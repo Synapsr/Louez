@@ -281,6 +281,20 @@
       "when": 1775232000000,
       "tag": "0036_add_store_locations",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1781006495531,
+      "tag": "0037_add_admin_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1781010765413,
+      "tag": "0038_add_admin_digest_logs",
+      "breakpoints": true
     }
   ]
 }

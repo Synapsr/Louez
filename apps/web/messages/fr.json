@@ -2712,6 +2712,7 @@
         "title": "Notifications",
         "description": "Configurez comment vous êtes notifié des événements de votre boutique",
         "saveError": "Erreur lors de l'enregistrement",
+        "saved": "Paramètres enregistrés",
         "phone": {
           "title": "Numéro de téléphone",
           "description": "Pour recevoir les notifications par SMS",
@@ -2773,6 +2774,18 @@
               "label": "Paiement échoué",
               "description": "Quand un paiement échoue"
             }
+          },
+          "reminder": {
+            "title": "Rappels automatiques",
+            "description": "Soyez averti avant les retraits et les retours",
+            "reservation_reminder_pickup": {
+              "label": "Rappel de retrait",
+              "description": "Avant qu'un client ne récupère sa location"
+            },
+            "reservation_reminder_return": {
+              "label": "Rappel de retour",
+              "description": "Avant qu'une location ne doive être rendue"
+            }
           }
         },
         "sms": {
@@ -2831,6 +2844,21 @@
           "pickupDescription": "Temps avant le début de la location",
           "returnDescription": "Temps avant la fin de la location",
           "hours": "{count, plural, =1 {1 heure} other {# heures}}"
+        },
+        "adminReminderTiming": {
+          "pickupLabel": "Délai rappel retrait",
+          "returnLabel": "Délai rappel retour",
+          "pickupDescription": "Temps avant un retrait pour vous alerter",
+          "returnDescription": "Temps avant un retour pour vous alerter"
+        },
+        "adminReminderMode": {
+          "label": "Fréquence des rappels",
+          "per_reservation": "Un rappel par réservation",
+          "daily_digest": "Résumé quotidien",
+          "per_reservationDescription": "Recevez un rappel distinct avant chaque retrait et retour.",
+          "daily_digestDescription": "Recevez chaque jour un résumé listant tous les retraits et retours du jour.",
+          "digestTimeLabel": "Envoyer le résumé quotidien à",
+          "digestTimeDescription": "Heure d'envoi du résumé (fuseau horaire de votre boutique)."
         },
         "customerTemplates": {
           "title": "Personnaliser le modèle",
@@ -4744,6 +4772,39 @@
       "scheduledReturn": "Retour prévu",
       "returnInfo": "Merci de rapporter le matériel en bon état. La caution vous sera restituée après vérification.",
       "thanks": "Merci de votre confiance !"
+    },
+    "reminderPickupAdmin": {
+      "subject": "Retrait à venir : réservation #{number}",
+      "title": "Retrait de matériel à venir",
+      "body": "Un retrait approche pour la réservation #{number}. Voici les détails pour préparer le matériel.",
+      "scheduledPickup": "Retrait prévu",
+      "customer": "Client :",
+      "email": "E-mail :",
+      "phone": "Téléphone :",
+      "amount": "Montant :",
+      "viewReservation": "Voir la réservation",
+      "connectToManage": "Connectez-vous à votre tableau de bord pour gérer cette réservation."
+    },
+    "reminderReturnAdmin": {
+      "subject": "Retour à venir : réservation #{number}",
+      "title": "Retour de matériel à venir",
+      "body": "Un retour approche pour la réservation #{number}. Voici les détails pour préparer la réception du matériel.",
+      "scheduledReturn": "Retour prévu",
+      "customer": "Client :",
+      "email": "E-mail :",
+      "phone": "Téléphone :",
+      "amount": "Montant :",
+      "viewReservation": "Voir la réservation",
+      "connectToManage": "Connectez-vous à votre tableau de bord pour gérer cette réservation."
+    },
+    "reminderDigestAdmin": {
+      "subject": "Votre programme du {date}",
+      "title": "Le programme du jour",
+      "body": "Voici ce qui se passe chez {storeName} aujourd'hui.",
+      "pickupsTitle": "Retraits ({count})",
+      "returnsTitle": "Retours ({count})",
+      "viewCalendar": "Voir le calendrier",
+      "connectToManage": "Connectez-vous à votre tableau de bord pour gérer votre journée."
     },
     "thankYouReview": {
       "subject": "Merci pour votre location !",

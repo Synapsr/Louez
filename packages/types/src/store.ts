@@ -447,6 +447,8 @@ export type NotificationEventType =
   | 'reservation_cancelled'
   | 'reservation_picked_up'
   | 'reservation_completed'
+  | 'reservation_reminder_pickup'
+  | 'reservation_reminder_return'
   | 'payment_received'
   | 'payment_failed'
 
@@ -457,6 +459,8 @@ export const NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
   'reservation_cancelled',
   'reservation_picked_up',
   'reservation_completed',
+  'reservation_reminder_pickup',
+  'reservation_reminder_return',
   'payment_received',
   'payment_failed',
 ]
@@ -474,9 +478,29 @@ export interface NotificationSettings {
   reservation_cancelled: NotificationChannelConfig
   reservation_picked_up: NotificationChannelConfig
   reservation_completed: NotificationChannelConfig
+  reservation_reminder_pickup: NotificationChannelConfig
+  reservation_reminder_return: NotificationChannelConfig
   payment_received: NotificationChannelConfig
   payment_failed: NotificationChannelConfig
+
+  // Automatic admin reminder timing (independent of customer reminder timing)
+  reminderSettings?: {
+    // Pickup reminder: hours before startDate to alert the admin (default: 24)
+    pickupReminderHours: number
+    // Return reminder: hours before endDate to alert the admin (default: 24)
+    returnReminderHours: number
+    // Delivery mode for admin reminders:
+    //  - 'per_reservation' (default): one reminder per reservation, sent
+    //    `pickup/returnReminderHours` before each event.
+    //  - 'daily_digest': one consolidated summary per day listing that day's
+    //    pickups and returns, sent at `digestHour` in the store's timezone.
+    mode?: AdminReminderMode
+    // Store-local hour (0-23) to send the daily digest. Default: 8 (08:00).
+    digestHour?: number
+  }
 }
+
+export type AdminReminderMode = 'per_reservation' | 'daily_digest'
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   reservation_new: { email: true, sms: false, discord: false },
@@ -485,8 +509,19 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   reservation_cancelled: { email: true, sms: false, discord: false },
   reservation_picked_up: { email: false, sms: false, discord: false },
   reservation_completed: { email: false, sms: false, discord: false },
+  // Admin reminders are opt-in (off by default; SMS/email/Discord cost money or noise)
+  reservation_reminder_pickup: { email: false, sms: false, discord: false },
+  reservation_reminder_return: { email: false, sms: false, discord: false },
   payment_received: { email: true, sms: false, discord: false },
   payment_failed: { email: true, sms: false, discord: false },
+
+  // Default admin reminder timing: 24 hours before event, per-reservation mode
+  reminderSettings: {
+    pickupReminderHours: 24,
+    returnReminderHours: 24,
+    mode: 'per_reservation',
+    digestHour: 8,
+  },
 }
 
 // ============================================================================

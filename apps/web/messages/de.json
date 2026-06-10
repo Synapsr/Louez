@@ -2465,6 +2465,7 @@
         "title": "Benachrichtigungen",
         "description": "Konfigurieren Sie, wie Sie über Shop-Ereignisse benachrichtigt werden",
         "saveError": "Fehler beim Speichern",
+        "saved": "Einstellungen gespeichert",
         "phone": {
           "title": "Telefonnummer",
           "description": "Um SMS-Benachrichtigungen zu erhalten",
@@ -2526,6 +2527,18 @@
               "label": "Zahlung fehlgeschlagen",
               "description": "Wenn eine Zahlung fehlschlägt"
             }
+          },
+          "reminder": {
+            "title": "Automatische Erinnerungen",
+            "description": "Lassen Sie sich vor Abholungen und Rückgaben erinnern",
+            "reservation_reminder_pickup": {
+              "label": "Abholungserinnerung",
+              "description": "Bevor ein Kunde seine Miete abholt"
+            },
+            "reservation_reminder_return": {
+              "label": "Rückgabeerinnerung",
+              "description": "Bevor eine Miete zurückgegeben werden muss"
+            }
           }
         },
         "sms": {
@@ -2584,6 +2597,21 @@
           "pickupDescription": "Zeit vor Mietbeginn",
           "returnDescription": "Zeit vor Mietende",
           "hours": "{count, plural, =1 {1 Stunde} other {# Stunden}}"
+        },
+        "adminReminderTiming": {
+          "pickupLabel": "Abholungserinnerung Vorlaufzeit",
+          "returnLabel": "Ruckgabeerinnerung Vorlaufzeit",
+          "pickupDescription": "Zeit vor einer Abholung, um Sie zu benachrichtigen",
+          "returnDescription": "Zeit vor einer Rückgabe, um Sie zu benachrichtigen"
+        },
+        "adminReminderMode": {
+          "label": "Erinnerungshäufigkeit",
+          "per_reservation": "Eine Erinnerung pro Reservierung",
+          "daily_digest": "Tägliche Zusammenfassung",
+          "per_reservationDescription": "Erhalten Sie eine separate Erinnerung vor jeder Abholung und Rückgabe.",
+          "daily_digestDescription": "Erhalten Sie täglich eine Zusammenfassung mit allen Abholungen und Rückgaben des Tages.",
+          "digestTimeLabel": "Tägliche Zusammenfassung senden um",
+          "digestTimeDescription": "Uhrzeit (Zeitzone Ihres Geschäfts), zu der die Zusammenfassung gesendet wird."
         },
         "customerTemplates": {
           "title": "Vorlage anpassen",
@@ -4694,6 +4722,39 @@
       "scheduledReturn": "Geplante Rückgabe",
       "returnInfo": "Bitte geben Sie die Ausrüstung in gutem Zustand zurück. Die Kaution wird nach Prüfung zurückgegeben.",
       "thanks": "Vielen Dank für Ihr Vertrauen!"
+    },
+    "reminderPickupAdmin": {
+      "subject": "Bevorstehende Abholung: Reservierung #{number}",
+      "title": "Bevorstehende Geräteabholung",
+      "body": "Für die Reservierung #{number} steht eine Abholung an. Hier sind die Details, damit Sie die Ausrüstung bereitstellen können.",
+      "scheduledPickup": "Geplante Abholung",
+      "customer": "Kunde:",
+      "email": "E-Mail:",
+      "phone": "Telefon:",
+      "amount": "Betrag:",
+      "viewReservation": "Reservierung ansehen",
+      "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Reservierung zu verwalten."
+    },
+    "reminderReturnAdmin": {
+      "subject": "Bevorstehende Rückgabe: Reservierung #{number}",
+      "title": "Bevorstehende Geräterückgabe",
+      "body": "Für die Reservierung #{number} steht eine Rückgabe an. Hier sind die Details, damit Sie sich auf die Annahme der Ausrüstung vorbereiten können.",
+      "scheduledReturn": "Geplante Rückgabe",
+      "customer": "Kunde:",
+      "email": "E-Mail:",
+      "phone": "Telefon:",
+      "amount": "Betrag:",
+      "viewReservation": "Reservierung ansehen",
+      "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Reservierung zu verwalten."
+    },
+    "reminderDigestAdmin": {
+      "subject": "Ihr Tagesplan für {date}",
+      "title": "Tagesplan",
+      "body": "Das steht heute bei {storeName} an.",
+      "pickupsTitle": "Abholungen ({count})",
+      "returnsTitle": "Rückgaben ({count})",
+      "viewCalendar": "Kalender ansehen",
+      "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um Ihren Tag zu verwalten."
     },
     "thankYouReview": {
       "subject": "Vielen Dank für Ihre Miete!",

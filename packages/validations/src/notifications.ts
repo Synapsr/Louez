@@ -17,8 +17,21 @@ export const notificationSettingsSchema = z.object({
   reservation_cancelled: notificationChannelConfigSchema,
   reservation_picked_up: notificationChannelConfigSchema,
   reservation_completed: notificationChannelConfigSchema,
+  reservation_reminder_pickup: notificationChannelConfigSchema,
+  reservation_reminder_return: notificationChannelConfigSchema,
   payment_received: notificationChannelConfigSchema,
   payment_failed: notificationChannelConfigSchema,
+  reminderSettings: z
+    .object({
+      pickupReminderHours: z.number().int().min(1).max(168),
+      returnReminderHours: z.number().int().min(1).max(168),
+      // Keep in sync with the NotificationSettings['reminderSettings'] type and
+      // updateAdminReminderSettings — omitting these would silently strip the
+      // admin delivery mode / digest hour if this schema is ever used to parse.
+      mode: z.enum(['per_reservation', 'daily_digest']).optional(),
+      digestHour: z.number().int().min(0).max(23).optional(),
+    })
+    .optional(),
 })
 
 export type NotificationSettingsInput = z.infer<typeof notificationSettingsSchema>

@@ -2473,6 +2473,7 @@
         "title": "Notificaciones",
         "description": "Configure como recibe notificaciones de eventos de su tienda",
         "saveError": "Error al guardar",
+        "saved": "Configuracion guardada",
         "phone": {
           "title": "Numero de telefono",
           "description": "Para recibir notificaciones por SMS",
@@ -2534,6 +2535,18 @@
               "label": "Pago fallido",
               "description": "Cuando un pago falla"
             }
+          },
+          "reminder": {
+            "title": "Recordatorios automáticos",
+            "description": "Reciba un aviso antes de las recogidas y devoluciones",
+            "reservation_reminder_pickup": {
+              "label": "Recordatorio de recogida",
+              "description": "Antes de que un cliente recoja su alquiler"
+            },
+            "reservation_reminder_return": {
+              "label": "Recordatorio de devolucion",
+              "description": "Antes de que un alquiler deba devolverse"
+            }
           }
         },
         "sms": {
@@ -2592,6 +2605,21 @@
           "pickupDescription": "Tiempo antes del inicio del alquiler",
           "returnDescription": "Tiempo antes del fin del alquiler",
           "hours": "{count, plural, =1 {1 hora} other {# horas}}"
+        },
+        "adminReminderTiming": {
+          "pickupLabel": "Anticipacion recordatorio recogida",
+          "returnLabel": "Anticipacion recordatorio devolucion",
+          "pickupDescription": "Tiempo antes de una recogida para avisarle",
+          "returnDescription": "Tiempo antes de una devolucion para avisarle"
+        },
+        "adminReminderMode": {
+          "label": "Frecuencia de recordatorios",
+          "per_reservation": "Un recordatorio por reserva",
+          "daily_digest": "Resumen diario",
+          "per_reservationDescription": "Reciba un recordatorio separado antes de cada recogida y devolucion.",
+          "daily_digestDescription": "Reciba un resumen cada dia con todas las recogidas y devoluciones de esa jornada.",
+          "digestTimeLabel": "Enviar el resumen diario a las",
+          "digestTimeDescription": "Hora del dia (zona horaria de su tienda) para enviar el resumen."
         },
         "customerTemplates": {
           "title": "Personalizar plantilla",
@@ -4711,6 +4739,39 @@
       "scheduledReturn": "Devolucion programada",
       "returnInfo": "Por favor devuelva el equipo en buenas condiciones. El deposito sera devuelto despues de la verificacion.",
       "thanks": "Gracias por su confianza!"
+    },
+    "reminderPickupAdmin": {
+      "subject": "Proxima recogida: reserva #{number}",
+      "title": "Proxima recogida de equipo",
+      "body": "Se acerca una recogida para la reserva #{number}. Aqui estan los detalles para que pueda preparar el equipo.",
+      "scheduledPickup": "Recogida programada",
+      "customer": "Cliente:",
+      "email": "Correo:",
+      "phone": "Telefono:",
+      "amount": "Monto:",
+      "viewReservation": "Ver reserva",
+      "connectToManage": "Inicie sesion en su panel para gestionar esta reserva."
+    },
+    "reminderReturnAdmin": {
+      "subject": "Proxima devolucion: reserva #{number}",
+      "title": "Proxima devolucion de equipo",
+      "body": "Se acerca una devolucion para la reserva #{number}. Aqui estan los detalles para que pueda preparar la recepcion del equipo.",
+      "scheduledReturn": "Devolucion programada",
+      "customer": "Cliente:",
+      "email": "Correo:",
+      "phone": "Telefono:",
+      "amount": "Monto:",
+      "viewReservation": "Ver reserva",
+      "connectToManage": "Inicie sesion en su panel para gestionar esta reserva."
+    },
+    "reminderDigestAdmin": {
+      "subject": "Su agenda para el {date}",
+      "title": "Agenda de hoy",
+      "body": "Esto es lo que ocurre hoy en {storeName}.",
+      "pickupsTitle": "Recogidas ({count})",
+      "returnsTitle": "Devoluciones ({count})",
+      "viewCalendar": "Ver calendario",
+      "connectToManage": "Inicie sesion en su panel para gestionar su jornada."
     },
     "thankYouReview": {
       "subject": "Gracias por su alquiler!",

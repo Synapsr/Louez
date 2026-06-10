@@ -48,6 +48,7 @@ import {
   updateCustomerTemplate,
   getCustomerTemplate,
   updateReminderSettings,
+  updateAdminReminderSettings,
 } from './actions'
 import type {
   NotificationSettings,
@@ -55,8 +56,13 @@ import type {
   CustomerNotificationSettings,
   CustomerNotificationEventType,
   CustomerNotificationTemplate,
+  AdminReminderMode,
 } from '@louez/types'
 import type { EmailLocale } from '@/lib/email/i18n'
+
+// Hours of the day offered for the daily digest send time.
+const DIGEST_HOURS = Array.from({ length: 24 }, (_, i) => i)
+const formatHour = (hour: number) => `${String(hour).padStart(2, '0')}:00`
 
 interface NotificationsFormProps {
   settings: NotificationSettings
@@ -86,7 +92,7 @@ interface NotificationsFormProps {
 
 interface NotificationEvent {
   type: NotificationEventType
-  category: 'reservation' | 'payment'
+  category: 'reservation' | 'reminder' | 'payment'
 }
 
 interface CustomerNotificationEvent {
@@ -101,6 +107,8 @@ const NOTIFICATION_EVENTS: NotificationEvent[] = [
   { type: 'reservation_cancelled', category: 'reservation' },
   { type: 'reservation_picked_up', category: 'reservation' },
   { type: 'reservation_completed', category: 'reservation' },
+  { type: 'reservation_reminder_pickup', category: 'reminder' },
+  { type: 'reservation_reminder_return', category: 'reminder' },
   { type: 'payment_received', category: 'payment' },
   { type: 'payment_failed', category: 'payment' },
 ]
@@ -154,6 +162,21 @@ export function NotificationsForm({
     initialCustomerSettings.reminderSettings?.returnReminderHours ?? 24
   )
   const [savingReminderSettings, setSavingReminderSettings] = useState(false)
+
+  // Admin reminder timing state (independent of customer timing)
+  const [adminPickupReminderHours, setAdminPickupReminderHours] = useState(
+    initialSettings.reminderSettings?.pickupReminderHours ?? 24
+  )
+  const [adminReturnReminderHours, setAdminReturnReminderHours] = useState(
+    initialSettings.reminderSettings?.returnReminderHours ?? 24
+  )
+  const [adminReminderMode, setAdminReminderMode] = useState<AdminReminderMode>(
+    initialSettings.reminderSettings?.mode ?? 'per_reservation'
+  )
+  const [adminDigestHour, setAdminDigestHour] = useState(
+    initialSettings.reminderSettings?.digestHour ?? 8
+  )
+  const [savingAdminReminderSettings, setSavingAdminReminderSettings] = useState(false)
 
   const smsLimitReached = !smsQuota.allowed
   const smsLow = smsQuota.limit !== null && smsQuota.current >= smsQuota.limit * 0.8
@@ -317,7 +340,51 @@ export function NotificationsForm({
     setSavingReminderSettings(false)
   }
 
+  // Persist admin reminder settings. Any field not being changed is resolved
+  // from current state, so the server action always gets a complete payload.
+  const persistAdminReminderSettings = async (overrides: {
+    pickupReminderHours?: number
+    returnReminderHours?: number
+    mode?: AdminReminderMode
+    digestHour?: number
+  }) => {
+    setSavingAdminReminderSettings(true)
+    const result = await updateAdminReminderSettings({
+      pickupReminderHours: overrides.pickupReminderHours ?? adminPickupReminderHours,
+      returnReminderHours: overrides.returnReminderHours ?? adminReturnReminderHours,
+      mode: overrides.mode ?? adminReminderMode,
+      digestHour: overrides.digestHour ?? adminDigestHour,
+    })
+    if (result.error) {
+      toastManager.add({ title: t('saveError'), type: 'error' })
+    } else {
+      toastManager.add({ title: t('saved'), type: 'success' })
+    }
+    setSavingAdminReminderSettings(false)
+  }
+
+  const handleAdminReminderTimingChange = (type: 'pickup' | 'return', hours: number) => {
+    if (type === 'pickup') {
+      setAdminPickupReminderHours(hours)
+      void persistAdminReminderSettings({ pickupReminderHours: hours })
+    } else {
+      setAdminReturnReminderHours(hours)
+      void persistAdminReminderSettings({ returnReminderHours: hours })
+    }
+  }
+
+  const handleAdminModeChange = (mode: AdminReminderMode) => {
+    setAdminReminderMode(mode)
+    void persistAdminReminderSettings({ mode })
+  }
+
+  const handleAdminDigestHourChange = (hour: number) => {
+    setAdminDigestHour(hour)
+    void persistAdminReminderSettings({ digestHour: hour })
+  }
+
   const reservationEvents = NOTIFICATION_EVENTS.filter((e) => e.category === 'reservation')
+  const adminReminderEvents = NOTIFICATION_EVENTS.filter((e) => e.category === 'reminder')
   const paymentEvents = NOTIFICATION_EVENTS.filter((e) => e.category === 'payment')
   const customerReservationEvents = CUSTOMER_NOTIFICATION_EVENTS.filter(
     (e) => e.category === 'reservation'
@@ -555,6 +622,180 @@ export function NotificationsForm({
               </div>
             </CardContent>
           </Card>
+
+          {/* Admin Reminders */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">
+                  {t('events.reminder.title')}
+                </CardTitle>
+              </div>
+              <CardDescription className="text-xs">
+                {t('events.reminder.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Delivery mode: per-reservation reminders vs. a daily digest */}
+              <div className="space-y-2 sm:max-w-sm">
+                <label className="text-sm font-medium">{t('adminReminderMode.label')}</label>
+                <Select
+                  value={adminReminderMode}
+                  onValueChange={(value) => {
+                    if (value === 'per_reservation' || value === 'daily_digest')
+                      handleAdminModeChange(value)
+                  }}
+                  disabled={savingAdminReminderSettings}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue>{t(`adminReminderMode.${adminReminderMode}`)}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectItem value="per_reservation" label={t('adminReminderMode.per_reservation')}>{t('adminReminderMode.per_reservation')}</SelectItem>
+                    <SelectItem value="daily_digest" label={t('adminReminderMode.daily_digest')}>{t('adminReminderMode.daily_digest')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {adminReminderMode === 'daily_digest'
+                    ? t('adminReminderMode.daily_digestDescription')
+                    : t('adminReminderMode.per_reservationDescription')}
+                </p>
+              </div>
+
+              {/* Timing: per-reservation lead times, or the daily digest send time */}
+              {adminReminderMode === 'per_reservation' ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t('adminReminderTiming.pickupLabel')}
+                  </label>
+                  <Select
+                    value={adminPickupReminderHours.toString()}
+                    onValueChange={(value) => {
+                      if (value !== null)
+                        handleAdminReminderTimingChange('pickup', parseInt(value, 10))
+                    }}
+                    disabled={savingAdminReminderSettings}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {t('reminderTiming.hours', { count: adminPickupReminderHours })}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectItem value="1" label={t('reminderTiming.hours', { count: 1 })}>{t('reminderTiming.hours', { count: 1 })}</SelectItem>
+                      <SelectItem value="2" label={t('reminderTiming.hours', { count: 2 })}>{t('reminderTiming.hours', { count: 2 })}</SelectItem>
+                      <SelectItem value="4" label={t('reminderTiming.hours', { count: 4 })}>{t('reminderTiming.hours', { count: 4 })}</SelectItem>
+                      <SelectItem value="6" label={t('reminderTiming.hours', { count: 6 })}>{t('reminderTiming.hours', { count: 6 })}</SelectItem>
+                      <SelectItem value="12" label={t('reminderTiming.hours', { count: 12 })}>{t('reminderTiming.hours', { count: 12 })}</SelectItem>
+                      <SelectItem value="24" label={t('reminderTiming.hours', { count: 24 })}>{t('reminderTiming.hours', { count: 24 })}</SelectItem>
+                      <SelectItem value="48" label={t('reminderTiming.hours', { count: 48 })}>{t('reminderTiming.hours', { count: 48 })}</SelectItem>
+                      <SelectItem value="72" label={t('reminderTiming.hours', { count: 72 })}>{t('reminderTiming.hours', { count: 72 })}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t('adminReminderTiming.pickupDescription')}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t('adminReminderTiming.returnLabel')}
+                  </label>
+                  <Select
+                    value={adminReturnReminderHours.toString()}
+                    onValueChange={(value) => {
+                      if (value !== null)
+                        handleAdminReminderTimingChange('return', parseInt(value, 10))
+                    }}
+                    disabled={savingAdminReminderSettings}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {t('reminderTiming.hours', { count: adminReturnReminderHours })}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      <SelectItem value="1" label={t('reminderTiming.hours', { count: 1 })}>{t('reminderTiming.hours', { count: 1 })}</SelectItem>
+                      <SelectItem value="2" label={t('reminderTiming.hours', { count: 2 })}>{t('reminderTiming.hours', { count: 2 })}</SelectItem>
+                      <SelectItem value="4" label={t('reminderTiming.hours', { count: 4 })}>{t('reminderTiming.hours', { count: 4 })}</SelectItem>
+                      <SelectItem value="6" label={t('reminderTiming.hours', { count: 6 })}>{t('reminderTiming.hours', { count: 6 })}</SelectItem>
+                      <SelectItem value="12" label={t('reminderTiming.hours', { count: 12 })}>{t('reminderTiming.hours', { count: 12 })}</SelectItem>
+                      <SelectItem value="24" label={t('reminderTiming.hours', { count: 24 })}>{t('reminderTiming.hours', { count: 24 })}</SelectItem>
+                      <SelectItem value="48" label={t('reminderTiming.hours', { count: 48 })}>{t('reminderTiming.hours', { count: 48 })}</SelectItem>
+                      <SelectItem value="72" label={t('reminderTiming.hours', { count: 72 })}>{t('reminderTiming.hours', { count: 72 })}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t('adminReminderTiming.returnDescription')}
+                  </p>
+                </div>
+              </div>
+              ) : (
+                <div className="space-y-2 sm:max-w-sm">
+                  <label className="text-sm font-medium">
+                    {t('adminReminderMode.digestTimeLabel')}
+                  </label>
+                  <Select
+                    value={String(adminDigestHour)}
+                    onValueChange={(value) => {
+                      if (value !== null) handleAdminDigestHourChange(parseInt(value, 10))
+                    }}
+                    disabled={savingAdminReminderSettings}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>{formatHour(adminDigestHour)}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent alignItemWithTrigger={false}>
+                      {DIGEST_HOURS.map((h) => (
+                        <SelectItem key={h} value={String(h)} label={formatHour(h)}>
+                          {formatHour(h)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t('adminReminderMode.digestTimeDescription')}
+                  </p>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Reminder Channel Configuration */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between py-2 text-xs text-muted-foreground border-b">
+                  <span>{t('events.event')}</span>
+                  <div className="flex items-center gap-6">
+                    <span className="w-10 text-center">Email</span>
+                    <span className="w-10 text-center">SMS</span>
+                    <span className="w-10 text-center">Discord</span>
+                  </div>
+                </div>
+                {adminReminderEvents.map((event) => (
+                  <NotificationRow
+                    key={event.type}
+                    eventType={event.type}
+                    label={t(`events.reminder.${event.type}.label`)}
+                    description={t(`events.reminder.${event.type}.description`)}
+                    config={settings[event.type]}
+                    onToggle={handleToggle}
+                    smsDisabled={!isSmsConfigured || smsLimitReached}
+                    smsTooltip={
+                      !isSmsConfigured
+                        ? t('phone.required')
+                        : smsLimitReached
+                          ? t('sms.limitReached')
+                          : undefined
+                    }
+                    discordDisabled={!isDiscordConnected}
+                    discordTooltip={!isDiscordConnected ? t('discord.required') : undefined}
+                    isPending={isPending}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Separator />
@@ -644,7 +885,7 @@ export function NotificationsForm({
                         {t('reminderTiming.hours', { count: pickupReminderHours })}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent alignItemWithTrigger={false}>
                       <SelectItem value="1" label={t('reminderTiming.hours', { count: 1 })}>{t('reminderTiming.hours', { count: 1 })}</SelectItem>
                       <SelectItem value="2" label={t('reminderTiming.hours', { count: 2 })}>{t('reminderTiming.hours', { count: 2 })}</SelectItem>
                       <SelectItem value="4" label={t('reminderTiming.hours', { count: 4 })}>{t('reminderTiming.hours', { count: 4 })}</SelectItem>
@@ -675,7 +916,7 @@ export function NotificationsForm({
                         {t('reminderTiming.hours', { count: returnReminderHours })}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent alignItemWithTrigger={false}>
                       <SelectItem value="1" label={t('reminderTiming.hours', { count: 1 })}>{t('reminderTiming.hours', { count: 1 })}</SelectItem>
                       <SelectItem value="2" label={t('reminderTiming.hours', { count: 2 })}>{t('reminderTiming.hours', { count: 2 })}</SelectItem>
                       <SelectItem value="4" label={t('reminderTiming.hours', { count: 4 })}>{t('reminderTiming.hours', { count: 4 })}</SelectItem>
