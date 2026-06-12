@@ -17,3 +17,5 @@ export {
   Loader as LoaderIcon,
   Star as StarIcon,
 } from 'lucide-react';
+
+export { GoogleCalendar as GoogleCalendarIcon } from './icon.google-calendar';

@@ -956,10 +956,13 @@
           "mappedTo": "Mapped to {title}",
           "linkOrCreateHelper": "Link an existing Tulip product or add a new Tulip product and link it.",
           "addNewProductButton": "Add a new product",
+          "editMappedProductButton": "Edit product",
           "mappingLabel": "Tulip product",
           "mappingPlaceholder": "Not mapped",
           "mappingSaving": "Saving...",
+          "dropdownValueExclTax": "{value} excl. tax",
           "noResults": "No Tulip products found",
+          "noRenterProducts": "No Tulip products found for this renter",
           "dialog": {
             "description": "Configure Tulip product details and push updates.",
             "cancel": "Cancel",
@@ -976,9 +979,15 @@
             "noResults": "No results",
             "noBrandResults": "No brand suggestions",
             "noModelResults": "No model suggestions",
+            "categoryRequired": "Select a Tulip category.",
+            "productSubtypeRequired": "Select a Tulip subtype.",
+            "brandRequired": "Enter a brand.",
+            "modelRequired": "Enter a model.",
+            "purchasePriceRequired": "Enter the purchase price before tax.",
             "invalidPurchasePrice": "Enter a valid purchase price.",
             "invalidMargin": "Enter a valid margin.",
-            "marginTooltip": "Additional margin added to the purchase price for insurance valuation.",
+            "marginTooltip": "Additional daily margin added to the purchase price for insurance valuation.",
+            "marginLockedTooltip": "This margin is set when the Tulip product is created and can't be changed afterward.",
             "invalidPurchasedDate": "Select a valid purchase date.",
             "fields": {
               "productTitle": "Product name (optional)",
@@ -988,7 +997,7 @@
               "model": "Model",
               "purchasedDate": "Purchase date",
               "purchasePriceHt": "Purchase price (excl. tax)",
-              "margin": "Margin"
+              "margin": "Margin / day"
             }
           }
         }
@@ -1114,6 +1123,7 @@
       "promoDiscount": "Promo discount",
       "pickupAtStore": "Store pickup",
       "tulipInsuredBadge": "Tulip insured",
+      "tulipPastStartWarning": "This reservation has already started: no Tulip contract was created. Adjust the rental period if insurance coverage still needs to be created.",
       "tulipContractCardTitle": "Insurance contract",
       "tulipContractCardDescription": "Open the contract in Colibri.",
       "manageStatus": "Manage reservation status",
@@ -1172,6 +1182,8 @@
         "summary": "Summary",
         "before": "Before",
         "after": "After",
+        "insuranceLine": "Breakage/theft coverage",
+        "insuranceEstimating": "Calculating...",
         "difference": "Difference",
         "deposit": "Deposit",
         "save": "Save",
@@ -1273,6 +1285,7 @@
         "perHour": "h",
         "perDay": "d",
         "perWeek": "week",
+        "pricingMode": "Pricing unit",
         "available": "available",
         "outOfStock": "Out of stock",
         "add": "Add",
@@ -1296,10 +1309,16 @@
         "tulipInsurance": {
           "title": "Tulip insurance",
           "appliesMappedProducts": "Applies only to products mapped to Tulip.",
-          "required": "Coverage is required for this reservation.",
-          "optionalLabel": "Enable coverage for this reservation",
+          "required": "Breakage/theft coverage is included in this reservation and will be applied automatically.",
+          "optionalLabel": "Protect this reservation with Tulip",
+          "optionalHelp": "Protect equipment against breakage and theft with Tulip coverage.",
           "insurableProduct": "Insurable",
-          "assuredProduct": "Insured"
+          "assuredProduct": "Insured",
+          "pastStartWarning": "This period starts in the past. Tulip cannot create or update insurance on these dates, so protection is removed from this change.",
+          "disabledPastStart": "Tulip protection disabled for this past period.",
+          "calculating": "Calculating coverage...",
+          "estimatedAmount": "Estimated coverage: {amount}",
+          "previewUnavailable": "Tulip amount could not be recalculated."
         },
         "duration": "Duration",
         "exact": "exact",
@@ -1969,13 +1988,22 @@
         "noProducts": "No products to display"
       },
       "export": {
-        "button": "Export calendar",
-        "title": "Export to calendar",
-        "description": "Sync your reservations with your favorite calendar by copying the link below.",
+        "button": "Sync calendar",
+        "title": "Sync calendar",
+        "description": "Connect a calendar integration or use the universal ICS link.",
+        "integration": {
+          "title": "Recommended calendar integration",
+          "description": "Connect Google Calendar to sync reservations automatically, with colors, private visibility, availability and retries.",
+          "button": "Configure Google Calendar"
+        },
+        "ics": {
+          "title": "Universal ICS link",
+          "description": "Compatible with Apple Calendar, Outlook and other calendars. Freshness depends on the subscribed app."
+        },
         "urlLabel": "ICS calendar link",
         "loading": "Loading...",
         "instructions": {
-          "title": "How to add this calendar?",
+          "title": "Add the ICS link manually",
           "google": {
             "step1": "Open Google Calendar",
             "step2": "Click the + next to \"Other calendars\" then \"From URL\"",
@@ -2154,7 +2182,7 @@
             "description": "Choose how insurance is applied and displayed to customers.",
             "disabledMessage": "Enter and validate your Tulip account identifier first.",
             "modeLabel": "Insurance mode",
-            "modeRequired": "Required for all products",
+            "modeRequired": "Included automatically",
             "modeOptional": "Optional at checkout",
             "modeNoPublic": "No public display",
             "includePriceLabel": "Include insurance in final price",
@@ -2190,9 +2218,15 @@
             "createOption": "Use \"{value}\"",
             "noBrandResults": "No brand suggestions",
             "noModelResults": "No model suggestions",
+            "categoryRequired": "Select a Tulip category.",
+            "productSubtypeRequired": "Select a Tulip subtype.",
+            "brandRequired": "Enter a brand.",
+            "modelRequired": "Enter a model.",
+            "purchasePriceRequired": "Enter the purchase price before tax.",
             "invalidPurchasePrice": "Enter a valid purchase price.",
             "invalidMargin": "Enter a valid margin.",
-            "marginTooltip": "Additional margin added to the purchase price for insurance valuation.",
+            "marginTooltip": "Additional daily margin added to the purchase price for insurance valuation.",
+            "marginLockedTooltip": "This margin is set when the Tulip product is created and can't be changed afterward.",
             "invalidPurchasedDate": "Select a valid purchase date.",
             "createButton": "Create in Tulip",
             "creatingButton": "Creating...",
@@ -2214,6 +2248,7 @@
               "mapped": "Mapped",
               "notMapped": "Not mapped"
             },
+            "dropdownValueExclTax": "{value} excl. tax",
             "noResults": "No Tulip products found",
             "noFilterResults": "No products match the current filters.",
             "sheet": {
@@ -2229,7 +2264,7 @@
               "model": "Model",
               "purchasedDate": "Purchase date",
               "purchasePriceHt": "Purchase price (excl. tax)",
-              "margin": "Margin"
+              "margin": "Margin / day"
             }
           }
         }
@@ -2294,20 +2329,68 @@
           "resources": "Resources"
         },
         "categories": {
+          "calendar": {
+            "name": "Calendar",
+            "description": "Synchronize reservations to external calendars."
+          },
           "insurance": {
             "name": "Insurance",
             "description": "Protect reservations and synchronize insurance contracts."
           }
         },
         "providers": {
+          "googleCalendar": {
+            "name": "Google Calendar",
+            "description": "Connect Google Calendar with OAuth to synchronize reservations into a dedicated calendar.",
+            "about": "Louez creates a dedicated Google calendar for your store, then pushes reservation creations, updates, and cancellations asynchronously.",
+            "features": {
+              "oauth": "Dedicated Google OAuth connection, separate from user sign-in.",
+              "sync": "One-way synchronization from Louez reservations to a dedicated Google calendar.",
+              "retry": "Synchronization queue with automatic retries when the provider fails."
+            },
+            "resources": {
+              "help": "Google Calendar help"
+            }
+          },
+          "icsCalendar": {
+            "name": "ICS link",
+            "description": "Publish a calendar link compatible with Apple Calendar, Outlook, and Google Calendar.",
+            "about": "The ICS link remains available as a simple universal option, but freshness depends on the subscribed calendar application.",
+            "features": {
+              "link": "Calendar subscription link generated per store.",
+              "compatibility": "Compatible with major calendars that accept ICS subscriptions."
+            },
+            "resources": {
+              "help": "iCalendar reference"
+            }
+          },
           "tulip": {
             "name": "Tulip Insurance",
-            "description": "Connect Tulip to quote and generate rental insurance contracts.",
-            "about": "Tulip centralizes renter insurance operations: quote preview during checkout, contract creation, and mapping between your catalog and insured products.",
+            "description": "Connect Tulip to offer breakage, theft, and vandalism insurance on your rentals.",
+            "about": "How it works: the coverage is offered during reservation or when signing the rental contract. The renter can subscribe in a few clicks depending on the selected guarantees. In case of a claim, the rental company reports it on the Tulip platform. How to configure: contract with Tulip and define whether insurance is included in the rental or offered as an option during reservation. Enable the Tulip integration in Louez.io with your access key from Tulip. Configure your account and start offering the service. About: Tulip specializes in professional equipment rental and works with more than 500 rental companies. Tulip is a French company registered with Orias since 2019 (19001215).",
+            "aboutSections": {
+              "howItWorks": {
+                "title": "How it works",
+                "reservation": "The coverage is offered during reservation or when signing the rental contract.",
+                "subscription": "The renter can subscribe in a few clicks depending on the selected guarantees.",
+                "claim": "In case of a claim, the rental company reports it on the Tulip platform."
+              },
+              "configure": {
+                "title": "How to configure",
+                "contract": "Contract with Tulip and define whether insurance is included in the rental or offered as an option during reservation.",
+                "enable": "Enable the Tulip integration in Louez.io with your access key from Tulip.",
+                "start": "Configure your account and start offering the service."
+              },
+              "about": {
+                "title": "About",
+                "market": "Tulip specializes in professional equipment rental and works with more than 500 rental companies.",
+                "orias": "Tulip is a French company registered with Orias since 2019 (19001215)."
+              }
+            },
             "features": {
-              "sync": "Connect your Tulip account by validating your account identifier.",
-              "checkout": "Apply insurance at checkout (required, optional, or hidden public mode).",
-              "mapping": "Map Louez products to Tulip products and push updates."
+              "sync": "Secure your rentals: protection against breakage, theft, and vandalism on rented equipment.",
+              "checkout": "Generate additional revenue: possible margin up to x2 on the insurance price.",
+              "mapping": "Improve customer satisfaction without adding operational workload."
             },
             "resources": {
               "website": "Website",
@@ -2320,6 +2403,7 @@
         "noIntegrations": "No integrations available yet.",
         "sections": {
           "byLouez": "By Louez.io",
+          "calendar": "Calendar",
           "insurance": "Insurance"
         },
         "builtIn": {
@@ -4172,11 +4256,11 @@
       "contactDescription": "We need this information to contact you",
       "addressDescription": "Enter your address details to continue",
       "confirmDescription": "Review your information before confirming",
-      "insuranceRequiredNotice": "Breakage/theft coverage is required for this reservation and will be applied automatically.",
+      "insuranceRequiredNotice": "Breakage/theft coverage is included in your reservation and will be applied automatically.",
       "insuranceOptionalLabel": "Add breakage/theft coverage",
-      "insuranceOptionalHelp": "Enable this option to include breakage/theft coverage in your reservation.",
+      "insuranceOptionalHelp": "Protect equipment against breakage and theft with Tulip coverage.",
       "insuranceLineLabel": "Breakage/theft coverage",
-      "insuranceRequiredBadge": "Required",
+      "insuranceRequiredBadge": "Included",
       "insuranceOptionalEnabled": "Selected",
       "insuranceOptionalDisabled": "Not selected",
       "insuranceOptionalUnavailable": "Coverage is temporarily unavailable. Your reservation will be sent without coverage.",
@@ -5129,6 +5213,9 @@
     "categoryNotFound": "Category not found",
     "integrationNotFound": "Integration not found",
     "integrationCategoryNotFound": "Integration category not found",
+    "integrationNotConnected": "Integration not connected",
+    "unsupportedOperation": "Unsupported operation",
+    "permissionDenied": "Insufficient permission",
     "customerNotFound": "Customer not found",
     "reservationNotFound": "Reservation not found",
     "emailAlreadyExists": "A customer with this email already exists",
@@ -5232,9 +5319,12 @@
     "tulipActionForbidden": "Tulip refused this action for the current account configuration.",
     "tulipApiUnavailable": "Tulip is currently unavailable. Please try again later.",
     "tulipRenterNotFound": "No Tulip account was found for this account identifier.",
+    "tulipRenterAttachFailed": "Unable to attach this Tulip account to the configured API key. Check the renter identifier and the key permissions.",
     "tulipProductSubtypeInvalid": "This subtype is not valid for the selected Tulip category.",
+    "tulipProductRequiredFieldsMissing": "Category, subtype, brand, model, and purchase price before tax are required to create a Tulip product.",
     "tulipProductPayloadInvalid": "Tulip rejected product data. Check category/subtype and required fields.",
     "tulipProductNotFound": "Tulip product not found. Refresh Tulip products and remap this item.",
+    "tulipProductCatalogUnavailable": "The Tulip product catalog is unavailable for this account. You can create a new Tulip product or ask Tulip to enable catalog access.",
     "tulipNotConfigured": "Tulip is not configured yet.",
     "tulipProductNotMapped": "Some products are not mapped to Tulip products.",
     "tulipProductAlreadyMapped": "This product is already mapped to a Tulip product.",
@@ -5243,10 +5333,23 @@
     "tulipInvalidContractResponse": "Tulip returned an invalid contract response.",
     "tulipContractCreationFailed": "Reservation confirmed, but Tulip contract creation failed.",
     "tulipContractUpdateFailed": "Reservation updated, but Tulip contract synchronization failed.",
+    "tulipContractCancellationFailed": "Reservation cancelled, but Tulip contract termination failed.",
     "tulipQuoteFailed": "Unable to calculate breakage/theft coverage for this reservation.",
+    "tulipInsuranceDisabledPastDate": "Reservation updated, but Tulip protection was disabled because the dates are in the past.",
     "tulipContractPastDate": "Tulip refused contract creation: contract dates cannot be in the past.",
+    "tulipContractDatesInvalid": "Tulip refused the contract: the start and end dates are inconsistent for this contract type.",
     "tulipContractActionForbidden": "Tulip refused this action for the current account configuration.",
-    "tulipContractTypeDisabled": "The Tulip contract type required for this duration is not enabled for this store."
+    "tulipContractOptionsInvalid": "Tulip rejected the contract options. Check breakage/theft options and the insured type.",
+    "tulipContractUpdateWindowExpired": "Tulip rejected the update: the contract started more than 4 hours ago and its dates can no longer be changed.",
+    "tulipContractNotFound": "Tulip could not find this contract. Check synchronization before trying again.",
+    "tulipContractNotOpen": "Tulip rejected the update: only open contracts can be modified.",
+    "tulipContractIdentityFrozen": "Tulip rejected the update: customer identity data is now frozen for this contract.",
+    "tulipContractProductMarkedMissing": "Tulip requires the real identifier of each insured item. Assign a unit or physical identifier to every insured product before creating or syncing the contract.",
+    "tulipContractPayloadInvalid": "Tulip rejected the contract payload. Check the insured products and required fields being sent.",
+    "tulipContractValidationFailed": "Tulip rejected this action because of a contract validation error.",
+    "tulipContractTypeDisabled": "The Tulip contract type required for this duration is not enabled for this store.",
+    "tulipContractProductsIncompatible": "The insured Tulip products in this reservation are not all compatible with this contract type.",
+    "tulipProductTypeDisabled": "This Tulip product category is not enabled for this store."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

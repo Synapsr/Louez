@@ -98,6 +98,7 @@ export function getIntegrationDetail(
     resourceLinks: entry.manifest.resourceLinks,
     featureKeys: entry.manifest.featureKeys,
     aboutKey: entry.manifest.aboutKey,
+    aboutSections: entry.manifest.aboutSections,
     websiteUrl: entry.manifest.websiteUrl,
   }
 }

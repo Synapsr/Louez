@@ -918,10 +918,13 @@
           "mappedTo": "Mappé vers {title}",
           "linkOrCreateHelper": "Je lie un produit Tulip existant ou j'ajoute un nouveau produit Tulip puis je le lie.",
           "addNewProductButton": "Ajouter un nouveau produit",
+          "editMappedProductButton": "Modifier le produit",
           "mappingLabel": "Produit Tulip",
           "mappingPlaceholder": "Non mappé",
           "mappingSaving": "Enregistrement...",
+          "dropdownValueExclTax": "{value} HT",
           "noResults": "Aucun produit Tulip trouvé",
+          "noRenterProducts": "Aucun produit Tulip trouvé pour ce loueur",
           "dialog": {
             "description": "Configurez les détails du produit Tulip et poussez les mises à jour.",
             "cancel": "Annuler",
@@ -938,9 +941,15 @@
             "noResults": "Aucun résultat",
             "noBrandResults": "Aucune suggestion de marque",
             "noModelResults": "Aucune suggestion de modèle",
+            "categoryRequired": "Sélectionnez une catégorie Tulip.",
+            "productSubtypeRequired": "Sélectionnez un sous-type Tulip.",
+            "brandRequired": "Renseignez une marque.",
+            "modelRequired": "Renseignez un modèle.",
+            "purchasePriceRequired": "Renseignez le prix d'achat HT.",
             "invalidPurchasePrice": "Saisissez un prix d'achat valide.",
             "invalidMargin": "Saisissez une marge valide.",
-            "marginTooltip": "Marge supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
+            "marginTooltip": "Marge journalière supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
+            "marginLockedTooltip": "Cette marge est définie à la création du produit Tulip et ne peut plus être modifiée ensuite.",
             "invalidPurchasedDate": "Sélectionnez une date d'achat valide.",
             "fields": {
               "productTitle": "Nom du produit (optionnel)",
@@ -950,7 +959,7 @@
               "model": "Modèle",
               "purchasedDate": "Date d'achat",
               "purchasePriceHt": "Prix d'achat HT",
-              "margin": "Marge"
+              "margin": "Marge / jour"
             }
           }
         },
@@ -1104,6 +1113,7 @@
       "productUnitPrice": "Prix unit.",
       "productTotal": "Total",
       "tulipInsuredBadge": "Assuré Tulip",
+      "tulipPastStartWarning": "La réservation a déjà commencé : aucun contrat Tulip n'a été créé. Ajustez la période si vous devez créer une couverture assurance.",
       "tulipContractCardTitle": "Contrat assurance",
       "tulipContractCardDescription": "Ouvrir le contrat dans Colibri.",
       "deliveryAndReturn": "Livraison & retour",
@@ -1172,6 +1182,8 @@
         "summary": "Récapitulatif",
         "before": "Avant",
         "after": "Après",
+        "insuranceLine": "Garantie casse/vol",
+        "insuranceEstimating": "Calcul...",
         "difference": "Différence",
         "deposit": "Caution",
         "save": "Enregistrer",
@@ -1282,6 +1294,7 @@
         "perHour": "h",
         "perDay": "j",
         "perWeek": "sem",
+        "pricingMode": "Unité de tarification",
         "available": "dispo",
         "outOfStock": "Rupture de stock",
         "add": "Ajouter",
@@ -1305,10 +1318,16 @@
         "tulipInsurance": {
           "title": "Assurance Tulip",
           "appliesMappedProducts": "S'applique uniquement aux produits mappés vers Tulip.",
-          "required": "La garantie est obligatoire pour cette réservation.",
-          "optionalLabel": "Activer la garantie pour cette réservation",
+          "required": "Une garantie casse/vol est intégrée à cette réservation et sera appliquée automatiquement.",
+          "optionalLabel": "Protéger cette réservation avec Tulip",
+          "optionalHelp": "Protégez le matériel contre la casse et le vol grâce à la garantie Tulip.",
           "insurableProduct": "Assurable",
-          "assuredProduct": "Assuré"
+          "assuredProduct": "Assuré",
+          "pastStartWarning": "Cette période démarre dans le passé. Tulip ne permet pas de créer ou modifier une assurance sur ces dates, donc la protection est retirée de cette modification.",
+          "disabledPastStart": "Protection Tulip désactivée pour cette période passée.",
+          "calculating": "Calcul de la garantie...",
+          "estimatedAmount": "Garantie estimée : {amount}",
+          "previewUnavailable": "Le montant Tulip n'a pas pu être recalculé."
         },
         "duration": "Durée",
         "exact": "exact",
@@ -1969,13 +1988,22 @@
         "noProducts": "Aucun produit à afficher"
       },
       "export": {
-        "button": "Exporter le calendrier",
-        "title": "Exporter vers un calendrier",
-        "description": "Synchronisez vos reservations avec votre calendrier favori en copiant le lien ci-dessous.",
+        "button": "Synchroniser le calendrier",
+        "title": "Synchroniser le calendrier",
+        "description": "Connectez une intégration calendrier ou utilisez le lien ICS universel.",
+        "integration": {
+          "title": "Intégration calendrier recommandée",
+          "description": "Connectez Google Calendar pour synchroniser les réservations automatiquement, avec couleurs, statut privé, disponibilité et relances automatiques.",
+          "button": "Configurer Google Calendar"
+        },
+        "ics": {
+          "title": "Lien ICS universel",
+          "description": "Option compatible Apple Calendar, Outlook et autres agendas. La fraîcheur dépend de l'application abonnée."
+        },
         "urlLabel": "Lien du calendrier ICS",
         "loading": "Chargement...",
         "instructions": {
-          "title": "Comment ajouter ce calendrier ?",
+          "title": "Ajouter le lien ICS manuellement",
           "google": {
             "step1": "Ouvrez Google Agenda",
             "step2": "Cliquez sur le + a cote de \"Autres agendas\" puis \"A partir de l'URL\"",
@@ -2154,7 +2182,7 @@
             "description": "Choisissez comment l'assurance est appliquée et affichée aux clients.",
             "disabledMessage": "Renseignez et validez d'abord votre identifiant de compte Tulip.",
             "modeLabel": "Mode d'assurance",
-            "modeRequired": "Obligatoire pour tous les produits",
+            "modeRequired": "Intégrée automatiquement",
             "modeOptional": "Optionnelle au checkout",
             "modeNoPublic": "Non affichée publiquement",
             "includePriceLabel": "Inclure l'assurance dans le prix final",
@@ -2190,9 +2218,15 @@
             "createOption": "Utiliser \"{value}\"",
             "noBrandResults": "Aucune suggestion de marque",
             "noModelResults": "Aucune suggestion de modèle",
+            "categoryRequired": "Sélectionnez une catégorie Tulip.",
+            "productSubtypeRequired": "Sélectionnez un sous-type Tulip.",
+            "brandRequired": "Renseignez une marque.",
+            "modelRequired": "Renseignez un modèle.",
+            "purchasePriceRequired": "Renseignez le prix d'achat HT.",
             "invalidPurchasePrice": "Saisissez un prix d'achat valide.",
             "invalidMargin": "Saisissez une marge valide.",
-            "marginTooltip": "Marge supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
+            "marginTooltip": "Marge journalière supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
+            "marginLockedTooltip": "Cette marge est définie à la création du produit Tulip et ne peut plus être modifiée ensuite.",
             "invalidPurchasedDate": "Sélectionnez une date d'achat valide.",
             "createButton": "Créer dans Tulip",
             "creatingButton": "Création...",
@@ -2214,6 +2248,7 @@
               "mapped": "Mappé",
               "notMapped": "Non mappé"
             },
+            "dropdownValueExclTax": "{value} HT",
             "noResults": "Aucun produit Tulip trouvé",
             "noFilterResults": "Aucun produit ne correspond aux filtres.",
             "sheet": {
@@ -2229,7 +2264,7 @@
               "model": "Modèle",
               "purchasedDate": "Date d'achat",
               "purchasePriceHt": "Prix d'achat HT",
-              "margin": "Marge"
+              "margin": "Marge / jour"
             }
           }
         }
@@ -2294,20 +2329,68 @@
           "resources": "Ressources"
         },
         "categories": {
+          "calendar": {
+            "name": "Calendrier",
+            "description": "Synchronisez vos réservations vers des agendas externes."
+          },
           "insurance": {
             "name": "Assurance",
             "description": "Protégez les réservations et synchronisez les contrats d'assurance."
           }
         },
         "providers": {
+          "googleCalendar": {
+            "name": "Google Calendar",
+            "description": "Connectez Google Calendar en OAuth pour synchroniser les réservations dans un agenda dédié.",
+            "about": "Louez crée un agenda Google dédié à votre boutique, puis pousse les créations, modifications et annulations de réservations de façon asynchrone.",
+            "features": {
+              "oauth": "Connexion OAuth Google dédiée, séparée de la connexion utilisateur.",
+              "sync": "Synchronisation one-way des réservations Louez vers un agenda Google dédié.",
+              "retry": "File de synchronisation avec relances automatiques en cas d'erreur fournisseur."
+            },
+            "resources": {
+              "help": "Aide Google Calendar"
+            }
+          },
+          "icsCalendar": {
+            "name": "Lien ICS",
+            "description": "Publiez un lien calendrier compatible Apple Calendar, Outlook et Google Calendar.",
+            "about": "Le lien ICS reste disponible comme option simple et universelle, mais sa fraîcheur dépend de l'application d'agenda abonnée.",
+            "features": {
+              "link": "Lien d'abonnement calendrier généré par boutique.",
+              "compatibility": "Compatible avec les principaux agendas qui acceptent les abonnements ICS."
+            },
+            "resources": {
+              "help": "Référence iCalendar"
+            }
+          },
           "tulip": {
             "name": "Assurance Tulip",
-            "description": "Connectez Tulip pour estimer et générer les contrats d'assurance location.",
-            "about": "Tulip centralise les opérations d'assurance du loueur : estimation lors du checkout, création de contrat et mapping entre votre catalogue et les produits assurables.",
+            "description": "Connectez Tulip pour proposer une assurance casse, vol et vandalisme sur vos locations.",
+            "about": "Comment ça marche : la garantie est proposée au moment de la réservation ou de la signature du contrat de location. Le locataire peut souscrire en quelques clics selon les garanties choisies. En cas de sinistre, le loueur déclare le sinistre sur la plateforme Tulip. Comment configurer : contractualisez avec Tulip et définissez si l’assurance est incluse dans la location ou proposée en option au moment de la réservation. Activez l’intégration Tulip dans Louez.io grâce à votre clé d’accès à demander à Tulip. Paramétrez votre compte et commencez à proposer ce service. À propos : Tulip est spécialisé dans la location de matériel et d’équipements professionnels et travaille avec plus de 500 loueurs. Tulip est une entreprise française inscrite à l’Orias depuis 2019 (19001215).",
+            "aboutSections": {
+              "howItWorks": {
+                "title": "Comment ça marche",
+                "reservation": "La garantie est proposée au moment de la réservation ou de la signature du contrat de location.",
+                "subscription": "Le locataire peut souscrire en quelques clics selon les garanties choisies.",
+                "claim": "En cas de sinistre, le loueur déclare le sinistre sur la plateforme Tulip."
+              },
+              "configure": {
+                "title": "Comment configurer",
+                "contract": "Contractualisez avec Tulip et définissez si l’assurance est incluse dans la location ou proposée en option au moment de la réservation.",
+                "enable": "Activez l’intégration Tulip dans Louez.io grâce à votre clé d’accès, à demander à Tulip.",
+                "start": "Paramétrez votre compte et commencez à proposer ce service."
+              },
+              "about": {
+                "title": "À propos",
+                "market": "Tulip est spécialisé dans la location de matériel et d’équipements professionnels et travaille avec plus de 500 loueurs.",
+                "orias": "Tulip est une entreprise française inscrite à l’Orias depuis 2019 (19001215)."
+              }
+            },
             "features": {
-              "sync": "Connectez votre compte Tulip avec validation de l'identifiant de compte.",
-              "checkout": "Appliquez l'assurance au checkout (mode obligatoire, optionnel ou masqué).",
-              "mapping": "Mappez les produits Louez avec les produits Tulip et poussez les mises à jour."
+              "sync": "Sécurisez vos locations : protection contre la casse, le vol et le vandalisme sur les équipements loués.",
+              "checkout": "Générez un revenu complémentaire : marge possible jusqu’à x2 sur le prix de l’assurance.",
+              "mapping": "Améliorez la satisfaction de vos clients, sans ajouter d’opérationnel."
             },
             "resources": {
               "website": "Site web",
@@ -2320,6 +2403,7 @@
         "noIntegrations": "Aucune intégration disponible pour le moment.",
         "sections": {
           "byLouez": "Par Louez.io",
+          "calendar": "Calendrier",
           "insurance": "Assurance"
         },
         "builtIn": {
@@ -4172,11 +4256,11 @@
       "contactDescription": "Nous avons besoin de ces informations pour vous contacter",
       "addressDescription": "Renseignez votre adresse pour continuer",
       "confirmDescription": "Vérifiez vos informations avant de valider",
-      "insuranceRequiredNotice": "La garantie casse/vol est obligatoire pour cette réservation et sera appliquée automatiquement.",
+      "insuranceRequiredNotice": "Une garantie casse/vol est intégrée à votre réservation et sera appliquée automatiquement.",
       "insuranceOptionalLabel": "Ajouter la garantie casse/vol",
-      "insuranceOptionalHelp": "Activez cette option pour inclure la garantie casse/vol à votre réservation.",
+      "insuranceOptionalHelp": "Protégez le matériel contre la casse et le vol grâce à la garantie Tulip.",
       "insuranceLineLabel": "Garantie casse/vol",
-      "insuranceRequiredBadge": "Obligatoire",
+      "insuranceRequiredBadge": "Intégrée",
       "insuranceOptionalEnabled": "Sélectionnée",
       "insuranceOptionalDisabled": "Non sélectionnée",
       "insuranceOptionalUnavailable": "La garantie est momentanément indisponible. Votre réservation sera envoyée sans garantie.",
@@ -5129,6 +5213,9 @@
     "categoryNotFound": "Catégorie introuvable",
     "integrationNotFound": "Intégration introuvable",
     "integrationCategoryNotFound": "Catégorie d'intégration introuvable",
+    "integrationNotConnected": "Intégration non connectée",
+    "unsupportedOperation": "Opération non prise en charge",
+    "permissionDenied": "Permission insuffisante",
     "customerNotFound": "Client introuvable",
     "reservationNotFound": "Réservation introuvable",
     "emailAlreadyExists": "Un client avec cet email existe déjà",
@@ -5227,9 +5314,12 @@
     "tulipActionForbidden": "Tulip a refusé cette action pour la configuration actuelle du compte.",
     "tulipApiUnavailable": "Tulip est indisponible pour le moment. Veuillez réessayer plus tard.",
     "tulipRenterNotFound": "Aucun compte Tulip trouvé pour cet identifiant.",
+    "tulipRenterAttachFailed": "Impossible de rattacher ce compte Tulip à la clé API configurée. Vérifiez l'identifiant du loueur et les droits de la clé.",
     "tulipProductSubtypeInvalid": "Ce sous-type n'est pas valide pour la catégorie Tulip sélectionnée.",
+    "tulipProductRequiredFieldsMissing": "Catégorie, sous-type, marque, modèle et prix d'achat HT sont obligatoires pour créer un produit Tulip.",
     "tulipProductPayloadInvalid": "Tulip a refusé les données produit. Vérifiez la catégorie/sous-type et les champs requis.",
     "tulipProductNotFound": "Produit Tulip introuvable. Actualisez les produits Tulip puis remappez cet élément.",
+    "tulipProductCatalogUnavailable": "Le catalogue produits Tulip est inaccessible pour ce compte. Vous pouvez créer un nouveau produit Tulip ou demander à Tulip d'activer l'accès au catalogue.",
     "tulipNotConfigured": "Tulip n'est pas encore configuré.",
     "tulipProductNotMapped": "Certains produits ne sont pas mappés avec des produits Tulip.",
     "tulipProductAlreadyMapped": "Ce produit est déjà mappé à un produit Tulip.",
@@ -5238,10 +5328,23 @@
     "tulipInvalidContractResponse": "Tulip a renvoyé une réponse de contrat invalide.",
     "tulipContractCreationFailed": "Réservation confirmée, mais la création du contrat Tulip a échoué.",
     "tulipContractUpdateFailed": "Réservation modifiée, mais la synchronisation du contrat Tulip a échoué.",
+    "tulipContractCancellationFailed": "Réservation annulée, mais la résiliation du contrat Tulip a échoué.",
     "tulipQuoteFailed": "Impossible de calculer la garantie casse/vol pour cette réservation.",
+    "tulipInsuranceDisabledPastDate": "Réservation modifiée, mais la protection Tulip a été désactivée car les dates sont dans le passé.",
     "tulipContractPastDate": "Tulip a refusé la création du contrat : les dates ne peuvent pas être dans le passé.",
+    "tulipContractDatesInvalid": "Tulip a refusé le contrat : les dates de début et de fin sont incohérentes pour ce type de contrat.",
     "tulipContractActionForbidden": "Tulip a refusé cette action pour la configuration actuelle du compte.",
+    "tulipContractOptionsInvalid": "Tulip a refusé les options du contrat. Vérifiez les options casse/vol et le type d'assuré.",
+    "tulipContractUpdateWindowExpired": "Tulip a refusé la modification : le contrat a démarré depuis plus de 4 heures et ses dates ne peuvent plus être modifiées.",
+    "tulipContractNotFound": "Tulip ne retrouve pas ce contrat. Vérifiez la synchronisation avant de réessayer.",
+    "tulipContractNotOpen": "Tulip a refusé la modification : seuls les contrats ouverts peuvent être mis à jour.",
+    "tulipContractIdentityFrozen": "Tulip a refusé la modification : les informations du client sont désormais gelées pour ce contrat.",
+    "tulipContractProductMarkedMissing": "Tulip exige le numéro réel du matériel assuré. Assignez une unité ou un identifiant physique à chaque produit assuré avant de créer ou synchroniser le contrat.",
+    "tulipContractPayloadInvalid": "Tulip a refusé les données du contrat. Vérifiez les produits assurés et les champs requis envoyés.",
+    "tulipContractValidationFailed": "Tulip a refusé cette action à cause d'une erreur de validation métier sur le contrat.",
     "tulipContractTypeDisabled": "Le type de contrat Tulip requis pour cette durée n'est pas activé pour cette boutique.",
+    "tulipContractProductsIncompatible": "Les produits Tulip assurés de cette réservation ne sont pas tous compatibles avec ce type de contrat.",
+    "tulipProductTypeDisabled": "Cette catégorie de produit Tulip n'est pas activée pour cette boutique.",
     "promoCodeInvalid": "Ce code promo est invalide ou n'existe pas",
     "promoCodeExpired": "Ce code promo a expiré",
     "promoCodeExhausted": "Ce code promo a atteint sa limite d'utilisation",

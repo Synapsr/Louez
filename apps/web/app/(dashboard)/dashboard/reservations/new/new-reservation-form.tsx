@@ -5,7 +5,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useStore } from '@tanstack/react-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { enUS, fr } from 'date-fns/locale';
 import {
   AlertTriangle,
@@ -13,7 +13,6 @@ import {
   ArrowRight,
   Calendar,
   Check,
-  Clock,
   FileText,
   Loader2,
   PenLine,
@@ -519,11 +518,128 @@ export function NewReservationForm({
     products,
   });
 
+  const effectiveTulipInsuranceOptInForPreview =
+    tulipInsuranceMode === 'required'
+      ? true
+      : tulipInsuranceMode === 'optional'
+        ? tulipInsuranceOptIn
+        : false;
+  const tulipInsuranceQuoteItems = useMemo(
+    () =>
+      selectedProducts
+        .filter((item) => item.productId && item.quantity > 0)
+        .map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+    [selectedProducts],
+  );
+  const tulipInsuranceQuoteRequest = useMemo(() => {
+    if (
+      !effectiveTulipInsuranceOptInForPreview ||
+      !watchStartDate ||
+      !watchEndDate ||
+      watchEndDate < watchStartDate ||
+      tulipInsuranceQuoteItems.length === 0
+    ) {
+      return null;
+    }
+
+    const basePayload = {
+      startDate: watchStartDate.toISOString(),
+      endDate: watchEndDate.toISOString(),
+      tulipInsuranceOptIn: true,
+      items: tulipInsuranceQuoteItems,
+    };
+
+    if (watchCustomerType === 'existing') {
+      if (!watchCustomerId?.trim()) {
+        return null;
+      }
+
+      return {
+        ...basePayload,
+        customerId: watchCustomerId,
+      };
+    }
+
+    const email = watchedValues.email?.trim() ?? '';
+    const firstName = watchedValues.firstName?.trim() ?? '';
+    const lastName = watchedValues.lastName?.trim() ?? '';
+    const phone = watchedValues.phone?.trim() ?? '';
+
+    if (
+      !email ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+      !firstName ||
+      !lastName
+    ) {
+      return null;
+    }
+
+    return {
+      ...basePayload,
+      newCustomer: {
+        email,
+        firstName,
+        lastName,
+        ...(phone && { phone }),
+      },
+    };
+  }, [
+    effectiveTulipInsuranceOptInForPreview,
+    tulipInsuranceQuoteItems,
+    watchCustomerId,
+    watchCustomerType,
+    watchEndDate,
+    watchStartDate,
+    watchedValues.email,
+    watchedValues.firstName,
+    watchedValues.lastName,
+    watchedValues.phone,
+  ]);
+  const tulipInsuranceQuoteInput = {
+    payload:
+      tulipInsuranceQuoteRequest ??
+      ({
+        startDate: (watchStartDate ?? new Date()).toISOString(),
+        endDate: (watchEndDate ?? watchStartDate ?? new Date()).toISOString(),
+        tulipInsuranceOptIn: false,
+        items: [],
+      } as const),
+  };
+  const tulipInsuranceQuoteQuery = useQuery({
+    ...orpc.dashboard.reservations.previewManualTulipQuote.queryOptions({
+      input: tulipInsuranceQuoteInput,
+    }),
+    enabled: tulipInsuranceQuoteRequest !== null,
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+  const isTulipInsuranceQuoteLoading =
+    tulipInsuranceQuoteRequest !== null &&
+    (tulipInsuranceQuoteQuery.isLoading ||
+      (tulipInsuranceQuoteQuery.isFetching && !tulipInsuranceQuoteQuery.data));
+  const tulipInsuranceQuotePreview = tulipInsuranceQuoteQuery.data;
+  const isTulipInsuranceApplied =
+    effectiveTulipInsuranceOptInForPreview &&
+    tulipInsuranceQuotePreview?.appliedOptIn === true;
+  const tulipInsuranceAmount =
+    isTulipInsuranceApplied && tulipInsuranceQuotePreview.amount > 0
+      ? tulipInsuranceQuotePreview.amount
+      : 0;
+  const tulipInsuranceQuoteErrorKey = tulipInsuranceQuoteQuery.isError
+    ? 'errors.tulipQuoteFailed'
+    : (tulipInsuranceQuotePreview?.quoteError ?? null);
+  const tulipInsuranceQuoteErrorMessage = tulipInsuranceQuoteErrorKey
+    ? tErrors(tulipInsuranceQuoteErrorKey.replace('errors.', ''))
+    : null;
   const delivery = useNewReservationDelivery({
     deliverySettings,
     storeLatitude,
     storeLongitude,
-    subtotal,
+    subtotal: subtotal + tulipInsuranceAmount,
   });
 
   const addProduct = (productId: string) => {
@@ -1245,6 +1361,11 @@ export function NewReservationForm({
                 customItems={customItems}
                 tulipInsuranceMode={tulipInsuranceMode}
                 tulipInsuranceOptIn={tulipInsuranceOptIn}
+                tulipInsuranceAmount={tulipInsuranceAmount}
+                isTulipInsuranceQuoteLoading={isTulipInsuranceQuoteLoading}
+                tulipInsuranceQuoteErrorMessage={
+                  tulipInsuranceQuoteErrorMessage
+                }
                 startDate={watchStartDate}
                 endDate={watchEndDate}
                 availabilityWarnings={availabilityWarnings}
@@ -1275,7 +1396,7 @@ export function NewReservationForm({
             <StepContent direction={stepDirection}>
               <NewReservationStepDelivery
                 deliverySettings={deliverySettings}
-                subtotal={subtotal}
+                subtotal={subtotal + tulipInsuranceAmount}
                 currency="EUR"
                 storeAddress={storeAddress}
                 locations={storeLocations}
@@ -1323,6 +1444,12 @@ export function NewReservationForm({
                 products={products}
                 tulipInsuranceMode={tulipInsuranceMode}
                 tulipInsuranceOptIn={tulipInsuranceOptIn}
+                isTulipInsuranceApplied={isTulipInsuranceApplied}
+                tulipInsuranceAmount={tulipInsuranceAmount}
+                isTulipInsuranceQuoteLoading={isTulipInsuranceQuoteLoading}
+                tulipInsuranceQuoteErrorMessage={
+                  tulipInsuranceQuoteErrorMessage
+                }
                 subtotal={subtotal}
                 deposit={deposit}
                 getProductPricingDetails={getProductPricingDetails}

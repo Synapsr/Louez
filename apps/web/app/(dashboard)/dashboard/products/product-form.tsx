@@ -650,9 +650,7 @@ export function ProductForm({
                 </div>
 
                 {product?.id ? (
-                  <div id="section-assurance" className="scroll-mt-8">
-                    <ProductAssuranceSection productId={product.id} />
-                  </div>
+                  <ProductAssuranceSection productId={product.id} />
                 ) : null}
               </div>
             </div>

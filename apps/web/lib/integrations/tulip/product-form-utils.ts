@@ -91,19 +91,35 @@ export const TULIP_FALLBACK_CATALOG: TulipCatalogItem[] = [
       'phone',
       'computer',
       'tablet',
+      'small-appliance',
+      'large-appliance',
+      'other-electronic-equipment',
     ].map((value) => ({ type: value, label: value })),
   },
   {
     type: 'small-tools',
     label: 'small-tools',
     subtypes: [
-      'small-appliance',
-      'large-appliance',
       'construction-equipment',
       'diy-tools',
       'electric-diy-tools',
       'gardening-tools',
       'electric-gardening-tools',
+    ].map((value) => ({ type: value, label: value })),
+  },
+  {
+    type: 'sports',
+    label: 'sports',
+    subtypes: [
+      'running-hiking',
+      'fishing',
+      'golf',
+      'racket-sports',
+      'horseriding',
+      'ball-sports',
+      'fitness',
+      'water-sports',
+      'other',
     ].map((value) => ({ type: value, label: value })),
   },
 ]
@@ -133,6 +149,10 @@ export function resolveProductSubtype(
   const normalized = normalizeCatalogValue(value)
   const subtypeList =
     catalog.find((item) => item.type === productType)?.subtypes ?? []
+  const preferredSubtype =
+    productType === 'bike'
+      ? subtypeList.find((item) => item.type === 'electric')?.type
+      : null
 
   if (normalized) {
     if (subtypeList.length === 0) {
@@ -144,7 +164,7 @@ export function resolveProductSubtype(
     }
   }
 
-  return subtypeList[0]?.type || normalized || 'standard'
+  return preferredSubtype || subtypeList[0]?.type || normalized || 'standard'
 }
 
 export function toUniqueSortedOptions(
@@ -164,12 +184,14 @@ export function toUniqueSortedOptions(
 export function buildActionInput(
   productId: string,
   draft: TulipProductDraft,
+  options: { includeMargin?: boolean } = {},
 ): TulipProductActionInput {
   const normalized = draft.valueExcl.trim().replace(',', '.')
   const parsed = normalized.length === 0 ? null : Number(normalized)
   const normalizedMarginInput = draft.margin.trim().replace(',', '.')
   const parsedMarginInput =
     normalizedMarginInput.length === 0 ? null : Number(normalizedMarginInput)
+  const includeMargin = options.includeMargin ?? true
 
   return {
     productId,
@@ -183,7 +205,9 @@ export function buildActionInput(
       : null,
     valueExcl: Number.isFinite(parsed) ? parsed : null,
     margin:
-      Number.isFinite(parsedMarginInput) && Number(parsedMarginInput) >= 0
+      includeMargin &&
+      Number.isFinite(parsedMarginInput) &&
+      Number(parsedMarginInput) >= 0
         ? Number(parsedMarginInput)
         : null,
   }
@@ -197,6 +221,9 @@ export function validateDraft(draft: TulipProductDraft | null) {
       hasInvalidPurchasedDate: false,
       hasMissingProductType: true,
       hasMissingSubtype: true,
+      hasMissingBrand: true,
+      hasMissingModel: true,
+      hasMissingValueExcl: true,
     }
   }
 
@@ -208,7 +235,8 @@ export function validateDraft(draft: TulipProductDraft | null) {
 
   return {
     hasInvalidValueExcl:
-      normalizedValueExcl.length > 0 && !Number.isFinite(parsedValueExcl),
+      normalizedValueExcl.length > 0 &&
+      (!Number.isFinite(parsedValueExcl) || Number(parsedValueExcl) > 15_000),
     hasInvalidMargin:
       normalizedMargin.length > 0 &&
       (!Number.isFinite(parsedMargin) || Number(parsedMargin) < 0),
@@ -217,6 +245,9 @@ export function validateDraft(draft: TulipProductDraft | null) {
       : false,
     hasMissingProductType: !normalizeCatalogValue(draft.productType),
     hasMissingSubtype: !normalizeCatalogValue(draft.productSubtype),
+    hasMissingBrand: draft.brand.trim().length === 0,
+    hasMissingModel: draft.model.trim().length === 0,
+    hasMissingValueExcl: normalizedValueExcl.length === 0,
   }
 }
 
@@ -235,7 +266,6 @@ export function initDraftFromTulipProduct(
     valueExcl: number | null
     margin: number | null
   } | null,
-  fallbackPrice: number,
 ): TulipProductDraft {
   const resolvedType = resolveProductType(resolvedCatalog, tulipProduct?.productType)
 
@@ -255,7 +285,7 @@ export function initDraftFromTulipProduct(
     valueExcl:
       tulipProduct?.valueExcl != null
         ? tulipProduct.valueExcl.toFixed(2)
-        : fallbackPrice.toFixed(2),
+        : '',
     margin:
       tulipProduct?.margin != null ? tulipProduct.margin.toFixed(2) : '',
   }

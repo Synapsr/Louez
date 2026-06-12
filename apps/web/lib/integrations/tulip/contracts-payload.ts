@@ -20,6 +20,10 @@ function addMonths(baseDate: Date, months: number): Date {
   return date;
 }
 
+function isLmdAtLeastSixMonths(startDate: Date, endDate: Date): boolean {
+  return endDate >= addMonths(startDate, 6);
+}
+
 export function resolveTulipContractTypeFromDates(
   startDate: Date,
   endDate: Date,
@@ -35,15 +39,31 @@ export function resolveTulipContractTypeFromDates(
   return 'LCD';
 }
 
-function requiresContractIdentityOption(contractType: TulipContractType): boolean {
-  return contractType === 'LMD' || contractType === 'LLD';
+function requiresContractIdentityOption(params: {
+  contractType: TulipContractType;
+  startDate: Date;
+  endDate: Date;
+}): boolean {
+  if (params.contractType === 'LLD') {
+    return true;
+  }
+
+  if (params.contractType !== 'LMD') {
+    return false;
+  }
+
+  return isLmdAtLeastSixMonths(params.startDate, params.endDate);
 }
 
 function assertRequiredIdentityFields(
   customer: TulipCustomerInput,
-  contractType: TulipContractType,
+  params: {
+    contractType: TulipContractType;
+    startDate: Date;
+    endDate: Date;
+  },
 ) {
-  if (!requiresContractIdentityOption(contractType)) {
+  if (!requiresContractIdentityOption(params)) {
     return;
   }
 
@@ -73,14 +93,18 @@ function assertRequiredIdentityFields(
 
 function buildCustomerPayload(
   customer: TulipCustomerInput,
-  contractType: TulipContractType,
+  params: {
+    contractType: TulipContractType;
+    startDate: Date;
+    endDate: Date;
+  },
 ): {
   options: string[];
   company?: Record<string, unknown>;
   individual?: Record<string, unknown>;
 } {
-  const requireIdentityOption = requiresContractIdentityOption(contractType);
-  assertRequiredIdentityFields(customer, contractType);
+  const requireIdentityOption = requiresContractIdentityOption(params);
+  assertRequiredIdentityFields(customer, params);
 
   const options = ['break', 'theft'];
   const companyName = customer.companyName?.trim() || '';
@@ -134,31 +158,53 @@ function buildCustomerPayload(
 function buildProductPayload(
   items: ResolvedTulipItemInput[],
   userName: string,
+  options?: {
+    preview?: boolean;
+  },
 ): Array<Record<string, unknown>> {
   const productsPayload: Array<Record<string, unknown>> = [];
+  const preview = options?.preview === true;
   const productOccurrenceById = new Map<string, number>();
 
   for (const item of items) {
+    const resolvedProductMarkedValues = Array.isArray(item.productMarkedValues)
+      ? item.productMarkedValues
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0)
+      : [];
+
     let remainingQuantity = item.quantity;
+    let nextMarkedIndex = 0;
     while (remainingQuantity > 0) {
-      const nextOccurrence = (productOccurrenceById.get(item.productId) ?? 0) + 1;
+      const nextOccurrence =
+        (productOccurrenceById.get(item.productId) ?? 0) + 1;
       productOccurrenceById.set(item.productId, nextOccurrence);
 
-      const serialLikeIdentifier = `${item.productId}-${nextOccurrence}`.trim();
-      const safeProductMarked =
-        serialLikeIdentifier.length > 0
-          ? serialLikeIdentifier
-          : `product-${productsPayload.length + 1}`;
+      const assignedProductMarked =
+        resolvedProductMarkedValues[nextMarkedIndex] ?? null;
+      const placeholderProductMarked = preview
+        ? `preview-${item.productId}-${nextOccurrence}`
+        : `unassigned-${item.productId}-${nextOccurrence}`;
+      const productMarked =
+        assignedProductMarked && assignedProductMarked.length > 0
+          ? assignedProductMarked
+          : placeholderProductMarked;
 
       productsPayload.push({
         product_id: item.tulipProductId,
         data: {
           user_name: userName,
-          product_marked: safeProductMarked,
-          internal_id: safeProductMarked,
+          // Temporary compatibility: many Louez flows still do not assign a real unit identifier
+          // before Tulip pricing/contract calls, so we keep a synthetic product_marked fallback.
+          product_marked: productMarked,
+          louez_product_ID: item.productId,
+          ...(item.margin != null && item.margin > 0
+            ? { margin: item.margin }
+            : {}),
         },
       });
 
+      nextMarkedIndex += 1;
       remainingQuantity -= 1;
     }
   }
@@ -173,10 +219,18 @@ export function buildContractPayload(params: {
   endDate: Date;
   customer: TulipCustomerInput;
   insuredItems: ResolvedTulipItemInput[];
+  preview?: boolean;
 }): TulipContractPayload {
-  const userName = `${params.customer.firstName} ${params.customer.lastName}`.trim();
-  const productsPayload = buildProductPayload(params.insuredItems, userName);
-  const customerPayload = buildCustomerPayload(params.customer, params.contractType);
+  const userName =
+    `${params.customer.firstName} ${params.customer.lastName}`.trim();
+  const productsPayload = buildProductPayload(params.insuredItems, userName, {
+    preview: params.preview,
+  });
+  const customerPayload = buildCustomerPayload(params.customer, {
+    contractType: params.contractType,
+    startDate: params.startDate,
+    endDate: params.endDate,
+  });
 
   return {
     uid: params.renterUid,
@@ -187,7 +241,9 @@ export function buildContractPayload(params: {
     options: customerPayload.options,
     products: productsPayload,
     ...(customerPayload.company ? { company: customerPayload.company } : {}),
-    ...(customerPayload.individual ? { individual: customerPayload.individual } : {}),
+    ...(customerPayload.individual
+      ? { individual: customerPayload.individual }
+      : {}),
   };
 }
 

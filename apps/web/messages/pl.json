@@ -917,10 +917,12 @@
           "mappedTo": "Zmapowano do {title}",
           "linkOrCreateHelper": "Połącz istniejący produkt Tulip lub dodaj nowy produkt Tulip i połącz go.",
           "addNewProductButton": "Dodaj nowy produkt",
+          "editMappedProductButton": "Edytuj produkt",
           "mappingLabel": "Produkt Tulip",
           "mappingPlaceholder": "Niezmapowano",
           "mappingSaving": "Zapisywanie...",
           "noResults": "Nie znaleziono produktów Tulip",
+          "noRenterProducts": "Nie znaleziono produktów Tulip dla tego wynajmującego",
           "dialog": {
             "description": "Skonfiguruj szczegóły produktu Tulip i wyślij aktualizacje.",
             "cancel": "Anuluj",
@@ -939,7 +941,8 @@
             "noModelResults": "Brak sugestii modeli",
             "invalidPurchasePrice": "Wprowadź prawidłową cenę zakupu.",
             "invalidMargin": "Wprowadź prawidłową marżę.",
-            "marginTooltip": "Dodatkowa marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
+            "marginTooltip": "Dodatkowa dzienna marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
+            "marginLockedTooltip": "Ta marża jest ustawiana podczas tworzenia produktu Tulip i nie można jej później zmienić.",
             "invalidPurchasedDate": "Wybierz prawidłową datę zakupu.",
             "fields": {
               "productTitle": "Nazwa produktu (opcjonalna)",
@@ -949,7 +952,7 @@
               "model": "Model",
               "purchasedDate": "Data zakupu",
               "purchasePriceHt": "Cena zakupu (netto)",
-              "margin": "Marża"
+              "margin": "Marża / dzień"
             }
           }
         }
@@ -3639,7 +3642,8 @@
             "noModelResults": "Brak sugestii modeli",
             "invalidPurchasePrice": "Wprowadź prawidłową cenę zakupu.",
             "invalidMargin": "Wprowadź prawidłową marżę.",
-            "marginTooltip": "Dodatkowa marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
+            "marginTooltip": "Dodatkowa dzienna marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
+            "marginLockedTooltip": "Ta marża jest ustawiana podczas tworzenia produktu Tulip i nie można jej później zmienić.",
             "invalidPurchasedDate": "Wybierz prawidłową datę zakupu.",
             "createButton": "Utwórz w Tulip",
             "creatingButton": "Tworzenie...",
@@ -3676,7 +3680,7 @@
               "model": "Model",
               "purchasedDate": "Data zakupu",
               "purchasePriceHt": "Cena zakupu (netto)",
-              "margin": "Marża"
+              "margin": "Marża / dzień"
             }
           }
         }
@@ -5209,6 +5213,7 @@
     "tulipQuoteFailed": "Nie udało się obliczyć ochrony przed uszkodzeniem/kradzieżą dla tej rezerwacji.",
     "tulipContractPastDate": "Tulip odrzucił tworzenie umowy: daty umowy nie mogą być w przeszłości.",
     "tulipContractActionForbidden": "Tulip odrzucił tę akcję dla bieżącej konfiguracji konta.",
+    "tulipContractProductMarkedMissing": "Tulip wymaga rzeczywistego identyfikatora każdego ubezpieczonego przedmiotu. Przypisz jednostkę lub fizyczny identyfikator do każdego ubezpieczonego produktu przed utworzeniem lub synchronizacją umowy.",
     "tulipContractTypeDisabled": "Typ umowy Tulip wymagany dla tego czasu trwania nie jest włączony dla tego sklepu."
   },
   "welcome": {

@@ -9,6 +9,8 @@ import { useTranslations } from 'next-intl';
 
 import type { TaxSettings } from '@louez/types';
 import {
+  Alert,
+  AlertDescription,
   Badge,
   Card,
   CardContent,
@@ -106,6 +108,7 @@ export function CheckoutOrderSummary({
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
+  const tErrors = useTranslations('errors');
   const maxDiscountPercent = useStoreMaxDiscountPercent();
   const showInsuranceUi =
     tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
@@ -121,6 +124,10 @@ export function CheckoutOrderSummary({
   const totalWithEstimatedInsurance =
     totalWithDelivery + estimatedInsuranceAmount;
   const subtotalWithEstimatedInsurance = subtotal + estimatedInsuranceAmount;
+  const tulipQuoteErrorMessage =
+    tulipQuotePreview?.quoteError?.startsWith('errors.')
+      ? tErrors(tulipQuotePreview.quoteError.slice('errors.'.length) as never)
+      : null;
 
   const durationLabel = (() => {
     if (!globalStartDate || !globalEndDate) return '';
@@ -383,6 +390,14 @@ export function CheckoutOrderSummary({
                     uninsured: tulipQuotePreview?.uninsuredProductCount ?? 0,
                   })}
                 </p>
+              )}
+
+            {showInsuranceSummary &&
+              tulipQuotePreview?.quoteUnavailable &&
+              tulipQuoteErrorMessage && (
+                <Alert variant="warning">
+                  <AlertDescription>{tulipQuoteErrorMessage}</AlertDescription>
+                </Alert>
               )}
 
             {showInsuranceUi && isTulipQuoteLoading && (

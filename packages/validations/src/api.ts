@@ -255,6 +255,48 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
   }),
 });
 
+export const dashboardReservationPreviewTulipQuoteInputSchema = z.object({
+  reservationId: z.string().length(21),
+  payload: z.object({
+    startDate: z.union([dateTimeOrDateSchema, z.date()]),
+    endDate: z.union([dateTimeOrDateSchema, z.date()]),
+    tulipInsuranceOptIn: z.boolean().optional(),
+    items: z
+      .array(
+        z.object({
+          productId: z.string().length(21).nullable().optional(),
+          quantity: z.number().int().min(1),
+        }),
+      )
+      .max(500),
+  }),
+});
+
+export const dashboardReservationPreviewManualTulipQuoteInputSchema = z.object({
+  payload: z.object({
+    customerId: z.string().length(21).optional(),
+    newCustomer: z
+      .object({
+        email: z.email().max(320),
+        firstName: z.string().trim().min(1).max(200),
+        lastName: z.string().trim().min(1).max(200),
+        phone: z.string().trim().max(50).optional(),
+      })
+      .optional(),
+    startDate: z.union([dateTimeOrDateSchema, z.date()]),
+    endDate: z.union([dateTimeOrDateSchema, z.date()]),
+    tulipInsuranceOptIn: z.boolean().optional(),
+    items: z
+      .array(
+        z.object({
+          productId: z.string().length(21),
+          quantity: z.number().int().min(1),
+        }),
+      )
+      .max(500),
+  }),
+});
+
 export const dashboardReservationCreateManualReservationInputSchema = z.object({
   payload: z.object({
     customerId: z.string().length(21).optional(),
@@ -373,6 +415,23 @@ export const dashboardIntegrationsSetEnabledInputSchema = z.object({
   integrationId: z.string().trim().min(1).max(60),
   enabled: z.boolean(),
 });
+
+export const dashboardIntegrationsGetCalendarStateInputSchema = z.object({});
+
+export const dashboardIntegrationsUpdateGoogleCalendarSettingsInputSchema =
+  z.object({
+    syncPendingReservations: z.boolean(),
+    cancelledReservationBehavior: z.enum(['show', 'hide']),
+  });
+
+export const dashboardIntegrationsResyncGoogleCalendarInputSchema = z.object(
+  {},
+);
+
+export const dashboardIntegrationsDisconnectGoogleCalendarInputSchema =
+  z.object({
+    deleteEvents: z.boolean().default(false),
+  });
 
 export const dashboardIntegrationsConnectTulipInputSchema = z.object({
   renterUid: z.string().trim().min(1).max(120),
@@ -547,6 +606,18 @@ export type DashboardIntegrationsGetDetailInput = z.infer<
 >;
 export type DashboardIntegrationsSetEnabledInput = z.infer<
   typeof dashboardIntegrationsSetEnabledInputSchema
+>;
+export type DashboardIntegrationsGetCalendarStateInput = z.infer<
+  typeof dashboardIntegrationsGetCalendarStateInputSchema
+>;
+export type DashboardIntegrationsUpdateGoogleCalendarSettingsInput = z.infer<
+  typeof dashboardIntegrationsUpdateGoogleCalendarSettingsInputSchema
+>;
+export type DashboardIntegrationsResyncGoogleCalendarInput = z.infer<
+  typeof dashboardIntegrationsResyncGoogleCalendarInputSchema
+>;
+export type DashboardIntegrationsDisconnectGoogleCalendarInput = z.infer<
+  typeof dashboardIntegrationsDisconnectGoogleCalendarInputSchema
 >;
 export type DashboardIntegrationsConnectTulipInput = z.infer<
   typeof dashboardIntegrationsConnectTulipInputSchema

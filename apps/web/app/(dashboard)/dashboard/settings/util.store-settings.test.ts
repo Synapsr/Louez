@@ -65,7 +65,7 @@ test('general settings update preserves unrelated settings branches', () => {
     },
     integrationData: {
       states: {
-        tulip: { enabled: true },
+        'google-calendar': { enabled: true },
       },
     },
   } satisfies StoreSettings;

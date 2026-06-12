@@ -4,12 +4,11 @@ import { RPCHandler } from '@orpc/server/fetch';
 import { appRouter } from '@louez/api/router';
 
 import { notifyStoreCreated as sendStoreCreatedNotification } from '@/lib/discord/platform-notifications';
+import { log, useLogger, withEvlog } from '@/lib/evlog';
 import { generateContract } from '@/lib/pdf/generate';
 import { getStorageKey, uploadFile } from '@/lib/storage/client';
 import { getCurrentStore } from '@/lib/store-context';
 
-import { getCustomerSession } from '@/app/(storefront)/[slug]/account/actions';
-import { log, useLogger, withEvlog } from '@/lib/evlog';
 import {
   assignUnitsToReservationItem,
   cancelReservation,
@@ -19,6 +18,8 @@ import {
   deletePayment,
   getAvailableUnitsForReservationItem,
   getReservationPaymentMethod,
+  previewManualReservationTulipQuote,
+  previewReservationTulipQuote,
   recordDamage,
   recordPayment,
   releaseDepositHold,
@@ -26,25 +27,30 @@ import {
   returnDeposit,
   sendAccessLink,
   sendAccessLinkBySms,
-  sendReservationModificationEmail,
   sendReservationEmail,
+  sendReservationModificationEmail,
   updateReservation,
   updateReservationStatus,
 } from '@/app/(dashboard)/dashboard/reservations/actions';
 import {
-  createTulipProductAction,
   connectTulipApiKeyAction,
+  createTulipProductAction,
+  disconnectGoogleCalendarAction,
   disconnectTulipAction,
+  getCalendarIntegrationStateAction,
   getIntegrationDetailAction,
+  getTulipIntegrationStateAction,
   getTulipProductStateAction,
   listIntegrationsCatalogAction,
   listIntegrationsCategoryAction,
-  getTulipIntegrationStateAction,
   pushTulipProductUpdateAction,
+  resyncGoogleCalendarAction,
   setIntegrationEnabledAction,
+  updateGoogleCalendarSettingsAction,
   updateTulipConfigurationAction,
   upsertTulipProductMappingAction,
 } from '@/app/(dashboard)/dashboard/settings/integrations/actions';
+import { getCustomerSession } from '@/app/(storefront)/[slug]/account/actions';
 
 const handler = new RPCHandler(appRouter, {
   interceptors: [
@@ -82,6 +88,8 @@ async function handleRequest(request: Request) {
         cancelReservation,
         updateReservationStatus,
         updateReservation,
+        previewReservationTulipQuote,
+        previewManualTulipQuote: previewManualReservationTulipQuote,
         createManualReservation,
         getAvailableUnitsForReservationItem,
         assignUnitsToReservationItem,
@@ -104,6 +112,13 @@ async function handleRequest(request: Request) {
         listIntegrationsCategory: listIntegrationsCategoryAction,
         getIntegrationDetail: getIntegrationDetailAction,
         setIntegrationEnabled: setIntegrationEnabledAction,
+        getCalendarIntegrationState: getCalendarIntegrationStateAction,
+        updateGoogleCalendarSettings: updateGoogleCalendarSettingsAction,
+        resyncGoogleCalendar: resyncGoogleCalendarAction,
+        disconnectGoogleCalendar: (input) =>
+          disconnectGoogleCalendarAction({
+            deleteEvents: input.deleteEvents ?? false,
+          }),
         getTulipIntegrationState: getTulipIntegrationStateAction,
         getTulipProductState: getTulipProductStateAction,
         connectTulipApiKey: connectTulipApiKeyAction,

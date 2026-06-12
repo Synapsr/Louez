@@ -9,32 +9,45 @@ The integrations feature is built around a **typed registry + adapter** model.
 An integration is composed of:
 
 1. A **manifest** (display metadata used by catalog/detail pages)
-2. An **adapter** (runtime behavior: enabled state, connectivity status, optional config panel)
-3. Optional backend procedures for provider-specific actions
-4. Translations and static assets
+2. An **adapter** (runtime status and optional configuration panel)
+3. Optional workflow records and services for durable business behavior
+4. Optional backend procedures for provider-specific actions
+5. Translations and static assets
+
+Read [Integrations Architecture](./architecture.md) before adding a provider. The core rule is:
+
+- **Category** is catalog UX.
+- **Provider** is the connectable service.
+- **Workflow** owns shared business behavior and persistence.
+- The provider catalog lives in code; store-specific integrations live in the database.
+- Categories are declared in code. Add a new category only when no existing catalog grouping fits.
 
 ## Source of Truth
 
 - Registry types: `apps/web/lib/integrations/registry/types.ts`
 - Registry helpers: `apps/web/lib/integrations/registry/index.ts`
-- Integration state helpers: `apps/web/lib/integrations/registry/state.ts`
 - Provider registrations: `apps/web/lib/integrations/providers/index.ts`
+- Architecture guide: `docs/integrations/architecture.md`
 - Dashboard routes:
   - `/dashboard/settings/integrations`
-  - `/dashboard/settings/integrations/categories/[category]`
   - `/dashboard/settings/integrations/[integrationId]`
 
 ## Data Model
 
-The generic enabled state is stored in store settings JSON:
+New providers should use the common integration core plus workflow-specific records:
 
-- `stores.settings.integrationData.states[integrationId].enabled`
+- `store_integrations` for provider activation, status, and health
+- `integration_credentials` for encrypted OAuth/API credentials
+- workflow tables for durable business state, such as calendar destinations or reservation event mappings
 
 Rules:
 
-- Enable/disable should **not** delete provider credentials.
+- Enable/disable is product intent and should **not** delete provider credentials.
+- Connection state is technical provider access and is separate from enablement.
+- Configuration state means the minimum business settings are complete.
+- Do not store provider credentials in `stores.settings`.
 - Provider-specific disconnect logic can still clear credentials/mappings.
-- Legacy providers can use fallback logic when no explicit state exists yet.
+- Legacy providers can keep existing storage until a separate migration is justified.
 
 ## Quick Start Checklist
 
@@ -50,16 +63,22 @@ When adding a provider `my-provider`:
    - `my-provider-configuration-panel.tsx`
 5. Register provider entry in:
    - `apps/web/lib/integrations/providers/index.ts`
-6. Add assets:
+6. Choose or document a workflow:
+   - reuse an existing workflow from `docs/integrations/architecture.md`
+   - or document a new workflow before adding provider-specific persistence
+7. Add assets:
    - `apps/web/public/integrations/my-provider/logo.(svg|webp|png)`
    - `apps/web/public/integrations/my-provider/screen-1.(svg|webp|png)`
    - `apps/web/public/integrations/my-provider/screen-2.(svg|webp|png)`
    - `apps/web/public/integrations/my-provider/screen-3.(svg|webp|png)`
-7. Add i18n keys in:
+8. Add i18n keys in:
    - `apps/web/messages/en.json`
    - `apps/web/messages/fr.json`
-8. If provider requires API actions, wire oRPC (see below)
-9. Run validation commands (see bottom)
+9. If the provider persists durable state, add Drizzle schema and migrations
+10. If provider requires API actions, wire oRPC (see below)
+11. Run validation commands (see bottom)
+
+Keep provider clients narrow. A provider client should wrap only the external API operations Louez actually uses. Do not introduce a broad SDK or generic abstraction unless the provider or workflow needs it.
 
 ## Manifest Contract
 
@@ -88,15 +107,16 @@ Use translation keys under:
 
 `IntegrationAdapter` requires:
 
-- `getStatus(settings)`
+- `getStatus(...)`
   - Returns `{ enabled, connected, configured, connectionIssue }`
-- `setEnabled(settings, enabled)`
-  - Must return updated `StoreSettings`
+- enable/disable behavior through the integration service or provider action
 
 Optional:
 
 - `getConfigurationPanel()`
   - Returns a React component rendered on the integration detail page when enabled
+
+Runtime status should come from integration records or workflow services. Do not use `stores.settings` as integration state for providers that need durable runtime configuration.
 
 ## Optional Backend Wiring (oRPC)
 
@@ -116,7 +136,6 @@ If your provider needs backend actions (connect/sync/etc), update:
 ## UI Behavior Requirements
 
 - Catalog page should list categories and integration cards.
-- Category page should show only integrations for that category.
 - Detail page should include:
   - Hero (logo/name/description)
   - Tabs (`Features`, `Configuration`, `About`)
@@ -128,8 +147,11 @@ If your provider needs backend actions (connect/sync/etc), update:
 For any backend/provider action:
 
 - Authenticate using store context (`getCurrentStore()`)
+- Require store owner access for connect, disconnect, enable, disable, resync, and configuration changes
 - Validate input with Zod
 - Scope queries by `storeId`
+- Keep provider credentials server-only and encrypted at rest with the integration encryption helper
+- Keep provider OAuth flows separate from Louez sign-in unless the provider is explicitly an identity provider
 - Return typed error keys (for i18n)
 
 ## Contributor Template

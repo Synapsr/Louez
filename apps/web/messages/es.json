@@ -956,10 +956,12 @@
           "mappedTo": "Mapeado a {title}",
           "linkOrCreateHelper": "Vincule un producto Tulip existente o agregue un nuevo producto Tulip y vinculelo.",
           "addNewProductButton": "Agregar un nuevo producto",
+          "editMappedProductButton": "Editar producto",
           "mappingLabel": "Producto Tulip",
           "mappingPlaceholder": "No mapeado",
           "mappingSaving": "Guardando...",
           "noResults": "No se encontraron productos Tulip",
+          "noRenterProducts": "No se encontraron productos Tulip para este arrendador",
           "dialog": {
             "description": "Configure los detalles del producto Tulip y envie actualizaciones.",
             "cancel": "Cancelar",
@@ -978,7 +980,8 @@
             "noModelResults": "No hay sugerencias de modelo",
             "invalidPurchasePrice": "Introduzca un precio de compra valido.",
             "invalidMargin": "Introduzca un margen valido.",
-            "marginTooltip": "Margen adicional agregado al precio de compra para la valoracion del seguro.",
+            "marginTooltip": "Margen diario adicional agregado al precio de compra para la valoracion del seguro.",
+            "marginLockedTooltip": "Este margen se define al crear el producto Tulip y no puede modificarse despues.",
             "invalidPurchasedDate": "Seleccione una fecha de compra valida.",
             "fields": {
               "productTitle": "Nombre del producto (opcional)",
@@ -988,7 +991,7 @@
               "model": "Modelo",
               "purchasedDate": "Fecha de compra",
               "purchasePriceHt": "Precio de compra (sin IVA)",
-              "margin": "Margen"
+              "margin": "Margen / día"
             }
           }
         }
@@ -1266,6 +1269,7 @@
         "noProductsHint": "Use el menu de arriba para agregar productos",
         "perHour": "h",
         "perDay": "d",
+        "pricingMode": "Unidad de precio",
         "available": "disponible",
         "outOfStock": "Agotado",
         "add": "Agregar",
@@ -1416,7 +1420,12 @@
           "required": "La cobertura es obligatoria para esta reserva.",
           "optionalLabel": "Activar cobertura para esta reserva",
           "insurableProduct": "Asegurable",
-          "assuredProduct": "Asegurado"
+          "assuredProduct": "Asegurado",
+          "pastStartWarning": "Este periodo empieza en el pasado. Tulip no puede crear ni modificar un seguro en estas fechas, por lo que la proteccion se retira de este cambio.",
+          "disabledPastStart": "Proteccion Tulip desactivada para este periodo pasado.",
+          "calculating": "Calculando la cobertura...",
+          "estimatedAmount": "Cobertura estimada: {amount}",
+          "previewUnavailable": "No se pudo recalcular el importe de Tulip."
         }
       },
       "rejectDialog": {
@@ -3639,7 +3648,8 @@
             "noModelResults": "No hay sugerencias de modelo",
             "invalidPurchasePrice": "Introduzca un precio de compra valido.",
             "invalidMargin": "Introduzca un margen valido.",
-            "marginTooltip": "Margen adicional agregado al precio de compra para la valoracion del seguro.",
+            "marginTooltip": "Margen diario adicional agregado al precio de compra para la valoracion del seguro.",
+            "marginLockedTooltip": "Este margen se define al crear el producto Tulip y no puede modificarse despues.",
             "invalidPurchasedDate": "Seleccione una fecha de compra valida.",
             "createButton": "Crear en Tulip",
             "creatingButton": "Creando...",
@@ -3676,7 +3686,7 @@
               "model": "Modelo",
               "purchasedDate": "Fecha de compra",
               "purchasePriceHt": "Precio de compra (sin IVA)",
-              "margin": "Margen"
+              "margin": "Margen / día"
             }
           }
         }
@@ -5207,8 +5217,10 @@
     "tulipContractCreationFailed": "Reserva confirmada, pero fallo la creacion del contrato Tulip.",
     "tulipContractUpdateFailed": "Reserva actualizada, pero fallo la sincronizacion del contrato Tulip.",
     "tulipQuoteFailed": "No se pudo calcular la cobertura contra rotura/robo para esta reserva.",
+    "tulipInsuranceDisabledPastDate": "Reserva actualizada, pero la proteccion Tulip se desactivo porque las fechas estan en el pasado.",
     "tulipContractPastDate": "Tulip rechazo la creacion del contrato: las fechas del contrato no pueden estar en el pasado.",
     "tulipContractActionForbidden": "Tulip rechazo esta accion para la configuracion de cuenta actual.",
+    "tulipContractProductMarkedMissing": "Tulip requiere el identificador real de cada articulo asegurado. Asigna una unidad o un identificador fisico a cada producto asegurado antes de crear o sincronizar el contrato.",
     "tulipContractTypeDisabled": "El tipo de contrato Tulip requerido para esta duracion no esta activado para esta tienda."
   },
   "welcome": {
