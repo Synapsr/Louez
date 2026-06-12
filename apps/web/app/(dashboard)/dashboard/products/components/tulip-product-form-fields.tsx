@@ -15,6 +15,7 @@ import {
   Label,
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from '@louez/ui'
 
@@ -34,6 +35,7 @@ interface TulipProductFormFieldsProps {
   onDraftChange: (updater: (prev: TulipProductDraft) => TulipProductDraft) => void
   disabled: boolean
   supportsMargin: boolean
+  disableMargin?: boolean
   defaultPrice: number
   defaultTitle: string
   resolvedCatalog: TulipCatalogItem[]
@@ -59,15 +61,26 @@ interface TulipProductFormFieldsProps {
     (key: 'noResults'): string
     (key: 'noBrandResults'): string
     (key: 'noModelResults'): string
+    (key: 'categoryRequired'): string
+    (key: 'productSubtypeRequired'): string
+    (key: 'brandRequired'): string
+    (key: 'modelRequired'): string
+    (key: 'purchasePriceRequired'): string
     (key: 'invalidPurchasePrice'): string
     (key: 'invalidMargin'): string
     (key: 'marginTooltip'): string
+    (key: 'marginLockedTooltip'): string
     (key: 'invalidPurchasedDate'): string
   }
   validation: {
     hasInvalidValueExcl: boolean
     hasInvalidMargin: boolean
     hasInvalidPurchasedDate: boolean
+    hasMissingProductType: boolean
+    hasMissingSubtype: boolean
+    hasMissingBrand: boolean
+    hasMissingModel: boolean
+    hasMissingValueExcl: boolean
   }
 }
 
@@ -76,6 +89,7 @@ export function TulipProductFormFields({
   onDraftChange,
   disabled,
   supportsMargin,
+  disableMargin = false,
   defaultPrice,
   defaultTitle,
   resolvedCatalog,
@@ -85,6 +99,7 @@ export function TulipProductFormFields({
 }: TulipProductFormFieldsProps) {
   const [brandInputValue, setBrandInputValue] = useState(draft.brand)
   const [modelInputValue, setModelInputValue] = useState(draft.model)
+  const isMarginDisabled = disabled || disableMargin
 
   const currentProductType = draft.productType ?? resolvedCatalog[0]?.type ?? 'event'
 
@@ -247,6 +262,9 @@ export function TulipProductFormFields({
             </ComboboxList>
           </ComboboxPopup>
         </Combobox>
+        {validation.hasMissingProductType && (
+          <p className="text-destructive text-xs">{t('categoryRequired')}</p>
+        )}
       </div>
 
       {/* Subtype */}
@@ -278,6 +296,11 @@ export function TulipProductFormFields({
             </ComboboxList>
           </ComboboxPopup>
         </Combobox>
+        {validation.hasMissingSubtype && (
+          <p className="text-destructive text-xs">
+            {t('productSubtypeRequired')}
+          </p>
+        )}
       </div>
 
       {/* Brand */}
@@ -323,6 +346,9 @@ export function TulipProductFormFields({
             </ComboboxList>
           </ComboboxPopup>
         </Combobox>
+        {validation.hasMissingBrand && (
+          <p className="text-destructive text-xs">{t('brandRequired')}</p>
+        )}
       </div>
 
       {/* Model */}
@@ -368,6 +394,9 @@ export function TulipProductFormFields({
             </ComboboxList>
           </ComboboxPopup>
         </Combobox>
+        {validation.hasMissingModel && (
+          <p className="text-destructive text-xs">{t('modelRequired')}</p>
+        )}
       </div>
 
       {/* Purchase date */}
@@ -397,9 +426,13 @@ export function TulipProductFormFields({
           }
           disabled={disabled}
         />
-        {validation.hasInvalidValueExcl && (
+        {validation.hasMissingValueExcl ? (
+          <p className="text-destructive text-xs">
+            {t('purchasePriceRequired')}
+          </p>
+        ) : validation.hasInvalidValueExcl ? (
           <p className="text-destructive text-xs">{t('invalidPurchasePrice')}</p>
-        )}
+        ) : null}
       </div>
 
       {/* Margin */}
@@ -407,14 +440,21 @@ export function TulipProductFormFields({
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
             <Label>{t('fields.margin')}</Label>
-            <Tooltip>
-              <TooltipTrigger className="text-muted-foreground hover:text-foreground transition-colors">
-                <Info className="size-3.5" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t('marginTooltip')}</p>
-              </TooltipContent>
-            </Tooltip>
+            <TooltipProvider delay={100}>
+              <Tooltip>
+                <TooltipTrigger className="text-muted-foreground hover:text-foreground transition-colors">
+                  <Info className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('marginTooltip')}</p>
+                  {disableMargin && (
+                    <p className="text-muted-foreground mt-1">
+                      {t('marginLockedTooltip')}
+                    </p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <Input
             value={draft.margin}
@@ -422,7 +462,7 @@ export function TulipProductFormFields({
             onChange={(event) =>
               onDraftChange((prev) => ({ ...prev, margin: event.target.value }))
             }
-            disabled={disabled}
+            disabled={isMarginDisabled}
           />
           {validation.hasInvalidMargin && (
             <p className="text-destructive text-xs">{t('invalidMargin')}</p>

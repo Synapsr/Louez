@@ -6,6 +6,8 @@ import { createHash } from 'node:crypto';
 import { db } from '@louez/db';
 import { reservations, stores } from '@louez/db';
 
+import { buildReservationCalendarDescription } from '@/lib/integrations/calendar/reservation-event-details';
+
 import { env } from '@/env';
 
 export const runtime = 'nodejs';
@@ -150,75 +152,6 @@ function hasReturnCollection(
   return reservation.returnMethod === 'address';
 }
 
-function formatStoreLocationLabel(
-  name: string | null | undefined,
-  address: string | null,
-): string {
-  if (name && address) return `${name} - ${address}`;
-  if (name) return name;
-  if (address) return address;
-  return 'Adresse magasin non renseignee';
-}
-
-function buildLogisticsLines({
-  reservation,
-  store,
-}: {
-  reservation: typeof reservations.$inferSelect;
-  store: typeof stores.$inferSelect;
-}): string[] {
-  const outboundMethod = hasOutboundDelivery(reservation) ? 'address' : 'store';
-  const returnMethod = hasReturnCollection(reservation) ? 'address' : 'store';
-  const outboundAddress = formatOutboundAddress(reservation);
-  const returnAddress = formatReturnAddress(reservation);
-  const pickupLocationAddress =
-    formatReservationLocationSnapshotAddress(
-      reservation.pickupLocationSnapshot,
-    ) ?? store.address;
-  const returnLocationAddress =
-    formatReservationLocationSnapshotAddress(
-      reservation.returnLocationSnapshot,
-    ) ?? store.address;
-
-  const lines = ['Logistique:'];
-
-  if (outboundMethod === 'address') {
-    lines.push('Depart: LIVRAISON AU CLIENT');
-    lines.push(
-      `Adresse livraison: ${outboundAddress ?? 'Adresse livraison non renseignee'}`,
-    );
-  } else {
-    lines.push('Depart: retrait magasin');
-    lines.push(
-      `Lieu retrait: ${formatStoreLocationLabel(
-        reservation.pickupLocationSnapshot?.name ?? store.name,
-        pickupLocationAddress,
-      )}`,
-    );
-  }
-
-  if (returnMethod === 'address') {
-    lines.push('Retour: RECUPERATION CHEZ LE CLIENT');
-    lines.push(
-      `Adresse retour: ${returnAddress ?? 'Adresse retour non renseignee'}`,
-    );
-  } else {
-    lines.push('Retour: retour magasin');
-    lines.push(
-      `Lieu retour: ${formatStoreLocationLabel(
-        reservation.returnLocationSnapshot?.name ?? store.name,
-        returnLocationAddress,
-      )}`,
-    );
-  }
-
-  if (reservation.deliveryFee && Number(reservation.deliveryFee) > 0) {
-    lines.push(`Frais livraison: ${reservation.deliveryFee} EUR`);
-  }
-
-  return lines;
-}
-
 function buildSummaryPrefix(
   reservation: typeof reservations.$inferSelect,
 ): string | null {
@@ -316,23 +249,13 @@ export async function GET(request: Request) {
       })
       .join(', ');
 
-    // Build description
-    const description = [
-      ...buildLogisticsLines({ reservation, store }),
-      '',
-      `Client: ${reservation.customer.firstName} ${reservation.customer.lastName}`,
-      reservation.customer.email
-        ? `Email: ${reservation.customer.email}`
-        : null,
-      reservation.customer.phone ? `Tel: ${reservation.customer.phone}` : null,
-      `Produits: ${productNames}`,
-      `Total: ${reservation.totalAmount} EUR`,
-      reservation.customerNotes
-        ? `Notes client: ${reservation.customerNotes}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join('\n');
+    const reservationUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/reservations/${reservation.id}`;
+    const description = buildReservationCalendarDescription({
+      reservation,
+      store,
+      productNames,
+      reservationUrl,
+    });
 
     // Status emoji prefix for visual identification
     const statusEmoji: Record<string, string> = {
@@ -342,6 +265,8 @@ export async function GET(request: Request) {
       completed: '[V]',
       cancelled: '[X]',
       rejected: '[X]',
+      quote: '[QUOTE]',
+      declined: '[X]',
     };
 
     const summaryPrefix = buildSummaryPrefix(reservation);
@@ -382,8 +307,7 @@ export async function GET(request: Request) {
     lines.push(`TRANSP:${isCancelled ? 'TRANSPARENT' : 'OPAQUE'}`);
 
     // Add URL to reservation details
-    const baseUrl = env.NEXT_PUBLIC_APP_URL;
-    lines.push(`URL:${baseUrl}/dashboard/reservations/${reservation.id}`);
+    lines.push(`URL:${reservationUrl}`);
 
     lines.push('END:VEVENT');
   }

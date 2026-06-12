@@ -10,6 +10,11 @@ export interface IntegrationResourceLink {
   url: string
 }
 
+export interface IntegrationAboutSection {
+  titleKey: string
+  bodyKeys: string[]
+}
+
 export interface IntegrationManifest {
   id: string
   category: IntegrationCategory
@@ -22,6 +27,7 @@ export interface IntegrationManifest {
   resourceLinks: IntegrationResourceLink[]
   featureKeys: string[]
   aboutKey: string
+  aboutSections?: IntegrationAboutSection[]
   websiteUrl: string
   status: IntegrationLifecycleStatus
 }
@@ -69,6 +75,7 @@ export interface IntegrationDetail extends IntegrationCatalogItem {
   resourceLinks: IntegrationResourceLink[]
   featureKeys: string[]
   aboutKey: string
+  aboutSections?: IntegrationAboutSection[]
   websiteUrl: string
 }
 

@@ -956,10 +956,12 @@
           "mappedTo": "Zugeordnet zu {title}",
           "linkOrCreateHelper": "Ein bestehendes Tulip-Produkt verknüpfen oder ein neues Tulip-Produkt erstellen und verknüpfen.",
           "addNewProductButton": "Neues Produkt hinzufügen",
+          "editMappedProductButton": "Produkt bearbeiten",
           "mappingLabel": "Tulip-Produkt",
           "mappingPlaceholder": "Nicht zugeordnet",
           "mappingSaving": "Wird gespeichert...",
           "noResults": "Keine Tulip-Produkte gefunden",
+          "noRenterProducts": "Keine Tulip-Produkte fur diesen Vermieter gefunden",
           "dialog": {
             "description": "Tulip-Produktdetails konfigurieren und Aktualisierungen übertragen.",
             "cancel": "Abbrechen",
@@ -978,7 +980,8 @@
             "noModelResults": "Keine Modellvorschläge",
             "invalidPurchasePrice": "Geben Sie einen gültigen Kaufpreis ein.",
             "invalidMargin": "Geben Sie eine gültige Marge ein.",
-            "marginTooltip": "Zusätzliche Marge auf den Kaufpreis für die Versicherungsbewertung.",
+            "marginTooltip": "Zusätzliche Tagesmarge auf den Kaufpreis für die Versicherungsbewertung.",
+            "marginLockedTooltip": "Diese Marge wird beim Erstellen des Tulip-Produkts festgelegt und kann danach nicht mehr geändert werden.",
             "invalidPurchasedDate": "Wählen Sie ein gültiges Kaufdatum.",
             "fields": {
               "productTitle": "Produktname (optional)",
@@ -988,7 +991,7 @@
               "model": "Modell",
               "purchasedDate": "Kaufdatum",
               "purchasePriceHt": "Kaufpreis (netto)",
-              "margin": "Marge"
+              "margin": "Marge / Tag"
             }
           }
         }
@@ -3639,7 +3642,8 @@
             "noModelResults": "Keine Modellvorschläge",
             "invalidPurchasePrice": "Geben Sie einen gültigen Kaufpreis ein.",
             "invalidMargin": "Geben Sie eine gültige Marge ein.",
-            "marginTooltip": "Zusätzliche Marge auf den Kaufpreis für die Versicherungsbewertung.",
+            "marginTooltip": "Zusätzliche Tagesmarge auf den Kaufpreis für die Versicherungsbewertung.",
+            "marginLockedTooltip": "Diese Marge wird beim Erstellen des Tulip-Produkts festgelegt und kann danach nicht mehr geändert werden.",
             "invalidPurchasedDate": "Wählen Sie ein gültiges Kaufdatum.",
             "createButton": "In Tulip erstellen",
             "creatingButton": "Wird erstellt...",
@@ -3676,7 +3680,7 @@
               "model": "Modell",
               "purchasedDate": "Kaufdatum",
               "purchasePriceHt": "Kaufpreis (netto)",
-              "margin": "Marge"
+              "margin": "Marge / Tag"
             }
           }
         }
@@ -5209,6 +5213,7 @@
     "tulipQuoteFailed": "Bruch-/Diebstahlschutz für diese Reservierung konnte nicht berechnet werden.",
     "tulipContractPastDate": "Tulip hat die Vertragserstellung abgelehnt: Vertragsdaten dürfen nicht in der Vergangenheit liegen.",
     "tulipContractActionForbidden": "Tulip hat diese Aktion für die aktuelle Kontokonfiguration abgelehnt.",
+    "tulipContractProductMarkedMissing": "Tulip benötigt die echte Kennung jedes versicherten Artikels. Weisen Sie jedem versicherten Produkt vor der Erstellung oder Synchronisierung des Vertrags eine Einheit oder physische Kennung zu.",
     "tulipContractTypeDisabled": "Der für diese Dauer erforderliche Tulip-Vertragstyp ist für diesen Shop nicht aktiviert."
   },
   "welcome": {

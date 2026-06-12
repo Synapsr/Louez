@@ -13,6 +13,8 @@ import {
   dashboardReservationGetByIdInputSchema,
   dashboardReservationGetPaymentMethodInputSchema,
   dashboardReservationPollInputSchema,
+  dashboardReservationPreviewManualTulipQuoteInputSchema,
+  dashboardReservationPreviewTulipQuoteInputSchema,
   dashboardReservationRecordDamageInputSchema,
   dashboardReservationRecordPaymentInputSchema,
   dashboardReservationReleaseDepositHoldInputSchema,
@@ -186,9 +188,62 @@ const updateReservation = requirePermission('write')
       });
 
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error as string });
+        throw new ORPCError('BAD_REQUEST', {
+          message: result.error as string,
+          data:
+            'errorDetails' in result && result.errorDetails
+              ? { details: result.errorDetails }
+              : undefined,
+        });
       }
       return result;
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const previewTulipQuote = requirePermission('write')
+  .input(dashboardReservationPreviewTulipQuoteInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn =
+        context.dashboardReservationActions?.previewReservationTulipQuote;
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message:
+            'dashboardReservationActions.previewReservationTulipQuote not provided',
+        });
+      }
+
+      const payload = input.payload;
+      return await fn(input.reservationId, {
+        ...payload,
+        startDate: toDate(payload.startDate)!,
+        endDate: toDate(payload.endDate)!,
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const previewManualTulipQuote = requirePermission('write')
+  .input(dashboardReservationPreviewManualTulipQuoteInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn = context.dashboardReservationActions?.previewManualTulipQuote;
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message:
+            'dashboardReservationActions.previewManualTulipQuote not provided',
+        });
+      }
+
+      const payload = input.payload;
+      return await fn({
+        ...payload,
+        startDate: toDate(payload.startDate)!,
+        endDate: toDate(payload.endDate)!,
+      });
     } catch (error) {
       throw toORPCError(error);
     }
@@ -254,7 +309,12 @@ const cancel = requirePermission('write')
       }
       const result = await fn(input.reservationId);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError('BAD_REQUEST', {
+          message: result.error,
+          data: result.errorDetails
+            ? { details: result.errorDetails }
+            : undefined,
+        });
       }
       return { success: true as const };
     } catch (error) {
@@ -423,7 +483,10 @@ const assignUnitsToItem = requirePermission('write')
       if (result.error) {
         throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
-      return { success: true as const };
+      return {
+        success: true as const,
+        ...(result.warnings ? { warnings: result.warnings } : {}),
+      };
     } catch (error) {
       throw toORPCError(error);
     }
@@ -558,6 +621,8 @@ export const dashboardReservationsRouter = {
   getAvailableUnitsForItem,
   createManualReservation,
   updateReservation,
+  previewTulipQuote,
+  previewManualTulipQuote,
   updateNotes,
   updateStatus,
   cancel,

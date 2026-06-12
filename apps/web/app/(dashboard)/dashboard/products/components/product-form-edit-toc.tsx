@@ -2,7 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { FileText, ImageIcon, Link2, Package, Receipt, Shield } from 'lucide-react';
+import {
+  FileText,
+  ImageIcon,
+  Link2,
+  Package,
+  Receipt,
+  Shield,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { cn } from '@louez/utils';
@@ -21,6 +28,7 @@ type SectionId = (typeof SECTION_IDS)[number];
 export function ProductFormEditToc() {
   const t = useTranslations('dashboard.products.form');
   const [activeId, setActiveId] = useState<SectionId>(SECTION_IDS[0]);
+  const [availableIds, setAvailableIds] = useState<SectionId[]>([]);
   const isManualScroll = useRef(false);
 
   const sections: { id: SectionId; label: string; icon: React.ReactNode }[] = [
@@ -57,9 +65,24 @@ export function ProductFormEditToc() {
   ];
 
   useEffect(() => {
-    const elements = SECTION_IDS.map((id) =>
-      document.getElementById(id),
-    ).filter(Boolean) as HTMLElement[];
+    const getAvailableElements = () =>
+      SECTION_IDS.map((id) => document.getElementById(id)).filter(
+        Boolean,
+      ) as HTMLElement[];
+
+    const syncAvailableIds = () => {
+      const nextIds = getAvailableElements().map(
+        (element) => element.id as SectionId,
+      );
+      setAvailableIds(nextIds);
+      setActiveId((current) =>
+        nextIds.includes(current) ? current : (nextIds[0] ?? SECTION_IDS[0]),
+      );
+      return nextIds;
+    };
+
+    let elements = getAvailableElements();
+    syncAvailableIds();
 
     if (!elements.length) return;
 
@@ -80,20 +103,37 @@ export function ProductFormEditToc() {
 
     elements.forEach((el) => observer.observe(el));
 
+    const mutationObserver = new MutationObserver(() => {
+      const nextElements = getAvailableElements();
+      const nextElementIds = nextElements
+        .map((element) => element.id)
+        .join(',');
+      const currentElementIds = elements.map((element) => element.id).join(',');
+      if (nextElementIds === currentElementIds) return;
+
+      elements.forEach((el) => observer.unobserve(el));
+      elements = nextElements;
+      elements.forEach((el) => observer.observe(el));
+      syncAvailableIds();
+    });
+
     // Activate last section when near the bottom of the page
     const handleScroll = () => {
       if (isManualScroll.current) return;
       const scrollBottom = window.innerHeight + window.scrollY;
       const docHeight = document.documentElement.scrollHeight;
       if (docHeight - scrollBottom < 100) {
-        setActiveId(SECTION_IDS[SECTION_IDS.length - 1]);
+        const lastId = syncAvailableIds().at(-1);
+        if (lastId) setActiveId(lastId);
       }
     };
 
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       observer.disconnect();
+      mutationObserver.disconnect();
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
@@ -118,36 +158,38 @@ export function ProductFormEditToc() {
     <nav className="hidden w-48 shrink-0 xl:block" aria-label="Form navigation">
       <div className="sticky top-4">
         <ul className="border-border relative space-y-0.5 border-l">
-          {sections.map((section) => {
-            const isActive = activeId === section.id;
-            return (
-              <li key={section.id}>
-                <a
-                  href={`#${section.id}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    scrollToSection(section.id);
-                  }}
-                  className={cn(
-                    '-ml-px flex items-center gap-2.5 border-l-2 py-2 pr-2 pl-4 text-[13px] transition-all duration-200',
-                    isActive
-                      ? 'border-primary text-foreground font-medium'
-                      : 'text-muted-foreground hover:text-foreground hover:border-muted-foreground/40 border-transparent',
-                  )}
-                >
-                  <span
+          {sections
+            .filter((section) => availableIds.includes(section.id))
+            .map((section) => {
+              const isActive = activeId === section.id;
+              return (
+                <li key={section.id}>
+                  <a
+                    href={`#${section.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      scrollToSection(section.id);
+                    }}
                     className={cn(
-                      'transition-colors duration-200',
-                      isActive ? 'text-primary' : 'text-muted-foreground/70',
+                      '-ml-px flex items-center gap-2.5 border-l-2 py-2 pr-2 pl-4 text-[13px] transition-all duration-200',
+                      isActive
+                        ? 'border-primary text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:border-muted-foreground/40 border-transparent',
                     )}
                   >
-                    {section.icon}
-                  </span>
-                  {section.label}
-                </a>
-              </li>
-            );
-          })}
+                    <span
+                      className={cn(
+                        'transition-colors duration-200',
+                        isActive ? 'text-primary' : 'text-muted-foreground/70',
+                      )}
+                    >
+                      {section.icon}
+                    </span>
+                    {section.label}
+                  </a>
+                </li>
+              );
+            })}
         </ul>
       </div>
     </nav>

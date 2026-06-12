@@ -62,8 +62,30 @@ export type CustomerData = {
   phone: string | null;
 };
 
-type TulipProductType = string
-type TulipProductSubtype = string
+type TulipProductType = string;
+type TulipProductSubtype = string;
+
+type CalendarIntegrationState = {
+  storeId: string;
+  google: {
+    enabled: boolean;
+    connected: boolean;
+    configured: boolean;
+    status: string;
+    accountEmail: string | null;
+    calendarName: string | null;
+    lastSyncAt: string | null;
+    lastError: string | null;
+    syncPendingReservations: boolean;
+    cancelledReservationBehavior: 'show' | 'hide';
+    pendingEvents: number;
+    failedEvents: number;
+  };
+  ics: {
+    token: string | null;
+    connected: boolean;
+  };
+};
 
 /**
  * Base context provided to all procedures
@@ -76,7 +98,11 @@ export interface BaseContext {
   ) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
   dashboardReservationActions?: {
-    cancelReservation?: (reservationId: string) => Promise<{ success?: boolean; error?: string }>
+    cancelReservation?: (reservationId: string) => Promise<{
+      success?: boolean;
+      error?: string;
+      errorDetails?: string | null;
+    }>;
     updateReservationStatus?: (
       reservationId: string,
       status:
@@ -91,269 +117,400 @@ export interface BaseContext {
       rejectionReason?: string,
     ) => Promise<
       | { success?: boolean; error?: string }
-      | { success?: boolean; warnings?: Array<{ key: string; params?: Record<string, string | number> }> }
-    >
+      | {
+          success?: boolean;
+          warnings?: Array<{
+            key: string;
+            params?: Record<string, string | number>;
+          }>;
+        }
+    >;
     updateReservation?: (
       reservationId: string,
       data: {
-        startDate?: Date
-        endDate?: Date
+        startDate?: Date;
+        endDate?: Date;
         items?: Array<{
-          id?: string
-          productId?: string | null
-          quantity: number
-          unitPrice: number
-          depositPerUnit: number
-          isManualPrice?: boolean
-          pricingMode?: 'hour' | 'day' | 'week'
+          id?: string;
+          productId?: string | null;
+          quantity: number;
+          unitPrice: number;
+          depositPerUnit: number;
+          isManualPrice?: boolean;
+          pricingMode?: 'hour' | 'day' | 'week';
           productSnapshot: {
-            name: string
-            description?: string | null
-            images?: string[]
-          }
-        }>
-        notifyCustomerByEmail?: boolean
+            name: string;
+            description?: string | null;
+            images?: string[];
+          };
+        }>;
+        notifyCustomerByEmail?: boolean;
       },
-    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
-    createManualReservation?: (data: {
-      customerId?: string
+    ) => Promise<
+      { success?: boolean; error?: string } & Record<string, unknown>
+    >;
+    previewReservationTulipQuote?: (
+      reservationId: string,
+      data: {
+        startDate: Date;
+        endDate: Date;
+        tulipInsuranceOptIn?: boolean;
+        items: Array<{
+          productId?: string | null;
+          quantity: number;
+        }>;
+      },
+    ) => Promise<{
+      mode: 'required' | 'optional' | 'no_public';
+      connected: boolean;
+      inclusionEnabled: boolean;
+      quoteUnavailable: boolean;
+      quoteError: string | null;
+      requestedOptIn: boolean;
+      appliedOptIn: boolean;
+      amount: number;
+      insuredProductCount: number;
+      uninsuredProductCount: number;
+      insuredProductIds: string[];
+    }>;
+    previewManualTulipQuote?: (data: {
+      customerId?: string;
       newCustomer?: {
-        email: string
-        firstName: string
-        lastName: string
-        phone?: string
-      }
-      startDate: Date
-      endDate: Date
+        email: string;
+        firstName: string;
+        lastName: string;
+        phone?: string;
+      };
+      startDate: Date;
+      endDate: Date;
+      tulipInsuranceOptIn?: boolean;
       items: Array<{
-        productId: string
-        quantity: number
-        selectedAttributes?: Record<string, string>
-        priceOverride?: { unitPrice: number }
-      }>
+        productId: string;
+        quantity: number;
+      }>;
+    }) => Promise<{
+      mode: 'required' | 'optional' | 'no_public';
+      connected: boolean;
+      inclusionEnabled: boolean;
+      quoteUnavailable: boolean;
+      quoteError: string | null;
+      requestedOptIn: boolean;
+      appliedOptIn: boolean;
+      amount: number;
+      insuredProductCount: number;
+      uninsuredProductCount: number;
+      insuredProductIds: string[];
+    }>;
+    createManualReservation?: (data: {
+      customerId?: string;
+      newCustomer?: {
+        email: string;
+        firstName: string;
+        lastName: string;
+        phone?: string;
+      };
+      startDate: Date;
+      endDate: Date;
+      items: Array<{
+        productId: string;
+        quantity: number;
+        selectedAttributes?: Record<string, string>;
+        priceOverride?: { unitPrice: number };
+      }>;
       customItems?: Array<{
-        name: string
-        description: string
-        unitPrice: number
-        deposit: number
-        quantity: number
-        pricingMode: 'hour' | 'day' | 'week'
-      }>
+        name: string;
+        description: string;
+        unitPrice: number;
+        deposit: number;
+        quantity: number;
+        pricingMode: 'hour' | 'day' | 'week';
+      }>;
       delivery?: {
         outbound: {
-          method: 'store' | 'address'
-          address?: string
-          city?: string
-          postalCode?: string
-          country?: string
-          latitude?: number
-          longitude?: number
-        }
+          method: 'store' | 'address';
+          address?: string;
+          city?: string;
+          postalCode?: string;
+          country?: string;
+          latitude?: number;
+          longitude?: number;
+        };
         return: {
-          method: 'store' | 'address'
-          address?: string
-          city?: string
-          postalCode?: string
-          country?: string
-          latitude?: number
-          longitude?: number
-        }
-      }
-      internalNotes?: string
-      sendConfirmationEmail?: boolean
-    }) => Promise<{ success?: boolean; reservationId?: string; error?: string }>
+          method: 'store' | 'address';
+          address?: string;
+          city?: string;
+          postalCode?: string;
+          country?: string;
+          latitude?: number;
+          longitude?: number;
+        };
+      };
+      internalNotes?: string;
+      tulipInsuranceOptIn?: boolean;
+      sendConfirmationEmail?: boolean;
+      sendAsQuote?: boolean;
+    }) => Promise<{
+      success?: boolean;
+      reservationId?: string;
+      error?: string;
+    }>;
     getAvailableUnitsForReservationItem?: (
       reservationItemId: string,
-    ) => Promise<{ units?: Array<{ id: string; identifier: string; notes: string | null }>; assigned?: string[]; error?: string }>
+    ) => Promise<{
+      units?: Array<{ id: string; identifier: string; notes: string | null }>;
+      assigned?: string[];
+      error?: string;
+    }>;
     assignUnitsToReservationItem?: (
       reservationItemId: string,
       unitIds: string[],
-    ) => Promise<{ success?: boolean; error?: string }>
+    ) => Promise<{
+      success?: boolean;
+      error?: string;
+      warnings?: Array<{
+        key: string;
+        params?: Record<string, string | number>;
+        details?: string;
+      }>;
+    }>;
     requestPayment?: (
       reservationId: string,
       data: {
-        type: 'rental' | 'deposit' | 'custom'
-        amount?: number
-        channels: { email: boolean; sms: boolean }
-        customMessage?: string
+        type: 'rental' | 'deposit' | 'custom';
+        amount?: number;
+        channels: { email: boolean; sms: boolean };
+        customMessage?: string;
       },
-    ) => Promise<{ success?: boolean; error?: string; paymentUrl?: string }>
+    ) => Promise<{ success?: boolean; error?: string; paymentUrl?: string }>;
     recordPayment?: (
       reservationId: string,
       data: {
-        type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'adjustment'
-        amount: number
-        method: 'cash' | 'card' | 'transfer' | 'check' | 'other'
-        paidAt?: Date
-        notes?: string
+        type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'adjustment';
+        amount: number;
+        method: 'cash' | 'card' | 'transfer' | 'check' | 'other';
+        paidAt?: Date;
+        notes?: string;
       },
-    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>
-    deletePayment?: (paymentId: string) => Promise<{ success?: boolean; error?: string }>
+    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>;
+    deletePayment?: (
+      paymentId: string,
+    ) => Promise<{ success?: boolean; error?: string }>;
     returnDeposit?: (
       reservationId: string,
-      data: { amount: number; method: 'cash' | 'card' | 'transfer' | 'check' | 'other'; notes?: string },
-    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>
+      data: {
+        amount: number;
+        method: 'cash' | 'card' | 'transfer' | 'check' | 'other';
+        notes?: string;
+      },
+    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>;
     recordDamage?: (
       reservationId: string,
-      data: { amount: number; method: 'cash' | 'card' | 'transfer' | 'check' | 'other'; notes: string },
-    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>
-    createDepositHold?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
+      data: {
+        amount: number;
+        method: 'cash' | 'card' | 'transfer' | 'check' | 'other';
+        notes: string;
+      },
+    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>;
+    createDepositHold?: (
+      reservationId: string,
+    ) => Promise<
+      { success?: boolean; error?: string } & Record<string, unknown>
+    >;
     captureDepositHold?: (
       reservationId: string,
       data: { amount: number; reason: string },
-    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
-    releaseDepositHold?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
-    getReservationPaymentMethod?: (reservationId: string) => Promise<unknown | null>
+    ) => Promise<
+      { success?: boolean; error?: string } & Record<string, unknown>
+    >;
+    releaseDepositHold?: (
+      reservationId: string,
+    ) => Promise<
+      { success?: boolean; error?: string } & Record<string, unknown>
+    >;
+    getReservationPaymentMethod?: (
+      reservationId: string,
+    ) => Promise<unknown | null>;
     sendReservationEmail?: (
       reservationId: string,
-      data: { templateId: string; customSubject?: string; customMessage?: string },
-    ) => Promise<{ success?: boolean; error?: string }>
+      data: {
+        templateId: string;
+        customSubject?: string;
+        customMessage?: string;
+      },
+    ) => Promise<{ success?: boolean; error?: string }>;
     sendReservationModificationEmail?: (
       reservationId: string,
       data?: { previousPeriod?: { startDate: Date; endDate: Date } },
-    ) => Promise<{ success?: boolean; error?: string }>
-    sendAccessLink?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
-    sendAccessLinkBySms?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
+    ) => Promise<{ success?: boolean; error?: string }>;
+    sendAccessLink?: (
+      reservationId: string,
+    ) => Promise<
+      { success?: boolean; error?: string } & Record<string, unknown>
+    >;
+    sendAccessLinkBySms?: (
+      reservationId: string,
+    ) => Promise<
+      { success?: boolean; error?: string } & Record<string, unknown>
+    >;
   };
   dashboardIntegrationActions?: {
     listIntegrationsCatalog?: (input: {}) => Promise<
       | {
-          categories: unknown[]
-          integrations: unknown[]
+          categories: unknown[];
+          integrations: unknown[];
         }
       | { error: string }
-    >
+    >;
     listIntegrationsCategory?: (input: { category: string }) => Promise<
       | {
-          category: string
-          categories: unknown[]
-          integrations: unknown[]
+          category: string;
+          categories: unknown[];
+          integrations: unknown[];
         }
       | { error: string }
-    >
+    >;
     getIntegrationDetail?: (input: { integrationId: string }) => Promise<
       | {
-          integration: unknown
+          integration: unknown;
         }
       | { error: string }
-    >
+    >;
     setIntegrationEnabled?: (input: {
-      integrationId: string
-      enabled: boolean
-    }) => Promise<{ success?: boolean; error?: string }>
+      integrationId: string;
+      enabled: boolean;
+    }) => Promise<{ success?: boolean; error?: string }>;
+    getCalendarIntegrationState?: () => Promise<
+      CalendarIntegrationState | { error: string }
+    >;
+    updateGoogleCalendarSettings?: (input: {
+      syncPendingReservations: boolean;
+      cancelledReservationBehavior: 'show' | 'hide';
+    }) => Promise<{ success?: boolean; error?: string }>;
+    resyncGoogleCalendar?: () => Promise<
+      | {
+          success: true;
+          enqueued: number;
+        }
+      | { error: string }
+    >;
+    disconnectGoogleCalendar?: (input: {
+      deleteEvents?: boolean;
+    }) => Promise<{ success?: boolean; error?: string }>;
     getTulipIntegrationState?: () => Promise<
       | {
-          connected: boolean
-          enabled: boolean
-          supportsMargin: boolean
-          inclusionEnabled: boolean
-          connectedAt: string | null
-          connectionIssue: string | null
-          calendlyUrl: string
+          connected: boolean;
+          enabled: boolean;
+          supportsMargin: boolean;
+          inclusionEnabled: boolean;
+          connectedAt: string | null;
+          connectionIssue: string | null;
+          calendlyUrl: string;
           settings: {
-            publicMode: 'required' | 'optional' | 'no_public'
-            renterUid: string | null
-          }
-          renters: Array<{ uid: string; enabled: boolean }>
+            publicMode: 'required' | 'optional' | 'no_public';
+            renterUid: string | null;
+          };
+          renters: Array<{ uid: string; enabled: boolean }>;
           tulipCatalog: Array<{
-            type: string
-            label: string
+            type: string;
+            label: string;
             subtypes: Array<{
-              type: string
-              label: string
-            }>
-          }>
+              type: string;
+              label: string;
+            }>;
+          }>;
           tulipProducts: Array<{
-            id: string
-            title: string
-            louezManaged: boolean
-            margin: number | null
-            productType: string | null
-            productSubtype: string | null
-            purchasedDate: string | null
-            valueExcl: number | null
-            brand: string | null
-            model: string | null
-          }>
+            id: string;
+            title: string;
+            louezManaged: boolean;
+            margin: number | null;
+            productType: string | null;
+            productSubtype: string | null;
+            purchasedDate: string | null;
+            valueExcl: number | null;
+            brand: string | null;
+            model: string | null;
+          }>;
           products: Array<{
-            id: string
-            name: string
-            price: number
-            tulipProductId: string | null
-          }>
+            id: string;
+            name: string;
+            price: number;
+            tulipProductId: string | null;
+          }>;
         }
       | { error: string }
-    >
+    >;
     getTulipProductState?: (input: { productId: string }) => Promise<
       | {
-          connected: boolean
-          supportsMargin: boolean
-          connectedAt: string | null
-          connectionIssue: string | null
-          calendlyUrl: string
+          connected: boolean;
+          supportsMargin: boolean;
+          connectedAt: string | null;
+          connectionIssue: string | null;
+          calendlyUrl: string;
           settings: {
-            publicMode: 'required' | 'optional' | 'no_public'
-          }
+            publicMode: 'required' | 'optional' | 'no_public';
+          };
           tulipCatalog: Array<{
-            type: string
-            label: string
+            type: string;
+            label: string;
             subtypes: Array<{
-              type: string
-              label: string
-            }>
-          }>
+              type: string;
+              label: string;
+            }>;
+          }>;
           tulipProducts: Array<{
-            id: string
-            title: string
-            louezManaged: boolean
-            margin: number | null
-            productType: string | null
-            productSubtype: string | null
-            purchasedDate: string | null
-            valueExcl: number | null
-            brand: string | null
-            model: string | null
-          }>
+            id: string;
+            title: string;
+            louezManaged: boolean;
+            margin: number | null;
+            productType: string | null;
+            productSubtype: string | null;
+            purchasedDate: string | null;
+            valueExcl: number | null;
+            brand: string | null;
+            model: string | null;
+          }>;
           product: {
-            id: string
-            name: string
-            price: number
-            tulipProductId: string | null
-          }
+            id: string;
+            name: string;
+            price: number;
+            tulipProductId: string | null;
+          };
         }
       | { error: string }
-    >
-    connectTulipApiKey?: (input: { renterUid: string }) => Promise<{ success?: boolean; error?: string }>
+    >;
+    connectTulipApiKey?: (input: {
+      renterUid: string;
+    }) => Promise<{ success?: boolean; error?: string }>;
     updateTulipConfiguration?: (input: {
-      publicMode: 'required' | 'optional' | 'no_public'
-    }) => Promise<{ success?: boolean; error?: string }>
+      publicMode: 'required' | 'optional' | 'no_public';
+    }) => Promise<{ success?: boolean; error?: string }>;
     upsertTulipProductMapping?: (input: {
-      productId: string
-      tulipProductId: string | null
-    }) => Promise<{ success?: boolean; error?: string }>
+      productId: string;
+      tulipProductId: string | null;
+    }) => Promise<{ success?: boolean; error?: string }>;
     pushTulipProductUpdate?: (input: {
-      productId: string
-      title?: string | null
-      productType?: TulipProductType | null
-      productSubtype?: TulipProductSubtype | null
-      purchasedDate?: string | null
-      brand?: string | null
-      model?: string | null
-      valueExcl?: number | null
-      margin?: number | null
-    }) => Promise<{ success?: boolean; error?: string }>
+      productId: string;
+      title?: string | null;
+      productType?: TulipProductType | null;
+      productSubtype?: TulipProductSubtype | null;
+      purchasedDate?: string | null;
+      brand?: string | null;
+      model?: string | null;
+      valueExcl?: number | null;
+      margin?: number | null;
+    }) => Promise<{ success?: boolean; error?: string }>;
     createTulipProduct?: (input: {
-      productId: string
-      title?: string | null
-      productType?: TulipProductType | null
-      productSubtype?: TulipProductSubtype | null
-      purchasedDate?: string | null
-      brand?: string | null
-      model?: string | null
-      valueExcl?: number | null
-      margin?: number | null
-    }) => Promise<{ success?: boolean; error?: string }>
-    disconnectTulip?: () => Promise<{ success?: boolean; error?: string }>
+      productId: string;
+      title?: string | null;
+      productType?: TulipProductType | null;
+      productSubtype?: TulipProductSubtype | null;
+      purchasedDate?: string | null;
+      brand?: string | null;
+      model?: string | null;
+      valueExcl?: number | null;
+      margin?: number | null;
+    }) => Promise<{ success?: boolean; error?: string }>;
+    disconnectTulip?: () => Promise<{ success?: boolean; error?: string }>;
   };
   notifyStoreCreated?: (store: {
     id: string;

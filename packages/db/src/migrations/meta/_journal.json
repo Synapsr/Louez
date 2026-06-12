@@ -295,6 +295,27 @@
       "when": 1781010765413,
       "tag": "0038_add_admin_digest_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1778630400000,
+      "tag": "0039_add_integrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1779893253000,
+      "tag": "0040_add_tulip_integration_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "5",
+      "when": 1780040265000,
+      "tag": "0041_backfill_legacy_tulip_integrations",
+      "breakpoints": true
     }
   ]
 }

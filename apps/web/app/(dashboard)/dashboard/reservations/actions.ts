@@ -6,7 +6,6 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import { getRouteDistance } from '@louez/api/services';
-import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import { db } from '@louez/db';
 import {
   customers,
@@ -29,7 +28,6 @@ import type {
   DeliverySettings,
   PricingBreakdown,
   PricingMode,
-  StoreSettings,
   TulipPublicMode,
   UnitAttributes,
 } from '@louez/types';
@@ -73,6 +71,7 @@ import {
 import {
   cancelTulipContractForReservation,
   createTulipContractForReservation,
+  getTulipCoverageSummary,
   previewTulipQuoteForCheckout,
   syncTulipContractForReservation,
 } from '@/lib/integrations/tulip/contracts';
@@ -80,17 +79,11 @@ import {
   getReservationInsuranceSelection,
   isLegacyTulipInsuranceItem,
 } from '@/lib/integrations/tulip/contracts-insurance';
-
-function getActionErrorKey(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.startsWith('errors.')) {
-    return error.message;
-  }
-
-  return fallback;
-}
-import { getTulipSettings } from '@/lib/integrations/tulip/settings';
+import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
+import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
+import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import {
   isSmsConfigured,
   sendAccessLinkSms,
@@ -112,13 +105,18 @@ import {
   toStripeCents,
 } from '@/lib/stripe';
 import { getContrastColorHex } from '@/lib/utils/colors';
-import {
-  calculateTotalDeliveryFee,
-  validateDelivery,
-} from '@/lib/utils/geo';
+import { calculateTotalDeliveryFee, validateDelivery } from '@/lib/utils/geo';
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
 
 import { env } from '@/env';
+
+function getActionErrorKey(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.startsWith('errors.')) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 async function getStoreForUser() {
   return getCurrentStore();
@@ -236,19 +234,12 @@ function resolveTulipInsuranceOptIn(params: {
   return params.defaultOptional ?? true;
 }
 
-function getDashboardTulipInsuranceMode(
-  settings: StoreSettings | null | undefined,
-): TulipPublicMode {
-  const tulipSettings = getTulipSettings(settings || null);
-  if (!tulipSettings.enabled) {
-    return 'no_public';
-  }
-
-  if (tulipSettings.publicMode === 'required') {
-    return 'required';
-  }
-
-  return 'optional';
+async function getDashboardTulipInsuranceMode(
+  storeId: string,
+): Promise<TulipPublicMode> {
+  const tulipSettings = (await resolveTulipIntegrationForStore(storeId))
+    .settings;
+  return getDashboardTulipInsuranceModeFromSettings(tulipSettings);
 }
 
 async function logReservationActivity(
@@ -349,19 +340,15 @@ export async function updateReservationStatus(
   };
 
   if (activityMap[status]) {
-    await logReservationActivity(
-      reservationId,
-      activityMap[status],
-      {
-        previousStatus,
-        newStatus: status,
-        ...(status === 'rejected' && rejectionReason && { rejectionReason }),
-        ...(validationWarnings.length > 0 && {
-          validationWarnings,
-          validationWarningsCount: validationWarnings.length,
-        }),
-      },
-    );
+    await logReservationActivity(reservationId, activityMap[status], {
+      previousStatus,
+      newStatus: status,
+      ...(status === 'rejected' && rejectionReason && { rejectionReason }),
+      ...(validationWarnings.length > 0 && {
+        validationWarnings,
+        validationWarningsCount: validationWarnings.length,
+      }),
+    });
   }
 
   let tulipWarning: {
@@ -436,7 +423,10 @@ export async function updateReservationStatus(
   };
 
   // Dispatch customer notification based on status change
-  if ((previousStatus === 'pending' || previousStatus === 'quote') && status === 'confirmed') {
+  if (
+    (previousStatus === 'pending' || previousStatus === 'quote') &&
+    status === 'confirmed'
+  ) {
     // Request/quote accepted - build items for email
     const emailItems = reservation.items.map((item) => ({
       name: item.productSnapshot?.name || 'Product',
@@ -561,7 +551,9 @@ export async function cancelReservation(reservationId: string) {
   }
 
   if (
-    ['cancelled', 'completed', 'rejected', 'declined'].includes(reservation.status || '')
+    ['cancelled', 'completed', 'rejected', 'declined'].includes(
+      reservation.status || '',
+    )
   ) {
     return { error: 'errors.cannotCancelReservation' };
   }
@@ -757,9 +749,15 @@ export async function createManualReservation(data: CreateReservationData) {
     return { error: 'errors.customerRequired' };
   }
 
-  const tulipMode = getDashboardTulipInsuranceMode(
-    store.settings as StoreSettings | null,
-  );
+  const customer = await db.query.customers.findFirst({
+    where: and(eq(customers.id, customerId), eq(customers.storeId, store.id)),
+  });
+
+  if (!customer) {
+    return { error: 'errors.customerNotFound' };
+  }
+
+  const tulipMode = await getDashboardTulipInsuranceMode(store.id);
   const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
     mode: tulipMode,
     requested: data.tulipInsuranceOptIn,
@@ -984,6 +982,44 @@ export async function createManualReservation(data: CreateReservationData) {
     };
   });
 
+  const tulipQuoteItems = productDetails.map((detail) => ({
+    productId: detail.product.id,
+    quantity: detail.quantity,
+  }));
+  let appliedTulipInsuranceOptIn = tulipInsuranceOptIn;
+  let tulipInsuranceAmount = 0;
+  let tulipQuoteError: string | null = null;
+
+  if (tulipInsuranceOptIn && tulipQuoteItems.length > 0) {
+    const quote = await resolveReservationTulipQuotePreview({
+      storeId: store.id,
+      mode: tulipMode,
+      fallbackCountry: store.settings?.country || 'FR',
+      customer,
+      data: {
+        startDate: data.startDate,
+        endDate: data.endDate,
+        tulipInsuranceOptIn: true,
+        items: tulipQuoteItems,
+      },
+      logMessage:
+        '[tulip] Failed to preview manual reservation quote before creation:',
+    });
+
+    tulipQuoteError = quote.quoteUnavailable ? quote.quoteError : null;
+    appliedTulipInsuranceOptIn =
+      quote.quoteUnavailable && tulipMode === 'required'
+        ? tulipInsuranceOptIn
+        : quote.appliedOptIn;
+    tulipInsuranceAmount = quote.amount;
+  } else if (!tulipInsuranceOptIn) {
+    appliedTulipInsuranceOptIn = false;
+  }
+
+  if (tulipInsuranceAmount > 0) {
+    subtotalAmount += tulipInsuranceAmount;
+  }
+
   // Delivery validation and fee calculation
   let deliveryFeeAmount = 0;
   let deliveryDistanceKm: number | null = null;
@@ -997,21 +1033,31 @@ export async function createManualReservation(data: CreateReservationData) {
   const hasAnyDelivery = hasOutboundDelivery || hasReturnDelivery;
   const hasOutboundStore = !outboundLeg || outboundLeg.method === 'store';
   const hasReturnStore = !returnLeg || returnLeg.method === 'store';
-  const isMultiLocationEnabled = Boolean(storeDeliverySettings?.multiLocationEnabled);
-  let pickupLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
-  let returnLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
+  const isMultiLocationEnabled = Boolean(
+    storeDeliverySettings?.multiLocationEnabled,
+  );
+  let pickupLocation: Awaited<
+    ReturnType<typeof resolveReservationLocationSnapshot>
+  > | null = null;
+  let returnLocation: Awaited<
+    ReturnType<typeof resolveReservationLocationSnapshot>
+  > | null = null;
 
   try {
     pickupLocation = hasOutboundStore
       ? await resolveReservationLocationSnapshot({
           store,
-          locationId: isMultiLocationEnabled ? outboundLeg?.locationId ?? null : null,
+          locationId: isMultiLocationEnabled
+            ? (outboundLeg?.locationId ?? null)
+            : null,
         })
       : null;
     returnLocation = hasReturnStore
       ? await resolveReservationLocationSnapshot({
           store,
-          locationId: isMultiLocationEnabled ? returnLeg?.locationId ?? null : null,
+          locationId: isMultiLocationEnabled
+            ? (returnLeg?.locationId ?? null)
+            : null,
         })
       : null;
   } catch (error) {
@@ -1044,7 +1090,10 @@ export async function createManualReservation(data: CreateReservationData) {
       });
       deliveryDistanceKm = outboundDistance.distanceKm;
 
-      const validation = validateDelivery(deliveryDistanceKm, storeDeliverySettings);
+      const validation = validateDelivery(
+        deliveryDistanceKm,
+        storeDeliverySettings,
+      );
       if (!validation.valid) {
         return { error: validation.errorKey || 'errors.deliveryTooFar' };
       }
@@ -1064,7 +1113,10 @@ export async function createManualReservation(data: CreateReservationData) {
       });
       returnDistanceKm = inboundDistance.distanceKm;
 
-      const returnValidation = validateDelivery(returnDistanceKm, storeDeliverySettings);
+      const returnValidation = validateDelivery(
+        returnDistanceKm,
+        storeDeliverySettings,
+      );
       if (!returnValidation.valid) {
         return { error: 'errors.returnAddressTooFar' };
       }
@@ -1087,6 +1139,7 @@ export async function createManualReservation(data: CreateReservationData) {
 
   // Generate reservation number
   const reservationNumber = await generateReservationNumber(store.id);
+  const totalAmount = subtotalAmount + deliveryFeeAmount;
 
   // Create reservation
   const reservationId = nanoid();
@@ -1100,29 +1153,44 @@ export async function createManualReservation(data: CreateReservationData) {
     endDate: data.endDate,
     subtotalAmount: subtotalAmount.toFixed(2),
     depositAmount: depositAmount.toFixed(2),
-    totalAmount: (subtotalAmount + deliveryFeeAmount).toFixed(2),
+    totalAmount: totalAmount.toFixed(2),
     internalNotes: data.internalNotes || null,
     source: 'manual',
-    tulipInsuranceOptIn,
-    tulipInsuranceAmount: null,
+    tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
+    tulipInsuranceAmount:
+      tulipInsuranceAmount > 0 ? tulipInsuranceAmount.toFixed(2) : null,
     // Delivery fields — leg-based model
     outboundMethod: outboundLeg?.method || 'store',
     returnMethod: returnLeg?.method || 'store',
     deliveryOption: hasAnyDelivery ? 'delivery' : 'pickup',
     deliveryAddress: hasOutboundDelivery ? (outboundLeg.address ?? null) : null,
     deliveryCity: hasOutboundDelivery ? (outboundLeg.city ?? null) : null,
-    deliveryPostalCode: hasOutboundDelivery ? (outboundLeg.postalCode ?? null) : null,
+    deliveryPostalCode: hasOutboundDelivery
+      ? (outboundLeg.postalCode ?? null)
+      : null,
     deliveryCountry: hasOutboundDelivery ? (outboundLeg.country ?? null) : null,
-    deliveryLatitude: hasOutboundDelivery && outboundLeg.latitude ? outboundLeg.latitude.toString() : null,
-    deliveryLongitude: hasOutboundDelivery && outboundLeg.longitude ? outboundLeg.longitude.toString() : null,
+    deliveryLatitude:
+      hasOutboundDelivery && outboundLeg.latitude
+        ? outboundLeg.latitude.toString()
+        : null,
+    deliveryLongitude:
+      hasOutboundDelivery && outboundLeg.longitude
+        ? outboundLeg.longitude.toString()
+        : null,
     deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
     deliveryFee: deliveryFeeAmount.toFixed(2),
     returnAddress: hasReturnDelivery ? (returnLeg.address ?? null) : null,
     returnCity: hasReturnDelivery ? (returnLeg.city ?? null) : null,
     returnPostalCode: hasReturnDelivery ? (returnLeg.postalCode ?? null) : null,
     returnCountry: hasReturnDelivery ? (returnLeg.country ?? null) : null,
-    returnLatitude: hasReturnDelivery && returnLeg.latitude != null ? returnLeg.latitude.toString() : null,
-    returnLongitude: hasReturnDelivery && returnLeg.longitude != null ? returnLeg.longitude.toString() : null,
+    returnLatitude:
+      hasReturnDelivery && returnLeg.latitude != null
+        ? returnLeg.latitude.toString()
+        : null,
+    returnLongitude:
+      hasReturnDelivery && returnLeg.longitude != null
+        ? returnLeg.longitude.toString()
+        : null,
     returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
     pickupLocationId: pickupLocation?.locationId ?? null,
     returnLocationId: returnLocation?.locationId ?? null,
@@ -1172,12 +1240,31 @@ export async function createManualReservation(data: CreateReservationData) {
     });
   }
 
+  if (tulipInsuranceAmount > 0) {
+    await db.insert(reservationItems).values({
+      reservationId,
+      productId: null,
+      isCustomItem: true,
+      quantity: 1,
+      unitPrice: tulipInsuranceAmount.toFixed(2),
+      depositPerUnit: '0.00',
+      totalPrice: tulipInsuranceAmount.toFixed(2),
+      productSnapshot: {
+        name: 'Garantie casse/vol',
+        description: 'Garantie casse/vol',
+        images: [],
+      },
+    });
+  }
+
   // Log activity for manual reservation creation
-  await logReservationActivity(
-    reservationId,
-    'created',
-    { source: 'manual', status: data.sendAsQuote ? 'quote' : 'confirmed' },
-  );
+  await logReservationActivity(reservationId, 'created', {
+    source: 'manual',
+    status: data.sendAsQuote ? 'quote' : 'confirmed',
+    tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
+    tulipInsuranceAmount,
+    ...(tulipQuoteError && { tulipQuoteError }),
+  });
 
   try {
     await createTulipContractForReservation({
@@ -1190,11 +1277,6 @@ export async function createManualReservation(data: CreateReservationData) {
       error,
     });
   }
-
-  // Get customer info for email
-  const customer = await db.query.customers.findFirst({
-    where: eq(customers.id, customerId),
-  });
 
   // Send email for manual reservations (if enabled)
   const shouldSendEmail = data.sendConfirmationEmail !== false;
@@ -1235,6 +1317,16 @@ export async function createManualReservation(data: CreateReservationData) {
         unitPrice: parseFloat(item.unitPrice),
         totalPrice: parseFloat(item.totalPrice),
       })),
+      ...(tulipInsuranceAmount > 0
+        ? [
+            {
+              name: 'Garantie casse/vol',
+              quantity: 1,
+              unitPrice: tulipInsuranceAmount,
+              totalPrice: tulipInsuranceAmount,
+            },
+          ]
+        : []),
     ];
 
     const domain = env.NEXT_PUBLIC_APP_DOMAIN;
@@ -1266,7 +1358,7 @@ export async function createManualReservation(data: CreateReservationData) {
           number: reservationNumber,
           startDate: data.startDate,
           endDate: data.endDate,
-          totalAmount: subtotalAmount,
+          totalAmount,
           subtotalAmount,
           depositAmount,
         },
@@ -1289,7 +1381,7 @@ export async function createManualReservation(data: CreateReservationData) {
           endDate: data.endDate,
           subtotalAmount,
           depositAmount,
-          totalAmount: subtotalAmount,
+          totalAmount,
         },
         items: emailItems,
         reservationUrl,
@@ -1311,7 +1403,7 @@ export async function createManualReservation(data: CreateReservationData) {
     {
       number: reservationNumber,
       customerName,
-      totalAmount: subtotalAmount,
+      totalAmount,
       currency: store.settings?.currency,
     },
   ).catch(() => {});
@@ -1413,6 +1505,334 @@ interface UpdateReservationData {
   items?: UpdateReservationItem[];
 }
 
+interface PreviewReservationTulipQuoteData {
+  startDate: Date | string;
+  endDate: Date | string;
+  tulipInsuranceOptIn?: boolean;
+  items: Array<{
+    productId?: string | null;
+    quantity: number;
+  }>;
+}
+
+type ReservationTulipQuotePreview = {
+  mode: TulipPublicMode;
+  connected: boolean;
+  inclusionEnabled: boolean;
+  quoteUnavailable: boolean;
+  quoteError: string | null;
+  requestedOptIn: boolean;
+  appliedOptIn: boolean;
+  amount: number;
+  insuredProductCount: number;
+  uninsuredProductCount: number;
+  insuredProductIds: string[];
+};
+
+function createEmptyReservationTulipQuotePreview(
+  mode: TulipPublicMode,
+  overrides: Partial<ReservationTulipQuotePreview> = {},
+): ReservationTulipQuotePreview {
+  return {
+    mode,
+    connected: mode !== 'no_public',
+    inclusionEnabled: false,
+    quoteUnavailable: false,
+    quoteError: null,
+    requestedOptIn: false,
+    appliedOptIn: false,
+    amount: 0,
+    insuredProductCount: 0,
+    uninsuredProductCount: 0,
+    insuredProductIds: [],
+    ...overrides,
+  };
+}
+
+type ReservationTulipQuotePreviewCustomer = {
+  customerType?: 'individual' | 'business' | null;
+  companyName?: string | null;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+};
+
+interface PreviewManualReservationTulipQuoteData extends PreviewReservationTulipQuoteData {
+  customerId?: string;
+  newCustomer?: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+  };
+}
+
+function normalizeReservationTulipQuoteItems(
+  items: PreviewReservationTulipQuoteData['items'],
+) {
+  return items
+    .filter(
+      (item): item is { productId: string; quantity: number } =>
+        typeof item.productId === 'string' &&
+        item.productId.length > 0 &&
+        item.quantity > 0,
+    )
+    .map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+    }));
+}
+
+async function resolveReservationTulipQuotePreview(params: {
+  storeId: string;
+  mode: TulipPublicMode;
+  fallbackCountry: string;
+  customer: ReservationTulipQuotePreviewCustomer;
+  data: PreviewReservationTulipQuoteData;
+  logMessage: string;
+  logContext?: Record<string, unknown>;
+}): Promise<ReservationTulipQuotePreview> {
+  const requestedOptIn = resolveTulipInsuranceOptIn({
+    mode: params.mode,
+    requested: params.data.tulipInsuranceOptIn,
+    defaultOptional: true,
+  });
+
+  if (params.mode === 'no_public' || !requestedOptIn) {
+    return createEmptyReservationTulipQuotePreview(params.mode, {
+      requestedOptIn,
+    });
+  }
+
+  const startDate =
+    params.data.startDate instanceof Date
+      ? params.data.startDate
+      : new Date(params.data.startDate);
+  const endDate =
+    params.data.endDate instanceof Date
+      ? params.data.endDate
+      : new Date(params.data.endDate);
+
+  if (
+    Number.isNaN(startDate.getTime()) ||
+    Number.isNaN(endDate.getTime()) ||
+    endDate < startDate
+  ) {
+    return createEmptyReservationTulipQuotePreview(params.mode, {
+      requestedOptIn,
+      quoteUnavailable: true,
+      quoteError: 'errors.invalidData',
+    });
+  }
+
+  if (startDate.getTime() < Date.now()) {
+    return createEmptyReservationTulipQuotePreview(params.mode, {
+      requestedOptIn,
+      quoteUnavailable: true,
+      quoteError: 'errors.tulipContractPastDate',
+    });
+  }
+
+  const quoteItems = normalizeReservationTulipQuoteItems(params.data.items);
+
+  if (quoteItems.length === 0) {
+    return createEmptyReservationTulipQuotePreview(params.mode, {
+      requestedOptIn,
+    });
+  }
+
+  const customer = {
+    customerType: params.customer.customerType,
+    companyName: params.customer.companyName,
+    firstName: params.customer.firstName,
+    lastName: params.customer.lastName,
+    email: params.customer.email,
+    phone: params.customer.phone || '',
+    address: params.customer.address || '',
+    city: params.customer.city || '',
+    postalCode: params.customer.postalCode || '',
+    country: params.customer.country || params.fallbackCountry,
+  };
+
+  try {
+    const quote = await previewTulipQuoteForCheckout({
+      storeId: params.storeId,
+      modeOverride: params.mode,
+      customer,
+      items: quoteItems,
+      startDate,
+      endDate,
+      optIn: true,
+    });
+
+    const inclusionEnabled = quote.inclusionEnabled === true;
+    const amount =
+      !inclusionEnabled &&
+      quote.shouldApply &&
+      Number.isFinite(quote.amount) &&
+      quote.amount > 0
+        ? Math.round(quote.amount * 100) / 100
+        : 0;
+
+    return {
+      mode: params.mode,
+      connected: true,
+      inclusionEnabled,
+      quoteUnavailable: false,
+      quoteError: null,
+      requestedOptIn,
+      appliedOptIn: requestedOptIn && quote.shouldApply,
+      amount,
+      insuredProductCount: quote.insuredProductCount,
+      uninsuredProductCount: quote.uninsuredProductCount,
+      insuredProductIds: quote.insuredProductIds,
+    };
+  } catch (error) {
+    const coverageSummary = await getTulipCoverageSummary(quoteItems);
+    const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed');
+
+    console.warn(params.logMessage, {
+      ...(params.logContext ?? {}),
+      error,
+    });
+
+    return createEmptyReservationTulipQuotePreview(params.mode, {
+      requestedOptIn,
+      quoteUnavailable: true,
+      quoteError: errorKey,
+      insuredProductCount: coverageSummary.insuredProductCount,
+      uninsuredProductCount: coverageSummary.uninsuredProductCount,
+      insuredProductIds: coverageSummary.insuredProductIds,
+    });
+  }
+}
+
+export async function previewManualReservationTulipQuote(
+  data: PreviewManualReservationTulipQuoteData,
+): Promise<ReservationTulipQuotePreview> {
+  const store = await getStoreForUser();
+  if (!store) {
+    return createEmptyReservationTulipQuotePreview('no_public', {
+      connected: false,
+      quoteUnavailable: true,
+      quoteError: 'errors.unauthorized',
+    });
+  }
+
+  const mode = await getDashboardTulipInsuranceMode(store.id);
+  const requestedOptIn = resolveTulipInsuranceOptIn({
+    mode,
+    requested: data.tulipInsuranceOptIn,
+    defaultOptional: true,
+  });
+
+  let customer: ReservationTulipQuotePreviewCustomer | null = null;
+
+  if (data.customerId) {
+    customer =
+      (await db.query.customers.findFirst({
+        where: and(
+          eq(customers.id, data.customerId),
+          eq(customers.storeId, store.id),
+        ),
+      })) ?? null;
+  } else if (data.newCustomer) {
+    customer = {
+      customerType: 'individual',
+      companyName: null,
+      firstName: data.newCustomer.firstName,
+      lastName: data.newCustomer.lastName,
+      email: data.newCustomer.email,
+      phone: data.newCustomer.phone || '',
+      address: '',
+      city: '',
+      postalCode: '',
+      country: store.settings?.country || 'FR',
+    };
+  }
+
+  if (!customer) {
+    return createEmptyReservationTulipQuotePreview(mode, {
+      requestedOptIn,
+      quoteUnavailable: true,
+      quoteError: 'errors.customerRequired',
+    });
+  }
+
+  return resolveReservationTulipQuotePreview({
+    storeId: store.id,
+    mode,
+    fallbackCountry: store.settings?.country || 'FR',
+    customer,
+    data,
+    logMessage: '[tulip] Failed to preview manual reservation quote:',
+  });
+}
+
+export async function previewReservationTulipQuote(
+  reservationId: string,
+  data: PreviewReservationTulipQuoteData,
+): Promise<ReservationTulipQuotePreview> {
+  const store = await getStoreForUser();
+  if (!store) {
+    return createEmptyReservationTulipQuotePreview('no_public', {
+      connected: false,
+      quoteUnavailable: true,
+      quoteError: 'errors.unauthorized',
+    });
+  }
+
+  const mode = await getDashboardTulipInsuranceMode(store.id);
+  const requestedOptIn = resolveTulipInsuranceOptIn({
+    mode,
+    requested: data.tulipInsuranceOptIn,
+    defaultOptional: true,
+  });
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id),
+    ),
+    with: {
+      customer: true,
+    },
+  });
+
+  if (!reservation) {
+    return createEmptyReservationTulipQuotePreview(mode, {
+      requestedOptIn,
+      quoteUnavailable: true,
+      quoteError: 'errors.reservationNotFound',
+    });
+  }
+
+  if (!reservation.customer) {
+    return createEmptyReservationTulipQuotePreview(mode, {
+      requestedOptIn,
+      quoteUnavailable: true,
+      quoteError: 'errors.customerNotFound',
+    });
+  }
+
+  return resolveReservationTulipQuotePreview({
+    storeId: store.id,
+    mode,
+    fallbackCountry: store.settings?.country || 'FR',
+    customer: reservation.customer,
+    data,
+    logMessage: '[tulip] Failed to preview reservation edit quote:',
+    logContext: {
+      reservationId,
+    },
+  });
+}
+
 export async function updateReservation(
   reservationId: string,
   data: UpdateReservationData,
@@ -1470,15 +1890,17 @@ export async function updateReservation(
     reservation.endDate.getTime() - reservation.startDate.getTime();
   const nextPeriodMs = newEndDate.getTime() - newStartDate.getTime();
   const isPeriodReduced = nextPeriodMs < previousPeriodMs;
-  const tulipMode = getDashboardTulipInsuranceMode(
-    store.settings as StoreSettings | null,
-  );
-  const nextTulipInsuranceOptIn = resolveTulipInsuranceOptIn({
+  const tulipMode = await getDashboardTulipInsuranceMode(store.id);
+  const requestedTulipInsuranceOptIn = resolveTulipInsuranceOptIn({
     mode: tulipMode,
     requested: data.tulipInsuranceOptIn,
     current: reservation.tulipInsuranceOptIn,
     defaultOptional: true,
   });
+  const isTulipInsurancePastDateBlocked = newStartDate.getTime() < Date.now();
+  const nextTulipInsuranceOptIn = isTulipInsurancePastDateBlocked
+    ? false
+    : requestedTulipInsuranceOptIn;
 
   const validationWarnings = evaluateReservationRules({
     startDate: newStartDate,
@@ -1494,7 +1916,11 @@ export async function updateReservation(
     key: string;
     params?: Record<string, string | number>;
   }> = [];
-  const insuranceQuoteItems: Array<{ productId: string; quantity: number }> = [];
+  if (isTulipInsurancePastDateBlocked && requestedTulipInsuranceOptIn) {
+    tulipWarnings.push({ key: 'errors.tulipInsuranceDisabledPastDate' });
+  }
+  const insuranceQuoteItems: Array<{ productId: string; quantity: number }> =
+    [];
   const legacyInsuranceItemIds = reservation.items
     .filter((item) =>
       isLegacyTulipInsuranceItem({
@@ -1509,7 +1935,9 @@ export async function updateReservation(
     items: reservation.items,
   });
   const previousTulipInsuranceAmount =
-    previousInsuranceSelection.amount > 0 ? previousInsuranceSelection.amount : null;
+    previousInsuranceSelection.amount > 0
+      ? previousInsuranceSelection.amount
+      : null;
 
   const INSURANCE_ITEM_NAME = 'Garantie casse/vol';
   const existingItemsById = new Map(
@@ -1886,7 +2314,6 @@ export async function updateReservation(
       try {
         const quote = await previewTulipQuoteForCheckout({
           storeId: store.id,
-          storeSettings: store.settings as StoreSettings | null,
           customer: {
             customerType: reservation.customer.customerType,
             companyName: reservation.customer.companyName,
@@ -1914,11 +2341,16 @@ export async function updateReservation(
           nextTulipInsuranceAmount = Math.round(quote.amount * 100) / 100;
         }
       } catch (error) {
-        console.error('[tulip] Failed to recalculate insurance quote after reservation edit:', {
-          reservationId,
-          error,
+        console.warn(
+          '[tulip] Failed to recalculate insurance quote after reservation edit:',
+          {
+            reservationId,
+            error,
+          },
+        );
+        tulipWarnings.push({
+          key: getErrorKey(error, 'errors.tulipQuoteFailed'),
         });
-        tulipWarnings.push({ key: getErrorKey(error, 'errors.tulipQuoteFailed') });
         if (previousTulipInsuranceAmount) {
           nextTulipInsuranceAmount = previousTulipInsuranceAmount;
         }
@@ -2016,33 +2448,50 @@ export async function updateReservation(
   if (data.delivery) {
     const deliverySettings = (store.settings as Record<string, unknown> | null)
       ?.delivery as DeliverySettings | undefined;
-    const isMultiLocationEnabled = Boolean(deliverySettings?.multiLocationEnabled);
+    const isMultiLocationEnabled = Boolean(
+      deliverySettings?.multiLocationEnabled,
+    );
 
     const storeLat = store.latitude ? parseFloat(store.latitude) : null;
     const storeLon = store.longitude ? parseFloat(store.longitude) : null;
-    let pickupLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
-    let returnLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
+    let pickupLocation: Awaited<
+      ReturnType<typeof resolveReservationLocationSnapshot>
+    > | null = null;
+    let returnLocation: Awaited<
+      ReturnType<typeof resolveReservationLocationSnapshot>
+    > | null = null;
 
     // Outbound leg
     deliveryUpdateFields.outboundMethod = data.delivery.outbound.method;
     if (data.delivery.outbound.method === 'address') {
       deliveryUpdateFields.pickupLocationId = null;
       deliveryUpdateFields.pickupLocationSnapshot = null;
-      deliveryUpdateFields.deliveryAddress = data.delivery.outbound.address ?? null;
+      deliveryUpdateFields.deliveryAddress =
+        data.delivery.outbound.address ?? null;
       deliveryUpdateFields.deliveryCity = data.delivery.outbound.city ?? null;
-      deliveryUpdateFields.deliveryPostalCode = data.delivery.outbound.postalCode ?? null;
-      deliveryUpdateFields.deliveryCountry = data.delivery.outbound.country ?? null;
-      deliveryUpdateFields.deliveryLatitude = data.delivery.outbound.latitude?.toFixed(7) ?? null;
-      deliveryUpdateFields.deliveryLongitude = data.delivery.outbound.longitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.deliveryPostalCode =
+        data.delivery.outbound.postalCode ?? null;
+      deliveryUpdateFields.deliveryCountry =
+        data.delivery.outbound.country ?? null;
+      deliveryUpdateFields.deliveryLatitude =
+        data.delivery.outbound.latitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.deliveryLongitude =
+        data.delivery.outbound.longitude?.toFixed(7) ?? null;
 
-      if (storeLat && storeLon && data.delivery.outbound.latitude && data.delivery.outbound.longitude) {
+      if (
+        storeLat &&
+        storeLon &&
+        data.delivery.outbound.latitude &&
+        data.delivery.outbound.longitude
+      ) {
         const outboundDistance = await getRouteDistance({
           originLatitude: storeLat,
           originLongitude: storeLon,
           destinationLatitude: data.delivery.outbound.latitude,
           destinationLongitude: data.delivery.outbound.longitude,
         });
-        deliveryUpdateFields.deliveryDistanceKm = outboundDistance.distanceKm.toFixed(2);
+        deliveryUpdateFields.deliveryDistanceKm =
+          outboundDistance.distanceKm.toFixed(2);
       } else {
         deliveryUpdateFields.deliveryDistanceKm = null;
       }
@@ -2050,7 +2499,9 @@ export async function updateReservation(
       try {
         pickupLocation = await resolveReservationLocationSnapshot({
           store,
-          locationId: isMultiLocationEnabled ? data.delivery.outbound.locationId ?? null : null,
+          locationId: isMultiLocationEnabled
+            ? (data.delivery.outbound.locationId ?? null)
+            : null,
         });
       } catch (error) {
         return { error: getActionErrorKey(error, 'errors.locationInvalid') };
@@ -2073,19 +2524,28 @@ export async function updateReservation(
       deliveryUpdateFields.returnLocationSnapshot = null;
       deliveryUpdateFields.returnAddress = data.delivery.return.address ?? null;
       deliveryUpdateFields.returnCity = data.delivery.return.city ?? null;
-      deliveryUpdateFields.returnPostalCode = data.delivery.return.postalCode ?? null;
+      deliveryUpdateFields.returnPostalCode =
+        data.delivery.return.postalCode ?? null;
       deliveryUpdateFields.returnCountry = data.delivery.return.country ?? null;
-      deliveryUpdateFields.returnLatitude = data.delivery.return.latitude?.toFixed(7) ?? null;
-      deliveryUpdateFields.returnLongitude = data.delivery.return.longitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.returnLatitude =
+        data.delivery.return.latitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.returnLongitude =
+        data.delivery.return.longitude?.toFixed(7) ?? null;
 
-      if (storeLat && storeLon && data.delivery.return.latitude && data.delivery.return.longitude) {
+      if (
+        storeLat &&
+        storeLon &&
+        data.delivery.return.latitude &&
+        data.delivery.return.longitude
+      ) {
         const inboundDistance = await getRouteDistance({
           originLatitude: storeLat,
           originLongitude: storeLon,
           destinationLatitude: data.delivery.return.latitude,
           destinationLongitude: data.delivery.return.longitude,
         });
-        deliveryUpdateFields.returnDistanceKm = inboundDistance.distanceKm.toFixed(2);
+        deliveryUpdateFields.returnDistanceKm =
+          inboundDistance.distanceKm.toFixed(2);
       } else {
         deliveryUpdateFields.returnDistanceKm = null;
       }
@@ -2093,7 +2553,9 @@ export async function updateReservation(
       try {
         returnLocation = await resolveReservationLocationSnapshot({
           store,
-          locationId: isMultiLocationEnabled ? data.delivery.return.locationId ?? null : null,
+          locationId: isMultiLocationEnabled
+            ? (data.delivery.return.locationId ?? null)
+            : null,
         });
       } catch (error) {
         return { error: getActionErrorKey(error, 'errors.locationInvalid') };
@@ -2168,68 +2630,15 @@ export async function updateReservation(
     try {
       await syncTulipContractForReservation({ reservationId });
     } catch (error) {
-      console.error('[tulip] Failed to sync contract after reservation edit:', {
+      console.warn('[tulip] Failed to sync contract after reservation edit:', {
         reservationId,
         error,
       });
 
-      const tulipErrorKey = getErrorKey(error, 'errors.tulipContractUpdateFailed');
-      if (nextTulipInsuranceOptIn) {
-        try {
-          await db.transaction(async (tx) => {
-            await tx
-              .update(reservations)
-              .set({
-                startDate: reservation.startDate,
-                endDate: reservation.endDate,
-                subtotalAmount: reservation.subtotalAmount,
-                depositAmount: reservation.depositAmount,
-                totalAmount: reservation.totalAmount,
-                tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
-                tulipInsuranceAmount: reservation.tulipInsuranceAmount,
-                updatedAt: reservation.updatedAt,
-              })
-              .where(eq(reservations.id, reservationId));
-
-            await tx
-              .delete(reservationItems)
-              .where(eq(reservationItems.reservationId, reservationId));
-
-            if (reservation.items.length > 0) {
-              await tx.insert(reservationItems).values(
-                reservation.items.map((item) => ({
-                  id: item.id,
-                  reservationId: item.reservationId,
-                  productId: item.productId,
-                  isCustomItem: item.isCustomItem,
-                  quantity: item.quantity,
-                  unitPrice: item.unitPrice,
-                  depositPerUnit: item.depositPerUnit,
-                  totalPrice: item.totalPrice,
-                  taxRate: item.taxRate,
-                  taxAmount: item.taxAmount,
-                  priceExclTax: item.priceExclTax,
-                  totalExclTax: item.totalExclTax,
-                  pricingBreakdown: item.pricingBreakdown,
-                  productSnapshot: item.productSnapshot,
-                  combinationKey: item.combinationKey,
-                  selectedAttributes: item.selectedAttributes,
-                  createdAt: item.createdAt,
-                })),
-              );
-            }
-          });
-        } catch (rollbackError) {
-          console.error('[tulip] Failed to rollback reservation after contract sync failure:', {
-            reservationId,
-            rollbackError,
-          });
-          return { error: 'errors.generic' };
-        }
-
-        return { error: tulipErrorKey };
-      }
-
+      const tulipErrorKey = getErrorKey(
+        error,
+        'errors.tulipContractUpdateFailed',
+      );
       tulipWarnings.push({
         key: tulipErrorKey,
       });
@@ -2240,29 +2649,25 @@ export async function updateReservation(
   const difference = newTotalAmount - previousState.totalAmount;
 
   // Log activity
-  await logReservationActivity(
-    reservationId,
-    'modified',
-    {
-      previous: {
-        startDate: previousState.startDate,
-        endDate: previousState.endDate,
-        subtotalAmount: previousState.subtotalAmount,
-        depositAmount: previousState.depositAmount,
-      },
-      updated: {
-        startDate: newStartDate,
-        endDate: newEndDate,
-        subtotalAmount: newSubtotalAmount,
-        depositAmount: newDepositAmount,
-      },
-      difference,
-      ...(validationWarnings.length > 0 && {
-        validationWarnings,
-        validationWarningsCount: validationWarnings.length,
-      }),
+  await logReservationActivity(reservationId, 'modified', {
+    previous: {
+      startDate: previousState.startDate,
+      endDate: previousState.endDate,
+      subtotalAmount: previousState.subtotalAmount,
+      depositAmount: previousState.depositAmount,
     },
-  );
+    updated: {
+      startDate: newStartDate,
+      endDate: newEndDate,
+      subtotalAmount: newSubtotalAmount,
+      depositAmount: newDepositAmount,
+    },
+    difference,
+    ...(validationWarnings.length > 0 && {
+      validationWarnings,
+      validationWarningsCount: validationWarnings.length,
+    }),
+  });
 
   revalidatePath('/dashboard/reservations');
   revalidatePath(`/dashboard/reservations/${reservationId}`);
@@ -2425,11 +2830,12 @@ export async function recordPayment(
   });
 
   // Log activity
-  await logReservationActivity(
-    reservationId,
-    'payment_added',
-    { paymentId, type: data.type, amount: data.amount, method: data.method },
-  );
+  await logReservationActivity(reservationId, 'payment_added', {
+    paymentId,
+    type: data.type,
+    amount: data.amount,
+    method: data.method,
+  });
 
   // Platform admin notification
   notifyPaymentReceived(
@@ -2470,16 +2876,12 @@ export async function deletePayment(paymentId: string) {
   await db.delete(payments).where(eq(payments.id, paymentId));
 
   // Log activity
-  await logReservationActivity(
-    payment.reservationId,
-    'payment_updated',
-    {
-      paymentId,
-      type: payment.type,
-      amount: payment.amount,
-      action: 'deleted',
-    },
-  );
+  await logReservationActivity(payment.reservationId, 'payment_updated', {
+    paymentId,
+    type: payment.type,
+    amount: payment.amount,
+    action: 'deleted',
+  });
 
   revalidatePath('/dashboard/reservations');
   revalidatePath(`/dashboard/reservations/${payment.reservationId}`);
@@ -2548,16 +2950,12 @@ export async function returnDeposit(
   });
 
   // Log activity
-  await logReservationActivity(
-    reservationId,
-    'payment_added',
-    {
-      paymentId,
-      type: 'deposit_return',
-      amount: data.amount,
-      method: data.method,
-    },
-  );
+  await logReservationActivity(reservationId, 'payment_added', {
+    paymentId,
+    type: 'deposit_return',
+    amount: data.amount,
+    method: data.method,
+  });
 
   revalidatePath('/dashboard/reservations');
   revalidatePath(`/dashboard/reservations/${reservationId}`);
@@ -2601,11 +2999,13 @@ export async function recordDamage(
   });
 
   // Log activity
-  await logReservationActivity(
-    reservationId,
-    'payment_added',
-    { paymentId, type: 'damage', amount: data.amount, method: data.method, notes: data.notes },
-  );
+  await logReservationActivity(reservationId, 'payment_added', {
+    paymentId,
+    type: 'damage',
+    amount: data.amount,
+    method: data.method,
+    notes: data.notes,
+  });
 
   revalidatePath('/dashboard/reservations');
   revalidatePath(`/dashboard/reservations/${reservationId}`);
@@ -3075,16 +3475,12 @@ export async function processStripeRefund(
     });
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'payment_updated',
-      {
-        paymentId,
-        refundId: refund.refundId,
-        amount: data.amount,
-        type: data.type,
-      },
-    );
+    await logReservationActivity(reservationId, 'payment_updated', {
+      paymentId,
+      refundId: refund.refundId,
+      amount: data.amount,
+      type: data.type,
+    });
 
     revalidatePath('/dashboard/reservations');
     revalidatePath(`/dashboard/reservations/${reservationId}`);
@@ -3171,29 +3567,21 @@ export async function sendReservationModificationEmail(
       locale: getLocaleFromCountry(store.settings?.country),
     });
 
-    await logReservationActivity(
-      reservationId,
-      'note_updated',
-      {
-        templateId: 'reservation_modified',
-        to: customerData.email,
-        customerEmailNotification: 'sent',
-      },
-    );
+    await logReservationActivity(reservationId, 'note_updated', {
+      templateId: 'reservation_modified',
+      to: customerData.email,
+      customerEmailNotification: 'sent',
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { success: true };
   } catch (error) {
     console.error('Failed to send reservation modification email:', error);
-    await logReservationActivity(
-      reservationId,
-      'note_updated',
-      {
-        templateId: 'reservation_modified',
-        to: customerData.email,
-        customerEmailNotification: 'failed',
-      },
-    );
+    await logReservationActivity(reservationId, 'note_updated', {
+      templateId: 'reservation_modified',
+      to: customerData.email,
+      customerEmailNotification: 'failed',
+    });
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { error: 'errors.emailSendFailed' };
   }
@@ -3356,11 +3744,10 @@ export async function sendReservationEmail(
     }
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'note_updated',
-      { templateId: data.templateId, to: customerData.email },
-    );
+    await logReservationActivity(reservationId, 'note_updated', {
+      templateId: data.templateId,
+      to: customerData.email,
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { success: true };
@@ -3511,15 +3898,11 @@ export async function sendAccessLink(reservationId: string) {
     });
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'access_link_sent',
-      {
-        token: token.substring(0, 8) + '...',
-        expiresAt: expiresAt.toISOString(),
-        method: 'email',
-      },
-    );
+    await logReservationActivity(reservationId, 'access_link_sent', {
+      token: token.substring(0, 8) + '...',
+      expiresAt: expiresAt.toISOString(),
+      method: 'email',
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { success: true };
@@ -3626,15 +4009,11 @@ export async function sendAccessLinkBySms(reservationId: string) {
     }
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'access_link_sent',
-      {
-        token: token.substring(0, 8) + '...',
-        expiresAt: expiresAt.toISOString(),
-        method: 'sms',
-      },
-    );
+    await logReservationActivity(reservationId, 'access_link_sent', {
+      token: token.substring(0, 8) + '...',
+      expiresAt: expiresAt.toISOString(),
+      method: 'sms',
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { success: true };
@@ -3904,19 +4283,15 @@ export async function requestPayment(
     }
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'payment_added',
-      {
-        type: data.type,
-        amount,
-        currency,
-        channels: data.channels,
-        notificationResults,
-        paymentUrl,
-        isPaymentRequest: true,
-      },
-    );
+    await logReservationActivity(reservationId, 'payment_added', {
+      type: data.type,
+      amount,
+      currency,
+      channels: data.channels,
+      notificationResults,
+      paymentUrl,
+      isPaymentRequest: true,
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
 

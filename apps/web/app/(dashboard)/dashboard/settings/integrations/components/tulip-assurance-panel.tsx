@@ -37,7 +37,7 @@ const FALLBACK_STATE = {
   connectionIssue: null,
   calendlyUrl: 'https://calendly.com/',
   settings: {
-    publicMode: 'required' as const,
+    publicMode: 'optional' as const,
     renterUid: null,
   },
   renters: [],
@@ -55,6 +55,23 @@ function extractErrorKey(error: unknown): string {
   }
 
   return 'errors.generic';
+}
+
+function extractErrorDetails(error: unknown): string | undefined {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'data' in error &&
+    typeof error.data === 'object' &&
+    error.data !== null &&
+    'details' in error.data &&
+    typeof error.data.details === 'string'
+  ) {
+    const normalized = error.data.details.trim();
+    return normalized || undefined;
+  }
+
+  return undefined;
 }
 
 export function TulipAssurancePanel() {
@@ -89,6 +106,7 @@ export function TulipAssurancePanel() {
         const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
+          description: extractErrorDetails(error),
           type: 'error',
         });
       },
@@ -105,6 +123,7 @@ export function TulipAssurancePanel() {
         const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
+          description: extractErrorDetails(error),
           type: 'error',
         });
       },
@@ -121,6 +140,7 @@ export function TulipAssurancePanel() {
         const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
+          description: extractErrorDetails(error),
           type: 'error',
         });
       },
@@ -140,6 +160,7 @@ export function TulipAssurancePanel() {
         const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
+          description: extractErrorDetails(error),
           type: 'error',
         });
       },
@@ -158,6 +179,7 @@ export function TulipAssurancePanel() {
         const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
+          description: extractErrorDetails(error),
           type: 'error',
         });
       },
@@ -177,6 +199,7 @@ export function TulipAssurancePanel() {
         const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
+          description: extractErrorDetails(error),
           type: 'error',
         });
       },
