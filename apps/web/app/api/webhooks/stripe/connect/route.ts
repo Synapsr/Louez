@@ -24,6 +24,12 @@ import {
 } from '@/lib/discord/platform-notifications';
 import { markReservationForCalendarSync } from '@/lib/integrations/calendar/sync';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
+import {
+  getReversibleOnlineUsage,
+  getStoreBilling,
+  markUsageReversed,
+  recordBillableLocation,
+} from '@/lib/pay-as-you-go';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import { fromStripeCents } from '@/lib/stripe';
 import { stripe } from '@/lib/stripe/client';
@@ -270,17 +276,15 @@ async function handleCheckoutCompleted(
     return;
   }
 
-  // Check idempotence: if payment already completed for this session, skip
+  // Check idempotence: if payment already completed for this session, the
+  // payment/confirmation work is skipped below — but pay-as-you-go usage is still
+  // recorded first, because the storefront success page can complete the payment
+  // without doing PAYG metering (it would otherwise leave the at-source commission
+  // untracked).
   const existingPayment = await db.query.payments.findFirst({
     where: eq(payments.stripeCheckoutSessionId, session.id),
   });
-
-  if (existingPayment?.status === 'completed') {
-    console.log(
-      `Payment already completed for session ${session.id}, skipping`,
-    );
-    return;
-  }
+  const paymentAlreadyCompleted = existingPayment?.status === 'completed';
 
   // Get reservation with store, customer, and items for notifications
   const reservation = await db.query.reservations.findFirst({
@@ -321,25 +325,61 @@ async function handleCheckoutCompleted(
     );
   }
 
+  // Resolve the store's billing mode up front (reused for pay-as-you-go metering).
+  const billing = await getStoreBilling(reservation.store.id);
+  const isPayAsYouGoStore = billing.billingMode === 'pay_as_you_go';
+
+  // Subscription stores: nothing more to do once the payment is already completed
+  // (PAYG stores fall through so usage is still recorded below).
+  if (paymentAlreadyCompleted && !isPayAsYouGoStore) {
+    console.log(`Payment already completed for session ${session.id}, skipping`);
+    return;
+  }
+
   // Get payment intent details and extract customer/payment method
   let paymentIntentId: string | null = null;
   let chargeId: string | null = null;
   let stripeCustomerId: string | null = null;
   let stripePaymentMethodId: string | null = null;
+  // Pay-as-you-go: platform commission skimmed from this charge (cents) + its id.
+  let applicationFeeCollectedCents = 0;
+  let applicationFeeId: string | null = null;
+  let paymentIntentRetrieveFailed = false;
 
   if (session.payment_intent && connectedAccountId) {
     try {
       const paymentIntent = await stripe.paymentIntents.retrieve(
         session.payment_intent as string,
+        { expand: ['latest_charge'] },
         { stripeAccount: connectedAccountId },
       );
       paymentIntentId = paymentIntent.id;
-      chargeId = paymentIntent.latest_charge as string | null;
       stripeCustomerId = paymentIntent.customer as string | null;
       stripePaymentMethodId = paymentIntent.payment_method as string | null;
+      applicationFeeCollectedCents = paymentIntent.application_fee_amount ?? 0;
+
+      const latestCharge = paymentIntent.latest_charge;
+      if (latestCharge && typeof latestCharge === 'object') {
+        chargeId = latestCharge.id;
+        applicationFeeId =
+          (latestCharge.application_fee as string | null) ?? null;
+      } else {
+        chargeId = (latestCharge as string | null) ?? null;
+      }
     } catch (error) {
       console.error('Failed to retrieve payment intent:', error);
+      paymentIntentRetrieveFailed = true;
     }
+  }
+
+  // For a pay-as-you-go store we MUST know whether an application fee was collected
+  // at source, otherwise the rental would be misclassified as manual and billed a
+  // second time at month-end. If the retrieve failed, abort so Stripe retries the
+  // webhook (nothing has been committed yet — the payment is still pending).
+  if (isPayAsYouGoStore && paymentIntentRetrieveFailed) {
+    throw new Error(
+      `PaymentIntent retrieve failed for pay-as-you-go reservation ${reservationId}; aborting so Stripe retries`,
+    );
   }
 
   // If we don't have customer from payment intent, get from session
@@ -360,6 +400,33 @@ async function handleCheckoutCompleted(
   }
 
   const paidAt = new Date();
+
+  // Pay-as-you-go: record this rental as a billable location BEFORE the payment is
+  // marked completed, so a transient failure aborts the webhook (Stripe retries with
+  // the payment still pending) instead of silently dropping the commission. Idempotent
+  // by reservationId. When the application fee was skimmed at source the commission is
+  // already collected; otherwise it is queued for the month-end invoice.
+  if (isPayAsYouGoStore) {
+    const collectedAtSource = applicationFeeCollectedCents > 0;
+    await recordBillableLocation({
+      storeId: reservation.store.id,
+      reservationId,
+      source: collectedAtSource ? 'online' : 'manual',
+      collectedAmountCents: applicationFeeCollectedCents,
+      currency,
+      stripePaymentIntentId: paymentIntentId,
+      stripeApplicationFeeId: applicationFeeId,
+      at: paidAt,
+      billing,
+    });
+  }
+
+  // Payment + confirmation already handled (e.g. by the success page). PAYG usage is
+  // now recorded, so we can safely stop here without duplicating notifications.
+  if (paymentAlreadyCompleted) {
+    console.log(`Payment already completed for session ${session.id}, skipping`);
+    return;
+  }
 
   // Update existing payment record (pending/failed/cancelled) or create a completed one.
   if (existingPayment) {
@@ -1119,6 +1186,42 @@ async function handleChargeRefunded(
       updatedAt: new Date(),
     })
     .where(eq(payments.id, payment.id));
+
+  // Pay-as-you-go: on a FULL refund, reverse the platform commission collected at
+  // source so the connected account gets it back. The Stripe fee refund must
+  // succeed BEFORE the row is marked reversed; if it throws we let it propagate so
+  // the webhook returns non-2xx and Stripe retries (the idempotency key prevents a
+  // double refund on retry).
+  if (isFullRefund && payment.stripePaymentIntentId) {
+    const reversible = await getReversibleOnlineUsage(
+      payment.stripePaymentIntentId,
+    );
+    if (reversible) {
+      if (reversible.stripeApplicationFeeId) {
+        try {
+          await stripe.applicationFees.createRefund(
+            reversible.stripeApplicationFeeId,
+            undefined,
+            {
+              idempotencyKey: `payg_reverse_${reversible.stripeApplicationFeeId}`,
+            },
+          );
+        } catch (error) {
+          // If the fee was already fully refunded (e.g. month-end over-collection
+          // refund covered it), treat it as success and settle the row. Any other
+          // error propagates so Stripe retries the webhook.
+          const message = error instanceof Error ? error.message.toLowerCase() : '';
+          const alreadyRefunded =
+            message.includes('already') ||
+            message.includes('no refundable') ||
+            message.includes('greater than') ||
+            message.includes('exceeds');
+          if (!alreadyRefunded) throw error;
+        }
+      }
+      await markUsageReversed(reversible.id);
+    }
+  }
 
   // Log activity
   await db.insert(reservationActivity).values({

@@ -11,6 +11,7 @@ import {
   notifySubscriptionCancelled,
   notifySmsCreditsTopup,
 } from '@/lib/discord/platform-notifications'
+import { reconcilePayAsYouGoInvoice } from '@/lib/pay-as-you-go'
 import { env } from '@/env'
 
 export async function POST(request: Request) {
@@ -43,6 +44,22 @@ export async function POST(request: Request) {
 
       case 'customer.subscription.deleted':
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
+        break
+
+      case 'invoice.paid':
+      case 'invoice.payment_succeeded':
+        await handlePayAsYouGoInvoiceEvent(
+          event.data.object as Stripe.Invoice,
+          'paid',
+        )
+        break
+
+      case 'invoice.payment_failed':
+      case 'invoice.marked_uncollectible':
+        await handlePayAsYouGoInvoiceEvent(
+          event.data.object as Stripe.Invoice,
+          'failed',
+        )
         break
 
       default:
@@ -132,6 +149,19 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 
   console.log(`Subscription created/updated for store ${storeId} with plan ${planSlug}`)
+}
+
+/**
+ * Reconcile a pay-as-you-go month-end invoice when Stripe reports its outcome.
+ * Closes the loop for hosted (send_invoice) invoices and for charge_automatically
+ * invoices that succeed/fail via dunning after the initial month-end run.
+ */
+async function handlePayAsYouGoInvoiceEvent(
+  invoice: Stripe.Invoice,
+  outcome: 'paid' | 'failed',
+) {
+  if (invoice.metadata?.type !== 'pay_as_you_go' || !invoice.id) return
+  await reconcilePayAsYouGoInvoice(invoice.id, outcome)
 }
 
 /**

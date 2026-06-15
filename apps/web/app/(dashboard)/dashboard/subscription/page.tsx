@@ -4,10 +4,12 @@ import Link from 'next/link'
 import { MessageSquare } from 'lucide-react'
 
 import { getCurrentStore } from '@/lib/store-context'
-import { getSubscriptionWithPlan, getPlans, hasStripeCustomer } from '@/lib/stripe/subscriptions'
+import { getSubscriptionWithPlan, getPlans, hasStripeCustomer, storeHasDefaultPaymentMethod } from '@/lib/stripe/subscriptions'
 import { getStoreUsage, canAddTeamMember, canSendSms } from '@/lib/plan-limits'
+import { getStoreBilling, getCurrentMonthUsage, getRecentPayAsYouGoInvoices } from '@/lib/pay-as-you-go'
 import { Button } from '@louez/ui'
 import { SubscriptionManagement } from './subscription-management'
+import { PayAsYouGoSummary } from './pay-as-you-go-summary'
 
 export default async function SubscriptionPage({
   searchParams,
@@ -22,6 +24,37 @@ export default async function SubscriptionPage({
 
   const t = await getTranslations('dashboard.settings.subscription')
   const params = await searchParams
+
+  // Pay-as-you-go stores get a usage summary instead of the plan grid.
+  const billing = await getStoreBilling(store.id)
+  if (billing.billingMode === 'pay_as_you_go') {
+    const [usage, invoices, hasPaymentMethod] = await Promise.all([
+      getCurrentMonthUsage(store.id, new Date(), billing),
+      getRecentPayAsYouGoInvoices(store.id),
+      storeHasDefaultPaymentMethod(store.id),
+    ])
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t('label')}</h1>
+          <p className="text-muted-foreground">{t('description')}</p>
+        </div>
+
+        <PayAsYouGoSummary
+          billingMonth={usage.billingMonth}
+          locationCount={usage.locationCount}
+          grossCents={usage.grossCents}
+          collectedAtSourceCents={usage.collectedAtSourceCents}
+          dueCents={usage.dueCents}
+          currency={usage.currency}
+          flatRateCents={usage.config.flatRateCents}
+          bands={usage.bands}
+          hasPaymentMethod={hasPaymentMethod}
+          invoices={invoices}
+        />
+      </div>
+    )
+  }
 
   // Get subscription with plan from code
   const subscription = await getSubscriptionWithPlan(store.id)

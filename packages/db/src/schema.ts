@@ -32,6 +32,7 @@ import type {
   StoreTheme,
   UnitAttributes,
 } from '@louez/types';
+import type { PayAsYouGoConfig } from '@louez/types';
 
 // Helper for generating IDs
 const id = () =>
@@ -130,6 +131,16 @@ export const subscriptions = mysqlTable(
     // Plan slug (references plans defined in src/lib/plans.ts)
     planSlug: varchar('plan_slug', { length: 50 }).notNull().default('start'),
 
+    // Billing mode: fixed subscription plan vs usage-based pay-as-you-go.
+    // When 'pay_as_you_go', `planSlug` is ignored for limits and the store is
+    // billed per rental (see pay_as_you_go_usage / pay_as_you_go_invoices).
+    billingMode: mysqlEnum('billing_mode', ['subscription', 'pay_as_you_go'])
+      .default('subscription')
+      .notNull(),
+
+    // Per-store pay-as-you-go pricing override. null => platform default ladder.
+    payAsYouGoConfig: json('pay_as_you_go_config').$type<PayAsYouGoConfig>(),
+
     // Status
     status: subscriptionStatus.default('active').notNull(),
 
@@ -156,6 +167,121 @@ export const subscriptions = mysqlTable(
     ),
     stripeCustomerIdx: index('subscriptions_stripe_customer_idx').on(
       table.stripeCustomerId,
+    ),
+  }),
+);
+
+// ============================================================================
+// Pay-as-you-go usage metering & invoicing
+// ============================================================================
+
+export const payAsYouGoUsageSource = mysqlEnum('payg_usage_source', [
+  'online', // commission collected at source via Stripe Connect application fee
+  'manual', // cash / offline rental, invoiced at month-end
+]);
+
+export const payAsYouGoUsageStatus = mysqlEnum('payg_usage_status', [
+  'pending', // manual rental awaiting the month-end invoice
+  'collected', // online rental, commission already collected at source
+  'billed', // included in a paid/sent month-end invoice
+  'voided', // reservation cancelled before billing -> not charged
+  'reversed', // online commission refunded (payment refunded)
+]);
+
+/**
+ * One row per billable rental ("location") for pay-as-you-go stores.
+ * Unique by reservationId so every code path that records usage is idempotent.
+ */
+export const payAsYouGoUsage = mysqlTable(
+  'pay_as_you_go_usage',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    reservationId: varchar('reservation_id', { length: 21 }).notNull().unique(),
+
+    // YYYY-MM the rental is billed in (set when first recorded).
+    billingMonth: varchar('billing_month', { length: 7 }).notNull(),
+    // 1-based position of this rental within its billing month (for audit; the
+    // authoritative monthly total is recomputed from the valid count at billing).
+    monthlyIndex: int('monthly_index').notNull(),
+
+    // Snapshot of the commission for this rental, in cents.
+    amountCents: int('amount_cents').notNull(),
+    currency: varchar('currency', { length: 3 }).notNull().default('eur'),
+
+    source: payAsYouGoUsageSource.notNull(),
+    status: payAsYouGoUsageStatus.notNull(),
+
+    // Stripe references (online source-collection, for reversal on refund).
+    stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
+    stripeApplicationFeeId: varchar('stripe_application_fee_id', {
+      length: 255,
+    }),
+
+    // Month-end invoice this usage was rolled into (manual rentals).
+    invoiceId: varchar('invoice_id', { length: 21 }),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    billedAt: timestamp('billed_at', { mode: 'date' }),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeMonthIdx: index('payg_usage_store_month_idx').on(
+      table.storeId,
+      table.billingMonth,
+    ),
+    statusIdx: index('payg_usage_status_idx').on(table.status),
+    paymentIntentIdx: index('payg_usage_payment_intent_idx').on(
+      table.stripePaymentIntentId,
+    ),
+  }),
+);
+
+export const payAsYouGoInvoiceStatus = mysqlEnum('payg_invoice_status', [
+  'draft',
+  'open', // sent / awaiting payment
+  'paid',
+  'failed',
+  'void',
+]);
+
+/**
+ * One aggregated month-end invoice per (store, month) for pay-as-you-go stores.
+ * Covers the rentals NOT already collected at source. Unique by (store, month)
+ * so the billing cron is idempotent.
+ */
+export const payAsYouGoInvoices = mysqlTable(
+  'pay_as_you_go_invoices',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    billingMonth: varchar('billing_month', { length: 7 }).notNull(),
+
+    locationCount: int('location_count').notNull().default(0),
+    grossAmountCents: int('gross_amount_cents').notNull().default(0), // T(N)
+    collectedAtSourceCents: int('collected_at_source_cents')
+      .notNull()
+      .default(0), // C
+    invoicedAmountCents: int('invoiced_amount_cents').notNull().default(0), // T - C
+    currency: varchar('currency', { length: 3 }).notNull().default('eur'),
+
+    status: payAsYouGoInvoiceStatus.default('draft').notNull(),
+
+    stripeInvoiceId: varchar('stripe_invoice_id', { length: 255 }),
+    stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    paidAt: timestamp('paid_at', { mode: 'date' }),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueStoreMonth: unique('payg_invoices_store_month_unique').on(
+      table.storeId,
+      table.billingMonth,
+    ),
+    statusIdx: index('payg_invoices_status_idx').on(table.status),
+    stripeInvoiceIdx: index('payg_invoices_stripe_invoice_idx').on(
+      table.stripeInvoiceId,
     ),
   }),
 );
@@ -1492,6 +1618,35 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
     references: [stores.id],
   }),
 }));
+
+export const payAsYouGoUsageRelations = relations(
+  payAsYouGoUsage,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [payAsYouGoUsage.storeId],
+      references: [stores.id],
+    }),
+    reservation: one(reservations, {
+      fields: [payAsYouGoUsage.reservationId],
+      references: [reservations.id],
+    }),
+    invoice: one(payAsYouGoInvoices, {
+      fields: [payAsYouGoUsage.invoiceId],
+      references: [payAsYouGoInvoices.id],
+    }),
+  }),
+);
+
+export const payAsYouGoInvoicesRelations = relations(
+  payAsYouGoInvoices,
+  ({ one, many }) => ({
+    store: one(stores, {
+      fields: [payAsYouGoInvoices.storeId],
+      references: [stores.id],
+    }),
+    usage: many(payAsYouGoUsage),
+  }),
+);
 
 export const storeMembersRelations = relations(storeMembers, ({ one }) => ({
   store: one(stores, {

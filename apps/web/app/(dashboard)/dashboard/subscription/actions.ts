@@ -5,6 +5,7 @@ import {
   createSubscriptionCheckoutSession,
   createCustomerPortalSession,
   cancelSubscription as cancelSub,
+  getOrCreateStripeCustomer,
   reactivateSubscription as reactivateSub,
 } from '@/lib/stripe/subscriptions'
 import { revalidatePath } from 'next/cache'
@@ -50,6 +51,20 @@ export async function openCustomerPortal() {
   const store = await getCurrentStore()
   if (!store) throw new Error('Unauthorized')
 
+  return createCustomerPortalSession(store.id)
+}
+
+/**
+ * Open the Stripe billing portal for a pay-as-you-go store. Unlike subscriptions,
+ * a PAYG store may not have a Stripe customer yet (mode is toggled by an admin, not
+ * via checkout), so we ensure one exists first. The portal lets the owner add a
+ * payment method and view/pay their month-end invoices.
+ */
+export async function openBillingPortal() {
+  const store = await getCurrentStore()
+  if (!store) throw new Error('Unauthorized')
+
+  await getOrCreateStripeCustomer(store.id)
   return createCustomerPortalSession(store.id)
 }
 
