@@ -111,11 +111,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   })
 
   if (existingSubscription) {
-    // Update existing subscription
+    // Update existing subscription. Subscribing always lands the store on
+    // subscription billing (covers an owner switching from pay-as-you-go).
     await db
       .update(subscriptions)
       .set({
         planSlug,
+        billingMode: 'subscription',
         stripeSubscriptionId: stripeSubscription.id,
         stripeCustomerId: session.customer as string,
         status,
@@ -130,6 +132,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       id: nanoid(),
       storeId,
       planSlug,
+      billingMode: 'subscription',
       stripeSubscriptionId: stripeSubscription.id,
       stripeCustomerId: session.customer as string,
       status,
@@ -292,12 +295,17 @@ async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subscription
     return
   }
 
-  // Reset to free plan instead of deleting
+  // If the owner scheduled a switch to pay-as-you-go (cancel at period end), apply it
+  // now that the paid period has actually ended — no double billing in between.
+  const switchingToPayg =
+    stripeSubscription.metadata?.pendingBillingMode === 'pay_as_you_go'
+
   await db
     .update(subscriptions)
     .set({
       planSlug: 'start',
-      status: 'cancelled',
+      billingMode: switchingToPayg ? 'pay_as_you_go' : 'subscription',
+      status: switchingToPayg ? 'active' : 'cancelled',
       stripeSubscriptionId: null,
       cancelAtPeriodEnd: false,
       currentPeriodEnd: null,
@@ -311,5 +319,7 @@ async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subscription
     notifySubscriptionCancelled({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
   }
 
-  console.log(`Subscription cancelled: ${stripeSubscription.id}`)
+  console.log(
+    `Subscription ended: ${stripeSubscription.id}${switchingToPayg ? ' → switched to pay-as-you-go' : ''}`,
+  )
 }

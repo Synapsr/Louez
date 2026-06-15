@@ -2573,7 +2573,13 @@
           "statusPaid": "Payée",
           "statusOpen": "En attente de paiement",
           "statusFailed": "Paiement échoué",
-          "statusVoid": "Rien à facturer"
+          "statusVoid": "Rien à facturer",
+          "switchToPlan": "Passer à un forfait",
+          "switchCta": "Passer au paiement à la location",
+          "switchingAt": "Vous passerez au paiement à la location le {date}.",
+          "cancelSwitch": "Annuler le changement",
+          "backToUsage": "Retour à l'usage",
+          "switchError": "Le changement n'a pas pu être effectué. Veuillez réessayer."
         }
       },
       "team": "Équipe",

@@ -2,12 +2,15 @@
 
 import { useState, useTransition } from 'react'
 
+import Link from 'next/link'
+
 import {
   AlertCircle,
   CalendarClock,
   CreditCard,
   Gauge,
   Loader2,
+  Package,
   Receipt,
   Sparkles,
   Zap,
@@ -163,11 +166,19 @@ export function PayAsYouGoSummary({
               </CardTitle>
               <CardDescription>{t('description')}</CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge className="gap-1">
                 <Zap className="h-3.5 w-3.5" />
                 {t('badge')}
               </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                render={<Link href="/dashboard/subscription?plans=1" />}
+              >
+                <Package className="mr-2 h-4 w-4" />
+                {t('switchToPlan')}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
