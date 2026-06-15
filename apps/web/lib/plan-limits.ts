@@ -9,7 +9,7 @@ import {
   smsCredits,
 } from '@louez/db'
 import { eq, count, and, gte, sql } from 'drizzle-orm'
-import { getPlan, getDefaultPlan, SMS_TOPUP_PRICING, type Plan } from '@/lib/plans'
+import { getPlan, getDefaultPlan, getPayAsYouGoPlan, SMS_TOPUP_PRICING, type Plan } from '@/lib/plans'
 import type { PlanFeatures } from '@louez/types'
 
 // ============================================================================
@@ -47,8 +47,13 @@ export interface StoreLimits {
 export async function getStorePlan(storeId: string): Promise<Plan> {
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
-    columns: { planSlug: true, status: true },
+    columns: { planSlug: true, status: true, billingMode: true },
   })
+
+  // Pay-as-you-go stores get the unlimited PAYG plan regardless of plan slug.
+  if (subscription?.billingMode === 'pay_as_you_go') {
+    return getPayAsYouGoPlan()
+  }
 
   // If no subscription or cancelled, return free plan
   if (!subscription || subscription.status === 'cancelled') {

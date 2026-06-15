@@ -370,6 +370,48 @@ export interface PricingBreakdown {
   }>;
 }
 
+// ============================================================================
+// Billing mode (subscription vs pay-as-you-go)
+// ============================================================================
+
+/**
+ * How a store is billed by the platform.
+ * - `subscription`: fixed monthly plan (Start/Pro/Ultra) with usage caps.
+ * - `pay_as_you_go`: billed per rental ("location"), no caps.
+ */
+export type BillingMode = 'subscription' | 'pay_as_you_go';
+
+/**
+ * A single graduated pricing band. `upToCount` is the inclusive upper bound of the
+ * monthly rental index this band covers; `null` means "and above" (the last band).
+ * Bands are evaluated in order; the first band whose `upToCount` is >= the rental's
+ * 1-based monthly index (or whose `upToCount` is null) applies.
+ *
+ * Example: `[{ upToCount: 50, priceCents: 100 }, { upToCount: null, priceCents: 50 }]`
+ * → rentals 1..50 cost 100c each, 51+ cost 50c each (graduated, monthly reset).
+ */
+export interface PayAsYouGoTier {
+  upToCount: number | null;
+  priceCents: number;
+}
+
+/**
+ * Per-store pay-as-you-go pricing configuration. Stored as JSON on the store's
+ * subscription row. When fields are omitted, the platform default ladder applies.
+ */
+export interface PayAsYouGoConfig {
+  /**
+   * Flat lifetime rate (in cents) per rental that OVERRIDES the tier ladder.
+   * Used for exclusive launch offers (e.g. 25c per rental for life).
+   * `null`/omitted = use the tier ladder.
+   */
+  flatRateCents?: number | null;
+  /** Graduated tier ladder. When omitted, the platform default ladder applies. */
+  tiers?: PayAsYouGoTier[];
+  /** ISO 4217 currency for the commission (lowercase, e.g. 'eur'). Default: 'eur'. */
+  currency?: string;
+}
+
 export interface PlanFeatures {
   // Limits
   maxProducts: number | null; // null = unlimited

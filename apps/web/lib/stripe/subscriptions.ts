@@ -35,6 +35,7 @@ export async function getOrCreateStripeCustomer(storeId: string): Promise<string
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, storeId),
+    columns: { id: true, name: true, email: true, userId: true },
   })
 
   if (!store) {
@@ -178,8 +179,39 @@ export async function createCustomerPortalSession(storeId: string) {
 export async function hasStripeCustomer(storeId: string): Promise<boolean> {
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
+    columns: { stripeCustomerId: true },
   })
   return !!subscription?.stripeCustomerId
+}
+
+/**
+ * Whether the store's platform Stripe customer has a default payment method on file.
+ * Read-only (never creates a customer); returns false when there is no customer yet.
+ * Used to warn pay-as-you-go stores that their month-end invoice will be sent for
+ * manual payment until a card is added.
+ */
+export async function storeHasDefaultPaymentMethod(
+  storeId: string,
+): Promise<boolean> {
+  const subscription = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.storeId, storeId),
+    columns: { stripeCustomerId: true },
+  })
+  if (!subscription?.stripeCustomerId) return false
+
+  try {
+    const customer = await stripe.customers.retrieve(
+      subscription.stripeCustomerId,
+    )
+    if (customer.deleted) return false
+    return Boolean(
+      customer.invoice_settings?.default_payment_method ||
+        customer.default_source,
+    )
+  } catch (error) {
+    console.error('Failed to check default payment method:', error)
+    return false
+  }
 }
 
 export async function cancelSubscription(storeId: string) {
@@ -327,10 +359,18 @@ export async function syncSubscriptionFromStripe(stripeSubscriptionId: string) {
 export async function getCurrentPlanSlug(storeId: string): Promise<string> {
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
-    columns: { planSlug: true, status: true },
+    columns: { planSlug: true, status: true, billingMode: true },
   })
 
-  if (!subscription || subscription.status === 'cancelled') {
+  if (!subscription) {
+    return 'start'
+  }
+
+  if (subscription.billingMode === 'pay_as_you_go') {
+    return 'pay_as_you_go'
+  }
+
+  if (subscription.status === 'cancelled') {
     return 'start'
   }
 

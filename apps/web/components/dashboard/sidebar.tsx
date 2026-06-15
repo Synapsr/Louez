@@ -50,6 +50,7 @@ import {
   SettingsIcon,
   SparklesIcon,
   UsersIcon,
+  ZapIcon,
 } from '@louez/ui/icons';
 
 import { StoreSwitcher } from '@/components/dashboard/store-switcher';
@@ -375,6 +376,12 @@ function PlanBadge({ planSlug }: { planSlug?: string }) {
       className:
         'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20',
       icon: <CrownIcon className="h-3 w-3" />,
+    },
+    pay_as_you_go: {
+      label: 'Pay as you go',
+      className:
+        'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20',
+      icon: <ZapIcon className="h-3 w-3" />,
     },
   };
 

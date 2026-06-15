@@ -79,6 +79,10 @@ import {
   getReservationInsuranceSelection,
   isLegacyTulipInsuranceItem,
 } from '@/lib/integrations/tulip/contracts-insurance';
+import {
+  recordBillableLocation,
+  voidLocationUsage,
+} from '@/lib/pay-as-you-go';
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
@@ -351,6 +355,26 @@ export async function updateReservationStatus(
     });
   }
 
+  // Pay-as-you-go metering (no-op for subscription stores). Record on confirmation,
+  // void when rejected before the rental was ever billed.
+  try {
+    if (status === 'confirmed' && previousStatus !== 'confirmed') {
+      await recordBillableLocation({
+        storeId: store.id,
+        reservationId,
+        source: 'manual',
+      });
+    } else if (status === 'rejected') {
+      await voidLocationUsage(reservationId);
+    }
+  } catch (error) {
+    console.error('[payg] metering on status change failed:', {
+      reservationId,
+      status,
+      error,
+    });
+  }
+
   let tulipWarning: {
     key: string;
     params?: Record<string, string | number>;
@@ -570,6 +594,16 @@ export async function cancelReservation(reservationId: string) {
   await logReservationActivity(reservationId, 'cancelled', {
     previousStatus: reservation.status,
   });
+
+  // Pay-as-you-go: drop the (not-yet-billed) commission for this rental.
+  try {
+    await voidLocationUsage(reservationId);
+  } catch (error) {
+    console.error('[payg] Failed to void usage on cancellation:', {
+      reservationId,
+      error,
+    });
+  }
 
   if (reservation.tulipContractId) {
     try {
@@ -1265,6 +1299,23 @@ export async function createManualReservation(data: CreateReservationData) {
     tulipInsuranceAmount,
     ...(tulipQuoteError && { tulipQuoteError }),
   });
+
+  // Pay-as-you-go: a manually created reservation that is immediately confirmed
+  // counts as a billable location (quotes are billed when later accepted).
+  if (!data.sendAsQuote) {
+    try {
+      await recordBillableLocation({
+        storeId: store.id,
+        reservationId,
+        source: 'manual',
+      });
+    } catch (error) {
+      console.error('[payg] Failed to record manual reservation location:', {
+        reservationId,
+        error,
+      });
+    }
+  }
 
   try {
     await createTulipContractForReservation({

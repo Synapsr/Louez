@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { getStripe } from '@/lib/stripe/client'
+import { recordBillableLocation } from '@/lib/pay-as-you-go'
 import { getCustomerSession } from '../../actions'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 import { revalidatePath } from 'next/cache'
@@ -199,6 +200,20 @@ export async function acceptQuote(
     metadata: { source: 'customer' },
     createdAt: new Date(),
   })
+
+  // Pay-as-you-go: an accepted quote is now a confirmed, billable location.
+  try {
+    await recordBillableLocation({
+      storeId: store.id,
+      reservationId,
+      source: 'manual',
+    })
+  } catch (error) {
+    console.error('[payg] Failed to record accepted-quote location:', {
+      reservationId,
+      error,
+    })
+  }
 
   // Notify the store owner
   dispatchNotification('reservation_confirmed', {

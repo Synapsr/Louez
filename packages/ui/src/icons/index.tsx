@@ -16,6 +16,7 @@ export {
   Users as UsersIcon,
   Loader as LoaderIcon,
   Star as StarIcon,
+  Zap as ZapIcon,
 } from 'lucide-react';
 
 export { GoogleCalendar as GoogleCalendarIcon } from './icon.google-calendar';

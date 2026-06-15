@@ -61,6 +61,10 @@ import {
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
+import {
+  getStoreBilling,
+  projectedNextLocationFeeCents,
+} from '@/lib/pay-as-you-go';
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
 import { validateRentalPeriod } from '@/lib/utils/business-hours';
@@ -1899,6 +1903,22 @@ export async function createReservation(input: CreateReservationInput) {
                 : []),
             ];
 
+        // Pay-as-you-go: skim the per-location commission directly from the
+        // online payment via a Stripe Connect application fee. The fee is capped
+        // below the charge amount; usage is recorded on confirmation (webhook).
+        let applicationFeeAmount: number | undefined;
+        const billing = await getStoreBilling(store.id);
+        if (billing.billingMode === 'pay_as_you_go') {
+          const feeCents = await projectedNextLocationFeeCents(
+            store.id,
+            new Date(),
+            billing,
+          );
+          const chargeCents = toStripeCents(finalChargeAmount, currency);
+          const cappedFee = Math.min(feeCents, Math.max(0, chargeCents - 1));
+          applicationFeeAmount = cappedFee > 0 ? cappedFee : undefined;
+        }
+
         // Create checkout session
         const { url, sessionId } = await createCheckoutSession({
           stripeAccountId: store.stripeAccountId!,
@@ -1912,6 +1932,7 @@ export async function createReservation(input: CreateReservationInput) {
           successUrl: `${baseUrl}/checkout/success?reservation=${reservationId}`,
           cancelUrl: `${baseUrl}/checkout?cancelled=true`,
           locale: input.locale,
+          applicationFeeAmount,
         });
 
         paymentUrl = url;
