@@ -2259,7 +2259,14 @@
           "switchingAt": "Przejdziesz na płatność za użycie dnia {date}.",
           "cancelSwitch": "Anuluj zmianę",
           "backToUsage": "Powrót do zużycia",
-          "switchError": "Nie udało się dokonać zmiany. Spróbuj ponownie."
+          "switchError": "Nie udało się dokonać zmiany. Spróbuj ponownie.",
+          "previewTitle": "Płatność za użycie",
+          "previewDescription": "Płać tylko za wynajem — bez abonamentu miesięcznego.",
+          "previewHowTitle": "Jak to działa",
+          "previewHowDescription": "Płatności online są obciążane niewielką prowizją w momencie płatności; wynajmy gotówkowe są łączone na jednej fakturze pobieranej 1. dnia każdego miesiąca.",
+          "activate": "Aktywuj płatność za użycie",
+          "deferredNote": "Twój obecny plan pozostaje aktywny do końca opłaconego okresu; potem płatność za użycie przejmuje automatycznie — bez podwójnego naliczania.",
+          "backToPlans": "Powrót do abonamentów"
         }
       },
       "team": "Zespół",

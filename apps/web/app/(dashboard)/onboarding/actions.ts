@@ -2,7 +2,7 @@
 
 import { auth } from '@/lib/auth'
 import { db } from '@louez/db'
-import { stores, storeMembers } from '@louez/db'
+import { stores, storeMembers, subscriptions } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
@@ -188,6 +188,14 @@ export async function createStore(data: StoreInfoInput) {
       storeId: newStore.id,
       userId: session.user.id,
       role: 'owner',
+    })
+
+    // New stores default to pay-as-you-go billing (the owner can switch to a
+    // subscription plan at any time from the subscription page).
+    await db.insert(subscriptions).values({
+      storeId: newStore.id,
+      planSlug: 'start',
+      billingMode: 'pay_as_you_go',
     })
 
     // Set as active store (will succeed since we just created ownership above)

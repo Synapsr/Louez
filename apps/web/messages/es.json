@@ -2265,7 +2265,14 @@
           "switchingAt": "Cambiarás a pago por uso el {date}.",
           "cancelSwitch": "Cancelar el cambio",
           "backToUsage": "Volver al uso",
-          "switchError": "No se pudo realizar el cambio. Inténtalo de nuevo."
+          "switchError": "No se pudo realizar el cambio. Inténtalo de nuevo.",
+          "previewTitle": "Pago por uso",
+          "previewDescription": "Paga solo por alquiler, sin suscripción mensual.",
+          "previewHowTitle": "Cómo funciona",
+          "previewHowDescription": "Los pagos en línea tienen una pequeña comisión cobrada en el momento del pago; los alquileres en efectivo se agrupan en una única factura cobrada el día 1 de cada mes.",
+          "activate": "Activar el pago por uso",
+          "deferredNote": "Tu plan actual sigue activo hasta el final del período pagado; después el pago por uso toma el relevo automáticamente, sin doble facturación.",
+          "backToPlans": "Volver a los planes"
         }
       },
       "team": "Equipo",
