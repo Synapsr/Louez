@@ -2253,7 +2253,13 @@
           "statusPaid": "Pagata",
           "statusOpen": "In attesa di pagamento",
           "statusFailed": "Pagamento non riuscito",
-          "statusVoid": "Niente da pagare"
+          "statusVoid": "Niente da pagare",
+          "switchToPlan": "Passa a un piano",
+          "switchCta": "Passa al pagamento a consumo",
+          "switchingAt": "Passerai al pagamento a consumo il {date}.",
+          "cancelSwitch": "Annulla il cambio",
+          "backToUsage": "Torna all'utilizzo",
+          "switchError": "Impossibile completare il cambio. Riprova."
         }
       },
       "team": "Team",

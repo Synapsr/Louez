@@ -66,6 +66,7 @@ import {
   createCheckoutSession,
   openCustomerPortal,
   reactivateSubscription,
+  switchToPayAsYouGo,
 } from './actions';
 
 interface Subscription {
@@ -100,6 +101,10 @@ interface SubscriptionManagementProps {
   usage: UsageStats;
   discountPercent?: number;
   discountDurationMonths?: number;
+  /** Pending billing-mode switch scheduled for period end (e.g. 'pay_as_you_go'). */
+  pendingBillingMode?: string | null;
+  /** True when a pay-as-you-go store is viewing this grid to pick a plan. */
+  showBackToPayAsYouGo?: boolean;
 }
 
 // Helper function to format price with currency
@@ -125,6 +130,8 @@ export function SubscriptionManagement({
   usage,
   discountPercent = 0,
   discountDurationMonths = 0,
+  pendingBillingMode = null,
+  showBackToPayAsYouGo = false,
 }: SubscriptionManagementProps) {
   const locale = useLocale();
   const [loading, setLoading] = useState<string | null>(null);
@@ -167,6 +174,25 @@ export function SubscriptionManagement({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleSwitchToPayg = async () => {
+    setLoading('switch-payg');
+    setError(null);
+    try {
+      const result = await switchToPayAsYouGo();
+      if (result?.error) {
+        setError(t('payAsYouGo.switchError'));
+        return;
+      }
+      // Immediate (free plan) → page re-renders to the usage view.
+      // Deferred (paid plan) → page re-renders to show the pending banner.
+      router.refresh();
+    } catch {
+      setError(t('payAsYouGo.switchError'));
     } finally {
       setLoading(null);
     }
@@ -339,6 +365,17 @@ export function SubscriptionManagement({
 
   return (
     <div className="space-y-8">
+      {/* Pay-as-you-go store here only to pick a subscription plan. */}
+      {showBackToPayAsYouGo && (
+        <Link
+          href="/dashboard/subscription"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-sm"
+        >
+          <ChevronRight className="h-4 w-4 rotate-180" />
+          {t('payAsYouGo.backToUsage')}
+        </Link>
+      )}
+
       {/* Alerts */}
       {error && (
         <Alert variant="error">
@@ -365,21 +402,31 @@ export function SubscriptionManagement({
       )}
 
       {subscription?.cancelAtPeriodEnd && subscription.currentPeriodEnd && (
-        <Alert variant="error">
+        <Alert
+          variant={pendingBillingMode === 'pay_as_you_go' ? 'warning' : 'error'}
+        >
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {t('alerts.cancellingAt', {
-              date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
-                locale: fr,
-              }),
-            })}
+            {pendingBillingMode === 'pay_as_you_go'
+              ? t('payAsYouGo.switchingAt', {
+                  date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
+                    locale: fr,
+                  }),
+                })
+              : t('alerts.cancellingAt', {
+                  date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
+                    locale: fr,
+                  }),
+                })}
             <Button
               variant="link"
               className="ml-2 h-auto p-0"
               onClick={handleReactivate}
               disabled={loading !== null}
             >
-              {t('reactivate')}
+              {pendingBillingMode === 'pay_as_you_go'
+                ? t('payAsYouGo.cancelSwitch')
+                : t('reactivate')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -583,6 +630,20 @@ export function SubscriptionManagement({
                 {t('cancelSubscription')}
               </Button>
             )}
+
+            {/* Owner-autonomous switch to pay-as-you-go (hidden when already
+                scheduled or when a PAYG store is here only to pick a plan). */}
+            {!showBackToPayAsYouGo &&
+              pendingBillingMode !== 'pay_as_you_go' && (
+                <Button
+                  variant="outline"
+                  onClick={handleSwitchToPayg}
+                  disabled={loading === 'switch-payg'}
+                >
+                  <Zap className="mr-2 h-4 w-4" />
+                  {t('payAsYouGo.switchCta')}
+                </Button>
+              )}
           </div>
         </CardContent>
       </Card>

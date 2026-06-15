@@ -2253,7 +2253,13 @@
           "statusPaid": "Opłacona",
           "statusOpen": "Oczekuje na płatność",
           "statusFailed": "Płatność nieudana",
-          "statusVoid": "Nic do zapłaty"
+          "statusVoid": "Nic do zapłaty",
+          "switchToPlan": "Przejdź na abonament",
+          "switchCta": "Przejdź na płatność za użycie",
+          "switchingAt": "Przejdziesz na płatność za użycie dnia {date}.",
+          "cancelSwitch": "Anuluj zmianę",
+          "backToUsage": "Powrót do zużycia",
+          "switchError": "Nie udało się dokonać zmiany. Spróbuj ponownie."
         }
       },
       "team": "Zespół",

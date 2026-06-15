@@ -2253,7 +2253,13 @@
           "statusPaid": "Paga",
           "statusOpen": "A aguardar pagamento",
           "statusFailed": "Pagamento falhado",
-          "statusVoid": "Nada a pagar"
+          "statusVoid": "Nada a pagar",
+          "switchToPlan": "Mudar para um plano",
+          "switchCta": "Mudar para pagamento por utilização",
+          "switchingAt": "Vai mudar para pagamento por utilização a {date}.",
+          "cancelSwitch": "Cancelar a mudança",
+          "backToUsage": "Voltar ao uso",
+          "switchError": "Não foi possível efetuar a mudança. Tente novamente."
         }
       },
       "team": "Equipe",

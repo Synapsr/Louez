@@ -2573,7 +2573,13 @@
           "statusPaid": "Paid",
           "statusOpen": "Awaiting payment",
           "statusFailed": "Payment failed",
-          "statusVoid": "Nothing due"
+          "statusVoid": "Nothing due",
+          "switchToPlan": "Switch to a plan",
+          "switchCta": "Switch to pay-as-you-go",
+          "switchingAt": "You'll switch to pay-as-you-go on {date}.",
+          "cancelSwitch": "Cancel switch",
+          "backToUsage": "Back to usage",
+          "switchError": "The switch could not be completed. Please try again."
         }
       },
       "team": "Team",

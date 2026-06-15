@@ -249,9 +249,15 @@ export async function reactivateSubscription(storeId: string) {
     throw new Error('No subscription found')
   }
 
-  // Reactivate
+  // Reactivate and clear any pending switch-to-PAYG flag (merge-safe metadata write).
+  const current = await stripe.subscriptions.retrieve(
+    subscription.stripeSubscriptionId,
+  )
+  const metadata = { ...current.metadata }
+  delete metadata.pendingBillingMode
   await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
     cancel_at_period_end: false,
+    metadata: { ...metadata, pendingBillingMode: '' },
   })
 
   // Update DB
@@ -264,6 +270,59 @@ export async function reactivateSubscription(storeId: string) {
     .where(eq(subscriptions.id, subscription.id))
 
   return { success: true }
+}
+
+export type SwitchToPayAsYouGoResult =
+  | { mode: 'immediate' }
+  | { mode: 'deferred'; effectiveAt: Date | null }
+
+/**
+ * Owner-initiated switch to pay-as-you-go.
+ * - On the free plan (no active Stripe subscription): flips immediately.
+ * - On a paid plan: schedules cancellation at period end and tags the Stripe
+ *   subscription so the deletion webhook flips the mode then — no double billing.
+ */
+export async function switchToPayAsYouGo(
+  storeId: string,
+): Promise<SwitchToPayAsYouGoResult> {
+  const subscription = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.storeId, storeId),
+  })
+
+  // Active paid subscription → defer to period end.
+  if (subscription?.stripeSubscriptionId) {
+    const current = await stripe.subscriptions.retrieve(
+      subscription.stripeSubscriptionId,
+    )
+    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+      cancel_at_period_end: true,
+      metadata: { ...current.metadata, pendingBillingMode: 'pay_as_you_go' },
+    })
+    await db
+      .update(subscriptions)
+      .set({ cancelAtPeriodEnd: true, updatedAt: new Date() })
+      .where(eq(subscriptions.id, subscription.id))
+    return {
+      mode: 'deferred',
+      effectiveAt: subscription.currentPeriodEnd ?? null,
+    }
+  }
+
+  // Free plan (or no row yet) → switch immediately.
+  if (subscription) {
+    await db
+      .update(subscriptions)
+      .set({ billingMode: 'pay_as_you_go', updatedAt: new Date() })
+      .where(eq(subscriptions.id, subscription.id))
+  } else {
+    await db.insert(subscriptions).values({
+      id: nanoid(),
+      storeId,
+      planSlug: 'start',
+      billingMode: 'pay_as_you_go',
+    })
+  }
+  return { mode: 'immediate' }
 }
 
 export async function getSubscriptionWithPlan(storeId: string) {
@@ -281,12 +340,15 @@ export async function getSubscriptionWithPlan(storeId: string) {
   // Get billing interval and currency from Stripe if subscription exists
   let billingInterval: 'monthly' | 'yearly' | null = null
   let billingCurrency: Currency | null = null
+  // 'pay_as_you_go' when the owner scheduled a switch that takes effect at period end.
+  let pendingBillingMode: string | null = null
   if (subscription.stripeSubscriptionId) {
     try {
       const stripeSubscription = await stripe.subscriptions.retrieve(
         subscription.stripeSubscriptionId,
         { expand: ['items.data'] }
       )
+      pendingBillingMode = stripeSubscription.metadata?.pendingBillingMode || null
       const firstItem = stripeSubscription.items.data[0]
       if (firstItem?.price?.recurring?.interval === 'year') {
         billingInterval = 'yearly'
@@ -310,6 +372,7 @@ export async function getSubscriptionWithPlan(storeId: string) {
     plan,
     billingInterval,
     billingCurrency,
+    pendingBillingMode,
   }
 }
 

@@ -2253,7 +2253,13 @@
           "statusPaid": "Bezahlt",
           "statusOpen": "Zahlung ausstehend",
           "statusFailed": "Zahlung fehlgeschlagen",
-          "statusVoid": "Nichts fällig"
+          "statusVoid": "Nichts fällig",
+          "switchToPlan": "Zu einem Tarif wechseln",
+          "switchCta": "Zu Pay as you go wechseln",
+          "switchingAt": "Sie wechseln am {date} zu Pay as you go.",
+          "cancelSwitch": "Wechsel abbrechen",
+          "backToUsage": "Zurück zur Nutzung",
+          "switchError": "Der Wechsel konnte nicht durchgeführt werden. Bitte erneut versuchen."
         }
       },
       "team": "Team",

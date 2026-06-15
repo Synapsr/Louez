@@ -7,6 +7,7 @@ import {
   cancelSubscription as cancelSub,
   getOrCreateStripeCustomer,
   reactivateSubscription as reactivateSub,
+  switchToPayAsYouGo as switchToPayg,
 } from '@/lib/stripe/subscriptions'
 import { revalidatePath } from 'next/cache'
 import type { Currency } from '@/lib/plans'
@@ -75,6 +76,25 @@ export async function cancelSubscription() {
   const result = await cancelSub(store.id)
   revalidatePath('/dashboard/subscription')
   return result
+}
+
+/**
+ * Owner-initiated switch to pay-as-you-go. Immediate on the free plan; deferred to
+ * period end on a paid plan (avoids double billing). Returns the outcome so the UI
+ * can confirm or show the effective date.
+ */
+export async function switchToPayAsYouGo() {
+  const store = await getCurrentStore()
+  if (!store) return { error: 'errors.unauthorized' as const }
+
+  try {
+    const result = await switchToPayg(store.id)
+    revalidatePath('/dashboard/subscription')
+    return { success: true as const, ...result }
+  } catch (error) {
+    console.error('Error switching to pay-as-you-go:', error)
+    return { error: 'errors.switchFailed' as const }
+  }
 }
 
 export async function reactivateSubscription() {

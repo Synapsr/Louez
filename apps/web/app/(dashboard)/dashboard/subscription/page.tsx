@@ -14,7 +14,7 @@ import { PayAsYouGoSummary } from './pay-as-you-go-summary'
 export default async function SubscriptionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; canceled?: string }>
+  searchParams: Promise<{ success?: string; canceled?: string; plans?: string }>
 }) {
   const store = await getCurrentStore()
 
@@ -25,9 +25,10 @@ export default async function SubscriptionPage({
   const t = await getTranslations('dashboard.settings.subscription')
   const params = await searchParams
 
-  // Pay-as-you-go stores get a usage summary instead of the plan grid.
+  // Pay-as-you-go stores get a usage summary instead of the plan grid — unless they
+  // explicitly asked to see the plans (?plans=1) to switch to a subscription.
   const billing = await getStoreBilling(store.id)
-  if (billing.billingMode === 'pay_as_you_go') {
+  if (billing.billingMode === 'pay_as_you_go' && !params.plans) {
     const [usage, invoices, hasPaymentMethod] = await Promise.all([
       getCurrentMonthUsage(store.id, new Date(), billing),
       getRecentPayAsYouGoInvoices(store.id),
@@ -55,6 +56,8 @@ export default async function SubscriptionPage({
       </div>
     )
   }
+
+  const isPayAsYouGo = billing.billingMode === 'pay_as_you_go'
 
   // Get subscription with plan from code
   const subscription = await getSubscriptionWithPlan(store.id)
@@ -104,6 +107,8 @@ export default async function SubscriptionPage({
         }}
         discountPercent={store.discountPercent}
         discountDurationMonths={store.discountDurationMonths}
+        pendingBillingMode={subscription?.pendingBillingMode ?? null}
+        showBackToPayAsYouGo={isPayAsYouGo}
       />
     </div>
   )

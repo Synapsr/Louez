@@ -2253,7 +2253,13 @@
           "statusPaid": "Betaald",
           "statusOpen": "Wacht op betaling",
           "statusFailed": "Betaling mislukt",
-          "statusVoid": "Niets verschuldigd"
+          "statusVoid": "Niets verschuldigd",
+          "switchToPlan": "Overschakelen naar een abonnement",
+          "switchCta": "Overschakelen naar betalen per gebruik",
+          "switchingAt": "U schakelt op {date} over naar betalen per gebruik.",
+          "cancelSwitch": "Wijziging annuleren",
+          "backToUsage": "Terug naar gebruik",
+          "switchError": "De overstap kon niet worden voltooid. Probeer het opnieuw."
         }
       },
       "team": "Team",
