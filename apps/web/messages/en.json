@@ -2579,7 +2579,14 @@
           "switchingAt": "You'll switch to pay-as-you-go on {date}.",
           "cancelSwitch": "Cancel switch",
           "backToUsage": "Back to usage",
-          "switchError": "The switch could not be completed. Please try again."
+          "switchError": "The switch could not be completed. Please try again.",
+          "previewTitle": "Pay as you go",
+          "previewDescription": "Pay only per rental — no monthly subscription.",
+          "previewHowTitle": "How it works",
+          "previewHowDescription": "Online payments are charged a small commission at the time of payment; cash rentals are grouped on a single invoice billed on the 1st of each month.",
+          "activate": "Activate pay-as-you-go",
+          "deferredNote": "Your current plan stays active until the end of the paid period; pay-as-you-go takes over automatically then — no double billing.",
+          "backToPlans": "Back to plans"
         }
       },
       "team": "Team",

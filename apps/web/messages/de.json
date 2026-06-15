@@ -2259,7 +2259,14 @@
           "switchingAt": "Sie wechseln am {date} zu Pay as you go.",
           "cancelSwitch": "Wechsel abbrechen",
           "backToUsage": "Zurück zur Nutzung",
-          "switchError": "Der Wechsel konnte nicht durchgeführt werden. Bitte erneut versuchen."
+          "switchError": "Der Wechsel konnte nicht durchgeführt werden. Bitte erneut versuchen.",
+          "previewTitle": "Pay as you go",
+          "previewDescription": "Zahlen Sie nur pro Vermietung — ohne monatliches Abonnement.",
+          "previewHowTitle": "So funktioniert es",
+          "previewHowDescription": "Bei Online-Zahlungen wird zum Zahlungszeitpunkt eine kleine Provision erhoben; Barvermietungen werden auf einer einzigen Rechnung gebündelt, die am 1. jedes Monats abgebucht wird.",
+          "activate": "Pay as you go aktivieren",
+          "deferredNote": "Ihr aktueller Tarif bleibt bis zum Ende der bezahlten Periode aktiv; danach übernimmt Pay as you go automatisch — ohne Doppelabrechnung.",
+          "backToPlans": "Zurück zu den Tarifen"
         }
       },
       "team": "Team",

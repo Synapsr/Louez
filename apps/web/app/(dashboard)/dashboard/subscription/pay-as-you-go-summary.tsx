@@ -12,7 +12,6 @@ import {
   Loader2,
   Package,
   Receipt,
-  Sparkles,
   Zap,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -29,6 +28,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@louez/ui'
+
+import { PayAsYouGoPricing } from './pay-as-you-go-pricing'
 
 import { openBillingPortal } from './actions'
 
@@ -243,45 +244,11 @@ export function PayAsYouGoSummary({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" />
-            {t('pricingTitle')}
-          </CardTitle>
-          <CardDescription>
-            {flatRateCents !== null
-              ? t('pricingFlatDescription')
-              : t('pricingTiersDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {flatRateCents !== null ? (
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold">{money(flatRateCents)}</span>
-              <span className="text-muted-foreground">{t('perLocation')}</span>
-            </div>
-          ) : (
-            <ul className="divide-y">
-              {bands.map((band, index) => (
-                <li
-                  key={index}
-                  className="flex items-center justify-between py-2.5 text-sm"
-                >
-                  <span className="text-muted-foreground">
-                    {band.to === null
-                      ? t('bandFromAbove', { from: band.from })
-                      : t('bandRange', { from: band.from, to: band.to })}
-                  </span>
-                  <span className="font-medium">
-                    {money(band.priceCents)} {t('perLocationShort')}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      <PayAsYouGoPricing
+        flatRateCents={flatRateCents}
+        bands={bands}
+        currency={currency}
+      />
 
       <Card>
         <CardHeader>

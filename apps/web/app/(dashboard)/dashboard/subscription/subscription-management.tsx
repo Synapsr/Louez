@@ -66,7 +66,6 @@ import {
   createCheckoutSession,
   openCustomerPortal,
   reactivateSubscription,
-  switchToPayAsYouGo,
 } from './actions';
 
 interface Subscription {
@@ -174,25 +173,6 @@ export function SubscriptionManagement({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleSwitchToPayg = async () => {
-    setLoading('switch-payg');
-    setError(null);
-    try {
-      const result = await switchToPayAsYouGo();
-      if (result?.error) {
-        setError(t('payAsYouGo.switchError'));
-        return;
-      }
-      // Immediate (free plan) → page re-renders to the usage view.
-      // Deferred (paid plan) → page re-renders to show the pending banner.
-      router.refresh();
-    } catch {
-      setError(t('payAsYouGo.switchError'));
     } finally {
       setLoading(null);
     }
@@ -631,14 +611,14 @@ export function SubscriptionManagement({
               </Button>
             )}
 
-            {/* Owner-autonomous switch to pay-as-you-go (hidden when already
-                scheduled or when a PAYG store is here only to pick a plan). */}
+            {/* Owner-autonomous switch to pay-as-you-go — links to the tariffs
+                preview first (hidden when already scheduled or when a PAYG store
+                is here only to pick a plan). */}
             {!showBackToPayAsYouGo &&
               pendingBillingMode !== 'pay_as_you_go' && (
                 <Button
                   variant="outline"
-                  onClick={handleSwitchToPayg}
-                  disabled={loading === 'switch-payg'}
+                  render={<Link href="/dashboard/subscription?payg=1" />}
                 >
                   <Zap className="mr-2 h-4 w-4" />
                   {t('payAsYouGo.switchCta')}

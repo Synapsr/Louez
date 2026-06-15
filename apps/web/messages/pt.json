@@ -2259,7 +2259,14 @@
           "switchingAt": "Vai mudar para pagamento por utilização a {date}.",
           "cancelSwitch": "Cancelar a mudança",
           "backToUsage": "Voltar ao uso",
-          "switchError": "Não foi possível efetuar a mudança. Tente novamente."
+          "switchError": "Não foi possível efetuar a mudança. Tente novamente.",
+          "previewTitle": "Pagamento por utilização",
+          "previewDescription": "Pague apenas por aluguer — sem subscrição mensal.",
+          "previewHowTitle": "Como funciona",
+          "previewHowDescription": "Os pagamentos online têm uma pequena comissão cobrada no momento do pagamento; os alugueres em dinheiro são agrupados numa única fatura cobrada no dia 1 de cada mês.",
+          "activate": "Ativar o pagamento por utilização",
+          "deferredNote": "O seu plano atual permanece ativo até ao fim do período pago; depois o pagamento por utilização assume automaticamente, sem dupla faturação.",
+          "backToPlans": "Voltar aos planos"
         }
       },
       "team": "Equipe",

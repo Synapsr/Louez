@@ -2579,7 +2579,14 @@
           "switchingAt": "Vous passerez au paiement à la location le {date}.",
           "cancelSwitch": "Annuler le changement",
           "backToUsage": "Retour à l'usage",
-          "switchError": "Le changement n'a pas pu être effectué. Veuillez réessayer."
+          "switchError": "Le changement n'a pas pu être effectué. Veuillez réessayer.",
+          "previewTitle": "Paiement à la location",
+          "previewDescription": "Payez uniquement à la location — sans abonnement mensuel.",
+          "previewHowTitle": "Comment ça marche",
+          "previewHowDescription": "Les paiements en ligne sont soumis à une petite commission prélevée au moment du paiement ; les locations en espèces sont regroupées sur une seule facture prélevée le 1er de chaque mois.",
+          "activate": "Activer le paiement à la location",
+          "deferredNote": "Votre forfait actuel reste actif jusqu’à la fin de la période payée ; le paiement à la location prend le relais automatiquement ensuite — sans double facturation.",
+          "backToPlans": "Retour aux forfaits"
         }
       },
       "team": "Équipe",

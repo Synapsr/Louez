@@ -2259,7 +2259,14 @@
           "switchingAt": "Passerai al pagamento a consumo il {date}.",
           "cancelSwitch": "Annulla il cambio",
           "backToUsage": "Torna all'utilizzo",
-          "switchError": "Impossibile completare il cambio. Riprova."
+          "switchError": "Impossibile completare il cambio. Riprova.",
+          "previewTitle": "Pagamento a consumo",
+          "previewDescription": "Paghi solo a noleggio, senza abbonamento mensile.",
+          "previewHowTitle": "Come funziona",
+          "previewHowDescription": "I pagamenti online prevedono una piccola commissione trattenuta al momento del pagamento; i noleggi in contanti vengono raggruppati in un’unica fattura addebitata il 1° di ogni mese.",
+          "activate": "Attiva il pagamento a consumo",
+          "deferredNote": "Il tuo piano attuale resta attivo fino alla fine del periodo pagato; il pagamento a consumo subentra automaticamente dopo, senza doppia fatturazione.",
+          "backToPlans": "Torna ai piani"
         }
       },
       "team": "Team",
