@@ -249,7 +249,7 @@ export async function getTopupPriceInfo(): Promise<{
 }> {
   const store = await getCurrentStore()
   if (!store) {
-    return { canTopup: false, priceCents: null, planSlug: 'start' }
+    return { canTopup: false, priceCents: null, planSlug: 'pay_as_you_go' }
   }
 
   return getSmsTopupPrice(store.id)

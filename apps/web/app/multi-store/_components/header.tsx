@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { authClient } from '@louez/auth/client'
-import { LogOut, Store, ChevronDown } from 'lucide-react'
+import { LogOut, Store, ChevronDown, Shield } from 'lucide-react'
 
 import { Button } from '@louez/ui'
 import { Logo } from '@louez/ui'
@@ -32,9 +32,10 @@ interface MultiStoreHeaderProps {
   stores: StoreWithRole[]
   userEmail: string
   userImage?: string | null
+  isPlatformAdmin?: boolean
 }
 
-export function MultiStoreHeader({ stores, userEmail, userImage }: MultiStoreHeaderProps) {
+export function MultiStoreHeader({ stores, userEmail, userImage, isPlatformAdmin }: MultiStoreHeaderProps) {
   const t = useTranslations('dashboard.multiStore')
   const tAuth = useTranslations('auth')
   const tSettings = useTranslations('dashboard.settings.accountSettings')
@@ -112,6 +113,15 @@ export function MultiStoreHeader({ stores, userEmail, userImage }: MultiStoreHea
               <DropdownMenuItem render={<Link href="/dashboard/account" className="cursor-pointer" />}>
                   {tSettings('title')}
               </DropdownMenuItem>
+              {isPlatformAdmin && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem render={<Link href="/admin" className="cursor-pointer" />}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    {tSettings('administration')}
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = '/login' } } })}

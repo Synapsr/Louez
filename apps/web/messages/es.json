@@ -408,7 +408,6 @@
         "processing": "Procesando...",
         "success": "¡Recarga exitosa! Tus créditos han sido añadidos.",
         "cancelled": "El pago fue cancelado. No se han cargado tus créditos.",
-        "notAvailable": "La recarga SMS no está disponible para el plan Start. Actualiza a Pro o Ultra para recargar.",
         "errors": {
           "generic": "Ocurrió un error durante la recarga",
           "notEligible": "Tu plan no permite la recarga de SMS"
@@ -419,9 +418,6 @@
           "didYouKnow": "¿Sabías que?",
           "ultraBenefit": "Con Ultra, paga solo {price} por SMS y obtén {count} SMS incluidos cada mes.",
           "upgradeToUltra": "Cambiar a Ultra",
-          "startTitle": "Desbloquea los SMS",
-          "startDescription": "Envía notificaciones automáticas a tus clientes",
-          "upgradeToPro": "Ver planes",
           "compareTitle": "Elige tu plan",
           "smsIncluded": "{count} SMS/mes incluidos",
           "topupPrice": "Recarga a {price}/SMS",
@@ -2173,10 +2169,10 @@
         },
         "cancelModal": {
           "title": "¿Cancelar su suscripción?",
-          "description": "Al cancelar su suscripción, volverá al plan gratuito con las siguientes limitaciones:",
-          "limit1": "5 productos máximo",
-          "limit2": "10 reservas por mes",
-          "limit3": "50 clientes máximo",
+          "description": "Al cancelar tu suscripción, tu tienda pasará al pago por uso al final del período pagado:",
+          "limit1": "Todos tus productos, reservas y clientes siguen accesibles",
+          "limit2": "Sin cuota mensual de suscripción",
+          "limit3": "Se te cobrará por alquiler (pago por uso)",
           "keepAccess": "Mantendrá el acceso a su plan actual hasta el {date}.",
           "confirm": "Acepto y confirmo la cancelación",
           "cancel": "Cancelar",
@@ -2272,7 +2268,10 @@
           "previewHowDescription": "Los pagos en línea tienen una pequeña comisión cobrada en el momento del pago; los alquileres en efectivo se agrupan en una única factura cobrada el día 1 de cada mes.",
           "activate": "Activar el pago por uso",
           "deferredNote": "Tu plan actual sigue activo hasta el final del período pagado; después el pago por uso toma el relevo automáticamente, sin doble facturación.",
-          "backToPlans": "Volver a los planes"
+          "backToPlans": "Volver a los planes",
+          "addPaymentMethod": "Añadir una tarjeta",
+          "freeReservationsTitle": "{count} reservas gratuitas restantes",
+          "freeReservationsDescription": "Te quedan {remaining} de tus {granted} reservas gratuitas de bienvenida — sin comisión en estas."
         }
       },
       "team": "Equipo",
@@ -3589,7 +3588,8 @@
         "deleteAccountDescription": "Elimine permanentemente su cuenta y todos sus datos",
         "deleteAccountWarning": "Esta accion es irreversible. Todos sus datos seran eliminados.",
         "signOut": "Cerrar sesion",
-        "comingSoon": "Proximamente"
+        "comingSoon": "Proximamente",
+        "administration": "Administración"
       },
       "admin": {
         "title": "Admin plataforma",
@@ -3629,6 +3629,13 @@
           "tierAndAbove": "y más",
           "tierAdd": "Añadir un tramo",
           "saved": "Configuración de pago por uso guardada"
+        },
+        "freeReservations": {
+          "title": "Reservas gratuitas",
+          "description": "Reservas regaladas a la tienda al crearla: mientras queden créditos, se exime la comisión por alquiler.",
+          "grantedLabel": "Reservas gratuitas concedidas",
+          "unit": "reservas",
+          "remaining": "{remaining} de {granted} restantes"
         }
       },
       "integrations": "Integraciones",
@@ -3757,6 +3764,65 @@
               "margin": "Margen / día"
             }
           }
+        }
+      },
+      "finance": {
+        "title": "Finanzas",
+        "description": "Ingresos de la plataforma por comisiones de reserva.",
+        "multiCurrencyWarning": "Los importes se muestran en {currency}. Hay otras divisas presentes y excluidas: {currencies}.",
+        "empty": "Aún no hay comisiones registradas.",
+        "kpi": {
+          "realizedAllTime": "Ingresos realizados (total)",
+          "realizedHint": "Comisiones cobradas en origen o facturadas a fin de mes.",
+          "thisMonth": "Realizado en {month}",
+          "pending": "Pendiente (sin facturar)",
+          "pendingHint": "Comisiones de reserva a facturar a fin de mes.",
+          "reversed": "Reembolsado",
+          "reversedHint": "Comisiones devueltas en reembolsos completos.",
+          "paidRentals": "Alquileres de pago",
+          "paidRentalsHint": "Alquileres que generaron comisión",
+          "freeRentals": "Alquileres gratuitos",
+          "freeRentalsHint": "Exentos por el bono de bienvenida"
+        },
+        "byMonth": {
+          "title": "Por mes",
+          "description": "Comisiones realizadas e importes pendientes por mes de facturación."
+        },
+        "byStore": {
+          "title": "Por tienda",
+          "description": "Ingresos por comisiones y uso por tienda."
+        },
+        "table": {
+          "month": "Mes",
+          "store": "Tienda",
+          "mode": "Facturación",
+          "realized": "Realizado",
+          "pending": "Pendiente",
+          "rentals": "Alquileres",
+          "free": "Gratis"
+        },
+        "mode": {
+          "subscription": "Suscripción",
+          "pay_as_you_go": "Pago por uso"
+        },
+        "recent": {
+          "title": "Comisiones recientes",
+          "description": "Las 50 entradas más recientes del registro.",
+          "amount": "Importe",
+          "source": "Origen",
+          "status": "Estado"
+        },
+        "source": {
+          "online": "En línea",
+          "manual": "Manual",
+          "free": "Gratis"
+        },
+        "status": {
+          "pending": "Pendiente",
+          "collected": "Cobrado",
+          "billed": "Facturado",
+          "voided": "Anulado",
+          "reversed": "Reembolsado"
         }
       }
     },
@@ -5372,6 +5438,13 @@
         "title": "Seguridad de los datos",
         "body": "Implementamos medidas técnicas y organizativas adecuadas para proteger sus datos frente a la pérdida, el acceso no autorizado, la alteración o la divulgación: cifrado de las comunicaciones, control de acceso, copias de seguridad periódicas y alojamiento seguro dentro de la Unión Europea."
       }
+    }
+  },
+  "platformAdmin": {
+    "title": "Administración",
+    "backToDashboard": "Volver al panel",
+    "nav": {
+      "finance": "Finanzas"
     }
   }
 }

@@ -13,9 +13,9 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
 
 // SMS top-up pricing per plan (in cents)
 export const SMS_TOPUP_PRICING: Record<string, number | null> = {
-  start: null, // Cannot top-up
   pro: 15, // 0.15€ per SMS
   ultra: 7, // 0.07€ per SMS
+  pay_as_you_go: 7, // 0.07€ per SMS (unlimited tier, Ultra parity)
 };
 
 // Available SMS top-up packages
@@ -48,30 +48,6 @@ const BASE_PLANS: Record<
   string,
   Omit<Plan, 'stripePriceMonthly' | 'stripePriceYearly'>
 > = {
-  start: {
-    slug: 'start',
-    name: 'Start',
-    description: 'Pour démarrer gratuitement',
-    price: 0,
-    features: {
-      maxProducts: 5,
-      maxReservationsPerMonth: process.env.NODE_ENV === 'development' ? 10 : 10,
-      maxCustomers: 50,
-      maxCollaborators: 0,
-      maxSmsPerMonth: 5,
-      onlinePayment: false,
-      analytics: false,
-      emailNotifications: true,
-      whiteLabel: false,
-      customDomain: false,
-      prioritySupport: false,
-      customerPortal: false,
-      reviewBooster: false,
-      apiAccess: false,
-      phoneSupport: false,
-      dedicatedManager: false,
-    },
-  },
   pro: {
     slug: 'pro',
     name: 'Pro',
@@ -127,6 +103,8 @@ const BASE_PLANS: Record<
  * Pseudo-plan for pay-as-you-go stores. Not purchasable as a subscription — it is
  * returned by `getStorePlan` when a store's billing mode is `pay_as_you_go`. PAYG
  * stores pay per rental, so every limit is unlimited and every feature is unlocked.
+ * Exception: pay-as-you-go includes NO free SMS — unlike Pro/Ultra which bundle a
+ * monthly allowance, PAYG stores pay for every SMS (via top-up credits).
  */
 export const PAY_AS_YOU_GO_PLAN: Plan = {
   slug: 'pay_as_you_go',
@@ -138,7 +116,7 @@ export const PAY_AS_YOU_GO_PLAN: Plan = {
     maxReservationsPerMonth: null,
     maxCustomers: null,
     maxCollaborators: null,
-    maxSmsPerMonth: 500,
+    maxSmsPerMonth: 0,
     onlinePayment: true,
     analytics: true,
     emailNotifications: true,
@@ -163,9 +141,6 @@ export function getPayAsYouGoPlan(): Plan {
  */
 export function getPlans(): Plan[] {
   return [
-    {
-      ...BASE_PLANS.start,
-    },
     {
       ...BASE_PLANS.pro,
       // Legacy EUR prices (backwards compatibility)
@@ -211,10 +186,12 @@ export function getPlan(slug: string): Plan | undefined {
 }
 
 /**
- * Get the default (free) plan
+ * Default plan for stores with no usable subscription (e.g. uninitialized, cancelled,
+ * or unknown slug). The free tier no longer exists, so the floor is pay-as-you-go:
+ * the store keeps working with no monthly fee and is billed per rental instead.
  */
 export function getDefaultPlan(): Plan {
-  return { ...BASE_PLANS.start };
+  return getPayAsYouGoPlan();
 }
 
 /**
@@ -236,7 +213,6 @@ export function isPlanAvailable(
   interval: 'monthly' | 'yearly',
   currency: Currency = 'eur',
 ): boolean {
-  if (plan.price === 0) return false; // Free plan - no purchase needed
   const priceId = getPlanPriceId(plan, interval, currency);
   return !!priceId;
 }

@@ -408,7 +408,6 @@
         "processing": "Traitement en cours...",
         "success": "Recharge effectuée avec succès ! Vos crédits ont été ajoutés.",
         "cancelled": "Le paiement a été annulé. Vos crédits n'ont pas été débités.",
-        "notAvailable": "La recharge SMS n'est pas disponible pour le plan Start. Passez à Pro ou Ultra pour recharger.",
         "errors": {
           "generic": "Une erreur est survenue lors de la recharge",
           "notEligible": "Votre plan ne permet pas la recharge SMS"
@@ -419,9 +418,6 @@
           "didYouKnow": "Le saviez-vous ?",
           "ultraBenefit": "Avec Ultra, payez seulement {price} par SMS et profitez de {count} SMS inclus chaque mois.",
           "upgradeToUltra": "Passer à Ultra",
-          "startTitle": "Débloquez les SMS",
-          "startDescription": "Envoyez des notifications automatiques à vos clients",
-          "upgradeToPro": "Découvrir les plans",
           "compareTitle": "Choisissez votre plan",
           "smsIncluded": "{count} SMS/mois inclus",
           "topupPrice": "Recharge à {price}/SMS",
@@ -2487,10 +2483,10 @@
         },
         "cancelModal": {
           "title": "Annuler votre abonnement ?",
-          "description": "En annulant votre abonnement, vous reviendrez au plan gratuit avec les limitations suivantes :",
-          "limit1": "5 produits maximum",
-          "limit2": "10 réservations par mois",
-          "limit3": "50 clients maximum",
+          "description": "En annulant votre abonnement, votre boutique passera au paiement à l'usage à la fin de la période payée :",
+          "limit1": "Tous vos produits, réservations et clients restent accessibles",
+          "limit2": "Plus aucun abonnement mensuel",
+          "limit3": "Vous serez facturé à la location (paiement à l'usage)",
           "keepAccess": "Vous conserverez l'accès à votre plan actuel jusqu'au {date}.",
           "confirm": "J'accepte et je confirme l'annulation",
           "cancel": "Annuler",
@@ -2586,7 +2582,10 @@
           "previewHowDescription": "Les paiements en ligne sont soumis à une petite commission prélevée au moment du paiement ; les locations en espèces sont regroupées sur une seule facture prélevée le 1er de chaque mois.",
           "activate": "Activer le paiement à la location",
           "deferredNote": "Votre forfait actuel reste actif jusqu’à la fin de la période payée ; le paiement à la location prend le relais automatiquement ensuite — sans double facturation.",
-          "backToPlans": "Retour aux forfaits"
+          "backToPlans": "Retour aux forfaits",
+          "addPaymentMethod": "Ajouter une carte",
+          "freeReservationsTitle": "{count} réservations offertes restantes",
+          "freeReservationsDescription": "Il vous reste {remaining} de vos {granted} réservations offertes de bienvenue — aucune commission sur celles-ci."
         }
       },
       "team": "Équipe",
@@ -3818,7 +3817,8 @@
         "deleteAccountDescription": "Supprime définitivement votre compte et toutes vos données",
         "deleteAccountWarning": "Cette action est irréversible. Toutes vos données seront supprimées.",
         "signOut": "Se déconnecter",
-        "comingSoon": "Bientôt"
+        "comingSoon": "Bientôt",
+        "administration": "Administration"
       },
       "admin": {
         "title": "Administration",
@@ -3858,6 +3858,72 @@
           "tierAndAbove": "et au-delà",
           "tierAdd": "Ajouter un palier",
           "saved": "Paramètres de paiement à la location enregistrés"
+        },
+        "freeReservations": {
+          "title": "Réservations offertes",
+          "description": "Réservations offertes à la création de la boutique — tant qu'il reste des crédits, la commission par location est offerte.",
+          "grantedLabel": "Réservations offertes accordées",
+          "unit": "réservations",
+          "remaining": "{remaining} sur {granted} restantes"
+        }
+      },
+      "finance": {
+        "title": "Finances",
+        "description": "Revenus de la plateforme issus des frais de réservation.",
+        "multiCurrencyWarning": "Les montants sont affichés en {currency}. D'autres devises sont présentes et exclues : {currencies}.",
+        "empty": "Aucun frais enregistré pour le moment.",
+        "kpi": {
+          "realizedAllTime": "Revenus réalisés (total)",
+          "realizedHint": "Frais prélevés à la source ou facturés en fin de mois.",
+          "thisMonth": "Réalisé en {month}",
+          "pending": "Dû (pas encore facturé)",
+          "pendingHint": "Frais de réservation à facturer en fin de mois.",
+          "reversed": "Remboursé",
+          "reversedHint": "Frais restitués lors des remboursements complets.",
+          "paidRentals": "Locations payantes",
+          "paidRentalsHint": "Locations ayant généré une commission",
+          "freeRentals": "Locations offertes",
+          "freeRentalsHint": "Offertes via l'allocation de bienvenue"
+        },
+        "byMonth": {
+          "title": "Par mois",
+          "description": "Frais réalisés et montants restant dus par mois de facturation."
+        },
+        "byStore": {
+          "title": "Par boutique",
+          "description": "Revenus de frais et utilisation par boutique."
+        },
+        "table": {
+          "month": "Mois",
+          "store": "Boutique",
+          "mode": "Facturation",
+          "realized": "Réalisé",
+          "pending": "Dû",
+          "rentals": "Locations",
+          "free": "Offertes"
+        },
+        "mode": {
+          "subscription": "Abonnement",
+          "pay_as_you_go": "Paiement à l'usage"
+        },
+        "recent": {
+          "title": "Frais récents",
+          "description": "Les 50 entrées les plus récentes du journal.",
+          "amount": "Montant",
+          "source": "Source",
+          "status": "Statut"
+        },
+        "source": {
+          "online": "En ligne",
+          "manual": "Manuel",
+          "free": "Offerte"
+        },
+        "status": {
+          "pending": "En attente",
+          "collected": "Prélevé",
+          "billed": "Facturé",
+          "voided": "Annulé",
+          "reversed": "Remboursé"
         }
       }
     },
@@ -5500,6 +5566,13 @@
         "title": "Sécurité des données",
         "body": "Nous mettons en œuvre des mesures techniques et organisationnelles adaptées pour protéger vos données contre la perte, l'accès non autorisé, l'altération ou la divulgation : chiffrement des communications, contrôle d'accès, sauvegardes régulières et hébergement sécurisé au sein de l'Union européenne."
       }
+    }
+  },
+  "platformAdmin": {
+    "title": "Administration",
+    "backToDashboard": "Retour au tableau de bord",
+    "nav": {
+      "finance": "Finances"
     }
   }
 }

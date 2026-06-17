@@ -279,13 +279,17 @@ async function seedStore(
 
   logSuccess(`Store created: ${config.name} (${storeId})`)
 
-  // Create subscription
+  // Create subscription. Pay-as-you-go configs use PAYG billing; the paid tiers
+  // (pro/ultra) use subscription billing.
+  const isPayAsYouGo = config.planSlug === 'pay_as_you_go'
   await db.insert(schema.subscriptions).values({
     id: generateId(),
     storeId,
     planSlug: config.planSlug,
+    billingMode: isPayAsYouGo ? 'pay_as_you_go' : 'subscription',
     status: 'active',
-    stripeSubscriptionId: config.stripeEnabled ? generateStripeId('sub') : null,
+    stripeSubscriptionId:
+      config.stripeEnabled && !isPayAsYouGo ? generateStripeId('sub') : null,
     stripeCustomerId: config.stripeEnabled ? generateStripeId('cus') : null,
     currentPeriodEnd: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
     cancelAtPeriodEnd: false,
@@ -295,18 +299,16 @@ async function seedStore(
 
   logSuccess(`Subscription created: ${config.planSlug}`)
 
-  // Create SMS credits (for pro/ultra)
-  if (config.planSlug !== 'start') {
-    await db.insert(schema.smsCredits).values({
-      id: generateId(),
-      storeId,
-      balance: config.planSlug === 'ultra' ? 450 : 40,
-      totalPurchased: config.planSlug === 'ultra' ? 100 : 0,
-      totalUsed: config.planSlug === 'ultra' ? 150 : 10,
-      createdAt: now,
-      updatedAt: now,
-    })
-  }
+  // Create SMS credits (all plans can hold credits).
+  await db.insert(schema.smsCredits).values({
+    id: generateId(),
+    storeId,
+    balance: config.planSlug === 'ultra' ? 450 : 40,
+    totalPurchased: config.planSlug === 'ultra' ? 100 : 0,
+    totalUsed: config.planSlug === 'ultra' ? 150 : 10,
+    createdAt: now,
+    updatedAt: now,
+  })
 
   // Generate team
   logInfo('Generating team...')
@@ -408,8 +410,8 @@ async function seedStore(
 
   logSuccess(`Payments created: ${paymentsData.length} payments`)
 
-  // Generate analytics (only for pro/ultra)
-  if (config.planSlug !== 'start') {
+  // Generate analytics (all plans include analytics).
+  {
     logInfo('Generating analytics...')
     const analyticsData = generateAnalytics(
       storeId,

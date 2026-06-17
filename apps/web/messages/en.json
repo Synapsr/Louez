@@ -408,7 +408,6 @@
         "processing": "Processing...",
         "success": "Top up successful! Your credits have been added.",
         "cancelled": "Payment was cancelled. Your credits were not charged.",
-        "notAvailable": "SMS top-up is not available for the Start plan. Upgrade to Pro or Ultra to top up.",
         "errors": {
           "generic": "An error occurred during top-up",
           "notEligible": "Your plan does not allow SMS top-up"
@@ -419,9 +418,6 @@
           "didYouKnow": "Did you know?",
           "ultraBenefit": "With Ultra, pay only {price} per SMS and get {count} SMS included every month.",
           "upgradeToUltra": "Upgrade to Ultra",
-          "startTitle": "Unlock SMS",
-          "startDescription": "Send automatic notifications to your customers",
-          "upgradeToPro": "View plans",
           "compareTitle": "Choose your plan",
           "smsIncluded": "{count} SMS/month included",
           "topupPrice": "Top-up at {price}/SMS",
@@ -2487,10 +2483,10 @@
         },
         "cancelModal": {
           "title": "Cancel your subscription?",
-          "description": "By canceling your subscription, you will return to the free plan with the following limitations:",
-          "limit1": "5 products maximum",
-          "limit2": "10 reservations per month",
-          "limit3": "50 customers maximum",
+          "description": "By canceling your subscription, your store will switch to pay-as-you-go at the end of the paid period:",
+          "limit1": "All your products, reservations and customers stay accessible",
+          "limit2": "No more monthly subscription fee",
+          "limit3": "You'll be billed per rental instead (pay-as-you-go)",
           "keepAccess": "You will keep access to your current plan until {date}.",
           "confirm": "I accept and confirm the cancellation",
           "cancel": "Cancel",
@@ -2586,7 +2582,10 @@
           "previewHowDescription": "Online payments are charged a small commission at the time of payment; cash rentals are grouped on a single invoice billed on the 1st of each month.",
           "activate": "Activate pay-as-you-go",
           "deferredNote": "Your current plan stays active until the end of the paid period; pay-as-you-go takes over automatically then — no double billing.",
-          "backToPlans": "Back to plans"
+          "backToPlans": "Back to plans",
+          "addPaymentMethod": "Add a card",
+          "freeReservationsTitle": "{count} free reservations left",
+          "freeReservationsDescription": "{remaining} of your {granted} welcome free reservations remain — no commission on these."
         }
       },
       "team": "Team",
@@ -3818,7 +3817,8 @@
         "deleteAccountDescription": "Permanently delete your account and all your data",
         "deleteAccountWarning": "This action is irreversible. All your data will be deleted.",
         "signOut": "Sign out",
-        "comingSoon": "Coming soon"
+        "comingSoon": "Coming soon",
+        "administration": "Administration"
       },
       "admin": {
         "title": "Platform Admin",
@@ -3858,6 +3858,72 @@
           "tierAndAbove": "and above",
           "tierAdd": "Add a tier",
           "saved": "Pay-as-you-go settings saved"
+        },
+        "freeReservations": {
+          "title": "Free reservations",
+          "description": "Reservations gifted to this store at creation — while credits remain, the per-rental commission is waived.",
+          "grantedLabel": "Free reservations granted",
+          "unit": "reservations",
+          "remaining": "{remaining} of {granted} remaining"
+        }
+      },
+      "finance": {
+        "title": "Finance",
+        "description": "Platform-wide revenue from reservation fees.",
+        "multiCurrencyWarning": "Amounts are shown in {currency}. Other currencies are present and excluded: {currencies}.",
+        "empty": "No fees recorded yet.",
+        "kpi": {
+          "realizedAllTime": "Realized revenue (all time)",
+          "realizedHint": "Fees collected at source or billed at month-end.",
+          "thisMonth": "Realized in {month}",
+          "pending": "Owed (not yet billed)",
+          "pendingHint": "Reservation fees to invoice at month-end.",
+          "reversed": "Reversed",
+          "reversedHint": "Fees returned on full refunds.",
+          "paidRentals": "Paid rentals",
+          "paidRentalsHint": "Rentals that incurred a commission",
+          "freeRentals": "Free rentals",
+          "freeRentalsHint": "Waived by the welcome allowance"
+        },
+        "byMonth": {
+          "title": "By month",
+          "description": "Realized fees and amounts still owed per billing month."
+        },
+        "byStore": {
+          "title": "By store",
+          "description": "Fee revenue and usage per store."
+        },
+        "table": {
+          "month": "Month",
+          "store": "Store",
+          "mode": "Billing",
+          "realized": "Realized",
+          "pending": "Owed",
+          "rentals": "Rentals",
+          "free": "Free"
+        },
+        "mode": {
+          "subscription": "Subscription",
+          "pay_as_you_go": "Pay-as-you-go"
+        },
+        "recent": {
+          "title": "Recent fees",
+          "description": "The 50 most recent ledger entries.",
+          "amount": "Amount",
+          "source": "Source",
+          "status": "Status"
+        },
+        "source": {
+          "online": "Online",
+          "manual": "Manual",
+          "free": "Free"
+        },
+        "status": {
+          "pending": "Pending",
+          "collected": "Collected",
+          "billed": "Billed",
+          "voided": "Voided",
+          "reversed": "Reversed"
         }
       }
     },
@@ -5500,6 +5566,13 @@
         "title": "Data security",
         "body": "We implement appropriate technical and organisational measures to protect your data against loss, unauthorised access, alteration or disclosure: encryption of communications, access controls, regular backups and secure hosting within the European Union."
       }
+    }
+  },
+  "platformAdmin": {
+    "title": "Administration",
+    "backToDashboard": "Back to dashboard",
+    "nav": {
+      "finance": "Finance"
     }
   }
 }
