@@ -59,7 +59,10 @@ export async function sendEmail({
     from = `"${fromName.replace(/"/g, '')}" <${emailAddress}>`;
   }
 
-  if (env.NODE_ENV === 'development') {
+  // Fail-closed: anything that is not explicitly production keeps the dev allowlist guard
+  // ON. Reads process.env directly because env.NODE_ENV's .default('development') is skipped
+  // under SKIP_ENV_VALIDATION (an unset NODE_ENV must not silently send to all recipients).
+  if (process.env.NODE_ENV !== 'production') {
     console.log('[DEV] Email from:', from);
     console.log('[DEV] Email to:', to);
     console.log('[DEV] Subject:', subject);
