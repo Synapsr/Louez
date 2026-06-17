@@ -339,7 +339,7 @@ export function SmsContent({
             </div>
           )}
 
-          {/* At limit CTA - shows topup modal (which handles upgrade for Start plan) */}
+          {/* At limit CTA - shows topup modal (top up credits or prompt to upgrade) */}
           {isAtLimit && (
             <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
               <p className="text-sm text-amber-700 dark:text-amber-400">

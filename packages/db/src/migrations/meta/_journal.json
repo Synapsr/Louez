@@ -323,6 +323,13 @@
       "when": 1781512852482,
       "tag": "0042_supreme_scarlet_witch",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1781624493486,
+      "tag": "0043_payg_platform_fee",
+      "breakpoints": true
     }
   ]
 }

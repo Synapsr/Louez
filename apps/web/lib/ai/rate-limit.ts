@@ -4,7 +4,7 @@
  * Limits vary by plan:
  * - Ultra: 20/min, 100/hour, 500/day
  * - Pro:   5/min,  10/hour,  25/day
- * - Free (start): AI chat disabled — prompts upgrade
+ * - Any plan without an entry below (e.g. pay-as-you-go): AI chat disabled — prompts upgrade
  *
  * Counts user messages from the ai_chat_messages table using sliding windows.
  * Notifies platform admins via Discord when a limit is hit.
@@ -53,7 +53,7 @@ export async function checkRateLimit(
     // Get the store's plan
     const planSlug = await getCurrentPlanSlug(storeId)
 
-    // Free plan — AI chat not available
+    // Plans without a limit entry (e.g. pay-as-you-go) — AI chat not available
     if (!LIMITS_BY_PLAN[planSlug]) {
       return {
         allowed: false,

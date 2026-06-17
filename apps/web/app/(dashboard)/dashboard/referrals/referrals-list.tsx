@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '@louez/ui'
 import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
-import { Users, Sparkles, Crown } from 'lucide-react'
+import { Users, Sparkles, Crown, Zap } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { formatDate } from '@louez/utils'
 import type { ReferralData } from './actions'
@@ -22,11 +22,6 @@ interface ReferralsListProps {
 
 function PlanBadge({ plan }: { plan: string }) {
   const config: Record<string, { label: string; icon: React.ReactNode; className: string }> = {
-    start: {
-      label: 'Start',
-      icon: null,
-      className: 'bg-muted text-muted-foreground border-transparent',
-    },
     pro: {
       label: 'Pro',
       icon: <Sparkles className="h-3 w-3" />,
@@ -37,9 +32,14 @@ function PlanBadge({ plan }: { plan: string }) {
       icon: <Crown className="h-3 w-3" />,
       className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
     },
+    pay_as_you_go: {
+      label: 'Pay as you go',
+      icon: <Zap className="h-3 w-3" />,
+      className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    },
   }
 
-  const c = config[plan] || config.start
+  const c = config[plan] || config.pay_as_you_go
 
   return (
     <Badge variant="outline" className={c.className}>

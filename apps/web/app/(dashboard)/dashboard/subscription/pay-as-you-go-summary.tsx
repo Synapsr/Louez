@@ -9,10 +9,10 @@ import {
   CalendarClock,
   CreditCard,
   Gauge,
+  Gift,
   Loader2,
   Package,
   Receipt,
-  Sparkles,
   Zap,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -29,6 +29,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@louez/ui'
+
+import { PayAsYouGoPricing } from './pay-as-you-go-pricing'
 
 import { openBillingPortal } from './actions'
 
@@ -60,6 +62,8 @@ interface PayAsYouGoSummaryProps {
   bands: BandSummary[]
   hasPaymentMethod: boolean
   invoices: InvoiceSummary[]
+  freeReservationsRemaining: number
+  freeReservationsGranted: number
 }
 
 const INVOICE_BADGE_VARIANT: Record<
@@ -90,6 +94,8 @@ export function PayAsYouGoSummary({
   bands,
   hasPaymentMethod,
   invoices,
+  freeReservationsRemaining,
+  freeReservationsGranted,
 }: PayAsYouGoSummaryProps) {
   const t = useTranslations('dashboard.settings.subscription.payAsYouGo')
   const locale = useLocale()
@@ -142,10 +148,26 @@ export function PayAsYouGoSummary({
   return (
     <div className="space-y-6">
       {!hasPaymentMethod && (
-        <Alert variant="warning">
+        <Alert variant="warning" className="max-w-2xl">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{t('noPaymentMethodTitle')}</AlertTitle>
-          <AlertDescription>{t('noPaymentMethodDescription')}</AlertDescription>
+          <AlertDescription>
+            <p>{t('noPaymentMethodDescription')}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 self-start"
+              onClick={handleManageBilling}
+              disabled={isPending}
+            >
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CreditCard className="mr-2 h-4 w-4" />
+              )}
+              {t('addPaymentMethod')}
+            </Button>
+          </AlertDescription>
         </Alert>
       )}
 
@@ -153,6 +175,22 @@ export function PayAsYouGoSummary({
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{t('portalError')}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Welcome allowance: free reservations remaining (commission waived). */}
+      {freeReservationsRemaining > 0 && (
+        <Alert variant="success" className="max-w-2xl">
+          <Gift className="h-4 w-4" />
+          <AlertTitle>
+            {t('freeReservationsTitle', { count: freeReservationsRemaining })}
+          </AlertTitle>
+          <AlertDescription>
+            {t('freeReservationsDescription', {
+              remaining: freeReservationsRemaining,
+              granted: freeReservationsGranted,
+            })}
+          </AlertDescription>
         </Alert>
       )}
 
@@ -243,55 +281,24 @@ export function PayAsYouGoSummary({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" />
-            {t('pricingTitle')}
-          </CardTitle>
-          <CardDescription>
-            {flatRateCents !== null
-              ? t('pricingFlatDescription')
-              : t('pricingTiersDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {flatRateCents !== null ? (
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold">{money(flatRateCents)}</span>
-              <span className="text-muted-foreground">{t('perLocation')}</span>
-            </div>
-          ) : (
-            <ul className="divide-y">
-              {bands.map((band, index) => (
-                <li
-                  key={index}
-                  className="flex items-center justify-between py-2.5 text-sm"
-                >
-                  <span className="text-muted-foreground">
-                    {band.to === null
-                      ? t('bandFromAbove', { from: band.from })
-                      : t('bandRange', { from: band.from, to: band.to })}
-                  </span>
-                  <span className="font-medium">
-                    {money(band.priceCents)} {t('perLocationShort')}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {/* Pricing and invoice history side by side: the tariff ladder is narrow, so
+          giving it its own column keeps the rates easy to read. Stacks on mobile. */}
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <PayAsYouGoPricing
+          flatRateCents={flatRateCents}
+          bands={bands}
+          currency={currency}
+        />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
-            {t('invoiceHistoryTitle')}
-          </CardTitle>
-          <CardDescription>{t('invoiceHistoryDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              {t('invoiceHistoryTitle')}
+            </CardTitle>
+            <CardDescription>{t('invoiceHistoryDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent>
           {invoices.length === 0 ? (
             <p className="text-muted-foreground text-sm">{t('noInvoicesYet')}</p>
           ) : (
@@ -324,8 +331,9 @@ export function PayAsYouGoSummary({
               ))}
             </ul>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

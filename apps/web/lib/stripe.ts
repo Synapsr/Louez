@@ -21,7 +21,12 @@ export async function createConnectAccount({
   metadata,
 }: CreateConnectAccountParams) {
   const account = await stripe.accounts.create({
-    type: 'express',
+    // Standard connected account: it is its own merchant of record, settles payments on
+    // its own balance, and bears Stripe processing fees and dispute liability. Payments
+    // are created as direct charges (see createCheckoutSession); the platform commission,
+    // if any, is taken via application_fee_amount. Onboarding uses hosted Account Links
+    // (see createAccountLink).
+    type: 'standard',
     email,
     country,
     business_type: businessType,
@@ -55,8 +60,15 @@ export async function createAccountLink(
 }
 
 export async function createAccountLoginLink(accountId: string) {
-  const loginLink = await stripe.accounts.createLoginLink(accountId)
-  return loginLink.url
+  // Standard accounts use the full Stripe Dashboard and sign in directly, so there is no
+  // platform-generated login link — they go to the hosted dashboard. Only Express accounts
+  // support a one-click login link, so we retrieve the account and special-case that type.
+  const account = await stripe.accounts.retrieve(accountId)
+  if (account.type === 'express') {
+    const loginLink = await stripe.accounts.createLoginLink(accountId)
+    return loginLink.url
+  }
+  return 'https://dashboard.stripe.com'
 }
 
 export async function getAccountStatus(accountId: string) {
@@ -97,6 +109,7 @@ interface CreateCheckoutSessionParams {
   successUrl: string
   cancelUrl: string
   applicationFeeAmount?: number // In cents (platform fee)
+  feeMetadata?: Record<string, string> // platform fee breakdown, merged into PI metadata
   locale?: string
 }
 
@@ -147,6 +160,7 @@ export async function createCheckoutSession({
   successUrl,
   cancelUrl,
   applicationFeeAmount,
+  feeMetadata,
   locale,
 }: CreateCheckoutSessionParams) {
   // Build Stripe line items (rental only, deposit is handled separately as authorization hold)
@@ -195,7 +209,7 @@ export async function createCheckoutSession({
       description: paymentReference.description,
       // Save card for future use (deposit authorization hold)
       setup_future_usage: 'off_session',
-      metadata: paymentReference.metadata,
+      metadata: { ...paymentReference.metadata, ...feeMetadata },
       ...(applicationFeeAmount && applicationFeeAmount > 0
         ? { application_fee_amount: applicationFeeAmount }
         : {}),
@@ -252,6 +266,7 @@ interface CreatePaymentRequestSessionParams {
   cancelUrl: string
   paymentRequestId: string
   applicationFeeAmount?: number // In cents (platform fee)
+  feeMetadata?: Record<string, string> // platform fee breakdown, merged into PI metadata
   locale?: string
 }
 
@@ -273,6 +288,7 @@ export async function createPaymentRequestSession({
   cancelUrl,
   paymentRequestId,
   applicationFeeAmount,
+  feeMetadata,
   locale,
 }: CreatePaymentRequestSessionParams) {
   // Append session_id to success URL for payment verification
@@ -317,6 +333,7 @@ export async function createPaymentRequestSession({
       metadata: {
         ...paymentReference.metadata,
         paymentRequestId,
+        ...feeMetadata,
       },
       ...(applicationFeeAmount && applicationFeeAmount > 0
         ? { application_fee_amount: applicationFeeAmount }
