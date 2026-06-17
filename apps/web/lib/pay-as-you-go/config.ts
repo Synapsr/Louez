@@ -43,6 +43,27 @@ export const payAsYouGoConfigSchema = z
   });
 
 /**
+ * Robustly resolve a pay-as-you-go config from an input that may be a parsed object OR a
+ * raw JSON string. env.ts normally validates+parses PAYG_DEFAULT_PRICING, but when
+ * SKIP_ENV_VALIDATION is set @t3-oss skips the transform and hands back the raw string —
+ * and spreading that string elsewhere produced character-indexed garbage. Parsing and
+ * re-validating here makes every consumer immune to that, and rejects malformed input.
+ */
+export function parsePayAsYouGoConfig(raw: unknown): PayAsYouGoConfig | null {
+  if (raw === null || raw === undefined || raw === '') return null;
+  let value: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  const result = payAsYouGoConfigSchema.safeParse(value);
+  return result.success ? result.data : null;
+}
+
+/**
  * Pay-as-you-go pricing math.
  *
  * Pricing is GRADUATED with a MONTHLY RESET: each rental ("location") is priced by

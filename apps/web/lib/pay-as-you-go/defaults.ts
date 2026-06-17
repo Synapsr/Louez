@@ -5,6 +5,7 @@ import { env } from '@/env';
 import {
   DEFAULT_PAY_AS_YOU_GO_CURRENCY,
   DEFAULT_PAY_AS_YOU_GO_TIERS,
+  parsePayAsYouGoConfig,
 } from './config';
 
 /**
@@ -30,8 +31,13 @@ export function getDefaultPayAsYouGoConfigSnapshot(
   const resolvedCurrency = (currency || DEFAULT_PAY_AS_YOU_GO_CURRENCY)
     .toLowerCase()
     .slice(0, 3);
-  if (env.PAYG_DEFAULT_PRICING) {
-    return { ...env.PAYG_DEFAULT_PRICING, currency: resolvedCurrency };
+  // PAYG_DEFAULT_PRICING may arrive as a parsed object (validation on) or a raw JSON
+  // string (SKIP_ENV_VALIDATION makes @t3-oss skip the transform). parsePayAsYouGoConfig
+  // handles both and rejects malformed input, so the offer applies identically in every
+  // environment — never spread a raw string into the config again.
+  const offer = parsePayAsYouGoConfig(env.PAYG_DEFAULT_PRICING);
+  if (offer) {
+    return { ...offer, currency: resolvedCurrency };
   }
   return {
     flatRateCents: null,
@@ -45,5 +51,10 @@ export function getDefaultPayAsYouGoConfigSnapshot(
  * onto the store so changing the env only affects future accounts. Server-only.
  */
 export function getDefaultFreeReservations(): number {
-  return env.PAYG_FREE_RESERVATIONS;
+  // env.PAYG_FREE_RESERVATIONS is a number when validation runs, but a raw string (or
+  // undefined) under SKIP_ENV_VALIDATION — undefined would make freeReservationsRemaining
+  // NaN and write 0 instead of the gift at onboarding. Coerce defensively to a real int,
+  // matching the schema default of 15.
+  const n = Number(env.PAYG_FREE_RESERVATIONS);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 15;
 }
