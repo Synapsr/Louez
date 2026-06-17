@@ -12,10 +12,11 @@ import {
  *
  * Returns the `PAYG_DEFAULT_PRICING` env override when configured (an ephemeral
  * launch offer deployed without a code change), otherwise the hardcoded platform
- * default ladder. The value is written verbatim onto the store's subscription row so
- * the store keeps its pricing for life — later changes to the env var (or the
- * hardcoded default) only affect accounts created afterwards. Per-store edits stay
- * possible from the platform-admin settings.
+ * default ladder. At onboarding the value is snapshotted onto the store's subscription
+ * row so that store keeps its pricing for life. Stores with NO stored config (e.g.
+ * legacy accounts) read this env default live at runtime instead (see `getStoreBilling`),
+ * so changing the env updates them immediately while snapshotted stores are unaffected.
+ * Per-store edits stay possible from the platform-admin settings.
  *
  * The tariff numbers are currency-agnostic (the same offer in EUR, USD, …); `currency`
  * is set to the store's own currency so the stored record is accurate. Currency is also

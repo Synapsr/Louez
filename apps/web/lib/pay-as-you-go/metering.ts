@@ -11,6 +11,7 @@ import {
   resolvePayAsYouGoConfig,
   summarizePayAsYouGoBands,
 } from './config';
+import { getDefaultPayAsYouGoConfigSnapshot } from './defaults';
 
 /** Fee statuses that count toward a store's owed/collected totals (not voided/reversed). */
 export const ACTIVE_FEE_STATUSES = ['pending', 'collected', 'billed'] as const;
@@ -76,7 +77,13 @@ export async function getStoreBilling(storeId: string): Promise<StoreBilling> {
     countFreeReservationsUsed(storeId),
   ]);
 
-  const config = resolvePayAsYouGoConfig(subscription?.payAsYouGoConfig ?? null);
+  // No per-store override → fall back to the platform default offer from
+  // PAYG_DEFAULT_PRICING (env), then to the hardcoded ladder. This makes the env var
+  // the live default for every store without its own stored config (e.g. legacy
+  // accounts), instead of silently using the hardcoded ladder.
+  const config = resolvePayAsYouGoConfig(
+    subscription?.payAsYouGoConfig ?? getDefaultPayAsYouGoConfigSnapshot(currency),
+  );
   config.currency = currency;
 
   const freeReservationsGranted = subscription?.freeReservationsGranted ?? 0;
