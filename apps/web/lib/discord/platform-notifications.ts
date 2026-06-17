@@ -251,6 +251,21 @@ export async function notifySubscriptionCancelled(store: StoreInfo): Promise<voi
   await send(`⬇️ ${link} [Pay as you go] subscription cancelled — reverted to pay-as-you-go`)
 }
 
+/**
+ * Sync the store owner's payment-method status to their fromHello profile as the
+ * `hasPaymentMethod` attribute. Drives activation journeys (e.g. an email nudge to a
+ * pay-as-you-go owner to add a card and "lock" their offer). Fire-and-forget: never
+ * throws or blocks the caller; no-op if the owner can't be resolved or fromHello is off.
+ */
+export async function syncStorePaymentMethodStatus(
+  storeId: string,
+  hasPaymentMethod: boolean,
+): Promise<void> {
+  const userId = await resolveStoreOwner(storeId)
+  if (!userId) return
+  await setFromHelloProfile(userId, { hasPaymentMethod })
+}
+
 // ---------------------------------------------------------------------------
 // Tier 3 — Reservations
 // ---------------------------------------------------------------------------
