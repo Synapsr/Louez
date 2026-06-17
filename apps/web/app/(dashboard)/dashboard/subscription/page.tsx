@@ -2,8 +2,10 @@ import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { MessageSquare } from 'lucide-react'
+import { after } from 'next/server'
 
 import { getCurrentStore } from '@/lib/store-context'
+import { syncStorePaymentMethodStatus } from '@/lib/discord/platform-notifications'
 import { getSubscriptionWithPlan, getPlans, hasStripeCustomer, storeHasDefaultPaymentMethod } from '@/lib/stripe/subscriptions'
 import { getStoreUsage, canAddTeamMember, canSendSms } from '@/lib/plan-limits'
 import { getStoreBilling, getCurrentMonthUsage, getRecentPayAsYouGoInvoices, summarizePayAsYouGoBands } from '@/lib/pay-as-you-go'
@@ -40,6 +42,11 @@ export default async function SubscriptionPage({
       getRecentPayAsYouGoInvoices(store.id),
       storeHasDefaultPaymentMethod(store.id),
     ])
+
+    // Sync the owner's card status to fromHello (drives activation journeys:
+    // nudge pay-as-you-go owners to add a card and "lock" their offer).
+    after(() => syncStorePaymentMethodStatus(store.id, hasPaymentMethod))
+
     return (
       <div className="space-y-8">
         <div>
