@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
-import confetti from 'canvas-confetti'
 import { cn } from '@louez/utils'
 
 /**
@@ -24,21 +23,9 @@ const TIMING = {
   WELCOME_START: 300,
   SUBTITLE_START: 1300,
   PAUSE_START: 2500,
-  CONFETTI_START: 2700,
   EXIT_START: 3700,
   COMPLETE: 4700,
 } as const
-
-/**
- * Confetti configuration
- */
-const CONFETTI_CONFIG = {
-  DURATION: 1300,
-  COLORS: ['#6366f1', '#8b5cf6', '#5082ef', '#723fed', '#2563eb'] as string[],
-  PARTICLE_COUNT: 3,
-  SPREAD: 55,
-  Z_INDEX: 9999,
-}
 
 const STORAGE_KEY = 'louez-show-welcome'
 
@@ -111,46 +98,13 @@ export function WelcomeOverlay() {
   }, [])
 
   /**
-   * Trigger celebration confetti from both sides of the screen
-   */
-  const triggerConfetti = useCallback(() => {
-    const end = Date.now() + CONFETTI_CONFIG.DURATION
-
-    const frame = () => {
-      confetti({
-        particleCount: CONFETTI_CONFIG.PARTICLE_COUNT,
-        angle: 60,
-        spread: CONFETTI_CONFIG.SPREAD,
-        origin: { x: 0, y: 0.7 },
-        colors: CONFETTI_CONFIG.COLORS,
-        zIndex: CONFETTI_CONFIG.Z_INDEX,
-      })
-      confetti({
-        particleCount: CONFETTI_CONFIG.PARTICLE_COUNT,
-        angle: 120,
-        spread: CONFETTI_CONFIG.SPREAD,
-        origin: { x: 1, y: 0.7 },
-        colors: CONFETTI_CONFIG.COLORS,
-        zIndex: CONFETTI_CONFIG.Z_INDEX,
-      })
-
-      if (Date.now() < end) {
-        requestAnimationFrame(frame)
-      }
-    }
-
-    frame()
-  }, [])
-
-  /**
    * Skip the animation and go directly to completion
    */
   const skip = useCallback(() => {
     if (phase === 'hidden' || phase === 'complete') return
     clearTimers()
-    triggerConfetti()
     setPhase('complete')
-  }, [phase, clearTimers, triggerConfetti])
+  }, [phase, clearTimers])
 
   // Preload audio on mount
   useEffect(() => {
@@ -184,7 +138,6 @@ export function WelcomeOverlay() {
 
     // Respect reduced motion preference
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      triggerConfetti()
       setPhase('complete')
       return
     }
@@ -198,11 +151,10 @@ export function WelcomeOverlay() {
 
       setTimeout(() => setPhase('subtitle'), TIMING.SUBTITLE_START),
       setTimeout(() => setPhase('pause'), TIMING.PAUSE_START),
-      setTimeout(triggerConfetti, TIMING.CONFETTI_START),
       setTimeout(() => setPhase('exiting'), TIMING.EXIT_START),
       setTimeout(() => setPhase('complete'), TIMING.COMPLETE)
     )
-  }, [phase, playAudio, triggerConfetti])
+  }, [phase, playAudio])
 
   // Cleanup timers on unmount only
   useEffect(() => {
