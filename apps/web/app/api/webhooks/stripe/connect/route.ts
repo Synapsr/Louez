@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
@@ -25,10 +25,12 @@ import {
 import { markReservationForCalendarSync } from '@/lib/integrations/calendar/sync';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import {
-  getReversibleOnlineUsage,
+  distributeReversal,
+  getReversibleFees,
   getStoreBilling,
-  markUsageReversed,
-  recordBillableLocation,
+  parseFeeMetadata,
+  recordFeeReversals,
+  recordReservationFee,
 } from '@/lib/pay-as-you-go';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import { fromStripeCents } from '@/lib/stripe';
@@ -236,9 +238,21 @@ export async function POST(request: Request) {
         );
         break;
 
+      // Dispute / chargeback — the funds are pulled back, so reverse the platform fees.
+      case 'charge.dispute.created':
+        await handleChargeDisputeCreated(
+          event.data.object as Stripe.Dispute,
+        );
+        break;
+
       // Account events
       case 'account.updated':
         await handleAccountUpdated(event.data.object as Stripe.Account);
+        break;
+
+      // A connected account disconnected from the platform — stop charging it.
+      case 'account.application.deauthorized':
+        await handleAccountDeauthorized(connectedAccountId);
         break;
 
       default:
@@ -329,21 +343,24 @@ async function handleCheckoutCompleted(
   const billing = await getStoreBilling(reservation.store.id);
   const isPayAsYouGoStore = billing.billingMode === 'pay_as_you_go';
 
-  // Subscription stores: nothing more to do once the payment is already completed
-  // (PAYG stores fall through so usage is still recorded below).
-  if (paymentAlreadyCompleted && !isPayAsYouGoStore) {
-    console.log(`Payment already completed for session ${session.id}, skipping`);
-    return;
-  }
+  // Even when the payment was already completed (e.g. by the success page) all stores
+  // fall through to retrieve the PaymentIntent and record the platform fees skimmed at
+  // source — the success page does not do platform metering. The notification work is
+  // skipped further below once those fees are recorded.
 
   // Get payment intent details and extract customer/payment method
   let paymentIntentId: string | null = null;
   let chargeId: string | null = null;
   let stripeCustomerId: string | null = null;
   let stripePaymentMethodId: string | null = null;
-  // Pay-as-you-go: platform commission skimmed from this charge (cents) + its id.
+  // Platform fee skimmed from this charge (cents), its id, and the breakdown carried
+  // in the PaymentIntent metadata (the pay-as-you-go reservation commission).
   let applicationFeeCollectedCents = 0;
   let applicationFeeId: string | null = null;
+  let feeBreakdown = {
+    reservationFeeCents: 0,
+    hasBreakdown: false,
+  };
   let paymentIntentRetrieveFailed = false;
 
   if (session.payment_intent && connectedAccountId) {
@@ -357,6 +374,7 @@ async function handleCheckoutCompleted(
       stripeCustomerId = paymentIntent.customer as string | null;
       stripePaymentMethodId = paymentIntent.payment_method as string | null;
       applicationFeeCollectedCents = paymentIntent.application_fee_amount ?? 0;
+      feeBreakdown = parseFeeMetadata(paymentIntent.metadata);
 
       const latestCharge = paymentIntent.latest_charge;
       if (latestCharge && typeof latestCharge === 'object') {
@@ -372,13 +390,13 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // For a pay-as-you-go store we MUST know whether an application fee was collected
-  // at source, otherwise the rental would be misclassified as manual and billed a
-  // second time at month-end. If the retrieve failed, abort so Stripe retries the
-  // webhook (nothing has been committed yet — the payment is still pending).
-  if (isPayAsYouGoStore && paymentIntentRetrieveFailed) {
+  // We MUST know the application fee that was collected at source before committing,
+  // otherwise platform fees would be dropped (or a PAYG rental misclassified as manual
+  // and billed a second time at month-end). If the retrieve failed, abort so Stripe
+  // retries the webhook (nothing has been committed yet — the payment is still pending).
+  if (session.payment_intent && paymentIntentRetrieveFailed) {
     throw new Error(
-      `PaymentIntent retrieve failed for pay-as-you-go reservation ${reservationId}; aborting so Stripe retries`,
+      `PaymentIntent retrieve failed for reservation ${reservationId}; aborting so Stripe retries`,
     );
   }
 
@@ -401,19 +419,33 @@ async function handleCheckoutCompleted(
 
   const paidAt = new Date();
 
-  // Pay-as-you-go: record this rental as a billable location BEFORE the payment is
-  // marked completed, so a transient failure aborts the webhook (Stripe retries with
-  // the payment still pending) instead of silently dropping the commission. Idempotent
-  // by reservationId. When the application fee was skimmed at source the commission is
-  // already collected; otherwise it is queued for the month-end invoice.
-  if (isPayAsYouGoStore) {
-    const collectedAtSource = applicationFeeCollectedCents > 0;
-    await recordBillableLocation({
+  // Record the pay-as-you-go reservation commission skimmed from this charge BEFORE the
+  // payment is marked completed, so a transient failure aborts the webhook (Stripe retries
+  // with the payment still pending) instead of silently dropping it. Idempotent per
+  // reservation. recordReservationFee itself waives the fee (source='free') when the store
+  // still has welcome-allowance credits.
+  if (paymentIntentId && isPayAsYouGoStore) {
+    // New PaymentIntents carry the exact reservation commission in metadata (recorded
+    // verbatim — no recompute drift). For a legacy/missing breakdown with a positive
+    // application fee (deploy seam / stripped metadata), the whole application fee was the
+    // reservation commission.
+    let reservationFeeCents = feeBreakdown.reservationFeeCents;
+    if (!feeBreakdown.hasBreakdown && applicationFeeCollectedCents > 0) {
+      reservationFeeCents = applicationFeeCollectedCents;
+      console.warn(
+        '[payg] PaymentIntent missing fee-breakdown metadata; treating the whole application fee as the reservation commission',
+        { reservationId, paymentIntentId, applicationFeeCollectedCents },
+      );
+    }
+
+    const collectedAtSource = reservationFeeCents > 0;
+    await recordReservationFee({
       storeId: reservation.store.id,
       reservationId,
       source: collectedAtSource ? 'online' : 'manual',
-      collectedAmountCents: applicationFeeCollectedCents,
+      collectedAmountCents: reservationFeeCents,
       currency,
+      paymentId: existingPayment?.id ?? null,
       stripePaymentIntentId: paymentIntentId,
       stripeApplicationFeeId: applicationFeeId,
       at: paidAt,
@@ -957,22 +989,33 @@ async function handleDepositCaptured(
       .where(eq(payments.id, depositPayment.id));
   }
 
-  // Create a deposit_capture payment record if partial capture
+  // Create a deposit_capture payment record. Guard against duplicates: the dashboard
+  // capture action inserts this row synchronously, and Stripe may re-deliver
+  // payment_intent.succeeded — only insert when no deposit_capture row exists yet for
+  // this PaymentIntent.
   if (capturedAmount > 0) {
-    await db.insert(payments).values({
-      id: nanoid(),
-      reservationId,
-      amount: capturedAmount.toFixed(2),
-      type: 'deposit_capture',
-      method: 'stripe',
-      status: 'completed',
-      stripePaymentIntentId: paymentIntent.id,
-      stripeChargeId: paymentIntent.latest_charge as string | null,
-      currency,
-      paidAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const existingCapture = await db.query.payments.findFirst({
+      where: and(
+        eq(payments.stripePaymentIntentId, paymentIntent.id),
+        eq(payments.type, 'deposit_capture'),
+      ),
     });
+    if (!existingCapture) {
+      await db.insert(payments).values({
+        id: nanoid(),
+        reservationId,
+        amount: capturedAmount.toFixed(2),
+        type: 'deposit_capture',
+        method: 'stripe',
+        status: 'completed',
+        stripePaymentIntentId: paymentIntent.id,
+        stripeChargeId: paymentIntent.latest_charge as string | null,
+        currency,
+        paidAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
   }
 
   // Update reservation deposit status
@@ -1187,40 +1230,21 @@ async function handleChargeRefunded(
     })
     .where(eq(payments.id, payment.id));
 
-  // Pay-as-you-go: on a FULL refund, reverse the platform commission collected at
-  // source so the connected account gets it back. The Stripe fee refund must
-  // succeed BEFORE the row is marked reversed; if it throws we let it propagate so
-  // the webhook returns non-2xx and Stripe retries (the idempotency key prevents a
-  // double refund on retry).
-  if (isFullRefund && payment.stripePaymentIntentId) {
-    const reversible = await getReversibleOnlineUsage(
-      payment.stripePaymentIntentId,
-    );
-    if (reversible) {
-      if (reversible.stripeApplicationFeeId) {
-        try {
-          await stripe.applicationFees.createRefund(
-            reversible.stripeApplicationFeeId,
-            undefined,
-            {
-              idempotencyKey: `payg_reverse_${reversible.stripeApplicationFeeId}`,
-            },
-          );
-        } catch (error) {
-          // If the fee was already fully refunded (e.g. month-end over-collection
-          // refund covered it), treat it as success and settle the row. Any other
-          // error propagates so Stripe retries the webhook.
-          const message = error instanceof Error ? error.message.toLowerCase() : '';
-          const alreadyRefunded =
-            message.includes('already') ||
-            message.includes('no refundable') ||
-            message.includes('greater than') ||
-            message.includes('exceeds');
-          if (!alreadyRefunded) throw error;
-        }
-      }
-      await markUsageReversed(reversible.id);
-    }
+  // Reverse the platform fees collected on this payment, in proportion to how much of
+  // the charge was refunded (full refund → reverse everything; partial → pro-rata).
+  // Both fee components share one Stripe application fee, so we refund the incremental
+  // amount once, then record the reversal. The Stripe refund must succeed BEFORE the
+  // rows are updated; a thrown error propagates so Stripe retries (idempotency-keyed,
+  // and re-delivery is a no-op because the already-reversed amount catches up).
+  if (payment.stripePaymentIntentId) {
+    await reversePlatformFees({
+      paymentIntentId: payment.stripePaymentIntentId,
+      refundRatio:
+        isFullRefund || charge.amount <= 0
+          ? 1
+          : Math.min(1, charge.amount_refunded / charge.amount),
+      idempotencyScope: charge.id,
+    });
   }
 
   // Log activity
@@ -1237,6 +1261,58 @@ async function handleChargeRefunded(
   });
 
   console.log(`Refund processed for payment ${payment.id}`);
+}
+
+/**
+ * Reverse platform fees for a payment by a given ratio (1 = full). Refunds the
+ * incremental application-fee amount at Stripe, then records the reversal on the ledger
+ * rows. Idempotent: re-delivery recomputes the increment as 0 once the ledger has caught
+ * up, and the Stripe call is idempotency-keyed by `idempotencyScope` + target amount.
+ */
+async function reversePlatformFees({
+  paymentIntentId,
+  refundRatio,
+  idempotencyScope,
+}: {
+  paymentIntentId: string;
+  refundRatio: number;
+  idempotencyScope: string;
+}): Promise<void> {
+  const { stripeApplicationFeeId, rows } = await getReversibleFees(paymentIntentId);
+  if (rows.length === 0) return;
+
+  const totalFeeCents = rows.reduce((sum, r) => sum + r.amountCents, 0);
+  const alreadyReversedCents = rows.reduce(
+    (sum, r) => sum + r.amountReversedCents,
+    0,
+  );
+  const targetReversedCents = Math.round(totalFeeCents * refundRatio);
+  const incrementCents = Math.max(0, targetReversedCents - alreadyReversedCents);
+  if (incrementCents <= 0) return;
+
+  if (stripeApplicationFeeId) {
+    try {
+      await stripe.applicationFees.createRefund(
+        stripeApplicationFeeId,
+        { amount: incrementCents },
+        {
+          idempotencyKey: `platform_fee_reverse_${idempotencyScope}_${targetReversedCents}`,
+        },
+      );
+    } catch (error) {
+      // The application fee was already (fully) refunded out-of-band — treat as success
+      // and reconcile the ledger. Any other error propagates so Stripe retries.
+      const message = error instanceof Error ? error.message.toLowerCase() : '';
+      const alreadyRefunded =
+        message.includes('already') ||
+        message.includes('no refundable') ||
+        message.includes('greater than') ||
+        message.includes('exceeds');
+      if (!alreadyRefunded) throw error;
+    }
+  }
+
+  await recordFeeReversals(distributeReversal(rows, incrementCents));
 }
 
 async function handleAccountUpdated(account: Stripe.Account) {
@@ -1274,5 +1350,58 @@ async function handleAccountUpdated(account: Stripe.Account) {
 
   console.log(
     `Store ${store.id} Stripe status updated: charges=${chargesEnabled}`,
+  );
+}
+
+/**
+ * A customer disputed/charged back a rental payment. The disputed funds (and, for a
+ * lost dispute, the application fee) are pulled from the connected account, so reverse
+ * the platform fees collected on that payment. Treated as a full reversal; if the store
+ * later WINS the dispute, the fee can be re-collected manually (rare).
+ */
+async function handleChargeDisputeCreated(dispute: Stripe.Dispute) {
+  const paymentIntentId =
+    typeof dispute.payment_intent === 'string'
+      ? dispute.payment_intent
+      : (dispute.payment_intent?.id ?? null);
+  if (!paymentIntentId) {
+    console.log(`Dispute ${dispute.id} has no payment_intent; nothing to reverse`);
+    return;
+  }
+  await reversePlatformFees({
+    paymentIntentId,
+    refundRatio: 1,
+    idempotencyScope: `dispute_${dispute.id}`,
+  });
+  console.log(`Platform fees reversed for dispute ${dispute.id}`);
+}
+
+/**
+ * A connected account disconnected the platform integration. Disable charges so no new
+ * payment is attempted against an account we can no longer act on (we keep the stored
+ * account id for audit; a re-onboard updates it via account.updated).
+ */
+async function handleAccountDeauthorized(connectedAccountId?: string) {
+  if (!connectedAccountId) {
+    console.warn('account.application.deauthorized without an account id');
+    return;
+  }
+  const store = await db.query.stores.findFirst({
+    where: eq(stores.stripeAccountId, connectedAccountId),
+  });
+  if (!store) {
+    console.log(`No store found for deauthorized account ${connectedAccountId}`);
+    return;
+  }
+  await db
+    .update(stores)
+    .set({
+      stripeChargesEnabled: false,
+      stripeOnboardingComplete: false,
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, store.id));
+  console.warn(
+    `[stripe] Connected account deauthorized for store ${store.id}; charges disabled`,
   );
 }

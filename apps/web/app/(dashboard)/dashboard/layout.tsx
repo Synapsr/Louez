@@ -20,6 +20,7 @@ import { WelcomeOverlay } from '@/components/dashboard/welcome-overlay';
 import { isAIChatConfigured } from '@/lib/ai/provider';
 import { auth } from '@/lib/auth';
 import { getStoreLimits } from '@/lib/plan-limits';
+import { isCurrentUserPlatformAdmin } from '@/lib/platform-admin';
 import { getCurrentStore, getUserStores } from '@/lib/store-context';
 import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions';
 
@@ -56,9 +57,10 @@ export default async function DashboardMainLayout({
   const showAIChat = isAIChatConfigured();
 
   // Get current plan for the store
-  const [planSlug, limits] = await Promise.all([
+  const [planSlug, limits, isPlatformAdmin] = await Promise.all([
     getCurrentPlanSlug(store.id),
     getStoreLimits(store.id),
+    isCurrentUserPlatformAdmin(),
   ]);
 
   return (
@@ -79,6 +81,7 @@ export default async function DashboardMainLayout({
                 storeSlug={store.slug}
                 userEmail={session.user.email || ''}
                 userImage={session.user.image}
+                isPlatformAdmin={isPlatformAdmin}
               />
               <SidebarInset className="overflow-x-hidden">
                 <header className="bg-background/90 supports-backdrop-filter:bg-background/70 sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b px-2.5 backdrop-blur">

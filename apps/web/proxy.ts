@@ -28,6 +28,7 @@ const DASHBOARD_ROUTES = [
   '/onboarding',
   '/invitation',
   '/multi-store',
+  '/admin', // platform-admin area (gated in its layout)
 ]
 
 /**

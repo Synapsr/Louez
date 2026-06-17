@@ -49,6 +49,8 @@ const adminSettingsSchema = z.object({
       currency: z.string().length(3),
     })
     .nullable(),
+  // Welcome allowance: number of free reservations gifted to the store.
+  freeReservationsGranted: z.number().int().min(0).max(100_000),
 })
 
 export type AdminSettingsInput = z.infer<typeof adminSettingsSchema>
@@ -75,6 +77,7 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
     discountDurationMonths,
     billingMode,
     payAsYouGoConfig,
+    freeReservationsGranted,
   } = validated.data
 
   // Handle Stripe coupon creation/update (network side-effect, kept out of the
@@ -125,15 +128,24 @@ export async function updateAdminSettings(data: AdminSettingsInput) {
     if (existing) {
       await tx
         .update(subscriptions)
-        .set({ billingMode, payAsYouGoConfig, updatedAt: new Date() })
+        .set({
+          billingMode,
+          payAsYouGoConfig,
+          freeReservationsGranted,
+          updatedAt: new Date(),
+        })
         .where(eq(subscriptions.id, existing.id))
     } else {
+      // No subscription row yet → the store can't be on real (Stripe) subscription
+      // billing, so it is created as pay-as-you-go regardless of the selected mode
+      // (keeps planSlug and billingMode consistent; a paid plan requires checkout).
       await tx.insert(subscriptions).values({
         id: nanoid(),
         storeId: store.id,
-        planSlug: 'start',
-        billingMode,
+        planSlug: 'pay_as_you_go',
+        billingMode: 'pay_as_you_go',
         payAsYouGoConfig,
+        freeReservationsGranted,
       })
     }
   })

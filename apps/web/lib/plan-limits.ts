@@ -55,7 +55,8 @@ export async function getStorePlan(storeId: string): Promise<Plan> {
     return getPayAsYouGoPlan()
   }
 
-  // If no subscription or cancelled, return free plan
+  // No subscription or a cancelled one → no paid tier active, fall back to the
+  // default plan (pay-as-you-go: unlimited, billed per rental, no monthly fee).
   if (!subscription || subscription.status === 'cancelled') {
     return getDefaultPlan()
   }
@@ -432,16 +433,15 @@ export async function deductPrepaidSmsCredit(storeId: string): Promise<boolean> 
 
 /**
  * Get the number of items to show before blurring based on plan
- * - Free: shows last N items (older ones blurred)
  * - Pro: shows last M items
- * - Ultra: shows all
+ * - Ultra / pay-as-you-go: shows all (unlimited)
  */
 export function getDisplayLimit(
   planSlug: string,
   type: 'products' | 'reservations' | 'customers'
 ): number | null {
-  const plan = getPlan(planSlug)
-  if (!plan) return 5 // Default to free plan limits
+  // Unknown / pay-as-you-go slug → unlimited (PAYG default), never the old free cap.
+  const plan = getPlan(planSlug) ?? getPayAsYouGoPlan()
 
   switch (type) {
     case 'products':
@@ -458,8 +458,6 @@ export function getDisplayLimit(
  */
 export function getSuggestedUpgradePlan(currentPlanSlug: string): string {
   switch (currentPlanSlug) {
-    case 'start':
-      return 'pro'
     case 'pro':
       return 'ultra'
     default:

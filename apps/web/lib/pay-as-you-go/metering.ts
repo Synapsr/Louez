@@ -1,43 +1,91 @@
-import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import { db } from '@louez/db';
-import { payAsYouGoInvoices, payAsYouGoUsage, subscriptions } from '@louez/db';
+import { payAsYouGoInvoices, platformFees, stores, subscriptions } from '@louez/db';
 import type { BillingMode } from '@louez/types';
 
 import {
   type ResolvedPayAsYouGoConfig,
-  graduatedTotalCents,
   priceForLocationIndex,
   resolvePayAsYouGoConfig,
   summarizePayAsYouGoBands,
 } from './config';
 
-/** Usage statuses that count toward the monthly total (i.e. not voided/reversed). */
-export const ACTIVE_USAGE_STATUSES = [
-  'pending',
-  'collected',
-  'billed',
-] as const;
+/** Fee statuses that count toward a store's owed/collected totals (not voided/reversed). */
+export const ACTIVE_FEE_STATUSES = ['pending', 'collected', 'billed'] as const;
+
+/** Idempotency key for the ledger (unique `dedup_key`): one row per reservation. */
+const reservationFeeKey = (reservationId: string) => `res:${reservationId}`;
 
 export interface StoreBilling {
   billingMode: BillingMode;
+  /** Reservation-fee pricing (pay-as-you-go ladder / flat rate). */
   config: ResolvedPayAsYouGoConfig;
+  /** Free reservations gifted at account creation (welcome allowance). */
+  freeReservationsGranted: number;
+  /** Free reservations still available = granted − used (waived rentals). */
+  freeReservationsRemaining: number;
+}
+
+/** Count of free-reservation credits a store has already used (non-voided `free` rows). */
+async function countFreeReservationsUsed(storeId: string): Promise<number> {
+  const [{ value }] = await db
+    .select({ value: sql<number>`count(*)` })
+    .from(platformFees)
+    .where(
+      and(
+        eq(platformFees.storeId, storeId),
+        eq(platformFees.source, 'free'),
+        ne(platformFees.status, 'voided'),
+      ),
+    );
+  return Number(value) || 0;
 }
 
 /**
- * Resolve a store's billing mode + pay-as-you-go pricing config.
- * Stores with no subscription row default to subscription mode.
+ * A store's own currency (ISO 4217, lowercase 3-char), from its settings.
+ * Defaults to `eur` when unset. Pay-as-you-go pricing is currency-agnostic (identical
+ * numbers in every currency) — the commission is always charged, displayed and invoiced
+ * in this currency, so it must follow the store rather than a stored config field.
+ */
+export async function getStoreCurrency(storeId: string): Promise<string> {
+  const store = await db.query.stores.findFirst({
+    where: eq(stores.id, storeId),
+    columns: { settings: true },
+  });
+  return (store?.settings?.currency || 'eur').toLowerCase().slice(0, 3);
+}
+
+/**
+ * Resolve a store's billing mode + fee configs. Stores with no subscription row
+ * default to subscription mode with the platform default fee configs. The PAYG
+ * pricing currency always reflects the store's own currency (same tariff in EUR/USD/…).
  */
 export async function getStoreBilling(storeId: string): Promise<StoreBilling> {
-  const subscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.storeId, storeId),
-    columns: { billingMode: true, payAsYouGoConfig: true },
-  });
+  const [subscription, currency, freeUsed] = await Promise.all([
+    db.query.subscriptions.findFirst({
+      where: eq(subscriptions.storeId, storeId),
+      columns: {
+        billingMode: true,
+        payAsYouGoConfig: true,
+        freeReservationsGranted: true,
+      },
+    }),
+    getStoreCurrency(storeId),
+    countFreeReservationsUsed(storeId),
+  ]);
+
+  const config = resolvePayAsYouGoConfig(subscription?.payAsYouGoConfig ?? null);
+  config.currency = currency;
+
+  const freeReservationsGranted = subscription?.freeReservationsGranted ?? 0;
 
   return {
     billingMode: subscription?.billingMode ?? 'subscription',
-    config: resolvePayAsYouGoConfig(subscription?.payAsYouGoConfig ?? null),
+    config,
+    freeReservationsGranted,
+    freeReservationsRemaining: Math.max(0, freeReservationsGranted - freeUsed),
   };
 }
 
@@ -53,47 +101,52 @@ export function billingMonthOf(date: Date): string {
   return `${year}-${month}`;
 }
 
-interface RecordBillableLocationInput {
+function isDuplicateError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('Duplicate') || message.includes('unique');
+}
+
+// ============================================================================
+// Reservation fee (pay-as-you-go per-rental fee)
+// ============================================================================
+
+interface RecordReservationFeeInput {
   storeId: string;
   reservationId: string;
   source: 'online' | 'manual';
-  /** Actual commission collected at source (online). Required for `online`. */
+  /** Actual reservation fee collected at source (online). Required for `online`. */
   collectedAmountCents?: number;
+  paymentId?: string | null;
   stripePaymentIntentId?: string | null;
   stripeApplicationFeeId?: string | null;
-  /** Charge currency for online; falls back to config currency. */
   currency?: string | null;
-  /** When the rental became billable. Defaults to now. */
   at?: Date;
-  /** Pre-resolved billing (avoids an extra query when the caller already has it). */
   billing?: StoreBilling;
 }
 
 /**
- * Idempotently record one billable rental for a pay-as-you-go store.
- *
- * - Idempotent by `reservationId` (unique). A second call is a no-op.
+ * Idempotently record the reservation commission for a pay-as-you-go rental.
+ * - One row per reservation (`dedup_key = res:<id>`); a second call is a no-op.
  * - No-op when the store is not on pay-as-you-go.
- * - `monthlyIndex` is informational (the authoritative monthly total is recomputed
- *   from the valid count at billing time), so a benign index race is harmless.
+ * - While the store has free-reservation credits, the rental is WAIVED: recorded with
+ *   `source='free'`, amount 0, outside the graduated ladder.
+ * - A manual `pending` row is upgraded to `collected` if the fee is later collected at
+ *   source (prevents double billing).
  */
-export async function recordBillableLocation(
-  input: RecordBillableLocationInput,
+export async function recordReservationFee(
+  input: RecordReservationFeeInput,
 ): Promise<{ recorded: boolean; reason?: string }> {
   const billing = input.billing ?? (await getStoreBilling(input.storeId));
   if (billing.billingMode !== 'pay_as_you_go') {
     return { recorded: false, reason: 'not_pay_as_you_go' };
   }
 
-  const existing = await db.query.payAsYouGoUsage.findFirst({
-    where: eq(payAsYouGoUsage.reservationId, input.reservationId),
+  const dedupKey = reservationFeeKey(input.reservationId);
+  const existing = await db.query.platformFees.findFirst({
+    where: eq(platformFees.dedupKey, dedupKey),
     columns: { id: true, status: true, source: true },
   });
   if (existing) {
-    // Upgrade a manual `pending` row to `collected` when the platform commission
-    // is now being collected at source (e.g. the owner manually confirmed the
-    // reservation before the customer completed an application-fee'd checkout).
-    // Without this, the rental would be charged twice: at source AND at month-end.
     if (
       input.source === 'online' &&
       (input.collectedAmountCents ?? 0) > 0 &&
@@ -101,16 +154,17 @@ export async function recordBillableLocation(
       existing.source === 'manual'
     ) {
       await db
-        .update(payAsYouGoUsage)
+        .update(platformFees)
         .set({
           source: 'online',
           status: 'collected',
           amountCents: Math.max(0, Math.round(input.collectedAmountCents ?? 0)),
+          paymentId: input.paymentId ?? null,
           stripePaymentIntentId: input.stripePaymentIntentId ?? null,
           stripeApplicationFeeId: input.stripeApplicationFeeId ?? null,
           updatedAt: new Date(),
         })
-        .where(eq(payAsYouGoUsage.id, existing.id));
+        .where(eq(platformFees.id, existing.id));
       return { recorded: true, reason: 'upgraded_to_collected' };
     }
     return { recorded: false, reason: 'already_recorded' };
@@ -118,51 +172,93 @@ export async function recordBillableLocation(
 
   const at = input.at ?? new Date();
   const billingMonth = billingMonthOf(at);
-
-  // 1-based position within the month (active records only).
-  const [{ value: priorCount }] = await db
-    .select({ value: sql<number>`count(*)` })
-    .from(payAsYouGoUsage)
-    .where(
-      and(
-        eq(payAsYouGoUsage.storeId, input.storeId),
-        eq(payAsYouGoUsage.billingMonth, billingMonth),
-        inArray(payAsYouGoUsage.status, [...ACTIVE_USAGE_STATUSES]),
-      ),
-    );
-  const monthlyIndex = Number(priorCount) + 1;
-
-  const currency = (
-    input.currency ||
-    billing.config.currency ||
-    'eur'
-  )
+  const currency = (input.currency || billing.config.currency || 'eur')
     .toLowerCase()
     .slice(0, 3);
 
-  const amountCents =
-    input.source === 'online'
-      ? Math.max(0, Math.round(input.collectedAmountCents ?? 0))
-      : priceForLocationIndex(billing.config, monthlyIndex);
-
   try {
-    await db.insert(payAsYouGoUsage).values({
-      id: nanoid(),
-      storeId: input.storeId,
-      reservationId: input.reservationId,
-      billingMonth,
-      monthlyIndex,
-      amountCents,
-      currency,
-      source: input.source,
-      status: input.source === 'online' ? 'collected' : 'pending',
-      stripePaymentIntentId: input.stripePaymentIntentId ?? null,
-      stripeApplicationFeeId: input.stripeApplicationFeeId ?? null,
+    let recordedFree = false;
+    await db.transaction(async (tx) => {
+      // Serialize per-store fee numbering: lock the store's subscription row so two
+      // concurrent rentals can't read the same counts (shared monthlyIndex / over-spent
+      // free credits).
+      await tx.execute(
+        sql`SELECT id FROM subscriptions WHERE store_id = ${input.storeId} FOR UPDATE`,
+      );
+
+      // Free-reservation welcome allowance: while credits remain, waive this rental.
+      const [{ value: freeUsed }] = await tx
+        .select({ value: sql<number>`count(*)` })
+        .from(platformFees)
+        .where(
+          and(
+            eq(platformFees.storeId, input.storeId),
+            eq(platformFees.source, 'free'),
+            ne(platformFees.status, 'voided'),
+          ),
+        );
+      const isFree = Number(freeUsed) < billing.freeReservationsGranted;
+
+      if (isFree) {
+        await tx.insert(platformFees).values({
+          id: nanoid(),
+          storeId: input.storeId,
+          reservationId: input.reservationId,
+          paymentId: input.paymentId ?? null,
+          dedupKey,
+          amountCents: 0,
+          currency,
+          source: 'free',
+          status: 'collected', // settled: nothing owed, nothing collected
+          billingMonth,
+          monthlyIndex: null,
+          stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+          stripeApplicationFeeId: input.stripeApplicationFeeId ?? null,
+        });
+        recordedFree = true;
+        return;
+      }
+
+      // Paid rental: priced by its position among PAID rentals this month (free rentals
+      // do not advance the graduated ladder).
+      const [{ value: priorPaid }] = await tx
+        .select({ value: sql<number>`count(*)` })
+        .from(platformFees)
+        .where(
+          and(
+            eq(platformFees.storeId, input.storeId),
+            ne(platformFees.source, 'free'),
+            eq(platformFees.billingMonth, billingMonth),
+            eq(platformFees.currency, currency),
+            inArray(platformFees.status, [...ACTIVE_FEE_STATUSES]),
+          ),
+        );
+      const monthlyIndex = Number(priorPaid) + 1;
+
+      const amountCents =
+        input.source === 'online'
+          ? Math.max(0, Math.round(input.collectedAmountCents ?? 0))
+          : priceForLocationIndex(billing.config, monthlyIndex);
+
+      await tx.insert(platformFees).values({
+        id: nanoid(),
+        storeId: input.storeId,
+        reservationId: input.reservationId,
+        paymentId: input.paymentId ?? null,
+        dedupKey,
+        amountCents,
+        currency,
+        source: input.source,
+        status: input.source === 'online' ? 'collected' : 'pending',
+        billingMonth,
+        monthlyIndex,
+        stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+        stripeApplicationFeeId: input.stripeApplicationFeeId ?? null,
+      });
     });
+    if (recordedFree) return { recorded: true, reason: 'free' };
   } catch (error) {
-    // Unique(reservationId) violation from a concurrent insert → treat as success.
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('Duplicate') || message.includes('unique')) {
+    if (isDuplicateError(error)) {
       return { recorded: false, reason: 'already_recorded' };
     }
     throw error;
@@ -172,56 +268,266 @@ export async function recordBillableLocation(
 }
 
 /**
- * Void the usage for a cancelled/rejected rental so it is not billed.
- * Only affects manual `pending` rentals — online commissions already collected at
- * source are reversed via the refund webhook (see {@link getReversibleOnlineUsage}).
+ * Void the reservation fee for a cancelled/rejected rental. Voids a not-yet-billed
+ * (`pending`) fee, AND a waived (`free`) fee — voiding a free row restores the store's
+ * free-reservation credit. Online fees already collected at source are reversed via the
+ * refund webhook (the money is real), so they are surfaced rather than voided.
  */
-export async function voidLocationUsage(
+export async function voidReservationFee(
   reservationId: string,
 ): Promise<{ voided: boolean }> {
   const result = await db
-    .update(payAsYouGoUsage)
+    .update(platformFees)
     .set({ status: 'voided', updatedAt: new Date() })
     .where(
       and(
-        eq(payAsYouGoUsage.reservationId, reservationId),
-        eq(payAsYouGoUsage.status, 'pending'),
+        eq(platformFees.dedupKey, reservationFeeKey(reservationId)),
+        ne(platformFees.status, 'voided'),
+        or(
+          eq(platformFees.status, 'pending'),
+          eq(platformFees.source, 'free'),
+        ),
       ),
     );
 
-  // Drizzle (mysql2) returns [ResultSetHeader, FieldPacket[]]; the header is typed.
   const affectedRows = result[0]?.affectedRows ?? 0;
+
+  // Nothing voided: if a fee was already collected at source (paid) or billed at
+  // month-end, it can't simply be voided. Surface it so a cancellation that also refunds
+  // the customer is reconciled via the refund webhook, and isn't silently kept.
+  if (affectedRows === 0) {
+    const existing = await db.query.platformFees.findFirst({
+      where: eq(platformFees.dedupKey, reservationFeeKey(reservationId)),
+      columns: { status: true, source: true },
+    });
+    if (
+      existing?.source !== 'free' &&
+      (existing?.status === 'collected' || existing?.status === 'billed')
+    ) {
+      console.warn(
+        '[payg] reservation fee not voided — already collected/billed; reverse via a refund if the customer is refunded',
+        { reservationId, status: existing?.status },
+      );
+    }
+  }
+
   return { voided: affectedRows > 0 };
 }
 
-/**
- * Look up the online (source-collected) usage row for a payment intent so a refund
- * can reverse the commission. Returns null when there is nothing to reverse (no row,
- * not collected at source, or already reversed). Read-only — the Stripe application
- * fee refund must succeed BEFORE {@link markUsageReversed} is called, so a transient
- * failure leaves the row reversible on the webhook retry.
- */
-export async function getReversibleOnlineUsage(paymentIntentId: string): Promise<{
-  id: string;
-  stripeApplicationFeeId: string | null;
-} | null> {
-  const usage = await db.query.payAsYouGoUsage.findFirst({
-    where: eq(payAsYouGoUsage.stripePaymentIntentId, paymentIntentId),
-    columns: { id: true, status: true, stripeApplicationFeeId: true },
+/** Whether a (non-voided) reservation fee already exists for this reservation. */
+export async function hasReservationFee(
+  reservationId: string,
+): Promise<boolean> {
+  const existing = await db.query.platformFees.findFirst({
+    where: and(
+      eq(platformFees.dedupKey, reservationFeeKey(reservationId)),
+      ne(platformFees.status, 'voided'),
+    ),
+    columns: { id: true },
   });
-  if (!usage || usage.status !== 'collected') {
-    return null;
-  }
-  return { id: usage.id, stripeApplicationFeeId: usage.stripeApplicationFeeId };
+  return Boolean(existing);
 }
 
-/** Mark a usage row reversed — call only after the Stripe fee refund has succeeded. */
-export async function markUsageReversed(usageId: string): Promise<void> {
-  await db
-    .update(payAsYouGoUsage)
-    .set({ status: 'reversed', updatedAt: new Date() })
-    .where(eq(payAsYouGoUsage.id, usageId));
+export interface StripeFeePlan {
+  /** Total to set as the Stripe application fee (capped below the charge). */
+  applicationFeeCents: number;
+  /** The pay-as-you-go reservation commission skimmed at source (= applicationFeeCents). */
+  reservationFeeCents: number;
 }
+
+/**
+ * Compute the pay-as-you-go reservation commission to skim from a Stripe rental payment
+ * via the application fee. Skimmed only for PAYG stores, only if not already recorded
+ * for this reservation (a balance payment must not re-charge it), and waived to 0 while
+ * the store still has free-reservation credits. Capped below the charge amount.
+ * (With Stripe Standard accounts the connected account bears Stripe's processing fees,
+ * so there is no separate platform payment fee.)
+ */
+export async function planStripeFees(opts: {
+  storeId: string;
+  reservationId: string;
+  chargeCents: number;
+  billing?: StoreBilling;
+  reference?: Date;
+}): Promise<StripeFeePlan> {
+  const billing = opts.billing ?? (await getStoreBilling(opts.storeId));
+
+  let reservationFeeCents = 0;
+  if (
+    billing.billingMode === 'pay_as_you_go' &&
+    billing.freeReservationsRemaining <= 0
+  ) {
+    const alreadyRecorded = await hasReservationFee(opts.reservationId);
+    if (!alreadyRecorded) {
+      reservationFeeCents = await projectedNextReservationFeeCents(
+        opts.storeId,
+        opts.reference ?? new Date(),
+        billing,
+      );
+    }
+  }
+
+  // Cap below the charge amount (Stripe requires application_fee < amount).
+  const maxFee = Math.max(0, opts.chargeCents - 1);
+  if (reservationFeeCents > maxFee) reservationFeeCents = maxFee;
+
+  return {
+    applicationFeeCents: reservationFeeCents,
+    reservationFeeCents,
+  };
+}
+
+/**
+ * PaymentIntent metadata carrying the reservation commission from checkout to webhook,
+ * so the webhook records the exact amount applied (no recompute drift).
+ */
+export const FEE_METADATA_KEYS = {
+  /** Present (='2') exactly when this PaymentIntent carries our fee breakdown. */
+  version: 'platformFeeVersion',
+  reservationFee: 'platformReservationFeeCents',
+} as const;
+
+/** Current fee-breakdown metadata version (lets the webhook detect legacy/absent ones). */
+export const FEE_METADATA_VERSION = '2';
+
+/**
+ * Serialize a fee plan into PaymentIntent metadata. The version marker is set whenever an
+ * application fee is applied, so the webhook can tell "breakdown present" (even with a 0
+ * reservation fee) apart from "legacy/missing metadata" instead of inferring from values.
+ */
+export function buildFeeMetadata(plan: StripeFeePlan): Record<string, string> {
+  const metadata: Record<string, string> = {};
+  if (plan.applicationFeeCents > 0) {
+    metadata[FEE_METADATA_KEYS.version] = FEE_METADATA_VERSION;
+  }
+  if (plan.reservationFeeCents > 0) {
+    metadata[FEE_METADATA_KEYS.reservationFee] = String(plan.reservationFeeCents);
+  }
+  return metadata;
+}
+
+/**
+ * Read the reservation commission back from PaymentIntent metadata. `hasBreakdown` is
+ * true only when the version marker is present — a PaymentIntent created before this
+ * format (or with stripped metadata) returns false so the webhook can fall back safely.
+ */
+export function parseFeeMetadata(
+  metadata: Record<string, string> | null | undefined,
+): { reservationFeeCents: number; hasBreakdown: boolean } {
+  const value = Number(metadata?.[FEE_METADATA_KEYS.reservationFee]);
+  return {
+    reservationFeeCents:
+      Number.isFinite(value) && value > 0 ? Math.round(value) : 0,
+    hasBreakdown: metadata?.[FEE_METADATA_KEYS.version] === FEE_METADATA_VERSION,
+  };
+}
+
+// ============================================================================
+// Refund reversal (covers the reservation fee collected on a payment)
+// ============================================================================
+
+export interface ReversibleFee {
+  id: string;
+  amountCents: number;
+  amountReversedCents: number;
+}
+
+/**
+ * Fees collected on a payment intent that can still be (partially) reversed — i.e.
+ * `collected`/`billed` rows not yet fully reversed. Both fee components share the one
+ * Stripe application fee object, refunded (in part or full) once. Read-only.
+ */
+export async function getReversibleFees(paymentIntentId: string): Promise<{
+  stripeApplicationFeeId: string | null;
+  rows: ReversibleFee[];
+}> {
+  const rows = await db
+    .select({
+      id: platformFees.id,
+      amountCents: platformFees.amountCents,
+      amountReversedCents: platformFees.amountReversedCents,
+      stripeApplicationFeeId: platformFees.stripeApplicationFeeId,
+    })
+    .from(platformFees)
+    .where(
+      and(
+        eq(platformFees.stripePaymentIntentId, paymentIntentId),
+        inArray(platformFees.status, ['collected', 'billed']),
+      ),
+    );
+
+  const reversible = rows.filter((r) => r.amountReversedCents < r.amountCents);
+  const stripeApplicationFeeId =
+    rows.find((r) => r.stripeApplicationFeeId)?.stripeApplicationFeeId ?? null;
+  return {
+    stripeApplicationFeeId,
+    rows: reversible.map((r) => ({
+      id: r.id,
+      amountCents: r.amountCents,
+      amountReversedCents: r.amountReversedCents,
+    })),
+  };
+}
+
+/**
+ * Distribute a total reversal amount across fee rows proportionally (capped at each
+ * row's remaining reversible amount). Pure — lets the caller decide the total (full
+ * refund, partial ratio, or dispute clawback) then persist via `recordFeeReversals`.
+ */
+export function distributeReversal(
+  rows: ReversibleFee[],
+  totalReverseCents: number,
+): Array<{ id: string; amountReversedCents: number; fullyReversed: boolean }> {
+  const updates: Array<{
+    id: string;
+    amountReversedCents: number;
+    fullyReversed: boolean;
+  }> = [];
+  let remaining = Math.max(0, Math.round(totalReverseCents));
+  for (const row of rows) {
+    if (remaining <= 0) break;
+    const capacity = row.amountCents - row.amountReversedCents;
+    if (capacity <= 0) continue;
+    const add = Math.min(capacity, remaining);
+    const newReversed = row.amountReversedCents + add;
+    updates.push({
+      id: row.id,
+      amountReversedCents: newReversed,
+      fullyReversed: newReversed >= row.amountCents,
+    });
+    remaining -= add;
+  }
+  return updates;
+}
+
+/**
+ * Persist fee reversals — call only after the Stripe application-fee refund succeeded.
+ * Idempotent + defensive: only touches rows still `collected`/`billed`, and marks a row
+ * `reversed` once `amountReversedCents` reaches `amountCents`.
+ */
+export async function recordFeeReversals(
+  updates: Array<{ id: string; amountReversedCents: number; fullyReversed: boolean }>,
+): Promise<void> {
+  for (const u of updates) {
+    await db
+      .update(platformFees)
+      .set({
+        amountReversedCents: u.amountReversedCents,
+        ...(u.fullyReversed ? { status: 'reversed' as const } : {}),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(platformFees.id, u.id),
+          inArray(platformFees.status, ['collected', 'billed']),
+        ),
+      );
+  }
+}
+
+// ============================================================================
+// Pay-as-you-go dashboard read models
+// ============================================================================
 
 export interface CurrentMonthUsage {
   billingMonth: string;
@@ -235,8 +541,8 @@ export interface CurrentMonthUsage {
 }
 
 /**
- * Live month-to-date usage snapshot for the dashboard. The estimated invoice
- * (`dueCents`) is what would be billed if the month closed now.
+ * Live month-to-date RESERVATION-fee snapshot for the pay-as-you-go dashboard.
+ * `dueCents` is what would be invoiced if the month closed now.
  */
 export async function getCurrentMonthUsage(
   storeId: string,
@@ -248,27 +554,35 @@ export async function getCurrentMonthUsage(
 
   const rows = await db
     .select({
-      status: payAsYouGoUsage.status,
-      amountCents: payAsYouGoUsage.amountCents,
+      status: platformFees.status,
+      amountCents: platformFees.amountCents,
     })
-    .from(payAsYouGoUsage)
+    .from(platformFees)
     .where(
       and(
-        eq(payAsYouGoUsage.storeId, storeId),
-        eq(payAsYouGoUsage.billingMonth, billingMonth),
+        eq(platformFees.storeId, storeId),
+        eq(platformFees.billingMonth, billingMonth),
+        eq(platformFees.currency, resolved.config.currency),
       ),
     );
 
+  // Stored amounts are the immutable ground truth — each rental keeps the price it was
+  // recorded at, so totals are SUMMED, never recomputed from the current config (a
+  // mid-month rate change must not retroactively reprice past rentals). Free rentals have
+  // amount 0, so they count as locations but add nothing to gross/due.
   const active = rows.filter((r) =>
-    (ACTIVE_USAGE_STATUSES as readonly string[]).includes(r.status),
+    (ACTIVE_FEE_STATUSES as readonly string[]).includes(r.status),
   );
   const locationCount = active.length;
+  const grossCents = active.reduce((sum, r) => sum + r.amountCents, 0);
   const collectedAtSourceCents = rows
     .filter((r) => r.status === 'collected')
     .reduce((sum, r) => sum + r.amountCents, 0);
-
-  const grossCents = graduatedTotalCents(resolved.config, locationCount);
-  const dueCents = Math.max(0, grossCents - collectedAtSourceCents);
+  // What would be invoiced if the month closed now: the manual (pending) fees only;
+  // collected fees are already paid at source.
+  const dueCents = rows
+    .filter((r) => r.status === 'pending')
+    .reduce((sum, r) => sum + r.amountCents, 0);
 
   return {
     billingMonth,
@@ -293,10 +607,7 @@ export interface PayAsYouGoInvoiceSummary {
   paidAt: Date | null;
 }
 
-/**
- * Most recent finalized month-end invoices for a store (newest first), for the
- * dashboard history. Drafts are excluded — only settled/sent months are shown.
- */
+/** Most recent finalized month-end invoices for a store (newest first). */
 export async function getRecentPayAsYouGoInvoices(
   storeId: string,
   limit = 12,
@@ -322,17 +633,14 @@ export async function getRecentPayAsYouGoInvoices(
     .orderBy(desc(payAsYouGoInvoices.billingMonth))
     .limit(limit);
 
-  // 'draft' is filtered out above, so the remaining statuses are the displayable set.
-  return rows.filter(
-    (r): r is PayAsYouGoInvoiceSummary => r.status !== 'draft',
-  );
+  return rows.filter((r): r is PayAsYouGoInvoiceSummary => r.status !== 'draft');
 }
 
 /**
- * Projected commission (in cents) for the NEXT rental this month, used to set the
- * Stripe application fee at checkout time for online payments.
+ * Projected reservation fee (cents) for the NEXT rental this month, used to set the
+ * Stripe application fee at checkout time.
  */
-export async function projectedNextLocationFeeCents(
+export async function projectedNextReservationFeeCents(
   storeId: string,
   reference: Date = new Date(),
   billing?: StoreBilling,
@@ -342,12 +650,14 @@ export async function projectedNextLocationFeeCents(
 
   const [{ value: priorCount }] = await db
     .select({ value: sql<number>`count(*)` })
-    .from(payAsYouGoUsage)
+    .from(platformFees)
     .where(
       and(
-        eq(payAsYouGoUsage.storeId, storeId),
-        eq(payAsYouGoUsage.billingMonth, billingMonth),
-        inArray(payAsYouGoUsage.status, [...ACTIVE_USAGE_STATUSES]),
+        eq(platformFees.storeId, storeId),
+        ne(platformFees.source, 'free'),
+        eq(platformFees.billingMonth, billingMonth),
+        eq(platformFees.currency, resolved.config.currency),
+        inArray(platformFees.status, [...ACTIVE_FEE_STATUSES]),
       ),
     );
 

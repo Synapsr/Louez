@@ -6,6 +6,8 @@ import { env as dbEnv } from '@louez/db/env';
 import { env as emailEnv } from '@louez/email/env';
 import { env as validationsEnv } from '@louez/validations/env';
 
+import { payAsYouGoConfigSchema } from '@/lib/pay-as-you-go/config';
+
 export const env = createEnv({
   extends: [dbEnv, validationsEnv, authEnv, emailEnv],
 
@@ -124,6 +126,49 @@ export const env = createEnv({
     FROMHELLO_API_URL: z.url().optional(),
     FROMHELLO_API_KEY: z.string().optional(),
 
+    // ===== Pay-as-you-go default pricing (Optional) =====
+    // JSON describing the per-rental pricing snapshotted onto every NEW store at
+    // account creation (an "ephemeral offer"). Omitted/empty → the hardcoded platform
+    // default ladder. Changing this only affects accounts created AFTER the deploy;
+    // existing stores keep the pricing snapshotted at their creation. Validated at
+    // boot so a malformed offer fails the deploy instead of silently mispricing.
+    // Examples:
+    //   {"flatRateCents":25}                                  → 0.25€ per rental, flat
+    //   {"tiers":[{"upToCount":50,"priceCents":25},{"upToCount":null,"priceCents":100}]}
+    // Number of free reservations gifted to a NEW store at account creation (the
+    // welcome allowance). While credits remain, a rental's pay-as-you-go commission is
+    // waived. Snapshotted per store at creation and editable per store in admin, so
+    // changing this only affects accounts created afterwards. Default 15.
+    PAYG_FREE_RESERVATIONS: z.coerce.number().int().min(0).max(100_000).default(15),
+
+    PAYG_DEFAULT_PRICING: z
+      .string()
+      .optional()
+      .transform((val, ctx) => {
+        if (!val || val.trim() === '') return undefined;
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(val);
+        } catch {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'PAYG_DEFAULT_PRICING must be valid JSON',
+          });
+          return z.NEVER;
+        }
+        const result = payAsYouGoConfigSchema.safeParse(parsed);
+        if (!result.success) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `PAYG_DEFAULT_PRICING is invalid: ${result.error.issues
+              .map((i) => i.message)
+              .join('; ')}`,
+          });
+          return z.NEVER;
+        }
+        return result.data;
+      }),
+
     // ===== Development =====
     AUTO_DB_SETUP: z
       .string()
@@ -220,6 +265,8 @@ export const env = createEnv({
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
+    PAYG_DEFAULT_PRICING: process.env.PAYG_DEFAULT_PRICING,
+    PAYG_FREE_RESERVATIONS: process.env.PAYG_FREE_RESERVATIONS,
 
     // Client
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

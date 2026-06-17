@@ -13,6 +13,7 @@ import {
   Crown,
   Sparkles,
   AlertTriangle,
+  Zap,
 } from 'lucide-react'
 import type { StorePerformance } from '@/lib/dashboard/multi-store-metrics'
 import { setCurrentStoreAction } from '../actions'
@@ -35,10 +36,6 @@ interface StoresTableProps {
 
 function PlanBadge({ planSlug, planName }: { planSlug: string; planName: string }) {
   const planConfig: Record<string, { className: string; icon: React.ReactNode }> = {
-    start: {
-      className: 'bg-muted text-muted-foreground',
-      icon: null,
-    },
     pro: {
       className: 'bg-primary/10 text-primary',
       icon: <Sparkles className="h-3 w-3" />,
@@ -47,9 +44,13 @@ function PlanBadge({ planSlug, planName }: { planSlug: string; planName: string 
       className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
       icon: <Crown className="h-3 w-3" />,
     },
+    pay_as_you_go: {
+      className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+      icon: <Zap className="h-3 w-3" />,
+    },
   }
 
-  const config = planConfig[planSlug] || planConfig.start
+  const config = planConfig[planSlug] || planConfig.pay_as_you_go
 
   return (
     <span

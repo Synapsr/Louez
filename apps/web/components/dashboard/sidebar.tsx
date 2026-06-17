@@ -48,9 +48,9 @@ import {
   LogOutIcon,
   PackageIcon,
   SettingsIcon,
+  ShieldIcon,
   SparklesIcon,
   UsersIcon,
-  ZapIcon,
 } from '@louez/ui/icons';
 
 import { StoreSwitcher } from '@/components/dashboard/store-switcher';
@@ -76,6 +76,7 @@ interface DashboardSidebarProps {
   userEmail: string;
   userImage?: string | null;
   planSlug?: string;
+  isPlatformAdmin?: boolean;
 }
 
 const mainNavigation = [
@@ -234,9 +235,11 @@ const StoreHeader = ({
 const UserMenu = ({
   userEmail,
   userImage,
+  isPlatformAdmin,
 }: {
   userEmail: string;
   userImage?: string | null;
+  isPlatformAdmin?: boolean;
 }) => {
   const t = useTranslations('dashboard.settings.accountSettings');
   const tAuth = useTranslations('auth');
@@ -268,6 +271,15 @@ const UserMenu = ({
         <DropdownMenuItem render={<Link href="/dashboard/account" />}>
           {t('title')}
         </DropdownMenuItem>
+        {isPlatformAdmin && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem render={<Link href="/admin" />}>
+              <ShieldIcon className="mr-2 h-4 w-4" />
+              {t('administration')}
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() =>
@@ -318,6 +330,7 @@ export const DashboardSidebar = ({
   userEmail,
   userImage,
   planSlug,
+  isPlatformAdmin,
 }: DashboardSidebarProps) => {
   const pathname = usePathname();
 
@@ -346,7 +359,11 @@ export const DashboardSidebar = ({
           <div>
             <HelpButton />
           </div>
-          <UserMenu userEmail={userEmail} userImage={userImage} />
+          <UserMenu
+            userEmail={userEmail}
+            userImage={userImage}
+            isPlatformAdmin={isPlatformAdmin}
+          />
         </SidebarFooter>
         {/* <SidebarRail /> */}
       </UISidebar>
@@ -355,17 +372,12 @@ export const DashboardSidebar = ({
 };
 
 function PlanBadge({ planSlug }: { planSlug?: string }) {
-  const plan = planSlug || 'start';
+  const plan = planSlug || 'pay_as_you_go';
 
   const planConfig: Record<
     string,
     { label: string; className: string; icon: React.ReactNode }
   > = {
-    start: {
-      label: 'Start',
-      className: 'bg-muted text-muted-foreground hover:bg-muted/80',
-      icon: null,
-    },
     pro: {
       label: 'Pro',
       className: 'bg-primary/10 text-primary hover:bg-primary/20',
@@ -377,15 +389,12 @@ function PlanBadge({ planSlug }: { planSlug?: string }) {
         'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20',
       icon: <CrownIcon className="h-3 w-3" />,
     },
-    pay_as_you_go: {
-      label: 'Pay as you go',
-      className:
-        'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20',
-      icon: <ZapIcon className="h-3 w-3" />,
-    },
   };
 
-  const config = planConfig[plan] || planConfig.start;
+  // Pay-as-you-go (the default) shows no plan badge next to the logo — only the
+  // paid tiers get a badge.
+  const config = planConfig[plan];
+  if (!config) return null;
 
   return (
     <Link

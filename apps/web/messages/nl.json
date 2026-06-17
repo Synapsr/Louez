@@ -408,7 +408,6 @@
         "processing": "Verwerken...",
         "success": "Opwaardering gelukt! Uw tegoed is toegevoegd.",
         "cancelled": "Betaling is geannuleerd. Uw tegoed is niet belast.",
-        "notAvailable": "SMS opwaarderen is niet beschikbaar voor het Start-plan. Upgrade naar Pro of Ultra om op te waarderen.",
         "errors": {
           "generic": "Er is een fout opgetreden bij het opwaarderen",
           "notEligible": "Uw plan staat SMS opwaarderen niet toe"
@@ -419,9 +418,6 @@
           "didYouKnow": "Wist u dat?",
           "ultraBenefit": "Met Ultra betaalt u slechts {price} per SMS en krijgt u {count} SMS per maand inbegrepen.",
           "upgradeToUltra": "Upgrade naar Ultra",
-          "startTitle": "Ontgrendel SMS",
-          "startDescription": "Stuur automatische meldingen naar uw klanten",
-          "upgradeToPro": "Bekijk plannen",
           "compareTitle": "Kies uw plan",
           "smsIncluded": "{count} SMS/maand inbegrepen",
           "topupPrice": "Opwaardering voor {price}/SMS",
@@ -2167,10 +2163,10 @@
         },
         "cancelModal": {
           "title": "Abonnement opzeggen?",
-          "description": "Door je abonnement op te zeggen, keer je terug naar het gratis plan met de volgende beperkingen:",
-          "limit1": "Maximaal 5 producten",
-          "limit2": "10 reserveringen per maand",
-          "limit3": "Maximaal 50 klanten",
+          "description": "Als je je abonnement opzegt, schakelt je winkel aan het einde van de betaalde periode over op betalen per gebruik:",
+          "limit1": "Al je producten, reserveringen en klanten blijven toegankelijk",
+          "limit2": "Geen maandelijkse abonnementskosten meer",
+          "limit3": "Je wordt in plaats daarvan per verhuur gefactureerd (betalen per gebruik)",
           "keepAccess": "Je behoudt toegang tot je huidige plan tot {date}.",
           "confirm": "Ik accepteer en bevestig de opzegging",
           "cancel": "Annuleren",
@@ -2259,7 +2255,17 @@
           "switchingAt": "U schakelt op {date} over naar betalen per gebruik.",
           "cancelSwitch": "Wijziging annuleren",
           "backToUsage": "Terug naar gebruik",
-          "switchError": "De overstap kon niet worden voltooid. Probeer het opnieuw."
+          "switchError": "De overstap kon niet worden voltooid. Probeer het opnieuw.",
+          "previewTitle": "Betalen per gebruik",
+          "previewDescription": "Betaal alleen per verhuur — geen maandabonnement.",
+          "previewHowTitle": "Hoe het werkt",
+          "previewHowDescription": "Online betalingen krijgen een kleine commissie op het moment van betaling; contante verhuringen worden gebundeld op één factuur die op de 1e van elke maand wordt geïncasseerd.",
+          "activate": "Betalen per gebruik activeren",
+          "deferredNote": "Uw huidige abonnement blijft actief tot het einde van de betaalde periode; daarna neemt betalen per gebruik automatisch over — zonder dubbele facturering.",
+          "backToPlans": "Terug naar abonnementen",
+          "addPaymentMethod": "Kaart toevoegen",
+          "freeReservationsTitle": "Nog {count} gratis reserveringen",
+          "freeReservationsDescription": "Je hebt nog {remaining} van je {granted} gratis welkomstreserveringen — geen commissie hierop."
         }
       },
       "team": "Team",
@@ -3576,7 +3582,8 @@
         "deleteAccountDescription": "Verwijder permanent uw account en al uw gegevens",
         "deleteAccountWarning": "Deze actie is onomkeerbaar. Al uw gegevens worden verwijderd.",
         "signOut": "Uitloggen",
-        "comingSoon": "Binnenkort"
+        "comingSoon": "Binnenkort",
+        "administration": "Beheer"
       },
       "admin": {
         "title": "Platformbeheer",
@@ -3616,6 +3623,13 @@
           "tierAndAbove": "en hoger",
           "tierAdd": "Schijf toevoegen",
           "saved": "Instellingen voor betalen per gebruik opgeslagen"
+        },
+        "freeReservations": {
+          "title": "Gratis reserveringen",
+          "description": "Reserveringen die bij aanmaak aan de winkel zijn gegeven — zolang er tegoed is, vervalt de commissie per verhuur.",
+          "grantedLabel": "Toegekende gratis reserveringen",
+          "unit": "reserveringen",
+          "remaining": "{remaining} van {granted} over"
         }
       },
       "integrations": "Integraties",
@@ -3744,6 +3758,65 @@
               "margin": "Marge / dag"
             }
           }
+        }
+      },
+      "finance": {
+        "title": "Financiën",
+        "description": "Platformbrede inkomsten uit reserveringskosten.",
+        "multiCurrencyWarning": "Bedragen worden weergegeven in {currency}. Andere valuta's zijn aanwezig en uitgesloten: {currencies}.",
+        "empty": "Nog geen kosten geregistreerd.",
+        "kpi": {
+          "realizedAllTime": "Gerealiseerde inkomsten (totaal)",
+          "realizedHint": "Aan de bron geïnde of aan het einde van de maand gefactureerde kosten.",
+          "thisMonth": "Gerealiseerd in {month}",
+          "pending": "Verschuldigd (nog niet gefactureerd)",
+          "pendingHint": "Reserveringskosten die aan het einde van de maand worden gefactureerd.",
+          "reversed": "Teruggestort",
+          "reversedHint": "Kosten die bij volledige terugbetalingen zijn teruggegeven.",
+          "paidRentals": "Betaalde verhuringen",
+          "paidRentalsHint": "Verhuringen met commissie",
+          "freeRentals": "Gratis verhuringen",
+          "freeRentalsHint": "Kwijtgescholden via welkomsttegoed"
+        },
+        "byMonth": {
+          "title": "Per maand",
+          "description": "Gerealiseerde kosten en nog verschuldigde bedragen per factuurmaand."
+        },
+        "byStore": {
+          "title": "Per winkel",
+          "description": "Inkomsten uit kosten en gebruik per winkel."
+        },
+        "table": {
+          "month": "Maand",
+          "store": "Winkel",
+          "mode": "Facturering",
+          "realized": "Gerealiseerd",
+          "pending": "Verschuldigd",
+          "rentals": "Verhuringen",
+          "free": "Gratis"
+        },
+        "mode": {
+          "subscription": "Abonnement",
+          "pay_as_you_go": "Betalen per gebruik"
+        },
+        "recent": {
+          "title": "Recente kosten",
+          "description": "De 50 meest recente journaalposten.",
+          "amount": "Bedrag",
+          "source": "Bron",
+          "status": "Status"
+        },
+        "source": {
+          "online": "Online",
+          "manual": "Handmatig",
+          "free": "Gratis"
+        },
+        "status": {
+          "pending": "In afwachting",
+          "collected": "Geïnd",
+          "billed": "Gefactureerd",
+          "voided": "Geannuleerd",
+          "reversed": "Teruggestort"
         }
       }
     },
@@ -5358,6 +5431,13 @@
         "title": "Gegevensbeveiliging",
         "body": "Wij implementeren passende technische en organisatorische maatregelen om uw gegevens te beschermen tegen verlies, ongeoorloofde toegang, wijziging of openbaarmaking: versleuteling van communicatie, toegangscontrole, regelmatige back-ups en beveiligde hosting binnen de Europese Unie."
       }
+    }
+  },
+  "platformAdmin": {
+    "title": "Beheer",
+    "backToDashboard": "Terug naar dashboard",
+    "nav": {
+      "finance": "Financiën"
     }
   }
 }

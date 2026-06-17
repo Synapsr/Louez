@@ -22,7 +22,7 @@ export interface StoreConfig {
   description: string
   pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
-  planSlug: 'start' | 'pro' | 'ultra'
+  planSlug: 'pro' | 'ultra' | 'pay_as_you_go'
   taxEnabled: boolean
   taxRate: number
   taxMode: 'inclusive' | 'exclusive'
@@ -107,7 +107,7 @@ export const STORE_CONFIGS: StoreConfig[] = [
     description: 'Location de vélos enfants, sièges bébé et remorques. Tout pour des balades en famille en toute sécurité.',
     pricingMode: 'day',
     reservationMode: 'request',
-    planSlug: 'start',
+    planSlug: 'pay_as_you_go',
     taxEnabled: false,
     taxRate: 0,
     taxMode: 'inclusive',

@@ -1,4 +1,46 @@
+import { z } from 'zod';
+
 import type { PayAsYouGoConfig, PayAsYouGoTier } from '@louez/types';
+
+/**
+ * Canonical validation for a pay-as-you-go pricing config. Shared by the admin
+ * settings action and the `PAYG_DEFAULT_PRICING` env var so the same rules apply
+ * wherever a config enters the system. All fields are optional — an omitted field
+ * falls back to the platform default in `resolvePayAsYouGoConfig`.
+ */
+export const payAsYouGoTierSchema = z.object({
+  upToCount: z.number().int().positive().nullable(),
+  priceCents: z.number().int().min(0).max(1_000_000),
+});
+
+export const payAsYouGoConfigSchema = z
+  .object({
+    flatRateCents: z.number().int().min(0).max(1_000_000).nullable().optional(),
+    tiers: z.array(payAsYouGoTierSchema).max(20).optional(),
+    currency: z.string().length(3).optional(),
+  })
+  .superRefine((config, ctx) => {
+    // Reject contradictory ladders: no two bands sharing an upper bound and at most
+    // one open-ended band (otherwise the monthly total becomes order-dependent).
+    const tiers = config.tiers ?? [];
+    const bounds = tiers
+      .map((t) => t.upToCount)
+      .filter((c): c is number => c !== null);
+    if (new Set(bounds).size !== bounds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Duplicate tier limit',
+        path: ['tiers'],
+      });
+    }
+    if (tiers.filter((t) => t.upToCount === null).length > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Multiple open-ended tiers',
+        path: ['tiers'],
+      });
+    }
+  });
 
 /**
  * Pay-as-you-go pricing math.

@@ -340,11 +340,6 @@ export function generateAnalytics(
   const dailyStats: GeneratedDailyStats[] = []
   const productStats: GeneratedProductStats[] = []
 
-  // Only generate analytics for pro/ultra plans
-  if (storeConfig.planSlug === 'start') {
-    return { pageViews, storefrontEvents, dailyStats, productStats }
-  }
-
   const activeProducts = products.filter((p) => p.status === 'active')
   const totalDays = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
 
