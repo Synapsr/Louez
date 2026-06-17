@@ -11,7 +11,10 @@ import {
   resolvePayAsYouGoConfig,
   summarizePayAsYouGoBands,
 } from './config';
-import { getDefaultPayAsYouGoConfigSnapshot } from './defaults';
+import {
+  getDefaultFreeReservations,
+  getDefaultPayAsYouGoConfigSnapshot,
+} from './defaults';
 
 /** Fee statuses that count toward a store's owed/collected totals (not voided/reversed). */
 export const ACTIVE_FEE_STATUSES = ['pending', 'collected', 'billed'] as const;
@@ -86,10 +89,16 @@ export async function getStoreBilling(storeId: string): Promise<StoreBilling> {
   );
   config.currency = currency;
 
-  const freeReservationsGranted = subscription?.freeReservationsGranted ?? 0;
+  // A store with no subscription row is a legacy / free-tier account. The free plan no
+  // longer exists, so the platform default is pay-as-you-go: default the billing mode AND
+  // the free-reservation allowance to the env-driven platform defaults. This mirrors how
+  // getPlanSlug / getDefaultPlan already treat a missing subscription as pay-as-you-go, and
+  // it makes the subscription page show the PAYG view (not the plan grid) for these stores.
+  const freeReservationsGranted =
+    subscription?.freeReservationsGranted ?? getDefaultFreeReservations();
 
   return {
-    billingMode: subscription?.billingMode ?? 'subscription',
+    billingMode: subscription?.billingMode ?? 'pay_as_you_go',
     config,
     freeReservationsGranted,
     freeReservationsRemaining: Math.max(0, freeReservationsGranted - freeUsed),
