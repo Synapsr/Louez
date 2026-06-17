@@ -4,7 +4,15 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
 import { useStore } from '@tanstack/react-form'
-import { Gauge, Percent, Plus, Shield, Sparkles, Trash2 } from 'lucide-react'
+import {
+  Gauge,
+  Gift,
+  Percent,
+  Plus,
+  Shield,
+  Sparkles,
+  Trash2,
+} from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 
@@ -49,6 +57,7 @@ const adminSettingsSchema = z.object({
   useFlatRate: z.boolean(),
   flatRateEuros: z.number().min(0),
   tiers: z.array(tierSchema),
+  freeReservationsGranted: z.number().int().min(0).max(100000),
 })
 
 type AdminSettingsFormValues = z.infer<typeof adminSettingsSchema>
@@ -61,6 +70,8 @@ interface AdminSettingsFormProps {
   flatRateCents: number | null
   tiers: { upToCount: number | null; priceCents: number }[]
   currency: string
+  freeReservationsGranted: number
+  freeReservationsRemaining: number
 }
 
 export function AdminSettingsForm({
@@ -71,6 +82,8 @@ export function AdminSettingsForm({
   flatRateCents,
   tiers,
   currency,
+  freeReservationsGranted,
+  freeReservationsRemaining,
 }: AdminSettingsFormProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.settings.admin')
@@ -95,6 +108,7 @@ export function AdminSettingsForm({
             priceEuros: tier.priceCents / 100,
           }))
         : [{ id: crypto.randomUUID(), upToCount: null, priceEuros: 0 }],
+    freeReservationsGranted,
   }))
 
   const form = useAppForm({
@@ -111,6 +125,7 @@ export function AdminSettingsForm({
           discountDurationMonths: value.discountDurationMonths,
           billingMode: value.billingMode,
           payAsYouGoConfig,
+          freeReservationsGranted: value.freeReservationsGranted,
         })
         if (result.error) {
           setRootError(result.error)
@@ -249,6 +264,65 @@ export function AdminSettingsForm({
                 </div>
               )}
             </form.Field>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5" />
+              {t('freeReservations.title')}
+            </CardTitle>
+            <CardDescription>
+              {t('freeReservations.description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form.Field name="freeReservationsGranted">
+              {(field) => (
+                <div className="grid gap-2">
+                  <Label htmlFor={field.name}>
+                    {t('freeReservations.grantedLabel')}
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id={field.name}
+                      type="number"
+                      min={0}
+                      step="1"
+                      value={
+                        Number.isFinite(field.state.value)
+                          ? field.state.value
+                          : 0
+                      }
+                      onChange={(e) =>
+                        field.handleChange(
+                          e.target.value === ''
+                            ? 0
+                            : Math.max(0, Math.round(Number(e.target.value))),
+                        )
+                      }
+                      onBlur={field.handleBlur}
+                      className="w-32"
+                    />
+                    <span className="text-muted-foreground text-sm">
+                      {t('freeReservations.unit')}
+                    </span>
+                  </div>
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-destructive text-sm">
+                      {getFieldError(field.state.meta.errors[0])}
+                    </p>
+                  )}
+                </div>
+              )}
+            </form.Field>
+            <p className="text-muted-foreground text-sm">
+              {t('freeReservations.remaining', {
+                remaining: freeReservationsRemaining,
+                granted: freeReservationsGranted,
+              })}
+            </p>
           </CardContent>
         </Card>
 

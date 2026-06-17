@@ -408,7 +408,6 @@
         "processing": "Verarbeitung...",
         "success": "Aufladung erfolgreich! Ihr Guthaben wurde hinzugefügt.",
         "cancelled": "Zahlung wurde abgebrochen. Ihr Guthaben wurde nicht belastet.",
-        "notAvailable": "SMS-Aufladung ist für den Start-Plan nicht verfügbar. Upgraden Sie auf Pro oder Ultra zum Aufladen.",
         "errors": {
           "generic": "Bei der Aufladung ist ein Fehler aufgetreten",
           "notEligible": "Ihr Plan erlaubt keine SMS-Aufladung"
@@ -419,9 +418,6 @@
           "didYouKnow": "Wussten Sie schon?",
           "ultraBenefit": "Mit Ultra zahlen Sie nur {price} pro SMS und erhalten {count} SMS monatlich inklusive.",
           "upgradeToUltra": "Zu Ultra wechseln",
-          "startTitle": "SMS freischalten",
-          "startDescription": "Senden Sie automatische Benachrichtigungen an Ihre Kunden",
-          "upgradeToPro": "Pläne ansehen",
           "compareTitle": "Wählen Sie Ihren Plan",
           "smsIncluded": "{count} SMS/Monat inklusive",
           "topupPrice": "Aufladung zu {price}/SMS",
@@ -2167,10 +2163,10 @@
         },
         "cancelModal": {
           "title": "Abonnement kündigen?",
-          "description": "Durch die Kündigung Ihres Abonnements kehren Sie zum kostenlosen Plan mit folgenden Einschränkungen zurück:",
-          "limit1": "Maximal 5 Produkte",
-          "limit2": "10 Reservierungen pro Monat",
-          "limit3": "Maximal 50 Kunden",
+          "description": "Wenn Sie Ihr Abonnement kündigen, wechselt Ihr Shop am Ende des bezahlten Zeitraums zu Pay-as-you-go:",
+          "limit1": "Alle Ihre Produkte, Reservierungen und Kunden bleiben zugänglich",
+          "limit2": "Keine monatliche Abonnementgebühr mehr",
+          "limit3": "Stattdessen wird pro Vermietung abgerechnet (Pay-as-you-go)",
           "keepAccess": "Sie behalten den Zugang zu Ihrem aktuellen Plan bis zum {date}.",
           "confirm": "Ich akzeptiere und bestätige die Kündigung",
           "cancel": "Abbrechen",
@@ -2266,7 +2262,10 @@
           "previewHowDescription": "Bei Online-Zahlungen wird zum Zahlungszeitpunkt eine kleine Provision erhoben; Barvermietungen werden auf einer einzigen Rechnung gebündelt, die am 1. jedes Monats abgebucht wird.",
           "activate": "Pay as you go aktivieren",
           "deferredNote": "Ihr aktueller Tarif bleibt bis zum Ende der bezahlten Periode aktiv; danach übernimmt Pay as you go automatisch — ohne Doppelabrechnung.",
-          "backToPlans": "Zurück zu den Tarifen"
+          "backToPlans": "Zurück zu den Tarifen",
+          "addPaymentMethod": "Karte hinzufügen",
+          "freeReservationsTitle": "{count} kostenlose Reservierungen übrig",
+          "freeReservationsDescription": "{remaining} von {granted} Willkommens-Gratisreservierungen übrig — keine Provision darauf."
         }
       },
       "team": "Team",
@@ -3583,7 +3582,8 @@
         "deleteAccountDescription": "Löscht dauerhaft Ihr Konto und alle Ihre Daten",
         "deleteAccountWarning": "Diese Aktion ist unwiderruflich. Alle Ihre Daten werden gelöscht.",
         "signOut": "Abmelden",
-        "comingSoon": "Demnächst"
+        "comingSoon": "Demnächst",
+        "administration": "Verwaltung"
       },
       "admin": {
         "title": "Plattform-Admin",
@@ -3623,6 +3623,13 @@
           "tierAndAbove": "und mehr",
           "tierAdd": "Stufe hinzufügen",
           "saved": "Pay-as-you-go-Einstellungen gespeichert"
+        },
+        "freeReservations": {
+          "title": "Kostenlose Reservierungen",
+          "description": "Bei der Erstellung geschenkte Reservierungen — solange Guthaben vorhanden ist, entfällt die Provision pro Vermietung.",
+          "grantedLabel": "Gewährte kostenlose Reservierungen",
+          "unit": "Reservierungen",
+          "remaining": "{remaining} von {granted} übrig"
         }
       },
       "integrations": "Integrationen",
@@ -3751,6 +3758,65 @@
               "margin": "Marge / Tag"
             }
           }
+        }
+      },
+      "finance": {
+        "title": "Finanzen",
+        "description": "Plattformweite Einnahmen aus Reservierungsgebühren.",
+        "multiCurrencyWarning": "Beträge werden in {currency} angezeigt. Weitere Währungen sind vorhanden und ausgeschlossen: {currencies}.",
+        "empty": "Noch keine Gebühren erfasst.",
+        "kpi": {
+          "realizedAllTime": "Realisierte Einnahmen (gesamt)",
+          "realizedHint": "An der Quelle einbehaltene oder zum Monatsende abgerechnete Gebühren.",
+          "thisMonth": "Realisiert in {month}",
+          "pending": "Offen (noch nicht abgerechnet)",
+          "pendingHint": "Zum Monatsende abzurechnende Reservierungsgebühren.",
+          "reversed": "Erstattet",
+          "reversedHint": "Bei vollständigen Rückerstattungen zurückgegebene Gebühren.",
+          "paidRentals": "Bezahlte Vermietungen",
+          "paidRentalsHint": "Vermietungen mit Provision",
+          "freeRentals": "Kostenlose Vermietungen",
+          "freeRentalsHint": "Über die Willkommensgutschrift erlassen"
+        },
+        "byMonth": {
+          "title": "Nach Monat",
+          "description": "Realisierte Gebühren und offene Beträge pro Abrechnungsmonat."
+        },
+        "byStore": {
+          "title": "Nach Shop",
+          "description": "Gebühreneinnahmen und Nutzung pro Shop."
+        },
+        "table": {
+          "month": "Monat",
+          "store": "Shop",
+          "mode": "Abrechnung",
+          "realized": "Realisiert",
+          "pending": "Offen",
+          "rentals": "Vermietungen",
+          "free": "Kostenlos"
+        },
+        "mode": {
+          "subscription": "Abonnement",
+          "pay_as_you_go": "Pay-as-you-go"
+        },
+        "recent": {
+          "title": "Letzte Gebühren",
+          "description": "Die 50 neuesten Journaleinträge.",
+          "amount": "Betrag",
+          "source": "Quelle",
+          "status": "Status"
+        },
+        "source": {
+          "online": "Online",
+          "manual": "Manuell",
+          "free": "Kostenlos"
+        },
+        "status": {
+          "pending": "Ausstehend",
+          "collected": "Einbehalten",
+          "billed": "Abgerechnet",
+          "voided": "Storniert",
+          "reversed": "Erstattet"
         }
       }
     },
@@ -5365,6 +5431,13 @@
         "title": "Datensicherheit",
         "body": "Wir setzen geeignete technische und organisatorische Maßnahmen ein, um Ihre Daten vor Verlust, unbefugtem Zugriff, Veränderung oder Offenlegung zu schützen: Verschlüsselung der Kommunikation, Zugriffskontrollen, regelmäßige Sicherungen und sicheres Hosting innerhalb der Europäischen Union."
       }
+    }
+  },
+  "platformAdmin": {
+    "title": "Verwaltung",
+    "backToDashboard": "Zurück zum Dashboard",
+    "nav": {
+      "finance": "Finanzen"
     }
   }
 }

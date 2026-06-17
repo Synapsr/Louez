@@ -6,7 +6,13 @@ import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { getStripe } from '@/lib/stripe/client'
-import { recordBillableLocation } from '@/lib/pay-as-you-go'
+import {
+  buildFeeMetadata,
+  getStoreBilling,
+  planStripeFees,
+  recordReservationFee,
+  voidReservationFee,
+} from '@/lib/pay-as-you-go'
 import { getCustomerSession } from '../../actions'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 import { revalidatePath } from 'next/cache'
@@ -88,22 +94,29 @@ export async function createReservationPaymentSession(
 
     const currency = store.settings?.currency || 'EUR'
 
-    // Build line items from reservation items
-    const lineItems: { name: string; description?: string; quantity: number; unitAmount: number }[] = reservation.items.map((item) => ({
-      name: item.productSnapshot.name,
-      quantity: 1,
-      unitAmount: toStripeCents(parseFloat(item.totalPrice), currency),
-    }))
-
-    // Add delivery fee as a line item if present
-    const deliveryFee = parseFloat(reservation.deliveryFee || '0')
-    if (deliveryFee > 0) {
-      lineItems.push({
-        name: 'Delivery',
+    // Charge exactly the agreed reservation total. totalAmount already folds in the
+    // subtotal, Tulip insurance, promo discount and delivery fee; rebuilding the charge
+    // from item line items alone would silently drop the discount and the insurance,
+    // charging a different amount than the one recorded on the payment. A single
+    // consolidated line keeps charge == recorded amount == agreed total.
+    const chargeCents = toStripeCents(parseFloat(reservation.totalAmount), currency)
+    const lineItems = [
+      {
+        name: `Reservation #${reservation.number}`,
         quantity: 1,
-        unitAmount: toStripeCents(deliveryFee, currency),
-      })
-    }
+        unitAmount: chargeCents,
+      },
+    ]
+
+    // Plan the platform fee skimmed from this rental payment (the pay-as-you-go
+    // reservation commission). Recorded exactly on payment success.
+    const billing = await getStoreBilling(store.id)
+    const feePlan = await planStripeFees({
+      storeId: store.id,
+      reservationId,
+      chargeCents,
+      billing,
+    })
 
     // Create checkout session
     const { url, sessionId } = await createCheckoutSession({
@@ -115,6 +128,8 @@ export async function createReservationPaymentSession(
       lineItems,
       depositAmount: toStripeCents(parseFloat(reservation.depositAmount), currency),
       currency,
+      applicationFeeAmount: feePlan.applicationFeeCents,
+      feeMetadata: buildFeeMetadata(feePlan),
       successUrl: getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=success`),
       cancelUrl: getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=cancelled`),
     })
@@ -203,7 +218,7 @@ export async function acceptQuote(
 
   // Pay-as-you-go: an accepted quote is now a confirmed, billable location.
   try {
-    await recordBillableLocation({
+    await recordReservationFee({
       storeId: store.id,
       reservationId,
       source: 'manual',
@@ -335,6 +350,17 @@ export async function declineQuote(
     .update(reservations)
     .set({ status: 'declined', updatedAt: new Date() })
     .where(eq(reservations.id, reservationId))
+
+  // Pay-as-you-go: void the pending reservation fee — the customer declined the quote,
+  // so it must not be invoiced at month-end. (No-op if no fee / already collected.)
+  try {
+    await voidReservationFee(reservationId)
+  } catch (error) {
+    console.error('[payg] Failed to void declined-quote reservation fee:', {
+      reservationId,
+      error,
+    })
+  }
 
   // Log activity
   await db.insert(reservationActivity).values({

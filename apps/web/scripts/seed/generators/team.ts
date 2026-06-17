@@ -83,9 +83,9 @@ export function generateTeam(
   })
 
   // Generate additional team members based on plan
-  // start: 0 members, pro: up to 2, ultra: unlimited
+  // pro: up to 2, ultra / pay-as-you-go: unlimited
   const maxMembers =
-    storeConfig.planSlug === 'start' ? 0 : storeConfig.planSlug === 'pro' ? 2 : storeConfig.teamSize
+    storeConfig.planSlug === 'pro' ? 2 : storeConfig.teamSize
 
   const memberCount = Math.min(storeConfig.teamSize - 1, maxMembers) // -1 for owner
 

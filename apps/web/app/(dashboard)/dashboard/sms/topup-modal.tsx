@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import Link from 'next/link'
-import { Loader2, CreditCard, Sparkles, Check, X, MessageSquare, ArrowRight } from 'lucide-react'
+import { Loader2, CreditCard, Sparkles, Check, X, ArrowRight } from 'lucide-react'
 
 import {
   Dialog,
@@ -41,7 +41,10 @@ export function TopupModal({ open, onOpenChange, priceCents, planSlug }: TopupMo
 
   const priceEuros = priceCents / 100
   const isPro = planSlug === 'pro'
-  const isStart = planSlug === 'start'
+  const planLabel =
+    planSlug === 'pay_as_you_go'
+      ? 'Pay as you go'
+      : planSlug.charAt(0).toUpperCase() + planSlug.slice(1)
 
   const handlePurchase = async () => {
     setLoading(true)
@@ -66,93 +69,6 @@ export function TopupModal({ open, onOpenChange, priceCents, planSlug }: TopupMo
     return (cents / 100).toFixed(2).replace('.', ',') + '€'
   }
 
-  // Start plan users see upgrade prompt with plan comparison
-  if (isStart) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogPopup className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                <MessageSquare className="h-5 w-5 text-primary" />
-              </div>
-              {t('upsell.startTitle')}
-            </DialogTitle>
-            <DialogDescription>{t('upsell.startDescription')}</DialogDescription>
-          </DialogHeader>
-
-          <DialogPanel>
-            <div className="space-y-4 pt-2">
-              {/* Plan comparison */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* Pro Plan */}
-                <div className="relative flex flex-col rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-sm">
-                  <div className="mb-3">
-                    <h3 className="font-semibold">Pro</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-primary">{PLAN_DETAILS.pro.price}€</span>
-                      <span className="text-xs text-muted-foreground">{t('upsell.month')}</span>
-                    </div>
-                  </div>
-                  <div className="flex-1 space-y-2.5">
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10">
-                        <Check className="h-3 w-3 text-primary" />
-                      </div>
-                      <span>{t('upsell.smsIncluded', { count: PLAN_DETAILS.pro.smsIncluded })}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-muted">
-                        <Sparkles className="h-3 w-3" />
-                      </div>
-                      <span>{t('upsell.topupPrice', { price: PLAN_DETAILS.pro.topupPrice })}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ultra Plan */}
-                <div className="relative flex flex-col rounded-xl border-2 border-primary bg-gradient-to-br from-primary/5 via-primary/5 to-primary/10 p-4 shadow-sm shadow-primary/10">
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-medium text-primary-foreground shadow-sm">
-                    {t('upsell.recommended')}
-                  </span>
-                  <div className="mb-3">
-                    <h3 className="font-semibold">Ultra</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-primary">{PLAN_DETAILS.ultra.price}€</span>
-                      <span className="text-xs text-muted-foreground">{t('upsell.month')}</span>
-                    </div>
-                  </div>
-                  <div className="flex-1 space-y-2.5">
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15">
-                        <Check className="h-3 w-3 text-primary" />
-                      </div>
-                      <span className="font-medium">
-                        {t('upsell.smsIncluded', { count: PLAN_DETAILS.ultra.smsIncluded })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10">
-                        <Sparkles className="h-3 w-3 text-primary/70" />
-                      </div>
-                      <span>{t('upsell.topupPrice', { price: PLAN_DETAILS.ultra.topupPrice })}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* CTA */}
-              <Button className="w-full shadow-sm shadow-primary/20" render={<Link href="/dashboard/subscription" />}>
-                  {t('upsell.upgradeToPro')}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </DialogPanel>
-        </DialogPopup>
-      </Dialog>
-    )
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="sm:max-w-md">
@@ -166,7 +82,7 @@ export function TopupModal({ open, onOpenChange, priceCents, planSlug }: TopupMo
           <DialogDescription>
             {t('description', {
               price: priceEuros.toFixed(2).replace('.', ','),
-              plan: planSlug.charAt(0).toUpperCase() + planSlug.slice(1),
+              plan: planLabel,
             })}
           </DialogDescription>
         </DialogHeader>

@@ -80,8 +80,8 @@ import {
   isLegacyTulipInsuranceItem,
 } from '@/lib/integrations/tulip/contracts-insurance';
 import {
-  recordBillableLocation,
-  voidLocationUsage,
+  recordReservationFee,
+  voidReservationFee,
 } from '@/lib/pay-as-you-go';
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
@@ -355,17 +355,22 @@ export async function updateReservationStatus(
     });
   }
 
-  // Pay-as-you-go metering (no-op for subscription stores). Record on confirmation,
-  // void when rejected before the rental was ever billed.
+  // Pay-as-you-go metering (no-op for subscription stores). Record the fee when a
+  // rental becomes billable; void it on ANY transition away from a billable state
+  // (rejected/cancelled/declined/back-to-quote) so a withdrawn rental is never invoiced.
+  const BILLABLE_STATUSES = ['confirmed', 'ongoing', 'completed'];
   try {
-    if (status === 'confirmed' && previousStatus !== 'confirmed') {
-      await recordBillableLocation({
+    if (BILLABLE_STATUSES.includes(status) && !BILLABLE_STATUSES.includes(previousStatus)) {
+      await recordReservationFee({
         storeId: store.id,
         reservationId,
         source: 'manual',
       });
-    } else if (status === 'rejected') {
-      await voidLocationUsage(reservationId);
+    } else if (
+      BILLABLE_STATUSES.includes(previousStatus) &&
+      !BILLABLE_STATUSES.includes(status)
+    ) {
+      await voidReservationFee(reservationId);
     }
   } catch (error) {
     console.error('[payg] metering on status change failed:', {
@@ -597,7 +602,7 @@ export async function cancelReservation(reservationId: string) {
 
   // Pay-as-you-go: drop the (not-yet-billed) commission for this rental.
   try {
-    await voidLocationUsage(reservationId);
+    await voidReservationFee(reservationId);
   } catch (error) {
     console.error('[payg] Failed to void usage on cancellation:', {
       reservationId,
@@ -1304,7 +1309,7 @@ export async function createManualReservation(data: CreateReservationData) {
   // counts as a billable location (quotes are billed when later accepted).
   if (!data.sendAsQuote) {
     try {
-      await recordBillableLocation({
+      await recordReservationFee({
         storeId: store.id,
         reservationId,
         source: 'manual',
@@ -3139,6 +3144,26 @@ export async function createDepositHold(reservationId: string) {
       customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
     });
 
+    // An off-session confirmation only yields a usable hold when it reaches
+    // requires_capture. Any other status (requires_action, processing, …) means no funds
+    // are actually held — do not mark the deposit authorized; surface it as failed so the
+    // owner can re-request via the on-storefront card flow.
+    if (result.status !== 'requires_capture') {
+      await db
+        .update(reservations)
+        .set({ depositStatus: 'failed', updatedAt: new Date() })
+        .where(eq(reservations.id, reservationId));
+
+      await logDepositActivity(
+        reservationId,
+        'deposit_failed',
+        `Empreinte non capturable (statut Stripe: ${result.status})`,
+        { paymentIntentId: result.paymentIntentId, status: result.status },
+      );
+
+      return { error: 'errors.stripe.authorizationFailed' };
+    }
+
     // Update reservation
     await db
       .update(reservations)
@@ -4099,8 +4124,8 @@ export async function requestPayment(
       return { error: 'errors.unauthorized' };
     }
 
-    // Check Stripe is configured
-    if (!store.stripeAccountId) {
+    // Check Stripe is configured and able to take payments
+    if (!store.stripeAccountId || !store.stripeChargesEnabled) {
       return { error: 'errors.stripeNotConfigured' };
     }
 

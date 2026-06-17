@@ -5,7 +5,7 @@
  * Pricing is based on the store's current plan:
  * - Pro: 0.15€ per SMS
  * - Ultra: 0.07€ per SMS
- * - Start: Not allowed to top-up
+ * - Pay as you go: 0.07€ per SMS (no included allowance — every SMS is bought)
  */
 
 import { stripe } from './client'
@@ -34,8 +34,8 @@ export interface SmsTopupCheckoutResult {
 }
 
 /**
- * Get the SMS top-up price per SMS for a store based on its plan
- * Returns null if the store cannot top-up (Start plan)
+ * Get the SMS top-up price per SMS for a store based on its plan.
+ * Returns canTopup=false / null price for any plan slug not in SMS_TOPUP_PRICING.
  */
 export async function getSmsTopupPrice(storeId: string): Promise<{
   canTopup: boolean

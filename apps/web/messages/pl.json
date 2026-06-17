@@ -408,7 +408,6 @@
         "processing": "Przetwarzanie...",
         "success": "Doładowanie udane! Twoje kredyty zostały dodane.",
         "cancelled": "Płatność została anulowana. Twoje kredyty nie zostały obciążone.",
-        "notAvailable": "Doładowanie SMS nie jest dostępne dla planu Start. Przejdź na Pro lub Ultra, aby doładować.",
         "errors": {
           "generic": "Wystąpił błąd podczas doładowania",
           "notEligible": "Twój plan nie pozwala na doładowanie SMS"
@@ -419,9 +418,6 @@
           "didYouKnow": "Czy wiesz, że?",
           "ultraBenefit": "Z Ultra płacisz tylko {price} za SMS i otrzymujesz {count} SMS w pakiecie co miesiąc.",
           "upgradeToUltra": "Przejdź na Ultra",
-          "startTitle": "Odblokuj SMS",
-          "startDescription": "Wysyłaj automatyczne powiadomienia do swoich klientów",
-          "upgradeToPro": "Zobacz plany",
           "compareTitle": "Wybierz swój plan",
           "smsIncluded": "{count} SMS/miesiąc w pakiecie",
           "topupPrice": "Doładowanie za {price}/SMS",
@@ -2167,10 +2163,10 @@
         },
         "cancelModal": {
           "title": "Anulować subskrypcję?",
-          "description": "Anulując subskrypcję, wrócisz do darmowego planu z następującymi ograniczeniami:",
-          "limit1": "Maksymalnie 5 produktów",
-          "limit2": "10 rezerwacji miesięcznie",
-          "limit3": "Maksymalnie 50 klientów",
+          "description": "Po anulowaniu subskrypcji Twój sklep przejdzie na płatność za użycie z końcem opłaconego okresu:",
+          "limit1": "Wszystkie produkty, rezerwacje i klienci pozostają dostępni",
+          "limit2": "Brak miesięcznej opłaty abonamentowej",
+          "limit3": "Zamiast tego zapłacisz za każdy wynajem (płatność za użycie)",
           "keepAccess": "Zachowasz dostęp do obecnego planu do {date}.",
           "confirm": "Akceptuję i potwierdzam anulowanie",
           "cancel": "Anuluj",
@@ -2266,7 +2262,10 @@
           "previewHowDescription": "Płatności online są obciążane niewielką prowizją w momencie płatności; wynajmy gotówkowe są łączone na jednej fakturze pobieranej 1. dnia każdego miesiąca.",
           "activate": "Aktywuj płatność za użycie",
           "deferredNote": "Twój obecny plan pozostaje aktywny do końca opłaconego okresu; potem płatność za użycie przejmuje automatycznie — bez podwójnego naliczania.",
-          "backToPlans": "Powrót do abonamentów"
+          "backToPlans": "Powrót do abonamentów",
+          "addPaymentMethod": "Dodaj kartę",
+          "freeReservationsTitle": "Pozostało {count} darmowych rezerwacji",
+          "freeReservationsDescription": "Pozostało {remaining} z {granted} powitalnych darmowych rezerwacji — bez prowizji."
         }
       },
       "team": "Zespół",
@@ -3583,7 +3582,8 @@
         "deleteAccountDescription": "Trwale usuń konto i wszystkie dane",
         "deleteAccountWarning": "Ta akcja jest nieodwracalna. Wszystkie Twoje dane zostaną usunięte.",
         "signOut": "Wyloguj się",
-        "comingSoon": "Wkrótce"
+        "comingSoon": "Wkrótce",
+        "administration": "Administracja"
       },
       "admin": {
         "title": "Admin platformy",
@@ -3623,6 +3623,13 @@
           "tierAndAbove": "i więcej",
           "tierAdd": "Dodaj próg",
           "saved": "Zapisano ustawienia płatności za użycie"
+        },
+        "freeReservations": {
+          "title": "Darmowe rezerwacje",
+          "description": "Rezerwacje podarowane sklepowi przy założeniu — dopóki są kredyty, prowizja za wynajem jest zniesiona.",
+          "grantedLabel": "Przyznane darmowe rezerwacje",
+          "unit": "rezerwacje",
+          "remaining": "pozostało {remaining} z {granted}"
         }
       },
       "integrations": "Integracje",
@@ -3751,6 +3758,65 @@
               "margin": "Marża / dzień"
             }
           }
+        }
+      },
+      "finance": {
+        "title": "Finanse",
+        "description": "Przychody platformy z opłat za rezerwacje.",
+        "multiCurrencyWarning": "Kwoty są wyświetlane w {currency}. Występują inne waluty, które są wykluczone: {currencies}.",
+        "empty": "Nie zarejestrowano jeszcze żadnych opłat.",
+        "kpi": {
+          "realizedAllTime": "Zrealizowane przychody (łącznie)",
+          "realizedHint": "Opłaty pobrane u źródła lub zafakturowane na koniec miesiąca.",
+          "thisMonth": "Zrealizowane w {month}",
+          "pending": "Należne (jeszcze niezafakturowane)",
+          "pendingHint": "Opłaty za rezerwację do zafakturowania na koniec miesiąca.",
+          "reversed": "Zwrócone",
+          "reversedHint": "Opłaty zwrócone przy pełnych zwrotach.",
+          "paidRentals": "Płatne wynajmy",
+          "paidRentalsHint": "Wynajmy z prowizją",
+          "freeRentals": "Darmowe wynajmy",
+          "freeRentalsHint": "Zniesione w ramach kredytu powitalnego"
+        },
+        "byMonth": {
+          "title": "Według miesiąca",
+          "description": "Zrealizowane opłaty i kwoty należne według miesiąca rozliczeniowego."
+        },
+        "byStore": {
+          "title": "Według sklepu",
+          "description": "Przychody z opłat i wykorzystanie według sklepu."
+        },
+        "table": {
+          "month": "Miesiąc",
+          "store": "Sklep",
+          "mode": "Rozliczenie",
+          "realized": "Zrealizowane",
+          "pending": "Należne",
+          "rentals": "Wynajmy",
+          "free": "Darmowe"
+        },
+        "mode": {
+          "subscription": "Subskrypcja",
+          "pay_as_you_go": "Płatność za użycie"
+        },
+        "recent": {
+          "title": "Ostatnie opłaty",
+          "description": "50 najnowszych wpisów w rejestrze.",
+          "amount": "Kwota",
+          "source": "Źródło",
+          "status": "Status"
+        },
+        "source": {
+          "online": "Online",
+          "manual": "Ręcznie",
+          "free": "Darmowe"
+        },
+        "status": {
+          "pending": "Oczekujące",
+          "collected": "Pobrane",
+          "billed": "Zafakturowane",
+          "voided": "Anulowane",
+          "reversed": "Zwrócone"
         }
       }
     },
@@ -5365,6 +5431,13 @@
         "title": "Bezpieczeństwo danych",
         "body": "Wdrażamy odpowiednie środki techniczne i organizacyjne w celu ochrony Twoich danych przed utratą, nieuprawnionym dostępem, modyfikacją lub ujawnieniem: szyfrowanie komunikacji, kontrola dostępu, regularne kopie zapasowe oraz bezpieczny hosting na terenie Unii Europejskiej."
       }
+    }
+  },
+  "platformAdmin": {
+    "title": "Administracja",
+    "backToDashboard": "Powrót do panelu",
+    "nav": {
+      "finance": "Finanse"
     }
   }
 }

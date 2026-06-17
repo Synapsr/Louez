@@ -295,17 +295,18 @@ async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subscription
     return
   }
 
-  // If the owner scheduled a switch to pay-as-you-go (cancel at period end), apply it
-  // now that the paid period has actually ended — no double billing in between.
-  const switchingToPayg =
+  // The free tier no longer exists, so any ended subscription (whether the owner
+  // scheduled a switch to pay-as-you-go, or it simply lapsed/cancelled) falls back to
+  // pay-as-you-go: the store keeps working with no monthly fee and is billed per rental.
+  const scheduledPaygSwitch =
     stripeSubscription.metadata?.pendingBillingMode === 'pay_as_you_go'
 
   await db
     .update(subscriptions)
     .set({
-      planSlug: 'start',
-      billingMode: switchingToPayg ? 'pay_as_you_go' : 'subscription',
-      status: switchingToPayg ? 'active' : 'cancelled',
+      planSlug: 'pay_as_you_go',
+      billingMode: 'pay_as_you_go',
+      status: 'active',
       stripeSubscriptionId: null,
       cancelAtPeriodEnd: false,
       currentPeriodEnd: null,
@@ -320,6 +321,6 @@ async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subscription
   }
 
   console.log(
-    `Subscription ended: ${stripeSubscription.id}${switchingToPayg ? ' → switched to pay-as-you-go' : ''}`,
+    `Subscription ended: ${stripeSubscription.id} → pay-as-you-go${scheduledPaygSwitch ? ' (owner-scheduled)' : ' (lapsed/cancelled)'}`,
   )
 }

@@ -58,6 +58,8 @@ export default async function SubscriptionPage({
           bands={usage.bands}
           hasPaymentMethod={hasPaymentMethod}
           invoices={invoices}
+          freeReservationsRemaining={billing.freeReservationsRemaining}
+          freeReservationsGranted={billing.freeReservationsGranted}
         />
       </div>
     )

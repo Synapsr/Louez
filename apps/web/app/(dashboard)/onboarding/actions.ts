@@ -14,6 +14,10 @@ import {
 import { defaultBusinessHours } from '@louez/validations'
 import { getTimezoneForCountry } from '@/lib/utils/countries'
 import { generateReferralCode, isValidReferralCode } from '@/lib/utils/referral'
+import {
+  getDefaultFreeReservations,
+  getDefaultPayAsYouGoConfigSnapshot,
+} from '@/lib/pay-as-you-go/defaults'
 
 export async function createStore(data: StoreInfoInput) {
   const session = await auth()
@@ -191,11 +195,18 @@ export async function createStore(data: StoreInfoInput) {
     })
 
     // New stores default to pay-as-you-go billing (the owner can switch to a
-    // subscription plan at any time from the subscription page).
+    // subscription plan at any time from the subscription page). Snapshot the current
+    // default pricing offer (PAYG_DEFAULT_PRICING env, or the platform default ladder)
+    // so the store keeps these tariffs for life even if the offer later changes.
     await db.insert(subscriptions).values({
       storeId: newStore.id,
-      planSlug: 'start',
+      planSlug: 'pay_as_you_go',
       billingMode: 'pay_as_you_go',
+      payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(
+        validated.data.currency,
+      ),
+      // Welcome gift: free reservations (commission waived) for the new store.
+      freeReservationsGranted: getDefaultFreeReservations(),
     })
 
     // Set as active store (will succeed since we just created ownership above)

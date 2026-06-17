@@ -302,7 +302,7 @@ export async function getStorePerformance(
           ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
           : 0
 
-      const plan = getPlan(store.planSlug || 'start') || getDefaultPlan()
+      const plan = getPlan(store.planSlug ?? '') || getDefaultPlan()
 
       return {
         storeId: store.id,
@@ -360,7 +360,7 @@ export async function getStoresApproachingLimits(
     const storesWithUsage = await Promise.all(
       storeInfo.map(async (store) => ({
         store,
-        plan: getPlan(store.planSlug || 'start') || getDefaultPlan(),
+        plan: getPlan(store.planSlug ?? '') || getDefaultPlan(),
         usage: await getStoreUsage(store.id),
       }))
     )

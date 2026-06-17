@@ -408,7 +408,6 @@
         "processing": "Elaborazione...",
         "success": "Ricarica effettuata! I tuoi crediti sono stati aggiunti.",
         "cancelled": "Il pagamento è stato annullato. I tuoi crediti non sono stati addebitati.",
-        "notAvailable": "La ricarica SMS non è disponibile per il piano Start. Passa a Pro o Ultra per ricaricare.",
         "errors": {
           "generic": "Si è verificato un errore durante la ricarica",
           "notEligible": "Il tuo piano non consente la ricarica SMS"
@@ -419,9 +418,6 @@
           "didYouKnow": "Lo sapevi?",
           "ultraBenefit": "Con Ultra, paghi solo {price} per SMS e ottieni {count} SMS inclusi ogni mese.",
           "upgradeToUltra": "Passa a Ultra",
-          "startTitle": "Sblocca gli SMS",
-          "startDescription": "Invia notifiche automatiche ai tuoi clienti",
-          "upgradeToPro": "Vedi i piani",
           "compareTitle": "Scegli il tuo piano",
           "smsIncluded": "{count} SMS/mese inclusi",
           "topupPrice": "Ricarica a {price}/SMS",
@@ -2167,10 +2163,10 @@
         },
         "cancelModal": {
           "title": "Annullare l'abbonamento?",
-          "description": "Annullando l'abbonamento, tornerai al piano gratuito con le seguenti limitazioni:",
-          "limit1": "Massimo 5 prodotti",
-          "limit2": "10 prenotazioni al mese",
-          "limit3": "Massimo 50 clienti",
+          "description": "Annullando l'abbonamento, il tuo negozio passerà al pagamento a consumo alla fine del periodo pagato:",
+          "limit1": "Tutti i tuoi prodotti, prenotazioni e clienti restano accessibili",
+          "limit2": "Nessun canone mensile di abbonamento",
+          "limit3": "Ti verrà addebitato per noleggio (pagamento a consumo)",
           "keepAccess": "Manterrai l'accesso al tuo piano attuale fino al {date}.",
           "confirm": "Accetto e confermo l'annullamento",
           "cancel": "Annulla",
@@ -2266,7 +2262,10 @@
           "previewHowDescription": "I pagamenti online prevedono una piccola commissione trattenuta al momento del pagamento; i noleggi in contanti vengono raggruppati in un’unica fattura addebitata il 1° di ogni mese.",
           "activate": "Attiva il pagamento a consumo",
           "deferredNote": "Il tuo piano attuale resta attivo fino alla fine del periodo pagato; il pagamento a consumo subentra automaticamente dopo, senza doppia fatturazione.",
-          "backToPlans": "Torna ai piani"
+          "backToPlans": "Torna ai piani",
+          "addPaymentMethod": "Aggiungi una carta",
+          "freeReservationsTitle": "{count} prenotazioni gratuite rimaste",
+          "freeReservationsDescription": "Ti restano {remaining} delle {granted} prenotazioni gratuite di benvenuto — nessuna commissione su queste."
         }
       },
       "team": "Team",
@@ -3583,7 +3582,8 @@
         "deleteAccountDescription": "Elimina definitivamente il tuo account e tutti i tuoi dati",
         "deleteAccountWarning": "Questa azione e irreversibile. Tutti i tuoi dati saranno eliminati.",
         "signOut": "Esci",
-        "comingSoon": "Prossimamente"
+        "comingSoon": "Prossimamente",
+        "administration": "Amministrazione"
       },
       "admin": {
         "title": "Admin piattaforma",
@@ -3623,6 +3623,13 @@
           "tierAndAbove": "e oltre",
           "tierAdd": "Aggiungi uno scaglione",
           "saved": "Impostazioni di pagamento a consumo salvate"
+        },
+        "freeReservations": {
+          "title": "Prenotazioni gratuite",
+          "description": "Prenotazioni offerte alla creazione del negozio: finché restano crediti, la commissione per noleggio è azzerata.",
+          "grantedLabel": "Prenotazioni gratuite concesse",
+          "unit": "prenotazioni",
+          "remaining": "{remaining} di {granted} rimanenti"
         }
       },
       "integrations": "Integrazioni",
@@ -3751,6 +3758,65 @@
               "margin": "Margine / giorno"
             }
           }
+        }
+      },
+      "finance": {
+        "title": "Finanze",
+        "description": "Ricavi della piattaforma dalle commissioni di prenotazione.",
+        "multiCurrencyWarning": "Gli importi sono mostrati in {currency}. Sono presenti altre valute escluse: {currencies}.",
+        "empty": "Nessuna commissione registrata finora.",
+        "kpi": {
+          "realizedAllTime": "Ricavi realizzati (totale)",
+          "realizedHint": "Commissioni trattenute alla fonte o fatturate a fine mese.",
+          "thisMonth": "Realizzato a {month}",
+          "pending": "Dovuto (non ancora fatturato)",
+          "pendingHint": "Commissioni di prenotazione da fatturare a fine mese.",
+          "reversed": "Rimborsato",
+          "reversedHint": "Commissioni restituite in caso di rimborso totale.",
+          "paidRentals": "Noleggi a pagamento",
+          "paidRentalsHint": "Noleggi che hanno generato una commissione",
+          "freeRentals": "Noleggi gratuiti",
+          "freeRentalsHint": "Azzerati dal bonus di benvenuto"
+        },
+        "byMonth": {
+          "title": "Per mese",
+          "description": "Commissioni realizzate e importi ancora dovuti per mese di fatturazione."
+        },
+        "byStore": {
+          "title": "Per negozio",
+          "description": "Ricavi da commissioni e utilizzo per negozio."
+        },
+        "table": {
+          "month": "Mese",
+          "store": "Negozio",
+          "mode": "Fatturazione",
+          "realized": "Realizzato",
+          "pending": "Dovuto",
+          "rentals": "Noleggi",
+          "free": "Gratis"
+        },
+        "mode": {
+          "subscription": "Abbonamento",
+          "pay_as_you_go": "Pagamento a consumo"
+        },
+        "recent": {
+          "title": "Commissioni recenti",
+          "description": "Le 50 voci più recenti del registro.",
+          "amount": "Importo",
+          "source": "Origine",
+          "status": "Stato"
+        },
+        "source": {
+          "online": "Online",
+          "manual": "Manuale",
+          "free": "Gratis"
+        },
+        "status": {
+          "pending": "In attesa",
+          "collected": "Trattenuto",
+          "billed": "Fatturato",
+          "voided": "Annullato",
+          "reversed": "Rimborsato"
         }
       }
     },
@@ -5365,6 +5431,13 @@
         "title": "Sicurezza dei dati",
         "body": "Adottiamo misure tecniche e organizzative adeguate per proteggere i tuoi dati da perdita, accesso non autorizzato, alterazione o divulgazione: cifratura delle comunicazioni, controllo degli accessi, backup regolari e hosting sicuro all'interno dell'Unione europea."
       }
+    }
+  },
+  "platformAdmin": {
+    "title": "Amministrazione",
+    "backToDashboard": "Torna alla dashboard",
+    "nav": {
+      "finance": "Finanze"
     }
   }
 }
