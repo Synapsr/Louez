@@ -140,11 +140,16 @@ export async function createStore(data: StoreInfoInput) {
     let referredByStoreId: string | null = null
 
     if (referralCookie && isValidReferralCode(referralCookie)) {
-      // Attribution applies only to a user's FIRST store. The .louez.io cookie can survive
-      // for 30 days, so without this guard a referred user who creates a second store would
-      // re-credit the referrer and re-claim the Referred Reward on every signup.
+      // Attribution applies only to a user's first OWNED store. The .louez.io cookie can
+      // survive for 30 days, so without this guard a referred user who creates a second
+      // store would re-credit the referrer and re-claim the Referred Reward on every signup.
+      // Filter on role 'owner' so a user who is only a team member elsewhere is still
+      // attributed when they create their own first store.
       const ownsAStore = await db.query.storeMembers.findFirst({
-        where: eq(storeMembers.userId, session.user.id),
+        where: and(
+          eq(storeMembers.userId, session.user.id),
+          eq(storeMembers.role, 'owner'),
+        ),
         columns: { id: true },
       })
       if (!ownsAStore) {
