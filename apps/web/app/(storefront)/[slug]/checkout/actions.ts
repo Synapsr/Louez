@@ -1693,6 +1693,7 @@ export async function createReservation(input: CreateReservationInput) {
         phone: store.phone,
         address: store.address,
         theme: store.theme,
+        settings: store.settings,
       };
 
       const customerData = {

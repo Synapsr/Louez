@@ -65,6 +65,10 @@ interface Store {
   } | null
 }
 
+type StoreWithEmailDateSettings = Store & {
+  settings: Store['settings']
+}
+
 interface Customer {
   firstName: string
   lastName: string
@@ -950,7 +954,7 @@ export async function sendNewRequestLandlordEmail({
   locale = 'fr',
 }: {
   to: string
-  store: Store
+  store: StoreWithEmailDateSettings
   customer: Customer
   reservation: {
     id: string
