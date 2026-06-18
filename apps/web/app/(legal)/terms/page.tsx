@@ -12,5 +12,5 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function TermsPage() {
-  return <LegalPage namespace="legalPages.terms" sectionCount={8} />;
+  return <LegalPage namespace="legalPages.terms" sectionCount={9} />;
 }
