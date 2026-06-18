@@ -198,6 +198,23 @@
     }
   },
   "dashboard": {
+    "installPrompt": {
+      "title": "App installeren",
+      "subtitle": "Houd je dashboard binnen handbereik op je beginscherm.",
+      "install": "Installeren",
+      "later": "Niet nu",
+      "inApp": "Open deze link in je browser om de app te installeren.",
+      "installedToast": "App geïnstalleerd. Je vindt 'm op je beginscherm.",
+      "close": "Sluiten",
+      "ios": {
+        "cta": "Zo doe je dat",
+        "title": "Zet op beginscherm",
+        "step1": "Tik op het deel-icoon",
+        "step2": "Kies 'Zet op beginscherm'",
+        "step3": "Tik op 'Voeg toe'",
+        "other": "Open deze site in Safari om de app te installeren."
+      }
+    },
     "title": "Dashboard",
     "notifications": {
       "newReservation": "Nieuwe reservering #{number}",

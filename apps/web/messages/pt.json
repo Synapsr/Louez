@@ -198,6 +198,23 @@
     }
   },
   "dashboard": {
+    "installPrompt": {
+      "title": "Instalar a aplicação",
+      "subtitle": "Tenha o seu painel sempre à mão no ecrã principal.",
+      "install": "Instalar",
+      "later": "Agora não",
+      "inApp": "Abra este link no seu navegador para instalar a aplicação.",
+      "installedToast": "Aplicação instalada. Encontra-a no seu ecrã principal.",
+      "close": "Fechar",
+      "ios": {
+        "cta": "Ver como",
+        "title": "Adicionar ao ecrã principal",
+        "step1": "Toque no ícone Partilhar",
+        "step2": "Escolha «Adicionar ao ecrã principal»",
+        "step3": "Toque em «Adicionar»",
+        "other": "Abra este site no Safari para instalar a aplicação."
+      }
+    },
     "title": "Painel",
     "notifications": {
       "newReservation": "Nova reserva #{number}",

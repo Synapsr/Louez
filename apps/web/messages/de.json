@@ -198,6 +198,23 @@
     }
   },
   "dashboard": {
+    "installPrompt": {
+      "title": "App installieren",
+      "subtitle": "Ihr Dashboard immer griffbereit auf dem Startbildschirm.",
+      "install": "Installieren",
+      "later": "Später",
+      "inApp": "Öffnen Sie diesen Link in Ihrem Browser, um die App zu installieren.",
+      "installedToast": "App installiert. Sie finden sie auf Ihrem Startbildschirm.",
+      "close": "Schließen",
+      "ios": {
+        "cta": "So geht's",
+        "title": "Zum Home-Bildschirm hinzufügen",
+        "step1": "Tippen Sie auf das Teilen-Symbol",
+        "step2": "Wählen Sie „Zum Home-Bildschirm“",
+        "step3": "Tippen Sie auf „Hinzufügen“",
+        "other": "Öffnen Sie diese Seite in Safari, um die App zu installieren."
+      }
+    },
     "title": "Dashboard",
     "notifications": {
       "newReservation": "Neue Reservierung #{number}",
