@@ -93,6 +93,14 @@ export const env = createEnv({
       .url('DISCORD_ADMIN_WEBHOOK_URL must be a valid URL')
       .optional(),
 
+    // ===== Web Push (Optional — VAPID keys for push notifications) =====
+    // One app-wide keypair. Generate with `npx web-push generate-vapid-keys`.
+    // When unset, push is simply unavailable (the channel degrades gracefully).
+    VAPID_PRIVATE_KEY: z.string().optional(),
+    // Contact subject for the push service (mailto: or https:). Falls back to
+    // NEXT_PUBLIC_APP_URL in the sender when unset.
+    VAPID_SUBJECT: z.string().optional(),
+
     // ===== Tulip Integrations (Optional) =====
     TULIP_API_KEY: z.string().optional(),
     TULIP_API_BASE_URL: z
@@ -190,6 +198,9 @@ export const env = createEnv({
       .string()
       .min(1, 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is required'),
 
+    // ===== Web Push (Optional — VAPID public key for subscribe()) =====
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
+
     // ===== PostHog Analytics (Required) =====
     NEXT_PUBLIC_POSTHOG_KEY: z
       .string()
@@ -251,6 +262,8 @@ export const env = createEnv({
     GOOGLE_PLACES_CACHE_TTL_HOURS: process.env.GOOGLE_PLACES_CACHE_TTL_HOURS,
     PLATFORM_ADMIN_EMAILS: process.env.PLATFORM_ADMIN_EMAILS,
     DISCORD_ADMIN_WEBHOOK_URL: process.env.DISCORD_ADMIN_WEBHOOK_URL,
+    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    VAPID_SUBJECT: process.env.VAPID_SUBJECT,
     TULIP_API_BASE_URL: process.env.TULIP_API_BASE_URL,
     TULIP_API_KEY: process.env.TULIP_API_KEY,
     TULIP_CALENDLY_URL: process.env.TULIP_CALENDLY_URL,
@@ -275,6 +288,7 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     NEXT_PUBLIC_UMAMI_SCRIPT_URL: process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL,

@@ -2550,6 +2550,18 @@
         "templateSaved": "Szablon zapisany"
       },
       "notifications": {
+        "push": {
+          "title": "Powiadomienia push",
+          "description": "Otrzymuj alert na tym urządzeniu, gdy tylko pojawi się nowa rezerwacja — nawet gdy aplikacja jest zamknięta.",
+          "enable": "Włącz na tym urządzeniu",
+          "enabled": "Włączone na tym urządzeniu",
+          "disable": "Wyłącz",
+          "disabledToast": "Powiadomienia push wyłączone na tym urządzeniu.",
+          "iosNeedsInstall": "Na iPhonie najpierw dodaj aplikację do ekranu głównego, aby włączyć powiadomienia.",
+          "denied": "Powiadomienia są zablokowane. Zezwól na nie w ustawieniach przeglądarki.",
+          "confirmTitle": "Powiadomienia włączone",
+          "confirmBody": "Otrzymasz powiadomienie o każdej nowej rezerwacji."
+        },
         "title": "Powiadomienia",
         "description": "Skonfiguruj sposob otrzymywania powiadomien o wydarzeniach w sklepie",
         "saveError": "Blad podczas zapisywania",

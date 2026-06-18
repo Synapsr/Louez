@@ -16,6 +16,7 @@ import {
   LimitBanner,
   UpgradeModal,
 } from '@/components/dashboard/upgrade-modal';
+import { PushPrimer } from '@/components/dashboard/push-primer';
 
 import { orpc } from '@/lib/orpc/react';
 import type { LimitStatus } from '@/lib/plan-limits';
@@ -227,6 +228,9 @@ export function ReservationsPageContent({
 
   return (
     <div className="space-y-6">
+      {/* Contextual nudge to enable push (reservations are the value moment) */}
+      <PushPrimer />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -2550,6 +2550,18 @@
         "templateSaved": "Modelo salvo"
       },
       "notifications": {
+        "push": {
+          "title": "Notificações push",
+          "description": "Receba um alerta neste dispositivo assim que chegar uma nova reserva — mesmo com a aplicação fechada.",
+          "enable": "Ativar neste dispositivo",
+          "enabled": "Ativadas neste dispositivo",
+          "disable": "Desativar",
+          "disabledToast": "Notificações push desativadas neste dispositivo.",
+          "iosNeedsInstall": "No iPhone, adicione primeiro a aplicação ao ecrã principal para ativar as notificações.",
+          "denied": "As notificações estão bloqueadas. Permita-as nas definições do navegador.",
+          "confirmTitle": "Notificações ativadas",
+          "confirmBody": "Será notificado de cada nova reserva."
+        },
         "title": "Notificacoes",
         "description": "Configure como voce recebe notificacoes de eventos da loja",
         "saveError": "Erro ao salvar",

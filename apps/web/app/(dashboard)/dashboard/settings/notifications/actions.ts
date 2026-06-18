@@ -77,7 +77,7 @@ export async function getNotificationSettings() {
 
 export async function updateSinglePreference(data: {
   eventType: string
-  channel: 'email' | 'sms' | 'discord'
+  channel: 'email' | 'sms' | 'discord' | 'push'
   enabled: boolean
 }) {
   const store = await getCurrentStore()

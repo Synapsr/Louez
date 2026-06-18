@@ -10,7 +10,7 @@
  */
 
 import { db } from '@louez/db'
-import { stores, smsLogs } from '@louez/db'
+import { stores, smsLogs, pushSubscriptions, storeMembers } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from '@/lib/plan-limits'
 import { sendSms, isSmsConfigured } from '@/lib/sms/client'
@@ -36,6 +36,8 @@ import {
   sendReminderDigestAdminEmail,
 } from '@/lib/email/send'
 import type { DigestEntry } from '@/lib/email/templates'
+import { isPushConfigured, sendPush } from '@/lib/push/client'
+import { buildAdminPushPayload } from '@/lib/push/notifications'
 import type { NotificationEventType, NotificationSettings } from '@louez/types'
 
 // ============================================================================
@@ -77,6 +79,7 @@ export interface NotificationResult {
   email: { sent: boolean; error?: string }
   sms: { sent: boolean; error?: string; limitReached?: boolean }
   discord: { sent: boolean; error?: string }
+  push: { sent: boolean; error?: string }
 }
 
 // ============================================================================
@@ -84,16 +87,16 @@ export interface NotificationResult {
 // ============================================================================
 
 const DEFAULT_SETTINGS: NotificationSettings = {
-  reservation_new: { email: true, sms: false, discord: false },
-  reservation_confirmed: { email: true, sms: false, discord: false },
-  reservation_rejected: { email: true, sms: false, discord: false },
-  reservation_cancelled: { email: true, sms: false, discord: false },
-  reservation_picked_up: { email: false, sms: false, discord: false },
-  reservation_completed: { email: false, sms: false, discord: false },
-  reservation_reminder_pickup: { email: false, sms: false, discord: false },
-  reservation_reminder_return: { email: false, sms: false, discord: false },
-  payment_received: { email: true, sms: false, discord: false },
-  payment_failed: { email: true, sms: false, discord: false },
+  reservation_new: { email: true, sms: false, discord: false, push: true },
+  reservation_confirmed: { email: true, sms: false, discord: false, push: false },
+  reservation_rejected: { email: true, sms: false, discord: false, push: false },
+  reservation_cancelled: { email: true, sms: false, discord: false, push: false },
+  reservation_picked_up: { email: false, sms: false, discord: false, push: false },
+  reservation_completed: { email: false, sms: false, discord: false, push: false },
+  reservation_reminder_pickup: { email: false, sms: false, discord: false, push: false },
+  reservation_reminder_return: { email: false, sms: false, discord: false, push: false },
+  payment_received: { email: true, sms: false, discord: false, push: false },
+  payment_failed: { email: true, sms: false, discord: false, push: false },
 }
 
 // ============================================================================
@@ -440,11 +443,14 @@ export async function dispatchNotification(
     email: { sent: false },
     sms: { sent: false },
     discord: { sent: false },
+    push: { sent: false },
   }
 
-  // Get notification preferences (use defaults if not set)
+  // Get notification preferences (use defaults if not set). Merge per-channel
+  // over the defaults so stores saved before a channel existed (e.g. `push`)
+  // still inherit that channel's default instead of resolving to undefined.
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS
-  const prefs = settings[eventType] || DEFAULT_SETTINGS[eventType]
+  const prefs = { ...DEFAULT_SETTINGS[eventType], ...settings[eventType] }
 
   // Determine locale from store country
   const locale = getLocaleFromCountry(ctx.store.settings?.country)
@@ -470,6 +476,52 @@ export async function dispatchNotification(
       sent: smsResult.success,
       error: smsResult.error,
       limitReached: smsResult.limitReached,
+    }
+  }
+
+  // Web push to every store member's registered devices
+  if (prefs.push && isPushConfigured()) {
+    try {
+      const payload = buildAdminPushPayload(eventType, ctx, locale)
+      if (payload) {
+        const subs = await db
+          .select({
+            id: pushSubscriptions.id,
+            endpoint: pushSubscriptions.endpoint,
+            p256dh: pushSubscriptions.p256dh,
+            auth: pushSubscriptions.auth,
+          })
+          .from(pushSubscriptions)
+          .innerJoin(
+            storeMembers,
+            eq(storeMembers.userId, pushSubscriptions.userId)
+          )
+          .where(eq(storeMembers.storeId, ctx.store.id))
+
+        for (const sub of subs) {
+          const sendResult = await sendPush(
+            {
+              endpoint: sub.endpoint,
+              keys: { p256dh: sub.p256dh, auth: sub.auth },
+            },
+            payload
+          )
+          if (sendResult.success) {
+            result.push.sent = true
+          } else if (
+            sendResult.statusCode === 404 ||
+            sendResult.statusCode === 410
+          ) {
+            // Endpoint is gone — prune the dead subscription.
+            await db
+              .delete(pushSubscriptions)
+              .where(eq(pushSubscriptions.id, sub.id))
+          }
+        }
+      }
+    } catch (error) {
+      result.push.error =
+        error instanceof Error ? error.message : 'Unknown error'
     }
   }
 
@@ -569,6 +621,7 @@ export async function dispatchAdminReminder(
     email: { sent: false },
     sms: { sent: false },
     discord: { sent: false },
+    push: { sent: false },
   }
 
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS
@@ -730,6 +783,7 @@ export async function dispatchAdminDigest(ctx: AdminDigestContext): Promise<Noti
     email: { sent: false },
     sms: { sent: false },
     discord: { sent: false },
+    push: { sent: false },
   }
 
   const locale = getLocaleFromCountry(ctx.store.settings?.country)

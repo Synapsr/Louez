@@ -2870,6 +2870,18 @@
         "templateSaved": "Modèle enregistré"
       },
       "notifications": {
+        "push": {
+          "title": "Notifications push",
+          "description": "Recevez une alerte sur cet appareil dès qu'une nouvelle réservation arrive — même l'application fermée.",
+          "enable": "Activer sur cet appareil",
+          "enabled": "Activées sur cet appareil",
+          "disable": "Désactiver",
+          "disabledToast": "Notifications push désactivées sur cet appareil.",
+          "iosNeedsInstall": "Sur iPhone, ajoutez d'abord l'application à votre écran d'accueil pour activer les notifications.",
+          "denied": "Les notifications sont bloquées. Autorisez-les dans les réglages de votre navigateur pour les activer.",
+          "confirmTitle": "Notifications activées",
+          "confirmBody": "Vous serez prévenu de chaque nouvelle réservation."
+        },
         "title": "Notifications",
         "description": "Configurez comment vous êtes notifié des événements de votre boutique",
         "saveError": "Erreur lors de l'enregistrement",

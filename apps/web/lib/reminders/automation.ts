@@ -433,13 +433,14 @@ async function sendAdminReminder(
 
   // Forward settings with already-sent channels turned off so the dispatcher
   // only attempts the channels still pending for this reservation.
-  const baseConfig = adminSettings[eventType] ?? { email: false, sms: false, discord: false }
+  const baseConfig = adminSettings[eventType] ?? { email: false, sms: false, discord: false, push: false }
   const adjustedSettings: NotificationSettings = {
     ...adminSettings,
     [eventType]: {
       email: baseConfig.email && !alreadySent.has('email'),
       sms: baseConfig.sms && !alreadySent.has('sms'),
       discord: baseConfig.discord && !alreadySent.has('discord'),
+      push: baseConfig.push,
     },
   }
 

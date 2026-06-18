@@ -2870,6 +2870,18 @@
         "templateSaved": "Template saved"
       },
       "notifications": {
+        "push": {
+          "title": "Push notifications",
+          "description": "Get an alert on this device the moment a new reservation comes in — even when the app is closed.",
+          "enable": "Enable on this device",
+          "enabled": "Enabled on this device",
+          "disable": "Disable",
+          "disabledToast": "Push notifications disabled on this device.",
+          "iosNeedsInstall": "On iPhone, add the app to your Home Screen first to enable notifications.",
+          "denied": "Notifications are blocked. Allow them in your browser settings to enable.",
+          "confirmTitle": "Notifications enabled",
+          "confirmBody": "You'll be notified of every new reservation."
+        },
         "title": "Notifications",
         "description": "Configure how you receive store event notifications",
         "saveError": "Error saving settings",
