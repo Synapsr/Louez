@@ -66,7 +66,6 @@ import {
   createCheckoutSession,
   openCustomerPortal,
   reactivateSubscription,
-  switchToPayAsYouGo,
 } from './actions';
 
 interface Subscription {
@@ -174,25 +173,6 @@ export function SubscriptionManagement({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleSwitchToPayg = async () => {
-    setLoading('switch-payg');
-    setError(null);
-    try {
-      const result = await switchToPayAsYouGo();
-      if (result?.error) {
-        setError(t('payAsYouGo.switchError'));
-        return;
-      }
-      // Immediate (free plan) → page re-renders to the usage view.
-      // Deferred (paid plan) → page re-renders to show the pending banner.
-      router.refresh();
-    } catch {
-      setError(t('payAsYouGo.switchError'));
     } finally {
       setLoading(null);
     }
@@ -355,7 +335,7 @@ export function SubscriptionManagement({
   };
 
   // Get the current plan info
-  const currentPlanSlug = subscription?.planSlug || 'start';
+  const currentPlanSlug = subscription?.planSlug || 'pay_as_you_go';
   const currentPlan =
     subscription?.plan ||
     plans.find((p) => p.slug === currentPlanSlug) ||
@@ -458,7 +438,8 @@ export function SubscriptionManagement({
               'bg-gradient-to-r from-amber-400 to-orange-500',
             currentPlanSlug === 'pro' &&
               'from-primary bg-gradient-to-r to-blue-600',
-            currentPlanSlug === 'start' && 'bg-muted',
+            currentPlanSlug === 'pay_as_you_go' &&
+              'bg-gradient-to-r from-emerald-400 to-teal-500',
           )}
         />
         <CardHeader>
@@ -469,7 +450,7 @@ export function SubscriptionManagement({
                   'rounded-lg p-2',
                   currentPlanSlug === 'ultra' && 'bg-amber-500/10',
                   currentPlanSlug === 'pro' && 'bg-primary/10',
-                  currentPlanSlug === 'start' && 'bg-muted',
+                  currentPlanSlug === 'pay_as_you_go' && 'bg-emerald-500/10',
                 )}
               >
                 {currentPlanSlug === 'ultra' ? (
@@ -477,12 +458,12 @@ export function SubscriptionManagement({
                 ) : currentPlanSlug === 'pro' ? (
                   <Sparkles className="text-primary h-6 w-6" />
                 ) : (
-                  <Zap className="text-muted-foreground h-6 w-6" />
+                  <Zap className="h-6 w-6 text-emerald-500" />
                 )}
               </div>
               <div>
                 <CardTitle className="text-2xl">
-                  {currentPlan?.name || 'Start'}
+                  {currentPlan?.name || 'Pay as you go'}
                 </CardTitle>
                 <CardDescription>{currentPlan?.description}</CardDescription>
               </div>
@@ -514,7 +495,7 @@ export function SubscriptionManagement({
             )}
             {currentPlan?.price === 0 && (
               <span className="text-muted-foreground ml-2">
-                {t('freePlan')}
+                {t('payAsYouGo.badge')}
               </span>
             )}
           </div>
@@ -631,14 +612,14 @@ export function SubscriptionManagement({
               </Button>
             )}
 
-            {/* Owner-autonomous switch to pay-as-you-go (hidden when already
-                scheduled or when a PAYG store is here only to pick a plan). */}
+            {/* Owner-autonomous switch to pay-as-you-go — links to the tariffs
+                preview first (hidden when already scheduled or when a PAYG store
+                is here only to pick a plan). */}
             {!showBackToPayAsYouGo &&
               pendingBillingMode !== 'pay_as_you_go' && (
                 <Button
                   variant="outline"
-                  onClick={handleSwitchToPayg}
-                  disabled={loading === 'switch-payg'}
+                  render={<Link href="/dashboard/subscription?payg=1" />}
                 >
                   <Zap className="mr-2 h-4 w-4" />
                   {t('payAsYouGo.switchCta')}
@@ -735,7 +716,7 @@ export function SubscriptionManagement({
         )}
 
         {/* Plan Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           {plans.map((plan) => {
             const originalPrice = getPrice(plan);
             const discountedPrice = hasDiscount
@@ -801,15 +782,11 @@ export function SubscriptionManagement({
                   <div
                     className={cn(
                       'mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full',
-                      plan.slug === 'start' && 'bg-muted',
                       plan.slug === 'pro' && 'bg-primary/10',
                       plan.slug === 'ultra' &&
                         'bg-gradient-to-br from-amber-400/20 to-orange-500/20',
                     )}
                   >
-                    {plan.slug === 'start' && (
-                      <Zap className="text-muted-foreground h-5 w-5" />
-                    )}
                     {plan.slug === 'pro' && (
                       <Sparkles className="text-primary h-5 w-5" />
                     )}

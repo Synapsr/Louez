@@ -62,8 +62,9 @@ import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import {
+  buildFeeMetadata,
   getStoreBilling,
-  projectedNextLocationFeeCents,
+  planStripeFees,
 } from '@/lib/pay-as-you-go';
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
@@ -1904,21 +1905,17 @@ export async function createReservation(input: CreateReservationInput) {
                 : []),
             ];
 
-        // Pay-as-you-go: skim the per-location commission directly from the
-        // online payment via a Stripe Connect application fee. The fee is capped
-        // below the charge amount; usage is recorded on confirmation (webhook).
-        let applicationFeeAmount: number | undefined;
+        // Skim the platform fee directly from the online payment via a Stripe
+        // application fee: the pay-as-you-go reservation commission. Capped below
+        // the charge amount; the exact amount is recorded on confirmation
+        // (webhook) from metadata.
         const billing = await getStoreBilling(store.id);
-        if (billing.billingMode === 'pay_as_you_go') {
-          const feeCents = await projectedNextLocationFeeCents(
-            store.id,
-            new Date(),
-            billing,
-          );
-          const chargeCents = toStripeCents(finalChargeAmount, currency);
-          const cappedFee = Math.min(feeCents, Math.max(0, chargeCents - 1));
-          applicationFeeAmount = cappedFee > 0 ? cappedFee : undefined;
-        }
+        const feePlan = await planStripeFees({
+          storeId: store.id,
+          reservationId,
+          chargeCents: toStripeCents(finalChargeAmount, currency),
+          billing,
+        });
 
         // Create checkout session
         const { url, sessionId } = await createCheckoutSession({
@@ -1933,7 +1930,8 @@ export async function createReservation(input: CreateReservationInput) {
           successUrl: `${baseUrl}/checkout/success?reservation=${reservationId}`,
           cancelUrl: `${baseUrl}/checkout?cancelled=true`,
           locale: input.locale,
-          applicationFeeAmount,
+          applicationFeeAmount: feePlan.applicationFeeCents,
+          feeMetadata: buildFeeMetadata(feePlan),
         });
 
         paymentUrl = url;

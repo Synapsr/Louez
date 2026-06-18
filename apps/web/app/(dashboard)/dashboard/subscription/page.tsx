@@ -2,19 +2,27 @@ import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { MessageSquare } from 'lucide-react'
+import { after } from 'next/server'
 
 import { getCurrentStore } from '@/lib/store-context'
+import { syncStorePaymentMethodStatus } from '@/lib/discord/platform-notifications'
 import { getSubscriptionWithPlan, getPlans, hasStripeCustomer, storeHasDefaultPaymentMethod } from '@/lib/stripe/subscriptions'
 import { getStoreUsage, canAddTeamMember, canSendSms } from '@/lib/plan-limits'
-import { getStoreBilling, getCurrentMonthUsage, getRecentPayAsYouGoInvoices } from '@/lib/pay-as-you-go'
+import { getStoreBilling, getCurrentMonthUsage, getRecentPayAsYouGoInvoices, summarizePayAsYouGoBands } from '@/lib/pay-as-you-go'
 import { Button } from '@louez/ui'
 import { SubscriptionManagement } from './subscription-management'
 import { PayAsYouGoSummary } from './pay-as-you-go-summary'
+import { PayAsYouGoPreview } from './pay-as-you-go-preview'
 
 export default async function SubscriptionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; canceled?: string; plans?: string }>
+  searchParams: Promise<{
+    success?: string
+    canceled?: string
+    plans?: string
+    payg?: string
+  }>
 }) {
   const store = await getCurrentStore()
 
@@ -34,6 +42,11 @@ export default async function SubscriptionPage({
       getRecentPayAsYouGoInvoices(store.id),
       storeHasDefaultPaymentMethod(store.id),
     ])
+
+    // Sync the owner's card status to fromHello (drives activation journeys:
+    // nudge pay-as-you-go owners to add a card and "lock" their offer).
+    after(() => syncStorePaymentMethodStatus(store.id, hasPaymentMethod))
+
     return (
       <div className="space-y-8">
         <div>
@@ -52,6 +65,8 @@ export default async function SubscriptionPage({
           bands={usage.bands}
           hasPaymentMethod={hasPaymentMethod}
           invoices={invoices}
+          freeReservationsRemaining={billing.freeReservationsRemaining}
+          freeReservationsGranted={billing.freeReservationsGranted}
         />
       </div>
     )
@@ -61,6 +76,25 @@ export default async function SubscriptionPage({
 
   // Get subscription with plan from code
   const subscription = await getSubscriptionWithPlan(store.id)
+
+  // Subscription store previewing the pay-as-you-go tariffs before activating.
+  if (params.payg && !isPayAsYouGo) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t('label')}</h1>
+          <p className="text-muted-foreground">{t('description')}</p>
+        </div>
+
+        <PayAsYouGoPreview
+          flatRateCents={billing.config.flatRateCents}
+          bands={summarizePayAsYouGoBands(billing.config)}
+          currency={billing.config.currency}
+          isPaidPlan={Boolean(subscription?.stripeSubscriptionId)}
+        />
+      </div>
+    )
+  }
 
   // Get all plans from code
   const plans = getPlans()

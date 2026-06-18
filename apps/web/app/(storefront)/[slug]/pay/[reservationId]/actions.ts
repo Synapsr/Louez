@@ -5,6 +5,11 @@ import { stores, reservations, paymentRequests, verificationCodes } from '@louez
 import { eq, and, gt } from 'drizzle-orm'
 import { createPaymentRequestSession, toStripeCents } from '@/lib/stripe'
 import { getStorefrontUrl } from '@/lib/storefront-url'
+import {
+  buildFeeMetadata,
+  getStoreBilling,
+  planStripeFees,
+} from '@/lib/pay-as-you-go'
 import { nanoid } from 'nanoid'
 import type { StoreSettings } from '@louez/types'
 
@@ -119,7 +124,7 @@ export async function initiatePayment({
     where: eq(stores.id, paymentRequest.storeId),
   })
 
-  if (!store?.stripeAccountId) {
+  if (!store?.stripeAccountId || !store.stripeChargesEnabled) {
     return { error: 'stripe_not_configured' }
   }
 
@@ -170,6 +175,19 @@ export async function initiatePayment({
     ? getStripeLocale(storeSettings.country)
     : undefined
 
+  // Platform fees apply to rental payments only — not to custom charges
+  // (e.g. damage fees). The exact breakdown is recorded on success (webhook).
+  const chargeCents = toStripeCents(amount, currency)
+  const feePlan =
+    paymentRequest.type === 'rental'
+      ? await planStripeFees({
+          storeId: store.id,
+          reservationId: reservation.id,
+          chargeCents,
+          billing: await getStoreBilling(store.id),
+        })
+      : null
+
   try {
     const session = await createPaymentRequestSession({
       stripeAccountId: store.stripeAccountId,
@@ -177,12 +195,14 @@ export async function initiatePayment({
       reservationNumber: reservation.number,
       customerEmail: reservation.customer.email,
       customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
-      amount: toStripeCents(amount, currency),
+      amount: chargeCents,
       description: paymentRequest.description,
       currency,
       successUrl,
       cancelUrl,
       paymentRequestId: paymentRequest.id,
+      applicationFeeAmount: feePlan?.applicationFeeCents,
+      feeMetadata: feePlan ? buildFeeMetadata(feePlan) : undefined,
       locale,
     })
 

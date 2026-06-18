@@ -144,19 +144,23 @@ async function setFromHelloProfile(
 
 /**
  * Get the current plan slug for a store.
- * Returns 'start' if no subscription exists.
+ * Returns 'pay_as_you_go' if no subscription exists (the free tier no longer exists).
  */
 async function getPlanSlug(storeId: string): Promise<string> {
   const sub = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
   })
-  return sub?.planSlug || 'start'
+  return sub?.planSlug || 'pay_as_you_go'
 }
 
 /** Format a plan slug as a display label. */
 function planLabel(slug: string): string {
-  const labels: Record<string, string> = { start: 'Start', pro: 'Pro', ultra: 'Ultra' }
-  return labels[slug] || 'Start'
+  const labels: Record<string, string> = {
+    pro: 'Pro',
+    ultra: 'Ultra',
+    pay_as_you_go: 'Pay as you go',
+  }
+  return labels[slug] || 'Pay as you go'
 }
 
 /** Build a Discord markdown link to a store's storefront. */
@@ -244,7 +248,22 @@ export async function notifySubscriptionCancelled(store: StoreInfo): Promise<voi
   }).catch(() => {})
   if (!isEnabled()) return
   const link = storeLink(store.name, store.slug)
-  await send(`⬇️ ${link} [Start] subscription cancelled — downgraded to Start`)
+  await send(`⬇️ ${link} [Pay as you go] subscription cancelled — reverted to pay-as-you-go`)
+}
+
+/**
+ * Sync the store owner's payment-method status to their fromHello profile as the
+ * `hasPaymentMethod` attribute. Drives activation journeys (e.g. an email nudge to a
+ * pay-as-you-go owner to add a card and "lock" their offer). Fire-and-forget: never
+ * throws or blocks the caller; no-op if the owner can't be resolved or fromHello is off.
+ */
+export async function syncStorePaymentMethodStatus(
+  storeId: string,
+  hasPaymentMethod: boolean,
+): Promise<void> {
+  const userId = await resolveStoreOwner(storeId)
+  if (!userId) return
+  await setFromHelloProfile(userId, { hasPaymentMethod })
 }
 
 // ---------------------------------------------------------------------------

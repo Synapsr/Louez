@@ -12,15 +12,23 @@
  */
 
 import { auth } from '@/lib/auth'
-import { env } from '@/env'
 
 /**
  * Parses the admin emails from environment variable
  * Returns an empty array if not configured
  */
 function getAdminEmails(): string[] {
-  // env.PLATFORM_ADMIN_EMAILS is already an array, transformed in env.ts
-  return env.PLATFORM_ADMIN_EMAILS
+  // Read and parse the raw value directly. env.PLATFORM_ADMIN_EMAILS is typed string[]
+  // (split in env.ts), but that transform is skipped under SKIP_ENV_VALIDATION, leaving a
+  // raw CSV string. A substring `includes()` on a raw string would let any email contained
+  // in the configured value pass as a platform admin, so we parse to an array here and keep
+  // membership an exact check.
+  const configured = process.env.PLATFORM_ADMIN_EMAILS
+  if (!configured) return []
+  return configured
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
 }
 
 /**

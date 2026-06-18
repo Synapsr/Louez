@@ -66,10 +66,13 @@ export async function getOrCreateStripeCustomer(storeId: string): Promise<string
       .set({ stripeCustomerId: customer.id, updatedAt: new Date() })
       .where(eq(subscriptions.id, existingSubscription.id))
   } else {
+    // A store with no subscription row yet is a pay-as-you-go store (the default),
+    // not a free one — the free tier no longer exists.
     await db.insert(subscriptions).values({
       id: nanoid(),
       storeId,
-      planSlug: 'start',
+      planSlug: 'pay_as_you_go',
+      billingMode: 'pay_as_you_go',
       stripeCustomerId: customer.id,
     })
   }
@@ -278,7 +281,7 @@ export type SwitchToPayAsYouGoResult =
 
 /**
  * Owner-initiated switch to pay-as-you-go.
- * - On the free plan (no active Stripe subscription): flips immediately.
+ * - With no active Stripe subscription (already PAYG / uninitialized): flips immediately.
  * - On a paid plan: schedules cancellation at period end and tags the Stripe
  *   subscription so the deletion webhook flips the mode then — no double billing.
  */
@@ -308,17 +311,22 @@ export async function switchToPayAsYouGo(
     }
   }
 
-  // Free plan (or no row yet) → switch immediately.
+  // No active Stripe subscription (or no row yet) → switch immediately. Set planSlug
+  // alongside billingMode so the row never carries a stale paid-plan slug with PAYG mode.
   if (subscription) {
     await db
       .update(subscriptions)
-      .set({ billingMode: 'pay_as_you_go', updatedAt: new Date() })
+      .set({
+        planSlug: 'pay_as_you_go',
+        billingMode: 'pay_as_you_go',
+        updatedAt: new Date(),
+      })
       .where(eq(subscriptions.id, subscription.id))
   } else {
     await db.insert(subscriptions).values({
       id: nanoid(),
       storeId,
-      planSlug: 'start',
+      planSlug: 'pay_as_you_go',
       billingMode: 'pay_as_you_go',
     })
   }
@@ -425,16 +433,14 @@ export async function getCurrentPlanSlug(storeId: string): Promise<string> {
     columns: { planSlug: true, status: true, billingMode: true },
   })
 
-  if (!subscription) {
-    return 'start'
-  }
-
-  if (subscription.billingMode === 'pay_as_you_go') {
+  // No subscription, PAYG mode, or a cancelled paid plan all resolve to pay-as-you-go
+  // (the free tier no longer exists).
+  if (!subscription || subscription.billingMode === 'pay_as_you_go') {
     return 'pay_as_you_go'
   }
 
   if (subscription.status === 'cancelled') {
-    return 'start'
+    return 'pay_as_you_go'
   }
 
   return subscription.planSlug
