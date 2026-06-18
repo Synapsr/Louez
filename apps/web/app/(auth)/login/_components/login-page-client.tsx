@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { BarChart3, Calendar, Package, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { Logo, Separator } from '@louez/ui';
+import { Logo } from '@louez/ui';
 
 import { LoginForm } from './login-form';
 
@@ -26,7 +26,6 @@ export const LoginPageClient = ({ callbackUrl }: LoginPageClientProps) => {
   const searchParams = useSearchParams();
 
   const errorCode = searchParams.get('error');
-  const refCode = searchParams.get('ref');
 
   return (
     <div className="flex min-h-screen">
@@ -83,11 +82,7 @@ export const LoginPageClient = ({ callbackUrl }: LoginPageClientProps) => {
             </Link>
           </div>
 
-          <LoginForm
-            callbackUrl={callbackUrl}
-            initialErrorCode={errorCode}
-            refCode={refCode}
-          />
+          <LoginForm callbackUrl={callbackUrl} initialErrorCode={errorCode} />
 
 
           <p className="text-muted-foreground text-center text-sm ">

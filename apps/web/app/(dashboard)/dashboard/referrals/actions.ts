@@ -5,7 +5,7 @@ import { stores, subscriptions } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { getCurrentStore } from '@/lib/store-context'
 import { generateReferralCode } from '@/lib/utils/referral'
-import { env } from '@/env'
+import { buildReferralUrl } from '@/lib/referral/link'
 
 export interface ReferralData {
   id: string
@@ -88,8 +88,7 @@ export async function getReferralData(): Promise<{
     ).length,
   }
 
-  const appUrl = env.NEXT_PUBLIC_APP_URL
-  const referralUrl = `${appUrl}/login?ref=${code}`
+  const referralUrl = buildReferralUrl(code)
 
   return { referrals, stats, referralUrl, referralCode: code }
 }

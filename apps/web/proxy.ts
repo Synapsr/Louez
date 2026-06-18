@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { env } from '@/env'
+import { isValidReferralCode } from '@/lib/utils/referral'
 
 // =============================================================================
 // CONFIGURATION
@@ -104,6 +105,49 @@ function createInternalRewriteUrl(request: NextRequest, pathname: string) {
   return url
 }
 
+// =============================================================================
+// REFERRAL ATTRIBUTION
+// =============================================================================
+
+const REFERRAL_COOKIE = 'louez_referral'
+const REFERRAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30-day attribution window
+
+/**
+ * Cross-subdomain cookie domain so a referral captured on the marketing site (the apex,
+ * e.g. louez.io) or any *.louez.io surface survives the hop to the dashboard
+ * (app.louez.io). Omitted on localhost — browsers reject domain=localhost.
+ */
+function referralCookieDomain(host: string): string | undefined {
+  const hostname = host.split(':')[0]
+  if (isLoopbackHost(hostname)) return undefined
+  return `.${APP_DOMAIN.split(':')[0]}`
+}
+
+/**
+ * Capture a `?ref=` referral code server-side (last-click) onto the shared louez_referral
+ * cookie, so attribution survives any entry URL and the OAuth round-trip. No-op when there
+ * is no valid code. Edge-safe (pure regex validation). The cookie is consumed and deleted
+ * at onboarding, where the self-referral guard and DB lookup live.
+ */
+function captureReferral(
+  request: NextRequest,
+  response: NextResponse,
+  host: string,
+): NextResponse {
+  const ref = request.nextUrl.searchParams.get('ref')
+  if (ref && isValidReferralCode(ref)) {
+    response.cookies.set(REFERRAL_COOKIE, ref, {
+      maxAge: REFERRAL_COOKIE_MAX_AGE,
+      path: '/',
+      sameSite: 'lax',
+      httpOnly: true,
+      secure: !isLoopbackHost(host.split(':')[0]),
+      domain: referralCookieDomain(host),
+    })
+  }
+  return response
+}
+
 export function proxy(request: NextRequest) {
   const host = request.headers.get('host') || ''
   const subdomain = getSubdomain(host)
@@ -135,7 +179,7 @@ export function proxy(request: NextRequest) {
       response.headers.set('x-embed-mode', '1')
     }
 
-    return response
+    return captureReferral(request, response, host)
   }
 
   // -----------------------------------------------------------------------------
@@ -145,7 +189,7 @@ export function proxy(request: NextRequest) {
   //   - {DASHBOARD_SUBDOMAIN}.{APP_DOMAIN} (e.g., app.example.com)
   //   - localhost (when PREVIEW_STORE_SLUG is not set)
   if (subdomain === DASHBOARD_SUBDOMAIN || (isLocalhost && !subdomain)) {
-    return NextResponse.next()
+    return captureReferral(request, NextResponse.next(), host)
   }
 
   // -----------------------------------------------------------------------------
@@ -162,13 +206,13 @@ export function proxy(request: NextRequest) {
       response.headers.set('x-embed-mode', '1')
     }
 
-    return response
+    return captureReferral(request, response, host)
   }
 
   // -----------------------------------------------------------------------------
   // 5. DEFAULT: Pass through (landing page, www, etc.)
   // -----------------------------------------------------------------------------
-  return NextResponse.next()
+  return captureReferral(request, NextResponse.next(), host)
 }
 
 export const config = {

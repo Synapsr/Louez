@@ -9,7 +9,6 @@ import { z } from 'zod';
 
 import { authClient } from '@louez/auth/client';
 
-import { isValidReferralCode } from '@/lib/utils/referral';
 import {
   createAuthMutationError,
   getAuthErrorCode,
@@ -23,7 +22,6 @@ import { useAppForm } from '@/hooks/form/form';
 interface UseLoginFormParams {
   callbackUrl: string;
   initialErrorCode: string | null;
-  refCode: string | null;
 }
 
 const resolveAuthErrorMessage = (
@@ -37,7 +35,6 @@ const resolveAuthErrorMessage = (
 export const useLoginForm = ({
   callbackUrl,
   initialErrorCode,
-  refCode,
 }: UseLoginFormParams) => {
   const t = useTranslations('auth');
   const [submittedEmail, setSubmittedEmail] = useState('');
@@ -58,14 +55,6 @@ export const useLoginForm = ({
 
     setRootError(initialErrorMessage);
   }, [initialErrorCode, initialErrorMessage]);
-
-  useEffect(() => {
-    if (!refCode || !isValidReferralCode(refCode)) {
-      return;
-    }
-
-    document.cookie = `louez_referral=${refCode}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
-  }, [refCode]);
 
   const verifyOtpMutation = useMutation({
     mutationFn: async ({ email, otp }: { email: string; otp: string }) => {
