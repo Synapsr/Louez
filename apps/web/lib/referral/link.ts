@@ -12,3 +12,16 @@ export function buildReferralUrl(referralCode: string): string {
   const protocol = isLocal ? 'http' : 'https';
   return `${protocol}://${domain}/?ref=${referralCode}`;
 }
+
+/**
+ * The domain the shared louez_referral cookie is scoped to (`.louez.io` in prod, undefined
+ * on localhost). Must match what the middleware set it with, otherwise clearing it at
+ * onboarding emits a non-matching expiry and the cookie lingers. Mirrors proxy.ts.
+ */
+export function referralCookieDomain(): string | undefined {
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+  if (domain.includes('localhost') || domain.includes('127.0.0.1')) {
+    return undefined;
+  }
+  return `.${domain.split(':')[0]}`;
+}

@@ -452,34 +452,37 @@ async function handleCheckoutCompleted(
       at: paidAt,
       billing,
     });
+  }
 
-    // Referral Program: a Referred Store's first qualifying online payment unlocks the
-    // Referrer Reward. Idempotent (one reward per referred store) and safe against the
-    // success-page/webhook double-processing. Best-effort — never block payment
-    // confirmation on the reward; a re-delivery (or backfill) can grant it later.
-    if (reservation.store.referredByStoreId) {
-      try {
-        await maybeGrantReferrerReward({
-          referredStore: {
-            id: reservation.store.id,
-            name: reservation.store.name,
-            referredByStoreId: reservation.store.referredByStoreId,
-            referredByUserId: reservation.store.referredByUserId,
-          },
-          qualifyingAmountCents: session.amount_total ?? 0,
-          currency,
-          reservationId,
-          paymentId: existingPayment?.id ?? null,
-          stripePaymentIntentId: paymentIntentId,
-          stripeChargeId: chargeId,
-          at: paidAt,
-        });
-      } catch (error) {
-        console.error('[referral] failed to grant referrer reward', {
-          reservationId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
+  // Referral Program: a Referred Store's first qualifying online payment unlocks the
+  // Referrer Reward. Runs for EVERY online checkout, not only pay-as-you-go referred
+  // stores — a referred store may have switched to a subscription before its first sale,
+  // and the reward must still fire. Idempotent (one reward per referred store) and safe
+  // against the success-page/webhook double-processing. Best-effort: never block payment
+  // confirmation on the reward (a transient failure forfeits this one reward; there is no
+  // backfill job yet, so a future reconciliation sweep is the proper recovery).
+  if (reservation.store.referredByStoreId) {
+    try {
+      await maybeGrantReferrerReward({
+        referredStore: {
+          id: reservation.store.id,
+          name: reservation.store.name,
+          referredByStoreId: reservation.store.referredByStoreId,
+          referredByUserId: reservation.store.referredByUserId,
+        },
+        qualifyingAmountCents: session.amount_total ?? 0,
+        currency,
+        reservationId,
+        paymentId: existingPayment?.id ?? null,
+        stripePaymentIntentId: paymentIntentId,
+        stripeChargeId: chargeId,
+        at: paidAt,
+      });
+    } catch (error) {
+      console.error('[referral] failed to grant referrer reward', {
+        reservationId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

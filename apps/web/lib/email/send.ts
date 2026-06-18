@@ -1061,6 +1061,7 @@ export async function sendRewardUnlockedEmail({
   storeLogoUrl,
   primaryColor,
   referredStoreName,
+  kind,
   freeReservations,
   rewardValue,
   ctaUrl,
@@ -1071,13 +1072,18 @@ export async function sendRewardUnlockedEmail({
   storeLogoUrl?: string | null
   primaryColor?: string
   referredStoreName: string
+  kind: 'free_reservations' | 'invoice_credit'
   freeReservations: number
   rewardValue: string
   ctaUrl: string
   locale?: EmailLocale
 }) {
   const t = getEmailTranslations(locale)
-  const subject = `${t.rewardUnlocked.subject} - ${storeName}`
+  const subjectLine =
+    kind === 'invoice_credit'
+      ? t.rewardUnlocked.subjectCredit
+      : t.rewardUnlocked.subject
+  const subject = `${subjectLine} - ${storeName}`
   const logo = await resolveEmailLogo(storeLogoUrl)
   const html = await render(
     RewardUnlockedEmail({
@@ -1085,6 +1091,7 @@ export async function sendRewardUnlockedEmail({
       storeLogoUrl: logo.url,
       primaryColor,
       referredStoreName,
+      kind,
       freeReservations,
       rewardValue,
       ctaUrl,

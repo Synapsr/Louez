@@ -5088,7 +5088,9 @@
       "greeting": "Cześć,",
       "body": "{referredStoreName} właśnie dokonał pierwszej sprzedaży online. Zdobywasz {freeReservations} darmowych rezerwacji o wartości ≈ {rewardValue}.",
       "cta": "Zobacz moje nagrody",
-      "footer": "Dziękujemy za rozwijanie społeczności Louez."
+      "footer": "Dziękujemy za rozwijanie społeczności Louez.",
+      "subjectCredit": "Zdobyłeś kredyt Louez 🎉",
+      "bodyCredit": "{referredStoreName} właśnie dokonał pierwszej sprzedaży online. Otrzymujesz kredyt {rewardValue} na następnej fakturze Louez."
     }
   },
   "contract": {

@@ -5201,7 +5201,9 @@
       "greeting": "Hello,",
       "body": "{referredStoreName} just made its first online sale. You earn {freeReservations} free reservations, worth ≈ {rewardValue}.",
       "cta": "View my rewards",
-      "footer": "Thank you for growing the Louez community."
+      "footer": "Thank you for growing the Louez community.",
+      "subjectCredit": "You've earned a Louez credit 🎉",
+      "bodyCredit": "{referredStoreName} just made its first online sale. You earn a {rewardValue} credit on your next Louez invoice."
     }
   },
   "contract": {

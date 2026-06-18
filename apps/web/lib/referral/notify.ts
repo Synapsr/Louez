@@ -9,9 +9,14 @@ import { getLocaleFromCountry } from '@/lib/email/i18n';
 import { sendRewardUnlockedEmail } from '@/lib/email/send';
 import { formatCurrency } from '@/lib/utils';
 
+import type { ReferralRewardKind } from './reward';
+
 interface NotifyReferrerRewardInput {
   referrerStoreId: string;
   referredStoreName: string;
+  /** Whether the reward was granted as free reservations or a euro invoice credit. */
+  kind: ReferralRewardKind;
+  /** Free reservations granted (0 for an invoice-credit reward). */
   freeReservations: number;
   displayValueCents: number;
 }
@@ -56,6 +61,7 @@ export async function notifyReferrerRewardGranted(
       }),
       primaryColor: store.theme?.primaryColor ?? undefined,
       referredStoreName: input.referredStoreName,
+      kind: input.kind,
       freeReservations: input.freeReservations,
       rewardValue,
       ctaUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/referrals`,

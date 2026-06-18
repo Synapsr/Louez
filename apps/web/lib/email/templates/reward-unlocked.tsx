@@ -8,6 +8,7 @@ interface RewardUnlockedEmailProps {
   storeLogoUrl?: string | null
   primaryColor?: string
   referredStoreName: string
+  kind: 'free_reservations' | 'invoice_credit'
   freeReservations: number
   rewardValue: string
   ctaUrl: string
@@ -19,6 +20,7 @@ export function RewardUnlockedEmail({
   storeLogoUrl,
   primaryColor = '#0066FF',
   referredStoreName,
+  kind,
   freeReservations,
   rewardValue,
   ctaUrl,
@@ -32,14 +34,18 @@ export function RewardUnlockedEmail({
     color: getContrastColorHex(primaryColor),
   }
 
-  const body = messages.body
+  // A subscribed referrer earns a euro invoice credit (no free reservations); use the
+  // credit-specific copy so the email is not misleading.
+  const template =
+    kind === 'invoice_credit' ? messages.bodyCredit : messages.body
+  const body = template
     .replace('{referredStoreName}', referredStoreName)
     .replace('{freeReservations}', String(freeReservations))
     .replace('{rewardValue}', rewardValue)
 
   return (
     <BaseLayout
-      preview={messages.subject}
+      preview={kind === 'invoice_credit' ? messages.subjectCredit : messages.subject}
       storeName={storeName}
       logoUrl={storeLogoUrl}
       primaryColor={primaryColor}
