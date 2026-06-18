@@ -1,35 +1,36 @@
-import { db } from '@louez/db'
-import { products, customers, reservations } from '@louez/db'
-import { eq, and, gte, lte, sql, count } from 'drizzle-orm'
+import { endOfMonth, startOfMonth, subMonths } from 'date-fns';
+import { and, count, eq, gte, lte, sql } from 'drizzle-orm';
+
+import { customers, db, payments, products, reservations } from '@louez/db';
 
 /**
  * Store metrics for adaptive dashboard
  */
 export interface StoreMetrics {
   // Catalog
-  productCount: number
-  activeProductCount: number
-  draftProductCount: number
+  productCount: number;
+  activeProductCount: number;
+  draftProductCount: number;
 
   // Customers
-  customerCount: number
-  newCustomersThisMonth: number
+  customerCount: number;
+  newCustomersThisMonth: number;
 
   // Reservations
-  totalReservations: number
-  completedReservations: number
-  pendingReservations: number
-  confirmedReservations: number
-  ongoingReservations: number
+  totalReservations: number;
+  completedReservations: number;
+  pendingReservations: number;
+  confirmedReservations: number;
+  ongoingReservations: number;
 
   // Today's operations
-  todaysDepartures: number
-  todaysReturns: number
+  todaysDepartures: number;
+  todaysReturns: number;
 
   // Financial
-  monthlyRevenue: number
-  lastMonthRevenue: number
-  allTimeRevenue: number
+  monthlyRevenue: number;
+  lastMonthRevenue: number;
+  allTimeRevenue: number;
 }
 
 /**
@@ -40,45 +41,150 @@ export type StoreState =
   | 'building' // Has products, no customers
   | 'starting' // Has customers, few reservations
   | 'active' // Regular activity
-  | 'established' // High volume
+  | 'established'; // High volume
+
+interface RentalPaymentStats {
+  revenue: number;
+  paymentCount: number;
+  reservationCount: number;
+}
+
+export interface RentalPaymentRevenueStats {
+  currentMonthRevenue: number;
+  currentMonthCount: number;
+  lastMonthRevenue: number;
+  lastMonthCount: number;
+  totalRevenue: number;
+  totalPayments: number;
+  totalReservations: number;
+  avgOrderValue: number;
+  revenueGrowth: number;
+}
+
+async function getRentalPaymentStats(params: {
+  storeId: string;
+  includeManualPayments: boolean;
+  startDate?: Date;
+  endDate?: Date;
+}): Promise<RentalPaymentStats> {
+  const { storeId, includeManualPayments, startDate, endDate } = params;
+  const dateConditions = [
+    ...(startDate
+      ? [
+          sql`COALESCE(${payments.paidAt}, ${payments.createdAt}) >= ${startDate}`,
+        ]
+      : []),
+    ...(endDate
+      ? [sql`COALESCE(${payments.paidAt}, ${payments.createdAt}) <= ${endDate}`]
+      : []),
+  ];
+
+  const result = await db
+    .select({
+      revenue: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
+      paymentCount: count(),
+      reservationCount: sql<number>`COUNT(DISTINCT ${payments.reservationId})`,
+    })
+    .from(payments)
+    .innerJoin(reservations, eq(payments.reservationId, reservations.id))
+    .where(
+      and(
+        eq(reservations.storeId, storeId),
+        ...(includeManualPayments ? [] : [eq(payments.method, 'stripe')]),
+        eq(payments.status, 'completed'),
+        eq(payments.type, 'rental'),
+        ...dateConditions,
+      ),
+    );
+
+  return {
+    revenue: parseFloat(result[0]?.revenue || '0'),
+    paymentCount: result[0]?.paymentCount || 0,
+    reservationCount: result[0]?.reservationCount || 0,
+  };
+}
+
+export async function getRentalPaymentRevenueStats(params: {
+  storeId: string;
+  includeManualPayments: boolean;
+}): Promise<RentalPaymentRevenueStats> {
+  const { storeId, includeManualPayments } = params;
+  const now = new Date();
+  const currentMonthStart = startOfMonth(now);
+  const lastMonthStart = startOfMonth(subMonths(now, 1));
+  const lastMonthEnd = endOfMonth(subMonths(now, 1));
+
+  const [currentMonth, lastMonth, allTime] = await Promise.all([
+    getRentalPaymentStats({
+      storeId,
+      includeManualPayments,
+      startDate: currentMonthStart,
+    }),
+    getRentalPaymentStats({
+      storeId,
+      includeManualPayments,
+      startDate: lastMonthStart,
+      endDate: lastMonthEnd,
+    }),
+    getRentalPaymentStats({ storeId, includeManualPayments }),
+  ]);
+
+  const avgOrderValue =
+    allTime.paymentCount > 0 ? allTime.revenue / allTime.paymentCount : 0;
+
+  const revenueGrowth =
+    lastMonth.revenue > 0
+      ? ((currentMonth.revenue - lastMonth.revenue) / lastMonth.revenue) * 100
+      : 0;
+
+  return {
+    currentMonthRevenue: currentMonth.revenue,
+    currentMonthCount: currentMonth.paymentCount,
+    lastMonthRevenue: lastMonth.revenue,
+    lastMonthCount: lastMonth.paymentCount,
+    totalRevenue: allTime.revenue,
+    totalPayments: allTime.paymentCount,
+    totalReservations: allTime.reservationCount,
+    avgOrderValue,
+    revenueGrowth,
+  };
+}
 
 /**
  * Determine the store state based on metrics
  */
 export function determineStoreState(metrics: StoreMetrics): StoreState {
-  const { activeProductCount, customerCount, completedReservations } = metrics
+  const { activeProductCount, customerCount, completedReservations } = metrics;
 
   if (activeProductCount === 0) {
-    return 'virgin'
+    return 'virgin';
   }
 
   if (customerCount === 0) {
-    return 'building'
+    return 'building';
   }
 
   if (completedReservations < 5) {
-    return 'starting'
+    return 'starting';
   }
 
   if (completedReservations < 50) {
-    return 'active'
+    return 'active';
   }
 
-  return 'established'
+  return 'established';
 }
 
 /**
  * Get all metrics for a store
  */
 export async function getStoreMetrics(storeId: string): Promise<StoreMetrics> {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const firstDayOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const lastDayOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   // Execute all queries in parallel for performance
   const [
@@ -129,8 +235,8 @@ export async function getStoreMetrics(storeId: string): Promise<StoreMetrics> {
             eq(reservations.storeId, storeId),
             eq(reservations.status, 'confirmed'),
             gte(reservations.startDate, today),
-            lte(reservations.startDate, tomorrow)
-          )
+            lte(reservations.startDate, tomorrow),
+          ),
         ),
       db
         .select({ count: count() })
@@ -140,51 +246,16 @@ export async function getStoreMetrics(storeId: string): Promise<StoreMetrics> {
             eq(reservations.storeId, storeId),
             eq(reservations.status, 'ongoing'),
             gte(reservations.endDate, today),
-            lte(reservations.endDate, tomorrow)
-          )
+            lte(reservations.endDate, tomorrow),
+          ),
         ),
     ]),
 
-    // Revenue stats
-    Promise.all([
-      db
-        .select({
-          total: sql<string>`COALESCE(SUM(${reservations.totalAmount}), 0)`,
-        })
-        .from(reservations)
-        .where(
-          and(
-            eq(reservations.storeId, storeId),
-            eq(reservations.status, 'completed'),
-            gte(reservations.createdAt, firstDayOfMonth)
-          )
-        ),
-      db
-        .select({
-          total: sql<string>`COALESCE(SUM(${reservations.totalAmount}), 0)`,
-        })
-        .from(reservations)
-        .where(
-          and(
-            eq(reservations.storeId, storeId),
-            eq(reservations.status, 'completed'),
-            gte(reservations.createdAt, firstDayOfLastMonth),
-            lte(reservations.createdAt, lastDayOfLastMonth)
-          )
-        ),
-      db
-        .select({
-          total: sql<string>`COALESCE(SUM(${reservations.totalAmount}), 0)`,
-        })
-        .from(reservations)
-        .where(
-          and(
-            eq(reservations.storeId, storeId),
-            eq(reservations.status, 'completed')
-          )
-        ),
-    ]),
-  ])
+    getRentalPaymentRevenueStats({
+      storeId,
+      includeManualPayments: true,
+    }),
+  ]);
 
   return {
     // Catalog
@@ -208,25 +279,25 @@ export async function getStoreMetrics(storeId: string): Promise<StoreMetrics> {
     todaysReturns: todaysOperations[1][0]?.count || 0,
 
     // Financial
-    monthlyRevenue: parseFloat(revenueStats[0][0]?.total || '0'),
-    lastMonthRevenue: parseFloat(revenueStats[1][0]?.total || '0'),
-    allTimeRevenue: parseFloat(revenueStats[2][0]?.total || '0'),
-  }
+    monthlyRevenue: revenueStats.currentMonthRevenue,
+    lastMonthRevenue: revenueStats.lastMonthRevenue,
+    allTimeRevenue: revenueStats.totalRevenue,
+  };
 }
 
 /**
  * Get the time of day for contextual greetings
  */
 export function getTimeOfDay(): 'morning' | 'afternoon' | 'evening' {
-  const hour = new Date().getHours()
+  const hour = new Date().getHours();
 
   if (hour >= 6 && hour < 12) {
-    return 'morning'
+    return 'morning';
   }
 
   if (hour >= 12 && hour < 18) {
-    return 'afternoon'
+    return 'afternoon';
   }
 
-  return 'evening'
+  return 'evening';
 }

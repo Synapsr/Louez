@@ -267,7 +267,7 @@ export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
         value={formatCurrency(metrics.monthlyRevenue)}
         icon={Euro}
         iconVariant="purple"
-        href="/dashboard/analytics"
+        href="/dashboard/analytics?tab=sales&includeManual=true"
         trend={revenueGrowth}
         subtitle={t('stats.vsLastMonth')}
       />

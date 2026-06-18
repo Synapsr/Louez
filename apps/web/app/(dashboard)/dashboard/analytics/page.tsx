@@ -41,6 +41,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@louez/ui';
 import { Skeleton } from '@louez/ui';
 import { formatCurrency } from '@louez/utils';
 
+import { getRentalPaymentRevenueStats } from '@/lib/dashboard/metrics';
 import { getCurrentStore } from '@/lib/store-context';
 
 import { DeviceBreakdown, type DeviceStats } from './device-breakdown';
@@ -445,79 +446,6 @@ async function getRawEventStats(storeId: string, period: Period) {
 // SALES/REVENUE ANALYTICS FUNCTIONS
 // ============================================
 
-async function getRevenueStats(
-  storeId: string,
-  includeManualPayments: boolean,
-) {
-  const now = new Date();
-  const currentMonthStart = startOfMonth(now);
-  const lastMonthStart = startOfMonth(subMonths(now, 1));
-  const lastMonthEnd = endOfMonth(subMonths(now, 1));
-
-  const getRentalPaymentStats = async (startDate?: Date, endDate?: Date) => {
-    const dateConditions = [
-      ...(startDate
-        ? [
-            sql`COALESCE(${payments.paidAt}, ${payments.createdAt}) >= ${startDate}`,
-          ]
-        : []),
-      ...(endDate
-        ? [
-            sql`COALESCE(${payments.paidAt}, ${payments.createdAt}) <= ${endDate}`,
-          ]
-        : []),
-    ];
-
-    const result = await db
-      .select({
-        revenue: sql<string>`COALESCE(SUM(${payments.amount}), 0)`,
-        paymentCount: count(),
-        reservationCount: sql<number>`COUNT(DISTINCT ${payments.reservationId})`,
-      })
-      .from(payments)
-      .innerJoin(reservations, eq(payments.reservationId, reservations.id))
-      .where(
-        and(
-          eq(reservations.storeId, storeId),
-          ...(includeManualPayments ? [] : [eq(payments.method, 'stripe')]),
-          eq(payments.status, 'completed'),
-          eq(payments.type, 'rental'),
-          ...dateConditions,
-        ),
-      );
-
-    return {
-      revenue: parseFloat(result[0]?.revenue || '0'),
-      paymentCount: result[0]?.paymentCount || 0,
-      reservationCount: result[0]?.reservationCount || 0,
-    };
-  };
-
-  const currentMonth = await getRentalPaymentStats(currentMonthStart);
-  const lastMonth = await getRentalPaymentStats(lastMonthStart, lastMonthEnd);
-  const allTime = await getRentalPaymentStats();
-
-  const avgOrderValue =
-    allTime.paymentCount > 0 ? allTime.revenue / allTime.paymentCount : 0;
-
-  const revenueGrowth =
-    lastMonth.revenue > 0
-      ? ((currentMonth.revenue - lastMonth.revenue) / lastMonth.revenue) * 100
-      : 0;
-
-  return {
-    currentMonthRevenue: currentMonth.revenue,
-    currentMonthCount: currentMonth.paymentCount,
-    lastMonthRevenue: lastMonth.revenue,
-    lastMonthCount: lastMonth.paymentCount,
-    totalRevenue: allTime.revenue,
-    totalPayments: allTime.paymentCount,
-    totalReservations: allTime.reservationCount,
-    avgOrderValue,
-    revenueGrowth,
-  };
-}
-
 async function getRevenueByMonth(
   storeId: string,
   period: Period,
@@ -722,7 +650,10 @@ async function RevenueStatsSection({
   includeManualPayments: boolean;
 }) {
   const t = await getTranslations('dashboard.statistics');
-  const stats = await getRevenueStats(storeId, includeManualPayments);
+  const stats = await getRentalPaymentRevenueStats({
+    storeId,
+    includeManualPayments,
+  });
 
   return (
     <div className="space-y-4">

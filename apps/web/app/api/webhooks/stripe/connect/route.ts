@@ -7,7 +7,6 @@ import type Stripe from 'stripe';
 
 import { db } from '@louez/db';
 import {
-  customers,
   paymentRequests,
   payments,
   reservationActivity,
@@ -24,6 +23,7 @@ import {
 } from '@/lib/discord/platform-notifications';
 import { markReservationForCalendarSync } from '@/lib/integrations/calendar/sync';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
+import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import {
   distributeReversal,
   getReversibleFees,
@@ -32,7 +32,6 @@ import {
   recordFeeReversals,
   recordReservationFee,
 } from '@/lib/pay-as-you-go';
-import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import { fromStripeCents } from '@/lib/stripe';
 import { stripe } from '@/lib/stripe/client';
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
@@ -240,9 +239,7 @@ export async function POST(request: Request) {
 
       // Dispute / chargeback — the funds are pulled back, so reverse the platform fees.
       case 'charge.dispute.created':
-        await handleChargeDisputeCreated(
-          event.data.object as Stripe.Dispute,
-        );
+        await handleChargeDisputeCreated(event.data.object as Stripe.Dispute);
         break;
 
       // Account events
@@ -456,7 +453,9 @@ async function handleCheckoutCompleted(
   // Payment + confirmation already handled (e.g. by the success page). PAYG usage is
   // now recorded, so we can safely stop here without duplicating notifications.
   if (paymentAlreadyCompleted) {
-    console.log(`Payment already completed for session ${session.id}, skipping`);
+    console.log(
+      `Payment already completed for session ${session.id}, skipping`,
+    );
     return;
   }
 
@@ -793,7 +792,7 @@ async function handleDepositAuthorized(
   }
 
   // SECURITY: Validate connected account matches store
-  const { valid, reservation } = await validateConnectedAccountForReservation(
+  const { valid } = await validateConnectedAccountForReservation(
     reservationId,
     connectedAccountId,
     'deposit_authorized',
@@ -1216,14 +1215,26 @@ async function handleChargeRefunded(
     return;
   }
 
+  const { valid } = await validateConnectedAccountForReservation(
+    payment.reservationId,
+    connectedAccountId,
+    'charge_refunded',
+  );
+  if (!valid) return;
+
   const currency = charge.currency.toUpperCase();
   const refundAmount = fromStripeCents(charge.amount_refunded, currency);
+  const netAmount = fromStripeCents(
+    Math.max(0, charge.amount - charge.amount_refunded),
+    currency,
+  );
   const isFullRefund = charge.refunded;
 
-  // Update payment status (only mark as refunded if fully refunded)
+  // Keep analytics net of cumulative partial refunds; full refunds are excluded by status.
   await db
     .update(payments)
     .set({
+      amount: netAmount.toFixed(2),
       status: isFullRefund ? 'refunded' : 'completed',
       stripeRefundId: charge.refunds?.data[0]?.id || null,
       updatedAt: new Date(),
@@ -1278,7 +1289,8 @@ async function reversePlatformFees({
   refundRatio: number;
   idempotencyScope: string;
 }): Promise<void> {
-  const { stripeApplicationFeeId, rows } = await getReversibleFees(paymentIntentId);
+  const { stripeApplicationFeeId, rows } =
+    await getReversibleFees(paymentIntentId);
   if (rows.length === 0) return;
 
   const totalFeeCents = rows.reduce((sum, r) => sum + r.amountCents, 0);
@@ -1287,7 +1299,10 @@ async function reversePlatformFees({
     0,
   );
   const targetReversedCents = Math.round(totalFeeCents * refundRatio);
-  const incrementCents = Math.max(0, targetReversedCents - alreadyReversedCents);
+  const incrementCents = Math.max(
+    0,
+    targetReversedCents - alreadyReversedCents,
+  );
   if (incrementCents <= 0) return;
 
   if (stripeApplicationFeeId) {
@@ -1365,7 +1380,9 @@ async function handleChargeDisputeCreated(dispute: Stripe.Dispute) {
       ? dispute.payment_intent
       : (dispute.payment_intent?.id ?? null);
   if (!paymentIntentId) {
-    console.log(`Dispute ${dispute.id} has no payment_intent; nothing to reverse`);
+    console.log(
+      `Dispute ${dispute.id} has no payment_intent; nothing to reverse`,
+    );
     return;
   }
   await reversePlatformFees({
@@ -1390,7 +1407,9 @@ async function handleAccountDeauthorized(connectedAccountId?: string) {
     where: eq(stores.stripeAccountId, connectedAccountId),
   });
   if (!store) {
-    console.log(`No store found for deauthorized account ${connectedAccountId}`);
+    console.log(
+      `No store found for deauthorized account ${connectedAccountId}`,
+    );
     return;
   }
   await db
