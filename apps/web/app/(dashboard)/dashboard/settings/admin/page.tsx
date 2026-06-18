@@ -36,6 +36,8 @@ export default async function AdminSettingsPage() {
         flatRateCents={billing.config.flatRateCents}
         tiers={billing.config.tiers}
         currency={billing.config.currency}
+        freeReservationsGranted={billing.freeReservationsGranted}
+        freeReservationsRemaining={billing.freeReservationsRemaining}
       />
     </div>
   )

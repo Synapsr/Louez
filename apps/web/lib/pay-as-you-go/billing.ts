@@ -3,13 +3,13 @@ import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
 import { db } from '@louez/db';
-import { payAsYouGoInvoices, payAsYouGoUsage, subscriptions } from '@louez/db';
+import { payAsYouGoInvoices, platformFees, subscriptions } from '@louez/db';
 
 import { getOrCreateStripeCustomer } from '@/lib/stripe/subscriptions';
 import { stripe } from '@/lib/stripe/client';
 
-import { graduatedTotalCents, resolvePayAsYouGoConfig } from './config';
-import { ACTIVE_USAGE_STATUSES, billingMonthOf } from './metering';
+import { resolvePayAsYouGoConfig } from './config';
+import { ACTIVE_FEE_STATUSES, billingMonthOf, getStoreCurrency } from './metering';
 
 /** First day (UTC) of the month preceding `reference`. */
 function previousMonthStart(reference: Date): Date {
@@ -64,12 +64,12 @@ export async function runMonthlyPayAsYouGoBilling(
     .where(eq(subscriptions.billingMode, 'pay_as_you_go'));
 
   const storesWithUsage = await db
-    .selectDistinct({ storeId: payAsYouGoUsage.storeId })
-    .from(payAsYouGoUsage)
+    .selectDistinct({ storeId: platformFees.storeId })
+    .from(platformFees)
     .where(
       and(
-        eq(payAsYouGoUsage.billingMonth, billingMonth),
-        inArray(payAsYouGoUsage.status, ['pending', 'collected']),
+        eq(platformFees.billingMonth, billingMonth),
+        inArray(platformFees.status, ['pending', 'collected']),
       ),
     );
 
@@ -115,39 +115,50 @@ export async function billStoreForMonth(
   billingMonth: string,
 ): Promise<BillStoreOutcome> {
   // ---- Aggregate this month's usage. ----
-  const subscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.storeId, storeId),
-    columns: { payAsYouGoConfig: true },
-  });
+  const [subscription, storeCurrency] = await Promise.all([
+    db.query.subscriptions.findFirst({
+      where: eq(subscriptions.storeId, storeId),
+      columns: { payAsYouGoConfig: true },
+    }),
+    getStoreCurrency(storeId),
+  ]);
   const config = resolvePayAsYouGoConfig(subscription?.payAsYouGoConfig ?? null);
+  // Invoice in the store's currency — it must match the currency the at-source
+  // commission was collected in (same tariff numbers across currencies).
+  config.currency = storeCurrency;
 
   const rows = await db
     .select({
-      id: payAsYouGoUsage.id,
-      status: payAsYouGoUsage.status,
-      amountCents: payAsYouGoUsage.amountCents,
-      stripeApplicationFeeId: payAsYouGoUsage.stripeApplicationFeeId,
+      id: platformFees.id,
+      status: platformFees.status,
+      amountCents: platformFees.amountCents,
+      stripeApplicationFeeId: platformFees.stripeApplicationFeeId,
     })
-    .from(payAsYouGoUsage)
+    .from(platformFees)
     .where(
       and(
-        eq(payAsYouGoUsage.storeId, storeId),
-        eq(payAsYouGoUsage.billingMonth, billingMonth),
-        inArray(payAsYouGoUsage.status, [...ACTIVE_USAGE_STATUSES]),
+        eq(platformFees.storeId, storeId),
+        eq(platformFees.billingMonth, billingMonth),
+        eq(platformFees.currency, storeCurrency),
+        inArray(platformFees.status, [...ACTIVE_FEE_STATUSES]),
       ),
     );
 
-  const locationCount = rows.length;
+  // Stored amounts are immutable: each rental keeps the price it was recorded at, so
+  // totals are summed (never recomputed from the current config). Invoice only the
+  // manual (pending) fees; collected fees were already charged at source. Because
+  // gross = collected + pending, collected can never exceed gross — there is no
+  // month-end over-collection to refund.
   const collectedRows = rows.filter((r) => r.status === 'collected');
   const collectedAtSourceCents = collectedRows.reduce(
     (sum, r) => sum + r.amountCents,
     0,
   );
-  const grossAmountCents = graduatedTotalCents(config, locationCount);
-  const invoicedAmountCents = Math.max(
-    0,
-    grossAmountCents - collectedAtSourceCents,
-  );
+  const invoicedAmountCents = rows
+    .filter((r) => r.status === 'pending')
+    .reduce((sum, r) => sum + r.amountCents, 0);
+  const grossAmountCents = rows.reduce((sum, r) => sum + r.amountCents, 0);
+  const locationCount = rows.length;
   const currency = config.currency;
 
   // ---- Claim the (store, month) slot BEFORE any Stripe call (idempotency). ----
@@ -177,17 +188,8 @@ export async function billStoreForMonth(
   const billCollectedCents = claim.collectedAtSourceCents;
   const billInvoicedCents = claim.invoicedAmountCents;
 
-  // Nothing to invoice (no usage, or everything already collected at source).
+  // Nothing to invoice (no manual/pending fees — everything was collected at source).
   if (billInvoicedCents <= 0) {
-    // If the platform over-collected at source (concurrent checkouts can lock an
-    // earlier, pricier band), refund the excess so the store pays exactly T(N).
-    if (billCollectedCents > billGrossCents) {
-      await refundOverCollection(
-        collectedRows,
-        billCollectedCents - billGrossCents,
-        billingMonth,
-      );
-    }
     await db
       .update(payAsYouGoInvoices)
       .set({ status: 'void', updatedAt: new Date() })
@@ -481,57 +483,15 @@ async function markUsageBilled(
   invoiceRowId: string,
 ): Promise<void> {
   await db
-    .update(payAsYouGoUsage)
+    .update(platformFees)
     .set({ status: 'billed', invoiceId: invoiceRowId, billedAt: new Date() })
     .where(
       and(
-        eq(payAsYouGoUsage.storeId, storeId),
-        eq(payAsYouGoUsage.billingMonth, billingMonth),
-        eq(payAsYouGoUsage.status, 'pending'),
+        eq(platformFees.storeId, storeId),
+        eq(platformFees.billingMonth, billingMonth),
+        eq(platformFees.status, 'pending'),
       ),
     );
-}
-
-/**
- * Refund over-collected application fees back to the connected accounts so the store
- * never pays more than the graduated total. Idempotency-keyed per fee.
- */
-async function refundOverCollection(
-  collectedRows: Array<{ amountCents: number; stripeApplicationFeeId: string | null }>,
-  excessCents: number,
-  billingMonth: string,
-): Promise<void> {
-  let remaining = excessCents;
-  for (const row of collectedRows) {
-    if (remaining <= 0) break;
-    if (!row.stripeApplicationFeeId) continue;
-    const refundAmount = Math.min(remaining, row.amountCents);
-    if (refundAmount <= 0) continue;
-    try {
-      await stripe.applicationFees.createRefund(
-        row.stripeApplicationFeeId,
-        { amount: refundAmount },
-        {
-          idempotencyKey: `payg_excess_${row.stripeApplicationFeeId}_${billingMonth}`,
-        },
-      );
-      remaining -= refundAmount;
-    } catch (error) {
-      console.error('[payg] Failed to refund over-collected fee:', {
-        applicationFeeId: row.stripeApplicationFeeId,
-        error,
-      });
-    }
-  }
-  // Surface any unrefunded excess (fees missing an id, already-refunded, or Stripe
-  // errors) so the store's slight overpayment can be corrected manually.
-  if (remaining > 0) {
-    console.error('[payg] Over-collection only partially refunded', {
-      billingMonth,
-      excessCents,
-      unrefundedCents: remaining,
-    });
-  }
 }
 
 function mapStripeInvoiceStatus(

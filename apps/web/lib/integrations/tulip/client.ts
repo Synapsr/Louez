@@ -3,6 +3,9 @@ import { env } from '@/env';
 type TulipRecord = Record<string, unknown>;
 const TULIP_API_TIMEOUT_MS = 20_000;
 const TULIP_ERROR_BODY_MAX_LENGTH = 2_000;
+// Falls back to the documented default when env.TULIP_API_BASE_URL is unset — covers
+// SKIP_ENV_VALIDATION, where env.ts's .default() is bypassed and the value is undefined.
+const TULIP_API_BASE_URL = env.TULIP_API_BASE_URL || 'https://api.mytulip.io/v2';
 
 export class TulipApiError extends Error {
   status: number;
@@ -110,7 +113,7 @@ function buildTulipDiagnosticPayload(
     request: {
       method,
       path,
-      url: response.url || `${env.TULIP_API_BASE_URL}${path}`,
+      url: response.url || `${TULIP_API_BASE_URL}${path}`,
       body: summarizeTulipRequestBody(requestBody),
     },
     response: {
@@ -136,7 +139,7 @@ async function request<T>(
   const method = options?.method || 'GET';
   const hasBody = options?.body !== undefined;
 
-  const url = `${env.TULIP_API_BASE_URL}${path}`;
+  const url = `${TULIP_API_BASE_URL}${path}`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TULIP_API_TIMEOUT_MS);
 

@@ -52,8 +52,8 @@ export function UpgradeModal({
   limitType,
   currentCount,
   limit,
-  currentPlan = 'start',
-  suggestedPlan = 'pro',
+  currentPlan = 'pro',
+  suggestedPlan = 'ultra',
 }: UpgradeModalProps) {
   const router = useRouter()
   const t = useTranslations('upgradeModal')
@@ -67,8 +67,9 @@ export function UpgradeModal({
     router.push('/dashboard/subscription')
   }
 
-  // Get the plan to suggest based on current plan
-  const targetPlan = currentPlan === 'start' ? 'pro' : 'ultra'
+  // Limits only bite on Pro (Ultra and pay-as-you-go are unlimited), so a store
+  // hitting a limit is upgraded toward Ultra.
+  const targetPlan = currentPlan === 'pro' ? 'ultra' : 'pro'
   const targetPlanName = targetPlan === 'pro' ? 'Pro' : 'Ultra'
 
   return (
@@ -209,13 +210,13 @@ interface BlurOverlayProps {
 
 export function BlurOverlay({
   limitType,
-  currentPlan = 'start',
+  currentPlan = 'pro',
   onUpgradeClick,
   className,
 }: BlurOverlayProps) {
   const t = useTranslations('upgradeModal')
   const Icon = LIMIT_ICONS[limitType]
-  const targetPlan = currentPlan === 'start' ? 'Pro' : 'Ultra'
+  const targetPlan = currentPlan === 'pro' ? 'Ultra' : 'Pro'
 
   return (
     <div className={cn(
@@ -262,7 +263,7 @@ export function LimitBanner({
   limitType,
   current,
   limit,
-  currentPlan = 'start',
+  currentPlan = 'pro',
   onUpgradeClick,
   className,
 }: LimitBannerProps) {

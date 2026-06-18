@@ -40,7 +40,7 @@ export function getPostHogServer(): PostHog {
 
   if (!posthogServerInstance) {
     posthogServerInstance = new PostHog(env.NEXT_PUBLIC_POSTHOG_KEY, {
-      host: env.NEXT_PUBLIC_POSTHOG_HOST,
+      host: env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
       // Flush events every 30 seconds or when 20 events are queued
       flushAt: 20,
       flushInterval: 30000,

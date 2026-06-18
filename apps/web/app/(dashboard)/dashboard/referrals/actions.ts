@@ -69,7 +69,7 @@ export async function getReferralData(): Promise<{
         slug: ref.slug,
         logoUrl: ref.logoUrl,
         joinedAt: ref.createdAt,
-        planSlug: sub?.planSlug ?? 'start',
+        planSlug: sub?.planSlug ?? 'pay_as_you_go',
         subscriptionStatus: sub?.status ?? 'active',
       }
     })
@@ -78,9 +78,9 @@ export async function getReferralData(): Promise<{
   const now = new Date()
   const stats: ReferralStats = {
     total: referrals.length,
-    activePaid: referrals.filter(
-      (r) => r.subscriptionStatus === 'active' && r.planSlug !== 'start'
-    ).length,
+    // The free tier no longer exists: every active referred store is monetized
+    // (a paid subscription or pay-as-you-go, which bills per rental).
+    activePaid: referrals.filter((r) => r.subscriptionStatus === 'active').length,
     thisMonth: referrals.filter(
       (r) =>
         r.joinedAt.getMonth() === now.getMonth() &&

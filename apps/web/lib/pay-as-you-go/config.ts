@@ -1,4 +1,67 @@
+import { z } from 'zod';
+
 import type { PayAsYouGoConfig, PayAsYouGoTier } from '@louez/types';
+
+/**
+ * Canonical validation for a pay-as-you-go pricing config. Shared by the admin
+ * settings action and the `PAYG_DEFAULT_PRICING` env var so the same rules apply
+ * wherever a config enters the system. All fields are optional — an omitted field
+ * falls back to the platform default in `resolvePayAsYouGoConfig`.
+ */
+export const payAsYouGoTierSchema = z.object({
+  upToCount: z.number().int().positive().nullable(),
+  priceCents: z.number().int().min(0).max(1_000_000),
+});
+
+export const payAsYouGoConfigSchema = z
+  .object({
+    flatRateCents: z.number().int().min(0).max(1_000_000).nullable().optional(),
+    tiers: z.array(payAsYouGoTierSchema).max(20).optional(),
+    currency: z.string().length(3).optional(),
+  })
+  .superRefine((config, ctx) => {
+    // Reject contradictory ladders: no two bands sharing an upper bound and at most
+    // one open-ended band (otherwise the monthly total becomes order-dependent).
+    const tiers = config.tiers ?? [];
+    const bounds = tiers
+      .map((t) => t.upToCount)
+      .filter((c): c is number => c !== null);
+    if (new Set(bounds).size !== bounds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Duplicate tier limit',
+        path: ['tiers'],
+      });
+    }
+    if (tiers.filter((t) => t.upToCount === null).length > 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Multiple open-ended tiers',
+        path: ['tiers'],
+      });
+    }
+  });
+
+/**
+ * Robustly resolve a pay-as-you-go config from an input that may be a parsed object OR a
+ * raw JSON string. env.ts normally validates+parses PAYG_DEFAULT_PRICING, but when
+ * SKIP_ENV_VALIDATION is set @t3-oss skips the transform and hands back the raw string —
+ * and spreading that string elsewhere produced character-indexed garbage. Parsing and
+ * re-validating here makes every consumer immune to that, and rejects malformed input.
+ */
+export function parsePayAsYouGoConfig(raw: unknown): PayAsYouGoConfig | null {
+  if (raw === null || raw === undefined || raw === '') return null;
+  let value: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  const result = payAsYouGoConfigSchema.safeParse(value);
+  return result.success ? result.data : null;
+}
 
 /**
  * Pay-as-you-go pricing math.

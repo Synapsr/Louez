@@ -18,7 +18,7 @@ const APP_URL = env.NEXT_PUBLIC_APP_URL
 
 /**
  * Start Stripe Connect onboarding
- * Creates a new Express account if needed and returns the onboarding URL
+ * Creates a new Standard account if needed and returns the onboarding URL
  */
 export async function startStripeOnboarding(): Promise<{
   url?: string
@@ -174,7 +174,7 @@ export async function syncStripeStatus(): Promise<{
 }
 
 /**
- * Get Stripe Express dashboard link
+ * Get Stripe dashboard link (Express login link, or the hosted dashboard for Standard)
  */
 export async function getStripeDashboardUrl(): Promise<{
   url?: string
