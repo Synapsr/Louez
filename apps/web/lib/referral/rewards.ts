@@ -19,6 +19,7 @@ import {
   isWithinClawbackWindow,
 } from './clawback';
 import { getReferralProgramConfig } from './defaults';
+import { notifyReferrerRewardGranted } from './notify';
 import { qualifiesForReferralReward } from './qualification';
 import { computeReferrerReward } from './reward';
 
@@ -30,6 +31,7 @@ function isDuplicateError(error: unknown): boolean {
 
 interface ReferredStoreRef {
   id: string;
+  name: string;
   referredByStoreId: string | null;
   referredByUserId: string | null;
 }
@@ -214,6 +216,15 @@ export async function maybeGrantReferrerReward(
     }
     throw error;
   }
+
+  // Notify the Referrer (best-effort; never throws). The headline count is the configured
+  // reward size; the value reflects the plan-aware grant (free reservations or € credit).
+  await notifyReferrerRewardGranted({
+    referrerStoreId,
+    referredStoreName: input.referredStore.name,
+    freeReservations: config.referrerRewardFreeReservations,
+    displayValueCents: reward.displayValueCents,
+  });
 
   return { granted: true };
 }

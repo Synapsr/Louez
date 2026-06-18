@@ -1,8 +1,9 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
-import { Users, BadgeDollarSign, TrendingUp } from 'lucide-react'
+import { Users, BadgeCheck, Gift } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { formatCurrency } from '@/lib/utils'
 import type { ReferralStats as Stats } from './actions'
 
 interface ReferralStatsProps {
@@ -12,21 +13,29 @@ interface ReferralStatsProps {
 export function ReferralStats({ stats }: ReferralStatsProps) {
   const t = useTranslations('dashboard.referrals.stats')
 
+  const value = formatCurrency(
+    stats.rewardValueCents / 100,
+    stats.currency.toUpperCase(),
+  )
+
   const cards = [
     {
       title: t('totalReferrals'),
       value: stats.total,
+      subtitle: null,
       icon: Users,
     },
     {
-      title: t('activePaid'),
-      value: stats.activePaid,
-      icon: BadgeDollarSign,
+      title: t('qualified'),
+      value: stats.qualified,
+      subtitle: null,
+      icon: BadgeCheck,
     },
     {
-      title: t('thisMonth'),
-      value: stats.thisMonth,
-      icon: TrendingUp,
+      title: t('freeReservationsEarned'),
+      value: stats.freeReservationsEarned,
+      subtitle: t('valueEarned', { value }),
+      icon: Gift,
     },
   ]
 
@@ -42,6 +51,11 @@ export function ReferralStats({ stats }: ReferralStatsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold tracking-tight">{card.value}</div>
+            {card.subtitle ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {card.subtitle}
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       ))}

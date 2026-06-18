@@ -62,6 +62,16 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant={variants[status] || 'secondary'}>{t(status)}</Badge>
 }
 
+function RewardBadge({ rewarded }: { rewarded: boolean }) {
+  const t = useTranslations('dashboard.referrals.list.reward')
+
+  return rewarded ? (
+    <Badge variant="success">{t('rewarded')}</Badge>
+  ) : (
+    <Badge variant="outline">{t('pending')}</Badge>
+  )
+}
+
 export function ReferralsList({ referrals }: ReferralsListProps) {
   const t = useTranslations('dashboard.referrals.list')
 
@@ -98,6 +108,7 @@ export function ReferralsList({ referrals }: ReferralsListProps) {
                 <TableHead>{t('columns.joined')}</TableHead>
                 <TableHead>{t('columns.plan')}</TableHead>
                 <TableHead>{t('columns.status')}</TableHead>
+                <TableHead>{t('columns.reward')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -127,6 +138,9 @@ export function ReferralsList({ referrals }: ReferralsListProps) {
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={referral.subscriptionStatus} />
+                  </TableCell>
+                  <TableCell>
+                    <RewardBadge rewarded={referral.rewarded} />
                   </TableCell>
                 </TableRow>
               ))}

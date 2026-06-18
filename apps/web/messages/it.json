@@ -324,12 +324,15 @@
       "stats": {
         "totalReferrals": "Referenze totali",
         "activePaid": "Referenze a pagamento",
-        "thisMonth": "Questo mese"
+        "thisMonth": "Questo mese",
+        "qualified": "Referral qualificati",
+        "freeReservationsEarned": "Prenotazioni guadagnate",
+        "valueEarned": "≈ {value} risparmiati"
       },
       "link": {
         "title": "Invita e guadagna",
         "description": "Condividi il tuo link e invita altri noleggiatori a unirsi a Louez.",
-        "reward": "Per ogni noleggiatore invitato, ottieni 3 mesi gratuiti sul piano Ultra.",
+        "reward": "Per ogni noleggiatore che inviti e che effettua la sua prima vendita, guadagni {referrer} prenotazioni gratuite — e lui inizia con {referred}.",
         "copyLink": "Copia link",
         "linkCopied": "Link copiato!"
       },
@@ -342,14 +345,25 @@
           "store": "Negozio",
           "joined": "Iscrizione",
           "plan": "Piano",
-          "status": "Stato"
+          "status": "Stato",
+          "reward": "Premio"
         },
         "status": {
           "active": "Attivo",
           "cancelled": "Annullato",
           "past_due": "Scaduto",
           "trialing": "Prova"
+        },
+        "reward": {
+          "rewarded": "Erogato",
+          "pending": "In attesa"
         }
+      },
+      "nudge": {
+        "title": "Ti piace Louez?",
+        "description": "Invita un noleggiatore: guadagnate entrambi prenotazioni gratuite.",
+        "cta": "Invita",
+        "dismiss": "Chiudi"
       }
     },
     "sms": {
@@ -3847,7 +3861,8 @@
           "voided": "Annullato",
           "reversed": "Rimborsato"
         }
-      }
+      },
+      "referrals": "Referral"
     },
     "aiChat": {
       "open": "Assistente IA",
@@ -5066,6 +5081,14 @@
       "yourQuote": "Il suo preventivo",
       "viewQuote": "Vedi preventivo",
       "expiry": "Può accettare o rifiutare questo preventivo dal suo account."
+    },
+    "rewardUnlocked": {
+      "subject": "Hai guadagnato prenotazioni gratuite 🎉",
+      "title": "Il tuo referral ha funzionato!",
+      "greeting": "Ciao,",
+      "body": "{referredStoreName} ha appena effettuato la sua prima vendita online. Guadagni {freeReservations} prenotazioni gratuite, pari a ≈ {rewardValue}.",
+      "cta": "Vedi i miei premi",
+      "footer": "Grazie per far crescere la comunità Louez."
     }
   },
   "contract": {

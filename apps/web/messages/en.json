@@ -324,12 +324,15 @@
       "stats": {
         "totalReferrals": "Total referrals",
         "activePaid": "Paid referrals",
-        "thisMonth": "This month"
+        "thisMonth": "This month",
+        "qualified": "Qualified referrals",
+        "freeReservationsEarned": "Reservations earned",
+        "valueEarned": "≈ {value} saved"
       },
       "link": {
         "title": "Refer & earn",
         "description": "Share your link and invite other rental businesses to join Louez.",
-        "reward": "For each referred rental business, get 3 free months on the Ultra plan.",
+        "reward": "For every rental business you refer that makes its first sale, you earn {referrer} free reservations — and they start with {referred}.",
         "copyLink": "Copy link",
         "linkCopied": "Link copied!"
       },
@@ -342,14 +345,25 @@
           "store": "Store",
           "joined": "Joined",
           "plan": "Plan",
-          "status": "Status"
+          "status": "Status",
+          "reward": "Reward"
         },
         "status": {
           "active": "Active",
           "cancelled": "Cancelled",
           "past_due": "Past due",
           "trialing": "Trial"
+        },
+        "reward": {
+          "rewarded": "Granted",
+          "pending": "Pending"
         }
+      },
+      "nudge": {
+        "title": "Enjoying Louez?",
+        "description": "Refer a rental business — you both earn free reservations.",
+        "cta": "Refer",
+        "dismiss": "Dismiss"
       }
     },
     "sms": {
@@ -3954,7 +3968,8 @@
           "voided": "Voided",
           "reversed": "Reversed"
         }
-      }
+      },
+      "referrals": "Referrals"
     },
     "aiChat": {
       "open": "AI Assistant",
@@ -5179,6 +5194,14 @@
       "authorizeNow": "Authorize deposit",
       "linkFallback": "Or copy this link into your browser:",
       "securePayment": "This authorization is secured by Stripe. The amount will not be charged immediately."
+    },
+    "rewardUnlocked": {
+      "subject": "You've earned free reservations 🎉",
+      "title": "Your referral paid off!",
+      "greeting": "Hello,",
+      "body": "{referredStoreName} just made its first online sale. You earn {freeReservations} free reservations, worth ≈ {rewardValue}.",
+      "cta": "View my rewards",
+      "footer": "Thank you for growing the Louez community."
     }
   },
   "contract": {

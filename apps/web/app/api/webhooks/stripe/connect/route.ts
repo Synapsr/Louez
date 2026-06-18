@@ -462,6 +462,7 @@ async function handleCheckoutCompleted(
         await maybeGrantReferrerReward({
           referredStore: {
             id: reservation.store.id,
+            name: reservation.store.name,
             referredByStoreId: reservation.store.referredByStoreId,
             referredByUserId: reservation.store.referredByUserId,
           },

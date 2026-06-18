@@ -324,12 +324,15 @@
       "stats": {
         "totalReferrals": "Łączne polecenia",
         "activePaid": "Płatne polecenia",
-        "thisMonth": "W tym miesiącu"
+        "thisMonth": "W tym miesiącu",
+        "qualified": "Kwalifikujące się polecenia",
+        "freeReservationsEarned": "Zdobyte rezerwacje",
+        "valueEarned": "≈ {value} oszczędności"
       },
       "link": {
         "title": "Polecaj i zyskuj",
         "description": "Udostępnij swój link i zaproś innych wynajmujących do Louez.",
-        "reward": "Za każdego poleconego wynajmującego otrzymasz 3 darmowe miesiące planu Ultra.",
+        "reward": "Za każdego poleconego wynajmującego, który dokona pierwszej sprzedaży, otrzymujesz {referrer} darmowych rezerwacji — a on zaczyna z {referred}.",
         "copyLink": "Kopiuj link",
         "linkCopied": "Link skopiowany!"
       },
@@ -342,14 +345,25 @@
           "store": "Sklep",
           "joined": "Dołączenie",
           "plan": "Plan",
-          "status": "Status"
+          "status": "Status",
+          "reward": "Nagroda"
         },
         "status": {
           "active": "Aktywny",
           "cancelled": "Anulowany",
           "past_due": "Zaległy",
           "trialing": "Okres próbny"
+        },
+        "reward": {
+          "rewarded": "Przyznana",
+          "pending": "Oczekująca"
         }
+      },
+      "nudge": {
+        "title": "Podoba Ci się Louez?",
+        "description": "Poleć wynajmującego — oboje zdobywacie darmowe rezerwacje.",
+        "cta": "Poleć",
+        "dismiss": "Zamknij"
       }
     },
     "sms": {
@@ -3847,7 +3861,8 @@
           "voided": "Anulowane",
           "reversed": "Zwrócone"
         }
-      }
+      },
+      "referrals": "Polecenia"
     },
     "aiChat": {
       "open": "Asystent AI",
@@ -5066,6 +5081,14 @@
       "yourQuote": "Twoja wycena",
       "viewQuote": "Zobacz wycenę",
       "expiry": "Możesz zaakceptować lub odrzucić tę wycenę ze swojego konta."
+    },
+    "rewardUnlocked": {
+      "subject": "Zdobyłeś darmowe rezerwacje 🎉",
+      "title": "Twoje polecenie się opłaciło!",
+      "greeting": "Cześć,",
+      "body": "{referredStoreName} właśnie dokonał pierwszej sprzedaży online. Zdobywasz {freeReservations} darmowych rezerwacji o wartości ≈ {rewardValue}.",
+      "cta": "Zobacz moje nagrody",
+      "footer": "Dziękujemy za rozwijanie społeczności Louez."
     }
   },
   "contract": {

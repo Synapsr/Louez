@@ -1,11 +1,14 @@
 'use server'
 
 import { db } from '@louez/db'
-import { stores, subscriptions } from '@louez/db'
-import { eq } from 'drizzle-orm'
+import { referralRewards, stores, subscriptions } from '@louez/db'
+import { and, eq } from 'drizzle-orm'
 import { getCurrentStore } from '@/lib/store-context'
 import { generateReferralCode } from '@/lib/utils/referral'
 import { buildReferralUrl } from '@/lib/referral/link'
+import { getReferralProgramConfig } from '@/lib/referral/defaults'
+import { priceForLocationIndex } from '@/lib/pay-as-you-go/config'
+import { getStoreBilling } from '@/lib/pay-as-you-go/metering'
 
 export interface ReferralData {
   id: string
@@ -15,17 +18,35 @@ export interface ReferralData {
   joinedAt: Date
   planSlug: string
   subscriptionStatus: string
+  /** Whether this referral reached its Qualifying Event and paid out a Referrer Reward. */
+  rewarded: boolean
 }
 
 export interface ReferralStats {
   total: number
-  activePaid: number
+  /** Referrals that reached the Qualifying Event (a Referrer Reward was granted). */
+  qualified: number
   thisMonth: number
+  /** Free reservations earned across all granted rewards. */
+  freeReservationsEarned: number
+  /** Monetary value of everything earned (free reservations × tariff + euro credits), in cents. */
+  rewardValueCents: number
+  /** Free reservations still available on this store. */
+  freeReservationsRemaining: number
+  currency: string
+}
+
+export interface ReferralProgramSummary {
+  /** Free reservations the Referrer earns per qualified referral. */
+  referrerReward: number
+  /** Free reservations a Referred Store receives at sign-up. */
+  referredReward: number
 }
 
 export async function getReferralData(): Promise<{
   referrals: ReferralData[]
   stats: ReferralStats
+  program: ReferralProgramSummary
   referralUrl: string
   referralCode: string
 } | null> {
@@ -52,6 +73,33 @@ export async function getReferralData(): Promise<{
     orderBy: (stores, { desc }) => [desc(stores.createdAt)],
   })
 
+  // The Referrer Reward ledger for this store, plus the store's own billing (used to
+  // value the free reservations and show how many remain).
+  const [rewards, billing] = await Promise.all([
+    db.query.referralRewards.findMany({
+      where: and(
+        eq(referralRewards.referrerStoreId, store.id),
+        eq(referralRewards.status, 'granted'),
+      ),
+      columns: {
+        referredStoreId: true,
+        freeReservations: true,
+        creditCents: true,
+      },
+    }),
+    getStoreBilling(store.id),
+  ])
+
+  const rewardedIds = new Set(rewards.map((r) => r.referredStoreId))
+  const unitValueCents = priceForLocationIndex(billing.config, 1)
+  const freeReservationsEarned = rewards.reduce(
+    (sum, r) => sum + r.freeReservations,
+    0,
+  )
+  const creditEarnedCents = rewards.reduce((sum, r) => sum + r.creditCents, 0)
+  const rewardValueCents =
+    freeReservationsEarned * unitValueCents + creditEarnedCents
+
   // Fetch subscription data for all referred stores
   const referrals: ReferralData[] = await Promise.all(
     referredStores.map(async (ref) => {
@@ -71,6 +119,7 @@ export async function getReferralData(): Promise<{
         joinedAt: ref.createdAt,
         planSlug: sub?.planSlug ?? 'pay_as_you_go',
         subscriptionStatus: sub?.status ?? 'active',
+        rewarded: rewardedIds.has(ref.id),
       }
     })
   )
@@ -78,19 +127,27 @@ export async function getReferralData(): Promise<{
   const now = new Date()
   const stats: ReferralStats = {
     total: referrals.length,
-    // The free tier no longer exists: every active referred store is monetized
-    // (a paid subscription or pay-as-you-go, which bills per rental).
-    activePaid: referrals.filter((r) => r.subscriptionStatus === 'active').length,
+    qualified: rewards.length,
     thisMonth: referrals.filter(
       (r) =>
         r.joinedAt.getMonth() === now.getMonth() &&
         r.joinedAt.getFullYear() === now.getFullYear()
     ).length,
+    freeReservationsEarned,
+    rewardValueCents,
+    freeReservationsRemaining: billing.freeReservationsRemaining,
+    currency: billing.config.currency,
+  }
+
+  const programConfig = getReferralProgramConfig()
+  const program: ReferralProgramSummary = {
+    referrerReward: programConfig.referrerRewardFreeReservations,
+    referredReward: programConfig.referredRewardFreeReservations,
   }
 
   const referralUrl = buildReferralUrl(code)
 
-  return { referrals, stats, referralUrl, referralCode: code }
+  return { referrals, stats, program, referralUrl, referralCode: code }
 }
 
 /**

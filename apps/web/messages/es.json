@@ -324,12 +324,15 @@
       "stats": {
         "totalReferrals": "Total referencias",
         "activePaid": "Referencias de pago",
-        "thisMonth": "Este mes"
+        "thisMonth": "Este mes",
+        "qualified": "Referidos cualificados",
+        "freeReservationsEarned": "Reservas ganadas",
+        "valueEarned": "≈ {value} ahorrados"
       },
       "link": {
         "title": "Recomiende y gane",
         "description": "Comparta su enlace e invite a otros arrendadores a unirse a Louez.",
-        "reward": "Por cada arrendador referido, obtenga 3 meses gratis en el plan Ultra.",
+        "reward": "Por cada arrendador que recomiendes y que realice su primera venta, ganas {referrer} reservas gratis — y él empieza con {referred}.",
         "copyLink": "Copiar enlace",
         "linkCopied": "¡Enlace copiado!"
       },
@@ -342,14 +345,25 @@
           "store": "Tienda",
           "joined": "Registro",
           "plan": "Plan",
-          "status": "Estado"
+          "status": "Estado",
+          "reward": "Recompensa"
         },
         "status": {
           "active": "Activo",
           "cancelled": "Cancelado",
           "past_due": "Vencido",
           "trialing": "Prueba"
+        },
+        "reward": {
+          "rewarded": "Otorgada",
+          "pending": "Pendiente"
         }
+      },
+      "nudge": {
+        "title": "¿Te gusta Louez?",
+        "description": "Recomienda a un arrendador: ambos ganáis reservas gratis.",
+        "cta": "Recomendar",
+        "dismiss": "Cerrar"
       }
     },
     "sms": {
@@ -3853,7 +3867,8 @@
           "voided": "Anulado",
           "reversed": "Reembolsado"
         }
-      }
+      },
+      "referrals": "Referidos"
     },
     "aiChat": {
       "open": "Asistente IA",
@@ -5072,6 +5087,14 @@
       "authorizeNow": "Autorizar depósito",
       "linkFallback": "O copie este enlace en su navegador:",
       "securePayment": "Esta autorización está asegurada por Stripe. El monto no se cobrará inmediatamente."
+    },
+    "rewardUnlocked": {
+      "subject": "Has ganado reservas gratis 🎉",
+      "title": "¡Tu recomendación dio sus frutos!",
+      "greeting": "Hola,",
+      "body": "{referredStoreName} acaba de realizar su primera venta online. Ganas {freeReservations} reservas gratis, por un valor de ≈ {rewardValue}.",
+      "cta": "Ver mis recompensas",
+      "footer": "Gracias por hacer crecer la comunidad Louez."
     }
   },
   "contract": {

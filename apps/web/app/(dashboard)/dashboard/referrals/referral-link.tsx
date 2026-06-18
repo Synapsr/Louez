@@ -9,9 +9,15 @@ import { toastManager } from '@louez/ui'
 
 interface ReferralLinkProps {
   referralUrl: string
+  referrerReward: number
+  referredReward: number
 }
 
-export function ReferralLink({ referralUrl }: ReferralLinkProps) {
+export function ReferralLink({
+  referralUrl,
+  referrerReward,
+  referredReward,
+}: ReferralLinkProps) {
   const t = useTranslations('dashboard.referrals.link')
   const [copied, setCopied] = useState(false)
 
@@ -44,7 +50,7 @@ export function ReferralLink({ referralUrl }: ReferralLinkProps) {
         <div className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
           <Crown className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-            {t('reward')}
+            {t('reward', { referrer: referrerReward, referred: referredReward })}
           </p>
         </div>
 
