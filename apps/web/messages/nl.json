@@ -210,9 +210,9 @@
         "cta": "Zo doe je dat",
         "title": "Zet op beginscherm",
         "step1": "Tik op het deel-icoon",
+        "step1Other": "Open het menu en tik op 'Delen'",
         "step2": "Kies 'Zet op beginscherm'",
-        "step3": "Tik op 'Voeg toe'",
-        "other": "Open deze site in Safari om de app te installeren."
+        "step3": "Tik op 'Voeg toe'"
       }
     },
     "title": "Dashboard",

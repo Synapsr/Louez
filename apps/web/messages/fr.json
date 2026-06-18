@@ -210,9 +210,9 @@
         "cta": "Voir comment",
         "title": "Ajouter à l'écran d'accueil",
         "step1": "Appuyez sur l'icône Partager",
+        "step1Other": "Ouvrez le menu, puis « Partager »",
         "step2": "Choisissez « Sur l'écran d'accueil »",
-        "step3": "Appuyez sur « Ajouter »",
-        "other": "Ouvrez ce site dans Safari pour installer l'application."
+        "step3": "Appuyez sur « Ajouter »"
       }
     },
     "title": "Tableau de bord",

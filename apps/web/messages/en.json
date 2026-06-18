@@ -210,9 +210,9 @@
         "cta": "Show me how",
         "title": "Add to Home Screen",
         "step1": "Tap the Share icon",
+        "step1Other": "Open the menu, then tap “Share”",
         "step2": "Choose “Add to Home Screen”",
-        "step3": "Tap “Add”",
-        "other": "Open this site in Safari to install the app."
+        "step3": "Tap “Add”"
       }
     },
     "title": "Dashboard",

@@ -210,9 +210,9 @@
         "cta": "Scopri come",
         "title": "Aggiungi alla schermata Home",
         "step1": "Tocca l'icona Condividi",
+        "step1Other": "Apri il menu, poi «Condividi»",
         "step2": "Scegli «Aggiungi a Home»",
-        "step3": "Tocca «Aggiungi»",
-        "other": "Apri questo sito in Safari per installare l'app."
+        "step3": "Tocca «Aggiungi»"
       }
     },
     "title": "Dashboard",
