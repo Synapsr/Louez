@@ -3,7 +3,14 @@
 import * as React from 'react';
 
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Check, Download, ExternalLink, SquarePlus, X } from 'lucide-react';
+import {
+  Check,
+  Download,
+  EllipsisVertical,
+  ExternalLink,
+  SquarePlus,
+  X,
+} from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import {
@@ -86,15 +93,15 @@ export function InstallPrompt() {
   const showBanner = visible && status !== 'hidden' && !saveBarVisible;
 
   const isActionable = status === 'android' || status === 'desktop';
-  const isOpenElsewhere = status === 'in-app' || status === 'ios-other';
+  // Only an embedded in-app webview truly can't install. Every standalone iOS
+  // browser (Safari, Chrome, Firefox, Edge…) supports Add to Home Screen since
+  // iOS 16.4, so iOS browsers get the instructions sheet rather than a "use
+  // Safari" dead end — only the Share location differs (toolbar vs menu).
+  const isWebview = status === 'in-app';
+  const canShowIosSteps = status === 'ios-safari' || status === 'ios-other';
 
-  const description = isOpenElsewhere
-    ? status === 'in-app'
-      ? t('inApp')
-      : t('ios.other')
-    : t('subtitle');
-
-  const LeadIcon = isOpenElsewhere ? ExternalLink : Download;
+  const description = isWebview ? t('inApp') : t('subtitle');
+  const LeadIcon = isWebview ? ExternalLink : Download;
 
   return (
     <>
@@ -147,7 +154,7 @@ export function InstallPrompt() {
                     </div>
                   )}
 
-                  {status === 'ios-safari' && (
+                  {canShowIosSteps && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button size="sm" onClick={() => setIosSheetOpen(true)}>
                         {t('ios.cta')}
@@ -187,8 +194,16 @@ export function InstallPrompt() {
           <div className="flex flex-col gap-4 px-6 pb-8">
             <InstallStep
               index={1}
-              icon={<IosShareIcon className="size-5" />}
-              text={t('ios.step1')}
+              icon={
+                status === 'ios-safari' ? (
+                  <IosShareIcon className="size-5" />
+                ) : (
+                  <EllipsisVertical className="size-5" />
+                )
+              }
+              text={
+                status === 'ios-safari' ? t('ios.step1') : t('ios.step1Other')
+              }
             />
             <InstallStep
               index={2}

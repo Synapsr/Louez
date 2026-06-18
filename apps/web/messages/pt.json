@@ -210,9 +210,9 @@
         "cta": "Ver como",
         "title": "Adicionar ao ecrã principal",
         "step1": "Toque no ícone Partilhar",
+        "step1Other": "Abra o menu e toque em «Partilhar»",
         "step2": "Escolha «Adicionar ao ecrã principal»",
-        "step3": "Toque em «Adicionar»",
-        "other": "Abra este site no Safari para instalar a aplicação."
+        "step3": "Toque em «Adicionar»"
       }
     },
     "title": "Painel",

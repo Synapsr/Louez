@@ -210,9 +210,9 @@
         "cta": "Ver cómo",
         "title": "Añadir a la pantalla de inicio",
         "step1": "Toca el icono Compartir",
+        "step1Other": "Abre el menú y toca «Compartir»",
         "step2": "Elige «Añadir a pantalla de inicio»",
-        "step3": "Toca «Añadir»",
-        "other": "Abre este sitio en Safari para instalar la aplicación."
+        "step3": "Toca «Añadir»"
       }
     },
     "title": "Panel de control",

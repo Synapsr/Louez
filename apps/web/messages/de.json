@@ -210,9 +210,9 @@
         "cta": "So geht's",
         "title": "Zum Home-Bildschirm hinzufügen",
         "step1": "Tippen Sie auf das Teilen-Symbol",
+        "step1Other": "Öffnen Sie das Menü und dann „Teilen“",
         "step2": "Wählen Sie „Zum Home-Bildschirm“",
-        "step3": "Tippen Sie auf „Hinzufügen“",
-        "other": "Öffnen Sie diese Seite in Safari, um die App zu installieren."
+        "step3": "Tippen Sie auf „Hinzufügen“"
       }
     },
     "title": "Dashboard",

@@ -210,9 +210,9 @@
         "cta": "Zobacz jak",
         "title": "Dodaj do ekranu głównego",
         "step1": "Dotknij ikony Udostępnij",
+        "step1Other": "Otwórz menu, a następnie „Udostępnij”",
         "step2": "Wybierz „Do ekranu początkowego”",
-        "step3": "Dotknij „Dodaj”",
-        "other": "Otwórz tę stronę w Safari, aby zainstalować aplikację."
+        "step3": "Dotknij „Dodaj”"
       }
     },
     "title": "Panel",
