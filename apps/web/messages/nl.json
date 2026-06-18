@@ -5088,7 +5088,9 @@
       "greeting": "Hallo,",
       "body": "{referredStoreName} heeft zojuist de eerste online verkoop gedaan. Je verdient {freeReservations} gratis reserveringen, ter waarde van ≈ {rewardValue}.",
       "cta": "Bekijk mijn beloningen",
-      "footer": "Bedankt dat je de Louez-community laat groeien."
+      "footer": "Bedankt dat je de Louez-community laat groeien.",
+      "subjectCredit": "Je hebt een Louez-tegoed verdiend 🎉",
+      "bodyCredit": "{referredStoreName} heeft zojuist de eerste online verkoop gedaan. Je verdient een tegoed van {rewardValue} op je volgende Louez-factuur."
     }
   },
   "contract": {

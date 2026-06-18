@@ -135,6 +135,7 @@ export async function maybeGrantReferrerReward(
     grantedMonth,
   };
 
+  let capExceeded = false;
   try {
     if (reward.kind === 'invoice_credit') {
       // Create the Stripe credit first (idempotency-keyed) so a transient failure retries
@@ -158,19 +159,31 @@ export async function maybeGrantReferrerReward(
         );
         invoiceItemId = item.id;
       }
-      await db.insert(referralRewards).values({
-        id: nanoid(),
-        ...ledgerBase,
-        stripeInvoiceItemId: invoiceItemId,
-        kind: 'invoice_credit',
-        freeReservations: 0,
-        creditCents: reward.creditCents,
-        status: 'granted',
-      });
+      try {
+        await db.insert(referralRewards).values({
+          id: nanoid(),
+          ...ledgerBase,
+          stripeInvoiceItemId: invoiceItemId,
+          kind: 'invoice_credit',
+          freeReservations: 0,
+          creditCents: reward.creditCents,
+          status: 'granted',
+        });
+      } catch (error) {
+        // The credit was already created; if the ledger row cannot be written for a
+        // non-duplicate reason, delete the credit so it never applies with no ledger basis
+        // (an orphaned credit could not be clawed back). Duplicates fall through to the
+        // outer catch and report already_rewarded.
+        if (!isDuplicateError(error) && invoiceItemId) {
+          await stripe.invoiceItems.del(invoiceItemId).catch(() => {});
+        }
+        throw error;
+      }
     } else {
-      // Free reservations: increment the Referrer's granted counter and write the ledger
-      // atomically, taking the same per-store subscription lock the metering uses. The
-      // ledger insert is last so the whole grant rolls back together on a duplicate race.
+      // Free reservations: under the per-referrer subscription lock, re-check the monthly cap
+      // (closing the read-then-insert race), then increment the Referrer's granted counter and
+      // write the ledger atomically. The ledger insert is last so the whole grant rolls back
+      // together on a duplicate race.
       const sub = await db.query.subscriptions.findFirst({
         where: eq(subscriptions.storeId, referrerStoreId),
         columns: { id: true },
@@ -180,6 +193,29 @@ export async function maybeGrantReferrerReward(
           await tx.execute(
             sql`SELECT id FROM subscriptions WHERE store_id = ${referrerStoreId} FOR UPDATE`,
           );
+        }
+        if (config.monthlyCapPerReferrer > 0) {
+          const [{ value }] = await tx
+            .select({ value: sql<number>`count(*)` })
+            .from(referralRewards)
+            .where(
+              and(
+                eq(referralRewards.referrerStoreId, referrerStoreId),
+                eq(referralRewards.grantedMonth, grantedMonth),
+                eq(referralRewards.status, 'granted'),
+              ),
+            );
+          if (
+            !isWithinMonthlyCap({
+              rewardedThisMonth: Number(value) || 0,
+              monthlyCap: config.monthlyCapPerReferrer,
+            })
+          ) {
+            capExceeded = true;
+            return;
+          }
+        }
+        if (sub) {
           await tx
             .update(subscriptions)
             .set({
@@ -209,6 +245,7 @@ export async function maybeGrantReferrerReward(
           status: 'granted',
         });
       });
+      if (capExceeded) return { granted: false, reason: 'monthly_cap' };
     }
   } catch (error) {
     if (isDuplicateError(error)) {
@@ -217,12 +254,13 @@ export async function maybeGrantReferrerReward(
     throw error;
   }
 
-  // Notify the Referrer (best-effort; never throws). The headline count is the configured
-  // reward size; the value reflects the plan-aware grant (free reservations or € credit).
+  // Notify the Referrer (best-effort; never throws), reflecting the actual reward kind so a
+  // subscribed referrer is told about their € credit, not phantom free reservations.
   await notifyReferrerRewardGranted({
     referrerStoreId,
     referredStoreName: input.referredStore.name,
-    freeReservations: config.referrerRewardFreeReservations,
+    kind: reward.kind,
+    freeReservations: reward.freeReservations,
     displayValueCents: reward.displayValueCents,
   });
 
@@ -270,6 +308,21 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
       await tx.execute(
         sql`SELECT id FROM subscriptions WHERE store_id = ${reward.referrerStoreId} FOR UPDATE`,
       );
+      // Claim the clawback atomically: only the invocation that flips the status from
+      // 'granted' to 'clawed_back' proceeds to decrement, so a re-delivered or concurrent
+      // event (a refund AND a dispute on the same payment resolve to the same reward row)
+      // never double-revokes the referrer's free-reservation balance.
+      const claim = await tx
+        .update(referralRewards)
+        .set({ status: 'clawed_back', clawedBackAt: at, updatedAt: new Date() })
+        .where(
+          and(
+            eq(referralRewards.id, reward.id),
+            eq(referralRewards.status, 'granted'),
+          ),
+        );
+      if ((claim[0]?.affectedRows ?? 0) === 0) return;
+
       const billing = await getStoreBilling(reward.referrerStoreId);
       const used = Math.max(
         0,
@@ -289,31 +342,11 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
           })
           .where(eq(subscriptions.storeId, reward.referrerStoreId));
       }
-      await tx
-        .update(referralRewards)
-        .set({ status: 'clawed_back', clawedBackAt: at, updatedAt: new Date() })
-        .where(
-          and(
-            eq(referralRewards.id, reward.id),
-            eq(referralRewards.status, 'granted'),
-          ),
-        );
     });
   } else {
-    // Invoice credit: drop the pending Stripe item if it has not been invoiced yet.
-    if (reward.stripeInvoiceItemId) {
-      try {
-        await stripe.invoiceItems.del(reward.stripeInvoiceItemId);
-      } catch (error) {
-        // Already invoiced/deleted out of band — the credit stands, but still mark the
-        // reward clawed back so the event is not re-processed. Non-fatal.
-        console.warn('[referral] could not delete reward invoice item on clawback', {
-          rewardId: reward.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-    await db
+    // Invoice credit: claim the clawback atomically first (so a re-delivered or concurrent
+    // event does nothing), then drop the pending Stripe item if it has not been invoiced yet.
+    const claim = await db
       .update(referralRewards)
       .set({ status: 'clawed_back', clawedBackAt: at, updatedAt: new Date() })
       .where(
@@ -322,6 +355,21 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
           eq(referralRewards.status, 'granted'),
         ),
       );
+    if ((claim[0]?.affectedRows ?? 0) === 0) {
+      return { clawedBack: false, reason: 'already_clawed_back' };
+    }
+    if (reward.stripeInvoiceItemId) {
+      try {
+        await stripe.invoiceItems.del(reward.stripeInvoiceItemId);
+      } catch (error) {
+        // Already invoiced/deleted out of band — the credit stands, but the reward is
+        // already marked clawed back so the event is not re-processed. Non-fatal.
+        console.warn('[referral] could not delete reward invoice item on clawback', {
+          rewardId: reward.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
   }
 
   return { clawedBack: true };

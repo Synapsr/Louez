@@ -20,6 +20,7 @@ import {
 } from '@/lib/pay-as-you-go/defaults'
 import { resolveReferralAttribution } from '@/lib/referral/attribution'
 import { getReferralProgramConfig } from '@/lib/referral/defaults'
+import { referralCookieDomain } from '@/lib/referral/link'
 
 export async function createStore(data: StoreInfoInput) {
   const session = await auth()
@@ -139,19 +140,41 @@ export async function createStore(data: StoreInfoInput) {
     let referredByStoreId: string | null = null
 
     if (referralCookie && isValidReferralCode(referralCookie)) {
-      const referrerStore = await db.query.stores.findFirst({
-        where: eq(stores.referralCode, referralCookie),
-        columns: { id: true, userId: true },
+      // Attribution applies only to a user's FIRST store. The .louez.io cookie can survive
+      // for 30 days, so without this guard a referred user who creates a second store would
+      // re-credit the referrer and re-claim the Referred Reward on every signup.
+      const ownsAStore = await db.query.storeMembers.findFirst({
+        where: eq(storeMembers.userId, session.user.id),
+        columns: { id: true },
       })
-      const attribution = resolveReferralAttribution({
-        refCode: referralCookie,
-        referrerStore: referrerStore ?? null,
-        currentUserId: session.user.id,
+      if (!ownsAStore) {
+        const referrerStore = await db.query.stores.findFirst({
+          where: eq(stores.referralCode, referralCookie),
+          columns: { id: true, userId: true },
+        })
+        const attribution = resolveReferralAttribution({
+          refCode: referralCookie,
+          referrerStore: referrerStore ?? null,
+          currentUserId: session.user.id,
+        })
+        referredByUserId = attribution?.referredByUserId ?? null
+        referredByStoreId = attribution?.referredByStoreId ?? null
+      }
+    }
+
+    // Consume the referral cookie exactly once, clearing it with the SAME domain it was set
+    // with — a bare delete() emits a host-only expiry that does not match the .louez.io
+    // cookie, so it would otherwise linger and re-attribute later signups.
+    if (referralCookie) {
+      const cookieDomain = referralCookieDomain()
+      cookieStore.set('louez_referral', '', {
+        domain: cookieDomain,
+        path: '/',
+        maxAge: 0,
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: cookieDomain !== undefined,
       })
-      referredByUserId = attribution?.referredByUserId ?? null
-      referredByStoreId = attribution?.referredByStoreId ?? null
-      // Clear the cookie regardless of validity
-      cookieStore.delete('louez_referral')
     }
 
     // Generate a unique referral code for this new store

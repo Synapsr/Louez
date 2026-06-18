@@ -5088,7 +5088,9 @@
       "greeting": "Hallo,",
       "body": "{referredStoreName} hat gerade den ersten Online-Verkauf getätigt. Sie erhalten {freeReservations} Gratis-Reservierungen im Wert von ≈ {rewardValue}.",
       "cta": "Meine Prämien ansehen",
-      "footer": "Danke, dass Sie die Louez-Community wachsen lassen."
+      "footer": "Danke, dass Sie die Louez-Community wachsen lassen.",
+      "subjectCredit": "Sie haben ein Louez-Guthaben verdient 🎉",
+      "bodyCredit": "{referredStoreName} hat gerade den ersten Online-Verkauf getätigt. Sie erhalten ein Guthaben von {rewardValue} auf Ihrer nächsten Louez-Rechnung."
     }
   },
   "contract": {

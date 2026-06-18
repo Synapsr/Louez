@@ -2,7 +2,7 @@
 
 import { db } from '@louez/db'
 import { referralRewards, stores, subscriptions } from '@louez/db'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { getCurrentStore } from '@/lib/store-context'
 import { generateReferralCode } from '@/lib/utils/referral'
 import { buildReferralUrl } from '@/lib/referral/link'
@@ -100,29 +100,29 @@ export async function getReferralData(): Promise<{
   const rewardValueCents =
     freeReservationsEarned * unitValueCents + creditEarnedCents
 
-  // Fetch subscription data for all referred stores
-  const referrals: ReferralData[] = await Promise.all(
-    referredStores.map(async (ref) => {
-      const sub = await db.query.subscriptions.findFirst({
-        where: eq(subscriptions.storeId, ref.id),
-        columns: {
-          planSlug: true,
-          status: true,
-        },
+  // Fetch all referred stores' subscriptions in one query (avoid an N+1 fan-out).
+  const referredIds = referredStores.map((ref) => ref.id)
+  const subs = referredIds.length
+    ? await db.query.subscriptions.findMany({
+        where: inArray(subscriptions.storeId, referredIds),
+        columns: { storeId: true, planSlug: true, status: true },
       })
+    : []
+  const subByStore = new Map(subs.map((s) => [s.storeId, s]))
 
-      return {
-        id: ref.id,
-        name: ref.name,
-        slug: ref.slug,
-        logoUrl: ref.logoUrl,
-        joinedAt: ref.createdAt,
-        planSlug: sub?.planSlug ?? 'pay_as_you_go',
-        subscriptionStatus: sub?.status ?? 'active',
-        rewarded: rewardedIds.has(ref.id),
-      }
-    })
-  )
+  const referrals: ReferralData[] = referredStores.map((ref) => {
+    const sub = subByStore.get(ref.id)
+    return {
+      id: ref.id,
+      name: ref.name,
+      slug: ref.slug,
+      logoUrl: ref.logoUrl,
+      joinedAt: ref.createdAt,
+      planSlug: sub?.planSlug ?? 'pay_as_you_go',
+      subscriptionStatus: sub?.status ?? 'active',
+      rewarded: rewardedIds.has(ref.id),
+    }
+  })
 
   const now = new Date()
   const stats: ReferralStats = {
@@ -130,8 +130,8 @@ export async function getReferralData(): Promise<{
     qualified: rewards.length,
     thisMonth: referrals.filter(
       (r) =>
-        r.joinedAt.getMonth() === now.getMonth() &&
-        r.joinedAt.getFullYear() === now.getFullYear()
+        r.joinedAt.getUTCMonth() === now.getUTCMonth() &&
+        r.joinedAt.getUTCFullYear() === now.getUTCFullYear()
     ).length,
     freeReservationsEarned,
     rewardValueCents,

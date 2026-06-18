@@ -5201,7 +5201,9 @@
       "greeting": "Bonjour,",
       "body": "{referredStoreName} vient de réaliser sa première vente en ligne. Vous gagnez {freeReservations} réservations offertes, soit ≈ {rewardValue}.",
       "cta": "Voir mes gains",
-      "footer": "Merci de faire grandir la communauté Louez."
+      "footer": "Merci de faire grandir la communauté Louez.",
+      "subjectCredit": "Vous avez gagné un crédit Louez 🎉",
+      "bodyCredit": "{referredStoreName} vient de réaliser sa première vente en ligne. Vous gagnez un crédit de {rewardValue} sur votre prochaine facture Louez."
     }
   },
   "contract": {
