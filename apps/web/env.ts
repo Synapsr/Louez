@@ -177,6 +177,34 @@ export const env = createEnv({
         return result.data;
       }),
 
+    // ===== Referral program =====
+    // Free reservations granted to the Referrer when a referral qualifies (PAYG referrer;
+    // a subscribed referrer gets the equivalent euro invoice credit). Default 30.
+    REFERRAL_REFERRER_REWARD: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(100_000)
+      .default(30),
+    // Free reservations gifted to a Referred Store at sign-up (instead of the welcome 15).
+    REFERRAL_REFERRED_REWARD: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(100_000)
+      .default(30),
+    // Minimum online payment (in cents) a Referred Store must take to unlock the reward.
+    REFERRAL_MIN_QUALIFYING_CENTS: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(10_000_000)
+      .default(2000),
+    // Max rewards a single Referrer can earn per calendar month. 0 = unlimited (launch default).
+    REFERRAL_MONTHLY_CAP: z.coerce.number().int().min(0).max(100_000).default(0),
+    // Days after a grant during which a refunded/disputed qualifying payment claws it back.
+    REFERRAL_CLAWBACK_DAYS: z.coerce.number().int().min(0).max(3650).default(30),
+
     // ===== Development =====
     AUTO_DB_SETUP: z
       .string()
@@ -280,6 +308,11 @@ export const env = createEnv({
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
     PAYG_DEFAULT_PRICING: process.env.PAYG_DEFAULT_PRICING,
     PAYG_FREE_RESERVATIONS: process.env.PAYG_FREE_RESERVATIONS,
+    REFERRAL_REFERRER_REWARD: process.env.REFERRAL_REFERRER_REWARD,
+    REFERRAL_REFERRED_REWARD: process.env.REFERRAL_REFERRED_REWARD,
+    REFERRAL_MIN_QUALIFYING_CENTS: process.env.REFERRAL_MIN_QUALIFYING_CENTS,
+    REFERRAL_MONTHLY_CAP: process.env.REFERRAL_MONTHLY_CAP,
+    REFERRAL_CLAWBACK_DAYS: process.env.REFERRAL_CLAWBACK_DAYS,
 
     // Client
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
