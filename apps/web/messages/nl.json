@@ -324,12 +324,15 @@
       "stats": {
         "totalReferrals": "Totaal verwijzingen",
         "activePaid": "Betalende verwijzingen",
-        "thisMonth": "Deze maand"
+        "thisMonth": "Deze maand",
+        "qualified": "Gekwalificeerde referrals",
+        "freeReservationsEarned": "Verdiende reserveringen",
+        "valueEarned": "≈ {value} bespaard"
       },
       "link": {
         "title": "Verwijs & verdien",
         "description": "Deel uw link en nodig andere verhuurders uit om zich aan te sluiten bij Louez.",
-        "reward": "Voor elke doorverwezen verhuurder ontvangt u 3 gratis maanden op het Ultra-plan.",
+        "reward": "Voor elke verhuurder die je aanbrengt en die zijn eerste verkoop doet, verdien je {referrer} gratis reserveringen — en hij start met {referred}.",
         "copyLink": "Link kopiëren",
         "linkCopied": "Link gekopieerd!"
       },
@@ -342,14 +345,25 @@
           "store": "Winkel",
           "joined": "Aangemeld",
           "plan": "Plan",
-          "status": "Status"
+          "status": "Status",
+          "reward": "Beloning"
         },
         "status": {
           "active": "Actief",
           "cancelled": "Geannuleerd",
           "past_due": "Achterstallig",
           "trialing": "Proefperiode"
+        },
+        "reward": {
+          "rewarded": "Toegekend",
+          "pending": "In afwachting"
         }
+      },
+      "nudge": {
+        "title": "Tevreden over Louez?",
+        "description": "Verwijs een verhuurder — jullie verdienen allebei gratis reserveringen.",
+        "cta": "Verwijzen",
+        "dismiss": "Sluiten"
       }
     },
     "sms": {
@@ -3847,7 +3861,8 @@
           "voided": "Geannuleerd",
           "reversed": "Teruggestort"
         }
-      }
+      },
+      "referrals": "Referrals"
     },
     "aiChat": {
       "open": "AI-assistent",
@@ -5066,6 +5081,14 @@
       "authorizeNow": "Borg autoriseren",
       "linkFallback": "Of kopieer deze link naar uw browser:",
       "securePayment": "Deze autorisatie wordt beveiligd door Stripe. Het bedrag wordt niet direct afgeschreven."
+    },
+    "rewardUnlocked": {
+      "subject": "Je hebt gratis reserveringen verdiend 🎉",
+      "title": "Je verwijzing heeft zich uitbetaald!",
+      "greeting": "Hallo,",
+      "body": "{referredStoreName} heeft zojuist de eerste online verkoop gedaan. Je verdient {freeReservations} gratis reserveringen, ter waarde van ≈ {rewardValue}.",
+      "cta": "Bekijk mijn beloningen",
+      "footer": "Bedankt dat je de Louez-community laat groeien."
     }
   },
   "contract": {

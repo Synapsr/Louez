@@ -324,12 +324,15 @@
       "stats": {
         "totalReferrals": "Total filleuls",
         "activePaid": "Filleuls payants",
-        "thisMonth": "Ce mois-ci"
+        "thisMonth": "Ce mois-ci",
+        "qualified": "Filleuls qualifiés",
+        "freeReservationsEarned": "Réservations gagnées",
+        "valueEarned": "≈ {value} économisés"
       },
       "link": {
         "title": "Parrainez et gagnez",
         "description": "Partagez votre lien et invitez d'autres loueurs à rejoindre Louez.",
-        "reward": "Pour chaque loueur parrainé, recevez 3 mois offerts sur le plan Ultra.",
+        "reward": "Pour chaque loueur parrainé qui réalise sa première vente, vous gagnez {referrer} réservations offertes — et votre filleul démarre avec {referred}.",
         "copyLink": "Copier le lien",
         "linkCopied": "Lien copié !"
       },
@@ -342,14 +345,25 @@
           "store": "Boutique",
           "joined": "Inscription",
           "plan": "Plan",
-          "status": "Statut"
+          "status": "Statut",
+          "reward": "Récompense"
         },
         "status": {
           "active": "Actif",
           "cancelled": "Annulé",
           "past_due": "Impayé",
           "trialing": "Essai"
+        },
+        "reward": {
+          "rewarded": "Versée",
+          "pending": "En attente"
         }
+      },
+      "nudge": {
+        "title": "Vous aimez Louez ?",
+        "description": "Parrainez un loueur : vous gagnez tous les deux des réservations offertes.",
+        "cta": "Parrainer",
+        "dismiss": "Fermer"
       }
     },
     "sms": {
@@ -3954,7 +3968,8 @@
           "voided": "Annulé",
           "reversed": "Remboursé"
         }
-      }
+      },
+      "referrals": "Parrainage"
     },
     "aiChat": {
       "open": "Assistant IA",
@@ -5179,6 +5194,14 @@
       "sentBy": "Cet email a été envoyé par {storeName}",
       "ignoreIfNotYou": "Si vous n'êtes pas à l'origine de cette action, veuillez ignorer cet email.",
       "poweredBy": "Propulsé par"
+    },
+    "rewardUnlocked": {
+      "subject": "Vous avez gagné des réservations offertes 🎉",
+      "title": "Votre parrainage a payé !",
+      "greeting": "Bonjour,",
+      "body": "{referredStoreName} vient de réaliser sa première vente en ligne. Vous gagnez {freeReservations} réservations offertes, soit ≈ {rewardValue}.",
+      "cta": "Voir mes gains",
+      "footer": "Merci de faire grandir la communauté Louez."
     }
   },
   "contract": {

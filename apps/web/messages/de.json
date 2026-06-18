@@ -324,12 +324,15 @@
       "stats": {
         "totalReferrals": "Empfehlungen gesamt",
         "activePaid": "Zahlende Empfehlungen",
-        "thisMonth": "Diesen Monat"
+        "thisMonth": "Diesen Monat",
+        "qualified": "Qualifizierte Empfehlungen",
+        "freeReservationsEarned": "Verdiente Reservierungen",
+        "valueEarned": "≈ {value} gespart"
       },
       "link": {
         "title": "Empfehlen & profitieren",
         "description": "Teilen Sie Ihren Link und laden Sie andere Vermieter zu Louez ein.",
-        "reward": "Für jeden geworbenen Vermieter erhalten Sie 3 kostenlose Monate im Ultra-Plan.",
+        "reward": "Für jeden geworbenen Vermieter, der seinen ersten Verkauf tätigt, erhalten Sie {referrer} Gratis-Reservierungen — und er startet mit {referred}.",
         "copyLink": "Link kopieren",
         "linkCopied": "Link kopiert!"
       },
@@ -342,14 +345,25 @@
           "store": "Geschäft",
           "joined": "Beigetreten",
           "plan": "Plan",
-          "status": "Status"
+          "status": "Status",
+          "reward": "Prämie"
         },
         "status": {
           "active": "Aktiv",
           "cancelled": "Gekündigt",
           "past_due": "Überfällig",
           "trialing": "Testphase"
+        },
+        "reward": {
+          "rewarded": "Gewährt",
+          "pending": "Ausstehend"
         }
+      },
+      "nudge": {
+        "title": "Gefällt Ihnen Louez?",
+        "description": "Empfehlen Sie einen Vermieter — Sie erhalten beide Gratis-Reservierungen.",
+        "cta": "Empfehlen",
+        "dismiss": "Schließen"
       }
     },
     "sms": {
@@ -3847,7 +3861,8 @@
           "voided": "Storniert",
           "reversed": "Erstattet"
         }
-      }
+      },
+      "referrals": "Empfehlungen"
     },
     "aiChat": {
       "open": "KI-Assistent",
@@ -5066,6 +5081,14 @@
       "yourQuote": "Ihr Angebot",
       "viewQuote": "Angebot ansehen",
       "expiry": "Sie können dieses Angebot in Ihrem Kundenkonto annehmen oder ablehnen."
+    },
+    "rewardUnlocked": {
+      "subject": "Sie haben Gratis-Reservierungen verdient 🎉",
+      "title": "Ihre Empfehlung hat sich gelohnt!",
+      "greeting": "Hallo,",
+      "body": "{referredStoreName} hat gerade den ersten Online-Verkauf getätigt. Sie erhalten {freeReservations} Gratis-Reservierungen im Wert von ≈ {rewardValue}.",
+      "cta": "Meine Prämien ansehen",
+      "footer": "Danke, dass Sie die Louez-Community wachsen lassen."
     }
   },
   "contract": {

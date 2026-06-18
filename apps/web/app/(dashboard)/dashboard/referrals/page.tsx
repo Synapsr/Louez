@@ -22,7 +22,11 @@ export default async function ReferralsPage() {
         <p className="mt-1 text-muted-foreground">{t('description')}</p>
       </div>
 
-      <ReferralLink referralUrl={data.referralUrl} />
+      <ReferralLink
+        referralUrl={data.referralUrl}
+        referrerReward={data.program.referrerReward}
+        referredReward={data.program.referredReward}
+      />
       <ReferralStats stats={data.stats} />
       <ReferralsList referrals={data.referrals} />
     </div>

@@ -75,6 +75,7 @@ import { cn, getCurrencySymbol } from '@louez/utils'
 
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
+import { ReferralNudge } from '@/components/dashboard/referral-nudge'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 import { RequestPaymentModal } from './request-payment-modal'
@@ -1088,6 +1089,11 @@ export function UnifiedPaymentSection({
           )}
         </CardContent>
       </Card>
+
+      {/* Niveau-B referral nudge at the satisfaction moment (reservation fully paid). */}
+      {isFullyPaid && !hasDepositToReturn ? (
+        <ReferralNudge className="mt-4" />
+      ) : null}
 
       {/* Record Payment Modal */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>

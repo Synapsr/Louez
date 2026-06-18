@@ -24,6 +24,7 @@ import {
   type DigestEntry,
   NewRequestLandlordEmail,
   TeamInvitationEmail,
+  RewardUnlockedEmail,
   InstantAccessEmail,
   ThankYouReviewEmail,
   PaymentConfirmationEmail,
@@ -1049,6 +1050,53 @@ export async function sendTeamInvitationEmail({
     return { success: true, messageId: result.messageId }
   } catch (error) {
     console.error('Failed to send team invitation email:', error)
+    throw error
+  }
+}
+
+// Referral Reward unlocked (sent to a Referrer when a referral reaches the Qualifying Event)
+export async function sendRewardUnlockedEmail({
+  to,
+  storeName,
+  storeLogoUrl,
+  primaryColor,
+  referredStoreName,
+  freeReservations,
+  rewardValue,
+  ctaUrl,
+  locale = 'fr',
+}: {
+  to: string
+  storeName: string
+  storeLogoUrl?: string | null
+  primaryColor?: string
+  referredStoreName: string
+  freeReservations: number
+  rewardValue: string
+  ctaUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.rewardUnlocked.subject} - ${storeName}`
+  const logo = await resolveEmailLogo(storeLogoUrl)
+  const html = await render(
+    RewardUnlockedEmail({
+      storeName,
+      storeLogoUrl: logo.url,
+      primaryColor,
+      referredStoreName,
+      freeReservations,
+      rewardValue,
+      ctaUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: storeName })
+    return { success: true, messageId: result.messageId }
+  } catch (error) {
+    console.error('Failed to send reward unlocked email:', error)
     throw error
   }
 }
