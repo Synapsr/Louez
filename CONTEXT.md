@@ -96,6 +96,46 @@ _Avoid_: Status, connection visibility
 A provider-specific visual marker used to approximate Louez reservation status colors in external calendars.
 _Avoid_: Louez design token, reservation status
 
+**Referral Program**:
+The program by which an existing Store invites new Stores to Louez, granting a reward to both sides when a referral qualifies.
+_Avoid_: affiliate program, parrainage
+
+**Affiliate Program**:
+A future extension of the Referral Program open to external promoters who are not Store owners.
+_Avoid_: referral program
+
+**Referrer**:
+An existing Store (acting through its owner) that recommends Louez to a prospective Store.
+_Avoid_: parrain, affiliate, ambassador, sponsor
+
+**Referred Store**:
+A new Store that signed up to Louez through a Referrer's referral.
+_Avoid_: filleul, lead, invitee
+
+**Referral Reward**:
+The benefit granted because a referral reached its Qualifying Event. It splits into a Referrer Reward and a Referred Reward.
+_Avoid_: commission, bounty, payout
+
+**Referrer Reward**:
+The Referral Reward granted to the Referrer.
+_Avoid_: commission, Louez commission
+
+**Referred Reward**:
+The Referral Reward granted to the Referred Store as a sign-up incentive.
+_Avoid_: welcome discount, promo code
+
+**Qualifying Event**:
+The Referred Store's first online (Stripe) Reservation payment from a real Customer at or above a configurable minimum amount (€20 at launch). It gates the Referrer Reward. The Referred Reward is granted earlier, at sign-up, and does not wait for the Qualifying Event.
+_Avoid_: conversion, signup, validation, first reservation (a manual reservation does not qualify)
+
+**Referral Guardrail**:
+A rule that protects the Referral Program from abuse. Self-referral block and reward clawback are always on (they enforce correct data); the minimum qualifying amount and the per-Referrer monthly cap are tunable and start permissive.
+_Avoid_: fraud check, limit
+
+**Free Reservation**:
+A reservation whose Louez commission is waived, drawn from a Store's granted free-reservation allowance. Only carries value for a pay-as-you-go Store, since a subscribed Store pays no per-reservation fee.
+_Avoid_: free trial, discount, promo, gift
+
 ## Relationships
 
 - A **Store** receives **Reservation payments** from **Customers**.
@@ -118,6 +158,13 @@ _Avoid_: Louez design token, reservation status
 - Only store owners manage **Integrations** and provider **Connections**.
 - Native store behavior belongs to **Store** settings; provider integration state belongs to **Integration** records.
 - Louez reservations are the source of truth for calendar export sync.
+- A **Referrer** can refer many **Referred Stores**; a **Referred Store** has at most one **Referrer**.
+- A **Referral Reward** is granted only after the **Referred Store** reaches its **Qualifying Event**.
+- A **Referrer Reward** is granted at most once per **Referred Store** (one-time, not recurring).
+- A single qualified referral can produce both a **Referrer Reward** and a **Referred Reward**, granted at different times: the **Referred Reward** at sign-up, the **Referrer Reward** at the **Qualifying Event**.
+- A **Referral Reward** is distinct from a **Louez commission** (a fee Louez charges) and from a customer-facing promo code.
+- A **Referrer Reward** is denominated in **Free Reservations** when the Referrer is pay-as-you-go, or in account credit when the Referrer is subscribed.
+- A **Referred Reward** is always denominated in **Free Reservations**, since a Referred Store starts pay-as-you-go.
 
 ## Example Dialogue
 
@@ -153,3 +200,4 @@ _Avoid_: Louez design token, reservation status
 - Provider clients should stay narrow; resolved: use a typed local Google Calendar client for the first implementation and defer a richer calendar provider abstraction until another provider needs it.
 - Calendar disconnect should be conservative; resolved: stop sync and remove credentials while keeping existing provider events by default, with explicit optional cleanup.
 - Managing integrations exposes external provider access and customer data; resolved: integration management is owner-only in the first permission model.
+- "commission" could mean the fee Louez charges on reservations or the reward paid to a referring Store; resolved: **Louez commission** stays the reservation fee, and the referral payout is a **Referrer Reward**, never a "commission".
