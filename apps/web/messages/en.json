@@ -198,6 +198,23 @@
     }
   },
   "dashboard": {
+    "installPrompt": {
+      "title": "Install the app",
+      "subtitle": "Keep your dashboard one tap away on your home screen.",
+      "install": "Install",
+      "later": "Not now",
+      "inApp": "Open this link in your browser to install the app.",
+      "installedToast": "App installed. Find it on your home screen.",
+      "close": "Close",
+      "ios": {
+        "cta": "Show me how",
+        "title": "Add to Home Screen",
+        "step1": "Tap the Share icon",
+        "step2": "Choose “Add to Home Screen”",
+        "step3": "Tap “Add”",
+        "other": "Open this site in Safari to install the app."
+      }
+    },
     "title": "Dashboard",
     "notifications": {
       "newReservation": "New reservation #{number}",

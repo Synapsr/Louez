@@ -198,6 +198,23 @@
     }
   },
   "dashboard": {
+    "installPrompt": {
+      "title": "Installer l'application",
+      "subtitle": "Retrouvez votre tableau de bord sur votre écran d'accueil.",
+      "install": "Installer",
+      "later": "Plus tard",
+      "inApp": "Ouvrez ce lien dans votre navigateur pour installer l'application.",
+      "installedToast": "Application installée. Retrouvez-la sur votre écran d'accueil.",
+      "close": "Fermer",
+      "ios": {
+        "cta": "Voir comment",
+        "title": "Ajouter à l'écran d'accueil",
+        "step1": "Appuyez sur l'icône Partager",
+        "step2": "Choisissez « Sur l'écran d'accueil »",
+        "step3": "Appuyez sur « Ajouter »",
+        "other": "Ouvrez ce site dans Safari pour installer l'application."
+      }
+    },
     "title": "Tableau de bord",
     "notifications": {
       "newReservation": "Nouvelle réservation #{number}",

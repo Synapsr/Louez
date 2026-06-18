@@ -198,6 +198,23 @@
     }
   },
   "dashboard": {
+    "installPrompt": {
+      "title": "Zainstaluj aplikację",
+      "subtitle": "Miej panel zawsze pod ręką na ekranie głównym.",
+      "install": "Zainstaluj",
+      "later": "Nie teraz",
+      "inApp": "Otwórz ten link w przeglądarce, aby zainstalować aplikację.",
+      "installedToast": "Aplikacja zainstalowana. Znajdziesz ją na ekranie głównym.",
+      "close": "Zamknij",
+      "ios": {
+        "cta": "Zobacz jak",
+        "title": "Dodaj do ekranu głównego",
+        "step1": "Dotknij ikony Udostępnij",
+        "step2": "Wybierz „Do ekranu początkowego”",
+        "step3": "Dotknij „Dodaj”",
+        "other": "Otwórz tę stronę w Safari, aby zainstalować aplikację."
+      }
+    },
     "title": "Panel",
     "notifications": {
       "newReservation": "Nowa rezerwacja #{number}",

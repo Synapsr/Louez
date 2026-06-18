@@ -198,6 +198,23 @@
     }
   },
   "dashboard": {
+    "installPrompt": {
+      "title": "Installa l'app",
+      "subtitle": "Tieni la tua dashboard sempre a portata di mano nella schermata Home.",
+      "install": "Installa",
+      "later": "Più tardi",
+      "inApp": "Apri questo link nel tuo browser per installare l'app.",
+      "installedToast": "App installata. La trovi nella schermata Home.",
+      "close": "Chiudi",
+      "ios": {
+        "cta": "Scopri come",
+        "title": "Aggiungi alla schermata Home",
+        "step1": "Tocca l'icona Condividi",
+        "step2": "Scegli «Aggiungi a Home»",
+        "step3": "Tocca «Aggiungi»",
+        "other": "Apri questo sito in Safari per installare l'app."
+      }
+    },
     "title": "Dashboard",
     "notifications": {
       "newReservation": "Nuova prenotazione #{number}",

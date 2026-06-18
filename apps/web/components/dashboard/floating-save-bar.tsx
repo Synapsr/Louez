@@ -1,10 +1,14 @@
 'use client';
 
+import { useEffect } from 'react';
+
 import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@louez/ui';
 import { cn } from '@louez/utils';
+
+import { setSaveBarVisible } from '@/hooks/use-save-bar';
 
 interface FloatingSaveBarProps {
   /** Whether the form has unsaved changes */
@@ -53,6 +57,13 @@ export function FloatingSaveBar({
   className,
 }: FloatingSaveBarProps) {
   const t = useTranslations('common');
+
+  // Let other bottom-fixed UI (the PWA install banner) yield while the save bar
+  // can be on screen, so it never covers the Save/Cancel actions.
+  useEffect(() => {
+    setSaveBarVisible(isDirty);
+    return () => setSaveBarVisible(false);
+  }, [isDirty]);
 
   return (
     <>
