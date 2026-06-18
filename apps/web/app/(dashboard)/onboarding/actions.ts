@@ -18,6 +18,8 @@ import {
   getDefaultFreeReservations,
   getDefaultPayAsYouGoConfigSnapshot,
 } from '@/lib/pay-as-you-go/defaults'
+import { resolveReferralAttribution } from '@/lib/referral/attribution'
+import { getReferralProgramConfig } from '@/lib/referral/defaults'
 
 export async function createStore(data: StoreInfoInput) {
   const session = await auth()
@@ -139,11 +141,15 @@ export async function createStore(data: StoreInfoInput) {
     if (referralCookie && isValidReferralCode(referralCookie)) {
       const referrerStore = await db.query.stores.findFirst({
         where: eq(stores.referralCode, referralCookie),
+        columns: { id: true, userId: true },
       })
-      if (referrerStore && referrerStore.userId !== session.user.id) {
-        referredByUserId = referrerStore.userId
-        referredByStoreId = referrerStore.id
-      }
+      const attribution = resolveReferralAttribution({
+        refCode: referralCookie,
+        referrerStore: referrerStore ?? null,
+        currentUserId: session.user.id,
+      })
+      referredByUserId = attribution?.referredByUserId ?? null
+      referredByStoreId = attribution?.referredByStoreId ?? null
       // Clear the cookie regardless of validity
       cookieStore.delete('louez_referral')
     }
@@ -205,8 +211,11 @@ export async function createStore(data: StoreInfoInput) {
       payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(
         validated.data.currency,
       ),
-      // Welcome gift: free reservations (commission waived) for the new store.
-      freeReservationsGranted: getDefaultFreeReservations(),
+      // Welcome gift: free reservations (commission waived) for the new store. A store
+      // that signed up through a referral gets the larger Referred Reward instead.
+      freeReservationsGranted: referredByStoreId
+        ? getReferralProgramConfig().referredRewardFreeReservations
+        : getDefaultFreeReservations(),
     })
 
     // Set as active store (will succeed since we just created ownership above)

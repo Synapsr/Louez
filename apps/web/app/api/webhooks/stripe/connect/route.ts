@@ -32,6 +32,10 @@ import {
   recordFeeReversals,
   recordReservationFee,
 } from '@/lib/pay-as-you-go';
+import {
+  clawbackReferrerRewardForQualifyingPayment,
+  maybeGrantReferrerReward,
+} from '@/lib/referral/rewards';
 import { fromStripeCents } from '@/lib/stripe';
 import { stripe } from '@/lib/stripe/client';
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
@@ -448,6 +452,34 @@ async function handleCheckoutCompleted(
       at: paidAt,
       billing,
     });
+
+    // Referral Program: a Referred Store's first qualifying online payment unlocks the
+    // Referrer Reward. Idempotent (one reward per referred store) and safe against the
+    // success-page/webhook double-processing. Best-effort — never block payment
+    // confirmation on the reward; a re-delivery (or backfill) can grant it later.
+    if (reservation.store.referredByStoreId) {
+      try {
+        await maybeGrantReferrerReward({
+          referredStore: {
+            id: reservation.store.id,
+            referredByStoreId: reservation.store.referredByStoreId,
+            referredByUserId: reservation.store.referredByUserId,
+          },
+          qualifyingAmountCents: session.amount_total ?? 0,
+          currency,
+          reservationId,
+          paymentId: existingPayment?.id ?? null,
+          stripePaymentIntentId: paymentIntentId,
+          stripeChargeId: chargeId,
+          at: paidAt,
+        });
+      } catch (error) {
+        console.error('[referral] failed to grant referrer reward', {
+          reservationId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
   }
 
   // Payment + confirmation already handled (e.g. by the success page). PAYG usage is
@@ -1258,6 +1290,20 @@ async function handleChargeRefunded(
     });
   }
 
+  // Referral Program: a fully refunded qualifying payment claws back the Referrer Reward
+  // (within the clawback window). Best-effort; never block refund processing.
+  if (isFullRefund) {
+    await clawbackReferrerRewardForQualifyingPayment({
+      stripeChargeId: charge.id,
+      stripePaymentIntentId: payment.stripePaymentIntentId,
+    }).catch((error) => {
+      console.error('[referral] reward clawback (refund) failed', {
+        chargeId: charge.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
+
   // Log activity
   await db.insert(reservationActivity).values({
     id: nanoid(),
@@ -1390,6 +1436,18 @@ async function handleChargeDisputeCreated(dispute: Stripe.Dispute) {
     refundRatio: 1,
     idempotencyScope: `dispute_${dispute.id}`,
   });
+
+  // Referral Program: a disputed qualifying payment claws back the Referrer Reward
+  // (within the clawback window). Best-effort; never block dispute processing.
+  await clawbackReferrerRewardForQualifyingPayment({
+    stripePaymentIntentId: paymentIntentId,
+  }).catch((error) => {
+    console.error('[referral] reward clawback (dispute) failed', {
+      disputeId: dispute.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+
   console.log(`Platform fees reversed for dispute ${dispute.id}`);
 }
 

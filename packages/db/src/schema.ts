@@ -311,6 +311,78 @@ export const payAsYouGoInvoices = mysqlTable(
   }),
 );
 
+export const referralRewardKind = mysqlEnum('referral_reward_kind', [
+  'free_reservations', // pay-as-you-go referrer: granted as freeReservationsGranted
+  'invoice_credit', // subscribed referrer: granted as a negative Stripe invoice item
+]);
+
+export const referralRewardStatus = mysqlEnum('referral_reward_status', [
+  'granted',
+  'clawed_back', // qualifying payment refunded/disputed within the clawback window
+]);
+
+/**
+ * Ledger of Referrer Rewards: one row per Referred Store whose Qualifying Event (first
+ * online Reservation payment at/above the minimum) unlocked a reward for its Referrer.
+ * Idempotent via the UNIQUE `referred_store_id` (a referral pays out at most once).
+ * Carries the Stripe payment references so a refund/dispute can claw the reward back.
+ */
+export const referralRewards = mysqlTable(
+  'referral_rewards',
+  {
+    id: id(),
+    // The Referrer Store that earns the reward.
+    referrerStoreId: varchar('referrer_store_id', { length: 21 }).notNull(),
+    // The Referred Store whose Qualifying Event unlocked it. Unique => one reward per
+    // referred store (the grant idempotency key).
+    referredStoreId: varchar('referred_store_id', { length: 21 })
+      .notNull()
+      .unique(),
+    referredUserId: varchar('referred_user_id', { length: 21 }),
+
+    // The qualifying online Reservation payment.
+    qualifyingReservationId: varchar('qualifying_reservation_id', {
+      length: 21,
+    }),
+    qualifyingPaymentId: varchar('qualifying_payment_id', { length: 21 }),
+    qualifyingAmountCents: int('qualifying_amount_cents').notNull(),
+    currency: varchar('currency', { length: 3 }).notNull().default('eur'),
+
+    // Stripe references for clawback lookup (refund keys on charge, dispute on PI).
+    stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
+    stripeChargeId: varchar('stripe_charge_id', { length: 255 }),
+    // The negative invoice item created for an invoice_credit reward (clawback target).
+    stripeInvoiceItemId: varchar('stripe_invoice_item_id', { length: 255 }),
+
+    kind: referralRewardKind.notNull(),
+    // Free reservations granted (kind='free_reservations'); 0 otherwise.
+    freeReservations: int('free_reservations').notNull().default(0),
+    // Euro invoice credit in cents (kind='invoice_credit'); 0 otherwise.
+    creditCents: int('credit_cents').notNull().default(0),
+
+    // YYYY-MM the reward was granted in (drives the per-referrer monthly cap).
+    grantedMonth: varchar('granted_month', { length: 7 }).notNull(),
+
+    status: referralRewardStatus.notNull().default('granted'),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    clawedBackAt: timestamp('clawed_back_at', { mode: 'date' }),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Covers the referrer's reward list and the monthly-cap count.
+    referrerMonthIdx: index('referral_rewards_referrer_month_idx').on(
+      table.referrerStoreId,
+      table.grantedMonth,
+    ),
+    // Clawback lookups from refund (charge) and dispute (payment intent) events.
+    chargeIdx: index('referral_rewards_charge_idx').on(table.stripeChargeId),
+    paymentIntentIdx: index('referral_rewards_payment_intent_idx').on(
+      table.stripePaymentIntentId,
+    ),
+  }),
+);
+
 // ============================================================================
 // Store Members (Multi-store support)
 // ============================================================================
