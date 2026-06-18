@@ -507,6 +507,7 @@ export interface NotificationChannelConfig {
   email: boolean;
   sms: boolean;
   discord: boolean;
+  push: boolean;
 }
 
 export interface NotificationSettings {
@@ -541,17 +542,18 @@ export interface NotificationSettings {
 export type AdminReminderMode = 'per_reservation' | 'daily_digest';
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
-  reservation_new: { email: true, sms: false, discord: false },
-  reservation_confirmed: { email: true, sms: false, discord: false },
-  reservation_rejected: { email: true, sms: false, discord: false },
-  reservation_cancelled: { email: true, sms: false, discord: false },
-  reservation_picked_up: { email: false, sms: false, discord: false },
-  reservation_completed: { email: false, sms: false, discord: false },
+  // Push defaults ON only for new reservations — the #1 real-time event.
+  reservation_new: { email: true, sms: false, discord: false, push: true },
+  reservation_confirmed: { email: true, sms: false, discord: false, push: false },
+  reservation_rejected: { email: true, sms: false, discord: false, push: false },
+  reservation_cancelled: { email: true, sms: false, discord: false, push: false },
+  reservation_picked_up: { email: false, sms: false, discord: false, push: false },
+  reservation_completed: { email: false, sms: false, discord: false, push: false },
   // Admin reminders are opt-in (off by default; SMS/email/Discord cost money or noise)
-  reservation_reminder_pickup: { email: false, sms: false, discord: false },
-  reservation_reminder_return: { email: false, sms: false, discord: false },
-  payment_received: { email: true, sms: false, discord: false },
-  payment_failed: { email: true, sms: false, discord: false },
+  reservation_reminder_pickup: { email: false, sms: false, discord: false, push: false },
+  reservation_reminder_return: { email: false, sms: false, discord: false, push: false },
+  payment_received: { email: true, sms: false, discord: false, push: false },
+  payment_failed: { email: true, sms: false, discord: false, push: false },
 
   // Default admin reminder timing: 24 hours before event, per-reservation mode
   reminderSettings: {

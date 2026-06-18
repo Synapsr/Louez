@@ -2550,6 +2550,18 @@
         "templateSaved": "Modello salvato"
       },
       "notifications": {
+        "push": {
+          "title": "Notifiche push",
+          "description": "Ricevi un avviso su questo dispositivo appena arriva una nuova prenotazione, anche con l'app chiusa.",
+          "enable": "Attiva su questo dispositivo",
+          "enabled": "Attivate su questo dispositivo",
+          "disable": "Disattiva",
+          "disabledToast": "Notifiche push disattivate su questo dispositivo.",
+          "iosNeedsInstall": "Su iPhone, aggiungi prima l'app alla schermata Home per attivare le notifiche.",
+          "denied": "Le notifiche sono bloccate. Abilitale nelle impostazioni del browser.",
+          "confirmTitle": "Notifiche attivate",
+          "confirmBody": "Riceverai un avviso per ogni nuova prenotazione."
+        },
         "title": "Notifiche",
         "description": "Configura come ricevi le notifiche degli eventi del negozio",
         "saveError": "Errore durante il salvataggio",

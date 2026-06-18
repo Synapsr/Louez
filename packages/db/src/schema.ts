@@ -2854,6 +2854,53 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   }),
 }));
 
+// Web Push device subscriptions. One row per browser/device, owned by a user
+// (a user can belong to many stores via store_members; send-time fan-out
+// resolves the target devices from store membership, not from storeId here).
+export const pushSubscriptions = mysqlTable(
+  'push_subscriptions',
+  {
+    id: id(),
+    userId: varchar('user_id', { length: 21 }).notNull(),
+    // Optional hint of the store the device subscribed from (not used for routing).
+    storeId: varchar('store_id', { length: 21 }),
+
+    endpoint: text('endpoint').notNull(),
+    // MySQL cannot UNIQUE a TEXT column, so dedupe on a sha-256 hex of the
+    // endpoint (mirrors api_keys.key_hash).
+    endpointHash: varchar('endpoint_hash', { length: 64 }).notNull(),
+    p256dh: varchar('p256dh', { length: 255 }).notNull(),
+    auth: varchar('auth', { length: 255 }).notNull(),
+    userAgent: text('user_agent'),
+
+    failureCount: int('failure_count').notNull().default(0),
+    lastSuccessAt: timestamp('last_success_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    endpointUnique: unique('push_subscriptions_endpoint_unique').on(
+      table.endpointHash,
+    ),
+    userIdx: index('push_subscriptions_user_idx').on(table.userId),
+    storeIdx: index('push_subscriptions_store_idx').on(table.storeId),
+  }),
+);
+
+export const pushSubscriptionsRelations = relations(
+  pushSubscriptions,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [pushSubscriptions.userId],
+      references: [users.id],
+    }),
+    store: one(stores, {
+      fields: [pushSubscriptions.storeId],
+      references: [stores.id],
+    }),
+  }),
+);
+
 // ============================================================================
 // AI Chat
 // ============================================================================

@@ -291,6 +291,18 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        // Service worker (web push): never cache so updates propagate at once,
+        // and allow it to control the whole origin.
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+      {
         // Embed (subdomain routing): ddm.louez.io/embed → external path /embed
         source: '/embed',
         headers: embedSecurityHeaders,

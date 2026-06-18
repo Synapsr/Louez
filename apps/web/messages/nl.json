@@ -2550,6 +2550,18 @@
         "templateSaved": "Sjabloon opgeslagen"
       },
       "notifications": {
+        "push": {
+          "title": "Pushmeldingen",
+          "description": "Ontvang direct een melding op dit apparaat zodra er een nieuwe reservering binnenkomt — ook als de app gesloten is.",
+          "enable": "Inschakelen op dit apparaat",
+          "enabled": "Ingeschakeld op dit apparaat",
+          "disable": "Uitschakelen",
+          "disabledToast": "Pushmeldingen uitgeschakeld op dit apparaat.",
+          "iosNeedsInstall": "Voeg de app op iPhone eerst toe aan je beginscherm om meldingen in te schakelen.",
+          "denied": "Meldingen zijn geblokkeerd. Sta ze toe in je browserinstellingen.",
+          "confirmTitle": "Meldingen ingeschakeld",
+          "confirmBody": "Je krijgt een melding bij elke nieuwe reservering."
+        },
         "title": "Meldingen",
         "description": "Configureer hoe u meldingen over winkelgebeurtenissen ontvangt",
         "saveError": "Fout bij opslaan",

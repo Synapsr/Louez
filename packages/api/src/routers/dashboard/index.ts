@@ -4,6 +4,7 @@ import { dashboardProcedure } from '../../procedures';
 import { dashboardApiKeysRouter } from './api-keys';
 import { dashboardCustomersRouter } from './customers';
 import { dashboardIntegrationsRouter } from './integrations';
+import { dashboardNotificationsRouter } from './notifications';
 import { dashboardOnboardingRouter } from './onboarding';
 import { dashboardReservationsRouter } from './reservations';
 import { dashboardSettingsRouter } from './settings';
@@ -36,4 +37,5 @@ export const dashboardRouter = {
   settings: dashboardSettingsRouter,
   reservations: dashboardReservationsRouter,
   onboarding: dashboardOnboardingRouter,
+  notifications: dashboardNotificationsRouter,
 };

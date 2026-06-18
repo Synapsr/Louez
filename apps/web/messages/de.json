@@ -2550,6 +2550,18 @@
         "templateSaved": "Vorlage gespeichert"
       },
       "notifications": {
+        "push": {
+          "title": "Push-Benachrichtigungen",
+          "description": "Erhalten Sie auf diesem Gerät sofort eine Meldung bei einer neuen Reservierung — auch wenn die App geschlossen ist.",
+          "enable": "Auf diesem Gerät aktivieren",
+          "enabled": "Auf diesem Gerät aktiviert",
+          "disable": "Deaktivieren",
+          "disabledToast": "Push-Benachrichtigungen auf diesem Gerät deaktiviert.",
+          "iosNeedsInstall": "Fügen Sie die App auf dem iPhone zuerst zum Home-Bildschirm hinzu, um Benachrichtigungen zu aktivieren.",
+          "denied": "Benachrichtigungen sind blockiert. Erlauben Sie sie in den Browsereinstellungen.",
+          "confirmTitle": "Benachrichtigungen aktiviert",
+          "confirmBody": "Sie werden über jede neue Reservierung informiert."
+        },
         "title": "Benachrichtigungen",
         "description": "Konfigurieren Sie, wie Sie über Shop-Ereignisse benachrichtigt werden",
         "saveError": "Fehler beim Speichern",
