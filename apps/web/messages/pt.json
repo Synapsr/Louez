@@ -168,7 +168,7 @@
       "verification": "O link de verificacao e invalido ou expirou.",
       "default": "Ocorreu um erro. Por favor, tente novamente."
     },
-    "referralBanner": "🎁 {storeName} convidou-o para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
+    "referralBanner": "{storeName} convidou-o para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
     "referralBannerGeneric": "🎁 Foi convidado para o Louez — crie a sua loja e comece com {count} reservas gratuitas."
   },
   "invitation": {
@@ -330,8 +330,8 @@
         "qualified": "Indicações qualificadas",
         "freeReservationsEarned": "Reservas ganhas",
         "valueEarned": "≈ {value} poupados",
-        "remainingTitle": "Reservas gratuitas restantes",
-        "valueRemaining": "≈ {value} de poupança futura"
+        "remainingTitle": "As suas reservas gratuitas",
+        "valueRemaining": "boas-vindas + indicações · ≈ {value} de poupança"
       },
       "link": {
         "title": "Indique e ganhe",
@@ -365,7 +365,7 @@
       },
       "nudge": {
         "title": "A gostar do Louez?",
-        "description": "Indique um locador: ambos ganham reservas gratuitas.",
+        "description": "Indique um locador: ambos ganham {count} reservas gratuitas (≈ {rewardValue}).",
         "cta": "Indicar",
         "dismiss": "Fechar"
       }

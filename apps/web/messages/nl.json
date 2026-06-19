@@ -168,7 +168,7 @@
       "verification": "De verificatielink is ongeldig of verlopen.",
       "default": "Er is een fout opgetreden. Probeer het opnieuw."
     },
-    "referralBanner": "🎁 {storeName} heeft je uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
+    "referralBanner": "{storeName} heeft je uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
     "referralBannerGeneric": "🎁 Je bent uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen."
   },
   "invitation": {
@@ -330,8 +330,8 @@
         "qualified": "Gekwalificeerde referrals",
         "freeReservationsEarned": "Verdiende reserveringen",
         "valueEarned": "≈ {value} bespaard",
-        "remainingTitle": "Resterende gratis reserveringen",
-        "valueRemaining": "≈ {value} aan toekomstige besparingen"
+        "remainingTitle": "Je gratis reserveringen",
+        "valueRemaining": "welkom + referrals · ≈ {value} aan besparingen"
       },
       "link": {
         "title": "Verwijs & verdien",
@@ -365,7 +365,7 @@
       },
       "nudge": {
         "title": "Tevreden over Louez?",
-        "description": "Verwijs een verhuurder — jullie verdienen allebei gratis reserveringen.",
+        "description": "Verwijs een verhuurder — jullie verdienen allebei {count} gratis reserveringen (≈ {rewardValue}).",
         "cta": "Verwijzen",
         "dismiss": "Sluiten"
       }

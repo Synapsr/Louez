@@ -168,7 +168,7 @@
       "verification": "The verification link is invalid or has expired.",
       "default": "An error occurred. Please try again."
     },
-    "referralBanner": "🎁 {storeName} invited you to Louez — create your store and start with {count} free reservations.",
+    "referralBanner": "{storeName} invited you to Louez — create your store and start with {count} free reservations.",
     "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations."
   },
   "invitation": {
@@ -330,8 +330,8 @@
         "qualified": "Qualified referrals",
         "freeReservationsEarned": "Reservations earned",
         "valueEarned": "≈ {value} saved",
-        "remainingTitle": "Free reservations remaining",
-        "valueRemaining": "≈ {value} of savings ahead"
+        "remainingTitle": "Your free reservations",
+        "valueRemaining": "welcome + referrals · ≈ {value} in savings"
       },
       "link": {
         "title": "Refer & earn",
@@ -365,7 +365,7 @@
       },
       "nudge": {
         "title": "Enjoying Louez?",
-        "description": "Refer a rental business — you both earn free reservations.",
+        "description": "Refer a rental business — you both earn {count} free reservations (≈ {rewardValue}).",
         "cta": "Refer",
         "dismiss": "Dismiss"
       }
