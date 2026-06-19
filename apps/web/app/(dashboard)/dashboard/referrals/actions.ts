@@ -163,6 +163,38 @@ export async function getReferralData(): Promise<{
 }
 
 /**
+ * Lightweight Referrer Reward summary for the current store: the headline free-reservation
+ * count and its indicative euro value at the store's entry-tier tariff. Powers the
+ * self-contained referral nudge (which fetches its own data over oRPC rather than threading
+ * props through the deeply-nested payment UI). Cheaper than {@link getReferralData} — it
+ * skips the referrals list and the reward ledger.
+ */
+export async function getReferralRewardSummary(): Promise<{
+  referrerReward: number
+  rewardValueCents: number
+  currency: string
+  /** The store's current free-reservation balance and the total ever granted (for a gauge). */
+  freeReservationsRemaining: number
+  freeReservationsGranted: number
+} | null> {
+  const store = await getCurrentStore()
+  if (!store) return null
+
+  const billing = await getStoreBilling(store.id)
+  const unitValueCents = priceForLocationIndex(billing.config, 1)
+  const programConfig = getReferralProgramConfig()
+
+  return {
+    referrerReward: programConfig.referrerRewardFreeReservations,
+    rewardValueCents:
+      programConfig.referrerRewardFreeReservations * unitValueCents,
+    currency: billing.config.currency,
+    freeReservationsRemaining: billing.freeReservationsRemaining,
+    freeReservationsGranted: billing.freeReservationsGranted,
+  }
+}
+
+/**
  * Generate and persist a referral code for legacy stores that don't have one.
  */
 async function ensureReferralCode(storeId: string): Promise<string | null> {

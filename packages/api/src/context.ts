@@ -512,6 +512,15 @@ export interface BaseContext {
     }) => Promise<{ success?: boolean; error?: string }>;
     disconnectTulip?: () => Promise<{ success?: boolean; error?: string }>;
   };
+  dashboardReferralActions?: {
+    getRewardSummary?: () => Promise<{
+      referrerReward: number;
+      rewardValueCents: number;
+      currency: string;
+      freeReservationsRemaining: number;
+      freeReservationsGranted: number;
+    } | null>;
+  };
   notifyStoreCreated?: (store: {
     id: string;
     name: string;

@@ -368,6 +368,10 @@
         "description": "Indique um locador: ambos ganham {count} reservas gratuitas (≈ {rewardValue}).",
         "cta": "Indicar",
         "dismiss": "Fechar"
+      },
+      "widget": {
+        "title": "Reservas gratuitas",
+        "cta": "Indique para ganhar mais →"
       }
     },
     "sms": {

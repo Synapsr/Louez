@@ -368,6 +368,10 @@
         "description": "Verwijs een verhuurder — jullie verdienen allebei {count} gratis reserveringen (≈ {rewardValue}).",
         "cta": "Verwijzen",
         "dismiss": "Sluiten"
+      },
+      "widget": {
+        "title": "Gratis reserveringen",
+        "cta": "Verwijs om meer te verdienen →"
       }
     },
     "sms": {

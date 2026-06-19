@@ -368,6 +368,10 @@
         "description": "Parrainez un loueur : vous gagnez tous les deux {count} réservations offertes (≈ {rewardValue}).",
         "cta": "Parrainer",
         "dismiss": "Fermer"
+      },
+      "widget": {
+        "title": "Réservations offertes",
+        "cta": "Parrainez pour en gagner →"
       }
     },
     "sms": {

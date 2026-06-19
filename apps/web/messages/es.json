@@ -368,6 +368,10 @@
         "description": "Recomienda a un arrendador: ambos ganáis {count} reservas gratis (≈ {rewardValue}).",
         "cta": "Recomendar",
         "dismiss": "Cerrar"
+      },
+      "widget": {
+        "title": "Reservas gratis",
+        "cta": "Recomienda para ganar más →"
       }
     },
     "sms": {

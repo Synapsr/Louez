@@ -368,6 +368,10 @@
         "description": "Poleć wynajmującego — oboje zdobywacie {count} darmowych rezerwacji (≈ {rewardValue}).",
         "cta": "Poleć",
         "dismiss": "Zamknij"
+      },
+      "widget": {
+        "title": "Darmowe rezerwacje",
+        "cta": "Polecaj, aby zdobyć więcej →"
       }
     },
     "sms": {

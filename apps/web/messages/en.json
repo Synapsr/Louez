@@ -368,6 +368,10 @@
         "description": "Refer a rental business — you both earn {count} free reservations (≈ {rewardValue}).",
         "cta": "Refer",
         "dismiss": "Dismiss"
+      },
+      "widget": {
+        "title": "Free reservations",
+        "cta": "Refer to earn more →"
       }
     },
     "sms": {

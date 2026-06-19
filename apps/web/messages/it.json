@@ -368,6 +368,10 @@
         "description": "Invita un noleggiatore: guadagnate entrambi {count} prenotazioni gratuite (≈ {rewardValue}).",
         "cta": "Invita",
         "dismiss": "Chiudi"
+      },
+      "widget": {
+        "title": "Prenotazioni gratuite",
+        "cta": "Invita per guadagnarne →"
       }
     },
     "sms": {
