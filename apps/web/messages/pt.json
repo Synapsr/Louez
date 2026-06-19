@@ -372,6 +372,14 @@
       "widget": {
         "title": "Reservas gratuitas",
         "cta": "Indique para ganhar mais →"
+      },
+      "howItWorks": {
+        "open": "Como funciona",
+        "title": "Como funcionam as indicações",
+        "step1": "Partilhe o seu link de convite com outros locadores.",
+        "step2": "O seu indicado começa com {count} reservas gratuitas assim que se regista.",
+        "step3": "Assim que o seu indicado fizer a primeira venda online de pelo menos {minAmount}, ganha {count} reservas gratuitas.",
+        "note": "Apenas as vendas pagas online (cartão/Stripe) desbloqueiam a recompensa — pagamentos manuais ou em dinheiro não contam. As reservas gratuitas são alugueres sem comissão Louez."
       }
     },
     "sms": {

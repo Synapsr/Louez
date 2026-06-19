@@ -372,6 +372,14 @@
       "widget": {
         "title": "Prenotazioni gratuite",
         "cta": "Invita per guadagnarne →"
+      },
+      "howItWorks": {
+        "open": "Come funziona",
+        "title": "Come funziona il referral",
+        "step1": "Condividi il tuo link di invito con altri noleggiatori.",
+        "step2": "Il tuo invitato inizia con {count} prenotazioni gratuite al momento della registrazione.",
+        "step3": "Non appena il tuo invitato effettua la sua prima vendita online di almeno {minAmount}, guadagni {count} prenotazioni gratuite.",
+        "note": "Solo le vendite pagate online (carta/Stripe) sbloccano la ricompensa — i pagamenti manuali o in contanti non contano. Le prenotazioni gratuite sono noleggi senza commissione Louez."
       }
     },
     "sms": {

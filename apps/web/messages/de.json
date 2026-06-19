@@ -372,6 +372,14 @@
       "widget": {
         "title": "Gratis-Reservierungen",
         "cta": "Empfehlen & mehr verdienen →"
+      },
+      "howItWorks": {
+        "open": "So funktioniert's",
+        "title": "So funktionieren Empfehlungen",
+        "step1": "Teilen Sie Ihren Einladungslink mit anderen Vermietern.",
+        "step2": "Ihr Geworbener startet mit {count} Gratis-Reservierungen, sobald er sich registriert.",
+        "step3": "Sobald Ihr Geworbener seinen ersten Online-Verkauf von mindestens {minAmount} tätigt, erhalten Sie {count} Gratis-Reservierungen.",
+        "note": "Nur online bezahlte Verkäufe (Karte/Stripe) schalten die Prämie frei — manuelle oder Barzahlungen zählen nicht. Gratis-Reservierungen sind Vermietungen ohne Louez-Provision."
       }
     },
     "sms": {

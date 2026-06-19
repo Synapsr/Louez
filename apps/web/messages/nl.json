@@ -372,6 +372,14 @@
       "widget": {
         "title": "Gratis reserveringen",
         "cta": "Verwijs om meer te verdienen →"
+      },
+      "howItWorks": {
+        "open": "Hoe het werkt",
+        "title": "Hoe verwijzingen werken",
+        "step1": "Deel je uitnodigingslink met andere verhuurders.",
+        "step2": "Je verwijzing start met {count} gratis reserveringen zodra ze zich aanmelden.",
+        "step3": "Zodra je verwijzing zijn eerste online verkoop van minstens {minAmount} doet, verdien je {count} gratis reserveringen.",
+        "note": "Alleen online betaalde verkopen (kaart/Stripe) ontgrendelen de beloning — handmatige of contante betalingen tellen niet. Gratis reserveringen zijn verhuringen zonder Louez-commissie."
       }
     },
     "sms": {

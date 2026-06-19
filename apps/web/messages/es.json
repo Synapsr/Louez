@@ -372,6 +372,14 @@
       "widget": {
         "title": "Reservas gratis",
         "cta": "Recomienda para ganar más →"
+      },
+      "howItWorks": {
+        "open": "Cómo funciona",
+        "title": "Cómo funcionan los referidos",
+        "step1": "Comparte tu enlace de invitación con otros arrendadores.",
+        "step2": "Tu referido empieza con {count} reservas gratis en cuanto se registra.",
+        "step3": "En cuanto tu referido realice su primera venta online de al menos {minAmount}, ganas {count} reservas gratis.",
+        "note": "Solo las ventas pagadas online (tarjeta/Stripe) desbloquean la recompensa — los pagos manuales o en efectivo no cuentan. Las reservas gratis son alquileres sin comisión de Louez."
       }
     },
     "sms": {
