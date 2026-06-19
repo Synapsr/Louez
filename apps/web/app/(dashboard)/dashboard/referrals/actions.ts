@@ -45,6 +45,8 @@ export interface ReferralProgramSummary {
   referredReward: number
   /** Indicative euro value of the Referrer Reward (count × entry-tier tariff), in cents. */
   rewardValueCents: number
+  /** Minimum online payment a referred store must take to unlock the Referrer Reward, in cents. */
+  minQualifyingAmountCents: number
   currency: string
 }
 
@@ -154,6 +156,7 @@ export async function getReferralData(): Promise<{
     // anchor, so "N réservations offertes (≈ Y €)" stays consistent across the hub.
     rewardValueCents:
       programConfig.referrerRewardFreeReservations * unitValueCents,
+    minQualifyingAmountCents: programConfig.minQualifyingAmountCents,
     currency: billing.config.currency,
   }
 

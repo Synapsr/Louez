@@ -372,6 +372,14 @@
       "widget": {
         "title": "Free reservations",
         "cta": "Refer to earn more →"
+      },
+      "howItWorks": {
+        "open": "How it works",
+        "title": "How referrals work",
+        "step1": "Share your invitation link with other rental businesses.",
+        "step2": "Your referral starts with {count} free reservations the moment they sign up.",
+        "step3": "As soon as your referral makes their first online sale of at least {minAmount}, you earn {count} free reservations.",
+        "note": "Only sales paid online (card/Stripe) unlock the reward — manual or cash payments don't count. Free reservations are rentals with no Louez commission."
       }
     },
     "sms": {

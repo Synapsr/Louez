@@ -372,6 +372,14 @@
       "widget": {
         "title": "Réservations offertes",
         "cta": "Parrainez pour en gagner →"
+      },
+      "howItWorks": {
+        "open": "Comment ça marche",
+        "title": "Comment fonctionne le parrainage",
+        "step1": "Partagez votre lien d'invitation avec d'autres loueurs.",
+        "step2": "Votre filleul démarre avec {count} réservations offertes dès son inscription.",
+        "step3": "Dès que votre filleul réalise sa première vente en ligne d'au moins {minAmount}, vous gagnez {count} réservations offertes.",
+        "note": "Seules les ventes payées en ligne (carte/Stripe) déclenchent la récompense — les paiements manuels ou en espèces ne comptent pas. Les réservations offertes sont des locations sans commission Louez."
       }
     },
     "sms": {

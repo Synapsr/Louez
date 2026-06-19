@@ -372,6 +372,14 @@
       "widget": {
         "title": "Darmowe rezerwacje",
         "cta": "Polecaj, aby zdobyć więcej →"
+      },
+      "howItWorks": {
+        "open": "Jak to działa",
+        "title": "Jak działają polecenia",
+        "step1": "Udostępnij swój link zaproszenia innym wynajmującym.",
+        "step2": "Twój polecony zaczyna z {count} darmowymi rezerwacjami zaraz po rejestracji.",
+        "step3": "Gdy tylko Twój polecony dokona pierwszej sprzedaży online o wartości co najmniej {minAmount}, zdobywasz {count} darmowych rezerwacji.",
+        "note": "Tylko sprzedaż opłacona online (karta/Stripe) odblokowuje nagrodę — płatności ręczne lub gotówkowe się nie liczą. Darmowe rezerwacje to wynajmy bez prowizji Louez."
       }
     },
     "sms": {
