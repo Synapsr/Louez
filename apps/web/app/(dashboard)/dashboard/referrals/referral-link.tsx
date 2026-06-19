@@ -6,20 +6,30 @@ import { Input } from '@louez/ui'
 import { Copy, Check, Gift, Crown } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { toastManager } from '@louez/ui'
+import { formatCurrency } from '@/lib/utils'
 
 interface ReferralLinkProps {
   referralUrl: string
   referrerReward: number
   referredReward: number
+  rewardValueCents: number
+  currency: string
 }
 
 export function ReferralLink({
   referralUrl,
   referrerReward,
   referredReward,
+  rewardValueCents,
+  currency,
 }: ReferralLinkProps) {
   const t = useTranslations('dashboard.referrals.link')
   const [copied, setCopied] = useState(false)
+
+  const rewardValue = formatCurrency(
+    rewardValueCents / 100,
+    currency.toUpperCase(),
+  )
 
   const copyToClipboard = async () => {
     await navigator.clipboard.writeText(referralUrl)
@@ -50,7 +60,11 @@ export function ReferralLink({
         <div className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
           <Crown className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-            {t('reward', { referrer: referrerReward, referred: referredReward })}
+            {t('reward', {
+              referrer: referrerReward,
+              referred: referredReward,
+              rewardValue,
+            })}
           </p>
         </div>
 

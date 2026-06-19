@@ -167,7 +167,9 @@
       "accessDenied": "Access denied. You don't have permission to sign in.",
       "verification": "The verification link is invalid or has expired.",
       "default": "An error occurred. Please try again."
-    }
+    },
+    "referralBanner": "🎁 {storeName} invited you to Louez — create your store and start with {count} free reservations.",
+    "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations."
   },
   "invitation": {
     "inviteToJoin": "{name} invites you to join the team",
@@ -327,12 +329,14 @@
         "thisMonth": "This month",
         "qualified": "Qualified referrals",
         "freeReservationsEarned": "Reservations earned",
-        "valueEarned": "≈ {value} saved"
+        "valueEarned": "≈ {value} saved",
+        "remainingTitle": "Free reservations remaining",
+        "valueRemaining": "≈ {value} of savings ahead"
       },
       "link": {
         "title": "Refer & earn",
         "description": "Share your link and invite other rental businesses to join Louez.",
-        "reward": "For every rental business you refer that makes its first sale, you earn {referrer} free reservations — and they start with {referred}.",
+        "reward": "For every rental business you refer that makes its first sale, you earn {referrer} free reservations (≈ {rewardValue}) — and they start with {referred}.",
         "copyLink": "Copy link",
         "linkCopied": "Link copied!"
       },

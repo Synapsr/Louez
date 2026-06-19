@@ -31,8 +31,10 @@ export interface ReferralStats {
   freeReservationsEarned: number
   /** Monetary value of everything earned (free reservations × tariff + euro credits), in cents. */
   rewardValueCents: number
-  /** Free reservations still available on this store. */
+  /** Free reservations still available on this store (welcome allowance + earned − used). */
   freeReservationsRemaining: number
+  /** Indicative euro value of the remaining free reservations, in cents. */
+  freeReservationsRemainingValueCents: number
   currency: string
 }
 
@@ -41,6 +43,9 @@ export interface ReferralProgramSummary {
   referrerReward: number
   /** Free reservations a Referred Store receives at sign-up. */
   referredReward: number
+  /** Indicative euro value of the Referrer Reward (count × entry-tier tariff), in cents. */
+  rewardValueCents: number
+  currency: string
 }
 
 export async function getReferralData(): Promise<{
@@ -136,6 +141,8 @@ export async function getReferralData(): Promise<{
     freeReservationsEarned,
     rewardValueCents,
     freeReservationsRemaining: billing.freeReservationsRemaining,
+    freeReservationsRemainingValueCents:
+      billing.freeReservationsRemaining * unitValueCents,
     currency: billing.config.currency,
   }
 
@@ -143,6 +150,11 @@ export async function getReferralData(): Promise<{
   const program: ReferralProgramSummary = {
     referrerReward: programConfig.referrerRewardFreeReservations,
     referredReward: programConfig.referredRewardFreeReservations,
+    // Value the headline reward from the same entry-tier tariff used for the stats euro
+    // anchor, so "N réservations offertes (≈ Y €)" stays consistent across the hub.
+    rewardValueCents:
+      programConfig.referrerRewardFreeReservations * unitValueCents,
+    currency: billing.config.currency,
   }
 
   const referralUrl = buildReferralUrl(code)

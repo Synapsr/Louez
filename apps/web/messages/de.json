@@ -167,7 +167,9 @@
       "accessDenied": "Zugriff verweigert. Sie haben keine Berechtigung zur Anmeldung.",
       "verification": "Der Bestätigungslink ist ungültig oder abgelaufen.",
       "default": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
-    }
+    },
+    "referralBanner": "🎁 {storeName} hat Sie zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen.",
+    "referralBannerGeneric": "🎁 Sie wurden zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen."
   },
   "invitation": {
     "inviteToJoin": "{name} lädt Sie ein, dem Team beizutreten",
@@ -327,12 +329,14 @@
         "thisMonth": "Diesen Monat",
         "qualified": "Qualifizierte Empfehlungen",
         "freeReservationsEarned": "Verdiente Reservierungen",
-        "valueEarned": "≈ {value} gespart"
+        "valueEarned": "≈ {value} gespart",
+        "remainingTitle": "Verbleibende Gratis-Reservierungen",
+        "valueRemaining": "≈ {value} künftige Ersparnis"
       },
       "link": {
         "title": "Empfehlen & profitieren",
         "description": "Teilen Sie Ihren Link und laden Sie andere Vermieter zu Louez ein.",
-        "reward": "Für jeden geworbenen Vermieter, der seinen ersten Verkauf tätigt, erhalten Sie {referrer} Gratis-Reservierungen — und er startet mit {referred}.",
+        "reward": "Für jeden geworbenen Vermieter, der seinen ersten Verkauf tätigt, erhalten Sie {referrer} Gratis-Reservierungen (≈ {rewardValue}) — und er startet mit {referred}.",
         "copyLink": "Link kopieren",
         "linkCopied": "Link kopiert!"
       },

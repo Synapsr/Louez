@@ -167,7 +167,9 @@
       "accessDenied": "Odmowa dostępu. Nie masz uprawnień do logowania.",
       "verification": "Link weryfikacyjny jest nieprawidłowy lub wygasł.",
       "default": "Wystąpił błąd. Spróbuj ponownie."
-    }
+    },
+    "referralBanner": "🎁 {storeName} zaprosił Cię do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
+    "referralBannerGeneric": "🎁 Zostałeś zaproszony do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami."
   },
   "invitation": {
     "inviteToJoin": "{name} zaprasza Cię do zespołu",
@@ -327,12 +329,14 @@
         "thisMonth": "W tym miesiącu",
         "qualified": "Kwalifikujące się polecenia",
         "freeReservationsEarned": "Zdobyte rezerwacje",
-        "valueEarned": "≈ {value} oszczędności"
+        "valueEarned": "≈ {value} oszczędności",
+        "remainingTitle": "Pozostałe darmowe rezerwacje",
+        "valueRemaining": "≈ {value} przyszłych oszczędności"
       },
       "link": {
         "title": "Polecaj i zyskuj",
         "description": "Udostępnij swój link i zaproś innych wynajmujących do Louez.",
-        "reward": "Za każdego poleconego wynajmującego, który dokona pierwszej sprzedaży, otrzymujesz {referrer} darmowych rezerwacji — a on zaczyna z {referred}.",
+        "reward": "Za każdego poleconego wynajmującego, który dokona pierwszej sprzedaży, otrzymujesz {referrer} darmowych rezerwacji (≈ {rewardValue}) — a on zaczyna z {referred}.",
         "copyLink": "Kopiuj link",
         "linkCopied": "Link skopiowany!"
       },

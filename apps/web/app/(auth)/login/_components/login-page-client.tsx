@@ -3,15 +3,18 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
-import { BarChart3, Calendar, Package, Users } from 'lucide-react';
+import { BarChart3, Calendar, Gift, Package, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Logo } from '@louez/ui';
+
+import type { ReferralInviteContext } from '@/lib/referral/invite';
 
 import { LoginForm } from './login-form';
 
 interface LoginPageClientProps {
   callbackUrl: string;
+  referral: ReferralInviteContext | null;
 }
 
 const features = [
@@ -21,7 +24,10 @@ const features = [
   { icon: BarChart3, labelKey: 'featureStats' },
 ] as const;
 
-export const LoginPageClient = ({ callbackUrl }: LoginPageClientProps) => {
+export const LoginPageClient = ({
+  callbackUrl,
+  referral,
+}: LoginPageClientProps) => {
   const t = useTranslations('auth');
   const searchParams = useSearchParams();
 
@@ -81,6 +87,22 @@ export const LoginPageClient = ({ callbackUrl }: LoginPageClientProps) => {
               <Logo className="mx-auto h-7 w-auto" />
             </Link>
           </div>
+
+          {referral ? (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900/40 dark:bg-amber-950/30">
+              <Gift className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="text-amber-800 dark:text-amber-200">
+                {referral.referrerName
+                  ? t('referralBanner', {
+                      storeName: referral.referrerName,
+                      count: referral.freeReservations,
+                    })
+                  : t('referralBannerGeneric', {
+                      count: referral.freeReservations,
+                    })}
+              </p>
+            </div>
+          ) : null}
 
           <LoginForm callbackUrl={callbackUrl} initialErrorCode={errorCode} />
 

@@ -167,7 +167,9 @@
       "accessDenied": "Toegang geweigerd. U heeft geen toestemming om in te loggen.",
       "verification": "De verificatielink is ongeldig of verlopen.",
       "default": "Er is een fout opgetreden. Probeer het opnieuw."
-    }
+    },
+    "referralBanner": "🎁 {storeName} heeft je uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
+    "referralBannerGeneric": "🎁 Je bent uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen."
   },
   "invitation": {
     "inviteToJoin": "{name} nodigt u uit om lid te worden van het team",
@@ -327,12 +329,14 @@
         "thisMonth": "Deze maand",
         "qualified": "Gekwalificeerde referrals",
         "freeReservationsEarned": "Verdiende reserveringen",
-        "valueEarned": "≈ {value} bespaard"
+        "valueEarned": "≈ {value} bespaard",
+        "remainingTitle": "Resterende gratis reserveringen",
+        "valueRemaining": "≈ {value} aan toekomstige besparingen"
       },
       "link": {
         "title": "Verwijs & verdien",
         "description": "Deel uw link en nodig andere verhuurders uit om zich aan te sluiten bij Louez.",
-        "reward": "Voor elke verhuurder die je aanbrengt en die zijn eerste verkoop doet, verdien je {referrer} gratis reserveringen — en hij start met {referred}.",
+        "reward": "Voor elke verhuurder die je aanbrengt en die zijn eerste verkoop doet, verdien je {referrer} gratis reserveringen (≈ {rewardValue}) — en hij start met {referred}.",
         "copyLink": "Link kopiëren",
         "linkCopied": "Link gekopieerd!"
       },

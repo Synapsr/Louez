@@ -167,7 +167,9 @@
       "accessDenied": "Accès refusé. Vous n'avez pas la permission de vous connecter.",
       "verification": "Le lien de vérification est invalide ou a expiré.",
       "default": "Une erreur est survenue. Veuillez réessayer."
-    }
+    },
+    "referralBanner": "🎁 {storeName} vous a invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
+    "referralBannerGeneric": "🎁 Vous avez été invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes."
   },
   "invitation": {
     "inviteToJoin": "{name} vous invite à rejoindre l'équipe",
@@ -327,12 +329,14 @@
         "thisMonth": "Ce mois-ci",
         "qualified": "Filleuls qualifiés",
         "freeReservationsEarned": "Réservations gagnées",
-        "valueEarned": "≈ {value} économisés"
+        "valueEarned": "≈ {value} économisés",
+        "remainingTitle": "Réservations offertes restantes",
+        "valueRemaining": "soit ≈ {value} d'économies à venir"
       },
       "link": {
         "title": "Parrainez et gagnez",
         "description": "Partagez votre lien et invitez d'autres loueurs à rejoindre Louez.",
-        "reward": "Pour chaque loueur parrainé qui réalise sa première vente, vous gagnez {referrer} réservations offertes — et votre filleul démarre avec {referred}.",
+        "reward": "Pour chaque loueur parrainé qui réalise sa première vente, vous gagnez {referrer} réservations offertes (≈ {rewardValue}) — et votre filleul démarre avec {referred}.",
         "copyLink": "Copier le lien",
         "linkCopied": "Lien copié !"
       },

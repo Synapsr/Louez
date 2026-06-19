@@ -26,6 +26,8 @@ export default async function ReferralsPage() {
         referralUrl={data.referralUrl}
         referrerReward={data.program.referrerReward}
         referredReward={data.program.referredReward}
+        rewardValueCents={data.program.rewardValueCents}
+        currency={data.program.currency}
       />
       <ReferralStats stats={data.stats} />
       <ReferralsList referrals={data.referrals} />
