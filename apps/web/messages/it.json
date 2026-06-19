@@ -167,7 +167,9 @@
       "accessDenied": "Accesso negato. Non hai il permesso di accedere.",
       "verification": "Il link di verifica non e valido o e scaduto.",
       "default": "Si e verificato un errore. Riprova."
-    }
+    },
+    "referralBanner": "🎁 {storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
+    "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite."
   },
   "invitation": {
     "inviteToJoin": "{name} ti invita a unirti al team",
@@ -327,12 +329,14 @@
         "thisMonth": "Questo mese",
         "qualified": "Referral qualificati",
         "freeReservationsEarned": "Prenotazioni guadagnate",
-        "valueEarned": "≈ {value} risparmiati"
+        "valueEarned": "≈ {value} risparmiati",
+        "remainingTitle": "Prenotazioni gratuite rimanenti",
+        "valueRemaining": "≈ {value} di risparmi futuri"
       },
       "link": {
         "title": "Invita e guadagna",
         "description": "Condividi il tuo link e invita altri noleggiatori a unirsi a Louez.",
-        "reward": "Per ogni noleggiatore che inviti e che effettua la sua prima vendita, guadagni {referrer} prenotazioni gratuite — e lui inizia con {referred}.",
+        "reward": "Per ogni noleggiatore che inviti e che effettua la sua prima vendita, guadagni {referrer} prenotazioni gratuite (≈ {rewardValue}) — e lui inizia con {referred}.",
         "copyLink": "Copia link",
         "linkCopied": "Link copiato!"
       },

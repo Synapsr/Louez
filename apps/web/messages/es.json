@@ -167,7 +167,9 @@
       "accessDenied": "Acceso denegado. No tiene permiso para iniciar sesion.",
       "verification": "El enlace de verificacion es invalido o ha expirado.",
       "default": "Ocurrio un error. Por favor, intente de nuevo."
-    }
+    },
+    "referralBanner": "🎁 {storeName} te ha invitado a Louez — crea tu tienda y empieza con {count} reservas gratis.",
+    "referralBannerGeneric": "🎁 Has sido invitado a Louez — crea tu tienda y empieza con {count} reservas gratis."
   },
   "invitation": {
     "inviteToJoin": "{name} le invita a unirse al equipo",
@@ -327,12 +329,14 @@
         "thisMonth": "Este mes",
         "qualified": "Referidos cualificados",
         "freeReservationsEarned": "Reservas ganadas",
-        "valueEarned": "≈ {value} ahorrados"
+        "valueEarned": "≈ {value} ahorrados",
+        "remainingTitle": "Reservas gratis restantes",
+        "valueRemaining": "≈ {value} de ahorro futuro"
       },
       "link": {
         "title": "Recomiende y gane",
         "description": "Comparta su enlace e invite a otros arrendadores a unirse a Louez.",
-        "reward": "Por cada arrendador que recomiendes y que realice su primera venta, ganas {referrer} reservas gratis — y él empieza con {referred}.",
+        "reward": "Por cada arrendador que recomiendes y que realice su primera venta, ganas {referrer} reservas gratis (≈ {rewardValue}) — y él empieza con {referred}.",
         "copyLink": "Copiar enlace",
         "linkCopied": "¡Enlace copiado!"
       },
