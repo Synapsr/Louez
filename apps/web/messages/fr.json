@@ -168,7 +168,7 @@
       "verification": "Le lien de vérification est invalide ou a expiré.",
       "default": "Une erreur est survenue. Veuillez réessayer."
     },
-    "referralBanner": "🎁 {storeName} vous a invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
+    "referralBanner": "{storeName} vous a invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
     "referralBannerGeneric": "🎁 Vous avez été invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes."
   },
   "invitation": {
@@ -330,8 +330,8 @@
         "qualified": "Filleuls qualifiés",
         "freeReservationsEarned": "Réservations gagnées",
         "valueEarned": "≈ {value} économisés",
-        "remainingTitle": "Réservations offertes restantes",
-        "valueRemaining": "soit ≈ {value} d'économies à venir"
+        "remainingTitle": "Vos réservations offertes",
+        "valueRemaining": "bienvenue + parrainage · ≈ {value} d'économies"
       },
       "link": {
         "title": "Parrainez et gagnez",
@@ -365,7 +365,7 @@
       },
       "nudge": {
         "title": "Vous aimez Louez ?",
-        "description": "Parrainez un loueur : vous gagnez tous les deux des réservations offertes.",
+        "description": "Parrainez un loueur : vous gagnez tous les deux {count} réservations offertes (≈ {rewardValue}).",
         "cta": "Parrainer",
         "dismiss": "Fermer"
       }

@@ -168,7 +168,7 @@
       "verification": "Il link di verifica non e valido o e scaduto.",
       "default": "Si e verificato un errore. Riprova."
     },
-    "referralBanner": "🎁 {storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
+    "referralBanner": "{storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
     "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite."
   },
   "invitation": {
@@ -330,8 +330,8 @@
         "qualified": "Referral qualificati",
         "freeReservationsEarned": "Prenotazioni guadagnate",
         "valueEarned": "≈ {value} risparmiati",
-        "remainingTitle": "Prenotazioni gratuite rimanenti",
-        "valueRemaining": "≈ {value} di risparmi futuri"
+        "remainingTitle": "Le tue prenotazioni gratuite",
+        "valueRemaining": "benvenuto + referral · ≈ {value} di risparmi"
       },
       "link": {
         "title": "Invita e guadagna",
@@ -365,7 +365,7 @@
       },
       "nudge": {
         "title": "Ti piace Louez?",
-        "description": "Invita un noleggiatore: guadagnate entrambi prenotazioni gratuite.",
+        "description": "Invita un noleggiatore: guadagnate entrambi {count} prenotazioni gratuite (≈ {rewardValue}).",
         "cta": "Invita",
         "dismiss": "Chiudi"
       }

@@ -168,7 +168,7 @@
       "verification": "Der Bestätigungslink ist ungültig oder abgelaufen.",
       "default": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
     },
-    "referralBanner": "🎁 {storeName} hat Sie zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen.",
+    "referralBanner": "{storeName} hat Sie zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen.",
     "referralBannerGeneric": "🎁 Sie wurden zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen."
   },
   "invitation": {
@@ -330,8 +330,8 @@
         "qualified": "Qualifizierte Empfehlungen",
         "freeReservationsEarned": "Verdiente Reservierungen",
         "valueEarned": "≈ {value} gespart",
-        "remainingTitle": "Verbleibende Gratis-Reservierungen",
-        "valueRemaining": "≈ {value} künftige Ersparnis"
+        "remainingTitle": "Ihre Gratis-Reservierungen",
+        "valueRemaining": "Willkommen + Empfehlungen · ≈ {value} Ersparnis"
       },
       "link": {
         "title": "Empfehlen & profitieren",
@@ -365,7 +365,7 @@
       },
       "nudge": {
         "title": "Gefällt Ihnen Louez?",
-        "description": "Empfehlen Sie einen Vermieter — Sie erhalten beide Gratis-Reservierungen.",
+        "description": "Empfehlen Sie einen Vermieter — Sie erhalten beide {count} Gratis-Reservierungen (≈ {rewardValue}).",
         "cta": "Empfehlen",
         "dismiss": "Schließen"
       }
