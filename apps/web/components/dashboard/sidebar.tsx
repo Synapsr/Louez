@@ -53,6 +53,7 @@ import {
   UsersIcon,
 } from '@louez/ui/icons';
 
+import { ReferralSidebarWidget } from '@/components/dashboard/referral-sidebar-widget';
 import { StoreSwitcher } from '@/components/dashboard/store-switcher';
 import { ThemeMenuSub } from '@/components/dashboard/theme-toggle';
 import { LanguageMenuSub } from '@/components/ui/language-switcher';
@@ -359,6 +360,7 @@ export const DashboardSidebar = ({
           <div>
             <HelpButton />
           </div>
+          <ReferralSidebarWidget />
           <UserMenu
             userEmail={userEmail}
             userImage={userImage}

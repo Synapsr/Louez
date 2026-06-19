@@ -368,6 +368,10 @@
         "description": "Empfehlen Sie einen Vermieter — Sie erhalten beide {count} Gratis-Reservierungen (≈ {rewardValue}).",
         "cta": "Empfehlen",
         "dismiss": "Schließen"
+      },
+      "widget": {
+        "title": "Gratis-Reservierungen",
+        "cta": "Empfehlen & mehr verdienen →"
       }
     },
     "sms": {

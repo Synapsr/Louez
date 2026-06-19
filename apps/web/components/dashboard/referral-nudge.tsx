@@ -4,7 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Gift, ArrowRight, X } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { useQuery } from '@tanstack/react-query'
 import { cn } from '@louez/utils'
+import { orpc } from '@/lib/orpc/react'
+import { formatCurrency } from '@/lib/utils'
 
 interface ReferralNudgeProps {
   className?: string
@@ -19,7 +22,19 @@ export function ReferralNudge({ className }: ReferralNudgeProps) {
   const t = useTranslations('dashboard.referrals.nudge')
   const [dismissed, setDismissed] = useState(false)
 
-  if (dismissed) return null
+  // Self-contained: the nudge fetches its own reward summary over oRPC so it can be dropped
+  // anywhere without threading props through the payment UI. It stays hidden until the
+  // (cheap, store-scoped) query resolves, so it never flashes a reward-less teaser.
+  const { data: summary } = useQuery(
+    orpc.dashboard.referral.getRewardSummary.queryOptions({ input: {} }),
+  )
+
+  if (dismissed || !summary) return null
+
+  const rewardValue = formatCurrency(
+    summary.rewardValueCents / 100,
+    summary.currency.toUpperCase(),
+  )
 
   return (
     <div
@@ -33,7 +48,12 @@ export function ReferralNudge({ className }: ReferralNudgeProps) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{t('title')}</p>
-        <p className="text-xs text-muted-foreground">{t('description')}</p>
+        <p className="text-xs text-muted-foreground">
+          {t('description', {
+            count: summary.referrerReward,
+            rewardValue,
+          })}
+        </p>
       </div>
       <Link
         href="/dashboard/referrals"

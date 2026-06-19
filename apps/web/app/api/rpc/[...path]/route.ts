@@ -32,6 +32,7 @@ import {
   updateReservation,
   updateReservationStatus,
 } from '@/app/(dashboard)/dashboard/reservations/actions';
+import { getReferralRewardSummary } from '@/app/(dashboard)/dashboard/referrals/actions';
 import {
   connectTulipApiKeyAction,
   createTulipProductAction,
@@ -127,6 +128,9 @@ async function handleRequest(request: Request) {
         pushTulipProductUpdate: pushTulipProductUpdateAction,
         createTulipProduct: createTulipProductAction,
         disconnectTulip: async () => disconnectTulipAction({}),
+      },
+      dashboardReferralActions: {
+        getRewardSummary: getReferralRewardSummary,
       },
       regenerateContract: async (reservationId: string) => {
         await generateContract({ reservationId, regenerate: true });

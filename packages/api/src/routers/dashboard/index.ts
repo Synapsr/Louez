@@ -6,6 +6,7 @@ import { dashboardCustomersRouter } from './customers';
 import { dashboardIntegrationsRouter } from './integrations';
 import { dashboardNotificationsRouter } from './notifications';
 import { dashboardOnboardingRouter } from './onboarding';
+import { dashboardReferralRouter } from './referral';
 import { dashboardReservationsRouter } from './reservations';
 import { dashboardSettingsRouter } from './settings';
 
@@ -38,4 +39,5 @@ export const dashboardRouter = {
   reservations: dashboardReservationsRouter,
   onboarding: dashboardOnboardingRouter,
   notifications: dashboardNotificationsRouter,
+  referral: dashboardReferralRouter,
 };
