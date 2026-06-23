@@ -32,6 +32,7 @@ import {
   recordFeeReversals,
   recordReservationFee,
 } from '@/lib/pay-as-you-go';
+import { getReferralProgramConfig } from '@/lib/referral/defaults';
 import {
   clawbackReferrerRewardForQualifyingPayment,
   maybeGrantReferrerReward,
@@ -1294,9 +1295,17 @@ async function handleChargeRefunded(
     });
   }
 
-  // Referral Program: a fully refunded qualifying payment claws back the Referrer Reward
-  // (within the clawback window). Best-effort; never block refund processing.
-  if (isFullRefund) {
+  const netAmountCents = Math.max(0, charge.amount - charge.amount_refunded);
+  const minQualifyingAmountCents =
+    getReferralProgramConfig().minQualifyingAmountCents;
+  const shouldClawbackReferralReward =
+    isFullRefund ||
+    (minQualifyingAmountCents > 0 && netAmountCents < minQualifyingAmountCents);
+
+  // Referral Program: a fully refunded qualifying payment, or a partial refund that
+  // drops the net online payment below the qualifying minimum, claws back the Referrer
+  // Reward (within the clawback window). Best-effort; never block refund processing.
+  if (shouldClawbackReferralReward) {
     await clawbackReferrerRewardForQualifyingPayment({
       stripeChargeId: charge.id,
       stripePaymentIntentId: payment.stripePaymentIntentId,

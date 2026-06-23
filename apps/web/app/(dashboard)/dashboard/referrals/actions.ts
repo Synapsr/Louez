@@ -1,70 +1,75 @@
-'use server'
+'use server';
 
-import { db } from '@louez/db'
-import { referralRewards, stores, subscriptions } from '@louez/db'
-import { and, eq, inArray } from 'drizzle-orm'
-import { getCurrentStore } from '@/lib/store-context'
-import { generateReferralCode } from '@/lib/utils/referral'
-import { buildReferralUrl } from '@/lib/referral/link'
-import { getReferralProgramConfig } from '@/lib/referral/defaults'
-import { priceForLocationIndex } from '@/lib/pay-as-you-go/config'
-import { getStoreBilling } from '@/lib/pay-as-you-go/metering'
+import { and, eq, inArray } from 'drizzle-orm';
+
+import { db } from '@louez/db';
+import { referralRewards, stores, subscriptions } from '@louez/db';
+
+import { priceForLocationIndex } from '@/lib/pay-as-you-go/config';
+import { getStoreBilling } from '@/lib/pay-as-you-go/metering';
+import { getReferralProgramConfig } from '@/lib/referral/defaults';
+import { buildReferralUrl } from '@/lib/referral/link';
+import type { ReferralRewardKind } from '@/lib/referral/reward';
+import { getCurrentStore } from '@/lib/store-context';
+import { generateReferralCode } from '@/lib/utils/referral';
 
 export interface ReferralData {
-  id: string
-  name: string
-  slug: string
-  logoUrl: string | null
-  joinedAt: Date
-  planSlug: string
-  subscriptionStatus: string
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  joinedAt: Date;
+  planSlug: string;
+  subscriptionStatus: string;
   /** Whether this referral reached its Qualifying Event and paid out a Referrer Reward. */
-  rewarded: boolean
+  rewarded: boolean;
 }
 
 export interface ReferralStats {
-  total: number
+  total: number;
   /** Referrals that reached the Qualifying Event (a Referrer Reward was granted). */
-  qualified: number
-  thisMonth: number
+  qualified: number;
+  thisMonth: number;
   /** Free reservations earned across all granted rewards. */
-  freeReservationsEarned: number
+  freeReservationsEarned: number;
   /** Monetary value of everything earned (free reservations × tariff + euro credits), in cents. */
-  rewardValueCents: number
+  rewardValueCents: number;
   /** Free reservations still available on this store (welcome allowance + earned − used). */
-  freeReservationsRemaining: number
+  freeReservationsRemaining: number;
   /** Indicative euro value of the remaining free reservations, in cents. */
-  freeReservationsRemainingValueCents: number
-  currency: string
+  freeReservationsRemainingValueCents: number;
+  currency: string;
 }
 
 export interface ReferralProgramSummary {
   /** Free reservations the Referrer earns per qualified referral. */
-  referrerReward: number
+  referrerReward: number;
   /** Free reservations a Referred Store receives at sign-up. */
-  referredReward: number
+  referredReward: number;
   /** Indicative euro value of the Referrer Reward (count × entry-tier tariff), in cents. */
-  rewardValueCents: number
+  rewardValueCents: number;
+  /** How the current Referrer will actually receive the reward. */
+  referrerRewardKind: ReferralRewardKind;
   /** Minimum online payment a referred store must take to unlock the Referrer Reward, in cents. */
-  minQualifyingAmountCents: number
-  currency: string
+  minQualifyingAmountCents: number;
+  currency: string;
 }
 
 export async function getReferralData(): Promise<{
-  referrals: ReferralData[]
-  stats: ReferralStats
-  program: ReferralProgramSummary
-  referralUrl: string
-  referralCode: string
+  referrals: ReferralData[];
+  stats: ReferralStats;
+  program: ReferralProgramSummary;
+  referralUrl: string;
+  referralCode: string;
 } | null> {
-  const store = await getCurrentStore()
-  if (!store) return null
+  const store = await getCurrentStore();
+  if (!store) return null;
 
   // Ensure store has a referral code (backfill for legacy stores)
-  let code = store.referralCode
+  let code = store.referralCode;
   if (!code) {
-    code = await ensureReferralCode(store.id)
-    if (!code) return null
+    code = await ensureReferralCode(store.id);
+    if (!code) return null;
   }
 
   // Fetch all stores referred by this store
@@ -78,7 +83,7 @@ export async function getReferralData(): Promise<{
       createdAt: true,
     },
     orderBy: (stores, { desc }) => [desc(stores.createdAt)],
-  })
+  });
 
   // The Referrer Reward ledger for this store, plus the store's own billing (used to
   // value the free reservations and show how many remain).
@@ -95,30 +100,30 @@ export async function getReferralData(): Promise<{
       },
     }),
     getStoreBilling(store.id),
-  ])
+  ]);
 
-  const rewardedIds = new Set(rewards.map((r) => r.referredStoreId))
-  const unitValueCents = priceForLocationIndex(billing.config, 1)
+  const rewardedIds = new Set(rewards.map((r) => r.referredStoreId));
+  const unitValueCents = priceForLocationIndex(billing.config, 1);
   const freeReservationsEarned = rewards.reduce(
     (sum, r) => sum + r.freeReservations,
     0,
-  )
-  const creditEarnedCents = rewards.reduce((sum, r) => sum + r.creditCents, 0)
+  );
+  const creditEarnedCents = rewards.reduce((sum, r) => sum + r.creditCents, 0);
   const rewardValueCents =
-    freeReservationsEarned * unitValueCents + creditEarnedCents
+    freeReservationsEarned * unitValueCents + creditEarnedCents;
 
   // Fetch all referred stores' subscriptions in one query (avoid an N+1 fan-out).
-  const referredIds = referredStores.map((ref) => ref.id)
+  const referredIds = referredStores.map((ref) => ref.id);
   const subs = referredIds.length
     ? await db.query.subscriptions.findMany({
         where: inArray(subscriptions.storeId, referredIds),
         columns: { storeId: true, planSlug: true, status: true },
       })
-    : []
-  const subByStore = new Map(subs.map((s) => [s.storeId, s]))
+    : [];
+  const subByStore = new Map(subs.map((s) => [s.storeId, s]));
 
   const referrals: ReferralData[] = referredStores.map((ref) => {
-    const sub = subByStore.get(ref.id)
+    const sub = subByStore.get(ref.id);
     return {
       id: ref.id,
       name: ref.name,
@@ -128,17 +133,17 @@ export async function getReferralData(): Promise<{
       planSlug: sub?.planSlug ?? 'pay_as_you_go',
       subscriptionStatus: sub?.status ?? 'active',
       rewarded: rewardedIds.has(ref.id),
-    }
-  })
+    };
+  });
 
-  const now = new Date()
+  const now = new Date();
   const stats: ReferralStats = {
     total: referrals.length,
     qualified: rewards.length,
     thisMonth: referrals.filter(
       (r) =>
         r.joinedAt.getUTCMonth() === now.getUTCMonth() &&
-        r.joinedAt.getUTCFullYear() === now.getUTCFullYear()
+        r.joinedAt.getUTCFullYear() === now.getUTCFullYear(),
     ).length,
     freeReservationsEarned,
     rewardValueCents,
@@ -146,9 +151,9 @@ export async function getReferralData(): Promise<{
     freeReservationsRemainingValueCents:
       billing.freeReservationsRemaining * unitValueCents,
     currency: billing.config.currency,
-  }
+  };
 
-  const programConfig = getReferralProgramConfig()
+  const programConfig = getReferralProgramConfig();
   const program: ReferralProgramSummary = {
     referrerReward: programConfig.referrerRewardFreeReservations,
     referredReward: programConfig.referredRewardFreeReservations,
@@ -156,13 +161,17 @@ export async function getReferralData(): Promise<{
     // anchor, so "N réservations offertes (≈ Y €)" stays consistent across the hub.
     rewardValueCents:
       programConfig.referrerRewardFreeReservations * unitValueCents,
+    referrerRewardKind:
+      billing.billingMode === 'subscription'
+        ? 'invoice_credit'
+        : 'free_reservations',
     minQualifyingAmountCents: programConfig.minQualifyingAmountCents,
     currency: billing.config.currency,
-  }
+  };
 
-  const referralUrl = buildReferralUrl(code)
+  const referralUrl = buildReferralUrl(code);
 
-  return { referrals, stats, program, referralUrl, referralCode: code }
+  return { referrals, stats, program, referralUrl, referralCode: code };
 }
 
 /**
@@ -173,19 +182,20 @@ export async function getReferralData(): Promise<{
  * skips the referrals list and the reward ledger.
  */
 export async function getReferralRewardSummary(): Promise<{
-  referrerReward: number
-  rewardValueCents: number
-  currency: string
+  referrerReward: number;
+  rewardValueCents: number;
+  currency: string;
   /** The store's current free-reservation balance and the total ever granted (for a gauge). */
-  freeReservationsRemaining: number
-  freeReservationsGranted: number
+  freeReservationsRemaining: number;
+  freeReservationsGranted: number;
+  rewardKind: ReferralRewardKind;
 } | null> {
-  const store = await getCurrentStore()
-  if (!store) return null
+  const store = await getCurrentStore();
+  if (!store) return null;
 
-  const billing = await getStoreBilling(store.id)
-  const unitValueCents = priceForLocationIndex(billing.config, 1)
-  const programConfig = getReferralProgramConfig()
+  const billing = await getStoreBilling(store.id);
+  const unitValueCents = priceForLocationIndex(billing.config, 1);
+  const programConfig = getReferralProgramConfig();
 
   return {
     referrerReward: programConfig.referrerRewardFreeReservations,
@@ -194,27 +204,31 @@ export async function getReferralRewardSummary(): Promise<{
     currency: billing.config.currency,
     freeReservationsRemaining: billing.freeReservationsRemaining,
     freeReservationsGranted: billing.freeReservationsGranted,
-  }
+    rewardKind:
+      billing.billingMode === 'subscription'
+        ? 'invoice_credit'
+        : 'free_reservations',
+  };
 }
 
 /**
  * Generate and persist a referral code for legacy stores that don't have one.
  */
 async function ensureReferralCode(storeId: string): Promise<string | null> {
-  let code = generateReferralCode()
+  let code = generateReferralCode();
 
   for (let attempt = 0; attempt < 10; attempt++) {
     const exists = await db.query.stores.findFirst({
       where: eq(stores.referralCode, code),
-    })
-    if (!exists) break
-    code = generateReferralCode()
+    });
+    if (!exists) break;
+    code = generateReferralCode();
   }
 
   await db
     .update(stores)
     .set({ referralCode: code, updatedAt: new Date() })
-    .where(eq(stores.id, storeId))
+    .where(eq(stores.id, storeId));
 
-  return code
+  return code;
 }

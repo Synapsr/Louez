@@ -337,8 +337,11 @@
         "title": "Polecaj i zyskuj",
         "description": "Udostępnij swój link i zaproś innych wynajmujących do Louez.",
         "reward": "Za każdego poleconego wynajmującego, który dokona pierwszej sprzedaży, otrzymujesz {referrer} darmowych rezerwacji (≈ {rewardValue}) — a on zaczyna z {referred}.",
+        "rewardInvoiceCredit": "Za każdego poleconego wynajmującego, który dokona pierwszej sprzedaży, otrzymujesz kredyt {rewardValue} na fakturze Louez — a on zaczyna z {referred} darmowymi rezerwacjami.",
         "copyLink": "Kopiuj link",
-        "linkCopied": "Link skopiowany!"
+        "linkCopied": "Link skopiowany!",
+        "linkCopyFailed": "Nie można skopiować linku.",
+        "inputLabel": "Link polecający"
       },
       "list": {
         "title": "Twoje polecenia",
@@ -366,12 +369,15 @@
       "nudge": {
         "title": "Podoba Ci się Louez?",
         "description": "Poleć wynajmującego — oboje zdobywacie {count} darmowych rezerwacji (≈ {rewardValue}).",
+        "descriptionInvoiceCredit": "Poleć wynajmującego — on zaczyna z {count} darmowymi rezerwacjami, Ty otrzymujesz kredyt {rewardValue}.",
         "cta": "Poleć",
         "dismiss": "Zamknij"
       },
       "widget": {
         "title": "Darmowe rezerwacje",
-        "cta": "Polecaj, aby zdobyć więcej →"
+        "cta": "Polecaj, aby zdobyć więcej →",
+        "creditTitle": "Polecenia",
+        "creditCta": "Zyskaj kredyt na fakturze"
       },
       "howItWorks": {
         "open": "Jak to działa",
@@ -379,6 +385,7 @@
         "step1": "Udostępnij swój link zaproszenia innym wynajmującym.",
         "step2": "Twój polecony zaczyna z {count} darmowymi rezerwacjami zaraz po rejestracji.",
         "step3": "Gdy tylko Twój polecony dokona pierwszej sprzedaży online o wartości co najmniej {minAmount}, zdobywasz {count} darmowych rezerwacji.",
+        "step3InvoiceCredit": "Gdy tylko Twój polecony dokona pierwszej sprzedaży online o wartości co najmniej {minAmount}, otrzymujesz kredyt na kolejnej fakturze Louez.",
         "note": "Tylko sprzedaż opłacona online (karta/Stripe) odblokowuje nagrodę — płatności ręczne lub gotówkowe się nie liczą. Darmowe rezerwacje to wynajmy bez prowizji Louez."
       }
     },

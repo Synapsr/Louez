@@ -1,5 +1,6 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import type Stripe from 'stripe';
 
 import { db } from '@louez/db';
 import { referralRewards, subscriptions } from '@louez/db';
@@ -27,6 +28,80 @@ import { computeReferrerReward } from './reward';
 function isDuplicateError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   return message.includes('Duplicate') || message.includes('unique');
+}
+
+function stripeResourceId(
+  resource: string | { id?: string } | null | undefined,
+): string | null {
+  if (!resource) return null;
+  if (typeof resource === 'string') return resource;
+  return typeof resource.id === 'string' ? resource.id : null;
+}
+
+function isDeletedInvoiceItem(
+  item: Stripe.InvoiceItem | Stripe.DeletedInvoiceItem,
+): item is Stripe.DeletedInvoiceItem {
+  return 'deleted' in item && item.deleted === true;
+}
+
+async function getInvoiceCreditClawbackTarget(invoiceItemId: string): Promise<
+  | {
+      state: 'deleted' | 'deletable';
+      customerId: string | null;
+      invoiceId: string | null;
+      invoiceStatus: string | null;
+    }
+  | {
+      state: 'finalized_invoice';
+      customerId: string | null;
+      invoiceId: string;
+      invoiceStatus: string | null;
+    }
+> {
+  const item = await stripe.invoiceItems.retrieve(invoiceItemId, {
+    expand: ['invoice'],
+  });
+
+  if (isDeletedInvoiceItem(item)) {
+    return {
+      state: 'deleted',
+      customerId: null,
+      invoiceId: null,
+      invoiceStatus: null,
+    };
+  }
+
+  const customerId = stripeResourceId(item.customer);
+  const invoiceId = stripeResourceId(item.invoice);
+  if (!invoiceId) {
+    return {
+      state: 'deletable',
+      customerId,
+      invoiceId: null,
+      invoiceStatus: null,
+    };
+  }
+
+  const invoice =
+    typeof item.invoice === 'string'
+      ? await stripe.invoices.retrieve(item.invoice)
+      : item.invoice;
+  const invoiceStatus = invoice?.status ?? null;
+  if (invoiceStatus === 'draft') {
+    return {
+      state: 'deletable',
+      customerId,
+      invoiceId,
+      invoiceStatus,
+    };
+  }
+
+  return {
+    state: 'finalized_invoice',
+    customerId,
+    invoiceId,
+    invoiceStatus,
+  };
 }
 
 interface ReferredStoreRef {
@@ -138,36 +213,70 @@ export async function maybeGrantReferrerReward(
   let capExceeded = false;
   try {
     if (reward.kind === 'invoice_credit') {
-      // Create the Stripe credit first (idempotency-keyed) so a transient failure retries
-      // without orphaning a ledger row; pending negative items auto-attach to the next invoice.
+      // Subscribed Referrers receive a Stripe credit. When a monthly cap is enabled,
+      // hold the Referrer's subscription row lock through credit creation + ledger insert
+      // so two different Referred Stores cannot both pass the cap check concurrently.
       let invoiceItemId: string | null = null;
-      if (reward.creditCents > 0) {
-        const customerId = await getOrCreateStripeCustomer(referrerStoreId);
-        const item = await stripe.invoiceItems.create(
-          {
-            customer: customerId,
-            amount: -reward.creditCents,
-            currency,
-            description: `Récompense de parrainage Louez (${config.referrerRewardFreeReservations} réservations offertes)`,
-            metadata: {
-              type: 'referral_reward',
-              referredStoreId: input.referredStore.id,
-              referrerStoreId,
-            },
-          },
-          { idempotencyKey: `referral_reward_credit_${input.referredStore.id}` },
-        );
-        invoiceItemId = item.id;
-      }
+      const customerId =
+        reward.creditCents > 0
+          ? await getOrCreateStripeCustomer(referrerStoreId)
+          : null;
       try {
-        await db.insert(referralRewards).values({
-          id: nanoid(),
-          ...ledgerBase,
-          stripeInvoiceItemId: invoiceItemId,
-          kind: 'invoice_credit',
-          freeReservations: 0,
-          creditCents: reward.creditCents,
-          status: 'granted',
+        await db.transaction(async (tx) => {
+          if (config.monthlyCapPerReferrer > 0) {
+            await tx.execute(
+              sql`SELECT id FROM subscriptions WHERE store_id = ${referrerStoreId} FOR UPDATE`,
+            );
+            const [{ value }] = await tx
+              .select({ value: sql<number>`count(*)` })
+              .from(referralRewards)
+              .where(
+                and(
+                  eq(referralRewards.referrerStoreId, referrerStoreId),
+                  eq(referralRewards.grantedMonth, grantedMonth),
+                  eq(referralRewards.status, 'granted'),
+                ),
+              );
+            if (
+              !isWithinMonthlyCap({
+                rewardedThisMonth: Number(value) || 0,
+                monthlyCap: config.monthlyCapPerReferrer,
+              })
+            ) {
+              capExceeded = true;
+              return;
+            }
+          }
+
+          if (customerId) {
+            const item = await stripe.invoiceItems.create(
+              {
+                customer: customerId,
+                amount: -reward.creditCents,
+                currency,
+                description: `Récompense de parrainage Louez (${config.referrerRewardFreeReservations} réservations offertes)`,
+                metadata: {
+                  type: 'referral_reward',
+                  referredStoreId: input.referredStore.id,
+                  referrerStoreId,
+                },
+              },
+              {
+                idempotencyKey: `referral_reward_credit_${input.referredStore.id}`,
+              },
+            );
+            invoiceItemId = item.id;
+          }
+
+          await tx.insert(referralRewards).values({
+            id: nanoid(),
+            ...ledgerBase,
+            stripeInvoiceItemId: invoiceItemId,
+            kind: 'invoice_credit',
+            freeReservations: 0,
+            creditCents: reward.creditCents,
+            status: 'granted',
+          });
         });
       } catch (error) {
         // The credit was already created; if the ledger row cannot be written for a
@@ -247,6 +356,7 @@ export async function maybeGrantReferrerReward(
       });
       if (capExceeded) return { granted: false, reason: 'monthly_cap' };
     }
+    if (capExceeded) return { granted: false, reason: 'monthly_cap' };
   } catch (error) {
     if (isDuplicateError(error)) {
       return { granted: false, reason: 'already_rewarded' };
@@ -344,8 +454,46 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
       }
     });
   } else {
-    // Invoice credit: claim the clawback atomically first (so a re-delivered or concurrent
-    // event does nothing), then drop the pending Stripe item if it has not been invoiced yet.
+    // Invoice credit: first make the Stripe-side compensation real, then claim the DB
+    // clawback. Pending/draft credits can be deleted. Once Stripe has finalized the invoice,
+    // the invoice item is immutable, so we create an opposite positive invoice item for the
+    // next bill instead of pretending the credit was removed.
+    if (reward.stripeInvoiceItemId) {
+      const target = await getInvoiceCreditClawbackTarget(
+        reward.stripeInvoiceItemId,
+      );
+      if (target.state === 'deletable') {
+        await stripe.invoiceItems.del(reward.stripeInvoiceItemId);
+      } else if (
+        target.state === 'finalized_invoice' &&
+        reward.creditCents > 0
+      ) {
+        const customerId =
+          target.customerId ??
+          (await getOrCreateStripeCustomer(reward.referrerStoreId));
+        await stripe.invoiceItems.create(
+          {
+            customer: customerId,
+            amount: reward.creditCents,
+            currency: reward.currency,
+            description: `Annulation de la récompense de parrainage Louez (${config.referrerRewardFreeReservations} réservations)`,
+            metadata: {
+              type: 'referral_reward_clawback',
+              referralRewardId: reward.id,
+              referredStoreId: reward.referredStoreId,
+              referrerStoreId: reward.referrerStoreId,
+              originalInvoiceItemId: reward.stripeInvoiceItemId,
+              originalInvoiceId: target.invoiceId,
+              originalInvoiceStatus: target.invoiceStatus ?? '',
+            },
+          },
+          {
+            idempotencyKey: `referral_reward_credit_clawback_${reward.id}`,
+          },
+        );
+      }
+    }
+
     const claim = await db
       .update(referralRewards)
       .set({ status: 'clawed_back', clawedBackAt: at, updatedAt: new Date() })
@@ -357,18 +505,6 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
       );
     if ((claim[0]?.affectedRows ?? 0) === 0) {
       return { clawedBack: false, reason: 'already_clawed_back' };
-    }
-    if (reward.stripeInvoiceItemId) {
-      try {
-        await stripe.invoiceItems.del(reward.stripeInvoiceItemId);
-      } catch (error) {
-        // Already invoiced/deleted out of band — the credit stands, but the reward is
-        // already marked clawed back so the event is not re-processed. Non-fatal.
-        console.warn('[referral] could not delete reward invoice item on clawback', {
-          rewardId: reward.id,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
     }
   }
 

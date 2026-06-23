@@ -337,8 +337,11 @@
         "title": "Verwijs & verdien",
         "description": "Deel uw link en nodig andere verhuurders uit om zich aan te sluiten bij Louez.",
         "reward": "Voor elke verhuurder die je aanbrengt en die zijn eerste verkoop doet, verdien je {referrer} gratis reserveringen (≈ {rewardValue}) — en hij start met {referred}.",
+        "rewardInvoiceCredit": "Voor elke verhuurder die je aanbrengt en die zijn eerste verkoop doet, verdien je {rewardValue} krediet op je Louez-factuur — en hij start met {referred} gratis reserveringen.",
         "copyLink": "Link kopiëren",
-        "linkCopied": "Link gekopieerd!"
+        "linkCopied": "Link gekopieerd!",
+        "linkCopyFailed": "Kon de link niet kopiëren.",
+        "inputLabel": "Verwijslink"
       },
       "list": {
         "title": "Uw verwijzingen",
@@ -366,12 +369,15 @@
       "nudge": {
         "title": "Tevreden over Louez?",
         "description": "Verwijs een verhuurder — jullie verdienen allebei {count} gratis reserveringen (≈ {rewardValue}).",
+        "descriptionInvoiceCredit": "Verwijs een verhuurder — hij start met {count} gratis reserveringen, jij verdient {rewardValue} krediet.",
         "cta": "Verwijzen",
         "dismiss": "Sluiten"
       },
       "widget": {
         "title": "Gratis reserveringen",
-        "cta": "Verwijs om meer te verdienen →"
+        "cta": "Verwijs om meer te verdienen →",
+        "creditTitle": "Verwijzingen",
+        "creditCta": "Verdien factuurkrediet"
       },
       "howItWorks": {
         "open": "Hoe het werkt",
@@ -379,6 +385,7 @@
         "step1": "Deel je uitnodigingslink met andere verhuurders.",
         "step2": "Je verwijzing start met {count} gratis reserveringen zodra ze zich aanmelden.",
         "step3": "Zodra je verwijzing zijn eerste online verkoop van minstens {minAmount} doet, verdien je {count} gratis reserveringen.",
+        "step3InvoiceCredit": "Zodra je verwijzing zijn eerste online verkoop van minstens {minAmount} doet, verdien je krediet op je volgende Louez-factuur.",
         "note": "Alleen online betaalde verkopen (kaart/Stripe) ontgrendelen de beloning — handmatige of contante betalingen tellen niet. Gratis reserveringen zijn verhuringen zonder Louez-commissie."
       }
     },

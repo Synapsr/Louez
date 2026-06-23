@@ -337,8 +337,11 @@
         "title": "Recomiende y gane",
         "description": "Comparta su enlace e invite a otros arrendadores a unirse a Louez.",
         "reward": "Por cada arrendador que recomiendes y que realice su primera venta, ganas {referrer} reservas gratis (≈ {rewardValue}) — y él empieza con {referred}.",
+        "rewardInvoiceCredit": "Por cada arrendador que recomiendes y que realice su primera venta, ganas un crédito de {rewardValue} en tu factura Louez — y él empieza con {referred} reservas gratis.",
         "copyLink": "Copiar enlace",
-        "linkCopied": "¡Enlace copiado!"
+        "linkCopied": "¡Enlace copiado!",
+        "linkCopyFailed": "No se pudo copiar el enlace.",
+        "inputLabel": "Enlace de referido"
       },
       "list": {
         "title": "Sus referencias",
@@ -366,12 +369,15 @@
       "nudge": {
         "title": "¿Te gusta Louez?",
         "description": "Recomienda a un arrendador: ambos ganáis {count} reservas gratis (≈ {rewardValue}).",
+        "descriptionInvoiceCredit": "Recomienda a un arrendador: él empieza con {count} reservas gratis y tú ganas {rewardValue} de crédito.",
         "cta": "Recomendar",
         "dismiss": "Cerrar"
       },
       "widget": {
         "title": "Reservas gratis",
-        "cta": "Recomienda para ganar más →"
+        "cta": "Recomienda para ganar más →",
+        "creditTitle": "Referidos",
+        "creditCta": "Gana crédito en factura"
       },
       "howItWorks": {
         "open": "Cómo funciona",
@@ -379,6 +385,7 @@
         "step1": "Comparte tu enlace de invitación con otros arrendadores.",
         "step2": "Tu referido empieza con {count} reservas gratis en cuanto se registra.",
         "step3": "En cuanto tu referido realice su primera venta online de al menos {minAmount}, ganas {count} reservas gratis.",
+        "step3InvoiceCredit": "En cuanto tu referido realice su primera venta online de al menos {minAmount}, ganas un crédito en tu próxima factura Louez.",
         "note": "Solo las ventas pagadas online (tarjeta/Stripe) desbloquean la recompensa — los pagos manuales o en efectivo no cuentan. Las reservas gratis son alquileres sin comisión de Louez."
       }
     },

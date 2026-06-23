@@ -25,3 +25,8 @@ export function referralCookieDomain(): string | undefined {
   }
   return `.${domain.split(':')[0]}`;
 }
+
+export function referralCookieSecure(): boolean {
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+  return !domain.includes('localhost') && !domain.includes('127.0.0.1');
+}

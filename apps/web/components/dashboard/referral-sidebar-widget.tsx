@@ -1,11 +1,14 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { Gift } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { useQuery } from '@tanstack/react-query'
-import { Progress } from '@louez/ui'
-import { orpc } from '@/lib/orpc/react'
+import Link from 'next/link';
+
+import { useQuery } from '@tanstack/react-query';
+import { Gift } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Progress } from '@louez/ui';
+
+import { orpc } from '@/lib/orpc/react';
 
 /**
  * Compact sidebar-footer gauge of the store's remaining free reservations, doubling as a
@@ -13,17 +16,36 @@ import { orpc } from '@/lib/orpc/react'
  * summary over oRPC, and stays hidden until it resolves.
  */
 export function ReferralSidebarWidget() {
-  const t = useTranslations('dashboard.referrals.widget')
+  const t = useTranslations('dashboard.referrals.widget');
   const { data: summary } = useQuery(
     orpc.dashboard.referral.getRewardSummary.queryOptions({ input: {} }),
-  )
+  );
 
-  if (!summary) return null
+  if (!summary) return null;
 
-  const remaining = summary.freeReservationsRemaining
-  const granted = summary.freeReservationsGranted
+  const remaining = summary.freeReservationsRemaining;
+  const granted = summary.freeReservationsGranted;
   const pct =
-    granted > 0 ? Math.min(100, Math.round((remaining / granted) * 100)) : 0
+    granted > 0 ? Math.min(100, Math.round((remaining / granted) * 100)) : 0;
+
+  if (summary.rewardKind === 'invoice_credit') {
+    return (
+      <Link
+        href="/dashboard/referrals"
+        className="group border-sidebar-border bg-sidebar-accent/40 hover:bg-sidebar-accent block rounded-lg border px-3 py-2.5 transition-colors"
+      >
+        <div className="flex items-center gap-1.5">
+          <Gift className="h-3.5 w-3.5 text-amber-500" />
+          <span className="text-sidebar-foreground/80 text-xs font-medium">
+            {t('creditTitle')}
+          </span>
+        </div>
+        <p className="text-sidebar-foreground/60 group-hover:text-sidebar-foreground/80 mt-1.5 text-[11px] transition-colors">
+          {t('creditCta')}
+        </p>
+      </Link>
+    );
+  }
 
   return (
     <Link
@@ -44,5 +66,5 @@ export function ReferralSidebarWidget() {
         {t('cta')}
       </p>
     </Link>
-  )
+  );
 }

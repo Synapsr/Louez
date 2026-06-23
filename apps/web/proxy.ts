@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { env } from '@/env'
-import { isValidReferralCode } from '@/lib/utils/referral'
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+import { isValidReferralCode } from '@/lib/utils/referral';
+
+import { env } from '@/env';
 
 // =============================================================================
 // CONFIGURATION
@@ -17,9 +19,9 @@ import { isValidReferralCode } from '@/lib/utils/referral'
 //   PREVIEW_STORE_SLUG - For local dev, show this store's storefront instead of dashboard
 // =============================================================================
 
-const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
-const DASHBOARD_SUBDOMAIN = env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN
-const PREVIEW_STORE_SLUG = env.PREVIEW_STORE_SLUG
+const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
+const DASHBOARD_SUBDOMAIN = env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN;
+const PREVIEW_STORE_SLUG = env.PREVIEW_STORE_SLUG;
 
 // Routes that should never be rewritten to storefront (dashboard/auth routes)
 const DASHBOARD_ROUTES = [
@@ -30,7 +32,7 @@ const DASHBOARD_ROUTES = [
   '/invitation',
   '/multi-store',
   '/admin', // platform-admin area (gated in its layout)
-]
+];
 
 /**
  * Extract subdomain from the host header.
@@ -47,31 +49,31 @@ const DASHBOARD_ROUTES = [
  */
 function getSubdomain(host: string): string | null {
   // Remove port if present
-  const hostname = host.split(':')[0]
+  const hostname = host.split(':')[0];
 
   // Localhost and 127.0.0.1 don't support subdomains
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return null
+    return null;
   }
 
   // Extract subdomain by comparing with base domain
-  const hostParts = hostname.split('.')
-  const baseDomain = APP_DOMAIN.split(':')[0]
-  const baseParts = baseDomain.split('.')
+  const hostParts = hostname.split('.');
+  const baseDomain = APP_DOMAIN.split(':')[0];
+  const baseParts = baseDomain.split('.');
 
   // If hostname has more parts than base domain, extract subdomain(s)
   if (hostParts.length > baseParts.length) {
-    return hostParts.slice(0, hostParts.length - baseParts.length).join('.')
+    return hostParts.slice(0, hostParts.length - baseParts.length).join('.');
   }
 
-  return null
+  return null;
 }
 
 /**
  * Check if the pathname is a dashboard/auth route that should not be rewritten.
  */
 function isDashboardRoute(pathname: string): boolean {
-  return DASHBOARD_ROUTES.some((route) => pathname.startsWith(route))
+  return DASHBOARD_ROUTES.some((route) => pathname.startsWith(route));
 }
 
 /**
@@ -82,7 +84,7 @@ function isStaticAsset(pathname: string): boolean {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.includes('.')
-  )
+  );
 }
 
 function isLoopbackHost(hostname: string): boolean {
@@ -91,26 +93,26 @@ function isLoopbackHost(hostname: string): boolean {
     hostname === '127.0.0.1' ||
     hostname === '::1' ||
     hostname === '[::1]'
-  )
+  );
 }
 
 function createInternalRewriteUrl(request: NextRequest, pathname: string) {
-  const url = request.nextUrl.clone()
-  url.pathname = pathname
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
 
   if (isLoopbackHost(url.hostname)) {
-    url.protocol = 'http:'
+    url.protocol = 'http:';
   }
 
-  return url
+  return url;
 }
 
 // =============================================================================
 // REFERRAL ATTRIBUTION
 // =============================================================================
 
-const REFERRAL_COOKIE = 'louez_referral'
-const REFERRAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30-day attribution window
+const REFERRAL_COOKIE = 'louez_referral';
+const REFERRAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30-day attribution window
 
 /**
  * Cross-subdomain cookie domain so a referral captured on the marketing site (the apex,
@@ -118,9 +120,13 @@ const REFERRAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30-day attribution window
  * (app.louez.io). Omitted on localhost — browsers reject domain=localhost.
  */
 function referralCookieDomain(host: string): string | undefined {
-  const hostname = host.split(':')[0]
-  if (isLoopbackHost(hostname)) return undefined
-  return `.${APP_DOMAIN.split(':')[0]}`
+  const hostname = host.split(':')[0].toLowerCase();
+  const baseDomain = APP_DOMAIN.split(':')[0].toLowerCase();
+  if (isLoopbackHost(hostname) || isLoopbackHost(baseDomain)) return undefined;
+  if (hostname === baseDomain || hostname.endsWith(`.${baseDomain}`)) {
+    return `.${baseDomain}`;
+  }
+  return undefined;
 }
 
 /**
@@ -134,7 +140,7 @@ function captureReferral(
   response: NextResponse,
   host: string,
 ): NextResponse {
-  const ref = request.nextUrl.searchParams.get('ref')
+  const ref = request.nextUrl.searchParams.get('ref');
   if (ref && isValidReferralCode(ref)) {
     response.cookies.set(REFERRAL_COOKIE, ref, {
       maxAge: REFERRAL_COOKIE_MAX_AGE,
@@ -143,21 +149,21 @@ function captureReferral(
       httpOnly: true,
       secure: !isLoopbackHost(host.split(':')[0]),
       domain: referralCookieDomain(host),
-    })
+    });
   }
-  return response
+  return response;
 }
 
 export function proxy(request: NextRequest) {
-  const host = request.headers.get('host') || ''
-  const subdomain = getSubdomain(host)
-  const { pathname } = request.nextUrl
+  const host = request.headers.get('host') || '';
+  const subdomain = getSubdomain(host);
+  const { pathname } = request.nextUrl;
 
   // -----------------------------------------------------------------------------
   // 1. PASS THROUGH: API routes and static assets
   // -----------------------------------------------------------------------------
   if (pathname.startsWith('/api') || isStaticAsset(pathname)) {
-    return NextResponse.next()
+    return NextResponse.next();
   }
 
   // -----------------------------------------------------------------------------
@@ -165,21 +171,26 @@ export function proxy(request: NextRequest) {
   // -----------------------------------------------------------------------------
   // When running locally with PREVIEW_STORE_SLUG set, rewrite to that store's
   // storefront (except for dashboard routes which should remain accessible).
-  const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1')
+  const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
 
-  if (isLocalhost && !subdomain && PREVIEW_STORE_SLUG && !isDashboardRoute(pathname)) {
+  if (
+    isLocalhost &&
+    !subdomain &&
+    PREVIEW_STORE_SLUG &&
+    !isDashboardRoute(pathname)
+  ) {
     const url = createInternalRewriteUrl(
       request,
       `/${PREVIEW_STORE_SLUG}${pathname}`,
-    )
-    const response = NextResponse.rewrite(url)
+    );
+    const response = NextResponse.rewrite(url);
 
     // Set embed mode header for embed routes
     if (pathname === '/embed' || pathname.startsWith('/embed/')) {
-      response.headers.set('x-embed-mode', '1')
+      response.headers.set('x-embed-mode', '1');
     }
 
-    return captureReferral(request, response, host)
+    return captureReferral(request, response, host);
   }
 
   // -----------------------------------------------------------------------------
@@ -189,7 +200,7 @@ export function proxy(request: NextRequest) {
   //   - {DASHBOARD_SUBDOMAIN}.{APP_DOMAIN} (e.g., app.example.com)
   //   - localhost (when PREVIEW_STORE_SLUG is not set)
   if (subdomain === DASHBOARD_SUBDOMAIN || (isLocalhost && !subdomain)) {
-    return captureReferral(request, NextResponse.next(), host)
+    return captureReferral(request, NextResponse.next(), host);
   }
 
   // -----------------------------------------------------------------------------
@@ -198,21 +209,21 @@ export function proxy(request: NextRequest) {
   // {slug}.{APP_DOMAIN} → rewrite to /{slug}/* routes
   // Excludes "www" which should show the landing page
   if (subdomain && subdomain !== 'www') {
-    const url = createInternalRewriteUrl(request, `/${subdomain}${pathname}`)
-    const response = NextResponse.rewrite(url)
+    const url = createInternalRewriteUrl(request, `/${subdomain}${pathname}`);
+    const response = NextResponse.rewrite(url);
 
     // Set embed mode header for embed routes (used by layout to skip chrome)
     if (pathname === '/embed' || pathname.startsWith('/embed/')) {
-      response.headers.set('x-embed-mode', '1')
+      response.headers.set('x-embed-mode', '1');
     }
 
-    return captureReferral(request, response, host)
+    return captureReferral(request, response, host);
   }
 
   // -----------------------------------------------------------------------------
   // 5. DEFAULT: Pass through (landing page, www, etc.)
   // -----------------------------------------------------------------------------
-  return captureReferral(request, NextResponse.next(), host)
+  return captureReferral(request, NextResponse.next(), host);
 }
 
 export const config = {
@@ -226,4 +237,4 @@ export const config = {
      */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
-}
+};

@@ -519,6 +519,7 @@ export interface BaseContext {
       currency: string;
       freeReservationsRemaining: number;
       freeReservationsGranted: number;
+      rewardKind: 'free_reservations' | 'invoice_credit';
     } | null>;
   };
   notifyStoreCreated?: (store: {

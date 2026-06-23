@@ -337,8 +337,11 @@
         "title": "Empfehlen & profitieren",
         "description": "Teilen Sie Ihren Link und laden Sie andere Vermieter zu Louez ein.",
         "reward": "Für jeden geworbenen Vermieter, der seinen ersten Verkauf tätigt, erhalten Sie {referrer} Gratis-Reservierungen (≈ {rewardValue}) — und er startet mit {referred}.",
+        "rewardInvoiceCredit": "Für jeden geworbenen Vermieter, der seinen ersten Verkauf tätigt, erhalten Sie {rewardValue} Guthaben auf Ihrer Louez-Rechnung — und er startet mit {referred} Gratis-Reservierungen.",
         "copyLink": "Link kopieren",
-        "linkCopied": "Link kopiert!"
+        "linkCopied": "Link kopiert!",
+        "linkCopyFailed": "Link konnte nicht kopiert werden.",
+        "inputLabel": "Empfehlungslink"
       },
       "list": {
         "title": "Ihre Empfehlungen",
@@ -366,12 +369,15 @@
       "nudge": {
         "title": "Gefällt Ihnen Louez?",
         "description": "Empfehlen Sie einen Vermieter — Sie erhalten beide {count} Gratis-Reservierungen (≈ {rewardValue}).",
+        "descriptionInvoiceCredit": "Empfehlen Sie einen Vermieter — er startet mit {count} Gratis-Reservierungen, Sie erhalten {rewardValue} Guthaben.",
         "cta": "Empfehlen",
         "dismiss": "Schließen"
       },
       "widget": {
         "title": "Gratis-Reservierungen",
-        "cta": "Empfehlen & mehr verdienen →"
+        "cta": "Empfehlen & mehr verdienen →",
+        "creditTitle": "Empfehlungen",
+        "creditCta": "Rechnungsguthaben erhalten"
       },
       "howItWorks": {
         "open": "So funktioniert's",
@@ -379,6 +385,7 @@
         "step1": "Teilen Sie Ihren Einladungslink mit anderen Vermietern.",
         "step2": "Ihr Geworbener startet mit {count} Gratis-Reservierungen, sobald er sich registriert.",
         "step3": "Sobald Ihr Geworbener seinen ersten Online-Verkauf von mindestens {minAmount} tätigt, erhalten Sie {count} Gratis-Reservierungen.",
+        "step3InvoiceCredit": "Sobald Ihr Geworbener seinen ersten Online-Verkauf von mindestens {minAmount} tätigt, erhalten Sie ein Guthaben auf Ihrer nächsten Louez-Rechnung.",
         "note": "Nur online bezahlte Verkäufe (Karte/Stripe) schalten die Prämie frei — manuelle oder Barzahlungen zählen nicht. Gratis-Reservierungen sind Vermietungen ohne Louez-Provision."
       }
     },

@@ -1,83 +1,114 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { Button } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { Copy, Check, Gift, Crown } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { toastManager } from '@louez/ui'
-import { formatCurrency } from '@/lib/utils'
+import { useState } from 'react';
+
+import { Check, Copy, Crown, Gift } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button } from '@louez/ui';
+import { Input } from '@louez/ui';
+import { toastManager } from '@louez/ui';
+
+import { formatCurrency } from '@/lib/utils';
 
 interface ReferralLinkProps {
-  referralUrl: string
-  referrerReward: number
-  referredReward: number
-  rewardValueCents: number
-  currency: string
+  referralUrl: string;
+  referrerReward: number;
+  referredReward: number;
+  rewardKind: 'free_reservations' | 'invoice_credit';
+  rewardValueCents: number;
+  currency: string;
 }
 
 export function ReferralLink({
   referralUrl,
   referrerReward,
   referredReward,
+  rewardKind,
   rewardValueCents,
   currency,
 }: ReferralLinkProps) {
-  const t = useTranslations('dashboard.referrals.link')
-  const [copied, setCopied] = useState(false)
+  const t = useTranslations('dashboard.referrals.link');
+  const [copied, setCopied] = useState(false);
 
   const rewardValue = formatCurrency(
     rewardValueCents / 100,
     currency.toUpperCase(),
-  )
+  );
+
+  const writeClipboard = async (value: string) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.className = 'sr-only';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textarea);
+
+    if (!copied) {
+      throw new Error('Clipboard copy failed');
+    }
+  };
 
   const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(referralUrl)
-    setCopied(true)
-    toastManager.add({ title: t('linkCopied'), type: 'success' })
-    setTimeout(() => setCopied(false), 2000)
-  }
+    try {
+      await writeClipboard(referralUrl);
+      setCopied(true);
+      toastManager.add({ title: t('linkCopied'), type: 'success' });
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toastManager.add({ title: t('linkCopyFailed'), type: 'error' });
+    }
+  };
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-primary/5 p-6 md:p-8">
-      {/* Decorative background elements */}
-      <div className="absolute top-0 right-0 h-40 w-40 translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
-      <div className="absolute bottom-0 left-0 h-24 w-24 -translate-x-1/2 translate-y-1/2 rounded-full bg-primary/5 blur-2xl" />
-
-      <div className="relative flex flex-col gap-6">
-        {/* Header */}
+    <div className="border-primary/20 bg-primary/5 rounded-xl border p-6 md:p-8">
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary shadow-lg">
-            <Gift className="h-7 w-7 text-primary-foreground" />
+          <div className="bg-primary flex h-14 w-14 shrink-0 items-center justify-center rounded-full shadow-lg">
+            <Gift className="text-primary-foreground h-7 w-7" />
           </div>
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold tracking-tight">{t('title')}</h2>
-            <p className="text-sm text-muted-foreground">{t('description')}</p>
+            <h2 className="text-xl font-semibold tracking-tight">
+              {t('title')}
+            </h2>
+            <p className="text-muted-foreground text-sm">{t('description')}</p>
           </div>
         </div>
 
-        {/* Reward highlight */}
         <div className="flex items-center gap-3 rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
           <Crown className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
-            {t('reward', {
-              referrer: referrerReward,
-              referred: referredReward,
-              rewardValue,
-            })}
+            {rewardKind === 'invoice_credit'
+              ? t('rewardInvoiceCredit', {
+                  referred: referredReward,
+                  rewardValue,
+                })
+              : t('reward', {
+                  referrer: referrerReward,
+                  referred: referredReward,
+                  rewardValue,
+                })}
           </p>
         </div>
 
-        {/* Referral link */}
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             value={referralUrl}
             readOnly
-            className="border-primary/20 bg-background text-sm"
+            aria-label={t('inputLabel')}
+            className="border-primary/20 bg-background min-w-0 text-sm"
           />
           <Button
             onClick={copyToClipboard}
-            className="shrink-0 gap-2 shadow-sm shadow-primary/20"
+            className="shadow-primary/20 w-full shrink-0 gap-2 shadow-sm sm:w-auto"
           >
             {copied ? (
               <Check className="h-4 w-4" />
@@ -89,5 +120,5 @@ export function ReferralLink({
         </div>
       </div>
     </div>
-  )
+  );
 }

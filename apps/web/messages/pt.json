@@ -337,8 +337,11 @@
         "title": "Indique e ganhe",
         "description": "Compartilhe seu link e convide outros locadores a se juntar ao Louez.",
         "reward": "Por cada locador que indicar e que fizer a primeira venda, ganha {referrer} reservas gratuitas (≈ {rewardValue}) — e ele começa com {referred}.",
+        "rewardInvoiceCredit": "Por cada locador que indicar e que fizer a primeira venda, ganha um crédito de {rewardValue} na fatura Louez — e ele começa com {referred} reservas gratuitas.",
         "copyLink": "Copiar link",
-        "linkCopied": "Link copiado!"
+        "linkCopied": "Link copiado!",
+        "linkCopyFailed": "Não foi possível copiar o link.",
+        "inputLabel": "Link de indicação"
       },
       "list": {
         "title": "Suas referências",
@@ -366,12 +369,15 @@
       "nudge": {
         "title": "A gostar do Louez?",
         "description": "Indique um locador: ambos ganham {count} reservas gratuitas (≈ {rewardValue}).",
+        "descriptionInvoiceCredit": "Indique um locador: ele começa com {count} reservas gratuitas, você ganha {rewardValue} de crédito.",
         "cta": "Indicar",
         "dismiss": "Fechar"
       },
       "widget": {
         "title": "Reservas gratuitas",
-        "cta": "Indique para ganhar mais →"
+        "cta": "Indique para ganhar mais →",
+        "creditTitle": "Indicações",
+        "creditCta": "Ganhe crédito na fatura"
       },
       "howItWorks": {
         "open": "Como funciona",
@@ -379,6 +385,7 @@
         "step1": "Partilhe o seu link de convite com outros locadores.",
         "step2": "O seu indicado começa com {count} reservas gratuitas assim que se regista.",
         "step3": "Assim que o seu indicado fizer a primeira venda online de pelo menos {minAmount}, ganha {count} reservas gratuitas.",
+        "step3InvoiceCredit": "Assim que o seu indicado fizer a primeira venda online de pelo menos {minAmount}, ganha um crédito na próxima fatura Louez.",
         "note": "Apenas as vendas pagas online (cartão/Stripe) desbloqueiam a recompensa — pagamentos manuais ou em dinheiro não contam. As reservas gratuitas são alugueres sem comissão Louez."
       }
     },

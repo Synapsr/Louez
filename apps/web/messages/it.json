@@ -337,8 +337,11 @@
         "title": "Invita e guadagna",
         "description": "Condividi il tuo link e invita altri noleggiatori a unirsi a Louez.",
         "reward": "Per ogni noleggiatore che inviti e che effettua la sua prima vendita, guadagni {referrer} prenotazioni gratuite (≈ {rewardValue}) — e lui inizia con {referred}.",
+        "rewardInvoiceCredit": "Per ogni noleggiatore che inviti e che effettua la sua prima vendita, guadagni un credito di {rewardValue} sulla fattura Louez — e lui inizia con {referred} prenotazioni gratuite.",
         "copyLink": "Copia link",
-        "linkCopied": "Link copiato!"
+        "linkCopied": "Link copiato!",
+        "linkCopyFailed": "Impossibile copiare il link.",
+        "inputLabel": "Link di referral"
       },
       "list": {
         "title": "Le tue referenze",
@@ -366,12 +369,15 @@
       "nudge": {
         "title": "Ti piace Louez?",
         "description": "Invita un noleggiatore: guadagnate entrambi {count} prenotazioni gratuite (≈ {rewardValue}).",
+        "descriptionInvoiceCredit": "Invita un noleggiatore: lui inizia con {count} prenotazioni gratuite, tu guadagni {rewardValue} di credito.",
         "cta": "Invita",
         "dismiss": "Chiudi"
       },
       "widget": {
         "title": "Prenotazioni gratuite",
-        "cta": "Invita per guadagnarne →"
+        "cta": "Invita per guadagnarne →",
+        "creditTitle": "Referral",
+        "creditCta": "Guadagna credito fattura"
       },
       "howItWorks": {
         "open": "Come funziona",
@@ -379,6 +385,7 @@
         "step1": "Condividi il tuo link di invito con altri noleggiatori.",
         "step2": "Il tuo invitato inizia con {count} prenotazioni gratuite al momento della registrazione.",
         "step3": "Non appena il tuo invitato effettua la sua prima vendita online di almeno {minAmount}, guadagni {count} prenotazioni gratuite.",
+        "step3InvoiceCredit": "Non appena il tuo invitato effettua la sua prima vendita online di almeno {minAmount}, guadagni un credito sulla prossima fattura Louez.",
         "note": "Solo le vendite pagate online (carta/Stripe) sbloccano la ricompensa — i pagamenti manuali o in contanti non contano. Le prenotazioni gratuite sono noleggi senza commissione Louez."
       }
     },
