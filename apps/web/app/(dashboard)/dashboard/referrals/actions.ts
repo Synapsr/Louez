@@ -56,6 +56,7 @@ export interface ReferralProgramSummary {
 }
 
 export async function getReferralData(): Promise<{
+  storeId: string;
   referrals: ReferralData[];
   stats: ReferralStats;
   program: ReferralProgramSummary;
@@ -171,7 +172,14 @@ export async function getReferralData(): Promise<{
 
   const referralUrl = buildReferralUrl(code);
 
-  return { referrals, stats, program, referralUrl, referralCode: code };
+  return {
+    storeId: store.id,
+    referrals,
+    stats,
+    program,
+    referralUrl,
+    referralCode: code,
+  };
 }
 
 /**

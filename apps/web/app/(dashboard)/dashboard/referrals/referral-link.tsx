@@ -4,14 +4,20 @@ import { useState } from 'react';
 
 import { Check, Copy, Crown, Gift } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { usePostHog } from 'posthog-js/react';
 
 import { Button } from '@louez/ui';
 import { Input } from '@louez/ui';
 import { toastManager } from '@louez/ui';
 
+import {
+  referralAnalyticsBaseProperties,
+  referralAnalyticsEvents,
+} from '@/lib/referral/analytics-events';
 import { formatCurrency } from '@/lib/utils';
 
 interface ReferralLinkProps {
+  storeId: string;
   referralUrl: string;
   referrerReward: number;
   referredReward: number;
@@ -20,15 +26,17 @@ interface ReferralLinkProps {
   currency: string;
 }
 
-export function ReferralLink({
+export const ReferralLink = ({
+  storeId,
   referralUrl,
   referrerReward,
   referredReward,
   rewardKind,
   rewardValueCents,
   currency,
-}: ReferralLinkProps) {
+}: ReferralLinkProps) => {
   const t = useTranslations('dashboard.referrals.link');
+  const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
 
   const rewardValue = formatCurrency(
@@ -60,10 +68,30 @@ export function ReferralLink({
   const copyToClipboard = async () => {
     try {
       await writeClipboard(referralUrl);
+      posthog.capture(referralAnalyticsEvents.linkCopied, {
+        ...referralAnalyticsBaseProperties,
+        placement: 'dashboard_referrals',
+        referrer_store_id: storeId,
+        reward_kind: rewardKind,
+        referrer_reward_free_reservations: referrerReward,
+        referred_reward_free_reservations: referredReward,
+        reward_value_cents: rewardValueCents,
+        currency,
+      });
       setCopied(true);
       toastManager.add({ title: t('linkCopied'), type: 'success' });
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
+      posthog.capture(referralAnalyticsEvents.linkCopyFailed, {
+        ...referralAnalyticsBaseProperties,
+        placement: 'dashboard_referrals',
+        referrer_store_id: storeId,
+        reward_kind: rewardKind,
+        referrer_reward_free_reservations: referrerReward,
+        referred_reward_free_reservations: referredReward,
+        reward_value_cents: rewardValueCents,
+        currency,
+      });
       toastManager.add({ title: t('linkCopyFailed'), type: 'error' });
     }
   };
@@ -121,4 +149,4 @@ export function ReferralLink({
       </div>
     </div>
   );
-}
+};
