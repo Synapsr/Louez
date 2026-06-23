@@ -15,6 +15,7 @@ const rewardSummarySchema = z
     freeReservationsRemaining: z.number(),
     /** Total free reservations ever granted to the store (for a gauge). */
     freeReservationsGranted: z.number(),
+    rewardKind: z.enum(['free_reservations', 'invoice_credit']),
   })
   .nullable();
 

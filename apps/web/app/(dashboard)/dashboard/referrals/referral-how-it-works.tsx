@@ -1,15 +1,18 @@
-'use client'
+'use client';
 
-import { HelpCircle } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { Popover, PopoverContent, PopoverTrigger } from '@louez/ui'
-import { formatCurrency } from '@/lib/utils'
+import { HelpCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Popover, PopoverContent, PopoverTrigger } from '@louez/ui';
+
+import { formatCurrency } from '@/lib/utils';
 
 interface ReferralHowItWorksProps {
-  referrerReward: number
-  referredReward: number
-  minQualifyingAmountCents: number
-  currency: string
+  referrerReward: number;
+  referredReward: number;
+  referrerRewardKind: 'free_reservations' | 'invoice_credit';
+  minQualifyingAmountCents: number;
+  currency: string;
 }
 
 /**
@@ -19,20 +22,23 @@ interface ReferralHowItWorksProps {
 export function ReferralHowItWorks({
   referrerReward,
   referredReward,
+  referrerRewardKind,
   minQualifyingAmountCents,
   currency,
 }: ReferralHowItWorksProps) {
-  const t = useTranslations('dashboard.referrals.howItWorks')
+  const t = useTranslations('dashboard.referrals.howItWorks');
   const minAmount = formatCurrency(
     minQualifyingAmountCents / 100,
     currency.toUpperCase(),
-  )
+  );
 
   const steps = [
     t('step1'),
     t('step2', { count: referredReward }),
-    t('step3', { count: referrerReward, minAmount }),
-  ]
+    referrerRewardKind === 'invoice_credit'
+      ? t('step3InvoiceCredit', { minAmount })
+      : t('step3', { count: referrerReward, minAmount }),
+  ];
 
   return (
     <Popover>
@@ -66,5 +72,5 @@ export function ReferralHowItWorks({
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

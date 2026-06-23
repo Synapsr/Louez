@@ -337,8 +337,11 @@
         "title": "Parrainez et gagnez",
         "description": "Partagez votre lien et invitez d'autres loueurs à rejoindre Louez.",
         "reward": "Pour chaque loueur parrainé qui réalise sa première vente, vous gagnez {referrer} réservations offertes (≈ {rewardValue}) — et votre filleul démarre avec {referred}.",
+        "rewardInvoiceCredit": "Pour chaque loueur parrainé qui réalise sa première vente, vous gagnez {rewardValue} de crédit sur votre facture Louez — et votre filleul démarre avec {referred} réservations offertes.",
         "copyLink": "Copier le lien",
-        "linkCopied": "Lien copié !"
+        "linkCopied": "Lien copié !",
+        "linkCopyFailed": "Impossible de copier le lien.",
+        "inputLabel": "Lien de parrainage"
       },
       "list": {
         "title": "Vos filleuls",
@@ -366,12 +369,15 @@
       "nudge": {
         "title": "Vous aimez Louez ?",
         "description": "Parrainez un loueur : vous gagnez tous les deux {count} réservations offertes (≈ {rewardValue}).",
+        "descriptionInvoiceCredit": "Parrainez un loueur : il démarre avec {count} réservations offertes, vous gagnez {rewardValue} de crédit.",
         "cta": "Parrainer",
         "dismiss": "Fermer"
       },
       "widget": {
         "title": "Réservations offertes",
-        "cta": "Parrainez pour en gagner →"
+        "cta": "Parrainez pour en gagner →",
+        "creditTitle": "Parrainage",
+        "creditCta": "Gagnez du crédit facture"
       },
       "howItWorks": {
         "open": "Comment ça marche",
@@ -379,6 +385,7 @@
         "step1": "Partagez votre lien d'invitation avec d'autres loueurs.",
         "step2": "Votre filleul démarre avec {count} réservations offertes dès son inscription.",
         "step3": "Dès que votre filleul réalise sa première vente en ligne d'au moins {minAmount}, vous gagnez {count} réservations offertes.",
+        "step3InvoiceCredit": "Dès que votre filleul réalise sa première vente en ligne d'au moins {minAmount}, vous gagnez un crédit sur votre prochaine facture Louez.",
         "note": "Seules les ventes payées en ligne (carte/Stripe) déclenchent la récompense — les paiements manuels ou en espèces ne comptent pas. Les réservations offertes sont des locations sans commission Louez."
       }
     },

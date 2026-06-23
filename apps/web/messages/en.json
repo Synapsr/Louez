@@ -337,8 +337,11 @@
         "title": "Refer & earn",
         "description": "Share your link and invite other rental businesses to join Louez.",
         "reward": "For every rental business you refer that makes its first sale, you earn {referrer} free reservations (≈ {rewardValue}) — and they start with {referred}.",
+        "rewardInvoiceCredit": "For every rental business you refer that makes its first sale, you earn a {rewardValue} credit on your Louez invoice — and they start with {referred} free reservations.",
         "copyLink": "Copy link",
-        "linkCopied": "Link copied!"
+        "linkCopied": "Link copied!",
+        "linkCopyFailed": "Could not copy the link.",
+        "inputLabel": "Referral link"
       },
       "list": {
         "title": "Your referrals",
@@ -366,12 +369,15 @@
       "nudge": {
         "title": "Enjoying Louez?",
         "description": "Refer a rental business — you both earn {count} free reservations (≈ {rewardValue}).",
+        "descriptionInvoiceCredit": "Refer a rental business — they start with {count} free reservations, you earn a {rewardValue} credit.",
         "cta": "Refer",
         "dismiss": "Dismiss"
       },
       "widget": {
         "title": "Free reservations",
-        "cta": "Refer to earn more →"
+        "cta": "Refer to earn more →",
+        "creditTitle": "Referrals",
+        "creditCta": "Earn invoice credit"
       },
       "howItWorks": {
         "open": "How it works",
@@ -379,6 +385,7 @@
         "step1": "Share your invitation link with other rental businesses.",
         "step2": "Your referral starts with {count} free reservations the moment they sign up.",
         "step3": "As soon as your referral makes their first online sale of at least {minAmount}, you earn {count} free reservations.",
+        "step3InvoiceCredit": "As soon as your referral makes their first online sale of at least {minAmount}, you earn a credit on your next Louez invoice.",
         "note": "Only sales paid online (card/Stripe) unlock the reward — manual or cash payments don't count. Free reservations are rentals with no Louez commission."
       }
     },
