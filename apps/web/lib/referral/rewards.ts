@@ -11,6 +11,8 @@ import {
   getDefaultPayAsYouGoConfigSnapshot,
 } from '@/lib/pay-as-you-go/defaults';
 import { billingMonthOf, getStoreBilling } from '@/lib/pay-as-you-go/metering';
+import { captureReferralServerEvent } from '@/lib/referral/analytics';
+import { referralAnalyticsEvents } from '@/lib/referral/analytics-events';
 import { stripe } from '@/lib/stripe/client';
 import { getOrCreateStripeCustomer } from '@/lib/stripe/subscriptions';
 
@@ -124,6 +126,144 @@ interface MaybeGrantReferrerRewardInput {
   at?: Date;
 }
 
+function referralRewardDistinctId(input: MaybeGrantReferrerRewardInput) {
+  return input.referredStore.referredByUserId ?? input.referredStore.id;
+}
+
+async function trackQualifyingPaymentEvaluated({
+  input,
+  granted,
+  reason,
+  rewardKind,
+  freeReservations,
+  creditCents,
+  displayValueCents,
+}: {
+  input: MaybeGrantReferrerRewardInput;
+  granted: boolean;
+  reason: string;
+  rewardKind?: string;
+  freeReservations?: number;
+  creditCents?: number;
+  displayValueCents?: number;
+}) {
+  const config = getReferralProgramConfig();
+
+  await captureReferralServerEvent({
+    distinctId: referralRewardDistinctId(input),
+    event: referralAnalyticsEvents.qualifyingPaymentEvaluated,
+    properties: {
+      placement: 'stripe_connect_webhook',
+      granted,
+      reason,
+      referrer_store_id: input.referredStore.referredByStoreId,
+      referred_store_id: input.referredStore.id,
+      qualifying_amount_cents: input.qualifyingAmountCents,
+      min_qualifying_amount_cents: config.minQualifyingAmountCents,
+      monthly_cap_per_referrer: config.monthlyCapPerReferrer,
+      clawback_window_days: config.clawbackWindowDays,
+      currency: input.currency,
+      reward_kind: rewardKind,
+      free_reservations: freeReservations,
+      credit_cents: creditCents,
+      reward_value_cents: displayValueCents,
+    },
+  });
+}
+
+async function trackReferrerRewardGranted({
+  input,
+  rewardKind,
+  freeReservations,
+  creditCents,
+  displayValueCents,
+}: {
+  input: MaybeGrantReferrerRewardInput;
+  rewardKind: string;
+  freeReservations: number;
+  creditCents: number;
+  displayValueCents: number;
+}) {
+  const config = getReferralProgramConfig();
+
+  await captureReferralServerEvent({
+    distinctId: referralRewardDistinctId(input),
+    event: referralAnalyticsEvents.rewardGranted,
+    properties: {
+      placement: 'stripe_connect_webhook',
+      referrer_store_id: input.referredStore.referredByStoreId,
+      referred_store_id: input.referredStore.id,
+      qualifying_amount_cents: input.qualifyingAmountCents,
+      min_qualifying_amount_cents: config.minQualifyingAmountCents,
+      monthly_cap_per_referrer: config.monthlyCapPerReferrer,
+      clawback_window_days: config.clawbackWindowDays,
+      currency: input.currency,
+      reward_kind: rewardKind,
+      free_reservations: freeReservations,
+      credit_cents: creditCents,
+      reward_value_cents: displayValueCents,
+    },
+  });
+}
+
+async function trackClawbackEvaluated({
+  reward,
+  clawedBack,
+  reason,
+  revokedFreeReservations,
+}: {
+  reward: typeof referralRewards.$inferSelect;
+  clawedBack: boolean;
+  reason: string;
+  revokedFreeReservations?: number;
+}) {
+  const config = getReferralProgramConfig();
+
+  await captureReferralServerEvent({
+    distinctId: reward.referredUserId ?? reward.referrerStoreId,
+    event: referralAnalyticsEvents.clawbackEvaluated,
+    properties: {
+      placement: 'stripe_connect_webhook',
+      clawed_back: clawedBack,
+      reason,
+      referrer_store_id: reward.referrerStoreId,
+      referred_store_id: reward.referredStoreId,
+      reward_kind: reward.kind,
+      free_reservations: reward.freeReservations,
+      revoked_free_reservations: revokedFreeReservations,
+      credit_cents: reward.creditCents,
+      qualifying_amount_cents: reward.qualifyingAmountCents,
+      min_qualifying_amount_cents: config.minQualifyingAmountCents,
+      clawback_window_days: config.clawbackWindowDays,
+      currency: reward.currency,
+    },
+  });
+}
+
+async function trackReferrerRewardClawedBack({
+  reward,
+  revokedFreeReservations,
+}: {
+  reward: typeof referralRewards.$inferSelect;
+  revokedFreeReservations?: number;
+}) {
+  await captureReferralServerEvent({
+    distinctId: reward.referredUserId ?? reward.referrerStoreId,
+    event: referralAnalyticsEvents.rewardClawedBack,
+    properties: {
+      placement: 'stripe_connect_webhook',
+      referrer_store_id: reward.referrerStoreId,
+      referred_store_id: reward.referredStoreId,
+      reward_kind: reward.kind,
+      free_reservations: reward.freeReservations,
+      revoked_free_reservations: revokedFreeReservations,
+      credit_cents: reward.creditCents,
+      qualifying_amount_cents: reward.qualifyingAmountCents,
+      currency: reward.currency,
+    },
+  });
+}
+
 /**
  * Qualifying Event handler: when a Referred Store takes its first online Reservation
  * payment at/above the minimum, grant its Referrer the plan-aware Referrer Reward (free
@@ -135,7 +275,14 @@ export async function maybeGrantReferrerReward(
   input: MaybeGrantReferrerRewardInput,
 ): Promise<{ granted: boolean; reason?: string }> {
   const referrerStoreId = input.referredStore.referredByStoreId;
-  if (!referrerStoreId) return { granted: false, reason: 'no_referrer' };
+  if (!referrerStoreId) {
+    await trackQualifyingPaymentEvaluated({
+      input,
+      granted: false,
+      reason: 'no_referrer',
+    });
+    return { granted: false, reason: 'no_referrer' };
+  }
 
   const config = getReferralProgramConfig();
 
@@ -146,6 +293,11 @@ export async function maybeGrantReferrerReward(
       minQualifyingAmountCents: config.minQualifyingAmountCents,
     })
   ) {
+    await trackQualifyingPaymentEvaluated({
+      input,
+      granted: false,
+      reason: 'below_minimum',
+    });
     return { granted: false, reason: 'below_minimum' };
   }
 
@@ -154,7 +306,14 @@ export async function maybeGrantReferrerReward(
     where: eq(referralRewards.referredStoreId, input.referredStore.id),
     columns: { id: true },
   });
-  if (existing) return { granted: false, reason: 'already_rewarded' };
+  if (existing) {
+    await trackQualifyingPaymentEvaluated({
+      input,
+      granted: false,
+      reason: 'already_rewarded',
+    });
+    return { granted: false, reason: 'already_rewarded' };
+  }
 
   // Size the reward from the Referrer's own billing: free reservations valued at their
   // entry-tier pay-as-you-go price, or the equivalent euro credit if they are subscribed.
@@ -193,6 +352,11 @@ export async function maybeGrantReferrerReward(
         monthlyCap: config.monthlyCapPerReferrer,
       })
     ) {
+      await trackQualifyingPaymentEvaluated({
+        input,
+        granted: false,
+        reason: 'monthly_cap',
+      });
       return { granted: false, reason: 'monthly_cap' };
     }
   }
@@ -354,15 +518,51 @@ export async function maybeGrantReferrerReward(
           status: 'granted',
         });
       });
-      if (capExceeded) return { granted: false, reason: 'monthly_cap' };
+      if (capExceeded) {
+        await trackQualifyingPaymentEvaluated({
+          input,
+          granted: false,
+          reason: 'monthly_cap',
+        });
+        return { granted: false, reason: 'monthly_cap' };
+      }
     }
-    if (capExceeded) return { granted: false, reason: 'monthly_cap' };
+    if (capExceeded) {
+      await trackQualifyingPaymentEvaluated({
+        input,
+        granted: false,
+        reason: 'monthly_cap',
+      });
+      return { granted: false, reason: 'monthly_cap' };
+    }
   } catch (error) {
     if (isDuplicateError(error)) {
+      await trackQualifyingPaymentEvaluated({
+        input,
+        granted: false,
+        reason: 'already_rewarded',
+      });
       return { granted: false, reason: 'already_rewarded' };
     }
     throw error;
   }
+
+  await trackQualifyingPaymentEvaluated({
+    input,
+    granted: true,
+    reason: 'granted',
+    rewardKind: reward.kind,
+    freeReservations: reward.freeReservations,
+    creditCents: reward.creditCents,
+    displayValueCents: reward.displayValueCents,
+  });
+  await trackReferrerRewardGranted({
+    input,
+    rewardKind: reward.kind,
+    freeReservations: reward.freeReservations,
+    creditCents: reward.creditCents,
+    displayValueCents: reward.displayValueCents,
+  });
 
   // Notify the Referrer (best-effort; never throws), reflecting the actual reward kind so a
   // subscribed referrer is told about their € credit, not phantom free reservations.
@@ -398,6 +598,11 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
   const reward = await db.query.referralRewards.findFirst({ where });
   if (!reward) return { clawedBack: false, reason: 'no_reward' };
   if (reward.status !== 'granted') {
+    await trackClawbackEvaluated({
+      reward,
+      clawedBack: false,
+      reason: 'already_clawed_back',
+    });
     return { clawedBack: false, reason: 'already_clawed_back' };
   }
 
@@ -410,8 +615,16 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
       clawbackWindowDays: config.clawbackWindowDays,
     })
   ) {
+    await trackClawbackEvaluated({
+      reward,
+      clawedBack: false,
+      reason: 'outside_window',
+    });
     return { clawedBack: false, reason: 'outside_window' };
   }
+
+  let revokedFreeReservations: number | undefined;
+  let clawbackClaimed = true;
 
   if (reward.kind === 'free_reservations') {
     await db.transaction(async (tx) => {
@@ -431,7 +644,10 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
             eq(referralRewards.status, 'granted'),
           ),
         );
-      if ((claim[0]?.affectedRows ?? 0) === 0) return;
+      if ((claim[0]?.affectedRows ?? 0) === 0) {
+        clawbackClaimed = false;
+        return;
+      }
 
       const billing = await getStoreBilling(reward.referrerStoreId);
       const used = Math.max(
@@ -443,6 +659,7 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
         grantedTotal: billing.freeReservationsGranted,
         usedTotal: used,
       });
+      revokedFreeReservations = revoke;
       if (revoke > 0) {
         await tx
           .update(subscriptions)
@@ -504,9 +721,31 @@ export async function clawbackReferrerRewardForQualifyingPayment(input: {
         ),
       );
     if ((claim[0]?.affectedRows ?? 0) === 0) {
+      await trackClawbackEvaluated({
+        reward,
+        clawedBack: false,
+        reason: 'already_clawed_back',
+      });
       return { clawedBack: false, reason: 'already_clawed_back' };
     }
   }
+
+  if (!clawbackClaimed) {
+    await trackClawbackEvaluated({
+      reward,
+      clawedBack: false,
+      reason: 'already_clawed_back',
+    });
+    return { clawedBack: false, reason: 'already_clawed_back' };
+  }
+
+  await trackClawbackEvaluated({
+    reward,
+    clawedBack: true,
+    reason: 'clawed_back',
+    revokedFreeReservations,
+  });
+  await trackReferrerRewardClawedBack({ reward, revokedFreeReservations });
 
   return { clawedBack: true };
 }

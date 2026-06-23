@@ -15,7 +15,12 @@ import {
   getDefaultFreeReservations,
   getDefaultPayAsYouGoConfigSnapshot,
 } from '@/lib/pay-as-you-go/defaults';
-import { resolveReferralAttribution } from '@/lib/referral/attribution';
+import { captureReferralServerEvent } from '@/lib/referral/analytics';
+import { referralAnalyticsEvents } from '@/lib/referral/analytics-events';
+import {
+  type ReferralAttribution,
+  resolveReferralAttribution,
+} from '@/lib/referral/attribution';
 import { getReferralProgramConfig } from '@/lib/referral/defaults';
 import {
   referralCookieDomain,
@@ -28,18 +33,37 @@ import {
   isValidReferralCode,
 } from '@/lib/utils/referral';
 
+type ReferralAttributionOutcome =
+  | 'no_cookie'
+  | 'invalid_code'
+  | 'existing_owner'
+  | 'unknown_referrer'
+  | 'self_referral'
+  | 'already_attributed'
+  | 'attributed';
+
+interface PendingReferralAttribution {
+  referralCookie: string | null;
+  attribution: ReferralAttribution | null;
+  outcome: ReferralAttributionOutcome;
+}
+
 async function resolvePendingReferralAttribution({
   currentUserId,
   ignoredOwnedStoreId,
 }: {
   currentUserId: string;
   ignoredOwnedStoreId?: string;
-}) {
+}): Promise<PendingReferralAttribution> {
   const cookieStore = await cookies();
   const referralCookie = cookieStore.get('louez_referral')?.value ?? null;
 
-  if (!referralCookie || !isValidReferralCode(referralCookie)) {
-    return { referralCookie, attribution: null };
+  if (!referralCookie) {
+    return { referralCookie, attribution: null, outcome: 'no_cookie' };
+  }
+
+  if (!isValidReferralCode(referralCookie)) {
+    return { referralCookie, attribution: null, outcome: 'invalid_code' };
   }
 
   const ownsAStore = await db.query.storeMembers.findFirst({
@@ -55,20 +79,33 @@ async function resolvePendingReferralAttribution({
         ),
     columns: { id: true },
   });
-  if (ownsAStore) return { referralCookie, attribution: null };
+  if (ownsAStore) {
+    return { referralCookie, attribution: null, outcome: 'existing_owner' };
+  }
 
   const referrerStore = await db.query.stores.findFirst({
     where: eq(stores.referralCode, referralCookie),
     columns: { id: true, userId: true },
   });
 
+  if (!referrerStore) {
+    return { referralCookie, attribution: null, outcome: 'unknown_referrer' };
+  }
+
+  const attribution = resolveReferralAttribution({
+    refCode: referralCookie,
+    referrerStore,
+    currentUserId,
+  });
+
+  if (!attribution) {
+    return { referralCookie, attribution: null, outcome: 'self_referral' };
+  }
+
   return {
     referralCookie,
-    attribution: resolveReferralAttribution({
-      refCode: referralCookie,
-      referrerStore: referrerStore ?? null,
-      currentUserId,
-    }),
+    attribution,
+    outcome: 'attributed',
   };
 }
 
@@ -127,6 +164,71 @@ async function grantReferredStoreWelcomeReward({
     billingMode: 'pay_as_you_go',
     payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(currency),
     freeReservationsGranted: referredReward,
+  });
+}
+
+async function trackReferralAttributionResolved({
+  userId,
+  storeId,
+  pendingReferral,
+  isExistingIncompleteStore,
+  currency,
+  country,
+}: {
+  userId: string;
+  storeId: string;
+  pendingReferral: PendingReferralAttribution;
+  isExistingIncompleteStore: boolean;
+  currency: string;
+  country: string;
+}) {
+  const programConfig = getReferralProgramConfig();
+
+  await captureReferralServerEvent({
+    distinctId: userId,
+    event: referralAnalyticsEvents.attributionResolved,
+    properties: {
+      placement: 'onboarding_store_create',
+      referral_attribution_outcome: pendingReferral.outcome,
+      has_referral_cookie: Boolean(pendingReferral.referralCookie),
+      is_existing_incomplete_store: isExistingIncompleteStore,
+      referred_store_id: storeId,
+      referrer_store_id: pendingReferral.attribution?.referredByStoreId ?? null,
+      referred_reward_free_reservations:
+        programConfig.referredRewardFreeReservations,
+      referrer_reward_free_reservations:
+        programConfig.referrerRewardFreeReservations,
+      min_qualifying_amount_cents: programConfig.minQualifyingAmountCents,
+      monthly_cap_per_referrer: programConfig.monthlyCapPerReferrer,
+      clawback_window_days: programConfig.clawbackWindowDays,
+      currency,
+      country,
+    },
+  });
+}
+
+async function trackReferredRewardGranted({
+  userId,
+  storeId,
+  referrerStoreId,
+  currency,
+}: {
+  userId: string;
+  storeId: string;
+  referrerStoreId: string;
+  currency: string;
+}) {
+  await captureReferralServerEvent({
+    distinctId: userId,
+    event: referralAnalyticsEvents.referredRewardGranted,
+    properties: {
+      placement: 'onboarding_store_create',
+      referred_store_id: storeId,
+      referrer_store_id: referrerStoreId,
+      referred_reward_free_reservations:
+        getReferralProgramConfig().referredRewardFreeReservations,
+      currency,
+    },
   });
 }
 
@@ -203,7 +305,11 @@ export async function createStore(data: StoreInfoInput) {
 
   if (storeToUpdate) {
     const pendingReferral = storeToUpdate.referredByStoreId
-      ? { referralCookie: null, attribution: null }
+      ? ({
+          referralCookie: null,
+          attribution: null,
+          outcome: 'already_attributed',
+        } satisfies PendingReferralAttribution)
       : await resolvePendingReferralAttribution({
           currentUserId: session.user.id,
           ignoredOwnedStoreId: storeToUpdate.id,
@@ -253,8 +359,23 @@ export async function createStore(data: StoreInfoInput) {
         storeId: storeToUpdate.id,
         currency: validated.data.currency,
       });
+      await trackReferredRewardGranted({
+        userId: session.user.id,
+        storeId: storeToUpdate.id,
+        referrerStoreId: pendingReferral.attribution.referredByStoreId,
+        currency: validated.data.currency,
+      });
     }
     await consumeReferralCookie(pendingReferral.referralCookie);
+
+    await trackReferralAttributionResolved({
+      userId: session.user.id,
+      storeId: storeToUpdate.id,
+      pendingReferral,
+      isExistingIncompleteStore: true,
+      currency: validated.data.currency,
+      country: validated.data.country,
+    });
 
     // Ensure the updated store stays active for subsequent onboarding steps
     const setStoreResult = await setActiveStoreId(storeToUpdate.id);
@@ -342,6 +463,24 @@ export async function createStore(data: StoreInfoInput) {
         ? getReferralProgramConfig().referredRewardFreeReservations
         : getDefaultFreeReservations(),
     });
+
+    await trackReferralAttributionResolved({
+      userId: session.user.id,
+      storeId: newStore.id,
+      pendingReferral,
+      isExistingIncompleteStore: false,
+      currency: validated.data.currency,
+      country: validated.data.country,
+    });
+
+    if (pendingReferral.attribution) {
+      await trackReferredRewardGranted({
+        userId: session.user.id,
+        storeId: newStore.id,
+        referrerStoreId: pendingReferral.attribution.referredByStoreId,
+        currency: validated.data.currency,
+      });
+    }
 
     // Set as active store (will succeed since we just created ownership above)
     const setStoreResult = await setActiveStoreId(newStore.id);

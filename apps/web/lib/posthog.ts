@@ -18,11 +18,11 @@
  * }
  * ```
  */
+import { PostHog } from 'posthog-node';
 
-import { PostHog } from 'posthog-node'
-import { env } from '@/env'
+import { env } from '@/env';
 
-let posthogServerInstance: PostHog | null = null
+let posthogServerInstance: PostHog | null = null;
 
 /**
  * Get a PostHog server-side client instance.
@@ -35,7 +35,7 @@ export function getPostHogServer(): PostHog {
       capture: () => {},
       identify: () => {},
       shutdown: async () => {},
-    } as unknown as PostHog
+    } as unknown as PostHog;
   }
 
   if (!posthogServerInstance) {
@@ -44,10 +44,17 @@ export function getPostHogServer(): PostHog {
       // Flush events every 30 seconds or when 20 events are queued
       flushAt: 20,
       flushInterval: 30000,
-    })
+    });
   }
 
-  return posthogServerInstance
+  return posthogServerInstance;
+}
+
+export async function shutdownPostHogServer() {
+  if (!posthogServerInstance) return;
+
+  await posthogServerInstance.shutdown();
+  posthogServerInstance = null;
 }
 
 /**
@@ -57,13 +64,13 @@ export function getPostHogServer(): PostHog {
 export async function captureServerEvent(
   distinctId: string,
   event: string,
-  properties?: Record<string, unknown>
+  properties?: Record<string, unknown>,
 ) {
-  const posthog = getPostHogServer()
+  const posthog = getPostHogServer();
   posthog.capture({
     distinctId,
     event,
     properties,
-  })
-  await posthog.shutdown()
+  });
+  await shutdownPostHogServer();
 }

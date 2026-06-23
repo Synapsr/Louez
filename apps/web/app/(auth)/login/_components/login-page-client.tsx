@@ -1,13 +1,20 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 
 import { BarChart3, Calendar, Gift, Package, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { usePostHog } from 'posthog-js/react';
 
 import { Logo } from '@louez/ui';
 
+import {
+  referralAnalyticsBaseProperties,
+  referralAnalyticsEvents,
+} from '@/lib/referral/analytics-events';
 import type { ReferralInviteContext } from '@/lib/referral/invite';
 
 import { LoginForm } from './login-form';
@@ -29,13 +36,27 @@ export const LoginPageClient = ({
   referral,
 }: LoginPageClientProps) => {
   const t = useTranslations('auth');
+  const posthog = usePostHog();
+  const hasTrackedReferralInvite = useRef(false);
   const searchParams = useSearchParams();
 
   const errorCode = searchParams.get('error');
 
+  useEffect(() => {
+    if (!referral || hasTrackedReferralInvite.current) return;
+
+    hasTrackedReferralInvite.current = true;
+    posthog.capture(referralAnalyticsEvents.inviteLanded, {
+      ...referralAnalyticsBaseProperties,
+      placement: 'auth_login',
+      has_referrer_name: Boolean(referral.referrerName),
+      referred_reward_free_reservations: referral.freeReservations,
+    });
+  }, [posthog, referral]);
+
   return (
     <div className="flex min-h-screen">
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:w-1/2">
+      <div className="bg-primary text-primary-foreground relative hidden flex-col justify-between overflow-hidden p-12 lg:flex lg:w-1/2">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20 blur-3xl" />
           <div className="absolute right-0 bottom-0 h-96 w-96 translate-x-1/2 translate-y-1/2 rounded-full bg-white/20 blur-3xl" />
@@ -106,8 +127,7 @@ export const LoginPageClient = ({
 
           <LoginForm callbackUrl={callbackUrl} initialErrorCode={errorCode} />
 
-
-          <p className="text-muted-foreground text-center text-sm ">
+          <p className="text-muted-foreground text-center text-sm">
             {t('termsAgreement')}{' '}
             <Link
               href="/terms"

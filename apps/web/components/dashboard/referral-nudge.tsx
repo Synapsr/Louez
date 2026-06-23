@@ -1,16 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import Link from 'next/link';
 
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Gift, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { usePostHog } from 'posthog-js/react';
 
 import { cn } from '@louez/utils';
 
 import { orpc } from '@/lib/orpc/react';
+import {
+  referralAnalyticsBaseProperties,
+  referralAnalyticsEvents,
+} from '@/lib/referral/analytics-events';
 import { formatCurrency } from '@/lib/utils';
 
 interface ReferralNudgeProps {
@@ -24,8 +29,10 @@ const REFERRAL_NUDGE_DISMISSED_KEY = 'louez:referral-nudge-dismissed';
  * reservation is fully paid). Links to the referral hub. Niveau B — contextual, not a
  * permanent banner.
  */
-export function ReferralNudge({ className }: ReferralNudgeProps) {
+export const ReferralNudge = ({ className }: ReferralNudgeProps) => {
   const t = useTranslations('dashboard.referrals.nudge');
+  const posthog = usePostHog();
+  const hasTrackedView = useRef(false);
   const [dismissed, setDismissed] = useState(() => {
     try {
       return (
@@ -44,6 +51,22 @@ export function ReferralNudge({ className }: ReferralNudgeProps) {
     orpc.dashboard.referral.getRewardSummary.queryOptions({ input: {} }),
   );
 
+  useEffect(() => {
+    if (!summary || hasTrackedView.current) return;
+
+    hasTrackedView.current = true;
+    posthog.capture(referralAnalyticsEvents.nudgeViewed, {
+      ...referralAnalyticsBaseProperties,
+      placement: 'post_payment_reservation_detail',
+      reward_kind: summary.rewardKind,
+      referrer_reward_free_reservations: summary.referrerReward,
+      reward_value_cents: summary.rewardValueCents,
+      currency: summary.currency,
+      free_reservations_remaining: summary.freeReservationsRemaining,
+      free_reservations_granted: summary.freeReservationsGranted,
+    });
+  }, [posthog, summary]);
+
   if (dismissed || !summary) return null;
 
   const rewardValue = formatCurrency(
@@ -52,6 +75,14 @@ export function ReferralNudge({ className }: ReferralNudgeProps) {
   );
 
   const dismiss = () => {
+    posthog.capture(referralAnalyticsEvents.nudgeDismissed, {
+      ...referralAnalyticsBaseProperties,
+      placement: 'post_payment_reservation_detail',
+      reward_kind: summary.rewardKind,
+      referrer_reward_free_reservations: summary.referrerReward,
+      reward_value_cents: summary.rewardValueCents,
+      currency: summary.currency,
+    });
     setDismissed(true);
     try {
       window.localStorage.setItem(REFERRAL_NUDGE_DISMISSED_KEY, '1');
@@ -87,6 +118,16 @@ export function ReferralNudge({ className }: ReferralNudgeProps) {
       <div className="flex items-center gap-2 sm:shrink-0">
         <Link
           href="/dashboard/referrals"
+          onClick={() => {
+            posthog.capture(referralAnalyticsEvents.nudgeClicked, {
+              ...referralAnalyticsBaseProperties,
+              placement: 'post_payment_reservation_detail',
+              reward_kind: summary.rewardKind,
+              referrer_reward_free_reservations: summary.referrerReward,
+              reward_value_cents: summary.rewardValueCents,
+              currency: summary.currency,
+            });
+          }}
           className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 sm:flex-none dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/40"
         >
           {t('cta')}
@@ -103,4 +144,4 @@ export function ReferralNudge({ className }: ReferralNudgeProps) {
       </div>
     </div>
   );
-}
+};
