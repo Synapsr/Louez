@@ -50,6 +50,11 @@ export const users = mysqlTable('users', {
   name: varchar('name', { length: 255 }),
   image: text('image'),
   emailVerified: boolean('email_verified').notNull().default(false),
+  // Acquisition Channel: self-reported "how did you hear about us", captured once
+  // on the owner's first Store onboarding. Distinct from Referral Attribution
+  // (stores.referredByStoreId), which is the programmatic ?ref= link.
+  acquisitionChannel: varchar('acquisition_channel', { length: 32 }),
+  acquisitionChannelOther: varchar('acquisition_channel_other', { length: 255 }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 });
