@@ -344,6 +344,20 @@
       "when": 1782216238416,
       "tag": "0045_harsh_warpath",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "5",
+      "when": 1782292849567,
+      "tag": "0046_secret_vanisher",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1782466339047,
+      "tag": "0047_add_quote_activity_types",
+      "breakpoints": true
     }
   ]
 }

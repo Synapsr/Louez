@@ -1,10 +1,13 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
-import { Button } from '@louez/ui'
+import { useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+
+import { CheckCircle, Loader2, XCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button } from '@louez/ui';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -13,61 +16,64 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@louez/ui'
-import { acceptQuote, declineQuote } from './actions'
+} from '@louez/ui';
+
+import { acceptQuote, declineQuote } from './actions';
 
 interface QuoteActionsProps {
-  storeSlug: string
-  reservationId: string
+  storeSlug: string;
+  reservationId: string;
 }
 
 export function QuoteActions({ storeSlug, reservationId }: QuoteActionsProps) {
-  const t = useTranslations('storefront.account')
-  const [isAccepting, setIsAccepting] = useState(false)
-  const [isDeclining, setIsDeclining] = useState(false)
-  const [declineDialogOpen, setDeclineDialogOpen] = useState(false)
-  const router = useRouter()
+  const t = useTranslations('storefront.account');
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isDeclining, setIsDeclining] = useState(false);
+  const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
+  const router = useRouter();
 
   const handleAccept = async () => {
-    setIsAccepting(true)
+    setIsAccepting(true);
     try {
-      const result = await acceptQuote(storeSlug, reservationId)
-      if (result.error) {
-        console.error('Failed to accept quote:', result.error)
+      const result = await acceptQuote(storeSlug, reservationId);
+      if ('paymentUrl' in result && result.paymentUrl) {
+        window.location.assign(result.paymentUrl);
+      } else if ('success' in result) {
+        router.refresh();
       } else {
-        router.refresh()
+        console.error('Failed to accept quote:', result.error);
       }
     } catch (error) {
-      console.error('Failed to accept quote:', error)
+      console.error('Failed to accept quote:', error);
     } finally {
-      setIsAccepting(false)
+      setIsAccepting(false);
     }
-  }
+  };
 
   const handleDecline = async () => {
-    setIsDeclining(true)
+    setIsDeclining(true);
     try {
-      const result = await declineQuote(storeSlug, reservationId)
-      if (result.error) {
-        console.error('Failed to decline quote:', result.error)
+      const result = await declineQuote(storeSlug, reservationId);
+      if ('success' in result) {
+        router.refresh();
       } else {
-        router.refresh()
+        console.error('Failed to decline quote:', result.error);
       }
     } catch (error) {
-      console.error('Failed to decline quote:', error)
+      console.error('Failed to decline quote:', error);
     } finally {
-      setIsDeclining(false)
-      setDeclineDialogOpen(false)
+      setIsDeclining(false);
+      setDeclineDialogOpen(false);
     }
-  }
+  };
 
   return (
     <>
-      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
         <Button
           onClick={handleAccept}
           disabled={isAccepting || isDeclining}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          className="bg-emerald-600 text-white hover:bg-emerald-700"
         >
           {isAccepting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -91,7 +97,9 @@ export function QuoteActions({ storeSlug, reservationId }: QuoteActionsProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('quote.declineTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>{t('quote.declineDescription')}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t('quote.declineDescription')}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogClose render={<Button variant="outline" />}>
@@ -109,5 +117,5 @@ export function QuoteActions({ storeSlug, reservationId }: QuoteActionsProps) {
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }
