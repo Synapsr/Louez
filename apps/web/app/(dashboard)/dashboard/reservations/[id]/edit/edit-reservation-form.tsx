@@ -220,6 +220,11 @@ export function EditReservationForm({
     orpc.dashboard.reservations.updateReservation.mutationOptions({
       onSuccess: async () => {
         await invalidateReservationAll(queryClient, reservation.id)
+        await queryClient.fetchQuery(
+          orpc.dashboard.reservations.getById.queryOptions({
+            input: { reservationId: reservation.id },
+          }),
+        )
       },
     }),
   )
@@ -515,6 +520,16 @@ export function EditReservationForm({
     )
   }
 
+  const handleDepositChange = (itemId: string, depositPerUnit: number) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId
+          ? { ...item, depositPerUnit: Math.max(0, depositPerUnit) }
+          : item
+      )
+    )
+  }
+
   const handleToggleManualPrice = (
     itemId: string,
     effectiveUnitPrice?: number,
@@ -787,6 +802,7 @@ export function EditReservationForm({
           type: 'success',
         })
         router.push(`/dashboard/reservations/${reservation.id}`)
+        router.refresh()
       }
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
@@ -1132,6 +1148,7 @@ export function EditReservationForm({
                 onQuantityChange={handleQuantityChange}
                 onPriceChange={handlePriceChange}
                 onTotalPriceChange={handleItemTotalPriceChange}
+                onDepositChange={handleDepositChange}
                 onToggleManualPrice={handleToggleManualPrice}
                 onRemoveItem={handleRemoveItem}
               />

@@ -11,6 +11,7 @@ import {
   Package,
   PenLine,
   Plus,
+  Shield,
   Trash2,
   Unlock,
 } from 'lucide-react';
@@ -64,6 +65,7 @@ interface EditReservationItemsSectionProps {
     totalPrice: number,
     pricingMode?: PricingMode,
   ) => void;
+  onDepositChange: (itemId: string, depositPerUnit: number) => void;
   onToggleManualPrice: (
     itemId: string,
     effectiveUnitPrice?: number,
@@ -323,6 +325,7 @@ export function EditReservationItemsSection({
   onQuantityChange,
   onPriceChange,
   onTotalPriceChange,
+  onDepositChange,
   onToggleManualPrice,
   onRemoveItem,
 }: EditReservationItemsSectionProps) {
@@ -511,6 +514,21 @@ export function EditReservationItemsSection({
                       }
                       ariaLabel={`${tForm('customItem.totalPrice')}, ${item.productSnapshot.name}`}
                     />
+
+                    <div className="flex items-center gap-1">
+                      <Shield
+                        className="text-muted-foreground h-3.5 w-3.5 shrink-0"
+                        aria-hidden="true"
+                      />
+                      <PriceInput
+                        value={item.depositPerUnit}
+                        onChange={(depositPerUnit) =>
+                          onDepositChange(item.id, depositPerUnit)
+                        }
+                        suffix={currencySymbol}
+                        ariaLabel={`${t('edit.deposit')}, ${item.productSnapshot.name}`}
+                      />
+                    </div>
 
                     <Tooltip>
                       <TooltipTrigger
