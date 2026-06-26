@@ -87,6 +87,11 @@ import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/t
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
+import {
+  captureProductServerEvent,
+  toAnalyticsAmountCents,
+} from '@/lib/product-analytics/analytics';
+import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import {
   isSmsConfigured,
@@ -1305,6 +1310,49 @@ export async function createManualReservation(data: CreateReservationData) {
     ...(tulipQuoteError && { tulipQuoteError }),
   });
 
+  const catalogQuantity = productDetails.reduce(
+    (total, detail) => total + detail.quantity,
+    0,
+  );
+  const customQuantity = customItemDetails.reduce(
+    (total, detail) => total + detail.quantity,
+    0,
+  );
+  const shouldSendEmail = data.sendConfirmationEmail !== false;
+
+  await captureProductServerEvent({
+    distinctId: store.userId,
+    event: productAnalyticsEvents.dashboardReservationCreated,
+    properties: {
+      feature: 'reservation_management',
+      surface: 'dashboard',
+      store_id: store.id,
+      reservation_id: reservationId,
+      customer_id: customerId,
+      source: 'dashboard_manual',
+      reservation_status: data.sendAsQuote ? 'quote' : 'confirmed',
+      catalog_line_count: productDetails.length,
+      custom_line_count: customItemDetails.length,
+      total_line_count:
+        productDetails.length +
+        customItemDetails.length +
+        (tulipInsuranceAmount > 0 ? 1 : 0),
+      total_quantity: catalogQuantity + customQuantity,
+      has_delivery: hasAnyDelivery,
+      has_outbound_delivery: hasOutboundDelivery,
+      has_return_delivery: hasReturnDelivery,
+      has_tulip_insurance: tulipInsuranceAmount > 0,
+      tulip_insurance_opt_in: appliedTulipInsuranceOptIn,
+      sent_as_quote: Boolean(data.sendAsQuote),
+      send_confirmation_email: shouldSendEmail,
+      subtotal_amount_cents: toAnalyticsAmountCents(subtotalAmount),
+      delivery_fee_cents: toAnalyticsAmountCents(deliveryFeeAmount),
+      deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
+      total_amount_cents: toAnalyticsAmountCents(totalAmount),
+      currency: store.settings?.currency ?? 'EUR',
+    },
+  });
+
   // Pay-as-you-go: a manually created reservation that is immediately confirmed
   // counts as a billable location (quotes are billed when later accepted).
   if (!data.sendAsQuote) {
@@ -1335,7 +1383,6 @@ export async function createManualReservation(data: CreateReservationData) {
   }
 
   // Send email for manual reservations (if enabled)
-  const shouldSendEmail = data.sendConfirmationEmail !== false;
   if (customer && shouldSendEmail) {
     const storeData = {
       id: store.id,

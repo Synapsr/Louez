@@ -66,6 +66,11 @@ import {
   getStoreBilling,
   planStripeFees,
 } from '@/lib/pay-as-you-go';
+import {
+  captureProductServerEvent,
+  toAnalyticsAmountCents,
+} from '@/lib/product-analytics/analytics';
+import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
 import { validateRentalPeriod } from '@/lib/utils/business-hours';
@@ -1667,6 +1672,44 @@ export async function createReservation(input: CreateReservationInput) {
       taxAmount,
     } = reservationWriteResult;
 
+    const checkoutCurrency = store.settings?.currency || 'EUR';
+    const checkoutTotalQuantity = input.items.reduce(
+      (total, item) => total + item.quantity,
+      0,
+    );
+
+    await captureProductServerEvent({
+      distinctId: customerId,
+      event: productAnalyticsEvents.checkoutReservationCreated,
+      properties: {
+        feature: 'checkout',
+        surface: 'storefront',
+        store_id: input.storeId,
+        reservation_id: reservationId,
+        customer_id: customerId,
+        source: 'storefront_checkout',
+        reservation_status: 'pending',
+        reservation_mode: store.settings?.reservationMode ?? null,
+        catalog_line_count: input.items.length,
+        total_quantity: checkoutTotalQuantity,
+        has_delivery: hasAnyDelivery,
+        has_outbound_delivery: hasOutboundDelivery,
+        has_return_delivery: hasReturnDelivery,
+        has_tulip_insurance: tulipInsuranceAmount > 0,
+        tulip_insurance_opt_in: tulipInsuranceOptIn,
+        promo_code_used: Boolean(validatedPromoCodeId),
+        payment_ready: Boolean(
+          store.stripeAccountId && store.stripeChargesEnabled,
+        ),
+        subtotal_amount_cents: toAnalyticsAmountCents(finalSubtotal),
+        discount_amount_cents: toAnalyticsAmountCents(finalDiscount),
+        delivery_fee_cents: toAnalyticsAmountCents(finalDeliveryFee),
+        deposit_amount_cents: toAnalyticsAmountCents(finalDeposit),
+        total_amount_cents: toAnalyticsAmountCents(finalTotal),
+        currency: checkoutCurrency,
+      },
+    });
+
     await queueReservationCalendarSync(input.storeId, reservationId);
 
     // Get store owner for fallback email
@@ -1967,6 +2010,27 @@ export async function createReservation(input: CreateReservationInput) {
             method: 'stripe',
           },
           createdAt: new Date(),
+        });
+
+        await captureProductServerEvent({
+          distinctId: customerId,
+          event: productAnalyticsEvents.checkoutPaymentStarted,
+          properties: {
+            feature: 'checkout',
+            surface: 'storefront',
+            store_id: input.storeId,
+            reservation_id: reservationId,
+            customer_id: customerId,
+            source: 'storefront_checkout',
+            payment_provider: 'stripe',
+            payment_mode: isPartialPayment ? 'partial' : 'full',
+            deposit_percentage: depositPercentage,
+            amount_cents: toAnalyticsAmountCents(finalChargeAmount),
+            total_amount_cents: toAnalyticsAmountCents(finalTotal),
+            application_fee_cents: feePlan.applicationFeeCents,
+            reservation_fee_cents: feePlan.reservationFeeCents,
+            currency,
+          },
         });
       } catch (error) {
         console.error('Failed to create Stripe checkout session:', error);

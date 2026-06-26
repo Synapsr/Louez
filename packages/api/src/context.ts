@@ -526,6 +526,8 @@ export interface BaseContext {
     id: string;
     name: string;
     slug: string;
+    userId?: string;
+    reservationMode?: 'payment' | 'request';
   }) => Promise<void>;
   uploadImageToStorage?: (params: {
     key: string;
