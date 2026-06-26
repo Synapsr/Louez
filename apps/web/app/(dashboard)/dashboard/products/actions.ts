@@ -32,6 +32,8 @@ import {
 } from '@louez/utils'
 import type { BookingAttributeAxis, UnitAttributes } from '@louez/types'
 import { notifyProductCreated, notifyProductUpdated } from '@/lib/discord/platform-notifications'
+import { captureProductServerEvent } from '@/lib/product-analytics/analytics'
+import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events'
 
 async function getStoreForUser() {
   return getCurrentStore()
@@ -278,6 +280,31 @@ export async function createProduct(data: ProductInput) {
     { id: store.id, name: store.name, slug: store.slug },
     validated.data.name
   ).catch(() => {})
+
+  await captureProductServerEvent({
+    distinctId: store.userId,
+    event: productAnalyticsEvents.productCreated,
+    properties: {
+      feature: 'product_catalog',
+      surface: 'dashboard',
+      store_id: store.id,
+      product_id: productId,
+      product_status: validated.data.status,
+      created_from: 'dashboard',
+      track_units: trackUnits,
+      available_unit_count: trackUnits ? quantity : null,
+      manual_quantity: trackUnits ? null : quantity,
+      has_category: Boolean(validated.data.categoryId),
+      image_count: validated.data.images?.length ?? 0,
+      has_video: Boolean(validated.data.videoUrl),
+      has_rate_tiers: rateTierRows.length > 0,
+      rate_tier_count: rateTierRows.length,
+      has_deposit: parseFloat(deposit) > 0,
+      base_period_minutes: basePeriodMinutes,
+      pricing_mode: legacyPricingMode,
+      booking_attribute_axis_count: bookingAttributeAxes.length,
+    },
+  })
 
   revalidatePath('/dashboard/products')
   return { success: true, productId }

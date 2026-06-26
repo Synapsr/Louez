@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { storefrontRedirect } from '@/lib/storefront-url'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
-import { CheckCircle2, Clock, Calendar, ArrowRight, Shield, Loader2, Tag } from 'lucide-react'
+import { CheckCircle2, Clock, Calendar, ArrowRight, Shield, Tag } from 'lucide-react'
 
 import { db } from '@louez/db'
 import { reservations, stores, payments, reservationActivity } from '@louez/db'
@@ -14,6 +14,11 @@ import { getCheckoutSession, fromStripeCents } from '@/lib/stripe'
 import { stripe } from '@/lib/stripe/client'
 import { nanoid } from 'nanoid'
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules'
+import {
+  captureProductServerEvent,
+  toAnalyticsAmountCents,
+} from '@/lib/product-analytics/analytics'
+import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events'
 
 interface SuccessPageProps {
   params: Promise<{ slug: string }>
@@ -193,6 +198,28 @@ async function verifyAndUpdatePayment(
         }),
       },
       createdAt: new Date(),
+    })
+
+    await captureProductServerEvent({
+      distinctId: reservation.customerId,
+      event: productAnalyticsEvents.checkoutPaymentCompleted,
+      properties: {
+        feature: 'checkout',
+        surface: 'storefront',
+        store_id: store.id,
+        reservation_id: reservationId,
+        customer_id: reservation.customerId,
+        source: 'success_page_verification',
+        payment_provider: 'stripe',
+        amount_cents: toAnalyticsAmountCents(totalAmount),
+        deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
+        currency,
+        has_deposit: depositAmount > 0,
+        card_saved: Boolean(stripePaymentMethodId),
+        payment_intent_present: Boolean(paymentIntentId),
+        reservation_status_before: reservation.status,
+        reservation_confirmed_by_event: true,
+      },
     })
 
     return { updated: true }

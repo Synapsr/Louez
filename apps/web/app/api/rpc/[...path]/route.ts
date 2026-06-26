@@ -6,6 +6,8 @@ import { appRouter } from '@louez/api/router';
 import { notifyStoreCreated as sendStoreCreatedNotification } from '@/lib/discord/platform-notifications';
 import { log, useLogger, withEvlog } from '@/lib/evlog';
 import { generateContract } from '@/lib/pdf/generate';
+import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
+import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
 import { getStorageKey, uploadFile } from '@/lib/storage/client';
 import { getCurrentStore } from '@/lib/store-context';
 
@@ -139,8 +141,22 @@ async function handleRequest(request: Request) {
         id: string;
         name: string;
         slug: string;
+        userId?: string;
+        reservationMode?: 'payment' | 'request';
       }) => {
-        await sendStoreCreatedNotification(store);
+        await Promise.allSettled([
+          sendStoreCreatedNotification(store),
+          captureProductServerEvent({
+            distinctId: store.userId,
+            event: productAnalyticsEvents.onboardingCompleted,
+            properties: {
+              feature: 'onboarding',
+              surface: 'dashboard',
+              store_id: store.id,
+              reservation_mode: store.reservationMode ?? null,
+            },
+          }),
+        ]);
       },
       uploadImageToStorage: async ({
         key,

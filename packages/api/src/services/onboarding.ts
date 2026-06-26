@@ -27,6 +27,8 @@ interface CompleteOnboardingParams {
     id: string;
     name: string;
     slug: string;
+    userId: string;
+    reservationMode: StripeSetupInput['reservationMode'];
   }) => Promise<void>;
 }
 
@@ -136,6 +138,8 @@ export async function completeOnboarding(params: CompleteOnboardingParams) {
       id: storeId,
       name: store.name,
       slug: store.slug,
+      userId: store.userId,
+      reservationMode: input.reservationMode,
     }).catch(() => {});
   }
 

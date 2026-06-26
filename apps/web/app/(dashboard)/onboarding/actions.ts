@@ -15,6 +15,8 @@ import {
   getDefaultFreeReservations,
   getDefaultPayAsYouGoConfigSnapshot,
 } from '@/lib/pay-as-you-go/defaults';
+import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
+import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
 import { captureReferralServerEvent } from '@/lib/referral/analytics';
 import { referralAnalyticsEvents } from '@/lib/referral/analytics-events';
 import {
@@ -246,6 +248,9 @@ export async function createStore(data: StoreInfoInput) {
   // Check if we're updating an existing incomplete store or creating a new one
   const activeStoreId = await getActiveStoreId();
   let storeToUpdate = null;
+  let analyticsStoreId: string | null = null;
+  let analyticsIsExistingIncompleteStore = false;
+  let analyticsReferralOutcome: ReferralAttributionOutcome | null = null;
 
   if (activeStoreId) {
     // Check if user has access to this store and it's not completed
@@ -377,6 +382,10 @@ export async function createStore(data: StoreInfoInput) {
       country: validated.data.country,
     });
 
+    analyticsStoreId = storeToUpdate.id;
+    analyticsIsExistingIncompleteStore = true;
+    analyticsReferralOutcome = pendingReferral.outcome;
+
     // Ensure the updated store stays active for subsequent onboarding steps
     const setStoreResult = await setActiveStoreId(storeToUpdate.id);
     if (!setStoreResult.success) {
@@ -473,6 +482,9 @@ export async function createStore(data: StoreInfoInput) {
       country: validated.data.country,
     });
 
+    analyticsStoreId = newStore.id;
+    analyticsReferralOutcome = pendingReferral.outcome;
+
     if (pendingReferral.attribution) {
       await trackReferredRewardGranted({
         userId: session.user.id,
@@ -491,6 +503,28 @@ export async function createStore(data: StoreInfoInput) {
         setStoreResult.error,
       );
     }
+  }
+
+  if (analyticsStoreId) {
+    await captureProductServerEvent({
+      distinctId: session.user.id,
+      event: productAnalyticsEvents.onboardingStoreInfoSaved,
+      properties: {
+        feature: 'onboarding',
+        surface: 'dashboard',
+        store_id: analyticsStoreId,
+        is_existing_incomplete_store: analyticsIsExistingIncompleteStore,
+        referral_outcome: analyticsReferralOutcome,
+        country: validated.data.country,
+        currency: validated.data.currency,
+        has_address: Boolean(validated.data.address),
+        has_coordinates: Boolean(
+          validated.data.latitude != null && validated.data.longitude != null,
+        ),
+        has_email: Boolean(validated.data.email),
+        has_phone: Boolean(validated.data.phone),
+      },
+    });
   }
 
   revalidatePath('/onboarding');

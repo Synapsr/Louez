@@ -32,6 +32,11 @@ import {
   recordFeeReversals,
   recordReservationFee,
 } from '@/lib/pay-as-you-go';
+import {
+  captureProductServerEvent,
+  toAnalyticsAmountCents,
+} from '@/lib/product-analytics/analytics';
+import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
 import { getReferralProgramConfig } from '@/lib/referral/defaults';
 import {
   clawbackReferrerRewardForQualifyingPayment,
@@ -557,6 +562,32 @@ async function handleCheckoutCompleted(
       type: 'rental',
     },
     createdAt: paidAt,
+  });
+
+  await captureProductServerEvent({
+    distinctId: reservation.customerId,
+    event: productAnalyticsEvents.checkoutPaymentCompleted,
+    properties: {
+      feature: 'checkout',
+      surface: 'storefront',
+      store_id: reservation.store.id,
+      reservation_id: reservationId,
+      customer_id: reservation.customerId,
+      source: 'stripe_connect_webhook',
+      payment_provider: 'stripe',
+      amount_cents: toAnalyticsAmountCents(totalAmount),
+      deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
+      currency,
+      has_deposit: depositAmount > 0,
+      card_saved: Boolean(stripePaymentMethodId),
+      payment_intent_present: Boolean(paymentIntentId),
+      payment_request_present: Boolean(paymentRequestId),
+      reservation_status_before: reservation.status,
+      reservation_confirmed_by_event: reservation.status === 'pending',
+      is_pay_as_you_go_store: isPayAsYouGoStore,
+      application_fee_collected_cents: applicationFeeCollectedCents,
+      reservation_fee_cents: feeBreakdown.reservationFeeCents,
+    },
   });
 
   // Dispatch admin notifications (SMS, Discord) for payment received.

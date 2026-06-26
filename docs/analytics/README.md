@@ -40,6 +40,14 @@ Chaque nouvelle page analytics devrait contenir :
 - Documenter les proprietes utilisees comme filtres ou breakdowns.
 - Eviter les axes melanges quand les unites different : utiliser une table pour comparer des counts, cents, credits et quantites.
 
+## Replays et friction
+
+- OpenReplay est l'outil de reference pour les replays de sessions Louez.
+- PostHog reste l'outil de reference pour les events produit, funnels, cohorts, web vitals et signaux de friction.
+- Un `dead click` est un clic sur un element qui semble actionnable mais ne produit pas de retour utile.
+- Une `exception` est une erreur runtime ou applicative capturee par l'outil ; elle doit etre traitee comme un signal plus dur qu'un clic de friction, avec vigilance privacy sur les messages et stack traces.
+
 ## Pages
 
+- [Core Product Analytics](core-product.md)
 - [Referral Program](referral-program.md)
