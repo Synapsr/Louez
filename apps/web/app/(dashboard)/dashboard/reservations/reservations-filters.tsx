@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -40,11 +40,11 @@ const STATUS_KEYS = [
 ] as const;
 const PERIOD_KEYS = ['all', 'today', 'thisWeek', 'thisMonth'] as const;
 
-export function ReservationsFilters({
+export const ReservationsFilters = ({
   counts,
   currentStatus = 'all',
   currentPeriod = 'all',
-}: ReservationsFiltersProps) {
+}: ReservationsFiltersProps) => {
   const t = useTranslations('dashboard.reservations');
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,10 +52,11 @@ export function ReservationsFilters({
   const currentView = searchParams.get('view') || 'cards';
   const currentSearch = searchParams.get('search') || '';
   const [searchQuery, setSearchQuery] = useState(currentSearch);
-
-  useEffect(() => {
-    setSearchQuery(currentSearch);
-  }, [currentSearch]);
+  const pendingSearchParamsRef = useRef(new Set<string>());
+  const latestSearchQueryRef = useRef(currentSearch);
+  const navigateToSearchRef = useRef<
+    (term: string, mode?: 'push' | 'replace') => void
+  >(() => {});
 
   const createQueryString = useCallback(
     (updates: Record<string, string | null>) => {
@@ -71,6 +72,46 @@ export function ReservationsFilters({
     },
     [searchParams],
   );
+
+  const navigateToSearch = useCallback(
+    (term: string, mode: 'push' | 'replace' = 'push') => {
+      if (term === currentSearch) {
+        return;
+      }
+
+      pendingSearchParamsRef.current.add(term);
+      const href = `/dashboard/reservations?${createQueryString({
+        search: term || null,
+        page: null,
+      })}`;
+
+      if (mode === 'replace') {
+        router.replace(href);
+        return;
+      }
+
+      router.push(href);
+    },
+    [createQueryString, currentSearch, router],
+  );
+
+  useEffect(() => {
+    navigateToSearchRef.current = navigateToSearch;
+  }, [navigateToSearch]);
+
+  // Search route updates can land after newer keystrokes. Ignore values pushed
+  // by this component so an older URL state cannot overwrite the local input.
+  useEffect(() => {
+    if (pendingSearchParamsRef.current.delete(currentSearch)) {
+      if (currentSearch !== '' && latestSearchQueryRef.current === '') {
+        navigateToSearchRef.current('', 'replace');
+      }
+      return;
+    }
+
+    latestSearchQueryRef.current = currentSearch;
+    setSearchQuery(currentSearch);
+  }, [currentSearch]);
 
   const handleStatusChange = (value: string) => {
     router.push(
@@ -94,32 +135,24 @@ export function ReservationsFilters({
   };
 
   const handleSearch = useDebouncedCallback((term: string) => {
-    router.push(
-      `/dashboard/reservations?${createQueryString({
-        search: term || null,
-        page: null,
-      })}`,
-    );
+    navigateToSearch(term);
   }, 300);
 
   const updateSearchQuery = (term: string) => {
+    latestSearchQueryRef.current = term;
     setSearchQuery(term);
     handleSearch(term);
   };
 
   const clearSearchQuery = () => {
+    latestSearchQueryRef.current = '';
     setSearchQuery('');
     handleSearch.cancel();
-    router.push(
-      `/dashboard/reservations?${createQueryString({
-        search: null,
-        page: null,
-      })}`,
-    );
+    navigateToSearch('');
   };
 
-  const handleViewChange = (value: any[]) => {
-    const selected = value[0] as string | undefined;
+  const handleViewChange = (value: string[]) => {
+    const selected = value[0];
     if (!selected) return;
     router.push(
       `/dashboard/reservations?${createQueryString({
@@ -244,4 +277,4 @@ export function ReservationsFilters({
       </div>
     </div>
   );
-}
+};
