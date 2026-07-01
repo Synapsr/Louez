@@ -371,7 +371,7 @@ export function NewReservationForm({
             newCustomer:
               value.customerType === 'new'
                 ? {
-                    email: value.email,
+                    email: value.email.trim().toLowerCase(),
                     firstName: value.firstName,
                     lastName: value.lastName,
                     phone: value.phone || undefined,
