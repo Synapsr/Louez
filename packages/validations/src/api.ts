@@ -7,6 +7,12 @@ const dateTimeOrDateSchema = z
   .datetime({ offset: true })
   .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/));
 
+const customerEmailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .pipe(z.email().max(320));
+
 export const storefrontAvailabilityInputSchema = z.object({
   startDate: dateTimeOrDateSchema,
   endDate: dateTimeOrDateSchema,
@@ -277,7 +283,7 @@ export const dashboardReservationPreviewManualTulipQuoteInputSchema = z.object({
     customerId: z.string().length(21).optional(),
     newCustomer: z
       .object({
-        email: z.email().max(320),
+        email: customerEmailSchema,
         firstName: z.string().trim().min(1).max(200),
         lastName: z.string().trim().min(1).max(200),
         phone: z.string().trim().max(50).optional(),
@@ -302,7 +308,7 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
     customerId: z.string().length(21).optional(),
     newCustomer: z
       .object({
-        email: z.email().max(320),
+        email: customerEmailSchema,
         firstName: z.string().trim().min(1).max(200),
         lastName: z.string().trim().min(1).max(200),
         phone: z.string().trim().max(50).optional(),

@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+const emailSchema = (message: string) =>
+  z.string().trim().toLowerCase().pipe(z.email(message));
+
 export const reservationStatusSchema = z.enum([
   'pending',
   'confirmed',
@@ -27,7 +30,7 @@ export const createManualReservationSchema = (
     // Customer
     customerType: z.enum(['existing', 'new']),
     customerId: z.string().optional(),
-    email: z.email(t('email')).optional(),
+    email: emailSchema(t('email')).optional(),
     firstName: z.string().min(1, t('required')).optional(),
     lastName: z.string().min(1, t('required')).optional(),
     phone: z.string().optional(),
@@ -53,7 +56,7 @@ export const manualReservationSchema = z.object({
   // Customer
   customerType: z.enum(['existing', 'new']),
   customerId: z.string().optional(),
-  email: z.email('validation.email').optional(),
+  email: emailSchema('validation.email').optional(),
   firstName: z.string().min(1, 'validation.required').optional(),
   lastName: z.string().min(1, 'validation.required').optional(),
   phone: z.string().optional(),
