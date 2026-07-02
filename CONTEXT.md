@@ -136,6 +136,30 @@ _Avoid_: fraud check, limit
 A reservation whose Louez commission is waived, drawn from a Store's granted free-reservation allowance. Only carries value for a pay-as-you-go Store, since a subscribed Store pays no per-reservation fee.
 _Avoid_: free trial, discount, promo, gift
 
+**Unit**:
+A single physical item a Store owns, individually tracked under a Product with its own identifier. French UI: "unité".
+_Avoid_: article, asset, stock item, item
+
+**Unit Lifecycle Status**:
+The merchant-set long-term state of a Unit: active (in the Store's fleet) or retired. Independent from short-term unavailability and from rental activity.
+_Avoid_: unit status (alone), availability, lost status, sold status
+
+**Retirement**:
+The reversible act of removing a Unit from the fleet, recorded with a date and a reason (sold, lost, broken, other). A retired Unit keeps its identifier and full history and can be reinstated.
+_Avoid_: deletion, archiving
+
+**Downtime**:
+A merchant-declared period during which a Unit is not rentable, with a reason (such as maintenance or repair) and an optional end. A Unit can have many Downtimes over its life; availability returns automatically when a Downtime ends.
+_Avoid_: maintenance status, blocked period, unavailability flag
+
+**Unit Operational State**:
+The rental state of a Unit derived from its reservations (such as reserved, rented out, overdue). Never set by hand.
+_Avoid_: status, checked out
+
+**Unit Event**:
+An append-only record of something that happened to a Unit (created, downtime declared or closed, retired, reinstated, assigned, unassigned), with the acting user and time. The source of the Unit's history timeline.
+_Avoid_: log, audit row, activity
+
 ## Relationships
 
 - A **Store** receives **Reservation payments** from **Customers**.
@@ -165,6 +189,14 @@ _Avoid_: free trial, discount, promo, gift
 - A **Referral Reward** is distinct from a **Louez commission** (a fee Louez charges) and from a customer-facing promo code.
 - A **Referrer Reward** is denominated in **Free Reservations** when the Referrer is pay-as-you-go, or in account credit when the Referrer is subscribed.
 - A **Referred Reward** is always denominated in **Free Reservations**, since a Referred Store starts pay-as-you-go.
+- A Product tracks stock either by quantity (bulk) or by **Units**; both kinds appear in the inventory view.
+- A **Downtime** applies to a single **Unit**, never to a bulk quantity.
+- A **Unit**'s availability at a date requires: lifecycle in the fleet, no **Downtime** covering the date, and no overlapping reservation.
+- A **Unit Operational State** is derived from reservations and is never merchant-set.
+- Declaring a **Downtime** or a **Retirement** never cancels a reservation: conflicting reservations are surfaced for reassignment to another Unit or left for the merchant to handle.
+- Assigning a **Unit** to a reservation is optional and merchant-driven; reservations consume product quantity even when no Unit is assigned, so a Unit's **Unit Operational State** only reflects reservations it is assigned to.
+- A return inspection rated damaged on an assigned **Unit** can suggest declaring a repair **Downtime**; the suggestion is never applied automatically.
+- Inventory management (Downtimes, Retirement, assignment) is open to all team members, owners and members alike.
 
 ## Example Dialogue
 
@@ -201,3 +233,7 @@ _Avoid_: free trial, discount, promo, gift
 - Calendar disconnect should be conservative; resolved: stop sync and remove credentials while keeping existing provider events by default, with explicit optional cleanup.
 - Managing integrations exposes external provider access and customer data; resolved: integration management is owner-only in the first permission model.
 - "commission" could mean the fee Louez charges on reservations or the reward paid to a referring Store; resolved: **Louez commission** stays the reservation fee, and the referral payout is a **Referrer Reward**, never a "commission".
+- The legacy `productUnits.status` enum (available/maintenance/retired) conflated three ideas; resolved: split into **Unit Lifecycle Status** (merchant-set), **Downtime** (dated, with reason), and **Unit Operational State** (derived from reservations, never merchant-set).
+- "indisponible" could mean a retired unit, a unit under repair, or fully-booked stock; resolved: **Retirement** for leaving the fleet, **Downtime** for temporary unavailability, and plain unavailability for booked-out stock.
+- "archived" (Product status) and "retired" (Unit) are different lifecycles; a Product can stay active while some of its Units are retired.
+- "inventaire" vs "stock" in French UI; resolved: "Inventaire" names the global fleet view, "stock" stays a quantity.
