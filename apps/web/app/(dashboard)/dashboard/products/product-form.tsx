@@ -20,8 +20,8 @@ import {
 } from '@louez/utils';
 import {
   type PricingTierInput as LegacyPricingTierInput,
-  type RateTierInput,
   type ProductUnitInput,
+  type RateTierInput,
   createProductSchema,
 } from '@louez/validations';
 
@@ -29,6 +29,7 @@ import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar';
 
 import { useAppForm } from '@/hooks/form/form';
 
+import { ProductAssuranceSection } from './components/product-assurance-section';
 import { ProductFormEditToc } from './components/product-form-edit-toc';
 import { ProductFormSectionAccessories } from './components/product-form-section-accessories';
 import { ProductFormSectionStock } from './components/product-form-section-stock';
@@ -36,7 +37,6 @@ import { ProductFormStepInfo } from './components/product-form-step-info';
 import { ProductFormStepPhotos } from './components/product-form-step-photos';
 import { ProductFormStepPreview } from './components/product-form-step-preview';
 import { ProductFormStepPricing } from './components/product-form-step-pricing';
-import { ProductAssuranceSection } from './components/product-assurance-section';
 import { ProductImageCropDialog } from './components/product-image-crop-dialog';
 import { useProductFormMedia } from './hooks/use-product-form-media';
 import { useProductFormMutations } from './hooks/use-product-form-mutations';
@@ -121,9 +121,14 @@ export function ProductForm({
   const hasShownDuplicateRateToastRef = useRef(false);
 
   // Seasonal pricing state (edit mode only)
-  const [seasonalPricings, setSeasonalPricings] = useState<SeasonalPricingData[]>([]);
-  const [selectedSeasonalPeriodId, setSelectedSeasonalPeriodId] = useState<string | null>(null);
-  const [isLoadingSeasonalPricings, setIsLoadingSeasonalPricings] = useState(false);
+  const [seasonalPricings, setSeasonalPricings] = useState<
+    SeasonalPricingData[]
+  >([]);
+  const [selectedSeasonalPeriodId, setSelectedSeasonalPeriodId] = useState<
+    string | null
+  >(null);
+  const [isLoadingSeasonalPricings, setIsLoadingSeasonalPricings] =
+    useState(false);
 
   useEffect(() => {
     if (!product?.id) return;
@@ -149,7 +154,12 @@ export function ProductForm({
       }
       setIsLoadingSeasonalPricings(false);
     });
-  }, [product?.id, seasonalPricings.length, isLoadingSeasonalPricings, selectedSeasonalPeriodId]);
+  }, [
+    product?.id,
+    seasonalPricings.length,
+    isLoadingSeasonalPricings,
+    selectedSeasonalPeriodId,
+  ]);
 
   // Convert product pricing tiers to input format
   const initialPricingTiers: LegacyPricingTierInput[] =
@@ -206,7 +216,7 @@ export function ProductForm({
       id: unit.id,
       identifier: unit.identifier,
       notes: unit.notes || '',
-      status: unit.status,
+      lifecycleStatus: unit.lifecycleStatus,
       attributes: unit.attributes || {},
     })) ?? [];
 
@@ -309,9 +319,8 @@ export function ProductForm({
     form.store,
     (s) => s.fieldMeta.rateTiers?.errorMap?.onSubmit,
   );
-  const hasUnitsSubmitError = useStore(
-    form.store,
-    (s) => Boolean(s.fieldMeta.units?.errorMap?.onSubmit),
+  const hasUnitsSubmitError = useStore(form.store, (s) =>
+    Boolean(s.fieldMeta.units?.errorMap?.onSubmit),
   );
   const isDirty = useStore(form.store, (s) => s.isDirty);
   const imagesPreviews = useStore(form.store, (s) => s.values.images ?? []);
@@ -373,7 +382,8 @@ export function ProductForm({
   }, [clearSubmitError]);
 
   const localDuplicateRateTierIndexes = useMemo(
-    () => getDuplicateRateTierIndexes(watchedValues.rateTiers as RateTierInput[]),
+    () =>
+      getDuplicateRateTierIndexes(watchedValues.rateTiers as RateTierInput[]),
     [watchedValues.rateTiers],
   );
   const effectiveDuplicateRateTierIndexes = useMemo(
@@ -485,13 +495,7 @@ export function ProductForm({
     }
 
     setPendingDuplicateRateTierIndexes(null);
-  }, [
-    form,
-    goToStep,
-    isEditMode,
-    pendingDuplicateRateTierIndexes,
-    t,
-  ]);
+  }, [form, goToStep, isEditMode, pendingDuplicateRateTierIndexes, t]);
 
   useEffect(() => {
     const hasDuplicateRates = localDuplicateRateTierIndexes.length > 0;

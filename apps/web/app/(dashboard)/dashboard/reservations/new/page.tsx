@@ -31,7 +31,7 @@ async function getProductsWithTiers(storeId: string) {
       },
       units: {
         columns: {
-          status: true,
+          lifecycleStatus: true,
           attributes: true,
         },
       },

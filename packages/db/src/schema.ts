@@ -54,7 +54,9 @@ export const users = mysqlTable('users', {
   // on the owner's first Store onboarding. Distinct from Referral Attribution
   // (stores.referredByStoreId), which is the programmatic ?ref= link.
   acquisitionChannel: varchar('acquisition_channel', { length: 32 }),
-  acquisitionChannelOther: varchar('acquisition_channel_other', { length: 255 }),
+  acquisitionChannelOther: varchar('acquisition_channel_other', {
+    length: 255,
+  }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 });
@@ -153,7 +155,9 @@ export const subscriptions = mysqlTable(
     // Welcome allowance: number of free reservations granted at account creation. While
     // unused credits remain, a rental's pay-as-you-go commission is waived. Editable per
     // store in admin. Usage is derived from the ledger (reservation fees with source 'free').
-    freeReservationsGranted: int('free_reservations_granted').notNull().default(0),
+    freeReservationsGranted: int('free_reservations_granted')
+      .notNull()
+      .default(0),
 
     // Status
     status: subscriptionStatus.default('active').notNull(),
@@ -1949,10 +1953,35 @@ export const productSeasonalPricingTiersRelations = relations(
 // Product Units (Individual Unit Tracking)
 // ============================================================================
 
-export const unitStatus = mysqlEnum('unit_status', [
-  'available',
-  'maintenance',
+export const unitLifecycleStatus = mysqlEnum('lifecycle_status', [
+  'active',
   'retired',
+]);
+
+export const unitRetirementReason = mysqlEnum('retirement_reason', [
+  'sold',
+  'lost',
+  'broken',
+  'other',
+]);
+
+export const unitDowntimeReason = mysqlEnum('reason', [
+  'maintenance',
+  'repair',
+  'other',
+]);
+
+export const unitEventType = mysqlEnum('type', [
+  'created',
+  'downtime_declared',
+  'downtime_updated',
+  'downtime_closed',
+  'downtime_deleted',
+  'retired',
+  'reinstated',
+  'assigned',
+  'unassigned',
+  'updated',
 ]);
 
 export const productUnits = mysqlTable(
@@ -1977,8 +2006,13 @@ export const productUnits = mysqlTable(
       .default('__default'),
 
     // Unit lifecycle status
-    // Note: "rented" is derived from reservation assignments, not stored here
-    status: unitStatus.default('available').notNull(),
+    // Note: downtime and rental state are derived from dedicated records.
+    lifecycleStatus: unitLifecycleStatus.default('active').notNull(),
+    retiredAt: timestamp('retired_at', { mode: 'date' }),
+    retirementReason: unitRetirementReason,
+    retirementNote: text('retirement_note'),
+    purchasePrice: decimal('purchase_price', { precision: 10, scale: 2 }),
+    purchasedAt: timestamp('purchased_at', { mode: 'date' }),
 
     // Metadata
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -1991,16 +2025,85 @@ export const productUnits = mysqlTable(
       table.productId,
       table.identifier,
     ),
-    // For quick lookups of available units
-    statusIdx: index('product_units_status_idx').on(
+    // For quick lookups of active units
+    lifecycleStatusIdx: index('product_units_lifecycle_status_idx').on(
       table.productId,
-      table.status,
+      table.lifecycleStatus,
     ),
-    statusCombinationIdx: index('product_units_status_combination_idx').on(
-      table.productId,
-      table.status,
-      table.combinationKey,
+    lifecycleStatusCombinationIdx: index(
+      'product_units_lifecycle_status_combination_idx',
+    ).on(table.productId, table.lifecycleStatus, table.combinationKey),
+  }),
+);
+
+export const productUnitDowntimes = mysqlTable(
+  'product_unit_downtimes',
+  {
+    id: id(),
+    productUnitId: varchar('product_unit_id', { length: 21 })
+      .notNull()
+      .references(() => productUnits.id, { onDelete: 'cascade' }),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    reason: unitDowntimeReason.notNull(),
+    startsAt: timestamp('starts_at', { mode: 'date' }).notNull(),
+    endsAt: timestamp('ends_at', { mode: 'date' }),
+    note: text('note'),
+    createdByUserId: varchar('created_by_user_id', { length: 21 }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    unitStartsAtIdx: index('product_unit_downtimes_unit_starts_at_idx').on(
+      table.productUnitId,
+      table.startsAt,
     ),
+    storeIdx: index('product_unit_downtimes_store_idx').on(table.storeId),
+    activeAtIdx: index('product_unit_downtimes_active_at_idx').on(
+      table.storeId,
+      table.startsAt,
+      table.endsAt,
+    ),
+  }),
+);
+
+export const productUnitDowntimesRelations = relations(
+  productUnitDowntimes,
+  ({ one }) => ({
+    unit: one(productUnits, {
+      fields: [productUnitDowntimes.productUnitId],
+      references: [productUnits.id],
+    }),
+  }),
+);
+
+export const productUnitEvents = mysqlTable(
+  'product_unit_events',
+  {
+    id: id(),
+    productUnitId: varchar('product_unit_id', { length: 21 })
+      .notNull()
+      .references(() => productUnits.id, { onDelete: 'cascade' }),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    type: unitEventType.notNull(),
+    actorUserId: varchar('actor_user_id', { length: 21 }),
+    payload: json('payload').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    unitCreatedAtIdx: index('product_unit_events_unit_created_at_idx').on(
+      table.productUnitId,
+      table.createdAt,
+    ),
+  }),
+);
+
+export const productUnitEventsRelations = relations(
+  productUnitEvents,
+  ({ one }) => ({
+    unit: one(productUnits, {
+      fields: [productUnitEvents.productUnitId],
+      references: [productUnits.id],
+    }),
   }),
 );
 
@@ -2011,6 +2114,8 @@ export const productUnitsRelations = relations(
       fields: [productUnits.productId],
       references: [products.id],
     }),
+    downtimes: many(productUnitDowntimes),
+    events: many(productUnitEvents),
     reservationAssignments: many(reservationItemUnits),
   }),
 );

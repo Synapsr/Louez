@@ -1,28 +1,27 @@
-'use client'
+'use client';
 
-import { useState, useMemo, useEffect } from 'react'
-import { Plus, Trash2, Package, ChevronDown, AlertCircle, Settings2, StickyNote, Lightbulb } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useEffect, useMemo, useState } from 'react';
 
-import { Button } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { Label } from '@louez/ui'
-import { Switch } from '@louez/ui'
-import { Badge } from '@louez/ui'
-import { Textarea } from '@louez/ui'
-import { Separator } from '@louez/ui'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@louez/ui'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@louez/ui'
+  AlertCircle,
+  ChevronDown,
+  Lightbulb,
+  Package,
+  Plus,
+  Settings2,
+  StickyNote,
+  Trash2,
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button } from '@louez/ui';
+import { Input } from '@louez/ui';
+import { Label } from '@louez/ui';
+import { Switch } from '@louez/ui';
+import { Badge } from '@louez/ui';
+import { Textarea } from '@louez/ui';
+import { Separator } from '@louez/ui';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@louez/ui';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -31,7 +30,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@louez/ui'
+} from '@louez/ui';
 import {
   Dialog,
   DialogClose,
@@ -42,29 +41,29 @@ import {
   DialogPopup,
   DialogTitle,
   DialogTrigger,
-} from '@louez/ui'
+} from '@louez/ui';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@louez/ui'
-import { buildPartialCombinationKey, cn, normalizeAxisKey } from '@louez/utils'
+} from '@louez/ui';
+import { buildPartialCombinationKey, cn, normalizeAxisKey } from '@louez/utils';
 
-type UnitStatus = 'available' | 'maintenance' | 'retired'
+type UnitLifecycleStatus = 'active' | 'retired';
 
 interface ProductUnitInput {
-  id?: string
-  identifier: string
-  notes?: string
-  status?: UnitStatus
-  attributes?: Record<string, string>
+  id?: string;
+  identifier: string;
+  notes?: string;
+  lifecycleStatus?: UnitLifecycleStatus;
+  attributes?: Record<string, string>;
 }
 
 interface BookingAttributeAxisInput {
-  key: string
-  label: string
-  position: number
+  key: string;
+  label: string;
+  position: number;
 }
 
 function AttributeValueCombobox({
@@ -76,32 +75,32 @@ function AttributeValueCombobox({
   hasError,
   createHint,
 }: {
-  value: string
-  onChange: (value: string) => void
-  suggestions: string[]
-  placeholder: string
-  disabled: boolean
-  hasError: boolean
-  createHint: (value: string) => string
+  value: string;
+  onChange: (value: string) => void;
+  suggestions: string[];
+  placeholder: string;
+  disabled: boolean;
+  hasError: boolean;
+  createHint: (value: string) => string;
 }) {
-  const [localValue, setLocalValue] = useState(value)
-  const [open, setOpen] = useState(false)
+  const [localValue, setLocalValue] = useState(value);
+  const [open, setOpen] = useState(false);
 
   // Sync from parent when value changes externally
   useEffect(() => {
-    setLocalValue(value)
-  }, [value])
+    setLocalValue(value);
+  }, [value]);
 
   const filtered = useMemo(() => {
-    if (!localValue.trim()) return suggestions
-    const lower = localValue.toLowerCase()
-    return suggestions.filter((s) => s.toLowerCase().includes(lower))
-  }, [suggestions, localValue])
+    if (!localValue.trim()) return suggestions;
+    const lower = localValue.toLowerCase();
+    return suggestions.filter((s) => s.toLowerCase().includes(lower));
+  }, [suggestions, localValue]);
 
-  const trimmed = localValue.trim()
+  const trimmed = localValue.trim();
   const isNewValue =
     trimmed.length > 0 &&
-    !suggestions.some((s) => s.toLowerCase() === trimmed.toLowerCase())
+    !suggestions.some((s) => s.toLowerCase() === trimmed.toLowerCase());
 
   return (
     <div className="relative">
@@ -110,50 +109,52 @@ function AttributeValueCombobox({
         onChange={(e) => setLocalValue(e.target.value)}
         onFocus={() => setOpen(true)}
         onBlur={() => {
-          setTimeout(() => setOpen(false), 150)
-          if (localValue !== value) onChange(localValue)
+          setTimeout(() => setOpen(false), 150);
+          if (localValue !== value) onChange(localValue);
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
-            e.preventDefault()
-            onChange(localValue)
-            setOpen(false)
-            ;(e.target as HTMLInputElement).blur()
+            e.preventDefault();
+            onChange(localValue);
+            setOpen(false);
+            (e.target as HTMLInputElement).blur();
           }
         }}
         placeholder={placeholder}
         disabled={disabled}
-        className={cn(hasError && !localValue.trim() && 'border-destructive/60')}
+        className={cn(
+          hasError && !localValue.trim() && 'border-destructive/60',
+        )}
       />
       {open && (filtered.length > 0 || isNewValue) && (
-        <div className="absolute z-50 mt-1 max-h-[200px] w-full overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg">
+        <div className="bg-popover absolute z-50 mt-1 max-h-[200px] w-full overflow-y-auto rounded-lg border p-1 shadow-lg">
           {filtered.map((s) => (
             <button
               key={s}
               type="button"
               className={cn(
-                'w-full cursor-default rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                'hover:bg-accent hover:text-accent-foreground w-full cursor-default rounded-sm px-2 py-1.5 text-left text-sm outline-none',
                 s === localValue && 'bg-accent/50 font-medium',
               )}
               onMouseDown={(e) => {
-                e.preventDefault()
-                setLocalValue(s)
-                onChange(s)
-                setOpen(false)
+                e.preventDefault();
+                setLocalValue(s);
+                onChange(s);
+                setOpen(false);
               }}
             >
               {s}
             </button>
           ))}
           {isNewValue && (
-            <p className="px-2 py-1.5 text-xs text-muted-foreground">
+            <p className="text-muted-foreground px-2 py-1.5 text-xs">
               {createHint(trimmed)}
             </p>
           )}
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function BookingAttributesDialog({
@@ -162,26 +163,31 @@ function BookingAttributesDialog({
   onRemoveAxis,
   disabled,
 }: {
-  axes: BookingAttributeAxisInput[]
-  onAddAxis: (label: string) => void
-  onRemoveAxis: (key: string) => void
-  disabled: boolean
+  axes: BookingAttributeAxisInput[];
+  onAddAxis: (label: string) => void;
+  onRemoveAxis: (key: string) => void;
+  disabled: boolean;
 }) {
-  const t = useTranslations('dashboard.products.form.unitTracking')
-  const [newAxisLabel, setNewAxisLabel] = useState('')
+  const t = useTranslations('dashboard.products.form.unitTracking');
+  const [newAxisLabel, setNewAxisLabel] = useState('');
 
   const handleAdd = () => {
-    const label = newAxisLabel.trim()
-    if (!label) return
-    onAddAxis(label)
-    setNewAxisLabel('')
-  }
+    const label = newAxisLabel.trim();
+    if (!label) return;
+    onAddAxis(label);
+    setNewAxisLabel('');
+  };
 
   return (
     <Dialog>
       <DialogTrigger
         render={
-          <Button type="button" variant="outline" size="sm" disabled={disabled} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+          />
         }
       >
         <Settings2 className="h-4 w-4" />
@@ -195,7 +201,9 @@ function BookingAttributesDialog({
       <DialogPopup className="max-w-md">
         <DialogHeader>
           <DialogTitle>{t('bookingAttributesTitle')}</DialogTitle>
-          <DialogDescription>{t('manageAttributesDescription')}</DialogDescription>
+          <DialogDescription>
+            {t('manageAttributesDescription')}
+          </DialogDescription>
         </DialogHeader>
         <DialogPanel>
           <div className="space-y-4">
@@ -219,8 +227,8 @@ function BookingAttributesDialog({
                 onChange={(e) => setNewAxisLabel(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    e.preventDefault()
-                    handleAdd()
+                    e.preventDefault();
+                    handleAdd();
                   }
                 }}
                 placeholder={t('bookingAttributePlaceholder')}
@@ -247,11 +255,11 @@ function BookingAttributesDialog({
                     className="flex items-center justify-between rounded-lg border px-3 py-2"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-muted text-xs font-medium">
+                      <span className="bg-muted flex h-5 w-5 items-center justify-center rounded-md text-xs font-medium">
                         {axis.position + 1}
                       </span>
                       <span className="text-sm font-medium">{axis.label}</span>
-                      <span className="font-mono text-xs text-muted-foreground">
+                      <span className="text-muted-foreground font-mono text-xs">
                         {axis.key}
                       </span>
                     </div>
@@ -259,7 +267,7 @@ function BookingAttributesDialog({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      className="text-muted-foreground hover:text-destructive h-7 w-7"
                       onClick={() => onRemoveAxis(axis.key)}
                       disabled={disabled}
                     >
@@ -270,7 +278,7 @@ function BookingAttributesDialog({
               </div>
             ) : (
               <div className="rounded-lg border border-dashed p-4 text-center">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-muted-foreground text-sm">
                   {t('bookingAttributesEmpty')}
                 </p>
               </div>
@@ -284,14 +292,13 @@ function BookingAttributesDialog({
         </DialogFooter>
       </DialogPopup>
     </Dialog>
-  )
+  );
 }
 
-const STATUS_COLORS: Record<UnitStatus, string> = {
-  available: 'bg-green-500',
-  maintenance: 'bg-amber-500',
+const LIFECYCLE_COLORS: Record<UnitLifecycleStatus, string> = {
+  active: 'bg-green-500',
   retired: 'bg-gray-400',
-}
+};
 
 function UnitRow({
   unit,
@@ -306,29 +313,31 @@ function UnitRow({
   onRemove,
   onTouch,
 }: {
-  unit: ProductUnitInput
-  index: number
-  bookingAttributeAxes: BookingAttributeAxisInput[]
-  existingValuesByAxis: Record<string, string[]>
-  isDuplicate: boolean
-  isEmpty: boolean
-  disabled: boolean
-  onUpdate: (index: number, patch: Partial<ProductUnitInput>) => void
-  onUpdateAttribute: (index: number, axisKey: string, value: string) => void
-  onRemove: (index: number) => void
-  onTouch: (index: number) => void
+  unit: ProductUnitInput;
+  index: number;
+  bookingAttributeAxes: BookingAttributeAxisInput[];
+  existingValuesByAxis: Record<string, string[]>;
+  isDuplicate: boolean;
+  isEmpty: boolean;
+  disabled: boolean;
+  onUpdate: (index: number, patch: Partial<ProductUnitInput>) => void;
+  onUpdateAttribute: (index: number, axisKey: string, value: string) => void;
+  onRemove: (index: number) => void;
+  onTouch: (index: number) => void;
 }) {
-  const t = useTranslations('dashboard.products.form.unitTracking')
-  const [isEditingNotes, setIsEditingNotes] = useState(false)
-  const hasAxes = bookingAttributeAxes.length > 0
-  const status = unit.status || 'available'
+  const t = useTranslations('dashboard.products.form.unitTracking');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const hasAxes = bookingAttributeAxes.length > 0;
+  const lifecycleStatus = unit.lifecycleStatus || 'active';
+  const lifecycleLabel =
+    lifecycleStatus === 'retired' ? t('statusRetired') : t('statusAvailable');
 
-  const hasAnyAttributeValue = hasAxes && bookingAttributeAxes.some(
-    (axis) => !!unit.attributes?.[axis.key]?.trim(),
-  )
+  const hasAnyAttributeValue =
+    hasAxes &&
+    bookingAttributeAxes.some((axis) => !!unit.attributes?.[axis.key]?.trim());
   const combinationLabel = hasAnyAttributeValue
     ? buildPartialCombinationKey(bookingAttributeAxes, unit.attributes)
-    : null
+    : null;
 
   return (
     <div
@@ -337,58 +346,28 @@ function UnitRow({
         isDuplicate && 'border-destructive bg-destructive/5',
       )}
     >
-      {/* Row 1: status dot + identifier + status select + delete */}
+      {/* Row 1: lifecycle dot + identifier + lifecycle display + delete */}
       <div className="flex items-center gap-2">
         <span
-          className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_COLORS[status])}
+          className={cn(
+            'h-2 w-2 shrink-0 rounded-full',
+            LIFECYCLE_COLORS[lifecycleStatus],
+          )}
         />
         <Input
           placeholder={t('identifierPlaceholder')}
           value={unit.identifier}
           onChange={(e) => onUpdate(index, { identifier: e.target.value })}
           onBlur={() => onTouch(index)}
-          className={cn('flex-1', (isDuplicate || isEmpty) && 'border-destructive')}
+          className={cn(
+            'flex-1',
+            (isDuplicate || isEmpty) && 'border-destructive',
+          )}
           disabled={disabled}
         />
-        <Select
-          value={status}
-          onValueChange={(value) => {
-            if (value !== null) onUpdate(index, { status: value as UnitStatus })
-          }}
-          disabled={disabled}
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue>
-              {
-                ({
-                  available: t('statusAvailable'),
-                  maintenance: t('statusMaintenance'),
-                  retired: t('statusRetired'),
-                } as const)[status]
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="available" label={t('statusAvailable')}>
-              <span className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-green-500" />
-                {t('statusAvailable')}
-              </span>
-            </SelectItem>
-            <SelectItem value="maintenance" label={t('statusMaintenance')}>
-              <span className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-amber-500" />
-                {t('statusMaintenance')}
-              </span>
-            </SelectItem>
-            <SelectItem value="retired" label={t('statusRetired')}>
-              <span className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-gray-400" />
-                {t('statusRetired')}
-              </span>
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <Badge variant="outline" className="w-[108px] justify-center">
+          {lifecycleLabel}
+        </Badge>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger
@@ -399,7 +378,7 @@ function UnitRow({
                   size="icon"
                   onClick={() => onRemove(index)}
                   disabled={disabled}
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  className="text-muted-foreground hover:text-destructive shrink-0"
                 />
               }
             >
@@ -413,20 +392,25 @@ function UnitRow({
       </div>
 
       {isEmpty && (
-        <p className="mt-1.5 text-xs text-destructive">{t('identifierRequired')}</p>
+        <p className="text-destructive mt-1.5 text-xs">
+          {t('identifierRequired')}
+        </p>
       )}
 
       {/* Row 2: attribute values (only when axes exist) */}
       {hasAxes && (
         <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {bookingAttributeAxes.map((axis) => {
-            const suggestions = existingValuesByAxis[axis.key] || []
-            const currentValue = unit.attributes?.[axis.key] || ''
-            const hasError = !currentValue.trim() && status === 'available'
+            const suggestions = existingValuesByAxis[axis.key] || [];
+            const currentValue = unit.attributes?.[axis.key] || '';
+            const hasError =
+              !currentValue.trim() && lifecycleStatus === 'active';
 
             return (
               <div key={axis.key} className="space-y-1">
-                <Label className="text-xs text-muted-foreground">{axis.label}</Label>
+                <Label className="text-muted-foreground text-xs">
+                  {axis.label}
+                </Label>
                 <AttributeValueCombobox
                   value={currentValue}
                   onChange={(val) => onUpdateAttribute(index, axis.key, val)}
@@ -439,7 +423,7 @@ function UnitRow({
                   createHint={(v) => t('pressEnterToCreate', { value: v })}
                 />
               </div>
-            )
+            );
           })}
         </div>
       )}
@@ -447,7 +431,9 @@ function UnitRow({
       {/* Row 3: combination key (only when axes exist and has partial key) */}
       {hasAxes && combinationLabel && (
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{t('combinationKey')}:</span>
+          <span className="text-muted-foreground text-xs">
+            {t('combinationKey')}:
+          </span>
           <Badge variant="outline" className="font-mono text-[11px]">
             {combinationLabel}
           </Badge>
@@ -463,13 +449,13 @@ function UnitRow({
           className="mt-2 min-h-[60px] text-sm"
           disabled={disabled}
           onBlur={() => {
-            if (!unit.notes?.trim()) setIsEditingNotes(false)
+            if (!unit.notes?.trim()) setIsEditingNotes(false);
           }}
         />
       ) : (
         <button
           type="button"
-          className="mt-2 flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          className="text-muted-foreground hover:text-foreground mt-2 flex items-center gap-1 text-xs transition-colors disabled:pointer-events-none disabled:opacity-50"
           onClick={() => setIsEditingNotes(true)}
           disabled={disabled}
         >
@@ -478,20 +464,20 @@ function UnitRow({
         </button>
       )}
     </div>
-  )
+  );
 }
 
 interface UnitTrackingEditorProps {
-  trackUnits: boolean
-  onTrackUnitsChange: (value: boolean) => void
-  bookingAttributeAxes: BookingAttributeAxisInput[]
-  onBookingAttributeAxesChange: (axes: BookingAttributeAxisInput[]) => void
-  units: ProductUnitInput[]
-  onChange: (units: ProductUnitInput[]) => void
-  quantity: string
-  onQuantityChange: (value: string) => void
-  disabled?: boolean
-  showValidationErrors?: boolean
+  trackUnits: boolean;
+  onTrackUnitsChange: (value: boolean) => void;
+  bookingAttributeAxes: BookingAttributeAxisInput[];
+  onBookingAttributeAxesChange: (axes: BookingAttributeAxisInput[]) => void;
+  units: ProductUnitInput[];
+  onChange: (units: ProductUnitInput[]) => void;
+  quantity: string;
+  onQuantityChange: (value: string) => void;
+  disabled?: boolean;
+  showValidationErrors?: boolean;
 }
 
 export function UnitTrackingEditor({
@@ -506,160 +492,182 @@ export function UnitTrackingEditor({
   disabled = false,
   showValidationErrors = false,
 }: UnitTrackingEditorProps) {
-  const t = useTranslations('dashboard.products.form.unitTracking')
-  const [showDisableConfirm, setShowDisableConfirm] = useState(false)
-  const [bulkOpen, setBulkOpen] = useState(false)
-  const [bulkPrefix, setBulkPrefix] = useState('')
-  const [bulkFrom, setBulkFrom] = useState('1')
-  const [bulkTo, setBulkTo] = useState('5')
-  const [touchedUnits, setTouchedUnits] = useState<Set<number>>(new Set())
+  const t = useTranslations('dashboard.products.form.unitTracking');
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkPrefix, setBulkPrefix] = useState('');
+  const [bulkFrom, setBulkFrom] = useState('1');
+  const [bulkTo, setBulkTo] = useState('5');
+  const [touchedUnits, setTouchedUnits] = useState<Set<number>>(new Set());
 
   const activeUnitsCount = useMemo(() => {
-    return units.filter((u) => !u.status || u.status === 'available').length
-  }, [units])
+    return units.filter((u) => (u.lifecycleStatus || 'active') === 'active')
+      .length;
+  }, [units]);
 
   const duplicateIdentifiers = useMemo(() => {
-    const seen = new Set<string>()
-    const duplicates = new Set<string>()
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
     for (const unit of units) {
-      const normalized = unit.identifier.trim().toLowerCase()
+      const normalized = unit.identifier.trim().toLowerCase();
       if (normalized && seen.has(normalized)) {
-        duplicates.add(normalized)
+        duplicates.add(normalized);
       }
-      seen.add(normalized)
+      seen.add(normalized);
     }
-    return duplicates
-  }, [units])
+    return duplicates;
+  }, [units]);
 
   const existingValuesByAxis = useMemo(() => {
-    const map: Record<string, string[]> = {}
+    const map: Record<string, string[]> = {};
     for (const axis of bookingAttributeAxes) {
-      const uniqueValues = new Set<string>()
+      const uniqueValues = new Set<string>();
       for (const unit of units) {
-        const val = unit.attributes?.[axis.key]?.trim()
-        if (val) uniqueValues.add(val)
+        const val = unit.attributes?.[axis.key]?.trim();
+        if (val) uniqueValues.add(val);
       }
-      map[axis.key] = Array.from(uniqueValues).sort()
+      map[axis.key] = Array.from(uniqueValues).sort();
     }
-    return map
-  }, [bookingAttributeAxes, units])
+    return map;
+  }, [bookingAttributeAxes, units]);
 
   const missingAttributeCount = useMemo(() => {
-    if (bookingAttributeAxes.length === 0) return 0
+    if (bookingAttributeAxes.length === 0) return 0;
     return units.filter((unit) => {
-      const status = unit.status || 'available'
-      if (status !== 'available') return false
-      return bookingAttributeAxes.some((axis) => !unit.attributes?.[axis.key]?.trim())
-    }).length
-  }, [bookingAttributeAxes, units])
+      const lifecycleStatus = unit.lifecycleStatus || 'active';
+      if (lifecycleStatus !== 'active') return false;
+      return bookingAttributeAxes.some(
+        (axis) => !unit.attributes?.[axis.key]?.trim(),
+      );
+    }).length;
+  }, [bookingAttributeAxes, units]);
 
   const handleToggle = (enabled: boolean) => {
     if (!enabled && units.length > 0) {
-      setShowDisableConfirm(true)
+      setShowDisableConfirm(true);
     } else {
-      onTrackUnitsChange(enabled)
+      onTrackUnitsChange(enabled);
       if (enabled && units.length === 0) {
-        const qty = parseInt(quantity, 10) || 0
+        const qty = parseInt(quantity, 10) || 0;
         if (qty > 0) {
-          const emptyUnits: ProductUnitInput[] = Array.from({ length: qty }, () => ({
-            identifier: '',
-            notes: '',
-            status: 'available',
-            attributes: {},
-          }))
-          onChange(emptyUnits)
+          const emptyUnits: ProductUnitInput[] = Array.from(
+            { length: qty },
+            () => ({
+              identifier: '',
+              notes: '',
+              lifecycleStatus: 'active',
+              attributes: {},
+            }),
+          );
+          onChange(emptyUnits);
         }
       }
     }
-  }
+  };
 
   const confirmDisable = () => {
-    onTrackUnitsChange(false)
-    onBookingAttributeAxesChange([])
-    onChange([])
-    setShowDisableConfirm(false)
-  }
+    onTrackUnitsChange(false);
+    onBookingAttributeAxesChange([]);
+    onChange([]);
+    setShowDisableConfirm(false);
+  };
 
   const addUnit = () => {
-    onChange([...units, { identifier: '', notes: '', status: 'available', attributes: {} }])
-  }
+    onChange([
+      ...units,
+      { identifier: '', notes: '', lifecycleStatus: 'active', attributes: {} },
+    ]);
+  };
 
   const removeUnit = (index: number) => {
-    onChange(units.filter((_, i) => i !== index))
-  }
+    onChange(units.filter((_, i) => i !== index));
+  };
 
   const updateUnit = (index: number, patch: Partial<ProductUnitInput>) => {
-    const newUnits = [...units]
-    newUnits[index] = { ...newUnits[index], ...patch }
-    onChange(newUnits)
-  }
+    const newUnits = [...units];
+    newUnits[index] = { ...newUnits[index], ...patch };
+    onChange(newUnits);
+  };
 
-  const updateUnitAttribute = (index: number, axisKey: string, value: string) => {
-    const newUnits = [...units]
-    const currentAttributes = newUnits[index].attributes || {}
+  const updateUnitAttribute = (
+    index: number,
+    axisKey: string,
+    value: string,
+  ) => {
+    const newUnits = [...units];
+    const currentAttributes = newUnits[index].attributes || {};
     newUnits[index] = {
       ...newUnits[index],
       attributes: {
         ...currentAttributes,
         [axisKey]: value,
       },
-    }
-    onChange(newUnits)
-  }
+    };
+    onChange(newUnits);
+  };
 
   const addBookingAxis = (label: string) => {
-    const trimmed = label.trim()
-    if (!trimmed) return
-    const key = normalizeAxisKey(trimmed)
-    if (!key) return
-    if (bookingAttributeAxes.some((axis) => axis.key === key)) return
-    if (bookingAttributeAxes.length >= 3) return
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    const key = normalizeAxisKey(trimmed);
+    if (!key) return;
+    if (bookingAttributeAxes.some((axis) => axis.key === key)) return;
+    if (bookingAttributeAxes.length >= 3) return;
 
     onBookingAttributeAxesChange([
       ...bookingAttributeAxes,
       { key, label: trimmed, position: bookingAttributeAxes.length },
-    ])
-  }
+    ]);
+  };
 
   const removeBookingAxis = (key: string) => {
     const nextAxes = bookingAttributeAxes
       .filter((axis) => axis.key !== key)
-      .map((axis, index) => ({ ...axis, position: index }))
-    onBookingAttributeAxesChange(nextAxes)
+      .map((axis, index) => ({ ...axis, position: index }));
+    onBookingAttributeAxesChange(nextAxes);
 
     if (units.length > 0) {
       const nextUnits = units.map((unit) => {
-        const attributes = { ...(unit.attributes || {}) }
-        delete attributes[key]
-        return { ...unit, attributes }
-      })
-      onChange(nextUnits)
+        const attributes = { ...(unit.attributes || {}) };
+        delete attributes[key];
+        return { ...unit, attributes };
+      });
+      onChange(nextUnits);
     }
-  }
+  };
 
   const handleBulkGenerate = () => {
-    const from = parseInt(bulkFrom, 10)
-    const to = parseInt(bulkTo, 10)
-    if (isNaN(from) || isNaN(to) || from > to || to - from > 100) return
+    const from = parseInt(bulkFrom, 10);
+    const to = parseInt(bulkTo, 10);
+    if (isNaN(from) || isNaN(to) || from > to || to - from > 100) return;
 
-    const newUnits: ProductUnitInput[] = []
+    const newUnits: ProductUnitInput[] = [];
     for (let i = from; i <= to; i++) {
-      const paddedNumber = String(i).padStart(String(to).length, '0')
-      const identifier = `${bulkPrefix}${paddedNumber}`
-      if (!units.some((u) => u.identifier.toLowerCase() === identifier.toLowerCase())) {
-        newUnits.push({ identifier, notes: '', status: 'available', attributes: {} })
+      const paddedNumber = String(i).padStart(String(to).length, '0');
+      const identifier = `${bulkPrefix}${paddedNumber}`;
+      if (
+        !units.some(
+          (u) => u.identifier.toLowerCase() === identifier.toLowerCase(),
+        )
+      ) {
+        newUnits.push({
+          identifier,
+          notes: '',
+          lifecycleStatus: 'active',
+          attributes: {},
+        });
       }
     }
 
     if (newUnits.length > 0) {
-      onChange([...units, ...newUnits])
+      onChange([...units, ...newUnits]);
     }
 
-    setBulkPrefix('')
-    setBulkFrom('1')
-    setBulkTo('5')
-    setBulkOpen(false)
-  }
+    setBulkPrefix('');
+    setBulkFrom('1');
+    setBulkTo('5');
+    setBulkOpen(false);
+  };
 
   return (
     <div className="space-y-4">
@@ -682,10 +690,15 @@ export function UnitTrackingEditor({
       {/* Toggle */}
       <div className="flex items-center justify-between rounded-lg border p-4">
         <div className="space-y-0.5">
-          <Label htmlFor="unit-tracking-toggle" className="text-base font-medium">
+          <Label
+            htmlFor="unit-tracking-toggle"
+            className="text-base font-medium"
+          >
             {t('toggle')}
           </Label>
-          <p className="text-sm text-muted-foreground">{t('toggleDescription')}</p>
+          <p className="text-muted-foreground text-sm">
+            {t('toggleDescription')}
+          </p>
         </div>
         <Switch
           id="unit-tracking-toggle"
@@ -698,10 +711,12 @@ export function UnitTrackingEditor({
       {trackUnits && (
         <>
           {/* Active units count */}
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
+          <div className="bg-muted/50 flex items-center justify-between rounded-lg p-3">
             <div className="flex items-center gap-2 text-sm">
-              <Package className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">{t('quantityManagedByTracking')}</span>
+              <Package className="text-muted-foreground h-4 w-4" />
+              <span className="text-muted-foreground">
+                {t('quantityManagedByTracking')}
+              </span>
             </div>
             <span className="font-medium">
               {t('activeUnits', { count: activeUnitsCount })}
@@ -739,11 +754,15 @@ export function UnitTrackingEditor({
             {/* Attribute axes summary (read-only badges) */}
             {bookingAttributeAxes.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   {t('bookingAttributesTitle')}:
                 </span>
                 {bookingAttributeAxes.map((axis) => (
-                  <Badge key={axis.key} variant="secondary" className="gap-1 pr-1">
+                  <Badge
+                    key={axis.key}
+                    variant="secondary"
+                    className="gap-1 pr-1"
+                  >
                     {axis.label}
                     <button
                       type="button"
@@ -761,9 +780,13 @@ export function UnitTrackingEditor({
             {/* Unit rows or empty state */}
             {units.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
-                <Package className="mx-auto h-10 w-10 text-muted-foreground/40" />
-                <p className="mt-3 text-sm font-medium">{t('noUnitsRegistered')}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{t('noUnitsHint')}</p>
+                <Package className="text-muted-foreground/40 mx-auto h-10 w-10" />
+                <p className="mt-3 text-sm font-medium">
+                  {t('noUnitsRegistered')}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  {t('noUnitsHint')}
+                </p>
                 <Button
                   type="button"
                   variant="outline"
@@ -780,10 +803,12 @@ export function UnitTrackingEditor({
                 {units.map((unit, index) => {
                   const isDuplicate =
                     unit.identifier.trim() &&
-                    duplicateIdentifiers.has(unit.identifier.trim().toLowerCase())
+                    duplicateIdentifiers.has(
+                      unit.identifier.trim().toLowerCase(),
+                    );
                   const isEmpty =
                     (touchedUnits.has(index) || showValidationErrors) &&
-                    !unit.identifier.trim()
+                    !unit.identifier.trim();
 
                   return (
                     <UnitRow
@@ -798,25 +823,31 @@ export function UnitTrackingEditor({
                       onUpdate={updateUnit}
                       onUpdateAttribute={updateUnitAttribute}
                       onRemove={removeUnit}
-                      onTouch={(i) => setTouchedUnits((prev) => new Set(prev).add(i))}
+                      onTouch={(i) =>
+                        setTouchedUnits((prev) => new Set(prev).add(i))
+                      }
                     />
-                  )
+                  );
                 })}
               </div>
             )}
 
             {/* Warnings */}
             {duplicateIdentifiers.size > 0 && (
-              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-3 text-sm">
                 <AlertCircle className="h-4 w-4 shrink-0" />
                 <span>{t('duplicateIdentifier')}</span>
               </div>
             )}
 
             {missingAttributeCount > 0 && (
-              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-3 text-sm">
                 <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{t('missingAttributesWarning', { count: missingAttributeCount })}</span>
+                <span>
+                  {t('missingAttributesWarning', {
+                    count: missingAttributeCount,
+                  })}
+                </span>
               </div>
             )}
 
@@ -843,7 +874,7 @@ export function UnitTrackingEditor({
                 />
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-3">
-                <div className="rounded-lg border bg-muted/40 p-4">
+                <div className="bg-muted/40 rounded-lg border p-4">
                   <div className="grid gap-4 sm:grid-cols-4">
                     <div className="space-y-2">
                       <Label className="text-xs">{t('bulkPrefix')}</Label>
@@ -885,7 +916,7 @@ export function UnitTrackingEditor({
                       </Button>
                     </div>
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
+                  <p className="text-muted-foreground mt-3 text-xs">
                     {bulkPrefix && (
                       <>
                         {t('bulkPreview')}: {bulkPrefix}
@@ -906,7 +937,10 @@ export function UnitTrackingEditor({
       )}
 
       {/* Disable confirmation dialog */}
-      <AlertDialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
+      <AlertDialog
+        open={showDisableConfirm}
+        onOpenChange={setShowDisableConfirm}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('disableConfirm')}</AlertDialogTitle>
@@ -925,5 +959,5 @@ export function UnitTrackingEditor({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

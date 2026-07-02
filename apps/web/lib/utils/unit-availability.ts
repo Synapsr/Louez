@@ -1,17 +1,25 @@
-import { db } from '@louez/db'
 import {
+  and,
+  eq,
+  gte,
+  inArray,
+  lte,
+  not,
+} from 'drizzle-orm';
+
+import {
+  buildUnitRentableDuringPredicate,
+  db,
   productUnits,
   reservationItemUnits,
   reservationItems,
   reservations,
-} from '@louez/db'
-import { and, eq, inArray, lte, gte, not } from 'drizzle-orm'
+} from '@louez/db';
 
 export interface AvailableUnit {
-  id: string
-  identifier: string
-  notes: string | null
-  status: 'available' | 'maintenance' | 'retired'
+  id: string;
+  identifier: string;
+  notes: string | null;
 }
 
 /**
@@ -19,13 +27,17 @@ export interface AvailableUnit {
  * Units assigned to reservations with these statuses cannot be reassigned
  * to overlapping reservations.
  */
-const BLOCKING_STATUSES = ['pending', 'confirmed', 'ongoing'] as const
+const BLOCKING_STATUSES = ['pending', 'confirmed', 'ongoing'] as const;
+
+export function isUnitRentableDuring(startDate: Date, endDate: Date) {
+  return buildUnitRentableDuringPredicate(db, startDate, endDate);
+}
 
 /**
  * Get available units for a product within a date range.
  *
  * Returns units that:
- * 1. Have status 'available' (not maintenance or retired)
+ * 1. Are active and have no overlapping downtime
  * 2. Are NOT assigned to any reservation that overlaps with the given period
  *    (unless that reservation is the one being edited, via excludeReservationId)
  *
@@ -44,32 +56,29 @@ export async function getAvailableUnitsForProduct(
 ): Promise<AvailableUnit[]> {
   const unitConditions = [
     eq(productUnits.productId, productId),
-    eq(productUnits.status, 'available'),
-  ]
+    isUnitRentableDuring(startDate, endDate),
+  ];
 
   if (combinationKey) {
-    unitConditions.push(eq(productUnits.combinationKey, combinationKey))
+    unitConditions.push(eq(productUnits.combinationKey, combinationKey));
   }
 
-  // 1. Get all units for the product with status 'available'
+  // 1. Get all rentable units for the product
   const allUnits = await db
     .select({
       id: productUnits.id,
       identifier: productUnits.identifier,
       notes: productUnits.notes,
-      status: productUnits.status,
     })
     .from(productUnits)
-    .where(
-      and(...unitConditions),
-    )
+    .where(and(...unitConditions));
 
   if (allUnits.length === 0) {
-    return []
+    return [];
   }
 
   // 2. Find units that are assigned to overlapping reservations
-  const unitIds = allUnits.map((u) => u.id)
+  const unitIds = allUnits.map((u) => u.id);
 
   // Build the reservation filter conditions
   const reservationConditions = [
@@ -78,11 +87,11 @@ export async function getAvailableUnitsForProduct(
     gte(reservations.endDate, startDate),
     // Only blocking statuses
     inArray(reservations.status, [...BLOCKING_STATUSES]),
-  ]
+  ];
 
   // Exclude specific reservation if editing
   if (excludeReservationId) {
-    reservationConditions.push(not(eq(reservations.id, excludeReservationId)))
+    reservationConditions.push(not(eq(reservations.id, excludeReservationId)));
   }
 
   // Query for busy units
@@ -91,17 +100,26 @@ export async function getAvailableUnitsForProduct(
       productUnitId: reservationItemUnits.productUnitId,
     })
     .from(reservationItemUnits)
-    .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))
-    .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-    .where(
-      and(inArray(reservationItemUnits.productUnitId, unitIds), ...reservationConditions)
+    .innerJoin(
+      reservationItems,
+      eq(reservationItemUnits.reservationItemId, reservationItems.id),
     )
+    .innerJoin(
+      reservations,
+      eq(reservationItems.reservationId, reservations.id),
+    )
+    .where(
+      and(
+        inArray(reservationItemUnits.productUnitId, unitIds),
+        ...reservationConditions,
+      ),
+    );
 
   // 3. Filter out busy units
-  const busyUnitIds = new Set(busyUnitAssignments.map((a) => a.productUnitId))
-  const availableUnits = allUnits.filter((unit) => !busyUnitIds.has(unit.id))
+  const busyUnitIds = new Set(busyUnitAssignments.map((a) => a.productUnitId));
+  const availableUnits = allUnits.filter((unit) => !busyUnitIds.has(unit.id));
 
-  return availableUnits
+  return availableUnits;
 }
 
 /**
@@ -117,21 +135,35 @@ export async function checkUnitsAvailability(
   unitIds: string[],
   startDate: Date,
   endDate: Date,
-  excludeReservationId?: string
+  excludeReservationId?: string,
 ): Promise<Record<string, boolean>> {
   if (unitIds.length === 0) {
-    return {}
+    return {};
   }
+
+  const rentableUnits = await db
+    .select({
+      id: productUnits.id,
+    })
+    .from(productUnits)
+    .where(
+      and(
+        inArray(productUnits.id, unitIds),
+        isUnitRentableDuring(startDate, endDate),
+      ),
+    );
+
+  const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
 
   // Build the reservation filter conditions
   const reservationConditions = [
     lte(reservations.startDate, endDate),
     gte(reservations.endDate, startDate),
     inArray(reservations.status, [...BLOCKING_STATUSES]),
-  ]
+  ];
 
   if (excludeReservationId) {
-    reservationConditions.push(not(eq(reservations.id, excludeReservationId)))
+    reservationConditions.push(not(eq(reservations.id, excludeReservationId)));
   }
 
   // Find busy units among the requested ones
@@ -140,21 +172,31 @@ export async function checkUnitsAvailability(
       productUnitId: reservationItemUnits.productUnitId,
     })
     .from(reservationItemUnits)
-    .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))
-    .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-    .where(
-      and(inArray(reservationItemUnits.productUnitId, unitIds), ...reservationConditions)
+    .innerJoin(
+      reservationItems,
+      eq(reservationItemUnits.reservationItemId, reservationItems.id),
     )
+    .innerJoin(
+      reservations,
+      eq(reservationItems.reservationId, reservations.id),
+    )
+    .where(
+      and(
+        inArray(reservationItemUnits.productUnitId, unitIds),
+        ...reservationConditions,
+      ),
+    );
 
-  const busyUnitIds = new Set(busyUnitAssignments.map((a) => a.productUnitId))
+  const busyUnitIds = new Set(busyUnitAssignments.map((a) => a.productUnitId));
 
   // Build availability map
-  const availability: Record<string, boolean> = {}
+  const availability: Record<string, boolean> = {};
   for (const unitId of unitIds) {
-    availability[unitId] = !busyUnitIds.has(unitId)
+    availability[unitId] =
+      rentableUnitIds.has(unitId) && !busyUnitIds.has(unitId);
   }
 
-  return availability
+  return availability;
 }
 
 /**
@@ -164,13 +206,13 @@ export async function checkUnitsAvailability(
  * @returns Array of assigned units with their snapshot identifiers
  */
 export async function getAssignedUnitsForReservationItem(
-  reservationItemId: string
+  reservationItemId: string,
 ): Promise<
   Array<{
-    id: string
-    productUnitId: string
-    identifierSnapshot: string
-    assignedAt: Date
+    id: string;
+    productUnitId: string;
+    identifierSnapshot: string;
+    assignedAt: Date;
   }>
 > {
   const assigned = await db
@@ -181,7 +223,7 @@ export async function getAssignedUnitsForReservationItem(
       assignedAt: reservationItemUnits.assignedAt,
     })
     .from(reservationItemUnits)
-    .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+    .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
 
-  return assigned
+  return assigned;
 }

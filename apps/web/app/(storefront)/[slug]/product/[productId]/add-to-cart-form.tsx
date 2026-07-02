@@ -10,7 +10,7 @@ import {
 import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import type { PricingMode, BusinessHours } from '@louez/types';
+import type { BusinessHours, PricingMode } from '@louez/types';
 import type { Rate } from '@louez/types';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
@@ -31,11 +31,11 @@ import {
   allocateAcrossCombinations,
   buildCombinationKey,
   calculateDurationMinutes,
-  calculateRentalPrice,
   calculateRateBasedPrice,
+  calculateRentalPrice,
   calculateSeasonalAwarePrice,
-  getAvailableDurations,
   getAvailableDurationMinutes,
+  getAvailableDurations,
   getDeterministicCombinationSortValue,
   getSelectionCapacity,
   isRateBasedProduct,
@@ -107,7 +107,7 @@ interface AddToCartFormProps {
   }>;
   bookingAttributeValues?: Record<string, string[]>;
   productUnits?: Array<{
-    status: 'available' | 'maintenance' | 'retired' | null;
+    lifecycleStatus: 'active' | 'retired' | null;
     attributes: Record<string, string> | null;
   }>;
   bookingCombinations?: Array<{
@@ -164,7 +164,7 @@ export function AddToCartForm({
     >();
 
     for (const unit of productUnits) {
-      if ((unit.status || 'available') !== 'available') continue;
+      if ((unit.lifecycleStatus || 'active') !== 'active') continue;
 
       const selected = unit.attributes || {};
       const combinationKey = buildCombinationKey(
@@ -313,64 +313,67 @@ export function AddToCartForm({
   // Use seasonal-aware calculation when seasonal pricings exist and dates are set
   const hasSeasonalPricings = seasonalPricings.length > 0;
 
-  const priceResult = hasSeasonalPricings && startDate && endDate
-    ? (() => {
-        const result = calculateSeasonalAwarePrice(
-          {
-            basePrice: price,
-            basePeriodMinutes: basePeriodMinutes ?? null,
-            deposit,
-            pricingMode,
-            enforceStrictTiers,
-            tiers: normalizedPricingTiers,
-            rates: rateTiers,
-          },
-          seasonalPricings,
-          startDate,
-          endDate,
-          quantity,
-        );
-        return {
-          subtotal: result.subtotal,
-          originalSubtotal: result.originalSubtotal,
-          savings: result.savings,
-          discountPercent: result.savings > 0 && result.originalSubtotal > 0
-            ? Math.round((result.savings / result.originalSubtotal) * 100)
-            : null,
-        };
-      })()
-    : (() => {
-        const result = isRateBased
-          ? calculateRateBasedPrice(
-              {
-                basePrice: price,
-                basePeriodMinutes: basePeriodMinutes ?? 1440,
-                deposit,
-                rates: rateTiers,
-                enforceStrictTiers,
-              },
-              Math.max(1, durationMinutes),
-              quantity,
-            )
-          : calculateRentalPrice(
-              {
-                basePrice: price,
-                deposit,
-                pricingMode,
-                tiers: normalizedPricingTiers,
-              } as ProductPricing,
-              duration,
-              quantity,
-            );
-        return {
-          subtotal: result.subtotal,
-          originalSubtotal: result.originalSubtotal,
-          savings: result.savings,
-          discountPercent: 'reductionPercent' in result
-            ? result.reductionPercent
-            : result.discountPercent,
-        };
-      })();
+  const priceResult =
+    hasSeasonalPricings && startDate && endDate
+      ? (() => {
+          const result = calculateSeasonalAwarePrice(
+            {
+              basePrice: price,
+              basePeriodMinutes: basePeriodMinutes ?? null,
+              deposit,
+              pricingMode,
+              enforceStrictTiers,
+              tiers: normalizedPricingTiers,
+              rates: rateTiers,
+            },
+            seasonalPricings,
+            startDate,
+            endDate,
+            quantity,
+          );
+          return {
+            subtotal: result.subtotal,
+            originalSubtotal: result.originalSubtotal,
+            savings: result.savings,
+            discountPercent:
+              result.savings > 0 && result.originalSubtotal > 0
+                ? Math.round((result.savings / result.originalSubtotal) * 100)
+                : null,
+          };
+        })()
+      : (() => {
+          const result = isRateBased
+            ? calculateRateBasedPrice(
+                {
+                  basePrice: price,
+                  basePeriodMinutes: basePeriodMinutes ?? 1440,
+                  deposit,
+                  rates: rateTiers,
+                  enforceStrictTiers,
+                },
+                Math.max(1, durationMinutes),
+                quantity,
+              )
+            : calculateRentalPrice(
+                {
+                  basePrice: price,
+                  deposit,
+                  pricingMode,
+                  tiers: normalizedPricingTiers,
+                } as ProductPricing,
+                duration,
+                quantity,
+              );
+          return {
+            subtotal: result.subtotal,
+            originalSubtotal: result.originalSubtotal,
+            savings: result.savings,
+            discountPercent:
+              'reductionPercent' in result
+                ? result.reductionPercent
+                : result.discountPercent,
+          };
+        })();
   const subtotal = priceResult.subtotal;
   const originalSubtotal = priceResult.originalSubtotal;
   const savings = priceResult.savings;
@@ -448,7 +451,8 @@ export function AddToCartForm({
               price: tier.price,
             })),
             productPricingMode: pricingMode,
-            seasonalPricings: seasonalPricings.length > 0 ? seasonalPricings : undefined,
+            seasonalPricings:
+              seasonalPricings.length > 0 ? seasonalPricings : undefined,
             selectedAttributes: allocation.combination.selectedAttributes,
           },
           storeSlug,
@@ -475,7 +479,8 @@ export function AddToCartForm({
             price: tier.price,
           })),
           productPricingMode: pricingMode,
-          seasonalPricings: seasonalPricings.length > 0 ? seasonalPricings : undefined,
+          seasonalPricings:
+            seasonalPricings.length > 0 ? seasonalPricings : undefined,
           selectedAttributes,
         },
         storeSlug,
