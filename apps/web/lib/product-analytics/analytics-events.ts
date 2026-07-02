@@ -4,6 +4,8 @@ export const productAnalyticsEvents = {
   checkoutReservationCreated: 'checkout_reservation_created',
   checkoutPaymentStarted: 'checkout_payment_started',
   checkoutPaymentCompleted: 'checkout_payment_completed',
+  quoteAccepted: 'quote_accepted',
+  quoteDeclined: 'quote_declined',
   onboardingStoreInfoSaved: 'onboarding_store_info_saved',
   onboardingCompleted: 'onboarding_completed',
 } as const;

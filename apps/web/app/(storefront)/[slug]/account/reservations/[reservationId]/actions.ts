@@ -17,6 +17,11 @@ import {
   recordReservationFee,
   voidReservationFee,
 } from '@/lib/pay-as-you-go';
+import {
+  captureProductServerEvent,
+  toAnalyticsAmountCents,
+} from '@/lib/product-analytics/analytics';
+import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
 import { getEffectiveReservationMode } from '@/lib/reservation-mode';
 import { getStorefrontUrl } from '@/lib/storefront-url';
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
@@ -181,6 +186,29 @@ async function createReservationPaymentSessionForCustomer(
       createdAt: new Date(),
     });
 
+    await captureProductServerEvent({
+      distinctId: customerId,
+      event: productAnalyticsEvents.checkoutPaymentStarted,
+      properties: {
+        feature: 'customer_account',
+        surface: 'storefront',
+        store_id: store.id,
+        reservation_id: reservationId,
+        customer_id: customerId,
+        source,
+        payment_provider: 'stripe',
+        payment_mode: 'full',
+        amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
+        total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
+        deposit_amount_cents: toAnalyticsAmountCents(
+          reservation.depositAmount,
+        ),
+        application_fee_cents: feePlan.applicationFeeCents,
+        reservation_fee_cents: feePlan.reservationFeeCents,
+        currency,
+      },
+    });
+
     return { success: true, paymentUrl: url };
   } catch (error) {
     console.error('Error creating payment session:', error);
@@ -270,6 +298,24 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   if (!accepted) {
     return { error: 'errors.invalidStatus' };
   }
+
+  await captureProductServerEvent({
+    distinctId: session.customerId,
+    event: productAnalyticsEvents.quoteAccepted,
+    properties: {
+      feature: 'customer_account',
+      surface: 'storefront',
+      store_id: store.id,
+      reservation_id: reservationId,
+      customer_id: session.customerId,
+      source: 'customer_account',
+      reservation_mode: getEffectiveReservationMode(store),
+      catalog_line_count: reservation.items.length,
+      total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
+      deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
+      currency: store.settings?.currency || 'EUR',
+    },
+  });
 
   let paymentUrl: string | null = null;
   if (getEffectiveReservationMode(store) === 'payment') {
@@ -447,6 +493,21 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
     activityType: 'quote_declined',
     metadata: { source: 'quote_decline', actor: 'customer' },
     createdAt: new Date(),
+  });
+
+  await captureProductServerEvent({
+    distinctId: session.customerId,
+    event: productAnalyticsEvents.quoteDeclined,
+    properties: {
+      feature: 'customer_account',
+      surface: 'storefront',
+      store_id: store.id,
+      reservation_id: reservationId,
+      customer_id: session.customerId,
+      source: 'customer_account',
+      total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
+      currency: store.settings?.currency || 'EUR',
+    },
   });
 
   // Notify the store owner
