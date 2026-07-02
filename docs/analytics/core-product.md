@@ -5,6 +5,9 @@
 - Outil : PostHog
 - Projet : `Louez.io` / `Default project` / id `118395`
 - Periode par defaut : `-30d` pour le suivi courant, `-90d` pour relire un flux peu frequente
+- Dashboards :
+  - [Louez Activation & Revenue](https://eu.posthog.com/project/118395/dashboard/787983) : funnels onboarding/checkout, reservations par canal, revenue encaisse, boutiques actives
+  - [Louez Core Metrics](https://eu.posthog.com/project/118395/dashboard/768690) : trafic, identification, friction, web vitals
 
 ## Role des outils
 
@@ -31,6 +34,10 @@ OpenReplay est la source pour les replays de sessions. Les analyses qualitatives
 | `checkout_reservation_created`  | Apres creation d'une reservation storefront        | `customer.id`  | `store_id`, `reservation_id`, `customer_id`, counts, flags livraison/assurance/promo/paiement, montants en cents                                 |
 | `checkout_payment_started`      | Apres creation d'une session Stripe Checkout       | `customer.id`  | `store_id`, `reservation_id`, `payment_provider`, `payment_mode`, montants/frais en cents                                                        |
 | `checkout_payment_completed`    | Apres reconciliation d'un paiement Stripe complete | `customer.id`  | `store_id`, `reservation_id`, source `stripe_connect_webhook` ou `success_page_verification`, statut avant confirmation, montants/frais en cents |
+| `quote_accepted`                | Quand le client accepte un devis (compte client)   | `customer.id`  | `store_id`, `reservation_id`, `reservation_mode`, `catalog_line_count`, montants en cents                                                        |
+| `quote_declined`                | Quand le client refuse un devis (compte client)    | `customer.id`  | `store_id`, `reservation_id`, `total_amount_cents`, `currency`                                                                                   |
+
+Note : `checkout_payment_started` est aussi emis depuis le compte client (`feature: customer_account`) quand une session Stripe est creee via `createReservationPaymentSession`, avec `source` = `account_page` ou `quote_acceptance`. Le chemin inline du checkout (`source: storefront_checkout`) ne s'execute que pour les stores en `reservationMode = payment` ; toutes les boutiques actuelles sont en mode `request`, donc le volume vient du compte client.
 
 Les proprietes ne doivent pas contenir de nom client, email, telephone, adresse, nom produit, note libre ou payload Stripe complet. Les IDs internes, montants agreges, counts, flags et statuts sont autorises.
 
@@ -41,14 +48,19 @@ Les proprietes ne doivent pas contenir de nom client, email, telephone, adresse,
 
 ## Funnels initiaux
 
-- Onboarding : `onboarding_store_info_saved` -> `onboarding_completed` -> `product_created`
+- Onboarding : `onboarding_store_info_saved` -> `onboarding_completed` -> `product_created` — [insight frgZ4fDn](https://eu.posthog.com/project/118395/insights/frgZ4fDn)
 - Catalogue marchand : `product_created` -> `dashboard_reservation_created`
-- Checkout storefront : `checkout_reservation_created` -> `checkout_payment_started` -> `checkout_payment_completed`
+- Checkout storefront : `checkout_reservation_created` -> `quote_accepted` (optionnel) -> `checkout_payment_started` (optionnel) -> `checkout_payment_completed` — [insight 1cmroYUG](https://eu.posthog.com/project/118395/insights/1cmroYUG). Toutes les etapes utilisent `customer.id`, le funnel est donc coherent cote identite.
 - Paiement sans friction : `checkout_payment_started` -> `checkout_payment_completed`, breakdown par `payment_mode`, `reservation_fee_cents`, `has_tulip_insurance`, `has_delivery`
+
+Attention identite : un funnel `dashboard_reservation_created` (distinct id = `store.userId`) -> `quote_accepted` (distinct id = `customer.id`) ne convertira jamais, les deux etapes appartiennent a des personnes differentes. Les funnels doivent rester dans un seul stream d'identite (marchand ou client).
 
 ## Limites connues
 
 - Les replays sont a regarder dans OpenReplay.
-- Les dead clicks PostHog ne sont pas actives dans le projet au 2026-06-26.
-- Les exceptions PostHog ne sont pas encore instrumentees comme source d'erreur produit au 2026-06-26.
-- Les events P1 demarrent a partir du deploy qui contient cette instrumentation ; les periodes precedentes resteront vides pour ces noms d'evenements.
+- Dead clicks actives dans le projet le 2026-07-02 (`capture_dead_clicks`) ; les donnees demarrent a cette date.
+- Exception autocapture activee le 2026-07-02 (`autocapture_exceptions_opt_in`) ; a surveiller cote privacy (messages, stack traces) avant d'elargir.
+- Les events P1 demarrent a partir du deploy qui contient cette instrumentation ; les periodes precedentes resteront vides pour ces noms d'evenements. Premiere ingestion observee : 2026-06-26. `quote_accepted` / `quote_declined` et le `checkout_payment_started` du compte client demarrent au deploy suivant le 2026-07-02.
+- Storefront track dans PostHog depuis le deploy du 2026-07-02 (fix `/ingest` dans `proxy.ts` + config exemptee de consentement : `persistence: memory`, events anonymes, pas de replay/autocapture/heatmaps — voir [setup-review-2026-07.md](setup-review-2026-07.md)). Avant cette date : zero event client storefront. Les pageviews storefront portent `surface: storefront` et `store_slug`. Le tracking MySQL via `/api/track` (`pageViews`, `storefrontEvents`) continue en parallele.
+- Les visiteurs storefront sont anonymes et changent de distinct id a chaque rechargement complet : funnels intra-session uniquement, pas de stitch automatique avec les events serveur en `customer.id`.
+- Toutes les boutiques sont en `reservationMode = request` : le paiement se joue apres acceptation du devis, pas au checkout. Interpreter les funnels checkout en consequence.

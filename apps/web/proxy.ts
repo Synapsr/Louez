@@ -160,9 +160,15 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // -----------------------------------------------------------------------------
-  // 1. PASS THROUGH: API routes and static assets
+  // 1. PASS THROUGH: API routes, PostHog ingest proxy, and static assets
   // -----------------------------------------------------------------------------
-  if (pathname.startsWith('/api') || isStaticAsset(pathname)) {
+  // /ingest must reach the next.config.ts rewrites untouched: rewriting it to
+  // /{slug}/ingest on storefront subdomains 404s every PostHog capture call.
+  if (
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/ingest') ||
+    isStaticAsset(pathname)
+  ) {
     return NextResponse.next();
   }
 
