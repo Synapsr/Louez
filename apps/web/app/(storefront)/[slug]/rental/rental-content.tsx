@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
+import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowRight,
@@ -18,6 +18,12 @@ import {
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+import type {
+  BusinessHours,
+  BusinessHoursValidation,
+  CombinationAvailability,
+  ProductAvailability,
+} from '@louez/types';
 import { Button } from '@louez/ui';
 import { Input } from '@louez/ui';
 import { Badge } from '@louez/ui';
@@ -37,6 +43,7 @@ import { DatePickerModal } from '@/components/storefront/date-picker-modal';
 import { PageTracker } from '@/components/storefront/page-tracker';
 import { ProductCardAvailable } from '@/components/storefront/product-card-available';
 
+import { orpc } from '@/lib/orpc/react';
 import {
   type PricingMode,
   calculateDuration,
@@ -47,14 +54,6 @@ import {
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
 import { useCart } from '@/contexts/cart-context';
-
-import type {
-  BusinessHours,
-  BusinessHoursValidation,
-  CombinationAvailability,
-  ProductAvailability,
-} from '@louez/types';
-import { orpc } from '@/lib/orpc/react';
 
 interface PricingTier {
   id: string;
@@ -83,7 +82,12 @@ interface SeasonalPricingData {
   startDate: string;
   endDate: string;
   basePrice: number;
-  tiers: { id: string; minDuration: number; discountPercent: number; displayOrder: number }[];
+  tiers: {
+    id: string;
+    minDuration: number;
+    discountPercent: number;
+    displayOrder: number;
+  }[];
   rates: { id: string; period: number; price: number; displayOrder: number }[];
 }
 
@@ -103,9 +107,13 @@ interface Product {
   videoUrl?: string | null;
   accessories?: Accessory[];
   trackUnits?: boolean | null;
-  bookingAttributeAxes?: Array<{ key: string; label: string; position: number }> | null;
+  bookingAttributeAxes?: Array<{
+    key: string;
+    label: string;
+    position: number;
+  }> | null;
   units?: Array<{
-    status: 'available' | 'maintenance' | 'retired' | null;
+    lifecycleStatus: 'active' | 'retired' | null;
     attributes: Record<string, string> | null;
   }>;
   seasonalPricings?: SeasonalPricingData[];
@@ -257,10 +265,14 @@ export function RentalContent({
 
     return [...filteredProducts].sort((a, b) => {
       const aCategoryOrder = a.category?.id
-        ? (categoryOrderById.get(a.category.id) ?? a.category.order ?? uncategorizedOrder)
+        ? (categoryOrderById.get(a.category.id) ??
+          a.category.order ??
+          uncategorizedOrder)
         : uncategorizedOrder;
       const bCategoryOrder = b.category?.id
-        ? (categoryOrderById.get(b.category.id) ?? b.category.order ?? uncategorizedOrder)
+        ? (categoryOrderById.get(b.category.id) ??
+          b.category.order ??
+          uncategorizedOrder)
         : uncategorizedOrder;
 
       if (aCategoryOrder !== bCategoryOrder) {
@@ -279,7 +291,9 @@ export function RentalContent({
         return availabilityOrder;
       }
 
-      return (originalOrderById.get(a.id) ?? 0) - (originalOrderById.get(b.id) ?? 0);
+      return (
+        (originalOrderById.get(a.id) ?? 0) - (originalOrderById.get(b.id) ?? 0)
+      );
     });
   }, [filteredProducts, availability, categories]);
 
@@ -445,9 +459,7 @@ export function RentalContent({
           {businessHoursValidation && !businessHoursValidation.valid && (
             <Alert variant="warning">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>
-                {t('businessHoursWarning.title')}
-              </AlertTitle>
+              <AlertTitle>{t('businessHoursWarning.title')}</AlertTitle>
               <AlertDescription>
                 {businessHoursValidation.errors.map((error) => {
                   // Parse error like "pickup_outside_hours" or "return_day_closed"
@@ -494,7 +506,9 @@ export function RentalContent({
                       <SelectValue placeholder={tFilters('categories')}>
                         {selectedCategory === 'all'
                           ? tFilters('allCategories')
-                          : categories.find(cat => cat.id === selectedCategory)?.name}
+                          : categories.find(
+                              (cat) => cat.id === selectedCategory,
+                            )?.name}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -502,7 +516,11 @@ export function RentalContent({
                         {tFilters('allCategories')}
                       </SelectItem>
                       {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id} label={cat.name}>
+                        <SelectItem
+                          key={cat.id}
+                          value={cat.id}
+                          label={cat.name}
+                        >
                           {cat.name}
                         </SelectItem>
                       ))}
@@ -554,7 +572,9 @@ export function RentalContent({
                       <SelectValue placeholder={tFilters('categories')}>
                         {selectedCategory === 'all'
                           ? tFilters('allCategories')
-                          : categories.find(cat => cat.id === selectedCategory)?.name}
+                          : categories.find(
+                              (cat) => cat.id === selectedCategory,
+                            )?.name}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
@@ -562,7 +582,11 @@ export function RentalContent({
                         {tFilters('allCategories')}
                       </SelectItem>
                       {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id} label={cat.name}>
+                        <SelectItem
+                          key={cat.id}
+                          value={cat.id}
+                          label={cat.name}
+                        >
                           {cat.name}
                         </SelectItem>
                       ))}
@@ -622,7 +646,9 @@ export function RentalContent({
                     }
                     startDate={startDate}
                     endDate={endDate}
-                    availableCombinations={(avail?.combinations || []) as CombinationAvailability[]}
+                    availableCombinations={
+                      (avail?.combinations || []) as CombinationAvailability[]
+                    }
                   />
                 );
               })}

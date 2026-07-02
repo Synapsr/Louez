@@ -358,6 +358,13 @@
       "when": 1782466339047,
       "tag": "0047_add_quote_activity_types",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "5",
+      "when": 1782998212193,
+      "tag": "0048_breezy_radioactive_man",
+      "breakpoints": true
     }
   ]
 }

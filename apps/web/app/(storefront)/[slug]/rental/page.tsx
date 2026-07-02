@@ -1,55 +1,68 @@
-import type { Metadata } from 'next'
-import { Suspense } from 'react'
-import { getTranslations } from 'next-intl/server'
-import { db } from '@louez/db'
-import { stores, products, categories, productPricingTiers, productAccessories, productUnits, productSeasonalPricing, productSeasonalPricingTiers } from '@louez/db'
-import { eq, and, inArray, desc, asc } from 'drizzle-orm'
-import { notFound } from 'next/navigation'
-import { storefrontRedirect } from '@/lib/storefront-url'
+import { Suspense } from 'react';
 
-import { RentalContent } from './rental-content'
-import { Skeleton } from '@louez/ui'
-import { generateStoreMetadata } from '@/lib/seo'
-import type { StoreSettings, StoreTheme } from '@louez/types'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { getTranslations } from 'next-intl/server';
+
+import { db } from '@louez/db';
+import {
+  categories,
+  productAccessories,
+  productPricingTiers,
+  productSeasonalPricing,
+  productSeasonalPricingTiers,
+  productUnits,
+  products,
+  stores,
+} from '@louez/db';
+import type { StoreSettings, StoreTheme } from '@louez/types';
+import { Skeleton } from '@louez/ui';
+
+import { generateStoreMetadata } from '@/lib/seo';
+import { storefrontRedirect } from '@/lib/storefront-url';
+
+import { RentalContent } from './rental-content';
 
 interface RentalPageProps {
-  params: Promise<{ slug: string }>
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{
-    startDate?: string
-    endDate?: string
-    category?: string
-    search?: string
-  }>
+    startDate?: string;
+    endDate?: string;
+    category?: string;
+    search?: string;
+  }>;
 }
 
 export async function generateMetadata({
   params,
   searchParams,
 }: RentalPageProps): Promise<Metadata> {
-  const { slug } = await params
-  const { startDate, endDate } = await searchParams
+  const { slug } = await params;
+  const { startDate, endDate } = await searchParams;
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
-  })
+  });
 
   if (!store) {
-    return { title: 'Boutique introuvable' }
+    return { title: 'Boutique introuvable' };
   }
 
-  const theme = (store.theme as StoreTheme) || {}
-  const settings = (store.settings as StoreSettings) || {}
+  const theme = (store.theme as StoreTheme) || {};
+  const settings = (store.settings as StoreSettings) || {};
 
   // Format dates for title if valid
-  let dateRange = ''
+  let dateRange = '';
   if (startDate && endDate) {
     try {
-      const start = new Date(startDate)
-      const end = new Date(endDate)
+      const start = new Date(startDate);
+      const end = new Date(endDate);
       if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-        dateRange = ` du ${format(start, 'd MMM', { locale: fr })} au ${format(end, 'd MMM yyyy', { locale: fr })}`
+        dateRange = ` du ${format(start, 'd MMM', { locale: fr })} au ${format(end, 'd MMM yyyy', { locale: fr })}`;
       }
     } catch {
       // Ignore date formatting errors
@@ -69,52 +82,57 @@ export async function generateMetadata({
       description: `Consultez les équipements disponibles à la location${dateRange} chez ${store.name}.`,
       path: '/rental',
       noIndex: true, // Don't index search results pages
-    }
-  )
+    },
+  );
 }
 
 export default async function RentalPage({
   params,
   searchParams,
 }: RentalPageProps) {
-  const { slug } = await params
-  const { startDate, endDate, category: categoryId, search } = await searchParams
-  const t = await getTranslations('storefront.availability')
+  const { slug } = await params;
+  const {
+    startDate,
+    endDate,
+    category: categoryId,
+    search,
+  } = await searchParams;
+  const t = await getTranslations('storefront.availability');
 
   // Redirect to homepage if no dates
   if (!startDate || !endDate) {
-    storefrontRedirect(slug, '/')
+    storefrontRedirect(slug, '/');
   }
 
   // Validate dates
-  const start = new Date(startDate)
-  const end = new Date(endDate)
+  const start = new Date(startDate);
+  const end = new Date(endDate);
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
-    storefrontRedirect(slug, '/')
+    storefrontRedirect(slug, '/');
   }
 
   // Fetch store
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
-  })
+  });
 
   if (!store) {
-    notFound()
+    notFound();
   }
 
   // Fetch categories
   const storeCategories = await db.query.categories.findMany({
     where: eq(categories.storeId, store.id),
     orderBy: [categories.order],
-  })
+  });
 
   // Build conditions for products query
   const conditions = [
     eq(products.storeId, store.id),
     eq(products.status, 'active'),
-  ]
+  ];
   if (categoryId) {
-    conditions.push(eq(products.categoryId, categoryId))
+    conditions.push(eq(products.categoryId, categoryId));
   }
 
   // Fetch product IDs first (lightweight query)
@@ -123,52 +141,59 @@ export default async function RentalPage({
     .select({ id: products.id })
     .from(products)
     .where(and(...conditions))
-    .orderBy(asc(products.displayOrder), desc(products.createdAt))
+    .orderBy(asc(products.displayOrder), desc(products.createdAt));
 
   // Fetch full product data
   interface PricingTier {
-    id: string
-    minDuration: number | null
-    discountPercent: string | null
-    period: number | null
-    price: string | null
-    displayOrder: number | null
+    id: string;
+    minDuration: number | null;
+    discountPercent: string | null;
+    period: number | null;
+    price: string | null;
+    displayOrder: number | null;
   }
   interface Accessory {
-    id: string
-    name: string
-    price: string
-    deposit: string
-    images: string[] | null
-    quantity: number
-    pricingMode: 'day' | 'hour' | 'week' | null
-    pricingTiers?: PricingTier[]
+    id: string;
+    name: string;
+    price: string;
+    deposit: string;
+    images: string[] | null;
+    quantity: number;
+    pricingMode: 'day' | 'hour' | 'week' | null;
+    pricingTiers?: PricingTier[];
   }
   interface ProductUnitSummary {
-    status: 'available' | 'maintenance' | 'retired' | null
-    attributes: Record<string, string> | null
+    lifecycleStatus: 'active' | 'retired' | null;
+    attributes: Record<string, string> | null;
   }
   interface SeasonalPricingForProduct {
-    id: string
-    name: string
-    startDate: string
-    endDate: string
-    basePrice: number
-    tiers: { id: string; minDuration: number; discountPercent: number; displayOrder: number }[]
-    rates: { id: string; period: number; price: number; displayOrder: number }[]
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    basePrice: number;
+    tiers: {
+      id: string;
+      minDuration: number;
+      discountPercent: number;
+      displayOrder: number;
+    }[];
+    rates: {
+      id: string;
+      period: number;
+      price: number;
+      displayOrder: number;
+    }[];
   }
-  let productsList: (
-    typeof products.$inferSelect
-    & {
-      category: typeof categories.$inferSelect | null
-      pricingTiers?: PricingTier[]
-      accessories?: Accessory[]
-      units?: ProductUnitSummary[]
-      seasonalPricings?: SeasonalPricingForProduct[]
-    }
-  )[] = []
+  let productsList: (typeof products.$inferSelect & {
+    category: typeof categories.$inferSelect | null;
+    pricingTiers?: PricingTier[];
+    accessories?: Accessory[];
+    units?: ProductUnitSummary[];
+    seasonalPricings?: SeasonalPricingForProduct[];
+  })[] = [];
   if (productIds.length > 0) {
-    const productIdsArray = productIds.map(p => p.id)
+    const productIdsArray = productIds.map((p) => p.id);
 
     // Fetch products with categories
     const productResults = await db
@@ -203,18 +228,18 @@ export default async function RentalPage({
       })
       .from(products)
       .leftJoin(categories, eq(products.categoryId, categories.id))
-      .where(inArray(products.id, productIdsArray))
+      .where(inArray(products.id, productIdsArray));
 
     // Fetch pricing tiers for all products
     const pricingTiersResults = await db
       .select()
       .from(productPricingTiers)
-      .where(inArray(productPricingTiers.productId, productIdsArray))
+      .where(inArray(productPricingTiers.productId, productIdsArray));
 
     // Group pricing tiers by product ID
-    const pricingTiersByProductId = new Map<string, PricingTier[]>()
+    const pricingTiersByProductId = new Map<string, PricingTier[]>();
     for (const tier of pricingTiersResults) {
-      const tiers = pricingTiersByProductId.get(tier.productId) || []
+      const tiers = pricingTiersByProductId.get(tier.productId) || [];
       tiers.push({
         id: tier.id,
         minDuration: tier.minDuration,
@@ -222,36 +247,48 @@ export default async function RentalPage({
         period: tier.period,
         price: tier.price,
         displayOrder: tier.displayOrder,
-      })
-      pricingTiersByProductId.set(tier.productId, tiers)
+      });
+      pricingTiersByProductId.set(tier.productId, tiers);
     }
 
     // Fetch seasonal pricings for all products
     const seasonalPricingsResults = await db
       .select()
       .from(productSeasonalPricing)
-      .where(inArray(productSeasonalPricing.productId, productIdsArray))
+      .where(inArray(productSeasonalPricing.productId, productIdsArray));
 
-    const seasonalPricingIds = seasonalPricingsResults.map((sp) => sp.id)
-    const seasonalTiersResults = seasonalPricingIds.length > 0
-      ? await db
-          .select()
-          .from(productSeasonalPricingTiers)
-          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, seasonalPricingIds))
-      : []
+    const seasonalPricingIds = seasonalPricingsResults.map((sp) => sp.id);
+    const seasonalTiersResults =
+      seasonalPricingIds.length > 0
+        ? await db
+            .select()
+            .from(productSeasonalPricingTiers)
+            .where(
+              inArray(
+                productSeasonalPricingTiers.seasonalPricingId,
+                seasonalPricingIds,
+              ),
+            )
+        : [];
 
     // Group seasonal tiers by seasonal pricing ID
-    const seasonalTiersByPricingId = new Map<string, typeof seasonalTiersResults>()
+    const seasonalTiersByPricingId = new Map<
+      string,
+      typeof seasonalTiersResults
+    >();
     for (const tier of seasonalTiersResults) {
-      const tiers = seasonalTiersByPricingId.get(tier.seasonalPricingId) || []
-      tiers.push(tier)
-      seasonalTiersByPricingId.set(tier.seasonalPricingId, tiers)
+      const tiers = seasonalTiersByPricingId.get(tier.seasonalPricingId) || [];
+      tiers.push(tier);
+      seasonalTiersByPricingId.set(tier.seasonalPricingId, tiers);
     }
 
     // Group seasonal pricings by product ID, converting to SeasonalPricingConfig format
-    const seasonalPricingsByProductId = new Map<string, SeasonalPricingForProduct[]>()
+    const seasonalPricingsByProductId = new Map<
+      string,
+      SeasonalPricingForProduct[]
+    >();
     for (const sp of seasonalPricingsResults) {
-      const spTiers = seasonalTiersByPricingId.get(sp.id) || []
+      const spTiers = seasonalTiersByPricingId.get(sp.id) || [];
       const config: SeasonalPricingForProduct = {
         id: sp.id,
         name: sp.name,
@@ -274,30 +311,30 @@ export default async function RentalPage({
             price: parseFloat(t.price!),
             displayOrder: t.displayOrder ?? 0,
           })),
-      }
-      const existing = seasonalPricingsByProductId.get(sp.productId) || []
-      existing.push(config)
-      seasonalPricingsByProductId.set(sp.productId, existing)
+      };
+      const existing = seasonalPricingsByProductId.get(sp.productId) || [];
+      existing.push(config);
+      seasonalPricingsByProductId.set(sp.productId, existing);
     }
 
     // Fetch unit attributes for all products (fallback for storefront selectors)
     const productUnitsResults = await db
       .select({
         productId: productUnits.productId,
-        status: productUnits.status,
+        lifecycleStatus: productUnits.lifecycleStatus,
         attributes: productUnits.attributes,
       })
       .from(productUnits)
-      .where(inArray(productUnits.productId, productIdsArray))
+      .where(inArray(productUnits.productId, productIdsArray));
 
-    const productUnitsByProductId = new Map<string, ProductUnitSummary[]>()
+    const productUnitsByProductId = new Map<string, ProductUnitSummary[]>();
     for (const unit of productUnitsResults) {
-      const units = productUnitsByProductId.get(unit.productId) || []
+      const units = productUnitsByProductId.get(unit.productId) || [];
       units.push({
-        status: unit.status,
+        lifecycleStatus: unit.lifecycleStatus,
         attributes: (unit.attributes as Record<string, string> | null) || null,
-      })
-      productUnitsByProductId.set(unit.productId, units)
+      });
+      productUnitsByProductId.set(unit.productId, units);
     }
 
     // Fetch accessories for all products
@@ -309,22 +346,24 @@ export default async function RentalPage({
       })
       .from(productAccessories)
       .where(inArray(productAccessories.productId, productIdsArray))
-      .orderBy(asc(productAccessories.displayOrder))
+      .orderBy(asc(productAccessories.displayOrder));
 
     // Get unique accessory IDs
-    const accessoryIds = [...new Set(accessoriesResults.map((a) => a.accessoryId))]
+    const accessoryIds = [
+      ...new Set(accessoriesResults.map((a) => a.accessoryId)),
+    ];
 
     // Fetch accessory product details
     let accessoryProductsRaw: {
-      id: string
-      name: string
-      price: string
-      deposit: string | null
-      images: string[] | null
-      quantity: number
-      status: 'active' | 'draft' | 'archived' | null
-      pricingMode: 'day' | 'hour' | 'week' | null
-    }[] = []
+      id: string;
+      name: string;
+      price: string;
+      deposit: string | null;
+      images: string[] | null;
+      quantity: number;
+      status: 'active' | 'draft' | 'archived' | null;
+      pricingMode: 'day' | 'hour' | 'week' | null;
+    }[] = [];
     if (accessoryIds.length > 0) {
       accessoryProductsRaw = await db
         .select({
@@ -338,21 +377,22 @@ export default async function RentalPage({
           pricingMode: products.pricingMode,
         })
         .from(products)
-        .where(inArray(products.id, accessoryIds))
+        .where(inArray(products.id, accessoryIds));
     }
 
     // Fetch pricing tiers for accessories
-    const accessoryPricingTiers = accessoryIds.length > 0
-      ? await db
-          .select()
-          .from(productPricingTiers)
-          .where(inArray(productPricingTiers.productId, accessoryIds))
-      : []
+    const accessoryPricingTiers =
+      accessoryIds.length > 0
+        ? await db
+            .select()
+            .from(productPricingTiers)
+            .where(inArray(productPricingTiers.productId, accessoryIds))
+        : [];
 
     // Group accessory pricing tiers
-    const accessoryTiersByProductId = new Map<string, PricingTier[]>()
+    const accessoryTiersByProductId = new Map<string, PricingTier[]>();
     for (const tier of accessoryPricingTiers) {
-      const tiers = accessoryTiersByProductId.get(tier.productId) || []
+      const tiers = accessoryTiersByProductId.get(tier.productId) || [];
       tiers.push({
         id: tier.id,
         minDuration: tier.minDuration,
@@ -360,30 +400,36 @@ export default async function RentalPage({
         period: tier.period,
         price: tier.price,
         displayOrder: tier.displayOrder,
-      })
-      accessoryTiersByProductId.set(tier.productId, tiers)
+      });
+      accessoryTiersByProductId.set(tier.productId, tiers);
     }
 
     // Create map of accessory products
-    const accessoryProductMap = new Map(accessoryProductsRaw.map((p) => [p.id, p]))
+    const accessoryProductMap = new Map(
+      accessoryProductsRaw.map((p) => [p.id, p]),
+    );
 
     // Group accessories by product ID with full details
     interface ProductAccessory {
-      id: string
-      name: string
-      price: string
-      deposit: string
-      images: string[] | null
-      quantity: number
-      pricingMode: 'day' | 'hour' | 'week' | null
-      pricingTiers?: PricingTier[]
+      id: string;
+      name: string;
+      price: string;
+      deposit: string;
+      images: string[] | null;
+      quantity: number;
+      pricingMode: 'day' | 'hour' | 'week' | null;
+      pricingTiers?: PricingTier[];
     }
-    const accessoriesByProductId = new Map<string, ProductAccessory[]>()
+    const accessoriesByProductId = new Map<string, ProductAccessory[]>();
     for (const acc of accessoriesResults) {
-      const accessoryProduct = accessoryProductMap.get(acc.accessoryId)
+      const accessoryProduct = accessoryProductMap.get(acc.accessoryId);
       // Only include active accessories with stock
-      if (accessoryProduct && accessoryProduct.status === 'active' && accessoryProduct.quantity > 0) {
-        const accessories = accessoriesByProductId.get(acc.productId) || []
+      if (
+        accessoryProduct &&
+        accessoryProduct.status === 'active' &&
+        accessoryProduct.quantity > 0
+      ) {
+        const accessories = accessoriesByProductId.get(acc.productId) || [];
         accessories.push({
           id: accessoryProduct.id,
           name: accessoryProduct.name,
@@ -393,12 +439,12 @@ export default async function RentalPage({
           quantity: accessoryProduct.quantity,
           pricingMode: accessoryProduct.pricingMode,
           pricingTiers: accessoryTiersByProductId.get(accessoryProduct.id),
-        })
-        accessoriesByProductId.set(acc.productId, accessories)
+        });
+        accessoriesByProductId.set(acc.productId, accessories);
       }
     }
 
-    const productMap = new Map(productResults.map(p => [p.id, p]))
+    const productMap = new Map(productResults.map((p) => [p.id, p]));
     productsList = productIds
       .map(({ id }) => productMap.get(id))
       .filter((p): p is NonNullable<typeof p> => p !== undefined)
@@ -424,22 +470,23 @@ export default async function RentalPage({
         trackUnits: row.trackUnits,
         bookingAttributeAxes: row.bookingAttributeAxes,
         units: productUnitsByProductId.get(row.id) || [],
-        category: row.categoryId && row.categoryName
-          ? {
-              id: row.categoryId,
-              storeId: row.categoryStoreId!,
-              name: row.categoryName,
-              description: row.categoryDescription,
-              imageUrl: row.categoryImageUrl,
-              order: row.categoryOrder!,
-              createdAt: row.categoryCreatedAt!,
-              updatedAt: row.categoryUpdatedAt!,
-            }
-          : null,
+        category:
+          row.categoryId && row.categoryName
+            ? {
+                id: row.categoryId,
+                storeId: row.categoryStoreId!,
+                name: row.categoryName,
+                description: row.categoryDescription,
+                imageUrl: row.categoryImageUrl,
+                order: row.categoryOrder!,
+                createdAt: row.categoryCreatedAt!,
+                updatedAt: row.categoryUpdatedAt!,
+              }
+            : null,
         pricingTiers: pricingTiersByProductId.get(row.id) || [],
         accessories: accessoriesByProductId.get(row.id) || [],
         seasonalPricings: seasonalPricingsByProductId.get(row.id) || [],
-      }))
+      }));
   }
 
   // Filter by search term if provided
@@ -447,27 +494,27 @@ export default async function RentalPage({
     ? productsList.filter(
         (p) =>
           p.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.description?.toLowerCase().includes(search.toLowerCase())
+          p.description?.toLowerCase().includes(search.toLowerCase()),
       )
-    : productsList
+    : productsList;
 
-  const pricingMode = 'day' as const
+  const pricingMode = 'day' as const;
 
   return (
     <div className="min-h-screen">
       <Suspense
         fallback={
           <div className="container mx-auto px-4 py-8">
-            <div className="grid lg:grid-cols-[1fr_320px] gap-8">
+            <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
               <div className="space-y-6">
                 <Skeleton className="h-8 w-48" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
                   {[...Array(6)].map((_, i) => (
                     <Skeleton key={i} className="aspect-[4/3] rounded-lg" />
                   ))}
                 </div>
               </div>
-              <Skeleton className="h-96 rounded-lg hidden lg:block" />
+              <Skeleton className="hidden h-96 rounded-lg lg:block" />
             </div>
           </div>
         }
@@ -484,5 +531,5 @@ export default async function RentalPage({
         />
       </Suspense>
     </div>
-  )
+  );
 }

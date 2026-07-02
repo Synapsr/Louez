@@ -72,6 +72,7 @@ import {
 } from '@/lib/product-analytics/analytics';
 import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
+import { normalizePhoneNumber } from '@/lib/sms/phone';
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
 import { validateRentalPeriod } from '@/lib/utils/business-hours';
 import { getMinStartDateTime } from '@/lib/utils/duration';
@@ -87,7 +88,7 @@ import {
   validateMaxRentalDurationMinutes,
   validateMinRentalDurationMinutes,
 } from '@/lib/utils/rental-duration';
-import { normalizePhoneNumber } from '@/lib/sms/phone';
+import { isUnitRentableDuring } from '@/lib/utils/unit-availability';
 
 import { env } from '@/env';
 
@@ -536,9 +537,9 @@ export async function createReservation(input: CreateReservationInput) {
 
     const customerPhone = input.customer.phone
       ? normalizePhoneNumber(input.customer.phone, store.settings?.country)
-      : null
+      : null;
     if (input.customer.phone && !customerPhone) {
-      return { error: 'errors.invalidData' }
+      return { error: 'errors.invalidData' };
     }
 
     // Calculate the overall rental period from items
@@ -624,6 +625,7 @@ export async function createReservation(input: CreateReservationInput) {
     // Never trust client-provided prices - always recalculate from database
 
     const storeSettings = store.settings as StoreSettings | null;
+    const turnoverBufferMinutes = storeSettings?.turnoverBufferMinutes ?? 0;
 
     // Structure to hold server-calculated prices
     interface ServerCalculatedItem {
@@ -670,13 +672,23 @@ export async function createReservation(input: CreateReservationInput) {
       }
 
       if (product.trackUnits) {
+        const itemRentalStartDate = new Date(item.startDate);
+        const itemRentalEndDate = new Date(item.endDate);
+        const itemBufferedStart = new Date(
+          itemRentalStartDate.getTime() -
+            Math.max(0, turnoverBufferMinutes) * 60 * 1000,
+        );
+        const itemBufferedEnd = new Date(
+          itemRentalEndDate.getTime() +
+            Math.max(0, turnoverBufferMinutes) * 60 * 1000,
+        );
         const availableUnits = await db
           .select({ id: productUnits.id })
           .from(productUnits)
           .where(
             and(
               eq(productUnits.productId, product.id),
-              eq(productUnits.status, 'available'),
+              isUnitRentableDuring(itemBufferedStart, itemBufferedEnd),
             ),
           );
 
@@ -1186,7 +1198,6 @@ export async function createReservation(input: CreateReservationInput) {
 
     const pendingBlocksAvailability =
       store.settings?.pendingBlocksAvailability ?? true;
-    const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
     const bufferedQueryStart = new Date(
       rentalStartDate.getTime() -
         Math.max(0, turnoverBufferMinutes) * 60 * 1000,
@@ -1252,7 +1263,7 @@ export async function createReservation(input: CreateReservationInput) {
               .where(
                 and(
                   inArray(productUnits.productId, trackedProductIds),
-                  eq(productUnits.status, 'available'),
+                  isUnitRentableDuring(bufferedQueryStart, bufferedQueryEnd),
                 ),
               )
           : [];

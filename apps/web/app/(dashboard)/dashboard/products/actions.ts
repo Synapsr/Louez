@@ -1,47 +1,59 @@
-'use server'
+'use server';
 
-import { db } from '@louez/db'
-import { getCurrentStore } from '@/lib/store-context'
+import { revalidatePath } from 'next/cache';
+
+import { and, eq, gte, inArray, ne, not, or } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+
+import { db } from '@louez/db';
 import {
-  products,
   categories,
-  productPricingTiers,
   productAccessories,
+  productPricingTiers,
   productUnits,
-  reservations,
+  products,
   reservationItems,
-} from '@louez/db'
-import { eq, and, ne, inArray, or, gte, not } from 'drizzle-orm'
-import { revalidatePath } from 'next/cache'
+  reservations,
+} from '@louez/db';
+import type { BookingAttributeAxis, UnitAttributes } from '@louez/types';
 import {
-  productSchema,
-  categorySchema,
-  type ProductInput,
-  type CategoryInput,
-  type ProductUnitInput,
-} from '@louez/validations'
-import { nanoid } from 'nanoid'
-import {
+  DEFAULT_COMBINATION_KEY,
   buildCombinationKey,
   canonicalizeAttributes,
-  DEFAULT_COMBINATION_KEY,
   normalizeAxisKey,
   priceDurationToMinutes,
   pricingModeToMinutes,
   validatePricingTiers,
-} from '@louez/utils'
-import type { BookingAttributeAxis, UnitAttributes } from '@louez/types'
-import { notifyProductCreated, notifyProductUpdated } from '@/lib/discord/platform-notifications'
-import { captureProductServerEvent } from '@/lib/product-analytics/analytics'
-import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events'
+} from '@louez/utils';
+import {
+  type CategoryInput,
+  type ProductInput,
+  type ProductUnitInput,
+  categorySchema,
+  productSchema,
+} from '@louez/validations';
+
+import {
+  notifyProductCreated,
+  notifyProductUpdated,
+} from '@/lib/discord/platform-notifications';
+import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
+import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
+import { getCurrentStore } from '@/lib/store-context';
 
 async function getStoreForUser() {
-  return getCurrentStore()
+  return getCurrentStore();
 }
 
-function normalizeBookingAttributeAxes(axes: ProductInput['bookingAttributeAxes']): BookingAttributeAxis[] {
+const UNIT_LIFECYCLE = {
+  active: 'active',
+} satisfies { active: 'active' };
+
+function normalizeBookingAttributeAxes(
+  axes: ProductInput['bookingAttributeAxes'],
+): BookingAttributeAxis[] {
   if (!axes || axes.length === 0) {
-    return []
+    return [];
   }
 
   return axes
@@ -50,24 +62,29 @@ function normalizeBookingAttributeAxes(axes: ProductInput['bookingAttributeAxes'
       label: axis.label.trim(),
       position: index,
     }))
-    .filter((axis) => axis.key.length > 0 && axis.label.length > 0)
+    .filter((axis) => axis.key.length > 0 && axis.label.length > 0);
 }
 
 function resolveUnitAttributes(
   axes: BookingAttributeAxis[],
   unit: ProductUnitInput,
 ): UnitAttributes {
-  return canonicalizeAttributes(axes, unit.attributes as UnitAttributes | undefined)
+  return canonicalizeAttributes(
+    axes,
+    unit.attributes as UnitAttributes | undefined,
+  );
 }
 
 function normalizePriceInput(value: string | undefined): string {
-  return (value || '0').replace(',', '.')
+  return (value || '0').replace(',', '.');
 }
 
-function getLegacyPricingModeFromUnit(unit: 'minute' | 'hour' | 'day' | 'week'): 'hour' | 'day' | 'week' {
-  if (unit === 'week') return 'week'
-  if (unit === 'day') return 'day'
-  return 'hour'
+function getLegacyPricingModeFromUnit(
+  unit: 'minute' | 'hour' | 'day' | 'week',
+): 'hour' | 'day' | 'week' {
+  if (unit === 'week') return 'week';
+  if (unit === 'day') return 'day';
+  return 'hour';
 }
 
 function buildRateTierRows(
@@ -75,16 +92,16 @@ function buildRateTierRows(
   basePrice: number,
   basePeriodMinutes: number,
 ): Array<{
-  id?: string
-  period: number
-  price: string
-  minDuration: number | null
-  discountPercent: string | null
+  id?: string;
+  period: number;
+  price: string;
+  minDuration: number | null;
+  discountPercent: string | null;
 }> {
   if (Array.isArray(input.rateTiers)) {
     const rows = input.rateTiers.map((tier) => {
-      const period = priceDurationToMinutes(tier.duration, tier.unit)
-      const tierPrice = normalizePriceInput(tier.price)
+      const period = priceDurationToMinutes(tier.duration, tier.unit);
+      const tierPrice = normalizePriceInput(tier.price);
 
       return {
         id: tier.id,
@@ -93,102 +110,104 @@ function buildRateTierRows(
         // Legacy compatibility columns are intentionally not persisted.
         minDuration: null,
         discountPercent: null,
-      }
-    })
+      };
+    });
 
-    return rows.sort((a, b) => a.period - b.period)
+    return rows.sort((a, b) => a.period - b.period);
   }
 
   // Backward fallback for legacy payloads.
-  const legacyTiers = input.pricingTiers || []
+  const legacyTiers = input.pricingTiers || [];
   const rows = legacyTiers.map((tier) => {
-    const period = tier.minDuration * basePeriodMinutes
-    const unitPrice = basePrice * (1 - tier.discountPercent / 100)
-    const totalPrice = unitPrice * tier.minDuration
+    const period = tier.minDuration * basePeriodMinutes;
+    const unitPrice = basePrice * (1 - tier.discountPercent / 100);
+    const totalPrice = unitPrice * tier.minDuration;
     return {
       id: tier.id,
       period,
       price: totalPrice.toFixed(2),
       minDuration: null,
       discountPercent: null,
-    }
-  })
+    };
+  });
 
-  return rows.sort((a, b) => a.period - b.period)
+  return rows.sort((a, b) => a.period - b.period);
 }
 
-function hasDuplicateRatePeriods(
-  rows: Array<{ period: number }>,
-): boolean {
-  const periods = new Set<number>()
+function hasDuplicateRatePeriods(rows: Array<{ period: number }>): boolean {
+  const periods = new Set<number>();
   for (const row of rows) {
     if (periods.has(row.period)) {
-      return true
+      return true;
     }
-    periods.add(row.period)
+    periods.add(row.period);
   }
-  return false
+  return false;
 }
 
 function getDuplicateRatePeriodIndexes(
   rows: Array<{ period: number }>,
 ): number[] {
-  const byPeriod = new Map<number, number[]>()
+  const byPeriod = new Map<number, number[]>();
 
   rows.forEach((row, index) => {
-    const existing = byPeriod.get(row.period)
+    const existing = byPeriod.get(row.period);
     if (existing) {
-      existing.push(index)
-      return
+      existing.push(index);
+      return;
     }
-    byPeriod.set(row.period, [index])
-  })
+    byPeriod.set(row.period, [index]);
+  });
 
-  const duplicateIndexes = new Set<number>()
+  const duplicateIndexes = new Set<number>();
   for (const indexes of byPeriod.values()) {
-    if (indexes.length < 2) continue
-    indexes.forEach((index) => duplicateIndexes.add(index))
+    if (indexes.length < 2) continue;
+    indexes.forEach((index) => duplicateIndexes.add(index));
   }
 
-  return Array.from(duplicateIndexes).sort((a, b) => a - b)
+  return Array.from(duplicateIndexes).sort((a, b) => a - b);
 }
 
 export async function createProduct(data: ProductInput) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
-  const validated = productSchema.safeParse(data)
+  const validated = productSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' }
+    return { error: 'errors.invalidData' };
   }
 
   // Validate legacy pricing tiers if provided (fallback compatibility only)
-  const pricingTiers = validated.data.pricingTiers || []
+  const pricingTiers = validated.data.pricingTiers || [];
   if (validated.data.rateTiers == null && pricingTiers.length > 0) {
-    const tierValidation = validatePricingTiers(pricingTiers)
+    const tierValidation = validatePricingTiers(pricingTiers);
     if (!tierValidation.valid) {
-      return { error: tierValidation.error }
+      return { error: tierValidation.error };
     }
   }
 
-  const basePriceDuration = validated.data.basePriceDuration
-  const price = normalizePriceInput(basePriceDuration?.price || validated.data.price)
+  const basePriceDuration = validated.data.basePriceDuration;
+  const price = normalizePriceInput(
+    basePriceDuration?.price || validated.data.price,
+  );
   const basePeriodMinutes = basePriceDuration
     ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
-    : pricingModeToMinutes((validated.data.pricingMode || 'day') as 'hour' | 'day' | 'week')
+    : pricingModeToMinutes(
+        (validated.data.pricingMode || 'day') as 'hour' | 'day' | 'week',
+      );
   const legacyPricingMode = basePriceDuration
     ? getLegacyPricingModeFromUnit(basePriceDuration.unit)
-    : ((validated.data.pricingMode || 'day') as 'hour' | 'day' | 'week')
+    : ((validated.data.pricingMode || 'day') as 'hour' | 'day' | 'week');
   const deposit = validated.data.deposit
     ? normalizePriceInput(validated.data.deposit)
-    : '0'
+    : '0';
   const rateTierRows = buildRateTierRows(
     validated.data,
     parseFloat(price) || 0,
     basePeriodMinutes,
-  )
+  );
   if (hasDuplicateRatePeriods(rateTierRows)) {
     return {
       error: 'errors.invalidData',
@@ -196,23 +215,23 @@ export async function createProduct(data: ProductInput) {
         code: 'duplicate_rate_periods',
         duplicateRateTierIndexes: getDuplicateRatePeriodIndexes(rateTierRows),
       },
-    }
+    };
   }
 
   // Unit tracking
-  const trackUnits = validated.data.trackUnits || false
-  const units = validated.data.units || []
+  const trackUnits = validated.data.trackUnits || false;
+  const units = validated.data.units || [];
   const bookingAttributeAxes = trackUnits
     ? normalizeBookingAttributeAxes(validated.data.bookingAttributeAxes)
-    : []
+    : [];
 
-  // If tracking units, quantity is derived from the count of available units
+  // If tracking units, quantity is derived from the count of active units
   // Otherwise, use the manually entered quantity
   const quantity = trackUnits
-    ? units.filter((u) => !u.status || u.status === 'available').length
-    : parseInt(validated.data.quantity, 10)
+    ? units.filter((u) => (u.lifecycleStatus || 'active') === 'active').length
+    : parseInt(validated.data.quantity, 10);
 
-  const productId = nanoid()
+  const productId = nanoid();
 
   try {
     await db.transaction(async (tx) => {
@@ -233,10 +252,11 @@ export async function createProduct(data: ProductInput) {
         taxSettings: validated.data.taxSettings || null,
         enforceStrictTiers: validated.data.enforceStrictTiers || false,
         trackUnits: trackUnits,
-        bookingAttributeAxes: trackUnits && bookingAttributeAxes.length > 0
-          ? bookingAttributeAxes
-          : null,
-      })
+        bookingAttributeAxes:
+          trackUnits && bookingAttributeAxes.length > 0
+            ? bookingAttributeAxes
+            : null,
+      });
 
       // Create pricing tiers if provided
       if (rateTierRows.length > 0) {
@@ -249,8 +269,8 @@ export async function createProduct(data: ProductInput) {
             period: tier.period,
             price: tier.price,
             displayOrder: index,
-          }))
-        )
+          })),
+        );
       }
 
       // Create units if tracking is enabled
@@ -266,20 +286,20 @@ export async function createProduct(data: ProductInput) {
             productId: productId,
             identifier: unit.identifier.trim(),
             notes: unit.notes?.trim() || null,
-            status: unit.status || 'available',
-          }))
-        )
+            lifecycleStatus: UNIT_LIFECYCLE.active,
+          })),
+        );
       }
-    })
+    });
   } catch (error) {
-    console.error('Error creating product:', error)
-    return { error: 'errors.invalidData' }
+    console.error('Error creating product:', error);
+    return { error: 'errors.invalidData' };
   }
 
   notifyProductCreated(
     { id: store.id, name: store.name, slug: store.slug },
-    validated.data.name
-  ).catch(() => {})
+    validated.data.name,
+  ).catch(() => {});
 
   await captureProductServerEvent({
     distinctId: store.userId,
@@ -304,57 +324,67 @@ export async function createProduct(data: ProductInput) {
       pricing_mode: legacyPricingMode,
       booking_attribute_axis_count: bookingAttributeAxes.length,
     },
-  })
+  });
 
-  revalidatePath('/dashboard/products')
-  return { success: true, productId }
+  revalidatePath('/dashboard/products');
+  return { success: true, productId };
 }
 
 export async function updateProduct(productId: string, data: ProductInput) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
-  const validated = productSchema.safeParse(data)
+  const validated = productSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' }
+    return { error: 'errors.invalidData' };
   }
 
   // Validate legacy pricing tiers only when V2 rates are not provided.
-  const pricingTiers = validated.data.pricingTiers || []
+  const pricingTiers = validated.data.pricingTiers || [];
   if (validated.data.rateTiers == null && pricingTiers.length > 0) {
-    const tierValidation = validatePricingTiers(pricingTiers)
+    const tierValidation = validatePricingTiers(pricingTiers);
     if (!tierValidation.valid) {
-      return { error: tierValidation.error }
+      return { error: tierValidation.error };
     }
   }
 
   // Verify product belongs to store
   const product = await db.query.products.findFirst({
     where: and(eq(products.id, productId), eq(products.storeId, store.id)),
-  })
+  });
 
   if (!product) {
-    return { error: 'errors.productNotFound' }
+    return { error: 'errors.productNotFound' };
   }
 
-  const basePriceDuration = validated.data.basePriceDuration
-  const price = normalizePriceInput(basePriceDuration?.price || validated.data.price)
+  const basePriceDuration = validated.data.basePriceDuration;
+  const price = normalizePriceInput(
+    basePriceDuration?.price || validated.data.price,
+  );
   const basePeriodMinutes = basePriceDuration
     ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
-    : pricingModeToMinutes((validated.data.pricingMode || product.pricingMode || 'day') as 'hour' | 'day' | 'week')
+    : pricingModeToMinutes(
+        (validated.data.pricingMode || product.pricingMode || 'day') as
+          | 'hour'
+          | 'day'
+          | 'week',
+      );
   const legacyPricingMode = basePriceDuration
     ? getLegacyPricingModeFromUnit(basePriceDuration.unit)
-    : ((validated.data.pricingMode || product.pricingMode || 'day') as 'hour' | 'day' | 'week')
+    : ((validated.data.pricingMode || product.pricingMode || 'day') as
+        | 'hour'
+        | 'day'
+        | 'week');
   const deposit = validated.data.deposit
     ? normalizePriceInput(validated.data.deposit)
-    : '0'
+    : '0';
   const rateTierRows = buildRateTierRows(
     validated.data,
     parseFloat(price) || 0,
     basePeriodMinutes,
-  )
+  );
   if (hasDuplicateRatePeriods(rateTierRows)) {
     return {
       error: 'errors.invalidData',
@@ -362,15 +392,15 @@ export async function updateProduct(productId: string, data: ProductInput) {
         code: 'duplicate_rate_periods',
         duplicateRateTierIndexes: getDuplicateRatePeriodIndexes(rateTierRows),
       },
-    }
+    };
   }
 
   // Unit tracking
-  const trackUnits = validated.data.trackUnits || false
-  const units = validated.data.units || []
+  const trackUnits = validated.data.trackUnits || false;
+  const units = validated.data.units || [];
   const bookingAttributeAxes = trackUnits
     ? normalizeBookingAttributeAxes(validated.data.bookingAttributeAxes)
-    : []
+    : [];
 
   // Prevent disabling unit tracking when future/active reservations use non-default combinations.
   if (!trackUnits && product.trackUnits) {
@@ -389,30 +419,33 @@ export async function updateProduct(productId: string, data: ProductInput) {
           gte(reservations.endDate, new Date()),
         ),
       )
-      .limit(1)
+      .limit(1);
 
     if (conflictingVariantReservations.length > 0) {
-      return { error: 'errors.cannotDisableUnitTrackingWithCombinations' }
+      return { error: 'errors.cannotDisableUnitTrackingWithCombinations' };
     }
   }
 
-  // Prevent edits that would make available unit capacity lower than
+  // Prevent edits that would make active unit capacity lower than
   // active/future reserved quantities for any combination.
   if (trackUnits) {
-    const proposedAvailableByCombination = new Map<string, number>()
+    const proposedAvailableByCombination = new Map<string, number>();
 
     for (const unit of units) {
-      const status = unit.status || 'available'
-      if (status !== 'available') {
-        continue
+      const lifecycleStatus = unit.lifecycleStatus || 'active';
+      if (lifecycleStatus !== 'active') {
+        continue;
       }
 
-      const attributes = resolveUnitAttributes(bookingAttributeAxes, unit)
-      const combinationKey = buildCombinationKey(bookingAttributeAxes, attributes)
+      const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
+      const combinationKey = buildCombinationKey(
+        bookingAttributeAxes,
+        attributes,
+      );
       proposedAvailableByCombination.set(
         combinationKey,
         (proposedAvailableByCombination.get(combinationKey) || 0) + 1,
-      )
+      );
     }
 
     const reservedRows = await db
@@ -431,34 +464,35 @@ export async function updateProduct(productId: string, data: ProductInput) {
           inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
           gte(reservations.endDate, new Date()),
         ),
-      )
+      );
 
-    const reservedByCombination = new Map<string, number>()
+    const reservedByCombination = new Map<string, number>();
     for (const row of reservedRows) {
-      const combinationKey = row.combinationKey || DEFAULT_COMBINATION_KEY
+      const combinationKey = row.combinationKey || DEFAULT_COMBINATION_KEY;
       reservedByCombination.set(
         combinationKey,
         (reservedByCombination.get(combinationKey) || 0) + row.quantity,
-      )
+      );
     }
 
     const hasCapacityConflict = [...reservedByCombination.entries()].some(
       ([combinationKey, reservedQty]) => {
-        const availableQty = proposedAvailableByCombination.get(combinationKey) || 0
-        return reservedQty > availableQty
+        const availableQty =
+          proposedAvailableByCombination.get(combinationKey) || 0;
+        return reservedQty > availableQty;
       },
-    )
+    );
 
     if (hasCapacityConflict) {
-      return { error: 'errors.unitStatusConflictsWithReservations' }
+      return { error: 'errors.unitStatusConflictsWithReservations' };
     }
   }
 
-  // If tracking units, quantity is derived from the count of available units
+  // If tracking units, quantity is derived from the count of active units
   // Otherwise, use the manually entered quantity
   const quantity = trackUnits
-    ? units.filter((u) => !u.status || u.status === 'available').length
-    : parseInt(validated.data.quantity, 10)
+    ? units.filter((u) => (u.lifecycleStatus || 'active') === 'active').length
+    : parseInt(validated.data.quantity, 10);
 
   await db
     .update(products)
@@ -477,15 +511,18 @@ export async function updateProduct(productId: string, data: ProductInput) {
       taxSettings: validated.data.taxSettings || null,
       enforceStrictTiers: validated.data.enforceStrictTiers || false,
       trackUnits: trackUnits,
-      bookingAttributeAxes: trackUnits && bookingAttributeAxes.length > 0
-        ? bookingAttributeAxes
-        : null,
+      bookingAttributeAxes:
+        trackUnits && bookingAttributeAxes.length > 0
+          ? bookingAttributeAxes
+          : null,
       updatedAt: new Date(),
     })
-    .where(eq(products.id, productId))
+    .where(eq(products.id, productId));
 
   // Update pricing tiers: delete all existing and insert new ones
-  await db.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId))
+  await db
+    .delete(productPricingTiers)
+    .where(eq(productPricingTiers.productId, productId));
 
   if (rateTierRows.length > 0) {
     await db.insert(productPricingTiers).values(
@@ -497,8 +534,8 @@ export async function updateProduct(productId: string, data: ProductInput) {
         period: tier.period,
         price: tier.price,
         displayOrder: index,
-      }))
-    )
+      })),
+    );
   }
 
   // Update product units: sync with provided units
@@ -506,40 +543,48 @@ export async function updateProduct(productId: string, data: ProductInput) {
     // Get existing units
     const existingUnits = await db.query.productUnits.findMany({
       where: eq(productUnits.productId, productId),
-    })
-    const existingUnitIds = new Set(existingUnits.map((u) => u.id))
+    });
+    const existingUnitIds = new Set(existingUnits.map((u) => u.id));
 
     // Separate units into updates and inserts
-    const unitsToUpdate = units.filter((u) => u.id && existingUnitIds.has(u.id))
-    const unitsToInsert = units.filter((u) => !u.id)
-    const unitIdsToKeep = new Set(units.filter((u) => u.id).map((u) => u.id))
+    const unitsToUpdate = units.filter(
+      (u) => u.id && existingUnitIds.has(u.id),
+    );
+    const unitsToInsert = units.filter((u) => !u.id);
+    const unitIdsToKeep = new Set(units.filter((u) => u.id).map((u) => u.id));
 
     // Delete units that are no longer in the list
     // Note: We don't delete units that are assigned to active reservations
     // (this is handled in the UI by disabling the delete button)
     const unitIdsToDelete = existingUnits
       .filter((u) => !unitIdsToKeep.has(u.id))
-      .map((u) => u.id)
+      .map((u) => u.id);
 
     if (unitIdsToDelete.length > 0) {
-      await db.delete(productUnits).where(inArray(productUnits.id, unitIdsToDelete))
+      await db
+        .delete(productUnits)
+        .where(inArray(productUnits.id, unitIdsToDelete));
     }
 
     // Update existing units
     for (const unit of unitsToUpdate) {
       if (unit.id) {
-        const attributes = resolveUnitAttributes(bookingAttributeAxes, unit)
+        const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
         await db
           .update(productUnits)
           .set({
             identifier: unit.identifier.trim(),
             notes: unit.notes?.trim() || null,
-            status: unit.status || 'available',
+            // lifecycleStatus is owned by the inventory actions: retire/reinstate
+            // must keep retiredAt/retirementReason and the event log consistent
             attributes,
-            combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
+            combinationKey: buildCombinationKey(
+              bookingAttributeAxes,
+              attributes,
+            ),
             updatedAt: new Date(),
           })
-          .where(eq(productUnits.id, unit.id))
+          .where(eq(productUnits.id, unit.id));
       }
     }
 
@@ -547,24 +592,29 @@ export async function updateProduct(productId: string, data: ProductInput) {
     if (unitsToInsert.length > 0) {
       await db.insert(productUnits).values(
         unitsToInsert.map((unit) => {
-          const attributes = resolveUnitAttributes(bookingAttributeAxes, unit)
+          const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
           return {
             id: nanoid(),
             productId: productId,
             identifier: unit.identifier.trim(),
             notes: unit.notes?.trim() || null,
-            status: unit.status || 'available',
+            lifecycleStatus: UNIT_LIFECYCLE.active,
             attributes,
-            combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
-          }
-        })
-      )
+            combinationKey: buildCombinationKey(
+              bookingAttributeAxes,
+              attributes,
+            ),
+          };
+        }),
+      );
     }
   }
 
   // Update accessories: delete all existing and insert new ones
-  const accessoryIds = validated.data.accessoryIds || []
-  await db.delete(productAccessories).where(eq(productAccessories.productId, productId))
+  const accessoryIds = validated.data.accessoryIds || [];
+  await db
+    .delete(productAccessories)
+    .where(eq(productAccessories.productId, productId));
 
   if (accessoryIds.length > 0) {
     // Verify all accessories belong to the same store and are not the product itself
@@ -572,12 +622,12 @@ export async function updateProduct(productId: string, data: ProductInput) {
       where: and(
         eq(products.storeId, store.id),
         inArray(products.id, accessoryIds),
-        ne(products.id, productId)
+        ne(products.id, productId),
       ),
       columns: { id: true },
-    })
+    });
 
-    const validAccessoryIds = validAccessories.map((a) => a.id)
+    const validAccessoryIds = validAccessories.map((a) => a.id);
 
     if (validAccessoryIds.length > 0) {
       await db.insert(productAccessories).values(
@@ -586,36 +636,36 @@ export async function updateProduct(productId: string, data: ProductInput) {
           productId: productId,
           accessoryId: accessoryId,
           displayOrder: index,
-        }))
-      )
+        })),
+      );
     }
   }
 
   notifyProductUpdated(
     { id: store.id, name: store.name, slug: store.slug },
-    validated.data.name
-  ).catch(() => {})
+    validated.data.name,
+  ).catch(() => {});
 
-  revalidatePath('/dashboard/products')
-  revalidatePath(`/dashboard/products/${productId}`)
-  return { success: true }
+  revalidatePath('/dashboard/products');
+  revalidatePath(`/dashboard/products/${productId}`);
+  return { success: true };
 }
 
 export async function updateProductStatus(
   productId: string,
-  status: 'draft' | 'active' | 'archived'
+  status: 'draft' | 'active' | 'archived',
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const product = await db.query.products.findFirst({
     where: and(eq(products.id, productId), eq(products.storeId, store.id)),
-  })
+  });
 
   if (!product) {
-    return { error: 'errors.productNotFound' }
+    return { error: 'errors.productNotFound' };
   }
 
   await db
@@ -624,47 +674,49 @@ export async function updateProductStatus(
       status,
       updatedAt: new Date(),
     })
-    .where(eq(products.id, productId))
+    .where(eq(products.id, productId));
 
-  revalidatePath('/dashboard/products')
-  return { success: true }
+  revalidatePath('/dashboard/products');
+  return { success: true };
 }
 
 export async function deleteProduct(productId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const product = await db.query.products.findFirst({
     where: and(eq(products.id, productId), eq(products.storeId, store.id)),
-  })
+  });
 
   if (!product) {
-    return { error: 'errors.productNotFound' }
+    return { error: 'errors.productNotFound' };
   }
 
   // Delete accessory relations (both as product and as accessory)
-  await db.delete(productAccessories).where(
-    or(
-      eq(productAccessories.productId, productId),
-      eq(productAccessories.accessoryId, productId)
-    )
-  )
+  await db
+    .delete(productAccessories)
+    .where(
+      or(
+        eq(productAccessories.productId, productId),
+        eq(productAccessories.accessoryId, productId),
+      ),
+    );
 
   // Delete product units
-  await db.delete(productUnits).where(eq(productUnits.productId, productId))
+  await db.delete(productUnits).where(eq(productUnits.productId, productId));
 
-  await db.delete(products).where(eq(products.id, productId))
+  await db.delete(products).where(eq(products.id, productId));
 
-  revalidatePath('/dashboard/products')
-  return { success: true }
+  revalidatePath('/dashboard/products');
+  return { success: true };
 }
 
 export async function duplicateProduct(productId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const product = await db.query.products.findFirst({
@@ -672,13 +724,13 @@ export async function duplicateProduct(productId: string) {
     with: {
       pricingTiers: true,
     },
-  })
+  });
 
   if (!product) {
-    return { error: 'errors.productNotFound' }
+    return { error: 'errors.productNotFound' };
   }
 
-  const newProductId = nanoid()
+  const newProductId = nanoid();
 
   // Note: the "(copy)" suffix will be translated on the client side
   // Note: Unit tracking is NOT duplicated because identifiers are unique per unit.
@@ -701,7 +753,7 @@ export async function duplicateProduct(productId: string) {
     enforceStrictTiers: product.enforceStrictTiers,
     trackUnits: false, // Units cannot be duplicated - they have unique identifiers
     bookingAttributeAxes: null,
-  })
+  });
 
   // Duplicate pricing tiers if any
   if (product.pricingTiers && product.pricingTiers.length > 0) {
@@ -710,22 +762,23 @@ export async function duplicateProduct(productId: string) {
         id: nanoid(),
         productId: newProductId,
         minDuration: tier.period && tier.price ? null : tier.minDuration,
-        discountPercent: tier.period && tier.price ? null : tier.discountPercent,
+        discountPercent:
+          tier.period && tier.price ? null : tier.discountPercent,
         period: tier.period,
         price: tier.price,
         displayOrder: tier.displayOrder,
-      }))
-    )
+      })),
+    );
   }
 
-  revalidatePath('/dashboard/products')
-  return { success: true }
+  revalidatePath('/dashboard/products');
+  return { success: true };
 }
 
 export async function getProduct(productId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return null
+    return null;
   }
 
   const product = await db.query.products.findFirst({
@@ -753,23 +806,20 @@ export async function getProduct(productId: string) {
         orderBy: (units, { asc }) => [asc(units.identifier)],
       },
     },
-  })
+  });
 
-  return product
+  return product;
 }
 
 // Get all products available as accessories (excluding the current product)
 export async function getAvailableAccessories(excludeProductId?: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return []
+    return [];
   }
 
   const allProducts = await db.query.products.findMany({
-    where: and(
-      eq(products.storeId, store.id),
-      eq(products.status, 'active')
-    ),
+    where: and(eq(products.storeId, store.id), eq(products.status, 'active')),
     columns: {
       id: true,
       name: true,
@@ -777,63 +827,63 @@ export async function getAvailableAccessories(excludeProductId?: string) {
       images: true,
     },
     orderBy: (p, { asc }) => [asc(p.name)],
-  })
+  });
 
   // Filter out the current product if provided
   if (excludeProductId) {
-    return allProducts.filter((p) => p.id !== excludeProductId)
+    return allProducts.filter((p) => p.id !== excludeProductId);
   }
 
-  return allProducts
+  return allProducts;
 }
 
 // Categories
 export async function createCategory(data: CategoryInput) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
-  const validated = categorySchema.safeParse(data)
+  const validated = categorySchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' }
+    return { error: 'errors.invalidData' };
   }
 
   // Get max order
   const existingCategories = await db.query.categories.findMany({
     where: eq(categories.storeId, store.id),
-  })
-  const maxOrder = Math.max(0, ...existingCategories.map((c) => c.order || 0))
+  });
+  const maxOrder = Math.max(0, ...existingCategories.map((c) => c.order || 0));
 
   await db.insert(categories).values({
     storeId: store.id,
     name: validated.data.name,
     description: validated.data.description || null,
     order: maxOrder + 1,
-  })
+  });
 
-  revalidatePath('/dashboard/products')
-  revalidatePath('/dashboard/categories')
-  return { success: true }
+  revalidatePath('/dashboard/products');
+  revalidatePath('/dashboard/categories');
+  return { success: true };
 }
 
 export async function updateCategory(categoryId: string, data: CategoryInput) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
-  const validated = categorySchema.safeParse(data)
+  const validated = categorySchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' }
+    return { error: 'errors.invalidData' };
   }
 
   const category = await db.query.categories.findFirst({
     where: and(eq(categories.id, categoryId), eq(categories.storeId, store.id)),
-  })
+  });
 
   if (!category) {
-    return { error: 'errors.categoryNotFound' }
+    return { error: 'errors.categoryNotFound' };
   }
 
   await db
@@ -843,67 +893,67 @@ export async function updateCategory(categoryId: string, data: CategoryInput) {
       description: validated.data.description || null,
       updatedAt: new Date(),
     })
-    .where(eq(categories.id, categoryId))
+    .where(eq(categories.id, categoryId));
 
-  revalidatePath('/dashboard/products')
-  revalidatePath('/dashboard/categories')
-  return { success: true }
+  revalidatePath('/dashboard/products');
+  revalidatePath('/dashboard/categories');
+  return { success: true };
 }
 
 export async function deleteCategory(categoryId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const category = await db.query.categories.findFirst({
     where: and(eq(categories.id, categoryId), eq(categories.storeId, store.id)),
-  })
+  });
 
   if (!category) {
-    return { error: 'errors.categoryNotFound' }
+    return { error: 'errors.categoryNotFound' };
   }
 
   // Remove category from products
   await db
     .update(products)
     .set({ categoryId: null })
-    .where(eq(products.categoryId, categoryId))
+    .where(eq(products.categoryId, categoryId));
 
-  await db.delete(categories).where(eq(categories.id, categoryId))
+  await db.delete(categories).where(eq(categories.id, categoryId));
 
-  revalidatePath('/dashboard/products')
-  revalidatePath('/dashboard/categories')
-  return { success: true }
+  revalidatePath('/dashboard/products');
+  revalidatePath('/dashboard/categories');
+  return { success: true };
 }
 
 export async function getCategories() {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return []
+    return [];
   }
 
   return db.query.categories.findMany({
     where: eq(categories.storeId, store.id),
     orderBy: [categories.order],
-  })
+  });
 }
 
 export async function updateProductsOrder(productIds: string[]) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   // Verify all products belong to this store
   const storeProducts = await db.query.products.findMany({
     where: eq(products.storeId, store.id),
     columns: { id: true },
-  })
-  const storeProductIds = new Set(storeProducts.map((p) => p.id))
+  });
+  const storeProductIds = new Set(storeProducts.map((p) => p.id));
 
   // Filter to only include valid product IDs
-  const validProductIds = productIds.filter((id) => storeProductIds.has(id))
+  const validProductIds = productIds.filter((id) => storeProductIds.has(id));
 
   // Update display order for each product
   await Promise.all(
@@ -914,10 +964,10 @@ export async function updateProductsOrder(productIds: string[]) {
           displayOrder: index,
           updatedAt: new Date(),
         })
-        .where(eq(products.id, productId))
-    )
-  )
+        .where(eq(products.id, productId)),
+    ),
+  );
 
-  revalidatePath('/dashboard/products')
-  return { success: true }
+  revalidatePath('/dashboard/products');
+  return { success: true };
 }

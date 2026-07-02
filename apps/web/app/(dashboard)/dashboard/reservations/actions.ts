@@ -79,14 +79,11 @@ import {
   getReservationInsuranceSelection,
   isLegacyTulipInsuranceItem,
 } from '@/lib/integrations/tulip/contracts-insurance';
-import {
-  recordReservationFee,
-  voidReservationFee,
-} from '@/lib/pay-as-you-go';
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
+import { recordReservationFee, voidReservationFee } from '@/lib/pay-as-you-go';
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -365,7 +362,10 @@ export async function updateReservationStatus(
   // (rejected/cancelled/declined/back-to-quote) so a withdrawn rental is never invoiced.
   const BILLABLE_STATUSES = ['confirmed', 'ongoing', 'completed'];
   try {
-    if (BILLABLE_STATUSES.includes(status) && !BILLABLE_STATUSES.includes(previousStatus)) {
+    if (
+      BILLABLE_STATUSES.includes(status) &&
+      !BILLABLE_STATUSES.includes(previousStatus)
+    ) {
       await recordReservationFee({
         storeId: store.id,
         reservationId,
@@ -4454,6 +4454,8 @@ export async function assignUnitsToReservationItem(
         combinationKey: reservationItems.combinationKey,
         quantity: reservationItems.quantity,
         reservationId: reservationItems.reservationId,
+        startDate: reservations.startDate,
+        endDate: reservations.endDate,
       })
       .from(reservationItems)
       .innerJoin(
@@ -4484,6 +4486,7 @@ export async function assignUnitsToReservationItem(
           productId: productUnits.productId,
           combinationKey: productUnits.combinationKey,
           identifier: productUnits.identifier,
+          lifecycleStatus: productUnits.lifecycleStatus,
         })
         .from(productUnits)
         .where(inArray(productUnits.id, unitIds));
@@ -4497,6 +4500,9 @@ export async function assignUnitsToReservationItem(
         if (unit.productId !== item.productId) {
           return { error: 'errors.unitProductMismatch' };
         }
+        if (unit.lifecycleStatus !== 'active') {
+          return { error: 'errors.invalidUnits' };
+        }
         if (
           item.combinationKey &&
           (unit.combinationKey || DEFAULT_COMBINATION_KEY) !==
@@ -4504,6 +4510,19 @@ export async function assignUnitsToReservationItem(
         ) {
           return { error: 'errors.unitCombinationMismatch' };
         }
+      }
+
+      const { checkUnitsAvailability } =
+        await import('@/lib/utils/unit-availability');
+      const availability = await checkUnitsAvailability(
+        unitIds,
+        item.startDate,
+        item.endDate,
+        item.reservationId,
+      );
+
+      if (unitIds.some((unitId) => !availability[unitId])) {
+        return { error: 'errors.invalidUnits' };
       }
 
       // 4. Delete existing assignments for this item
@@ -4629,12 +4648,9 @@ export async function getAvailableUnitsForReservationItem(
       })
       .from(productUnits)
       .where(
-        and(
-          inArray(
-            productUnits.id,
-            assignedUnitIds.length > 0 ? assignedUnitIds : ['__none__'],
-          ),
-          eq(productUnits.status, 'available'),
+        inArray(
+          productUnits.id,
+          assignedUnitIds.length > 0 ? assignedUnitIds : ['__none__'],
         ),
       );
 

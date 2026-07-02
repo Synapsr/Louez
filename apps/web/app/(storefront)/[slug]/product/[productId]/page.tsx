@@ -1,70 +1,80 @@
-import type { Metadata } from 'next'
-import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
-import { db } from '@louez/db'
-import { stores, products, categories, productSeasonalPricing, productSeasonalPricingTiers } from '@louez/db'
-import { inArray } from 'drizzle-orm'
-import { eq, and, ne, asc, desc } from 'drizzle-orm'
-import { notFound } from 'next/navigation'
-import { ArrowLeft, Check, ImageIcon } from 'lucide-react'
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
-import { Button } from '@louez/ui'
-import { Badge } from '@louez/ui'
-import { Separator } from '@louez/ui'
+import { inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, ne } from 'drizzle-orm';
+import { ArrowLeft, Check, ImageIcon } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
+
+import { db } from '@louez/db';
+import {
+  categories,
+  productSeasonalPricing,
+  productSeasonalPricingTiers,
+  products,
+  stores,
+} from '@louez/db';
+import type { BusinessHours, StoreSettings, StoreTheme } from '@louez/types';
+import { Button } from '@louez/ui';
+import { Badge } from '@louez/ui';
+import { Separator } from '@louez/ui';
 import {
   buildCombinationKey,
   formatCurrency,
   getDeterministicCombinationSortValue,
-} from '@louez/utils'
-import type { StoreSettings, StoreTheme, BusinessHours } from '@louez/types'
-import { getMinRentalMinutes } from '@/lib/utils/rental-duration'
-import { ProductCard } from '@/components/storefront/product-card'
-import { PricingTiersDisplay } from '@/components/storefront/pricing-tiers-display'
-import { ProductGallery } from './product-gallery'
-import { AddToCartForm } from './add-to-cart-form'
+} from '@louez/utils';
+
+import { PageTracker } from '@/components/storefront/page-tracker';
+import { PricingTiersDisplay } from '@/components/storefront/pricing-tiers-display';
+import { ProductCard } from '@/components/storefront/product-card';
+
 import {
+  JsonLd,
+  generateBreadcrumbSchema,
   generateProductMetadata,
   generateProductSchema,
-  generateBreadcrumbSchema,
   getCanonicalUrl,
-  JsonLd,
-} from '@/lib/seo'
-import { PageTracker } from '@/components/storefront/page-tracker'
+} from '@/lib/seo';
+import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
+
+import { AddToCartForm } from './add-to-cart-form';
+import { ProductGallery } from './product-gallery';
 
 interface ProductPageProps {
-  params: Promise<{ slug: string; productId: string }>
+  params: Promise<{ slug: string; productId: string }>;
 }
 
 export async function generateMetadata({
   params,
 }: ProductPageProps): Promise<Metadata> {
-  const { slug, productId } = await params
+  const { slug, productId } = await params;
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
-  })
+  });
 
   if (!store) {
-    return { title: 'Boutique introuvable' }
+    return { title: 'Boutique introuvable' };
   }
 
   const product = await db.query.products.findFirst({
     where: and(
       eq(products.id, productId),
       eq(products.storeId, store.id),
-      eq(products.status, 'active')
+      eq(products.status, 'active'),
     ),
     with: {
       category: true,
     },
-  })
+  });
 
   if (!product) {
-    return { title: 'Produit introuvable' }
+    return { title: 'Produit introuvable' };
   }
 
-  const theme = (store.theme as StoreTheme) || {}
-  const settings = (store.settings as StoreSettings) || {}
+  const theme = (store.theme as StoreTheme) || {};
+  const settings = (store.settings as StoreSettings) || {};
 
   return generateProductMetadata(
     {
@@ -88,31 +98,31 @@ export async function generateMetadata({
     },
     {
       path: `/product/${productId}`,
-    }
-  )
+    },
+  );
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const { slug, productId } = await params
-  const t = await getTranslations('storefront.product')
-  const tCatalog = await getTranslations('storefront.catalog')
+  const { slug, productId } = await params;
+  const t = await getTranslations('storefront.product');
+  const tCatalog = await getTranslations('storefront.catalog');
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
-  })
+  });
 
   if (!store) {
-    notFound()
+    notFound();
   }
 
-  const storeSettings = (store.settings as StoreSettings) || {}
-  const currency = storeSettings.currency || 'EUR'
+  const storeSettings = (store.settings as StoreSettings) || {};
+  const currency = storeSettings.currency || 'EUR';
 
   const product = await db.query.products.findFirst({
     where: and(
       eq(products.id, productId),
       eq(products.storeId, store.id),
-      eq(products.status, 'active')
+      eq(products.status, 'active'),
     ),
     with: {
       category: true,
@@ -120,7 +130,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       units: {
         columns: {
           id: true,
-          status: true,
+          lifecycleStatus: true,
           attributes: true,
         },
       },
@@ -135,36 +145,42 @@ export default async function ProductPage({ params }: ProductPageProps) {
         },
       },
     },
-  })
+  });
 
   if (!product) {
-    notFound()
+    notFound();
   }
 
   // Fetch seasonal pricings for this product
   const seasonalPricingsRaw = await db
     .select()
     .from(productSeasonalPricing)
-    .where(eq(productSeasonalPricing.productId, product.id))
+    .where(eq(productSeasonalPricing.productId, product.id));
 
-  const seasonalPricingIds = seasonalPricingsRaw.map((sp) => sp.id)
-  const seasonalTiersRaw = seasonalPricingIds.length > 0
-    ? await db
-        .select()
-        .from(productSeasonalPricingTiers)
-        .where(inArray(productSeasonalPricingTiers.seasonalPricingId, seasonalPricingIds))
-    : []
+  const seasonalPricingIds = seasonalPricingsRaw.map((sp) => sp.id);
+  const seasonalTiersRaw =
+    seasonalPricingIds.length > 0
+      ? await db
+          .select()
+          .from(productSeasonalPricingTiers)
+          .where(
+            inArray(
+              productSeasonalPricingTiers.seasonalPricingId,
+              seasonalPricingIds,
+            ),
+          )
+      : [];
 
   // Group seasonal tiers by seasonal pricing ID
-  const seasonalTiersByPricingId = new Map<string, typeof seasonalTiersRaw>()
+  const seasonalTiersByPricingId = new Map<string, typeof seasonalTiersRaw>();
   for (const tier of seasonalTiersRaw) {
-    const tiers = seasonalTiersByPricingId.get(tier.seasonalPricingId) || []
-    tiers.push(tier)
-    seasonalTiersByPricingId.set(tier.seasonalPricingId, tiers)
+    const tiers = seasonalTiersByPricingId.get(tier.seasonalPricingId) || [];
+    tiers.push(tier);
+    seasonalTiersByPricingId.set(tier.seasonalPricingId, tiers);
   }
 
   const seasonalPricings = seasonalPricingsRaw.map((sp) => {
-    const spTiers = seasonalTiersByPricingId.get(sp.id) || []
+    const spTiers = seasonalTiersByPricingId.get(sp.id) || [];
     return {
       id: sp.id,
       name: sp.name,
@@ -187,12 +203,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
           price: parseFloat(t.price!),
           displayOrder: t.displayOrder ?? 0,
         })),
-    }
-  })
+    };
+  });
 
   // Filter accessories to only include active ones with stock
   const availableAccessories = (product.accessories || [])
-    .filter((acc) => acc.accessory && acc.accessory.status === 'active' && acc.accessory.quantity > 0)
+    .filter(
+      (acc) =>
+        acc.accessory &&
+        acc.accessory.status === 'active' &&
+        acc.accessory.quantity > 0,
+    )
     .map((acc) => ({
       id: acc.accessory.id,
       name: acc.accessory.name,
@@ -209,7 +230,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         period: tier.period,
         price: tier.price,
       })),
-    }))
+    }));
 
   // Get related products from same category
   const relatedProducts = product.categoryId
@@ -218,7 +239,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           eq(products.storeId, store.id),
           eq(products.status, 'active'),
           eq(products.categoryId, product.categoryId),
-          ne(products.id, product.id)
+          ne(products.id, product.id),
         ),
         with: {
           pricingTiers: true,
@@ -226,66 +247,83 @@ export default async function ProductPage({ params }: ProductPageProps) {
         orderBy: [asc(products.displayOrder), desc(products.createdAt)],
         limit: 4,
       })
-    : []
+    : [];
 
-  const effectivePricingMode = product.pricingMode ?? 'day'
-  const isAvailable = product.quantity > 0
-  const storedBookingAttributeAxes = ((product.bookingAttributeAxes as Array<{
-    key: string
-    label: string
-    position: number
-  }> | null) || []).sort((a, b) => a.position - b.position)
-  const inferredBookingAttributeAxes = storedBookingAttributeAxes.length > 0
-    ? storedBookingAttributeAxes
-    : (() => {
-        const keys = new Set<string>()
-        for (const unit of product.units || []) {
-          const attributes = unit.attributes as Record<string, string> | null | undefined
-          if (!attributes) continue
-          for (const key of Object.keys(attributes)) {
-            if (key.trim()) {
-              keys.add(key.trim())
+  const effectivePricingMode = product.pricingMode ?? 'day';
+  const isAvailable = product.quantity > 0;
+  const storedBookingAttributeAxes = (
+    (product.bookingAttributeAxes as Array<{
+      key: string;
+      label: string;
+      position: number;
+    }> | null) || []
+  ).sort((a, b) => a.position - b.position);
+  const inferredBookingAttributeAxes =
+    storedBookingAttributeAxes.length > 0
+      ? storedBookingAttributeAxes
+      : (() => {
+          const keys = new Set<string>();
+          for (const unit of product.units || []) {
+            const attributes = unit.attributes as
+              | Record<string, string>
+              | null
+              | undefined;
+            if (!attributes) continue;
+            for (const key of Object.keys(attributes)) {
+              if (key.trim()) {
+                keys.add(key.trim());
+              }
             }
           }
-        }
-        return [...keys]
-          .sort((a, b) => a.localeCompare(b, 'en'))
-          .map((key, index) => ({
-            key,
-            label: key,
-            position: index,
-          }))
-      })()
-  const bookingAttributeAxes = inferredBookingAttributeAxes
-  const bookingAttributeValues = bookingAttributeAxes.reduce<Record<string, string[]>>((acc, axis) => {
-    const values = new Set<string>()
+          return [...keys]
+            .sort((a, b) => a.localeCompare(b, 'en'))
+            .map((key, index) => ({
+              key,
+              label: key,
+              position: index,
+            }));
+        })();
+  const bookingAttributeAxes = inferredBookingAttributeAxes;
+  const bookingAttributeValues = bookingAttributeAxes.reduce<
+    Record<string, string[]>
+  >((acc, axis) => {
+    const values = new Set<string>();
     for (const unit of product.units || []) {
-      if ((unit.status || 'available') !== 'available') continue
-      const raw = (unit.attributes as Record<string, string> | null | undefined)?.[axis.key]
+      if ((unit.lifecycleStatus || 'active') !== 'active') continue;
+      const raw = (
+        unit.attributes as Record<string, string> | null | undefined
+      )?.[axis.key];
       if (raw && raw.trim()) {
-        values.add(raw.trim())
+        values.add(raw.trim());
       }
     }
-    acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'))
-    return acc
-  }, {})
+    acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'));
+    return acc;
+  }, {});
   const bookingCombinations = (() => {
-    const byCombination = new Map<string, { selectedAttributes: Record<string, string>; availableQuantity: number }>()
+    const byCombination = new Map<
+      string,
+      { selectedAttributes: Record<string, string>; availableQuantity: number }
+    >();
 
     for (const unit of product.units || []) {
-      if (unit.status !== 'available') continue
+      if ((unit.lifecycleStatus || 'active') !== 'active') continue;
 
-      const selectedAttributes = (unit.attributes as Record<string, string> | null | undefined) || {}
-      const combinationKey = buildCombinationKey(bookingAttributeAxes, selectedAttributes)
-      const current = byCombination.get(combinationKey)
+      const selectedAttributes =
+        (unit.attributes as Record<string, string> | null | undefined) || {};
+      const combinationKey = buildCombinationKey(
+        bookingAttributeAxes,
+        selectedAttributes,
+      );
+      const current = byCombination.get(combinationKey);
       if (!current) {
         byCombination.set(combinationKey, {
           selectedAttributes,
           availableQuantity: 1,
-        })
+        });
       } else {
-        current.availableQuantity += 1
-        byCombination.set(combinationKey, current)
+        current.availableQuantity += 1;
+        byCombination.set(combinationKey, current);
       }
     }
 
@@ -296,11 +334,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
         availableQuantity: value.availableQuantity,
       }))
       .sort((a, b) => {
-        const sortA = getDeterministicCombinationSortValue(bookingAttributeAxes, a.selectedAttributes)
-        const sortB = getDeterministicCombinationSortValue(bookingAttributeAxes, b.selectedAttributes)
-        return sortA.localeCompare(sortB, 'en')
-      })
-  })()
+        const sortA = getDeterministicCombinationSortValue(
+          bookingAttributeAxes,
+          a.selectedAttributes,
+        );
+        const sortB = getDeterministicCombinationSortValue(
+          bookingAttributeAxes,
+          b.selectedAttributes,
+        );
+        return sortA.localeCompare(sortB, 'en');
+      });
+  })();
 
   // Prepare data for JSON-LD schemas
   const storeForSchema = {
@@ -308,7 +352,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     name: store.name,
     slug: store.slug,
     settings: storeSettings as StoreSettings,
-  }
+  };
 
   const productForSchema = {
     id: product.id,
@@ -321,20 +365,20 @@ export default async function ProductPage({ params }: ProductPageProps) {
     category: product.category
       ? { id: product.category.id, name: product.category.name }
       : null,
-  }
+  };
 
   // Build breadcrumb items
   const breadcrumbItems: { name: string; url?: string }[] = [
     { name: store.name, url: getCanonicalUrl(slug) },
     { name: 'Catalogue', url: getCanonicalUrl(slug, '/catalog') },
-  ]
+  ];
   if (product.category) {
     breadcrumbItems.push({
       name: product.category.name,
       url: getCanonicalUrl(slug, `/catalog?category=${product.category.id}`),
-    })
+    });
   }
-  breadcrumbItems.push({ name: product.name })
+  breadcrumbItems.push({ name: product.name });
 
   return (
     <>
@@ -349,143 +393,156 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
-      <nav className="mb-6">
-        <ol className="flex items-center gap-2 text-sm text-muted-foreground">
-          <li>
-            <Link href="/" className="hover:text-foreground">
-              {t('breadcrumb.home')}
-            </Link>
-          </li>
-          <li>/</li>
-          <li>
-            <Link href="/catalog" className="hover:text-foreground">
-              {t('breadcrumb.catalog')}
-            </Link>
-          </li>
-          {product.category && (
-            <>
-              <li>/</li>
-              <li>
-                <Link
-                  href={`/catalog?category=${product.category.id}`}
-                  className="hover:text-foreground"
-                >
-                  {product.category.name}
-                </Link>
-              </li>
-            </>
-          )}
-          <li>/</li>
-          <li className="text-foreground">{product.name}</li>
-        </ol>
-      </nav>
-
-      <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-        {/* Gallery */}
-        <ProductGallery images={product.images || []} productName={product.name} />
-
-        {/* Product Info */}
-        <div className="space-y-6">
-          {product.category && (
-            <Badge variant="secondary">{product.category.name}</Badge>
-          )}
-
-          <h1 className="text-3xl font-bold">{product.name}</h1>
-
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold">
-              {formatCurrency(parseFloat(product.price), currency)}
-            </span>
-            <span className="text-lg text-muted-foreground">
-              / {t(`pricingUnit.${effectivePricingMode}.singular`)}
-            </span>
-          </div>
-
-          {product.deposit && parseFloat(product.deposit) > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {t('deposit')}: {formatCurrency(parseFloat(product.deposit), currency)}
-            </p>
-          )}
-
-          {/* Pricing Tiers Display */}
-          {product.pricingTiers && product.pricingTiers.length > 0 && (
-            <PricingTiersDisplay
-              basePrice={parseFloat(product.price)}
-              pricingMode={effectivePricingMode}
-              tiers={product.pricingTiers}
-              className="mt-4"
-            />
-          )}
-
-          <div className="flex items-center gap-2">
-            {isAvailable ? (
+        <nav className="mb-6">
+          <ol className="text-muted-foreground flex items-center gap-2 text-sm">
+            <li>
+              <Link href="/" className="hover:text-foreground">
+                {t('breadcrumb.home')}
+              </Link>
+            </li>
+            <li>/</li>
+            <li>
+              <Link href="/catalog" className="hover:text-foreground">
+                {t('breadcrumb.catalog')}
+              </Link>
+            </li>
+            {product.category && (
               <>
-                <Check className="h-5 w-5 text-green-500" />
-                <span className="text-green-600 font-medium">
-                  {t('availableCount', { count: product.quantity })}
-                </span>
+                <li>/</li>
+                <li>
+                  <Link
+                    href={`/catalog?category=${product.category.id}`}
+                    className="hover:text-foreground"
+                  >
+                    {product.category.name}
+                  </Link>
+                </li>
               </>
-            ) : (
-              <Badge variant="error">{tCatalog('unavailable')}</Badge>
+            )}
+            <li>/</li>
+            <li className="text-foreground">{product.name}</li>
+          </ol>
+        </nav>
+
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
+          {/* Gallery */}
+          <ProductGallery
+            images={product.images || []}
+            productName={product.name}
+          />
+
+          {/* Product Info */}
+          <div className="space-y-6">
+            {product.category && (
+              <Badge variant="secondary">{product.category.name}</Badge>
+            )}
+
+            <h1 className="text-3xl font-bold">{product.name}</h1>
+
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold">
+                {formatCurrency(parseFloat(product.price), currency)}
+              </span>
+              <span className="text-muted-foreground text-lg">
+                / {t(`pricingUnit.${effectivePricingMode}.singular`)}
+              </span>
+            </div>
+
+            {product.deposit && parseFloat(product.deposit) > 0 && (
+              <p className="text-muted-foreground text-sm">
+                {t('deposit')}:{' '}
+                {formatCurrency(parseFloat(product.deposit), currency)}
+              </p>
+            )}
+
+            {/* Pricing Tiers Display */}
+            {product.pricingTiers && product.pricingTiers.length > 0 && (
+              <PricingTiersDisplay
+                basePrice={parseFloat(product.price)}
+                pricingMode={effectivePricingMode}
+                tiers={product.pricingTiers}
+                className="mt-4"
+              />
+            )}
+
+            <div className="flex items-center gap-2">
+              {isAvailable ? (
+                <>
+                  <Check className="h-5 w-5 text-green-500" />
+                  <span className="font-medium text-green-600">
+                    {t('availableCount', { count: product.quantity })}
+                  </span>
+                </>
+              ) : (
+                <Badge variant="error">{tCatalog('unavailable')}</Badge>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Add to Cart Form */}
+            {isAvailable && (
+              <AddToCartForm
+                productId={product.id}
+                productName={product.name}
+                productImage={product.images?.[0] || null}
+                price={parseFloat(product.price)}
+                deposit={product.deposit ? parseFloat(product.deposit) : 0}
+                maxQuantity={product.quantity}
+                pricingMode={effectivePricingMode}
+                basePeriodMinutes={product.basePeriodMinutes}
+                storeSlug={slug}
+                pricingTiers={product.pricingTiers?.map((tier) => ({
+                  id: tier.id,
+                  minDuration: tier.minDuration,
+                  discountPercent: parseFloat(tier.discountPercent ?? '0'),
+                  period: tier.period,
+                  price: tier.price,
+                }))}
+                enforceStrictTiers={product.enforceStrictTiers ?? false}
+                advanceNotice={storeSettings.advanceNoticeMinutes || 0}
+                minRentalMinutes={getMinRentalMinutes(
+                  storeSettings as StoreSettings,
+                )}
+                businessHours={
+                  storeSettings.businessHours as BusinessHours | undefined
+                }
+                timezone={storeSettings.timezone}
+                accessories={availableAccessories}
+                trackUnits={Boolean(
+                  product.trackUnits || bookingAttributeAxes.length > 0,
+                )}
+                bookingAttributeAxes={bookingAttributeAxes}
+                bookingAttributeValues={bookingAttributeValues}
+                productUnits={(product.units || []).map((unit) => ({
+                  lifecycleStatus: unit.lifecycleStatus || 'active',
+                  attributes:
+                    (unit.attributes as Record<string, string> | null) || null,
+                }))}
+                bookingCombinations={bookingCombinations}
+                seasonalPricings={seasonalPricings}
+              />
+            )}
+
+            {/* Description */}
+            {product.description && (
+              <div className="mt-8">
+                <h2 className="mb-2 text-lg font-semibold">
+                  {t('description')}
+                </h2>
+                <p className="text-muted-foreground whitespace-pre-line">
+                  {product.description}
+                </p>
+              </div>
             )}
           </div>
-
-          <Separator />
-
-          {/* Add to Cart Form */}
-          {isAvailable && (
-            <AddToCartForm
-              productId={product.id}
-              productName={product.name}
-              productImage={product.images?.[0] || null}
-              price={parseFloat(product.price)}
-              deposit={product.deposit ? parseFloat(product.deposit) : 0}
-              maxQuantity={product.quantity}
-              pricingMode={effectivePricingMode}
-              basePeriodMinutes={product.basePeriodMinutes}
-              storeSlug={slug}
-              pricingTiers={product.pricingTiers?.map((tier) => ({
-                id: tier.id,
-                minDuration: tier.minDuration,
-                discountPercent: parseFloat(tier.discountPercent ?? '0'),
-                period: tier.period,
-                price: tier.price,
-              }))}
-              enforceStrictTiers={product.enforceStrictTiers ?? false}
-              advanceNotice={storeSettings.advanceNoticeMinutes || 0}
-              minRentalMinutes={getMinRentalMinutes(storeSettings as StoreSettings)}
-              businessHours={storeSettings.businessHours as BusinessHours | undefined}
-              timezone={storeSettings.timezone}
-              accessories={availableAccessories}
-              trackUnits={Boolean(product.trackUnits || bookingAttributeAxes.length > 0)}
-              bookingAttributeAxes={bookingAttributeAxes}
-              bookingAttributeValues={bookingAttributeValues}
-              productUnits={(product.units || []).map((unit) => ({
-                status: unit.status || 'available',
-                attributes: (unit.attributes as Record<string, string> | null) || null,
-              }))}
-              bookingCombinations={bookingCombinations}
-              seasonalPricings={seasonalPricings}
-            />
-          )}
-
-          {/* Description */}
-          {product.description && (
-            <div className="mt-8">
-              <h2 className="text-lg font-semibold mb-2">{t('description')}</h2>
-              <p className="text-muted-foreground whitespace-pre-line">
-                {product.description}
-              </p>
-            </div>
-          )}
         </div>
-      </div>
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (
           <section className="mt-16">
-            <h2 className="text-2xl font-bold mb-6">{t('relatedProducts')}</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <h2 className="mb-6 text-2xl font-bold">{t('relatedProducts')}</h2>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {relatedProducts.map((relatedProduct) => (
                 <ProductCard
                   key={relatedProduct.id}
@@ -498,5 +555,5 @@ export default async function ProductPage({ params }: ProductPageProps) {
         )}
       </div>
     </>
-  )
+  );
 }

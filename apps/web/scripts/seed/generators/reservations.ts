@@ -3,105 +3,117 @@
  *
  * Generates reservations with all possible states, items, and activity logs.
  */
-
-import type { StoreConfig } from '../config'
-import type { GeneratedProduct, GeneratedProductUnit } from './products'
-import type { GeneratedCustomer } from './customers'
+import type { StoreConfig } from '../config';
 import {
-  generateId,
-  generateStripeId,
-  generateReservationNumber,
-  generateIpAddress,
-  pickRandom,
-  pickRandomMultiple,
-  randomInt,
-  randomDecimal,
-  chance,
-  weightedRandom,
-  randomDate,
-  addHours,
   addDays,
+  addHours,
   addMinutes,
-  setTime,
-  startOfDay,
+  chance,
+  generateId,
+  generateIpAddress,
+  generateReservationNumber,
+  generateStripeId,
   isPast,
   logProgress,
-} from '../utils'
+  pickRandom,
+  pickRandomMultiple,
+  randomDate,
+  randomDecimal,
+  randomInt,
+  setTime,
+  startOfDay,
+  weightedRandom,
+} from '../utils';
+import type { GeneratedCustomer } from './customers';
+import type { GeneratedProduct, GeneratedProductUnit } from './products';
 
 export interface GeneratedReservation {
-  id: string
-  storeId: string
-  customerId: string
-  number: string
-  status: 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
-  startDate: Date
-  endDate: Date
-  subtotalAmount: string
-  depositAmount: string
-  totalAmount: string
-  subtotalExclTax: string | null
-  taxAmount: string | null
-  taxRate: string | null
-  signedAt: Date | null
-  signatureIp: string | null
-  depositStatus: 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed'
-  depositPaymentIntentId: string | null
-  depositAuthorizationExpiresAt: Date | null
-  stripeCustomerId: string | null
-  stripePaymentMethodId: string | null
-  pickedUpAt: Date | null
-  returnedAt: Date | null
-  customerNotes: string | null
-  internalNotes: string | null
-  source: 'online' | 'phone' | 'inperson'
-  createdAt: Date
-  updatedAt: Date
+  id: string;
+  storeId: string;
+  customerId: string;
+  number: string;
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'ongoing'
+    | 'completed'
+    | 'cancelled'
+    | 'rejected';
+  startDate: Date;
+  endDate: Date;
+  subtotalAmount: string;
+  depositAmount: string;
+  totalAmount: string;
+  subtotalExclTax: string | null;
+  taxAmount: string | null;
+  taxRate: string | null;
+  signedAt: Date | null;
+  signatureIp: string | null;
+  depositStatus:
+    | 'none'
+    | 'pending'
+    | 'card_saved'
+    | 'authorized'
+    | 'captured'
+    | 'released'
+    | 'failed';
+  depositPaymentIntentId: string | null;
+  depositAuthorizationExpiresAt: Date | null;
+  stripeCustomerId: string | null;
+  stripePaymentMethodId: string | null;
+  pickedUpAt: Date | null;
+  returnedAt: Date | null;
+  customerNotes: string | null;
+  internalNotes: string | null;
+  source: 'online' | 'phone' | 'inperson';
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface PricingBreakdownSeed {
-  basePrice: number
-  effectivePrice: number
-  duration: number
-  pricingMode: 'hour' | 'day' | 'week'
-  discountPercent: number | null
-  discountAmount: number
-  tierApplied: string | null
-  taxRate: number | null
-  taxAmount: number | null
-  subtotalExclTax: number | null
-  subtotalInclTax: number | null
-  isManualOverride?: boolean
-  originalPrice?: number
+  basePrice: number;
+  effectivePrice: number;
+  duration: number;
+  pricingMode: 'hour' | 'day' | 'week';
+  discountPercent: number | null;
+  discountAmount: number;
+  tierApplied: string | null;
+  taxRate: number | null;
+  taxAmount: number | null;
+  subtotalExclTax: number | null;
+  subtotalInclTax: number | null;
+  isManualOverride?: boolean;
+  originalPrice?: number;
 }
 
 export interface GeneratedReservationItem {
-  id: string
-  reservationId: string
-  productId: string | null
-  isCustomItem: boolean
-  quantity: number
-  unitPrice: string
-  depositPerUnit: string
-  totalPrice: string
-  taxRate: string | null
-  taxAmount: string | null
-  priceExclTax: string | null
-  totalExclTax: string | null
-  pricingBreakdown: PricingBreakdownSeed | null
+  id: string;
+  reservationId: string;
+  productId: string | null;
+  isCustomItem: boolean;
+  quantity: number;
+  unitPrice: string;
+  depositPerUnit: string;
+  totalPrice: string;
+  taxRate: string | null;
+  taxAmount: string | null;
+  priceExclTax: string | null;
+  totalExclTax: string | null;
+  pricingBreakdown: PricingBreakdownSeed | null;
   productSnapshot: {
-    name: string
-    description: string | null
-    images: string[]
-  }
-  createdAt: Date
+    name: string;
+    description: string | null;
+    images: string[];
+  };
+  createdAt: Date;
 }
 
 export interface GeneratedReservationItemUnit {
-  id: string
-  reservationItemId: string
-  productUnitId: string
-  identifierSnapshot: string
-  assignedAt: Date
+  id: string;
+  reservationItemId: string;
+  productUnitId: string;
+  identifierSnapshot: string;
+  assignedAt: Date;
 }
 
 export type ActivityType =
@@ -130,23 +142,23 @@ export type ActivityType =
   | 'inspection_return_started'
   | 'inspection_return_completed'
   | 'inspection_damage_detected'
-  | 'inspection_signed'
+  | 'inspection_signed';
 
 export interface GeneratedReservationActivity {
-  id: string
-  reservationId: string
-  userId: string | null
-  activityType: ActivityType
-  description: string | null
-  metadata: Record<string, unknown> | null
-  createdAt: Date
+  id: string;
+  reservationId: string;
+  userId: string | null;
+  activityType: ActivityType;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: Date;
 }
 
 export interface ReservationsGeneratorResult {
-  reservations: GeneratedReservation[]
-  reservationItems: GeneratedReservationItem[]
-  reservationItemUnits: GeneratedReservationItemUnit[]
-  reservationActivity: GeneratedReservationActivity[]
+  reservations: GeneratedReservation[];
+  reservationItems: GeneratedReservationItem[];
+  reservationItemUnits: GeneratedReservationItemUnit[];
+  reservationActivity: GeneratedReservationActivity[];
 }
 
 // Customer notes templates
@@ -155,14 +167,14 @@ const CUSTOMER_NOTES = [
   'Besoin de conseils pour les itinéraires.',
   'Premier séjour dans la région.',
   'Groupe familial avec 2 enfants.',
-  'Sortie d\'entreprise.',
+  "Sortie d'entreprise.",
   'Anniversaire de mariage.',
-  'Vacances d\'été.',
+  "Vacances d'été.",
   'Week-end prolongé.',
   null,
   null,
   null,
-]
+];
 
 // Internal notes templates
 const INTERNAL_NOTES = {
@@ -192,7 +204,7 @@ const INTERNAL_NOTES = {
     'Conflit avec maintenance prévue.',
     'Demande de dernière minute - délai trop court.',
   ],
-}
+};
 
 /**
  * Determine reservation status based on dates and random distribution
@@ -201,21 +213,37 @@ function determineReservationStatus(
   startDate: Date,
   endDate: Date,
   now: Date,
-  storeConfig: StoreConfig
+  storeConfig: StoreConfig,
 ): {
-  status: 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
-  depositStatus: 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed'
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'ongoing'
+    | 'completed'
+    | 'cancelled'
+    | 'rejected';
+  depositStatus:
+    | 'none'
+    | 'pending'
+    | 'card_saved'
+    | 'authorized'
+    | 'captured'
+    | 'released'
+    | 'failed';
 } {
-  const isStartPast = startDate < now
-  const isEndPast = endDate < now
-  const isOngoing = isStartPast && !isEndPast
+  const isStartPast = startDate < now;
+  const isEndPast = endDate < now;
+  const isOngoing = isStartPast && !isEndPast;
 
   // Cancelled/rejected can happen anytime
   if (chance(0.05)) {
-    return { status: 'cancelled', depositStatus: chance(0.3) ? 'released' : 'none' }
+    return {
+      status: 'cancelled',
+      depositStatus: chance(0.3) ? 'released' : 'none',
+    };
   }
   if (storeConfig.reservationMode === 'request' && chance(0.03)) {
-    return { status: 'rejected', depositStatus: 'none' }
+    return { status: 'rejected', depositStatus: 'none' };
   }
 
   // Past reservations
@@ -223,25 +251,25 @@ function determineReservationStatus(
     // 90% completed, 10% cancelled
     if (chance(0.9)) {
       // Completed: 85% released deposit, 15% captured (damage)
-      const hasDamage = chance(0.15)
+      const hasDamage = chance(0.15);
       return {
         status: 'completed',
         depositStatus: hasDamage ? 'captured' : 'released',
-      }
+      };
     }
-    return { status: 'cancelled', depositStatus: 'released' }
+    return { status: 'cancelled', depositStatus: 'released' };
   }
 
   // Ongoing reservations
   if (isOngoing) {
-    return { status: 'ongoing', depositStatus: 'authorized' }
+    return { status: 'ongoing', depositStatus: 'authorized' };
   }
 
   // Future reservations
   // Request mode: mix of pending and confirmed
   if (storeConfig.reservationMode === 'request') {
     if (chance(0.3)) {
-      return { status: 'pending', depositStatus: 'pending' }
+      return { status: 'pending', depositStatus: 'pending' };
     }
   }
 
@@ -251,9 +279,9 @@ function determineReservationStatus(
     { item: 'pending' as const, weight: 0.2 },
     { item: 'card_saved' as const, weight: 0.1 },
     { item: 'none' as const, weight: 0.1 },
-  ])
+  ]);
 
-  return { status: 'confirmed', depositStatus }
+  return { status: 'confirmed', depositStatus };
 }
 
 /**
@@ -262,18 +290,18 @@ function determineReservationStatus(
 function calculateDuration(
   startDate: Date,
   endDate: Date,
-  pricingMode: 'hour' | 'day' | 'week'
+  pricingMode: 'hour' | 'day' | 'week',
 ): number {
-  const diffMs = endDate.getTime() - startDate.getTime()
-  const diffHours = diffMs / (1000 * 60 * 60)
+  const diffMs = endDate.getTime() - startDate.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
 
   switch (pricingMode) {
     case 'hour':
-      return Math.ceil(diffHours)
+      return Math.ceil(diffHours);
     case 'day':
-      return Math.ceil(diffHours / 24)
+      return Math.ceil(diffHours / 24);
     case 'week':
-      return Math.ceil(diffHours / (24 * 7))
+      return Math.ceil(diffHours / (24 * 7));
   }
 }
 
@@ -282,15 +310,21 @@ function calculateDuration(
  */
 function generateActivityLog(
   reservationId: string,
-  status: 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected',
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'ongoing'
+    | 'completed'
+    | 'cancelled'
+    | 'rejected',
   depositStatus: string,
   createdAt: Date,
   startDate: Date,
   endDate: Date,
   userId: string | null,
-  storeConfig: StoreConfig
+  storeConfig: StoreConfig,
 ): GeneratedReservationActivity[] {
-  const activities: GeneratedReservationActivity[] = []
+  const activities: GeneratedReservationActivity[] = [];
 
   // Created
   activities.push({
@@ -301,7 +335,7 @@ function generateActivityLog(
     description: null,
     metadata: { source: 'online' },
     createdAt,
-  })
+  });
 
   // Payment initiated (for payment mode)
   if (storeConfig.reservationMode === 'payment' && storeConfig.stripeEnabled) {
@@ -313,7 +347,7 @@ function generateActivityLog(
       description: null,
       metadata: null,
       createdAt: addMinutes(createdAt, randomInt(1, 5)),
-    })
+    });
 
     // Payment received (for completed flow)
     if (status !== 'pending') {
@@ -325,7 +359,7 @@ function generateActivityLog(
         description: null,
         metadata: null,
         createdAt: addMinutes(createdAt, randomInt(5, 15)),
-      })
+      });
     }
   }
 
@@ -340,7 +374,7 @@ function generateActivityLog(
         description: null,
         metadata: null,
         createdAt: addMinutes(createdAt, randomInt(30, 120)),
-      })
+      });
 
       // Deposit authorized
       if (depositStatus === 'authorized') {
@@ -352,9 +386,9 @@ function generateActivityLog(
           description: null,
           metadata: null,
           createdAt: addHours(createdAt, randomInt(1, 24)),
-        })
+        });
       }
-      break
+      break;
 
     case 'ongoing':
       activities.push({
@@ -365,7 +399,7 @@ function generateActivityLog(
         description: null,
         metadata: null,
         createdAt: addMinutes(createdAt, randomInt(30, 120)),
-      })
+      });
       activities.push({
         id: generateId(),
         reservationId,
@@ -374,7 +408,7 @@ function generateActivityLog(
         description: null,
         metadata: null,
         createdAt: addHours(createdAt, randomInt(1, 24)),
-      })
+      });
       activities.push({
         id: generateId(),
         reservationId,
@@ -383,8 +417,8 @@ function generateActivityLog(
         description: null,
         metadata: null,
         createdAt: setTime(startDate, randomInt(9, 11)),
-      })
-      break
+      });
+      break;
 
     case 'completed':
       activities.push({
@@ -395,7 +429,7 @@ function generateActivityLog(
         description: null,
         metadata: null,
         createdAt: addMinutes(createdAt, randomInt(30, 120)),
-      })
+      });
       activities.push({
         id: generateId(),
         reservationId,
@@ -404,7 +438,7 @@ function generateActivityLog(
         description: null,
         metadata: null,
         createdAt: addHours(createdAt, randomInt(1, 24)),
-      })
+      });
       activities.push({
         id: generateId(),
         reservationId,
@@ -413,7 +447,7 @@ function generateActivityLog(
         description: null,
         metadata: null,
         createdAt: setTime(startDate, randomInt(9, 11)),
-      })
+      });
       activities.push({
         id: generateId(),
         reservationId,
@@ -422,7 +456,7 @@ function generateActivityLog(
         description: null,
         metadata: null,
         createdAt: setTime(endDate, randomInt(16, 18)),
-      })
+      });
 
       // Deposit released or captured
       if (depositStatus === 'captured') {
@@ -434,7 +468,7 @@ function generateActivityLog(
           description: pickRandom(INTERNAL_NOTES.damage),
           metadata: { amount: randomDecimal(20, 100) },
           createdAt: addHours(endDate, randomInt(1, 24)),
-        })
+        });
       } else {
         activities.push({
           id: generateId(),
@@ -444,9 +478,9 @@ function generateActivityLog(
           description: null,
           metadata: null,
           createdAt: addHours(endDate, randomInt(1, 48)),
-        })
+        });
       }
-      break
+      break;
 
     case 'cancelled':
       activities.push({
@@ -457,8 +491,8 @@ function generateActivityLog(
         description: pickRandom(INTERNAL_NOTES.cancelled),
         metadata: null,
         createdAt: addHours(createdAt, randomInt(1, 72)),
-      })
-      break
+      });
+      break;
 
     case 'rejected':
       activities.push({
@@ -469,11 +503,11 @@ function generateActivityLog(
         description: pickRandom(INTERNAL_NOTES.rejected),
         metadata: null,
         createdAt: addHours(createdAt, randomInt(1, 24)),
-      })
-      break
+      });
+      break;
   }
 
-  return activities
+  return activities;
 }
 
 /**
@@ -488,115 +522,129 @@ export function generateReservations(
   teamUserIds: string[],
   startDate: Date,
   endDate: Date,
-  now: Date
+  now: Date,
 ): ReservationsGeneratorResult {
-  const reservations: GeneratedReservation[] = []
-  const reservationItems: GeneratedReservationItem[] = []
-  const reservationItemUnits: GeneratedReservationItemUnit[] = []
-  const reservationActivity: GeneratedReservationActivity[] = []
+  const reservations: GeneratedReservation[] = [];
+  const reservationItems: GeneratedReservationItem[] = [];
+  const reservationItemUnits: GeneratedReservationItemUnit[] = [];
+  const reservationActivity: GeneratedReservationActivity[] = [];
 
   // Filter active products only
-  const activeProducts = products.filter((p) => p.status === 'active')
+  const activeProducts = products.filter((p) => p.status === 'active');
   if (activeProducts.length === 0 || customers.length === 0) {
-    return { reservations, reservationItems, reservationItemUnits, reservationActivity }
+    return {
+      reservations,
+      reservationItems,
+      reservationItemUnits,
+      reservationActivity,
+    };
   }
 
   // Build product units map
-  const productUnitsMap = new Map<string, GeneratedProductUnit[]>()
+  const productUnitsMap = new Map<string, GeneratedProductUnit[]>();
   for (const unit of productUnits) {
     if (!productUnitsMap.has(unit.productId)) {
-      productUnitsMap.set(unit.productId, [])
+      productUnitsMap.set(unit.productId, []);
     }
-    productUnitsMap.get(unit.productId)!.push(unit)
+    productUnitsMap.get(unit.productId)!.push(unit);
   }
 
   // Reservation counter for numbering
-  let reservationCounter = 1
+  let reservationCounter = 1;
 
   for (let i = 0; i < storeConfig.reservationCount; i++) {
     // Pick a random customer
-    const customer = pickRandom(customers)
+    const customer = pickRandom(customers);
 
     // Generate reservation dates
-    const resStartDate = randomDate(startDate, endDate)
+    const resStartDate = randomDate(startDate, endDate);
     // Set time to business hours (9-18)
-    const adjustedStartDate = setTime(startOfDay(resStartDate), randomInt(9, 17))
+    const adjustedStartDate = setTime(
+      startOfDay(resStartDate),
+      randomInt(9, 17),
+    );
 
     // Duration varies by pricing mode
-    let durationHours: number
+    let durationHours: number;
     switch (storeConfig.pricingMode) {
       case 'hour':
-        durationHours = randomInt(2, 8)
-        break
+        durationHours = randomInt(2, 8);
+        break;
       case 'day':
-        durationHours = randomInt(1, 7) * 24
-        break
+        durationHours = randomInt(1, 7) * 24;
+        break;
       case 'week':
-        durationHours = randomInt(1, 3) * 7 * 24
-        break
+        durationHours = randomInt(1, 3) * 7 * 24;
+        break;
     }
 
-    const resEndDate = addHours(adjustedStartDate, durationHours)
+    const resEndDate = addHours(adjustedStartDate, durationHours);
 
     // Determine status based on dates
     const { status, depositStatus } = determineReservationStatus(
       adjustedStartDate,
       resEndDate,
       now,
-      storeConfig
-    )
+      storeConfig,
+    );
 
     // Pick 1-3 products
     const numProducts = weightedRandom([
       { item: 1, weight: 0.5 },
       { item: 2, weight: 0.35 },
       { item: 3, weight: 0.15 },
-    ])
-    const selectedProducts = pickRandomMultiple(activeProducts, numProducts)
+    ]);
+    const selectedProducts = pickRandomMultiple(activeProducts, numProducts);
 
     // Calculate totals
-    let subtotal = 0
-    let totalDeposit = 0
-    const duration = calculateDuration(adjustedStartDate, resEndDate, storeConfig.pricingMode)
+    let subtotal = 0;
+    let totalDeposit = 0;
+    const duration = calculateDuration(
+      adjustedStartDate,
+      resEndDate,
+      storeConfig.pricingMode,
+    );
 
-    const reservationId = generateId()
-    const createdAt = new Date(adjustedStartDate.getTime() - randomInt(1, 14) * 24 * 60 * 60 * 1000)
-    const userId = teamUserIds.length > 0 ? pickRandom(teamUserIds) : null
+    const reservationId = generateId();
+    const createdAt = new Date(
+      adjustedStartDate.getTime() - randomInt(1, 14) * 24 * 60 * 60 * 1000,
+    );
+    const userId = teamUserIds.length > 0 ? pickRandom(teamUserIds) : null;
 
     // Generate items
     for (const product of selectedProducts) {
-      const quantity = randomInt(1, Math.min(3, product.quantity))
-      const unitPrice = parseFloat(product.price)
-      const depositPerUnit = parseFloat(product.deposit)
+      const quantity = randomInt(1, Math.min(3, product.quantity));
+      const unitPrice = parseFloat(product.price);
+      const depositPerUnit = parseFloat(product.deposit);
 
       // Apply simple tiered pricing (just for seed data, not exact)
-      const totalPrice = unitPrice * duration * quantity
-      const itemDeposit = depositPerUnit * quantity
+      const totalPrice = unitPrice * duration * quantity;
+      const itemDeposit = depositPerUnit * quantity;
 
-      subtotal += totalPrice
-      totalDeposit += itemDeposit
+      subtotal += totalPrice;
+      totalDeposit += itemDeposit;
 
-      const itemId = generateId()
+      const itemId = generateId();
 
       // Tax calculation if enabled
-      let taxRate: string | null = null
-      let taxAmount: string | null = null
-      let priceExclTax: string | null = null
-      let totalExclTax: string | null = null
+      let taxRate: string | null = null;
+      let taxAmount: string | null = null;
+      let priceExclTax: string | null = null;
+      let totalExclTax: string | null = null;
 
       if (storeConfig.taxEnabled) {
-        taxRate = storeConfig.taxRate.toFixed(2)
+        taxRate = storeConfig.taxRate.toFixed(2);
         if (storeConfig.taxMode === 'inclusive') {
           // Price includes tax
-          const rate = storeConfig.taxRate / 100
-          priceExclTax = (unitPrice / (1 + rate)).toFixed(2)
-          totalExclTax = (totalPrice / (1 + rate)).toFixed(2)
-          taxAmount = (totalPrice - parseFloat(totalExclTax)).toFixed(2)
+          const rate = storeConfig.taxRate / 100;
+          priceExclTax = (unitPrice / (1 + rate)).toFixed(2);
+          totalExclTax = (totalPrice / (1 + rate)).toFixed(2);
+          taxAmount = (totalPrice - parseFloat(totalExclTax)).toFixed(2);
         } else {
           // Price excludes tax
-          priceExclTax = unitPrice.toFixed(2)
-          totalExclTax = totalPrice.toFixed(2)
-          taxAmount = (totalPrice * (storeConfig.taxRate / 100)).toFixed(2)
+          priceExclTax = unitPrice.toFixed(2);
+          totalExclTax = totalPrice.toFixed(2);
+          taxAmount = (totalPrice * (storeConfig.taxRate / 100)).toFixed(2);
         }
       }
 
@@ -632,13 +680,16 @@ export function generateReservations(
           images: product.images,
         },
         createdAt,
-      })
+      });
 
       // Assign product units if tracking is enabled and reservation is ongoing/completed
       if (product.trackUnits && ['ongoing', 'completed'].includes(status)) {
-        const availableUnits = productUnitsMap.get(product.id)?.filter((u) => u.status === 'available') || []
+        const availableUnits =
+          productUnitsMap
+            .get(product.id)
+            ?.filter((unit) => unit.lifecycleStatus === 'active') || [];
 
-        const unitsToAssign = availableUnits.slice(0, quantity)
+        const unitsToAssign = availableUnits.slice(0, quantity);
         for (const unit of unitsToAssign) {
           reservationItemUnits.push({
             id: generateId(),
@@ -646,24 +697,24 @@ export function generateReservations(
             productUnitId: unit.id,
             identifierSnapshot: unit.identifier,
             assignedAt: adjustedStartDate,
-          })
+          });
         }
       }
     }
 
     // Calculate tax totals
-    let subtotalExclTax: string | null = null
-    let totalTaxAmount: string | null = null
+    let subtotalExclTax: string | null = null;
+    let totalTaxAmount: string | null = null;
 
     if (storeConfig.taxEnabled) {
       if (storeConfig.taxMode === 'inclusive') {
-        const rate = storeConfig.taxRate / 100
-        subtotalExclTax = (subtotal / (1 + rate)).toFixed(2)
-        totalTaxAmount = (subtotal - parseFloat(subtotalExclTax)).toFixed(2)
+        const rate = storeConfig.taxRate / 100;
+        subtotalExclTax = (subtotal / (1 + rate)).toFixed(2);
+        totalTaxAmount = (subtotal - parseFloat(subtotalExclTax)).toFixed(2);
       } else {
-        subtotalExclTax = subtotal.toFixed(2)
-        totalTaxAmount = (subtotal * (storeConfig.taxRate / 100)).toFixed(2)
-        subtotal = subtotal + parseFloat(totalTaxAmount) // Add tax to total
+        subtotalExclTax = subtotal.toFixed(2);
+        totalTaxAmount = (subtotal * (storeConfig.taxRate / 100)).toFixed(2);
+        subtotal = subtotal + parseFloat(totalTaxAmount); // Add tax to total
       }
     }
 
@@ -672,49 +723,53 @@ export function generateReservations(
       { item: 'online' as const, weight: 0.7 },
       { item: 'phone' as const, weight: 0.2 },
       { item: 'inperson' as const, weight: 0.1 },
-    ])
+    ]);
 
     // Signature for confirmed+ reservations
-    const shouldSign = ['confirmed', 'ongoing', 'completed'].includes(status)
-    const signedAt = shouldSign ? addMinutes(createdAt, randomInt(5, 30)) : null
-    const signatureIp = shouldSign ? generateIpAddress() : null
+    const shouldSign = ['confirmed', 'ongoing', 'completed'].includes(status);
+    const signedAt = shouldSign
+      ? addMinutes(createdAt, randomInt(5, 30))
+      : null;
+    const signatureIp = shouldSign ? generateIpAddress() : null;
 
     // Pickup and return times
-    let pickedUpAt: Date | null = null
-    let returnedAt: Date | null = null
+    let pickedUpAt: Date | null = null;
+    let returnedAt: Date | null = null;
 
     if (['ongoing', 'completed'].includes(status)) {
-      pickedUpAt = setTime(adjustedStartDate, randomInt(9, 11))
+      pickedUpAt = setTime(adjustedStartDate, randomInt(9, 11));
     }
     if (status === 'completed') {
-      returnedAt = setTime(resEndDate, randomInt(16, 18))
+      returnedAt = setTime(resEndDate, randomInt(16, 18));
     }
 
     // Stripe IDs for online payments
-    const hasStripe = storeConfig.stripeEnabled && source === 'online'
-    const stripeCustomerId = hasStripe ? generateStripeId('cus') : null
-    const stripePaymentMethodId = hasStripe && depositStatus !== 'none' ? generateStripeId('pm') : null
+    const hasStripe = storeConfig.stripeEnabled && source === 'online';
+    const stripeCustomerId = hasStripe ? generateStripeId('cus') : null;
+    const stripePaymentMethodId =
+      hasStripe && depositStatus !== 'none' ? generateStripeId('pm') : null;
     const depositPaymentIntentId =
-      hasStripe && ['authorized', 'captured', 'released'].includes(depositStatus)
+      hasStripe &&
+      ['authorized', 'captured', 'released'].includes(depositStatus)
         ? generateStripeId('pi')
-        : null
+        : null;
 
     // Deposit authorization expiry (7 days after creation for active holds)
     const depositAuthorizationExpiresAt =
-      depositStatus === 'authorized' ? addDays(createdAt, 7) : null
+      depositStatus === 'authorized' ? addDays(createdAt, 7) : null;
 
     // Notes
-    const customerNotes = chance(0.3) ? pickRandom(CUSTOMER_NOTES) : null
-    let internalNotes: string | null = null
+    const customerNotes = chance(0.3) ? pickRandom(CUSTOMER_NOTES) : null;
+    let internalNotes: string | null = null;
 
     if (status === 'completed' && depositStatus === 'captured') {
-      internalNotes = pickRandom(INTERNAL_NOTES.damage)
+      internalNotes = pickRandom(INTERNAL_NOTES.damage);
     } else if (status === 'completed') {
-      internalNotes = pickRandom(INTERNAL_NOTES.completed)
+      internalNotes = pickRandom(INTERNAL_NOTES.completed);
     } else if (status === 'cancelled') {
-      internalNotes = pickRandom(INTERNAL_NOTES.cancelled)
+      internalNotes = pickRandom(INTERNAL_NOTES.cancelled);
     } else if (status === 'rejected') {
-      internalNotes = pickRandom(INTERNAL_NOTES.rejected)
+      internalNotes = pickRandom(INTERNAL_NOTES.rejected);
     }
 
     reservations.push({
@@ -745,7 +800,7 @@ export function generateReservations(
       source,
       createdAt,
       updatedAt: now,
-    })
+    });
 
     // Generate activity log
     const activities = generateActivityLog(
@@ -756,11 +811,15 @@ export function generateReservations(
       adjustedStartDate,
       resEndDate,
       userId,
-      storeConfig
-    )
-    reservationActivity.push(...activities)
+      storeConfig,
+    );
+    reservationActivity.push(...activities);
 
-    logProgress(i + 1, storeConfig.reservationCount, `Reservations for ${storeConfig.name}`)
+    logProgress(
+      i + 1,
+      storeConfig.reservationCount,
+      `Reservations for ${storeConfig.name}`,
+    );
   }
 
   return {
@@ -768,5 +827,5 @@ export function generateReservations(
     reservationItems,
     reservationItemUnits,
     reservationActivity,
-  }
+  };
 }

@@ -282,7 +282,7 @@ export function NewReservationStepProducts({
             >((acc, axis) => {
               const values = new Set<string>();
               for (const unit of product.units || []) {
-                if ((unit.status || 'available') !== 'available') {
+                if ((unit.lifecycleStatus || 'active') !== 'active') {
                   continue;
                 }
                 const rawValue = unit.attributes?.[axis.key];

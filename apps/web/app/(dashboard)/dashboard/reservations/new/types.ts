@@ -43,7 +43,7 @@ export interface Product {
   trackUnits: boolean;
   bookingAttributeAxes: BookingAttributeAxis[] | null;
   units: Array<{
-    status: 'available' | 'maintenance' | 'retired';
+    lifecycleStatus: 'active' | 'retired';
     attributes: UnitAttributes | null;
   }>;
   pricingTiers: ProductPricingTier[];

@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { Eye, Package } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { Eye, Package } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import {
   Badge,
@@ -13,17 +13,21 @@ import {
   RadioGroup,
   RadioGroupItem,
   Separator,
-} from '@louez/ui'
-import { formatCurrency } from '@louez/utils'
+} from '@louez/ui';
+import { formatCurrency } from '@louez/utils';
 
-import type { Category, ProductFormComponentApi, ProductFormValues } from '../types'
+import type {
+  Category,
+  ProductFormComponentApi,
+  ProductFormValues,
+} from '../types';
 
 interface ProductFormStepPreviewProps {
-  form: ProductFormComponentApi
-  watchedValues: ProductFormValues
-  imagesPreviews: string[]
-  selectedCategory: Category | undefined
-  priceLabel: string
+  form: ProductFormComponentApi;
+  watchedValues: ProductFormValues;
+  imagesPreviews: string[];
+  selectedCategory: Category | undefined;
+  priceLabel: string;
 }
 
 export function ProductFormStepPreview({
@@ -33,7 +37,7 @@ export function ProductFormStepPreview({
   selectedCategory,
   priceLabel,
 }: ProductFormStepPreviewProps) {
-  const t = useTranslations('dashboard.products.form')
+  const t = useTranslations('dashboard.products.form');
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -65,7 +69,9 @@ export function ProductFormStepPreview({
               <div className="space-y-2 p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold">{watchedValues.name || t('noName')}</h3>
+                    <h3 className="font-semibold">
+                      {watchedValues.name || t('noName')}
+                    </h3>
                     {selectedCategory && (
                       <Badge variant="secondary" className="mt-1">
                         {selectedCategory.name}
@@ -74,9 +80,17 @@ export function ProductFormStepPreview({
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold">
-                      {formatCurrency(parseFloat(watchedValues.basePriceDuration?.price || watchedValues.price || '0') || 0)}
+                      {formatCurrency(
+                        parseFloat(
+                          watchedValues.basePriceDuration?.price ||
+                            watchedValues.price ||
+                            '0',
+                        ) || 0,
+                      )}
                     </p>
-                    <p className="text-muted-foreground text-xs">{priceLabel}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {priceLabel}
+                    </p>
                   </div>
                 </div>
                 {watchedValues.description && (
@@ -95,14 +109,18 @@ export function ProductFormStepPreview({
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('deposit')}</span>
-                <span>{formatCurrency(parseFloat(watchedValues.deposit || '0') || 0)}</span>
+                <span>
+                  {formatCurrency(
+                    parseFloat(watchedValues.deposit || '0') || 0,
+                  )}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('quantity')}</span>
                 <span>
                   {watchedValues.trackUnits
                     ? (watchedValues.units ?? []).filter(
-                        (u) => !u.status || u.status === 'available'
+                        (u) => (u.lifecycleStatus || 'active') === 'active',
                       ).length
                     : watchedValues.quantity}{' '}
                   {t('units')}
@@ -141,7 +159,11 @@ export function ProductFormStepPreview({
                         : 'hover:bg-muted/50'
                     }`}
                   >
-                    <RadioGroupItem value="active" id="active" className="mt-1" />
+                    <RadioGroupItem
+                      value="active"
+                      id="active"
+                      className="mt-1"
+                    />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{t('statusActive')}</span>
@@ -180,7 +202,11 @@ export function ProductFormStepPreview({
                         : 'hover:bg-muted/50'
                     }`}
                   >
-                    <RadioGroupItem value="archived" id="archived" className="mt-1" />
+                    <RadioGroupItem
+                      value="archived"
+                      id="archived"
+                      className="mt-1"
+                    />
                     <div className="flex-1">
                       <span className="font-medium">{t('statusArchived')}</span>
                       <p className="text-muted-foreground mt-1 text-sm">
@@ -200,5 +226,5 @@ export function ProductFormStepPreview({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -9,53 +9,52 @@
  *   pnpm db:seed --email=dev@example.com
  *   pnpm db:seed -e dev@example.com -m 6 -y
  */
-
-import 'dotenv/config'
-import { drizzle } from 'drizzle-orm/mysql2'
-import { createPool, type Pool } from 'mysql2/promise'
-import { nanoid } from 'nanoid'
-import { eq } from 'drizzle-orm'
-
-import {
-  validateEnvironment,
-  parseCliArgs,
-  askConfirmation,
-  getDateRanges,
-  STORE_CONFIGS,
-  type StoreConfig,
-} from './config'
-import {
-  generateId,
-  generateStripeId,
-  generateReferralCode,
-  generateIcsToken,
-  logSection,
-  logSuccess,
-  logInfo,
-  logError,
-  colors,
-} from './utils'
-import { generateProducts } from './generators/products'
-import { generateCustomers } from './generators/customers'
-import { generateTeam } from './generators/team'
-import { generateReservations } from './generators/reservations'
-import { generatePayments } from './generators/payments'
-import { generateAnalytics } from './generators/analytics'
+import 'dotenv/config';
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/mysql2';
+import { type Pool, createPool } from 'mysql2/promise';
+import { nanoid } from 'nanoid';
 
 // Import schema
-import * as schema from '@louez/db'
+import * as schema from '@louez/db';
 import type {
-  StoreSettings,
-  StoreTheme,
+  BusinessHours,
+  CustomerNotificationSettings,
   EmailSettings,
   NotificationSettings,
-  CustomerNotificationSettings,
-  BusinessHours,
+  StoreSettings,
+  StoreTheme,
   TaxSettings,
-} from '@louez/types'
+} from '@louez/types';
+
+import {
+  STORE_CONFIGS,
+  type StoreConfig,
+  askConfirmation,
+  getDateRanges,
+  parseCliArgs,
+  validateEnvironment,
+} from './config';
+import { generateAnalytics } from './generators/analytics';
+import { generateCustomers } from './generators/customers';
+import { generatePayments } from './generators/payments';
+import { generateProducts } from './generators/products';
+import { generateReservations } from './generators/reservations';
+import { generateTeam } from './generators/team';
+import {
+  colors,
+  generateIcsToken,
+  generateId,
+  generateReferralCode,
+  generateStripeId,
+  logError,
+  logInfo,
+  logSection,
+  logSuccess,
+} from './utils';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DrizzleDB = ReturnType<typeof drizzle<any>>
+type DrizzleDB = ReturnType<typeof drizzle<any>>;
 
 /**
  * Create or get the owner user
@@ -63,22 +62,22 @@ type DrizzleDB = ReturnType<typeof drizzle<any>>
 async function getOrCreateUser(
   db: DrizzleDB,
   email: string,
-  now: Date
+  now: Date,
 ): Promise<string> {
   // Check if user exists
   const existingUser = await db
     .select({ id: schema.users.id })
     .from(schema.users)
     .where(eq(schema.users.email, email))
-    .limit(1)
+    .limit(1);
 
   if (existingUser.length > 0) {
-    logInfo(`Using existing user: ${email}`)
-    return existingUser[0].id
+    logInfo(`Using existing user: ${email}`);
+    return existingUser[0].id;
   }
 
   // Create new user
-  const userId = generateId()
+  const userId = generateId();
   await db.insert(schema.users).values({
     id: userId,
     email,
@@ -87,10 +86,10 @@ async function getOrCreateUser(
     emailVerified: true,
     createdAt: now,
     updatedAt: now,
-  })
+  });
 
-  logSuccess(`Created new user: ${email}`)
-  return userId
+  logSuccess(`Created new user: ${email}`);
+  return userId;
 }
 
 /**
@@ -99,7 +98,12 @@ async function getOrCreateUser(
 function generateStoreSettings(config: StoreConfig): StoreSettings {
   const settings: StoreSettings = {
     reservationMode: config.reservationMode,
-    minRentalMinutes: config.pricingMode === 'hour' ? 120 : config.pricingMode === 'week' ? 10080 : 1440,
+    minRentalMinutes:
+      config.pricingMode === 'hour'
+        ? 120
+        : config.pricingMode === 'week'
+          ? 10080
+          : 1440,
     maxRentalMinutes: null,
     advanceNoticeMinutes: config.pricingMode === 'hour' ? 240 : 1440,
     requireCustomerAddress: config.reservationMode === 'payment',
@@ -108,7 +112,7 @@ function generateStoreSettings(config: StoreConfig): StoreSettings {
     country: 'FR',
     timezone: 'Europe/Paris',
     currency: 'EUR',
-  }
+  };
 
   // Add tax settings
   if (config.taxEnabled) {
@@ -117,8 +121,10 @@ function generateStoreSettings(config: StoreConfig): StoreSettings {
       defaultRate: config.taxRate,
       displayMode: config.taxMode,
       taxLabel: 'TVA',
-      taxNumber: `FR${Math.floor(Math.random() * 1000000000000).toString().padStart(11, '0')}`,
-    }
+      taxNumber: `FR${Math.floor(Math.random() * 1000000000000)
+        .toString()
+        .padStart(11, '0')}`,
+    };
   }
 
   // Add business hours
@@ -131,7 +137,7 @@ function generateStoreSettings(config: StoreConfig): StoreSettings {
       4: { isOpen: true, ranges: [{ openTime: '09:00', closeTime: '18:00' }] },
       5: { isOpen: true, ranges: [{ openTime: '09:00', closeTime: '18:00' }] },
       6: { isOpen: true, ranges: [{ openTime: '10:00', closeTime: '17:00' }] }, // Saturday shorter
-    }
+    };
 
     settings.businessHours = {
       enabled: true,
@@ -145,10 +151,10 @@ function generateStoreSettings(config: StoreConfig): StoreSettings {
           reason: 'Fermeture annuelle',
         },
       ],
-    }
+    };
   }
 
-  return settings
+  return settings;
 }
 
 /**
@@ -160,7 +166,7 @@ function generateStoreTheme(config: StoreConfig): StoreTheme {
     'e-bikes': '#059669', // Green
     mtb: '#DC2626', // Red
     family: '#7C3AED', // Purple
-  }
+  };
 
   return {
     mode: config.specialty === 'e-bikes' ? 'dark' : 'light',
@@ -169,7 +175,7 @@ function generateStoreTheme(config: StoreConfig): StoreTheme {
       `https://picsum.photos/seed/${config.slug}-1/1920/600`,
       `https://picsum.photos/seed/${config.slug}-2/1920/600`,
     ],
-  }
+  };
 }
 
 /**
@@ -181,8 +187,8 @@ function generateEmailSettings(): EmailSettings {
     reminderPickupEnabled: true,
     reminderReturnEnabled: true,
     replyToEmail: null,
-    defaultSignature: 'L\'équipe de location',
-  }
+    defaultSignature: "L'équipe de location",
+  };
 }
 
 /**
@@ -191,13 +197,48 @@ function generateEmailSettings(): EmailSettings {
 function generateNotificationSettings(): NotificationSettings {
   return {
     reservation_new: { email: true, sms: false, discord: false, push: true },
-    reservation_confirmed: { email: true, sms: false, discord: false, push: false },
-    reservation_rejected: { email: true, sms: false, discord: false, push: false },
-    reservation_cancelled: { email: true, sms: false, discord: false, push: false },
-    reservation_picked_up: { email: false, sms: false, discord: false, push: false },
-    reservation_completed: { email: false, sms: false, discord: false, push: false },
-    reservation_reminder_pickup: { email: false, sms: false, discord: false, push: false },
-    reservation_reminder_return: { email: false, sms: false, discord: false, push: false },
+    reservation_confirmed: {
+      email: true,
+      sms: false,
+      discord: false,
+      push: false,
+    },
+    reservation_rejected: {
+      email: true,
+      sms: false,
+      discord: false,
+      push: false,
+    },
+    reservation_cancelled: {
+      email: true,
+      sms: false,
+      discord: false,
+      push: false,
+    },
+    reservation_picked_up: {
+      email: false,
+      sms: false,
+      discord: false,
+      push: false,
+    },
+    reservation_completed: {
+      email: false,
+      sms: false,
+      discord: false,
+      push: false,
+    },
+    reservation_reminder_pickup: {
+      email: false,
+      sms: false,
+      discord: false,
+      push: false,
+    },
+    reservation_reminder_return: {
+      email: false,
+      sms: false,
+      discord: false,
+      push: false,
+    },
     payment_received: { email: true, sms: false, discord: false, push: false },
     payment_failed: { email: true, sms: false, discord: false, push: false },
     reminderSettings: {
@@ -206,7 +247,7 @@ function generateNotificationSettings(): NotificationSettings {
       mode: 'per_reservation',
       digestHour: 8,
     },
-  }
+  };
 }
 
 /**
@@ -221,7 +262,11 @@ function generateCustomerNotificationSettings(): CustomerNotificationSettings {
     customer_reminder_pickup: { enabled: true, email: true, sms: false },
     customer_reminder_return: { enabled: true, email: true, sms: false },
     customer_payment_requested: { enabled: true, email: true, sms: false },
-    customer_deposit_authorization_requested: { enabled: true, email: true, sms: false },
+    customer_deposit_authorization_requested: {
+      enabled: true,
+      email: true,
+      sms: false,
+    },
     customer_quote_sent: { enabled: true, email: true, sms: false },
     customer_quote_accepted: { enabled: true, email: true, sms: false },
     templates: {},
@@ -229,7 +274,7 @@ function generateCustomerNotificationSettings(): CustomerNotificationSettings {
       pickupReminderHours: 24,
       returnReminderHours: 24,
     },
-  }
+  };
 }
 
 /**
@@ -241,12 +286,12 @@ async function seedStore(
   ownerId: string,
   startDate: Date,
   endDate: Date,
-  now: Date
+  now: Date,
 ): Promise<void> {
-  logSection(`Creating store: ${config.name}`)
+  logSection(`Creating store: ${config.name}`);
 
   // Create store
-  const storeId = generateId()
+  const storeId = generateId();
 
   await db.insert(schema.stores).values({
     id: storeId,
@@ -275,13 +320,13 @@ async function seedStore(
     onboardingCompleted: true,
     createdAt: now,
     updatedAt: now,
-  })
+  });
 
-  logSuccess(`Store created: ${config.name} (${storeId})`)
+  logSuccess(`Store created: ${config.name} (${storeId})`);
 
   // Create subscription. Pay-as-you-go configs use PAYG billing; the paid tiers
   // (pro/ultra) use subscription billing.
-  const isPayAsYouGo = config.planSlug === 'pay_as_you_go'
+  const isPayAsYouGo = config.planSlug === 'pay_as_you_go';
   await db.insert(schema.subscriptions).values({
     id: generateId(),
     storeId,
@@ -295,9 +340,9 @@ async function seedStore(
     cancelAtPeriodEnd: false,
     createdAt: now,
     updatedAt: now,
-  })
+  });
 
-  logSuccess(`Subscription created: ${config.planSlug}`)
+  logSuccess(`Subscription created: ${config.planSlug}`);
 
   // Create SMS credits (all plans can hold credits).
   await db.insert(schema.smsCredits).values({
@@ -308,67 +353,85 @@ async function seedStore(
     totalUsed: config.planSlug === 'ultra' ? 150 : 10,
     createdAt: now,
     updatedAt: now,
-  })
+  });
 
   // Generate team
-  logInfo('Generating team...')
-  const teamData = generateTeam(storeId, ownerId, config, now)
+  logInfo('Generating team...');
+  const teamData = generateTeam(storeId, ownerId, config, now);
 
   if (teamData.users.length > 0) {
-    await db.insert(schema.users).values(teamData.users)
+    await db.insert(schema.users).values(teamData.users);
   }
-  await db.insert(schema.storeMembers).values(teamData.storeMembers)
+  await db.insert(schema.storeMembers).values(teamData.storeMembers);
   if (teamData.storeInvitations.length > 0) {
-    await db.insert(schema.storeInvitations).values(teamData.storeInvitations)
+    await db.insert(schema.storeInvitations).values(teamData.storeInvitations);
   }
 
-  logSuccess(`Team created: ${teamData.storeMembers.length} members, ${teamData.storeInvitations.length} invitations`)
+  logSuccess(
+    `Team created: ${teamData.storeMembers.length} members, ${teamData.storeInvitations.length} invitations`,
+  );
 
   // Generate products
-  logInfo('Generating products...')
-  const productsData = generateProducts(storeId, config, now)
+  logInfo('Generating products...');
+  const productsData = generateProducts(storeId, config, now);
 
   if (productsData.categories.length > 0) {
-    await db.insert(schema.categories).values(productsData.categories)
+    await db.insert(schema.categories).values(productsData.categories);
   }
   if (productsData.products.length > 0) {
-    await db.insert(schema.products).values(productsData.products)
+    await db.insert(schema.products).values(productsData.products);
   }
   if (productsData.pricingTiers.length > 0) {
-    await db.insert(schema.productPricingTiers).values(productsData.pricingTiers)
+    await db
+      .insert(schema.productPricingTiers)
+      .values(productsData.pricingTiers);
   }
   if (productsData.accessories.length > 0) {
-    await db.insert(schema.productAccessories).values(productsData.accessories)
+    await db.insert(schema.productAccessories).values(productsData.accessories);
   }
   if (productsData.productUnits.length > 0) {
-    await db.insert(schema.productUnits).values(productsData.productUnits)
+    await db.insert(schema.productUnits).values(productsData.productUnits);
+  }
+  if (productsData.productUnitDowntimes.length > 0) {
+    await db
+      .insert(schema.productUnitDowntimes)
+      .values(productsData.productUnitDowntimes);
+  }
+  if (productsData.productUnitEvents.length > 0) {
+    await db
+      .insert(schema.productUnitEvents)
+      .values(productsData.productUnitEvents);
   }
 
   logSuccess(
     `Products created: ${productsData.categories.length} categories, ` +
       `${productsData.products.length} products, ` +
-      `${productsData.productUnits.length} units`
-  )
+      `${productsData.productUnits.length} units, ` +
+      `${productsData.productUnitDowntimes.length} unit downtimes, ` +
+      `${productsData.productUnitEvents.length} unit events`,
+  );
 
   // Generate customers
-  logInfo('Generating customers...')
-  const customersData = generateCustomers(storeId, config, now, startDate)
+  logInfo('Generating customers...');
+  const customersData = generateCustomers(storeId, config, now, startDate);
 
   if (customersData.customers.length > 0) {
-    await db.insert(schema.customers).values(customersData.customers)
+    await db.insert(schema.customers).values(customersData.customers);
   }
   if (customersData.customerSessions.length > 0) {
-    await db.insert(schema.customerSessions).values(customersData.customerSessions)
+    await db
+      .insert(schema.customerSessions)
+      .values(customersData.customerSessions);
   }
 
   logSuccess(
     `Customers created: ${customersData.customers.length} customers, ` +
-      `${customersData.customerSessions.length} sessions`
-  )
+      `${customersData.customerSessions.length} sessions`,
+  );
 
   // Generate reservations
-  logInfo('Generating reservations...')
-  const teamUserIds = teamData.storeMembers.map((m) => m.userId)
+  logInfo('Generating reservations...');
+  const teamUserIds = teamData.storeMembers.map((m) => m.userId);
   const reservationsData = generateReservations(
     storeId,
     config,
@@ -378,41 +441,51 @@ async function seedStore(
     teamUserIds,
     startDate,
     endDate,
-    now
-  )
+    now,
+  );
 
   if (reservationsData.reservations.length > 0) {
-    await db.insert(schema.reservations).values(reservationsData.reservations)
+    await db.insert(schema.reservations).values(reservationsData.reservations);
   }
   if (reservationsData.reservationItems.length > 0) {
-    await db.insert(schema.reservationItems).values(reservationsData.reservationItems)
+    await db
+      .insert(schema.reservationItems)
+      .values(reservationsData.reservationItems);
   }
   if (reservationsData.reservationItemUnits.length > 0) {
-    await db.insert(schema.reservationItemUnits).values(reservationsData.reservationItemUnits)
+    await db
+      .insert(schema.reservationItemUnits)
+      .values(reservationsData.reservationItemUnits);
   }
   if (reservationsData.reservationActivity.length > 0) {
-    await db.insert(schema.reservationActivity).values(reservationsData.reservationActivity)
+    await db
+      .insert(schema.reservationActivity)
+      .values(reservationsData.reservationActivity);
   }
 
   logSuccess(
     `Reservations created: ${reservationsData.reservations.length} reservations, ` +
       `${reservationsData.reservationItems.length} items, ` +
-      `${reservationsData.reservationItemUnits.length} unit assignments`
-  )
+      `${reservationsData.reservationItemUnits.length} unit assignments`,
+  );
 
   // Generate payments
-  logInfo('Generating payments...')
-  const paymentsData = generatePayments(reservationsData.reservations, config, now)
+  logInfo('Generating payments...');
+  const paymentsData = generatePayments(
+    reservationsData.reservations,
+    config,
+    now,
+  );
 
   if (paymentsData.length > 0) {
-    await db.insert(schema.payments).values(paymentsData)
+    await db.insert(schema.payments).values(paymentsData);
   }
 
-  logSuccess(`Payments created: ${paymentsData.length} payments`)
+  logSuccess(`Payments created: ${paymentsData.length} payments`);
 
   // Generate analytics (all plans include analytics).
   {
-    logInfo('Generating analytics...')
+    logInfo('Generating analytics...');
     const analyticsData = generateAnalytics(
       storeId,
       config,
@@ -421,112 +494,134 @@ async function seedStore(
       reservationsData.reservations,
       startDate,
       endDate,
-      now
-    )
+      now,
+    );
 
     if (analyticsData.pageViews.length > 0) {
       // Insert in batches to avoid memory issues
-      const batchSize = 1000
+      const batchSize = 1000;
       for (let i = 0; i < analyticsData.pageViews.length; i += batchSize) {
-        const batch = analyticsData.pageViews.slice(i, i + batchSize)
-        await db.insert(schema.pageViews).values(batch)
+        const batch = analyticsData.pageViews.slice(i, i + batchSize);
+        await db.insert(schema.pageViews).values(batch);
       }
     }
     if (analyticsData.storefrontEvents.length > 0) {
-      const batchSize = 1000
-      for (let i = 0; i < analyticsData.storefrontEvents.length; i += batchSize) {
-        const batch = analyticsData.storefrontEvents.slice(i, i + batchSize)
-        await db.insert(schema.storefrontEvents).values(batch)
+      const batchSize = 1000;
+      for (
+        let i = 0;
+        i < analyticsData.storefrontEvents.length;
+        i += batchSize
+      ) {
+        const batch = analyticsData.storefrontEvents.slice(i, i + batchSize);
+        await db.insert(schema.storefrontEvents).values(batch);
       }
     }
     if (analyticsData.dailyStats.length > 0) {
-      await db.insert(schema.dailyStats).values(analyticsData.dailyStats)
+      await db.insert(schema.dailyStats).values(analyticsData.dailyStats);
     }
     if (analyticsData.productStats.length > 0) {
-      await db.insert(schema.productStats).values(analyticsData.productStats)
+      await db.insert(schema.productStats).values(analyticsData.productStats);
     }
 
     logSuccess(
       `Analytics created: ${analyticsData.pageViews.length} page views, ` +
         `${analyticsData.storefrontEvents.length} events, ` +
-        `${analyticsData.dailyStats.length} daily stats`
-    )
+        `${analyticsData.dailyStats.length} daily stats`,
+    );
   }
 
-  console.log('')
+  console.log('');
 }
 
 /**
  * Main entry point
  */
 async function main(): Promise<void> {
-  console.log('')
-  console.log(`${colors.cyan}${colors.bold}╔════════════════════════════════════════════════════════════╗${colors.reset}`)
-  console.log(`${colors.cyan}${colors.bold}║         LOUEZ - DATABASE SEED SCRIPT                       ║${colors.reset}`)
-  console.log(`${colors.cyan}${colors.bold}║         Development Only                                   ║${colors.reset}`)
-  console.log(`${colors.cyan}${colors.bold}╚════════════════════════════════════════════════════════════╝${colors.reset}`)
-  console.log('')
+  console.log('');
+  console.log(
+    `${colors.cyan}${colors.bold}╔════════════════════════════════════════════════════════════╗${colors.reset}`,
+  );
+  console.log(
+    `${colors.cyan}${colors.bold}║         LOUEZ - DATABASE SEED SCRIPT                       ║${colors.reset}`,
+  );
+  console.log(
+    `${colors.cyan}${colors.bold}║         Development Only                                   ║${colors.reset}`,
+  );
+  console.log(
+    `${colors.cyan}${colors.bold}╚════════════════════════════════════════════════════════════╝${colors.reset}`,
+  );
+  console.log('');
 
   // Validate environment
-  validateEnvironment()
+  validateEnvironment();
 
   // Parse CLI arguments
-  const config = parseCliArgs()
+  const config = parseCliArgs();
 
   // Ask for confirmation
-  const confirmed = await askConfirmation(config)
+  const confirmed = await askConfirmation(config);
   if (!confirmed) {
-    console.log('')
-    logInfo('Seed cancelled by user.')
-    process.exit(0)
+    console.log('');
+    logInfo('Seed cancelled by user.');
+    process.exit(0);
   }
 
   // Calculate date ranges
-  const { startDate, endDate, now } = getDateRanges(config.months)
+  const { startDate, endDate, now } = getDateRanges(config.months);
 
-  console.log('')
-  logInfo(`Date range: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`)
+  console.log('');
+  logInfo(
+    `Date range: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`,
+  );
 
   // Connect to database
-  logInfo('Connecting to database...')
+  logInfo('Connecting to database...');
 
-  const pool = createPool(process.env.DATABASE_URL!)
+  const pool = createPool(process.env.DATABASE_URL!);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = drizzle(pool as any, { schema, mode: 'default' }) as DrizzleDB
+  const db = drizzle(pool as any, { schema, mode: 'default' }) as DrizzleDB;
 
-  logSuccess('Database connected')
+  logSuccess('Database connected');
 
   try {
     // Get or create owner user
-    const ownerId = await getOrCreateUser(db, config.userEmail, now)
+    const ownerId = await getOrCreateUser(db, config.userEmail, now);
 
     // Seed each store
     for (const storeConfig of STORE_CONFIGS) {
-      await seedStore(db, storeConfig, ownerId, startDate, endDate, now)
+      await seedStore(db, storeConfig, ownerId, startDate, endDate, now);
     }
 
-    console.log('')
-    console.log(`${colors.green}${colors.bold}╔════════════════════════════════════════════════════════════╗${colors.reset}`)
-    console.log(`${colors.green}${colors.bold}║         SEED COMPLETED SUCCESSFULLY!                       ║${colors.reset}`)
-    console.log(`${colors.green}${colors.bold}╚════════════════════════════════════════════════════════════╝${colors.reset}`)
-    console.log('')
-    console.log(`${colors.bold}Created stores:${colors.reset}`)
+    console.log('');
+    console.log(
+      `${colors.green}${colors.bold}╔════════════════════════════════════════════════════════════╗${colors.reset}`,
+    );
+    console.log(
+      `${colors.green}${colors.bold}║         SEED COMPLETED SUCCESSFULLY!                       ║${colors.reset}`,
+    );
+    console.log(
+      `${colors.green}${colors.bold}╚════════════════════════════════════════════════════════════╝${colors.reset}`,
+    );
+    console.log('');
+    console.log(`${colors.bold}Created stores:${colors.reset}`);
     for (const storeConfig of STORE_CONFIGS) {
-      console.log(`  - ${storeConfig.name} (${storeConfig.slug})`)
+      console.log(`  - ${storeConfig.name} (${storeConfig.slug})`);
     }
-    console.log('')
-    console.log(`${colors.dim}Login with: ${config.userEmail}${colors.reset}`)
-    console.log(`${colors.dim}Use Drizzle Studio to explore: pnpm db:studio${colors.reset}`)
-    console.log('')
+    console.log('');
+    console.log(`${colors.dim}Login with: ${config.userEmail}${colors.reset}`);
+    console.log(
+      `${colors.dim}Use Drizzle Studio to explore: pnpm db:studio${colors.reset}`,
+    );
+    console.log('');
   } catch (error) {
-    console.log('')
-    logError('Seed failed!')
-    console.error(error)
-    process.exit(1)
+    console.log('');
+    logError('Seed failed!');
+    console.error(error);
+    process.exit(1);
   } finally {
-    await pool.end()
+    await pool.end();
   }
 }
 
 // Run
-main().catch(console.error)
+main().catch(console.error);

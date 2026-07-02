@@ -33,6 +33,7 @@ export type Database = typeof db
 
 // Re-export schema for convenience
 export * from './schema'
+export { buildUnitRentableDuringPredicate } from './unit-availability'
 
 // Database setup utilities
 export { setupDatabase } from './setup'
