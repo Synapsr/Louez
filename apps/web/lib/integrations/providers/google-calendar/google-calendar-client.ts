@@ -37,6 +37,17 @@ const googleEventSchema = z.object({
   id: z.string(),
 });
 
+export class GoogleCalendarApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'GoogleCalendarApiError';
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
 export type GoogleCalendarEventInput = {
   summary: string;
   description: string;
@@ -103,7 +114,10 @@ export async function exchangeGoogleCalendarCode(code: string): Promise<{
   });
 
   if (!response.ok) {
-    throw new Error(`Google token exchange failed (${response.status})`);
+    throw new GoogleCalendarApiError(
+      `Google token exchange failed (${response.status})`,
+      response.status,
+    );
   }
 
   const token = googleTokenResponseSchema.parse(await response.json());
@@ -141,7 +155,10 @@ export async function refreshGoogleCalendarAccessToken(
   });
 
   if (!response.ok) {
-    throw new Error(`Google token refresh failed (${response.status})`);
+    throw new GoogleCalendarApiError(
+      `Google token refresh failed (${response.status})`,
+      response.status,
+    );
   }
 
   const token = googleRefreshResponseSchema.parse(await response.json());
@@ -193,7 +210,10 @@ export async function createGoogleCalendar(params: {
   );
 
   if (!response.ok) {
-    throw new Error(`Google Calendar creation failed (${response.status})`);
+    throw new GoogleCalendarApiError(
+      `Google Calendar creation failed (${response.status})`,
+      response.status,
+    );
   }
 
   const calendar = googleCalendarSchema.parse(await response.json());
@@ -241,7 +261,10 @@ export async function insertGoogleCalendarEvent(params: {
   );
 
   if (!response.ok) {
-    throw new Error(`Google Calendar event insert failed (${response.status})`);
+    throw new GoogleCalendarApiError(
+      `Google Calendar event insert failed (${response.status})`,
+      response.status,
+    );
   }
 
   return googleEventSchema.parse(await response.json());
@@ -266,7 +289,10 @@ export async function updateGoogleCalendarEvent(params: {
   );
 
   if (!response.ok) {
-    throw new Error(`Google Calendar event update failed (${response.status})`);
+    throw new GoogleCalendarApiError(
+      `Google Calendar event update failed (${response.status})`,
+      response.status,
+    );
   }
 
   return googleEventSchema.parse(await response.json());
@@ -288,6 +314,9 @@ export async function deleteGoogleCalendarEvent(params: {
   );
 
   if (!response.ok && response.status !== 404 && response.status !== 410) {
-    throw new Error(`Google Calendar event delete failed (${response.status})`);
+    throw new GoogleCalendarApiError(
+      `Google Calendar event delete failed (${response.status})`,
+      response.status,
+    );
   }
 }
