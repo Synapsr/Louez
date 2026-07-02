@@ -13,6 +13,7 @@ import {
   payments,
   productSeasonalPricing,
   productSeasonalPricingTiers,
+  productUnitEvents,
   productUnits,
   products,
   reservationActivity,
@@ -4478,6 +4479,11 @@ export async function assignUnitsToReservationItem(
       return { error: 'errors.tooManyUnitsAssigned' };
     }
 
+    const unitEventPayload = {
+      reservationId: item.reservationId,
+      reservationItemId,
+    };
+
     // 3. Verify all units belong to the correct product
     if (unitIds.length > 0) {
       const units = await db
@@ -4525,11 +4531,6 @@ export async function assignUnitsToReservationItem(
         return { error: 'errors.invalidUnits' };
       }
 
-      // 4. Delete existing assignments for this item
-      await db
-        .delete(reservationItemUnits)
-        .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
-
       // 5. Insert new assignments with identifier snapshots
       const unitMap = new Map(units.map((u) => [u.id, u.identifier]));
       const assignmentsToInsert = unitIds.map((unitId) => ({
@@ -4539,7 +4540,62 @@ export async function assignUnitsToReservationItem(
         identifierSnapshot: unitMap.get(unitId) || '',
       }));
 
-      await db.insert(reservationItemUnits).values(assignmentsToInsert);
+      const session = await auth();
+      const actorUserId = session?.user?.id ?? null;
+
+      await db.transaction(async (tx) => {
+        const existingAssignments = await tx
+          .select({
+            productUnitId: reservationItemUnits.productUnitId,
+          })
+          .from(reservationItemUnits)
+          .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
+
+        const existingUnitIds = new Set(
+          existingAssignments.map((assignment) => assignment.productUnitId),
+        );
+        const nextUnitIds = new Set(unitIds);
+        const unassignedUnitIds = [...existingUnitIds].filter(
+          (unitId) => !nextUnitIds.has(unitId),
+        );
+        const assignedUnitIds = unitIds.filter(
+          (unitId) => !existingUnitIds.has(unitId),
+        );
+        const unitEvents: Array<typeof productUnitEvents.$inferInsert> = [
+          ...unassignedUnitIds.map(
+            (unitId) =>
+              ({
+                id: nanoid(),
+                productUnitId: unitId,
+                storeId: store.id,
+                type: 'unassigned',
+                actorUserId,
+                payload: unitEventPayload,
+              }) satisfies typeof productUnitEvents.$inferInsert,
+          ),
+          ...assignedUnitIds.map(
+            (unitId) =>
+              ({
+                id: nanoid(),
+                productUnitId: unitId,
+                storeId: store.id,
+                type: 'assigned',
+                actorUserId,
+                payload: unitEventPayload,
+              }) satisfies typeof productUnitEvents.$inferInsert,
+          ),
+        ];
+
+        await tx
+          .delete(reservationItemUnits)
+          .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
+
+        await tx.insert(reservationItemUnits).values(assignmentsToInsert);
+
+        if (unitEvents.length > 0) {
+          await tx.insert(productUnitEvents).values(unitEvents);
+        }
+      });
 
       // 6. Log activity
       await logReservationActivity(item.reservationId, 'modified', {
@@ -4548,10 +4604,46 @@ export async function assignUnitsToReservationItem(
         unitIdentifiers: units.map((u) => u.identifier),
       });
     } else {
+      const session = await auth();
+      const actorUserId = session?.user?.id ?? null;
+
       // Clear assignments if no units provided
-      await db
-        .delete(reservationItemUnits)
-        .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
+      await db.transaction(async (tx) => {
+        const existingAssignments = await tx
+          .select({
+            productUnitId: reservationItemUnits.productUnitId,
+          })
+          .from(reservationItemUnits)
+          .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
+
+        const existingUnitIds = new Set(
+          existingAssignments.map((assignment) => assignment.productUnitId),
+        );
+        const nextUnitIds = new Set(unitIds);
+        const unassignedUnitIds = [...existingUnitIds].filter(
+          (unitId) => !nextUnitIds.has(unitId),
+        );
+        const unitEvents: Array<typeof productUnitEvents.$inferInsert> =
+          unassignedUnitIds.map(
+            (unitId) =>
+              ({
+                id: nanoid(),
+                productUnitId: unitId,
+                storeId: store.id,
+                type: 'unassigned',
+                actorUserId,
+                payload: unitEventPayload,
+              }) satisfies typeof productUnitEvents.$inferInsert,
+          );
+
+        await tx
+          .delete(reservationItemUnits)
+          .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
+
+        if (unitEvents.length > 0) {
+          await tx.insert(productUnitEvents).values(unitEvents);
+        }
+      });
 
       await logReservationActivity(item.reservationId, 'modified', {
         action: 'units_unassigned',
@@ -4560,6 +4652,7 @@ export async function assignUnitsToReservationItem(
     }
 
     revalidatePath(`/dashboard/reservations/${item.reservationId}`);
+    revalidatePath('/dashboard/inventory');
 
     return { success: true };
   } catch (error) {
