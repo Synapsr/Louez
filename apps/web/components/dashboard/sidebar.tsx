@@ -51,6 +51,7 @@ import {
   ShieldIcon,
   SparklesIcon,
   UsersIcon,
+  WarehouseIcon,
 } from '@louez/ui/icons';
 
 // import { ReferralSidebarWidget } from '@/components/dashboard/referral-sidebar-widget';
@@ -89,6 +90,7 @@ const mainNavigation = [
 
 const catalogNavigation = [
   { key: 'products', href: '/dashboard/products', icon: PackageIcon },
+  { key: 'inventory', href: '/dashboard/inventory', icon: WarehouseIcon },
 ];
 
 const analyticsNavigation = [

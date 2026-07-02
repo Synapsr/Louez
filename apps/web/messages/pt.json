@@ -501,6 +501,7 @@
     "navigation": {
       "home": "Inicio",
       "products": "Produtos",
+      "inventory": "Inventário",
       "reservations": "Reservas",
       "customers": "Clientes",
       "calendar": "Calendario",
@@ -847,9 +848,6 @@
           "identifierPlaceholder": "ex., BIKE-01, SN-2024-001",
           "notes": "Notas",
           "notesPlaceholder": "Notas opcionais sobre esta unidade (condição, cor...)",
-          "statusAvailable": "Disponível",
-          "statusMaintenance": "Manutenção",
-          "statusRetired": "Aposentado",
           "bulkAdd": "Adicionar em massa",
           "bulkPrefix": "Prefixo",
           "bulkPrefixPlaceholder": "ex., BIKE-",
@@ -879,7 +877,12 @@
           "manageAttributesDescription": "Os atributos permitem que os clientes escolham características específicas ao reservar (ex: tamanho, cor). Cada unidade é etiquetada com os seus valores de atributo, e o sistema atribui automaticamente uma unidade correspondente no checkout.",
           "manageAttributesExample": "Exemplo: para aluguer de caiaque, adicione \"Tamanho\" (S, M, L) e \"Cor\" (Vermelho, Azul). Um cliente que reserve um caiaque Médio Vermelho receberá uma unidade disponível correspondente.",
           "manageAttributesMax": "Até 3 atributos permitidos.",
-          "pressEnterToCreate": "Prima Enter para criar \"{value}\""
+          "pressEnterToCreate": "Prima Enter para criar \"{value}\"",
+          "lifecycleActive": "Ativa",
+          "lifecycleRetired": "Retirada",
+          "purchasePrice": "Preço de compra",
+          "purchasePricePlaceholder": "0,00",
+          "purchasedAt": "Data de compra"
         },
         "previewTitle": "Previa",
         "previewDescription": "Veja como seu produto aparecera no catalogo",
@@ -1010,6 +1013,174 @@
       "deleteConfirm": {
         "title": "Excluir este produto?",
         "description": "Esta acao e irreversivel. O produto sera excluido permanentemente."
+      }
+    },
+    "inventory": {
+      "title": "Inventário",
+      "description": "Gira disponibilidade, indisponibilidades, retiradas e conflitos de reservas das unidades num só local.",
+      "productScoped": {
+        "openInventory": "Abrir inventário"
+      },
+      "filters": {
+        "searchPlaceholder": "Pesquisar por referência",
+        "clearSearch": "Limpar pesquisa",
+        "product": "Produto",
+        "allProducts": "Todos os produtos",
+        "state": "Estado",
+        "allStates": "Todos os estados"
+      },
+      "states": {
+        "available": "Disponível",
+        "reserved": "Reservada",
+        "rented_out": "Alugada",
+        "overdue": "Em atraso",
+        "in_downtime": "Indisponível",
+        "retired": "Retirada"
+      },
+      "empty": {
+        "no-products": {
+          "title": "Ainda não há produtos",
+          "description": "Crie um produto antes de gerir unidades de inventário."
+        },
+        "tracked-empty": {
+          "title": "O rastreio por unidade ainda não está ativo",
+          "description": "Produtos sem rastreio por unidade continuam geridos por quantidade. Ative o rastreio num produto para gerir cada unidade separadamente."
+        },
+        "no-results": {
+          "title": "Nenhuma linha de inventário encontrada",
+          "description": "Ajuste o produto, estado ou pesquisa para ver mais unidades."
+        },
+        "addProduct": "Adicionar produto",
+        "chooseProduct": "Escolher um produto"
+      },
+      "table": {
+        "identifier": "Referência",
+        "product": "Produto",
+        "state": "Estado",
+        "downtime": "Indisponibilidade",
+        "notes": "Notas"
+      },
+      "counters": {
+        "reservedWithoutAssignedUnit": "{count, plural, one {# reservada sem unidade atribuída} other {# reservadas sem unidade atribuída}}"
+      },
+      "downtimeReasons": {
+        "maintenance": "Manutenção",
+        "repair": "Reparação",
+        "other": "Outro"
+      },
+      "retirementReasons": {
+        "sold": "Vendida",
+        "lost": "Perdida ou roubada",
+        "broken": "Partida",
+        "other": "Outro"
+      },
+      "downtime": {
+        "current": "{reason}",
+        "until": "Até {date}",
+        "openEnded": "Sem data de fim",
+        "next": "Próxima: {reason}",
+        "none": "Sem indisponibilidade"
+      },
+      "indicators": {
+        "conflicts": "Esta unidade tem conflitos de atribuição",
+        "notes": "Esta unidade contém notas internas"
+      },
+      "bulk": {
+        "bulkProduct": "Stock por quantidade",
+        "trackingDisabled": "Rastreio por unidade desativado",
+        "quantity": "{count, plural, one {# artigo} other {# artigos}}",
+        "availabilityInfo": "A disponibilidade é gerida por quantidade",
+        "enableTracking": "Ativar rastreio por unidade"
+      },
+      "actions": {
+        "declareDowntime": "Colocar fora de serviço",
+        "closeDowntime": "Fechar indisponibilidade",
+        "retire": "Retirar unidade",
+        "reinstate": "Reintegrar unidade",
+        "editDetails": "Editar detalhes",
+        "viewHistory": "Histórico",
+        "editProduct": "Editar produto"
+      },
+      "conflicts": {
+        "title": "Conflitos de reserva",
+        "description": "{count, plural, =0 {Todos os conflitos foram tratados.} one {# conflito ainda precisa de decisão.} other {# conflitos ainda precisam de decisão.}}",
+        "reservation": "Reserva {number}",
+        "unknownCustomer": "Cliente não especificado",
+        "reassignedToast": "Reserva reatribuída",
+        "reassigned": "Reatribuída",
+        "leftAsIs": "Mantida como está",
+        "replacementUnit": "Unidade de substituição",
+        "noCandidates": "Nenhuma unidade disponível",
+        "reassign": "Reatribuir",
+        "leaveAsIs": "Manter como está"
+      },
+      "downtimeDialog": {
+        "title": "Colocar fora de serviço",
+        "description": "Marque {identifier} como indisponível durante um período de manutenção ou reparação.",
+        "successToast": "Indisponibilidade declarada",
+        "reason": "Motivo",
+        "startsAt": "Data e hora de início",
+        "endsAt": "Data e hora de fim",
+        "openEnded": "Indisponibilidade sem fim previsto",
+        "note": "Nota",
+        "notePlaceholder": "Adicione contexto para a equipa",
+        "close": "Fechar",
+        "submit": "Colocar fora de serviço"
+      },
+      "retireDialog": {
+        "title": "Retirar unidade",
+        "description": "Remova {identifier} do inventário alugável.",
+        "confirmationCopy": "A unidade mantém todo o histórico e pode ser reintegrada mais tarde, se necessário.",
+        "successToast": "Unidade retirada",
+        "reason": "Motivo",
+        "note": "Nota",
+        "notePlaceholder": "Adicione o motivo ou contexto operacional",
+        "close": "Fechar",
+        "submit": "Retirar unidade"
+      },
+      "editDialog": {
+        "title": "Editar detalhes da unidade",
+        "description": "Atualize notas e informações de compra de {identifier}.",
+        "successToast": "Detalhes da unidade atualizados",
+        "notes": "Notas",
+        "notesPlaceholder": "Estado, local de armazenamento ou detalhes internos",
+        "purchasePrice": "Preço de compra",
+        "purchasePricePlaceholder": "0,00",
+        "purchasedAt": "Data de compra",
+        "cancel": "Cancelar",
+        "submit": "Guardar alterações"
+      },
+      "history": {
+        "title": "Histórico",
+        "description": "Cronologia de {identifier}",
+        "loading": "A carregar histórico...",
+        "empty": "Ainda não há histórico",
+        "systemActor": "Sistema",
+        "unknownCustomer": "Cliente não especificado",
+        "byActor": "Por {actor}",
+        "viewReservation": "Ver reserva",
+        "events": {
+          "created": "Unidade criada",
+          "downtime_declared": "Indisponibilidade declarada",
+          "downtime_updated": "Indisponibilidade atualizada",
+          "downtime_closed": "Indisponibilidade fechada",
+          "downtime_deleted": "Indisponibilidade eliminada",
+          "retired": "Unidade retirada",
+          "reinstated": "Unidade reintegrada",
+          "assigned": "Unidade atribuída",
+          "unassigned": "Unidade desatribuída",
+          "updated": "Unidade atualizada",
+          "assignment": "Atribuída à reserva {number}"
+        }
+      },
+      "toasts": {
+        "downtimeClosed": "Indisponibilidade fechada",
+        "reinstated": "Unidade reintegrada"
+      },
+      "pagination": {
+        "previous": "Anterior",
+        "next": "Seguinte",
+        "page": "Página {page} de {totalPages}"
       }
     },
     "reservations": {
@@ -5425,7 +5596,9 @@
     "tulipContractPastDate": "O Tulip recusou a criação do contrato: as datas do contrato não podem ser no passado.",
     "tulipContractActionForbidden": "O Tulip recusou esta ação para a configuração da conta atual.",
     "tulipContractProductMarkedMissing": "O Tulip exige o identificador real de cada item segurado. Atribua uma unidade ou um identificador físico a cada produto segurado antes de criar ou sincronizar o contrato.",
-    "tulipContractTypeDisabled": "O tipo de contrato Tulip necessário para esta duração não está ativado para esta loja."
+    "tulipContractTypeDisabled": "O tipo de contrato Tulip necessário para esta duração não está ativado para esta loja.",
+    "unitAlreadyRetired": "Esta unidade já foi retirada",
+    "unitNotRetired": "Esta unidade não foi retirada"
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

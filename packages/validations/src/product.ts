@@ -40,6 +40,23 @@ export const rateTierSchema = z.object({
   discountPercent: z.number().min(0).max(99).optional(),
 });
 
+const optionalMoneyInputSchema = z
+  .string()
+  .trim()
+  .regex(/^\d+([.,]\d{1,2})?$/, 'validation.positive')
+  .optional()
+  .nullable()
+  .or(z.literal(''));
+
+const optionalDateInputSchema = z
+  .union([
+    z.date(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'validation.date'),
+    z.literal(''),
+  ])
+  .optional()
+  .nullable();
+
 // Tax settings schema for product
 export const productTaxSettingsSchema = z.object({
   inheritFromStore: z.boolean(),
@@ -54,6 +71,8 @@ export const productUnitSchema = z.object({
   identifier: z.string().max(255, 'validation.maxLength'),
   notes: z.string().max(1000).optional().or(z.literal('')),
   lifecycleStatus: z.enum(['active', 'retired']).optional(),
+  purchasePrice: optionalMoneyInputSchema,
+  purchasedAt: optionalDateInputSchema,
   attributes: z.record(z.string(), z.string()).optional(),
 });
 
@@ -207,6 +226,8 @@ export const createProductSchema = (
             .optional()
             .or(z.literal('')),
           lifecycleStatus: z.enum(['active', 'retired']).optional(),
+          purchasePrice: optionalMoneyInputSchema,
+          purchasedAt: optionalDateInputSchema,
           attributes: z.record(z.string(), z.string()).optional(),
         }),
       ),

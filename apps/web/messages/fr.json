@@ -501,6 +501,7 @@
     "navigation": {
       "home": "Accueil",
       "products": "Produits",
+      "inventory": "Inventaire",
       "reservations": "Réservations",
       "customers": "Clients",
       "calendar": "Calendrier",
@@ -899,9 +900,6 @@
           "identifierPlaceholder": "ex : VELO-01, SN-2024-001",
           "notes": "Notes",
           "notesPlaceholder": "Notes optionnelles sur cette unité (état, couleur...)",
-          "statusAvailable": "Disponible",
-          "statusMaintenance": "Maintenance",
-          "statusRetired": "Retiré",
           "bulkAdd": "Ajout en masse",
           "bulkPrefix": "Préfixe",
           "bulkPrefixPlaceholder": "ex : VELO-",
@@ -918,7 +916,12 @@
           "noUnitsRegistered": "Aucune unité enregistrée",
           "noUnitsHint": "Ajoutez des unités individuelles pour suivre lesquelles sont en location",
           "cancel": "Annuler",
-          "confirm": "Confirmer"
+          "confirm": "Confirmer",
+          "lifecycleActive": "Active",
+          "lifecycleRetired": "Retirée",
+          "purchasePrice": "Prix d’achat",
+          "purchasePricePlaceholder": "0,00",
+          "purchasedAt": "Date d’achat"
         },
         "previewTitle": "Aperçu",
         "previewDescription": "Voici comment votre produit apparaîtra dans le catalogue",
@@ -1055,6 +1058,174 @@
       "deleteConfirm": {
         "title": "Supprimer ce produit ?",
         "description": "Cette action est irréversible. Le produit sera définitivement supprimé."
+      }
+    },
+    "inventory": {
+      "title": "Inventaire",
+      "description": "Gérez les disponibilités, indisponibilités, retraits du parc et conflits de réservation des unités.",
+      "productScoped": {
+        "openInventory": "Ouvrir l’inventaire"
+      },
+      "filters": {
+        "searchPlaceholder": "Rechercher une référence",
+        "clearSearch": "Effacer la recherche",
+        "product": "Produit",
+        "allProducts": "Tous les produits",
+        "state": "État",
+        "allStates": "Tous les états"
+      },
+      "states": {
+        "available": "Disponible",
+        "reserved": "Réservée",
+        "rented_out": "En location",
+        "overdue": "En retard",
+        "in_downtime": "En maintenance",
+        "retired": "Retirée"
+      },
+      "empty": {
+        "no-products": {
+          "title": "Aucun produit pour le moment",
+          "description": "Créez un produit avant de gérer les unités de l’inventaire."
+        },
+        "tracked-empty": {
+          "title": "Le suivi unitaire n’est pas encore activé",
+          "description": "Les produits non suivis restent gérés en stock global. Activez le suivi sur un produit pour gérer chaque unité séparément."
+        },
+        "no-results": {
+          "title": "Aucune ligne d’inventaire trouvée",
+          "description": "Modifiez le produit, l’état ou la recherche pour afficher plus d’unités."
+        },
+        "addProduct": "Ajouter un produit",
+        "chooseProduct": "Choisir un produit"
+      },
+      "table": {
+        "identifier": "Référence",
+        "product": "Produit",
+        "state": "État",
+        "downtime": "Indisponibilité",
+        "notes": "Notes"
+      },
+      "counters": {
+        "reservedWithoutAssignedUnit": "{count, plural, one {# réservée sans unité assignée} other {# réservées sans unité assignée}}"
+      },
+      "downtimeReasons": {
+        "maintenance": "Entretien",
+        "repair": "Réparation",
+        "other": "Autre"
+      },
+      "retirementReasons": {
+        "sold": "Vendue",
+        "lost": "Perdue ou volée",
+        "broken": "Cassée",
+        "other": "Autre"
+      },
+      "downtime": {
+        "current": "{reason}",
+        "until": "Jusqu’au {date}",
+        "openEnded": "Sans date de fin",
+        "next": "Prochaine : {reason}",
+        "none": "Aucune indisponibilité"
+      },
+      "indicators": {
+        "conflicts": "Cette unité a des conflits d’assignation",
+        "notes": "Cette unité contient des notes internes"
+      },
+      "bulk": {
+        "bulkProduct": "Stock global",
+        "trackingDisabled": "Suivi unitaire désactivé",
+        "quantity": "{count, plural, one {# article} other {# articles}}",
+        "availabilityInfo": "La disponibilité est gérée par quantité",
+        "enableTracking": "Activer le suivi unitaire"
+      },
+      "actions": {
+        "declareDowntime": "Mettre hors service",
+        "closeDowntime": "Clôturer l’indisponibilité",
+        "retire": "Retirer du parc",
+        "reinstate": "Réintégrer au parc",
+        "editDetails": "Modifier les détails",
+        "viewHistory": "Historique",
+        "editProduct": "Modifier le produit"
+      },
+      "conflicts": {
+        "title": "Conflits de réservation",
+        "description": "{count, plural, =0 {Tous les conflits ont été traités.} one {# conflit nécessite encore une décision.} other {# conflits nécessitent encore une décision.}}",
+        "reservation": "Réservation {number}",
+        "unknownCustomer": "Client non renseigné",
+        "reassignedToast": "Réservation réassignée",
+        "reassigned": "Réassignée",
+        "leftAsIs": "Laissée en l’état",
+        "replacementUnit": "Unité de remplacement",
+        "noCandidates": "Aucune unité disponible",
+        "reassign": "Réassigner",
+        "leaveAsIs": "Laisser en l’état"
+      },
+      "downtimeDialog": {
+        "title": "Mettre hors service",
+        "description": "Marquez {identifier} comme indisponible pour une période d’entretien ou de réparation.",
+        "successToast": "Indisponibilité déclarée",
+        "reason": "Motif",
+        "startsAt": "Date et heure de début",
+        "endsAt": "Date et heure de fin",
+        "openEnded": "Indisponibilité sans fin prévue",
+        "note": "Note",
+        "notePlaceholder": "Ajoutez du contexte pour votre équipe",
+        "close": "Fermer",
+        "submit": "Mettre hors service"
+      },
+      "retireDialog": {
+        "title": "Retirer du parc",
+        "description": "Retirez {identifier} de l’inventaire louable.",
+        "confirmationCopy": "L’unité conserve tout son historique et pourra être réintégrée au parc plus tard si besoin.",
+        "successToast": "Unité retirée du parc",
+        "reason": "Motif",
+        "note": "Note",
+        "notePlaceholder": "Ajoutez le motif ou le contexte opérationnel",
+        "close": "Fermer",
+        "submit": "Retirer du parc"
+      },
+      "editDialog": {
+        "title": "Modifier les détails de l’unité",
+        "description": "Mettez à jour les notes et informations d’achat de {identifier}.",
+        "successToast": "Détails de l’unité mis à jour",
+        "notes": "Notes",
+        "notesPlaceholder": "État, emplacement de stockage ou détails internes",
+        "purchasePrice": "Prix d’achat",
+        "purchasePricePlaceholder": "0,00",
+        "purchasedAt": "Date d’achat",
+        "cancel": "Annuler",
+        "submit": "Enregistrer"
+      },
+      "history": {
+        "title": "Historique",
+        "description": "Chronologie de {identifier}",
+        "loading": "Chargement de l’historique...",
+        "empty": "Aucun historique pour le moment",
+        "systemActor": "Système",
+        "unknownCustomer": "Client non renseigné",
+        "byActor": "Par {actor}",
+        "viewReservation": "Voir la réservation",
+        "events": {
+          "created": "Unité créée",
+          "downtime_declared": "Indisponibilité déclarée",
+          "downtime_updated": "Indisponibilité mise à jour",
+          "downtime_closed": "Indisponibilité clôturée",
+          "downtime_deleted": "Indisponibilité supprimée",
+          "retired": "Unité retirée du parc",
+          "reinstated": "Unité réintégrée au parc",
+          "assigned": "Unité assignée",
+          "unassigned": "Unité désassignée",
+          "updated": "Unité mise à jour",
+          "assignment": "Assignée à la réservation {number}"
+        }
+      },
+      "toasts": {
+        "downtimeClosed": "Indisponibilité clôturée",
+        "reinstated": "Unité réintégrée au parc"
+      },
+      "pagination": {
+        "previous": "Précédent",
+        "next": "Suivant",
+        "page": "Page {page} sur {totalPages}"
       }
     },
     "reservations": {
@@ -5560,7 +5731,9 @@
     "promoCodeExpired": "Ce code promo a expiré",
     "promoCodeExhausted": "Ce code promo a atteint sa limite d'utilisation",
     "promoCodeMinimumNotMet": "Montant minimum de {amount} € requis pour utiliser ce code",
-    "promoCodeNotStarted": "Ce code promo n'est pas encore actif"
+    "promoCodeNotStarted": "Ce code promo n'est pas encore actif",
+    "unitAlreadyRetired": "Cette unité est déjà retirée du parc",
+    "unitNotRetired": "Cette unité n’est pas retirée du parc"
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

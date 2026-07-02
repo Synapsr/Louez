@@ -501,6 +501,7 @@
     "navigation": {
       "home": "Startseite",
       "products": "Produkte",
+      "inventory": "Inventar",
       "reservations": "Reservierungen",
       "customers": "Kunden",
       "calendar": "Kalender",
@@ -897,9 +898,6 @@
           "identifierPlaceholder": "z.B. BIKE-01, SN-2024-001",
           "notes": "Notizen",
           "notesPlaceholder": "Optionale Notizen zu dieser Einheit (Zustand, Farbe...)",
-          "statusAvailable": "Verfügbar",
-          "statusMaintenance": "Wartung",
-          "statusRetired": "Ausgemustert",
           "bulkAdd": "Mehrere hinzufügen",
           "bulkPrefix": "Präfix",
           "bulkPrefixPlaceholder": "z.B. BIKE-",
@@ -918,7 +916,12 @@
           "cancel": "Abbrechen",
           "confirm": "Bestätigen",
           "manageAttributesExample": "Beispiel: Für eine Kajakvermietung fügen Sie \"Größe\" (S, M, L) und \"Farbe\" (Rot, Blau) hinzu. Ein Kunde, der ein mittleres rotes Kajak bucht, erhält eine passende verfügbare Einheit.",
-          "manageAttributesMax": "Maximal 3 Attribute erlaubt."
+          "manageAttributesMax": "Maximal 3 Attribute erlaubt.",
+          "lifecycleActive": "Aktiv",
+          "lifecycleRetired": "Ausgemustert",
+          "purchasePrice": "Kaufpreis",
+          "purchasePricePlaceholder": "0,00",
+          "purchasedAt": "Kaufdatum"
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",
@@ -1049,6 +1052,174 @@
       "deleteConfirm": {
         "title": "Dieses Produkt löschen?",
         "description": "Diese Aktion ist unwiderruflich. Das Produkt wird dauerhaft gelöscht."
+      }
+    },
+    "inventory": {
+      "title": "Inventar",
+      "description": "Verwalten Sie Verfügbarkeit, Ausfallzeiten, Ausmusterungen und Reservierungskonflikte Ihrer Einheiten zentral.",
+      "productScoped": {
+        "openInventory": "Inventar öffnen"
+      },
+      "filters": {
+        "searchPlaceholder": "Nach Referenz suchen",
+        "clearSearch": "Suche löschen",
+        "product": "Produkt",
+        "allProducts": "Alle Produkte",
+        "state": "Status",
+        "allStates": "Alle Status"
+      },
+      "states": {
+        "available": "Verfügbar",
+        "reserved": "Reserviert",
+        "rented_out": "Vermietet",
+        "overdue": "Überfällig",
+        "in_downtime": "Nicht verfügbar",
+        "retired": "Ausgemustert"
+      },
+      "empty": {
+        "no-products": {
+          "title": "Noch keine Produkte",
+          "description": "Erstellen Sie ein Produkt, bevor Sie Inventareinheiten verwalten."
+        },
+        "tracked-empty": {
+          "title": "Einheitenverfolgung ist noch nicht aktiviert",
+          "description": "Produkte ohne Einheitenverfolgung bleiben als Mengenbestand verfügbar. Aktivieren Sie die Verfolgung an einem Produkt, um jede Einheit separat zu verwalten."
+        },
+        "no-results": {
+          "title": "Keine Inventarzeilen gefunden",
+          "description": "Passen Sie Produkt, Status oder Suche an, um weitere Einheiten zu sehen."
+        },
+        "addProduct": "Produkt hinzufügen",
+        "chooseProduct": "Produkt auswählen"
+      },
+      "table": {
+        "identifier": "Referenz",
+        "product": "Produkt",
+        "state": "Status",
+        "downtime": "Ausfallzeit",
+        "notes": "Notizen"
+      },
+      "counters": {
+        "reservedWithoutAssignedUnit": "{count, plural, one {# reserviert ohne zugewiesene Einheit} other {# reserviert ohne zugewiesene Einheit}}"
+      },
+      "downtimeReasons": {
+        "maintenance": "Wartung",
+        "repair": "Reparatur",
+        "other": "Sonstiges"
+      },
+      "retirementReasons": {
+        "sold": "Verkauft",
+        "lost": "Verloren oder gestohlen",
+        "broken": "Defekt",
+        "other": "Sonstiges"
+      },
+      "downtime": {
+        "current": "{reason}",
+        "until": "Bis {date}",
+        "openEnded": "Ohne Enddatum",
+        "next": "Nächste: {reason}",
+        "none": "Keine Ausfallzeit"
+      },
+      "indicators": {
+        "conflicts": "Diese Einheit hat Zuweisungskonflikte",
+        "notes": "Diese Einheit enthält interne Notizen"
+      },
+      "bulk": {
+        "bulkProduct": "Mengenbestand",
+        "trackingDisabled": "Einheitenverfolgung deaktiviert",
+        "quantity": "{count, plural, one {# Artikel} other {# Artikel}}",
+        "availabilityInfo": "Verfügbarkeit wird über die Menge verwaltet",
+        "enableTracking": "Einheitenverfolgung aktivieren"
+      },
+      "actions": {
+        "declareDowntime": "Ausfallzeit eintragen",
+        "closeDowntime": "Ausfallzeit schließen",
+        "retire": "Einheit ausmustern",
+        "reinstate": "Einheit reaktivieren",
+        "editDetails": "Details bearbeiten",
+        "viewHistory": "Historie",
+        "editProduct": "Produkt bearbeiten"
+      },
+      "conflicts": {
+        "title": "Reservierungskonflikte",
+        "description": "{count, plural, =0 {Alle Konflikte wurden bearbeitet.} one {# Konflikt benötigt noch eine Entscheidung.} other {# Konflikte benötigen noch eine Entscheidung.}}",
+        "reservation": "Reservierung {number}",
+        "unknownCustomer": "Kunde nicht angegeben",
+        "reassignedToast": "Reservierung neu zugewiesen",
+        "reassigned": "Neu zugewiesen",
+        "leftAsIs": "Unverändert gelassen",
+        "replacementUnit": "Ersatzeinheit",
+        "noCandidates": "Keine Ersatzeinheit verfügbar",
+        "reassign": "Neu zuweisen",
+        "leaveAsIs": "Unverändert lassen"
+      },
+      "downtimeDialog": {
+        "title": "Ausfallzeit eintragen",
+        "description": "{identifier} für einen Wartungs- oder Reparaturzeitraum als nicht verfügbar markieren.",
+        "successToast": "Ausfallzeit eingetragen",
+        "reason": "Grund",
+        "startsAt": "Startdatum und -zeit",
+        "endsAt": "Enddatum und -zeit",
+        "openEnded": "Ausfallzeit ohne Enddatum",
+        "note": "Notiz",
+        "notePlaceholder": "Kontext für Ihr Team hinzufügen",
+        "close": "Schließen",
+        "submit": "Ausfallzeit eintragen"
+      },
+      "retireDialog": {
+        "title": "Einheit ausmustern",
+        "description": "{identifier} aus dem vermietbaren Inventar entfernen.",
+        "confirmationCopy": "Die Einheit behält ihre vollständige Historie und kann später bei Bedarf reaktiviert werden.",
+        "successToast": "Einheit ausgemustert",
+        "reason": "Grund",
+        "note": "Notiz",
+        "notePlaceholder": "Grund oder operativen Kontext hinzufügen",
+        "close": "Schließen",
+        "submit": "Einheit ausmustern"
+      },
+      "editDialog": {
+        "title": "Einheitendetails bearbeiten",
+        "description": "Notizen und Kaufinformationen für {identifier} aktualisieren.",
+        "successToast": "Einheitendetails aktualisiert",
+        "notes": "Notizen",
+        "notesPlaceholder": "Zustand, Lagerort oder interne Details",
+        "purchasePrice": "Kaufpreis",
+        "purchasePricePlaceholder": "0,00",
+        "purchasedAt": "Kaufdatum",
+        "cancel": "Abbrechen",
+        "submit": "Änderungen speichern"
+      },
+      "history": {
+        "title": "Historie",
+        "description": "Zeitachse für {identifier}",
+        "loading": "Historie wird geladen...",
+        "empty": "Noch keine Historie",
+        "systemActor": "System",
+        "unknownCustomer": "Kunde nicht angegeben",
+        "byActor": "Von {actor}",
+        "viewReservation": "Reservierung ansehen",
+        "events": {
+          "created": "Einheit erstellt",
+          "downtime_declared": "Ausfallzeit eingetragen",
+          "downtime_updated": "Ausfallzeit aktualisiert",
+          "downtime_closed": "Ausfallzeit geschlossen",
+          "downtime_deleted": "Ausfallzeit gelöscht",
+          "retired": "Einheit ausgemustert",
+          "reinstated": "Einheit reaktiviert",
+          "assigned": "Einheit zugewiesen",
+          "unassigned": "Einheit entfernt",
+          "updated": "Einheit aktualisiert",
+          "assignment": "Zugewiesen zu Reservierung {number}"
+        }
+      },
+      "toasts": {
+        "downtimeClosed": "Ausfallzeit geschlossen",
+        "reinstated": "Einheit reaktiviert"
+      },
+      "pagination": {
+        "previous": "Zurück",
+        "next": "Weiter",
+        "page": "Seite {page} von {totalPages}"
       }
     },
     "reservations": {
@@ -5425,7 +5596,9 @@
     "tulipContractPastDate": "Tulip hat die Vertragserstellung abgelehnt: Vertragsdaten dürfen nicht in der Vergangenheit liegen.",
     "tulipContractActionForbidden": "Tulip hat diese Aktion für die aktuelle Kontokonfiguration abgelehnt.",
     "tulipContractProductMarkedMissing": "Tulip benötigt die echte Kennung jedes versicherten Artikels. Weisen Sie jedem versicherten Produkt vor der Erstellung oder Synchronisierung des Vertrags eine Einheit oder physische Kennung zu.",
-    "tulipContractTypeDisabled": "Der für diese Dauer erforderliche Tulip-Vertragstyp ist für diesen Shop nicht aktiviert."
+    "tulipContractTypeDisabled": "Der für diese Dauer erforderliche Tulip-Vertragstyp ist für diesen Shop nicht aktiviert.",
+    "unitAlreadyRetired": "Diese Einheit ist bereits ausgemustert",
+    "unitNotRetired": "Diese Einheit ist nicht ausgemustert"
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",
