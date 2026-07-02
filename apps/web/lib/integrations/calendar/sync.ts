@@ -16,6 +16,7 @@ import {
 } from '@/lib/integrations/credentials';
 import {
   GOOGLE_CALENDAR_PROVIDER_KEY,
+  GoogleCalendarApiError,
   deleteGoogleCalendarEvent,
   insertGoogleCalendarEvent,
   refreshGoogleCalendarAccessToken,
@@ -26,6 +27,13 @@ import { buildReservationCalendarEventPayload } from './calendar-event-payload';
 
 const MAX_ATTEMPTS = 8;
 const IMMEDIATE_BACKFILL_SYNC_LIMIT = 10;
+
+function isMissingProviderEvent(error: unknown): boolean {
+  return (
+    error instanceof GoogleCalendarApiError &&
+    (error.status === 404 || error.status === 410)
+  );
+}
 
 async function processCalendarSyncQueueImmediately(
   limit: number,
@@ -255,18 +263,34 @@ async function processCalendarEvent(row: {
     throw new Error('Calendar event payload is missing');
   }
 
-  const providerEvent = row.providerEventId
-    ? await updateGoogleCalendarEvent({
+  let providerEvent: { id: string };
+
+  if (row.providerEventId) {
+    try {
+      providerEvent = await updateGoogleCalendarEvent({
         accessToken,
         calendarId: row.calendarId,
         eventId: row.providerEventId,
         event: payload.event,
-      })
-    : await insertGoogleCalendarEvent({
+      });
+    } catch (error) {
+      if (!isMissingProviderEvent(error)) {
+        throw error;
+      }
+
+      providerEvent = await insertGoogleCalendarEvent({
         accessToken,
         calendarId: row.calendarId,
         event: payload.event,
       });
+    }
+  } else {
+    providerEvent = await insertGoogleCalendarEvent({
+      accessToken,
+      calendarId: row.calendarId,
+      event: payload.event,
+    });
+  }
 
   await db
     .update(reservationCalendarEvents)
