@@ -10,6 +10,7 @@ import {
   categories,
   productAccessories,
   productPricingTiers,
+  productUnitEvents,
   productUnits,
   products,
   reservationItems,
@@ -33,6 +34,7 @@ import {
   productSchema,
 } from '@louez/validations';
 
+import { auth } from '@/lib/auth';
 import {
   notifyProductCreated,
   notifyProductUpdated,
@@ -43,6 +45,11 @@ import { getCurrentStore } from '@/lib/store-context';
 
 async function getStoreForUser() {
   return getCurrentStore();
+}
+
+async function getActorUserId(): Promise<string | null> {
+  const session = await auth();
+  return session?.user?.id ?? null;
 }
 
 const UNIT_LIFECYCLE = {
@@ -232,6 +239,8 @@ export async function createProduct(data: ProductInput) {
     : parseInt(validated.data.quantity, 10);
 
   const productId = nanoid();
+  const actorUserId =
+    trackUnits && units.length > 0 ? await getActorUserId() : null;
 
   try {
     await db.transaction(async (tx) => {
@@ -275,20 +284,40 @@ export async function createProduct(data: ProductInput) {
 
       // Create units if tracking is enabled
       if (trackUnits && units.length > 0) {
-        await tx.insert(productUnits).values(
-          units.map((unit) => ({
-            attributes: resolveUnitAttributes(bookingAttributeAxes, unit),
+        const unitRows = units.map((unit) => {
+          const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
+
+          return {
+            attributes,
             combinationKey: buildCombinationKey(
               bookingAttributeAxes,
-              resolveUnitAttributes(bookingAttributeAxes, unit),
+              attributes,
             ),
             id: nanoid(),
             productId: productId,
             identifier: unit.identifier.trim(),
             notes: unit.notes?.trim() || null,
             lifecycleStatus: UNIT_LIFECYCLE.active,
-          })),
+          };
+        });
+
+        await tx.insert(productUnits).values(unitRows);
+        const eventRows = unitRows.map(
+          (unit) =>
+            ({
+              id: nanoid(),
+              productUnitId: unit.id,
+              storeId: store.id,
+              type: 'created',
+              actorUserId,
+              payload: {
+                productId,
+                identifier: unit.identifier,
+                combinationKey: unit.combinationKey,
+              },
+            }) satisfies typeof productUnitEvents.$inferInsert,
         );
+        await tx.insert(productUnitEvents).values(eventRows);
       }
     });
   } catch (error) {
@@ -327,6 +356,7 @@ export async function createProduct(data: ProductInput) {
   });
 
   revalidatePath('/dashboard/products');
+  revalidatePath('/dashboard/inventory');
   return { success: true, productId };
 }
 
@@ -590,23 +620,39 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
     // Insert new units
     if (unitsToInsert.length > 0) {
-      await db.insert(productUnits).values(
-        unitsToInsert.map((unit) => {
-          const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
-          return {
-            id: nanoid(),
-            productId: productId,
-            identifier: unit.identifier.trim(),
-            notes: unit.notes?.trim() || null,
-            lifecycleStatus: UNIT_LIFECYCLE.active,
-            attributes,
-            combinationKey: buildCombinationKey(
-              bookingAttributeAxes,
-              attributes,
-            ),
-          };
-        }),
-      );
+      const actorUserId = await getActorUserId();
+      const unitRows = unitsToInsert.map((unit) => {
+        const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
+        return {
+          id: nanoid(),
+          productId: productId,
+          identifier: unit.identifier.trim(),
+          notes: unit.notes?.trim() || null,
+          lifecycleStatus: UNIT_LIFECYCLE.active,
+          attributes,
+          combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
+        };
+      });
+
+      await db.transaction(async (tx) => {
+        await tx.insert(productUnits).values(unitRows);
+        const eventRows = unitRows.map(
+          (unit) =>
+            ({
+              id: nanoid(),
+              productUnitId: unit.id,
+              storeId: store.id,
+              type: 'created',
+              actorUserId,
+              payload: {
+                productId,
+                identifier: unit.identifier,
+                combinationKey: unit.combinationKey,
+              },
+            }) satisfies typeof productUnitEvents.$inferInsert,
+        );
+        await tx.insert(productUnitEvents).values(eventRows);
+      });
     }
   }
 
@@ -647,6 +693,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
   ).catch(() => {});
 
   revalidatePath('/dashboard/products');
+  revalidatePath('/dashboard/inventory');
   revalidatePath(`/dashboard/products/${productId}`);
   return { success: true };
 }

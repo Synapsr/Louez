@@ -1,11 +1,4 @@
-import {
-  and,
-  eq,
-  gte,
-  inArray,
-  lte,
-  not,
-} from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, not } from 'drizzle-orm';
 
 import {
   buildUnitRentableDuringPredicate,
@@ -27,7 +20,16 @@ export interface AvailableUnit {
  * Units assigned to reservations with these statuses cannot be reassigned
  * to overlapping reservations.
  */
-const BLOCKING_STATUSES = ['pending', 'confirmed', 'ongoing'] as const;
+export const BLOCKING_STATUSES = ['pending', 'confirmed', 'ongoing'] as const;
+export type BlockingReservationStatus = (typeof BLOCKING_STATUSES)[number];
+
+export function getBlockingReservationStatuses(
+  pendingBlocksAvailability: boolean,
+): BlockingReservationStatus[] {
+  return pendingBlocksAvailability
+    ? [...BLOCKING_STATUSES]
+    : ['confirmed', 'ongoing'];
+}
 
 export function isUnitRentableDuring(startDate: Date, endDate: Date) {
   return buildUnitRentableDuringPredicate(db, startDate, endDate);
@@ -53,6 +55,7 @@ export async function getAvailableUnitsForProduct(
   endDate: Date,
   excludeReservationId?: string,
   combinationKey?: string | null,
+  blockingStatuses: readonly BlockingReservationStatus[] = BLOCKING_STATUSES,
 ): Promise<AvailableUnit[]> {
   const unitConditions = [
     eq(productUnits.productId, productId),
@@ -86,7 +89,7 @@ export async function getAvailableUnitsForProduct(
     lte(reservations.startDate, endDate),
     gte(reservations.endDate, startDate),
     // Only blocking statuses
-    inArray(reservations.status, [...BLOCKING_STATUSES]),
+    inArray(reservations.status, [...blockingStatuses]),
   ];
 
   // Exclude specific reservation if editing
@@ -136,6 +139,7 @@ export async function checkUnitsAvailability(
   startDate: Date,
   endDate: Date,
   excludeReservationId?: string,
+  blockingStatuses: readonly BlockingReservationStatus[] = BLOCKING_STATUSES,
 ): Promise<Record<string, boolean>> {
   if (unitIds.length === 0) {
     return {};
@@ -159,7 +163,7 @@ export async function checkUnitsAvailability(
   const reservationConditions = [
     lte(reservations.startDate, endDate),
     gte(reservations.endDate, startDate),
-    inArray(reservations.status, [...BLOCKING_STATUSES]),
+    inArray(reservations.status, [...blockingStatuses]),
   ];
 
   if (excludeReservationId) {
