@@ -501,6 +501,7 @@
     "navigation": {
       "home": "Home",
       "products": "Prodotti",
+      "inventory": "Inventario",
       "reservations": "Prenotazioni",
       "customers": "Clienti",
       "calendar": "Calendario",
@@ -847,9 +848,6 @@
           "identifierPlaceholder": "es., BIKE-01, SN-2024-001",
           "notes": "Note",
           "notesPlaceholder": "Note opzionali su questa unità (condizione, colore...)",
-          "statusAvailable": "Disponibile",
-          "statusMaintenance": "Manutenzione",
-          "statusRetired": "Ritirato",
           "bulkAdd": "Aggiungi in blocco",
           "bulkPrefix": "Prefisso",
           "bulkPrefixPlaceholder": "es., BIKE-",
@@ -879,7 +877,12 @@
           "manageAttributesDescription": "Gli attributi permettono ai clienti di scegliere caratteristiche specifiche al momento della prenotazione (es. taglia, colore). Ogni unita e associata ai propri valori di attributo e il sistema assegna automaticamente un'unita corrispondente al checkout.",
           "manageAttributesExample": "Esempio: per un noleggio di kayak, aggiungi \"Taglia\" (S, M, L) e \"Colore\" (Rosso, Blu). Un cliente che prenota un kayak Medio Rosso ricevera un'unita disponibile corrispondente.",
           "manageAttributesMax": "Massimo 3 attributi consentiti.",
-          "pressEnterToCreate": "Premi Invio per creare \"{value}\""
+          "pressEnterToCreate": "Premi Invio per creare \"{value}\"",
+          "lifecycleActive": "Attiva",
+          "lifecycleRetired": "Ritirata",
+          "purchasePrice": "Prezzo di acquisto",
+          "purchasePricePlaceholder": "0,00",
+          "purchasedAt": "Data di acquisto"
         },
         "previewTitle": "Anteprima",
         "previewDescription": "Ecco come apparira il tuo prodotto nel catalogo",
@@ -1010,6 +1013,174 @@
       "deleteConfirm": {
         "title": "Eliminare questo prodotto?",
         "description": "Questa azione e irreversibile. Il prodotto verra eliminato definitivamente."
+      }
+    },
+    "inventory": {
+      "title": "Inventario",
+      "description": "Gestisci disponibilità, indisponibilità, ritiro dal parco e conflitti di prenotazione delle unità.",
+      "productScoped": {
+        "openInventory": "Apri inventario"
+      },
+      "filters": {
+        "searchPlaceholder": "Cerca per riferimento",
+        "clearSearch": "Cancella ricerca",
+        "product": "Prodotto",
+        "allProducts": "Tutti i prodotti",
+        "state": "Stato",
+        "allStates": "Tutti gli stati"
+      },
+      "states": {
+        "available": "Disponibile",
+        "reserved": "Riservata",
+        "rented_out": "In noleggio",
+        "overdue": "In ritardo",
+        "in_downtime": "Fuori servizio",
+        "retired": "Ritirata"
+      },
+      "empty": {
+        "no-products": {
+          "title": "Nessun prodotto ancora",
+          "description": "Crea un prodotto prima di gestire le unità di inventario."
+        },
+        "tracked-empty": {
+          "title": "Il tracciamento unità non è ancora attivo",
+          "description": "I prodotti senza tracciamento unità restano gestiti come stock a quantità. Attivalo su un prodotto per gestire ogni unità separatamente."
+        },
+        "no-results": {
+          "title": "Nessuna riga di inventario trovata",
+          "description": "Modifica prodotto, stato o ricerca per visualizzare più unità."
+        },
+        "addProduct": "Aggiungi prodotto",
+        "chooseProduct": "Scegli un prodotto"
+      },
+      "table": {
+        "identifier": "Riferimento",
+        "product": "Prodotto",
+        "state": "Stato",
+        "downtime": "Indisponibilità",
+        "notes": "Note"
+      },
+      "counters": {
+        "reservedWithoutAssignedUnit": "{count, plural, one {# riservata senza unità assegnata} other {# riservate senza unità assegnata}}"
+      },
+      "downtimeReasons": {
+        "maintenance": "Manutenzione",
+        "repair": "Riparazione",
+        "other": "Altro"
+      },
+      "retirementReasons": {
+        "sold": "Venduta",
+        "lost": "Persa o rubata",
+        "broken": "Rotta",
+        "other": "Altro"
+      },
+      "downtime": {
+        "current": "{reason}",
+        "until": "Fino al {date}",
+        "openEnded": "Senza data di fine",
+        "next": "Prossima: {reason}",
+        "none": "Nessuna indisponibilità"
+      },
+      "indicators": {
+        "conflicts": "Questa unità ha conflitti di assegnazione",
+        "notes": "Questa unità contiene note interne"
+      },
+      "bulk": {
+        "bulkProduct": "Stock a quantità",
+        "trackingDisabled": "Tracciamento unità disattivato",
+        "quantity": "{count, plural, one {# articolo} other {# articoli}}",
+        "availabilityInfo": "La disponibilità è gestita per quantità",
+        "enableTracking": "Attiva tracciamento unità"
+      },
+      "actions": {
+        "declareDowntime": "Metti fuori servizio",
+        "closeDowntime": "Chiudi indisponibilità",
+        "retire": "Ritira dal parco",
+        "reinstate": "Reintegra nel parco",
+        "editDetails": "Modifica dettagli",
+        "viewHistory": "Cronologia",
+        "editProduct": "Modifica prodotto"
+      },
+      "conflicts": {
+        "title": "Conflitti di prenotazione",
+        "description": "{count, plural, =0 {Tutti i conflitti sono stati gestiti.} one {# conflitto richiede ancora una decisione.} other {# conflitti richiedono ancora una decisione.}}",
+        "reservation": "Prenotazione {number}",
+        "unknownCustomer": "Cliente non specificato",
+        "reassignedToast": "Prenotazione riassegnata",
+        "reassigned": "Riassegnata",
+        "leftAsIs": "Lasciata invariata",
+        "replacementUnit": "Unità sostitutiva",
+        "noCandidates": "Nessuna unità disponibile",
+        "reassign": "Riassegna",
+        "leaveAsIs": "Lascia invariata"
+      },
+      "downtimeDialog": {
+        "title": "Metti fuori servizio",
+        "description": "Segna {identifier} come non disponibile per un periodo di manutenzione o riparazione.",
+        "successToast": "Indisponibilità dichiarata",
+        "reason": "Motivo",
+        "startsAt": "Data e ora di inizio",
+        "endsAt": "Data e ora di fine",
+        "openEnded": "Indisponibilità senza fine prevista",
+        "note": "Nota",
+        "notePlaceholder": "Aggiungi contesto per il team",
+        "close": "Chiudi",
+        "submit": "Metti fuori servizio"
+      },
+      "retireDialog": {
+        "title": "Ritira dal parco",
+        "description": "Rimuovi {identifier} dall’inventario noleggiabile.",
+        "confirmationCopy": "L’unità conserva tutta la cronologia e può essere reintegrata più avanti se necessario.",
+        "successToast": "Unità ritirata dal parco",
+        "reason": "Motivo",
+        "note": "Nota",
+        "notePlaceholder": "Aggiungi il motivo o il contesto operativo",
+        "close": "Chiudi",
+        "submit": "Ritira dal parco"
+      },
+      "editDialog": {
+        "title": "Modifica dettagli unità",
+        "description": "Aggiorna note e informazioni di acquisto di {identifier}.",
+        "successToast": "Dettagli unità aggiornati",
+        "notes": "Note",
+        "notesPlaceholder": "Condizione, posizione di stoccaggio o dettagli interni",
+        "purchasePrice": "Prezzo di acquisto",
+        "purchasePricePlaceholder": "0,00",
+        "purchasedAt": "Data di acquisto",
+        "cancel": "Annulla",
+        "submit": "Salva modifiche"
+      },
+      "history": {
+        "title": "Cronologia",
+        "description": "Cronologia di {identifier}",
+        "loading": "Caricamento cronologia...",
+        "empty": "Ancora nessuna cronologia",
+        "systemActor": "Sistema",
+        "unknownCustomer": "Cliente non specificato",
+        "byActor": "Da {actor}",
+        "viewReservation": "Vedi prenotazione",
+        "events": {
+          "created": "Unità creata",
+          "downtime_declared": "Indisponibilità dichiarata",
+          "downtime_updated": "Indisponibilità aggiornata",
+          "downtime_closed": "Indisponibilità chiusa",
+          "downtime_deleted": "Indisponibilità eliminata",
+          "retired": "Unità ritirata dal parco",
+          "reinstated": "Unità reintegrata nel parco",
+          "assigned": "Unità assegnata",
+          "unassigned": "Unità disassegnata",
+          "updated": "Unità aggiornata",
+          "assignment": "Assegnata alla prenotazione {number}"
+        }
+      },
+      "toasts": {
+        "downtimeClosed": "Indisponibilità chiusa",
+        "reinstated": "Unità reintegrata nel parco"
+      },
+      "pagination": {
+        "previous": "Precedente",
+        "next": "Successiva",
+        "page": "Pagina {page} di {totalPages}"
       }
     },
     "reservations": {
@@ -5425,7 +5596,9 @@
     "tulipContractPastDate": "Tulip ha rifiutato la creazione del contratto: le date del contratto non possono essere nel passato.",
     "tulipContractActionForbidden": "Tulip ha rifiutato questa azione per la configurazione attuale dell'account.",
     "tulipContractProductMarkedMissing": "Tulip richiede l'identificativo reale di ogni articolo assicurato. Assegna un'unità o un identificativo fisico a ogni prodotto assicurato prima di creare o sincronizzare il contratto.",
-    "tulipContractTypeDisabled": "Il tipo di contratto Tulip richiesto per questa durata non e abilitato per questo negozio."
+    "tulipContractTypeDisabled": "Il tipo di contratto Tulip richiesto per questa durata non e abilitato per questo negozio.",
+    "unitAlreadyRetired": "Questa unità è già ritirata dal parco",
+    "unitNotRetired": "Questa unità non è ritirata dal parco"
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

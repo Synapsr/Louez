@@ -501,6 +501,7 @@
     "navigation": {
       "home": "Home",
       "products": "Products",
+      "inventory": "Inventory",
       "reservations": "Reservations",
       "customers": "Customers",
       "calendar": "Calendar",
@@ -899,9 +900,6 @@
           "identifierPlaceholder": "e.g., BIKE-01, SN-2024-001",
           "notes": "Notes",
           "notesPlaceholder": "Optional notes about this unit (condition, color...)",
-          "statusAvailable": "Available",
-          "statusMaintenance": "Maintenance",
-          "statusRetired": "Retired",
           "bulkAdd": "Bulk add",
           "bulkPrefix": "Prefix",
           "bulkPrefixPlaceholder": "e.g., BIKE-",
@@ -918,7 +916,12 @@
           "noUnitsRegistered": "No units registered",
           "noUnitsHint": "Add individual units to track which ones are rented out",
           "cancel": "Cancel",
-          "confirm": "Confirm"
+          "confirm": "Confirm",
+          "lifecycleActive": "Active",
+          "lifecycleRetired": "Retired",
+          "purchasePrice": "Purchase price",
+          "purchasePricePlaceholder": "0.00",
+          "purchasedAt": "Purchase date"
         },
         "previewTitle": "Preview",
         "previewDescription": "Here's how your product will appear in the catalog",
@@ -1055,6 +1058,174 @@
       "deleteConfirm": {
         "title": "Delete this product?",
         "description": "This action is irreversible. The product will be permanently deleted."
+      }
+    },
+    "inventory": {
+      "title": "Inventory",
+      "description": "Manage unit availability, downtime, retirement, and assignment conflicts from one place.",
+      "productScoped": {
+        "openInventory": "Open inventory"
+      },
+      "filters": {
+        "searchPlaceholder": "Search by reference",
+        "clearSearch": "Clear search",
+        "product": "Product",
+        "allProducts": "All products",
+        "state": "State",
+        "allStates": "All states"
+      },
+      "states": {
+        "available": "Available",
+        "reserved": "Reserved",
+        "rented_out": "Rented out",
+        "overdue": "Overdue",
+        "in_downtime": "In downtime",
+        "retired": "Retired"
+      },
+      "empty": {
+        "no-products": {
+          "title": "No products yet",
+          "description": "Create a product before managing inventory units."
+        },
+        "tracked-empty": {
+          "title": "Unit tracking is not enabled yet",
+          "description": "Products without unit tracking remain available as bulk stock. Enable tracking on a product to manage each unit separately."
+        },
+        "no-results": {
+          "title": "No inventory rows found",
+          "description": "Adjust the product, state, or search filters to see more units."
+        },
+        "addProduct": "Add product",
+        "chooseProduct": "Choose a product"
+      },
+      "table": {
+        "identifier": "Reference",
+        "product": "Product",
+        "state": "State",
+        "downtime": "Downtime",
+        "notes": "Notes"
+      },
+      "counters": {
+        "reservedWithoutAssignedUnit": "{count, plural, one {# reserved without assigned unit} other {# reserved without assigned unit}}"
+      },
+      "downtimeReasons": {
+        "maintenance": "Maintenance",
+        "repair": "Repair",
+        "other": "Other"
+      },
+      "retirementReasons": {
+        "sold": "Sold",
+        "lost": "Lost or stolen",
+        "broken": "Broken",
+        "other": "Other"
+      },
+      "downtime": {
+        "current": "{reason}",
+        "until": "Until {date}",
+        "openEnded": "Open-ended",
+        "next": "Next: {reason}",
+        "none": "No downtime"
+      },
+      "indicators": {
+        "conflicts": "This unit has assignment conflicts",
+        "notes": "This unit has internal notes"
+      },
+      "bulk": {
+        "bulkProduct": "Bulk stock",
+        "trackingDisabled": "Unit tracking disabled",
+        "quantity": "{count, plural, one {# item} other {# items}}",
+        "availabilityInfo": "Availability is managed by quantity",
+        "enableTracking": "Enable unit tracking"
+      },
+      "actions": {
+        "declareDowntime": "Declare downtime",
+        "closeDowntime": "Close downtime",
+        "retire": "Retire unit",
+        "reinstate": "Reinstate unit",
+        "editDetails": "Edit details",
+        "viewHistory": "History",
+        "editProduct": "Edit product"
+      },
+      "conflicts": {
+        "title": "Reservation conflicts",
+        "description": "{count, plural, =0 {All conflicts have been handled.} one {# conflict still needs a decision.} other {# conflicts still need a decision.}}",
+        "reservation": "Reservation {number}",
+        "unknownCustomer": "Customer not specified",
+        "reassignedToast": "Reservation reassigned",
+        "reassigned": "Reassigned",
+        "leftAsIs": "Left as is",
+        "replacementUnit": "Replacement unit",
+        "noCandidates": "No replacement available",
+        "reassign": "Reassign",
+        "leaveAsIs": "Leave as is"
+      },
+      "downtimeDialog": {
+        "title": "Declare downtime",
+        "description": "Mark {identifier} as unavailable for a dated maintenance or repair period.",
+        "successToast": "Downtime declared",
+        "reason": "Reason",
+        "startsAt": "Start date and time",
+        "endsAt": "End date and time",
+        "openEnded": "Open-ended downtime",
+        "note": "Note",
+        "notePlaceholder": "Add context for your team",
+        "close": "Close",
+        "submit": "Declare downtime"
+      },
+      "retireDialog": {
+        "title": "Retire unit",
+        "description": "Remove {identifier} from rentable inventory.",
+        "confirmationCopy": "The unit keeps its full history and can be reinstated later if needed.",
+        "successToast": "Unit retired",
+        "reason": "Reason",
+        "note": "Note",
+        "notePlaceholder": "Add the reason or operational context",
+        "close": "Close",
+        "submit": "Retire unit"
+      },
+      "editDialog": {
+        "title": "Edit unit details",
+        "description": "Update notes and purchase information for {identifier}.",
+        "successToast": "Unit details updated",
+        "notes": "Notes",
+        "notesPlaceholder": "Condition, storage location, or internal details",
+        "purchasePrice": "Purchase price",
+        "purchasePricePlaceholder": "0.00",
+        "purchasedAt": "Purchase date",
+        "cancel": "Cancel",
+        "submit": "Save changes"
+      },
+      "history": {
+        "title": "History",
+        "description": "Timeline for {identifier}",
+        "loading": "Loading history...",
+        "empty": "No history yet",
+        "systemActor": "System",
+        "unknownCustomer": "Customer not specified",
+        "byActor": "By {actor}",
+        "viewReservation": "View reservation",
+        "events": {
+          "created": "Unit created",
+          "downtime_declared": "Downtime declared",
+          "downtime_updated": "Downtime updated",
+          "downtime_closed": "Downtime closed",
+          "downtime_deleted": "Downtime deleted",
+          "retired": "Unit retired",
+          "reinstated": "Unit reinstated",
+          "assigned": "Unit assigned",
+          "unassigned": "Unit unassigned",
+          "updated": "Unit updated",
+          "assignment": "Assigned to reservation {number}"
+        }
+      },
+      "toasts": {
+        "downtimeClosed": "Downtime closed",
+        "reinstated": "Unit reinstated"
+      },
+      "pagination": {
+        "previous": "Previous",
+        "next": "Next",
+        "page": "Page {page} of {totalPages}"
       }
     },
     "reservations": {
@@ -5560,7 +5731,9 @@
     "tulipContractValidationFailed": "Tulip rejected this action because of a contract validation error.",
     "tulipContractTypeDisabled": "The Tulip contract type required for this duration is not enabled for this store.",
     "tulipContractProductsIncompatible": "The insured Tulip products in this reservation are not all compatible with this contract type.",
-    "tulipProductTypeDisabled": "This Tulip product category is not enabled for this store."
+    "tulipProductTypeDisabled": "This Tulip product category is not enabled for this store.",
+    "unitAlreadyRetired": "This unit is already retired",
+    "unitNotRetired": "This unit is not retired"
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

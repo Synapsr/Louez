@@ -501,6 +501,7 @@
     "navigation": {
       "home": "Home",
       "products": "Producten",
+      "inventory": "Inventaris",
       "reservations": "Reserveringen",
       "customers": "Klanten",
       "calendar": "Kalender",
@@ -847,9 +848,6 @@
           "identifierPlaceholder": "bijv., BIKE-01, SN-2024-001",
           "notes": "Notities",
           "notesPlaceholder": "Optionele notities over deze eenheid (conditie, kleur...)",
-          "statusAvailable": "Beschikbaar",
-          "statusMaintenance": "Onderhoud",
-          "statusRetired": "Uitgeschreven",
           "bulkAdd": "Bulk toevoegen",
           "bulkPrefix": "Prefix",
           "bulkPrefixPlaceholder": "bijv., BIKE-",
@@ -879,7 +877,12 @@
           "manageAttributesDescription": "Met kenmerken kunnen klanten specifieke eigenschappen kiezen bij het boeken (bijv. maat, kleur). Elke eenheid wordt getagd met kenmerkwaarden en het systeem wijst automatisch een passende eenheid toe bij het afrekenen.",
           "manageAttributesExample": "Voorbeeld: voor een kajakhuurverhuur voegt u \"Maat\" (S, M, L) en \"Kleur\" (Rood, Blauw) toe. Een klant die een Medium Rode kajak boekt, krijgt een passende beschikbare eenheid toegewezen.",
           "manageAttributesMax": "Maximaal 3 kenmerken toegestaan.",
-          "pressEnterToCreate": "Druk op Enter om \"{value}\" aan te maken"
+          "pressEnterToCreate": "Druk op Enter om \"{value}\" aan te maken",
+          "lifecycleActive": "Actief",
+          "lifecycleRetired": "Uitgefaseerd",
+          "purchasePrice": "Aankoopprijs",
+          "purchasePricePlaceholder": "0,00",
+          "purchasedAt": "Aankoopdatum"
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",
@@ -1010,6 +1013,174 @@
       "deleteConfirm": {
         "title": "Dit product verwijderen?",
         "description": "Deze actie is onomkeerbaar. Het product wordt permanent verwijderd."
+      }
+    },
+    "inventory": {
+      "title": "Inventaris",
+      "description": "Beheer beschikbaarheid, buitengebruikstelling, uitfasering en reserveringsconflicten van eenheden op één plek.",
+      "productScoped": {
+        "openInventory": "Inventaris openen"
+      },
+      "filters": {
+        "searchPlaceholder": "Zoeken op referentie",
+        "clearSearch": "Zoekopdracht wissen",
+        "product": "Product",
+        "allProducts": "Alle producten",
+        "state": "Status",
+        "allStates": "Alle statussen"
+      },
+      "states": {
+        "available": "Beschikbaar",
+        "reserved": "Gereserveerd",
+        "rented_out": "Verhuurd",
+        "overdue": "Te laat",
+        "in_downtime": "Buiten gebruik",
+        "retired": "Uitgefaseerd"
+      },
+      "empty": {
+        "no-products": {
+          "title": "Nog geen producten",
+          "description": "Maak een product aan voordat je inventariseenheden beheert."
+        },
+        "tracked-empty": {
+          "title": "Eenheidstracking is nog niet ingeschakeld",
+          "description": "Producten zonder eenheidstracking blijven beschikbaar als voorraad op aantal. Schakel tracking in op een product om elke eenheid apart te beheren."
+        },
+        "no-results": {
+          "title": "Geen inventarisregels gevonden",
+          "description": "Pas product, status of zoekopdracht aan om meer eenheden te zien."
+        },
+        "addProduct": "Product toevoegen",
+        "chooseProduct": "Product kiezen"
+      },
+      "table": {
+        "identifier": "Referentie",
+        "product": "Product",
+        "state": "Status",
+        "downtime": "Buiten gebruik",
+        "notes": "Notities"
+      },
+      "counters": {
+        "reservedWithoutAssignedUnit": "{count, plural, one {# gereserveerd zonder toegewezen eenheid} other {# gereserveerd zonder toegewezen eenheid}}"
+      },
+      "downtimeReasons": {
+        "maintenance": "Onderhoud",
+        "repair": "Reparatie",
+        "other": "Overig"
+      },
+      "retirementReasons": {
+        "sold": "Verkocht",
+        "lost": "Verloren of gestolen",
+        "broken": "Defect",
+        "other": "Overig"
+      },
+      "downtime": {
+        "current": "{reason}",
+        "until": "Tot {date}",
+        "openEnded": "Zonder einddatum",
+        "next": "Volgende: {reason}",
+        "none": "Niet buiten gebruik"
+      },
+      "indicators": {
+        "conflicts": "Deze eenheid heeft toewijzingsconflicten",
+        "notes": "Deze eenheid bevat interne notities"
+      },
+      "bulk": {
+        "bulkProduct": "Voorraad op aantal",
+        "trackingDisabled": "Eenheidstracking uitgeschakeld",
+        "quantity": "{count, plural, one {# item} other {# items}}",
+        "availabilityInfo": "Beschikbaarheid wordt per aantal beheerd",
+        "enableTracking": "Eenheidstracking inschakelen"
+      },
+      "actions": {
+        "declareDowntime": "Buiten gebruik stellen",
+        "closeDowntime": "Buitengebruikstelling sluiten",
+        "retire": "Eenheid uitfaseren",
+        "reinstate": "Eenheid herstellen",
+        "editDetails": "Details bewerken",
+        "viewHistory": "Historie",
+        "editProduct": "Product bewerken"
+      },
+      "conflicts": {
+        "title": "Reserveringsconflicten",
+        "description": "{count, plural, =0 {Alle conflicten zijn afgehandeld.} one {# conflict heeft nog een beslissing nodig.} other {# conflicten hebben nog een beslissing nodig.}}",
+        "reservation": "Reservering {number}",
+        "unknownCustomer": "Klant niet opgegeven",
+        "reassignedToast": "Reservering opnieuw toegewezen",
+        "reassigned": "Opnieuw toegewezen",
+        "leftAsIs": "Ongewijzigd gelaten",
+        "replacementUnit": "Vervangende eenheid",
+        "noCandidates": "Geen vervangende eenheid beschikbaar",
+        "reassign": "Opnieuw toewijzen",
+        "leaveAsIs": "Ongewijzigd laten"
+      },
+      "downtimeDialog": {
+        "title": "Buiten gebruik stellen",
+        "description": "Markeer {identifier} als niet beschikbaar voor onderhoud of reparatie.",
+        "successToast": "Buitengebruikstelling aangemaakt",
+        "reason": "Reden",
+        "startsAt": "Startdatum en -tijd",
+        "endsAt": "Einddatum en -tijd",
+        "openEnded": "Buitengebruikstelling zonder einddatum",
+        "note": "Notitie",
+        "notePlaceholder": "Voeg context toe voor je team",
+        "close": "Sluiten",
+        "submit": "Buiten gebruik stellen"
+      },
+      "retireDialog": {
+        "title": "Eenheid uitfaseren",
+        "description": "Verwijder {identifier} uit de verhuurbare inventaris.",
+        "confirmationCopy": "De eenheid behoudt de volledige historie en kan later indien nodig worden hersteld.",
+        "successToast": "Eenheid uitgefaseerd",
+        "reason": "Reden",
+        "note": "Notitie",
+        "notePlaceholder": "Voeg reden of operationele context toe",
+        "close": "Sluiten",
+        "submit": "Eenheid uitfaseren"
+      },
+      "editDialog": {
+        "title": "Eenheidsdetails bewerken",
+        "description": "Werk notities en aankoopinformatie voor {identifier} bij.",
+        "successToast": "Eenheidsdetails bijgewerkt",
+        "notes": "Notities",
+        "notesPlaceholder": "Staat, opslaglocatie of interne details",
+        "purchasePrice": "Aankoopprijs",
+        "purchasePricePlaceholder": "0,00",
+        "purchasedAt": "Aankoopdatum",
+        "cancel": "Annuleren",
+        "submit": "Wijzigingen opslaan"
+      },
+      "history": {
+        "title": "Historie",
+        "description": "Tijdlijn voor {identifier}",
+        "loading": "Historie laden...",
+        "empty": "Nog geen historie",
+        "systemActor": "Systeem",
+        "unknownCustomer": "Klant niet opgegeven",
+        "byActor": "Door {actor}",
+        "viewReservation": "Reservering bekijken",
+        "events": {
+          "created": "Eenheid aangemaakt",
+          "downtime_declared": "Buitengebruikstelling aangemaakt",
+          "downtime_updated": "Buitengebruikstelling bijgewerkt",
+          "downtime_closed": "Buitengebruikstelling gesloten",
+          "downtime_deleted": "Buitengebruikstelling verwijderd",
+          "retired": "Eenheid uitgefaseerd",
+          "reinstated": "Eenheid hersteld",
+          "assigned": "Eenheid toegewezen",
+          "unassigned": "Eenheid losgekoppeld",
+          "updated": "Eenheid bijgewerkt",
+          "assignment": "Toegewezen aan reservering {number}"
+        }
+      },
+      "toasts": {
+        "downtimeClosed": "Buitengebruikstelling gesloten",
+        "reinstated": "Eenheid hersteld"
+      },
+      "pagination": {
+        "previous": "Vorige",
+        "next": "Volgende",
+        "page": "Pagina {page} van {totalPages}"
       }
     },
     "reservations": {
@@ -5425,7 +5596,9 @@
     "tulipContractPastDate": "Tulip heeft het aanmaken van het contract geweigerd: contractdatums kunnen niet in het verleden liggen.",
     "tulipContractActionForbidden": "Tulip heeft deze actie geweigerd voor de huidige accountconfiguratie.",
     "tulipContractProductMarkedMissing": "Tulip vereist de echte identificatie van elk verzekerd item. Wijs een unit of fysieke identificatie toe aan elk verzekerd product voordat je het contract aanmaakt of synchroniseert.",
-    "tulipContractTypeDisabled": "Het Tulip contracttype dat vereist is voor deze duur is niet ingeschakeld voor deze winkel."
+    "tulipContractTypeDisabled": "Het Tulip contracttype dat vereist is voor deze duur is niet ingeschakeld voor deze winkel.",
+    "unitAlreadyRetired": "Deze eenheid is al uitgefaseerd",
+    "unitNotRetired": "Deze eenheid is niet uitgefaseerd"
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

@@ -16,6 +16,7 @@ export {
   Shield as ShieldIcon,
   Sparkles as SparklesIcon,
   Users as UsersIcon,
+  Warehouse as WarehouseIcon,
   Loader as LoaderIcon,
   Star as StarIcon,
   Zap as ZapIcon,

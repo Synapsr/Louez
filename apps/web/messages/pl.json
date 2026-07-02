@@ -501,6 +501,7 @@
     "navigation": {
       "home": "Strona główna",
       "products": "Produkty",
+      "inventory": "Inwentarz",
       "reservations": "Rezerwacje",
       "customers": "Klienci",
       "calendar": "Kalendarz",
@@ -847,9 +848,6 @@
           "identifierPlaceholder": "np. BIKE-01, SN-2024-001",
           "notes": "Notatki",
           "notesPlaceholder": "Opcjonalne notatki o tej jednostce (stan, kolor...)",
-          "statusAvailable": "Dostępna",
-          "statusMaintenance": "Konserwacja",
-          "statusRetired": "Wycofana",
           "bulkAdd": "Dodaj masowo",
           "bulkPrefix": "Prefiks",
           "bulkPrefixPlaceholder": "np. BIKE-",
@@ -879,7 +877,12 @@
           "manageAttributesDescription": "Atrybuty pozwalają klientom wybrać konkretne cechy podczas rezerwacji (np. rozmiar, kolor).",
           "manageAttributesExample": "Przykład: dla wynajmu kajaka dodaj \"Rozmiar\" (S, M, L) i \"Kolor\" (Czerwony, Niebieski). Klient wybierze konkretną kombinację.",
           "manageAttributesMax": "Dozwolone maksymalnie 3 atrybuty.",
-          "pressEnterToCreate": "Naciśnij Enter, aby utworzyć \"{value}\""
+          "pressEnterToCreate": "Naciśnij Enter, aby utworzyć \"{value}\"",
+          "lifecycleActive": "Aktywna",
+          "lifecycleRetired": "Wycofana",
+          "purchasePrice": "Cena zakupu",
+          "purchasePricePlaceholder": "0,00",
+          "purchasedAt": "Data zakupu"
         },
         "previewTitle": "Podgląd",
         "previewDescription": "Zobacz jak produkt będzie wyglądał w katalogu",
@@ -1010,6 +1013,174 @@
       "deleteConfirm": {
         "title": "Usunąć ten produkt?",
         "description": "Ta akcja jest nieodwracalna. Produkt zostanie trwale usunięty."
+      }
+    },
+    "inventory": {
+      "title": "Inwentarz",
+      "description": "Zarządzaj dostępnością, przestojami, wycofaniem i konfliktami rezerwacji jednostek w jednym miejscu.",
+      "productScoped": {
+        "openInventory": "Otwórz inwentarz"
+      },
+      "filters": {
+        "searchPlaceholder": "Szukaj po referencji",
+        "clearSearch": "Wyczyść wyszukiwanie",
+        "product": "Produkt",
+        "allProducts": "Wszystkie produkty",
+        "state": "Stan",
+        "allStates": "Wszystkie stany"
+      },
+      "states": {
+        "available": "Dostępna",
+        "reserved": "Zarezerwowana",
+        "rented_out": "Wynajęta",
+        "overdue": "Po terminie",
+        "in_downtime": "Niedostępna",
+        "retired": "Wycofana"
+      },
+      "empty": {
+        "no-products": {
+          "title": "Brak produktów",
+          "description": "Utwórz produkt, zanim zaczniesz zarządzać jednostkami inwentarza."
+        },
+        "tracked-empty": {
+          "title": "Śledzenie jednostek nie jest jeszcze włączone",
+          "description": "Produkty bez śledzenia jednostek pozostają zarządzane jako stan ilościowy. Włącz śledzenie w produkcie, aby zarządzać każdą jednostką osobno."
+        },
+        "no-results": {
+          "title": "Nie znaleziono pozycji inwentarza",
+          "description": "Zmień produkt, stan lub wyszukiwanie, aby zobaczyć więcej jednostek."
+        },
+        "addProduct": "Dodaj produkt",
+        "chooseProduct": "Wybierz produkt"
+      },
+      "table": {
+        "identifier": "Referencja",
+        "product": "Produkt",
+        "state": "Stan",
+        "downtime": "Przestój",
+        "notes": "Notatki"
+      },
+      "counters": {
+        "reservedWithoutAssignedUnit": "{count, plural, one {# zarezerwowana bez przypisanej jednostki} few {# zarezerwowane bez przypisanej jednostki} many {# zarezerwowanych bez przypisanej jednostki} other {# zarezerwowanych bez przypisanej jednostki}}"
+      },
+      "downtimeReasons": {
+        "maintenance": "Konserwacja",
+        "repair": "Naprawa",
+        "other": "Inne"
+      },
+      "retirementReasons": {
+        "sold": "Sprzedana",
+        "lost": "Zgubiona lub skradziona",
+        "broken": "Uszkodzona",
+        "other": "Inne"
+      },
+      "downtime": {
+        "current": "{reason}",
+        "until": "Do {date}",
+        "openEnded": "Bez daty końca",
+        "next": "Następny: {reason}",
+        "none": "Brak przestoju"
+      },
+      "indicators": {
+        "conflicts": "Ta jednostka ma konflikty przypisania",
+        "notes": "Ta jednostka ma notatki wewnętrzne"
+      },
+      "bulk": {
+        "bulkProduct": "Stan ilościowy",
+        "trackingDisabled": "Śledzenie jednostek wyłączone",
+        "quantity": "{count, plural, one {# sztuka} few {# sztuki} many {# sztuk} other {# sztuki}}",
+        "availabilityInfo": "Dostępność jest zarządzana ilościowo",
+        "enableTracking": "Włącz śledzenie jednostek"
+      },
+      "actions": {
+        "declareDowntime": "Oznacz jako niedostępną",
+        "closeDowntime": "Zamknij przestój",
+        "retire": "Wycofaj jednostkę",
+        "reinstate": "Przywróć jednostkę",
+        "editDetails": "Edytuj szczegóły",
+        "viewHistory": "Historia",
+        "editProduct": "Edytuj produkt"
+      },
+      "conflicts": {
+        "title": "Konflikty rezerwacji",
+        "description": "{count, plural, =0 {Wszystkie konflikty zostały obsłużone.} one {# konflikt wymaga jeszcze decyzji.} few {# konflikty wymagają jeszcze decyzji.} many {# konfliktów wymaga jeszcze decyzji.} other {# konfliktów wymaga jeszcze decyzji.}}",
+        "reservation": "Rezerwacja {number}",
+        "unknownCustomer": "Klient nieokreślony",
+        "reassignedToast": "Rezerwacja przypisana ponownie",
+        "reassigned": "Przypisana ponownie",
+        "leftAsIs": "Pozostawiona bez zmian",
+        "replacementUnit": "Jednostka zastępcza",
+        "noCandidates": "Brak dostępnej jednostki",
+        "reassign": "Przypisz ponownie",
+        "leaveAsIs": "Pozostaw bez zmian"
+      },
+      "downtimeDialog": {
+        "title": "Oznacz jako niedostępną",
+        "description": "Oznacz {identifier} jako niedostępną na czas konserwacji lub naprawy.",
+        "successToast": "Przestój dodany",
+        "reason": "Powód",
+        "startsAt": "Data i godzina rozpoczęcia",
+        "endsAt": "Data i godzina zakończenia",
+        "openEnded": "Przestój bez daty końca",
+        "note": "Notatka",
+        "notePlaceholder": "Dodaj kontekst dla zespołu",
+        "close": "Zamknij",
+        "submit": "Oznacz jako niedostępną"
+      },
+      "retireDialog": {
+        "title": "Wycofaj jednostkę",
+        "description": "Usuń {identifier} z inwentarza dostępnego do wynajmu.",
+        "confirmationCopy": "Jednostka zachowuje pełną historię i może zostać później przywrócona.",
+        "successToast": "Jednostka wycofana",
+        "reason": "Powód",
+        "note": "Notatka",
+        "notePlaceholder": "Dodaj powód lub kontekst operacyjny",
+        "close": "Zamknij",
+        "submit": "Wycofaj jednostkę"
+      },
+      "editDialog": {
+        "title": "Edytuj szczegóły jednostki",
+        "description": "Zaktualizuj notatki i informacje zakupowe dla {identifier}.",
+        "successToast": "Szczegóły jednostki zaktualizowane",
+        "notes": "Notatki",
+        "notesPlaceholder": "Stan, miejsce przechowywania lub szczegóły wewnętrzne",
+        "purchasePrice": "Cena zakupu",
+        "purchasePricePlaceholder": "0,00",
+        "purchasedAt": "Data zakupu",
+        "cancel": "Anuluj",
+        "submit": "Zapisz zmiany"
+      },
+      "history": {
+        "title": "Historia",
+        "description": "Oś czasu dla {identifier}",
+        "loading": "Ładowanie historii...",
+        "empty": "Brak historii",
+        "systemActor": "System",
+        "unknownCustomer": "Klient nieokreślony",
+        "byActor": "Przez {actor}",
+        "viewReservation": "Zobacz rezerwację",
+        "events": {
+          "created": "Jednostka utworzona",
+          "downtime_declared": "Przestój dodany",
+          "downtime_updated": "Przestój zaktualizowany",
+          "downtime_closed": "Przestój zamknięty",
+          "downtime_deleted": "Przestój usunięty",
+          "retired": "Jednostka wycofana",
+          "reinstated": "Jednostka przywrócona",
+          "assigned": "Jednostka przypisana",
+          "unassigned": "Jednostka odpięta",
+          "updated": "Jednostka zaktualizowana",
+          "assignment": "Przypisana do rezerwacji {number}"
+        }
+      },
+      "toasts": {
+        "downtimeClosed": "Przestój zamknięty",
+        "reinstated": "Jednostka przywrócona"
+      },
+      "pagination": {
+        "previous": "Poprzednia",
+        "next": "Następna",
+        "page": "Strona {page} z {totalPages}"
       }
     },
     "reservations": {
@@ -5425,7 +5596,9 @@
     "tulipContractPastDate": "Tulip odrzucił tworzenie umowy: daty umowy nie mogą być w przeszłości.",
     "tulipContractActionForbidden": "Tulip odrzucił tę akcję dla bieżącej konfiguracji konta.",
     "tulipContractProductMarkedMissing": "Tulip wymaga rzeczywistego identyfikatora każdego ubezpieczonego przedmiotu. Przypisz jednostkę lub fizyczny identyfikator do każdego ubezpieczonego produktu przed utworzeniem lub synchronizacją umowy.",
-    "tulipContractTypeDisabled": "Typ umowy Tulip wymagany dla tego czasu trwania nie jest włączony dla tego sklepu."
+    "tulipContractTypeDisabled": "Typ umowy Tulip wymagany dla tego czasu trwania nie jest włączony dla tego sklepu.",
+    "unitAlreadyRetired": "Ta jednostka jest już wycofana",
+    "unitNotRetired": "Ta jednostka nie jest wycofana"
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

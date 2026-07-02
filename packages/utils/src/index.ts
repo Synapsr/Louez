@@ -8,6 +8,7 @@ export {
   formatNumber,
   formatPercent,
   formatDate,
+  toDatePickerValue,
   formatDateShort,
   formatDateTime,
   formatTime,

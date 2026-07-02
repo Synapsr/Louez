@@ -217,6 +217,8 @@ export function ProductForm({
       identifier: unit.identifier,
       notes: unit.notes || '',
       lifecycleStatus: unit.lifecycleStatus,
+      purchasePrice: unit.purchasePrice ?? '',
+      purchasedAt: unit.purchasedAt ?? null,
       attributes: unit.attributes || {},
     })) ?? [];
 
@@ -636,6 +638,7 @@ export function ProductForm({
                 <div id="section-stock" className="scroll-mt-8">
                   <ProductFormSectionStock
                     form={form as unknown as ProductFormComponentApi}
+                    productId={product.id}
                     watchedValues={watchedValues}
                     disabled={isSaving}
                     showValidationErrors={

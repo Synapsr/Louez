@@ -48,7 +48,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@louez/ui';
-import { buildPartialCombinationKey, cn, normalizeAxisKey } from '@louez/utils';
+import {
+  buildPartialCombinationKey,
+  cn,
+  normalizeAxisKey,
+  toDatePickerValue,
+} from '@louez/utils';
+
+import { DatePicker } from '@/components/ui/date-time-picker';
 
 type UnitLifecycleStatus = 'active' | 'retired';
 
@@ -57,6 +64,8 @@ interface ProductUnitInput {
   identifier: string;
   notes?: string;
   lifecycleStatus?: UnitLifecycleStatus;
+  purchasePrice?: string | null;
+  purchasedAt?: string | Date | null;
   attributes?: Record<string, string>;
 }
 
@@ -117,7 +126,7 @@ function AttributeValueCombobox({
             e.preventDefault();
             onChange(localValue);
             setOpen(false);
-            (e.target as HTMLInputElement).blur();
+            e.currentTarget.blur();
           }
         }}
         placeholder={placeholder}
@@ -326,11 +335,14 @@ function UnitRow({
   onTouch: (index: number) => void;
 }) {
   const t = useTranslations('dashboard.products.form.unitTracking');
+  const tReservationForm = useTranslations('dashboard.reservations.manualForm');
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const hasAxes = bookingAttributeAxes.length > 0;
   const lifecycleStatus = unit.lifecycleStatus || 'active';
   const lifecycleLabel =
-    lifecycleStatus === 'retired' ? t('statusRetired') : t('statusAvailable');
+    lifecycleStatus === 'retired'
+      ? t('lifecycleRetired')
+      : t('lifecycleActive');
 
   const hasAnyAttributeValue =
     hasAxes &&
@@ -440,7 +452,40 @@ function UnitRow({
         </div>
       )}
 
-      {/* Row 4: notes */}
+      {/* Row 4: purchase metadata */}
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label className="text-muted-foreground text-xs">
+            {t('purchasePrice')}
+          </Label>
+          <Input
+            inputMode="decimal"
+            placeholder={t('purchasePricePlaceholder')}
+            value={
+              typeof unit.purchasePrice === 'string' ? unit.purchasePrice : ''
+            }
+            onChange={(e) => onUpdate(index, { purchasePrice: e.target.value })}
+            disabled={disabled}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-muted-foreground text-xs">
+            {t('purchasedAt')}
+          </Label>
+          <DatePicker
+            date={toDatePickerValue(unit.purchasedAt)}
+            setDate={(date) =>
+              onUpdate(index, {
+                purchasedAt: date ?? null,
+              })
+            }
+            disabled={disabled}
+            placeholder={tReservationForm('pickDate')}
+          />
+        </div>
+      </div>
+
+      {/* Row 5: notes */}
       {isEditingNotes || unit.notes ? (
         <Textarea
           placeholder={t('notesPlaceholder')}
@@ -556,6 +601,8 @@ export function UnitTrackingEditor({
               identifier: '',
               notes: '',
               lifecycleStatus: 'active',
+              purchasePrice: '',
+              purchasedAt: null,
               attributes: {},
             }),
           );
@@ -575,7 +622,14 @@ export function UnitTrackingEditor({
   const addUnit = () => {
     onChange([
       ...units,
-      { identifier: '', notes: '', lifecycleStatus: 'active', attributes: {} },
+      {
+        identifier: '',
+        notes: '',
+        lifecycleStatus: 'active',
+        purchasePrice: '',
+        purchasedAt: null,
+        attributes: {},
+      },
     ]);
   };
 
@@ -654,6 +708,8 @@ export function UnitTrackingEditor({
           identifier,
           notes: '',
           lifecycleStatus: 'active',
+          purchasePrice: '',
+          purchasedAt: null,
           attributes: {},
         });
       }

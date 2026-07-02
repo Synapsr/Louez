@@ -97,6 +97,21 @@ export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOpt
   }).format(d)
 }
 
+export function toDatePickerValue(
+  value: Date | string | null | undefined,
+): Date | undefined {
+  if (!value) {
+    return undefined
+  }
+
+  const date = typeof value === 'string' ? new Date(value) : value
+  if (Number.isNaN(date.getTime())) {
+    return undefined
+  }
+
+  return date
+}
+
 // Short date formatting (e.g., "15 jan.")
 export function formatDateShort(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date

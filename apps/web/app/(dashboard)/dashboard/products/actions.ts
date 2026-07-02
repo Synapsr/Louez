@@ -86,6 +86,27 @@ function normalizePriceInput(value: string | undefined): string {
   return (value || '0').replace(',', '.');
 }
 
+function normalizeNullablePriceInput(
+  value: string | null | undefined,
+): string | null {
+  if (value == null) {
+    return null;
+  }
+
+  return value.trim().replace(',', '.') || null;
+}
+
+function normalizeNullableDateInput(
+  value: string | Date | null | undefined,
+): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = typeof value === 'string' ? new Date(value) : value;
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function getLegacyPricingModeFromUnit(
   unit: 'minute' | 'hour' | 'day' | 'week',
 ): 'hour' | 'day' | 'week' {
@@ -297,6 +318,8 @@ export async function createProduct(data: ProductInput) {
             productId: productId,
             identifier: unit.identifier.trim(),
             notes: unit.notes?.trim() || null,
+            purchasePrice: normalizeNullablePriceInput(unit.purchasePrice),
+            purchasedAt: normalizeNullableDateInput(unit.purchasedAt),
             lifecycleStatus: UNIT_LIFECYCLE.active,
           };
         });
@@ -605,6 +628,8 @@ export async function updateProduct(productId: string, data: ProductInput) {
           .set({
             identifier: unit.identifier.trim(),
             notes: unit.notes?.trim() || null,
+            purchasePrice: normalizeNullablePriceInput(unit.purchasePrice),
+            purchasedAt: normalizeNullableDateInput(unit.purchasedAt),
             // lifecycleStatus is owned by the inventory actions: retire/reinstate
             // must keep retiredAt/retirementReason and the event log consistent
             attributes,
@@ -628,6 +653,8 @@ export async function updateProduct(productId: string, data: ProductInput) {
           productId: productId,
           identifier: unit.identifier.trim(),
           notes: unit.notes?.trim() || null,
+          purchasePrice: normalizeNullablePriceInput(unit.purchasePrice),
+          purchasedAt: normalizeNullableDateInput(unit.purchasedAt),
           lifecycleStatus: UNIT_LIFECYCLE.active,
           attributes,
           combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
