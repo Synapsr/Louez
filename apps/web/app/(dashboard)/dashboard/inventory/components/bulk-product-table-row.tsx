@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { Badge, Button, TableCell, TableRow } from '@louez/ui';
 
 import type { InventoryBulkProductRow } from '../queries';
+import { ProductThumbnail } from './product-thumbnail';
 
 interface BulkProductTableRowProps {
   row: InventoryBulkProductRow;
@@ -25,16 +26,19 @@ export const BulkProductTableRow = ({ row }: BulkProductTableRowProps) => {
         </div>
       </TableCell>
       <TableCell>
-        <div className="space-y-1">
-          <Link
-            href={`/dashboard/products/${row.productId}`}
-            className="font-medium hover:underline"
-          >
-            {row.productName}
-          </Link>
-          <p className="text-muted-foreground text-xs">
-            {t('bulk.trackingDisabled')}
-          </p>
+        <div className="flex items-center gap-3">
+          <ProductThumbnail src={row.productImage} alt={row.productName} />
+          <div className="min-w-0 space-y-1">
+            <Link
+              href={`/dashboard/products/${row.productId}`}
+              className="font-medium hover:underline"
+            >
+              {row.productName}
+            </Link>
+            <p className="text-muted-foreground text-xs">
+              {t('bulk.trackingDisabled')}
+            </p>
+          </div>
         </div>
       </TableCell>
       <TableCell>
