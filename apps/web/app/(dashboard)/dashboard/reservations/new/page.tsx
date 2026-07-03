@@ -165,7 +165,7 @@ export default async function NewReservationPage() {
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
         pendingBlocksAvailability={
-          store.settings?.pendingBlocksAvailability ?? true
+          (store.settings?.pendingBlocksAvailability) ?? true
         }
         turnoverBufferMinutes={store.settings?.turnoverBufferMinutes ?? 0}
         existingReservations={activeReservations}

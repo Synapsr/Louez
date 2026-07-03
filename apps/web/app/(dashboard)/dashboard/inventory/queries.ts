@@ -5,7 +5,6 @@ import {
   eq,
   gt,
   inArray,
-  isNull,
   like,
   lte,
   or,
@@ -14,8 +13,10 @@ import {
 import 'server-only';
 
 import {
+  buildUnitInDowntimeAtPredicate,
   customers,
   db,
+  getBlockingReservationStatuses,
   productUnitDowntimes,
   productUnitEvents,
   productUnits,
@@ -36,10 +37,7 @@ import {
 } from '@louez/validations';
 
 import { getCurrentStore } from '@/lib/store-context';
-import {
-  type BlockingReservationStatus,
-  getBlockingReservationStatuses,
-} from '@/lib/utils/unit-availability';
+import type { BlockingReservationStatus } from '@louez/db';
 import { getUnitConflictFlags } from '@/lib/utils/unit-conflicts';
 
 export type InventoryOperationalState =
@@ -258,7 +256,7 @@ export async function getInventory(input: GetInventoryInput = {}) {
   const pageSize = validated.data.pageSize ?? 50;
   const search = validated.data.search?.trim();
   const blockingStatuses = getBlockingReservationStatuses(
-    store.settings?.pendingBlocksAvailability ?? true,
+    (store.settings?.pendingBlocksAvailability) ?? true,
   );
 
   const unitConditions = [
@@ -331,11 +329,7 @@ export async function getInventory(input: GetInventoryInput = {}) {
             and(
               eq(productUnitDowntimes.storeId, store.id),
               inArray(productUnitDowntimes.productUnitId, unitIds),
-              lte(productUnitDowntimes.startsAt, now),
-              or(
-                isNull(productUnitDowntimes.endsAt),
-                gt(productUnitDowntimes.endsAt, now),
-              ),
+              buildUnitInDowntimeAtPredicate(now),
             ),
           )
           .orderBy(desc(productUnitDowntimes.startsAt)),
@@ -508,6 +502,7 @@ export async function getInventory(input: GetInventoryInput = {}) {
   const conflictFlags = await getUnitConflictFlags(conflictWindows, {
     storeId: store.id,
     pendingBlocksAvailability: store.settings?.pendingBlocksAvailability,
+    turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
   });
 
   const unitInventoryRows = unitRows

@@ -1,8 +1,10 @@
-import { and, eq, gt, inArray, lt } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 import {
+  buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   db,
+  getBlockingReservationStatuses,
   productUnits,
   products,
   reservations,
@@ -25,6 +27,61 @@ import {
 } from '@louez/utils';
 
 import { ApiServiceError } from './errors';
+
+type ReservationWithAssignedUnits = {
+  startDate: Date;
+  endDate: Date;
+  items: Array<{
+    productId: string | null;
+    combinationKey?: string | null;
+    quantity: number;
+    assignedUnits: Array<{ productUnitId: string }>;
+  }>;
+};
+
+export function computeReservedNetOfExcludedUnits(params: {
+  reservations: ReservationWithAssignedUnits[];
+  startDate: Date;
+  endDate: Date;
+  turnoverBufferMinutes: number;
+  excludedProductUnitIds: ReadonlySet<string>;
+}): {
+  reservedByProduct: Map<string, number>;
+  reservedByProductCombination: Map<string, number>;
+} {
+  const reservations = params.reservations.map((reservation) => ({
+    startDate: reservation.startDate,
+    endDate: reservation.endDate,
+    items: reservation.items.flatMap((item) => {
+      const excludedAssignedUnitCount = item.assignedUnits.filter((unit) =>
+        params.excludedProductUnitIds.has(unit.productUnitId),
+      ).length;
+      const quantity = Math.max(
+        0,
+        item.quantity - Math.min(item.quantity, excludedAssignedUnitCount),
+      );
+
+      if (quantity === 0) {
+        return [];
+      }
+
+      return [
+        {
+          productId: item.productId,
+          combinationKey: item.combinationKey,
+          quantity,
+        },
+      ];
+    }),
+  }));
+
+  return calculatePeakReservedQuantities({
+    reservations,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    turnoverBufferMinutes: params.turnoverBufferMinutes,
+  });
+}
 
 const WEEKDAY_INDEX: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
   Sun: 0,
@@ -268,50 +325,50 @@ export async function getStorefrontAvailability(
     };
   }
 
-  const pendingBlocksAvailability =
-    store.settings?.pendingBlocksAvailability ?? true;
   const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
-  const bufferedQueryStart = new Date(
-    startDate.getTime() - Math.max(0, turnoverBufferMinutes) * 60 * 1000,
+  const blockingStatuses = getBlockingReservationStatuses(
+    (store.settings?.pendingBlocksAvailability) ?? true,
   );
-  const bufferedQueryEnd = new Date(
-    endDate.getTime() + Math.max(0, turnoverBufferMinutes) * 60 * 1000,
-  );
-  const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
-    pendingBlocksAvailability
-      ? ['pending', 'confirmed', 'ongoing']
-      : ['confirmed', 'ongoing'];
 
   const overlappingReservations = await db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, store.id),
       inArray(reservations.status, blockingStatuses),
-      lt(reservations.startDate, bufferedQueryEnd),
-      gt(reservations.endDate, bufferedQueryStart),
+      buildReservationOverlapPredicate({
+        start: startDate,
+        end: endDate,
+        turnoverBufferMinutes,
+      }),
     ),
     with: {
-      items: true,
+      items: {
+        with: {
+          assignedUnits: true,
+        },
+      },
     },
   });
-
-  const { reservedByProduct, reservedByProductCombination } =
-    calculatePeakReservedQuantities({
-      reservations: overlappingReservations,
-      startDate,
-      endDate,
-      turnoverBufferMinutes,
-    });
 
   const trackedProductIds = storeProducts
     .filter((product) => product.trackUnits)
     .map((product) => product.id);
-  const availableUnits =
+  const trackedUnits =
     trackedProductIds.length > 0
       ? await db
           .select({
-            productId: productUnits.productId,
-            combinationKey: productUnits.combinationKey,
-            attributes: productUnits.attributes,
+            id: productUnits.id,
+          })
+          .from(productUnits)
+          .where(inArray(productUnits.productId, trackedProductIds))
+      : [];
+  const availableUnits =
+    trackedProductIds.length > 0
+          ? await db
+              .select({
+                id: productUnits.id,
+                productId: productUnits.productId,
+                combinationKey: productUnits.combinationKey,
+                attributes: productUnits.attributes,
           })
           .from(productUnits)
           .where(
@@ -319,12 +376,27 @@ export async function getStorefrontAvailability(
               inArray(productUnits.productId, trackedProductIds),
               buildUnitRentableDuringPredicate(
                 db,
-                bufferedQueryStart,
-                bufferedQueryEnd,
+                startDate,
+                endDate,
               ),
             ),
           )
       : [];
+  const availableUnitIds = new Set(availableUnits.map((unit) => unit.id));
+  const excludedProductUnitIds = new Set(
+    trackedUnits
+      .filter((unit) => !availableUnitIds.has(unit.id))
+      .map((unit) => unit.id),
+  );
+
+  const { reservedByProduct, reservedByProductCombination } =
+    computeReservedNetOfExcludedUnits({
+      reservations: overlappingReservations,
+      startDate,
+      endDate,
+      turnoverBufferMinutes,
+      excludedProductUnitIds,
+    });
 
   const combinationsByProduct = new Map<
     string,

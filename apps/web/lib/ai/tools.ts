@@ -3,11 +3,9 @@ import {
   and,
   desc,
   eq,
-  gt,
   gte,
   inArray,
   like,
-  lt,
   lte,
   sql,
   sum,
@@ -19,6 +17,8 @@ import {
   customers,
   dailyStats,
   db,
+  buildReservationOverlapPredicate,
+  getBlockingReservationStatuses,
   payments,
   productStats,
   products,
@@ -1137,22 +1137,21 @@ export function createAITools(ctx: AIChatContext) {
           where: eq(stores.id, ctx.storeId),
           columns: { settings: true },
         });
-        const pendingBlocksAvailability =
-          store?.settings?.pendingBlocksAvailability ?? true;
         const turnoverBufferMinutes =
           store?.settings?.turnoverBufferMinutes ?? 0;
-        const bufferMs = Math.max(0, turnoverBufferMinutes) * 60 * 1000;
-        const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
-          pendingBlocksAvailability
-            ? ['pending', 'confirmed', 'ongoing']
-            : ['confirmed', 'ongoing'];
+        const blockingStatuses = getBlockingReservationStatuses(
+          (store?.settings?.pendingBlocksAvailability) ?? true,
+        );
 
         const overlappingReservations = await db.query.reservations.findMany({
           where: and(
             eq(reservations.storeId, ctx.storeId),
             inArray(reservations.status, blockingStatuses),
-            lt(reservations.startDate, new Date(end.getTime() + bufferMs)),
-            gt(reservations.endDate, new Date(start.getTime() - bufferMs)),
+            buildReservationOverlapPredicate({
+              start,
+              end,
+              turnoverBufferMinutes,
+            }),
           ),
           with: {
             items: {

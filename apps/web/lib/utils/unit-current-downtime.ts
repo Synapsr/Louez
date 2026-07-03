@@ -1,7 +1,11 @@
-import { and, eq, gt, inArray, isNull, lte, or } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import 'server-only';
 
-import { db, productUnitDowntimes } from '@louez/db';
+import {
+  buildUnitInDowntimeAtPredicate,
+  db,
+  productUnitDowntimes,
+} from '@louez/db';
 
 export async function getCurrentDowntimeUnitIds(
   unitIds: string[],
@@ -19,11 +23,7 @@ export async function getCurrentDowntimeUnitIds(
       and(
         eq(productUnitDowntimes.storeId, storeId),
         inArray(productUnitDowntimes.productUnitId, unitIds),
-        lte(productUnitDowntimes.startsAt, now),
-        or(
-          isNull(productUnitDowntimes.endsAt),
-          gt(productUnitDowntimes.endsAt, now),
-        ),
+        buildUnitInDowntimeAtPredicate(now),
       ),
     );
 

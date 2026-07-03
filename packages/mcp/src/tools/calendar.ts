@@ -1,18 +1,20 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { and, desc, eq, gt, gte, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
+  buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   customers,
   db,
+  getBlockingReservationStatuses,
   productUnits,
   products,
   reservationItems,
   reservations,
   stores,
 } from '@louez/db';
-import { calculatePeakReservedQuantities } from '@louez/utils';
+import { computeReservedNetOfExcludedUnits } from '@louez/api/services';
 
 import type { McpSessionContext } from '../auth/context';
 import { requirePermission } from '../auth/context';
@@ -187,23 +189,20 @@ export function registerCalendarTools(
         where: eq(stores.id, ctx.storeId),
         columns: { settings: true },
       });
-      const pendingBlocksAvailability =
-        store?.settings?.pendingBlocksAvailability ?? true;
       const turnoverBufferMinutes = store?.settings?.turnoverBufferMinutes ?? 0;
-      const bufferMs = Math.max(0, turnoverBufferMinutes) * 60 * 1000;
-      const bufferedQueryStart = new Date(start.getTime() - bufferMs);
-      const bufferedQueryEnd = new Date(end.getTime() + bufferMs);
-      const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
-        pendingBlocksAvailability
-          ? ['pending', 'confirmed', 'ongoing']
-          : ['confirmed', 'ongoing'];
+      const blockingStatuses = getBlockingReservationStatuses(
+        (store?.settings?.pendingBlocksAvailability) ?? true,
+      );
 
       const overlappingReservations = await db.query.reservations.findMany({
         where: and(
           eq(reservations.storeId, ctx.storeId),
           inArray(reservations.status, blockingStatuses),
-          lt(reservations.startDate, bufferedQueryEnd),
-          gt(reservations.endDate, bufferedQueryStart),
+          buildReservationOverlapPredicate({
+            start,
+            end,
+            turnoverBufferMinutes,
+          }),
         ),
         with: {
           items: {
@@ -213,33 +212,46 @@ export function registerCalendarTools(
               quantity: true,
               combinationKey: true,
             },
+            with: {
+              assignedUnits: true,
+            },
           },
         },
       });
 
-      const { reservedByProduct } = calculatePeakReservedQuantities({
+      const trackedUnits = product.trackUnits
+        ? await db
+            .select({ id: productUnits.id })
+            .from(productUnits)
+            .where(eq(productUnits.productId, productId))
+        : [];
+      const rentableUnits = product.trackUnits
+        ? await db
+            .select({ id: productUnits.id })
+            .from(productUnits)
+            .where(
+              and(
+                eq(productUnits.productId, productId),
+                buildUnitRentableDuringPredicate(db, start, end),
+              ),
+            )
+        : [];
+      const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
+      const excludedProductUnitIds = new Set(
+        trackedUnits
+          .filter((unit) => !rentableUnitIds.has(unit.id))
+          .map((unit) => unit.id),
+      );
+      const { reservedByProduct } = computeReservedNetOfExcludedUnits({
         reservations: overlappingReservations,
         startDate: start,
         endDate: end,
         turnoverBufferMinutes,
+        excludedProductUnitIds,
       });
       const reserved = reservedByProduct.get(productId) ?? 0;
       const capacity = product.trackUnits
-        ? ((
-            await db
-              .select({ count: sql<number>`count(*)` })
-              .from(productUnits)
-              .where(
-                and(
-                  eq(productUnits.productId, productId),
-                  buildUnitRentableDuringPredicate(
-                    db,
-                    bufferedQueryStart,
-                    bufferedQueryEnd,
-                  ),
-                ),
-              )
-          )[0]?.count ?? 0)
+        ? rentableUnits.length
         : product.quantity;
       const available = Math.max(0, capacity - reserved);
 

@@ -1,12 +1,18 @@
 'use server';
 
-import { and, eq, gt, inArray, lt, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-import { getRouteDistance } from '@louez/api/services';
+import {
+  computeReservedNetOfExcludedUnits,
+  getRouteDistance,
+} from '@louez/api/services';
 import { db } from '@louez/db';
 import {
+  buildReservationOverlapPredicate,
+  buildUnitRentableDuringPredicate,
   customers,
+  getBlockingReservationStatuses,
   payments,
   productSeasonalPricing,
   productSeasonalPricingTiers,
@@ -41,7 +47,6 @@ import {
 import {
   DEFAULT_COMBINATION_KEY,
   calculateDuration as calcDuration,
-  calculatePeakReservedQuantities,
   calculateSeasonalAwarePrice,
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
@@ -88,7 +93,6 @@ import {
   validateMaxRentalDurationMinutes,
   validateMinRentalDurationMinutes,
 } from '@/lib/utils/rental-duration';
-import { isUnitRentableDuring } from '@/lib/utils/unit-availability';
 
 import { env } from '@/env';
 
@@ -674,21 +678,17 @@ export async function createReservation(input: CreateReservationInput) {
       if (product.trackUnits) {
         const itemRentalStartDate = new Date(item.startDate);
         const itemRentalEndDate = new Date(item.endDate);
-        const itemBufferedStart = new Date(
-          itemRentalStartDate.getTime() -
-            Math.max(0, turnoverBufferMinutes) * 60 * 1000,
-        );
-        const itemBufferedEnd = new Date(
-          itemRentalEndDate.getTime() +
-            Math.max(0, turnoverBufferMinutes) * 60 * 1000,
-        );
         const availableUnits = await db
           .select({ id: productUnits.id })
           .from(productUnits)
           .where(
             and(
               eq(productUnits.productId, product.id),
-              isUnitRentableDuring(itemBufferedStart, itemBufferedEnd),
+              buildUnitRentableDuringPredicate(
+                db,
+                itemRentalStartDate,
+                itemRentalEndDate,
+              ),
             ),
           );
 
@@ -1196,19 +1196,9 @@ export async function createReservation(input: CreateReservationInput) {
     const storeTaxRate = storeTaxSettings?.defaultRate ?? 0;
     const displayMode = storeTaxSettings?.displayMode ?? 'inclusive';
 
-    const pendingBlocksAvailability =
-      store.settings?.pendingBlocksAvailability ?? true;
-    const bufferedQueryStart = new Date(
-      rentalStartDate.getTime() -
-        Math.max(0, turnoverBufferMinutes) * 60 * 1000,
+    const blockingStatuses = getBlockingReservationStatuses(
+      (store.settings?.pendingBlocksAvailability) ?? true,
     );
-    const bufferedQueryEnd = new Date(
-      rentalEndDate.getTime() + Math.max(0, turnoverBufferMinutes) * 60 * 1000,
-    );
-    const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
-      pendingBlocksAvailability
-        ? ['pending', 'confirmed', 'ongoing']
-        : ['confirmed', 'ongoing'];
 
     const reservationWriteResult = await db.transaction(async (tx) => {
       const requestedProductIds = [
@@ -1231,42 +1221,70 @@ export async function createReservation(input: CreateReservationInput) {
         where: and(
           eq(reservations.storeId, input.storeId),
           inArray(reservations.status, blockingStatuses),
-          lt(reservations.startDate, bufferedQueryEnd),
-          gt(reservations.endDate, bufferedQueryStart),
+          buildReservationOverlapPredicate({
+            start: rentalStartDate,
+            end: rentalEndDate,
+            turnoverBufferMinutes,
+          }),
         ),
         with: {
-          items: true,
+          items: {
+            with: {
+              assignedUnits: true,
+            },
+          },
         },
       });
-
-      const { reservedByProduct, reservedByProductCombination } =
-        calculatePeakReservedQuantities({
-          reservations: overlappingReservations,
-          startDate: rentalStartDate,
-          endDate: rentalEndDate,
-          turnoverBufferMinutes,
-        });
 
       const trackedProductIds = [...productsForReservation.values()]
         .filter((product) => product.trackUnits)
         .map((product) => product.id);
 
-      const availableUnits =
+      const trackedUnits =
         trackedProductIds.length > 0
           ? await tx
               .select({
-                productId: productUnits.productId,
-                combinationKey: productUnits.combinationKey,
-                attributes: productUnits.attributes,
+                id: productUnits.id,
+              })
+              .from(productUnits)
+              .where(inArray(productUnits.productId, trackedProductIds))
+          : [];
+      const availableUnits =
+        trackedProductIds.length > 0
+              ? await tx
+                  .select({
+                    id: productUnits.id,
+                    productId: productUnits.productId,
+                    combinationKey: productUnits.combinationKey,
+                    attributes: productUnits.attributes,
               })
               .from(productUnits)
               .where(
                 and(
                   inArray(productUnits.productId, trackedProductIds),
-                  isUnitRentableDuring(bufferedQueryStart, bufferedQueryEnd),
+                  buildUnitRentableDuringPredicate(
+                    tx,
+                    rentalStartDate,
+                    rentalEndDate,
+                  ),
                 ),
               )
           : [];
+      const availableUnitIds = new Set(availableUnits.map((unit) => unit.id));
+      const excludedProductUnitIds = new Set(
+        trackedUnits
+          .filter((unit) => !availableUnitIds.has(unit.id))
+          .map((unit) => unit.id),
+      );
+
+      const { reservedByProduct, reservedByProductCombination } =
+        computeReservedNetOfExcludedUnits({
+          reservations: overlappingReservations,
+          startDate: rentalStartDate,
+          endDate: rentalEndDate,
+          turnoverBufferMinutes,
+          excludedProductUnitIds,
+        });
 
       const combinationsByProduct = new Map<
         string,
