@@ -101,6 +101,32 @@ function pricingModeToBasePeriodMinutes(mode: PricingMode): number {
   return 1440;
 }
 
+type ManualReservationShortfall = {
+  productId: string;
+  productName: string;
+  combinationKey: string | null;
+  requested: number;
+  available: number;
+};
+
+function isInsufficientCapacityResult(
+  result: unknown,
+): result is {
+  error: 'errors.insufficientCapacity';
+  shortfalls: ManualReservationShortfall[];
+} {
+  if (!result || typeof result !== 'object') {
+    return false;
+  }
+
+  return (
+    'error' in result &&
+    result.error === 'errors.insufficientCapacity' &&
+    'shortfalls' in result &&
+    Array.isArray(result.shortfalls)
+  );
+}
+
 export function NewReservationForm({
   customers,
   products,
@@ -168,6 +194,13 @@ export function NewReservationForm({
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(
     tulipInsuranceMode === 'required' || tulipInsuranceMode === 'optional',
   );
+  const [overbookingDialog, setOverbookingDialog] = useState<{
+    isOpen: boolean;
+    shortfalls: ManualReservationShortfall[];
+  }>({
+    isOpen: false,
+    shortfalls: [],
+  });
 
   const isDeliveryEnabled = Boolean(
     (deliverySettings?.enabled &&
@@ -335,6 +368,124 @@ export function NewReservationForm({
     isDeliveryEnabled,
   });
 
+  const submitManualReservation = async (
+    value: NewReservationFormValues,
+    options: { allowOverbooking?: boolean } = {},
+  ) => {
+    if (!value.startDate || !value.endDate) {
+      toastManager.add({ title: t('selectDatesError'), type: 'error' });
+      return;
+    }
+
+    try {
+      const effectiveTulipInsuranceOptIn =
+        tulipInsuranceMode === 'required'
+          ? true
+          : tulipInsuranceMode === 'optional'
+            ? tulipInsuranceOptIn
+            : false;
+
+      const result = await createReservationMutation.mutateAsync({
+        payload: {
+          customerId:
+            value.customerType === 'existing' ? value.customerId : undefined,
+          newCustomer:
+            value.customerType === 'new'
+              ? {
+                  email: value.email.trim().toLowerCase(),
+                  firstName: value.firstName,
+                  lastName: value.lastName,
+                  phone: value.phone || undefined,
+                }
+              : undefined,
+          startDate: value.startDate,
+          endDate: value.endDate,
+          items: selectedProducts,
+          customItems: customItems.map((item) => ({
+            name: item.name,
+            description: item.description,
+            unitPrice: item.unitPrice,
+            deposit: item.deposit,
+            quantity: item.quantity,
+            pricingMode: item.pricingMode,
+          })),
+          delivery: {
+            outbound:
+              delivery.outboundMethod === 'address' &&
+              delivery.outboundAddress.latitude !== null &&
+              delivery.outboundAddress.longitude !== null
+                ? {
+                    method: 'address' as const,
+                    address: delivery.outboundAddress.address,
+                    city: delivery.outboundAddress.city,
+                    postalCode: delivery.outboundAddress.postalCode,
+                    country: delivery.outboundAddress.country,
+                    latitude: delivery.outboundAddress.latitude,
+                    longitude: delivery.outboundAddress.longitude,
+                  }
+                : {
+                    method: 'store' as const,
+                    locationId: delivery.pickupLocationId,
+                  },
+            return:
+              delivery.returnMethod === 'address' &&
+              delivery.returnAddress.latitude !== null &&
+              delivery.returnAddress.longitude !== null
+                ? {
+                    method: 'address' as const,
+                    address: delivery.returnAddress.address,
+                    city: delivery.returnAddress.city,
+                    postalCode: delivery.returnAddress.postalCode,
+                    country: delivery.returnAddress.country,
+                    latitude: delivery.returnAddress.latitude,
+                    longitude: delivery.returnAddress.longitude,
+                  }
+                : {
+                    method: 'store' as const,
+                    locationId: delivery.returnLocationId,
+                  },
+          },
+          internalNotes: value.internalNotes || undefined,
+          tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
+          sendConfirmationEmail: sendAsQuoteRef.current
+            ? true
+            : sendConfirmationEmail,
+          sendAsQuote: sendAsQuoteRef.current,
+          allowOverbooking: options.allowOverbooking,
+        },
+      });
+
+      if (isInsufficientCapacityResult(result)) {
+        setOverbookingDialog({
+          isOpen: true,
+          shortfalls: result.shortfalls,
+        });
+        return;
+      }
+
+      if ('error' in result && result.error) {
+        toastManager.add({
+          title: tErrors(result.error.replace('errors.', '')),
+          type: 'error',
+        });
+        return;
+      }
+
+      toastManager.add({
+        title: sendAsQuoteRef.current
+          ? t('quoteSent')
+          : t('reservationCreated'),
+        type: 'success',
+      });
+      router.push(`/dashboard/reservations/${result.reservationId}`);
+    } catch (error) {
+      toastManager.add({
+        title: getActionErrorMessage(error),
+        type: 'error',
+      });
+    }
+  };
+
   const form = useAppForm({
     defaultValues: {
       customerType: (customers.length > 0 ? 'existing' : 'new') as
@@ -356,96 +507,7 @@ export function NewReservationForm({
 
       if (!validateCurrentStep()) return;
 
-      try {
-        const effectiveTulipInsuranceOptIn =
-          tulipInsuranceMode === 'required'
-            ? true
-            : tulipInsuranceMode === 'optional'
-              ? tulipInsuranceOptIn
-              : false;
-
-        const result = await createReservationMutation.mutateAsync({
-          payload: {
-            customerId:
-              value.customerType === 'existing' ? value.customerId : undefined,
-            newCustomer:
-              value.customerType === 'new'
-                ? {
-                    email: value.email.trim().toLowerCase(),
-                    firstName: value.firstName,
-                    lastName: value.lastName,
-                    phone: value.phone || undefined,
-                  }
-                : undefined,
-            startDate: value.startDate!,
-            endDate: value.endDate!,
-            items: selectedProducts,
-            customItems: customItems.map((item) => ({
-              name: item.name,
-              description: item.description,
-              unitPrice: item.unitPrice,
-              deposit: item.deposit,
-              quantity: item.quantity,
-              pricingMode: item.pricingMode,
-            })),
-            delivery: {
-              outbound:
-                delivery.outboundMethod === 'address' &&
-                delivery.outboundAddress.latitude !== null &&
-                delivery.outboundAddress.longitude !== null
-                  ? {
-                      method: 'address' as const,
-                      address: delivery.outboundAddress.address,
-                      city: delivery.outboundAddress.city,
-                      postalCode: delivery.outboundAddress.postalCode,
-                      country: delivery.outboundAddress.country,
-                      latitude: delivery.outboundAddress.latitude,
-                      longitude: delivery.outboundAddress.longitude,
-                    }
-                  : {
-                      method: 'store' as const,
-                      locationId: delivery.pickupLocationId,
-                    },
-              return:
-                delivery.returnMethod === 'address' &&
-                delivery.returnAddress.latitude !== null &&
-                delivery.returnAddress.longitude !== null
-                  ? {
-                      method: 'address' as const,
-                      address: delivery.returnAddress.address,
-                      city: delivery.returnAddress.city,
-                      postalCode: delivery.returnAddress.postalCode,
-                      country: delivery.returnAddress.country,
-                      latitude: delivery.returnAddress.latitude,
-                      longitude: delivery.returnAddress.longitude,
-                    }
-                  : {
-                      method: 'store' as const,
-                      locationId: delivery.returnLocationId,
-                    },
-            },
-            internalNotes: value.internalNotes || undefined,
-            tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
-            sendConfirmationEmail: sendAsQuoteRef.current
-              ? true
-              : sendConfirmationEmail,
-            sendAsQuote: sendAsQuoteRef.current,
-          },
-        });
-
-        toastManager.add({
-          title: sendAsQuoteRef.current
-            ? t('quoteSent')
-            : t('reservationCreated'),
-          type: 'success',
-        });
-        router.push(`/dashboard/reservations/${result.reservationId}`);
-      } catch (error) {
-        toastManager.add({
-          title: getActionErrorMessage(error),
-          type: 'error',
-        });
-      }
+      await submitManualReservation(value);
     },
   });
 
@@ -1943,6 +2005,80 @@ export function NewReservationForm({
             </Button>
             <Button type="button" onClick={applyPriceOverride}>
               {t('priceOverride.apply')}
+            </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </Dialog>
+
+      <Dialog
+        open={overbookingDialog.isOpen}
+        onOpenChange={(open) =>
+          setOverbookingDialog((current) => ({
+            ...current,
+            isOpen: open,
+          }))
+        }
+      >
+        <DialogPopup className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="text-destructive h-5 w-5" />
+              {t('overbooking.title')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('overbooking.description')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogPanel>
+            <div className="space-y-2">
+              {overbookingDialog.shortfalls.map((shortfall) => (
+                <div
+                  key={`${shortfall.productId}:${shortfall.combinationKey || 'product'}`}
+                  className="rounded-md border p-3"
+                >
+                  <p className="text-sm font-medium">
+                    {shortfall.productName}
+                  </p>
+                  {shortfall.combinationKey && (
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {t('overbooking.combination', {
+                        combination: shortfall.combinationKey,
+                      })}
+                    </p>
+                  )}
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    {t('overbooking.shortfall', {
+                      requested: shortfall.requested,
+                      available: shortfall.available,
+                    })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </DialogPanel>
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setOverbookingDialog({ isOpen: false, shortfalls: [] })
+              }
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isSaving}
+              onClick={async () => {
+                setOverbookingDialog({ isOpen: false, shortfalls: [] });
+                await submitManualReservation(watchedValues, {
+                  allowOverbooking: true,
+                });
+              }}
+            >
+              {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {t('overbooking.createAnyway')}
             </Button>
           </DialogFooter>
         </DialogPopup>

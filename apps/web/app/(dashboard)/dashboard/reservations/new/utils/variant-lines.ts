@@ -38,6 +38,8 @@ export function buildProductCombinations(
   reservedByCombination: ReservedByProductCombination = new Map(),
   hasSelectedPeriod = false,
 ): CombinationAvailability[] {
+  void hasSelectedPeriod;
+
   const bookingAttributeAxes = getSortedAxes(product);
   const byCombination = new Map<
     string,
@@ -48,7 +50,7 @@ export function buildProductCombinations(
     if ((unit.lifecycleStatus || 'active') !== 'active') {
       continue;
     }
-    if (!hasSelectedPeriod && unit.inDowntimeNow) {
+    if (unit.inDowntimeNow) {
       continue;
     }
 

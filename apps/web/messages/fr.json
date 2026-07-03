@@ -1700,7 +1700,14 @@
         },
         "addItemError": "Veuillez ajouter au moins un produit ou article personnalisé",
         "sendAsQuote": "Envoyer un devis",
-        "quoteSent": "Devis envoyé au client"
+        "quoteSent": "Devis envoyé au client",
+        "overbooking": {
+          "title": "Capacité insuffisante",
+          "description": "Certains produits ne sont plus disponibles sur la période sélectionnée. Vous pouvez tout de même créer la réservation et l'override sera visible dans l'historique.",
+          "combination": "Combinaison : {combination}",
+          "shortfall": "Demandé : {requested} · Disponible : {available}",
+          "createAnyway": "Créer quand même"
+        }
       },
       "rejectDialog": {
         "title": "Refuser la demande",
@@ -1742,6 +1749,7 @@
         "modified": "Réservation modifiée",
         "quote_accepted": "Devis accepté",
         "quote_declined": "Devis refusé",
+        "overbooked": "Sur-réservée",
         "showAll": "Voir tout ({count} événements)",
         "showLess": "Voir moins",
         "paymentFailure": {
@@ -5655,6 +5663,7 @@
     "customerRequired": "Client requis",
     "productUnavailable": "Produit non disponible: {name}",
     "productNoLongerAvailable": "Le produit {name} n'est plus disponible pour ces dates. Une autre réservation a été effectuée entre-temps.",
+    "insufficientCapacity": "Capacité insuffisante pour la période sélectionnée.",
     "insufficientStock": "Stock insuffisant pour: {name} ({count} disponibles)",
     "tooManyUnitsAssigned": "Impossible d'assigner plus d'unités que la quantité réservée",
     "tooManyAssignedUnits": "Désassignez les unités de {item} avant de réduire la quantité sous {assignedCount}.",

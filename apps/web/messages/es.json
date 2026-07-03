@@ -1533,6 +1533,13 @@
         "reservationCreated": "Reserva creada",
         "sendAsQuote": "Enviar como presupuesto",
         "quoteSent": "Presupuesto enviado al cliente",
+        "overbooking": {
+          "title": "Capacidad insuficiente",
+          "description": "Algunos productos ya no están disponibles para el periodo seleccionado. Puedes crear la reserva de todos modos y el override quedará visible en el historial.",
+          "combination": "Combinación: {combination}",
+          "shortfall": "Solicitado: {requested} · Disponible: {available}",
+          "createAnyway": "Crear de todos modos"
+        },
         "selectDatesError": "Por favor seleccione fechas",
         "addProductError": "Por favor agregue al menos un producto",
         "selectCustomerError": "Por favor seleccione un cliente",
@@ -1713,6 +1720,7 @@
         "modified": "Reserva modificada",
         "quote_accepted": "Presupuesto aceptado",
         "quote_declined": "Presupuesto rechazado",
+        "overbooked": "Sobrevendida",
         "showAll": "Ver todo ({count} eventos)",
         "showLess": "Ver menos",
         "paymentFailure": {
@@ -5543,6 +5551,7 @@
     "customerRequired": "Cliente requerido",
     "productUnavailable": "Producto no disponible: {name}",
     "productNoLongerAvailable": "El producto {name} ya no esta disponible para estas fechas. Se realizo otra reserva mientras tanto.",
+    "insufficientCapacity": "Capacidad insuficiente para el periodo seleccionado.",
     "insufficientStock": "Stock insuficiente para: {name} ({count} disponibles)",
     "tooManyUnitsAssigned": "No se pueden asignar mas unidades que la cantidad reservada",
     "tooManyAssignedUnits": "Desasigna unidades de {item} antes de reducir la cantidad por debajo de {assignedCount}.",

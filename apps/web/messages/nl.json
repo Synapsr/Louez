@@ -1492,6 +1492,13 @@
         "durationWeeks": "{count, plural, one {# week} other {# weken}}",
         "sendAsQuote": "Verstuur als offerte",
         "quoteSent": "Offerte naar de klant verzonden",
+        "overbooking": {
+          "title": "Onvoldoende capaciteit",
+          "description": "Sommige producten zijn niet meer beschikbaar voor de geselecteerde periode. Je kunt de reservering toch aanmaken; de override wordt zichtbaar in de tijdlijn.",
+          "combination": "Combinatie: {combination}",
+          "shortfall": "Gevraagd: {requested} · Beschikbaar: {available}",
+          "createAnyway": "Toch aanmaken"
+        },
         "reservationCreated": "Reservering aangemaakt",
         "selectDatesError": "Selecteer data",
         "addProductError": "Voeg minimaal één product toe",
@@ -1677,6 +1684,7 @@
         "modified": "Reservering gewijzigd",
         "quote_accepted": "Offerte geaccepteerd",
         "quote_declined": "Offerte afgewezen",
+        "overbooked": "Overboekt",
         "showAll": "Alles tonen ({count} gebeurtenissen)",
         "showLess": "Minder tonen",
         "paymentFailure": {
@@ -5537,6 +5545,7 @@
     "customerRequired": "Klant vereist",
     "productUnavailable": "Product niet beschikbaar: {name}",
     "productNoLongerAvailable": "Product {name} is niet meer beschikbaar voor deze datums. Er is inmiddels een andere reservering gemaakt.",
+    "insufficientCapacity": "Onvoldoende capaciteit voor de geselecteerde periode.",
     "insufficientStock": "Onvoldoende voorraad voor: {name} ({count} beschikbaar)",
     "tooManyUnitsAssigned": "Kan niet meer eenheden toewijzen dan de gereserveerde hoeveelheid",
     "tooManyAssignedUnits": "Maak eenheden van {item} los voordat u de hoeveelheid onder {assignedCount} verlaagt.",

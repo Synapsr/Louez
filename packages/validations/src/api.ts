@@ -370,6 +370,7 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
     tulipInsuranceOptIn: z.boolean().optional(),
     sendConfirmationEmail: z.boolean().optional(),
     sendAsQuote: z.boolean().optional(),
+    allowOverbooking: z.boolean().optional(),
   }),
 });
 

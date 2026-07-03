@@ -288,7 +288,7 @@ export function NewReservationStepProducts({
                 if ((unit.lifecycleStatus || 'active') !== 'active') {
                   continue;
                 }
-                if (!hasSelectedPeriod && unit.inDowntimeNow) {
+                if (unit.inDowntimeNow) {
                   continue;
                 }
                 const rawValue = unit.attributes?.[axis.key];

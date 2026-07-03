@@ -160,6 +160,12 @@ const createManualReservation = requirePermission('write')
         startDate: toDate(payload.startDate)!,
         endDate: toDate(payload.endDate)!,
       });
+      if (result.error === 'errors.insufficientCapacity') {
+        return {
+          error: result.error,
+          shortfalls: result.shortfalls || [],
+        };
+      }
       if (result.error) {
         throw new ORPCError('BAD_REQUEST', { message: result.error });
       }

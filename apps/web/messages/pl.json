@@ -1493,6 +1493,13 @@
         "reservationCreated": "Rezerwacja utworzona",
         "sendAsQuote": "Wyślij jako wycenę",
         "quoteSent": "Wycena wysłana do klienta",
+        "overbooking": {
+          "title": "Niewystarczająca dostępność",
+          "description": "Część produktów nie jest już dostępna w wybranym okresie. Możesz mimo to utworzyć rezerwację; override będzie widoczny w historii.",
+          "combination": "Kombinacja: {combination}",
+          "shortfall": "Żądane: {requested} · Dostępne: {available}",
+          "createAnyway": "Utwórz mimo to"
+        },
         "selectDatesError": "Proszę wybrać daty",
         "addProductError": "Proszę dodać co najmniej jeden produkt",
         "selectCustomerError": "Proszę wybrać klienta",
@@ -1677,6 +1684,7 @@
         "modified": "Rezerwacja zmodyfikowana",
         "quote_accepted": "Oferta zaakceptowana",
         "quote_declined": "Oferta odrzucona",
+        "overbooked": "Nadmiarowa",
         "showAll": "Pokaż wszystko ({count} wydarzeń)",
         "showLess": "Pokaż mniej",
         "paymentFailure": {
@@ -5537,6 +5545,7 @@
     "customerRequired": "Klient wymagany",
     "productUnavailable": "Produkt niedostępny: {name}",
     "productNoLongerAvailable": "Produkt {name} nie jest juz dostepny na te daty. W miedzyczasie dokonano innej rezerwacji.",
+    "insufficientCapacity": "Niewystarczająca dostępność w wybranym okresie.",
     "insufficientStock": "Niewystarczający stan magazynowy dla: {name} ({count} dostępne)",
     "tooManyUnitsAssigned": "Nie można przypisać więcej jednostek niż zarezerwowana ilość",
     "tooManyAssignedUnits": "Najpierw odłącz jednostki od {item}, zanim zmniejszysz ilość poniżej {assignedCount}.",

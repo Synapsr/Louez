@@ -273,10 +273,18 @@ export interface BaseContext {
       tulipInsuranceOptIn?: boolean;
       sendConfirmationEmail?: boolean;
       sendAsQuote?: boolean;
+      allowOverbooking?: boolean;
     }) => Promise<{
       success?: boolean;
       reservationId?: string;
       error?: string;
+      shortfalls?: Array<{
+        productId: string;
+        productName: string;
+        combinationKey: string | null;
+        requested: number;
+        available: number;
+      }>;
     }>;
     getAvailableUnitsForReservationItem?: (
       reservationItemId: string,

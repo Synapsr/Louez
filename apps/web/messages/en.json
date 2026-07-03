@@ -1691,7 +1691,14 @@
         },
         "addItemError": "Please add at least one product or custom item",
         "sendAsQuote": "Send as quote",
-        "quoteSent": "Quote sent to customer"
+        "quoteSent": "Quote sent to customer",
+        "overbooking": {
+          "title": "Insufficient capacity",
+          "description": "Some products are no longer available for the selected period. You can still create the reservation and track the override in the timeline.",
+          "combination": "Combination: {combination}",
+          "shortfall": "Requested: {requested} · Available: {available}",
+          "createAnyway": "Create anyway"
+        }
       },
       "rejectDialog": {
         "title": "Reject request",
@@ -1733,6 +1740,7 @@
         "modified": "Reservation modified",
         "quote_accepted": "Quote accepted",
         "quote_declined": "Quote declined",
+        "overbooked": "Overbooked",
         "showAll": "Show all ({count} events)",
         "showLess": "Show less",
         "paymentFailure": {
@@ -5655,6 +5663,7 @@
     "customerRequired": "Customer required",
     "productUnavailable": "Product unavailable: {name}",
     "productNoLongerAvailable": "Product {name} is no longer available for these dates. Another reservation was made in the meantime.",
+    "insufficientCapacity": "Insufficient capacity for the selected period.",
     "insufficientStock": "Insufficient stock for: {name} ({count} available)",
     "tooManyUnitsAssigned": "Cannot assign more units than the reserved quantity",
     "tooManyAssignedUnits": "Unassign units from {item} before reducing the quantity below {assignedCount}.",
