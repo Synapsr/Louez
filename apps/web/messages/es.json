@@ -3511,6 +3511,7 @@
           "allOk": "Todo OK",
           "allOkDescription": "Marcar todos los artículos en excelente estado",
           "quantity": "Cantidad",
+          "unitReference": "Referencia {identifier}",
           "condition": "Estado",
           "photos": "Fotos",
           "notes": "Notas",
@@ -3545,6 +3546,21 @@
           "takePhoto": "Tomar foto",
           "photoPreview": "Vista previa de la foto",
           "deletePhoto": "Eliminar foto",
+          "repairDowntime": {
+            "title": "Indisponibilidad por reparación",
+            "description": "El acta de devolución marcó unidades con seguimiento como dañadas. Seleccione las unidades que deben quedar en reparación sin fecha de fin.",
+            "singleQuestion": "¿Crear una indisponibilidad por reparación para {identifier}?",
+            "multipleQuestion": "¿Crear indisponibilidades por reparación para {count, plural, one {# unidad dañada} other {# unidades dañadas}}?",
+            "note": "Acta de devolución - reserva #{reservationNumber}",
+            "noneSelected": "Seleccione al menos una unidad",
+            "createdToast": "{count, plural, one {Indisponibilidad por reparación creada} other {Indisponibilidades por reparación creadas}}",
+            "conflictsToast": "Conflictos detectados - gestiónelos en Inventario",
+            "conflictsDescription": "Conflictos detectados. Gestiónelos en Inventario.",
+            "openInventory": "Abrir Inventario",
+            "skip": "Omitir",
+            "submit": "Crear indisponibilidad por reparación",
+            "done": "Listo"
+          },
           "close": "Cerrar"
         },
         "conditions": {

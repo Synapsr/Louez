@@ -408,7 +408,7 @@ const nextConfig: NextConfig = {
       // Users can add their own custom domains if needed
     ],
   },
-  allowedDevOrigins: ['louez.localify', '*.louez.localify'],
+  allowedDevOrigins: ['louez.localify', '*.louez.localify', 'feat-inventory.louez.localify'],
 }
 
 export default withNextIntl(nextConfig)

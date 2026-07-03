@@ -3505,6 +3505,7 @@
           "allOk": "Alles OK",
           "allOkDescription": "Alle artikelen als uitstekend markeren",
           "quantity": "Hoeveelheid",
+          "unitReference": "Referentie {identifier}",
           "condition": "Staat",
           "photos": "Foto's",
           "notes": "Opmerkingen",
@@ -3539,6 +3540,21 @@
           "takePhoto": "Foto maken",
           "photoPreview": "Fotovoorbeeld",
           "deletePhoto": "Foto verwijderen",
+          "repairDowntime": {
+            "title": "Reparatie-buitengebruikstelling",
+            "description": "De retourinspectie heeft gevolgde eenheden als beschadigd gemarkeerd. Selecteer de eenheden die zonder einddatum in reparatie moeten.",
+            "singleQuestion": "Reparatie-buitengebruikstelling maken voor {identifier}?",
+            "multipleQuestion": "Reparatie-buitengebruikstellingen maken voor {count, plural, one {# beschadigde eenheid} other {# beschadigde eenheden}}?",
+            "note": "Retourinspectie - reservering #{reservationNumber}",
+            "noneSelected": "Selecteer ten minste één eenheid",
+            "createdToast": "{count, plural, one {Reparatie-buitengebruikstelling gemaakt} other {Reparatie-buitengebruikstellingen gemaakt}}",
+            "conflictsToast": "Conflicten gedetecteerd - beheer ze in Inventaris",
+            "conflictsDescription": "Conflicten gedetecteerd. Beheer ze in Inventaris.",
+            "openInventory": "Inventaris openen",
+            "skip": "Overslaan",
+            "submit": "Reparatie-buitengebruikstelling maken",
+            "done": "Klaar"
+          },
           "close": "Sluiten"
         },
         "conditions": {

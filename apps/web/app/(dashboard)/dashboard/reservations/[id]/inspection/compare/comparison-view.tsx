@@ -37,6 +37,7 @@ interface InspectionPhoto {
 interface InspectionItem {
   id: string
   productName: string
+  unitIdentifier: string | null
   condition: ConditionRating
   notes: string | null
   photos: InspectionPhoto[]
@@ -69,6 +70,26 @@ const conditionColors: Record<ConditionRating, string> = {
   damaged: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 }
 
+const formatInspectionItemName = (item: InspectionItem) =>
+  item.unitIdentifier
+    ? `${item.productName} — ${item.unitIdentifier}`
+    : item.productName
+
+const inspectionItemsMatch = (
+  departureItem: InspectionItem,
+  returnItem: InspectionItem
+) => {
+  if (departureItem.productName !== returnItem.productName) {
+    return false
+  }
+
+  if (departureItem.unitIdentifier !== null || returnItem.unitIdentifier !== null) {
+    return departureItem.unitIdentifier === returnItem.unitIdentifier
+  }
+
+  return true
+}
+
 export function ComparisonView({
   reservationId,
   reservationNumber,
@@ -95,11 +116,12 @@ export function ComparisonView({
 
     for (const returnItem of return_.items) {
       const departureItem = departure.items.find(
-        (d) => d.productName === returnItem.productName
+        (departureCandidate) =>
+          inspectionItemsMatch(departureCandidate, returnItem)
       )
       if (departureItem && departureItem.condition !== returnItem.condition) {
         changes.push({
-          productName: returnItem.productName,
+          productName: formatInspectionItemName(returnItem),
           departureCondition: departureItem.condition,
           returnCondition: returnItem.condition,
         })
@@ -153,8 +175,13 @@ export function ComparisonView({
         </CardHeader>
         <CardContent className="space-y-4">
           {inspection.items.map((item) => {
-            const hasConditionChange = type === 'return' && departure &&
-              departure.items.find(d => d.productName === item.productName)?.condition !== item.condition
+            const matchingDepartureItem = departure?.items.find(
+              (departureItem) => inspectionItemsMatch(departureItem, item)
+            )
+            const hasConditionChange =
+              type === 'return' &&
+              departure &&
+              matchingDepartureItem?.condition !== item.condition
 
             return (
               <div
@@ -165,7 +192,9 @@ export function ComparisonView({
                 )}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-sm">{item.productName}</span>
+                  <span className="font-medium text-sm">
+                    {formatInspectionItemName(item)}
+                  </span>
                   <Badge className={conditionColors[item.condition]}>
                     {t(`conditions.${item.condition}`)}
                   </Badge>

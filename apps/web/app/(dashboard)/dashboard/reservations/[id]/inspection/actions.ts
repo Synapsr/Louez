@@ -1,46 +1,59 @@
-'use server'
+'use server';
 
-import { revalidatePath } from 'next/cache'
-import { nanoid } from 'nanoid'
-import { eq, and } from 'drizzle-orm'
-import { db } from '@louez/db'
+import { revalidatePath } from 'next/cache';
+
+import { and, eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+
+import { db } from '@louez/db';
 import {
-  inspections,
   inspectionItems,
   inspectionPhotos,
-  reservations,
-  reservationItems,
+  inspections,
+  productUnits,
   products,
   reservationActivity,
-} from '@louez/db'
-import { getCurrentStore } from '@/lib/store-context'
+  reservationItemUnits,
+  reservationItems,
+  reservations,
+} from '@louez/db';
 import {
-  createInspectionSchema,
-  completeInspectionSchema,
-  signInspectionSchema,
-  type CreateInspectionInput,
   type CompleteInspectionInput,
+  type CreateInspectionInput,
   type SignInspectionInput,
-} from '@louez/validations'
+  completeInspectionSchema,
+  createInspectionSchema,
+  signInspectionSchema,
+} from '@louez/validations';
+
+import { getCurrentStore } from '@/lib/store-context';
+
+export interface RepairDowntimeSuggestion {
+  units: Array<{
+    id: string;
+    identifier: string;
+    productName: string;
+  }>;
+}
 
 // ============================================================================
 // Create Inspection
 // ============================================================================
 
 export async function createInspection(
-  data: CreateInspectionInput
+  data: CreateInspectionInput,
 ): Promise<{ inspectionId?: string; error?: string }> {
-  const store = await getCurrentStore()
+  const store = await getCurrentStore();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
-  const validated = createInspectionSchema.safeParse(data)
+  const validated = createInspectionSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' }
+    return { error: 'errors.invalidData' };
   }
 
-  const { reservationId, type, templateId, notes, items } = validated.data
+  const { reservationId, type, templateId, notes, items } = validated.data;
 
   // Verify reservation belongs to store
   const [reservation] = await db
@@ -49,13 +62,13 @@ export async function createInspection(
     .where(
       and(
         eq(reservations.id, reservationId),
-        eq(reservations.storeId, store.id)
-      )
+        eq(reservations.storeId, store.id),
+      ),
     )
-    .limit(1)
+    .limit(1);
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   // Check if inspection already exists
@@ -65,35 +78,22 @@ export async function createInspection(
     .where(
       and(
         eq(inspections.reservationId, reservationId),
-        eq(inspections.type, type)
-      )
+        eq(inspections.type, type),
+      ),
     )
-    .limit(1)
+    .limit(1);
 
   if (existing) {
-    return { error: 'errors.inspectionAlreadyExists' }
+    return { error: 'errors.inspectionAlreadyExists' };
   }
 
-  const inspectionId = nanoid()
-  const now = new Date()
+  const inspectionId = nanoid();
+  const now = new Date();
+  const inspectionItemRows: Array<typeof inspectionItems.$inferInsert> = [];
 
-  // Create inspection
-  await db.insert(inspections).values({
-    id: inspectionId,
-    storeId: store.id,
-    reservationId,
-    type,
-    status: 'draft',
-    templateId: templateId || null,
-    notes: notes || null,
-    performedById: store.userId,
-    performedAt: now,
-    hasDamage: false,
-  })
-
-  // Create inspection items
+  // Validate and prepare inspection items before writing the inspection.
   for (const item of items) {
-    const itemId = nanoid()
+    const itemId = nanoid();
 
     // Fetch product info for snapshot
     const [reservationItemData] = await db
@@ -102,33 +102,89 @@ export async function createInspection(
       })
       .from(reservationItems)
       .innerJoin(products, eq(products.id, reservationItems.productId))
-      .where(eq(reservationItems.id, item.reservationItemId))
-      .limit(1)
+      .where(
+        and(
+          eq(reservationItems.id, item.reservationItemId),
+          eq(reservationItems.reservationId, reservationId),
+        ),
+      )
+      .limit(1);
 
-    await db.insert(inspectionItems).values({
+    if (!reservationItemData) {
+      return { error: 'errors.invalidData' };
+    }
+
+    let unitIdentifier: string | null = null;
+
+    if (item.productUnitId) {
+      const [assignedUnit] = await db
+        .select({
+          identifier: productUnits.identifier,
+        })
+        .from(reservationItemUnits)
+        .innerJoin(
+          productUnits,
+          eq(productUnits.id, reservationItemUnits.productUnitId),
+        )
+        .where(
+          and(
+            eq(reservationItemUnits.reservationItemId, item.reservationItemId),
+            eq(reservationItemUnits.productUnitId, item.productUnitId),
+          ),
+        )
+        .limit(1);
+
+      if (!assignedUnit) {
+        return { error: 'errors.invalidData' };
+      }
+
+      unitIdentifier = assignedUnit.identifier;
+    }
+
+    inspectionItemRows.push({
       id: itemId,
       inspectionId,
       reservationItemId: item.reservationItemId,
       productUnitId: item.productUnitId || null,
       productSnapshot: {
-        name: reservationItemData?.productName || 'Produit inconnu',
+        name: reservationItemData.productName,
+        ...(unitIdentifier ? { unitIdentifier } : {}),
       },
       overallCondition: item.overallCondition,
       notes: item.notes || null,
       createdAt: now,
-    })
+    });
   }
 
-  // Log activity
-  await db.insert(reservationActivity).values({
-    reservationId,
-    activityType: type === 'departure' ? 'inspection_departure_started' : 'inspection_return_started',
-    userId: store.userId,
-  })
+  await db.transaction(async (tx) => {
+    await tx.insert(inspections).values({
+      id: inspectionId,
+      storeId: store.id,
+      reservationId,
+      type,
+      status: 'draft',
+      templateId: templateId || null,
+      notes: notes || null,
+      performedById: store.userId,
+      performedAt: now,
+      hasDamage: false,
+    });
 
-  revalidatePath(`/dashboard/reservations/${reservationId}`)
+    await tx.insert(inspectionItems).values(inspectionItemRows);
 
-  return { inspectionId }
+    await tx.insert(reservationActivity).values({
+      reservationId,
+      activityType:
+        type === 'departure'
+          ? 'inspection_departure_started'
+          : 'inspection_return_started',
+      userId: store.userId,
+    });
+  });
+
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+
+  return { inspectionId };
 }
 
 // ============================================================================
@@ -137,19 +193,24 @@ export async function createInspection(
 
 export async function completeInspection(
   inspectionId: string,
-  data: CompleteInspectionInput
-): Promise<{ success?: boolean; error?: string }> {
-  const store = await getCurrentStore()
+  data: CompleteInspectionInput,
+): Promise<{
+  success?: boolean;
+  repairDowntimeSuggestion?: RepairDowntimeSuggestion;
+  error?: string;
+}> {
+  const store = await getCurrentStore();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
-  const validated = completeInspectionSchema.safeParse(data)
+  const validated = completeInspectionSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' }
+    return { error: 'errors.invalidData' };
   }
 
-  const { notes, hasDamage, damageDescription, estimatedDamageCost } = validated.data
+  const { notes, hasDamage, damageDescription, estimatedDamageCost } =
+    validated.data;
 
   // Get inspection and verify access
   const [inspection] = await db
@@ -161,63 +222,96 @@ export async function completeInspection(
     })
     .from(inspections)
     .where(
-      and(
-        eq(inspections.id, inspectionId),
-        eq(inspections.storeId, store.id)
-      )
+      and(eq(inspections.id, inspectionId), eq(inspections.storeId, store.id)),
     )
-    .limit(1)
+    .limit(1);
 
   if (!inspection) {
-    return { error: 'errors.inspectionNotFound' }
+    return { error: 'errors.inspectionNotFound' };
   }
 
   if (inspection.status !== 'draft') {
-    return { error: 'errors.inspectionAlreadyCompleted' }
+    return { error: 'errors.inspectionAlreadyCompleted' };
   }
 
-  const now = new Date()
+  const now = new Date();
 
-  // Update inspection
-  await db
-    .update(inspections)
-    .set({
-      status: 'completed',
-      notes: notes || null,
-      hasDamage,
-      damageDescription: damageDescription || null,
-      estimatedDamageCost: estimatedDamageCost?.toString() || null,
-      updatedAt: now,
-    })
-    .where(eq(inspections.id, inspectionId))
+  await db.transaction(async (tx) => {
+    await tx
+      .update(inspections)
+      .set({
+        status: 'completed',
+        notes: notes || null,
+        hasDamage,
+        damageDescription: damageDescription || null,
+        estimatedDamageCost: estimatedDamageCost?.toString() || null,
+        updatedAt: now,
+      })
+      .where(eq(inspections.id, inspectionId));
 
-  // Log activity
-  await db.insert(reservationActivity).values({
-    reservationId: inspection.reservationId,
-    activityType:
-      inspection.type === 'departure'
-        ? 'inspection_departure_completed'
-        : 'inspection_return_completed',
-    userId: store.userId,
-  })
-
-  // Log damage activity if applicable
-  if (hasDamage) {
-    await db.insert(reservationActivity).values({
+    await tx.insert(reservationActivity).values({
       reservationId: inspection.reservationId,
-      activityType: 'inspection_damage_detected',
+      activityType:
+        inspection.type === 'departure'
+          ? 'inspection_departure_completed'
+          : 'inspection_return_completed',
       userId: store.userId,
-      metadata: {
-        inspectionId,
-        description: damageDescription,
-        estimatedCost: estimatedDamageCost,
-      },
-    })
+    });
+
+    if (hasDamage) {
+      await tx.insert(reservationActivity).values({
+        reservationId: inspection.reservationId,
+        activityType: 'inspection_damage_detected',
+        userId: store.userId,
+        metadata: {
+          inspectionId,
+          description: damageDescription,
+          estimatedCost: estimatedDamageCost,
+        },
+      });
+    }
+  });
+
+  let repairDowntimeSuggestion: RepairDowntimeSuggestion | undefined;
+
+  if (inspection.type === 'return') {
+    const damagedUnits = await db
+      .select({
+        id: productUnits.id,
+        identifier: productUnits.identifier,
+        productName: products.name,
+      })
+      .from(inspectionItems)
+      .innerJoin(
+        productUnits,
+        eq(productUnits.id, inspectionItems.productUnitId),
+      )
+      .innerJoin(products, eq(products.id, productUnits.productId))
+      .where(
+        and(
+          eq(inspectionItems.inspectionId, inspectionId),
+          eq(inspectionItems.overallCondition, 'damaged'),
+          eq(products.storeId, store.id),
+        ),
+      );
+
+    const damagedUnitsById = new Map<string, (typeof damagedUnits)[number]>();
+    for (const unit of damagedUnits) {
+      if (!damagedUnitsById.has(unit.id)) {
+        damagedUnitsById.set(unit.id, unit);
+      }
+    }
+
+    const uniqueDamagedUnits = Array.from(damagedUnitsById.values());
+
+    if (uniqueDamagedUnits.length > 0) {
+      repairDowntimeSuggestion = { units: uniqueDamagedUnits };
+    }
   }
 
-  revalidatePath(`/dashboard/reservations/${inspection.reservationId}`)
+  revalidatePath(`/dashboard/reservations/${inspection.reservationId}`);
 
-  return { success: true }
+  return { success: true, repairDowntimeSuggestion };
 }
 
 // ============================================================================
@@ -226,19 +320,19 @@ export async function completeInspection(
 
 export async function signInspection(
   inspectionId: string,
-  data: SignInspectionInput
+  data: SignInspectionInput,
 ): Promise<{ success?: boolean; error?: string }> {
-  const store = await getCurrentStore()
+  const store = await getCurrentStore();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
-  const validated = signInspectionSchema.safeParse(data)
+  const validated = signInspectionSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' }
+    return { error: 'errors.invalidData' };
   }
 
-  const { customerSignature } = validated.data
+  const { customerSignature } = validated.data;
 
   // Get inspection and verify access
   const [inspection] = await db
@@ -249,22 +343,19 @@ export async function signInspection(
     })
     .from(inspections)
     .where(
-      and(
-        eq(inspections.id, inspectionId),
-        eq(inspections.storeId, store.id)
-      )
+      and(eq(inspections.id, inspectionId), eq(inspections.storeId, store.id)),
     )
-    .limit(1)
+    .limit(1);
 
   if (!inspection) {
-    return { error: 'errors.inspectionNotFound' }
+    return { error: 'errors.inspectionNotFound' };
   }
 
   if (inspection.status === 'signed') {
-    return { error: 'errors.inspectionAlreadySigned' }
+    return { error: 'errors.inspectionAlreadySigned' };
   }
 
-  const now = new Date()
+  const now = new Date();
 
   // Update inspection with signature
   await db
@@ -275,18 +366,18 @@ export async function signInspection(
       signedAt: now,
       updatedAt: now,
     })
-    .where(eq(inspections.id, inspectionId))
+    .where(eq(inspections.id, inspectionId));
 
   // Log activity
   await db.insert(reservationActivity).values({
     reservationId: inspection.reservationId,
     activityType: 'inspection_signed',
     userId: store.userId,
-  })
+  });
 
-  revalidatePath(`/dashboard/reservations/${inspection.reservationId}`)
+  revalidatePath(`/dashboard/reservations/${inspection.reservationId}`);
 
-  return { success: true }
+  return { success: true };
 }
 
 // ============================================================================
@@ -294,31 +385,28 @@ export async function signInspection(
 // ============================================================================
 
 export async function getInspection(inspectionId: string) {
-  const store = await getCurrentStore()
+  const store = await getCurrentStore();
   if (!store) {
-    return null
+    return null;
   }
 
   const [inspection] = await db
     .select()
     .from(inspections)
     .where(
-      and(
-        eq(inspections.id, inspectionId),
-        eq(inspections.storeId, store.id)
-      )
+      and(eq(inspections.id, inspectionId), eq(inspections.storeId, store.id)),
     )
-    .limit(1)
+    .limit(1);
 
   if (!inspection) {
-    return null
+    return null;
   }
 
   // Get items
   const items = await db
     .select()
     .from(inspectionItems)
-    .where(eq(inspectionItems.inspectionId, inspectionId))
+    .where(eq(inspectionItems.inspectionId, inspectionId));
 
   // Get photos
   const photos = await db
@@ -327,15 +415,15 @@ export async function getInspection(inspectionId: string) {
     .where(
       eq(
         inspectionPhotos.inspectionItemId,
-        items.length > 0 ? items[0].id : ''
-      )
-    )
+        items.length > 0 ? items[0].id : '',
+      ),
+    );
 
   return {
     ...inspection,
     items,
     photos,
-  }
+  };
 }
 
 // ============================================================================
@@ -343,9 +431,9 @@ export async function getInspection(inspectionId: string) {
 // ============================================================================
 
 export async function getReservationInspections(reservationId: string) {
-  const store = await getCurrentStore()
+  const store = await getCurrentStore();
   if (!store) {
-    return []
+    return [];
   }
 
   const result = await db
@@ -354,11 +442,11 @@ export async function getReservationInspections(reservationId: string) {
     .where(
       and(
         eq(inspections.reservationId, reservationId),
-        eq(inspections.storeId, store.id)
-      )
-    )
+        eq(inspections.storeId, store.id),
+      ),
+    );
 
-  return result
+  return result;
 }
 
 // ============================================================================
@@ -371,11 +459,11 @@ export async function uploadInspectionPhoto(
   photoUrl: string,
   thumbnailKey?: string,
   thumbnailUrl?: string,
-  caption?: string
+  caption?: string,
 ): Promise<{ photoId?: string; error?: string }> {
-  const store = await getCurrentStore()
+  const store = await getCurrentStore();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   // Verify item belongs to store's inspection
@@ -389,23 +477,23 @@ export async function uploadInspectionPhoto(
     .where(
       and(
         eq(inspectionItems.id, inspectionItemId),
-        eq(inspections.storeId, store.id)
-      )
+        eq(inspections.storeId, store.id),
+      ),
     )
-    .limit(1)
+    .limit(1);
 
   if (!item) {
-    return { error: 'errors.inspectionItemNotFound' }
+    return { error: 'errors.inspectionItemNotFound' };
   }
 
   // Get current photo count
   const existingPhotos = await db
     .select({ id: inspectionPhotos.id })
     .from(inspectionPhotos)
-    .where(eq(inspectionPhotos.inspectionItemId, inspectionItemId))
+    .where(eq(inspectionPhotos.inspectionItemId, inspectionItemId));
 
-  const photoId = nanoid()
-  const now = new Date()
+  const photoId = nanoid();
+  const now = new Date();
 
   await db.insert(inspectionPhotos).values({
     id: photoId,
@@ -417,9 +505,9 @@ export async function uploadInspectionPhoto(
     caption: caption || null,
     displayOrder: existingPhotos.length,
     createdAt: now,
-  })
+  });
 
-  return { photoId }
+  return { photoId };
 }
 
 // ============================================================================
@@ -427,11 +515,11 @@ export async function uploadInspectionPhoto(
 // ============================================================================
 
 export async function deleteInspectionPhoto(
-  photoId: string
+  photoId: string,
 ): Promise<{ success?: boolean; error?: string }> {
-  const store = await getCurrentStore()
+  const store = await getCurrentStore();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   // Verify photo belongs to store's inspection
@@ -444,23 +532,23 @@ export async function deleteInspectionPhoto(
     .from(inspectionPhotos)
     .innerJoin(
       inspectionItems,
-      eq(inspectionItems.id, inspectionPhotos.inspectionItemId)
+      eq(inspectionItems.id, inspectionPhotos.inspectionItemId),
     )
     .innerJoin(inspections, eq(inspections.id, inspectionItems.inspectionId))
     .where(
-      and(eq(inspectionPhotos.id, photoId), eq(inspections.storeId, store.id))
+      and(eq(inspectionPhotos.id, photoId), eq(inspections.storeId, store.id)),
     )
-    .limit(1)
+    .limit(1);
 
   if (!photo) {
-    return { error: 'errors.photoNotFound' }
+    return { error: 'errors.photoNotFound' };
   }
 
   // Delete from database
-  await db.delete(inspectionPhotos).where(eq(inspectionPhotos.id, photoId))
+  await db.delete(inspectionPhotos).where(eq(inspectionPhotos.id, photoId));
 
   // Note: Actual file deletion from S3/R2 should be handled separately
   // to avoid orphaned files if deletion fails
 
-  return { success: true }
+  return { success: true };
 }

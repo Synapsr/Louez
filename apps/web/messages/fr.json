@@ -3740,6 +3740,7 @@
           "allOk": "Tout est OK",
           "allOkDescription": "Marquer tous les équipements en excellent état",
           "quantity": "Quantité",
+          "unitReference": "Référence {identifier}",
           "condition": "Etat général",
           "photos": "Photos",
           "notes": "Remarques",
@@ -3774,6 +3775,21 @@
           "takePhoto": "Prendre une photo",
           "photoPreview": "Aperçu de la photo",
           "deletePhoto": "Supprimer la photo",
+          "repairDowntime": {
+            "title": "Indisponibilité réparation",
+            "description": "L'état des lieux retour a marqué des unités suivies comme endommagées. Sélectionnez les unités à placer en réparation sans date de fin.",
+            "singleQuestion": "Créer une indisponibilité réparation pour {identifier} ?",
+            "multipleQuestion": "Créer des indisponibilités réparation pour {count, plural, one {# unité endommagée} other {# unités endommagées}} ?",
+            "note": "Etat des lieux retour - réservation #{reservationNumber}",
+            "noneSelected": "Sélectionnez au moins une unité",
+            "createdToast": "{count, plural, one {Indisponibilité réparation créée} other {Indisponibilités réparation créées}}",
+            "conflictsToast": "Conflits détectés - gérez-les dans l’inventaire",
+            "conflictsDescription": "Conflits détectés. Gérez-les dans l’inventaire.",
+            "openInventory": "Ouvrir l’inventaire",
+            "skip": "Ignorer",
+            "submit": "Créer l'indisponibilité réparation",
+            "done": "Terminé"
+          },
           "close": "Fermer"
         },
         "conditions": {
