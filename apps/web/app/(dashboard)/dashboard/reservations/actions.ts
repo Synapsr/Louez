@@ -4518,13 +4518,19 @@ export async function assignUnitsToReservationItem(
         }
       }
 
-      const { checkUnitsAvailability } =
+      const { checkUnitsAvailability, getBlockingReservationStatuses } =
         await import('@/lib/utils/unit-availability');
       const availability = await checkUnitsAvailability(
         unitIds,
         item.startDate,
         item.endDate,
-        item.reservationId,
+        {
+          blockingStatuses: getBlockingReservationStatuses(
+            (store.settings?.pendingBlocksAvailability) ?? true,
+          ),
+          turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
+          excludeReservationItemId: item.id,
+        },
       );
 
       if (unitIds.some((unitId) => !availability[unitId])) {
@@ -4713,14 +4719,20 @@ export async function getAvailableUnitsForReservationItem(
     }
 
     // 2. Get available units using the utility
-    const { getAvailableUnitsForProduct } =
+    const { getAvailableUnitsForProduct, getBlockingReservationStatuses } =
       await import('@/lib/utils/unit-availability');
     const availableUnits = await getAvailableUnitsForProduct(
       item.productId,
       item.startDate,
       item.endDate,
-      item.reservationId, // Exclude current reservation to allow re-assignment
-      item.combinationKey || undefined,
+      {
+        blockingStatuses: getBlockingReservationStatuses(
+          (store.settings?.pendingBlocksAvailability) ?? true,
+        ),
+        turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
+        excludeReservationItemId: item.id,
+        combinationKey: item.combinationKey,
+      },
     );
 
     // 3. Get currently assigned units for this item

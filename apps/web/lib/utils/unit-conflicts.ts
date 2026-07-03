@@ -2,6 +2,7 @@ import { and, eq, gt, inArray, lt, not, sql } from 'drizzle-orm';
 import 'server-only';
 
 import {
+  buildReservationOverlapPredicate,
   customers,
   db,
   productUnits,
@@ -36,18 +37,20 @@ export type UnitConflict = {
 type GetUnitConflictsOptions = {
   storeId: string;
   pendingBlocksAvailability?: boolean;
+  turnoverBufferMinutes?: number;
   excludeReservationItemId?: string;
 };
 
 type GetUnitConflictFlagsOptions = {
   storeId: string;
   pendingBlocksAvailability?: boolean;
+  turnoverBufferMinutes?: number;
 };
 
 function getBlockingStatuses(
   pendingBlocksAvailability: boolean | undefined,
 ): BlockingReservationStatus[] {
-  return getBlockingReservationStatuses(pendingBlocksAvailability ?? true);
+  return getBlockingReservationStatuses((pendingBlocksAvailability) ?? true);
 }
 
 export async function getUnitConflicts(
@@ -58,6 +61,7 @@ export async function getUnitConflicts(
   const blockingStatuses = getBlockingStatuses(
     options.pendingBlocksAvailability,
   );
+  const turnoverBufferMinutes = options.turnoverBufferMinutes ?? 0;
 
   const [unit] = await db
     .select({
@@ -80,11 +84,25 @@ export async function getUnitConflicts(
     eq(reservationItemUnits.productUnitId, unitId),
     eq(reservations.storeId, options.storeId),
     inArray(reservations.status, blockingStatuses),
-    gt(reservations.endDate, window.start),
   ];
 
   if (window.end) {
-    conditions.push(lt(reservations.startDate, window.end));
+    conditions.push(
+      buildReservationOverlapPredicate({
+        start: window.start,
+        end: window.end,
+        turnoverBufferMinutes,
+      }),
+    );
+  } else {
+    conditions.push(
+      gt(
+        reservations.endDate,
+        new Date(
+          window.start.getTime() - Math.max(0, turnoverBufferMinutes) * 60_000,
+        ),
+      ),
+    );
   }
 
   if (options.excludeReservationItemId) {
@@ -122,9 +140,12 @@ export async function getUnitConflicts(
         unit.productId,
         conflict.startDate,
         conflict.endDate,
-        conflict.reservationId,
-        unit.combinationKey,
-        blockingStatuses,
+        {
+          blockingStatuses,
+          turnoverBufferMinutes,
+          excludeReservationItemId: conflict.reservationItemId,
+          combinationKey: unit.combinationKey,
+        },
       );
 
       return {
@@ -149,6 +170,7 @@ export async function getUnitConflictFlags(
   const blockingStatuses = getBlockingStatuses(
     options.pendingBlocksAvailability,
   );
+  const turnoverBufferMinutes = options.turnoverBufferMinutes ?? 0;
   const windowsByUnitId = new Map<string, UnitConflictWindow[]>();
 
   for (const item of windows) {
@@ -160,7 +182,8 @@ export async function getUnitConflictFlags(
 
   const unitIds = [...windowsByUnitId.keys()];
   const minStart = new Date(
-    Math.min(...windows.map((item) => item.window.start.getTime())),
+    Math.min(...windows.map((item) => item.window.start.getTime())) -
+      Math.max(0, turnoverBufferMinutes) * 60_000,
   );
   const finiteEnds = windows
     .map((item) => item.window.end)
@@ -169,6 +192,11 @@ export async function getUnitConflictFlags(
     finiteEnds.length === windows.length
       ? new Date(Math.max(...finiteEnds.map((end) => end.getTime())))
       : null;
+  const bufferedMaxFiniteEnd = maxFiniteEnd
+    ? new Date(
+        maxFiniteEnd.getTime() + Math.max(0, turnoverBufferMinutes) * 60_000,
+      )
+    : null;
 
   const conditions = [
     inArray(reservationItemUnits.productUnitId, unitIds),
@@ -177,8 +205,8 @@ export async function getUnitConflictFlags(
     gt(reservations.endDate, minStart),
   ];
 
-  if (maxFiniteEnd) {
-    conditions.push(lt(reservations.startDate, maxFiniteEnd));
+  if (bufferedMaxFiniteEnd) {
+    conditions.push(lt(reservations.startDate, bufferedMaxFiniteEnd));
   }
 
   const assignments = await db
@@ -203,9 +231,23 @@ export async function getUnitConflictFlags(
 
     if (
       unitWindows.some(
-        (window) =>
-          assignment.endDate > window.start &&
-          (window.end === null || assignment.startDate < window.end),
+        (window) => {
+          const bufferedStart = new Date(
+            window.start.getTime() -
+              Math.max(0, turnoverBufferMinutes) * 60_000,
+          );
+          const bufferedEnd = window.end
+            ? new Date(
+                window.end.getTime() +
+                  Math.max(0, turnoverBufferMinutes) * 60_000,
+              )
+            : null;
+
+          return (
+            assignment.endDate > bufferedStart &&
+            (bufferedEnd === null || assignment.startDate < bufferedEnd)
+          );
+        },
       )
     ) {
       flags[assignment.productUnitId] = true;

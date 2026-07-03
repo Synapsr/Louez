@@ -124,7 +124,7 @@ export function StoreSettingsForm({
 
   const settings: StoreSettings = {
     reservationMode: store.settings?.reservationMode ?? 'payment',
-    pendingBlocksAvailability: store.settings?.pendingBlocksAvailability ?? true,
+    pendingBlocksAvailability: (store.settings?.pendingBlocksAvailability) ?? true,
     onlinePaymentDepositPercentage:
       store.settings?.onlinePaymentDepositPercentage ?? 100,
     minRentalMinutes: store.settings?.minRentalMinutes ?? 60,
@@ -169,7 +169,7 @@ export function StoreSettingsForm({
       billingPostalCode: billingAddress.postalCode || '',
       billingCountry: billingAddress.country || defaultCountry,
       reservationMode: settings.reservationMode,
-      pendingBlocksAvailability: settings.pendingBlocksAvailability ?? true,
+      pendingBlocksAvailability: (settings.pendingBlocksAvailability) ?? true,
       onlinePaymentDepositPercentage:
         settings.onlinePaymentDepositPercentage ?? 100,
       minRentalMinutes: getMinRentalMinutes(settings as StoreSettings),

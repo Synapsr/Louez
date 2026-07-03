@@ -38,7 +38,10 @@ import {
 
 import { auth } from '@/lib/auth';
 import { getCurrentStore } from '@/lib/store-context';
-import { checkUnitsAvailability } from '@/lib/utils/unit-availability';
+import {
+  checkUnitsAvailability,
+  getBlockingReservationStatuses,
+} from '@/lib/utils/unit-availability';
 import { getUnitConflicts } from '@/lib/utils/unit-conflicts';
 
 import {
@@ -277,6 +280,7 @@ export async function declareDowntime(input: DeclareDowntimeInput) {
     {
       storeId: store.id,
       pendingBlocksAvailability: store.settings?.pendingBlocksAvailability,
+      turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
     },
   );
 
@@ -370,6 +374,7 @@ export async function updateDowntime(input: UpdateDowntimeInput) {
     {
       storeId: store.id,
       pendingBlocksAvailability: store.settings?.pendingBlocksAvailability,
+      turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
     },
   );
 
@@ -551,6 +556,7 @@ export async function retireUnit(input: RetireUnitInput) {
     {
       storeId: store.id,
       pendingBlocksAvailability: store.settings?.pendingBlocksAvailability,
+      turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
     },
   );
 
@@ -833,7 +839,13 @@ export async function reassignReservationItemUnit(
     [toUnit.id],
     item.startDate,
     item.endDate,
-    item.reservationId,
+    {
+      blockingStatuses: getBlockingReservationStatuses(
+        (store.settings?.pendingBlocksAvailability) ?? true,
+      ),
+      turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
+      excludeReservationItemId: item.id,
+    },
   );
 
   if (!availability[toUnit.id]) {

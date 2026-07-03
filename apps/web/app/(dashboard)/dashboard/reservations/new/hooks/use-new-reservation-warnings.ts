@@ -48,9 +48,10 @@ export function getPeriodAvailability(params: {
   } = params
   const reservedByProduct = new Map<string, number>()
   const reservedByProductCombination: ReservedByProductCombination = new Map()
-  const blockingStatuses = pendingBlocksAvailability
-    ? ['pending', 'confirmed', 'ongoing']
-    : ['confirmed', 'ongoing']
+  const blockingStatuses = ['confirmed', 'ongoing']
+  if (pendingBlocksAvailability) {
+    blockingStatuses.unshift('pending')
+  }
 
   if (!startDate || !endDate) {
     return { reservedByProduct, reservedByProductCombination }
