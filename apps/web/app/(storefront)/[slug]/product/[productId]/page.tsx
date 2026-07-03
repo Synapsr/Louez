@@ -76,7 +76,7 @@ export async function generateMetadata({
     product.id,
   ]);
   const quantity = product.trackUnits
-    ? effectiveQuantities.get(product.id) ?? 0
+    ? (effectiveQuantities.get(product.id) ?? 0)
     : product.quantity;
 
   const theme = (store.theme as StoreTheme) || {};
@@ -165,7 +165,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     ...accessoryIds,
   ]);
   const effectiveQuantity = product.trackUnits
-    ? effectiveQuantities.get(product.id) ?? 0
+    ? (effectiveQuantities.get(product.id) ?? 0)
     : product.quantity;
 
   const currentDowntimeUnitIds = await getCurrentDowntimeUnitIds(
@@ -235,12 +235,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
         acc.accessory &&
         acc.accessory.status === 'active' &&
         (acc.accessory.trackUnits
-          ? effectiveQuantities.get(acc.accessory.id) ?? 0
+          ? (effectiveQuantities.get(acc.accessory.id) ?? 0)
           : acc.accessory.quantity) > 0,
     )
     .map((acc) => ({
       quantity: acc.accessory.trackUnits
-        ? effectiveQuantities.get(acc.accessory.id) ?? 0
+        ? (effectiveQuantities.get(acc.accessory.id) ?? 0)
         : acc.accessory.quantity,
       id: acc.accessory.id,
       name: acc.accessory.name,
@@ -281,7 +281,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const relatedProducts = relatedProductsRaw.map((relatedProduct) => ({
     ...relatedProduct,
     quantity: relatedProduct.trackUnits
-      ? relatedQuantities.get(relatedProduct.id) ?? 0
+      ? (relatedQuantities.get(relatedProduct.id) ?? 0)
       : relatedProduct.quantity,
   }));
 
@@ -293,7 +293,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           !currentDowntimeUnitIds.has(unit.id),
       ).length
     : effectiveQuantity;
-  const isAvailable = displayQuantity > 0;
+  const isAvailable = effectiveQuantity > 0;
   const storedBookingAttributeAxes = (
     (product.bookingAttributeAxes as Array<{
       key: string;

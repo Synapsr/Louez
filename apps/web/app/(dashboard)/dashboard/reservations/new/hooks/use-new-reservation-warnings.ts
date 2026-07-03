@@ -1,43 +1,57 @@
-import { useMemo } from 'react'
-import { useTranslations } from 'next-intl'
-import { calculatePeakReservedQuantities } from '@louez/utils'
+import { useMemo } from 'react';
 
-import { isWithinBusinessHours, getDaySchedule, formatDaySchedule } from '@/lib/utils/business-hours'
-import { getMinStartDateTime } from '@/lib/utils/duration'
-import { formatDurationFromMinutes } from '@/lib/utils/rental-duration'
+import { useTranslations } from 'next-intl';
+
+import type { ProductAvailability } from '@louez/types';
+import { calculatePeakReservedQuantities } from '@louez/utils';
+
+import {
+  formatDaySchedule,
+  getDaySchedule,
+  isWithinBusinessHours,
+} from '@/lib/utils/business-hours';
+import { getMinStartDateTime } from '@/lib/utils/duration';
+import { formatDurationFromMinutes } from '@/lib/utils/rental-duration';
 
 import type {
   AvailabilityWarning,
+  NewReservationFormProps,
   PeriodWarning,
   Product,
   SelectedProduct,
-  NewReservationFormProps,
-} from '../types'
-import type { ReservedByProductCombination } from '../utils/variant-lines'
+} from '../types';
+import type { ReservedByProductCombination } from '../utils/variant-lines';
 
 interface UseNewReservationWarningsParams {
-  startDate: Date | undefined
-  endDate: Date | undefined
-  selectedProducts: SelectedProduct[]
-  products: Product[]
-  businessHours: NewReservationFormProps['businessHours']
-  advanceNoticeMinutes: number
-  pendingBlocksAvailability: boolean
-  turnoverBufferMinutes: number
-  existingReservations: NonNullable<NewReservationFormProps['existingReservations']>
+  startDate: Date | undefined;
+  endDate: Date | undefined;
+  selectedProducts: SelectedProduct[];
+  products: Product[];
+  businessHours: NewReservationFormProps['businessHours'];
+  advanceNoticeMinutes: number;
+  pendingBlocksAvailability: boolean;
+  turnoverBufferMinutes: number;
+  existingReservations: NonNullable<
+    NewReservationFormProps['existingReservations']
+  >;
+  serviceAvailability?: ProductAvailability[];
 }
 
 export interface PeriodAvailability {
-  reservedByProduct: Map<string, number>
-  reservedByProductCombination: ReservedByProductCombination
+  reservedByProduct: Map<string, number>;
+  reservedByProductCombination: ReservedByProductCombination;
+  productsById: Map<string, ProductAvailability>;
 }
 
 export function getPeriodAvailability(params: {
-  startDate: Date | undefined
-  endDate: Date | undefined
-  pendingBlocksAvailability: boolean
-  turnoverBufferMinutes?: number
-  existingReservations: NonNullable<NewReservationFormProps['existingReservations']>
+  startDate: Date | undefined;
+  endDate: Date | undefined;
+  pendingBlocksAvailability: boolean;
+  turnoverBufferMinutes?: number;
+  existingReservations: NonNullable<
+    NewReservationFormProps['existingReservations']
+  >;
+  serviceAvailability?: ProductAvailability[];
 }): PeriodAvailability {
   const {
     startDate,
@@ -45,16 +59,22 @@ export function getPeriodAvailability(params: {
     pendingBlocksAvailability,
     turnoverBufferMinutes = 0,
     existingReservations,
-  } = params
-  const reservedByProduct = new Map<string, number>()
-  const reservedByProductCombination: ReservedByProductCombination = new Map()
-  const blockingStatuses = ['confirmed', 'ongoing']
+  } = params;
+  const reservedByProduct = new Map<string, number>();
+  const reservedByProductCombination: ReservedByProductCombination = new Map();
+  const productsById = new Map(
+    (params.serviceAvailability ?? []).map((product) => [
+      product.productId,
+      product,
+    ]),
+  );
+  const blockingStatuses = ['confirmed', 'ongoing'];
   if (pendingBlocksAvailability) {
-    blockingStatuses.unshift('pending')
+    blockingStatuses.unshift('pending');
   }
 
   if (!startDate || !endDate) {
-    return { reservedByProduct, reservedByProductCombination }
+    return { reservedByProduct, reservedByProductCombination, productsById };
   }
 
   const peakAvailability = calculatePeakReservedQuantities({
@@ -64,16 +84,18 @@ export function getPeriodAvailability(params: {
     startDate,
     endDate,
     turnoverBufferMinutes,
-  })
+  });
 
   peakAvailability.reservedByProduct.forEach((quantity, productId) => {
-    reservedByProduct.set(productId, quantity)
-  })
-  peakAvailability.reservedByProductCombination.forEach((quantity, combinationKey) => {
-    reservedByProductCombination.set(combinationKey, quantity)
-  })
+    reservedByProduct.set(productId, quantity);
+  });
+  peakAvailability.reservedByProductCombination.forEach(
+    (quantity, combinationKey) => {
+      reservedByProductCombination.set(combinationKey, quantity);
+    },
+  );
 
-  return { reservedByProduct, reservedByProductCombination }
+  return { reservedByProduct, reservedByProductCombination, productsById };
 }
 
 export function useNewReservationWarnings({
@@ -86,16 +108,17 @@ export function useNewReservationWarnings({
   pendingBlocksAvailability,
   turnoverBufferMinutes,
   existingReservations,
+  serviceAvailability,
 }: UseNewReservationWarningsParams) {
-  const t = useTranslations('dashboard.reservations.manualForm')
+  const t = useTranslations('dashboard.reservations.manualForm');
 
   const minDateTime = useMemo(
     () => getMinStartDateTime(advanceNoticeMinutes),
-    [advanceNoticeMinutes]
-  )
+    [advanceNoticeMinutes],
+  );
 
   const periodWarnings = useMemo<PeriodWarning[]>(() => {
-    const warnings: PeriodWarning[] = []
+    const warnings: PeriodWarning[] = [];
 
     if (startDate) {
       if (startDate < minDateTime) {
@@ -106,11 +129,11 @@ export function useNewReservationWarnings({
           details: t('warnings.advanceNoticeDetails', {
             duration: formatDurationFromMinutes(advanceNoticeMinutes),
           }),
-        })
+        });
       }
 
       if (businessHours?.enabled) {
-        const startCheck = isWithinBusinessHours(startDate, businessHours)
+        const startCheck = isWithinBusinessHours(startDate, businessHours);
         if (!startCheck.valid) {
           if (startCheck.reason === 'day_closed') {
             warnings.push({
@@ -118,9 +141,9 @@ export function useNewReservationWarnings({
               field: 'start',
               message: t('warnings.startDayClosed'),
               details: t('warnings.dayClosedDetails'),
-            })
+            });
           } else if (startCheck.reason === 'outside_hours') {
-            const startDaySchedule = getDaySchedule(startDate, businessHours)
+            const startDaySchedule = getDaySchedule(startDate, businessHours);
             warnings.push({
               type: 'outside_hours',
               field: 'start',
@@ -128,21 +151,26 @@ export function useNewReservationWarnings({
               details: t('warnings.outsideHoursDetails', {
                 hours: formatDaySchedule(startDaySchedule),
               }),
-            })
-          } else if (startCheck.reason === 'closure_period' && startCheck.closurePeriod) {
+            });
+          } else if (
+            startCheck.reason === 'closure_period' &&
+            startCheck.closurePeriod
+          ) {
             warnings.push({
               type: 'closure_period',
               field: 'start',
               message: t('warnings.startClosurePeriod'),
-              details: startCheck.closurePeriod.name || t('warnings.closurePeriodDetails'),
-            })
+              details:
+                startCheck.closurePeriod.name ||
+                t('warnings.closurePeriodDetails'),
+            });
           }
         }
       }
     }
 
     if (endDate && businessHours?.enabled) {
-      const endCheck = isWithinBusinessHours(endDate, businessHours)
+      const endCheck = isWithinBusinessHours(endDate, businessHours);
       if (!endCheck.valid) {
         if (endCheck.reason === 'day_closed') {
           warnings.push({
@@ -150,9 +178,9 @@ export function useNewReservationWarnings({
             field: 'end',
             message: t('warnings.endDayClosed'),
             details: t('warnings.dayClosedDetails'),
-          })
+          });
         } else if (endCheck.reason === 'outside_hours') {
-          const endDaySchedule = getDaySchedule(endDate, businessHours)
+          const endDaySchedule = getDaySchedule(endDate, businessHours);
           warnings.push({
             type: 'outside_hours',
             field: 'end',
@@ -160,47 +188,67 @@ export function useNewReservationWarnings({
             details: t('warnings.outsideHoursDetails', {
               hours: formatDaySchedule(endDaySchedule),
             }),
-          })
-        } else if (endCheck.reason === 'closure_period' && endCheck.closurePeriod) {
+          });
+        } else if (
+          endCheck.reason === 'closure_period' &&
+          endCheck.closurePeriod
+        ) {
           warnings.push({
             type: 'closure_period',
             field: 'end',
             message: t('warnings.endClosurePeriod'),
-            details: endCheck.closurePeriod.name || t('warnings.closurePeriodDetails'),
-          })
+            details:
+              endCheck.closurePeriod.name || t('warnings.closurePeriodDetails'),
+          });
         }
       }
     }
 
-    return warnings
-  }, [advanceNoticeMinutes, businessHours, endDate, minDateTime, startDate, t])
+    return warnings;
+  }, [advanceNoticeMinutes, businessHours, endDate, minDateTime, startDate, t]);
 
   const availabilityWarnings = useMemo<AvailabilityWarning[]>(() => {
     if (!startDate || !endDate || selectedProducts.length === 0) {
-      return []
+      return [];
     }
 
-    const warnings: AvailabilityWarning[] = []
+    const warnings: AvailabilityWarning[] = [];
     const { reservedByProduct } = getPeriodAvailability({
       startDate,
       endDate,
       pendingBlocksAvailability,
       turnoverBufferMinutes,
       existingReservations,
-    })
+      serviceAvailability,
+    });
+    const productsById = new Map(
+      (serviceAvailability ?? []).map((product) => [
+        product.productId,
+        product,
+      ]),
+    );
 
-    const requestedByProduct = new Map<string, number>()
+    const requestedByProduct = new Map<string, number>();
     for (const selectedItem of selectedProducts) {
-      const current = requestedByProduct.get(selectedItem.productId) || 0
-      requestedByProduct.set(selectedItem.productId, current + selectedItem.quantity)
+      const current = requestedByProduct.get(selectedItem.productId) || 0;
+      requestedByProduct.set(
+        selectedItem.productId,
+        current + selectedItem.quantity,
+      );
     }
 
     for (const [productId, requestedQuantity] of requestedByProduct.entries()) {
-      const product = products.find((p) => p.id === productId)
-      if (!product) continue
+      const product = products.find((p) => p.id === productId);
+      if (!product) continue;
 
-      const reserved = reservedByProduct.get(productId) || 0
-      const available = Math.max(0, product.quantity - reserved)
+      const serviceProduct = productsById.get(productId);
+      const reserved =
+        serviceProduct?.reservedQuantity ??
+        reservedByProduct.get(productId) ??
+        0;
+      const available = serviceProduct
+        ? serviceProduct.availableQuantity
+        : Math.max(0, product.quantity - reserved);
 
       if (requestedQuantity > available) {
         warnings.push({
@@ -210,23 +258,24 @@ export function useNewReservationWarnings({
           availableQuantity: available,
           conflictingReservations: reserved,
           turnoverBufferMinutes,
-        })
+        });
       }
     }
 
-    return warnings
+    return warnings;
   }, [
     endDate,
     existingReservations,
     pendingBlocksAvailability,
     products,
+    serviceAvailability,
     selectedProducts,
     startDate,
     turnoverBufferMinutes,
-  ])
+  ]);
 
   return {
     periodWarnings,
     availabilityWarnings,
-  }
+  };
 }

@@ -1,4 +1,7 @@
-import type { CombinationAvailability } from '@louez/types';
+import type {
+  CombinationAvailability,
+  ProductAvailability,
+} from '@louez/types';
 import {
   DEFAULT_COMBINATION_KEY,
   buildCombinationKey,
@@ -37,8 +40,11 @@ export function buildProductCombinations(
   product: Product,
   reservedByCombination: ReservedByProductCombination = new Map(),
   hasSelectedPeriod = false,
+  periodProductAvailability?: ProductAvailability,
 ): CombinationAvailability[] {
-  void hasSelectedPeriod;
+  if (hasSelectedPeriod && periodProductAvailability?.combinations) {
+    return periodProductAvailability.combinations;
+  }
 
   const bookingAttributeAxes = getSortedAxes(product);
   const byCombination = new Map<
@@ -117,9 +123,14 @@ export function buildProductCombinations(
 function getTrackedPoolCapacity(
   product: Product,
   combinations: CombinationAvailability[],
+  periodProductAvailability?: ProductAvailability,
 ) {
   if (!product.trackUnits) {
     return Math.max(0, product.quantity);
+  }
+
+  if (periodProductAvailability) {
+    return Math.max(0, periodProductAvailability.availableQuantity);
   }
 
   if (combinations.length === 0) {
@@ -138,6 +149,7 @@ export function getLineQuantityConstraints(
   reservedQuantity = 0,
   reservedByCombination: ReservedByProductCombination = new Map(),
   hasSelectedPeriod = false,
+  periodProductAvailability?: ProductAvailability,
 ): LineQuantityConstraints {
   const bookingAttributeAxes = getSortedAxes(product);
   const hasBookingAttributes =
@@ -146,6 +158,7 @@ export function getLineQuantityConstraints(
     product,
     reservedByCombination,
     hasSelectedPeriod,
+    periodProductAvailability,
   );
 
   const otherLines = productLines.filter((item) => item.lineId !== line.lineId);
@@ -155,8 +168,12 @@ export function getLineQuantityConstraints(
   );
 
   const productCapacity = product.trackUnits
-    ? getTrackedPoolCapacity(product, combinations)
-    : Math.max(0, product.quantity - reservedQuantity);
+    ? getTrackedPoolCapacity(product, combinations, periodProductAvailability)
+    : Math.max(
+        0,
+        periodProductAvailability?.availableQuantity ??
+          product.quantity - reservedQuantity,
+      );
   const remainingProductCapacity = Math.max(
     0,
     productCapacity - otherProductQuantity,

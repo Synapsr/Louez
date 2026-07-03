@@ -23,11 +23,11 @@ export const formatUnitAttributes = (attributes: UnitAttributes | null) => {
 export const toDateTimeLocalInputValue = (
   value: Date | string | null | undefined,
 ) => {
-  const date = value
-    ? typeof value === 'string'
-      ? new Date(value)
-      : value
-    : new Date();
+  if (value == null) {
+    return '';
+  }
+
+  const date = typeof value === 'string' ? new Date(value) : value;
 
   if (Number.isNaN(date.getTime())) {
     return '';

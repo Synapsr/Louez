@@ -60,7 +60,9 @@ export const DowntimeDialog = ({
   const tErrors = useTranslations('errors');
   const router = useRouter();
   const [reason, setReason] = useState<DowntimeReasonOption>('maintenance');
-  const [startsAt, setStartsAt] = useState(toDateTimeLocalInputValue(null));
+  const [startsAt, setStartsAt] = useState(
+    toDateTimeLocalInputValue(new Date()),
+  );
   const [endsAt, setEndsAt] = useState('');
   const [openEnded, setOpenEnded] = useState(true);
   const [note, setNote] = useState('');
@@ -75,7 +77,9 @@ export const DowntimeDialog = ({
     }
 
     setReason(currentDowntime?.reason ?? 'maintenance');
-    setStartsAt(toDateTimeLocalInputValue(currentDowntime?.startsAt ?? null));
+    setStartsAt(
+      toDateTimeLocalInputValue(currentDowntime?.startsAt ?? new Date()),
+    );
     setEndsAt(toDateTimeLocalInputValue(currentDowntime?.endsAt ?? null));
     setOpenEnded(currentDowntime?.endsAt == null);
     setNote(currentDowntime?.note ?? '');

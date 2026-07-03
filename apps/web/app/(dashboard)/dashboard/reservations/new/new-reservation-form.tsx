@@ -62,6 +62,7 @@ import { useAppForm } from '@/hooks/form/form';
 
 import { useStoreTimezone } from '@/contexts/store-context';
 
+import { getManualReservationAvailability } from '../actions';
 import { NewReservationStepCustomer } from './components/new-reservation-step-customer';
 import { NewReservationStepDelivery } from './components/new-reservation-step-delivery';
 import { NewReservationStepProducts } from './components/new-reservation-step-products';
@@ -109,9 +110,7 @@ type ManualReservationShortfall = {
   available: number;
 };
 
-function isInsufficientCapacityResult(
-  result: unknown,
-): result is {
+function isInsufficientCapacityResult(result: unknown): result is {
   error: 'errors.insufficientCapacity';
   shortfalls: ManualReservationShortfall[];
 } {
@@ -532,6 +531,41 @@ export function NewReservationForm({
 
   const selectedCustomer = customers.find((c) => c.id === watchCustomerId);
   const hasSelectedPeriod = Boolean(watchStartDate && watchEndDate);
+  const availabilityProductIds = useMemo(
+    () => products.map((product) => product.id),
+    [products],
+  );
+  const manualAvailabilityQuery = useQuery({
+    queryKey: [
+      'manual-reservation-availability',
+      watchStartDate?.toISOString() ?? null,
+      watchEndDate?.toISOString() ?? null,
+      availabilityProductIds,
+    ],
+    queryFn: async () => {
+      if (!watchStartDate || !watchEndDate) {
+        return null;
+      }
+
+      const result = await getManualReservationAvailability({
+        startDate: watchStartDate.toISOString(),
+        endDate: watchEndDate.toISOString(),
+        productIds: availabilityProductIds,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error ?? 'errors.invalidData');
+      }
+
+      return result.availability.products;
+    },
+    enabled: hasSelectedPeriod,
+    staleTime: 30_000,
+  });
+  const serviceAvailability =
+    manualAvailabilityQuery.data && !manualAvailabilityQuery.isError
+      ? manualAvailabilityQuery.data
+      : undefined;
 
   const { periodWarnings, availabilityWarnings } = useNewReservationWarnings({
     startDate: watchStartDate,
@@ -543,6 +577,7 @@ export function NewReservationForm({
     pendingBlocksAvailability,
     turnoverBufferMinutes,
     existingReservations,
+    serviceAvailability,
   });
   const periodAvailability = useMemo(
     () =>
@@ -552,14 +587,20 @@ export function NewReservationForm({
         pendingBlocksAvailability,
         turnoverBufferMinutes,
         existingReservations,
+        serviceAvailability,
       }),
     [
       existingReservations,
       pendingBlocksAvailability,
+      serviceAvailability,
       turnoverBufferMinutes,
       watchEndDate,
       watchStartDate,
     ],
+  );
+  const getPeriodProductAvailability = useCallback(
+    (productId: string) => periodAvailability.productsById.get(productId),
+    [periodAvailability],
   );
 
   const {
@@ -733,6 +774,7 @@ export function NewReservationForm({
           periodAvailability.reservedByProduct.get(product.id) || 0,
           periodAvailability.reservedByProductCombination,
           hasSelectedPeriod,
+          getPeriodProductAvailability(product.id),
         );
         if (constraints.lineMaxQuantity <= 0) {
           return prev;
@@ -755,6 +797,7 @@ export function NewReservationForm({
           periodAvailability.reservedByProduct.get(product.id) || 0,
           periodAvailability.reservedByProductCombination,
           hasSelectedPeriod,
+          getPeriodProductAvailability(product.id),
         );
         if (constraints.lineMaxQuantity <= 0) {
           return prev;
@@ -771,6 +814,7 @@ export function NewReservationForm({
         periodAvailability.reservedByProduct.get(product.id) || 0,
         periodAvailability.reservedByProductCombination,
         hasSelectedPeriod,
+        getPeriodProductAvailability(product.id),
       );
       const nextQuantity = Math.min(
         existingLine.quantity + 1,
@@ -818,6 +862,7 @@ export function NewReservationForm({
         periodAvailability.reservedByProduct.get(product.id) || 0,
         periodAvailability.reservedByProductCombination,
         hasSelectedPeriod,
+        getPeriodProductAvailability(product.id),
       );
       const nextQuantity = Math.max(
         1,
@@ -888,6 +933,7 @@ export function NewReservationForm({
         periodAvailability.reservedByProduct.get(product.id) || 0,
         periodAvailability.reservedByProductCombination,
         hasSelectedPeriod,
+        getPeriodProductAvailability(product.id),
       );
       const nextQuantity = Math.min(
         nextLine.quantity,
@@ -2036,9 +2082,7 @@ export function NewReservationForm({
                   key={`${shortfall.productId}:${shortfall.combinationKey || 'product'}`}
                   className="rounded-md border p-3"
                 >
-                  <p className="text-sm font-medium">
-                    {shortfall.productName}
-                  </p>
+                  <p className="text-sm font-medium">{shortfall.productName}</p>
                   {shortfall.combinationKey && (
                     <p className="text-muted-foreground mt-1 text-xs">
                       {t('overbooking.combination', {

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const idSchema = z.string().length(21);
+const idListSchema = z.array(idSchema).max(100).optional();
 const dateInputSchema = z.coerce.date();
 const optionalDateInputSchema = z
   .preprocess(
@@ -48,6 +49,7 @@ export const declareDowntimeSchema = z
     startsAt: dateInputSchema,
     endsAt: optionalDateInputSchema,
     note: z.string().max(2000).optional().nullable(),
+    excludeReservationItemIds: idListSchema,
   })
   .refine(
     (data) =>
@@ -66,6 +68,7 @@ export const updateDowntimeSchema = z.object({
   startsAt: dateInputSchema.optional(),
   endsAt: optionalDateInputSchema,
   note: z.string().max(2000).optional().nullable(),
+  excludeReservationItemIds: idListSchema,
 });
 
 export const closeDowntimeSchema = z.object({

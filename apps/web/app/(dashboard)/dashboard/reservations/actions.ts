@@ -8,6 +8,7 @@ import { nanoid } from 'nanoid';
 import {
   computeReservedNetOfExcludedUnits,
   getRouteDistance,
+  getStorefrontAvailability,
 } from '@louez/api/services';
 import { db, getEffectiveProductQuantities } from '@louez/db';
 import {
@@ -43,9 +44,9 @@ import {
   DEFAULT_COMBINATION_KEY,
   buildCombinationKey,
   canonicalizeAttributes,
+  getCurrencySymbol,
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
-  getCurrencySymbol,
   hasCompleteAttributes,
   matchesSelectedAttributes,
 } from '@louez/utils';
@@ -57,8 +58,10 @@ import {
   calculateSeasonalAwarePrice,
 } from '@louez/utils';
 import {
-  dashboardReservationAssignUnitsInputSchema,
   type ReservationStatus,
+  type StorefrontAvailabilityInput,
+  dashboardReservationAssignUnitsInputSchema,
+  storefrontAvailabilityInputSchema,
 } from '@louez/validations';
 
 import { auth } from '@/lib/auth';
@@ -140,6 +143,34 @@ function getActionErrorKey(error: unknown, fallback: string): string {
 
 async function getStoreForUser() {
   return getCurrentStore();
+}
+
+export async function getManualReservationAvailability(
+  input: StorefrontAvailabilityInput,
+) {
+  const store = await getCurrentStore();
+  if (!store) {
+    return { error: 'errors.unauthorized' };
+  }
+
+  const validated = storefrontAvailabilityInputSchema.safeParse(input);
+  if (!validated.success) {
+    return { error: 'errors.invalidData' };
+  }
+
+  try {
+    const availability = await getStorefrontAvailability({
+      storeSlug: store.slug,
+      startDate: validated.data.startDate,
+      endDate: validated.data.endDate,
+      productIds: validated.data.productIds,
+    });
+
+    return { success: true, availability };
+  } catch (error) {
+    console.error('Error fetching manual reservation availability:', error);
+    return { error: 'errors.invalidData' };
+  }
 }
 
 function toPricingMode(value: unknown): PricingMode {
@@ -779,7 +810,11 @@ type ManualReservationCapacityShortfall = {
 };
 
 function normalizeUnitAttributes(attributes: unknown): UnitAttributes {
-  if (!attributes || typeof attributes !== 'object' || Array.isArray(attributes)) {
+  if (
+    !attributes ||
+    typeof attributes !== 'object' ||
+    Array.isArray(attributes)
+  ) {
     return {};
   }
 
@@ -1911,7 +1946,7 @@ export async function getStoreProducts() {
   return storeProducts.map((product) => ({
     ...product,
     quantity: product.trackUnits
-      ? effectiveQuantities.get(product.id) ?? 0
+      ? (effectiveQuantities.get(product.id) ?? 0)
       : product.quantity,
   }));
 }
@@ -3286,7 +3321,9 @@ export async function updateReservation(
 
     if (dateChanged && assignmentsToKeep.length > 0) {
       const assignedUnitIds = [
-        ...new Set(assignmentsToKeep.map((assignment) => assignment.productUnitId)),
+        ...new Set(
+          assignmentsToKeep.map((assignment) => assignment.productUnitId),
+        ),
       ].sort((a, b) => a.localeCompare(b, 'en'));
 
       const lockedUnits = await tx
@@ -3322,7 +3359,9 @@ export async function updateReservation(
       const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
       const hardConflictKeys = new Set<string>();
       const hardConflicts: UpdateReservationConflict[] = [];
-      const pushHardConflict = (assignment: (typeof assignmentsToKeep)[number]) => {
+      const pushHardConflict = (
+        assignment: (typeof assignmentsToKeep)[number],
+      ) => {
         const key = `${assignment.reservationItemId}:${assignment.productUnitId}`;
         if (hardConflictKeys.has(key)) return;
         hardConflictKeys.add(key);
@@ -3342,10 +3381,7 @@ export async function updateReservation(
         }
       }
 
-      const assignmentsByItemId = new Map<
-        string,
-        typeof assignmentsToKeep
-      >();
+      const assignmentsByItemId = new Map<string, typeof assignmentsToKeep>();
       for (const assignment of assignmentsToKeep) {
         assignmentsByItemId.set(assignment.reservationItemId, [
           ...(assignmentsByItemId.get(assignment.reservationItemId) ?? []),
@@ -3356,7 +3392,9 @@ export async function updateReservation(
       const bufferUnitIds = new Set<string>();
       for (const [reservationItemId, itemAssignments] of assignmentsByItemId) {
         const busyUnitIds = await findBusyUnitIds(tx, {
-          unitIds: itemAssignments.map((assignment) => assignment.productUnitId),
+          unitIds: itemAssignments.map(
+            (assignment) => assignment.productUnitId,
+          ),
           start: newStartDate,
           end: newEndDate,
           blockingStatuses,
@@ -3411,10 +3449,11 @@ export async function updateReservation(
       await tx
         .delete(reservationItemUnits)
         .where(
-          inArray(
-            reservationItemUnits.reservationItemId,
-            [...new Set(assignmentsToRemove.map((item) => item.reservationItemId))],
-          ),
+          inArray(reservationItemUnits.reservationItemId, [
+            ...new Set(
+              assignmentsToRemove.map((item) => item.reservationItemId),
+            ),
+          ]),
         );
     }
 
@@ -3467,7 +3506,10 @@ export async function updateReservation(
         updatedAt: new Date(),
       })
       .where(
-        and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
+        and(
+          eq(reservations.id, reservationId),
+          eq(reservations.storeId, store.id),
+        ),
       );
 
     return { success: true };
@@ -5257,7 +5299,7 @@ export async function assignUnitsToReservationItem(
     const session = await auth();
     const actorUserId = session?.user?.id ?? null;
     const blockingStatuses = getBlockingReservationStatuses(
-      (store.settings?.pendingBlocksAvailability) ?? true,
+      store.settings?.pendingBlocksAvailability ?? true,
     );
     const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
 
@@ -5561,7 +5603,7 @@ export async function getAvailableUnitsForReservationItem(
       item.endDate,
       {
         blockingStatuses: getBlockingReservationStatuses(
-          (store.settings?.pendingBlocksAvailability) ?? true,
+          store.settings?.pendingBlocksAvailability ?? true,
         ),
         turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
         excludeReservationItemId: item.id,

@@ -248,6 +248,7 @@ export async function declareDowntime(input: DeclareDowntimeInput) {
       storeId: store.id,
       pendingBlocksAvailability: store.settings?.pendingBlocksAvailability,
       turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
+      excludeReservationItemIds: validated.data.excludeReservationItemIds,
     },
   );
 
@@ -342,6 +343,7 @@ export async function updateDowntime(input: UpdateDowntimeInput) {
       storeId: store.id,
       pendingBlocksAvailability: store.settings?.pendingBlocksAvailability,
       turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
+      excludeReservationItemIds: validated.data.excludeReservationItemIds,
     },
   );
 

@@ -39,6 +39,7 @@ type GetUnitConflictsOptions = {
   pendingBlocksAvailability?: boolean;
   turnoverBufferMinutes?: number;
   excludeReservationItemId?: string;
+  excludeReservationItemIds?: string[];
 };
 
 type GetUnitConflictFlagsOptions = {
@@ -50,7 +51,7 @@ type GetUnitConflictFlagsOptions = {
 function getBlockingStatuses(
   pendingBlocksAvailability: boolean | undefined,
 ): BlockingReservationStatus[] {
-  return getBlockingReservationStatuses((pendingBlocksAvailability) ?? true);
+  return getBlockingReservationStatuses(pendingBlocksAvailability ?? true);
 }
 
 export async function getUnitConflicts(
@@ -105,9 +106,27 @@ export async function getUnitConflicts(
     );
   }
 
-  if (options.excludeReservationItemId) {
+  const excludedReservationItemIds = [
+    ...(options.excludeReservationItemId
+      ? [options.excludeReservationItemId]
+      : []),
+    ...(options.excludeReservationItemIds ?? []),
+  ];
+  const uniqueExcludedReservationItemIds = [
+    ...new Set(excludedReservationItemIds),
+  ];
+
+  const [onlyExcludedReservationItemId] = uniqueExcludedReservationItemIds;
+  if (
+    uniqueExcludedReservationItemIds.length === 1 &&
+    onlyExcludedReservationItemId
+  ) {
     conditions.push(
-      not(eq(reservationItems.id, options.excludeReservationItemId)),
+      not(eq(reservationItems.id, onlyExcludedReservationItemId)),
+    );
+  } else if (uniqueExcludedReservationItemIds.length > 1) {
+    conditions.push(
+      not(inArray(reservationItems.id, uniqueExcludedReservationItemIds)),
     );
   }
 
@@ -230,25 +249,22 @@ export async function getUnitConflictFlags(
     const unitWindows = windowsByUnitId.get(assignment.productUnitId) ?? [];
 
     if (
-      unitWindows.some(
-        (window) => {
-          const bufferedStart = new Date(
-            window.start.getTime() -
-              Math.max(0, turnoverBufferMinutes) * 60_000,
-          );
-          const bufferedEnd = window.end
-            ? new Date(
-                window.end.getTime() +
-                  Math.max(0, turnoverBufferMinutes) * 60_000,
-              )
-            : null;
+      unitWindows.some((window) => {
+        const bufferedStart = new Date(
+          window.start.getTime() - Math.max(0, turnoverBufferMinutes) * 60_000,
+        );
+        const bufferedEnd = window.end
+          ? new Date(
+              window.end.getTime() +
+                Math.max(0, turnoverBufferMinutes) * 60_000,
+            )
+          : null;
 
-          return (
-            assignment.endDate > bufferedStart &&
-            (bufferedEnd === null || assignment.startDate < bufferedEnd)
-          );
-        },
-      )
+        return (
+          assignment.endDate > bufferedStart &&
+          (bufferedEnd === null || assignment.startDate < bufferedEnd)
+        );
+      })
     ) {
       flags[assignment.productUnitId] = true;
     }

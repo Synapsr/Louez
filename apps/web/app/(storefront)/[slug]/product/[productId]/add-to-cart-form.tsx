@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import { useQuery } from '@tanstack/react-query';
 import {
   differenceInDays,
   differenceInHours,
@@ -10,7 +11,11 @@ import {
 import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import type { BusinessHours, PricingMode } from '@louez/types';
+import type {
+  BusinessHours,
+  CombinationAvailability,
+  PricingMode,
+} from '@louez/types';
 import type { Rate } from '@louez/types';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
@@ -49,6 +54,7 @@ import {
   RentalDatePicker,
 } from '@/components/storefront/rental-date-picker';
 
+import { orpc } from '@/lib/orpc/react';
 import { getMinStartDate } from '@/lib/utils/duration';
 import {
   formatDurationFromMinutes,
@@ -154,6 +160,38 @@ export function AddToCartForm({
   >({});
   const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false);
   const hasBookingAttributes = trackUnits && bookingAttributeAxes.length > 0;
+  const hasSelectedDates = Boolean(startDate && endDate);
+  const availabilityStartDate =
+    startDate?.toISOString() ?? new Date(0).toISOString();
+  const availabilityEndDate =
+    endDate?.toISOString() ??
+    startDate?.toISOString() ??
+    new Date(0).toISOString();
+  const availabilityQuery = useQuery({
+    ...orpc.storefront.availability.get.queryOptions({
+      input: {
+        startDate: availabilityStartDate,
+        endDate: availabilityEndDate,
+        productIds: [productId],
+      },
+    }),
+    enabled: hasSelectedDates,
+  });
+  const periodProductAvailability =
+    hasSelectedDates && availabilityQuery.data
+      ? (availabilityQuery.data.products.find(
+          (item) => item.productId === productId,
+        ) ?? null)
+      : null;
+  const periodCombinations = useMemo<CombinationAvailability[]>(() => {
+    if (!periodProductAvailability) {
+      return [];
+    }
+
+    return periodProductAvailability.combinationsByKey
+      ? Object.values(periodProductAvailability.combinationsByKey)
+      : (periodProductAvailability.combinations ?? []);
+  }, [periodProductAvailability]);
   const fallbackCombinations = useMemo(() => {
     if (!hasBookingAttributes) {
       return [];
@@ -206,11 +244,59 @@ export function AddToCartForm({
   }, [bookingAttributeAxes, hasBookingAttributes, productUnits]);
   const effectiveCombinations = useMemo(
     () =>
-      bookingCombinations.length > 0
-        ? bookingCombinations
-        : fallbackCombinations,
-    [bookingCombinations, fallbackCombinations],
+      hasSelectedDates && periodProductAvailability
+        ? periodCombinations
+        : bookingCombinations.length > 0
+          ? bookingCombinations
+          : fallbackCombinations,
+    [
+      bookingCombinations,
+      fallbackCombinations,
+      hasSelectedDates,
+      periodCombinations,
+      periodProductAvailability,
+    ],
   );
+  const effectiveBookingAttributeValues = useMemo(() => {
+    if (!hasSelectedDates || !periodProductAvailability) {
+      return bookingAttributeValues;
+    }
+
+    return bookingAttributeAxes.reduce<Record<string, string[]>>(
+      (acc, axis) => {
+        const values = new Set<string>();
+        for (const combination of periodCombinations) {
+          if (combination.availableQuantity <= 0) {
+            continue;
+          }
+          const value = combination.selectedAttributes?.[axis.key];
+          if (value && value.trim()) {
+            values.add(value.trim());
+          }
+        }
+        acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'));
+        return acc;
+      },
+      {},
+    );
+  }, [
+    bookingAttributeAxes,
+    bookingAttributeValues,
+    hasSelectedDates,
+    periodCombinations,
+    periodProductAvailability,
+  ]);
+  const periodAwareMaxQuantity =
+    hasSelectedDates && periodProductAvailability
+      ? periodProductAvailability.availableQuantity
+      : maxQuantity;
+  const isAvailabilityLoadingForSelection =
+    hasSelectedDates &&
+    availabilityQuery.isLoading &&
+    !periodProductAvailability;
+  const availabilityBoundQuantity = isAvailabilityLoadingForSelection
+    ? 0
+    : periodAwareMaxQuantity;
   const selectionCapacity = useMemo(
     () =>
       getSelectionCapacity(
@@ -223,8 +309,8 @@ export function AddToCartForm({
   const shouldSplitAcrossCombinations =
     hasBookingAttributes && selectionCapacity.allocationMode === 'split';
   const effectiveMaxQuantity = hasBookingAttributes
-    ? Math.min(maxQuantity, selectionCapacity.capacity)
-    : maxQuantity;
+    ? Math.min(availabilityBoundQuantity, selectionCapacity.capacity)
+    : availabilityBoundQuantity;
   const isSelectionUnavailable =
     hasBookingAttributes && effectiveMaxQuantity === 0;
 
@@ -582,12 +668,15 @@ export function AddToCartForm({
                   >
                     {t('bookingAttributeNone')}
                   </SelectItem>
-                  {(bookingAttributeValues[axis.key] || []).length > 0 ? (
-                    (bookingAttributeValues[axis.key] || []).map((value) => (
-                      <SelectItem key={value} value={value} label={value}>
-                        {value}
-                      </SelectItem>
-                    ))
+                  {(effectiveBookingAttributeValues[axis.key] || []).length >
+                  0 ? (
+                    (effectiveBookingAttributeValues[axis.key] || []).map(
+                      (value) => (
+                        <SelectItem key={value} value={value} label={value}>
+                          {value}
+                        </SelectItem>
+                      ),
+                    )
                   ) : (
                     <SelectItem
                       value={`__empty_${axis.key}`}
