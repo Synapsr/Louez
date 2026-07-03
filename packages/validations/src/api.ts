@@ -108,6 +108,7 @@ export const dashboardReservationGetAvailableUnitsInputSchema = z.object({
 export const dashboardReservationAssignUnitsInputSchema = z.object({
   reservationItemId: z.string().length(21),
   unitIds: z.array(z.string().length(21)).max(500),
+  overrideTurnoverBuffer: z.boolean().optional(),
 });
 
 export const dashboardReservationRequestPaymentInputSchema = z.object({

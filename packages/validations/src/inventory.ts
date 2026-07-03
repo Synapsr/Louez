@@ -98,6 +98,7 @@ export const reassignReservationItemUnitSchema = z.object({
   reservationItemId: idSchema,
   fromUnitId: idSchema,
   toUnitId: idSchema,
+  overrideTurnoverBuffer: z.boolean().optional(),
 });
 
 export const getInventorySchema = z.object({

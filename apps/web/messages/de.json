@@ -1153,7 +1153,12 @@
         "replacementUnit": "Ersatzeinheit",
         "noCandidates": "Keine Ersatzeinheit verfügbar",
         "reassign": "Neu zuweisen",
-        "leaveAsIs": "Unverändert lassen"
+        "leaveAsIs": "Unverändert lassen",
+        "invalidUnitsToast": "Nicht verfügbare Einheiten: {identifiers}",
+        "bufferConflictTitle": "Konflikt mit Umschlagspuffer",
+        "bufferConflictDescription": "Dieser Ersatz wird nur durch den Umschlagspuffer blockiert: {identifiers}. Trotzdem neu zuweisen?",
+        "bufferConflictCancel": "Abbrechen",
+        "bufferConflictConfirm": "Trotzdem neu zuweisen"
       },
       "downtimeDialog": {
         "title": "Ausfallzeit eintragen",
@@ -1738,6 +1743,11 @@
         "saved": "Einheiten zugewiesen",
         "notes": "Notizen",
         "identifiers": "Kennzeichen: {identifiers}",
+        "invalidUnitsToast": "Nicht verfügbare Einheiten: {identifiers}",
+        "bufferConflictTitle": "Konflikt mit Umschlagspuffer",
+        "bufferConflictDescription": "Diese Einheiten werden nur durch den Umschlagspuffer blockiert: {identifiers}. Trotzdem zuweisen?",
+        "bufferConflictCancel": "Auswahl behalten",
+        "bufferConflictConfirm": "Trotzdem zuweisen",
         "optionsLabel": "Optionen",
         "clearSelection": "Auswahl aufheben",
         "autofillHint": "Vorgeschlagene Einheiten ausgewählt. Klicken Sie auf Speichern, um zu bestätigen."
@@ -5525,6 +5535,7 @@
     "insufficientStock": "Unzureichender Bestand für: {name} ({count} verfügbar)",
     "tooManyUnitsAssigned": "Es können nicht mehr Einheiten zugewiesen werden als reserviert",
     "invalidUnits": "Eine oder mehrere ausgewählte Einheiten sind ungültig",
+    "turnoverBufferConflict": "Die ausgewählte Einheit wird nur durch den Umschlagspuffer blockiert",
     "unitProductMismatch": "Ausgewählte Einheiten gehören nicht zu diesem Produkt",
     "assignUnitsFailed": "Zuweisung der Einheiten fehlgeschlagen",
     "getAvailableUnitsFailed": "Laden der verfügbaren Einheiten fehlgeschlagen",

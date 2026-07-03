@@ -8,7 +8,10 @@ import { nanoid } from 'nanoid';
 import { getRouteDistance } from '@louez/api/services';
 import { db } from '@louez/db';
 import {
+  buildUnitRentableDuringPredicate,
   customers,
+  findBusyUnitIds,
+  getBlockingReservationStatuses,
   paymentRequests,
   payments,
   productSeasonalPricing,
@@ -46,7 +49,10 @@ import {
   calculateDurationMinutes,
   calculateSeasonalAwarePrice,
 } from '@louez/utils';
-import type { ReservationStatus } from '@louez/validations';
+import {
+  dashboardReservationAssignUnitsInputSchema,
+  type ReservationStatus,
+} from '@louez/validations';
 
 import { auth } from '@/lib/auth';
 import {
@@ -4433,6 +4439,18 @@ export async function requestPayment(
 // Unit Assignment Actions
 // ============================================================================
 
+type AssignUnitsToReservationItemResult = {
+  success?: boolean;
+  error?: string;
+  bufferConflict?: boolean;
+  failedUnitIds?: string[];
+  warnings?: Array<{
+    key: string;
+    params?: Record<string, string | number>;
+    details?: string;
+  }>;
+};
+
 /**
  * Assign units to a reservation item.
  * This replaces any existing assignments for the item.
@@ -4440,10 +4458,20 @@ export async function requestPayment(
 export async function assignUnitsToReservationItem(
   reservationItemId: string,
   unitIds: string[],
-): Promise<{ success?: boolean; error?: string }> {
+  options?: { overrideTurnoverBuffer?: boolean },
+): Promise<AssignUnitsToReservationItemResult> {
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };
+  }
+
+  const validated = dashboardReservationAssignUnitsInputSchema.safeParse({
+    reservationItemId,
+    unitIds,
+    overrideTurnoverBuffer: options?.overrideTurnoverBuffer,
+  });
+  if (!validated.success) {
+    return { error: 'errors.invalidData' };
   }
 
   try {
@@ -4474,8 +4502,12 @@ export async function assignUnitsToReservationItem(
       return { error: 'errors.notFound' };
     }
 
+    const selectedUnitIds = validated.data.unitIds;
+    const overrideTurnoverBuffer =
+      validated.data.overrideTurnoverBuffer ?? false;
+
     // 2. Validate that we're not assigning more units than quantity
-    if (unitIds.length > item.quantity) {
+    if (selectedUnitIds.length > item.quantity) {
       return { error: 'errors.tooManyUnitsAssigned' };
     }
 
@@ -4484,178 +4516,242 @@ export async function assignUnitsToReservationItem(
       reservationItemId,
     };
 
-    // 3. Verify all units belong to the correct product
-    if (unitIds.length > 0) {
-      const units = await db
+    const session = await auth();
+    const actorUserId = session?.user?.id ?? null;
+    const blockingStatuses = getBlockingReservationStatuses(
+      (store.settings?.pendingBlocksAvailability) ?? true,
+    );
+    const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
+
+    const assignmentResult = await db.transaction(async (tx) => {
+      const existingAssignments = await tx
         .select({
-          id: productUnits.id,
-          productId: productUnits.productId,
-          combinationKey: productUnits.combinationKey,
-          identifier: productUnits.identifier,
-          lifecycleStatus: productUnits.lifecycleStatus,
+          productUnitId: reservationItemUnits.productUnitId,
+          identifierSnapshot: reservationItemUnits.identifierSnapshot,
         })
-        .from(productUnits)
-        .where(inArray(productUnits.id, unitIds));
+        .from(reservationItemUnits)
+        .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
 
-      // Check all units exist and belong to the right product
-      if (units.length !== unitIds.length) {
-        return { error: 'errors.invalidUnits' };
-      }
-
-      for (const unit of units) {
-        if (unit.productId !== item.productId) {
-          return { error: 'errors.unitProductMismatch' };
-        }
-        if (unit.lifecycleStatus !== 'active') {
-          return { error: 'errors.invalidUnits' };
-        }
-        if (
-          item.combinationKey &&
-          (unit.combinationKey || DEFAULT_COMBINATION_KEY) !==
-            item.combinationKey
-        ) {
-          return { error: 'errors.unitCombinationMismatch' };
-        }
-      }
-
-      const { checkUnitsAvailability, getBlockingReservationStatuses } =
-        await import('@/lib/utils/unit-availability');
-      const availability = await checkUnitsAvailability(
-        unitIds,
-        item.startDate,
-        item.endDate,
-        {
-          blockingStatuses: getBlockingReservationStatuses(
-            (store.settings?.pendingBlocksAvailability) ?? true,
-          ),
-          turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
-          excludeReservationItemId: item.id,
-        },
+      const existingUnitIds = new Set(
+        existingAssignments.map((assignment) => assignment.productUnitId),
+      );
+      const nextUnitIds = new Set(selectedUnitIds);
+      const unassignedUnitIds = [...existingUnitIds].filter(
+        (unitId) => !nextUnitIds.has(unitId),
+      );
+      const addedUnitIds = selectedUnitIds.filter(
+        (unitId) => !existingUnitIds.has(unitId),
+      );
+      const sortedLockUnitIds = [...new Set(selectedUnitIds)].sort((a, b) =>
+        a.localeCompare(b, 'en'),
       );
 
-      if (unitIds.some((unitId) => !availability[unitId])) {
-        return { error: 'errors.invalidUnits' };
+      if (sortedLockUnitIds.length > 0) {
+        await tx
+          .select({ id: productUnits.id })
+          .from(productUnits)
+          .where(inArray(productUnits.id, sortedLockUnitIds))
+          .orderBy(productUnits.id)
+          .for('update');
       }
 
-      // 5. Insert new assignments with identifier snapshots
-      const unitMap = new Map(units.map((u) => [u.id, u.identifier]));
-      const assignmentsToInsert = unitIds.map((unitId) => ({
+      const units =
+        selectedUnitIds.length > 0
+          ? await tx
+              .select({
+                id: productUnits.id,
+                productId: productUnits.productId,
+                combinationKey: productUnits.combinationKey,
+                identifier: productUnits.identifier,
+                lifecycleStatus: productUnits.lifecycleStatus,
+              })
+              .from(productUnits)
+              .where(inArray(productUnits.id, selectedUnitIds))
+          : [];
+      const unitById = new Map(units.map((unit) => [unit.id, unit]));
+
+      const missingAddedUnitIds = addedUnitIds.filter(
+        (unitId) => !unitById.has(unitId),
+      );
+      if (missingAddedUnitIds.length > 0) {
+        return {
+          error: 'errors.invalidUnits',
+          failedUnitIds: missingAddedUnitIds,
+        };
+      }
+
+      const productMismatchUnitIds = addedUnitIds.filter(
+        (unitId) => unitById.get(unitId)?.productId !== item.productId,
+      );
+      if (productMismatchUnitIds.length > 0) {
+        return {
+          error: 'errors.unitProductMismatch',
+          failedUnitIds: productMismatchUnitIds,
+        };
+      }
+
+      const inactiveAddedUnitIds = addedUnitIds.filter(
+        (unitId) => unitById.get(unitId)?.lifecycleStatus !== 'active',
+      );
+      if (inactiveAddedUnitIds.length > 0) {
+        return {
+          error: 'errors.invalidUnits',
+          failedUnitIds: inactiveAddedUnitIds,
+        };
+      }
+
+      const combinationMismatchUnitIds = addedUnitIds.filter((unitId) => {
+        const unit = unitById.get(unitId);
+        return (
+          Boolean(item.combinationKey) &&
+          unit &&
+          (unit.combinationKey || DEFAULT_COMBINATION_KEY) !==
+            item.combinationKey
+        );
+      });
+      if (combinationMismatchUnitIds.length > 0) {
+        return {
+          error: 'errors.unitCombinationMismatch',
+          failedUnitIds: combinationMismatchUnitIds,
+        };
+      }
+
+      if (addedUnitIds.length > 0) {
+        const rentableUnits = await tx
+          .select({ id: productUnits.id })
+          .from(productUnits)
+          .where(
+            and(
+              inArray(productUnits.id, addedUnitIds),
+              buildUnitRentableDuringPredicate(
+                tx,
+                item.startDate,
+                item.endDate,
+              ),
+            ),
+          );
+        const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
+        const notRentableUnitIds = addedUnitIds.filter(
+          (unitId) => !rentableUnitIds.has(unitId),
+        );
+        if (notRentableUnitIds.length > 0) {
+          return {
+            error: 'errors.invalidUnits',
+            failedUnitIds: notRentableUnitIds,
+          };
+        }
+
+        const busyUnitIds = await findBusyUnitIds(tx, {
+          unitIds: addedUnitIds,
+          start: item.startDate,
+          end: item.endDate,
+          blockingStatuses,
+          turnoverBufferMinutes,
+          excludeReservationItemId: item.id,
+        });
+        const overlapUnitIds = [...busyUnitIds.entries()]
+          .filter(([, reason]) => reason === 'overlap')
+          .map(([unitId]) => unitId);
+        const bufferUnitIds = [...busyUnitIds.entries()]
+          .filter(([, reason]) => reason === 'buffer')
+          .map(([unitId]) => unitId);
+
+        if (overlapUnitIds.length > 0) {
+          return {
+            error: 'errors.invalidUnits',
+            failedUnitIds: overrideTurnoverBuffer
+              ? overlapUnitIds
+              : [...overlapUnitIds, ...bufferUnitIds],
+          };
+        }
+
+        if (!overrideTurnoverBuffer && bufferUnitIds.length > 0) {
+          return {
+            error: 'errors.turnoverBufferConflict',
+            bufferConflict: true,
+            failedUnitIds: bufferUnitIds,
+          };
+        }
+      }
+
+      const existingIdentifierByUnitId = new Map(
+        existingAssignments.map((assignment) => [
+          assignment.productUnitId,
+          assignment.identifierSnapshot,
+        ]),
+      );
+      const unitIdentifierById = new Map(
+        units.map((unit) => [unit.id, unit.identifier]),
+      );
+      const assignmentsToInsert = selectedUnitIds.map((unitId) => ({
         id: nanoid(),
         reservationItemId,
         productUnitId: unitId,
-        identifierSnapshot: unitMap.get(unitId) || '',
+        identifierSnapshot:
+          unitIdentifierById.get(unitId) ||
+          existingIdentifierByUnitId.get(unitId) ||
+          '',
       }));
+      const unitEvents: Array<typeof productUnitEvents.$inferInsert> = [
+        ...unassignedUnitIds.map(
+          (unitId) =>
+            ({
+              id: nanoid(),
+              productUnitId: unitId,
+              storeId: store.id,
+              type: 'unassigned',
+              actorUserId,
+              payload: unitEventPayload,
+            }) satisfies typeof productUnitEvents.$inferInsert,
+        ),
+        ...addedUnitIds.map(
+          (unitId) =>
+            ({
+              id: nanoid(),
+              productUnitId: unitId,
+              storeId: store.id,
+              type: 'assigned',
+              actorUserId,
+              payload: unitEventPayload,
+            }) satisfies typeof productUnitEvents.$inferInsert,
+        ),
+      ];
 
-      const session = await auth();
-      const actorUserId = session?.user?.id ?? null;
+      await tx
+        .delete(reservationItemUnits)
+        .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
 
-      await db.transaction(async (tx) => {
-        const existingAssignments = await tx
-          .select({
-            productUnitId: reservationItemUnits.productUnitId,
-          })
-          .from(reservationItemUnits)
-          .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
-
-        const existingUnitIds = new Set(
-          existingAssignments.map((assignment) => assignment.productUnitId),
-        );
-        const nextUnitIds = new Set(unitIds);
-        const unassignedUnitIds = [...existingUnitIds].filter(
-          (unitId) => !nextUnitIds.has(unitId),
-        );
-        const assignedUnitIds = unitIds.filter(
-          (unitId) => !existingUnitIds.has(unitId),
-        );
-        const unitEvents: Array<typeof productUnitEvents.$inferInsert> = [
-          ...unassignedUnitIds.map(
-            (unitId) =>
-              ({
-                id: nanoid(),
-                productUnitId: unitId,
-                storeId: store.id,
-                type: 'unassigned',
-                actorUserId,
-                payload: unitEventPayload,
-              }) satisfies typeof productUnitEvents.$inferInsert,
-          ),
-          ...assignedUnitIds.map(
-            (unitId) =>
-              ({
-                id: nanoid(),
-                productUnitId: unitId,
-                storeId: store.id,
-                type: 'assigned',
-                actorUserId,
-                payload: unitEventPayload,
-              }) satisfies typeof productUnitEvents.$inferInsert,
-          ),
-        ];
-
-        await tx
-          .delete(reservationItemUnits)
-          .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
-
+      if (assignmentsToInsert.length > 0) {
         await tx.insert(reservationItemUnits).values(assignmentsToInsert);
+      }
 
-        if (unitEvents.length > 0) {
-          await tx.insert(productUnitEvents).values(unitEvents);
-        }
-      });
+      if (unitEvents.length > 0) {
+        await tx.insert(productUnitEvents).values(unitEvents);
+      }
 
-      // 6. Log activity
-      await logReservationActivity(item.reservationId, 'modified', {
-        action: 'units_assigned',
-        reservationItemId,
-        unitIdentifiers: units.map((u) => u.identifier),
-      });
-    } else {
-      const session = await auth();
-      const actorUserId = session?.user?.id ?? null;
+      return {
+        success: true,
+        unitIdentifiers: selectedUnitIds.map(
+          (unitId) =>
+            unitIdentifierById.get(unitId) ||
+            existingIdentifierByUnitId.get(unitId) ||
+            unitId,
+        ),
+      };
+    });
 
-      // Clear assignments if no units provided
-      await db.transaction(async (tx) => {
-        const existingAssignments = await tx
-          .select({
-            productUnitId: reservationItemUnits.productUnitId,
-          })
-          .from(reservationItemUnits)
-          .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
-
-        const existingUnitIds = new Set(
-          existingAssignments.map((assignment) => assignment.productUnitId),
-        );
-        const nextUnitIds = new Set(unitIds);
-        const unassignedUnitIds = [...existingUnitIds].filter(
-          (unitId) => !nextUnitIds.has(unitId),
-        );
-        const unitEvents: Array<typeof productUnitEvents.$inferInsert> =
-          unassignedUnitIds.map(
-            (unitId) =>
-              ({
-                id: nanoid(),
-                productUnitId: unitId,
-                storeId: store.id,
-                type: 'unassigned',
-                actorUserId,
-                payload: unitEventPayload,
-              }) satisfies typeof productUnitEvents.$inferInsert,
-          );
-
-        await tx
-          .delete(reservationItemUnits)
-          .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
-
-        if (unitEvents.length > 0) {
-          await tx.insert(productUnitEvents).values(unitEvents);
-        }
-      });
-
-      await logReservationActivity(item.reservationId, 'modified', {
-        action: 'units_unassigned',
-        reservationItemId,
-      });
+    if ('error' in assignmentResult && assignmentResult.error) {
+      return assignmentResult;
     }
+
+    await logReservationActivity(item.reservationId, 'modified', {
+      action:
+        selectedUnitIds.length > 0 ? 'units_assigned' : 'units_unassigned',
+      reservationItemId,
+      ...(selectedUnitIds.length > 0
+        ? { unitIdentifiers: assignmentResult.unitIdentifiers }
+        : {}),
+    });
 
     revalidatePath(`/dashboard/reservations/${item.reservationId}`);
     revalidatePath('/dashboard/inventory');

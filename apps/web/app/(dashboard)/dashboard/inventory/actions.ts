@@ -6,7 +6,10 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import {
+  buildUnitRentableDuringPredicate,
   db,
+  findBusyUnitIds,
+  getBlockingReservationStatuses,
   productUnitDowntimes,
   productUnitEvents,
   productUnits,
@@ -38,10 +41,6 @@ import {
 
 import { auth } from '@/lib/auth';
 import { getCurrentStore } from '@/lib/store-context';
-import {
-  checkUnitsAvailability,
-  getBlockingReservationStatuses,
-} from '@/lib/utils/unit-availability';
 import { getUnitConflicts } from '@/lib/utils/unit-conflicts';
 
 import {
@@ -715,7 +714,12 @@ export async function updateUnitDetails(input: UpdateUnitDetailsInput) {
 
 export async function reassignReservationItemUnit(
   input: ReassignReservationItemUnitInput,
-) {
+): Promise<{
+  success?: boolean;
+  error?: string;
+  bufferConflict?: boolean;
+  failedUnitIds?: string[];
+}> {
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };
@@ -756,110 +760,154 @@ export async function reassignReservationItemUnit(
     return { error: 'errors.notFound' };
   }
 
-  const units = await db
-    .select({
-      id: productUnits.id,
-      productId: productUnits.productId,
-      identifier: productUnits.identifier,
-      combinationKey: productUnits.combinationKey,
-      lifecycleStatus: productUnits.lifecycleStatus,
-    })
-    .from(productUnits)
-    .innerJoin(products, eq(productUnits.productId, products.id))
-    .where(
-      and(
-        inArray(productUnits.id, [
-          validated.data.fromUnitId,
-          validated.data.toUnitId,
-        ]),
-        eq(products.storeId, store.id),
-      ),
-    );
-
-  const fromUnit = units.find((unit) => unit.id === validated.data.fromUnitId);
-  const toUnit = units.find((unit) => unit.id === validated.data.toUnitId);
-
-  if (!fromUnit || !toUnit) {
-    return { error: 'errors.invalidUnits' };
-  }
-
-  if (
-    fromUnit.productId !== item.productId ||
-    toUnit.productId !== item.productId
-  ) {
-    return { error: 'errors.unitProductMismatch' };
-  }
-
-  if (toUnit.lifecycleStatus !== 'active') {
-    return { error: 'errors.invalidUnits' };
-  }
-
-  const fromCombinationKey = fromUnit.combinationKey || DEFAULT_COMBINATION_KEY;
-  const toCombinationKey = toUnit.combinationKey || DEFAULT_COMBINATION_KEY;
-  const itemCombinationKey = item.combinationKey || DEFAULT_COMBINATION_KEY;
-
-  if (
-    fromCombinationKey !== toCombinationKey ||
-    toCombinationKey !== itemCombinationKey
-  ) {
-    return { error: 'errors.unitCombinationMismatch' };
-  }
-
-  const [existingAssignment] = await db
-    .select({ id: reservationItemUnits.id })
-    .from(reservationItemUnits)
-    .where(
-      and(
-        eq(reservationItemUnits.reservationItemId, item.id),
-        eq(reservationItemUnits.productUnitId, fromUnit.id),
-      ),
-    )
-    .limit(1);
-
-  if (!existingAssignment) {
-    return { error: 'errors.notFound' };
-  }
-
-  const [duplicateAssignment] = await db
-    .select({ id: reservationItemUnits.id })
-    .from(reservationItemUnits)
-    .where(
-      and(
-        eq(reservationItemUnits.reservationItemId, item.id),
-        eq(reservationItemUnits.productUnitId, toUnit.id),
-      ),
-    )
-    .limit(1);
-
-  if (duplicateAssignment) {
-    return { error: 'errors.invalidUnits' };
-  }
-
-  const availability = await checkUnitsAvailability(
-    [toUnit.id],
-    item.startDate,
-    item.endDate,
-    {
-      blockingStatuses: getBlockingReservationStatuses(
-        (store.settings?.pendingBlocksAvailability) ?? true,
-      ),
-      turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
-      excludeReservationItemId: item.id,
-    },
-  );
-
-  if (!availability[toUnit.id]) {
-    return { error: 'errors.invalidUnits' };
-  }
-
   const actorUserId = await getActorUserId();
   const eventPayload = {
     reservationId: item.reservationId,
     reservationItemId: item.id,
   };
+  const blockingStatuses = getBlockingReservationStatuses(
+    (store.settings?.pendingBlocksAvailability) ?? true,
+  );
+  const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
 
   try {
-    await db.transaction(async (tx) => {
+    const reassignmentResult = await db.transaction(async (tx) => {
+      const sortedLockUnitIds = [
+        ...new Set([validated.data.fromUnitId, validated.data.toUnitId]),
+      ].sort((a, b) => a.localeCompare(b, 'en'));
+
+      await tx
+        .select({ id: productUnits.id })
+        .from(productUnits)
+        .where(inArray(productUnits.id, sortedLockUnitIds))
+        .orderBy(productUnits.id)
+        .for('update');
+
+      const units = await tx
+        .select({
+          id: productUnits.id,
+          productId: productUnits.productId,
+          identifier: productUnits.identifier,
+          combinationKey: productUnits.combinationKey,
+          lifecycleStatus: productUnits.lifecycleStatus,
+        })
+        .from(productUnits)
+        .innerJoin(products, eq(productUnits.productId, products.id))
+        .where(
+          and(
+            inArray(productUnits.id, sortedLockUnitIds),
+            eq(products.storeId, store.id),
+          ),
+        );
+
+      const fromUnit = units.find(
+        (unit) => unit.id === validated.data.fromUnitId,
+      );
+      const toUnit = units.find((unit) => unit.id === validated.data.toUnitId);
+
+      if (!fromUnit || !toUnit) {
+        return {
+          error: 'errors.invalidUnits',
+          failedUnitIds: !toUnit ? [validated.data.toUnitId] : undefined,
+        };
+      }
+
+      if (
+        fromUnit.productId !== item.productId ||
+        toUnit.productId !== item.productId
+      ) {
+        return {
+          error: 'errors.unitProductMismatch',
+          failedUnitIds: [toUnit.id],
+        };
+      }
+
+      if (toUnit.lifecycleStatus !== 'active') {
+        return { error: 'errors.invalidUnits', failedUnitIds: [toUnit.id] };
+      }
+
+      const fromCombinationKey =
+        fromUnit.combinationKey || DEFAULT_COMBINATION_KEY;
+      const toCombinationKey =
+        toUnit.combinationKey || DEFAULT_COMBINATION_KEY;
+      const itemCombinationKey = item.combinationKey || DEFAULT_COMBINATION_KEY;
+
+      if (
+        fromCombinationKey !== toCombinationKey ||
+        toCombinationKey !== itemCombinationKey
+      ) {
+        return {
+          error: 'errors.unitCombinationMismatch',
+          failedUnitIds: [toUnit.id],
+        };
+      }
+
+      const [existingAssignment] = await tx
+        .select({ id: reservationItemUnits.id })
+        .from(reservationItemUnits)
+        .where(
+          and(
+            eq(reservationItemUnits.reservationItemId, item.id),
+            eq(reservationItemUnits.productUnitId, fromUnit.id),
+          ),
+        )
+        .limit(1);
+
+      if (!existingAssignment) {
+        return { error: 'errors.notFound' };
+      }
+
+      const [duplicateAssignment] = await tx
+        .select({ id: reservationItemUnits.id })
+        .from(reservationItemUnits)
+        .where(
+          and(
+            eq(reservationItemUnits.reservationItemId, item.id),
+            eq(reservationItemUnits.productUnitId, toUnit.id),
+          ),
+        )
+        .limit(1);
+
+      if (duplicateAssignment) {
+        return { error: 'errors.invalidUnits', failedUnitIds: [toUnit.id] };
+      }
+
+      const rentableUnits = await tx
+        .select({ id: productUnits.id })
+        .from(productUnits)
+        .where(
+          and(
+            eq(productUnits.id, toUnit.id),
+            buildUnitRentableDuringPredicate(tx, item.startDate, item.endDate),
+          ),
+        );
+      if (rentableUnits.length === 0) {
+        return { error: 'errors.invalidUnits', failedUnitIds: [toUnit.id] };
+      }
+
+      const busyUnitIds = await findBusyUnitIds(tx, {
+        unitIds: [toUnit.id],
+        start: item.startDate,
+        end: item.endDate,
+        blockingStatuses,
+        turnoverBufferMinutes,
+        excludeReservationItemId: item.id,
+      });
+      const busyReason = busyUnitIds.get(toUnit.id);
+      if (busyReason === 'overlap') {
+        return { error: 'errors.invalidUnits', failedUnitIds: [toUnit.id] };
+      }
+      if (
+        busyReason === 'buffer' &&
+        !validated.data.overrideTurnoverBuffer
+      ) {
+        return {
+          error: 'errors.turnoverBufferConflict',
+          bufferConflict: true,
+          failedUnitIds: [toUnit.id],
+        };
+      }
+
       await tx
         .delete(reservationItemUnits)
         .where(eq(reservationItemUnits.id, existingAssignment.id));
@@ -888,14 +936,24 @@ export async function reassignReservationItemUnit(
           payload: eventPayload,
         }),
       ]);
+
+      return {
+        success: true,
+        fromIdentifier: fromUnit.identifier,
+        toIdentifier: toUnit.identifier,
+      };
     });
+
+    if ('error' in reassignmentResult && reassignmentResult.error) {
+      return reassignmentResult;
+    }
 
     await logReservationActivity(item.reservationId, 'modified', {
       action: 'unit_reassigned',
       reservationItemId: item.id,
       unitIdentifiers: {
-        from: fromUnit.identifier,
-        to: toUnit.identifier,
+        from: reassignmentResult.fromIdentifier,
+        to: reassignmentResult.toIdentifier,
       },
     });
   } catch (error) {

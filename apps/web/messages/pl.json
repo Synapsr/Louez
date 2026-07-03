@@ -1114,7 +1114,12 @@
         "replacementUnit": "Jednostka zastępcza",
         "noCandidates": "Brak dostępnej jednostki",
         "reassign": "Przypisz ponownie",
-        "leaveAsIs": "Pozostaw bez zmian"
+        "leaveAsIs": "Pozostaw bez zmian",
+        "invalidUnitsToast": "Niedostepne jednostki: {identifiers}",
+        "bufferConflictTitle": "Konflikt bufora rotacji",
+        "bufferConflictDescription": "Ta jednostka zastepcza jest blokowana tylko przez bufor rotacji: {identifiers}. Przypisac ponownie mimo to?",
+        "bufferConflictCancel": "Anuluj",
+        "bufferConflictConfirm": "Przypisz ponownie mimo to"
       },
       "downtimeDialog": {
         "title": "Oznacz jako niedostępną",
@@ -1708,6 +1713,11 @@
         "saved": "Jednostki przypisane",
         "notes": "Notatki",
         "identifiers": "Identyfikatory: {identifiers}",
+        "invalidUnitsToast": "Niedostepne jednostki: {identifiers}",
+        "bufferConflictTitle": "Konflikt bufora rotacji",
+        "bufferConflictDescription": "Te jednostki sa blokowane tylko przez bufor rotacji: {identifiers}. Przypisac mimo to?",
+        "bufferConflictCancel": "Zachowaj wybor",
+        "bufferConflictConfirm": "Przypisz mimo to",
         "optionsLabel": "Opcje",
         "clearSelection": "Wyczyść wybór",
         "autofillHint": "Sugerowane jednostki wybrane. Kliknij Zapisz, aby potwierdzić."
@@ -5525,6 +5535,7 @@
     "insufficientStock": "Niewystarczający stan magazynowy dla: {name} ({count} dostępne)",
     "tooManyUnitsAssigned": "Nie można przypisać więcej jednostek niż zarezerwowana ilość",
     "invalidUnits": "Jedna lub więcej wybranych jednostek jest nieprawidłowa",
+    "turnoverBufferConflict": "Wybrana jednostka jest blokowana tylko przez bufor rotacji",
     "unitProductMismatch": "Wybrane jednostki nie należą do tego produktu",
     "assignUnitsFailed": "Nie udało się przypisać jednostek",
     "getAvailableUnitsFailed": "Nie udało się załadować dostępnych jednostek",

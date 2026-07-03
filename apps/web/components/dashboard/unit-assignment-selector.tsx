@@ -15,6 +15,15 @@ import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Badge } from '@louez/ui';
 import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@louez/ui';
+import {
   Command,
   CommandEmpty,
   CommandGroup,
@@ -31,9 +40,10 @@ import {
 } from '@louez/ui';
 import { cn } from '@louez/utils';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { orpc } from '@/lib/orpc/react'
-import { invalidateReservationAll } from '@/lib/orpc/invalidation'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+import { invalidateReservationAll } from '@/lib/orpc/invalidation';
+import { orpc } from '@/lib/orpc/react';
 
 interface AvailableUnit {
   id: string;
@@ -42,10 +52,21 @@ interface AvailableUnit {
 }
 
 type ActionWarning = {
-  key: string
-  params?: Record<string, string | number>
-  details?: string
-}
+  key: string;
+  params?: Record<string, string | number>;
+  details?: string;
+};
+
+type UnitsQueryData = {
+  units: AvailableUnit[];
+  assigned: string[];
+};
+
+type AssignmentFailure = {
+  error: string;
+  bufferConflict?: boolean;
+  failedUnitIds?: string[];
+};
 
 interface UnitAssignmentSelectorProps {
   reservationId: string;
@@ -70,13 +91,15 @@ export function UnitAssignmentSelector({
 }: UnitAssignmentSelectorProps) {
   const t = useTranslations('dashboard.reservations.unitAssignment');
   const tErrors = useTranslations('errors');
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   const formatWarning = (warning: ActionWarning) => {
-    const key = warning.key.replace('errors.', '')
-    const translated = tErrors(key, warning.params || {})
-    return warning.details ? `${translated} Cause: ${warning.details}` : translated
-  }
+    const key = warning.key.replace('errors.', '');
+    const translated = tErrors(key, warning.params || {});
+    return warning.details
+      ? `${translated} Cause: ${warning.details}`
+      : translated;
+  };
 
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +110,8 @@ export function UnitAssignmentSelector({
   const [openPopovers, setOpenPopovers] = useState<Record<number, boolean>>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [wasAutofilled, setWasAutofilled] = useState(false);
+  const [bufferOverrideFailure, setBufferOverrideFailure] =
+    useState<AssignmentFailure | null>(null);
   const didAutofillRef = useRef(false);
   const hasUserInteractedRef = useRef(false);
 
@@ -112,40 +137,40 @@ export function UnitAssignmentSelector({
       input: { reservationItemId },
     }),
     enabled: trackUnits,
-  })
+  });
 
   useEffect(() => {
-    if (!trackUnits) return
+    if (!trackUnits) return;
 
-    const units = unitsQuery.data?.units || []
-    const assigned = unitsQuery.data?.assigned || []
+    const units = unitsQuery.data?.units || [];
+    const assigned = unitsQuery.data?.assigned || [];
 
     if (unitsQuery.isError) {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
-      setIsLoading(false)
-      return
+      toastManager.add({ title: tErrors('generic'), type: 'error' });
+      setIsLoading(false);
+      return;
     }
 
     if (unitsQuery.isLoading) {
-      setIsLoading(true)
-      return
+      setIsLoading(true);
+      return;
     }
 
-    setAvailableUnits(units)
-    setSelectedUnitIds(assigned)
-    setIsLoading(false)
+    setAvailableUnits(units);
+    setSelectedUnitIds(assigned);
+    setIsLoading(false);
 
     if (
       !didAutofillRef.current &&
       !hasUserInteractedRef.current &&
       assigned.length === 0
     ) {
-      const prefill = units.slice(0, Math.max(0, quantity)).map((u) => u.id)
+      const prefill = units.slice(0, Math.max(0, quantity)).map((u) => u.id);
       if (prefill.length > 0) {
-        didAutofillRef.current = true
-        setSelectedUnitIds(prefill)
-        setWasAutofilled(true)
-        setHasChanges(true)
+        didAutofillRef.current = true;
+        setSelectedUnitIds(prefill);
+        setWasAutofilled(true);
+        setHasChanges(true);
       }
     }
   }, [
@@ -155,7 +180,7 @@ export function UnitAssignmentSelector({
     unitsQuery.data,
     unitsQuery.isError,
     unitsQuery.isLoading,
-  ])
+  ]);
 
   // Don't render anything if product doesn't track units
   if (!trackUnits) {
@@ -190,14 +215,35 @@ export function UnitAssignmentSelector({
     setOpenPopovers((prev) => ({ ...prev, [slotIndex]: false }));
   };
 
-  const handleSave = () => {
+  const getUnitIdentifiers = (unitIds: string[] | undefined) => {
+    if (!unitIds || unitIds.length === 0) {
+      return '';
+    }
+
+    return unitIds
+      .map((unitId) => getUnit(unitId)?.identifier ?? unitId)
+      .join(', ');
+  };
+
+  const showAssignmentFailure = (failure: AssignmentFailure) => {
+    const identifiers = getUnitIdentifiers(failure.failedUnitIds);
+    toastManager.add({
+      title: identifiers
+        ? t('invalidUnitsToast', { identifiers })
+        : tErrors(failure.error.replace('errors.', '')),
+      type: 'error',
+    });
+  };
+
+  const handleSave = (overrideTurnoverBuffer = false) => {
     startTransition(async () => {
-      const unitIdsToSave = selectedUnitIds.filter((id) => id && id.length > 0)
+      const unitIdsToSave = selectedUnitIds.filter((id) => id && id.length > 0);
       await assignUnitsMutation.mutateAsync({
         reservationItemId,
         unitIds: unitIdsToSave,
-      })
-    })
+        overrideTurnoverBuffer,
+      });
+    });
   };
 
   const assignUnitsMutation = useMutation(
@@ -207,31 +253,28 @@ export function UnitAssignmentSelector({
           queryKey: orpc.dashboard.reservations.getAvailableUnitsForItem.key({
             input: { reservationItemId: input.reservationItemId },
           }),
-        })
+        });
 
-        const previous = queryClient.getQueryData<{
-          units: AvailableUnit[]
-          assigned: string[]
-        }>(
+        const previous = queryClient.getQueryData<UnitsQueryData>(
           orpc.dashboard.reservations.getAvailableUnitsForItem.key({
             input: { reservationItemId: input.reservationItemId },
           }),
-        )
+        );
 
         queryClient.setQueryData(
           orpc.dashboard.reservations.getAvailableUnitsForItem.key({
             input: { reservationItemId: input.reservationItemId },
           }),
-          (current: any) => ({
+          (current: UnitsQueryData | undefined) => ({
             units: current?.units || previous?.units || [],
             assigned: input.unitIds,
           }),
-        )
+        );
 
-        setHasChanges(false)
-        setWasAutofilled(false)
+        setHasChanges(false);
+        setWasAutofilled(false);
 
-        return { previous }
+        return { previous };
       },
       onError: (error, input, ctx) => {
         if (ctx?.previous) {
@@ -240,33 +283,94 @@ export function UnitAssignmentSelector({
               input: { reservationItemId: input.reservationItemId },
             }),
             ctx.previous,
-          )
+          );
         }
-        toastManager.add({ title: tErrors('generic'), type: 'error' })
-        void error
+        setHasChanges(true);
+        toastManager.add({ title: tErrors('generic'), type: 'error' });
+        void error;
       },
-      onSuccess: async (result) => {
-        toastManager.add({ title: t('saved'), type: 'success' })
+      onSuccess: async (result, input, ctx) => {
+        if (
+          result &&
+          typeof result === 'object' &&
+          'error' in result &&
+          typeof result.error === 'string'
+        ) {
+          const failedUnitIds =
+            'failedUnitIds' in result && Array.isArray(result.failedUnitIds)
+              ? result.failedUnitIds.filter(
+                  (unitId): unitId is string => typeof unitId === 'string',
+                )
+              : undefined;
+          const failure: AssignmentFailure = {
+            error: result.error,
+            bufferConflict:
+              'bufferConflict' in result &&
+              typeof result.bufferConflict === 'boolean'
+                ? result.bufferConflict
+                : undefined,
+            failedUnitIds,
+          };
+
+          if (ctx?.previous) {
+            queryClient.setQueryData(
+              orpc.dashboard.reservations.getAvailableUnitsForItem.key({
+                input: { reservationItemId: input.reservationItemId },
+              }),
+              ctx.previous,
+            );
+          }
+          setHasChanges(true);
+
+          if (failure.bufferConflict) {
+            setBufferOverrideFailure(failure);
+          } else {
+            showAssignmentFailure(failure);
+          }
+          return;
+        }
+
+        toastManager.add({ title: t('saved'), type: 'success' });
 
         const warnings =
           result && typeof result === 'object' && 'warnings' in result
-            ? (result as { warnings?: unknown }).warnings
-            : undefined
+            ? result.warnings
+            : undefined;
 
         if (Array.isArray(warnings) && warnings.length > 0) {
-          const parsedWarnings: ActionWarning[] = warnings.filter(
-            (warning): warning is ActionWarning =>
-              Boolean(warning) &&
-              typeof warning === 'object' &&
-              'key' in warning &&
-              typeof (warning as { key?: unknown }).key === 'string',
-          )
+          const parsedWarnings: ActionWarning[] = warnings
+            .filter(
+              (warning) =>
+                Boolean(warning) &&
+                typeof warning === 'object' &&
+                'key' in warning &&
+                typeof warning.key === 'string',
+            )
+            .map((warning) => ({
+              key: warning.key,
+              params:
+                warning.params &&
+                typeof warning.params === 'object' &&
+                !Array.isArray(warning.params)
+                  ? Object.fromEntries(
+                      Object.entries(warning.params).filter(
+                        (entry): entry is [string, string | number] =>
+                          typeof entry[1] === 'string' ||
+                          typeof entry[1] === 'number',
+                      ),
+                    )
+                  : undefined,
+              details:
+                typeof warning.details === 'string'
+                  ? warning.details
+                  : undefined,
+            }));
 
           if (parsedWarnings.length > 0) {
             toastManager.add({
               title: parsedWarnings.map(formatWarning).join(' • '),
               type: 'warning',
-            })
+            });
           }
         }
 
@@ -274,11 +378,11 @@ export function UnitAssignmentSelector({
           queryKey: orpc.dashboard.reservations.getAvailableUnitsForItem.key({
             input: { reservationItemId },
           }),
-        })
-        await invalidateReservationAll(queryClient, reservationId)
+        });
+        await invalidateReservationAll(queryClient, reservationId);
       },
     }),
-  )
+  );
 
   // Get assignment status
   const assignedCount = selectedUnitIds.filter(
@@ -480,12 +584,47 @@ export function UnitAssignmentSelector({
           )}
         </div>
         {hasChanges && (
-          <Button onClick={handleSave} disabled={isPending}>
+          <Button onClick={() => handleSave()} disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
             {t('save')}
           </Button>
         )}
       </div>
+      <AlertDialog
+        open={Boolean(bufferOverrideFailure)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBufferOverrideFailure(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('bufferConflictTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('bufferConflictDescription', {
+                identifiers: getUnitIdentifiers(
+                  bufferOverrideFailure?.failedUnitIds,
+                ),
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogClose render={<Button variant="outline" />}>
+              {t('bufferConflictCancel')}
+            </AlertDialogClose>
+            <AlertDialogClose
+              render={<Button />}
+              onClick={() => {
+                setBufferOverrideFailure(null);
+                handleSave(true);
+              }}
+            >
+              {t('bufferConflictConfirm')}
+            </AlertDialogClose>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
