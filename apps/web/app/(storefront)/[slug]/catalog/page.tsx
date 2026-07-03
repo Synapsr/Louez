@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
-import { db } from '@louez/db'
+import { db, effectiveProductQuantitySql } from '@louez/db'
 import { stores, products, categories, productPricingTiers } from '@louez/db'
 import { eq, and, desc, asc, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
@@ -151,7 +151,7 @@ export default async function CatalogPage({
         basePeriodMinutes: products.basePeriodMinutes,
         pricingMode: products.pricingMode,
         videoUrl: products.videoUrl,
-        quantity: products.quantity,
+        quantity: effectiveProductQuantitySql(),
         status: products.status,
         displayOrder: products.displayOrder,
         createdAt: products.createdAt,

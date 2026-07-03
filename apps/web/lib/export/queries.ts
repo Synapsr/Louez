@@ -1,4 +1,4 @@
-import { db, reservations, reservationItems, payments, products, categories, customers } from '@louez/db'
+import { db, reservations, payments, products, categories, customers, effectiveProductQuantitySql } from '@louez/db'
 import { eq, and, between, asc, desc } from 'drizzle-orm'
 import type { ExportParams } from './types'
 
@@ -214,7 +214,7 @@ async function queryProductsData(storeId: string) {
       price: products.price,
       deposit: products.deposit,
       pricingMode: products.pricingMode,
-      quantity: products.quantity,
+      quantity: effectiveProductQuantitySql(),
       status: products.status,
       createdAt: products.createdAt,
     })

@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { and, eq, inArray, ne } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 
-import { db } from '@louez/db';
+import { db, getEffectiveProductQuantities } from '@louez/db';
 import {
   categories,
   getBlockingReservationStatuses,
@@ -114,6 +114,12 @@ export default async function EditProductPage({
   const assignedUnitIds = new Set(
     assignedUnitRows.map((row) => row.productUnitId),
   );
+  const effectiveQuantities = await getEffectiveProductQuantities(db, [
+    product.id,
+  ]);
+  const effectiveQuantity = product.trackUnits
+    ? effectiveQuantities.get(product.id) ?? 0
+    : product.quantity;
 
   return (
     <div className="space-y-6">
@@ -128,6 +134,7 @@ export default async function EditProductPage({
       <ProductForm
         product={{
           ...product,
+          quantity: effectiveQuantity,
           accessoryIds,
           units: product.units.map((unit) => ({
             id: unit.id,

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 
-import { db } from '@louez/db';
+import { db, getEffectiveProductQuantities } from '@louez/db';
 import { categories, products, stores } from '@louez/db';
 import type {
   ReviewBoosterSettings,
@@ -165,8 +165,20 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
         category: true,
       },
     });
+    const effectiveQuantities = await getEffectiveProductQuantities(
+      db,
+      productResults.map((product) => product.id),
+    );
+    const productsWithEffectiveQuantity = productResults.map((product) => ({
+      ...product,
+      quantity: product.trackUnits
+        ? effectiveQuantities.get(product.id) ?? 0
+        : product.quantity,
+    }));
     // Preserve order from first query
-    const productMap = new Map(productResults.map((p) => [p.id, p]));
+    const productMap = new Map(
+      productsWithEffectiveQuantity.map((p) => [p.id, p]),
+    );
     storeProducts = productIds
       .map(({ id }) => productMap.get(id))
       .filter((p): p is NonNullable<typeof p> => p !== undefined);

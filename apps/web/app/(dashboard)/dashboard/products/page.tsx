@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { db } from '@louez/db'
+import { db, effectiveProductQuantitySql } from '@louez/db'
 import { products, categories } from '@louez/db'
 import { eq, desc, asc, and, count, inArray } from 'drizzle-orm'
 
@@ -47,7 +47,7 @@ async function getProducts(storeId: string, searchParams: { status?: string; cat
       images: products.images,
       price: products.price,
       deposit: products.deposit,
-      quantity: products.quantity,
+      quantity: effectiveProductQuantitySql(),
       status: products.status,
       categoryId: products.categoryId,
       createdAt: products.createdAt,

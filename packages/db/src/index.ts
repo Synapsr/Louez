@@ -34,6 +34,11 @@ export type Database = typeof db
 // Re-export schema for convenience
 export * from './schema'
 export {
+  activeProductUnitCountSql,
+  effectiveProductQuantitySql,
+  getEffectiveProductQuantities,
+} from './product-quantity'
+export {
   buildReservationOverlapPredicate,
   buildUnitInDowntimeAtPredicate,
   buildUnitRentableDuringPredicate,

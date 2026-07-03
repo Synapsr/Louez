@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { subDays } from 'date-fns';
 import { and, eq, gte, inArray, ne } from 'drizzle-orm';
 
-import { db } from '@louez/db';
+import { db, getEffectiveProductQuantities } from '@louez/db';
 import { products, reservations, storeLocations } from '@louez/db';
 import type { DeliverySettings, LegMethod } from '@louez/types';
 import type { SeasonalPricingConfig } from '@louez/utils';
@@ -269,6 +269,18 @@ export default async function EditReservationPage({
     .settings;
   const tulipInsuranceMode =
     getDashboardTulipInsuranceModeFromSettings(tulipSettings);
+  const effectiveQuantities = await getEffectiveProductQuantities(
+    db,
+    availableProducts.map((product) => product.id),
+  );
+  const availableProductsWithEffectiveQuantity = availableProducts.map(
+    (product) => ({
+      ...product,
+      quantity: product.trackUnits
+        ? effectiveQuantities.get(product.id) ?? 0
+        : product.quantity,
+    }),
+  );
 
   const locationOptions: ReservationLocationOption[] = [
     {
@@ -356,7 +368,7 @@ export default async function EditReservationPage({
           lastName: reservation.customer.lastName,
         },
       }}
-      availableProducts={availableProducts.map(mapProduct)}
+      availableProducts={availableProductsWithEffectiveQuantity.map(mapProduct)}
       existingReservations={existingReservations}
       currency={currency}
       tulipInsuranceMode={tulipInsuranceMode}
