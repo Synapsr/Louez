@@ -6,9 +6,8 @@ import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
 
-import { db } from '@louez/db';
+import { db, effectiveProductQuantitySql } from '@louez/db';
 import {
   categories,
   productAccessories,
@@ -98,8 +97,6 @@ export default async function RentalPage({
     category: categoryId,
     search,
   } = await searchParams;
-  const t = await getTranslations('storefront.availability');
-
   // Redirect to homepage if no dates
   if (!startDate || !endDate) {
     storefrontRedirect(slug, '/');
@@ -212,7 +209,7 @@ export default async function RentalPage({
         basePeriodMinutes: products.basePeriodMinutes,
         pricingMode: products.pricingMode,
         videoUrl: products.videoUrl,
-        quantity: products.quantity,
+        quantity: effectiveProductQuantitySql(),
         status: products.status,
         displayOrder: products.displayOrder,
         createdAt: products.createdAt,
@@ -381,7 +378,7 @@ export default async function RentalPage({
           price: products.price,
           deposit: products.deposit,
           images: products.images,
-          quantity: products.quantity,
+          quantity: effectiveProductQuantitySql(),
           status: products.status,
           pricingMode: products.pricingMode,
         })

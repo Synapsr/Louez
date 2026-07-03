@@ -9,7 +9,7 @@ import {
   computeReservedNetOfExcludedUnits,
   getRouteDistance,
 } from '@louez/api/services';
-import { db } from '@louez/db';
+import { db, getEffectiveProductQuantities } from '@louez/db';
 import {
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
@@ -1899,10 +1899,21 @@ export async function getStoreProducts() {
     return [];
   }
 
-  return db.query.products.findMany({
+  const storeProducts = await db.query.products.findMany({
     where: and(eq(products.storeId, store.id), eq(products.status, 'active')),
     orderBy: (products, { asc }) => [asc(products.name)],
   });
+  const effectiveQuantities = await getEffectiveProductQuantities(
+    db,
+    storeProducts.map((product) => product.id),
+  );
+
+  return storeProducts.map((product) => ({
+    ...product,
+    quantity: product.trackUnits
+      ? effectiveQuantities.get(product.id) ?? 0
+      : product.quantity,
+  }));
 }
 
 // ============================================================================

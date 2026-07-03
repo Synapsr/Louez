@@ -4,19 +4,17 @@ import { notFound } from 'next/navigation';
 
 import { inArray } from 'drizzle-orm';
 import { and, asc, desc, eq, ne } from 'drizzle-orm';
-import { ArrowLeft, Check, ImageIcon } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { getTranslations } from 'next-intl/server';
 
-import { db } from '@louez/db';
+import { db, getEffectiveProductQuantities } from '@louez/db';
 import {
-  categories,
   productSeasonalPricing,
   productSeasonalPricingTiers,
   products,
   stores,
 } from '@louez/db';
 import type { BusinessHours, StoreSettings, StoreTheme } from '@louez/types';
-import { Button } from '@louez/ui';
 import { Badge } from '@louez/ui';
 import { Separator } from '@louez/ui';
 import {
@@ -74,6 +72,13 @@ export async function generateMetadata({
     return { title: 'Produit introuvable' };
   }
 
+  const effectiveQuantities = await getEffectiveProductQuantities(db, [
+    product.id,
+  ]);
+  const quantity = product.trackUnits
+    ? effectiveQuantities.get(product.id) ?? 0
+    : product.quantity;
+
   const theme = (store.theme as StoreTheme) || {};
   const settings = (store.settings as StoreSettings) || {};
 
@@ -92,7 +97,7 @@ export async function generateMetadata({
       price: product.price,
       deposit: product.deposit,
       images: product.images,
-      quantity: product.quantity,
+      quantity,
       category: product.category
         ? { id: product.category.id, name: product.category.name }
         : null,
@@ -151,6 +156,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) {
     notFound();
   }
+
+  const accessoryIds = (product.accessories || [])
+    .map((acc) => acc.accessory?.id)
+    .filter((id): id is string => Boolean(id));
+  const effectiveQuantities = await getEffectiveProductQuantities(db, [
+    product.id,
+    ...accessoryIds,
+  ]);
+  const effectiveQuantity = product.trackUnits
+    ? effectiveQuantities.get(product.id) ?? 0
+    : product.quantity;
 
   const currentDowntimeUnitIds = await getCurrentDowntimeUnitIds(
     (product.units || []).map((unit) => unit.id),
@@ -218,15 +234,19 @@ export default async function ProductPage({ params }: ProductPageProps) {
       (acc) =>
         acc.accessory &&
         acc.accessory.status === 'active' &&
-        acc.accessory.quantity > 0,
+        (acc.accessory.trackUnits
+          ? effectiveQuantities.get(acc.accessory.id) ?? 0
+          : acc.accessory.quantity) > 0,
     )
     .map((acc) => ({
+      quantity: acc.accessory.trackUnits
+        ? effectiveQuantities.get(acc.accessory.id) ?? 0
+        : acc.accessory.quantity,
       id: acc.accessory.id,
       name: acc.accessory.name,
       price: acc.accessory.price,
       deposit: acc.accessory.deposit || '0',
       images: acc.accessory.images,
-      quantity: acc.accessory.quantity,
       pricingMode: acc.accessory.pricingMode,
       basePeriodMinutes: acc.accessory.basePeriodMinutes,
       pricingTiers: acc.accessory.pricingTiers?.map((tier) => ({
@@ -239,7 +259,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }));
 
   // Get related products from same category
-  const relatedProducts = product.categoryId
+  const relatedProductsRaw = product.categoryId
     ? await db.query.products.findMany({
         where: and(
           eq(products.storeId, store.id),
@@ -254,6 +274,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
         limit: 4,
       })
     : [];
+  const relatedQuantities = await getEffectiveProductQuantities(
+    db,
+    relatedProductsRaw.map((relatedProduct) => relatedProduct.id),
+  );
+  const relatedProducts = relatedProductsRaw.map((relatedProduct) => ({
+    ...relatedProduct,
+    quantity: relatedProduct.trackUnits
+      ? relatedQuantities.get(relatedProduct.id) ?? 0
+      : relatedProduct.quantity,
+  }));
 
   const effectivePricingMode = product.pricingMode ?? 'day';
   const displayQuantity = product.trackUnits
@@ -262,7 +292,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           (unit.lifecycleStatus || 'active') === 'active' &&
           !currentDowntimeUnitIds.has(unit.id),
       ).length
-    : product.quantity;
+    : effectiveQuantity;
   const isAvailable = displayQuantity > 0;
   const storedBookingAttributeAxes = (
     (product.bookingAttributeAxes as Array<{
@@ -376,7 +406,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     price: product.price,
     deposit: product.deposit,
     images: product.images,
-    quantity: product.quantity,
+    quantity: effectiveQuantity,
     category: product.category
       ? { id: product.category.id, name: product.category.name }
       : null,

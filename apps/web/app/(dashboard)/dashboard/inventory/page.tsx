@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 
 import { asc, eq } from 'drizzle-orm';
 
-import { db, products } from '@louez/db';
+import { db, effectiveProductQuantitySql, products } from '@louez/db';
 import type { GetInventoryInput } from '@louez/validations';
 
 import { getCurrentStore } from '@/lib/store-context';
@@ -52,7 +52,7 @@ const getProductOptions = async (
       id: products.id,
       name: products.name,
       trackUnits: products.trackUnits,
-      quantity: products.quantity,
+      quantity: effectiveProductQuantitySql(),
     })
     .from(products)
     .where(eq(products.storeId, storeId))

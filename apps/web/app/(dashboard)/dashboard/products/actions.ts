@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { and, eq, gte, inArray, ne, not, or } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-import { db } from '@louez/db';
+import { db, getEffectiveProductQuantities } from '@louez/db';
 import {
   categories,
   getBlockingReservationStatuses,
@@ -314,11 +314,7 @@ export async function createProduct(data: ProductInput) {
     ? normalizeBookingAttributeAxes(validated.data.bookingAttributeAxes)
     : [];
 
-  // If tracking units, quantity is derived from the count of active units
-  // Otherwise, use the manually entered quantity
-  const quantity = trackUnits
-    ? units.length
-    : parseInt(validated.data.quantity, 10);
+  const manualQuantity = parseInt(validated.data.quantity, 10);
 
   const productId = nanoid();
   const actorUserId =
@@ -336,7 +332,7 @@ export async function createProduct(data: ProductInput) {
         deposit: deposit,
         pricingMode: legacyPricingMode,
         basePeriodMinutes,
-        quantity: quantity,
+        ...(!trackUnits ? { quantity: manualQuantity } : {}),
         status: validated.data.status,
         images: validated.data.images || [],
         videoUrl: validated.data.videoUrl || null,
@@ -428,8 +424,8 @@ export async function createProduct(data: ProductInput) {
       product_status: validated.data.status,
       created_from: 'dashboard',
       track_units: trackUnits,
-      available_unit_count: trackUnits ? quantity : null,
-      manual_quantity: trackUnits ? null : quantity,
+      available_unit_count: trackUnits ? units.length : null,
+      manual_quantity: trackUnits ? null : manualQuantity,
       has_category: Boolean(validated.data.categoryId),
       image_count: validated.data.images?.length ?? 0,
       has_video: Boolean(validated.data.videoUrl),
@@ -567,12 +563,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
   const unitsToDelete = existingUnits.filter(
     (unit) => !unitIdsToKeep.has(unit.id),
   );
-  const activeUnitQuantity = trackUnits
-    ? unitsToUpdate.filter((unit) => {
-        if (!unit.id) return false;
-        return existingUnitsById.get(unit.id)?.lifecycleStatus === 'active';
-      }).length + unitsToInsert.length
-    : parseInt(validated.data.quantity, 10);
+  const manualQuantity = parseInt(validated.data.quantity, 10);
 
   if (unitsToDelete.length > 0) {
     const failedUnitIds = await getAssignedBlockingUnitIds({
@@ -660,10 +651,6 @@ export async function updateProduct(productId: string, data: ProductInput) {
     }
   }
 
-  // If tracking units, quantity is derived from the count of active units
-  // Otherwise, use the manually entered quantity
-  const quantity = activeUnitQuantity;
-
   await db
     .update(products)
     .set({
@@ -674,7 +661,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
       deposit: deposit,
       pricingMode: legacyPricingMode,
       basePeriodMinutes,
-      quantity: quantity,
+      ...(!trackUnits ? { quantity: manualQuantity } : {}),
       status: validated.data.status,
       images: validated.data.images || [],
       videoUrl: validated.data.videoUrl || null,
@@ -991,6 +978,12 @@ export async function duplicateProduct(productId: string) {
   }
 
   const newProductId = nanoid();
+  const effectiveQuantities = await getEffectiveProductQuantities(db, [
+    product.id,
+  ]);
+  const duplicateQuantity = product.trackUnits
+    ? effectiveQuantities.get(product.id) ?? 0
+    : product.quantity;
 
   // Note: the "(copy)" suffix will be translated on the client side
   // Note: Unit tracking is NOT duplicated because identifiers are unique per unit.
@@ -1005,7 +998,7 @@ export async function duplicateProduct(productId: string) {
     deposit: product.deposit,
     pricingMode: product.pricingMode,
     basePeriodMinutes: product.basePeriodMinutes,
-    quantity: product.quantity,
+    quantity: duplicateQuantity,
     status: 'draft',
     images: product.images,
     videoUrl: product.videoUrl,

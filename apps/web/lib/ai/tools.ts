@@ -17,6 +17,7 @@ import {
   customers,
   dailyStats,
   db,
+  effectiveProductQuantitySql,
   buildReservationOverlapPredicate,
   getBlockingReservationStatuses,
   payments,
@@ -89,7 +90,7 @@ export function createAITools(ctx: AIChatContext) {
             price: products.price,
             deposit: products.deposit,
             pricingMode: products.pricingMode,
-            quantity: products.quantity,
+            quantity: effectiveProductQuantitySql(),
             status: products.status,
             categoryName: categories.name,
           })
@@ -125,7 +126,13 @@ export function createAITools(ctx: AIChatContext) {
         });
 
         if (!product) return { error: 'Product not found' };
-        return { product };
+
+        const effectiveQuantity = product.trackUnits
+          ? product.units.filter((unit) => unit.lifecycleStatus === 'active')
+              .length
+          : product.quantity;
+
+        return { product: { ...product, quantity: effectiveQuantity } };
       },
     }),
 
@@ -1129,9 +1136,19 @@ export function createAITools(ctx: AIChatContext) {
             eq(products.storeId, ctx.storeId),
             eq(products.id, productId),
           ),
-          columns: { id: true, name: true, quantity: true },
+          columns: { id: true, name: true, quantity: true, trackUnits: true },
         });
         if (!product) return { error: 'Product not found' };
+
+        const effectiveQuantity = product.trackUnits
+          ? (
+              await db
+                .select({ quantity: effectiveProductQuantitySql() })
+                .from(products)
+                .where(eq(products.id, productId))
+                .limit(1)
+            )[0]?.quantity ?? 0
+          : product.quantity;
 
         const store = await db.query.stores.findFirst({
           where: eq(stores.id, ctx.storeId),
@@ -1172,11 +1189,11 @@ export function createAITools(ctx: AIChatContext) {
           turnoverBufferMinutes,
         });
         const reserved = reservedByProduct.get(productId) ?? 0;
-        const available = Math.max(0, product.quantity - reserved);
+        const available = Math.max(0, effectiveQuantity - reserved);
 
         return {
           product: product.name,
-          totalStock: product.quantity,
+          totalStock: effectiveQuantity,
           reserved,
           available,
           turnoverBufferMinutes,

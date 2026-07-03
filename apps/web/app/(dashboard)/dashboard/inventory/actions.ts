@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import {
@@ -184,39 +184,6 @@ function revalidateInventoryPaths(productId?: string, reservationId?: string) {
   if (reservationId) {
     revalidatePath(`/dashboard/reservations/${reservationId}`);
   }
-}
-
-async function refreshTrackedProductQuantity(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  productId: string,
-) {
-  const [product] = await tx
-    .select({ trackUnits: products.trackUnits })
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
-
-  if (!product?.trackUnits) {
-    return;
-  }
-
-  const [activeUnits] = await tx
-    .select({ count: sql<number>`count(*)` })
-    .from(productUnits)
-    .where(
-      and(
-        eq(productUnits.productId, productId),
-        eq(productUnits.lifecycleStatus, 'active'),
-      ),
-    );
-
-  await tx
-    .update(products)
-    .set({
-      quantity: activeUnits?.count ?? 0,
-      updatedAt: new Date(),
-    })
-    .where(eq(products.id, productId));
 }
 
 export async function declareDowntime(input: DeclareDowntimeInput) {
@@ -540,8 +507,6 @@ export async function retireUnit(input: RetireUnitInput) {
           },
         },
       ]);
-
-      await refreshTrackedProductQuantity(tx, unit.productId);
     });
   } catch (error) {
     console.error('Error retiring unit:', error);
@@ -610,8 +575,6 @@ export async function reinstateUnit(input: ReinstateUnitInput) {
           },
         },
       ]);
-
-      await refreshTrackedProductQuantity(tx, unit.productId);
     });
   } catch (error) {
     console.error('Error reinstating unit:', error);

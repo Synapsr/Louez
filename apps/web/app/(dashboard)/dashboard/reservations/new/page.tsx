@@ -4,7 +4,7 @@ import { subDays } from 'date-fns';
 import { and, eq, gte, inArray } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 
-import { db } from '@louez/db';
+import { db, getEffectiveProductQuantities } from '@louez/db';
 import { customers, products, reservations, storeLocations } from '@louez/db';
 
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
@@ -49,10 +49,17 @@ async function getProductsWithTiers(storeId: string) {
     result.flatMap((product) => product.units.map((unit) => unit.id)),
     storeId,
   );
+  const effectiveQuantities = await getEffectiveProductQuantities(
+    db,
+    result.map((product) => product.id),
+  );
 
   return result
     .map((p) => ({
       ...p,
+      quantity: p.trackUnits
+        ? effectiveQuantities.get(p.id) ?? 0
+        : p.quantity,
       tulipInsurable: Boolean(p.tulipMapping?.productId),
       units: p.units.map((unit) => ({
         lifecycleStatus: unit.lifecycleStatus,

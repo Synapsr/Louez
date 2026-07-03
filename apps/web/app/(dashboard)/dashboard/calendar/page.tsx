@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { and, eq, gte, lte, or } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 
-import { db } from '@louez/db';
+import { db, effectiveProductQuantitySql } from '@louez/db';
 import { products, reservations } from '@louez/db';
 
 import { getCurrentStore } from '@/lib/store-context';
@@ -72,7 +72,7 @@ async function getProducts(storeId: string) {
     .select({
       id: products.id,
       name: products.name,
-      quantity: products.quantity,
+      quantity: effectiveProductQuantitySql(),
     })
     .from(products)
     .where(and(eq(products.storeId, storeId), eq(products.status, 'active')))

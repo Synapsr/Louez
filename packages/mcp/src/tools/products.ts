@@ -5,6 +5,8 @@ import { z } from 'zod';
 import {
   categories,
   db,
+  effectiveProductQuantitySql,
+  getEffectiveProductQuantities,
   products,
   reservationItems,
   reservations,
@@ -59,7 +61,7 @@ export function registerProductTools(
           price: products.price,
           deposit: products.deposit,
           pricingMode: products.pricingMode,
-          quantity: products.quantity,
+          quantity: effectiveProductQuantitySql(),
           status: products.status,
           categoryId: products.categoryId,
           categoryName: categories.name,
@@ -115,13 +117,20 @@ export function registerProductTools(
 
       if (!product) return toolError('Product not found.');
 
+      const effectiveQuantities = await getEffectiveProductQuantities(db, [
+        product.id,
+      ]);
+      const effectiveQuantity = product.trackUnits
+        ? effectiveQuantities.get(product.id) ?? 0
+        : product.quantity;
+
       let text =
         `## ${product.name}\n\n` +
         `- **ID**: ${product.id}\n` +
         `- **Status**: ${product.status}\n` +
         `- **Price**: ${formatCurrency(product.price)}/${product.pricingMode}\n` +
         `- **Deposit**: ${formatCurrency(product.deposit ?? '0')}\n` +
-        `- **Stock**: ${product.quantity}\n` +
+        `- **Stock**: ${effectiveQuantity}\n` +
         `- **Category**: ${product.category?.name ?? '—'}\n` +
         `- **Unit tracking**: ${product.trackUnits ? 'Yes' : 'No'}\n` +
         `- **Created**: ${formatDate(product.createdAt)}\n`;
@@ -227,9 +236,14 @@ export function registerProductTools(
           eq(products.storeId, ctx.storeId),
           eq(products.id, productId),
         ),
-        columns: { id: true },
+        columns: { id: true, trackUnits: true },
       });
       if (!existing) return toolError('Product not found.');
+      if (existing.trackUnits && updates.quantity !== undefined) {
+        return toolError(
+          'Quantity is derived from active units for unit-tracked products.',
+        );
+      }
 
       const updateData: Record<string, unknown> = {};
       if (updates.name !== undefined) updateData.name = updates.name;
