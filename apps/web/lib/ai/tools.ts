@@ -19,16 +19,21 @@ import {
   db,
   effectiveProductQuantitySql,
   buildReservationOverlapPredicate,
+  buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
   payments,
   productStats,
+  productUnits,
   products,
   reservationItems,
   reservations,
   stores,
 } from '@louez/db';
 import type { ApiKeyPermissions } from '@louez/db/schema';
-import { calculatePeakReservedQuantities } from '@louez/utils';
+import {
+  computeReservedNetOfExcludedUnits,
+  loadExcludedUnitInfo,
+} from '@louez/api/services';
 
 // ---------------------------------------------------------------------------
 // Context & permissions
@@ -1140,16 +1145,6 @@ export function createAITools(ctx: AIChatContext) {
         });
         if (!product) return { error: 'Product not found' };
 
-        const effectiveQuantity = product.trackUnits
-          ? (
-              await db
-                .select({ quantity: effectiveProductQuantitySql() })
-                .from(products)
-                .where(eq(products.id, productId))
-                .limit(1)
-            )[0]?.quantity ?? 0
-          : product.quantity;
-
         const store = await db.query.stores.findFirst({
           where: eq(stores.id, ctx.storeId),
           columns: { settings: true },
@@ -1178,22 +1173,57 @@ export function createAITools(ctx: AIChatContext) {
                 quantity: true,
                 combinationKey: true,
               },
+              with: {
+                assignedUnits: true,
+              },
             },
           },
         });
 
-        const { reservedByProduct } = calculatePeakReservedQuantities({
+        const trackedUnits = product.trackUnits
+          ? await db
+              .select({ id: productUnits.id })
+              .from(productUnits)
+              .where(eq(productUnits.productId, productId))
+          : [];
+        const rentableUnits = product.trackUnits
+          ? await db
+              .select({ id: productUnits.id })
+              .from(productUnits)
+              .where(
+                and(
+                  eq(productUnits.productId, productId),
+                  buildUnitRentableDuringPredicate(db, start, end),
+                ),
+              )
+          : [];
+        const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
+        const excludedProductUnitIds = new Set(
+          trackedUnits
+            .filter((unit) => !rentableUnitIds.has(unit.id))
+            .map((unit) => unit.id),
+        );
+        const excludedUnitInfo = await loadExcludedUnitInfo(
+          db,
+          excludedProductUnitIds,
+        );
+        const { reservedByProduct } = computeReservedNetOfExcludedUnits({
           reservations: overlappingReservations,
           startDate: start,
           endDate: end,
           turnoverBufferMinutes,
+          excludedProductUnitIds,
+          excludedUnitInfo,
         });
         const reserved = reservedByProduct.get(productId) ?? 0;
-        const available = Math.max(0, effectiveQuantity - reserved);
+        const capacity = product.trackUnits
+          ? rentableUnits.length
+          : product.quantity;
+        const available = Math.max(0, capacity - reserved);
 
         return {
           product: product.name,
-          totalStock: effectiveQuantity,
+          totalStock: capacity,
           reserved,
           available,
           turnoverBufferMinutes,

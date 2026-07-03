@@ -3,7 +3,11 @@ import { notFound, redirect } from 'next/navigation';
 import { subDays } from 'date-fns';
 import { and, eq, gte, inArray, ne } from 'drizzle-orm';
 
-import { db, getEffectiveProductQuantities } from '@louez/db';
+import {
+  db,
+  getBlockingReservationStatuses,
+  getEffectiveProductQuantities,
+} from '@louez/db';
 import { products, reservations, storeLocations } from '@louez/db';
 import type { DeliverySettings, LegMethod } from '@louez/types';
 import type { SeasonalPricingConfig } from '@louez/utils';
@@ -28,14 +32,18 @@ interface EditReservationPageProps {
 async function getActiveReservations(
   storeId: string,
   excludeReservationId: string,
+  pendingBlocksAvailability: boolean,
 ) {
   const thirtyDaysAgo = subDays(new Date(), 30);
+  const blockingStatuses = getBlockingReservationStatuses(
+    pendingBlocksAvailability,
+  );
 
   return db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
       ne(reservations.id, excludeReservationId),
-      inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+      inArray(reservations.status, blockingStatuses),
       gte(reservations.endDate, thirtyDaysAgo),
     ),
     with: {
@@ -250,7 +258,11 @@ export default async function EditReservationPage({
         },
         orderBy: (products, { asc }) => [asc(products.name)],
       }),
-      getActiveReservations(store.id, id),
+      getActiveReservations(
+        store.id,
+        id,
+        store.settings?.pendingBlocksAvailability ?? true,
+      ),
       deliverySettings?.multiLocationEnabled
         ? db.query.storeLocations.findMany({
             where: and(

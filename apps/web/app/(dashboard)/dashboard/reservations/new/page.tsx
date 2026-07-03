@@ -4,7 +4,11 @@ import { subDays } from 'date-fns';
 import { and, eq, gte, inArray } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 
-import { db, getEffectiveProductQuantities } from '@louez/db';
+import {
+  db,
+  getBlockingReservationStatuses,
+  getEffectiveProductQuantities,
+} from '@louez/db';
 import { customers, products, reservations, storeLocations } from '@louez/db';
 
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
@@ -94,15 +98,22 @@ async function getProductsWithTiers(storeId: string) {
 }
 
 // Fetch existing reservations for availability conflict checking
-async function getActiveReservations(storeId: string) {
+async function getActiveReservations(
+  storeId: string,
+  pendingBlocksAvailability: boolean,
+) {
   // Get reservations that are active or upcoming (not cancelled/rejected/completed)
   // Only look at reservations from 30 days ago to avoid loading too much data
   const thirtyDaysAgo = subDays(new Date(), 30);
 
+  const blockingStatuses = getBlockingReservationStatuses(
+    pendingBlocksAvailability,
+  );
+
   return db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
-      inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+      inArray(reservations.status, blockingStatuses),
       gte(reservations.endDate, thirtyDaysAgo),
     ),
     with: {
@@ -140,7 +151,10 @@ export default async function NewReservationPage() {
   ] = await Promise.all([
     getCustomers(store.id),
     getProductsWithTiers(store.id),
-    getActiveReservations(store.id),
+    getActiveReservations(
+      store.id,
+      store.settings?.pendingBlocksAvailability ?? true,
+    ),
     deliverySettings?.multiLocationEnabled
       ? db.query.storeLocations.findMany({
           where: and(

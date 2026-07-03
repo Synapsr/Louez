@@ -14,7 +14,10 @@ import {
   reservations,
   stores,
 } from '@louez/db';
-import { computeReservedNetOfExcludedUnits } from '@louez/api/services';
+import {
+  computeReservedNetOfExcludedUnits,
+  loadExcludedUnitInfo,
+} from '@louez/api/services';
 
 import type { McpSessionContext } from '../auth/context';
 import { requirePermission } from '../auth/context';
@@ -242,12 +245,17 @@ export function registerCalendarTools(
           .filter((unit) => !rentableUnitIds.has(unit.id))
           .map((unit) => unit.id),
       );
+      const excludedUnitInfo = await loadExcludedUnitInfo(
+        db,
+        excludedProductUnitIds,
+      );
       const { reservedByProduct } = computeReservedNetOfExcludedUnits({
         reservations: overlappingReservations,
         startDate: start,
         endDate: end,
         turnoverBufferMinutes,
         excludedProductUnitIds,
+        excludedUnitInfo,
       });
       const reserved = reservedByProduct.get(productId) ?? 0;
       const capacity = product.trackUnits

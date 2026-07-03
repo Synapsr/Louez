@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 import {
   computeReservedNetOfExcludedUnits,
   getRouteDistance,
+  loadExcludedUnitInfo,
 } from '@louez/api/services';
 import { db } from '@louez/db';
 import {
@@ -1216,6 +1217,19 @@ export async function createReservation(input: CreateReservationInput) {
         );
       }
 
+      const lockedProducts =
+        requestedProductIds.length > 0
+          ? await tx.query.products.findMany({
+              where: and(
+                eq(products.storeId, input.storeId),
+                inArray(products.id, requestedProductIds),
+              ),
+            })
+          : [];
+      const lockedProductsById = new Map(
+        lockedProducts.map((product) => [product.id, product]),
+      );
+
       // Recompute overlap and availability inside the transaction after row locks are acquired.
       const overlappingReservations = await tx.query.reservations.findMany({
         where: and(
@@ -1236,7 +1250,7 @@ export async function createReservation(input: CreateReservationInput) {
         },
       });
 
-      const trackedProductIds = [...productsForReservation.values()]
+      const trackedProductIds = [...lockedProductsById.values()]
         .filter((product) => product.trackUnits)
         .map((product) => product.id);
 
@@ -1276,6 +1290,10 @@ export async function createReservation(input: CreateReservationInput) {
           .filter((unit) => !availableUnitIds.has(unit.id))
           .map((unit) => unit.id),
       );
+      const excludedUnitInfo = await loadExcludedUnitInfo(
+        tx,
+        excludedProductUnitIds,
+      );
 
       const { reservedByProduct, reservedByProductCombination } =
         computeReservedNetOfExcludedUnits({
@@ -1284,6 +1302,7 @@ export async function createReservation(input: CreateReservationInput) {
           endDate: rentalEndDate,
           turnoverBufferMinutes,
           excludedProductUnitIds,
+          excludedUnitInfo,
         });
 
       const combinationsByProduct = new Map<
@@ -1327,7 +1346,7 @@ export async function createReservation(input: CreateReservationInput) {
 
       for (let i = 0; i < input.items.length; i++) {
         const item = input.items[i];
-        const product = productsForReservation.get(item.productId);
+        const product = lockedProductsById.get(item.productId);
         if (!product) continue;
 
         if (!product.trackUnits) {

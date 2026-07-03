@@ -29,9 +29,7 @@ export function useEditReservationAvailability({
 
     const warnings: AvailabilityWarning[] = []
     const { reservedByProduct } = calculatePeakReservedQuantities({
-      reservations: existingReservations.filter((reservation) =>
-        ['pending', 'confirmed', 'ongoing'].includes(reservation.status),
-      ),
+      reservations: existingReservations,
       startDate,
       endDate,
       turnoverBufferMinutes,

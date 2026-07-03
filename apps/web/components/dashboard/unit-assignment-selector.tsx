@@ -66,6 +66,7 @@ type AssignmentFailure = {
   error: string;
   bufferConflict?: boolean;
   failedUnitIds?: string[];
+  attemptedUnitIds?: string[];
 };
 
 interface UnitAssignmentSelectorProps {
@@ -157,7 +158,9 @@ export function UnitAssignmentSelector({
     }
 
     setAvailableUnits(units);
-    setSelectedUnitIds(assigned);
+    if (!bufferOverrideFailure) {
+      setSelectedUnitIds(assigned);
+    }
     setIsLoading(false);
 
     if (
@@ -180,6 +183,7 @@ export function UnitAssignmentSelector({
     unitsQuery.data,
     unitsQuery.isError,
     unitsQuery.isLoading,
+    bufferOverrideFailure,
   ]);
 
   // Don't render anything if product doesn't track units
@@ -235,9 +239,13 @@ export function UnitAssignmentSelector({
     });
   };
 
-  const handleSave = (overrideTurnoverBuffer = false) => {
+  const handleSave = (
+    overrideTurnoverBuffer = false,
+    overrideUnitIds?: string[],
+  ) => {
     startTransition(async () => {
-      const unitIdsToSave = selectedUnitIds.filter((id) => id && id.length > 0);
+      const sourceUnitIds = overrideUnitIds ?? selectedUnitIds;
+      const unitIdsToSave = sourceUnitIds.filter((id) => id && id.length > 0);
       await assignUnitsMutation.mutateAsync({
         reservationItemId,
         unitIds: unitIdsToSave,
@@ -310,6 +318,7 @@ export function UnitAssignmentSelector({
                 ? result.bufferConflict
                 : undefined,
             failedUnitIds,
+            attemptedUnitIds: input.unitIds,
           };
 
           if (ctx?.previous) {
@@ -616,8 +625,9 @@ export function UnitAssignmentSelector({
             <AlertDialogClose
               render={<Button />}
               onClick={() => {
+                const request = bufferOverrideFailure;
                 setBufferOverrideFailure(null);
-                handleSave(true);
+                handleSave(true, request?.attemptedUnitIds);
               }}
             >
               {t('bufferConflictConfirm')}

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, not } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import {
@@ -42,7 +42,10 @@ import {
 import { auth } from '@/lib/auth';
 import { getCurrentStore } from '@/lib/store-context';
 import { getUnitConflicts } from '@/lib/utils/unit-conflicts';
-import { updateUnits } from '@/lib/utils/unit-mutations';
+import {
+  buildUnitEvent,
+  updateUnits,
+} from '@/lib/utils/unit-mutations';
 
 import {
   getUnitDowntimes as getUnitDowntimesQuery,
@@ -85,23 +88,6 @@ function normalizeMoney(value: string | null | undefined): string | null {
 
 function toJsonDate(value: Date | null): string | null {
   return value ? value.toISOString() : null;
-}
-
-function buildUnitEvent(values: {
-  productUnitId: string;
-  storeId: string;
-  type: (typeof productUnitEvents.$inferInsert)['type'];
-  actorUserId: string | null;
-  payload?: Record<string, unknown> | null;
-}): typeof productUnitEvents.$inferInsert {
-  return {
-    id: nanoid(),
-    productUnitId: values.productUnitId,
-    storeId: values.storeId,
-    type: values.type,
-    actorUserId: values.actorUserId,
-    payload: values.payload ?? null,
-  };
 }
 
 async function logReservationActivity(
@@ -149,6 +135,7 @@ async function getDowntimeForStore(downtimeId: string, storeId: string) {
     .select({
       id: productUnitDowntimes.id,
       productUnitId: productUnitDowntimes.productUnitId,
+      unitIdentifier: productUnits.identifier,
       storeId: productUnitDowntimes.storeId,
       reason: productUnitDowntimes.reason,
       startsAt: productUnitDowntimes.startsAt,
@@ -223,15 +210,18 @@ export async function declareDowntime(input: DeclareDowntimeInput) {
       await tx.insert(productUnitEvents).values(
         buildUnitEvent({
           productUnitId: unit.id,
-          storeId: store.id,
-          type: 'downtime_declared',
-          actorUserId,
-          payload: {
-            downtimeId,
-            reason: validated.data.reason,
-            startsAt: validated.data.startsAt.toISOString(),
-            endsAt: toJsonDate(endsAt),
-            note,
+          event: {
+            storeId: store.id,
+            type: 'downtime_declared',
+            actorUserId,
+            identifierSnapshot: unit.identifier,
+            payload: {
+              downtimeId,
+              reason: validated.data.reason,
+              startsAt: validated.data.startsAt.toISOString(),
+              endsAt: toJsonDate(endsAt),
+              note,
+            },
           },
         }),
       );
@@ -310,22 +300,25 @@ export async function updateDowntime(input: UpdateDowntimeInput) {
       await tx.insert(productUnitEvents).values(
         buildUnitEvent({
           productUnitId: downtime.productUnitId,
-          storeId: store.id,
-          type: 'downtime_updated',
-          actorUserId,
-          payload: {
-            downtimeId: downtime.id,
-            previous: {
-              reason: downtime.reason,
-              startsAt: downtime.startsAt.toISOString(),
-              endsAt: toJsonDate(downtime.endsAt),
-              note: downtime.note,
-            },
-            current: {
-              reason,
-              startsAt: startsAt.toISOString(),
-              endsAt: toJsonDate(endsAt),
-              note,
+          event: {
+            storeId: store.id,
+            type: 'downtime_updated',
+            actorUserId,
+            identifierSnapshot: downtime.unitIdentifier,
+            payload: {
+              downtimeId: downtime.id,
+              previous: {
+                reason: downtime.reason,
+                startsAt: downtime.startsAt.toISOString(),
+                endsAt: toJsonDate(downtime.endsAt),
+                note: downtime.note,
+              },
+              current: {
+                reason,
+                startsAt: startsAt.toISOString(),
+                endsAt: toJsonDate(endsAt),
+                note,
+              },
             },
           },
         }),
@@ -390,12 +383,15 @@ export async function closeDowntime(input: CloseDowntimeInput) {
       await tx.insert(productUnitEvents).values(
         buildUnitEvent({
           productUnitId: downtime.productUnitId,
-          storeId: store.id,
-          type: 'downtime_closed',
-          actorUserId,
-          payload: {
-            downtimeId: downtime.id,
-            endsAt: endsAt.toISOString(),
+          event: {
+            storeId: store.id,
+            type: 'downtime_closed',
+            actorUserId,
+            identifierSnapshot: downtime.unitIdentifier,
+            payload: {
+              downtimeId: downtime.id,
+              endsAt: endsAt.toISOString(),
+            },
           },
         }),
       );
@@ -435,15 +431,18 @@ export async function deleteDowntime(input: DeleteDowntimeInput) {
       await tx.insert(productUnitEvents).values(
         buildUnitEvent({
           productUnitId: downtime.productUnitId,
-          storeId: store.id,
-          type: 'downtime_deleted',
-          actorUserId,
-          payload: {
-            downtimeId: downtime.id,
-            reason: downtime.reason,
-            startsAt: downtime.startsAt.toISOString(),
-            endsAt: toJsonDate(downtime.endsAt),
-            note: downtime.note,
+          event: {
+            storeId: store.id,
+            type: 'downtime_deleted',
+            actorUserId,
+            identifierSnapshot: downtime.unitIdentifier,
+            payload: {
+              downtimeId: downtime.id,
+              reason: downtime.reason,
+              startsAt: downtime.startsAt.toISOString(),
+              endsAt: toJsonDate(downtime.endsAt),
+              note: downtime.note,
+            },
           },
         }),
       );
@@ -730,6 +729,18 @@ export async function reassignReservationItemUnit(
 
   try {
     const reassignmentResult = await db.transaction(async (tx) => {
+      const [lockedReservation] = await tx
+        .select({ id: reservations.id })
+        .from(reservations)
+        .where(
+          and(eq(reservations.id, item.reservationId), eq(reservations.storeId, store.id)),
+        )
+        .for('update');
+
+      if (!lockedReservation) {
+        return { error: 'errors.notFound' };
+      }
+
       const sortedLockUnitIds = [
         ...new Set([validated.data.fromUnitId, validated.data.toUnitId]),
       ].sort((a, b) => a.localeCompare(b, 'en'));
@@ -740,6 +751,32 @@ export async function reassignReservationItemUnit(
         .where(inArray(productUnits.id, sortedLockUnitIds))
         .orderBy(productUnits.id)
         .for('update');
+
+      const [currentItem] = await tx
+        .select({
+          id: reservationItems.id,
+          productId: reservationItems.productId,
+          combinationKey: reservationItems.combinationKey,
+          reservationId: reservationItems.reservationId,
+          startDate: reservations.startDate,
+          endDate: reservations.endDate,
+        })
+        .from(reservationItems)
+        .innerJoin(
+          reservations,
+          eq(reservationItems.reservationId, reservations.id),
+        )
+        .where(
+          and(
+            eq(reservationItems.id, validated.data.reservationItemId),
+            eq(reservations.storeId, store.id),
+          ),
+        )
+        .limit(1);
+
+      if (!currentItem || !currentItem.productId) {
+        return { error: 'errors.notFound' };
+      }
 
       const units = await tx
         .select({
@@ -771,8 +808,8 @@ export async function reassignReservationItemUnit(
       }
 
       if (
-        fromUnit.productId !== item.productId ||
-        toUnit.productId !== item.productId
+        fromUnit.productId !== currentItem.productId ||
+        toUnit.productId !== currentItem.productId
       ) {
         return {
           error: 'errors.unitProductMismatch',
@@ -787,7 +824,8 @@ export async function reassignReservationItemUnit(
       const fromCombinationKey =
         fromUnit.combinationKey || DEFAULT_COMBINATION_KEY;
       const toCombinationKey = toUnit.combinationKey || DEFAULT_COMBINATION_KEY;
-      const itemCombinationKey = item.combinationKey || DEFAULT_COMBINATION_KEY;
+      const itemCombinationKey =
+        currentItem.combinationKey || DEFAULT_COMBINATION_KEY;
 
       if (
         fromCombinationKey !== toCombinationKey ||
@@ -804,7 +842,7 @@ export async function reassignReservationItemUnit(
         .from(reservationItemUnits)
         .where(
           and(
-            eq(reservationItemUnits.reservationItemId, item.id),
+            eq(reservationItemUnits.reservationItemId, currentItem.id),
             eq(reservationItemUnits.productUnitId, fromUnit.id),
           ),
         )
@@ -819,7 +857,7 @@ export async function reassignReservationItemUnit(
         .from(reservationItemUnits)
         .where(
           and(
-            eq(reservationItemUnits.reservationItemId, item.id),
+            eq(reservationItemUnits.reservationItemId, currentItem.id),
             eq(reservationItemUnits.productUnitId, toUnit.id),
           ),
         )
@@ -829,13 +867,37 @@ export async function reassignReservationItemUnit(
         return { error: 'errors.invalidUnits', failedUnitIds: [toUnit.id] };
       }
 
+      const [siblingAssignment] = await tx
+        .select({ id: reservationItemUnits.id })
+        .from(reservationItemUnits)
+        .innerJoin(
+          reservationItems,
+          eq(reservationItemUnits.reservationItemId, reservationItems.id),
+        )
+        .where(
+          and(
+            eq(reservationItems.reservationId, currentItem.reservationId),
+            not(eq(reservationItemUnits.reservationItemId, currentItem.id)),
+            eq(reservationItemUnits.productUnitId, toUnit.id),
+          ),
+        )
+        .limit(1);
+
+      if (siblingAssignment) {
+        return { error: 'errors.invalidUnits', failedUnitIds: [toUnit.id] };
+      }
+
       const rentableUnits = await tx
         .select({ id: productUnits.id })
         .from(productUnits)
         .where(
           and(
             eq(productUnits.id, toUnit.id),
-            buildUnitRentableDuringPredicate(tx, item.startDate, item.endDate),
+            buildUnitRentableDuringPredicate(
+              tx,
+              currentItem.startDate,
+              currentItem.endDate,
+            ),
           ),
         );
       if (rentableUnits.length === 0) {
@@ -844,11 +906,11 @@ export async function reassignReservationItemUnit(
 
       const busyUnitIds = await findBusyUnitIds(tx, {
         unitIds: [toUnit.id],
-        start: item.startDate,
-        end: item.endDate,
+        start: currentItem.startDate,
+        end: currentItem.endDate,
         blockingStatuses,
         turnoverBufferMinutes,
-        excludeReservationItemId: item.id,
+        excludeReservationItemId: currentItem.id,
       });
       const busyReason = busyUnitIds.get(toUnit.id);
       if (busyReason === 'overlap') {
@@ -868,7 +930,7 @@ export async function reassignReservationItemUnit(
 
       await tx.insert(reservationItemUnits).values({
         id: nanoid(),
-        reservationItemId: item.id,
+        reservationItemId: currentItem.id,
         productUnitId: toUnit.id,
         identifierSnapshot: toUnit.identifier,
         assignedAt: new Date(),
@@ -877,17 +939,23 @@ export async function reassignReservationItemUnit(
       await tx.insert(productUnitEvents).values([
         buildUnitEvent({
           productUnitId: fromUnit.id,
-          storeId: store.id,
-          type: 'unassigned',
-          actorUserId,
-          payload: eventPayload,
+          event: {
+            storeId: store.id,
+            type: 'unassigned',
+            actorUserId,
+            identifierSnapshot: fromUnit.identifier,
+            payload: eventPayload,
+          },
         }),
         buildUnitEvent({
           productUnitId: toUnit.id,
-          storeId: store.id,
-          type: 'assigned',
-          actorUserId,
-          payload: eventPayload,
+          event: {
+            storeId: store.id,
+            type: 'assigned',
+            actorUserId,
+            identifierSnapshot: toUnit.identifier,
+            payload: eventPayload,
+          },
         }),
       ]);
 

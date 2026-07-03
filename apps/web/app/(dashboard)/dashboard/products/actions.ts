@@ -165,7 +165,11 @@ async function getAssignedBlockingUnitIds({
       ),
     );
 
-  return [...new Set(rows.map((row) => row.productUnitId))];
+  return [
+    ...new Set(
+      rows.flatMap((row) => (row.productUnitId ? [row.productUnitId] : [])),
+    ),
+  ];
 }
 
 function getLegacyPricingModeFromUnit(
@@ -313,7 +317,6 @@ export async function createProduct(data: ProductInput) {
   const bookingAttributeAxes = trackUnits
     ? normalizeBookingAttributeAxes(validated.data.bookingAttributeAxes)
     : [];
-
   const manualQuantity = parseInt(validated.data.quantity, 10);
 
   const productId = nanoid();
@@ -514,6 +517,9 @@ export async function updateProduct(productId: string, data: ProductInput) {
   const bookingAttributeAxes = trackUnits
     ? normalizeBookingAttributeAxes(validated.data.bookingAttributeAxes)
     : [];
+  const blockingStatuses = getBlockingReservationStatuses(
+    store.settings?.pendingBlocksAvailability ?? true,
+  );
 
   // Prevent disabling unit tracking when future/active reservations use non-default combinations.
   if (!trackUnits && product.trackUnits) {
@@ -528,7 +534,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
         and(
           eq(reservationItems.productId, productId),
           not(eq(reservationItems.combinationKey, DEFAULT_COMBINATION_KEY)),
-          inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+          inArray(reservations.status, blockingStatuses),
           gte(reservations.endDate, new Date()),
         ),
       )
@@ -545,10 +551,13 @@ export async function updateProduct(productId: string, data: ProductInput) {
           where: eq(productUnits.productId, productId),
         })
       : [];
-  const existingUnitsById = new Map(
-    existingUnits.map((unit) => [unit.id, unit]),
+  const editableExistingUnits = existingUnits.filter(
+    (unit) => unit.lifecycleStatus === UNIT_LIFECYCLE.active,
   );
-  const existingUnitIds = new Set(existingUnits.map((unit) => unit.id));
+  const existingUnitsById = new Map(
+    editableExistingUnits.map((unit) => [unit.id, unit]),
+  );
+  const existingUnitIds = new Set(editableExistingUnits.map((unit) => unit.id));
   const unitsToUpdate = units.filter(
     (unit) => unit.id && existingUnitIds.has(unit.id),
   );
@@ -560,7 +569,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
         )
       : [],
   );
-  const unitsToDelete = existingUnits.filter(
+  const unitsToDelete = editableExistingUnits.filter(
     (unit) => !unitIdsToKeep.has(unit.id),
   );
   const manualQuantity = parseInt(validated.data.quantity, 10);
@@ -624,7 +633,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
       .where(
         and(
           eq(reservationItems.productId, productId),
-          inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+          inArray(reservations.status, blockingStatuses),
           gte(reservations.endDate, new Date()),
         ),
       );
@@ -919,7 +928,13 @@ export async function deleteProduct(productId: string) {
   });
 
   if (failedUnitIds.length > 0) {
-    return { error: 'errors.unitAssigned', failedUnitIds };
+    return {
+      error: 'errors.unitAssigned',
+      failedUnitIds,
+      failedUnitIdentifiers: unitsToDelete
+        .filter((unit) => failedUnitIds.includes(unit.id))
+        .map((unit) => unit.identifier),
+    };
   }
 
   const actorUserId = unitsToDelete.length > 0 ? await getActorUserId() : null;

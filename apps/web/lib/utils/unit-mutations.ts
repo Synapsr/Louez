@@ -38,7 +38,7 @@ type DeleteUnitMutation = {
   event: UnitEventInput;
 };
 
-function buildUnitEvent({
+export function buildUnitEvent({
   productUnitId,
   event,
 }: {

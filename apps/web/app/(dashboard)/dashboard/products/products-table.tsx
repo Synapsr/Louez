@@ -65,6 +65,11 @@ interface ProductsTableProps {
   currency?: string
 }
 
+type ProductActionResult = {
+  error?: string
+  failedUnitIdentifiers?: string[]
+}
+
 const STATUS_STYLES = {
   active: 'bg-green-500/10 text-green-600 hover:bg-green-500/20',
   draft: 'bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20',
@@ -103,13 +108,27 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  const getActionErrorMessage = (result: ProductActionResult) => {
+    const errorKey = result.error?.startsWith('errors.')
+      ? result.error.replace('errors.', '')
+      : null
+    const message = errorKey && result.error ? tErrors(errorKey) : result.error
+    const identifiers = result.failedUnitIdentifiers?.filter(Boolean)
+
+    if (identifiers && identifiers.length > 0) {
+      return `${message || tErrors('generic')} (${identifiers.join(', ')})`
+    }
+
+    return message || tErrors('generic')
+  }
+
   const handleStatusToggle = async (product: Product) => {
     const newStatus = product.status === 'active' ? 'draft' : 'active'
     setIsLoading(true)
     try {
       const result = await updateProductStatus(product.id, newStatus)
       if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
+        toastManager.add({ title: getActionErrorMessage(result), type: 'error' })
       } else {
         toastManager.add({
           title: newStatus === 'active'
@@ -130,7 +149,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
     try {
       const result = await updateProductStatus(product.id, 'archived')
       if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
+        toastManager.add({ title: getActionErrorMessage(result), type: 'error' })
       } else {
         toastManager.add({ title: t('productArchived'), type: 'success' })
       }
@@ -146,7 +165,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
     try {
       const result = await duplicateProduct(product.id)
       if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
+        toastManager.add({ title: getActionErrorMessage(result), type: 'error' })
       } else {
         toastManager.add({ title: t('productDuplicated'), type: 'success' })
       }
@@ -164,7 +183,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
     try {
       const result = await deleteProduct(productToDelete.id)
       if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
+        toastManager.add({ title: getActionErrorMessage(result), type: 'error' })
       } else {
         toastManager.add({ title: t('productDeleted'), type: 'success' })
       }
