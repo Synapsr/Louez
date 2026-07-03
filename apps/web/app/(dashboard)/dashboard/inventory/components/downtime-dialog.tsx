@@ -29,7 +29,7 @@ import {
   toastManager,
 } from '@louez/ui';
 
-import { declareDowntime } from '../actions';
+import { declareDowntime, updateDowntime } from '../actions';
 import type { InventoryUnitRow } from '../queries';
 import { ConflictsPanel } from './conflicts-panel';
 import type { InventoryConflict } from './inventory-types';
@@ -66,20 +66,22 @@ export const DowntimeDialog = ({
   const [note, setNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [conflicts, setConflicts] = useState<InventoryConflict[]>([]);
+  const currentDowntime = unit?.currentDowntime ?? null;
+  const isEditing = Boolean(currentDowntime);
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    setReason('maintenance');
-    setStartsAt(toDateTimeLocalInputValue(null));
-    setEndsAt('');
-    setOpenEnded(true);
-    setNote('');
+    setReason(currentDowntime?.reason ?? 'maintenance');
+    setStartsAt(toDateTimeLocalInputValue(currentDowntime?.startsAt ?? null));
+    setEndsAt(toDateTimeLocalInputValue(currentDowntime?.endsAt ?? null));
+    setOpenEnded(currentDowntime?.endsAt == null);
+    setNote(currentDowntime?.note ?? '');
     setIsSubmitting(false);
     setConflicts([]);
-  }, [open, unit?.id]);
+  }, [currentDowntime, open, unit?.id]);
 
   const handleSubmit = async () => {
     if (!unit) {
@@ -96,13 +98,21 @@ export const DowntimeDialog = ({
 
     setIsSubmitting(true);
     try {
-      const result = await declareDowntime({
-        unitId: unit.id,
-        reason,
-        startsAt: startsAtDate,
-        endsAt: endsAtDate,
-        note,
-      });
+      const result = currentDowntime
+        ? await updateDowntime({
+            downtimeId: currentDowntime.id,
+            reason,
+            startsAt: startsAtDate,
+            endsAt: endsAtDate,
+            note,
+          })
+        : await declareDowntime({
+            unitId: unit.id,
+            reason,
+            startsAt: startsAtDate,
+            endsAt: endsAtDate,
+            note,
+          });
 
       if (!result.success) {
         toastManager.add({
@@ -114,7 +124,10 @@ export const DowntimeDialog = ({
         return;
       }
 
-      toastManager.add({ title: t('successToast'), type: 'success' });
+      toastManager.add({
+        title: t(isEditing ? 'editSuccessToast' : 'successToast'),
+        type: 'success',
+      });
       router.refresh();
 
       if (result.conflicts.length > 0) {
@@ -134,7 +147,7 @@ export const DowntimeDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{t('title')}</DialogTitle>
+          <DialogTitle>{t(isEditing ? 'editTitle' : 'title')}</DialogTitle>
           <DialogDescription>
             {unit ? t('description', { identifier: unit.identifier }) : ''}
           </DialogDescription>
@@ -220,7 +233,7 @@ export const DowntimeDialog = ({
           </DialogClose>
           <Button onClick={handleSubmit} disabled={isSubmitting || !unit}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {t('submit')}
+            {t(isEditing ? 'editSubmit' : 'submit')}
           </Button>
         </DialogFooter>
       </DialogPopup>

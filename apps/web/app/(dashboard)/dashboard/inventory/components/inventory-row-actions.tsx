@@ -59,8 +59,17 @@ export const InventoryRowActions = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => onDeclareDowntime(row)}>
-          <Wrench className="mr-2 h-4 w-4" />
-          {t('declareDowntime')}
+          {row.currentDowntime ? (
+            <>
+              <Pencil className="mr-2 h-4 w-4" />
+              {t('editDowntime')}
+            </>
+          ) : (
+            <>
+              <Wrench className="mr-2 h-4 w-4" />
+              {t('declareDowntime')}
+            </>
+          )}
         </DropdownMenuItem>
         {row.currentDowntime ? (
           <DropdownMenuItem onClick={() => onCloseDowntime(row)}>

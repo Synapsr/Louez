@@ -1139,6 +1139,7 @@
       },
       "actions": {
         "declareDowntime": "Declare downtime",
+        "editDowntime": "Edit downtime",
         "closeDowntime": "Close downtime",
         "retire": "Retire unit",
         "reinstate": "Reinstate unit",
@@ -1161,8 +1162,10 @@
       },
       "downtimeDialog": {
         "title": "Declare downtime",
+        "editTitle": "Edit downtime",
         "description": "Mark {identifier} as unavailable for a dated maintenance or repair period.",
         "successToast": "Downtime declared",
+        "editSuccessToast": "Downtime updated",
         "reason": "Reason",
         "startsAt": "Start date and time",
         "endsAt": "End date and time",
@@ -1170,7 +1173,8 @@
         "note": "Note",
         "notePlaceholder": "Add context for your team",
         "close": "Close",
-        "submit": "Declare downtime"
+        "submit": "Declare downtime",
+        "editSubmit": "Save changes"
       },
       "retireDialog": {
         "title": "Retire unit",

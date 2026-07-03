@@ -1094,6 +1094,7 @@
       },
       "actions": {
         "declareDowntime": "Oznacz jako niedostępną",
+        "editDowntime": "Edytuj niedostępność",
         "closeDowntime": "Zamknij przestój",
         "retire": "Wycofaj jednostkę",
         "reinstate": "Przywróć jednostkę",
@@ -1116,8 +1117,10 @@
       },
       "downtimeDialog": {
         "title": "Oznacz jako niedostępną",
+        "editTitle": "Edytuj niedostępność",
         "description": "Oznacz {identifier} jako niedostępną na czas konserwacji lub naprawy.",
         "successToast": "Przestój dodany",
+        "editSuccessToast": "Niedostępność zaktualizowana",
         "reason": "Powód",
         "startsAt": "Data i godzina rozpoczęcia",
         "endsAt": "Data i godzina zakończenia",
@@ -1125,7 +1128,8 @@
         "note": "Notatka",
         "notePlaceholder": "Dodaj kontekst dla zespołu",
         "close": "Zamknij",
-        "submit": "Oznacz jako niedostępną"
+        "submit": "Oznacz jako niedostępną",
+        "editSubmit": "Zapisz zmiany"
       },
       "retireDialog": {
         "title": "Wycofaj jednostkę",
