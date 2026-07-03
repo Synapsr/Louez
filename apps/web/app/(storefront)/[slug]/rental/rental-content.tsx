@@ -99,6 +99,7 @@ interface Product {
   price: string;
   deposit: string | null;
   quantity: number;
+  displayQuantity?: number;
   category: { id: string; name: string; order?: number | null } | null;
   pricingMode?: PricingMode | null;
   basePeriodMinutes?: number | null;
@@ -114,6 +115,7 @@ interface Product {
   }> | null;
   units?: Array<{
     lifecycleStatus: 'active' | 'retired' | null;
+    inDowntimeNow?: boolean;
     attributes: Record<string, string> | null;
   }>;
   seasonalPricings?: SeasonalPricingData[];
@@ -642,7 +644,9 @@ export function RentalContent({
                     product={product}
                     storeSlug={store.slug}
                     availableQuantity={
-                      avail?.availableQuantity ?? product.quantity
+                      avail?.availableQuantity ??
+                      product.displayQuantity ??
+                      product.quantity
                     }
                     startDate={startDate}
                     endDate={endDate}

@@ -10,6 +10,7 @@ import { customers, products, reservations, storeLocations } from '@louez/db';
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { getCurrentStore } from '@/lib/store-context';
+import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
 import { NewReservationForm } from './new-reservation-form';
 
@@ -31,6 +32,7 @@ async function getProductsWithTiers(storeId: string) {
       },
       units: {
         columns: {
+          id: true,
           lifecycleStatus: true,
           attributes: true,
         },
@@ -43,10 +45,20 @@ async function getProductsWithTiers(storeId: string) {
     },
     limit: 500,
   });
+  const currentDowntimeUnitIds = await getCurrentDowntimeUnitIds(
+    result.flatMap((product) => product.units.map((unit) => unit.id)),
+    storeId,
+  );
+
   return result
     .map((p) => ({
       ...p,
       tulipInsurable: Boolean(p.tulipMapping?.productId),
+      units: p.units.map((unit) => ({
+        lifecycleStatus: unit.lifecycleStatus,
+        attributes: unit.attributes ?? null,
+        inDowntimeNow: currentDowntimeUnitIds.has(unit.id),
+      })),
       seasonalPricings: p.seasonalPricings.map((sp) => ({
         id: sp.id,
         name: sp.name,

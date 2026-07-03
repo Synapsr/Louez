@@ -1203,6 +1203,15 @@
         "unknownCustomer": "Kunde nicht angegeben",
         "byActor": "Von {actor}",
         "viewReservation": "Reservierung ansehen",
+        "downtimes": {
+          "title": "Ausfallzeiten",
+          "empty": "Keine Ausfallzeit erfasst",
+          "status": {
+            "current": "Läuft",
+            "upcoming": "Bevorstehend",
+            "past": "Vergangen"
+          }
+        },
         "events": {
           "created": "Einheit erstellt",
           "downtime_declared": "Ausfallzeit eingetragen",

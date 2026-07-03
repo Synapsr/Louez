@@ -36,6 +36,7 @@ export function getProductCombinationAvailabilityKey(
 export function buildProductCombinations(
   product: Product,
   reservedByCombination: ReservedByProductCombination = new Map(),
+  hasSelectedPeriod = false,
 ): CombinationAvailability[] {
   const bookingAttributeAxes = getSortedAxes(product);
   const byCombination = new Map<
@@ -45,6 +46,9 @@ export function buildProductCombinations(
 
   for (const unit of product.units || []) {
     if ((unit.lifecycleStatus || 'active') !== 'active') {
+      continue;
+    }
+    if (!hasSelectedPeriod && unit.inDowntimeNow) {
       continue;
     }
 
@@ -131,11 +135,16 @@ export function getLineQuantityConstraints(
   productLines: SelectedProduct[],
   reservedQuantity = 0,
   reservedByCombination: ReservedByProductCombination = new Map(),
+  hasSelectedPeriod = false,
 ): LineQuantityConstraints {
   const bookingAttributeAxes = getSortedAxes(product);
   const hasBookingAttributes =
     product.trackUnits && bookingAttributeAxes.length > 0;
-  const combinations = buildProductCombinations(product, reservedByCombination);
+  const combinations = buildProductCombinations(
+    product,
+    reservedByCombination,
+    hasSelectedPeriod,
+  );
 
   const otherLines = productLines.filter((item) => item.lineId !== line.lineId);
   const otherProductQuantity = otherLines.reduce(

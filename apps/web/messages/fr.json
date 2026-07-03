@@ -1209,6 +1209,15 @@
         "unknownCustomer": "Client non renseigné",
         "byActor": "Par {actor}",
         "viewReservation": "Voir la réservation",
+        "downtimes": {
+          "title": "Indisponibilités",
+          "empty": "Aucune indisponibilité enregistrée",
+          "status": {
+            "current": "En cours",
+            "upcoming": "À venir",
+            "past": "Passée"
+          }
+        },
         "events": {
           "created": "Unité créée",
           "downtime_declared": "Indisponibilité déclarée",

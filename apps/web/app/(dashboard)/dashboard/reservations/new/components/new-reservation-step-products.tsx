@@ -66,6 +66,7 @@ interface NewReservationStepProductsProps {
   endDate: Date | undefined;
   availabilityWarnings: AvailabilityWarning[];
   periodAvailability: PeriodAvailability;
+  hasSelectedPeriod: boolean;
   hasItems: boolean;
   subtotal: number;
   originalSubtotal: number;
@@ -114,6 +115,7 @@ export function NewReservationStepProducts({
   endDate,
   availabilityWarnings,
   periodAvailability,
+  hasSelectedPeriod,
   hasItems,
   subtotal,
   originalSubtotal,
@@ -259,6 +261,7 @@ export function NewReservationStepProducts({
             const productCombinations = buildProductCombinations(
               product,
               periodAvailability.reservedByProductCombination,
+              hasSelectedPeriod,
             );
             const productCapacity = product.trackUnits
               ? productCombinations.reduce(
@@ -283,6 +286,9 @@ export function NewReservationStepProducts({
               const values = new Set<string>();
               for (const unit of product.units || []) {
                 if ((unit.lifecycleStatus || 'active') !== 'active') {
+                  continue;
+                }
+                if (!hasSelectedPeriod && unit.inDowntimeNow) {
                   continue;
                 }
                 const rawValue = unit.attributes?.[axis.key];
@@ -325,6 +331,7 @@ export function NewReservationStepProducts({
                 productLines,
                 productReservedQuantity,
                 periodAvailability.reservedByProductCombination,
+                hasSelectedPeriod,
               );
 
               return {

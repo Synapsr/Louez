@@ -69,6 +69,7 @@ interface ProductCardAvailableProps {
     price: string;
     deposit: string | null;
     quantity: number;
+    displayQuantity?: number;
     category?: { name: string } | null;
     pricingMode?: PricingMode | null;
     basePeriodMinutes?: number | null;
@@ -84,6 +85,7 @@ interface ProductCardAvailableProps {
     }> | null;
     units?: Array<{
       lifecycleStatus: 'active' | 'retired' | null;
+      inDowntimeNow?: boolean;
       attributes: Record<string, string> | null;
     }>;
     seasonalPricings?: SeasonalPricingConfig[];
@@ -96,9 +98,7 @@ interface ProductCardAvailableProps {
 }
 
 // Helper to convert tier discountPercent to number
-function normalizeTiers(
-  tiers?: PricingTier[],
-): {
+function normalizeTiers(tiers?: PricingTier[]): {
   id: string;
   minDuration: number;
   discountPercent: number;
@@ -140,6 +140,7 @@ export function ProductCardAvailable({
   const firstLine = cartLines[0];
   const cartQuantity = getProductQuantityInCart(product.id);
   const inCart = cartQuantity > 0;
+  const totalQuantity = product.displayQuantity ?? product.quantity;
 
   const price = parseFloat(product.price);
   const deposit = product.deposit ? parseFloat(product.deposit) : 0;
@@ -247,11 +248,11 @@ export function ProductCardAvailable({
     ? 'in_cart'
     : availableQuantity === 0
       ? 'unavailable'
-      : availableQuantity < product.quantity
+      : availableQuantity < totalQuantity
         ? 'limited'
         : 'available';
 
-  const maxQuantity = Math.min(availableQuantity, product.quantity);
+  const maxQuantity = Math.min(availableQuantity, totalQuantity);
   const firstLineQuantity = firstLine?.quantity || 0;
   const firstLineMaxQuantity = firstLine?.maxQuantity || maxQuantity;
   const canAddMore = firstLineQuantity < firstLineMaxQuantity;
@@ -398,7 +399,7 @@ export function ProductCardAvailable({
             <AvailabilityBadge
               status={status}
               availableQuantity={availableQuantity}
-              totalQuantity={product.quantity}
+              totalQuantity={totalQuantity}
               cartQuantity={cartQuantity}
             />
           </div>

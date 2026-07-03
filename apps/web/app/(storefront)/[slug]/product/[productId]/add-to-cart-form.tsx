@@ -108,6 +108,7 @@ interface AddToCartFormProps {
   bookingAttributeValues?: Record<string, string[]>;
   productUnits?: Array<{
     lifecycleStatus: 'active' | 'retired' | null;
+    inDowntimeNow?: boolean;
     attributes: Record<string, string> | null;
   }>;
   bookingCombinations?: Array<{
@@ -165,6 +166,7 @@ export function AddToCartForm({
 
     for (const unit of productUnits) {
       if ((unit.lifecycleStatus || 'active') !== 'active') continue;
+      if (unit.inDowntimeNow) continue;
 
       const selected = unit.attributes || {};
       const combinationKey = buildCombinationKey(

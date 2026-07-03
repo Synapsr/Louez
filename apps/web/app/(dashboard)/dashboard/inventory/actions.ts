@@ -41,7 +41,10 @@ import { getCurrentStore } from '@/lib/store-context';
 import { checkUnitsAvailability } from '@/lib/utils/unit-availability';
 import { getUnitConflicts } from '@/lib/utils/unit-conflicts';
 
-import { getUnitTimeline as getUnitTimelineQuery } from './queries';
+import {
+  getUnitDowntimes as getUnitDowntimesQuery,
+  getUnitTimeline as getUnitTimelineQuery,
+} from './queries';
 
 async function getStoreForUser() {
   return getCurrentStore();
@@ -894,4 +897,8 @@ export async function reassignReservationItemUnit(
 
 export async function loadUnitTimeline(input: { unitId: string }) {
   return getUnitTimelineQuery(input);
+}
+
+export async function loadUnitDowntimes(input: { unitId: string }) {
+  return getUnitDowntimesQuery(input);
 }
