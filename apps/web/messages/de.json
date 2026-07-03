@@ -1133,6 +1133,7 @@
       },
       "actions": {
         "declareDowntime": "Ausfallzeit eintragen",
+        "editDowntime": "Ausfallzeit bearbeiten",
         "closeDowntime": "Ausfallzeit schließen",
         "retire": "Einheit ausmustern",
         "reinstate": "Einheit reaktivieren",
@@ -1155,8 +1156,10 @@
       },
       "downtimeDialog": {
         "title": "Ausfallzeit eintragen",
+        "editTitle": "Ausfallzeit bearbeiten",
         "description": "{identifier} für einen Wartungs- oder Reparaturzeitraum als nicht verfügbar markieren.",
         "successToast": "Ausfallzeit eingetragen",
+        "editSuccessToast": "Ausfallzeit aktualisiert",
         "reason": "Grund",
         "startsAt": "Startdatum und -zeit",
         "endsAt": "Enddatum und -zeit",
@@ -1164,7 +1167,8 @@
         "note": "Notiz",
         "notePlaceholder": "Kontext für Ihr Team hinzufügen",
         "close": "Schließen",
-        "submit": "Ausfallzeit eintragen"
+        "submit": "Ausfallzeit eintragen",
+        "editSubmit": "Änderungen speichern"
       },
       "retireDialog": {
         "title": "Einheit ausmustern",

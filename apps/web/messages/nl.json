@@ -1094,6 +1094,7 @@
       },
       "actions": {
         "declareDowntime": "Buiten gebruik stellen",
+        "editDowntime": "Onbeschikbaarheid bewerken",
         "closeDowntime": "Buitengebruikstelling sluiten",
         "retire": "Eenheid uitfaseren",
         "reinstate": "Eenheid herstellen",
@@ -1116,8 +1117,10 @@
       },
       "downtimeDialog": {
         "title": "Buiten gebruik stellen",
+        "editTitle": "Onbeschikbaarheid bewerken",
         "description": "Markeer {identifier} als niet beschikbaar voor onderhoud of reparatie.",
         "successToast": "Buitengebruikstelling aangemaakt",
+        "editSuccessToast": "Onbeschikbaarheid bijgewerkt",
         "reason": "Reden",
         "startsAt": "Startdatum en -tijd",
         "endsAt": "Einddatum en -tijd",
@@ -1125,7 +1128,8 @@
         "note": "Notitie",
         "notePlaceholder": "Voeg context toe voor je team",
         "close": "Sluiten",
-        "submit": "Buiten gebruik stellen"
+        "submit": "Buiten gebruik stellen",
+        "editSubmit": "Wijzigingen opslaan"
       },
       "retireDialog": {
         "title": "Eenheid uitfaseren",

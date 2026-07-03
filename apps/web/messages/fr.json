@@ -1139,6 +1139,7 @@
       },
       "actions": {
         "declareDowntime": "Mettre hors service",
+        "editDowntime": "Modifier l'indisponibilité",
         "closeDowntime": "Clôturer l’indisponibilité",
         "retire": "Retirer du parc",
         "reinstate": "Réintégrer au parc",
@@ -1161,8 +1162,10 @@
       },
       "downtimeDialog": {
         "title": "Mettre hors service",
+        "editTitle": "Modifier l'indisponibilité",
         "description": "Marquez {identifier} comme indisponible pour une période d’entretien ou de réparation.",
         "successToast": "Indisponibilité déclarée",
+        "editSuccessToast": "Indisponibilité mise à jour",
         "reason": "Motif",
         "startsAt": "Date et heure de début",
         "endsAt": "Date et heure de fin",
@@ -1170,7 +1173,8 @@
         "note": "Note",
         "notePlaceholder": "Ajoutez du contexte pour votre équipe",
         "close": "Fermer",
-        "submit": "Mettre hors service"
+        "submit": "Mettre hors service",
+        "editSubmit": "Enregistrer les modifications"
       },
       "retireDialog": {
         "title": "Retirer du parc",

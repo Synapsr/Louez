@@ -1094,6 +1094,7 @@
       },
       "actions": {
         "declareDowntime": "Metti fuori servizio",
+        "editDowntime": "Modifica indisponibilità",
         "closeDowntime": "Chiudi indisponibilità",
         "retire": "Ritira dal parco",
         "reinstate": "Reintegra nel parco",
@@ -1116,8 +1117,10 @@
       },
       "downtimeDialog": {
         "title": "Metti fuori servizio",
+        "editTitle": "Modifica indisponibilità",
         "description": "Segna {identifier} come non disponibile per un periodo di manutenzione o riparazione.",
         "successToast": "Indisponibilità dichiarata",
+        "editSuccessToast": "Indisponibilità aggiornata",
         "reason": "Motivo",
         "startsAt": "Data e ora di inizio",
         "endsAt": "Data e ora di fine",
@@ -1125,7 +1128,8 @@
         "note": "Nota",
         "notePlaceholder": "Aggiungi contesto per il team",
         "close": "Chiudi",
-        "submit": "Metti fuori servizio"
+        "submit": "Metti fuori servizio",
+        "editSubmit": "Salva modifiche"
       },
       "retireDialog": {
         "title": "Ritira dal parco",

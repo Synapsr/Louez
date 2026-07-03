@@ -1094,6 +1094,7 @@
       },
       "actions": {
         "declareDowntime": "Colocar fora de serviço",
+        "editDowntime": "Editar indisponibilidade",
         "closeDowntime": "Fechar indisponibilidade",
         "retire": "Retirar unidade",
         "reinstate": "Reintegrar unidade",
@@ -1116,8 +1117,10 @@
       },
       "downtimeDialog": {
         "title": "Colocar fora de serviço",
+        "editTitle": "Editar indisponibilidade",
         "description": "Marque {identifier} como indisponível durante um período de manutenção ou reparação.",
         "successToast": "Indisponibilidade declarada",
+        "editSuccessToast": "Indisponibilidade atualizada",
         "reason": "Motivo",
         "startsAt": "Data e hora de início",
         "endsAt": "Data e hora de fim",
@@ -1125,7 +1128,8 @@
         "note": "Nota",
         "notePlaceholder": "Adicione contexto para a equipa",
         "close": "Fechar",
-        "submit": "Colocar fora de serviço"
+        "submit": "Colocar fora de serviço",
+        "editSubmit": "Guardar alterações"
       },
       "retireDialog": {
         "title": "Retirar unidade",
