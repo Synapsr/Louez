@@ -372,6 +372,13 @@
       "when": 1783088338363,
       "tag": "0049_silly_magma",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
+      "when": 1783089155673,
+      "tag": "0050_early_swarm",
+      "breakpoints": true
     }
   ]
 }

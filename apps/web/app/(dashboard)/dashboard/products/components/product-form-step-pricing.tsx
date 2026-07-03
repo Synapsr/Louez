@@ -1,9 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
 
 import { format } from 'date-fns';
-import { fr, enUS } from 'date-fns/locale';
+import { enUS, fr } from 'date-fns/locale';
 import {
   CalendarRange,
   Check,
@@ -16,10 +23,9 @@ import {
   Puzzle,
   Trash2,
 } from 'lucide-react';
-import { useTranslations, useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import type { PricingMode, Rate, TaxSettings } from '@louez/types';
-import { minutesToPriceDuration, priceDurationToMinutes } from '@louez/utils';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -49,17 +55,18 @@ import {
   Separator,
   toastManager,
 } from '@louez/ui';
+import { minutesToPriceDuration, priceDurationToMinutes } from '@louez/utils';
 
 import { AccessoriesSelector } from '@/components/dashboard/accessories-selector';
 import {
   CHART_RANGE_PRESETS,
   type ChartRangePreset,
-  buildChartData,
-  buildChartTicks,
   PricingChart,
   RatesEditor,
-  resolveChartMaxMinutes,
   SHOW_DEV_CHART_RANGE_SELECTOR,
+  buildChartData,
+  buildChartTicks,
+  resolveChartMaxMinutes,
 } from '@/components/dashboard/rates-editor';
 import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor';
 import {
@@ -69,6 +76,11 @@ import {
 
 import { getFieldError } from '@/hooks/form/form-context';
 
+import {
+  deleteSeasonalPricing,
+  duplicateSeasonalPricing,
+  updateSeasonalPricing,
+} from '../seasonal-actions';
 import type {
   AvailableAccessory,
   ProductFormComponentApi,
@@ -76,12 +88,6 @@ import type {
   RateTierInput,
   SeasonalPricingData,
 } from '../types';
-import {
-  deleteSeasonalPricing,
-  duplicateSeasonalPricing,
-  updateSeasonalPricing,
-} from '../seasonal-actions';
-
 import { PricingPeriodSelector } from './pricing-period-selector';
 import { SeasonalPeriodFormDialog } from './seasonal-period-form-dialog';
 
@@ -163,24 +169,34 @@ export function ProductFormStepPricing({
   const [highlightBaseRate, setHighlightBaseRate] = useState(false);
 
   // Seasonal inline editing state
-  const [seasonalPriceDuration, setSeasonalPriceDuration] = useState<PriceDurationValue | undefined>();
-  const [seasonalRateTiers, setSeasonalRateTiers] = useState<RateTierInput[]>([]);
+  const [seasonalPriceDuration, setSeasonalPriceDuration] = useState<
+    PriceDurationValue | undefined
+  >();
+  const [seasonalRateTiers, setSeasonalRateTiers] = useState<RateTierInput[]>(
+    [],
+  );
   const [seasonalDirty, setSeasonalDirty] = useState(false);
   const [isSavingSeasonal, startSeasonalTransition] = useTransition();
   const [seasonalChartRangePreset, setSeasonalChartRangePreset] =
     useState<ChartRangePreset>('auto');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMetadata, setEditingMetadata] = useState<{
-    id: string; name: string; startDate: string; endDate: string;
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [autoSaveStatus, setAutoSaveStatus] = useState<
+    'idle' | 'saving' | 'saved'
+  >('idle');
 
   // Track the previous period id to detect changes and auto-save
   const isSeasonalMode = selectedSeasonalPeriodId !== null;
   const selectedPeriod = isSeasonalMode
-    ? seasonalPricings.find((sp) => sp.id === selectedSeasonalPeriodId) ?? null
+    ? (seasonalPricings.find((sp) => sp.id === selectedSeasonalPeriodId) ??
+      null)
     : null;
 
   // Load seasonal data into local state when period changes
@@ -196,29 +212,35 @@ export function ProductFormStepPricing({
   }, [selectedPeriod?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save when switching periods
-  const saveCurrentSeasonalPricing = useCallback(async (periodId: string) => {
-    const period = seasonalPricings.find((sp) => sp.id === periodId);
-    if (!period || !seasonalPriceDuration) return;
+  const saveCurrentSeasonalPricing = useCallback(
+    async (periodId: string) => {
+      const period = seasonalPricings.find((sp) => sp.id === periodId);
+      if (!period || !seasonalPriceDuration) return;
 
-    const payload = {
-      name: period.name,
-      startDate: period.startDate,
-      endDate: period.endDate,
-      price: seasonalPriceDuration.price.replace(',', '.'),
-      rateTiers: seasonalRateTiers.map((tier) => ({
-        price: tier.price.replace(',', '.'),
-        duration: tier.duration,
-        unit: tier.unit,
-      })),
-    };
+      const payload = {
+        name: period.name,
+        startDate: period.startDate,
+        endDate: period.endDate,
+        price: seasonalPriceDuration.price.replace(',', '.'),
+        rateTiers: seasonalRateTiers.map((tier) => ({
+          price: tier.price.replace(',', '.'),
+          duration: tier.duration,
+          unit: tier.unit,
+        })),
+      };
 
-    const result = await updateSeasonalPricing(periodId, payload);
-    if (result && 'error' in result) {
-      toastManager.add({ title: t(result.error as any) || result.error, type: 'error' });
-      return false;
-    }
-    return true;
-  }, [seasonalPriceDuration, seasonalRateTiers, seasonalPricings, t]);
+      const result = await updateSeasonalPricing(periodId, payload);
+      if (result && 'error' in result) {
+        toastManager.add({
+          title: t(result.error as any) || result.error,
+          type: 'error',
+        });
+        return false;
+      }
+      return true;
+    },
+    [seasonalPriceDuration, seasonalRateTiers, seasonalPricings, t],
+  );
 
   // Debounced auto-save: triggers 1.5s after the last edit
   useEffect(() => {
@@ -230,7 +252,9 @@ export function ProductFormStepPricing({
 
     autoSaveTimerRef.current = setTimeout(async () => {
       setAutoSaveStatus('saving');
-      const success = await saveCurrentSeasonalPricing(selectedSeasonalPeriodId);
+      const success = await saveCurrentSeasonalPricing(
+        selectedSeasonalPeriodId,
+      );
       if (success) {
         setSeasonalDirty(false);
         setAutoSaveStatus('saved');
@@ -238,7 +262,10 @@ export function ProductFormStepPricing({
         if (onSeasonalPricingsChange && seasonalPriceDuration) {
           const updated = seasonalPricings.map((sp) => {
             if (sp.id !== selectedSeasonalPeriodId) return sp;
-            return { ...sp, price: seasonalPriceDuration.price.replace(',', '.') };
+            return {
+              ...sp,
+              price: seasonalPriceDuration.price.replace(',', '.'),
+            };
           });
           onSeasonalPricingsChange(updated);
         }
@@ -256,26 +283,40 @@ export function ProductFormStepPricing({
   }, [seasonalDirty, seasonalPriceDuration, seasonalRateTiers]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save immediately when switching periods
-  const handleSelectPeriod = useCallback(async (newPeriodId: string | null) => {
-    // Clear any pending debounce timer
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-      autoSaveTimerRef.current = null;
-    }
-    // Auto-save current period if dirty
-    if (seasonalDirty && selectedSeasonalPeriodId) {
-      await saveCurrentSeasonalPricing(selectedSeasonalPeriodId);
-      if (onSeasonalPricingsChange && seasonalPriceDuration) {
-        const updated = seasonalPricings.map((sp) => {
-          if (sp.id !== selectedSeasonalPeriodId) return sp;
-          return { ...sp, price: seasonalPriceDuration.price.replace(',', '.') };
-        });
-        onSeasonalPricingsChange(updated);
+  const handleSelectPeriod = useCallback(
+    async (newPeriodId: string | null) => {
+      // Clear any pending debounce timer
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
       }
-    }
-    setAutoSaveStatus('idle');
-    onSelectSeasonalPeriod?.(newPeriodId);
-  }, [seasonalDirty, selectedSeasonalPeriodId, saveCurrentSeasonalPricing, onSelectSeasonalPeriod, onSeasonalPricingsChange, seasonalPriceDuration, seasonalPricings]);
+      // Auto-save current period if dirty
+      if (seasonalDirty && selectedSeasonalPeriodId) {
+        await saveCurrentSeasonalPricing(selectedSeasonalPeriodId);
+        if (onSeasonalPricingsChange && seasonalPriceDuration) {
+          const updated = seasonalPricings.map((sp) => {
+            if (sp.id !== selectedSeasonalPeriodId) return sp;
+            return {
+              ...sp,
+              price: seasonalPriceDuration.price.replace(',', '.'),
+            };
+          });
+          onSeasonalPricingsChange(updated);
+        }
+      }
+      setAutoSaveStatus('idle');
+      onSelectSeasonalPeriod?.(newPeriodId);
+    },
+    [
+      seasonalDirty,
+      selectedSeasonalPeriodId,
+      saveCurrentSeasonalPricing,
+      onSelectSeasonalPeriod,
+      onSeasonalPricingsChange,
+      seasonalPriceDuration,
+      seasonalPricings,
+    ],
+  );
 
   const handleAddPeriod = () => {
     setEditingMetadata(null);
@@ -294,25 +335,32 @@ export function ProductFormStepPricing({
   };
 
   const handlePeriodCreated = (newPeriod: SeasonalPricingData) => {
-    const updated = [...seasonalPricings, newPeriod].sort(
-      (a, b) => a.startDate.localeCompare(b.startDate)
+    const updated = [...seasonalPricings, newPeriod].sort((a, b) =>
+      a.startDate.localeCompare(b.startDate),
     );
     onSeasonalPricingsChange?.(updated);
     onSelectSeasonalPeriod?.(newPeriod.id);
   };
 
-  const handleMetadataUpdated = async (id: string, name: string, startDate: string, endDate: string) => {
+  const handleMetadataUpdated = async (
+    id: string,
+    name: string,
+    startDate: string,
+    endDate: string,
+  ) => {
     // Get current pricing data for the period
     const period = seasonalPricings.find((sp) => sp.id === id);
     if (!period) return;
 
     // Use local state values if this is the currently selected period, otherwise use stored values
-    const currentPrice = id === selectedSeasonalPeriodId && seasonalPriceDuration
-      ? seasonalPriceDuration.price.replace(',', '.')
-      : period.price;
-    const currentTiers = id === selectedSeasonalPeriodId
-      ? seasonalRateTiers
-      : toFormTiers(period.tiers);
+    const currentPrice =
+      id === selectedSeasonalPeriodId && seasonalPriceDuration
+        ? seasonalPriceDuration.price.replace(',', '.')
+        : period.price;
+    const currentTiers =
+      id === selectedSeasonalPeriodId
+        ? seasonalRateTiers
+        : toFormTiers(period.tiers);
 
     const payload = {
       name,
@@ -328,15 +376,20 @@ export function ProductFormStepPricing({
 
     const result = await updateSeasonalPricing(id, payload);
     if (result && 'error' in result) {
-      toastManager.add({ title: t(result.error as any) || result.error, type: 'error' });
+      toastManager.add({
+        title: t(result.error as any) || result.error,
+        type: 'error',
+      });
       return;
     }
 
     toastManager.add({ title: t('periodSaved'), type: 'success' });
-    const updated = seasonalPricings.map((sp) => {
-      if (sp.id !== id) return sp;
-      return { ...sp, name, startDate, endDate, price: currentPrice };
-    }).sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const updated = seasonalPricings
+      .map((sp) => {
+        if (sp.id !== id) return sp;
+        return { ...sp, name, startDate, endDate, price: currentPrice };
+      })
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
     onSeasonalPricingsChange?.(updated);
     setSeasonalDirty(false);
   };
@@ -346,10 +399,15 @@ export function ProductFormStepPricing({
     startSeasonalTransition(async () => {
       const result = await deleteSeasonalPricing(selectedPeriod.id);
       if (result && 'error' in result) {
-        toastManager.add({ title: t(result.error as any) || result.error, type: 'error' });
+        toastManager.add({
+          title: t(result.error as any) || result.error,
+          type: 'error',
+        });
         return;
       }
-      const updated = seasonalPricings.filter((sp) => sp.id !== selectedPeriod.id);
+      const updated = seasonalPricings.filter(
+        (sp) => sp.id !== selectedPeriod.id,
+      );
       onSeasonalPricingsChange?.(updated);
       onSelectSeasonalPeriod?.(null);
       setDeleteDialogOpen(false);
@@ -365,7 +423,10 @@ export function ProductFormStepPricing({
     startSeasonalTransition(async () => {
       const result = await duplicateSeasonalPricing(selectedPeriod.id);
       if (result && 'error' in result) {
-        toastManager.add({ title: t(result.error as any) || result.error, type: 'error' });
+        toastManager.add({
+          title: t(result.error as any) || result.error,
+          type: 'error',
+        });
         return;
       }
       if (result && 'id' in result) {
@@ -396,7 +457,10 @@ export function ProductFormStepPricing({
   );
 
   const seasonalBasePeriod = seasonalPriceDuration
-    ? priceDurationToMinutes(seasonalPriceDuration.duration, seasonalPriceDuration.unit)
+    ? priceDurationToMinutes(
+        seasonalPriceDuration.duration,
+        seasonalPriceDuration.unit,
+      )
     : 0;
   const seasonalBasePrice = seasonalPriceDuration
     ? Number.parseFloat(seasonalPriceDuration.price.replace(',', '.')) || 0
@@ -431,33 +495,45 @@ export function ProductFormStepPricing({
 
   // Seasonal banner for when a period is selected
   const seasonalBanner = selectedPeriod ? (
-    <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-      <CalendarRange className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm">{selectedPeriod.name}</p>
-        <p className="text-muted-foreground text-xs mt-0.5">
-          {format(new Date(selectedPeriod.startDate + 'T00:00:00'), 'd MMM yyyy', { locale: calendarLocale })}
+    <div className="border-primary/20 bg-primary/5 flex items-start gap-3 rounded-lg border p-3">
+      <CalendarRange className="text-primary mt-0.5 h-5 w-5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">{selectedPeriod.name}</p>
+        <p className="text-muted-foreground mt-0.5 text-xs">
+          {format(
+            new Date(selectedPeriod.startDate + 'T00:00:00'),
+            'd MMM yyyy',
+            { locale: calendarLocale },
+          )}
           {' → '}
-          {format(new Date(selectedPeriod.endDate + 'T00:00:00'), 'd MMM yyyy', { locale: calendarLocale })}
+          {format(
+            new Date(selectedPeriod.endDate + 'T00:00:00'),
+            'd MMM yyyy',
+            { locale: calendarLocale },
+          )}
         </p>
       </div>
       {autoSaveStatus !== 'idle' && (
-        <div className="flex items-center gap-1.5 self-center shrink-0">
+        <div className="flex shrink-0 items-center gap-1.5 self-center">
           {autoSaveStatus === 'saving' && (
             <>
-              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">{t('savingPeriod')}</span>
+              <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
+              <span className="text-muted-foreground text-xs">
+                {t('savingPeriod')}
+              </span>
             </>
           )}
           {autoSaveStatus === 'saved' && (
             <>
               <Check className="h-3 w-3 text-emerald-600" />
-              <span className="text-xs text-emerald-600">{t('periodSaved')}</span>
+              <span className="text-xs text-emerald-600">
+                {t('periodSaved')}
+              </span>
             </>
           )}
         </div>
       )}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex shrink-0 items-center gap-1">
         <Button
           variant="ghost"
           size="sm"
@@ -469,9 +545,7 @@ export function ProductFormStepPricing({
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="icon" className="h-7 w-7" />
-            }
+            render={<Button variant="ghost" size="icon" className="h-7 w-7" />}
           >
             <MoreHorizontal className="h-4 w-4" />
           </DropdownMenuTrigger>
@@ -525,7 +599,13 @@ export function ProductFormStepPricing({
             <div className="space-y-2">
               <Label>{t('seasonBasePrice')}</Label>
               <PriceDurationInput
-                value={seasonalPriceDuration ?? { price: '', duration: 1, unit: 'day' }}
+                value={
+                  seasonalPriceDuration ?? {
+                    price: '',
+                    duration: 1,
+                    unit: 'day',
+                  }
+                }
                 onChange={(next) => {
                   setSeasonalPriceDuration(next);
                   setSeasonalDirty(true);
@@ -587,14 +667,13 @@ export function ProductFormStepPricing({
               </div>
             )}
             {/* Hint to go back to base pricing for TVA/deposit/progressive */}
-            <div className="flex items-start gap-2.5 rounded-lg border border-muted bg-muted/30 px-3.5 py-3">
-              <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <div className="flex-1 text-sm text-muted-foreground">
-                <span>{t('seasonalSettingsHint')}</span>
-                {' '}
+            <div className="border-muted bg-muted/30 flex items-start gap-2.5 rounded-lg border px-3.5 py-3">
+              <Info className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+              <div className="text-muted-foreground flex-1 text-sm">
+                <span>{t('seasonalSettingsHint')}</span>{' '}
                 <button
                   type="button"
-                  className="inline font-medium text-primary underline-offset-2 hover:underline"
+                  className="text-primary inline font-medium underline-offset-2 hover:underline"
                   onClick={() => onSelectSeasonalPeriod?.(null)}
                 >
                   {t('switchToBasePricing')}
@@ -663,7 +742,9 @@ export function ProductFormStepPricing({
                       field.handleChange(next);
                       onRateTiersEdit?.();
                     }}
-                    enforceStrictTiers={watchedValues.enforceStrictTiers ?? true}
+                    enforceStrictTiers={
+                      watchedValues.enforceStrictTiers ?? true
+                    }
                     onEnforceStrictTiersChange={(value) =>
                       form.setFieldValue('enforceStrictTiers', value)
                     }
@@ -774,7 +855,9 @@ export function ProductFormStepPricing({
           <AlertDialogHeader>
             <AlertDialogTitle>{t('deleteSeasonTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteSeasonDescription', { name: selectedPeriod?.name || '' })}
+              {t('deleteSeasonDescription', {
+                name: selectedPeriod?.name || '',
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -826,6 +909,7 @@ export function ProductFormStepPricing({
           }}
           disabled={isSaving}
           showValidationErrors={showUnitValidationErrors}
+          productId={productId}
         />
       </CardContent>
     </Card>

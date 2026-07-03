@@ -119,9 +119,7 @@ export function ProductFormStepPreview({
                 <span className="text-muted-foreground">{t('quantity')}</span>
                 <span>
                   {watchedValues.trackUnits
-                    ? (watchedValues.units ?? []).filter(
-                        (u) => (u.lifecycleStatus || 'active') === 'active',
-                      ).length
+                    ? (watchedValues.units ?? []).length
                     : watchedValues.quantity}{' '}
                   {t('units')}
                 </span>

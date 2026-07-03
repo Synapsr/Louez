@@ -881,6 +881,7 @@
           "quantityLabel": "Quantité disponible",
           "quantityManagedByTracking": "Géré par le suivi unitaire",
           "activeUnits": "{count, plural, one {# unité active} other {# unités actives}}",
+          "trackedUnits": "{count, plural, one {# unité suivie} other {# unités suivies}}",
           "bookingAttributesTitle": "Attributs de réservation",
           "bookingAttributesDescription": "Ajoutez jusqu'à 3 axes (taille, couleur, voltage...) pour les combinaisons suivies.",
           "bookingAttributePlaceholder": "Libellé de l'attribut (ex : Taille)",
@@ -906,6 +907,7 @@
           "bulkPreview": "Aperçu",
           "deleteConfirm": "Supprimer cette unité",
           "deleteWarning": "Cette unité est actuellement assignée à une réservation active et ne peut pas être retirée.",
+          "assignedUnit": "Assignée",
           "disableConfirm": "Désactiver le suivi unitaire ?",
           "disableDescription": "Le suivi individuel sera désactivé. La quantité sera définie à {count}. Les unités enregistrées seront supprimées.",
           "duplicateIdentifier": "Un ou plusieurs identifiants sont en double",
@@ -922,7 +924,9 @@
           "generatorHint": "Les références sont générées automatiquement — modifiables ensuite.",
           "applyPurchaseToAll": "Appliquer à toutes les unités",
           "purchaseDetails": "Détails d'achat",
-          "unitDetails": "Détails"
+          "unitDetails": "Détails",
+          "existingUnitDetailsHint": "Les détails d'achat, les notes et le cycle de vie se gèrent depuis l'inventaire.",
+          "openInventoryDetails": "Ouvrir l'inventaire"
         },
         "previewTitle": "Aperçu",
         "previewDescription": "Voici comment votre produit apparaîtra dans le catalogue",
@@ -1225,6 +1229,7 @@
         },
         "events": {
           "created": "Unité créée",
+          "deleted": "Unité supprimée",
           "downtime_declared": "Indisponibilité déclarée",
           "downtime_updated": "Indisponibilité mise à jour",
           "downtime_closed": "Indisponibilité clôturée",
@@ -5660,6 +5665,7 @@
     "unitCombinationMismatch": "Les unités sélectionnées ne correspondent pas à la combinaison réservée pour cette ligne",
     "cannotDisableUnitTrackingWithCombinations": "Impossible de désactiver le suivi unitaire tant que des réservations actives utilisent des combinaisons suivies pour ce produit.",
     "unitStatusConflictsWithReservations": "Cette modification rendrait impossibles des réservations futures pour au moins une combinaison suivie.",
+    "unitAssigned": "Cette unité est assignée à une réservation bloquante et ne peut pas être supprimée.",
     "assignUnitsFailed": "Échec de l'assignation des unités",
     "getAvailableUnitsFailed": "Échec du chargement des unités disponibles",
     "createCustomerError": "Erreur lors de la création du client",

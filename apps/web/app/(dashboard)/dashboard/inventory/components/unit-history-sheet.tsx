@@ -13,6 +13,7 @@ import {
   Loader2,
   Pencil,
   RotateCcw,
+  Trash2,
   Unlink,
   Wrench,
 } from 'lucide-react';
@@ -46,6 +47,7 @@ interface UnitHistorySheetProps {
 
 const EVENT_ICONS = {
   created: CheckCircle2,
+  deleted: Trash2,
   downtime_declared: Wrench,
   downtime_updated: Wrench,
   downtime_closed: Wrench,

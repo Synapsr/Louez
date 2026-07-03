@@ -215,11 +215,8 @@ export function ProductForm({
     product?.units?.map((unit) => ({
       id: unit.id,
       identifier: unit.identifier,
-      notes: unit.notes || '',
-      lifecycleStatus: unit.lifecycleStatus,
-      purchasePrice: unit.purchasePrice ?? '',
-      purchasedAt: unit.purchasedAt ?? null,
       attributes: unit.attributes || {},
+      hasActiveAssignment: unit.hasActiveAssignment ?? false,
     })) ?? [];
 
   const initialBookingAttributeAxes: BookingAttributeAxisData[] =

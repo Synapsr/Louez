@@ -63,18 +63,30 @@ export const productTaxSettingsSchema = z.object({
   customRate: z.number().min(0).max(100).optional(),
 });
 
+const productUnitBaseSchema = z.object({
+  identifier: z.string().max(255, 'validation.maxLength'),
+  attributes: z.record(z.string(), z.string()).optional(),
+  hasActiveAssignment: z.boolean().optional(),
+});
+
+const newProductUnitDetailsSchema = z.object({
+  notes: z.string().max(1000).optional().or(z.literal('')),
+  purchasePrice: optionalMoneyInputSchema,
+  purchasedAt: optionalDateInputSchema,
+});
+
 // Product unit schema for individual unit tracking
 // Note: identifier min length is NOT enforced here — it's conditionally validated
 // via .superRefine() on the parent schema only when trackUnits is true.
-export const productUnitSchema = z.object({
-  id: z.string().optional(), // Absent for new units
-  identifier: z.string().max(255, 'validation.maxLength'),
-  notes: z.string().max(1000).optional().or(z.literal('')),
-  lifecycleStatus: z.enum(['active', 'retired']).optional(),
-  purchasePrice: optionalMoneyInputSchema,
-  purchasedAt: optionalDateInputSchema,
-  attributes: z.record(z.string(), z.string()).optional(),
-});
+export const productUnitSchema = z.union([
+  productUnitBaseSchema.extend({
+    id: z.string().min(1),
+  }),
+  productUnitBaseSchema.extend({
+    id: z.undefined().optional(),
+    ...newProductUnitDetailsSchema.shape,
+  }),
+]);
 
 export const bookingAttributeAxisSchema = z.object({
   key: z
@@ -217,19 +229,27 @@ export const createProductSchema = (
       // Unit tracking
       trackUnits: z.boolean(),
       units: z.array(
-        z.object({
-          id: z.string().optional(), // Absent for new units
-          identifier: z.string().max(255, t('maxLength', { max: 255 })),
-          notes: z
-            .string()
-            .max(1000, t('maxLength', { max: 1000 }))
-            .optional()
-            .or(z.literal('')),
-          lifecycleStatus: z.enum(['active', 'retired']).optional(),
-          purchasePrice: optionalMoneyInputSchema,
-          purchasedAt: optionalDateInputSchema,
-          attributes: z.record(z.string(), z.string()).optional(),
-        }),
+        z.union([
+          z.object({
+            id: z.string().min(1),
+            identifier: z.string().max(255, t('maxLength', { max: 255 })),
+            attributes: z.record(z.string(), z.string()).optional(),
+            hasActiveAssignment: z.boolean().optional(),
+          }),
+          z.object({
+            id: z.undefined().optional(),
+            identifier: z.string().max(255, t('maxLength', { max: 255 })),
+            notes: z
+              .string()
+              .max(1000, t('maxLength', { max: 1000 }))
+              .optional()
+              .or(z.literal('')),
+            purchasePrice: optionalMoneyInputSchema,
+            purchasedAt: optionalDateInputSchema,
+            attributes: z.record(z.string(), z.string()).optional(),
+            hasActiveAssignment: z.boolean().optional(),
+          }),
+        ]),
       ),
       bookingAttributeAxes: z
         .array(
@@ -283,8 +303,7 @@ export const createProductSchema = (
             });
           }
 
-          const lifecycleStatus = data.units[i].lifecycleStatus || 'active';
-          if (lifecycleStatus === 'active' && axes.length > 0) {
+          if (axes.length > 0) {
             for (const axis of axes) {
               const value = data.units[i].attributes?.[axis.key];
               if (!value || !value.trim()) {
@@ -399,8 +418,7 @@ export const productSchema = z
           });
         }
 
-        const lifecycleStatus = data.units[i].lifecycleStatus || 'active';
-        if (lifecycleStatus === 'active' && axes.length > 0) {
+        if (axes.length > 0) {
           for (const axis of axes) {
             const value = data.units[i].attributes?.[axis.key];
             if (!value || !value.trim()) {

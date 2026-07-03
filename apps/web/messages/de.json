@@ -881,6 +881,7 @@
           "quantityLabel": "Verfügbare Menge",
           "quantityManagedByTracking": "Verwaltet durch Einheitenverfolgung",
           "activeUnits": "{count, plural, one {# aktive Einheit} other {# aktive Einheiten}}",
+          "trackedUnits": "{count, plural, one {# verfolgte Einheit} other {# verfolgte Einheiten}}",
           "bookingAttributesTitle": "Buchungsattribute",
           "bookingAttributesDescription": "Fügen Sie bis zu 3 Attributachsen (Größe, Farbe, Spannung...) für verfolgte Kombinationen hinzu.",
           "bookingAttributePlaceholder": "Attributbezeichnung (z.B. Größe)",
@@ -904,6 +905,7 @@
           "bulkPreview": "Vorschau",
           "deleteConfirm": "Diese Einheit löschen",
           "deleteWarning": "Diese Einheit ist derzeit einer aktiven Reservierung zugeordnet und kann nicht entfernt werden.",
+          "assignedUnit": "Zugeordnet",
           "disableConfirm": "Einheitenverfolgung deaktivieren?",
           "disableDescription": "Die individuelle Einheitenverfolgung wird deaktiviert. Die Menge wird auf {count} gesetzt. Registrierte Einheiten werden entfernt.",
           "duplicateIdentifier": "Eine oder mehrere Kennungen sind doppelt vorhanden",
@@ -922,7 +924,9 @@
           "generatorHint": "Referenzen werden automatisch generiert — anschließend bearbeitbar.",
           "applyPurchaseToAll": "Auf alle Einheiten anwenden",
           "purchaseDetails": "Kaufdetails",
-          "unitDetails": "Details"
+          "unitDetails": "Details",
+          "existingUnitDetailsHint": "Kaufdetails, Notizen und Lebenszyklus werden im Inventar verwaltet.",
+          "openInventoryDetails": "Inventar öffnen"
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",
@@ -1219,6 +1223,7 @@
         },
         "events": {
           "created": "Einheit erstellt",
+          "deleted": "Einheit gelöscht",
           "downtime_declared": "Ausfallzeit eingetragen",
           "downtime_updated": "Ausfallzeit aktualisiert",
           "downtime_closed": "Ausfallzeit geschlossen",
@@ -5620,6 +5625,7 @@
     "unitCombinationMismatch": "Ausgewählte Einheiten stimmen nicht mit der reservierten Kombination für diese Position überein",
     "cannotDisableUnitTrackingWithCombinations": "Einheitenverfolgung kann nicht deaktiviert werden, solange aktive Reservierungen verfolgte Kombinationen für dieses Produkt verwenden.",
     "unitStatusConflictsWithReservations": "Diese Änderung würde zukünftige Reservierungen für mindestens eine verfolgte Kombination unmöglich machen.",
+    "unitAssigned": "Diese Einheit ist einer blockierenden Reservierung zugeordnet und kann nicht gelöscht werden.",
     "tulipApiKeyInvalid": "Der Tulip-API-Schlüssel ist ungültig.",
     "tulipActionForbidden": "Tulip hat diese Aktion für die aktuelle Kontokonfiguration abgelehnt.",
     "tulipApiUnavailable": "Tulip ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.",

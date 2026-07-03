@@ -842,6 +842,7 @@
           "quantityLabel": "Beschikbare hoeveelheid",
           "quantityManagedByTracking": "Beheerd door eenheidtracking",
           "activeUnits": "{count, plural, one {# actieve eenheid} other {# actieve eenheden}}",
+          "trackedUnits": "{count, plural, one {# gevolgde eenheid} other {# gevolgde eenheden}}",
           "addUnit": "Eenheid toevoegen",
           "addNotes": "Notities toevoegen",
           "identifier": "Identificatie",
@@ -854,6 +855,7 @@
           "bulkPreview": "Voorbeeld",
           "deleteConfirm": "Deze eenheid verwijderen",
           "deleteWarning": "Deze eenheid is momenteel toegewezen aan een actieve reservering en kan niet worden verwijderd.",
+          "assignedUnit": "Toegewezen",
           "disableConfirm": "Eenheidtracking uitschakelen?",
           "disableDescription": "Individuele eenheidtracking wordt uitgeschakeld. De hoeveelheid wordt ingesteld op {count}. Geregistreerde eenheden worden verwijderd.",
           "duplicateIdentifier": "Een of meer identificaties zijn gedupliceerd",
@@ -883,7 +885,9 @@
           "generatorHint": "Referenties worden automatisch gegenereerd — daarna aan te passen.",
           "applyPurchaseToAll": "Toepassen op alle eenheden",
           "purchaseDetails": "Aankoopgegevens",
-          "unitDetails": "Details"
+          "unitDetails": "Details",
+          "existingUnitDetailsHint": "Aankoopdetails, notities en levenscyclus worden beheerd vanuit de inventaris.",
+          "openInventoryDetails": "Inventaris openen"
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",
@@ -1180,6 +1184,7 @@
         },
         "events": {
           "created": "Eenheid aangemaakt",
+          "deleted": "Eenheid verwijderd",
           "downtime_declared": "Buitengebruikstelling aangemaakt",
           "downtime_updated": "Buitengebruikstelling bijgewerkt",
           "downtime_closed": "Buitengebruikstelling gesloten",
@@ -5620,6 +5625,7 @@
     "unitCombinationMismatch": "Geselecteerde eenheden komen niet overeen met de gereserveerde combinatie voor dit regelitem",
     "cannotDisableUnitTrackingWithCombinations": "Kan eenheidtracering niet uitschakelen terwijl actieve reserveringen gevolgde combinaties gebruiken voor dit product.",
     "unitStatusConflictsWithReservations": "Deze wijziging zou toekomstige reserveringen onmogelijk maken voor ten minste één gevolgde combinatie.",
+    "unitAssigned": "Deze eenheid is toegewezen aan een blokkerende reservering en kan niet worden verwijderd.",
     "tulipApiKeyInvalid": "De Tulip API-sleutel is ongeldig.",
     "tulipActionForbidden": "Tulip heeft deze actie geweigerd voor de huidige accountconfiguratie.",
     "tulipApiUnavailable": "Tulip is momenteel niet beschikbaar. Probeer het later opnieuw.",

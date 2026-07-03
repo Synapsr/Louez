@@ -27,6 +27,7 @@ import type {
   TaxSettings,
 } from '@louez/types';
 
+import { createUnits } from '../../lib/utils/unit-mutations';
 import {
   STORE_CONFIGS,
   type StoreConfig,
@@ -389,18 +390,42 @@ async function seedStore(
   if (productsData.accessories.length > 0) {
     await db.insert(schema.productAccessories).values(productsData.accessories);
   }
+  const createdUnitEventsByUnitId = new Map(
+    productsData.productUnitEvents
+      .filter((event) => event.type === 'created')
+      .map((event) => [event.productUnitId, event]),
+  );
   if (productsData.productUnits.length > 0) {
-    await db.insert(schema.productUnits).values(productsData.productUnits);
+    await db.transaction(async (tx) => {
+      await createUnits(
+        tx,
+        productsData.productUnits.map((unit) => {
+          const event = createdUnitEventsByUnitId.get(unit.id);
+          return {
+            unit,
+            event: {
+              storeId,
+              actorUserId: event?.actorUserId ?? null,
+              identifierSnapshot: unit.identifier,
+              payload: event?.payload ?? {
+                identifier: unit.identifier,
+              },
+            },
+          };
+        }),
+      );
+    });
   }
   if (productsData.productUnitDowntimes.length > 0) {
     await db
       .insert(schema.productUnitDowntimes)
       .values(productsData.productUnitDowntimes);
   }
-  if (productsData.productUnitEvents.length > 0) {
-    await db
-      .insert(schema.productUnitEvents)
-      .values(productsData.productUnitEvents);
+  const productUnitEventsToInsert = productsData.productUnitEvents.filter(
+    (event) => event.type !== 'created',
+  );
+  if (productUnitEventsToInsert.length > 0) {
+    await db.insert(schema.productUnitEvents).values(productUnitEventsToInsert);
   }
 
   logSuccess(

@@ -881,6 +881,7 @@
           "quantityLabel": "Cantidad disponible",
           "quantityManagedByTracking": "Gestionado por seguimiento de unidades",
           "activeUnits": "{count, plural, one {# unidad activa} other {# unidades activas}}",
+          "trackedUnits": "{count, plural, one {# unidad rastreada} other {# unidades rastreadas}}",
           "bookingAttributesTitle": "Atributos de reserva",
           "bookingAttributesDescription": "Añada hasta 3 ejes de atributo (talla, color, voltaje...) para combinaciones rastreadas.",
           "bookingAttributePlaceholder": "Etiqueta del atributo (ej., Talla)",
@@ -904,6 +905,7 @@
           "bulkPreview": "Vista previa",
           "deleteConfirm": "Eliminar esta unidad",
           "deleteWarning": "Esta unidad está actualmente asignada a una reserva activa y no se puede eliminar.",
+          "assignedUnit": "Asignada",
           "disableConfirm": "¿Desactivar seguimiento de unidades?",
           "disableDescription": "El seguimiento individual de unidades se desactivará. La cantidad se establecerá en {count}. Las unidades registradas serán eliminadas.",
           "duplicateIdentifier": "Uno o más identificadores están duplicados",
@@ -922,7 +924,9 @@
           "generatorHint": "Las referencias se generan automáticamente — editables después.",
           "applyPurchaseToAll": "Aplicar a todas las unidades",
           "purchaseDetails": "Detalles de compra",
-          "unitDetails": "Detalles"
+          "unitDetails": "Detalles",
+          "existingUnitDetailsHint": "Los detalles de compra, las notas y el ciclo de vida se gestionan desde el inventario.",
+          "openInventoryDetails": "Abrir inventario"
         },
         "previewTitle": "Vista previa",
         "previewDescription": "Asi es como aparecera su producto en el catalogo",
@@ -1219,6 +1223,7 @@
         },
         "events": {
           "created": "Unidad creada",
+          "deleted": "Unidad eliminada",
           "downtime_declared": "Indisponibilidad declarada",
           "downtime_updated": "Indisponibilidad actualizada",
           "downtime_closed": "Indisponibilidad cerrada",
@@ -5626,6 +5631,7 @@
     "unitCombinationMismatch": "Las unidades seleccionadas no coinciden con la combinacion reservada para este articulo",
     "cannotDisableUnitTrackingWithCombinations": "No se puede desactivar el seguimiento de unidades mientras haya reservas activas que utilicen combinaciones rastreadas para este producto.",
     "unitStatusConflictsWithReservations": "Este cambio haria imposibles las reservas futuras para al menos una combinacion rastreada.",
+    "unitAssigned": "Esta unidad está asignada a una reserva bloqueante y no se puede eliminar.",
     "tulipApiKeyInvalid": "La clave API de Tulip es invalida.",
     "tulipActionForbidden": "Tulip rechazo esta accion para la configuracion de cuenta actual.",
     "tulipApiUnavailable": "Tulip no esta disponible actualmente. Por favor, intente de nuevo mas tarde.",

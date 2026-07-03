@@ -56,11 +56,8 @@ export interface RateTierInput {
 export interface ProductUnitData {
   id: string;
   identifier: string;
-  notes: string | null;
-  lifecycleStatus: 'active' | 'retired';
-  purchasePrice?: string | null;
-  purchasedAt?: Date | null;
   attributes?: Record<string, string> | null;
+  hasActiveAssignment?: boolean;
 }
 
 export interface BookingAttributeAxisData {

@@ -2,16 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
+import Link from 'next/link';
+
 import {
   AlertCircle,
   ChevronDown,
-  Euro,
   Lightbulb,
   Package,
   Plus,
   Settings2,
   Sparkles,
-  StickyNote,
   Trash2,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -53,16 +53,14 @@ import { cn, normalizeAxisKey, toDatePickerValue } from '@louez/utils';
 
 import { DatePicker } from '@/components/ui/date-time-picker';
 
-type UnitLifecycleStatus = 'active' | 'retired';
-
 interface ProductUnitInput {
   id?: string;
   identifier: string;
   notes?: string;
-  lifecycleStatus?: UnitLifecycleStatus;
   purchasePrice?: string | null;
   purchasedAt?: string | Date | null;
   attributes?: Record<string, string>;
+  hasActiveAssignment?: boolean;
 }
 
 interface BookingAttributeAxisInput {
@@ -309,6 +307,7 @@ function UnitRow({
   isDuplicate,
   isEmpty,
   disabled,
+  productId,
   onUpdate,
   onUpdateAttribute,
   onRemove,
@@ -323,6 +322,7 @@ function UnitRow({
   isDuplicate: boolean;
   isEmpty: boolean;
   disabled: boolean;
+  productId?: string;
   onUpdate: (index: number, patch: Partial<ProductUnitInput>) => void;
   onUpdateAttribute: (index: number, axisKey: string, value: string) => void;
   onRemove: (index: number) => void;
@@ -333,13 +333,15 @@ function UnitRow({
   const tReservationForm = useTranslations('dashboard.reservations.manualForm');
   const [detailsOpen, setDetailsOpen] = useState(false);
   const hasAxes = bookingAttributeAxes.length > 0;
-  const isRetired = (unit.lifecycleStatus || 'active') === 'retired';
-
-  const hasNotes = !!unit.notes?.trim();
+  const isExistingUnit = Boolean(unit.id);
+  const hasActiveAssignment = unit.hasActiveAssignment ?? false;
   const hasPurchase =
     !!(typeof unit.purchasePrice === 'string' && unit.purchasePrice.trim()) ||
     !!unit.purchasedAt;
-  const canApplyToAll = unitCount > 1 && hasPurchase;
+  const canApplyToAll = !isExistingUnit && unitCount > 1 && hasPurchase;
+  const inventoryHref = productId
+    ? `/dashboard/inventory?productId=${productId}`
+    : '/dashboard/inventory';
 
   return (
     <div
@@ -355,7 +357,7 @@ function UnitRow({
             <span
               className={cn(
                 'h-2 w-2 shrink-0 rounded-full',
-                isRetired ? 'bg-gray-400' : 'bg-green-500',
+                hasActiveAssignment ? 'bg-amber-500' : 'bg-green-500',
               )}
             />
             <Input
@@ -369,14 +371,8 @@ function UnitRow({
               )}
               disabled={disabled}
             />
-            {isRetired && (
-              <Badge variant="outline">{t('lifecycleRetired')}</Badge>
-            )}
-            {hasNotes && (
-              <StickyNote className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
-            )}
-            {hasPurchase && (
-              <Euro className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+            {hasActiveAssignment && (
+              <Badge variant="outline">{t('assignedUnit')}</Badge>
             )}
             <CollapsibleTrigger
               render={
@@ -406,7 +402,7 @@ function UnitRow({
                       variant="ghost"
                       size="icon"
                       onClick={() => onRemove(index)}
-                      disabled={disabled}
+                      disabled={disabled || hasActiveAssignment}
                       className="text-muted-foreground hover:text-destructive h-8 w-8 shrink-0"
                     />
                   }
@@ -414,7 +410,11 @@ function UnitRow({
                   <Trash2 className="h-4 w-4" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{t('deleteConfirm')}</p>
+                  <p>
+                    {hasActiveAssignment
+                      ? t('deleteWarning')
+                      : t('deleteConfirm')}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -432,7 +432,7 @@ function UnitRow({
               {bookingAttributeAxes.map((axis) => {
                 const suggestions = existingValuesByAxis[axis.key] || [];
                 const currentValue = unit.attributes?.[axis.key] || '';
-                const hasError = !currentValue.trim() && !isRetired;
+                const hasError = !currentValue.trim();
 
                 return (
                   <div key={axis.key} className="space-y-1">
@@ -459,66 +459,80 @@ function UnitRow({
           )}
         </div>
 
-        {/* Expanded details: purchase metadata + notes */}
+        {/* Expanded details: product form only edits details for new units. */}
         <CollapsibleContent>
           <div className="space-y-3 border-t px-3 pt-3 pb-3">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground text-xs font-medium">
-                  {t('purchaseDetails')}
-                </span>
-                {canApplyToAll && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-muted-foreground h-6 px-2 text-xs"
-                    onClick={() => onApplyPurchaseToAll(index)}
+            {isExistingUnit ? (
+              <p className="text-muted-foreground text-sm">
+                {t('existingUnitDetailsHint')}{' '}
+                <Link
+                  href={inventoryHref}
+                  className="text-primary font-medium underline-offset-4 hover:underline"
+                >
+                  {t('openInventoryDetails')}
+                </Link>
+              </p>
+            ) : (
+              <>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-xs font-medium">
+                      {t('purchaseDetails')}
+                    </span>
+                    {canApplyToAll && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground h-6 px-2 text-xs"
+                        onClick={() => onApplyPurchaseToAll(index)}
+                        disabled={disabled}
+                      >
+                        {t('applyPurchaseToAll')}
+                      </Button>
+                    )}
+                  </div>
+                  <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+                    <Input
+                      inputMode="decimal"
+                      placeholder={t('purchasePricePlaceholder')}
+                      aria-label={t('purchasePrice')}
+                      value={
+                        typeof unit.purchasePrice === 'string'
+                          ? unit.purchasePrice
+                          : ''
+                      }
+                      onChange={(e) =>
+                        onUpdate(index, { purchasePrice: e.target.value })
+                      }
+                      disabled={disabled}
+                    />
+                    <DatePicker
+                      date={toDatePickerValue(unit.purchasedAt)}
+                      setDate={(date) =>
+                        onUpdate(index, {
+                          purchasedAt: date ?? null,
+                        })
+                      }
+                      disabled={disabled}
+                      placeholder={tReservationForm('pickDate')}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <span className="text-muted-foreground text-xs font-medium">
+                    {t('notes')}
+                  </span>
+                  <Textarea
+                    placeholder={t('notesPlaceholder')}
+                    value={unit.notes || ''}
+                    onChange={(e) => onUpdate(index, { notes: e.target.value })}
+                    className="mt-1.5 min-h-[60px] text-sm"
                     disabled={disabled}
-                  >
-                    {t('applyPurchaseToAll')}
-                  </Button>
-                )}
-              </div>
-              <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
-                <Input
-                  inputMode="decimal"
-                  placeholder={t('purchasePricePlaceholder')}
-                  aria-label={t('purchasePrice')}
-                  value={
-                    typeof unit.purchasePrice === 'string'
-                      ? unit.purchasePrice
-                      : ''
-                  }
-                  onChange={(e) =>
-                    onUpdate(index, { purchasePrice: e.target.value })
-                  }
-                  disabled={disabled}
-                />
-                <DatePicker
-                  date={toDatePickerValue(unit.purchasedAt)}
-                  setDate={(date) =>
-                    onUpdate(index, {
-                      purchasedAt: date ?? null,
-                    })
-                  }
-                  disabled={disabled}
-                  placeholder={tReservationForm('pickDate')}
-                />
-              </div>
-            </div>
-            <div>
-              <span className="text-muted-foreground text-xs font-medium">
-                {t('notes')}
-              </span>
-              <Textarea
-                placeholder={t('notesPlaceholder')}
-                value={unit.notes || ''}
-                onChange={(e) => onUpdate(index, { notes: e.target.value })}
-                className="mt-1.5 min-h-[60px] text-sm"
-                disabled={disabled}
-              />
-            </div>
+                  />
+                </div>
+              </>
+            )}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -538,6 +552,7 @@ interface UnitTrackingEditorProps {
   defaultPrefix?: string;
   disabled?: boolean;
   showValidationErrors?: boolean;
+  productId?: string;
 }
 
 const MAX_GENERATED_UNITS = 100;
@@ -573,6 +588,7 @@ export function UnitTrackingEditor({
   defaultPrefix = '',
   disabled = false,
   showValidationErrors = false,
+  productId,
 }: UnitTrackingEditorProps) {
   const t = useTranslations('dashboard.products.form.unitTracking');
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
@@ -582,10 +598,7 @@ export function UnitTrackingEditor({
 
   const effectivePrefix = genPrefix || defaultPrefix;
 
-  const activeUnitsCount = useMemo(() => {
-    return units.filter((u) => (u.lifecycleStatus || 'active') === 'active')
-      .length;
-  }, [units]);
+  const trackedUnitsCount = units.length;
 
   const duplicateIdentifiers = useMemo(() => {
     const seen = new Set<string>();
@@ -616,8 +629,6 @@ export function UnitTrackingEditor({
   const missingAttributeCount = useMemo(() => {
     if (bookingAttributeAxes.length === 0) return 0;
     return units.filter((unit) => {
-      const lifecycleStatus = unit.lifecycleStatus || 'active';
-      if (lifecycleStatus !== 'active') return false;
       return bookingAttributeAxes.some(
         (axis) => !unit.attributes?.[axis.key]?.trim(),
       );
@@ -625,10 +636,7 @@ export function UnitTrackingEditor({
   }, [bookingAttributeAxes, units]);
 
   const generationPreview = useMemo(() => {
-    const count = Math.min(
-      parseInt(genCount, 10) || 0,
-      MAX_GENERATED_UNITS,
-    );
+    const count = Math.min(parseInt(genCount, 10) || 0, MAX_GENERATED_UNITS);
     if (!effectivePrefix.trim() || count < 1) return null;
     const from = getNextSequenceNumber(units, effectivePrefix.trim());
     const to = from + count - 1;
@@ -668,7 +676,6 @@ export function UnitTrackingEditor({
       {
         identifier: '',
         notes: '',
-        lifecycleStatus: 'active',
         purchasePrice: '',
         purchasedAt: null,
         attributes: {},
@@ -707,11 +714,15 @@ export function UnitTrackingEditor({
     const source = units[sourceIndex];
     if (!source) return;
     onChange(
-      units.map((unit) => ({
-        ...unit,
-        purchasePrice: source.purchasePrice,
-        purchasedAt: source.purchasedAt,
-      })),
+      units.map((unit) =>
+        unit.id
+          ? unit
+          : {
+              ...unit,
+              purchasePrice: source.purchasePrice,
+              purchasedAt: source.purchasedAt,
+            },
+      ),
     );
   };
 
@@ -765,7 +776,6 @@ export function UnitTrackingEditor({
         newUnits.push({
           identifier,
           notes: '',
-          lifecycleStatus: 'active',
           purchasePrice: '',
           purchasedAt: null,
           attributes: {},
@@ -871,7 +881,7 @@ export function UnitTrackingEditor({
               <Package className="text-muted-foreground h-4 w-4" />
               <span className="font-medium">{t('title')}</span>
               <Badge variant="outline">
-                {t('activeUnits', { count: activeUnitsCount })}
+                {t('trackedUnits', { count: trackedUnitsCount })}
               </Badge>
             </div>
             <div className="flex items-center gap-2">
@@ -951,6 +961,7 @@ export function UnitTrackingEditor({
                     isDuplicate={!!isDuplicate}
                     isEmpty={isEmpty}
                     disabled={disabled}
+                    productId={productId}
                     onUpdate={updateUnit}
                     onUpdateAttribute={updateUnitAttribute}
                     onRemove={removeUnit}
@@ -994,7 +1005,7 @@ export function UnitTrackingEditor({
           <AlertDialogHeader>
             <AlertDialogTitle>{t('disableConfirm')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('disableDescription', { count: activeUnitsCount })}
+              {t('disableDescription', { count: trackedUnitsCount })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -42,6 +42,7 @@ import {
 import { auth } from '@/lib/auth';
 import { getCurrentStore } from '@/lib/store-context';
 import { getUnitConflicts } from '@/lib/utils/unit-conflicts';
+import { updateUnits } from '@/lib/utils/unit-mutations';
 
 import {
   getUnitDowntimes as getUnitDowntimesQuery,
@@ -517,32 +518,30 @@ export async function retireUnit(input: RetireUnitInput) {
 
   try {
     await db.transaction(async (tx) => {
-      await tx
-        .update(productUnits)
-        .set({
-          lifecycleStatus: 'retired',
-          retiredAt: now,
-          retirementReason: validated.data.reason,
-          retirementNote: note,
-          updatedAt: new Date(),
-        })
-        .where(eq(productUnits.id, unit.id));
+      await updateUnits(tx, [
+        {
+          unitId: unit.id,
+          values: {
+            lifecycleStatus: 'retired',
+            retiredAt: now,
+            retirementReason: validated.data.reason,
+            retirementNote: note,
+          },
+          event: {
+            storeId: store.id,
+            type: 'retired',
+            actorUserId,
+            identifierSnapshot: unit.identifier,
+            payload: {
+              reason: validated.data.reason,
+              note,
+              retiredAt: now.toISOString(),
+            },
+          },
+        },
+      ]);
 
       await refreshTrackedProductQuantity(tx, unit.productId);
-
-      await tx.insert(productUnitEvents).values(
-        buildUnitEvent({
-          productUnitId: unit.id,
-          storeId: store.id,
-          type: 'retired',
-          actorUserId,
-          payload: {
-            reason: validated.data.reason,
-            note,
-            retiredAt: now.toISOString(),
-          },
-        }),
-      );
     });
   } catch (error) {
     console.error('Error retiring unit:', error);
@@ -587,34 +586,32 @@ export async function reinstateUnit(input: ReinstateUnitInput) {
 
   try {
     await db.transaction(async (tx) => {
-      await tx
-        .update(productUnits)
-        .set({
-          lifecycleStatus: 'active',
-          retiredAt: null,
-          retirementReason: null,
-          retirementNote: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(productUnits.id, unit.id));
-
-      await refreshTrackedProductQuantity(tx, unit.productId);
-
-      await tx.insert(productUnitEvents).values(
-        buildUnitEvent({
-          productUnitId: unit.id,
-          storeId: store.id,
-          type: 'reinstated',
-          actorUserId,
-          payload: {
-            previous: {
-              retiredAt: toJsonDate(unit.retiredAt),
-              retirementReason: unit.retirementReason,
-              retirementNote: unit.retirementNote,
+      await updateUnits(tx, [
+        {
+          unitId: unit.id,
+          values: {
+            lifecycleStatus: 'active',
+            retiredAt: null,
+            retirementReason: null,
+            retirementNote: null,
+          },
+          event: {
+            storeId: store.id,
+            type: 'reinstated',
+            actorUserId,
+            identifierSnapshot: unit.identifier,
+            payload: {
+              previous: {
+                retiredAt: toJsonDate(unit.retiredAt),
+                retirementReason: unit.retirementReason,
+                retirementNote: unit.retirementNote,
+              },
             },
           },
-        }),
-      );
+        },
+      ]);
+
+      await refreshTrackedProductQuantity(tx, unit.productId);
     });
   } catch (error) {
     console.error('Error reinstating unit:', error);
@@ -685,23 +682,19 @@ export async function updateUnitDetails(input: UpdateUnitDetailsInput) {
 
   try {
     await db.transaction(async (tx) => {
-      await tx
-        .update(productUnits)
-        .set({
-          ...updates,
-          updatedAt: new Date(),
-        })
-        .where(eq(productUnits.id, unit.id));
-
-      await tx.insert(productUnitEvents).values(
-        buildUnitEvent({
-          productUnitId: unit.id,
-          storeId: store.id,
-          type: 'updated',
-          actorUserId,
-          payload: { changes },
-        }),
-      );
+      await updateUnits(tx, [
+        {
+          unitId: unit.id,
+          values: updates,
+          event: {
+            storeId: store.id,
+            type: 'updated',
+            actorUserId,
+            identifierSnapshot: unit.identifier,
+            payload: { changes },
+          },
+        },
+      ]);
     });
   } catch (error) {
     console.error('Error updating unit details:', error);
@@ -766,7 +759,7 @@ export async function reassignReservationItemUnit(
     reservationItemId: item.id,
   };
   const blockingStatuses = getBlockingReservationStatuses(
-    (store.settings?.pendingBlocksAvailability) ?? true,
+    store.settings?.pendingBlocksAvailability ?? true,
   );
   const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
 
@@ -828,8 +821,7 @@ export async function reassignReservationItemUnit(
 
       const fromCombinationKey =
         fromUnit.combinationKey || DEFAULT_COMBINATION_KEY;
-      const toCombinationKey =
-        toUnit.combinationKey || DEFAULT_COMBINATION_KEY;
+      const toCombinationKey = toUnit.combinationKey || DEFAULT_COMBINATION_KEY;
       const itemCombinationKey = item.combinationKey || DEFAULT_COMBINATION_KEY;
 
       if (
@@ -897,10 +889,7 @@ export async function reassignReservationItemUnit(
       if (busyReason === 'overlap') {
         return { error: 'errors.invalidUnits', failedUnitIds: [toUnit.id] };
       }
-      if (
-        busyReason === 'buffer' &&
-        !validated.data.overrideTurnoverBuffer
-      ) {
+      if (busyReason === 'buffer' && !validated.data.overrideTurnoverBuffer) {
         return {
           error: 'errors.turnoverBufferConflict',
           bufferConflict: true,
