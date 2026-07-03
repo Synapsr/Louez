@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import Link from 'next/link';
 
 import { Warehouse } from 'lucide-react';
@@ -39,6 +41,19 @@ export function ProductFormSectionStock({
 }: ProductFormSectionStockProps) {
   const t = useTranslations('dashboard.products.form');
   const tInventory = useTranslations('dashboard.inventory.productScoped');
+
+  // "Vélo gravel VFD" → "VELO-" : accent-stripped first word, used as the
+  // suggested reference prefix for generated units.
+  const defaultPrefix = useMemo(() => {
+    const firstWord = (watchedValues.name || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .split(/\s+/)[0]
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toUpperCase()
+      .slice(0, 6);
+    return firstWord ? `${firstWord}-` : '';
+  }, [watchedValues.name]);
 
   return (
     <Card>
@@ -83,6 +98,7 @@ export function ProductFormSectionStock({
             );
             form.setFieldValue('quantity', value);
           }}
+          defaultPrefix={defaultPrefix}
           disabled={disabled}
           showValidationErrors={showValidationErrors}
         />

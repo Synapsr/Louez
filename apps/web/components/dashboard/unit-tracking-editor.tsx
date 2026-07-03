@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   ChevronDown,
+  Euro,
   Lightbulb,
   Package,
   Plus,
   Settings2,
+  Sparkles,
   StickyNote,
   Trash2,
 } from 'lucide-react';
@@ -20,7 +22,6 @@ import { Label } from '@louez/ui';
 import { Switch } from '@louez/ui';
 import { Badge } from '@louez/ui';
 import { Textarea } from '@louez/ui';
-import { Separator } from '@louez/ui';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@louez/ui';
 import {
   AlertDialog,
@@ -48,12 +49,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@louez/ui';
-import {
-  buildPartialCombinationKey,
-  cn,
-  normalizeAxisKey,
-  toDatePickerValue,
-} from '@louez/utils';
+import { cn, normalizeAxisKey, toDatePickerValue } from '@louez/utils';
 
 import { DatePicker } from '@/components/ui/date-time-picker';
 
@@ -304,14 +300,10 @@ function BookingAttributesDialog({
   );
 }
 
-const LIFECYCLE_COLORS: Record<UnitLifecycleStatus, string> = {
-  active: 'bg-green-500',
-  retired: 'bg-gray-400',
-};
-
 function UnitRow({
   unit,
   index,
+  unitCount,
   bookingAttributeAxes,
   existingValuesByAxis,
   isDuplicate,
@@ -321,9 +313,11 @@ function UnitRow({
   onUpdateAttribute,
   onRemove,
   onTouch,
+  onApplyPurchaseToAll,
 }: {
   unit: ProductUnitInput;
   index: number;
+  unitCount: number;
   bookingAttributeAxes: BookingAttributeAxisInput[];
   existingValuesByAxis: Record<string, string[]>;
   isDuplicate: boolean;
@@ -333,181 +327,201 @@ function UnitRow({
   onUpdateAttribute: (index: number, axisKey: string, value: string) => void;
   onRemove: (index: number) => void;
   onTouch: (index: number) => void;
+  onApplyPurchaseToAll: (index: number) => void;
 }) {
   const t = useTranslations('dashboard.products.form.unitTracking');
   const tReservationForm = useTranslations('dashboard.reservations.manualForm');
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const hasAxes = bookingAttributeAxes.length > 0;
-  const lifecycleStatus = unit.lifecycleStatus || 'active';
-  const lifecycleLabel =
-    lifecycleStatus === 'retired'
-      ? t('lifecycleRetired')
-      : t('lifecycleActive');
+  const isRetired = (unit.lifecycleStatus || 'active') === 'retired';
 
-  const hasAnyAttributeValue =
-    hasAxes &&
-    bookingAttributeAxes.some((axis) => !!unit.attributes?.[axis.key]?.trim());
-  const combinationLabel = hasAnyAttributeValue
-    ? buildPartialCombinationKey(bookingAttributeAxes, unit.attributes)
-    : null;
+  const hasNotes = !!unit.notes?.trim();
+  const hasPurchase =
+    !!(typeof unit.purchasePrice === 'string' && unit.purchasePrice.trim()) ||
+    !!unit.purchasedAt;
+  const canApplyToAll = unitCount > 1 && hasPurchase;
 
   return (
     <div
       className={cn(
-        'rounded-lg border p-3 transition-colors',
+        'rounded-lg border transition-colors',
         isDuplicate && 'border-destructive bg-destructive/5',
       )}
     >
-      {/* Row 1: lifecycle dot + identifier + lifecycle display + delete */}
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            'h-2 w-2 shrink-0 rounded-full',
-            LIFECYCLE_COLORS[lifecycleStatus],
-          )}
-        />
-        <Input
-          placeholder={t('identifierPlaceholder')}
-          value={unit.identifier}
-          onChange={(e) => onUpdate(index, { identifier: e.target.value })}
-          onBlur={() => onTouch(index)}
-          className={cn(
-            'flex-1',
-            (isDuplicate || isEmpty) && 'border-destructive',
-          )}
-          disabled={disabled}
-        />
-        <Badge variant="outline" className="w-[108px] justify-center">
-          {lifecycleLabel}
-        </Badge>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger
+      <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <div className="px-3 py-2">
+          {/* Line 1: dot + identifier + indicators + expand + delete */}
+          <div className="flex items-center gap-2">
+            <span
+              className={cn(
+                'h-2 w-2 shrink-0 rounded-full',
+                isRetired ? 'bg-gray-400' : 'bg-green-500',
+              )}
+            />
+            <Input
+              placeholder={t('identifierPlaceholder')}
+              value={unit.identifier}
+              onChange={(e) => onUpdate(index, { identifier: e.target.value })}
+              onBlur={() => onTouch(index)}
+              className={cn(
+                'h-8 flex-1',
+                (isDuplicate || isEmpty) && 'border-destructive',
+              )}
+              disabled={disabled}
+            />
+            {isRetired && (
+              <Badge variant="outline">{t('lifecycleRetired')}</Badge>
+            )}
+            {hasNotes && (
+              <StickyNote className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+            )}
+            {hasPurchase && (
+              <Euro className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+            )}
+            <CollapsibleTrigger
               render={
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  onClick={() => onRemove(index)}
+                  className="text-muted-foreground h-8 w-8 shrink-0"
                   disabled={disabled}
-                  className="text-muted-foreground hover:text-destructive shrink-0"
+                  aria-label={t('unitDetails')}
                 />
               }
             >
-              <Trash2 className="h-4 w-4" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{t('deleteConfirm')}</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
+              <ChevronDown
+                className={cn(
+                  'h-4 w-4 transition-transform duration-200 ease-out',
+                  detailsOpen && 'rotate-180',
+                )}
+              />
+            </CollapsibleTrigger>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onRemove(index)}
+                      disabled={disabled}
+                      className="text-muted-foreground hover:text-destructive h-8 w-8 shrink-0"
+                    />
+                  }
+                >
+                  <Trash2 className="h-4 w-4" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('deleteConfirm')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
 
-      {isEmpty && (
-        <p className="text-destructive mt-1.5 text-xs">
-          {t('identifierRequired')}
-        </p>
-      )}
+          {isEmpty && (
+            <p className="text-destructive mt-1.5 text-xs">
+              {t('identifierRequired')}
+            </p>
+          )}
 
-      {/* Row 2: attribute values (only when axes exist) */}
-      {hasAxes && (
-        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {bookingAttributeAxes.map((axis) => {
-            const suggestions = existingValuesByAxis[axis.key] || [];
-            const currentValue = unit.attributes?.[axis.key] || '';
-            const hasError =
-              !currentValue.trim() && lifecycleStatus === 'active';
+          {/* Line 2: attribute values (only when axes exist — required data) */}
+          {hasAxes && (
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {bookingAttributeAxes.map((axis) => {
+                const suggestions = existingValuesByAxis[axis.key] || [];
+                const currentValue = unit.attributes?.[axis.key] || '';
+                const hasError = !currentValue.trim() && !isRetired;
 
-            return (
-              <div key={axis.key} className="space-y-1">
-                <Label className="text-muted-foreground text-xs">
-                  {axis.label}
-                </Label>
-                <AttributeValueCombobox
-                  value={currentValue}
-                  onChange={(val) => onUpdateAttribute(index, axis.key, val)}
-                  suggestions={suggestions}
-                  placeholder={t('bookingAttributeValuePlaceholder', {
-                    label: axis.label,
-                  })}
+                return (
+                  <div key={axis.key} className="space-y-1">
+                    <Label className="text-muted-foreground text-xs">
+                      {axis.label}
+                    </Label>
+                    <AttributeValueCombobox
+                      value={currentValue}
+                      onChange={(val) =>
+                        onUpdateAttribute(index, axis.key, val)
+                      }
+                      suggestions={suggestions}
+                      placeholder={t('bookingAttributeValuePlaceholder', {
+                        label: axis.label,
+                      })}
+                      disabled={disabled}
+                      hasError={hasError}
+                      createHint={(v) => t('pressEnterToCreate', { value: v })}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Expanded details: purchase metadata + notes */}
+        <CollapsibleContent>
+          <div className="space-y-3 border-t px-3 pt-3 pb-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground text-xs font-medium">
+                  {t('purchaseDetails')}
+                </span>
+                {canApplyToAll && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground h-6 px-2 text-xs"
+                    onClick={() => onApplyPurchaseToAll(index)}
+                    disabled={disabled}
+                  >
+                    {t('applyPurchaseToAll')}
+                  </Button>
+                )}
+              </div>
+              <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+                <Input
+                  inputMode="decimal"
+                  placeholder={t('purchasePricePlaceholder')}
+                  aria-label={t('purchasePrice')}
+                  value={
+                    typeof unit.purchasePrice === 'string'
+                      ? unit.purchasePrice
+                      : ''
+                  }
+                  onChange={(e) =>
+                    onUpdate(index, { purchasePrice: e.target.value })
+                  }
                   disabled={disabled}
-                  hasError={hasError}
-                  createHint={(v) => t('pressEnterToCreate', { value: v })}
+                />
+                <DatePicker
+                  date={toDatePickerValue(unit.purchasedAt)}
+                  setDate={(date) =>
+                    onUpdate(index, {
+                      purchasedAt: date ?? null,
+                    })
+                  }
+                  disabled={disabled}
+                  placeholder={tReservationForm('pickDate')}
                 />
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Row 3: combination key (only when axes exist and has partial key) */}
-      {hasAxes && combinationLabel && (
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-muted-foreground text-xs">
-            {t('combinationKey')}:
-          </span>
-          <Badge variant="outline" className="font-mono text-[11px]">
-            {combinationLabel}
-          </Badge>
-        </div>
-      )}
-
-      {/* Row 4: purchase metadata */}
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs">
-            {t('purchasePrice')}
-          </Label>
-          <Input
-            inputMode="decimal"
-            placeholder={t('purchasePricePlaceholder')}
-            value={
-              typeof unit.purchasePrice === 'string' ? unit.purchasePrice : ''
-            }
-            onChange={(e) => onUpdate(index, { purchasePrice: e.target.value })}
-            disabled={disabled}
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-muted-foreground text-xs">
-            {t('purchasedAt')}
-          </Label>
-          <DatePicker
-            date={toDatePickerValue(unit.purchasedAt)}
-            setDate={(date) =>
-              onUpdate(index, {
-                purchasedAt: date ?? null,
-              })
-            }
-            disabled={disabled}
-            placeholder={tReservationForm('pickDate')}
-          />
-        </div>
-      </div>
-
-      {/* Row 5: notes */}
-      {isEditingNotes || unit.notes ? (
-        <Textarea
-          placeholder={t('notesPlaceholder')}
-          value={unit.notes || ''}
-          onChange={(e) => onUpdate(index, { notes: e.target.value })}
-          className="mt-2 min-h-[60px] text-sm"
-          disabled={disabled}
-          onBlur={() => {
-            if (!unit.notes?.trim()) setIsEditingNotes(false);
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground mt-2 flex items-center gap-1 text-xs transition-colors disabled:pointer-events-none disabled:opacity-50"
-          onClick={() => setIsEditingNotes(true)}
-          disabled={disabled}
-        >
-          <StickyNote className="h-3 w-3" />
-          {t('addNotes')}
-        </button>
-      )}
+            </div>
+            <div>
+              <span className="text-muted-foreground text-xs font-medium">
+                {t('notes')}
+              </span>
+              <Textarea
+                placeholder={t('notesPlaceholder')}
+                value={unit.notes || ''}
+                onChange={(e) => onUpdate(index, { notes: e.target.value })}
+                className="mt-1.5 min-h-[60px] text-sm"
+                disabled={disabled}
+              />
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
@@ -521,8 +535,30 @@ interface UnitTrackingEditorProps {
   onChange: (units: ProductUnitInput[]) => void;
   quantity: string;
   onQuantityChange: (value: string) => void;
+  defaultPrefix?: string;
   disabled?: boolean;
   showValidationErrors?: boolean;
+}
+
+const MAX_GENERATED_UNITS = 100;
+
+function getNextSequenceNumber(
+  units: ProductUnitInput[],
+  prefix: string,
+): number {
+  const pattern = new RegExp(
+    `^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}0*(\\d+)$`,
+    'i',
+  );
+  let max = 0;
+  for (const unit of units) {
+    const match = unit.identifier.trim().match(pattern);
+    if (match) {
+      const value = parseInt(match[1], 10);
+      if (!isNaN(value) && value > max) max = value;
+    }
+  }
+  return max + 1;
 }
 
 export function UnitTrackingEditor({
@@ -534,16 +570,17 @@ export function UnitTrackingEditor({
   onChange,
   quantity,
   onQuantityChange,
+  defaultPrefix = '',
   disabled = false,
   showValidationErrors = false,
 }: UnitTrackingEditorProps) {
   const t = useTranslations('dashboard.products.form.unitTracking');
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkPrefix, setBulkPrefix] = useState('');
-  const [bulkFrom, setBulkFrom] = useState('1');
-  const [bulkTo, setBulkTo] = useState('5');
+  const [genPrefix, setGenPrefix] = useState('');
+  const [genCount, setGenCount] = useState('5');
   const [touchedUnits, setTouchedUnits] = useState<Set<number>>(new Set());
+
+  const effectivePrefix = genPrefix || defaultPrefix;
 
   const activeUnitsCount = useMemo(() => {
     return units.filter((u) => (u.lifecycleStatus || 'active') === 'active')
@@ -587,27 +624,33 @@ export function UnitTrackingEditor({
     }).length;
   }, [bookingAttributeAxes, units]);
 
+  const generationPreview = useMemo(() => {
+    const count = Math.min(
+      parseInt(genCount, 10) || 0,
+      MAX_GENERATED_UNITS,
+    );
+    if (!effectivePrefix.trim() || count < 1) return null;
+    const from = getNextSequenceNumber(units, effectivePrefix.trim());
+    const to = from + count - 1;
+    const padLength = Math.max(2, String(to).length);
+    const first = `${effectivePrefix.trim()}${String(from).padStart(padLength, '0')}`;
+    if (count === 1) return first;
+    const last = `${effectivePrefix.trim()}${String(to).padStart(padLength, '0')}`;
+    return `${first} … ${last}`;
+  }, [effectivePrefix, genCount, units]);
+
   const handleToggle = (enabled: boolean) => {
     if (!enabled && units.length > 0) {
       setShowDisableConfirm(true);
-    } else {
-      onTrackUnitsChange(enabled);
-      if (enabled && units.length === 0) {
-        const qty = parseInt(quantity, 10) || 0;
-        if (qty > 0) {
-          const emptyUnits: ProductUnitInput[] = Array.from(
-            { length: qty },
-            () => ({
-              identifier: '',
-              notes: '',
-              lifecycleStatus: 'active',
-              purchasePrice: '',
-              purchasedAt: null,
-              attributes: {},
-            }),
-          );
-          onChange(emptyUnits);
-        }
+      return;
+    }
+    onTrackUnitsChange(enabled);
+    if (enabled && units.length === 0) {
+      // Seed the generator with the declared quantity instead of creating
+      // empty (and invalid) unit rows.
+      const qty = parseInt(quantity, 10);
+      if (!isNaN(qty) && qty > 0) {
+        setGenCount(String(Math.min(qty, MAX_GENERATED_UNITS)));
       }
     }
   };
@@ -660,6 +703,18 @@ export function UnitTrackingEditor({
     onChange(newUnits);
   };
 
+  const applyPurchaseToAll = (sourceIndex: number) => {
+    const source = units[sourceIndex];
+    if (!source) return;
+    onChange(
+      units.map((unit) => ({
+        ...unit,
+        purchasePrice: source.purchasePrice,
+        purchasedAt: source.purchasedAt,
+      })),
+    );
+  };
+
   const addBookingAxis = (label: string) => {
     const trimmed = label.trim();
     if (!trimmed) return;
@@ -690,15 +745,18 @@ export function UnitTrackingEditor({
     }
   };
 
-  const handleBulkGenerate = () => {
-    const from = parseInt(bulkFrom, 10);
-    const to = parseInt(bulkTo, 10);
-    if (isNaN(from) || isNaN(to) || from > to || to - from > 100) return;
+  const handleGenerate = () => {
+    const prefix = effectivePrefix.trim();
+    const count = Math.min(parseInt(genCount, 10) || 0, MAX_GENERATED_UNITS);
+    if (!prefix || count < 1) return;
+
+    const from = getNextSequenceNumber(units, prefix);
+    const to = from + count - 1;
+    const padLength = Math.max(2, String(to).length);
 
     const newUnits: ProductUnitInput[] = [];
     for (let i = from; i <= to; i++) {
-      const paddedNumber = String(i).padStart(String(to).length, '0');
-      const identifier = `${bulkPrefix}${paddedNumber}`;
+      const identifier = `${prefix}${String(i).padStart(padLength, '0')}`;
       if (
         !units.some(
           (u) => u.identifier.toLowerCase() === identifier.toLowerCase(),
@@ -718,11 +776,6 @@ export function UnitTrackingEditor({
     if (newUnits.length > 0) {
       onChange([...units, ...newUnits]);
     }
-
-    setBulkPrefix('');
-    setBulkFrom('1');
-    setBulkTo('5');
-    setBulkOpen(false);
   };
 
   return (
@@ -766,229 +819,169 @@ export function UnitTrackingEditor({
 
       {trackUnits && (
         <>
-          {/* Active units count */}
-          <div className="bg-muted/50 flex items-center justify-between rounded-lg p-3">
-            <div className="flex items-center gap-2 text-sm">
+          {/* Generator — the primary way to declare units */}
+          <div className="bg-muted/40 rounded-lg border p-3">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-[120px] flex-1 space-y-1">
+                <Label className="text-muted-foreground text-xs">
+                  {t('bulkPrefix')}
+                </Label>
+                <Input
+                  placeholder={defaultPrefix || t('bulkPrefixPlaceholder')}
+                  value={genPrefix}
+                  onChange={(e) => setGenPrefix(e.target.value)}
+                  disabled={disabled}
+                  className="h-8"
+                />
+              </div>
+              <div className="w-24 space-y-1">
+                <Label className="text-muted-foreground text-xs">
+                  {t('generatorCount')}
+                </Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={MAX_GENERATED_UNITS}
+                  value={genCount}
+                  onChange={(e) => setGenCount(e.target.value)}
+                  disabled={disabled}
+                  className="h-8"
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleGenerate}
+                disabled={disabled || !effectivePrefix.trim()}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {t('bulkGenerate')}
+              </Button>
+            </div>
+            <p className="text-muted-foreground mt-2 text-xs">
+              {generationPreview
+                ? `${t('bulkPreview')} : ${generationPreview}`
+                : t('generatorHint')}
+            </p>
+          </div>
+
+          {/* Header: count + actions */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Package className="text-muted-foreground h-4 w-4" />
-              <span className="text-muted-foreground">
-                {t('quantityManagedByTracking')}
+              <span className="font-medium">{t('title')}</span>
+              <Badge variant="outline">
+                {t('activeUnits', { count: activeUnitsCount })}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              <BookingAttributesDialog
+                axes={bookingAttributeAxes}
+                onAddAxis={addBookingAxis}
+                onRemoveAxis={removeBookingAxis}
+                disabled={disabled}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addUnit}
+                disabled={disabled}
+              >
+                <Plus className="h-4 w-4" />
+                {t('addUnit')}
+              </Button>
+            </div>
+          </div>
+
+          {/* Attribute axes summary (read-only badges) */}
+          {bookingAttributeAxes.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground text-xs">
+                {t('bookingAttributesTitle')}:
+              </span>
+              {bookingAttributeAxes.map((axis) => (
+                <Badge
+                  key={axis.key}
+                  variant="secondary"
+                  className="gap-1 pr-1"
+                >
+                  {axis.label}
+                  <button
+                    type="button"
+                    className="rounded-sm px-0.5 hover:bg-black/10 dark:hover:bg-white/10"
+                    onClick={() => removeBookingAxis(axis.key)}
+                    disabled={disabled}
+                  >
+                    &times;
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Unit rows or empty hint */}
+          {units.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-6 text-center">
+              <p className="text-sm font-medium">{t('noUnitsRegistered')}</p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                {t('noUnitsHint')}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {units.map((unit, index) => {
+                const isDuplicate =
+                  unit.identifier.trim() &&
+                  duplicateIdentifiers.has(
+                    unit.identifier.trim().toLowerCase(),
+                  );
+                const isEmpty =
+                  (touchedUnits.has(index) || showValidationErrors) &&
+                  !unit.identifier.trim();
+
+                return (
+                  <UnitRow
+                    key={unit.id || `new-${index}`}
+                    unit={unit}
+                    index={index}
+                    unitCount={units.length}
+                    bookingAttributeAxes={bookingAttributeAxes}
+                    existingValuesByAxis={existingValuesByAxis}
+                    isDuplicate={!!isDuplicate}
+                    isEmpty={isEmpty}
+                    disabled={disabled}
+                    onUpdate={updateUnit}
+                    onUpdateAttribute={updateUnitAttribute}
+                    onRemove={removeUnit}
+                    onTouch={(i) =>
+                      setTouchedUnits((prev) => new Set(prev).add(i))
+                    }
+                    onApplyPurchaseToAll={applyPurchaseToAll}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* Warnings */}
+          {duplicateIdentifiers.size > 0 && (
+            <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-3 text-sm">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{t('duplicateIdentifier')}</span>
+            </div>
+          )}
+
+          {missingAttributeCount > 0 && (
+            <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-3 text-sm">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>
+                {t('missingAttributesWarning', {
+                  count: missingAttributeCount,
+                })}
               </span>
             </div>
-            <span className="font-medium">
-              {t('activeUnits', { count: activeUnitsCount })}
-            </span>
-          </div>
-
-          {/* Unit list section */}
-          <div className="space-y-3">
-            {/* Header: title + action buttons */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{t('title')}</span>
-                <Badge variant="outline">{units.length}</Badge>
-              </div>
-              <div className="flex items-center gap-2">
-                <BookingAttributesDialog
-                  axes={bookingAttributeAxes}
-                  onAddAxis={addBookingAxis}
-                  onRemoveAxis={removeBookingAxis}
-                  disabled={disabled}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addUnit}
-                  disabled={disabled}
-                >
-                  <Plus className="h-4 w-4" />
-                  {t('addUnit')}
-                </Button>
-              </div>
-            </div>
-
-            {/* Attribute axes summary (read-only badges) */}
-            {bookingAttributeAxes.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-muted-foreground text-xs">
-                  {t('bookingAttributesTitle')}:
-                </span>
-                {bookingAttributeAxes.map((axis) => (
-                  <Badge
-                    key={axis.key}
-                    variant="secondary"
-                    className="gap-1 pr-1"
-                  >
-                    {axis.label}
-                    <button
-                      type="button"
-                      className="rounded-sm px-0.5 hover:bg-black/10 dark:hover:bg-white/10"
-                      onClick={() => removeBookingAxis(axis.key)}
-                      disabled={disabled}
-                    >
-                      &times;
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {/* Unit rows or empty state */}
-            {units.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <Package className="text-muted-foreground/40 mx-auto h-10 w-10" />
-                <p className="mt-3 text-sm font-medium">
-                  {t('noUnitsRegistered')}
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  {t('noUnitsHint')}
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addUnit}
-                  className="mt-4"
-                  disabled={disabled}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('addUnit')}
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {units.map((unit, index) => {
-                  const isDuplicate =
-                    unit.identifier.trim() &&
-                    duplicateIdentifiers.has(
-                      unit.identifier.trim().toLowerCase(),
-                    );
-                  const isEmpty =
-                    (touchedUnits.has(index) || showValidationErrors) &&
-                    !unit.identifier.trim();
-
-                  return (
-                    <UnitRow
-                      key={unit.id || `new-${index}`}
-                      unit={unit}
-                      index={index}
-                      bookingAttributeAxes={bookingAttributeAxes}
-                      existingValuesByAxis={existingValuesByAxis}
-                      isDuplicate={!!isDuplicate}
-                      isEmpty={isEmpty}
-                      disabled={disabled}
-                      onUpdate={updateUnit}
-                      onUpdateAttribute={updateUnitAttribute}
-                      onRemove={removeUnit}
-                      onTouch={(i) =>
-                        setTouchedUnits((prev) => new Set(prev).add(i))
-                      }
-                    />
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Warnings */}
-            {duplicateIdentifiers.size > 0 && (
-              <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-3 text-sm">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>{t('duplicateIdentifier')}</span>
-              </div>
-            )}
-
-            {missingAttributeCount > 0 && (
-              <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-3 text-sm">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <span>
-                  {t('missingAttributesWarning', {
-                    count: missingAttributeCount,
-                  })}
-                </span>
-              </div>
-            )}
-
-            <Separator />
-
-            {/* Bulk add */}
-            <Collapsible open={bulkOpen} onOpenChange={setBulkOpen}>
-              <CollapsibleTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="w-full justify-between"
-                    disabled={disabled}
-                  />
-                }
-              >
-                {t('bulkAdd')}
-                <ChevronDown
-                  className={cn(
-                    'h-4 w-4 transition-transform',
-                    bulkOpen && 'rotate-180',
-                  )}
-                />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-3">
-                <div className="bg-muted/40 rounded-lg border p-4">
-                  <div className="grid gap-4 sm:grid-cols-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs">{t('bulkPrefix')}</Label>
-                      <Input
-                        placeholder={t('bulkPrefixPlaceholder')}
-                        value={bulkPrefix}
-                        onChange={(e) => setBulkPrefix(e.target.value)}
-                        disabled={disabled}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">{t('bulkFrom')}</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={bulkFrom}
-                        onChange={(e) => setBulkFrom(e.target.value)}
-                        disabled={disabled}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">{t('bulkTo')}</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={bulkTo}
-                        onChange={(e) => setBulkTo(e.target.value)}
-                        disabled={disabled}
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button
-                        type="button"
-                        onClick={handleBulkGenerate}
-                        disabled={disabled || !bulkPrefix.trim()}
-                        className="w-full"
-                      >
-                        {t('bulkGenerate')}
-                      </Button>
-                    </div>
-                  </div>
-                  <p className="text-muted-foreground mt-3 text-xs">
-                    {bulkPrefix && (
-                      <>
-                        {t('bulkPreview')}: {bulkPrefix}
-                        {String(parseInt(bulkFrom, 10) || 1).padStart(
-                          String(parseInt(bulkTo, 10) || 5).length,
-                          '0',
-                        )}{' '}
-                        ... {bulkPrefix}
-                        {bulkTo}
-                      </>
-                    )}
-                  </p>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </div>
+          )}
         </>
       )}
 
