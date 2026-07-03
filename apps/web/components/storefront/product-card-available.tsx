@@ -252,7 +252,7 @@ export function ProductCardAvailable({
         ? 'limited'
         : 'available';
 
-  const maxQuantity = Math.min(availableQuantity, totalQuantity);
+  const maxQuantity = availableQuantity;
   const firstLineQuantity = firstLine?.quantity || 0;
   const firstLineMaxQuantity = firstLine?.maxQuantity || maxQuantity;
   const canAddMore = firstLineQuantity < firstLineMaxQuantity;

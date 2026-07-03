@@ -386,7 +386,7 @@ export function ProductModal({
     ? activeSeasonalPricing.rates
     : rateTiers;
 
-  const maxQuantity = Math.min(availableQuantity, product.quantity);
+  const maxQuantity = availableQuantity;
   const isUnavailable = availableQuantity === 0;
   const bookingAttributeAxes = (product.bookingAttributeAxes || [])
     .slice()

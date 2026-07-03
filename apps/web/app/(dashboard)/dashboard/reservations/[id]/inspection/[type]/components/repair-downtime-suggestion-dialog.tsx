@@ -33,6 +33,7 @@ interface RepairDowntimeSuggestionDialogProps {
   open: boolean;
   units: RepairDowntimeSuggestionUnit[];
   reservationNumber: string;
+  reservationItemIds: string[];
   onDone: () => void;
 }
 
@@ -40,6 +41,7 @@ export const RepairDowntimeSuggestionDialog = ({
   open,
   units,
   reservationNumber,
+  reservationItemIds,
   onDone,
 }: RepairDowntimeSuggestionDialogProps) => {
   const t = useTranslations(
@@ -100,6 +102,7 @@ export const RepairDowntimeSuggestionDialog = ({
           startsAt,
           endsAt: null,
           note,
+          excludeReservationItemIds: reservationItemIds,
         });
 
         if (!result.success) {

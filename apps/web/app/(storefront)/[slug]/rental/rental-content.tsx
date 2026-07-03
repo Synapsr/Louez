@@ -638,6 +638,9 @@ export function RentalContent({
             <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
               {sortedProducts.map((product) => {
                 const avail = availability.get(product.id);
+                const availableCombinations = avail?.combinationsByKey
+                  ? Object.values(avail.combinationsByKey)
+                  : avail?.combinations || [];
                 return (
                   <ProductCardAvailable
                     key={product.id}
@@ -651,7 +654,7 @@ export function RentalContent({
                     startDate={startDate}
                     endDate={endDate}
                     availableCombinations={
-                      (avail?.combinations || []) as CombinationAvailability[]
+                      availableCombinations as CombinationAvailability[]
                     }
                   />
                 );

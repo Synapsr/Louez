@@ -258,18 +258,23 @@ export function NewReservationStepProducts({
             );
             const productReservedQuantity =
               periodAvailability.reservedByProduct.get(product.id) || 0;
+            const periodProductAvailability =
+              periodAvailability.productsById.get(product.id);
             const productCombinations = buildProductCombinations(
               product,
               periodAvailability.reservedByProductCombination,
               hasSelectedPeriod,
+              periodProductAvailability,
             );
             const productCapacity = product.trackUnits
-              ? productCombinations.reduce(
+              ? (periodProductAvailability?.availableQuantity ??
+                productCombinations.reduce(
                   (sum, combination) =>
                     sum + Math.max(0, combination.availableQuantity || 0),
                   0,
-                )
-              : Math.max(0, product.quantity - productReservedQuantity);
+                ))
+              : (periodProductAvailability?.availableQuantity ??
+                Math.max(0, product.quantity - productReservedQuantity));
             const isOutOfStock = productCapacity === 0;
             const remainingStock = Math.max(
               0,
@@ -284,16 +289,28 @@ export function NewReservationStepProducts({
               Record<string, string[]>
             >((acc, axis) => {
               const values = new Set<string>();
-              for (const unit of product.units || []) {
-                if ((unit.lifecycleStatus || 'active') !== 'active') {
-                  continue;
+              if (hasSelectedPeriod && periodProductAvailability) {
+                for (const combination of productCombinations) {
+                  if (combination.availableQuantity <= 0) {
+                    continue;
+                  }
+                  const rawValue = combination.selectedAttributes?.[axis.key];
+                  if (rawValue && rawValue.trim()) {
+                    values.add(rawValue.trim());
+                  }
                 }
-                if (unit.inDowntimeNow) {
-                  continue;
-                }
-                const rawValue = unit.attributes?.[axis.key];
-                if (rawValue && rawValue.trim()) {
-                  values.add(rawValue.trim());
+              } else {
+                for (const unit of product.units || []) {
+                  if ((unit.lifecycleStatus || 'active') !== 'active') {
+                    continue;
+                  }
+                  if (unit.inDowntimeNow) {
+                    continue;
+                  }
+                  const rawValue = unit.attributes?.[axis.key];
+                  if (rawValue && rawValue.trim()) {
+                    values.add(rawValue.trim());
+                  }
                 }
               }
               for (const line of productLines) {
@@ -332,6 +349,7 @@ export function NewReservationStepProducts({
                 productReservedQuantity,
                 periodAvailability.reservedByProductCombination,
                 hasSelectedPeriod,
+                periodProductAvailability,
               );
 
               return {

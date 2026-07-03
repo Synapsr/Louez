@@ -327,7 +327,7 @@ export async function getStorefrontAvailability(
 
   const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
   const blockingStatuses = getBlockingReservationStatuses(
-    (store.settings?.pendingBlocksAvailability) ?? true,
+    store.settings?.pendingBlocksAvailability ?? true,
   );
 
   const overlappingReservations = await db.query.reservations.findMany({
@@ -363,22 +363,18 @@ export async function getStorefrontAvailability(
       : [];
   const availableUnits =
     trackedProductIds.length > 0
-          ? await db
-              .select({
-                id: productUnits.id,
-                productId: productUnits.productId,
-                combinationKey: productUnits.combinationKey,
-                attributes: productUnits.attributes,
+      ? await db
+          .select({
+            id: productUnits.id,
+            productId: productUnits.productId,
+            combinationKey: productUnits.combinationKey,
+            attributes: productUnits.attributes,
           })
           .from(productUnits)
           .where(
             and(
               inArray(productUnits.productId, trackedProductIds),
-              buildUnitRentableDuringPredicate(
-                db,
-                startDate,
-                endDate,
-              ),
+              buildUnitRentableDuringPredicate(db, startDate, endDate),
             ),
           )
       : [];
@@ -503,6 +499,12 @@ export async function getStorefrontAvailability(
         );
         return sortA.localeCompare(sortB, 'en');
       });
+      const combinationsByKey = Object.fromEntries(
+        combinations.map((combination) => [
+          combination.combinationKey,
+          combination,
+        ]),
+      );
 
       const reservedQuantity = reservedByProduct.get(product.id) || 0;
       const availableQuantity = Math.max(0, totalQuantity - reservedQuantity);
@@ -521,6 +523,7 @@ export async function getStorefrontAvailability(
         availableQuantity,
         status,
         combinations,
+        combinationsByKey,
       };
     },
   );

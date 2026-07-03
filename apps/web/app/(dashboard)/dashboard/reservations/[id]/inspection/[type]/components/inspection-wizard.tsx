@@ -773,6 +773,10 @@ export function InspectionWizard({
   const isLastStep = currentStepIndex === activeSteps.length - 1;
   const isOnItemsStep = currentStep === 'items';
   const isLastItem = currentItemIndex === items.length - 1;
+  const reservationItemIds = useMemo(
+    () => [...new Set(items.map((item) => item.reservationItemId))],
+    [items],
+  );
 
   // Determine if back button should be disabled
   // Only disabled on overview step (first step, first item is N/A)
@@ -908,6 +912,7 @@ export function InspectionWizard({
         open={repairDowntimeSuggestion !== null}
         units={repairDowntimeSuggestion?.units ?? []}
         reservationNumber={reservationNumber}
+        reservationItemIds={reservationItemIds}
         onDone={finishInspectionFlow}
       />
     </div>

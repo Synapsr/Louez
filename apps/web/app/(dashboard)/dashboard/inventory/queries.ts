@@ -26,6 +26,7 @@ import {
   reservations,
   users,
 } from '@louez/db';
+import type { BlockingReservationStatus } from '@louez/db';
 import type { UnitAttributes } from '@louez/types';
 import {
   type GetInventoryInput,
@@ -37,7 +38,6 @@ import {
 } from '@louez/validations';
 
 import { getCurrentStore } from '@/lib/store-context';
-import type { BlockingReservationStatus } from '@louez/db';
 import { getUnitConflictFlags } from '@/lib/utils/unit-conflicts';
 
 export type InventoryOperationalState =
@@ -256,7 +256,7 @@ export async function getInventory(input: GetInventoryInput = {}) {
   const pageSize = validated.data.pageSize ?? 50;
   const search = validated.data.search?.trim();
   const blockingStatuses = getBlockingReservationStatuses(
-    (store.settings?.pendingBlocksAvailability) ?? true,
+    store.settings?.pendingBlocksAvailability ?? true,
   );
 
   const unitConditions = [
@@ -398,7 +398,16 @@ export async function getInventory(input: GetInventoryInput = {}) {
     : [[], [], [], [], []];
 
   const currentDowntimeByUnitId = new Map<string, InventoryDowntimeSummary>();
+  const currentDowntimesByUnitId = new Map<
+    string,
+    InventoryDowntimeSummary[]
+  >();
   for (const downtime of currentDowntimeRows) {
+    const summaries =
+      currentDowntimesByUnitId.get(downtime.productUnitId) ?? [];
+    summaries.push(toDowntimeSummary(downtime));
+    currentDowntimesByUnitId.set(downtime.productUnitId, summaries);
+
     if (!currentDowntimeByUnitId.has(downtime.productUnitId)) {
       currentDowntimeByUnitId.set(
         downtime.productUnitId,
@@ -408,7 +417,16 @@ export async function getInventory(input: GetInventoryInput = {}) {
   }
 
   const nextDowntimeByUnitId = new Map<string, InventoryDowntimeSummary>();
+  const upcomingDowntimesByUnitId = new Map<
+    string,
+    InventoryDowntimeSummary[]
+  >();
   for (const downtime of upcomingDowntimeRows) {
+    const summaries =
+      upcomingDowntimesByUnitId.get(downtime.productUnitId) ?? [];
+    summaries.push(toDowntimeSummary(downtime));
+    upcomingDowntimesByUnitId.set(downtime.productUnitId, summaries);
+
     if (!nextDowntimeByUnitId.has(downtime.productUnitId)) {
       nextDowntimeByUnitId.set(
         downtime.productUnitId,
@@ -473,30 +491,16 @@ export async function getInventory(input: GetInventoryInput = {}) {
       return [{ unitId: unit.id, window: { start: now, end: null } }];
     }
 
-    const currentDowntime = currentDowntimeByUnitId.get(unit.id);
-    if (currentDowntime) {
-      return [
-        {
-          unitId: unit.id,
-          window: {
-            start: currentDowntime.startsAt,
-            end: currentDowntime.endsAt,
-          },
-        },
-      ];
-    }
+    const currentDowntimes = currentDowntimesByUnitId.get(unit.id) ?? [];
+    const upcomingDowntimes = upcomingDowntimesByUnitId.get(unit.id) ?? [];
 
-    const nextDowntime = nextDowntimeByUnitId.get(unit.id);
-    if (nextDowntime) {
-      return [
-        {
-          unitId: unit.id,
-          window: { start: nextDowntime.startsAt, end: nextDowntime.endsAt },
-        },
-      ];
-    }
-
-    return [];
+    return [...currentDowntimes, ...upcomingDowntimes].map((downtime) => ({
+      unitId: unit.id,
+      window: {
+        start: downtime.startsAt,
+        end: downtime.endsAt,
+      },
+    }));
   });
 
   const conflictFlags = await getUnitConflictFlags(conflictWindows, {
