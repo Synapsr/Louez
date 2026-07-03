@@ -1608,11 +1608,85 @@ interface UpdateReservationData {
   endDate?: Date;
   notifyCustomerByEmail?: boolean;
   tulipInsuranceOptIn?: boolean;
+  overrideTurnoverBuffer?: boolean;
   delivery?: {
     outbound: UpdateDeliveryLeg;
     return: UpdateDeliveryLeg;
   };
   items?: UpdateReservationItem[];
+}
+
+type UpdateReservationConflict = {
+  reservationItemId: string;
+  unitId: string;
+  identifier: string;
+};
+
+type UpdateReservationResult = {
+  success?: boolean;
+  error?: string;
+  bufferConflict?: boolean;
+  failedUnitIds?: string[];
+  conflicts?: UpdateReservationConflict[];
+  reservationItemId?: string;
+  assignedCount?: number;
+  warnings?: Array<{
+    key: string;
+    params?: Record<string, string | number>;
+  }>;
+  emailNotification?:
+    | { status: 'sent'; to: string }
+    | { status: 'failed'; error: string; to: string };
+} & Record<string, unknown>;
+
+type ReservationItemInsertValues = typeof reservationItems.$inferInsert;
+type ReservationItemUpdateValues = Pick<
+  ReservationItemInsertValues,
+  | 'productId'
+  | 'isCustomItem'
+  | 'quantity'
+  | 'unitPrice'
+  | 'depositPerUnit'
+  | 'totalPrice'
+  | 'pricingBreakdown'
+  | 'productSnapshot'
+>;
+
+type ReservationItemWrite =
+  | { type: 'insert'; values: ReservationItemInsertValues }
+  | { type: 'update'; id: string; values: ReservationItemUpdateValues };
+
+function normalizeMoney(value: string | number) {
+  const parsed = typeof value === 'number' ? value : parseFloat(value);
+  return Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00';
+}
+
+function hasReservationItemChanges(
+  current: {
+    productId: string | null;
+    isCustomItem: boolean;
+    quantity: number;
+    unitPrice: string;
+    depositPerUnit: string;
+    totalPrice: string;
+    pricingBreakdown: PricingBreakdown | null;
+    productSnapshot: unknown;
+  },
+  next: ReservationItemUpdateValues,
+) {
+  return (
+    current.productId !== next.productId ||
+    current.isCustomItem !== next.isCustomItem ||
+    current.quantity !== next.quantity ||
+    normalizeMoney(current.unitPrice) !== normalizeMoney(next.unitPrice) ||
+    normalizeMoney(current.depositPerUnit) !==
+      normalizeMoney(next.depositPerUnit) ||
+    normalizeMoney(current.totalPrice) !== normalizeMoney(next.totalPrice) ||
+    JSON.stringify(current.pricingBreakdown) !==
+      JSON.stringify(next.pricingBreakdown) ||
+    JSON.stringify(current.productSnapshot) !==
+      JSON.stringify(next.productSnapshot)
+  );
 }
 
 interface PreviewReservationTulipQuoteData {
@@ -1946,7 +2020,7 @@ export async function previewReservationTulipQuote(
 export async function updateReservation(
   reservationId: string,
   data: UpdateReservationData,
-) {
+): Promise<UpdateReservationResult> {
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };
@@ -1958,7 +2032,11 @@ export async function updateReservation(
       eq(reservations.storeId, store.id),
     ),
     with: {
-      items: true,
+      items: {
+        with: {
+          assignedUnits: true,
+        },
+      },
       customer: true,
     },
   });
@@ -2053,6 +2131,17 @@ export async function updateReservation(
   const existingItemsById = new Map(
     reservation.items.map((item) => [item.id, item]),
   );
+  const existingNonInsuranceItems = reservation.items.filter(
+    (item) =>
+      !isLegacyTulipInsuranceItem({
+        isCustomItem: item.isCustomItem,
+        productSnapshot: item.productSnapshot,
+      }),
+  );
+  const itemWrites: ReservationItemWrite[] = [];
+  let removedReservationItemIds: string[] = [];
+  const insuranceItemWrites: ReservationItemWrite[] = [];
+  let extraInsuranceItemIdsToDelete: string[] = [];
 
   // Process items
   if (data.items && data.items.length > 0) {
@@ -2063,11 +2152,19 @@ export async function updateReservation(
           productSnapshot: item.productSnapshot,
         }),
     );
-
-    // Delete existing items
-    await db
-      .delete(reservationItems)
-      .where(eq(reservationItems.reservationId, reservationId));
+    const submittedExistingItemIds = new Set(
+      reservationItemsWithoutLegacyInsurance
+        .map((item) => item.id)
+        .filter((itemId): itemId is string => Boolean(itemId)),
+    );
+    for (const submittedItemId of submittedExistingItemIds) {
+      if (!existingItemsById.has(submittedItemId)) {
+        return { error: 'errors.invalidData' };
+      }
+    }
+    removedReservationItemIds = existingNonInsuranceItems
+      .filter((item) => !submittedExistingItemIds.has(item.id))
+      .map((item) => item.id);
 
     // Insert new items
     for (const item of reservationItemsWithoutLegacyInsurance) {
@@ -2220,9 +2317,7 @@ export async function updateReservation(
         ? existingItemsById.get(item.id)?.productSnapshot
         : null;
 
-      await db.insert(reservationItems).values({
-        id: nanoid(),
-        reservationId,
+      const itemValues = {
         productId: item.productId || null,
         isCustomItem: !item.productId,
         quantity: item.quantity,
@@ -2235,19 +2330,34 @@ export async function updateReservation(
           description: item.productSnapshot.description || null,
           images: item.productSnapshot.images || existingSnapshot?.images || [],
         },
-      });
+      } satisfies ReservationItemUpdateValues;
+
+      if (item.id) {
+        const existingItem = existingItemsById.get(item.id);
+        if (!existingItem) {
+          return { error: 'errors.invalidData' };
+        }
+        if (hasReservationItemChanges(existingItem, itemValues)) {
+          itemWrites.push({
+            type: 'update',
+            id: item.id,
+            values: itemValues,
+          });
+        }
+      } else {
+        itemWrites.push({
+          type: 'insert',
+          values: {
+            id: nanoid(),
+            reservationId,
+            ...itemValues,
+          },
+        });
+      }
     }
   } else {
     // Just recalculate existing items with new duration
-    const existingItemsWithoutLegacyInsurance = reservation.items.filter(
-      (item) =>
-        !isLegacyTulipInsuranceItem({
-          isCustomItem: item.isCustomItem,
-          productSnapshot: item.productSnapshot,
-        }),
-    );
-
-    for (const item of existingItemsWithoutLegacyInsurance) {
+    for (const item of existingNonInsuranceItems) {
       const pricingBreakdown = item.pricingBreakdown as Record<
         string,
         unknown
@@ -2354,14 +2464,23 @@ export async function updateReservation(
             seasonalResultForDate.subtotal / Math.max(1, item.quantity);
           totalPrice = seasonalResultForDate.subtotal;
 
-          await db
-            .update(reservationItems)
-            .set({
-              unitPrice: finalUnitPrice.toFixed(2),
-              totalPrice: totalPrice.toFixed(2),
-              pricingBreakdown: newBreakdown,
-            })
-            .where(eq(reservationItems.id, item.id));
+          const itemValues = {
+            productId: item.productId,
+            isCustomItem: item.isCustomItem,
+            quantity: item.quantity,
+            unitPrice: finalUnitPrice.toFixed(2),
+            depositPerUnit: item.depositPerUnit,
+            totalPrice: totalPrice.toFixed(2),
+            pricingBreakdown: newBreakdown,
+            productSnapshot: item.productSnapshot,
+          } satisfies ReservationItemUpdateValues;
+          if (hasReservationItemChanges(item, itemValues)) {
+            itemWrites.push({
+              type: 'update',
+              id: item.id,
+              values: itemValues,
+            });
+          }
         } else {
           const fallbackPricingMode = toPricingMode(
             pricingBreakdown?.pricingMode,
@@ -2372,10 +2491,23 @@ export async function updateReservation(
             fallbackPricingMode,
           );
           totalPrice = finalUnitPrice * itemDuration * item.quantity;
-          await db
-            .update(reservationItems)
-            .set({ totalPrice: totalPrice.toFixed(2) })
-            .where(eq(reservationItems.id, item.id));
+          const itemValues = {
+            productId: item.productId,
+            isCustomItem: item.isCustomItem,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            depositPerUnit: item.depositPerUnit,
+            totalPrice: totalPrice.toFixed(2),
+            pricingBreakdown: item.pricingBreakdown,
+            productSnapshot: item.productSnapshot,
+          } satisfies ReservationItemUpdateValues;
+          if (hasReservationItemChanges(item, itemValues)) {
+            itemWrites.push({
+              type: 'update',
+              id: item.id,
+              values: itemValues,
+            });
+          }
         }
       } else {
         // Manual price - just multiply by new duration
@@ -2388,19 +2520,30 @@ export async function updateReservation(
           fallbackPricingMode,
         );
         totalPrice = finalUnitPrice * itemDuration * item.quantity;
-        await db
-          .update(reservationItems)
-          .set({
-            totalPrice: totalPrice.toFixed(2),
-            pricingBreakdown: pricingBreakdown
-              ? ({
-                  ...pricingBreakdown,
-                  duration: itemDuration,
-                  pricingMode: fallbackPricingMode,
-                } as PricingBreakdown)
-              : null,
-          })
-          .where(eq(reservationItems.id, item.id));
+        const nextPricingBreakdown = item.pricingBreakdown
+          ? {
+              ...item.pricingBreakdown,
+              duration: itemDuration,
+              pricingMode: fallbackPricingMode,
+            }
+          : null;
+        const itemValues = {
+          productId: item.productId,
+          isCustomItem: item.isCustomItem,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          depositPerUnit: item.depositPerUnit,
+          totalPrice: totalPrice.toFixed(2),
+          pricingBreakdown: nextPricingBreakdown,
+          productSnapshot: item.productSnapshot,
+        } satisfies ReservationItemUpdateValues;
+        if (hasReservationItemChanges(item, itemValues)) {
+          itemWrites.push({
+            type: 'update',
+            id: item.id,
+            values: itemValues,
+          });
+        }
       }
 
       newSubtotalAmount += totalPrice;
@@ -2484,31 +2627,13 @@ export async function updateReservation(
 
   if (data.items && data.items.length > 0) {
     if (nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0) {
-      await db.insert(reservationItems).values({
-        id: nanoid(),
-        reservationId,
-        productId: null,
-        isCustomItem: true,
-        quantity: 1,
-        unitPrice: nextTulipInsuranceAmount.toFixed(2),
-        depositPerUnit: '0.00',
-        totalPrice: nextTulipInsuranceAmount.toFixed(2),
-        pricingBreakdown: null,
-        productSnapshot: {
-          name: INSURANCE_ITEM_NAME,
-          description: INSURANCE_ITEM_NAME,
-          images: [],
-        },
-      });
-    }
-  } else if (nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0) {
-    const [existingInsuranceItemId, ...extraInsuranceItemIds] =
-      legacyInsuranceItemIds;
-
-    if (existingInsuranceItemId) {
-      await db
-        .update(reservationItems)
-        .set({
+      insuranceItemWrites.push({
+        type: 'insert',
+        values: {
+          id: nanoid(),
+          reservationId,
+          productId: null,
+          isCustomItem: true,
           quantity: 1,
           unitPrice: nextTulipInsuranceAmount.toFixed(2),
           depositPerUnit: '0.00',
@@ -2519,36 +2644,59 @@ export async function updateReservation(
             description: INSURANCE_ITEM_NAME,
             images: [],
           },
-        })
-        .where(eq(reservationItems.id, existingInsuranceItemId));
+        },
+      });
+    }
+  } else if (nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0) {
+    const [existingInsuranceItemId, ...extraInsuranceItemIds] =
+      legacyInsuranceItemIds;
+
+    if (existingInsuranceItemId) {
+      insuranceItemWrites.push({
+        type: 'update',
+        id: existingInsuranceItemId,
+        values: {
+          productId: null,
+          isCustomItem: true,
+          quantity: 1,
+          unitPrice: nextTulipInsuranceAmount.toFixed(2),
+          depositPerUnit: '0.00',
+          totalPrice: nextTulipInsuranceAmount.toFixed(2),
+          pricingBreakdown: null,
+          productSnapshot: {
+            name: INSURANCE_ITEM_NAME,
+            description: INSURANCE_ITEM_NAME,
+            images: [],
+          },
+        },
+      });
     } else {
-      await db.insert(reservationItems).values({
-        id: nanoid(),
-        reservationId,
-        productId: null,
-        isCustomItem: true,
-        quantity: 1,
-        unitPrice: nextTulipInsuranceAmount.toFixed(2),
-        depositPerUnit: '0.00',
-        totalPrice: nextTulipInsuranceAmount.toFixed(2),
-        pricingBreakdown: null,
-        productSnapshot: {
-          name: INSURANCE_ITEM_NAME,
-          description: INSURANCE_ITEM_NAME,
-          images: [],
+      insuranceItemWrites.push({
+        type: 'insert',
+        values: {
+          id: nanoid(),
+          reservationId,
+          productId: null,
+          isCustomItem: true,
+          quantity: 1,
+          unitPrice: nextTulipInsuranceAmount.toFixed(2),
+          depositPerUnit: '0.00',
+          totalPrice: nextTulipInsuranceAmount.toFixed(2),
+          pricingBreakdown: null,
+          productSnapshot: {
+            name: INSURANCE_ITEM_NAME,
+            description: INSURANCE_ITEM_NAME,
+            images: [],
+          },
         },
       });
     }
 
     if (extraInsuranceItemIds.length > 0) {
-      await db
-        .delete(reservationItems)
-        .where(inArray(reservationItems.id, extraInsuranceItemIds));
+      extraInsuranceItemIdsToDelete = extraInsuranceItemIds;
     }
   } else if (legacyInsuranceItemIds.length > 0) {
-    await db
-      .delete(reservationItems)
-      .where(inArray(reservationItems.id, legacyInsuranceItemIds));
+    extraInsuranceItemIdsToDelete = legacyInsuranceItemIds;
   }
 
   // Process delivery changes
@@ -2717,25 +2865,275 @@ export async function updateReservation(
   // Calculate total: subtotal + delivery fee - discount
   const existingDiscount = parseFloat(reservation.discountAmount || '0');
   const newTotalAmount = newSubtotalAmount + deliveryFee - existingDiscount;
+  const difference = newTotalAmount - previousState.totalAmount;
+  const dateChanged =
+    newStartDate.getTime() !== reservation.startDate.getTime() ||
+    newEndDate.getTime() !== reservation.endDate.getTime();
+  const blockingStatuses = getBlockingReservationStatuses(
+    store.settings?.pendingBlocksAvailability ?? true,
+  );
+  const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
+  const overrideTurnoverBuffer = data.overrideTurnoverBuffer ?? false;
+  const session = await auth();
+  const actorUserId = session?.user?.id ?? null;
 
-  // Update reservation
-  await db
-    .update(reservations)
-    .set({
-      startDate: newStartDate,
-      endDate: newEndDate,
-      subtotalAmount: newSubtotalAmount.toFixed(2),
-      depositAmount: newDepositAmount.toFixed(2),
-      totalAmount: newTotalAmount.toFixed(2),
-      tulipInsuranceOptIn: nextTulipInsuranceOptIn,
-      tulipInsuranceAmount:
-        nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
-          ? nextTulipInsuranceAmount.toFixed(2)
-          : null,
-      ...deliveryUpdateFields,
-      updatedAt: new Date(),
-    })
-    .where(eq(reservations.id, reservationId));
+  const transactionResult = await db.transaction(async (tx) => {
+    const currentAssignments = await tx
+      .select({
+        reservationItemId: reservationItemUnits.reservationItemId,
+        productUnitId: reservationItemUnits.productUnitId,
+        identifierSnapshot: reservationItemUnits.identifierSnapshot,
+        unitId: productUnits.id,
+        identifier: productUnits.identifier,
+      })
+      .from(reservationItemUnits)
+      .innerJoin(
+        reservationItems,
+        eq(reservationItemUnits.reservationItemId, reservationItems.id),
+      )
+      .innerJoin(
+        reservations,
+        eq(reservationItems.reservationId, reservations.id),
+      )
+      .leftJoin(
+        productUnits,
+        eq(reservationItemUnits.productUnitId, productUnits.id),
+      )
+      .where(
+        and(
+          eq(reservationItems.reservationId, reservationId),
+          eq(reservations.storeId, store.id),
+        ),
+      );
+
+    const assignedCountByItemId = new Map<string, number>();
+    for (const assignment of currentAssignments) {
+      assignedCountByItemId.set(
+        assignment.reservationItemId,
+        (assignedCountByItemId.get(assignment.reservationItemId) ?? 0) + 1,
+      );
+    }
+
+    if (data.items && data.items.length > 0) {
+      for (const item of data.items) {
+        if (!item.id) continue;
+
+        const assignedCount = assignedCountByItemId.get(item.id) ?? 0;
+        if (item.quantity < assignedCount) {
+          return {
+            error: 'errors.tooManyAssignedUnits',
+            reservationItemId: item.id,
+            assignedCount,
+          };
+        }
+      }
+    }
+
+    const itemIdsToDelete = [
+      ...removedReservationItemIds,
+      ...extraInsuranceItemIdsToDelete,
+    ];
+    const itemIdsToDeleteSet = new Set(itemIdsToDelete);
+    const assignmentsToRemove = currentAssignments.filter((assignment) =>
+      itemIdsToDeleteSet.has(assignment.reservationItemId),
+    );
+    const assignmentsToKeep = currentAssignments.filter(
+      (assignment) => !itemIdsToDeleteSet.has(assignment.reservationItemId),
+    );
+
+    if (dateChanged && assignmentsToKeep.length > 0) {
+      const assignedUnitIds = [
+        ...new Set(assignmentsToKeep.map((assignment) => assignment.productUnitId)),
+      ].sort((a, b) => a.localeCompare(b, 'en'));
+
+      const lockedUnits = await tx
+        .select({
+          id: productUnits.id,
+          identifier: productUnits.identifier,
+        })
+        .from(productUnits)
+        .where(inArray(productUnits.id, assignedUnitIds))
+        .orderBy(productUnits.id)
+        .for('update');
+      const unitIdentifierById = new Map(
+        lockedUnits.map((unit) => [unit.id, unit.identifier]),
+      );
+      for (const assignment of assignmentsToKeep) {
+        if (!unitIdentifierById.has(assignment.productUnitId)) {
+          unitIdentifierById.set(
+            assignment.productUnitId,
+            assignment.identifierSnapshot,
+          );
+        }
+      }
+
+      const rentableUnits = await tx
+        .select({ id: productUnits.id })
+        .from(productUnits)
+        .where(
+          and(
+            inArray(productUnits.id, assignedUnitIds),
+            buildUnitRentableDuringPredicate(tx, newStartDate, newEndDate),
+          ),
+        );
+      const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
+      const hardConflictKeys = new Set<string>();
+      const hardConflicts: UpdateReservationConflict[] = [];
+      const pushHardConflict = (assignment: (typeof assignmentsToKeep)[number]) => {
+        const key = `${assignment.reservationItemId}:${assignment.productUnitId}`;
+        if (hardConflictKeys.has(key)) return;
+        hardConflictKeys.add(key);
+        hardConflicts.push({
+          reservationItemId: assignment.reservationItemId,
+          unitId: assignment.productUnitId,
+          identifier:
+            unitIdentifierById.get(assignment.productUnitId) ||
+            assignment.identifierSnapshot ||
+            assignment.productUnitId,
+        });
+      };
+
+      for (const assignment of assignmentsToKeep) {
+        if (!rentableUnitIds.has(assignment.productUnitId)) {
+          pushHardConflict(assignment);
+        }
+      }
+
+      const assignmentsByItemId = new Map<
+        string,
+        typeof assignmentsToKeep
+      >();
+      for (const assignment of assignmentsToKeep) {
+        assignmentsByItemId.set(assignment.reservationItemId, [
+          ...(assignmentsByItemId.get(assignment.reservationItemId) ?? []),
+          assignment,
+        ]);
+      }
+
+      const bufferUnitIds = new Set<string>();
+      for (const [reservationItemId, itemAssignments] of assignmentsByItemId) {
+        const busyUnitIds = await findBusyUnitIds(tx, {
+          unitIds: itemAssignments.map((assignment) => assignment.productUnitId),
+          start: newStartDate,
+          end: newEndDate,
+          blockingStatuses,
+          turnoverBufferMinutes,
+          excludeReservationItemId: reservationItemId,
+        });
+
+        for (const assignment of itemAssignments) {
+          const reason = busyUnitIds.get(assignment.productUnitId);
+          if (reason === 'overlap') {
+            pushHardConflict(assignment);
+          } else if (reason === 'buffer') {
+            bufferUnitIds.add(assignment.productUnitId);
+          }
+        }
+      }
+
+      if (hardConflicts.length > 0) {
+        return {
+          error: 'errors.assignedUnitsConflict',
+          conflicts: hardConflicts,
+        };
+      }
+
+      if (!overrideTurnoverBuffer && bufferUnitIds.size > 0) {
+        return {
+          error: 'errors.turnoverBufferConflict',
+          bufferConflict: true,
+          failedUnitIds: [...bufferUnitIds],
+        };
+      }
+    }
+
+    const unitEvents: Array<typeof productUnitEvents.$inferInsert> =
+      assignmentsToRemove.map(
+        (assignment) =>
+          ({
+            id: nanoid(),
+            productUnitId: assignment.productUnitId,
+            storeId: store.id,
+            type: 'unassigned',
+            actorUserId,
+            payload: {
+              reservationId,
+              reservationItemId: assignment.reservationItemId,
+              reason: 'reservation_item_removed',
+            },
+          }) satisfies typeof productUnitEvents.$inferInsert,
+      );
+
+    if (assignmentsToRemove.length > 0) {
+      await tx
+        .delete(reservationItemUnits)
+        .where(
+          inArray(
+            reservationItemUnits.reservationItemId,
+            [...new Set(assignmentsToRemove.map((item) => item.reservationItemId))],
+          ),
+        );
+    }
+
+    if (unitEvents.length > 0) {
+      await tx.insert(productUnitEvents).values(unitEvents);
+    }
+
+    for (const itemWrite of itemWrites) {
+      if (itemWrite.type === 'insert') {
+        await tx.insert(reservationItems).values(itemWrite.values);
+      } else {
+        await tx
+          .update(reservationItems)
+          .set(itemWrite.values)
+          .where(eq(reservationItems.id, itemWrite.id));
+      }
+    }
+
+    for (const insuranceItemWrite of insuranceItemWrites) {
+      if (insuranceItemWrite.type === 'insert') {
+        await tx.insert(reservationItems).values(insuranceItemWrite.values);
+      } else {
+        await tx
+          .update(reservationItems)
+          .set(insuranceItemWrite.values)
+          .where(eq(reservationItems.id, insuranceItemWrite.id));
+      }
+    }
+
+    if (itemIdsToDelete.length > 0) {
+      await tx
+        .delete(reservationItems)
+        .where(inArray(reservationItems.id, itemIdsToDelete));
+    }
+
+    await tx
+      .update(reservations)
+      .set({
+        startDate: newStartDate,
+        endDate: newEndDate,
+        subtotalAmount: newSubtotalAmount.toFixed(2),
+        depositAmount: newDepositAmount.toFixed(2),
+        totalAmount: newTotalAmount.toFixed(2),
+        tulipInsuranceOptIn: nextTulipInsuranceOptIn,
+        tulipInsuranceAmount:
+          nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
+            ? nextTulipInsuranceAmount.toFixed(2)
+            : null,
+        ...deliveryUpdateFields,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
+      );
+
+    return { success: true };
+  });
+
+  if (transactionResult.error) {
+    return transactionResult;
+  }
+
   if (reservation.status === 'confirmed' || reservation.status === 'ongoing') {
     try {
       await syncTulipContractForReservation({ reservationId });
@@ -2754,9 +3152,6 @@ export async function updateReservation(
       });
     }
   }
-
-  // Calculate difference for activity log
-  const difference = newTotalAmount - previousState.totalAmount;
 
   // Log activity
   await logReservationActivity(reservationId, 'modified', {

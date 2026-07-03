@@ -129,6 +129,56 @@ function isEmailNotificationResult(
   )
 }
 
+function getErrorTranslationKey(error: string): string {
+  return error.startsWith('errors.') ? error.replace('errors.', '') : error
+}
+
+function isBufferConflictResult(
+  value: unknown,
+): value is { bufferConflict: true; failedUnitIds?: string[] } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'bufferConflict' in value &&
+    value.bufferConflict === true
+  )
+}
+
+function isTooManyAssignedUnitsResult(
+  value: unknown,
+): value is {
+  error: 'errors.tooManyAssignedUnits'
+  reservationItemId: string
+  assignedCount: number
+} {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'error' in value &&
+    value.error === 'errors.tooManyAssignedUnits' &&
+    'reservationItemId' in value &&
+    typeof value.reservationItemId === 'string' &&
+    'assignedCount' in value &&
+    typeof value.assignedCount === 'number'
+  )
+}
+
+function isAssignedUnitsConflictResult(
+  value: unknown,
+): value is {
+  error: 'errors.assignedUnitsConflict'
+  conflicts: Array<{ identifier: string }>
+} {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'error' in value &&
+    value.error === 'errors.assignedUnitsConflict' &&
+    'conflicts' in value &&
+    Array.isArray(value.conflicts)
+  )
+}
+
 function toReservationItemPayload(item: EditableItem) {
   return {
     id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
@@ -707,7 +757,7 @@ export function EditReservationForm({
     [tErrors]
   )
 
-  const saveReservation = async () => {
+  const saveReservation = async (overrideTurnoverBuffer = false) => {
     if (!startDate || !endDate) return
 
     if (items.length === 0) {
@@ -759,13 +809,53 @@ export function EditReservationForm({
           endDate,
           notifyCustomerByEmail,
           tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
+          overrideTurnoverBuffer,
           delivery: deliveryPayload,
           items: items.map(toReservationItemPayload),
         },
       })
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error), type: 'error' })
+        if (isBufferConflictResult(result)) {
+          const shouldOverride = window.confirm(
+            tErrors('turnoverBufferConflict'),
+          )
+          if (shouldOverride) {
+            await saveReservation(true)
+          }
+          return
+        }
+
+        if (isTooManyAssignedUnitsResult(result)) {
+          const itemName =
+            items.find((item) => item.id === result.reservationItemId)
+              ?.productSnapshot.name ?? result.reservationItemId
+          toastManager.add({
+            title: tErrors('tooManyAssignedUnits', {
+              item: itemName,
+              assignedCount: result.assignedCount,
+            }),
+            type: 'error',
+          })
+          return
+        }
+
+        if (isAssignedUnitsConflictResult(result)) {
+          const identifiers = result.conflicts
+            .map((conflict) => conflict.identifier)
+            .filter((identifier) => identifier.length > 0)
+            .join(', ')
+          toastManager.add({
+            title: tErrors('assignedUnitsConflict', { identifiers }),
+            type: 'error',
+          })
+          return
+        }
+
+        toastManager.add({
+          title: tErrors(getErrorTranslationKey(result.error)),
+          type: 'error',
+        })
       } else {
         const warnings = result.warnings
         if (Array.isArray(warnings) && warnings.length > 0) {
@@ -804,7 +894,15 @@ export function EditReservationForm({
         router.push(`/dashboard/reservations/${reservation.id}`)
         router.refresh()
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith('errors.')) {
+        toastManager.add({
+          title: tErrors(getErrorTranslationKey(error.message)),
+          type: 'error',
+        })
+        return
+      }
+
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)

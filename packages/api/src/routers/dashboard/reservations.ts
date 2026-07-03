@@ -188,13 +188,25 @@ const updateReservation = requirePermission('write')
       });
 
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', {
-          message: result.error as string,
-          data:
-            'errorDetails' in result && result.errorDetails
-              ? { details: result.errorDetails }
-              : undefined,
-        });
+        return {
+          success: false as const,
+          error: result.error,
+          ...('bufferConflict' in result && result.bufferConflict
+            ? { bufferConflict: result.bufferConflict }
+            : {}),
+          ...('failedUnitIds' in result && result.failedUnitIds
+            ? { failedUnitIds: result.failedUnitIds }
+            : {}),
+          ...('conflicts' in result && result.conflicts
+            ? { conflicts: result.conflicts }
+            : {}),
+          ...('reservationItemId' in result && result.reservationItemId
+            ? { reservationItemId: result.reservationItemId }
+            : {}),
+          ...('assignedCount' in result && result.assignedCount
+            ? { assignedCount: result.assignedCount }
+            : {}),
+        };
       }
       return result;
     } catch (error) {
