@@ -90,13 +90,12 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
         }),
   })
 
-  if (!isDashboard) {
-    // Memory persistence: registered for the page lifetime only
-    posthog.register({
-      surface: storeSlug ? 'storefront' : 'marketing',
-      ...(storeSlug ? { store_slug: storeSlug } : {}),
-    })
-  }
+  // Surface is intentionally coarse and non-identifying. It keeps pageviews
+  // segmentable without adding new storefront persistence or personal data.
+  posthog.register({
+    surface: isDashboard ? 'dashboard' : storeSlug ? 'storefront' : 'marketing',
+    ...(storeSlug ? { store_slug: storeSlug } : {}),
+  })
 }
 
 export default posthog
