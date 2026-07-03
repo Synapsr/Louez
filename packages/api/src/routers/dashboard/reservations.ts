@@ -479,9 +479,20 @@ const assignUnitsToItem = requirePermission('write')
             'dashboardReservationActions.assignUnitsToReservationItem not provided',
         });
       }
-      const result = await fn(input.reservationItemId, input.unitIds);
+      const result = await fn(input.reservationItemId, input.unitIds, {
+        overrideTurnoverBuffer: input.overrideTurnoverBuffer,
+      });
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        return {
+          success: false as const,
+          error: result.error,
+          ...(result.bufferConflict
+            ? { bufferConflict: result.bufferConflict }
+            : {}),
+          ...(result.failedUnitIds
+            ? { failedUnitIds: result.failedUnitIds }
+            : {}),
+        };
       }
       return {
         success: true as const,

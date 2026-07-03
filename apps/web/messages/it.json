@@ -1114,7 +1114,12 @@
         "replacementUnit": "Unità sostitutiva",
         "noCandidates": "Nessuna unità disponibile",
         "reassign": "Riassegna",
-        "leaveAsIs": "Lascia invariata"
+        "leaveAsIs": "Lascia invariata",
+        "invalidUnitsToast": "Unita non disponibili: {identifiers}",
+        "bufferConflictTitle": "Conflitto con margine di rotazione",
+        "bufferConflictDescription": "Questa sostituzione e bloccata solo dal margine di rotazione: {identifiers}. Riassegnare comunque?",
+        "bufferConflictCancel": "Annulla",
+        "bufferConflictConfirm": "Riassegna comunque"
       },
       "downtimeDialog": {
         "title": "Metti fuori servizio",
@@ -1708,6 +1713,11 @@
         "saved": "Unita assegnate",
         "notes": "Note",
         "identifiers": "Identificatori: {identifiers}",
+        "invalidUnitsToast": "Unita non disponibili: {identifiers}",
+        "bufferConflictTitle": "Conflitto con margine di rotazione",
+        "bufferConflictDescription": "Queste unita sono bloccate solo dal margine di rotazione: {identifiers}. Assegnarle comunque?",
+        "bufferConflictCancel": "Mantieni selezione",
+        "bufferConflictConfirm": "Assegna comunque",
         "optionsLabel": "Opzioni",
         "clearSelection": "Cancella selezione",
         "autofillHint": "Unita suggerite selezionate. Clicchi su Salva per confermare."
@@ -5525,6 +5535,7 @@
     "insufficientStock": "Stock insufficiente per: {name} ({count} disponibili)",
     "tooManyUnitsAssigned": "Non e possibile assegnare piu unita della quantita riservata",
     "invalidUnits": "Una o piu unita selezionate non sono valide",
+    "turnoverBufferConflict": "L'unita selezionata e bloccata solo dal margine di rotazione",
     "unitProductMismatch": "Le unita selezionate non appartengono a questo prodotto",
     "assignUnitsFailed": "Assegnazione unita fallita",
     "getAvailableUnitsFailed": "Caricamento unita disponibili fallito",

@@ -1114,7 +1114,12 @@
         "replacementUnit": "Vervangende eenheid",
         "noCandidates": "Geen vervangende eenheid beschikbaar",
         "reassign": "Opnieuw toewijzen",
-        "leaveAsIs": "Ongewijzigd laten"
+        "leaveAsIs": "Ongewijzigd laten",
+        "invalidUnitsToast": "Niet-beschikbare eenheden: {identifiers}",
+        "bufferConflictTitle": "Conflict met omlooptijdbuffer",
+        "bufferConflictDescription": "Deze vervanging wordt alleen geblokkeerd door de omlooptijdbuffer: {identifiers}. Toch opnieuw toewijzen?",
+        "bufferConflictCancel": "Annuleren",
+        "bufferConflictConfirm": "Toch opnieuw toewijzen"
       },
       "downtimeDialog": {
         "title": "Buiten gebruik stellen",
@@ -1708,6 +1713,11 @@
         "saved": "Eenheden toegewezen",
         "notes": "Notities",
         "identifiers": "Identificatoren: {identifiers}",
+        "invalidUnitsToast": "Niet-beschikbare eenheden: {identifiers}",
+        "bufferConflictTitle": "Conflict met omlooptijdbuffer",
+        "bufferConflictDescription": "Deze eenheden worden alleen geblokkeerd door de omlooptijdbuffer: {identifiers}. Toch toewijzen?",
+        "bufferConflictCancel": "Selectie behouden",
+        "bufferConflictConfirm": "Toch toewijzen",
         "optionsLabel": "Opties",
         "clearSelection": "Selectie wissen",
         "autofillHint": "Voorgestelde eenheden geselecteerd. Klik op Opslaan om te bevestigen."
@@ -5525,6 +5535,7 @@
     "insufficientStock": "Onvoldoende voorraad voor: {name} ({count} beschikbaar)",
     "tooManyUnitsAssigned": "Kan niet meer eenheden toewijzen dan de gereserveerde hoeveelheid",
     "invalidUnits": "Een of meer geselecteerde eenheden zijn ongeldig",
+    "turnoverBufferConflict": "De geselecteerde eenheid wordt alleen geblokkeerd door de omlooptijdbuffer",
     "unitProductMismatch": "Geselecteerde eenheden behoren niet tot dit product",
     "assignUnitsFailed": "Toewijzing van eenheden mislukt",
     "getAvailableUnitsFailed": "Laden van beschikbare eenheden mislukt",

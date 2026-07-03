@@ -14,6 +14,13 @@ import {
 import { useTranslations } from 'next-intl';
 
 import {
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   Button,
   Select,
   SelectContent,
@@ -36,6 +43,12 @@ interface ConflictsPanelProps {
 
 type ResolutionState = 'left' | 'reassigned';
 
+type BufferOverrideRequest = {
+  conflict: InventoryConflict;
+  toUnitId: string;
+  failedUnitIds: string[];
+};
+
 export const ConflictsPanel = ({
   conflicts,
   fromUnitId,
@@ -50,6 +63,8 @@ export const ConflictsPanel = ({
     Record<string, ResolutionState>
   >({});
   const [pendingItemId, setPendingItemId] = useState<string | null>(null);
+  const [bufferOverrideRequest, setBufferOverrideRequest] =
+    useState<BufferOverrideRequest | null>(null);
 
   const unresolvedCount = useMemo(
     () =>
@@ -59,8 +74,26 @@ export const ConflictsPanel = ({
     [conflicts, resolutionByItemId],
   );
 
-  const handleReassign = async (conflict: InventoryConflict) => {
+  const getCandidateIdentifiers = (
+    conflict: InventoryConflict,
+    unitIds: string[],
+  ) => {
+    return unitIds
+      .map(
+        (unitId) =>
+          conflict.replacementCandidates.find(
+            (candidate) => candidate.id === unitId,
+          )?.identifier ?? unitId,
+      )
+      .join(', ');
+  };
+
+  const handleReassign = async (
+    conflict: InventoryConflict,
+    options?: { overrideTurnoverBuffer?: boolean; toUnitId?: string },
+  ) => {
     const toUnitId =
+      options?.toUnitId ??
       selectedCandidates[conflict.reservationItemId] ??
       conflict.replacementCandidates[0]?.id;
 
@@ -74,11 +107,29 @@ export const ConflictsPanel = ({
         reservationItemId: conflict.reservationItemId,
         fromUnitId,
         toUnitId,
+        overrideTurnoverBuffer: options?.overrideTurnoverBuffer,
       });
 
       if ('error' in result && result.error) {
+        if (result.bufferConflict && result.failedUnitIds) {
+          setBufferOverrideRequest({
+            conflict,
+            toUnitId,
+            failedUnitIds: result.failedUnitIds,
+          });
+          return;
+        }
+
         toastManager.add({
-          title: getTranslatedActionError(result.error, tErrors),
+          title:
+            result.failedUnitIds && result.failedUnitIds.length > 0
+              ? t('invalidUnitsToast', {
+                  identifiers: getCandidateIdentifiers(
+                    conflict,
+                    result.failedUnitIds,
+                  ),
+                })
+              : getTranslatedActionError(result.error, tErrors),
           type: 'error',
         });
         return;
@@ -225,6 +276,51 @@ export const ConflictsPanel = ({
           );
         })}
       </div>
+      <AlertDialog
+        open={Boolean(bufferOverrideRequest)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBufferOverrideRequest(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('bufferConflictTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('bufferConflictDescription', {
+                identifiers: bufferOverrideRequest
+                  ? getCandidateIdentifiers(
+                      bufferOverrideRequest.conflict,
+                      bufferOverrideRequest.failedUnitIds,
+                    )
+                  : '',
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogClose render={<Button variant="outline" />}>
+              {t('bufferConflictCancel')}
+            </AlertDialogClose>
+            <AlertDialogClose
+              render={<Button />}
+              onClick={() => {
+                const request = bufferOverrideRequest;
+                setBufferOverrideRequest(null);
+                if (!request) {
+                  return;
+                }
+                void handleReassign(request.conflict, {
+                  overrideTurnoverBuffer: true,
+                  toUnitId: request.toUnitId,
+                });
+              }}
+            >
+              {t('bufferConflictConfirm')}
+            </AlertDialogClose>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

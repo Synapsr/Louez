@@ -1159,7 +1159,12 @@
         "replacementUnit": "Replacement unit",
         "noCandidates": "No replacement available",
         "reassign": "Reassign",
-        "leaveAsIs": "Leave as is"
+        "leaveAsIs": "Leave as is",
+        "invalidUnitsToast": "Unavailable units: {identifiers}",
+        "bufferConflictTitle": "Turnover buffer conflict",
+        "bufferConflictDescription": "This replacement is only blocked by the turnover buffer: {identifiers}. Reassign anyway?",
+        "bufferConflictCancel": "Cancel",
+        "bufferConflictConfirm": "Reassign anyway"
       },
       "downtimeDialog": {
         "title": "Declare downtime",
@@ -1766,7 +1771,12 @@
         "save": "Save",
         "saved": "Units assigned",
         "notes": "Notes",
-        "identifiers": "Identifiers: {identifiers}"
+        "identifiers": "Identifiers: {identifiers}",
+        "invalidUnitsToast": "Unavailable units: {identifiers}",
+        "bufferConflictTitle": "Turnover buffer conflict",
+        "bufferConflictDescription": "These units are only blocked by the turnover buffer: {identifiers}. Assign them anyway?",
+        "bufferConflictCancel": "Keep selection",
+        "bufferConflictConfirm": "Assign anyway"
       },
       "smartActions": {
         "paymentIncomplete": "Rental unpaid ({remaining} remaining)",
@@ -5643,6 +5653,7 @@
     "insufficientStock": "Insufficient stock for: {name} ({count} available)",
     "tooManyUnitsAssigned": "Cannot assign more units than the reserved quantity",
     "invalidUnits": "One or more selected units are invalid",
+    "turnoverBufferConflict": "The selected unit is blocked only by the turnover buffer",
     "unitProductMismatch": "Selected units do not belong to this product",
     "unitCombinationMismatch": "Selected units do not match the reserved combination for this line item",
     "cannotDisableUnitTrackingWithCombinations": "Cannot disable unit tracking while active reservations use tracked combinations for this product.",

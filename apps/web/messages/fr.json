@@ -1159,7 +1159,12 @@
         "replacementUnit": "Unité de remplacement",
         "noCandidates": "Aucune unité disponible",
         "reassign": "Réassigner",
-        "leaveAsIs": "Laisser en l’état"
+        "leaveAsIs": "Laisser en l’état",
+        "invalidUnitsToast": "Unités indisponibles : {identifiers}",
+        "bufferConflictTitle": "Conflit de marge de rotation",
+        "bufferConflictDescription": "Ce remplacement est bloqué uniquement par la marge de rotation : {identifiers}. Réassigner quand même ?",
+        "bufferConflictCancel": "Annuler",
+        "bufferConflictConfirm": "Réassigner quand même"
       },
       "downtimeDialog": {
         "title": "Mettre hors service",
@@ -1775,7 +1780,12 @@
         "save": "Enregistrer",
         "saved": "Unités assignées",
         "notes": "Notes",
-        "identifiers": "Identifiants : {identifiers}"
+        "identifiers": "Identifiants : {identifiers}",
+        "invalidUnitsToast": "Unités indisponibles : {identifiers}",
+        "bufferConflictTitle": "Conflit de marge de rotation",
+        "bufferConflictDescription": "Ces unités sont bloquées uniquement par la marge de rotation : {identifiers}. Les assigner quand même ?",
+        "bufferConflictCancel": "Conserver la sélection",
+        "bufferConflictConfirm": "Assigner quand même"
       },
       "smartActions": {
         "paymentIncomplete": "Location non réglée ({remaining} restant)",
@@ -5643,6 +5653,7 @@
     "insufficientStock": "Stock insuffisant pour: {name} ({count} disponibles)",
     "tooManyUnitsAssigned": "Impossible d'assigner plus d'unités que la quantité réservée",
     "invalidUnits": "Une ou plusieurs unités sélectionnées sont invalides",
+    "turnoverBufferConflict": "L'unité sélectionnée est bloquée uniquement par la marge de rotation",
     "unitProductMismatch": "Les unités sélectionnées n'appartiennent pas à ce produit",
     "unitCombinationMismatch": "Les unités sélectionnées ne correspondent pas à la combinaison réservée pour cette ligne",
     "cannotDisableUnitTrackingWithCombinations": "Impossible de désactiver le suivi unitaire tant que des réservations actives utilisent des combinaisons suivies pour ce produit.",

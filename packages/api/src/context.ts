@@ -264,9 +264,12 @@ export interface BaseContext {
     assignUnitsToReservationItem?: (
       reservationItemId: string,
       unitIds: string[],
+      options?: { overrideTurnoverBuffer?: boolean },
     ) => Promise<{
       success?: boolean;
       error?: string;
+      bufferConflict?: boolean;
+      failedUnitIds?: string[];
       warnings?: Array<{
         key: string;
         params?: Record<string, string | number>;

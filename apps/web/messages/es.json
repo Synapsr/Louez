@@ -1153,7 +1153,12 @@
         "replacementUnit": "Unidad de reemplazo",
         "noCandidates": "No hay unidad disponible",
         "reassign": "Reasignar",
-        "leaveAsIs": "Dejar como está"
+        "leaveAsIs": "Dejar como está",
+        "invalidUnitsToast": "Unidades no disponibles: {identifiers}",
+        "bufferConflictTitle": "Conflicto de margen de rotación",
+        "bufferConflictDescription": "Este reemplazo solo está bloqueado por el margen de rotación: {identifiers}. ¿Reasignar igualmente?",
+        "bufferConflictCancel": "Cancelar",
+        "bufferConflictConfirm": "Reasignar igualmente"
       },
       "downtimeDialog": {
         "title": "Poner fuera de servicio",
@@ -1744,6 +1749,11 @@
         "saved": "Unidades asignadas",
         "notes": "Notas",
         "identifiers": "Identificadores: {identifiers}",
+        "invalidUnitsToast": "Unidades no disponibles: {identifiers}",
+        "bufferConflictTitle": "Conflicto de margen de rotación",
+        "bufferConflictDescription": "Estas unidades solo están bloqueadas por el margen de rotación: {identifiers}. ¿Asignarlas igualmente?",
+        "bufferConflictCancel": "Mantener selección",
+        "bufferConflictConfirm": "Asignar igualmente",
         "optionsLabel": "Opciones",
         "clearSelection": "Borrar seleccion",
         "autofillHint": "Unidades sugeridas seleccionadas. Haga clic en Guardar para confirmar."
@@ -5531,6 +5541,7 @@
     "insufficientStock": "Stock insuficiente para: {name} ({count} disponibles)",
     "tooManyUnitsAssigned": "No se pueden asignar mas unidades que la cantidad reservada",
     "invalidUnits": "Una o mas unidades seleccionadas no son validas",
+    "turnoverBufferConflict": "La unidad seleccionada solo está bloqueada por el margen de rotación",
     "unitProductMismatch": "Las unidades seleccionadas no pertenecen a este producto",
     "assignUnitsFailed": "Error al asignar unidades",
     "getAvailableUnitsFailed": "Error al cargar las unidades disponibles",
