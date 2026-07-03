@@ -146,6 +146,7 @@ interface ProductModalProps {
     }> | null;
     units?: Array<{
       lifecycleStatus: 'active' | 'retired' | null;
+      inDowntimeNow?: boolean;
       attributes: Record<string, string> | null;
     }>;
     seasonalPricings?: SeasonalPricingConfig[];
@@ -396,6 +397,7 @@ export function ProductModal({
     const values = new Set<string>();
     for (const unit of product.units || []) {
       if ((unit.lifecycleStatus || 'active') !== 'active') continue;
+      if (unit.inDowntimeNow) continue;
       const value = unit.attributes?.[axis.key];
       if (value && value.trim()) {
         values.add(value.trim());
@@ -434,6 +436,7 @@ export function ProductModal({
 
     for (const unit of product.units || []) {
       if ((unit.lifecycleStatus || 'active') !== 'active') continue;
+      if (unit.inDowntimeNow) continue;
 
       const selectedAttributes = (unit.attributes || {}) as Record<
         string,

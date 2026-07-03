@@ -113,6 +113,10 @@ export const getUnitTimelineSchema = z.object({
   unitId: idSchema,
 });
 
+export const getUnitDowntimesSchema = z.object({
+  unitId: idSchema,
+});
+
 export type DeclareDowntimeInput = z.infer<typeof declareDowntimeSchema>;
 export type UpdateDowntimeInput = z.infer<typeof updateDowntimeSchema>;
 export type CloseDowntimeInput = z.infer<typeof closeDowntimeSchema>;
@@ -125,3 +129,4 @@ export type ReassignReservationItemUnitInput = z.infer<
 >;
 export type GetInventoryInput = z.infer<typeof getInventorySchema>;
 export type GetUnitTimelineInput = z.infer<typeof getUnitTimelineSchema>;
+export type GetUnitDowntimesInput = z.infer<typeof getUnitDowntimesSchema>;

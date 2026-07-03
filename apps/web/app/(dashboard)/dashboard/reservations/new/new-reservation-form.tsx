@@ -469,6 +469,7 @@ export function NewReservationForm({
   const isSaving = createReservationMutation.isPending;
 
   const selectedCustomer = customers.find((c) => c.id === watchCustomerId);
+  const hasSelectedPeriod = Boolean(watchStartDate && watchEndDate);
 
   const { periodWarnings, availabilityWarnings } = useNewReservationWarnings({
     startDate: watchStartDate,
@@ -669,6 +670,7 @@ export function NewReservationForm({
           productLines,
           periodAvailability.reservedByProduct.get(product.id) || 0,
           periodAvailability.reservedByProductCombination,
+          hasSelectedPeriod,
         );
         if (constraints.lineMaxQuantity <= 0) {
           return prev;
@@ -690,6 +692,7 @@ export function NewReservationForm({
           [nextLine],
           periodAvailability.reservedByProduct.get(product.id) || 0,
           periodAvailability.reservedByProductCombination,
+          hasSelectedPeriod,
         );
         if (constraints.lineMaxQuantity <= 0) {
           return prev;
@@ -705,6 +708,7 @@ export function NewReservationForm({
         productLines,
         periodAvailability.reservedByProduct.get(product.id) || 0,
         periodAvailability.reservedByProductCombination,
+        hasSelectedPeriod,
       );
       const nextQuantity = Math.min(
         existingLine.quantity + 1,
@@ -751,6 +755,7 @@ export function NewReservationForm({
         productLines,
         periodAvailability.reservedByProduct.get(product.id) || 0,
         periodAvailability.reservedByProductCombination,
+        hasSelectedPeriod,
       );
       const nextQuantity = Math.max(
         1,
@@ -820,6 +825,7 @@ export function NewReservationForm({
         productLines,
         periodAvailability.reservedByProduct.get(product.id) || 0,
         periodAvailability.reservedByProductCombination,
+        hasSelectedPeriod,
       );
       const nextQuantity = Math.min(
         nextLine.quantity,
@@ -1370,6 +1376,7 @@ export function NewReservationForm({
                 endDate={watchEndDate}
                 availabilityWarnings={availabilityWarnings}
                 periodAvailability={periodAvailability}
+                hasSelectedPeriod={hasSelectedPeriod}
                 hasItems={hasItems}
                 subtotal={subtotal}
                 originalSubtotal={originalSubtotal}

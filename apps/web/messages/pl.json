@@ -1164,6 +1164,15 @@
         "unknownCustomer": "Klient nieokreślony",
         "byActor": "Przez {actor}",
         "viewReservation": "Zobacz rezerwację",
+        "downtimes": {
+          "title": "Przestoje",
+          "empty": "Brak zarejestrowanych przestojów",
+          "status": {
+            "current": "W toku",
+            "upcoming": "Nadchodzący",
+            "past": "Miniony"
+          }
+        },
         "events": {
           "created": "Jednostka utworzona",
           "downtime_declared": "Przestój dodany",

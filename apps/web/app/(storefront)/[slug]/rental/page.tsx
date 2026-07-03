@@ -24,6 +24,7 @@ import { Skeleton } from '@louez/ui';
 
 import { generateStoreMetadata } from '@/lib/seo';
 import { storefrontRedirect } from '@/lib/storefront-url';
+import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
 import { RentalContent } from './rental-content';
 
@@ -164,6 +165,7 @@ export default async function RentalPage({
   }
   interface ProductUnitSummary {
     lifecycleStatus: 'active' | 'retired' | null;
+    inDowntimeNow: boolean;
     attributes: Record<string, string> | null;
   }
   interface SeasonalPricingForProduct {
@@ -190,6 +192,7 @@ export default async function RentalPage({
     pricingTiers?: PricingTier[];
     accessories?: Accessory[];
     units?: ProductUnitSummary[];
+    displayQuantity?: number;
     seasonalPricings?: SeasonalPricingForProduct[];
   })[] = [];
   if (productIds.length > 0) {
@@ -320,18 +323,24 @@ export default async function RentalPage({
     // Fetch unit attributes for all products (fallback for storefront selectors)
     const productUnitsResults = await db
       .select({
+        id: productUnits.id,
         productId: productUnits.productId,
         lifecycleStatus: productUnits.lifecycleStatus,
         attributes: productUnits.attributes,
       })
       .from(productUnits)
       .where(inArray(productUnits.productId, productIdsArray));
+    const currentDowntimeUnitIds = await getCurrentDowntimeUnitIds(
+      productUnitsResults.map((unit) => unit.id),
+      store.id,
+    );
 
     const productUnitsByProductId = new Map<string, ProductUnitSummary[]>();
     for (const unit of productUnitsResults) {
       const units = productUnitsByProductId.get(unit.productId) || [];
       units.push({
         lifecycleStatus: unit.lifecycleStatus,
+        inDowntimeNow: currentDowntimeUnitIds.has(unit.id),
         attributes: (unit.attributes as Record<string, string> | null) || null,
       });
       productUnitsByProductId.set(unit.productId, units);
@@ -470,6 +479,13 @@ export default async function RentalPage({
         trackUnits: row.trackUnits,
         bookingAttributeAxes: row.bookingAttributeAxes,
         units: productUnitsByProductId.get(row.id) || [],
+        displayQuantity: row.trackUnits
+          ? (productUnitsByProductId.get(row.id) || []).filter(
+              (unit) =>
+                (unit.lifecycleStatus || 'active') === 'active' &&
+                !unit.inDowntimeNow,
+            ).length
+          : row.quantity,
         category:
           row.categoryId && row.categoryName
             ? {

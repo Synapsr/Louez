@@ -44,6 +44,7 @@ export interface Product {
   bookingAttributeAxes: BookingAttributeAxis[] | null;
   units: Array<{
     lifecycleStatus: 'active' | 'retired';
+    inDowntimeNow?: boolean;
     attributes: UnitAttributes | null;
   }>;
   pricingTiers: ProductPricingTier[];

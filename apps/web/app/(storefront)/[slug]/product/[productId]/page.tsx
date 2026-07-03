@@ -37,6 +37,7 @@ import {
   getCanonicalUrl,
 } from '@/lib/seo';
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
+import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
 import { AddToCartForm } from './add-to-cart-form';
 import { ProductGallery } from './product-gallery';
@@ -151,6 +152,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
     notFound();
   }
 
+  const currentDowntimeUnitIds = await getCurrentDowntimeUnitIds(
+    (product.units || []).map((unit) => unit.id),
+    store.id,
+  );
+
   // Fetch seasonal pricings for this product
   const seasonalPricingsRaw = await db
     .select()
@@ -250,7 +256,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
     : [];
 
   const effectivePricingMode = product.pricingMode ?? 'day';
-  const isAvailable = product.quantity > 0;
+  const displayQuantity = product.trackUnits
+    ? (product.units || []).filter(
+        (unit) =>
+          (unit.lifecycleStatus || 'active') === 'active' &&
+          !currentDowntimeUnitIds.has(unit.id),
+      ).length
+    : product.quantity;
+  const isAvailable = displayQuantity > 0;
   const storedBookingAttributeAxes = (
     (product.bookingAttributeAxes as Array<{
       key: string;
@@ -290,6 +303,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     const values = new Set<string>();
     for (const unit of product.units || []) {
       if ((unit.lifecycleStatus || 'active') !== 'active') continue;
+      if (currentDowntimeUnitIds.has(unit.id)) continue;
       const raw = (
         unit.attributes as Record<string, string> | null | undefined
       )?.[axis.key];
@@ -308,6 +322,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
     for (const unit of product.units || []) {
       if ((unit.lifecycleStatus || 'active') !== 'active') continue;
+      if (currentDowntimeUnitIds.has(unit.id)) continue;
 
       const selectedAttributes =
         (unit.attributes as Record<string, string> | null | undefined) || {};
@@ -470,7 +485,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <>
                   <Check className="h-5 w-5 text-green-500" />
                   <span className="font-medium text-green-600">
-                    {t('availableCount', { count: product.quantity })}
+                    {t('availableCount', { count: displayQuantity })}
                   </span>
                 </>
               ) : (
@@ -488,7 +503,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 productImage={product.images?.[0] || null}
                 price={parseFloat(product.price)}
                 deposit={product.deposit ? parseFloat(product.deposit) : 0}
-                maxQuantity={product.quantity}
+                maxQuantity={displayQuantity}
                 pricingMode={effectivePricingMode}
                 basePeriodMinutes={product.basePeriodMinutes}
                 storeSlug={slug}
@@ -516,6 +531,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 bookingAttributeValues={bookingAttributeValues}
                 productUnits={(product.units || []).map((unit) => ({
                   lifecycleStatus: unit.lifecycleStatus || 'active',
+                  inDowntimeNow: currentDowntimeUnitIds.has(unit.id),
                   attributes:
                     (unit.attributes as Record<string, string> | null) || null,
                 }))}

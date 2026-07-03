@@ -1209,6 +1209,15 @@
         "unknownCustomer": "Customer not specified",
         "byActor": "By {actor}",
         "viewReservation": "View reservation",
+        "downtimes": {
+          "title": "Downtimes",
+          "empty": "No downtime recorded",
+          "status": {
+            "current": "Current",
+            "upcoming": "Upcoming",
+            "past": "Past"
+          }
+        },
         "events": {
           "created": "Unit created",
           "downtime_declared": "Downtime declared",

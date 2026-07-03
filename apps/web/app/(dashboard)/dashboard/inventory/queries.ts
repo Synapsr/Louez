@@ -28,8 +28,10 @@ import {
 import type { UnitAttributes } from '@louez/types';
 import {
   type GetInventoryInput,
+  type GetUnitDowntimesInput,
   type GetUnitTimelineInput,
   getInventorySchema,
+  getUnitDowntimesSchema,
   getUnitTimelineSchema,
 } from '@louez/validations';
 
@@ -117,6 +119,17 @@ export type UnitTimelineEntry =
       createdAt: Date;
     };
 
+export type UnitDowntimeStatus = 'current' | 'upcoming' | 'past';
+
+export type UnitDowntimeEntry = {
+  id: string;
+  reason: 'maintenance' | 'repair' | 'other';
+  startsAt: Date;
+  endsAt: Date | null;
+  note: string | null;
+  status: UnitDowntimeStatus;
+};
+
 function getCounter(
   countersByProductId: Map<string, InventoryProductCounters>,
   productId: string,
@@ -200,6 +213,33 @@ function deriveOperationalState(params: {
   }
 
   return 'available';
+}
+
+function getDowntimeStatus(
+  downtime: Pick<UnitDowntimeEntry, 'startsAt' | 'endsAt'>,
+  now: Date,
+): UnitDowntimeStatus {
+  if (downtime.startsAt <= now && (!downtime.endsAt || downtime.endsAt > now)) {
+    return 'current';
+  }
+
+  if (downtime.startsAt > now) {
+    return 'upcoming';
+  }
+
+  return 'past';
+}
+
+function getDowntimeStatusOrder(status: UnitDowntimeStatus): number {
+  if (status === 'current') {
+    return 0;
+  }
+
+  if (status === 'upcoming') {
+    return 1;
+  }
+
+  return 2;
 }
 
 export async function getInventory(input: GetInventoryInput = {}) {
@@ -736,4 +776,70 @@ export async function getUnitTimeline(input: GetUnitTimelineInput) {
   );
 
   return { success: true, timeline };
+}
+
+export async function getUnitDowntimes(input: GetUnitDowntimesInput) {
+  const store = await getCurrentStore();
+  if (!store) {
+    return { error: 'errors.unauthorized' };
+  }
+
+  const validated = getUnitDowntimesSchema.safeParse(input);
+  if (!validated.success) {
+    return { error: 'errors.invalidData' };
+  }
+
+  const [unit] = await db
+    .select({ id: productUnits.id })
+    .from(productUnits)
+    .innerJoin(products, eq(productUnits.productId, products.id))
+    .where(
+      and(
+        eq(productUnits.id, validated.data.unitId),
+        eq(products.storeId, store.id),
+      ),
+    )
+    .limit(1);
+
+  if (!unit) {
+    return { error: 'errors.notFound' };
+  }
+
+  const rows = await db
+    .select({
+      id: productUnitDowntimes.id,
+      reason: productUnitDowntimes.reason,
+      startsAt: productUnitDowntimes.startsAt,
+      endsAt: productUnitDowntimes.endsAt,
+      note: productUnitDowntimes.note,
+    })
+    .from(productUnitDowntimes)
+    .where(
+      and(
+        eq(productUnitDowntimes.productUnitId, validated.data.unitId),
+        eq(productUnitDowntimes.storeId, store.id),
+      ),
+    );
+
+  const now = new Date();
+  const downtimes: UnitDowntimeEntry[] = rows
+    .map((row) => ({
+      ...row,
+      status: getDowntimeStatus(row, now),
+    }))
+    .sort((a, b) => {
+      const statusOrder =
+        getDowntimeStatusOrder(a.status) - getDowntimeStatusOrder(b.status);
+      if (statusOrder !== 0) {
+        return statusOrder;
+      }
+
+      if (a.status === 'upcoming') {
+        return a.startsAt.getTime() - b.startsAt.getTime();
+      }
+
+      return b.startsAt.getTime() - a.startsAt.getTime();
+    });
+
+  return { success: true, downtimes };
 }

@@ -1164,6 +1164,15 @@
         "unknownCustomer": "Klant niet opgegeven",
         "byActor": "Door {actor}",
         "viewReservation": "Reservering bekijken",
+        "downtimes": {
+          "title": "Buitengebruikstellingen",
+          "empty": "Geen buitengebruikstelling geregistreerd",
+          "status": {
+            "current": "Lopend",
+            "upcoming": "Aankomend",
+            "past": "Voorbij"
+          }
+        },
         "events": {
           "created": "Eenheid aangemaakt",
           "downtime_declared": "Buitengebruikstelling aangemaakt",
