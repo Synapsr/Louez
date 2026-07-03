@@ -217,6 +217,7 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
     endDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     notifyCustomerByEmail: z.boolean().optional(),
     tulipInsuranceOptIn: z.boolean().optional(),
+    overrideTurnoverBuffer: z.boolean().optional(),
     delivery: z
       .object({
         outbound: z.object({

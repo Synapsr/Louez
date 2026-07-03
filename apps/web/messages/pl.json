@@ -5534,6 +5534,8 @@
     "productNoLongerAvailable": "Produkt {name} nie jest juz dostepny na te daty. W miedzyczasie dokonano innej rezerwacji.",
     "insufficientStock": "Niewystarczający stan magazynowy dla: {name} ({count} dostępne)",
     "tooManyUnitsAssigned": "Nie można przypisać więcej jednostek niż zarezerwowana ilość",
+    "tooManyAssignedUnits": "Najpierw odłącz jednostki od {item}, zanim zmniejszysz ilość poniżej {assignedCount}.",
+    "assignedUnitsConflict": "Przypisane jednostki są niedostępne w nowych terminach: {identifiers}",
     "invalidUnits": "Jedna lub więcej wybranych jednostek jest nieprawidłowa",
     "turnoverBufferConflict": "Wybrana jednostka jest blokowana tylko przez bufor rotacji",
     "unitProductMismatch": "Wybrane jednostki nie należą do tego produktu",

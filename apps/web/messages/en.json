@@ -5652,6 +5652,8 @@
     "productNoLongerAvailable": "Product {name} is no longer available for these dates. Another reservation was made in the meantime.",
     "insufficientStock": "Insufficient stock for: {name} ({count} available)",
     "tooManyUnitsAssigned": "Cannot assign more units than the reserved quantity",
+    "tooManyAssignedUnits": "Unassign units from {item} before reducing the quantity below {assignedCount}.",
+    "assignedUnitsConflict": "Assigned units are unavailable for the new dates: {identifiers}",
     "invalidUnits": "One or more selected units are invalid",
     "turnoverBufferConflict": "The selected unit is blocked only by the turnover buffer",
     "unitProductMismatch": "Selected units do not belong to this product",

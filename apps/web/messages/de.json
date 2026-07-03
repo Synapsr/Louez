@@ -5534,6 +5534,8 @@
     "productNoLongerAvailable": "Das Produkt {name} ist für diese Daten nicht mehr verfügbar. In der Zwischenzeit wurde eine andere Reservierung vorgenommen.",
     "insufficientStock": "Unzureichender Bestand für: {name} ({count} verfügbar)",
     "tooManyUnitsAssigned": "Es können nicht mehr Einheiten zugewiesen werden als reserviert",
+    "tooManyAssignedUnits": "Heben Sie die Zuweisung von Einheiten für {item} auf, bevor Sie die Menge unter {assignedCount} reduzieren.",
+    "assignedUnitsConflict": "Zugewiesene Einheiten sind für die neuen Daten nicht verfügbar: {identifiers}",
     "invalidUnits": "Eine oder mehrere ausgewählte Einheiten sind ungültig",
     "turnoverBufferConflict": "Die ausgewählte Einheit wird nur durch den Umschlagspuffer blockiert",
     "unitProductMismatch": "Ausgewählte Einheiten gehören nicht zu diesem Produkt",

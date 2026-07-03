@@ -5540,6 +5540,8 @@
     "productNoLongerAvailable": "El producto {name} ya no esta disponible para estas fechas. Se realizo otra reserva mientras tanto.",
     "insufficientStock": "Stock insuficiente para: {name} ({count} disponibles)",
     "tooManyUnitsAssigned": "No se pueden asignar mas unidades que la cantidad reservada",
+    "tooManyAssignedUnits": "Desasigna unidades de {item} antes de reducir la cantidad por debajo de {assignedCount}.",
+    "assignedUnitsConflict": "Las unidades asignadas no están disponibles para las nuevas fechas: {identifiers}",
     "invalidUnits": "Una o mas unidades seleccionadas no son validas",
     "turnoverBufferConflict": "La unidad seleccionada solo está bloqueada por el margen de rotación",
     "unitProductMismatch": "Las unidades seleccionadas no pertenecen a este producto",

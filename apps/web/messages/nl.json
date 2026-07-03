@@ -5534,6 +5534,8 @@
     "productNoLongerAvailable": "Product {name} is niet meer beschikbaar voor deze datums. Er is inmiddels een andere reservering gemaakt.",
     "insufficientStock": "Onvoldoende voorraad voor: {name} ({count} beschikbaar)",
     "tooManyUnitsAssigned": "Kan niet meer eenheden toewijzen dan de gereserveerde hoeveelheid",
+    "tooManyAssignedUnits": "Maak eenheden van {item} los voordat u de hoeveelheid onder {assignedCount} verlaagt.",
+    "assignedUnitsConflict": "Toegewezen eenheden zijn niet beschikbaar voor de nieuwe datums: {identifiers}",
     "invalidUnits": "Een of meer geselecteerde eenheden zijn ongeldig",
     "turnoverBufferConflict": "De geselecteerde eenheid wordt alleen geblokkeerd door de omlooptijdbuffer",
     "unitProductMismatch": "Geselecteerde eenheden behoren niet tot dit product",

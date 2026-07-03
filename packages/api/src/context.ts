@@ -145,6 +145,30 @@ export interface BaseContext {
           };
         }>;
         notifyCustomerByEmail?: boolean;
+        tulipInsuranceOptIn?: boolean;
+        overrideTurnoverBuffer?: boolean;
+        delivery?: {
+          outbound: {
+            method: 'store' | 'address';
+            locationId?: string | null;
+            address?: string;
+            city?: string;
+            postalCode?: string;
+            country?: string;
+            latitude?: number;
+            longitude?: number;
+          };
+          return: {
+            method: 'store' | 'address';
+            locationId?: string | null;
+            address?: string;
+            city?: string;
+            postalCode?: string;
+            country?: string;
+            latitude?: number;
+            longitude?: number;
+          };
+        };
       },
     ) => Promise<
       { success?: boolean; error?: string } & Record<string, unknown>

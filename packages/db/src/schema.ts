@@ -2128,8 +2128,12 @@ export const reservationItemUnits = mysqlTable(
   'reservation_item_units',
   {
     id: id(),
-    reservationItemId: varchar('reservation_item_id', { length: 21 }).notNull(),
-    productUnitId: varchar('product_unit_id', { length: 21 }).notNull(),
+    reservationItemId: varchar('reservation_item_id', { length: 21 })
+      .notNull()
+      .references(() => reservationItems.id, { onDelete: 'cascade' }),
+    productUnitId: varchar('product_unit_id', { length: 21 })
+      .notNull()
+      .references(() => productUnits.id, { onDelete: 'restrict' }),
 
     // Snapshot of identifier at assignment time (for contract/history accuracy
     // even if the unit is renamed later)
