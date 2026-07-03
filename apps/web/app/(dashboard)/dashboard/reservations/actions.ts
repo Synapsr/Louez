@@ -5,9 +5,13 @@ import { revalidatePath } from 'next/cache';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-import { getRouteDistance } from '@louez/api/services';
+import {
+  computeReservedNetOfExcludedUnits,
+  getRouteDistance,
+} from '@louez/api/services';
 import { db } from '@louez/db';
 import {
+  buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   customers,
   findBusyUnitIds,
@@ -39,8 +43,11 @@ import {
   DEFAULT_COMBINATION_KEY,
   buildCombinationKey,
   canonicalizeAttributes,
+  getDeterministicCombinationSortValue,
+  getProductCombinationAvailabilityKey,
   getCurrencySymbol,
   hasCompleteAttributes,
+  matchesSelectedAttributes,
 } from '@louez/utils';
 import {
   type PricingTier,
@@ -760,6 +767,27 @@ interface CreateReservationData {
   tulipInsuranceOptIn?: boolean;
   sendConfirmationEmail?: boolean;
   sendAsQuote?: boolean;
+  allowOverbooking?: boolean;
+}
+
+type ManualReservationCapacityShortfall = {
+  productId: string;
+  productName: string;
+  combinationKey: string | null;
+  requested: number;
+  available: number;
+};
+
+function normalizeUnitAttributes(attributes: unknown): UnitAttributes {
+  if (!attributes || typeof attributes !== 'object' || Array.isArray(attributes)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(attributes).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string',
+    ),
+  );
 }
 
 export async function createManualReservation(data: CreateReservationData) {
@@ -1194,119 +1222,419 @@ export async function createManualReservation(data: CreateReservationData) {
 
   // Create reservation
   const reservationId = nanoid();
-  await db.insert(reservations).values({
-    id: reservationId,
-    storeId: store.id,
-    customerId,
-    number: reservationNumber,
-    status: data.sendAsQuote ? 'quote' : 'confirmed',
-    startDate: data.startDate,
-    endDate: data.endDate,
-    subtotalAmount: subtotalAmount.toFixed(2),
-    depositAmount: depositAmount.toFixed(2),
-    totalAmount: totalAmount.toFixed(2),
-    internalNotes: data.internalNotes || null,
-    source: 'manual',
-    tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
-    tulipInsuranceAmount:
-      tulipInsuranceAmount > 0 ? tulipInsuranceAmount.toFixed(2) : null,
-    // Delivery fields — leg-based model
-    outboundMethod: outboundLeg?.method || 'store',
-    returnMethod: returnLeg?.method || 'store',
-    deliveryOption: hasAnyDelivery ? 'delivery' : 'pickup',
-    deliveryAddress: hasOutboundDelivery ? (outboundLeg.address ?? null) : null,
-    deliveryCity: hasOutboundDelivery ? (outboundLeg.city ?? null) : null,
-    deliveryPostalCode: hasOutboundDelivery
-      ? (outboundLeg.postalCode ?? null)
-      : null,
-    deliveryCountry: hasOutboundDelivery ? (outboundLeg.country ?? null) : null,
-    deliveryLatitude:
-      hasOutboundDelivery && outboundLeg.latitude
-        ? outboundLeg.latitude.toString()
-        : null,
-    deliveryLongitude:
-      hasOutboundDelivery && outboundLeg.longitude
-        ? outboundLeg.longitude.toString()
-        : null,
-    deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
-    deliveryFee: deliveryFeeAmount.toFixed(2),
-    returnAddress: hasReturnDelivery ? (returnLeg.address ?? null) : null,
-    returnCity: hasReturnDelivery ? (returnLeg.city ?? null) : null,
-    returnPostalCode: hasReturnDelivery ? (returnLeg.postalCode ?? null) : null,
-    returnCountry: hasReturnDelivery ? (returnLeg.country ?? null) : null,
-    returnLatitude:
-      hasReturnDelivery && returnLeg.latitude != null
-        ? returnLeg.latitude.toString()
-        : null,
-    returnLongitude:
-      hasReturnDelivery && returnLeg.longitude != null
-        ? returnLeg.longitude.toString()
-        : null,
-    returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
-    pickupLocationId: pickupLocation?.locationId ?? null,
-    returnLocationId: returnLocation?.locationId ?? null,
-    pickupLocationSnapshot: pickupLocation?.snapshot ?? null,
-    returnLocationSnapshot: returnLocation?.snapshot ?? null,
-  });
+  const reservationWriteResult = await db.transaction(async (tx) => {
+    const requestedProductIds = [
+      ...new Set(productDetails.map((detail) => detail.product.id)),
+    ];
 
-  // Create reservation items for catalog products
-  for (const detail of productDetails) {
-    await db.insert(reservationItems).values({
-      reservationId,
-      productId: detail.product.id,
-      isCustomItem: false,
-      quantity: detail.quantity,
-      unitPrice: detail.unitPrice,
-      depositPerUnit: detail.depositPerUnit,
-      totalPrice: detail.totalPrice,
-      pricingBreakdown: detail.pricingBreakdown,
-      combinationKey: detail.combinationKey,
-      selectedAttributes: detail.selectedAttributes,
-      productSnapshot: {
-        name: detail.product.name,
-        description: detail.product.description,
-        images: detail.product.images || [],
+    if (requestedProductIds.length > 0) {
+      const requestedProductIdSql = sql.join(
+        requestedProductIds.map((productId) => sql`${productId}`),
+        sql`, `,
+      );
+      await tx.execute(
+        sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) FOR UPDATE`,
+      );
+    }
+
+    const lockedProducts =
+      requestedProductIds.length > 0
+        ? await tx.query.products.findMany({
+            where: and(
+              eq(products.storeId, store.id),
+              inArray(products.id, requestedProductIds),
+            ),
+          })
+        : [];
+    const productsById = new Map(
+      lockedProducts.map((product) => [product.id, product]),
+    );
+    const blockingStatuses = getBlockingReservationStatuses(
+      store.settings?.pendingBlocksAvailability ?? true,
+    );
+    const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
+    const overlappingReservations = await tx.query.reservations.findMany({
+      where: and(
+        eq(reservations.storeId, store.id),
+        inArray(reservations.status, blockingStatuses),
+        buildReservationOverlapPredicate({
+          start: data.startDate,
+          end: data.endDate,
+          turnoverBufferMinutes,
+        }),
+      ),
+      with: {
+        items: {
+          with: {
+            assignedUnits: true,
+          },
+        },
+      },
+    });
+
+    const trackedProductIds = lockedProducts
+      .filter((product) => product.trackUnits)
+      .map((product) => product.id);
+    const trackedUnits =
+      trackedProductIds.length > 0
+        ? await tx
+            .select({
+              id: productUnits.id,
+            })
+            .from(productUnits)
+            .where(inArray(productUnits.productId, trackedProductIds))
+        : [];
+    const availableUnits =
+      trackedProductIds.length > 0
+        ? await tx
+            .select({
+              id: productUnits.id,
+              productId: productUnits.productId,
+              combinationKey: productUnits.combinationKey,
+              attributes: productUnits.attributes,
+            })
+            .from(productUnits)
+            .where(
+              and(
+                inArray(productUnits.productId, trackedProductIds),
+                buildUnitRentableDuringPredicate(
+                  tx,
+                  data.startDate,
+                  data.endDate,
+                ),
+              ),
+            )
+        : [];
+    const availableUnitIds = new Set(availableUnits.map((unit) => unit.id));
+    const excludedProductUnitIds = new Set(
+      trackedUnits
+        .filter((unit) => !availableUnitIds.has(unit.id))
+        .map((unit) => unit.id),
+    );
+    const { reservedByProduct, reservedByProductCombination } =
+      computeReservedNetOfExcludedUnits({
+        reservations: overlappingReservations,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        turnoverBufferMinutes,
+        excludedProductUnitIds,
+      });
+    const combinationsByProduct = new Map<
+      string,
+      Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
+    >();
+
+    for (const unit of availableUnits) {
+      const productCombinations =
+        combinationsByProduct.get(unit.productId) || new Map();
+      const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
+      const current = productCombinations.get(combinationKey);
+      const selectedAttributes = normalizeUnitAttributes(unit.attributes);
+
+      if (!current) {
+        productCombinations.set(combinationKey, {
+          totalQuantity: 1,
+          selectedAttributes,
+        });
+      } else {
+        current.totalQuantity += 1;
+        if (
+          Object.keys(current.selectedAttributes).length === 0 &&
+          Object.keys(selectedAttributes).length > 0
+        ) {
+          current.selectedAttributes = selectedAttributes;
+        }
+        productCombinations.set(combinationKey, current);
+      }
+
+      combinationsByProduct.set(unit.productId, productCombinations);
+    }
+
+    const remainingByProduct = new Map<string, number>();
+    const remainingByProductCombination = new Map<string, number>();
+
+    for (const product of lockedProducts) {
+      if (!product.trackUnits) {
+        const reserved = reservedByProduct.get(product.id) || 0;
+        remainingByProduct.set(
+          product.id,
+          Math.max(0, product.quantity - reserved),
+        );
+        continue;
+      }
+
+      const productCombinations =
+        combinationsByProduct.get(product.id) || new Map();
+      for (const [combinationKey, combination] of productCombinations) {
+        const key = getProductCombinationAvailabilityKey(
+          product.id,
+          combinationKey,
+        );
+        const reserved = reservedByProductCombination.get(key) || 0;
+        remainingByProductCombination.set(
+          key,
+          Math.max(0, combination.totalQuantity - reserved),
+        );
+      }
+    }
+
+    const shortfalls: ManualReservationCapacityShortfall[] = [];
+
+    for (const detail of productDetails) {
+      const product = productsById.get(detail.product.id);
+      if (!product) {
+        return {
+          ok: false as const,
+          error: 'errors.productNotFound' as const,
+          shortfalls: [],
+        };
+      }
+
+      if (!product.trackUnits) {
+        const available = remainingByProduct.get(product.id) || 0;
+        if (detail.quantity > available) {
+          shortfalls.push({
+            productId: product.id,
+            productName: product.name,
+            combinationKey: null,
+            requested: detail.quantity,
+            available,
+          });
+          remainingByProduct.set(product.id, 0);
+          continue;
+        }
+
+        remainingByProduct.set(product.id, available - detail.quantity);
+        continue;
+      }
+
+      const productCombinations =
+        combinationsByProduct.get(product.id) || new Map();
+      const selectedAttributes = detail.selectedAttributes || {};
+
+      if (detail.combinationKey) {
+        const key = getProductCombinationAvailabilityKey(
+          product.id,
+          detail.combinationKey,
+        );
+        const available = remainingByProductCombination.get(key) || 0;
+        if (detail.quantity > available) {
+          shortfalls.push({
+            productId: product.id,
+            productName: product.name,
+            combinationKey: detail.combinationKey,
+            requested: detail.quantity,
+            available,
+          });
+          remainingByProductCombination.set(key, 0);
+          continue;
+        }
+
+        remainingByProductCombination.set(key, available - detail.quantity);
+        continue;
+      }
+
+      const candidates = [...productCombinations.entries()]
+        .map(([combinationKey, combination]) => ({
+          combinationKey,
+          ...combination,
+        }))
+        .filter((combination) =>
+          matchesSelectedAttributes(
+            selectedAttributes,
+            combination.selectedAttributes,
+          ),
+        )
+        .sort((a, b) => {
+          const sortA = getDeterministicCombinationSortValue(
+            product.bookingAttributeAxes,
+            a.selectedAttributes,
+          );
+          const sortB = getDeterministicCombinationSortValue(
+            product.bookingAttributeAxes,
+            b.selectedAttributes,
+          );
+          return sortA.localeCompare(sortB, 'en');
+        });
+      const resolvedCombination = candidates.find((candidate) => {
+        const key = getProductCombinationAvailabilityKey(
+          product.id,
+          candidate.combinationKey,
+        );
+        return (remainingByProductCombination.get(key) || 0) >= detail.quantity;
+      });
+
+      if (!resolvedCombination) {
+        const available = candidates.reduce((sum, candidate) => {
+          const key = getProductCombinationAvailabilityKey(
+            product.id,
+            candidate.combinationKey,
+          );
+          return sum + (remainingByProductCombination.get(key) || 0);
+        }, 0);
+        shortfalls.push({
+          productId: product.id,
+          productName: product.name,
+          combinationKey: null,
+          requested: detail.quantity,
+          available,
+        });
+        continue;
+      }
+
+      const key = getProductCombinationAvailabilityKey(
+        product.id,
+        resolvedCombination.combinationKey,
+      );
+      const available = remainingByProductCombination.get(key) || 0;
+      remainingByProductCombination.set(key, available - detail.quantity);
+    }
+
+    if (shortfalls.length > 0 && !data.allowOverbooking) {
+      return {
+        ok: false as const,
+        error: 'errors.insufficientCapacity' as const,
+        shortfalls,
+      };
+    }
+
+    await tx.insert(reservations).values({
+      id: reservationId,
+      storeId: store.id,
+      customerId,
+      number: reservationNumber,
+      status: data.sendAsQuote ? 'quote' : 'confirmed',
+      startDate: data.startDate,
+      endDate: data.endDate,
+      subtotalAmount: subtotalAmount.toFixed(2),
+      depositAmount: depositAmount.toFixed(2),
+      totalAmount: totalAmount.toFixed(2),
+      internalNotes: data.internalNotes || null,
+      source: 'manual',
+      tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
+      tulipInsuranceAmount:
+        tulipInsuranceAmount > 0 ? tulipInsuranceAmount.toFixed(2) : null,
+      // Delivery fields — leg-based model
+      outboundMethod: outboundLeg?.method || 'store',
+      returnMethod: returnLeg?.method || 'store',
+      deliveryOption: hasAnyDelivery ? 'delivery' : 'pickup',
+      deliveryAddress: hasOutboundDelivery
+        ? (outboundLeg.address ?? null)
+        : null,
+      deliveryCity: hasOutboundDelivery ? (outboundLeg.city ?? null) : null,
+      deliveryPostalCode: hasOutboundDelivery
+        ? (outboundLeg.postalCode ?? null)
+        : null,
+      deliveryCountry: hasOutboundDelivery
+        ? (outboundLeg.country ?? null)
+        : null,
+      deliveryLatitude:
+        hasOutboundDelivery && outboundLeg.latitude
+          ? outboundLeg.latitude.toString()
+          : null,
+      deliveryLongitude:
+        hasOutboundDelivery && outboundLeg.longitude
+          ? outboundLeg.longitude.toString()
+          : null,
+      deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
+      deliveryFee: deliveryFeeAmount.toFixed(2),
+      returnAddress: hasReturnDelivery ? (returnLeg.address ?? null) : null,
+      returnCity: hasReturnDelivery ? (returnLeg.city ?? null) : null,
+      returnPostalCode: hasReturnDelivery
+        ? (returnLeg.postalCode ?? null)
+        : null,
+      returnCountry: hasReturnDelivery ? (returnLeg.country ?? null) : null,
+      returnLatitude:
+        hasReturnDelivery && returnLeg.latitude != null
+          ? returnLeg.latitude.toString()
+          : null,
+      returnLongitude:
+        hasReturnDelivery && returnLeg.longitude != null
+          ? returnLeg.longitude.toString()
+          : null,
+      returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
+      pickupLocationId: pickupLocation?.locationId ?? null,
+      returnLocationId: returnLocation?.locationId ?? null,
+      pickupLocationSnapshot: pickupLocation?.snapshot ?? null,
+      returnLocationSnapshot: returnLocation?.snapshot ?? null,
+    });
+
+    // Create reservation items for catalog products
+    for (const detail of productDetails) {
+      await tx.insert(reservationItems).values({
+        reservationId,
+        productId: detail.product.id,
+        isCustomItem: false,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        depositPerUnit: detail.depositPerUnit,
+        totalPrice: detail.totalPrice,
+        pricingBreakdown: detail.pricingBreakdown,
         combinationKey: detail.combinationKey,
         selectedAttributes: detail.selectedAttributes,
-      },
-    });
+        productSnapshot: {
+          name: detail.product.name,
+          description: detail.product.description,
+          images: detail.product.images || [],
+          combinationKey: detail.combinationKey,
+          selectedAttributes: detail.selectedAttributes,
+        },
+      });
+    }
+
+    // Create reservation items for custom items
+    for (const customItem of customItemDetails) {
+      await tx.insert(reservationItems).values({
+        reservationId,
+        productId: null,
+        isCustomItem: true,
+        quantity: customItem.quantity,
+        unitPrice: customItem.unitPrice,
+        depositPerUnit: customItem.depositPerUnit,
+        totalPrice: customItem.totalPrice,
+        pricingBreakdown: customItem.pricingBreakdown,
+        productSnapshot: {
+          name: customItem.name,
+          description: customItem.description,
+          images: [],
+        },
+      });
+    }
+
+    if (tulipInsuranceAmount > 0) {
+      await tx.insert(reservationItems).values({
+        reservationId,
+        productId: null,
+        isCustomItem: true,
+        quantity: 1,
+        unitPrice: tulipInsuranceAmount.toFixed(2),
+        depositPerUnit: '0.00',
+        totalPrice: tulipInsuranceAmount.toFixed(2),
+        productSnapshot: {
+          name: 'Garantie casse/vol',
+          description: 'Garantie casse/vol',
+          images: [],
+        },
+      });
+    }
+
+    return {
+      ok: true as const,
+      overbookingShortfalls: shortfalls,
+    };
+  });
+
+  if (!reservationWriteResult.ok) {
+    return {
+      error: reservationWriteResult.error,
+      shortfalls: reservationWriteResult.shortfalls,
+    };
   }
 
-  // Create reservation items for custom items
-  for (const customItem of customItemDetails) {
-    await db.insert(reservationItems).values({
-      reservationId,
-      productId: null,
-      isCustomItem: true,
-      quantity: customItem.quantity,
-      unitPrice: customItem.unitPrice,
-      depositPerUnit: customItem.depositPerUnit,
-      totalPrice: customItem.totalPrice,
-      pricingBreakdown: customItem.pricingBreakdown,
-      productSnapshot: {
-        name: customItem.name,
-        description: customItem.description,
-        images: [],
-      },
-    });
-  }
-
-  if (tulipInsuranceAmount > 0) {
-    await db.insert(reservationItems).values({
-      reservationId,
-      productId: null,
-      isCustomItem: true,
-      quantity: 1,
-      unitPrice: tulipInsuranceAmount.toFixed(2),
-      depositPerUnit: '0.00',
-      totalPrice: tulipInsuranceAmount.toFixed(2),
-      productSnapshot: {
-        name: 'Garantie casse/vol',
-        description: 'Garantie casse/vol',
-        images: [],
-      },
-    });
-  }
+  const overbookingShortfalls =
+    reservationWriteResult.overbookingShortfalls.length > 0
+      ? reservationWriteResult.overbookingShortfalls
+      : null;
 
   // Log activity for manual reservation creation
   await logReservationActivity(reservationId, 'created', {
@@ -1314,6 +1642,10 @@ export async function createManualReservation(data: CreateReservationData) {
     status: data.sendAsQuote ? 'quote' : 'confirmed',
     tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
     tulipInsuranceAmount,
+    ...(overbookingShortfalls && {
+      overbooked: true,
+      overbookingShortfalls,
+    }),
     ...(tulipQuoteError && { tulipQuoteError }),
   });
 

@@ -432,6 +432,8 @@ export function ActivityTimelineV2({
     const activitySource = isCreationEvent
       ? (activity.metadata?.source as string) || reservationSource
       : undefined
+    const isOverbookedCreation =
+      isCreationEvent && activity.metadata?.overbooked === true
 
     const Icon = isCreationEvent
       ? activitySource === 'manual'
@@ -513,6 +515,14 @@ export function ActivityTimelineV2({
                       {t('sourceOnline')}
                     </>
                   )}
+                </Badge>
+              )}
+              {isOverbookedCreation && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 h-4 bg-destructive/10 text-destructive border-0"
+                >
+                  {t('activity.overbooked')}
                 </Badge>
               )}
               {/* Stripe badge for online payment activities */}

@@ -1531,6 +1531,13 @@
         "durationWeeks": "{count, plural, one {# Woche} other {# Wochen}}",
         "sendAsQuote": "Als Angebot senden",
         "quoteSent": "Angebot an den Kunden gesendet",
+        "overbooking": {
+          "title": "Unzureichende Kapazität",
+          "description": "Einige Produkte sind für den gewählten Zeitraum nicht mehr verfügbar. Sie können die Reservierung trotzdem erstellen; die Überbuchung wird im Verlauf sichtbar.",
+          "combination": "Kombination: {combination}",
+          "shortfall": "Angefragt: {requested} · Verfügbar: {available}",
+          "createAnyway": "Trotzdem erstellen"
+        },
         "reservationCreated": "Reservierung erstellt",
         "selectDatesError": "Bitte wählen Sie Daten aus",
         "addProductError": "Bitte fügen Sie mindestens ein Produkt hinzu",
@@ -1707,6 +1714,7 @@
         "modified": "Reservierung geändert",
         "quote_accepted": "Angebot angenommen",
         "quote_declined": "Angebot abgelehnt",
+        "overbooked": "Überbucht",
         "showAll": "Alle anzeigen ({count} Ereignisse)",
         "showLess": "Weniger anzeigen",
         "paymentFailure": {
@@ -5537,6 +5545,7 @@
     "customerRequired": "Kunde erforderlich",
     "productUnavailable": "Produkt nicht verfügbar: {name}",
     "productNoLongerAvailable": "Das Produkt {name} ist für diese Daten nicht mehr verfügbar. In der Zwischenzeit wurde eine andere Reservierung vorgenommen.",
+    "insufficientCapacity": "Unzureichende Kapazität für den gewählten Zeitraum.",
     "insufficientStock": "Unzureichender Bestand für: {name} ({count} verfügbar)",
     "tooManyUnitsAssigned": "Es können nicht mehr Einheiten zugewiesen werden als reserviert",
     "tooManyAssignedUnits": "Heben Sie die Zuweisung von Einheiten für {item} auf, bevor Sie die Menge unter {assignedCount} reduzieren.",

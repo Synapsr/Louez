@@ -1451,6 +1451,13 @@
         "sendConfirmationEmail": "Enviar confirmacao ao cliente",
         "sendAsQuote": "Enviar como orçamento",
         "quoteSent": "Orçamento enviado ao cliente",
+        "overbooking": {
+          "title": "Capacidade insuficiente",
+          "description": "Alguns produtos já não estão disponíveis para o período selecionado. Ainda pode criar a reserva; o override ficará visível no histórico.",
+          "combination": "Combinação: {combination}",
+          "shortfall": "Solicitado: {requested} · Disponível: {available}",
+          "createAnyway": "Criar mesmo assim"
+        },
         "customer": "Cliente",
         "customerStepDescription": "Selecione um cliente existente ou crie um novo",
         "chooseCustomer": "Escolher um cliente",
@@ -1668,6 +1675,7 @@
         "modified": "Reserva modificada",
         "quote_accepted": "Orçamento aceite",
         "quote_declined": "Orçamento recusado",
+        "overbooked": "Sobrerreservada",
         "showAll": "Mostrar tudo ({count} eventos)",
         "showLess": "Mostrar menos",
         "paymentFailure": {
@@ -5537,6 +5545,7 @@
     "customerRequired": "Cliente obrigatorio",
     "productUnavailable": "Produto indisponivel: {name}",
     "productNoLongerAvailable": "O produto {name} nao esta mais disponivel para estas datas. Outra reserva foi feita nesse meio tempo.",
+    "insufficientCapacity": "Capacidade insuficiente para o período selecionado.",
     "insufficientStock": "Estoque insuficiente para: {name} ({count} disponiveis)",
     "tooManyUnitsAssigned": "Nao e possivel atribuir mais unidades do que a quantidade reservada",
     "tooManyAssignedUnits": "Remova as unidades de {item} antes de reduzir a quantidade abaixo de {assignedCount}.",
