@@ -106,8 +106,13 @@ export async function generateInspectionReport({
         .from(inspectionPhotos)
         .where(eq(inspectionPhotos.inspectionItemId, item.id))
 
-      const productName =
-        (item.productSnapshot as { name?: string })?.name || 'Équipement'
+      const productSnapshot = item.productSnapshot as {
+        name?: string
+        unitIdentifier?: string | null
+      } | null
+      const productName = productSnapshot?.unitIdentifier
+        ? `${productSnapshot.name || 'Équipement'} — ${productSnapshot.unitIdentifier}`
+        : productSnapshot?.name || 'Équipement'
 
       return {
         productName,

@@ -3505,6 +3505,7 @@
           "allOk": "Tudo OK",
           "allOkDescription": "Marcar todos os itens em excelente estado",
           "quantity": "Quantidade",
+          "unitReference": "Referência {identifier}",
           "condition": "Estado",
           "photos": "Fotos",
           "notes": "Observações",
@@ -3539,6 +3540,21 @@
           "takePhoto": "Tirar foto",
           "photoPreview": "Visualização da foto",
           "deletePhoto": "Excluir foto",
+          "repairDowntime": {
+            "title": "Indisponibilidade para reparo",
+            "description": "A vistoria de devolução marcou unidades rastreadas como danificadas. Selecione as unidades que devem ficar em reparo sem data final.",
+            "singleQuestion": "Criar uma indisponibilidade para reparo para {identifier}?",
+            "multipleQuestion": "Criar indisponibilidades para reparo para {count, plural, one {# unidade danificada} other {# unidades danificadas}}?",
+            "note": "Vistoria de devolução - reserva #{reservationNumber}",
+            "noneSelected": "Selecione pelo menos uma unidade",
+            "createdToast": "{count, plural, one {Indisponibilidade para reparo criada} other {Indisponibilidades para reparo criadas}}",
+            "conflictsToast": "Conflitos detectados - gerencie-os no Inventário",
+            "conflictsDescription": "Conflitos detectados. Gerencie-os no Inventário.",
+            "openInventory": "Abrir Inventário",
+            "skip": "Ignorar",
+            "submit": "Criar indisponibilidade para reparo",
+            "done": "Concluído"
+          },
           "close": "Fechar"
         },
         "conditions": {

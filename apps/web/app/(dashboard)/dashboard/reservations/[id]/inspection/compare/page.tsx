@@ -108,12 +108,17 @@ export default async function InspectionComparePage({ params }: PageProps) {
           .from(inspectionPhotos)
           .where(eq(inspectionPhotos.inspectionItemId, item.id))
 
-        // Get product name from snapshot
-        const productName = item.productSnapshot?.name || 'Équipement'
+        const productSnapshot = item.productSnapshot as {
+          name?: string
+          unitIdentifier?: string | null
+        } | null
+        const productName = productSnapshot?.name || 'Équipement'
+        const unitIdentifier = productSnapshot?.unitIdentifier ?? null
 
         return {
           id: item.id,
           productName,
+          unitIdentifier,
           condition: item.overallCondition as ConditionRating,
           notes: item.notes,
           photos: photos.map((p) => ({

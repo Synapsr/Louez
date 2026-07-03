@@ -3505,6 +3505,7 @@
           "allOk": "Tutto OK",
           "allOkDescription": "Segna tutti gli articoli in condizioni eccellenti",
           "quantity": "Quantità",
+          "unitReference": "Riferimento {identifier}",
           "condition": "Stato",
           "photos": "Foto",
           "notes": "Note",
@@ -3539,6 +3540,21 @@
           "takePhoto": "Scatta foto",
           "photoPreview": "Anteprima foto",
           "deletePhoto": "Elimina foto",
+          "repairDowntime": {
+            "title": "Indisponibilità per riparazione",
+            "description": "Il verbale di rientro ha segnato unità tracciate come danneggiate. Seleziona le unità da mettere in riparazione senza data di fine.",
+            "singleQuestion": "Creare un'indisponibilità per riparazione per {identifier}?",
+            "multipleQuestion": "Creare indisponibilità per riparazione per {count, plural, one {# unità danneggiata} other {# unità danneggiate}}?",
+            "note": "Verbale di rientro - prenotazione #{reservationNumber}",
+            "noneSelected": "Seleziona almeno un'unità",
+            "createdToast": "{count, plural, one {Indisponibilità per riparazione creata} other {Indisponibilità per riparazione create}}",
+            "conflictsToast": "Conflitti rilevati - gestiscili in Inventario",
+            "conflictsDescription": "Conflitti rilevati. Gestiscili in Inventario.",
+            "openInventory": "Apri Inventario",
+            "skip": "Ignora",
+            "submit": "Crea indisponibilità per riparazione",
+            "done": "Fine"
+          },
           "close": "Chiudi"
         },
         "conditions": {

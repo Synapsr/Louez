@@ -3505,6 +3505,7 @@
           "allOk": "Alles OK",
           "allOkDescription": "Alle Artikel als ausgezeichnet markieren",
           "quantity": "Menge",
+          "unitReference": "Referenz {identifier}",
           "condition": "Zustand",
           "photos": "Fotos",
           "notes": "Anmerkungen",
@@ -3539,6 +3540,21 @@
           "takePhoto": "Foto aufnehmen",
           "photoPreview": "Fotovorschau",
           "deletePhoto": "Foto löschen",
+          "repairDowntime": {
+            "title": "Reparatur-Ausfallzeit",
+            "description": "Das Rückgabeprotokoll hat nachverfolgte Einheiten als beschädigt markiert. Wählen Sie die Einheiten aus, die ohne Enddatum in Reparatur-Ausfallzeit gesetzt werden sollen.",
+            "singleQuestion": "Reparatur-Ausfallzeit für {identifier} erstellen?",
+            "multipleQuestion": "Reparatur-Ausfallzeiten für {count, plural, one {# beschädigte Einheit} other {# beschädigte Einheiten}} erstellen?",
+            "note": "Rückgabeprotokoll - Reservierung #{reservationNumber}",
+            "noneSelected": "Wählen Sie mindestens eine Einheit aus",
+            "createdToast": "{count, plural, one {Reparatur-Ausfallzeit erstellt} other {Reparatur-Ausfallzeiten erstellt}}",
+            "conflictsToast": "Konflikte erkannt - in Inventar verwalten",
+            "conflictsDescription": "Konflikte erkannt. Verwalten Sie sie im Inventar.",
+            "openInventory": "Inventar öffnen",
+            "skip": "Überspringen",
+            "submit": "Reparatur-Ausfallzeit erstellen",
+            "done": "Fertig"
+          },
           "close": "Schließen"
         },
         "conditions": {

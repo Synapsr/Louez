@@ -3505,6 +3505,7 @@
           "allOk": "Wszystko OK",
           "allOkDescription": "Oznacz wszystkie przedmioty jako w doskonałym stanie",
           "quantity": "Ilość",
+          "unitReference": "Referencja {identifier}",
           "condition": "Stan",
           "photos": "Zdjęcia",
           "notes": "Uwagi",
@@ -3539,6 +3540,21 @@
           "takePhoto": "Zrób zdjęcie",
           "photoPreview": "Podgląd zdjęcia",
           "deletePhoto": "Usuń zdjęcie",
+          "repairDowntime": {
+            "title": "Przestój naprawczy",
+            "description": "Protokół zwrotu oznaczył śledzone jednostki jako uszkodzone. Wybierz jednostki, które mają trafić do naprawy bez daty zakończenia.",
+            "singleQuestion": "Utworzyć przestój naprawczy dla {identifier}?",
+            "multipleQuestion": "Utworzyć przestoje naprawcze dla {count, plural, one {# uszkodzonej jednostki} few {# uszkodzonych jednostek} other {# uszkodzonych jednostek}}?",
+            "note": "Protokół zwrotu - rezerwacja #{reservationNumber}",
+            "noneSelected": "Wybierz co najmniej jedną jednostkę",
+            "createdToast": "{count, plural, one {Utworzono przestój naprawczy} few {Utworzono przestoje naprawcze} other {Utworzono przestoje naprawcze}}",
+            "conflictsToast": "Wykryto konflikty - zarządzaj nimi w Inwentarzu",
+            "conflictsDescription": "Wykryto konflikty. Zarządzaj nimi w Inwentarzu.",
+            "openInventory": "Otwórz Inwentarz",
+            "skip": "Pomiń",
+            "submit": "Utwórz przestój naprawczy",
+            "done": "Gotowe"
+          },
           "close": "Zamknij"
         },
         "conditions": {

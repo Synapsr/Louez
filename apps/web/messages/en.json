@@ -3740,6 +3740,7 @@
           "allOk": "All OK",
           "allOkDescription": "Mark all items as excellent condition",
           "quantity": "Quantity",
+          "unitReference": "Reference {identifier}",
           "condition": "Condition",
           "photos": "Photos",
           "notes": "Notes",
@@ -3774,6 +3775,21 @@
           "takePhoto": "Take photo",
           "photoPreview": "Photo preview",
           "deletePhoto": "Delete photo",
+          "repairDowntime": {
+            "title": "Repair downtime",
+            "description": "The return inspection marked tracked units as damaged. Select the units to place in open-ended repair downtime.",
+            "singleQuestion": "Create a repair downtime for {identifier}?",
+            "multipleQuestion": "Create repair downtimes for {count, plural, one {# damaged unit} other {# damaged units}}?",
+            "note": "Return inspection - reservation #{reservationNumber}",
+            "noneSelected": "Select at least one unit",
+            "createdToast": "{count, plural, one {Repair downtime created} other {Repair downtimes created}}",
+            "conflictsToast": "Conflicts detected - manage them in Inventory",
+            "conflictsDescription": "Conflicts detected. Manage them in Inventory.",
+            "openInventory": "Open Inventory",
+            "skip": "Skip",
+            "submit": "Create repair downtime",
+            "done": "Done"
+          },
           "close": "Close"
         },
         "conditions": {
