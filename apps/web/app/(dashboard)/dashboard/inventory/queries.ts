@@ -67,6 +67,7 @@ export type InventoryUnitRow = {
   id: string;
   productId: string;
   productName: string;
+  productImage: string | null;
   identifier: string;
   notes: string | null;
   attributes: UnitAttributes | null;
@@ -85,6 +86,7 @@ export type InventoryBulkProductRow = {
   kind: 'bulk_product';
   productId: string;
   productName: string;
+  productImage: string | null;
   quantity: number;
   counters: InventoryProductCounters;
 };
@@ -250,6 +252,7 @@ export async function getInventory(input: GetInventoryInput = {}) {
       id: productUnits.id,
       productId: productUnits.productId,
       productName: products.name,
+      productImages: products.images,
       identifier: productUnits.identifier,
       notes: productUnits.notes,
       attributes: productUnits.attributes,
@@ -485,6 +488,7 @@ export async function getInventory(input: GetInventoryInput = {}) {
         id: unit.id,
         productId: unit.productId,
         productName: unit.productName,
+        productImage: unit.productImages?.[0] ?? null,
         identifier: unit.identifier,
         notes: unit.notes,
         attributes: unit.attributes ?? null,
@@ -608,6 +612,7 @@ async function getBulkProductRows(params: {
     .select({
       productId: products.id,
       productName: products.name,
+      productImages: products.images,
       quantity: products.quantity,
     })
     .from(products)
@@ -618,6 +623,7 @@ async function getBulkProductRows(params: {
     kind: 'bulk_product',
     productId: row.productId,
     productName: row.productName,
+    productImage: row.productImages?.[0] ?? null,
     quantity: row.quantity,
     counters: getCounter(params.countersByProductId, row.productId),
   }));
