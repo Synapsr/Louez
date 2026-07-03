@@ -101,6 +101,7 @@ export function ProductFormSectionStock({
           defaultPrefix={defaultPrefix}
           disabled={disabled}
           showValidationErrors={showValidationErrors}
+          productId={productId}
         />
       </CardContent>
     </Card>

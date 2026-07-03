@@ -842,6 +842,7 @@
           "quantityLabel": "Dostępna ilość",
           "quantityManagedByTracking": "Zarządzane przez śledzenie jednostek",
           "activeUnits": "{count, plural, one {# aktywna jednostka} few {# aktywne jednostki} many {# aktywnych jednostek} other {# aktywnych jednostek}}",
+          "trackedUnits": "{count, plural, one {# śledzona jednostka} few {# śledzone jednostki} many {# śledzonych jednostek} other {# śledzonych jednostek}}",
           "addUnit": "Dodaj jednostkę",
           "addNotes": "Dodaj notatki",
           "identifier": "Identyfikator",
@@ -854,6 +855,7 @@
           "bulkPreview": "Podgląd",
           "deleteConfirm": "Usuń tę jednostkę",
           "deleteWarning": "Ta jednostka jest obecnie przypisana do aktywnej rezerwacji i nie może zostać usunięta.",
+          "assignedUnit": "Przypisana",
           "disableConfirm": "Wyłączyć śledzenie jednostek?",
           "disableDescription": "Indywidualne śledzenie jednostek zostanie wyłączone. Ilość zostanie ustawiona na {count}. Zarejestrowane jednostki zostaną usunięte.",
           "duplicateIdentifier": "Jeden lub więcej identyfikatorów jest zduplikowanych",
@@ -883,7 +885,9 @@
           "generatorHint": "Numery referencyjne są generowane automatycznie — można je później edytować.",
           "applyPurchaseToAll": "Zastosuj do wszystkich jednostek",
           "purchaseDetails": "Szczegóły zakupu",
-          "unitDetails": "Szczegóły"
+          "unitDetails": "Szczegóły",
+          "existingUnitDetailsHint": "Szczegóły zakupu, notatki i cykl życia są zarządzane w inwentarzu.",
+          "openInventoryDetails": "Otwórz inwentarz"
         },
         "previewTitle": "Podgląd",
         "previewDescription": "Zobacz jak produkt będzie wyglądał w katalogu",
@@ -1180,6 +1184,7 @@
         },
         "events": {
           "created": "Jednostka utworzona",
+          "deleted": "Jednostka usunięta",
           "downtime_declared": "Przestój dodany",
           "downtime_updated": "Przestój zaktualizowany",
           "downtime_closed": "Przestój zamknięty",
@@ -5620,6 +5625,7 @@
     "unitCombinationMismatch": "Wybrane jednostki nie odpowiadają zarezerwowanej kombinacji dla tej pozycji",
     "cannotDisableUnitTrackingWithCombinations": "Nie można wyłączyć śledzenia jednostek, gdy aktywne rezerwacje korzystają ze śledzonych kombinacji",
     "unitStatusConflictsWithReservations": "Ta zmiana uniemożliwiłaby przyszłe rezerwacje dla co najmniej jednej śledzonej kombinacji",
+    "unitAssigned": "Ta jednostka jest przypisana do blokującej rezerwacji i nie można jej usunąć.",
     "tulipApiKeyInvalid": "Klucz API Tulip jest nieprawidłowy.",
     "tulipActionForbidden": "Tulip odrzucił tę akcję dla bieżącej konfiguracji konta.",
     "tulipApiUnavailable": "Tulip jest obecnie niedostępny. Spróbuj ponownie później.",

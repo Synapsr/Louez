@@ -881,6 +881,7 @@
           "quantityLabel": "Available quantity",
           "quantityManagedByTracking": "Managed by unit tracking",
           "activeUnits": "{count, plural, one {# active unit} other {# active units}}",
+          "trackedUnits": "{count, plural, one {# tracked unit} other {# tracked units}}",
           "bookingAttributesTitle": "Booking attributes",
           "bookingAttributesDescription": "Add up to 3 attribute axes (size, color, voltage...) for tracked combinations.",
           "bookingAttributePlaceholder": "Attribute label (e.g., Size)",
@@ -906,6 +907,7 @@
           "bulkPreview": "Preview",
           "deleteConfirm": "Delete this unit",
           "deleteWarning": "This unit is currently assigned to an active reservation and cannot be removed.",
+          "assignedUnit": "Assigned",
           "disableConfirm": "Disable unit tracking?",
           "disableDescription": "Individual unit tracking will be disabled. The quantity will be set to {count}. Registered units will be removed.",
           "duplicateIdentifier": "One or more identifiers are duplicated",
@@ -922,7 +924,9 @@
           "generatorHint": "References are generated automatically — you can edit them afterwards.",
           "applyPurchaseToAll": "Apply to all units",
           "purchaseDetails": "Purchase details",
-          "unitDetails": "Details"
+          "unitDetails": "Details",
+          "existingUnitDetailsHint": "Purchase details, notes, and lifecycle are managed from inventory.",
+          "openInventoryDetails": "Open inventory"
         },
         "previewTitle": "Preview",
         "previewDescription": "Here's how your product will appear in the catalog",
@@ -1225,6 +1229,7 @@
         },
         "events": {
           "created": "Unit created",
+          "deleted": "Unit deleted",
           "downtime_declared": "Downtime declared",
           "downtime_updated": "Downtime updated",
           "downtime_closed": "Downtime closed",
@@ -5660,6 +5665,7 @@
     "unitCombinationMismatch": "Selected units do not match the reserved combination for this line item",
     "cannotDisableUnitTrackingWithCombinations": "Cannot disable unit tracking while active reservations use tracked combinations for this product.",
     "unitStatusConflictsWithReservations": "This change would make future reservations impossible for at least one tracked combination.",
+    "unitAssigned": "This unit is assigned to a blocking reservation and cannot be deleted.",
     "assignUnitsFailed": "Failed to assign units",
     "getAvailableUnitsFailed": "Failed to load available units",
     "createCustomerError": "Error creating customer",

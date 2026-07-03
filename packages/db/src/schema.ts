@@ -1973,6 +1973,7 @@ export const unitDowntimeReason = mysqlEnum('reason', [
 
 export const unitEventType = mysqlEnum('type', [
   'created',
+  'deleted',
   'downtime_declared',
   'downtime_updated',
   'downtime_closed',
@@ -2080,9 +2081,11 @@ export const productUnitEvents = mysqlTable(
   'product_unit_events',
   {
     id: id(),
-    productUnitId: varchar('product_unit_id', { length: 21 })
-      .notNull()
-      .references(() => productUnits.id, { onDelete: 'cascade' }),
+    productUnitId: varchar('product_unit_id', { length: 21 }).references(
+      () => productUnits.id,
+      { onDelete: 'set null' },
+    ),
+    identifierSnapshot: varchar('identifier_snapshot', { length: 255 }),
     storeId: varchar('store_id', { length: 21 }).notNull(),
     type: unitEventType.notNull(),
     actorUserId: varchar('actor_user_id', { length: 21 }),

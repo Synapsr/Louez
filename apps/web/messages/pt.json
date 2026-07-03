@@ -842,6 +842,7 @@
           "quantityLabel": "Quantidade disponível",
           "quantityManagedByTracking": "Gerenciado pelo rastreamento de unidades",
           "activeUnits": "{count, plural, one {# unidade ativa} other {# unidades ativas}}",
+          "trackedUnits": "{count, plural, one {# unidade rastreada} other {# unidades rastreadas}}",
           "addUnit": "Adicionar unidade",
           "addNotes": "Adicionar notas",
           "identifier": "Identificador",
@@ -854,6 +855,7 @@
           "bulkPreview": "Prévia",
           "deleteConfirm": "Excluir esta unidade",
           "deleteWarning": "Esta unidade está atualmente atribuída a uma reserva ativa e não pode ser removida.",
+          "assignedUnit": "Atribuída",
           "disableConfirm": "Desativar rastreamento de unidades?",
           "disableDescription": "O rastreamento individual de unidades será desativado. A quantidade será definida como {count}. As unidades registradas serão removidas.",
           "duplicateIdentifier": "Um ou mais identificadores estão duplicados",
@@ -883,7 +885,9 @@
           "generatorHint": "As referências são geradas automaticamente — editáveis depois.",
           "applyPurchaseToAll": "Aplicar a todas as unidades",
           "purchaseDetails": "Detalhes de compra",
-          "unitDetails": "Detalhes"
+          "unitDetails": "Detalhes",
+          "existingUnitDetailsHint": "Os detalhes de compra, notas e ciclo de vida são geridos no inventário.",
+          "openInventoryDetails": "Abrir inventário"
         },
         "previewTitle": "Previa",
         "previewDescription": "Veja como seu produto aparecera no catalogo",
@@ -1180,6 +1184,7 @@
         },
         "events": {
           "created": "Unidade criada",
+          "deleted": "Unidade eliminada",
           "downtime_declared": "Indisponibilidade declarada",
           "downtime_updated": "Indisponibilidade atualizada",
           "downtime_closed": "Indisponibilidade fechada",
@@ -5620,6 +5625,7 @@
     "unitCombinationMismatch": "As unidades selecionadas não correspondem à combinação reservada para esta linha",
     "cannotDisableUnitTrackingWithCombinations": "Não é possível desativar o rastreamento de unidades enquanto reservas ativas utilizam combinações rastreadas para este produto.",
     "unitStatusConflictsWithReservations": "Esta alteração tornaria impossíveis futuras reservas para pelo menos uma combinação rastreada.",
+    "unitAssigned": "Esta unidade está atribuída a uma reserva bloqueante e não pode ser eliminada.",
     "tulipApiKeyInvalid": "A chave de API Tulip é inválida.",
     "tulipActionForbidden": "O Tulip recusou esta ação para a configuração da conta atual.",
     "tulipApiUnavailable": "O Tulip está temporariamente indisponível. Tente novamente mais tarde.",

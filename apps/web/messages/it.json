@@ -842,6 +842,7 @@
           "quantityLabel": "Quantità disponibile",
           "quantityManagedByTracking": "Gestito dal tracciamento delle unità",
           "activeUnits": "{count, plural, one {# unità attiva} other {# unità attive}}",
+          "trackedUnits": "{count, plural, one {# unità tracciata} other {# unità tracciate}}",
           "addUnit": "Aggiungi unità",
           "addNotes": "Aggiungi note",
           "identifier": "Identificatore",
@@ -854,6 +855,7 @@
           "bulkPreview": "Anteprima",
           "deleteConfirm": "Elimina questa unità",
           "deleteWarning": "Questa unità è attualmente assegnata a una prenotazione attiva e non può essere rimossa.",
+          "assignedUnit": "Assegnata",
           "disableConfirm": "Disattivare il tracciamento delle unità?",
           "disableDescription": "Il tracciamento individuale delle unità sarà disattivato. La quantità sarà impostata a {count}. Le unità registrate saranno rimosse.",
           "duplicateIdentifier": "Uno o più identificatori sono duplicati",
@@ -883,7 +885,9 @@
           "generatorHint": "I riferimenti vengono generati automaticamente — modificabili in seguito.",
           "applyPurchaseToAll": "Applica a tutte le unità",
           "purchaseDetails": "Dettagli di acquisto",
-          "unitDetails": "Dettagli"
+          "unitDetails": "Dettagli",
+          "existingUnitDetailsHint": "Dettagli di acquisto, note e ciclo di vita sono gestiti dall'inventario.",
+          "openInventoryDetails": "Apri inventario"
         },
         "previewTitle": "Anteprima",
         "previewDescription": "Ecco come apparira il tuo prodotto nel catalogo",
@@ -1180,6 +1184,7 @@
         },
         "events": {
           "created": "Unità creata",
+          "deleted": "Unità eliminata",
           "downtime_declared": "Indisponibilità dichiarata",
           "downtime_updated": "Indisponibilità aggiornata",
           "downtime_closed": "Indisponibilità chiusa",
@@ -5620,6 +5625,7 @@
     "unitCombinationMismatch": "Le unita selezionate non corrispondono alla combinazione riservata per questa riga",
     "cannotDisableUnitTrackingWithCombinations": "Impossibile disattivare il tracciamento delle unita mentre prenotazioni attive utilizzano combinazioni tracciate per questo prodotto.",
     "unitStatusConflictsWithReservations": "Questa modifica renderebbe impossibili le prenotazioni future per almeno una combinazione tracciata.",
+    "unitAssigned": "Questa unità è assegnata a una prenotazione bloccante e non può essere eliminata.",
     "tulipApiKeyInvalid": "La chiave API Tulip non e valida.",
     "tulipActionForbidden": "Tulip ha rifiutato questa azione per la configurazione attuale dell'account.",
     "tulipApiUnavailable": "Tulip e attualmente non disponibile. Riprovare piu tardi.",

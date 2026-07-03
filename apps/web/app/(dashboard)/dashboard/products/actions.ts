@@ -8,11 +8,12 @@ import { nanoid } from 'nanoid';
 import { db } from '@louez/db';
 import {
   categories,
+  getBlockingReservationStatuses,
   productAccessories,
   productPricingTiers,
-  productUnitEvents,
   productUnits,
   products,
+  reservationItemUnits,
   reservationItems,
   reservations,
 } from '@louez/db';
@@ -42,6 +43,12 @@ import {
 import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
 import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
 import { getCurrentStore } from '@/lib/store-context';
+import {
+  type UpdateUnitMutation,
+  createUnits,
+  deleteUnits,
+  updateUnits,
+} from '@/lib/utils/unit-mutations';
 
 async function getStoreForUser() {
   return getCurrentStore();
@@ -105,6 +112,60 @@ function normalizeNullableDateInput(
 
   const date = typeof value === 'string' ? new Date(value) : value;
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getNewUnitNotesInput(unit: ProductUnitInput): string | undefined {
+  return 'notes' in unit ? unit.notes : undefined;
+}
+
+function getNewUnitPurchasePriceInput(
+  unit: ProductUnitInput,
+): string | null | undefined {
+  return 'purchasePrice' in unit ? unit.purchasePrice : undefined;
+}
+
+function getNewUnitPurchasedAtInput(
+  unit: ProductUnitInput,
+): string | Date | null | undefined {
+  return 'purchasedAt' in unit ? unit.purchasedAt : undefined;
+}
+
+async function getAssignedBlockingUnitIds({
+  unitIds,
+  storeId,
+  pendingBlocksAvailability,
+}: {
+  unitIds: string[];
+  storeId: string;
+  pendingBlocksAvailability: boolean;
+}): Promise<string[]> {
+  if (unitIds.length === 0) {
+    return [];
+  }
+
+  const blockingStatuses = getBlockingReservationStatuses(
+    pendingBlocksAvailability,
+  );
+  const rows = await db
+    .select({ productUnitId: reservationItemUnits.productUnitId })
+    .from(reservationItemUnits)
+    .innerJoin(
+      reservationItems,
+      eq(reservationItemUnits.reservationItemId, reservationItems.id),
+    )
+    .innerJoin(
+      reservations,
+      eq(reservationItems.reservationId, reservations.id),
+    )
+    .where(
+      and(
+        inArray(reservationItemUnits.productUnitId, unitIds),
+        eq(reservations.storeId, storeId),
+        inArray(reservations.status, blockingStatuses),
+      ),
+    );
+
+  return [...new Set(rows.map((row) => row.productUnitId))];
 }
 
 function getLegacyPricingModeFromUnit(
@@ -256,7 +317,7 @@ export async function createProduct(data: ProductInput) {
   // If tracking units, quantity is derived from the count of active units
   // Otherwise, use the manually entered quantity
   const quantity = trackUnits
-    ? units.filter((u) => (u.lifecycleStatus || 'active') === 'active').length
+    ? units.length
     : parseInt(validated.data.quantity, 10);
 
   const productId = nanoid();
@@ -317,30 +378,33 @@ export async function createProduct(data: ProductInput) {
             id: nanoid(),
             productId: productId,
             identifier: unit.identifier.trim(),
-            notes: unit.notes?.trim() || null,
-            purchasePrice: normalizeNullablePriceInput(unit.purchasePrice),
-            purchasedAt: normalizeNullableDateInput(unit.purchasedAt),
+            notes: getNewUnitNotesInput(unit)?.trim() || null,
+            purchasePrice: normalizeNullablePriceInput(
+              getNewUnitPurchasePriceInput(unit),
+            ),
+            purchasedAt: normalizeNullableDateInput(
+              getNewUnitPurchasedAtInput(unit),
+            ),
             lifecycleStatus: UNIT_LIFECYCLE.active,
           };
         });
 
-        await tx.insert(productUnits).values(unitRows);
-        const eventRows = unitRows.map(
-          (unit) =>
-            ({
-              id: nanoid(),
-              productUnitId: unit.id,
+        await createUnits(
+          tx,
+          unitRows.map((unit) => ({
+            unit,
+            event: {
               storeId: store.id,
-              type: 'created',
               actorUserId,
+              identifierSnapshot: unit.identifier,
               payload: {
                 productId,
                 identifier: unit.identifier,
                 combinationKey: unit.combinationKey,
               },
-            }) satisfies typeof productUnitEvents.$inferInsert,
+            },
+          })),
         );
-        await tx.insert(productUnitEvents).values(eventRows);
       }
     });
   } catch (error) {
@@ -479,17 +543,72 @@ export async function updateProduct(productId: string, data: ProductInput) {
     }
   }
 
+  const existingUnits =
+    trackUnits || product.trackUnits
+      ? await db.query.productUnits.findMany({
+          where: eq(productUnits.productId, productId),
+        })
+      : [];
+  const existingUnitsById = new Map(
+    existingUnits.map((unit) => [unit.id, unit]),
+  );
+  const existingUnitIds = new Set(existingUnits.map((unit) => unit.id));
+  const unitsToUpdate = units.filter(
+    (unit) => unit.id && existingUnitIds.has(unit.id),
+  );
+  const unitsToInsert = units.filter((unit) => !unit.id);
+  const unitIdsToKeep = new Set(
+    trackUnits
+      ? units.flatMap((unit) =>
+          unit.id && existingUnitIds.has(unit.id) ? [unit.id] : [],
+        )
+      : [],
+  );
+  const unitsToDelete = existingUnits.filter(
+    (unit) => !unitIdsToKeep.has(unit.id),
+  );
+  const activeUnitQuantity = trackUnits
+    ? unitsToUpdate.filter((unit) => {
+        if (!unit.id) return false;
+        return existingUnitsById.get(unit.id)?.lifecycleStatus === 'active';
+      }).length + unitsToInsert.length
+    : parseInt(validated.data.quantity, 10);
+
+  if (unitsToDelete.length > 0) {
+    const failedUnitIds = await getAssignedBlockingUnitIds({
+      unitIds: unitsToDelete.map((unit) => unit.id),
+      storeId: store.id,
+      pendingBlocksAvailability:
+        store.settings?.pendingBlocksAvailability ?? true,
+    });
+
+    if (failedUnitIds.length > 0) {
+      return { error: 'errors.unitAssigned', failedUnitIds };
+    }
+  }
+
   // Prevent edits that would make active unit capacity lower than
   // active/future reserved quantities for any combination.
   if (trackUnits) {
     const proposedAvailableByCombination = new Map<string, number>();
 
-    for (const unit of units) {
-      const lifecycleStatus = unit.lifecycleStatus || 'active';
-      if (lifecycleStatus !== 'active') {
-        continue;
-      }
+    for (const unit of unitsToUpdate) {
+      if (!unit.id) continue;
+      const existingUnit = existingUnitsById.get(unit.id);
+      if (existingUnit?.lifecycleStatus !== 'active') continue;
 
+      const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
+      const combinationKey = buildCombinationKey(
+        bookingAttributeAxes,
+        attributes,
+      );
+      proposedAvailableByCombination.set(
+        combinationKey,
+        (proposedAvailableByCombination.get(combinationKey) || 0) + 1,
+      );
+    }
+
+    for (const unit of unitsToInsert) {
       const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
       const combinationKey = buildCombinationKey(
         bookingAttributeAxes,
@@ -543,9 +662,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
   // If tracking units, quantity is derived from the count of active units
   // Otherwise, use the manually entered quantity
-  const quantity = trackUnits
-    ? units.filter((u) => (u.lifecycleStatus || 'active') === 'active').length
-    : parseInt(validated.data.quantity, 10);
+  const quantity = activeUnitQuantity;
 
   await db
     .update(products)
@@ -592,95 +709,131 @@ export async function updateProduct(productId: string, data: ProductInput) {
   }
 
   // Update product units: sync with provided units
-  if (trackUnits) {
-    // Get existing units
-    const existingUnits = await db.query.productUnits.findMany({
-      where: eq(productUnits.productId, productId),
-    });
-    const existingUnitIds = new Set(existingUnits.map((u) => u.id));
+  if (trackUnits || product.trackUnits) {
+    const actorUserId =
+      unitsToDelete.length > 0 ||
+      unitsToUpdate.length > 0 ||
+      unitsToInsert.length > 0
+        ? await getActorUserId()
+        : null;
 
-    // Separate units into updates and inserts
-    const unitsToUpdate = units.filter(
-      (u) => u.id && existingUnitIds.has(u.id),
-    );
-    const unitsToInsert = units.filter((u) => !u.id);
-    const unitIdsToKeep = new Set(units.filter((u) => u.id).map((u) => u.id));
+    const updateMutations: UpdateUnitMutation[] = unitsToUpdate.flatMap(
+      (unit) => {
+        if (!unit.id) return [];
+        const existingUnit = existingUnitsById.get(unit.id);
+        if (!existingUnit) return [];
 
-    // Delete units that are no longer in the list
-    // Note: We don't delete units that are assigned to active reservations
-    // (this is handled in the UI by disabling the delete button)
-    const unitIdsToDelete = existingUnits
-      .filter((u) => !unitIdsToKeep.has(u.id))
-      .map((u) => u.id);
-
-    if (unitIdsToDelete.length > 0) {
-      await db
-        .delete(productUnits)
-        .where(inArray(productUnits.id, unitIdsToDelete));
-    }
-
-    // Update existing units
-    for (const unit of unitsToUpdate) {
-      if (unit.id) {
+        const identifier = unit.identifier.trim();
         const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
-        await db
-          .update(productUnits)
-          .set({
-            identifier: unit.identifier.trim(),
-            notes: unit.notes?.trim() || null,
-            purchasePrice: normalizeNullablePriceInput(unit.purchasePrice),
-            purchasedAt: normalizeNullableDateInput(unit.purchasedAt),
-            // lifecycleStatus is owned by the inventory actions: retire/reinstate
-            // must keep retiredAt/retirementReason and the event log consistent
-            attributes,
-            combinationKey: buildCombinationKey(
-              bookingAttributeAxes,
-              attributes,
-            ),
-            updatedAt: new Date(),
-          })
-          .where(eq(productUnits.id, unit.id));
-      }
-    }
-
-    // Insert new units
-    if (unitsToInsert.length > 0) {
-      const actorUserId = await getActorUserId();
-      const unitRows = unitsToInsert.map((unit) => {
-        const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
-        return {
-          id: nanoid(),
-          productId: productId,
-          identifier: unit.identifier.trim(),
-          notes: unit.notes?.trim() || null,
-          purchasePrice: normalizeNullablePriceInput(unit.purchasePrice),
-          purchasedAt: normalizeNullableDateInput(unit.purchasedAt),
-          lifecycleStatus: UNIT_LIFECYCLE.active,
+        const combinationKey = buildCombinationKey(
+          bookingAttributeAxes,
           attributes,
-          combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
-        };
-      });
-
-      await db.transaction(async (tx) => {
-        await tx.insert(productUnits).values(unitRows);
-        const eventRows = unitRows.map(
-          (unit) =>
-            ({
-              id: nanoid(),
-              productUnitId: unit.id,
-              storeId: store.id,
-              type: 'created',
-              actorUserId,
-              payload: {
-                productId,
-                identifier: unit.identifier,
-                combinationKey: unit.combinationKey,
-              },
-            }) satisfies typeof productUnitEvents.$inferInsert,
         );
-        await tx.insert(productUnitEvents).values(eventRows);
-      });
-    }
+        const changes: Record<string, { from: unknown; to: unknown }> = {};
+
+        if (identifier !== existingUnit.identifier) {
+          changes.identifier = {
+            from: existingUnit.identifier,
+            to: identifier,
+          };
+        }
+
+        if (combinationKey !== existingUnit.combinationKey) {
+          changes.combinationKey = {
+            from: existingUnit.combinationKey,
+            to: combinationKey,
+          };
+        }
+
+        if (
+          JSON.stringify(attributes) !==
+          JSON.stringify(existingUnit.attributes ?? {})
+        ) {
+          changes.attributes = {
+            from: existingUnit.attributes ?? {},
+            to: attributes,
+          };
+        }
+
+        if (Object.keys(changes).length === 0) {
+          return [];
+        }
+
+        return [
+          {
+            unitId: unit.id,
+            values: {
+              identifier,
+              attributes,
+              combinationKey,
+            },
+            event: {
+              storeId: store.id,
+              type: 'updated',
+              actorUserId,
+              identifierSnapshot: identifier,
+              payload: { changes },
+            },
+          },
+        ];
+      },
+    );
+
+    const unitRows = unitsToInsert.map((unit) => {
+      const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
+      return {
+        id: nanoid(),
+        productId: productId,
+        identifier: unit.identifier.trim(),
+        notes: getNewUnitNotesInput(unit)?.trim() || null,
+        purchasePrice: normalizeNullablePriceInput(
+          getNewUnitPurchasePriceInput(unit),
+        ),
+        purchasedAt: normalizeNullableDateInput(
+          getNewUnitPurchasedAtInput(unit),
+        ),
+        lifecycleStatus: UNIT_LIFECYCLE.active,
+        attributes,
+        combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
+      };
+    });
+
+    await db.transaction(async (tx) => {
+      await deleteUnits(
+        tx,
+        unitsToDelete.map((unit) => ({
+          unitId: unit.id,
+          event: {
+            storeId: store.id,
+            type: 'deleted',
+            actorUserId,
+            identifierSnapshot: unit.identifier,
+            payload: {
+              productId,
+              identifier: unit.identifier,
+              combinationKey: unit.combinationKey,
+            },
+          },
+        })),
+      );
+      await updateUnits(tx, updateMutations);
+      await createUnits(
+        tx,
+        unitRows.map((unit) => ({
+          unit,
+          event: {
+            storeId: store.id,
+            actorUserId,
+            identifierSnapshot: unit.identifier,
+            payload: {
+              productId,
+              identifier: unit.identifier,
+              combinationKey: unit.combinationKey,
+            },
+          },
+        })),
+      );
+    });
   }
 
   // Update accessories: delete all existing and insert new ones
@@ -768,20 +921,53 @@ export async function deleteProduct(productId: string) {
     return { error: 'errors.productNotFound' };
   }
 
-  // Delete accessory relations (both as product and as accessory)
-  await db
-    .delete(productAccessories)
-    .where(
-      or(
-        eq(productAccessories.productId, productId),
-        eq(productAccessories.accessoryId, productId),
-      ),
+  const unitsToDelete = await db.query.productUnits.findMany({
+    where: eq(productUnits.productId, productId),
+  });
+  const failedUnitIds = await getAssignedBlockingUnitIds({
+    unitIds: unitsToDelete.map((unit) => unit.id),
+    storeId: store.id,
+    pendingBlocksAvailability:
+      store.settings?.pendingBlocksAvailability ?? true,
+  });
+
+  if (failedUnitIds.length > 0) {
+    return { error: 'errors.unitAssigned', failedUnitIds };
+  }
+
+  const actorUserId = unitsToDelete.length > 0 ? await getActorUserId() : null;
+
+  await db.transaction(async (tx) => {
+    // Delete accessory relations (both as product and as accessory)
+    await tx
+      .delete(productAccessories)
+      .where(
+        or(
+          eq(productAccessories.productId, productId),
+          eq(productAccessories.accessoryId, productId),
+        ),
+      );
+
+    await deleteUnits(
+      tx,
+      unitsToDelete.map((unit) => ({
+        unitId: unit.id,
+        event: {
+          storeId: store.id,
+          type: 'deleted',
+          actorUserId,
+          identifierSnapshot: unit.identifier,
+          payload: {
+            productId,
+            identifier: unit.identifier,
+            combinationKey: unit.combinationKey,
+          },
+        },
+      })),
     );
 
-  // Delete product units
-  await db.delete(productUnits).where(eq(productUnits.productId, productId));
-
-  await db.delete(products).where(eq(products.id, productId));
+    await tx.delete(products).where(eq(products.id, productId));
+  });
 
   revalidatePath('/dashboard/products');
   return { success: true };
