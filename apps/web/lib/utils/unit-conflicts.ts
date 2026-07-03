@@ -246,6 +246,10 @@ export async function getUnitConflictFlags(
     .where(and(...conditions));
 
   for (const assignment of assignments) {
+    if (!assignment.productUnitId) {
+      continue;
+    }
+
     const unitWindows = windowsByUnitId.get(assignment.productUnitId) ?? [];
 
     if (

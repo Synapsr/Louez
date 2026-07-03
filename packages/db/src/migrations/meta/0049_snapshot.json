@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "bc7bbc3b-277a-4ab5-8ac8-f161d042917f",
+  "id": "daa8bb77-2c33-4542-8283-12254d2150c0",
   "prevId": "67eff4e0-3974-42b6-bfab-7cab6cd84bda",
   "tables": {
     "accounts": {
@@ -3511,7 +3511,14 @@
           "name": "product_unit_id",
           "type": "varchar(21)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "identifier_snapshot": {
+          "name": "identifier_snapshot",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "store_id": {
@@ -3523,7 +3530,7 @@
         },
         "type": {
           "name": "type",
-          "type": "enum('created','downtime_declared','downtime_updated','downtime_closed','downtime_deleted','retired','reinstated','assigned','unassigned','updated')",
+          "type": "enum('created','deleted','downtime_declared','downtime_updated','downtime_closed','downtime_deleted','retired','reinstated','assigned','unassigned','updated')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -3572,7 +3579,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -4798,7 +4805,7 @@
           "name": "product_unit_id",
           "type": "varchar(21)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "identifier_snapshot": {
@@ -4834,8 +4841,8 @@
         }
       },
       "foreignKeys": {
-        "reservation_item_units_reservation_item_id_reservation_items_id_fk": {
-          "name": "reservation_item_units_reservation_item_id_reservation_items_id_fk",
+        "riu_reservation_item_fk": {
+          "name": "riu_reservation_item_fk",
           "tableFrom": "reservation_item_units",
           "tableTo": "reservation_items",
           "columnsFrom": [
@@ -4847,8 +4854,8 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "reservation_item_units_product_unit_id_product_units_id_fk": {
-          "name": "reservation_item_units_product_unit_id_product_units_id_fk",
+        "riu_product_unit_fk": {
+          "name": "riu_product_unit_fk",
           "tableFrom": "reservation_item_units",
           "tableTo": "product_units",
           "columnsFrom": [
@@ -4857,7 +4864,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "restrict",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

@@ -444,6 +444,10 @@ export async function getInventory(input: GetInventoryInput = {}) {
     }>
   >();
   for (const assignment of assignmentRows) {
+    if (!assignment.productUnitId) {
+      continue;
+    }
+
     if (
       assignment.status !== 'pending' &&
       assignment.status !== 'confirmed' &&

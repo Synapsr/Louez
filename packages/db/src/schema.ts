@@ -3,6 +3,7 @@ import {
   boolean,
   date,
   decimal,
+  foreignKey,
   index,
   int,
   json,
@@ -2131,12 +2132,10 @@ export const reservationItemUnits = mysqlTable(
   'reservation_item_units',
   {
     id: id(),
-    reservationItemId: varchar('reservation_item_id', { length: 21 })
-      .notNull()
-      .references(() => reservationItems.id, { onDelete: 'cascade' }),
-    productUnitId: varchar('product_unit_id', { length: 21 })
-      .notNull()
-      .references(() => productUnits.id, { onDelete: 'restrict' }),
+    reservationItemId: varchar('reservation_item_id', {
+      length: 21,
+    }).notNull(),
+    productUnitId: varchar('product_unit_id', { length: 21 }),
 
     // Snapshot of identifier at assignment time (for contract/history accuracy
     // even if the unit is renamed later)
@@ -2161,6 +2160,16 @@ export const reservationItemUnits = mysqlTable(
       table.reservationItemId,
       table.productUnitId,
     ),
+    reservationItemFk: foreignKey({
+      name: 'riu_reservation_item_fk',
+      columns: [table.reservationItemId],
+      foreignColumns: [reservationItems.id],
+    }).onDelete('cascade'),
+    productUnitFk: foreignKey({
+      name: 'riu_product_unit_fk',
+      columns: [table.productUnitId],
+      foreignColumns: [productUnits.id],
+    }).onDelete('set null'),
   }),
 );
 

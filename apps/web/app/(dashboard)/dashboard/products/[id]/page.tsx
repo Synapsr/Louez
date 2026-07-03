@@ -86,7 +86,10 @@ export default async function EditProductPage({
 
   // Extract accessory IDs for the form
   const accessoryIds = product.accessories.map((a) => a.accessoryId);
-  const unitIds = product.units.map((unit) => unit.id);
+  const editableUnits = product.units.filter(
+    (unit) => unit.lifecycleStatus === 'active',
+  );
+  const unitIds = editableUnits.map((unit) => unit.id);
   const blockingStatuses = getBlockingReservationStatuses(
     store.settings?.pendingBlocksAvailability ?? true,
   );
@@ -112,7 +115,9 @@ export default async function EditProductPage({
           )
       : [];
   const assignedUnitIds = new Set(
-    assignedUnitRows.map((row) => row.productUnitId),
+    assignedUnitRows.flatMap((row) =>
+      row.productUnitId ? [row.productUnitId] : [],
+    ),
   );
   const effectiveQuantities = await getEffectiveProductQuantities(db, [
     product.id,
@@ -136,7 +141,7 @@ export default async function EditProductPage({
           ...product,
           quantity: effectiveQuantity,
           accessoryIds,
-          units: product.units.map((unit) => ({
+          units: editableUnits.map((unit) => ({
             id: unit.id,
             identifier: unit.identifier,
             attributes: unit.attributes,

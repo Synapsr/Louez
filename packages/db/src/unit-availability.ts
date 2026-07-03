@@ -150,6 +150,10 @@ export async function findBusyUnitIds(
   const busyUnitIds = new Map<string, BusyUnitReason>();
 
   for (const assignment of assignments) {
+    if (!assignment.productUnitId) {
+      continue;
+    }
+
     const reason =
       assignment.reservationStart < params.end &&
       assignment.reservationEnd > params.start

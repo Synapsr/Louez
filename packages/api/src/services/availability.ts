@@ -4,7 +4,9 @@ import {
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   db,
+  type Database,
   getBlockingReservationStatuses,
+  productUnitDowntimes,
   productUnits,
   products,
   reservations,
@@ -29,15 +31,98 @@ import {
 import { ApiServiceError } from './errors';
 
 type ReservationWithAssignedUnits = {
+  status: string;
   startDate: Date;
   endDate: Date;
   items: Array<{
     productId: string | null;
     combinationKey?: string | null;
     quantity: number;
-    assignedUnits: Array<{ productUnitId: string }>;
+    assignedUnits: Array<{ productUnitId: string | null }>;
   }>;
 };
+
+export type ExcludedUnitInfo = {
+  lifecycleStatus: 'active' | 'retired';
+  downtimes: Array<{ startsAt: Date; endsAt: Date | null }>;
+};
+
+function downtimeOverlaps(
+  downtime: { startsAt: Date; endsAt: Date | null },
+  startDate: Date,
+  endDate: Date,
+) {
+  return downtime.startsAt < endDate && (!downtime.endsAt || downtime.endsAt > startDate);
+}
+
+function excludedUnitAbsorbsReservation(params: {
+  reservation: ReservationWithAssignedUnits;
+  unitInfo: ExcludedUnitInfo | undefined;
+}) {
+  if (params.reservation.status === 'ongoing') {
+    return true;
+  }
+
+  if (!params.unitInfo || params.unitInfo.lifecycleStatus !== 'active') {
+    return false;
+  }
+
+  return !params.unitInfo.downtimes.some((downtime) =>
+    downtimeOverlaps(
+      downtime,
+      params.reservation.startDate,
+      params.reservation.endDate,
+    ),
+  );
+}
+
+export async function loadExcludedUnitInfo(
+  database: Pick<Database, 'select'>,
+  excludedProductUnitIds: ReadonlySet<string>,
+): Promise<Map<string, ExcludedUnitInfo>> {
+  if (excludedProductUnitIds.size === 0) {
+    return new Map();
+  }
+
+  const unitIds = [...excludedProductUnitIds];
+  const unitRows = await database
+    .select({
+      id: productUnits.id,
+      lifecycleStatus: productUnits.lifecycleStatus,
+    })
+    .from(productUnits)
+    .where(inArray(productUnits.id, unitIds));
+  const downtimeRows = await database
+    .select({
+      productUnitId: productUnitDowntimes.productUnitId,
+      startsAt: productUnitDowntimes.startsAt,
+      endsAt: productUnitDowntimes.endsAt,
+    })
+    .from(productUnitDowntimes)
+    .where(inArray(productUnitDowntimes.productUnitId, unitIds));
+  const infoByUnitId = new Map<string, ExcludedUnitInfo>();
+
+  for (const unit of unitRows) {
+    infoByUnitId.set(unit.id, {
+      lifecycleStatus: unit.lifecycleStatus,
+      downtimes: [],
+    });
+  }
+
+  for (const downtime of downtimeRows) {
+    const unitInfo = infoByUnitId.get(downtime.productUnitId);
+    if (!unitInfo) {
+      continue;
+    }
+
+    unitInfo.downtimes.push({
+      startsAt: downtime.startsAt,
+      endsAt: downtime.endsAt,
+    });
+  }
+
+  return infoByUnitId;
+}
 
 export function computeReservedNetOfExcludedUnits(params: {
   reservations: ReservationWithAssignedUnits[];
@@ -45,6 +130,7 @@ export function computeReservedNetOfExcludedUnits(params: {
   endDate: Date;
   turnoverBufferMinutes: number;
   excludedProductUnitIds: ReadonlySet<string>;
+  excludedUnitInfo: ReadonlyMap<string, ExcludedUnitInfo>;
 }): {
   reservedByProduct: Map<string, number>;
   reservedByProductCombination: Map<string, number>;
@@ -54,7 +140,12 @@ export function computeReservedNetOfExcludedUnits(params: {
     endDate: reservation.endDate,
     items: reservation.items.flatMap((item) => {
       const excludedAssignedUnitCount = item.assignedUnits.filter((unit) =>
-        params.excludedProductUnitIds.has(unit.productUnitId),
+        unit.productUnitId &&
+        params.excludedProductUnitIds.has(unit.productUnitId) &&
+        excludedUnitAbsorbsReservation({
+          reservation,
+          unitInfo: params.excludedUnitInfo.get(unit.productUnitId),
+        }),
       ).length;
       const quantity = Math.max(
         0,
@@ -384,6 +475,10 @@ export async function getStorefrontAvailability(
       .filter((unit) => !availableUnitIds.has(unit.id))
       .map((unit) => unit.id),
   );
+  const excludedUnitInfo = await loadExcludedUnitInfo(
+    db,
+    excludedProductUnitIds,
+  );
 
   const { reservedByProduct, reservedByProductCombination } =
     computeReservedNetOfExcludedUnits({
@@ -392,6 +487,7 @@ export async function getStorefrontAvailability(
       endDate,
       turnoverBufferMinutes,
       excludedProductUnitIds,
+      excludedUnitInfo,
     });
 
   const combinationsByProduct = new Map<

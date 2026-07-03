@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import {
   buildUnitRentableDuringPredicate,
@@ -6,7 +6,6 @@ import {
   findBusyUnitIds,
   getBlockingReservationStatuses,
   productUnits,
-  reservationItemUnits,
   type BlockingReservationStatus,
 } from '@louez/db';
 
@@ -71,67 +70,4 @@ export async function getAvailableUnitsForProduct(
   });
 
   return allUnits.filter((unit) => !busyUnitIds.has(unit.id));
-}
-
-export async function checkUnitsAvailability(
-  unitIds: string[],
-  startDate: Date,
-  endDate: Date,
-  options: UnitAvailabilityOptions,
-): Promise<Record<string, boolean>> {
-  if (unitIds.length === 0) {
-    return {};
-  }
-
-  const rentableUnits = await db
-    .select({ id: productUnits.id })
-    .from(productUnits)
-    .where(
-      and(
-        inArray(productUnits.id, unitIds),
-        isUnitRentableDuring(startDate, endDate),
-      ),
-    );
-
-  const busyUnitIds = await findBusyUnitIds(db, {
-    unitIds,
-    start: startDate,
-    end: endDate,
-    blockingStatuses: options.blockingStatuses,
-    turnoverBufferMinutes: options.turnoverBufferMinutes,
-    excludeReservationItemId: options.excludeReservationItemId,
-  });
-
-  const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
-  const availability: Record<string, boolean> = {};
-
-  for (const unitId of unitIds) {
-    availability[unitId] =
-      rentableUnitIds.has(unitId) && !busyUnitIds.has(unitId);
-  }
-
-  return availability;
-}
-
-export async function getAssignedUnitsForReservationItem(
-  reservationItemId: string,
-): Promise<
-  Array<{
-    id: string;
-    productUnitId: string;
-    identifierSnapshot: string;
-    assignedAt: Date;
-  }>
-> {
-  const assigned = await db
-    .select({
-      id: reservationItemUnits.id,
-      productUnitId: reservationItemUnits.productUnitId,
-      identifierSnapshot: reservationItemUnits.identifierSnapshot,
-      assignedAt: reservationItemUnits.assignedAt,
-    })
-    .from(reservationItemUnits)
-    .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
-
-  return assigned;
 }
