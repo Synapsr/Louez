@@ -93,9 +93,10 @@ export const DowntimeDialog = ({
     }
 
     const startsAtDate = parseOptionalDate(startsAt);
-    const endsAtDate = openEnded ? null : parseOptionalDate(endsAt);
+    const endsAtDate =
+      openEnded || !endsAt.trim() ? null : parseOptionalDate(endsAt);
 
-    if (!startsAtDate || (!openEnded && !endsAtDate)) {
+    if (!startsAtDate || (!openEnded && endsAt.trim() && !endsAtDate)) {
       toastManager.add({ title: tErrors('invalidData'), type: 'error' });
       return;
     }

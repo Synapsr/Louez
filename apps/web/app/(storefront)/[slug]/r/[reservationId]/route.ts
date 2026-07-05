@@ -1,39 +1,68 @@
-import { cookies } from 'next/headers'
-import { NextRequest } from 'next/server'
-import { db } from '@louez/db'
-import { storefrontRedirect } from '@/lib/storefront-url'
-import {
-  verificationCodes,
-  customerSessions,
-  stores,
-  reservations,
-} from '@louez/db'
-import { eq, and, gt } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
+import { cookies } from 'next/headers';
+import { NextRequest } from 'next/server';
 
-const CUSTOMER_SESSION_COOKIE = 'customer_session'
-const SESSION_DURATION_DAYS = 30
+import { and, eq, gt } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+
+import { db } from '@louez/db';
+import {
+  customerSessions,
+  reservations,
+  stores,
+  verificationCodes,
+} from '@louez/db';
+
+import { storefrontRedirect } from '@/lib/storefront-url';
+
+const CUSTOMER_SESSION_COOKIE = 'customer_session';
+const SESSION_DURATION_DAYS = 30;
+
+function getAccessRedirectPath(
+  redirect: string | null,
+  reservationId: string,
+): string {
+  const reservationPath = `/account/reservations/${reservationId}`;
+
+  if (
+    redirect === reservationPath ||
+    redirect === `${reservationPath}/contract`
+  ) {
+    return redirect;
+  }
+
+  return reservationPath;
+}
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string; reservationId: string }> }
+  { params }: { params: Promise<{ slug: string; reservationId: string }> },
 ) {
-  const { slug, reservationId } = await params
-  const token = request.nextUrl.searchParams.get('token')
+  const { slug, reservationId } = await params;
+  const token = request.nextUrl.searchParams.get('token');
+  const redirectPath = getAccessRedirectPath(
+    request.nextUrl.searchParams.get('redirect'),
+    reservationId,
+  );
 
   if (!token) {
     // No token provided, redirect to login
-    storefrontRedirect(slug, `/account/login?redirect=/account/reservations/${reservationId}`)
+    storefrontRedirect(
+      slug,
+      `/account/login?redirect=${encodeURIComponent(redirectPath)}`,
+    );
   }
 
   try {
     // Get store by slug
     const store = await db.query.stores.findFirst({
       where: eq(stores.slug, slug),
-    })
+    });
 
     if (!store) {
-      storefrontRedirect(slug, `/account/login?error=storeNotFound&redirect=/account/reservations/${reservationId}`)
+      storefrontRedirect(
+        slug,
+        `/account/login?error=storeNotFound&redirect=${encodeURIComponent(redirectPath)}`,
+      );
     }
 
     // Find valid instant access token
@@ -43,60 +72,69 @@ export async function GET(
         eq(verificationCodes.type, 'instant_access'),
         eq(verificationCodes.token, token),
         eq(verificationCodes.reservationId, reservationId),
-        gt(verificationCodes.expiresAt, new Date())
+        gt(verificationCodes.expiresAt, new Date()),
       ),
-    })
+    });
 
     if (!verification) {
-      storefrontRedirect(slug, `/account/login?error=invalidToken&redirect=/account/reservations/${reservationId}`)
+      storefrontRedirect(
+        slug,
+        `/account/login?error=invalidToken&redirect=${encodeURIComponent(redirectPath)}`,
+      );
     }
 
     // Verify reservation exists and belongs to this store
     const reservation = await db.query.reservations.findFirst({
       where: and(
         eq(reservations.id, reservationId),
-        eq(reservations.storeId, store.id)
+        eq(reservations.storeId, store.id),
       ),
       with: { customer: true },
-    })
+    });
 
     if (!reservation) {
-      storefrontRedirect(slug, `/account/login?error=reservationNotFound&redirect=/account/reservations/${reservationId}`)
+      storefrontRedirect(
+        slug,
+        `/account/login?error=reservationNotFound&redirect=${encodeURIComponent(redirectPath)}`,
+      );
     }
 
     // Token is valid and reusable (we don't mark it as used)
 
     // Create customer session
-    const sessionToken = nanoid(32)
+    const sessionToken = nanoid(32);
     const expiresAt = new Date(
-      Date.now() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000
-    )
+      Date.now() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000,
+    );
 
     await db.insert(customerSessions).values({
       customerId: reservation.customer.id,
       token: sessionToken,
       expiresAt,
-    })
+    });
 
     // Set session cookie - this works in Route Handlers
-    const cookieStore = await cookies()
+    const cookieStore = await cookies();
     cookieStore.set(CUSTOMER_SESSION_COOKIE, sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       expires: expiresAt,
       path: '/',
-    })
+    });
 
     // Redirect to reservation detail page
-    storefrontRedirect(slug, `/account/reservations/${reservationId}`)
+    storefrontRedirect(slug, redirectPath);
   } catch (error) {
     // If it's a redirect, rethrow it
     if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
-      throw error
+      throw error;
     }
 
-    console.error('Error processing instant access:', error)
-    storefrontRedirect(slug, `/account/login?error=verificationError&redirect=/account/reservations/${reservationId}`)
+    console.error('Error processing instant access:', error);
+    storefrontRedirect(
+      slug,
+      `/account/login?error=verificationError&redirect=${encodeURIComponent(redirectPath)}`,
+    );
   }
 }
