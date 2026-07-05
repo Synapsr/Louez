@@ -408,7 +408,16 @@ const nextConfig: NextConfig = {
       // Users can add their own custom domains if needed
     ],
   },
-  allowedDevOrigins: ['louez.localify', '*.louez.localify', 'feat-inventory.louez.localify'],
+  // Storefront tenant subdomains are <store-slug>.<env>.louez.localify (three
+  // levels). Next's wildcard only matches one label, so *.louez.localify does
+  // NOT cover them — add the per-env tenant wildcard or the dev server 403s the
+  // client bundle and the page never hydrates.
+  allowedDevOrigins: [
+    'louez.localify',
+    '*.louez.localify',
+    'feat-inventory.louez.localify',
+    '*.feat-inventory.louez.localify',
+  ],
 }
 
 export default withNextIntl(nextConfig)

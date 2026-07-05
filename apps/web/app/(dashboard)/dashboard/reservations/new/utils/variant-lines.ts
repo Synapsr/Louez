@@ -142,6 +142,18 @@ function getTrackedPoolCapacity(
   }, 0);
 }
 
+function getProductSelectableQuantity(product: Product) {
+  if (!product.trackUnits) {
+    return Math.max(0, product.quantity);
+  }
+
+  const activeUnits = (product.units || []).filter(
+    (unit) => (unit.lifecycleStatus || 'active') === 'active',
+  );
+
+  return Math.max(0, activeUnits.length || product.quantity);
+}
+
 export function getLineQuantityConstraints(
   product: Product,
   line: SelectedProduct,
@@ -174,15 +186,16 @@ export function getLineQuantityConstraints(
         periodProductAvailability?.availableQuantity ??
           product.quantity - reservedQuantity,
       );
-  const remainingProductCapacity = Math.max(
+  const productSelectableQuantity = getProductSelectableQuantity(product);
+  const remainingSelectableQuantity = Math.max(
     0,
-    productCapacity - otherProductQuantity,
+    productSelectableQuantity - otherProductQuantity,
   );
 
   if (!hasBookingAttributes) {
     return {
-      lineMaxQuantity: remainingProductCapacity,
-      selectionCapacity: remainingProductCapacity,
+      lineMaxQuantity: remainingSelectableQuantity,
+      selectionCapacity: productCapacity,
       selectionMode: 'none',
       hasBookingAttributes: false,
     };
@@ -238,7 +251,7 @@ export function getLineQuantityConstraints(
   return {
     lineMaxQuantity: Math.max(
       0,
-      Math.min(remainingProductCapacity, selectionCapacity),
+      Math.min(remainingSelectableQuantity, selectionCapacity),
     ),
     selectionCapacity,
     selectionMode: selection.mode,

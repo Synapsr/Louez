@@ -286,10 +286,9 @@ export function AddToCartForm({
     periodCombinations,
     periodProductAvailability,
   ]);
-  const periodAwareMaxQuantity =
-    hasSelectedDates && periodProductAvailability
-      ? periodProductAvailability.availableQuantity
-      : maxQuantity;
+  const periodAwareMaxQuantity = hasSelectedDates
+    ? (periodProductAvailability?.availableQuantity ?? 0)
+    : maxQuantity;
   const isAvailabilityLoadingForSelection =
     hasSelectedDates &&
     availabilityQuery.isLoading &&
@@ -311,8 +310,7 @@ export function AddToCartForm({
   const effectiveMaxQuantity = hasBookingAttributes
     ? Math.min(availabilityBoundQuantity, selectionCapacity.capacity)
     : availabilityBoundQuantity;
-  const isSelectionUnavailable =
-    hasBookingAttributes && effectiveMaxQuantity === 0;
+  const isSelectionUnavailable = effectiveMaxQuantity === 0;
 
   const calculateDuration = () => {
     if (!startDate || !endDate) return 0;
@@ -740,7 +738,7 @@ export function AddToCartForm({
           <span className="text-muted-foreground text-sm">
             (
             {t('availableCount', {
-              count: hasBookingAttributes ? effectiveMaxQuantity : maxQuantity,
+              count: hasSelectedDates ? effectiveMaxQuantity : maxQuantity,
             })}
             )
           </span>

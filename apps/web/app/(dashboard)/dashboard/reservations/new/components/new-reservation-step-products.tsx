@@ -222,6 +222,18 @@ export function NewReservationStepProducts({
       .join(' + ');
   };
 
+  const getSelectableQuantity = (product: Product) => {
+    if (!product.trackUnits) {
+      return Math.max(0, product.quantity);
+    }
+
+    const activeUnits = product.units.filter(
+      (unit) => (unit.lifecycleStatus || 'active') === 'active',
+    );
+
+    return Math.max(0, activeUnits.length || product.quantity);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -279,6 +291,11 @@ export function NewReservationStepProducts({
             const remainingStock = Math.max(
               0,
               productCapacity - selectedQuantity,
+            );
+            const selectableQuantity = getSelectableQuantity(product);
+            const remainingSelectableQuantity = Math.max(
+              0,
+              selectableQuantity - selectedQuantity,
             );
             const bookingAttributeAxes = (product.bookingAttributeAxes || [])
               .slice()
@@ -483,7 +500,7 @@ export function NewReservationStepProducts({
                         type="button"
                         variant={isOutOfStock ? 'ghost' : 'outline'}
                         onClick={() => addProduct(product.id)}
-                        disabled={isOutOfStock}
+                        disabled={selectableQuantity <= 0}
                         className="w-full sm:w-auto"
                       >
                         <Plus className="mr-1 h-4 w-4" />
@@ -494,7 +511,7 @@ export function NewReservationStepProducts({
                         type="button"
                         variant="outline"
                         onClick={() => addProduct(product.id)}
-                        disabled={remainingStock <= 0}
+                        disabled={remainingSelectableQuantity <= 0}
                         className="w-full sm:w-auto"
                       >
                         <Plus className="mr-1 h-4 w-4" />

@@ -115,6 +115,7 @@ import {
   sendPaymentRequestSms,
 } from '@/lib/sms';
 import { getCurrentStore } from '@/lib/store-context';
+import { getStorefrontUrl } from '@/lib/storefront-url';
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
@@ -135,6 +136,8 @@ import { buildUnitEvent } from '@/lib/utils/unit-mutations';
 
 import { env } from '@/env';
 
+const INSTANT_ACCESS_TOKEN_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+
 function getActionErrorKey(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.startsWith('errors.')) {
     return error.message;
@@ -145,6 +148,45 @@ function getActionErrorKey(error: unknown, fallback: string): string {
 
 async function getStoreForUser() {
   return getCurrentStore();
+}
+
+async function createReservationInstantAccessUrl({
+  storeId,
+  storeSlug,
+  customerEmail,
+  reservationId,
+  redirectPath,
+}: {
+  storeId: string;
+  storeSlug: string;
+  customerEmail: string;
+  reservationId: string;
+  redirectPath?: string;
+}) {
+  const token = nanoid(64);
+  const expiresAt = new Date(Date.now() + INSTANT_ACCESS_TOKEN_DURATION_MS);
+
+  await db.insert(verificationCodes).values({
+    id: nanoid(),
+    email: customerEmail,
+    storeId,
+    code: '',
+    type: 'instant_access',
+    token,
+    reservationId,
+    expiresAt,
+    createdAt: new Date(),
+  });
+
+  const searchParams = new URLSearchParams({ token });
+  if (redirectPath) {
+    searchParams.set('redirect', redirectPath);
+  }
+
+  return getStorefrontUrl(
+    storeSlug,
+    `/r/${reservationId}?${searchParams.toString()}`,
+  );
 }
 
 export async function getManualReservationAvailability(
@@ -3252,7 +3294,10 @@ export async function updateReservation(
       .select({ id: reservations.id })
       .from(reservations)
       .where(
-        and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
+        and(
+          eq(reservations.id, reservationId),
+          eq(reservations.storeId, store.id),
+        ),
       )
       .for('update');
 
@@ -4592,8 +4637,13 @@ export async function sendReservationEmail(
 
     switch (data.templateId) {
       case 'contract': {
-        // Send contract email with PDF attachment link
-        const contractUrl = `${env.NEXT_PUBLIC_APP_URL}/api/reservations/${reservationId}/contract`;
+        const contractUrl = await createReservationInstantAccessUrl({
+          storeId: store.id,
+          storeSlug: store.slug,
+          customerEmail: customerData.email,
+          reservationId,
+          redirectPath: `/account/reservations/${reservationId}/contract`,
+        });
         const subject =
           data.customSubject ||
           `Contrat de location #${reservation.number} - ${store.name}`;
@@ -5347,7 +5397,10 @@ export async function assignUnitsToReservationItem(
         .select({ id: reservations.id })
         .from(reservations)
         .where(
-          and(eq(reservations.id, item.reservationId), eq(reservations.storeId, store.id)),
+          and(
+            eq(reservations.id, item.reservationId),
+            eq(reservations.storeId, store.id),
+          ),
         )
         .for('update');
 
@@ -5593,7 +5646,8 @@ export async function assignUnitsToReservationItem(
               storeId: store.id,
               type: 'unassigned',
               actorUserId,
-              identifierSnapshot: existingIdentifierByUnitId.get(unitId) || unitId,
+              identifierSnapshot:
+                existingIdentifierByUnitId.get(unitId) || unitId,
               payload: unitEventPayload,
             },
           }),
@@ -5712,19 +5766,78 @@ export async function getAvailableUnitsForReservationItem(
     // 2. Get available units using the utility
     const { getAvailableUnitsForProduct, getBlockingReservationStatuses } =
       await import('@/lib/utils/unit-availability');
+    const blockingStatuses = getBlockingReservationStatuses(
+      store.settings?.pendingBlocksAvailability ?? true,
+    );
+    const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
     const availableUnits = await getAvailableUnitsForProduct(
       item.productId,
       item.startDate,
       item.endDate,
       {
-        blockingStatuses: getBlockingReservationStatuses(
-          store.settings?.pendingBlocksAvailability ?? true,
-        ),
-        turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
+        blockingStatuses,
+        turnoverBufferMinutes,
         excludeReservationItemId: item.id,
         combinationKey: item.combinationKey,
       },
     );
+    const availableUnitIds = new Set(availableUnits.map((unit) => unit.id));
+    let bufferOnlyUnits: Array<{
+      id: string;
+      identifier: string;
+      notes: string | null;
+    }> = [];
+
+    if (turnoverBufferMinutes > 0) {
+      const unitConditions = [
+        eq(productUnits.productId, item.productId),
+        eq(productUnits.lifecycleStatus, 'active' as const),
+        buildUnitRentableDuringPredicate(db, item.startDate, item.endDate),
+      ];
+
+      if (item.combinationKey) {
+        unitConditions.push(
+          eq(productUnits.combinationKey, item.combinationKey),
+        );
+      }
+
+      const candidateUnits = await db
+        .select({
+          id: productUnits.id,
+          identifier: productUnits.identifier,
+          notes: productUnits.notes,
+        })
+        .from(productUnits)
+        .where(and(...unitConditions));
+      const candidateUnitIds = candidateUnits.map((unit) => unit.id);
+
+      if (candidateUnitIds.length > 0) {
+        const busyWithoutBuffer = await findBusyUnitIds(db, {
+          unitIds: candidateUnitIds,
+          start: item.startDate,
+          end: item.endDate,
+          blockingStatuses,
+          turnoverBufferMinutes: 0,
+          excludeReservationItemId: item.id,
+        });
+        const busyWithBuffer = await findBusyUnitIds(db, {
+          unitIds: candidateUnitIds,
+          start: item.startDate,
+          end: item.endDate,
+          blockingStatuses,
+          turnoverBufferMinutes,
+          excludeReservationItemId: item.id,
+        });
+
+        bufferOnlyUnits = candidateUnits.filter((unit) => {
+          if (availableUnitIds.has(unit.id) || busyWithoutBuffer.has(unit.id)) {
+            return false;
+          }
+
+          return busyWithBuffer.get(unit.id) === 'buffer';
+        });
+      }
+    }
 
     // 3. Get currently assigned units for this item
     const assignedUnits = await db
@@ -5753,9 +5866,12 @@ export async function getAvailableUnitsForReservationItem(
       );
 
     // Merge available units with currently assigned (avoiding duplicates)
-    const availableUnitIds = new Set(availableUnits.map((u) => u.id));
+    for (const unit of bufferOnlyUnits) {
+      availableUnitIds.add(unit.id);
+    }
     const allUnits = [
       ...availableUnits,
+      ...bufferOnlyUnits,
       ...currentlyAssignedUnits.filter((u) => !availableUnitIds.has(u.id)),
     ].sort((a, b) => a.identifier.localeCompare(b.identifier, 'en'));
 
