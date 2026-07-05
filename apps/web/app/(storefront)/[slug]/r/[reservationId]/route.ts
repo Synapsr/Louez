@@ -14,16 +14,39 @@ import { nanoid } from 'nanoid'
 const CUSTOMER_SESSION_COOKIE = 'customer_session'
 const SESSION_DURATION_DAYS = 30
 
+function getAccessRedirectPath(
+  redirect: string | null,
+  reservationId: string
+): string {
+  const reservationPath = `/account/reservations/${reservationId}`
+
+  if (
+    redirect === reservationPath ||
+    redirect === `${reservationPath}/contract`
+  ) {
+    return redirect
+  }
+
+  return reservationPath
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string; reservationId: string }> }
 ) {
   const { slug, reservationId } = await params
   const token = request.nextUrl.searchParams.get('token')
+  const redirectPath = getAccessRedirectPath(
+    request.nextUrl.searchParams.get('redirect'),
+    reservationId
+  )
 
   if (!token) {
     // No token provided, redirect to login
-    storefrontRedirect(slug, `/account/login?redirect=/account/reservations/${reservationId}`)
+    storefrontRedirect(
+      slug,
+      `/account/login?redirect=${encodeURIComponent(redirectPath)}`
+    )
   }
 
   try {
@@ -33,7 +56,10 @@ export async function GET(
     })
 
     if (!store) {
-      storefrontRedirect(slug, `/account/login?error=storeNotFound&redirect=/account/reservations/${reservationId}`)
+      storefrontRedirect(
+        slug,
+        `/account/login?error=storeNotFound&redirect=${encodeURIComponent(redirectPath)}`
+      )
     }
 
     // Find valid instant access token
@@ -48,7 +74,10 @@ export async function GET(
     })
 
     if (!verification) {
-      storefrontRedirect(slug, `/account/login?error=invalidToken&redirect=/account/reservations/${reservationId}`)
+      storefrontRedirect(
+        slug,
+        `/account/login?error=invalidToken&redirect=${encodeURIComponent(redirectPath)}`
+      )
     }
 
     // Verify reservation exists and belongs to this store
@@ -61,7 +90,10 @@ export async function GET(
     })
 
     if (!reservation) {
-      storefrontRedirect(slug, `/account/login?error=reservationNotFound&redirect=/account/reservations/${reservationId}`)
+      storefrontRedirect(
+        slug,
+        `/account/login?error=reservationNotFound&redirect=${encodeURIComponent(redirectPath)}`
+      )
     }
 
     // Token is valid and reusable (we don't mark it as used)
@@ -89,7 +121,7 @@ export async function GET(
     })
 
     // Redirect to reservation detail page
-    storefrontRedirect(slug, `/account/reservations/${reservationId}`)
+    storefrontRedirect(slug, redirectPath)
   } catch (error) {
     // If it's a redirect, rethrow it
     if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
@@ -97,6 +129,9 @@ export async function GET(
     }
 
     console.error('Error processing instant access:', error)
-    storefrontRedirect(slug, `/account/login?error=verificationError&redirect=/account/reservations/${reservationId}`)
+    storefrontRedirect(
+      slug,
+      `/account/login?error=verificationError&redirect=${encodeURIComponent(redirectPath)}`
+    )
   }
 }

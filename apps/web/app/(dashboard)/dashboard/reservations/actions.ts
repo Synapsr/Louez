@@ -100,6 +100,7 @@ import {
   sendPaymentRequestSms,
 } from '@/lib/sms';
 import { getCurrentStore } from '@/lib/store-context';
+import { getStorefrontUrl } from '@/lib/storefront-url';
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
@@ -119,6 +120,8 @@ import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
 
 import { env } from '@/env';
 
+const INSTANT_ACCESS_TOKEN_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
+
 function getActionErrorKey(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.startsWith('errors.')) {
     return error.message;
@@ -129,6 +132,45 @@ function getActionErrorKey(error: unknown, fallback: string): string {
 
 async function getStoreForUser() {
   return getCurrentStore();
+}
+
+async function createReservationInstantAccessUrl({
+  storeId,
+  storeSlug,
+  customerEmail,
+  reservationId,
+  redirectPath,
+}: {
+  storeId: string;
+  storeSlug: string;
+  customerEmail: string;
+  reservationId: string;
+  redirectPath?: string;
+}) {
+  const token = nanoid(64);
+  const expiresAt = new Date(Date.now() + INSTANT_ACCESS_TOKEN_DURATION_MS);
+
+  await db.insert(verificationCodes).values({
+    id: nanoid(),
+    email: customerEmail,
+    storeId,
+    code: '',
+    type: 'instant_access',
+    token,
+    reservationId,
+    expiresAt,
+    createdAt: new Date(),
+  });
+
+  const searchParams = new URLSearchParams({ token });
+  if (redirectPath) {
+    searchParams.set('redirect', redirectPath);
+  }
+
+  return getStorefrontUrl(
+    storeSlug,
+    `/r/${reservationId}?${searchParams.toString()}`,
+  );
 }
 
 function toPricingMode(value: unknown): PricingMode {
@@ -3766,8 +3808,13 @@ export async function sendReservationEmail(
 
     switch (data.templateId) {
       case 'contract': {
-        // Send contract email with PDF attachment link
-        const contractUrl = `${env.NEXT_PUBLIC_APP_URL}/api/reservations/${reservationId}/contract`;
+        const contractUrl = await createReservationInstantAccessUrl({
+          storeId: store.id,
+          storeSlug: store.slug,
+          customerEmail: customerData.email,
+          reservationId,
+          redirectPath: `/account/reservations/${reservationId}/contract`,
+        });
         const subject =
           data.customSubject ||
           `Contrat de location #${reservation.number} - ${store.name}`;
