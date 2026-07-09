@@ -1,12 +1,18 @@
 # Dependencies
+# (**/ so nested workspace dirs match too — bare patterns only match at the root)
 node_modules
+**/node_modules
 .pnpm-store
 
-# Build outputs
+# Build outputs and caches
 .next
+**/.next
+.turbo
+**/.turbo
 out
 dist
 build
+.tmp
 
 # Development
 .env

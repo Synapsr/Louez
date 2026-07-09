@@ -32,21 +32,36 @@ const __dirname = path.dirname(__filename)
 const MIGRATIONS_TABLE = '__drizzle_migrations'
 const MIGRATIONS_FOLDER = path.join(__dirname, 'migrations')
 
-async function runMigrations() {
+export interface RunMigrationsOptions {
+  /**
+   * Where to read migration .sql files from. Defaults to the folder next to
+   * this file, which only exists when running from the repo (tsx/dev).
+   * Bundled environments (Next.js standalone, Docker) must pass an explicit
+   * path because __dirname points inside the bundle output.
+   */
+  migrationsFolder?: string
+}
+
+export async function runMigrations(options: RunMigrationsOptions = {}) {
+  const migrationsFolder = options.migrationsFolder ?? MIGRATIONS_FOLDER
   const databaseUrl = process.env.DATABASE_URL
 
   if (!databaseUrl) {
-    console.error('❌ DATABASE_URL environment variable is not set')
-    process.exit(1)
+    throw new Error('DATABASE_URL environment variable is not set')
   }
 
   console.log('🔌 Connecting to database...')
 
-  const connection = await mysql.createConnection(databaseUrl)
+  // multipleStatements: some hand-written migrations (e.g. 0032, 0034) hold
+  // several statements in one chunk without --> statement-breakpoint markers
+  const connection = await mysql.createConnection({
+    uri: databaseUrl,
+    multipleStatements: true,
+  })
 
   try {
     const migrationConfig: MigrationConfig = {
-      migrationsFolder: MIGRATIONS_FOLDER,
+      migrationsFolder,
       migrationsTable: MIGRATIONS_TABLE,
     }
 
@@ -212,11 +227,20 @@ async function runMigrations() {
       }
     }
 
-    // Recalculate truly pending migrations (after any skips above)
-    const [latestApplied] = await connection.query<mysql.RowDataPacket[]>(
-      `SELECT hash FROM \`${MIGRATIONS_TABLE}\``
+    // Recalculate truly pending migrations (after any skips above).
+    // The migrations table may still not exist here (fresh empty database).
+    const [migrationsTableNow] = await connection.query<mysql.RowDataPacket[]>(
+      `SELECT TABLE_NAME FROM information_schema.TABLES
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?`,
+      [MIGRATIONS_TABLE]
     )
-    const latestAppliedHashes = new Set(latestApplied.map((row) => row.hash))
+    let latestAppliedHashes = new Set<string>()
+    if (migrationsTableNow.length > 0) {
+      const [latestApplied] = await connection.query<mysql.RowDataPacket[]>(
+        `SELECT hash FROM \`${MIGRATIONS_TABLE}\``
+      )
+      latestAppliedHashes = new Set(latestApplied.map((row) => row.hash))
+    }
     const trulyPending = allMigrations.filter((m) => !latestAppliedHashes.has(m.hash))
 
     // Run pending migrations directly (bypasses Drizzle's migrate() which can silently skip migrations)
@@ -283,7 +307,7 @@ async function runMigrations() {
       console.error('   To fix this manually, run: pnpm db:baseline')
     }
 
-    process.exit(1)
+    throw error
   } finally {
     await connection.end()
     console.log('🔌 Database connection closed.')
@@ -361,6 +385,6 @@ if (isMainModule) {
   if (process.argv.includes('--baseline')) {
     createBaselineOnly()
   } else {
-    runMigrations()
+    runMigrations().catch(() => process.exit(1))
   }
 }
