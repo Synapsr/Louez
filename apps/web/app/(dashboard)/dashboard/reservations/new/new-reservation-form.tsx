@@ -908,7 +908,7 @@ export function NewReservationForm({
       }
 
       const nextAttributes: UnitAttributes = {
-        ...(currentLine.selectedAttributes || {}),
+        ...currentLine.selectedAttributes,
       };
 
       if (!value || value === '__none__') {

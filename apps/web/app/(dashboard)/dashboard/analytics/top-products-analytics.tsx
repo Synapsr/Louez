@@ -1,45 +1,47 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
-import { Badge } from '@louez/ui'
-import { Eye, ShoppingCart, Package } from 'lucide-react'
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Badge } from "@louez/ui";
+import { Eye, ShoppingCart, Package } from "lucide-react";
 
 export interface TopProductData {
-  productId: string
-  productName: string
-  views: number
-  cartAdditions: number
-  conversions: number
+  productId: string;
+  productName: string;
+  views: number;
+  cartAdditions: number;
+  conversions: number;
 }
 
 interface TopProductsAnalyticsProps {
-  products: TopProductData[]
-  storeSlug?: string
+  products: TopProductData[];
+  storeSlug?: string;
 }
 
-export function TopProductsAnalytics({ products, storeSlug }: TopProductsAnalyticsProps) {
-  const t = useTranslations('dashboard.analytics')
+export function TopProductsAnalytics({
+  products,
+  storeSlug: _storeSlug,
+}: TopProductsAnalyticsProps) {
+  const t = useTranslations("dashboard.analytics");
 
   if (products.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
         <Package className="mb-2 h-8 w-8" />
-        <p>{t('noProducts')}</p>
+        <p>{t("noProducts")}</p>
       </div>
-    )
+    );
   }
 
   // Get max values for relative sizing
-  const maxViews = Math.max(...products.map((p) => p.views), 1)
+  const maxViews = Math.max(...products.map((p) => p.views), 1);
 
   return (
     <div className="space-y-3">
       {products.map((product, index) => {
-        const viewsPercentage = (product.views / maxViews) * 100
-        const conversionRate = product.views > 0
-          ? ((product.conversions / product.views) * 100).toFixed(1)
-          : '0'
+        const viewsPercentage = (product.views / maxViews) * 100;
+        const conversionRate =
+          product.views > 0 ? ((product.conversions / product.views) * 100).toFixed(1) : "0";
 
         return (
           <div
@@ -86,8 +88,8 @@ export function TopProductsAnalytics({ products, storeSlug }: TopProductsAnalyti
               </div>
             </div>
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

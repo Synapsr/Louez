@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from "next/navigation";
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
   ArrowRight,
@@ -15,45 +15,39 @@ import {
   Globe,
   Search,
   X,
-} from 'lucide-react';
-import { useTranslations } from 'next-intl';
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import type {
   BusinessHours,
   BusinessHoursValidation,
   CombinationAvailability,
   ProductAvailability,
-} from '@louez/types';
-import { Button } from '@louez/ui';
-import { Input } from '@louez/ui';
-import { Badge } from '@louez/ui';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@louez/ui';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@louez/ui';
-import { Skeleton } from '@louez/ui';
-import { Alert, AlertDescription, AlertTitle } from '@louez/ui';
+} from "@louez/types";
+import { Button } from "@louez/ui";
+import { Input } from "@louez/ui";
+import { Badge } from "@louez/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@louez/ui";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@louez/ui";
+import { Skeleton } from "@louez/ui";
+import { Alert, AlertDescription, AlertTitle } from "@louez/ui";
 
-import { CartSidebar } from '@/components/storefront/cart-sidebar';
-import { DatePickerModal } from '@/components/storefront/date-picker-modal';
-import { PageTracker } from '@/components/storefront/page-tracker';
-import { ProductCardAvailable } from '@/components/storefront/product-card-available';
+import { CartSidebar } from "@/components/storefront/cart-sidebar";
+import { DatePickerModal } from "@/components/storefront/date-picker-modal";
+import { PageTracker } from "@/components/storefront/page-tracker";
+import { ProductCardAvailable } from "@/components/storefront/product-card-available";
 
-import { orpc } from '@/lib/orpc/react';
+import { orpc } from "@/lib/orpc/react";
 import {
   type PricingMode,
   calculateDuration,
   formatDateTime,
   getDetailedDuration,
-} from '@/lib/utils/duration';
+} from "@/lib/utils/duration";
 
-import { useStorefrontUrl } from '@/hooks/use-storefront-url';
+import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 
-import { useCart } from '@/contexts/cart-context';
+import { useCart } from "@/contexts/cart-context";
 
 interface PricingTier {
   id: string;
@@ -71,7 +65,7 @@ interface Accessory {
   deposit: string;
   images: string[] | null;
   quantity: number;
-  pricingMode: 'day' | 'hour' | 'week' | null;
+  pricingMode: "day" | "hour" | "week" | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: PricingTier[];
 }
@@ -114,7 +108,7 @@ interface Product {
     position: number;
   }> | null;
   units?: Array<{
-    lifecycleStatus: 'active' | 'retired' | null;
+    lifecycleStatus: "active" | "retired" | null;
     inDowntimeNow?: boolean;
     attributes: Record<string, string> | null;
   }>;
@@ -161,16 +155,16 @@ export function RentalContent({
   categoryId,
   searchTerm: initialSearchTerm,
 }: RentalContentProps) {
-  const t = useTranslations('storefront.availability');
-  const tFilters = useTranslations('storefront.availability.filters');
-  const tDate = useTranslations('storefront.dateSelection');
+  const t = useTranslations("storefront.availability");
+  const tFilters = useTranslations("storefront.availability.filters");
+  const tDate = useTranslations("storefront.dateSelection");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setGlobalDates, setPricingMode } = useCart();
   const { getUrl } = useStorefrontUrl(store.slug);
 
-  const [searchTerm, setSearchTerm] = useState(initialSearchTerm || '');
-  const [selectedCategory, setSelectedCategory] = useState(categoryId || 'all');
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm || "");
+  const [selectedCategory, setSelectedCategory] = useState(categoryId || "all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
 
@@ -192,7 +186,7 @@ export function RentalContent({
   const businessHoursValidation: BusinessHoursValidation | null =
     availabilityData?.businessHoursValidation || null;
 
-  const duration = useMemo(
+  const _duration = useMemo(
     () => calculateDuration(startDate, endDate, pricingMode),
     [startDate, endDate, pricingMode],
   );
@@ -220,7 +214,7 @@ export function RentalContent({
     const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (browserTimezone === storeTimezone) return null;
     // Extract city name from IANA timezone (e.g., "Europe/Paris" → "Paris")
-    const city = storeTimezone.split('/').pop()?.replace(/_/g, ' ');
+    const city = storeTimezone.split("/").pop()?.replace(/_/g, " ");
     return city || storeTimezone;
   }, [storeTimezone]);
 
@@ -235,7 +229,7 @@ export function RentalContent({
     let filtered = products;
 
     // Category filter
-    if (selectedCategory && selectedCategory !== 'all') {
+    if (selectedCategory && selectedCategory !== "all") {
       filtered = filtered.filter((p) => p.category?.id === selectedCategory);
     }
 
@@ -243,9 +237,7 @@ export function RentalContent({
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(term) ||
-          p.description?.toLowerCase().includes(term),
+        (p) => p.name.toLowerCase().includes(term) || p.description?.toLowerCase().includes(term),
       );
     }
 
@@ -255,10 +247,7 @@ export function RentalContent({
   // Keep the catalog category order first, then surface available products within each category.
   const sortedProducts = useMemo(() => {
     const categoryOrderById = new Map(
-      categories.map((category, index) => [
-        category.id,
-        category.order ?? index,
-      ]),
+      categories.map((category, index) => [category.id, category.order ?? index]),
     );
     const originalOrderById = new Map(
       filteredProducts.map((product, index) => [product.id, index]),
@@ -267,14 +256,10 @@ export function RentalContent({
 
     return [...filteredProducts].sort((a, b) => {
       const aCategoryOrder = a.category?.id
-        ? (categoryOrderById.get(a.category.id) ??
-          a.category.order ??
-          uncategorizedOrder)
+        ? (categoryOrderById.get(a.category.id) ?? a.category.order ?? uncategorizedOrder)
         : uncategorizedOrder;
       const bCategoryOrder = b.category?.id
-        ? (categoryOrderById.get(b.category.id) ??
-          b.category.order ??
-          uncategorizedOrder)
+        ? (categoryOrderById.get(b.category.id) ?? b.category.order ?? uncategorizedOrder)
         : uncategorizedOrder;
 
       if (aCategoryOrder !== bCategoryOrder) {
@@ -285,17 +270,15 @@ export function RentalContent({
       const bAvail = availability.get(b.id);
 
       const statusOrder = { available: 0, limited: 1, unavailable: 2 };
-      const aStatus = aAvail?.status || 'available';
-      const bStatus = bAvail?.status || 'available';
+      const aStatus = aAvail?.status || "available";
+      const bStatus = bAvail?.status || "available";
       const availabilityOrder = statusOrder[aStatus] - statusOrder[bStatus];
 
       if (availabilityOrder !== 0) {
         return availabilityOrder;
       }
 
-      return (
-        (originalOrderById.get(a.id) ?? 0) - (originalOrderById.get(b.id) ?? 0)
-      );
+      return (originalOrderById.get(a.id) ?? 0) - (originalOrderById.get(b.id) ?? 0);
     });
   }, [filteredProducts, availability, categories]);
 
@@ -307,12 +290,12 @@ export function RentalContent({
     if (value === null) return;
     setSelectedCategory(value);
     const params = new URLSearchParams(searchParams.toString());
-    if (value === 'all') {
-      params.delete('category');
+    if (value === "all") {
+      params.delete("category");
     } else {
-      params.set('category', value);
+      params.set("category", value);
     }
-    router.push(`${getUrl('/rental')}?${params.toString()}`, { scroll: false });
+    router.push(`${getUrl("/rental")}?${params.toString()}`, { scroll: false });
   };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -320,24 +303,23 @@ export function RentalContent({
   };
 
   const handleClearFilters = () => {
-    setSearchTerm('');
-    setSelectedCategory('all');
+    setSearchTerm("");
+    setSelectedCategory("all");
     const params = new URLSearchParams();
-    params.set('startDate', startDate);
-    params.set('endDate', endDate);
-    router.push(`${getUrl('/rental')}?${params.toString()}`, { scroll: false });
+    params.set("startDate", startDate);
+    params.set("endDate", endDate);
+    router.push(`${getUrl("/rental")}?${params.toString()}`, { scroll: false });
   };
 
-  const hasFilters =
-    searchTerm || (selectedCategory && selectedCategory !== 'all');
+  const hasFilters = searchTerm || (selectedCategory && selectedCategory !== "all");
 
-  const primaryColor = store.theme?.primaryColor || '#0066FF';
+  const primaryColor = store.theme?.primaryColor || "#0066FF";
 
   // Format duration label with days + hours
   const durationLabel = (() => {
     const { days, hours } = detailedDuration;
 
-    if (pricingMode === 'hour') {
+    if (pricingMode === "hour") {
       return `${detailedDuration.totalHours}h`;
     }
 
@@ -345,20 +327,20 @@ export function RentalContent({
       return `${hours}h`;
     }
 
-    const dayLabel = days === 1 ? tDate('durationDay') : tDate('durationDays');
+    const dayLabel = days === 1 ? tDate("durationDay") : tDate("durationDays");
 
     if (hours === 0) {
       return `${days} ${dayLabel}`;
     }
 
-    return `${days} ${dayLabel} ${tDate('and')} ${hours}h`;
+    return `${days} ${dayLabel} ${tDate("and")} ${hours}h`;
   })();
 
   return (
     <div className="container mx-auto px-4 py-4 md:py-6">
       <PageTracker
         page="rental"
-        categoryId={selectedCategory !== 'all' ? selectedCategory : undefined}
+        categoryId={selectedCategory !== "all" ? selectedCategory : undefined}
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main Content */}
@@ -380,14 +362,11 @@ export function RentalContent({
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                     style={{ backgroundColor: `${primaryColor}20` }}
                   >
-                    <CalendarDays
-                      className="h-4 w-4"
-                      style={{ color: primaryColor }}
-                    />
+                    <CalendarDays className="h-4 w-4" style={{ color: primaryColor }} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-muted-foreground text-[10px] tracking-wide uppercase">
-                      {tDate('startLabel')}
+                      {tDate("startLabel")}
                     </p>
                     <p className="text-sm font-medium">
                       {startDateTime.date}
@@ -407,14 +386,11 @@ export function RentalContent({
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                     style={{ backgroundColor: `${primaryColor}20` }}
                   >
-                    <Clock
-                      className="h-4 w-4"
-                      style={{ color: primaryColor }}
-                    />
+                    <Clock className="h-4 w-4" style={{ color: primaryColor }} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-muted-foreground text-[10px] tracking-wide uppercase">
-                      {tDate('endLabel')}
+                      {tDate("endLabel")}
                     </p>
                     <p className="text-sm font-medium">
                       {endDateTime.date}
@@ -444,7 +420,7 @@ export function RentalContent({
                 onClick={handleChangeDates}
                 className="w-full shrink-0 sm:w-auto"
               >
-                {t('changeDates')}
+                {t("changeDates")}
               </Button>
             </div>
 
@@ -452,7 +428,7 @@ export function RentalContent({
             {timezoneCity && (
               <div className="text-muted-foreground mt-3 flex items-center gap-1.5 border-t pt-3 text-xs">
                 <Globe className="h-3.5 w-3.5 shrink-0" />
-                <span>{tDate('timezoneNotice', { city: timezoneCity })}</span>
+                <span>{tDate("timezoneNotice", { city: timezoneCity })}</span>
               </div>
             )}
           </div>
@@ -461,22 +437,20 @@ export function RentalContent({
           {businessHoursValidation && !businessHoursValidation.valid && (
             <Alert variant="warning">
               <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>{t('businessHoursWarning.title')}</AlertTitle>
+              <AlertTitle>{t("businessHoursWarning.title")}</AlertTitle>
               <AlertDescription>
                 {businessHoursValidation.errors.map((error) => {
                   // Parse error like "pickup_outside_hours" or "return_day_closed"
-                  const [action, ...reasonParts] = error.split('_');
-                  const reason = reasonParts.join('_');
+                  const [action, ...reasonParts] = error.split("_");
+                  const reason = reasonParts.join("_");
                   return (
                     <span key={error} className="block">
-                      {t(`businessHoursWarning.${action}`)}:{' '}
+                      {t(`businessHoursWarning.${action}`)}:{" "}
                       {t(`businessHoursWarning.reasons.${reason}`)}
                     </span>
                   );
                 })}
-                <span className="mt-2 block text-sm">
-                  {t('businessHoursWarning.suggestion')}
-                </span>
+                <span className="mt-2 block text-sm">{t("businessHoursWarning.suggestion")}</span>
               </AlertDescription>
             </Alert>
           )}
@@ -485,7 +459,7 @@ export function RentalContent({
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
             <div className="flex items-center justify-between gap-4">
               <p className="text-muted-foreground text-sm">
-                {t('productCountPlural', { count: sortedProducts.length })}
+                {t("productCountPlural", { count: sortedProducts.length })}
               </p>
 
               {/* Desktop filters */}
@@ -493,36 +467,27 @@ export function RentalContent({
                 <div className="relative w-48">
                   <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                   <Input
-                    placeholder={tFilters('search')}
+                    placeholder={tFilters("search")}
                     value={searchTerm}
                     onChange={handleSearch}
                     className="h-9"
                   />
                 </div>
                 {categories.length > 0 && (
-                  <Select
-                    value={selectedCategory}
-                    onValueChange={handleCategoryChange}
-                  >
+                  <Select value={selectedCategory} onValueChange={handleCategoryChange}>
                     <SelectTrigger className="h-9 w-40">
-                      <SelectValue placeholder={tFilters('categories')}>
-                        {selectedCategory === 'all'
-                          ? tFilters('allCategories')
-                          : categories.find(
-                              (cat) => cat.id === selectedCategory,
-                            )?.name}
+                      <SelectValue placeholder={tFilters("categories")}>
+                        {selectedCategory === "all"
+                          ? tFilters("allCategories")
+                          : categories.find((cat) => cat.id === selectedCategory)?.name}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all" label={tFilters('allCategories')}>
-                        {tFilters('allCategories')}
+                      <SelectItem value="all" label={tFilters("allCategories")}>
+                        {tFilters("allCategories")}
                       </SelectItem>
                       {categories.map((cat) => (
-                        <SelectItem
-                          key={cat.id}
-                          value={cat.id}
-                          label={cat.name}
-                        >
+                        <SelectItem key={cat.id} value={cat.id} label={cat.name}>
                           {cat.name}
                         </SelectItem>
                       ))}
@@ -530,26 +495,19 @@ export function RentalContent({
                   </Select>
                 )}
                 {hasFilters && (
-                  <Button
-                    variant="ghost"
-                    onClick={handleClearFilters}
-                    className="h-9"
-                  >
+                  <Button variant="ghost" onClick={handleClearFilters} className="h-9">
                     <X className="mr-1 h-4 w-4" />
-                    {tFilters('clearFilters')}
+                    {tFilters("clearFilters")}
                   </Button>
                 )}
               </div>
 
               {/* Mobile filter toggle */}
-              <CollapsibleTrigger
-                className="md:hidden"
-                render={<Button variant="outline" />}
-              >
+              <CollapsibleTrigger className="md:hidden" render={<Button variant="outline" />}>
                 <Filter className="mr-2 h-4 w-4" />
                 Filtres
                 <ChevronDown
-                  className={`ml-2 h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
+                  className={`ml-2 h-4 w-4 transition-transform ${filtersOpen ? "rotate-180" : ""}`}
                 />
               </CollapsibleTrigger>
             </div>
@@ -560,35 +518,26 @@ export function RentalContent({
                 <div className="relative">
                   <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                   <Input
-                    placeholder={tFilters('search')}
+                    placeholder={tFilters("search")}
                     value={searchTerm}
                     onChange={handleSearch}
                   />
                 </div>
                 {categories.length > 0 && (
-                  <Select
-                    value={selectedCategory}
-                    onValueChange={handleCategoryChange}
-                  >
+                  <Select value={selectedCategory} onValueChange={handleCategoryChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder={tFilters('categories')}>
-                        {selectedCategory === 'all'
-                          ? tFilters('allCategories')
-                          : categories.find(
-                              (cat) => cat.id === selectedCategory,
-                            )?.name}
+                      <SelectValue placeholder={tFilters("categories")}>
+                        {selectedCategory === "all"
+                          ? tFilters("allCategories")
+                          : categories.find((cat) => cat.id === selectedCategory)?.name}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all" label={tFilters('allCategories')}>
-                        {tFilters('allCategories')}
+                      <SelectItem value="all" label={tFilters("allCategories")}>
+                        {tFilters("allCategories")}
                       </SelectItem>
                       {categories.map((cat) => (
-                        <SelectItem
-                          key={cat.id}
-                          value={cat.id}
-                          label={cat.name}
-                        >
+                        <SelectItem key={cat.id} value={cat.id} label={cat.name}>
                           {cat.name}
                         </SelectItem>
                       ))}
@@ -596,13 +545,9 @@ export function RentalContent({
                   </Select>
                 )}
                 {hasFilters && (
-                  <Button
-                    variant="ghost"
-                    onClick={handleClearFilters}
-                    className="justify-start"
-                  >
+                  <Button variant="ghost" onClick={handleClearFilters} className="justify-start">
                     <X className="mr-1 h-4 w-4" />
-                    {tFilters('clearFilters')}
+                    {tFilters("clearFilters")}
                   </Button>
                 )}
               </div>
@@ -622,16 +567,10 @@ export function RentalContent({
             </div>
           ) : sortedProducts.length === 0 ? (
             <div className="py-16 text-center">
-              <p className="text-lg font-medium">{t('empty.title')}</p>
-              <p className="text-muted-foreground mt-2">
-                {t('empty.description')}
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={handleChangeDates}
-              >
-                {t('empty.changeDates')}
+              <p className="text-lg font-medium">{t("empty.title")}</p>
+              <p className="text-muted-foreground mt-2">{t("empty.description")}</p>
+              <Button variant="outline" className="mt-4" onClick={handleChangeDates}>
+                {t("empty.changeDates")}
               </Button>
             </div>
           ) : (
@@ -647,15 +586,11 @@ export function RentalContent({
                     product={product}
                     storeSlug={store.slug}
                     availableQuantity={
-                      avail?.availableQuantity ??
-                      product.displayQuantity ??
-                      product.quantity
+                      avail?.availableQuantity ?? product.displayQuantity ?? product.quantity
                     }
                     startDate={startDate}
                     endDate={endDate}
-                    availableCombinations={
-                      availableCombinations as CombinationAvailability[]
-                    }
+                    availableCombinations={availableCombinations as CombinationAvailability[]}
                   />
                 );
               })}

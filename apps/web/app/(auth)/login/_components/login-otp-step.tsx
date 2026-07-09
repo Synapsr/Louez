@@ -1,31 +1,18 @@
-'use client';
+"use client";
 
-import { Mail } from 'lucide-react';
+import { Mail } from "lucide-react";
 
-import {
-  Button,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui';
+import { Button } from "@louez/ui";
 
-import { LoginErrorAlert } from './login-error-alert';
-import type { LoginFormState } from './use-login-form';
+import { LoginErrorAlert } from "./login-error-alert";
+import type { LoginFormState } from "./use-login-form";
 
 interface LoginOtpStepProps {
   state: LoginFormState;
 }
 
 export const LoginOtpStep = ({ state }: LoginOtpStepProps) => {
-  const {
-    handleUseDifferentEmail,
-    isPending,
-    otpForm,
-    rootError,
-    submittedEmail,
-    t,
-  } = state;
+  const { handleUseDifferentEmail, isPending, otpForm, rootError, submittedEmail, t } = state;
 
   return (
     <div className="space-y-6 px-4">
@@ -34,9 +21,9 @@ export const LoginOtpStep = ({ state }: LoginOtpStepProps) => {
           <Mail className="text-primary h-8 w-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold">{t('enterCode')}</h2>
+          <h2 className="text-2xl font-bold">{t("enterCode")}</h2>
           <p className="text-muted-foreground text-base">
-            {t('codeSentTo')} <strong>{submittedEmail}</strong>
+            {t("codeSentTo")} <strong>{submittedEmail}</strong>
           </p>
         </div>
       </div>
@@ -61,7 +48,7 @@ export const LoginOtpStep = ({ state }: LoginOtpStepProps) => {
                     disabled={field.state.value.length !== 6}
                     isPending={isPending}
                   >
-                    {t('verify')}
+                    {t("verify")}
                   </Button>
                 </>
               )}
@@ -75,7 +62,7 @@ export const LoginOtpStep = ({ state }: LoginOtpStepProps) => {
           className="w-full"
           disabled={isPending}
         >
-          {t('tryDifferentEmail')}
+          {t("tryDifferentEmail")}
         </Button>
 
         <LoginErrorAlert message={rootError} />

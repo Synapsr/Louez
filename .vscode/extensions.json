@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "TypeScriptTeam.native-preview",
+    "inlang.vs-code-extension",
+    "oxc.oxc-vscode"
+  ],
+  "unwantedRecommendations": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+}

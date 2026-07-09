@@ -2,49 +2,48 @@
   "name": "louez",
   "version": "1.0.0",
   "description": "Open-source equipment rental management platform with multi-tenant storefronts",
-  "author": "Synapsr <contact@synapsr.com>",
-  "license": "Apache-2.0 WITH Commons-Clause",
+  "keywords": [
+    "drizzle",
+    "equipment-rental",
+    "inventory-management",
+    "multi-tenant",
+    "mysql",
+    "nextjs",
+    "react",
+    "rental",
+    "reservation-system",
+    "saas",
+    "self-hosted",
+    "storefront",
+    "tailwindcss",
+    "typescript"
+  ],
   "homepage": "https://github.com/synapsr/louez#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/synapsr/louez.git"
-  },
   "bugs": {
     "url": "https://github.com/synapsr/louez/issues"
   },
-  "keywords": [
-    "rental",
-    "equipment-rental",
-    "saas",
-    "multi-tenant",
-    "nextjs",
-    "react",
-    "typescript",
-    "tailwindcss",
-    "drizzle",
-    "mysql",
-    "storefront",
-    "inventory-management",
-    "reservation-system",
-    "self-hosted"
-  ],
-  "engines": {
-    "node": ">=20.0.0"
+  "license": "Apache-2.0 WITH Commons-Clause",
+  "author": "Synapsr <contact@synapsr.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/synapsr/louez.git"
   },
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
-  "packageManager": "pnpm@10.27.0",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:web": "turbo dev --filter=@louez/web",
-    "lint": "turbo run lint && pnpm audit:duplicates",
+    "lint": "oxlint && pnpm audit:duplicates",
+    "lint:ox": "oxlint",
     "audit:duplicates": "node scripts/audit-duplicates.mjs",
     "type-check": "turbo run type-check",
     "type-check:web": "turbo type-check --filter=@louez/web",
-    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "format": "oxfmt --write apps packages docs scripts docker spec .github .vscode package.json pnpm-workspace.yaml turbo.json tsconfig.json \"*.md\" \"*.json\"",
+    "format:check": "oxfmt --check apps packages docs scripts docker spec .github .vscode package.json pnpm-workspace.yaml turbo.json tsconfig.json \"*.md\" \"*.json\"",
+    "check": "pnpm lint && pnpm type-check",
     "clean": "turbo run clean && rm -rf node_modules",
     "db:generate": "turbo run db:generate --filter=@louez/db",
     "db:migrate": "turbo run db:migrate --filter=@louez/db",
@@ -60,9 +59,13 @@
   },
   "devDependencies": {
     "@louez/config": "workspace:*",
-    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
-    "prettier": "^3.7.4",
-    "prettier-plugin-tailwindcss": "^0.7.2",
-    "turbo": "^2.8.17"
-  }
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "turbo": "^2.8.17",
+    "typescript": "catalog:"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@10.27.0"
 }

@@ -1,6 +1,5 @@
 import { defineNodeInstrumentation } from 'evlog/next/instrumentation';
 
-import { env } from '@/env';
 
 const evlogInstrumentation = defineNodeInstrumentation(
   () => import('./lib/evlog'),

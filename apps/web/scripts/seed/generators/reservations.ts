@@ -13,7 +13,6 @@ import {
   generateIpAddress,
   generateReservationNumber,
   generateStripeId,
-  isPast,
   logProgress,
   pickRandom,
   pickRandomMultiple,

@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { db } from '@louez/db'
-import { storeInvitations, storeMembers, stores, users } from '@louez/db'
+import { storeInvitations, storeMembers, users } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { InvitationContent } from './invitation-content'

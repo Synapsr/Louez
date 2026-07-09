@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { db, categories } from '@louez/db'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 import type { McpSessionContext } from '../auth/context'

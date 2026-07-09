@@ -220,7 +220,7 @@ function toResolvedAttributes(
   resolved: UnitAttributes,
 ): UnitAttributes {
   return {
-    ...(selected || {}),
+    ...selected,
     ...resolved,
   };
 }

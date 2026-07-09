@@ -9,7 +9,6 @@ import { useTranslations } from 'next-intl';
 import { Button, SelectPopup } from '@louez/ui';
 import {
   Select,
-  SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,

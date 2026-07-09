@@ -56,11 +56,11 @@ export function setIntegrationEnabledState(
 ): StoreSettings {
   const base = getBaseSettings(settings)
   const integrationData: IntegrationData = {
-    ...(base.integrationData || {}),
+    ...base.integrationData,
     states: {
-      ...(base.integrationData?.states || {}),
+      ...base.integrationData?.states,
       [integrationId]: {
-        ...(base.integrationData?.states?.[integrationId] || {}),
+        ...base.integrationData?.states?.[integrationId],
         enabled,
       },
     },

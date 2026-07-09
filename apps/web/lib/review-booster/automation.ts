@@ -5,23 +5,23 @@
  * after rentals are completed.
  */
 
-import { db } from '@louez/db'
-import { stores, reservations, customers, reviewRequestLogs } from '@louez/db'
-import { eq, and, lte, gte, inArray, sql } from 'drizzle-orm'
-import { sendThankYouReviewSms } from '@/lib/sms/send'
-import { buildReviewUrl } from '@/lib/google-places'
-import { sendThankYouReviewEmail } from '@/lib/email/send'
-import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
-import type { ReviewBoosterSettings } from '@louez/types'
-import { env } from '@/env'
+import { db } from "@louez/db";
+import { reservations, customers, reviewRequestLogs } from "@louez/db";
+import { eq, and, lte, gte, inArray, sql } from "drizzle-orm";
+import { sendThankYouReviewSms } from "@/lib/sms/send";
+import { buildReviewUrl } from "@/lib/google-places";
+import { sendThankYouReviewEmail } from "@/lib/email/send";
+import { getLocaleFromCountry, type EmailLocale } from "@/lib/email/i18n";
+import type { ReviewBoosterSettings } from "@louez/types";
+import { env } from "@/env";
 
 // Base domain for short URLs (e.g., "louez.io" or "localhost:3000")
-const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
-const IS_PRODUCTION = env.NODE_ENV === 'production'
+const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
+const IS_PRODUCTION = env.NODE_ENV === "production";
 
 // Maximum window for eligible reservations (prevents mass sending on feature activation)
 // Only reservations returned within the last 24 hours are eligible
-const MAX_ELIGIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000 // 1 day
+const MAX_ELIGIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000; // 1 day
 
 /**
  * Build a short review URL for SMS
@@ -29,17 +29,17 @@ const MAX_ELIGIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000 // 1 day
  */
 function buildShortReviewUrl(storeSlug: string): string {
   if (IS_PRODUCTION) {
-    return `https://${storeSlug}.${APP_DOMAIN}/review`
+    return `https://${storeSlug}.${APP_DOMAIN}/review`;
   }
   // In development, use path-based routing
-  return `http://${APP_DOMAIN}/${storeSlug}/review`
+  return `http://${APP_DOMAIN}/${storeSlug}/review`;
 }
 
 interface ProcessResult {
-  processed: number
-  emailsSent: number
-  smsSent: number
-  errors: string[]
+  processed: number;
+  emailsSent: number;
+  smsSent: number;
+  errors: string[];
 }
 
 /**
@@ -52,47 +52,47 @@ export async function processReviewRequests(): Promise<ProcessResult> {
     emailsSent: 0,
     smsSent: 0,
     errors: [],
-  }
+  };
 
   try {
     // Get all stores with review booster enabled
     const storesWithReviewBooster = await db.query.stores.findMany({
       where: sql`JSON_EXTRACT(review_booster_settings, '$.enabled') = true`,
-    })
+    });
 
     for (const store of storesWithReviewBooster) {
-      const settings = store.reviewBoosterSettings as ReviewBoosterSettings | null
-      if (!settings?.googlePlaceId) continue
+      const settings = store.reviewBoosterSettings as ReviewBoosterSettings | null;
+      if (!settings?.googlePlaceId) continue;
 
       // Full Google URL for emails (more trustworthy)
-      const fullReviewUrl = buildReviewUrl(settings.googlePlaceId)
+      const fullReviewUrl = buildReviewUrl(settings.googlePlaceId);
       // Short URL for SMS (saves characters)
-      const shortReviewUrl = buildShortReviewUrl(store.slug)
+      const shortReviewUrl = buildShortReviewUrl(store.slug);
       // Get locale from store's country (from store settings)
-      const storeSettings = store.settings as { country?: string } | null
-      const locale = getLocaleFromCountry(storeSettings?.country)
+      const storeSettings = store.settings as { country?: string } | null;
+      const locale = getLocaleFromCountry(storeSettings?.country);
 
       // Process email requests
       if (settings.autoSendThankYouEmail) {
-        const emailResult = await processEmailRequests(store, settings, shortReviewUrl, locale)
-        result.emailsSent += emailResult.sent
-        result.errors.push(...emailResult.errors)
+        const emailResult = await processEmailRequests(store, settings, fullReviewUrl, locale);
+        result.emailsSent += emailResult.sent;
+        result.errors.push(...emailResult.errors);
       }
 
       // Process SMS requests
       if (settings.autoSendThankYouSms) {
-        const smsResult = await processSmsRequests(store, settings, shortReviewUrl, locale)
-        result.smsSent += smsResult.sent
-        result.errors.push(...smsResult.errors)
+        const smsResult = await processSmsRequests(store, settings, shortReviewUrl, locale);
+        result.smsSent += smsResult.sent;
+        result.errors.push(...smsResult.errors);
       }
 
-      result.processed++
+      result.processed++;
     }
   } catch (error) {
-    result.errors.push(`Global error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    result.errors.push(`Global error: ${error instanceof Error ? error.message : "Unknown error"}`);
   }
 
-  return result
+  return result;
 }
 
 /**
@@ -100,22 +100,22 @@ export async function processReviewRequests(): Promise<ProcessResult> {
  */
 async function processEmailRequests(
   store: {
-    id: string
-    name: string
-    logoUrl: string | null
-    email: string | null
-    phone: string | null
-    address: string | null
-    theme: { primaryColor?: string } | null
+    id: string;
+    name: string;
+    logoUrl: string | null;
+    email: string | null;
+    phone: string | null;
+    address: string | null;
+    theme: { primaryColor?: string } | null;
   },
   settings: ReviewBoosterSettings,
   reviewUrl: string,
-  locale: EmailLocale
+  locale: EmailLocale,
 ): Promise<{ sent: number; errors: string[] }> {
-  const result = { sent: 0, errors: [] as string[] }
-  const delayMs = settings.emailDelayHours * 60 * 60 * 1000
-  const cutoffDate = new Date(Date.now() - delayMs)
-  const maxAgeDate = new Date(Date.now() - MAX_ELIGIBILITY_WINDOW_MS)
+  const result = { sent: 0, errors: [] as string[] };
+  const delayMs = settings.emailDelayHours * 60 * 60 * 1000;
+  const cutoffDate = new Date(Date.now() - delayMs);
+  const maxAgeDate = new Date(Date.now() - MAX_ELIGIBILITY_WINDOW_MS);
 
   // Find completed reservations that need email review request
   // - returnedAt is before cutoff (delay has passed)
@@ -131,27 +131,27 @@ async function processEmailRequests(
     .where(
       and(
         eq(reservations.storeId, store.id),
-        eq(reservations.status, 'completed'),
+        eq(reservations.status, "completed"),
         lte(reservations.returnedAt, cutoffDate),
-        gte(reservations.returnedAt, maxAgeDate)
-      )
+        gte(reservations.returnedAt, maxAgeDate),
+      ),
     )
-    .limit(50) // Process in batches
+    .limit(50); // Process in batches
 
   // Filter out reservations that already have an email sent
-  const reservationIds = eligibleReservations.map((r) => r.reservation.id)
-  if (reservationIds.length === 0) return result
+  const reservationIds = eligibleReservations.map((r) => r.reservation.id);
+  if (reservationIds.length === 0) return result;
 
   const existingLogs = await db.query.reviewRequestLogs.findMany({
     where: and(
       inArray(reviewRequestLogs.reservationId, reservationIds),
-      eq(reviewRequestLogs.channel, 'email')
+      eq(reviewRequestLogs.channel, "email"),
     ),
-  })
-  const sentReservationIds = new Set(existingLogs.map((l) => l.reservationId))
+  });
+  const sentReservationIds = new Set(existingLogs.map((l) => l.reservationId));
 
   for (const { reservation, customer } of eligibleReservations) {
-    if (sentReservationIds.has(reservation.id)) continue
+    if (sentReservationIds.has(reservation.id)) continue;
 
     try {
       await sendThankYouReviewEmail({
@@ -164,7 +164,7 @@ async function processEmailRequests(
           email: store.email,
           phone: store.phone,
           address: store.address,
-          theme: store.theme as { mode?: 'light' | 'dark'; primaryColor?: string } | null,
+          theme: store.theme as { mode?: "light" | "dark"; primaryColor?: string } | null,
         },
         customer: { firstName: customer.firstName },
         reservation: {
@@ -175,25 +175,25 @@ async function processEmailRequests(
         },
         reviewUrl,
         locale,
-      })
+      });
 
       // Log the sent request
       await db.insert(reviewRequestLogs).values({
         reservationId: reservation.id,
         storeId: store.id,
         customerId: customer.id,
-        channel: 'email',
-      })
+        channel: "email",
+      });
 
-      result.sent++
+      result.sent++;
     } catch (error) {
       result.errors.push(
-        `Email error for reservation ${reservation.number}: ${error instanceof Error ? error.message : 'Unknown'}`
-      )
+        `Email error for reservation ${reservation.number}: ${error instanceof Error ? error.message : "Unknown"}`,
+      );
     }
   }
 
-  return result
+  return result;
 }
 
 /**
@@ -201,17 +201,17 @@ async function processEmailRequests(
  */
 async function processSmsRequests(
   store: {
-    id: string
-    name: string
+    id: string;
+    name: string;
   },
   settings: ReviewBoosterSettings,
   reviewUrl: string,
-  locale: EmailLocale
+  locale: EmailLocale,
 ): Promise<{ sent: number; errors: string[] }> {
-  const result = { sent: 0, errors: [] as string[] }
-  const delayMs = settings.smsDelayHours * 60 * 60 * 1000
-  const cutoffDate = new Date(Date.now() - delayMs)
-  const maxAgeDate = new Date(Date.now() - MAX_ELIGIBILITY_WINDOW_MS)
+  const result = { sent: 0, errors: [] as string[] };
+  const delayMs = settings.smsDelayHours * 60 * 60 * 1000;
+  const cutoffDate = new Date(Date.now() - delayMs);
+  const maxAgeDate = new Date(Date.now() - MAX_ELIGIBILITY_WINDOW_MS);
 
   // Find completed reservations that need SMS review request
   // - returnedAt is before cutoff (delay has passed)
@@ -226,37 +226,42 @@ async function processSmsRequests(
     .where(
       and(
         eq(reservations.storeId, store.id),
-        eq(reservations.status, 'completed'),
+        eq(reservations.status, "completed"),
         lte(reservations.returnedAt, cutoffDate),
-        gte(reservations.returnedAt, maxAgeDate)
-      )
+        gte(reservations.returnedAt, maxAgeDate),
+      ),
     )
-    .limit(50)
+    .limit(50);
 
   // Filter out reservations that already have SMS sent
-  const reservationIds = eligibleReservations.map((r) => r.reservation.id)
-  if (reservationIds.length === 0) return result
+  const reservationIds = eligibleReservations.map((r) => r.reservation.id);
+  if (reservationIds.length === 0) return result;
 
   const existingLogs = await db.query.reviewRequestLogs.findMany({
     where: and(
       inArray(reviewRequestLogs.reservationId, reservationIds),
-      eq(reviewRequestLogs.channel, 'sms')
+      eq(reviewRequestLogs.channel, "sms"),
     ),
-  })
-  const sentReservationIds = new Set(existingLogs.map((l) => l.reservationId))
+  });
+  const sentReservationIds = new Set(existingLogs.map((l) => l.reservationId));
 
   for (const { reservation, customer } of eligibleReservations) {
-    if (sentReservationIds.has(reservation.id)) continue
-    if (!customer.phone) continue // Skip if no phone
+    if (sentReservationIds.has(reservation.id)) continue;
+    if (!customer.phone) continue; // Skip if no phone
 
     try {
       const smsResult = await sendThankYouReviewSms({
         store: { id: store.id, name: store.name },
-        customer: { id: customer.id, firstName: customer.firstName, lastName: customer.lastName, phone: customer.phone },
+        customer: {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          phone: customer.phone,
+        },
         reservation: { id: reservation.id, number: reservation.number },
         reviewUrl,
         locale,
-      })
+      });
 
       if (smsResult.success) {
         // Log the sent request
@@ -264,23 +269,23 @@ async function processSmsRequests(
           reservationId: reservation.id,
           storeId: store.id,
           customerId: customer.id,
-          channel: 'sms',
-        })
+          channel: "sms",
+        });
 
-        result.sent++
+        result.sent++;
       } else if (smsResult.limitReached) {
         // Stop processing SMS if limit reached
-        result.errors.push(`SMS limit reached for store ${store.id}`)
-        break
+        result.errors.push(`SMS limit reached for store ${store.id}`);
+        break;
       }
     } catch (error) {
       result.errors.push(
-        `SMS error for reservation ${reservation.number}: ${error instanceof Error ? error.message : 'Unknown'}`
-      )
+        `SMS error for reservation ${reservation.number}: ${error instanceof Error ? error.message : "Unknown"}`,
+      );
     }
   }
 
-  return result
+  return result;
 }
 
 /**
@@ -288,7 +293,7 @@ async function processSmsRequests(
  */
 export async function sendManualReviewRequest(
   reservationId: string,
-  channel: 'email' | 'sms'
+  channel: "email" | "sms",
 ): Promise<{ success: boolean; error?: string }> {
   const reservation = await db.query.reservations.findFirst({
     where: eq(reservations.id, reservationId),
@@ -296,28 +301,28 @@ export async function sendManualReviewRequest(
       store: true,
       customer: true,
     },
-  })
+  });
 
   if (!reservation) {
-    return { success: false, error: 'Reservation not found' }
+    return { success: false, error: "Reservation not found" };
   }
 
-  const store = reservation.store
-  const customer = reservation.customer
-  const settings = store.reviewBoosterSettings as ReviewBoosterSettings | null
+  const store = reservation.store;
+  const customer = reservation.customer;
+  const settings = store.reviewBoosterSettings as ReviewBoosterSettings | null;
 
   if (!settings?.googlePlaceId) {
-    return { success: false, error: 'Review Booster not configured' }
+    return { success: false, error: "Review Booster not configured" };
   }
 
   // Use short URL for both email and SMS
-  const reviewUrl = buildShortReviewUrl(store.slug)
+  const reviewUrl = buildShortReviewUrl(store.slug);
   // Get locale from store's country (from store settings)
-  const storeSettings = store.settings as { country?: string } | null
-  const locale = getLocaleFromCountry(storeSettings?.country)
+  const storeSettings = store.settings as { country?: string } | null;
+  const locale = getLocaleFromCountry(storeSettings?.country);
 
   try {
-    if (channel === 'email') {
+    if (channel === "email") {
       await sendThankYouReviewEmail({
         to: customer.email,
         store: {
@@ -328,7 +333,7 @@ export async function sendManualReviewRequest(
           email: store.email,
           phone: store.phone,
           address: store.address,
-          theme: store.theme as { mode?: 'light' | 'dark'; primaryColor?: string } | null,
+          theme: store.theme as { mode?: "light" | "dark"; primaryColor?: string } | null,
         },
         customer: { firstName: customer.firstName },
         reservation: {
@@ -339,22 +344,27 @@ export async function sendManualReviewRequest(
         },
         reviewUrl,
         locale,
-      })
+      });
     } else {
       if (!customer.phone) {
-        return { success: false, error: 'Customer has no phone number' }
+        return { success: false, error: "Customer has no phone number" };
       }
 
       const smsResult = await sendThankYouReviewSms({
         store: { id: store.id, name: store.name },
-        customer: { id: customer.id, firstName: customer.firstName, lastName: customer.lastName, phone: customer.phone },
+        customer: {
+          id: customer.id,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          phone: customer.phone,
+        },
         reservation: { id: reservation.id, number: reservation.number },
         reviewUrl,
         locale,
-      })
+      });
 
       if (!smsResult.success) {
-        return { success: false, error: smsResult.error }
+        return { success: false, error: smsResult.error };
       }
     }
 
@@ -364,10 +374,10 @@ export async function sendManualReviewRequest(
       storeId: store.id,
       customerId: customer.id,
       channel,
-    })
+    });
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }

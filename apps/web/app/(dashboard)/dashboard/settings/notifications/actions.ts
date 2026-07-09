@@ -9,7 +9,6 @@ import { validateDiscordWebhook, sendTestDiscordNotification } from '@/lib/disco
 import {
   updateSinglePreferenceSchema,
   discordWebhookSchema,
-  ownerPhoneSchema,
 } from '@louez/validations'
 import { getSmsQuotaStatus } from '@/lib/plan-limits'
 import { notifyNotificationSettingsUpdated } from '@/lib/discord/platform-notifications'
@@ -58,7 +57,7 @@ export async function getNotificationSettings() {
   return {
     // Admin notification settings — merge over defaults so stores saved before
     // newer event types (e.g. admin reminders) still expose every key.
-    settings: { ...DEFAULT_NOTIFICATION_SETTINGS, ...(store.notificationSettings ?? {}) },
+    settings: { ...DEFAULT_NOTIFICATION_SETTINGS, ...store.notificationSettings },
     discordWebhookUrl: store.discordWebhookUrl,
     ownerPhone: store.ownerPhone,
     smsQuota: {
@@ -92,7 +91,7 @@ export async function updateSinglePreference(data: {
   // (e.g. admin reminders) keep a full {email, sms, discord} config when toggled.
   const currentSettings: NotificationSettings = {
     ...DEFAULT_NOTIFICATION_SETTINGS,
-    ...(store.notificationSettings ?? {}),
+    ...store.notificationSettings,
   }
 
   // Update the specific preference
@@ -396,7 +395,7 @@ export async function updateAdminReminderSettings(data: {
   // gets a full settings object (including the new event keys) when timing is saved.
   const currentSettings: NotificationSettings = {
     ...DEFAULT_NOTIFICATION_SETTINGS,
-    ...(store.notificationSettings ?? {}),
+    ...store.notificationSettings,
   }
   const currentTiming = currentSettings.reminderSettings ?? {
     pickupReminderHours: 24,

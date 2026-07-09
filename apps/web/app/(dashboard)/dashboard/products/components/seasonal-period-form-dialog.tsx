@@ -25,7 +25,6 @@ import {
 
 import {
   createSeasonalPricing,
-  updateSeasonalPricing,
 } from '../seasonal-actions';
 import type {
   PriceDurationValue,

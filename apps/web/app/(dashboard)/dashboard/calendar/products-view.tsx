@@ -7,7 +7,7 @@ import type {
   PointerEvent as ReactPointerEvent,
 } from 'react';
 
-import { ChevronDown, ChevronRight, Package } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import {

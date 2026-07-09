@@ -1,40 +1,33 @@
-'use client';
+"use client";
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState } from "react";
 
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
-import { useQuery } from '@tanstack/react-query';
-import { Calendar, Lock, Plus } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useQuery } from "@tanstack/react-query";
+import { Calendar } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { Button } from '@louez/ui';
+import { Button } from "@louez/ui";
 
-import {
-  BlurOverlay,
-  LimitBanner,
-  UpgradeModal,
-} from '@/components/dashboard/upgrade-modal';
-import { PushPrimer } from '@/components/dashboard/push-primer';
+import { BlurOverlay, LimitBanner, UpgradeModal } from "@/components/dashboard/upgrade-modal";
+import { PushPrimer } from "@/components/dashboard/push-primer";
 
-import { orpc } from '@/lib/orpc/react';
-import type { LimitStatus } from '@/lib/plan-limits';
+import { orpc } from "@/lib/orpc/react";
+import type { LimitStatus } from "@/lib/plan-limits";
 
-import {
-  ReservationConfirmDialogs,
-  useReservationActions,
-} from './reservations-actions';
-import { ReservationsCardView } from './reservations-card-view';
-import { ReservationsFilters } from './reservations-filters';
-import { ReservationsPagination } from './reservations-pagination';
-import { ReservationsTableView } from './reservations-table-view';
+import { ReservationConfirmDialogs, useReservationActions } from "./reservations-actions";
+import { ReservationsCardView } from "./reservations-card-view";
+import { ReservationsFilters } from "./reservations-filters";
+import { ReservationsPagination } from "./reservations-pagination";
+import { ReservationsTableView } from "./reservations-table-view";
 import type {
   Reservation,
   ReservationCounts,
   SortDirection,
   SortField,
-} from './reservations-types';
+} from "./reservations-types";
 
 interface ReservationsPageContentProps {
   currentStatus?: string;
@@ -59,36 +52,30 @@ export function ReservationsPageContent({
   currency,
   timezone,
 }: ReservationsPageContentProps) {
-  const t = useTranslations('dashboard.reservations');
+  const t = useTranslations("dashboard.reservations");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
   // Read URL params
-  const status = searchParams.get('status') || currentStatus || undefined;
-  const period = searchParams.get('period') || currentPeriod || undefined;
-  const operation = searchParams.get('operation') || undefined;
-  const search = searchParams.get('search') || undefined;
-  const view = searchParams.get('view') || 'cards';
-  const sortParam = searchParams.get('sort') as SortField | null;
-  const sortDirectionParam = searchParams.get(
-    'sortDirection',
-  ) as SortDirection | null;
-  const pageParam = searchParams.get('page');
-  const pageSizeParam = searchParams.get('pageSize');
+  const status = searchParams.get("status") || currentStatus || undefined;
+  const period = searchParams.get("period") || currentPeriod || undefined;
+  const operation = searchParams.get("operation") || undefined;
+  const search = searchParams.get("search") || undefined;
+  const view = searchParams.get("view") || "cards";
+  const sortParam = searchParams.get("sort") as SortField | null;
+  const sortDirectionParam = searchParams.get("sortDirection") as SortDirection | null;
+  const pageParam = searchParams.get("page");
+  const pageSizeParam = searchParams.get("pageSize");
 
   const currentSort = sortParam || undefined;
-  const currentSortDirection = sortDirectionParam || 'desc';
+  const currentSortDirection = sortDirectionParam || "desc";
   const currentPage = pageParam ? parseInt(pageParam, 10) : 1;
   const currentPageSize = pageSizeParam ? parseInt(pageSizeParam, 10) : 25;
 
   // Actions hook
-  const {
-    loadingAction,
-    handleStatusChange,
-    openRejectDialog,
-    confirmDialogsProps,
-  } = useReservationActions();
+  const { loadingAction, handleStatusChange, openRejectDialog, confirmDialogsProps } =
+    useReservationActions();
 
   // Sort handler
   const handleSortChange = useCallback(
@@ -96,14 +83,14 @@ export function ReservationsPageContent({
       const params = new URLSearchParams(searchParams.toString());
       if (currentSort === field) {
         // Toggle direction
-        const newDir = currentSortDirection === 'desc' ? 'asc' : 'desc';
-        params.set('sort', field);
-        params.set('sortDirection', newDir);
+        const newDir = currentSortDirection === "desc" ? "asc" : "desc";
+        params.set("sort", field);
+        params.set("sortDirection", newDir);
       } else {
-        params.set('sort', field);
-        params.set('sortDirection', 'desc');
+        params.set("sort", field);
+        params.set("sortDirection", "desc");
       }
-      params.delete('page'); // reset page on sort change
+      params.delete("page"); // reset page on sort change
       router.push(`/dashboard/reservations?${params.toString()}`);
     },
     [searchParams, currentSort, currentSortDirection, router],
@@ -113,27 +100,21 @@ export function ReservationsPageContent({
     ...orpc.dashboard.reservations.list.queryOptions({
       input: {
         status:
-          status === 'all' ||
-          status === 'pending' ||
-          status === 'confirmed' ||
-          status === 'ongoing' ||
-          status === 'completed' ||
-          status === 'cancelled' ||
-          status === 'rejected' ||
-          status === 'quote'
+          status === "all" ||
+          status === "pending" ||
+          status === "confirmed" ||
+          status === "ongoing" ||
+          status === "completed" ||
+          status === "cancelled" ||
+          status === "rejected" ||
+          status === "quote"
             ? status
             : undefined,
-        period:
-          period === 'today' || period === 'week' || period === 'month'
-            ? period
-            : undefined,
-        operation:
-          operation === 'departure' || operation === 'return'
-            ? operation
-            : undefined,
+        period: period === "today" || period === "week" || period === "month" ? period : undefined,
+        operation: operation === "departure" || operation === "return" ? operation : undefined,
         search: search || undefined,
         sort: currentSort,
-        sortDirection: currentSortDirection as 'asc' | 'desc',
+        sortDirection: currentSortDirection as "asc" | "desc",
         page: currentPage,
         pageSize: currentPageSize,
       },
@@ -158,23 +139,12 @@ export function ReservationsPageContent({
   const displayLimit = limits.limit;
   const hasLimit = displayLimit !== null;
   const isOverLimit = limits.isOverLimit;
-  const isAtLimit = limits.isAtLimit;
 
   const visibleReservations =
-    hasLimit && isOverLimit
-      ? reservations.slice(0, displayLimit)
-      : reservations;
-  const blurredReservations =
-    hasLimit && isOverLimit ? reservations.slice(displayLimit) : [];
+    hasLimit && isOverLimit ? reservations.slice(0, displayLimit) : reservations;
+  const blurredReservations = hasLimit && isOverLimit ? reservations.slice(displayLimit) : [];
 
-  const handleAddReservationClick = (e: React.MouseEvent) => {
-    if (isAtLimit) {
-      e.preventDefault();
-      setShowUpgradeModal(true);
-    }
-  };
-
-  const isCardView = view === 'cards';
+  const isCardView = view === "cards";
 
   // Empty state
   const isEmpty = reservations.length === 0 && !search;
@@ -184,15 +154,12 @@ export function ReservationsPageContent({
       <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
         <Calendar className="text-muted-foreground h-8 w-8" />
       </div>
-      <h3 className="text-lg font-semibold">{t('noReservations')}</h3>
+      <h3 className="text-lg font-semibold">{t("noReservations")}</h3>
       <p className="text-muted-foreground mt-2 max-w-sm text-center text-sm">
-        {t('noReservationsDescription')}
+        {t("noReservationsDescription")}
       </p>
-      <Button
-        render={<Link href="/dashboard/reservations/new" />}
-        className="mt-6"
-      >
-        {t('createReservation')}
+      <Button render={<Link href="/dashboard/reservations/new" />} className="mt-6">
+        {t("createReservation")}
       </Button>
     </div>
   );
@@ -234,8 +201,8 @@ export function ReservationsPageContent({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-muted-foreground">{t('description')}</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground">{t("description")}</p>
         </div>
       </div>
 
@@ -251,11 +218,7 @@ export function ReservationsPageContent({
       )}
 
       {/* Filters */}
-      <ReservationsFilters
-        counts={counts}
-        currentStatus={status}
-        currentPeriod={period}
-      />
+      <ReservationsFilters counts={counts} currentStatus={status} currentPeriod={period} />
 
       {/* Reservations List */}
       {isEmpty ? (
