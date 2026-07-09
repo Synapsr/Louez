@@ -67,7 +67,12 @@ async function runMigrations() {
 
   let connection
   try {
-    connection = await mysql.createConnection(databaseUrl)
+    // multipleStatements: some hand-written migrations (e.g. 0032, 0034) hold
+    // several statements in one chunk without --> statement-breakpoint markers
+    connection = await mysql.createConnection({
+      uri: databaseUrl,
+      multipleStatements: true,
+    })
   } catch (error) {
     console.error('❌ Failed to connect to database:', error.message)
     console.error('   Make sure the database is running and DATABASE_URL is correct')

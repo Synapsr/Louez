@@ -162,7 +162,15 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
 # Copy public assets (static files) - must match monorepo structure
-COPY --from=builder /app/apps/web/public ./apps/web/public
+# --chown so the non-root nextjs user can read them regardless of the
+# permissions the files had on the build host
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+
+# Copy SQL migrations so the app can set up an empty database at startup
+# (setupDatabase in packages/db runs them programmatically — drizzle-kit is
+# a dev tool and is not available in this image)
+COPY --from=builder --chown=nextjs:nodejs /app/packages/db/src/migrations ./migrations
+ENV MIGRATIONS_FOLDER=/app/migrations
 
 # Switch to non-root user
 USER nextjs

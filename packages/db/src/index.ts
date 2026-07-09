@@ -51,4 +51,4 @@ export type {
 } from './unit-availability'
 
 // Database setup utilities
-export { setupDatabase } from './setup'
+export { setupDatabase, CORE_TABLES } from './setup'

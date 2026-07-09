@@ -4,6 +4,18 @@ on:
   push:
     tags:
       - 'v*'
+  # Smoke-test the image on PRs that can break the Docker runtime environment
+  # (the build job below only runs on tags / manual dispatch)
+  pull_request:
+    paths:
+      - 'docker/**'
+      - 'Dockerfile'
+      - 'packages/db/**'
+      - 'apps/web/next.config.*'
+      - 'apps/web/instrumentation.ts'
+      - 'apps/web/app/api/health/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docker.yml'
   workflow_dispatch:
     inputs:
       tag:
@@ -17,8 +29,101 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # Boots the production image against an empty MySQL and verifies the app
+  # actually sets up its schema and reports healthy. Catches the class of bug
+  # where something works in dev but is missing from the pruned standalone
+  # image (see issue #28).
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for smoke test
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.web
+          target: app
+          platforms: linux/amd64
+          load: true
+          tags: louez-web:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Start MySQL
+        run: |
+          docker network create louez-net
+          docker run -d --name louez-db --network louez-net \
+            -e MYSQL_ROOT_PASSWORD=smoketest \
+            -e MYSQL_DATABASE=louez \
+            mysql:8.4
+          echo "Waiting for MySQL to accept connections..."
+          for i in $(seq 1 60); do
+            if docker exec louez-db mysqladmin ping -h 127.0.0.1 -uroot -psmoketest --silent 2>/dev/null; then
+              echo "MySQL is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "MySQL never became ready"
+          docker logs louez-db
+          exit 1
+
+      - name: Boot app against empty database
+        run: |
+          docker run -d --name louez-app --network louez-net -p 3000:3000 \
+            -e DATABASE_URL=mysql://root:smoketest@louez-db:3306/louez \
+            -e AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e BETTER_AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e NEXT_PUBLIC_APP_URL=http://localhost:3000 \
+            -e NEXT_PUBLIC_APP_DOMAIN=localhost:3000 \
+            louez-web:smoke
+
+      - name: Wait for app to report healthy
+        run: |
+          for i in $(seq 1 60); do
+            if [ "$(docker inspect -f '{{.State.Running}}' louez-app)" != "true" ]; then
+              echo "App container exited prematurely"
+              docker logs louez-app
+              exit 1
+            fi
+            status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/health || true)
+            if [ "$status" = "200" ]; then
+              echo "App is healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Health endpoint never returned 200 (last status: $status)"
+          docker logs louez-app
+          exit 1
+
+      - name: Verify core tables were created
+        run: |
+          tables=$(docker exec louez-db mysql -uroot -psmoketest -N -e "SHOW TABLES" louez)
+          echo "Tables in database:"
+          echo "$tables"
+          for t in users accounts sessions stores products reservations; do
+            if ! echo "$tables" | grep -qx "$t"; then
+              echo "❌ Missing core table: $t"
+              docker logs louez-app
+              exit 1
+            fi
+          done
+          echo "✅ All core tables present"
+
+      - name: Dump app logs
+        if: always()
+        run: docker logs louez-app 2>&1 || true
+
   build:
     runs-on: ubuntu-latest
+    needs: smoke-test
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       packages: write
