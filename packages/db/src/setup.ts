@@ -1,5 +1,7 @@
 import mysql from 'mysql2/promise'
-import { execSync } from 'child_process'
+import fs from 'fs'
+import path from 'path'
+import { runMigrations } from './migrate'
 
 // ANSI color codes for console output
 const colors = {
@@ -26,8 +28,64 @@ function logSection(title: string) {
 }
 
 // Core tables that should exist in a properly configured database
-const CORE_TABLES = ['users', 'accounts', 'sessions', 'stores', 'products', 'reservations']
+export const CORE_TABLES = ['users', 'accounts', 'sessions', 'stores', 'products', 'reservations']
 
+const MIGRATIONS_TABLE = '__drizzle_migrations'
+
+const CONNECT_RETRIES = 10
+const CONNECT_RETRY_DELAY_MS = 3000
+
+/**
+ * Locate the drizzle migrations folder. The location differs by environment:
+ * - Docker image: MIGRATIONS_FOLDER env var (set in the Dockerfile)
+ * - Docker image fallback: ./migrations relative to WORKDIR
+ * - Monorepo (next dev/start from apps/web or repo root)
+ */
+function resolveMigrationsFolder(): string | null {
+  const candidates = [
+    process.env.MIGRATIONS_FOLDER,
+    path.join(process.cwd(), 'migrations'),
+    path.join(process.cwd(), 'packages/db/src/migrations'),
+    path.join(process.cwd(), '../../packages/db/src/migrations'),
+  ].filter((c): c is string => Boolean(c))
+
+  return (
+    candidates.find((c) => fs.existsSync(path.join(c, 'meta', '_journal.json'))) ?? null
+  )
+}
+
+async function connectWithRetry(databaseUrl: string): Promise<mysql.Connection> {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= CONNECT_RETRIES; attempt++) {
+    try {
+      return await mysql.createConnection(databaseUrl)
+    } catch (error) {
+      lastError = error
+      const message = error instanceof Error ? error.message : String(error)
+      log('⏳', `Database not reachable (attempt ${attempt}/${CONNECT_RETRIES}): ${message}`, colors.yellow)
+      if (attempt < CONNECT_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, CONNECT_RETRY_DELAY_MS))
+      }
+    }
+  }
+  throw lastError
+}
+
+async function listTables(connection: mysql.Connection): Promise<string[]> {
+  const [rows] = await connection.query('SHOW TABLES')
+  return (rows as Array<Record<string, string>>).map((row) => Object.values(row)[0])
+}
+
+/**
+ * Ensures the database schema is up to date at application startup.
+ *
+ * Runs the committed SQL migrations programmatically (drizzle-orm migrator) —
+ * it deliberately does NOT shell out to drizzle-kit, which is a dev-only tool
+ * that is not present in the production Docker image (see issue #28).
+ *
+ * Fails fast: if the schema cannot be set up, the process exits non-zero so
+ * orchestrators surface a crash loop instead of a silently broken app.
+ */
 export async function setupDatabase(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL
 
@@ -40,97 +98,58 @@ export async function setupDatabase(): Promise<void> {
     return
   }
 
-  log('🔍', 'Checking database configuration...', colors.blue)
-
   let connection: mysql.Connection | null = null
 
   try {
-    // Step 1: Test database connection
+    // Step 1: Connect (with retries — the database container may still be starting)
     log('🔌', 'Connecting to database...', colors.blue)
-
-    connection = await mysql.createConnection(databaseUrl)
-
+    connection = await connectWithRetry(databaseUrl)
     log('✅', 'Database connection successful!', colors.green)
 
-    // Step 2: Check existing tables
+    // Step 2: Safety check — refuse to touch a database that belongs to
+    // another application (tables present, but none of ours and no migration
+    // tracking table).
     log('📋', 'Checking existing tables...', colors.blue)
+    const tables = await listTables(connection)
+    const hasCoreTables = CORE_TABLES.some((table) => tables.includes(table))
+    const hasMigrationsTable = tables.includes(MIGRATIONS_TABLE)
 
-    const [rows] = await connection.query('SHOW TABLES')
-    const tables = (rows as Array<Record<string, string>>).map((row) => Object.values(row)[0])
-
-    if (tables.length > 0) {
-      // Database has tables - check if it's properly configured
-      const missingCoreTables = CORE_TABLES.filter((table) => !tables.includes(table))
-
-      if (missingCoreTables.length === 0) {
-        log('✅', `Database is properly configured with ${tables.length} tables.`, colors.green)
-        log('📦', `Core tables found: ${CORE_TABLES.join(', ')}`, colors.dim)
-        return
-      } else if (missingCoreTables.length === CORE_TABLES.length) {
-        // All core tables missing - might be a different database or partial setup
-        log('⚠️', `Found ${tables.length} tables but missing all core tables.`, colors.yellow)
-        log('📝', `Existing tables: ${tables.join(', ')}`, colors.dim)
-        log('❌', 'Database may belong to another application. Skipping setup for safety.', colors.red)
-        return
-      } else {
-        // Some core tables exist - partial setup, might need migration
-        log('⚠️', `Partial setup detected. Missing tables: ${missingCoreTables.join(', ')}`, colors.yellow)
-        log('📝', 'Run "pnpm db:push" or "pnpm db:migrate" to complete setup.', colors.yellow)
-        return
-      }
+    if (tables.length > 0 && !hasCoreTables && !hasMigrationsTable) {
+      log('⚠️', `Found ${tables.length} tables but none belong to Louez.`, colors.yellow)
+      log('📝', `Existing tables: ${tables.join(', ')}`, colors.dim)
+      throw new Error(
+        'Database appears to belong to another application. Point DATABASE_URL at an empty or Louez database.'
+      )
     }
 
-    // Step 3: Database is empty - perform initial setup
-    log('📭', 'Database is empty. Starting initial setup...', colors.yellow)
-    console.log('')
-
-    // Run drizzle-kit push with --force to skip interactive confirmation
-    // This is safe because we've already verified the database is empty
-    log('🚀', 'Running database schema push (drizzle-kit push --force)...', colors.blue)
-    console.log('')
-
-    let pushFailed = false
-    try {
-      execSync('npx drizzle-kit push --force', {
-        stdio: 'inherit',
-        env: { ...process.env },
-        cwd: process.cwd(),
-      })
-    } catch {
-      // drizzle-kit may return non-zero exit code even when tables are created
-      // (due to interactive prompt issues). We'll verify by checking tables.
-      pushFailed = true
+    // Step 3: Run pending migrations (no-op when already up to date)
+    const migrationsFolder = resolveMigrationsFolder()
+    if (!migrationsFolder) {
+      throw new Error(
+        'Migrations folder not found. Set MIGRATIONS_FOLDER to the directory containing the drizzle migrations.'
+      )
     }
 
+    log('🚀', `Running database migrations from ${migrationsFolder}...`, colors.blue)
+    console.log('')
+    await runMigrations({ migrationsFolder })
     console.log('')
 
     // Step 4: Verify setup - this is the source of truth
     log('🔍', 'Verifying database setup...', colors.blue)
-
-    const [verifyRows] = await connection.query('SHOW TABLES')
-    const verifyTables = (verifyRows as Array<Record<string, string>>).map((row) => Object.values(row)[0])
-
-    if (verifyTables.length === 0) {
-      log('❌', 'Setup failed - no tables created.', colors.red)
-      throw new Error('Database setup verification failed')
-    }
-
+    const verifyTables = await listTables(connection)
     const missingAfterSetup = CORE_TABLES.filter((table) => !verifyTables.includes(table))
 
     if (missingAfterSetup.length > 0) {
-      log('⚠️', `Setup incomplete. Missing: ${missingAfterSetup.join(', ')}`, colors.yellow)
-    } else {
-      log('✅', `Database setup complete! Created ${verifyTables.length} tables.`, colors.green)
-      // If drizzle-kit reported an error but tables were created, that's fine
-      if (pushFailed) {
-        log('📝', 'Note: drizzle-kit reported an error but all tables were created successfully.', colors.dim)
-      }
+      throw new Error(`Setup incomplete. Missing core tables: ${missingAfterSetup.join(', ')}`)
     }
+
+    log('✅', `Database is ready with ${verifyTables.length} tables.`, colors.green)
+    log('📦', `Core tables found: ${CORE_TABLES.join(', ')}`, colors.dim)
 
     logSection('Setup Complete')
     log('🎉', 'Your database is ready to use!', colors.green)
     console.log('')
-
   } catch (error) {
     console.log('')
     log('❌', 'Database setup failed!', colors.red)
@@ -148,9 +167,11 @@ export async function setupDatabase(): Promise<void> {
       }
     }
 
-    // Don't throw - let the app continue and fail naturally if DB is required
-    log('📝', 'You may need to run "pnpm db:push" manually.', colors.dim)
+    // Fail fast: a broken schema means a broken app. Exiting non-zero puts
+    // the container in a visible crash loop instead of serving errors.
+    log('🛑', 'Exiting. Fix the issue above and restart the application.', colors.red)
     console.log('')
+    process.exit(1)
   } finally {
     if (connection) {
       await connection.end()
