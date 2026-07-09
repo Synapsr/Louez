@@ -19,6 +19,11 @@
     "nanoid": "^5.1.6",
     "zod": "^4.3.5"
   },
+  "devDependencies": {
+    "@louez/config": "workspace:*",
+    "next": "16.2.6",
+    "typescript": "catalog:"
+  },
   "peerDependencies": {
     "next": ">=15"
   },
@@ -26,10 +31,5 @@
     "next": {
       "optional": true
     }
-  },
-  "devDependencies": {
-    "@louez/config": "workspace:*",
-    "next": "16.2.6",
-    "typescript": "^5"
   }
 }

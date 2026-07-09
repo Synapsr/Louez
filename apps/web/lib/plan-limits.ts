@@ -10,7 +10,6 @@ import {
 } from '@louez/db'
 import { eq, count, and, gte, sql } from 'drizzle-orm'
 import { getPlan, getDefaultPlan, getPayAsYouGoPlan, SMS_TOPUP_PRICING, type Plan } from '@/lib/plans'
-import type { PlanFeatures } from '@louez/types'
 
 // ============================================================================
 // Types

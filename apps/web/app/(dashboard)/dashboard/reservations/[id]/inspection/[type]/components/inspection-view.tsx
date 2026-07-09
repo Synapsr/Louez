@@ -19,7 +19,6 @@ import { Badge } from '@louez/ui'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@louez/ui'

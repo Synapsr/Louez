@@ -1,0 +1,53 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "node": true
+  },
+  "ignorePatterns": [
+    "**/.agents/**",
+    "**/.claude/**",
+    "**/.codex/**",
+    "**/.cursor/**",
+    "**/.next/**",
+    "**/.turbo/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/routeTree.gen.ts",
+    "**/*.generated.ts"
+  ],
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@/lib/pricing", "@/lib/pricing/*"],
+            "message": "Use @louez/utils pricing exports instead of local pricing modules."
+          },
+          {
+            "group": ["@/types/*"],
+            "message": "Use @louez/types instead of local app types."
+          },
+          {
+            "group": ["@/components/ui/logo"],
+            "message": "Use Logo exports from @louez/ui."
+          },
+          {
+            "group": ["../../lib/db/schema"],
+            "message": "Use schema exports from @louez/db."
+          },
+          {
+            "group": ["../../types"],
+            "message": "Use type exports from @louez/types."
+          }
+        ]
+      }
+    ]
+  }
+}

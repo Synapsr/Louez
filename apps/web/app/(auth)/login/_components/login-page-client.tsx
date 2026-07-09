@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
-import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
-import { BarChart3, Calendar, Gift, Package, Users } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { usePostHog } from 'posthog-js/react';
+import { BarChart3, Calendar, Gift, Package, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { usePostHog } from "posthog-js/react";
 
-import { Logo } from '@louez/ui';
+import { Logo } from "@louez/ui";
 
 import {
   referralAnalyticsBaseProperties,
   referralAnalyticsEvents,
-} from '@/lib/referral/analytics-events';
-import type { ReferralInviteContext } from '@/lib/referral/invite';
+} from "@/lib/referral/analytics-events";
+import type { ReferralInviteContext } from "@/lib/referral/invite";
 
-import { LoginForm } from './login-form';
+import { LoginForm } from "./login-form";
 
 interface LoginPageClientProps {
   callbackUrl: string;
@@ -25,22 +25,19 @@ interface LoginPageClientProps {
 }
 
 const features = [
-  { icon: Package, labelKey: 'featureProducts' },
-  { icon: Calendar, labelKey: 'featureReservations' },
-  { icon: Users, labelKey: 'featureCustomers' },
-  { icon: BarChart3, labelKey: 'featureStats' },
+  { icon: Package, labelKey: "featureProducts" },
+  { icon: Calendar, labelKey: "featureReservations" },
+  { icon: Users, labelKey: "featureCustomers" },
+  { icon: BarChart3, labelKey: "featureStats" },
 ] as const;
 
-export const LoginPageClient = ({
-  callbackUrl,
-  referral,
-}: LoginPageClientProps) => {
-  const t = useTranslations('auth');
+export const LoginPageClient = ({ callbackUrl, referral }: LoginPageClientProps) => {
+  const t = useTranslations("auth");
   const posthog = usePostHog();
   const hasTrackedReferralInvite = useRef(false);
   const searchParams = useSearchParams();
 
-  const errorCode = searchParams.get('error');
+  const errorCode = searchParams.get("error");
 
   useEffect(() => {
     if (!referral || hasTrackedReferralInvite.current) return;
@@ -48,7 +45,7 @@ export const LoginPageClient = ({
     hasTrackedReferralInvite.current = true;
     posthog.capture(referralAnalyticsEvents.inviteLanded, {
       ...referralAnalyticsBaseProperties,
-      placement: 'auth_login',
+      placement: "auth_login",
       has_referrer_name: Boolean(referral.referrerName),
       referred_reward_free_reservations: referral.freeReservations,
     });
@@ -70,12 +67,8 @@ export const LoginPageClient = ({
 
         <div className="relative z-10 space-y-8">
           <div>
-            <h1 className="mb-4 text-4xl leading-tight font-bold">
-              {t('heroTitle')}
-            </h1>
-            <p className="text-primary-foreground/80 max-w-md text-lg">
-              {t('heroSubtitle')}
-            </p>
+            <h1 className="mb-4 text-4xl leading-tight font-bold">{t("heroTitle")}</h1>
+            <p className="text-primary-foreground/80 max-w-md text-lg">{t("heroSubtitle")}</p>
           </div>
 
           <div className="space-y-4">
@@ -87,9 +80,7 @@ export const LoginPageClient = ({
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10 backdrop-blur-sm">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <span className="text-primary-foreground/90">
-                    {t(feature.labelKey)}
-                  </span>
+                  <span className="text-primary-foreground/90">{t(feature.labelKey)}</span>
                 </div>
               );
             })}
@@ -97,7 +88,7 @@ export const LoginPageClient = ({
         </div>
 
         <div className="relative z-10">
-          <p className="text-primary-foreground/60 text-sm">{t('trustedBy')}</p>
+          <p className="text-primary-foreground/60 text-sm">{t("trustedBy")}</p>
         </div>
       </div>
 
@@ -114,11 +105,11 @@ export const LoginPageClient = ({
               <Gift className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
               <p className="text-amber-800 dark:text-amber-200">
                 {referral.referrerName
-                  ? t('referralBanner', {
+                  ? t("referralBanner", {
                       storeName: referral.referrerName,
                       count: referral.freeReservations,
                     })
-                  : t('referralBannerGeneric', {
+                  : t("referralBannerGeneric", {
                       count: referral.freeReservations,
                     })}
               </p>
@@ -128,23 +119,23 @@ export const LoginPageClient = ({
           <LoginForm callbackUrl={callbackUrl} initialErrorCode={errorCode} />
 
           <p className="text-muted-foreground text-center text-sm">
-            {t('termsAgreement')}{' '}
+            {t("termsAgreement")}{" "}
             <Link
               href="/terms"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-primary underline underline-offset-4"
             >
-              {t('termsOfService')}
-            </Link>{' '}
-            {t('and')}{' '}
+              {t("termsOfService")}
+            </Link>{" "}
+            {t("and")}{" "}
             <Link
               href="/privacy"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-primary underline underline-offset-4"
             >
-              {t('privacyPolicy')}
+              {t("privacyPolicy")}
             </Link>
           </p>
         </div>

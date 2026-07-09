@@ -12,7 +12,7 @@
 import 'dotenv/config';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/mysql2';
-import { type Pool, createPool } from 'mysql2/promise';
+import { createPool } from 'mysql2/promise';
 import { nanoid } from 'nanoid';
 
 // Import schema
@@ -24,7 +24,6 @@ import type {
   NotificationSettings,
   StoreSettings,
   StoreTheme,
-  TaxSettings,
 } from '@louez/types';
 
 import { createUnits } from '../../lib/utils/unit-mutations';

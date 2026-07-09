@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
-import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { CheckCircle2, AlertCircle } from 'lucide-react'
 
 import { getCurrentStore } from '@/lib/store-context'
 import { getAccountStatus } from '@/lib/stripe'

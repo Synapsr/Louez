@@ -13,7 +13,6 @@ import {
   PenLine,
   Download,
   MoreVertical,
-  Eye,
 } from 'lucide-react'
 import { cn } from '@louez/utils'
 import { Button } from '@louez/ui'

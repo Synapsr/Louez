@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [
+    "**/.agents/**",
+    "**/.claude/**",
+    "**/.codex/**",
+    "**/.cursor/**",
+    "**/.next/**",
+    "**/.turbo/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/routeTree.gen.ts",
+    "**/*.generated.ts"
+  ]
+}

@@ -7,7 +7,6 @@
     "dev:web": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "db:seed": "tsx scripts/seed/index.ts",
     "pwa:icons": "tsx scripts/generate-pwa-icons.ts",
@@ -98,12 +97,9 @@
     "@types/web-push": "^3.6.4",
     "agentation": "^2.2.0",
     "drizzle-kit": "^0.31.8",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.1-canary.14",
-    "eslint-config-prettier": "^10.1.8",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "tw-animate-css": "^1.4.0",
-    "typescript": "^5"
+    "typescript": "catalog:"
   }
 }

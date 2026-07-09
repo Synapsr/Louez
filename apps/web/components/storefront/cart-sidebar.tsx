@@ -13,7 +13,6 @@ import {
   Plus,
   ShoppingCart,
   Trash2,
-  X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -21,7 +20,6 @@ import { Button } from '@louez/ui';
 import {
   Card,
   CardContent,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@louez/ui';

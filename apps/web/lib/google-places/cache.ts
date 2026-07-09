@@ -1,5 +1,5 @@
 import { db } from '@louez/db'
-import { googlePlacesCache, stores } from '@louez/db'
+import { googlePlacesCache } from '@louez/db'
 import { eq, lt, sql } from 'drizzle-orm'
 import { getPlaceDetails, type PlaceDetails } from './index'
 import type { GoogleReview, ReviewBoosterSettings } from '@louez/types'

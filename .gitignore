@@ -54,13 +54,16 @@ dist
 next-env.d.ts
 
 # IDE
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
 
 # Local agent settings
 .claude/settings.local.json
+.claude/worktrees/
 
 # Internal documentation (not for public release)
 tasks/

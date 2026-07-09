@@ -1,18 +1,11 @@
-'use client';
+"use client";
 
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight } from "lucide-react";
 
-import {
-  Button,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Separator,
-} from '@louez/ui';
+import { Button, Separator } from "@louez/ui";
 
-import { LoginErrorAlert } from './login-error-alert';
-import type { LoginFormState } from './use-login-form';
+import { LoginErrorAlert } from "./login-error-alert";
+import type { LoginFormState } from "./use-login-form";
 
 interface LoginEmailStepProps {
   state: LoginFormState;
@@ -24,10 +17,8 @@ export const LoginEmailStep = ({ state }: LoginEmailStepProps) => {
   return (
     <div className="space-y-6 px-4">
       <div className="space-y-2 text-center">
-        <h2 className="text-2xl font-bold">{t('loginTitle')}</h2>
-        <p className="text-base text-muted-foreground">
-          {t('loginDescription')}
-        </p>
+        <h2 className="text-2xl font-bold">{t("loginTitle")}</h2>
+        <p className="text-base text-muted-foreground">{t("loginDescription")}</p>
       </div>
       <div className="space-y-6">
         <Button
@@ -54,7 +45,7 @@ export const LoginEmailStep = ({ state }: LoginEmailStepProps) => {
               fill="#EA4335"
             />
           </svg>
-          {t('continueWithGoogle')}
+          {t("continueWithGoogle")}
         </Button>
 
         <div className="relative">
@@ -62,9 +53,7 @@ export const LoginEmailStep = ({ state }: LoginEmailStepProps) => {
             <Separator className="w-full" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card text-muted-foreground px-3">
-              {t('or')}
-            </span>
+            <span className="bg-card text-muted-foreground px-3">{t("or")}</span>
           </div>
         </div>
 
@@ -73,21 +62,16 @@ export const LoginEmailStep = ({ state }: LoginEmailStepProps) => {
             <emailForm.AppField name="email">
               {(field) => (
                 <field.Input
-                  label={t('email')}
+                  label={t("email")}
                   type="email"
-                  placeholder={t('emailPlaceholder')}
+                  placeholder={t("emailPlaceholder")}
                   className="*:h-12"
                 />
               )}
             </emailForm.AppField>
 
-            <Button
-              type="submit"
-              size="xl"
-              className="w-full"
-              isPending={isPending}
-            >
-              {t('sendCode')}
+            <Button type="submit" size="xl" className="w-full" isPending={isPending}>
+              {t("sendCode")}
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
           </emailForm.Form>

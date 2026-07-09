@@ -1,10 +1,9 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import {
-  Rocket,
   Sparkles,
   TrendingUp,
   Package,
@@ -15,28 +14,22 @@ import {
   Check,
   Zap,
   MessageSquare,
-} from 'lucide-react'
-import {
-  Dialog,
-  DialogPopup,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@louez/ui'
-import { Button } from '@louez/ui'
-import { Badge } from '@louez/ui'
-import { cn } from '@louez/utils'
+} from "lucide-react";
+import { Dialog, DialogPopup, DialogHeader, DialogTitle, DialogDescription } from "@louez/ui";
+import { Button } from "@louez/ui";
+import { Badge } from "@louez/ui";
+import { cn } from "@louez/utils";
 
-export type LimitType = 'products' | 'reservations' | 'customers' | 'sms'
+export type LimitType = "products" | "reservations" | "customers" | "sms";
 
 interface UpgradeModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  limitType: LimitType
-  currentCount: number
-  limit: number
-  currentPlan?: string
-  suggestedPlan?: string
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  limitType: LimitType;
+  currentCount: number;
+  limit: number;
+  currentPlan?: string;
+  suggestedPlan?: string;
 }
 
 const LIMIT_ICONS = {
@@ -44,7 +37,7 @@ const LIMIT_ICONS = {
   reservations: CalendarCheck,
   customers: Users,
   sms: MessageSquare,
-}
+};
 
 export function UpgradeModal({
   open,
@@ -52,25 +45,25 @@ export function UpgradeModal({
   limitType,
   currentCount,
   limit,
-  currentPlan = 'pro',
-  suggestedPlan = 'ultra',
+  currentPlan = "pro",
+  suggestedPlan: _suggestedPlan = "ultra",
 }: UpgradeModalProps) {
-  const router = useRouter()
-  const t = useTranslations('upgradeModal')
-  const [isNavigating, setIsNavigating] = useState(false)
+  const router = useRouter();
+  const t = useTranslations("upgradeModal");
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  const Icon = LIMIT_ICONS[limitType]
-  const isOverLimit = currentCount > limit
+  const Icon = LIMIT_ICONS[limitType];
+  const isOverLimit = currentCount > limit;
 
   const handleUpgrade = () => {
-    setIsNavigating(true)
-    router.push('/dashboard/subscription')
-  }
+    setIsNavigating(true);
+    router.push("/dashboard/subscription");
+  };
 
   // Limits only bite on Pro (Ultra and pay-as-you-go are unlimited), so a store
   // hitting a limit is upgraded toward Ultra.
-  const targetPlan = currentPlan === 'pro' ? 'ultra' : 'pro'
-  const targetPlanName = targetPlan === 'pro' ? 'Pro' : 'Ultra'
+  const targetPlan = currentPlan === "pro" ? "ultra" : "pro";
+  const targetPlanName = targetPlan === "pro" ? "Pro" : "Ultra";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -100,14 +93,12 @@ export function UpgradeModal({
               <DialogTitle className="text-center text-xl">
                 {isOverLimit
                   ? t(`${limitType}.overLimitTitle`)
-                  : t(`${limitType}.limitReachedTitle`)
-                }
+                  : t(`${limitType}.limitReachedTitle`)}
               </DialogTitle>
               <DialogDescription className="text-center text-base">
                 {isOverLimit
                   ? t(`${limitType}.overLimitDescription`, { count: currentCount, limit })
-                  : t(`${limitType}.limitReachedDescription`, { count: currentCount, limit })
-                }
+                  : t(`${limitType}.limitReachedDescription`, { count: currentCount, limit })}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -141,9 +132,7 @@ export function UpgradeModal({
                 <Crown className="h-3 w-3" />
                 {targetPlanName}
               </Badge>
-              <Badge variant="success">
-                {t('earlyBird')}
-              </Badge>
+              <Badge variant="success">{t("earlyBird")}</Badge>
             </div>
 
             <p className="text-sm text-muted-foreground mb-4">
@@ -174,11 +163,11 @@ export function UpgradeModal({
               size="lg"
             >
               {isNavigating ? (
-                t('loading')
+                t("loading")
               ) : (
                 <>
                   <Zap className="h-4 w-4" />
-                  {t('upgradeNow')}
+                  {t("upgradeNow")}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -188,13 +177,13 @@ export function UpgradeModal({
               onClick={() => onOpenChange(false)}
               className="w-full text-muted-foreground"
             >
-              {t('maybeLater')}
+              {t("maybeLater")}
             </Button>
           </div>
         </div>
       </DialogPopup>
     </Dialog>
-  )
+  );
 }
 
 // ============================================================================
@@ -202,48 +191,48 @@ export function UpgradeModal({
 // ============================================================================
 
 interface BlurOverlayProps {
-  limitType: LimitType
-  currentPlan?: string
-  onUpgradeClick: () => void
-  className?: string
+  limitType: LimitType;
+  currentPlan?: string;
+  onUpgradeClick: () => void;
+  className?: string;
 }
 
 export function BlurOverlay({
   limitType,
-  currentPlan = 'pro',
+  currentPlan = "pro",
   onUpgradeClick,
   className,
 }: BlurOverlayProps) {
-  const t = useTranslations('upgradeModal')
-  const Icon = LIMIT_ICONS[limitType]
-  const targetPlan = currentPlan === 'pro' ? 'Ultra' : 'Pro'
+  const t = useTranslations("upgradeModal");
+  const Icon = LIMIT_ICONS[limitType];
+  const targetPlan = currentPlan === "pro" ? "Ultra" : "Pro";
 
   return (
-    <div className={cn(
-      "absolute inset-0 z-10 flex items-center justify-center",
-      "bg-gradient-to-t from-background via-background/95 to-background/80",
-      "backdrop-blur-[2px]",
-      className
-    )}>
+    <div
+      className={cn(
+        "absolute inset-0 z-10 flex items-center justify-center",
+        "bg-gradient-to-t from-background via-background/95 to-background/80",
+        "backdrop-blur-[2px]",
+        className,
+      )}
+    >
       <div className="text-center px-4 py-6 max-w-sm">
         <div className="flex justify-center mb-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Icon className="h-6 w-6 text-primary" />
           </div>
         </div>
-        <h3 className="font-semibold text-lg mb-2">
-          {t(`${limitType}.blurTitle`)}
-        </h3>
+        <h3 className="font-semibold text-lg mb-2">{t(`${limitType}.blurTitle`)}</h3>
         <p className="text-sm text-muted-foreground mb-4">
           {t(`${limitType}.blurDescription`, { plan: targetPlan })}
         </p>
         <Button onClick={onUpgradeClick} className="gap-2">
           <Zap className="h-4 w-4" />
-          {t('unlock', { plan: targetPlan })}
+          {t("unlock", { plan: targetPlan })}
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 // ============================================================================
@@ -251,57 +240,52 @@ export function BlurOverlay({
 // ============================================================================
 
 interface LimitBannerProps {
-  limitType: LimitType
-  current: number
-  limit: number
-  currentPlan?: string
-  onUpgradeClick: () => void
-  className?: string
+  limitType: LimitType;
+  current: number;
+  limit: number;
+  currentPlan?: string;
+  onUpgradeClick: () => void;
+  className?: string;
 }
 
 export function LimitBanner({
   limitType,
   current,
   limit,
-  currentPlan = 'pro',
+  currentPlan: _currentPlan = "pro",
   onUpgradeClick,
   className,
 }: LimitBannerProps) {
-  const t = useTranslations('upgradeModal')
-  const percentUsed = Math.min(100, Math.round((current / limit) * 100))
-  const isNearLimit = percentUsed >= 80
-  const isAtLimit = current >= limit
+  const t = useTranslations("upgradeModal");
+  const percentUsed = Math.min(100, Math.round((current / limit) * 100));
+  const isAtLimit = current >= limit;
 
-  if (percentUsed < 80) return null
+  if (percentUsed < 80) return null;
 
   return (
-    <div className={cn(
-      "rounded-lg border p-4",
-      isAtLimit
-        ? "bg-amber-500/5 border-amber-500/20"
-        : "bg-primary/5 border-primary/20",
-      className
-    )}>
+    <div
+      className={cn(
+        "rounded-lg border p-4",
+        isAtLimit ? "bg-amber-500/5 border-amber-500/20" : "bg-primary/5 border-primary/20",
+        className,
+      )}
+    >
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-full flex-shrink-0",
-            isAtLimit ? "bg-amber-500/10" : "bg-primary/10"
-          )}>
-            <TrendingUp className={cn(
-              "h-5 w-5",
-              isAtLimit ? "text-amber-600" : "text-primary"
-            )} />
+          <div
+            className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-full flex-shrink-0",
+              isAtLimit ? "bg-amber-500/10" : "bg-primary/10",
+            )}
+          >
+            <TrendingUp className={cn("h-5 w-5", isAtLimit ? "text-amber-600" : "text-primary")} />
           </div>
           <div>
             <p className="font-medium">
-              {isAtLimit
-                ? t(`${limitType}.bannerAtLimit`)
-                : t(`${limitType}.bannerNearLimit`)
-              }
+              {isAtLimit ? t(`${limitType}.bannerAtLimit`) : t(`${limitType}.bannerNearLimit`)}
             </p>
             <p className="text-sm text-muted-foreground">
-              {t('usage', { current, limit, percent: percentUsed })}
+              {t("usage", { current, limit, percent: percentUsed })}
             </p>
           </div>
         </div>
@@ -311,7 +295,7 @@ export function LimitBanner({
           className="flex-shrink-0 gap-1"
         >
           <Zap className="h-3.5 w-3.5" />
-          {t('upgrade')}
+          {t("upgrade")}
         </Button>
       </div>
 
@@ -320,11 +304,11 @@ export function LimitBanner({
         <div
           className={cn(
             "h-full rounded-full transition-all",
-            isAtLimit ? "bg-amber-500" : "bg-primary"
+            isAtLimit ? "bg-amber-500" : "bg-primary",
           )}
           style={{ width: `${percentUsed}%` }}
         />
       </div>
     </div>
-  )
+  );
 }

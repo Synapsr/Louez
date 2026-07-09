@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-import { ArrowRight, Package, Plus } from 'lucide-react';
+import { ArrowRight, Package } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@louez/ui';

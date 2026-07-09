@@ -1,30 +1,31 @@
-import { config } from 'dotenv'
-import { resolve } from 'path'
-import type { NextConfig } from 'next'
-import createNextIntlPlugin from 'next-intl/plugin'
+import { config } from "dotenv";
+import { resolve } from "path";
+import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 // Monorepo: .env files live at the repository root (../../ relative to apps/web/).
 // Next.js only loads .env from its own directory, so we bridge the gap with dotenv.
 // .env.local is loaded first so its values take priority over .env.
 // Neither overrides env vars already set in the system (safe for production).
-const rootDir = resolve(process.cwd(), '../..')
-config({ path: resolve(rootDir, '.env.local') })
-config({ path: resolve(rootDir, '.env') })
+const rootDir = resolve(process.cwd(), "../..");
+config({ path: resolve(rootDir, ".env.local") });
+config({ path: resolve(rootDir, ".env") });
 
-const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 // ===== SECURITY HEADERS & CSP =====
 // Comprehensive Content Security Policy to prevent XSS and other injection attacks
 // Designed for production use with Next.js, Stripe, and various S3 providers
 // Note: Next.js requires 'unsafe-eval' in development mode for hot reload
 
-const isDev = process.env.NODE_ENV === 'development'
+const isDev = process.env.NODE_ENV === "development";
 
 // Build storefront wildcard origin for CSP frame-src (dashboard needs to iframe storefront embeds)
-const appDomainBase = (process.env.NEXT_PUBLIC_APP_DOMAIN || '').split(':')[0]
-const storefrontWildcard = appDomainBase && !['localhost', '127.0.0.1'].includes(appDomainBase)
-  ? `https://*.${appDomainBase}`
-  : null
+const appDomainBase = (process.env.NEXT_PUBLIC_APP_DOMAIN || "").split(":")[0];
+const storefrontWildcard =
+  appDomainBase && !["localhost", "127.0.0.1"].includes(appDomainBase)
+    ? `https://*.${appDomainBase}`
+    : null;
 
 // fromHello (engagement platform) origin for CSP. Only added when the
 // integration is configured. URL() normalizes the value so a trailing
@@ -37,161 +38,175 @@ const storefrontWildcard = appDomainBase && !['localhost', '127.0.0.1'].includes
 // ensures we see whatever env the running process actually has.
 function getFromhelloOrigin(): string | null {
   try {
-    const raw = process.env.NEXT_PUBLIC_FROMHELLO_API_URL
-    return raw ? new URL(raw).origin : null
+    const raw = process.env.NEXT_PUBLIC_FROMHELLO_API_URL;
+    return raw ? new URL(raw).origin : null;
   } catch {
-    return null
+    return null;
   }
 }
 
 function getOpenReplayOrigin(): string | null {
   try {
-    const raw = process.env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT
-    return raw ? new URL(raw).origin : null
+    const raw = process.env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT;
+    return raw ? new URL(raw).origin : null;
   } catch {
-    return null
+    return null;
   }
 }
 
 // CSP Directives factory. Returns a fresh object each call so
 // fromhelloOrigin reflects the current env (see getFromhelloOrigin).
 function buildCspDirectives() {
-  const fromhelloOrigin = getFromhelloOrigin()
-  const openReplayOrigin =
-    getOpenReplayOrigin() || 'https://replay.lumy.cloud'
+  const fromhelloOrigin = getFromhelloOrigin();
+  const openReplayOrigin = getOpenReplayOrigin() || "https://replay.lumy.cloud";
   return {
-  // Default: only allow from same origin
-  'default-src': ["'self'"],
+    // Default: only allow from same origin
+    "default-src": ["'self'"],
 
-  // Scripts: self + Stripe + Google + PostHog + Leaflet + Gleap + development requirements
-  'script-src': [
-    "'self'",
-    // Stripe.js for payments
-    'https://js.stripe.com',
-    'https://*.js.stripe.com',
-    'https://maps.googleapis.com',
-    // Google Maps
-    'https://maps.gstatic.com',
-    // PostHog analytics
-    'https://eu-assets.i.posthog.com',
-    // Gleap feedback widget
-    'https://gleapjs.com',
-    'https://api.gleap.io',
-    // Leaflet maps
-    'https://unpkg.com',
-    // Development: Next.js hot reload requires eval
-    ...(isDev ? ["'unsafe-eval'", "'unsafe-inline'"] : []),
-    // Production: unsafe-inline needed for Next.js inline scripts (nonce-based CSP is the next step)
-    // unsafe-eval required by PostHog JS SDK (eval/new Function for feature flags & config)
-    ...(!isDev ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
-    // fromHello tracking snippet
-    ...(fromhelloOrigin ? [fromhelloOrigin] : []),
-  ],
+    // Scripts: self + Stripe + Google + PostHog + Leaflet + Gleap + development requirements
+    "script-src": [
+      "'self'",
+      // Stripe.js for payments
+      "https://js.stripe.com",
+      "https://*.js.stripe.com",
+      "https://maps.googleapis.com",
+      // Google Maps
+      "https://maps.gstatic.com",
+      // PostHog analytics
+      "https://eu-assets.i.posthog.com",
+      // Gleap feedback widget
+      "https://gleapjs.com",
+      "https://api.gleap.io",
+      // Leaflet maps
+      "https://unpkg.com",
+      // Development: Next.js hot reload requires eval
+      ...(isDev ? ["'unsafe-eval'", "'unsafe-inline'"] : []),
+      // Production: unsafe-inline needed for Next.js inline scripts (nonce-based CSP is the next step)
+      // unsafe-eval required by PostHog JS SDK (eval/new Function for feature flags & config)
+      ...(!isDev ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
+      // fromHello tracking snippet
+      ...(fromhelloOrigin ? [fromhelloOrigin] : []),
+    ],
 
-  // Styles: self + inline (required for Tailwind and component libraries)
-  'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://api.fontshare.com', 'https://unpkg.com', 'https://gleapjs.com'],
+    // Styles: self + inline (required for Tailwind and component libraries)
+    "style-src": [
+      "'self'",
+      "'unsafe-inline'",
+      "https://fonts.googleapis.com",
+      "https://api.fontshare.com",
+      "https://unpkg.com",
+      "https://gleapjs.com",
+    ],
 
-  // Images: self + data URIs + blob + all allowed image providers
-  'img-src': [
-    "'self'",
-    'data:',
-    'blob:',
-    // Google profile pictures
-    'https://lh3.googleusercontent.com',
-    // Google Maps
-    'https://maps.googleapis.com',
-    'https://maps.gstatic.com',
-    // Leaflet map tiles (CartoDB)
-    'https://*.basemaps.cartocdn.com',
-    // OpenStreetMap tiles (fallback)
-    'https://*.tile.openstreetmap.org',
-    // Gleap
-    'https://gleapjs.com',
-    'https://api.gleap.io',
-    'https://staticfiles.gleap.io',
-    // Stripe Elements icons/assets
-    'https://*.stripe.com',
-    // YouTube thumbnails
-    'https://img.youtube.com',
-    'https://i.ytimg.com',
-    // AWS S3
-    'https://*.s3.amazonaws.com',
-    'https://*.amazonaws.com',
-    // Scaleway
-    'https://*.scw.cloud',
-    // OVH
-    'https://*.cloud.ovh.net',
-    // DigitalOcean
-    'https://*.digitaloceanspaces.com',
-    // Cloudflare R2
-    'https://*.r2.cloudflarestorage.com',
-    // Backblaze
-    'https://*.backblazeb2.com',
-    // Wasabi
-    'https://*.wasabisys.com',
-    // Linode
-    'https://*.linodeobjects.com',
-    // fromHello pixel proxy (Meta/LinkedIn/Google pixels routed via fromHello)
-    ...(fromhelloOrigin ? [fromhelloOrigin] : []),
-  ],
+    // Images: self + data URIs + blob + all allowed image providers
+    "img-src": [
+      "'self'",
+      "data:",
+      "blob:",
+      // Google profile pictures
+      "https://lh3.googleusercontent.com",
+      // Google Maps
+      "https://maps.googleapis.com",
+      "https://maps.gstatic.com",
+      // Leaflet map tiles (CartoDB)
+      "https://*.basemaps.cartocdn.com",
+      // OpenStreetMap tiles (fallback)
+      "https://*.tile.openstreetmap.org",
+      // Gleap
+      "https://gleapjs.com",
+      "https://api.gleap.io",
+      "https://staticfiles.gleap.io",
+      // Stripe Elements icons/assets
+      "https://*.stripe.com",
+      // YouTube thumbnails
+      "https://img.youtube.com",
+      "https://i.ytimg.com",
+      // AWS S3
+      "https://*.s3.amazonaws.com",
+      "https://*.amazonaws.com",
+      // Scaleway
+      "https://*.scw.cloud",
+      // OVH
+      "https://*.cloud.ovh.net",
+      // DigitalOcean
+      "https://*.digitaloceanspaces.com",
+      // Cloudflare R2
+      "https://*.r2.cloudflarestorage.com",
+      // Backblaze
+      "https://*.backblazeb2.com",
+      // Wasabi
+      "https://*.wasabisys.com",
+      // Linode
+      "https://*.linodeobjects.com",
+      // fromHello pixel proxy (Meta/LinkedIn/Google pixels routed via fromHello)
+      ...(fromhelloOrigin ? [fromhelloOrigin] : []),
+    ],
 
-  // Fonts: self + Google Fonts + Fontshare
-  'font-src': ["'self'", 'https://fonts.gstatic.com', 'https://cdn.fontshare.com', 'data:'],
+    // Fonts: self + Google Fonts + Fontshare
+    "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdn.fontshare.com", "data:"],
 
-  // Connect: API calls and WebSocket
-  'connect-src': [
-    "'self'",
-    // Stripe
-    'https://api.stripe.com',
-    'https://maps.googleapis.com',
-    // Google Places API
-    'https://places.googleapis.com',
-    // PostHog analytics
-    'https://eu.i.posthog.com',
-    'https://eu-assets.i.posthog.com',
-    // Gleap feedback
-    'https://api.gleap.io',
-    'wss://ws.gleap.io',
-    // Leaflet resources
-    'https://unpkg.com',
-    // Map tiles
-    'https://*.basemaps.cartocdn.com',
-    'https://*.tile.openstreetmap.org',
-    // Fontshare fonts
-    'https://api.fontshare.com',
-    'https://cdn.fontshare.com',
-    // Development: Next.js WebSocket for hot reload
-    ...(isDev ? ['ws://localhost:*', 'ws://127.0.0.1:*'] : []),
-    // fromHello: snippet POSTs to /api/events, /api/profiles/merge, etc.
-    ...(fromhelloOrigin ? [fromhelloOrigin] : []),
-    // OpenReplay session recording ingest
-    ...(openReplayOrigin ? [openReplayOrigin] : []),
-  ],
+    // Connect: API calls and WebSocket
+    "connect-src": [
+      "'self'",
+      // Stripe
+      "https://api.stripe.com",
+      "https://maps.googleapis.com",
+      // Google Places API
+      "https://places.googleapis.com",
+      // PostHog analytics
+      "https://eu.i.posthog.com",
+      "https://eu-assets.i.posthog.com",
+      // Gleap feedback
+      "https://api.gleap.io",
+      "wss://ws.gleap.io",
+      // Leaflet resources
+      "https://unpkg.com",
+      // Map tiles
+      "https://*.basemaps.cartocdn.com",
+      "https://*.tile.openstreetmap.org",
+      // Fontshare fonts
+      "https://api.fontshare.com",
+      "https://cdn.fontshare.com",
+      // Development: Next.js WebSocket for hot reload
+      ...(isDev ? ["ws://localhost:*", "ws://127.0.0.1:*"] : []),
+      // fromHello: snippet POSTs to /api/events, /api/profiles/merge, etc.
+      ...(fromhelloOrigin ? [fromhelloOrigin] : []),
+      // OpenReplay session recording ingest
+      ...(openReplayOrigin ? [openReplayOrigin] : []),
+    ],
 
-  // Frames: Stripe for 3D Secure + Gleap + storefront embeds (dashboard previews)
-  'frame-src': ["'self'", 'https://js.stripe.com', 'https://*.js.stripe.com', 'https://hooks.stripe.com', 'https://gleapjs.com', 'https://messenger-app.gleap.io', ...(storefrontWildcard ? [storefrontWildcard] : [])],
+    // Frames: Stripe for 3D Secure + Gleap + storefront embeds (dashboard previews)
+    "frame-src": [
+      "'self'",
+      "https://js.stripe.com",
+      "https://*.js.stripe.com",
+      "https://hooks.stripe.com",
+      "https://gleapjs.com",
+      "https://messenger-app.gleap.io",
+      ...(storefrontWildcard ? [storefrontWildcard] : []),
+    ],
 
-  // Workers: only from self
-  'worker-src': ["'self'", 'blob:'],
+    // Workers: only from self
+    "worker-src": ["'self'", "blob:"],
 
-  // Media: self + YouTube embeds
-  'media-src': ["'self'", 'https://www.youtube.com', 'https://youtube.com'],
+    // Media: self + YouTube embeds
+    "media-src": ["'self'", "https://www.youtube.com", "https://youtube.com"],
 
-  // Object: none (no plugins)
-  'object-src': ["'none'"],
+    // Object: none (no plugins)
+    "object-src": ["'none'"],
 
-  // Base URI: restrict to self (prevents base tag hijacking)
-  'base-uri': ["'self'"],
+    // Base URI: restrict to self (prevents base tag hijacking)
+    "base-uri": ["'self'"],
 
-  // Form action: restrict to self
-  'form-action': ["'self'"],
+    // Form action: restrict to self
+    "form-action": ["'self'"],
 
-  // Frame ancestors: prevent clickjacking (replaces X-Frame-Options)
-  'frame-ancestors': ["'self'"],
+    // Frame ancestors: prevent clickjacking (replaces X-Frame-Options)
+    "frame-ancestors": ["'self'"],
 
-  // Upgrade insecure requests in production
-  ...(!isDev ? { 'upgrade-insecure-requests': [] } : {}),
-  }
+    // Upgrade insecure requests in production
+    ...(!isDev ? { "upgrade-insecure-requests": [] } : {}),
+  };
 }
 
 // Build the CSP header string from a fresh directive set. Called
@@ -199,87 +214,90 @@ function buildCspDirectives() {
 function buildCspString(): string {
   return Object.entries(buildCspDirectives())
     .map(([directive, sources]) => {
-      if (sources.length === 0) return directive
-      return `${directive} ${sources.join(' ')}`
+      if (sources.length === 0) return directive;
+      return `${directive} ${sources.join(" ")}`;
     })
-    .join('; ')
+    .join("; ");
 }
 
 function buildSecurityHeaders() {
   return [
-  {
-    // Content Security Policy - Main XSS protection
-    key: 'Content-Security-Policy',
-    value: buildCspString(),
-  },
-  {
-    // Prevent clickjacking attacks (legacy, superseded by CSP frame-ancestors)
-    key: 'X-Frame-Options',
-    value: 'SAMEORIGIN',
-  },
-  {
-    // Prevent MIME type sniffing
-    key: 'X-Content-Type-Options',
-    value: 'nosniff',
-  },
-  {
-    // Enable XSS filter in older browsers
-    key: 'X-XSS-Protection',
-    value: '1; mode=block',
-  },
-  {
-    // Control referrer information
-    key: 'Referrer-Policy',
-    value: 'strict-origin-when-cross-origin',
-  },
-  {
-    // Restrict browser features
-    key: 'Permissions-Policy',
-    value: 'camera=(), microphone=(), geolocation=(self), interest-cohort=()',
-  },
-  {
-    // Enforce HTTPS (enable in production with proper SSL)
-    key: 'Strict-Transport-Security',
-    value: 'max-age=31536000; includeSubDomains',
-  },
-  ]
+    {
+      // Content Security Policy - Main XSS protection
+      key: "Content-Security-Policy",
+      value: buildCspString(),
+    },
+    {
+      // Prevent clickjacking attacks (legacy, superseded by CSP frame-ancestors)
+      key: "X-Frame-Options",
+      value: "SAMEORIGIN",
+    },
+    {
+      // Prevent MIME type sniffing
+      key: "X-Content-Type-Options",
+      value: "nosniff",
+    },
+    {
+      // Enable XSS filter in older browsers
+      key: "X-XSS-Protection",
+      value: "1; mode=block",
+    },
+    {
+      // Control referrer information
+      key: "Referrer-Policy",
+      value: "strict-origin-when-cross-origin",
+    },
+    {
+      // Restrict browser features
+      key: "Permissions-Policy",
+      value: "camera=(), microphone=(), geolocation=(self), interest-cohort=()",
+    },
+    {
+      // Enforce HTTPS (enable in production with proper SSL)
+      key: "Strict-Transport-Security",
+      value: "max-age=31536000; includeSubDomains",
+    },
+  ];
 }
 
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployment
-  output: 'standalone',
+  output: "standalone",
+  // TypeScript 7 ships the native compiler without the legacy JS API surface
+  // Next currently expects during next build. Keep TS validation as a separate
+  // workspace gate through `pnpm type-check`.
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   // Make SKIP_ENV_VALIDATION visible to Turbopack-compiled code (packages/db, packages/validations).
   // Without this, Turbopack inlines process.env.SKIP_ENV_VALIDATION as undefined during compilation.
   // At runtime, t3-env's proxy falls back to real process.env for actual values like DATABASE_URL.
   env: {
-    SKIP_ENV_VALIDATION: process.env.SKIP_ENV_VALIDATION ?? '',
+    SKIP_ENV_VALIDATION: process.env.SKIP_ENV_VALIDATION ?? "",
   },
   // Increase body size limit for server actions (image uploads)
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      bodySizeLimit: "10mb",
     },
   },
   // Security headers for all routes
   async headers() {
     // Build at request time so env vars (e.g. NEXT_PUBLIC_FROMHELLO_API_URL)
     // injected only at runtime by the host platform are reflected here.
-    const securityHeaders = buildSecurityHeaders()
+    const securityHeaders = buildSecurityHeaders();
     // Embed routes: allow framing from any origin (for iframe embedding)
     const embedSecurityHeaders = securityHeaders
-      .filter((h) => h.key !== 'X-Frame-Options')
+      .filter((h) => h.key !== "X-Frame-Options")
       .map((h) => {
-        if (h.key === 'Content-Security-Policy') {
+        if (h.key === "Content-Security-Policy") {
           return {
             ...h,
-            value: h.value.replace(
-              /frame-ancestors\s+'self'/,
-              'frame-ancestors *'
-            ),
-          }
+            value: h.value.replace(/frame-ancestors\s+'self'/, "frame-ancestors *"),
+          };
         }
-        return h
-      })
+        return h;
+      });
 
     // Next.js applies headers in order — when multiple rules match the same
     // path, the LAST matching rule wins for duplicate header keys.
@@ -287,46 +305,46 @@ const nextConfig: NextConfig = {
     return [
       {
         // Default: all routes get strict security headers
-        source: '/:path*',
+        source: "/:path*",
         headers: securityHeaders,
       },
       {
         // Service worker (web push): never cache so updates propagate at once,
         // and allow it to control the whole origin.
-        source: '/sw.js',
+        source: "/sw.js",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
           },
-          { key: 'Service-Worker-Allowed', value: '/' },
+          { key: "Service-Worker-Allowed", value: "/" },
         ],
       },
       {
         // Embed (subdomain routing): ddm.louez.io/embed → external path /embed
-        source: '/embed',
+        source: "/embed",
         headers: embedSecurityHeaders,
       },
       {
         // Embed (path-based routing): localhost:3000/slug/embed
-        source: '/:slug/embed',
+        source: "/:slug/embed",
         headers: embedSecurityHeaders,
       },
-    ]
+    ];
   },
   // PostHog reverse proxy: route analytics through our domain to avoid CORS
   // issues and ad blockers. See https://posthog.com/docs/advanced/proxy/nextjs
   async rewrites() {
     return [
       {
-        source: '/ingest/static/:path*',
-        destination: 'https://eu-assets.i.posthog.com/static/:path*',
+        source: "/ingest/static/:path*",
+        destination: "https://eu-assets.i.posthog.com/static/:path*",
       },
       {
-        source: '/ingest/:path*',
-        destination: 'https://eu.i.posthog.com/:path*',
+        source: "/ingest/:path*",
+        destination: "https://eu.i.posthog.com/:path*",
       },
-    ]
+    ];
   },
   // Required for PostHog proxy to work with middleware
   skipTrailingSlashRedirect: true,
@@ -334,75 +352,75 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       // Google (OAuth profile pictures)
       {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
       },
       // Google Maps Places API (photos)
       {
-        protocol: 'https',
-        hostname: 'maps.googleapis.com',
+        protocol: "https",
+        hostname: "maps.googleapis.com",
       },
       // YouTube thumbnails
       {
-        protocol: 'https',
-        hostname: 'img.youtube.com',
+        protocol: "https",
+        hostname: "img.youtube.com",
       },
       // Seed script placeholders (dev only)
       {
-        protocol: 'https',
-        hostname: 'ui-avatars.com',
+        protocol: "https",
+        hostname: "ui-avatars.com",
       },
       {
-        protocol: 'https',
-        hostname: 'picsum.photos',
+        protocol: "https",
+        hostname: "picsum.photos",
       },
       // AWS S3
       {
-        protocol: 'https',
-        hostname: '*.s3.amazonaws.com',
+        protocol: "https",
+        hostname: "*.s3.amazonaws.com",
       },
       {
-        protocol: 'https',
-        hostname: '**.amazonaws.com',
+        protocol: "https",
+        hostname: "**.amazonaws.com",
       },
       // Scaleway Object Storage
       {
-        protocol: 'https',
-        hostname: '*.scw.cloud',
+        protocol: "https",
+        hostname: "*.scw.cloud",
       },
       // OVH Object Storage
       {
-        protocol: 'https',
-        hostname: '*.cloud.ovh.net',
+        protocol: "https",
+        hostname: "*.cloud.ovh.net",
       },
       {
-        protocol: 'https',
-        hostname: '**.cloud.ovh.net',
+        protocol: "https",
+        hostname: "**.cloud.ovh.net",
       },
       // DigitalOcean Spaces
       {
-        protocol: 'https',
-        hostname: '*.digitaloceanspaces.com',
+        protocol: "https",
+        hostname: "*.digitaloceanspaces.com",
       },
       // Cloudflare R2
       {
-        protocol: 'https',
-        hostname: '*.r2.cloudflarestorage.com',
+        protocol: "https",
+        hostname: "*.r2.cloudflarestorage.com",
       },
       // Backblaze B2
       {
-        protocol: 'https',
-        hostname: '*.backblazeb2.com',
+        protocol: "https",
+        hostname: "*.backblazeb2.com",
       },
       // Wasabi
       {
-        protocol: 'https',
-        hostname: '*.wasabisys.com',
+        protocol: "https",
+        hostname: "*.wasabisys.com",
       },
       // Linode Object Storage
       {
-        protocol: 'https',
-        hostname: '*.linodeobjects.com',
+        protocol: "https",
+        hostname: "*.linodeobjects.com",
       },
       // MinIO (self-hosted) - Allow any hostname for flexibility
       // Users can add their own custom domains if needed
@@ -413,11 +431,11 @@ const nextConfig: NextConfig = {
   // NOT cover them — add the per-env tenant wildcard or the dev server 403s the
   // client bundle and the page never hydrates.
   allowedDevOrigins: [
-    'louez.localify',
-    '*.louez.localify',
-    'feat-inventory.louez.localify',
-    '*.feat-inventory.louez.localify',
+    "louez.localify",
+    "*.louez.localify",
+    "feat-inventory.louez.localify",
+    "*.feat-inventory.louez.localify",
   ],
-}
+};
 
-export default withNextIntl(nextConfig)
+export default withNextIntl(nextConfig);

@@ -748,7 +748,7 @@ export function UnitTrackingEditor({
 
     if (units.length > 0) {
       const nextUnits = units.map((unit) => {
-        const attributes = { ...(unit.attributes || {}) };
+        const attributes = { ...unit.attributes };
         delete attributes[key];
         return { ...unit, attributes };
       });

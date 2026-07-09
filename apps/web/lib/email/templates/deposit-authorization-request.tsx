@@ -1,36 +1,28 @@
-import {
-  Button,
-  Column,
-  Heading,
-  Hr,
-  Row,
-  Section,
-  Text,
-} from '@react-email/components'
-import { BaseLayout } from './base-layout'
-import { getContrastColorHex } from '@/lib/utils/colors'
-import { getEmailTranslations, getCurrencyFormatter, type EmailLocale } from '../i18n'
+import { Button, Column, Heading, Hr, Row, Section, Text } from "@react-email/components";
+import { BaseLayout } from "./base-layout";
+import { getContrastColorHex } from "@/lib/utils/colors";
+import { getEmailTranslations, getCurrencyFormatter, type EmailLocale } from "../i18n";
 
 interface DepositAuthorizationRequestEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storeEmail?: string | null
-  storePhone?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  depositAmount: number
-  authorizationUrl: string
-  customMessage?: string
-  locale?: EmailLocale
-  currency?: string
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  depositAmount: number;
+  authorizationUrl: string;
+  customMessage?: string;
+  locale?: EmailLocale;
+  currency?: string;
 }
 
 export function DepositAuthorizationRequestEmail({
   storeName,
   logoUrl,
-  primaryColor = '#0066FF',
+  primaryColor = "#0066FF",
   storeAddress,
   storeEmail,
   storePhone,
@@ -39,23 +31,23 @@ export function DepositAuthorizationRequestEmail({
   depositAmount,
   authorizationUrl,
   customMessage,
-  locale = 'fr',
-  currency = 'EUR',
+  locale = "fr",
+  currency = "EUR",
 }: DepositAuthorizationRequestEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.depositAuthorizationRequest
-  const tc = t.common
-  const formatCurrency = getCurrencyFormatter(locale, currency)
+  const t = getEmailTranslations(locale);
+  const messages = t.depositAuthorizationRequest;
+  const tc = t.common;
+  const formatCurrency = getCurrencyFormatter(locale, currency);
 
   const buttonStyle = {
     ...button,
     backgroundColor: primaryColor,
     color: getContrastColorHex(primaryColor),
-  }
+  };
 
   return (
     <BaseLayout
-      preview={messages.subject.replace('{number}', reservationNumber)}
+      preview={messages.subject.replace("{number}", reservationNumber)}
       storeName={storeName}
       logoUrl={logoUrl}
       primaryColor={primaryColor}
@@ -66,13 +58,13 @@ export function DepositAuthorizationRequestEmail({
     >
       <Heading style={heading}>{messages.title}</Heading>
 
-      <Text style={paragraph}>{tc.greeting.replace('{name}', customerFirstName)}</Text>
+      <Text style={paragraph}>{tc.greeting.replace("{name}", customerFirstName)}</Text>
 
       <Text style={paragraph}>
         {messages.body
-          .replace('{storeName}', storeName)
-          .replace('{amount}', formatCurrency(depositAmount))
-          .replace('{number}', reservationNumber)}
+          .replace("{storeName}", storeName)
+          .replace("{amount}", formatCurrency(depositAmount))
+          .replace("{number}", reservationNumber)}
       </Text>
 
       {/* Info box explaining deposit authorization */}
@@ -90,7 +82,9 @@ export function DepositAuthorizationRequestEmail({
 
         <Row style={detailRow}>
           <Column>
-            <Text style={detailLabel}>{tc.reservationNumber.replace('{number}', reservationNumber)}</Text>
+            <Text style={detailLabel}>
+              {tc.reservationNumber.replace("{number}", reservationNumber)}
+            </Text>
           </Column>
         </Row>
 
@@ -123,159 +117,148 @@ export function DepositAuthorizationRequestEmail({
         </Button>
       </Section>
 
-      <Text style={fallbackText}>
-        {messages.linkFallback}
-      </Text>
+      <Text style={fallbackText}>{messages.linkFallback}</Text>
       <Text style={linkText}>{authorizationUrl}</Text>
 
       <Hr style={hr} />
 
-      <Text style={footerNote}>
-        {messages.securePayment}
-      </Text>
+      <Text style={footerNote}>{messages.securePayment}</Text>
     </BaseLayout>
-  )
+  );
 }
 
 const heading = {
-  fontSize: '24px',
-  fontWeight: 'bold' as const,
-  color: '#1a1a1a',
-  marginBottom: '24px',
-}
+  fontSize: "24px",
+  fontWeight: "bold" as const,
+  color: "#1a1a1a",
+  marginBottom: "24px",
+};
 
 const paragraph = {
-  fontSize: '14px',
-  lineHeight: '24px',
-  color: '#525f7f',
-  margin: '0 0 10px 0',
-}
+  fontSize: "14px",
+  lineHeight: "24px",
+  color: "#525f7f",
+  margin: "0 0 10px 0",
+};
 
 const infoBox = {
-  backgroundColor: '#eff6ff',
-  borderRadius: '8px',
-  padding: '16px',
-  marginBottom: '24px',
-  borderLeft: '4px solid #3b82f6',
-}
+  backgroundColor: "#eff6ff",
+  borderRadius: "8px",
+  padding: "16px",
+  marginBottom: "24px",
+  borderLeft: "4px solid #3b82f6",
+};
 
 const infoTitle = {
-  fontSize: '14px',
-  fontWeight: 'bold' as const,
-  color: '#1e40af',
-  margin: '0 0 8px 0',
-}
+  fontSize: "14px",
+  fontWeight: "bold" as const,
+  color: "#1e40af",
+  margin: "0 0 8px 0",
+};
 
 const infoText = {
-  fontSize: '13px',
-  lineHeight: '20px',
-  color: '#1e40af',
-  margin: '0',
-}
+  fontSize: "13px",
+  lineHeight: "20px",
+  color: "#1e40af",
+  margin: "0",
+};
 
 const boxSection = {
-  backgroundColor: '#f8fafc',
-  borderRadius: '8px',
-  padding: '20px',
-  marginBottom: '24px',
-}
+  backgroundColor: "#f8fafc",
+  borderRadius: "8px",
+  padding: "20px",
+  marginBottom: "24px",
+};
 
 const sectionTitle = {
-  fontSize: '12px',
-  fontWeight: 'bold' as const,
-  textTransform: 'uppercase' as const,
-  color: '#8898aa',
-  marginBottom: '16px',
-}
+  fontSize: "12px",
+  fontWeight: "bold" as const,
+  textTransform: "uppercase" as const,
+  color: "#8898aa",
+  marginBottom: "16px",
+};
 
 const detailRow = {
-  marginBottom: '8px',
-}
+  marginBottom: "8px",
+};
 
 const detailLabel = {
-  fontSize: '14px',
-  color: '#525f7f',
-  margin: '0',
-}
-
-const detailValue = {
-  fontSize: '14px',
-  fontWeight: '600' as const,
-  color: '#1a1a1a',
-  margin: '0',
-}
+  fontSize: "14px",
+  color: "#525f7f",
+  margin: "0",
+};
 
 const amountValue = {
-  fontSize: '18px',
-  fontWeight: 'bold' as const,
-  color: '#1a1a1a',
-  margin: '0',
-}
+  fontSize: "18px",
+  fontWeight: "bold" as const,
+  color: "#1a1a1a",
+  margin: "0",
+};
 
 const hrInner = {
-  borderColor: '#e6ebf1',
-  margin: '12px 0',
-}
+  borderColor: "#e6ebf1",
+  margin: "12px 0",
+};
 
 const hr = {
-  borderColor: '#e6ebf1',
-  margin: '20px 0',
-}
+  borderColor: "#e6ebf1",
+  margin: "20px 0",
+};
 
 const customMessageSection = {
-  backgroundColor: '#fffbeb',
-  borderRadius: '8px',
-  padding: '16px',
-  marginBottom: '24px',
-  borderLeft: '4px solid #f59e0b',
-}
+  backgroundColor: "#fffbeb",
+  borderRadius: "8px",
+  padding: "16px",
+  marginBottom: "24px",
+  borderLeft: "4px solid #f59e0b",
+};
 
 const customMessageText = {
-  fontSize: '14px',
-  lineHeight: '22px',
-  color: '#78350f',
-  margin: '0',
-  fontStyle: 'italic' as const,
-}
+  fontSize: "14px",
+  lineHeight: "22px",
+  color: "#78350f",
+  margin: "0",
+  fontStyle: "italic" as const,
+};
 
 const ctaSection = {
-  textAlign: 'center' as const,
-  marginTop: '32px',
-  marginBottom: '16px',
-}
+  textAlign: "center" as const,
+  marginTop: "32px",
+  marginBottom: "16px",
+};
 
 const button = {
-  backgroundColor: '#0066FF',
-  borderRadius: '6px',
-  color: '#fff',
-  fontSize: '16px',
-  fontWeight: 'bold' as const,
-  textDecoration: 'none',
-  textAlign: 'center' as const,
-  display: 'inline-block',
-  padding: '14px 32px',
-}
+  backgroundColor: "#0066FF",
+  borderRadius: "6px",
+  color: "#fff",
+  fontSize: "16px",
+  fontWeight: "bold" as const,
+  textDecoration: "none",
+  textAlign: "center" as const,
+  display: "inline-block",
+  padding: "14px 32px",
+};
 
 const fallbackText = {
-  fontSize: '12px',
-  color: '#8898aa',
-  textAlign: 'center' as const,
-  margin: '0 0 4px 0',
-}
+  fontSize: "12px",
+  color: "#8898aa",
+  textAlign: "center" as const,
+  margin: "0 0 4px 0",
+};
 
 const linkText = {
-  fontSize: '11px',
-  color: '#8898aa',
-  textAlign: 'center' as const,
-  wordBreak: 'break-all' as const,
-  margin: '0',
-}
+  fontSize: "11px",
+  color: "#8898aa",
+  textAlign: "center" as const,
+  wordBreak: "break-all" as const,
+  margin: "0",
+};
 
 const footerNote = {
-  fontSize: '13px',
-  color: '#8898aa',
-  fontStyle: 'italic' as const,
-  textAlign: 'center' as const,
-}
+  fontSize: "13px",
+  color: "#8898aa",
+  fontStyle: "italic" as const,
+  textAlign: "center" as const,
+};
 
-export default DepositAuthorizationRequestEmail
+export default DepositAuthorizationRequestEmail;

@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 
-import { format, setHours, setMinutes } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { format, setHours, setMinutes } from "date-fns";
+import { fr } from "date-fns/locale";
 import {
   AlertCircle,
   ArrowRight,
@@ -21,43 +21,36 @@ import {
   Layers,
   Play,
   TrendingDown,
-} from 'lucide-react';
-import { useTranslations } from 'next-intl';
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import type { BusinessHours } from '@louez/types';
-import { Button } from '@louez/ui';
-import { Dialog, DialogHeader, DialogPopup, DialogTitle } from '@louez/ui';
-import { Popover, PopoverContent, PopoverTrigger } from '@louez/ui';
-import { Calendar } from '@louez/ui';
-import { ScrollArea } from '@louez/ui';
-import { Badge } from '@louez/ui';
-import { cn, formatCurrency, minutesToPriceDuration } from '@louez/utils';
+import type { BusinessHours } from "@louez/types";
+import { Button } from "@louez/ui";
+import { Dialog, DialogHeader, DialogPopup, DialogTitle } from "@louez/ui";
+import { Popover, PopoverContent, PopoverTrigger } from "@louez/ui";
+import { Calendar } from "@louez/ui";
+import { ScrollArea } from "@louez/ui";
+import { Badge } from "@louez/ui";
+import { cn, formatCurrency, minutesToPriceDuration } from "@louez/utils";
 
 import {
   generateTimeSlots,
   getAvailableTimeSlots,
   isDateAvailable,
-} from '@/lib/utils/business-hours';
-import {
-  type PricingMode,
-  getMinStartDate,
-  isTimeSlotAvailable,
-} from '@/lib/utils/duration';
+} from "@/lib/utils/business-hours";
+import { type PricingMode, getMinStartDate, isTimeSlotAvailable } from "@/lib/utils/duration";
 import {
   getDefaultEndDateForStartDate,
   isCalendarDateBeforeSelectedDate,
   isSameDayEndTimeSlotAllowed,
-} from '@/components/storefront/date-picker/core/use-rental-date-core';
+} from "@/components/storefront/date-picker/core/use-rental-date-core";
 
-import { useStorefrontUrl } from '@/hooks/use-storefront-url';
-import {
-  getStorefrontPricingSummary,
-  getStorefrontRateRows,
-} from '@/lib/utils/storefront-pricing';
+import { useStorefrontUrl } from "@/hooks/use-storefront-url";
+import { getStorefrontPricingSummary, getStorefrontRateRows } from "@/lib/utils/storefront-pricing";
 
-import { useAnalytics } from '@/contexts/analytics-context';
-import { useCart } from '@/contexts/cart-context';
-import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context';
+import { useAnalytics } from "@/contexts/analytics-context";
+import { useCart } from "@/contexts/cart-context";
+import { useStoreCurrency, useStoreMaxDiscountPercent } from "@/contexts/store-context";
 
 interface PricingTier {
   id: string;
@@ -103,7 +96,7 @@ interface ProductPreviewModalProps {
   timezone?: string;
 }
 
-const defaultTimeSlots = generateTimeSlots('07:00', '21:00', 30);
+const defaultTimeSlots = generateTimeSlots("07:00", "21:00", 30);
 
 export function ProductPreviewModal({
   product,
@@ -115,9 +108,9 @@ export function ProductPreviewModal({
   minRentalMinutes = 0,
   timezone,
 }: ProductPreviewModalProps) {
-  const tProduct = useTranslations('storefront.product');
-  const tDateSelection = useTranslations('storefront.dateSelection');
-  const tCommon = useTranslations('common');
+  const tProduct = useTranslations("storefront.product");
+  const tDateSelection = useTranslations("storefront.dateSelection");
+  const tCommon = useTranslations("common");
   const currency = useStoreCurrency();
   const maxDiscountPercent = useStoreMaxDiscountPercent();
   const router = useRouter();
@@ -130,8 +123,8 @@ export function ProductPreviewModal({
   // Date picker state
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [startTime, setStartTime] = useState<string>('09:00');
-  const [endTime, setEndTime] = useState<string>('18:00');
+  const [startTime, setStartTime] = useState<string>("09:00");
+  const [endTime, setEndTime] = useState<string>("18:00");
 
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [startTimeOpen, setStartTimeOpen] = useState(false);
@@ -145,12 +138,12 @@ export function ProductPreviewModal({
       setSelectedImageIndex(0);
       setStartDate(undefined);
       setEndDate(undefined);
-      setStartTime('09:00');
-      setEndTime('18:00');
+      setStartTime("09:00");
+      setEndTime("18:00");
       setTiersExpanded(false);
       // Track product view when modal opens
       trackEvent({
-        eventType: 'product_view',
+        eventType: "product_view",
         metadata: {
           productId: product.id,
           productName: product.name,
@@ -159,41 +152,28 @@ export function ProductPreviewModal({
         },
       });
     }
-  }, [
-    isOpen,
-    trackEvent,
-    product.id,
-    product.name,
-    product.price,
-    product.category?.name,
-  ]);
+  }, [isOpen, trackEvent, product.id, product.name, product.price, product.category?.name]);
 
-  const price = parseFloat(product.price);
-  const effectivePricingMode: PricingMode = product.pricingMode ?? 'day';
+  const effectivePricingMode: PricingMode = product.pricingMode ?? "day";
 
   useEffect(() => {
     setPricingMode(effectivePricingMode);
   }, [effectivePricingMode, setPricingMode]);
 
   const rateRows = useMemo(() => getStorefrontRateRows(product), [product]);
-  const pricingSummary = useMemo(
-    () => getStorefrontPricingSummary(product),
-    [product],
-  );
+  const pricingSummary = useMemo(() => getStorefrontPricingSummary(product), [product]);
   const displayPeriodMinutes = pricingSummary.displayPeriodMinutes;
   // Highest discount within the store limit, for the header badge
-  const modalDiscount = maxDiscountPercent == null
-    ? pricingSummary.maxReductionPercent
-    : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0);
+  const modalDiscount =
+    maxDiscountPercent == null
+      ? pricingSummary.maxReductionPercent
+      : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0);
   // Whether a specific tier's discount badge should be displayed
   const isDiscountVisible = (reductionPercent: number) =>
     reductionPercent > 0 && (maxDiscountPercent == null || reductionPercent <= maxDiscountPercent);
 
-  const images =
-    product.images && product.images.length > 0 ? product.images : [];
-  const videoId = product.videoUrl
-    ? extractYouTubeVideoId(product.videoUrl)
-    : null;
+  const images = product.images && product.images.length > 0 ? product.images : [];
+  const videoId = product.videoUrl ? extractYouTubeVideoId(product.videoUrl) : null;
   const hasVideo = !!videoId;
   const totalMediaItems = images.length + (hasVideo ? 1 : 0);
   const isVideoSelected = hasVideo && selectedImageIndex === images.length;
@@ -207,15 +187,15 @@ export function ProductPreviewModal({
     ) => {
       const period = minutesToPriceDuration(periodMinutes);
       const alwaysShowCount = options?.alwaysShowCount ?? false;
-      if (period.unit === 'minute') {
-        const minuteLabel = tCommon('minuteUnit', { count: period.duration });
+      if (period.unit === "minute") {
+        const minuteLabel = tCommon("minuteUnit", { count: period.duration });
         if (period.duration === 1 && !alwaysShowCount) {
           return minuteLabel;
         }
         return `${period.duration} ${minuteLabel}`;
       }
       const unitLabel = tProduct(
-        `pricingUnit.${period.unit}.${period.duration === 1 ? 'singular' : 'plural'}`,
+        `pricingUnit.${period.unit}.${period.duration === 1 ? "singular" : "plural"}`,
       );
       if (period.duration === 1 && !alwaysShowCount) {
         return unitLabel;
@@ -227,36 +207,22 @@ export function ProductPreviewModal({
 
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedImageIndex((prev) =>
-      prev === 0 ? totalMediaItems - 1 : prev - 1,
-    );
+    setSelectedImageIndex((prev) => (prev === 0 ? totalMediaItems - 1 : prev - 1));
   };
 
   const handleNextImage = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedImageIndex((prev) =>
-      prev === totalMediaItems - 1 ? 0 : prev + 1,
-    );
+    setSelectedImageIndex((prev) => (prev === totalMediaItems - 1 ? 0 : prev + 1));
   };
 
   // Date picker logic
-  const minDate = useMemo(
-    () => getMinStartDate(advanceNotice),
-    [advanceNotice],
-  );
+  const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice]);
 
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots;
-    const businessHoursSlots = getAvailableTimeSlots(
-      startDate,
-      businessHours,
-      30,
-      timezone,
-    );
+    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30, timezone);
     // Filter out time slots that are within the advance notice period
-    return businessHoursSlots.filter((slot) =>
-      isTimeSlotAvailable(startDate, slot, advanceNotice),
-    );
+    return businessHoursSlots.filter((slot) => isTimeSlotAvailable(startDate, slot, advanceNotice));
   }, [startDate, businessHours, advanceNotice, timezone]);
 
   const endTimeSlots = useMemo(() => {
@@ -290,11 +256,7 @@ export function ProductPreviewModal({
   );
 
   useEffect(() => {
-    if (
-      startDate &&
-      startTimeSlots.length > 0 &&
-      !startTimeSlots.includes(startTime)
-    ) {
+    if (startDate && startTimeSlots.length > 0 && !startTimeSlots.includes(startTime)) {
       setStartTime(startTimeSlots[0]);
     }
   }, [startDate, startTimeSlots, startTime]);
@@ -314,7 +276,7 @@ export function ProductPreviewModal({
       setEndDate(
         getDefaultEndDateForStartDate({
           startDate: date,
-          pricingMode: product.pricingMode || 'day',
+          pricingMode: product.pricingMode || "day",
           minRentalMinutes,
           businessHours,
           timezone,
@@ -348,18 +310,18 @@ export function ProductPreviewModal({
   const handleSubmit = () => {
     if (!canSubmit) return;
 
-    const [startH, startM] = startTime.split(':').map(Number);
+    const [startH, startM] = startTime.split(":").map(Number);
     const finalStart = setMinutes(setHours(startDate!, startH), startM);
-    const [endH, endM] = endTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(":").map(Number);
     const finalEnd = setMinutes(setHours(endDate!, endH), endM);
 
     setGlobalDates(finalStart.toISOString(), finalEnd.toISOString());
     const params = new URLSearchParams();
-    params.set('startDate', finalStart.toISOString());
-    params.set('endDate', finalEnd.toISOString());
+    params.set("startDate", finalStart.toISOString());
+    params.set("endDate", finalEnd.toISOString());
 
     onClose();
-    router.push(`${getUrl('/rental')}?${params.toString()}`);
+    router.push(`${getUrl("/rental")}?${params.toString()}`);
   };
 
   const TimeSelector = ({
@@ -378,7 +340,7 @@ export function ProductPreviewModal({
         {slots.length === 0 ? (
           <div className="text-muted-foreground p-4 text-center text-sm">
             <AlertCircle className="mx-auto mb-2 h-5 w-5" />
-            {tDateSelection('businessHours.storeClosed')}
+            {tDateSelection("businessHours.storeClosed")}
           </div>
         ) : (
           slots.map((time) => {
@@ -391,12 +353,12 @@ export function ProductPreviewModal({
                 onClick={() => !isDisabled && onSelect(time)}
                 disabled={isDisabled}
                 className={cn(
-                  'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors',
+                  "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors",
                   isSelected
-                    ? 'bg-primary text-primary-foreground'
+                    ? "bg-primary text-primary-foreground"
                     : isDisabled
-                      ? 'text-muted-foreground/40 cursor-not-allowed'
-                      : 'hover:bg-muted',
+                      ? "text-muted-foreground/40 cursor-not-allowed"
+                      : "hover:bg-muted",
                 )}
               >
                 <span className="font-medium">{time}</span>
@@ -486,10 +448,10 @@ export function ProductPreviewModal({
                     key={idx}
                     onClick={() => setSelectedImageIndex(idx)}
                     className={cn(
-                      'relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
+                      "relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-all",
                       selectedImageIndex === idx
-                        ? 'border-primary ring-primary/20 ring-2'
-                        : 'border-transparent opacity-70 hover:opacity-100',
+                        ? "border-primary ring-primary/20 ring-2"
+                        : "border-transparent opacity-70 hover:opacity-100",
                     )}
                   >
                     <Image
@@ -512,10 +474,10 @@ export function ProductPreviewModal({
                   <button
                     onClick={() => setSelectedImageIndex(images.length)}
                     className={cn(
-                      'relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
+                      "relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 transition-all",
                       isVideoSelected
-                        ? 'border-primary ring-primary/20 ring-2'
-                        : 'border-transparent opacity-70 hover:opacity-100',
+                        ? "border-primary ring-primary/20 ring-2"
+                        : "border-transparent opacity-70 hover:opacity-100",
                     )}
                   >
                     <Image
@@ -541,9 +503,7 @@ export function ProductPreviewModal({
               <div className="mb-2 flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   {product.category && (
-                    <p className="text-muted-foreground mb-1 text-sm">
-                      {product.category.name}
-                    </p>
+                    <p className="text-muted-foreground mb-1 text-sm">{product.category.name}</p>
                   )}
                   <h2 className="text-xl leading-tight font-semibold md:text-2xl">
                     {product.name}
@@ -551,7 +511,7 @@ export function ProductPreviewModal({
                 </div>
                 {product.quantity === 0 && (
                   <Badge variant="error" className="shrink-0 text-xs">
-                    {tProduct('unavailable')}
+                    {tProduct("unavailable")}
                   </Badge>
                 )}
               </div>
@@ -560,7 +520,7 @@ export function ProductPreviewModal({
               <div className="mt-3 flex items-baseline gap-2">
                 {pricingSummary.showStartingFrom && (
                   <span className="text-muted-foreground text-sm font-medium">
-                    {tProduct('startingFrom')}
+                    {tProduct("startingFrom")}
                   </span>
                 )}
                 <span className="text-primary text-2xl font-bold md:text-3xl">
@@ -572,7 +532,7 @@ export function ProductPreviewModal({
                 {modalDiscount > 0 && (
                   <Badge className="ml-2 bg-primary/10 text-primary">
                     <TrendingDown className="mr-1 h-3 w-3" />
-                    {tProduct('tieredPricing.badge', {
+                    {tProduct("tieredPricing.badge", {
                       percent: Math.floor(modalDiscount),
                     })}
                   </Badge>
@@ -586,8 +546,8 @@ export function ProductPreviewModal({
                 <div
                   className="text-muted-foreground prose prose-sm dark:prose-invert max-w-none text-sm [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_li]:mb-1 [&_ol]:mb-2 [&_p]:mb-2 [&_ul]:mb-2 [&>*]:break-words"
                   style={{
-                    wordBreak: 'break-word',
-                    overflowWrap: 'break-word',
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
                   }}
                   dangerouslySetInnerHTML={{ __html: product.description }}
                 />
@@ -595,131 +555,134 @@ export function ProductPreviewModal({
             )}
 
             {/* Pricing tiers */}
-            {rateRows.length > 1 && (() => {
-              const MAX_VISIBLE = 3;
-              const hasHidden = rateRows.length > MAX_VISIBLE;
-              const hiddenCount = rateRows.length - MAX_VISIBLE;
-              const visibleRows = rateRows.slice(0, MAX_VISIBLE);
-              const hiddenRows = rateRows.slice(MAX_VISIBLE);
+            {rateRows.length > 1 &&
+              (() => {
+                const MAX_VISIBLE = 3;
+                const hasHidden = rateRows.length > MAX_VISIBLE;
+                const hiddenCount = rateRows.length - MAX_VISIBLE;
+                const visibleRows = rateRows.slice(0, MAX_VISIBLE);
+                const hiddenRows = rateRows.slice(MAX_VISIBLE);
 
-              return (
-                <div className="rounded-xl border bg-primary/5 p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <div className="rounded-lg bg-primary/10 p-1.5">
-                      <Layers className="h-4 w-4 text-primary" />
-                    </div>
-                    <span className="text-sm font-semibold">
-                      {tProduct('tieredPricing.ratesTitle')}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {visibleRows.map((rate) => (
-                      <div
-                        key={rate.id}
-                        className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm shadow-xs"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">
-                            {formatPeriodLabel(rate.periodMinutes, {
-                              alwaysShowCount: true,
-                            })}
-                          </span>
-                          {isDiscountVisible(rate.reductionPercent) && (
-                            <Badge className="bg-primary/10 text-xs font-semibold text-primary">
-                              -{Math.floor(rate.reductionPercent)}%
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <span className="font-semibold">
-                            {formatCurrency(rate.price, currency)}
-                          </span>
-                          {(() => {
-                            const period = minutesToPriceDuration(rate.periodMinutes);
-                            if (period.duration <= 1) return null;
-                            const unitMinutes = rate.periodMinutes / period.duration;
-                            return (
-                              <div className="text-muted-foreground text-xs">
-                                {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
-                              </div>
-                            );
-                          })()}
-                        </div>
+                return (
+                  <div className="rounded-xl border bg-primary/5 p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <div className="rounded-lg bg-primary/10 p-1.5">
+                        <Layers className="h-4 w-4 text-primary" />
                       </div>
-                    ))}
+                      <span className="text-sm font-semibold">
+                        {tProduct("tieredPricing.ratesTitle")}
+                      </span>
+                    </div>
 
-                    {/* Collapsible hidden tiers */}
-                    {hasHidden && (
-                      <div
-                        className="grid transition-[grid-template-rows] duration-300 ease-in-out"
-                        style={{
-                          gridTemplateRows: tiersExpanded ? '1fr' : '0fr',
-                        }}
-                      >
-                        <div className="overflow-hidden">
-                          <div className="space-y-1.5">
-                            {hiddenRows.map((rate) => (
-                              <div
-                                key={rate.id}
-                                className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm shadow-xs"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">
-                                    {formatPeriodLabel(rate.periodMinutes, {
-                                      alwaysShowCount: true,
-                                    })}
-                                  </span>
-                                  {isDiscountVisible(rate.reductionPercent) && (
-                                    <Badge className="bg-primary/10 text-xs font-semibold text-primary">
-                                      -{Math.floor(rate.reductionPercent)}%
-                                    </Badge>
-                                  )}
+                    <div className="space-y-1.5">
+                      {visibleRows.map((rate) => (
+                        <div
+                          key={rate.id}
+                          className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm shadow-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {formatPeriodLabel(rate.periodMinutes, {
+                                alwaysShowCount: true,
+                              })}
+                            </span>
+                            {isDiscountVisible(rate.reductionPercent) && (
+                              <Badge className="bg-primary/10 text-xs font-semibold text-primary">
+                                -{Math.floor(rate.reductionPercent)}%
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="font-semibold">
+                              {formatCurrency(rate.price, currency)}
+                            </span>
+                            {(() => {
+                              const period = minutesToPriceDuration(rate.periodMinutes);
+                              if (period.duration <= 1) return null;
+                              const unitMinutes = rate.periodMinutes / period.duration;
+                              return (
+                                <div className="text-muted-foreground text-xs">
+                                  {formatCurrency(rate.price / period.duration, currency)}/
+                                  {formatPeriodLabel(unitMinutes)}
                                 </div>
-                                <div className="text-right">
-                                  <span className="font-semibold">
-                                    {formatCurrency(rate.price, currency)}
-                                  </span>
-                                  {(() => {
-                                    const period = minutesToPriceDuration(rate.periodMinutes);
-                                    if (period.duration <= 1) return null;
-                                    const unitMinutes = rate.periodMinutes / period.duration;
-                                    return (
-                                      <div className="text-muted-foreground text-xs">
-                                        {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
-                                      </div>
-                                    );
-                                  })()}
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })()}
                           </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
 
-                    {hasHidden && (
-                      <button
-                        type="button"
-                        onClick={() => setTiersExpanded((v) => !v)}
-                        className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 pt-1 text-xs font-medium transition-colors"
-                      >
-                        {tiersExpanded
-                          ? tProduct('tieredPricing.showLess')
-                          : tProduct('tieredPricing.showMore', {
-                              count: hiddenCount,
-                            })}
-                        {tiersExpanded ? (
-                          <ChevronUp className="h-3.5 w-3.5" />
-                        ) : (
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                    )}
+                      {/* Collapsible hidden tiers */}
+                      {hasHidden && (
+                        <div
+                          className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                          style={{
+                            gridTemplateRows: tiersExpanded ? "1fr" : "0fr",
+                          }}
+                        >
+                          <div className="overflow-hidden">
+                            <div className="space-y-1.5">
+                              {hiddenRows.map((rate) => (
+                                <div
+                                  key={rate.id}
+                                  className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm shadow-xs"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {formatPeriodLabel(rate.periodMinutes, {
+                                        alwaysShowCount: true,
+                                      })}
+                                    </span>
+                                    {isDiscountVisible(rate.reductionPercent) && (
+                                      <Badge className="bg-primary/10 text-xs font-semibold text-primary">
+                                        -{Math.floor(rate.reductionPercent)}%
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="font-semibold">
+                                      {formatCurrency(rate.price, currency)}
+                                    </span>
+                                    {(() => {
+                                      const period = minutesToPriceDuration(rate.periodMinutes);
+                                      if (period.duration <= 1) return null;
+                                      const unitMinutes = rate.periodMinutes / period.duration;
+                                      return (
+                                        <div className="text-muted-foreground text-xs">
+                                          {formatCurrency(rate.price / period.duration, currency)}/
+                                          {formatPeriodLabel(unitMinutes)}
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {hasHidden && (
+                        <button
+                          type="button"
+                          onClick={() => setTiersExpanded((v) => !v)}
+                          className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 pt-1 text-xs font-medium transition-colors"
+                        >
+                          {tiersExpanded
+                            ? tProduct("tieredPricing.showLess")
+                            : tProduct("tieredPricing.showMore", {
+                                count: hiddenCount,
+                              })}
+                          {tiersExpanded ? (
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
           </div>
         </div>
 
@@ -731,7 +694,7 @@ export function ProductPreviewModal({
               {/* Start Date/Time */}
               <div>
                 <label className="text-muted-foreground mb-1.5 block text-xs font-medium">
-                  {tDateSelection('startLabel')}
+                  {tDateSelection("startLabel")}
                 </label>
                 <div className="bg-background flex h-11 overflow-hidden rounded-xl border">
                   <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
@@ -739,8 +702,8 @@ export function ProductPreviewModal({
                       render={
                         <button
                           className={cn(
-                            'hover:bg-muted/50 flex min-w-0 flex-1 items-center gap-2 px-3 text-left transition-colors',
-                            !startDate && 'text-muted-foreground',
+                            "hover:bg-muted/50 flex min-w-0 flex-1 items-center gap-2 px-3 text-left transition-colors",
+                            !startDate && "text-muted-foreground",
                           )}
                         />
                       }
@@ -748,8 +711,8 @@ export function ProductPreviewModal({
                       <CalendarIcon className="text-primary h-4 w-4 shrink-0" />
                       <span className="truncate text-sm font-medium">
                         {startDate
-                          ? format(startDate, 'd MMM', { locale: fr })
-                          : tDateSelection('startDate')}
+                          ? format(startDate, "d MMM", { locale: fr })
+                          : tDateSelection("startDate")}
                       </span>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -789,7 +752,7 @@ export function ProductPreviewModal({
               {/* End Date/Time */}
               <div>
                 <label className="text-muted-foreground mb-1.5 block text-xs font-medium">
-                  {tDateSelection('endLabel')}
+                  {tDateSelection("endLabel")}
                 </label>
                 <div className="bg-background flex h-11 overflow-hidden rounded-xl border">
                   <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
@@ -797,8 +760,8 @@ export function ProductPreviewModal({
                       render={
                         <button
                           className={cn(
-                            'hover:bg-muted/50 flex min-w-0 flex-1 items-center gap-2 px-3 text-left transition-colors',
-                            !endDate && 'text-muted-foreground',
+                            "hover:bg-muted/50 flex min-w-0 flex-1 items-center gap-2 px-3 text-left transition-colors",
+                            !endDate && "text-muted-foreground",
                           )}
                         />
                       }
@@ -806,8 +769,8 @@ export function ProductPreviewModal({
                       <CalendarIcon className="text-primary h-4 w-4 shrink-0" />
                       <span className="truncate text-sm font-medium">
                         {endDate
-                          ? format(endDate, 'd MMM', { locale: fr })
-                          : tDateSelection('endDate')}
+                          ? format(endDate, "d MMM", { locale: fr })
+                          : tDateSelection("endDate")}
                       </span>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -816,8 +779,7 @@ export function ProductPreviewModal({
                         selected={endDate}
                         onSelect={handleEndDateSelect}
                         disabled={(date) =>
-                          isDateDisabled(date) ||
-                          isCalendarDateBeforeSelectedDate(date, startDate)
+                          isDateDisabled(date) || isCalendarDateBeforeSelectedDate(date, startDate)
                         }
                         locale={fr}
                         initialFocus
@@ -862,7 +824,7 @@ export function ProductPreviewModal({
               size="lg"
               className="h-12 w-full text-base font-semibold"
             >
-              {tDateSelection('viewAvailability')}
+              {tDateSelection("viewAvailability")}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>
