@@ -107,7 +107,16 @@ export function AdvisorWidget({
       if (!parsed.success) {
         return { success: false as const, reason: 'invalid_input' };
       }
-      const { productId, quantity, startDate, endDate } = parsed.data;
+      const { productId, quantity } = parsed.data;
+      // Models sometimes emit datetimes without a timezone offset — normalize
+      // to strict ISO 8601, which the cart endpoints require.
+      const startMs = Date.parse(parsed.data.startDate);
+      const endMs = Date.parse(parsed.data.endDate);
+      if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) {
+        return { success: false as const, reason: 'invalid_dates' };
+      }
+      const startDate = new Date(startMs).toISOString();
+      const endDate = new Date(endMs).toISOString();
       const currentCart = cartActionsRef.current;
 
       // The cart has one global rental period: adding with different dates
@@ -145,9 +154,6 @@ export function AdvisorWidget({
           };
         }
 
-        if (currentCart.items.length === 0) {
-          currentCart.setGlobalDates(startDate, endDate);
-        }
         currentCart.addItem(
           {
             productId,
@@ -166,6 +172,12 @@ export function AdvisorWidget({
           },
           storeSlug,
         );
+        // AFTER addItem: setGlobalDates remaps every line (the freshly added
+        // one included) through a state updater, overriding whatever period
+        // addItem inherited from a stale render closure.
+        if (currentCart.items.length === 0) {
+          currentCart.setGlobalDates(startDate, endDate);
+        }
 
         return { success: true as const, productName: line.productName };
       } catch {

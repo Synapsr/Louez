@@ -1,4 +1,5 @@
-import { stepCountIs, streamText } from 'ai'
+import { convertToModelMessages, stepCountIs, streamText } from 'ai'
+import type { UIMessage } from 'ai'
 import { and, eq, inArray } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
@@ -35,25 +36,34 @@ import { defaultLocale, locales } from '@/i18n/config'
 // Keep the model context bounded: older turns stay in DB, not in the prompt.
 const HISTORY_WINDOW = 20
 
+// Structural validation only — convertToModelMessages() performs the strict
+// UIMessage validation (tool parts included) and throws on malformed input.
 const advisorChatRequestSchema = z.object({
   messages: z
     .array(
-      z.object({
-        role: z.string(),
-        content: z.string().optional(),
-        parts: z
-          .array(
-            z
-              .object({ type: z.string(), text: z.string().optional() })
-              .passthrough(),
-          )
-          .optional(),
-      }),
+      z
+        .object({
+          role: z.string(),
+          parts: z.array(z.looseObject({ type: z.string() })).optional(),
+        })
+        .loose(),
     )
-    .min(1),
+    .min(1)
+    .max(HISTORY_WINDOW * 3),
   conversationId: z.string().length(21).optional(),
   cart: advisorCartSnapshotSchema.optional(),
 })
+
+/** Plain text of a UIMessage (for persistence and length checks). */
+function messageText(message: { parts?: Array<{ type: string }> }): string {
+  return (message.parts ?? [])
+    .filter(
+      (part): part is { type: 'text'; text: string } =>
+        part.type === 'text' && typeof (part as { text?: unknown }).text === 'string',
+    )
+    .map((part) => part.text)
+    .join('\n')
+}
 
 async function resolveLocale(acceptLanguage: string | null): Promise<string> {
   const cookieStore = await cookies()
@@ -163,26 +173,31 @@ export async function POST(req: Request) {
 
   const { messages: rawMessages, conversationId, cart } = body.data
 
-  // Normalize UIMessage parts to plain content strings
-  const messages = rawMessages
-    .map((message) => ({
-      role: message.role as 'user' | 'assistant' | 'system',
-      content:
-        message.content ??
-        message.parts
-          ?.filter((part) => part.type === 'text')
-          .map((part) => part.text)
-          .join('\n') ??
-        '',
-    }))
-    .slice(-HISTORY_WINDOW)
+  // A request is either a new user turn, or the automatic continuation sent
+  // after a client-side tool (add_to_cart) resolved — its history then ends
+  // with the assistant message carrying the tool result.
+  const lastMessage = rawMessages[rawMessages.length - 1]
+  const isUserTurn = lastMessage?.role === 'user'
+  const lastUserText = isUserTurn ? messageText(lastMessage) : null
 
-  const lastMessage = messages[messages.length - 1]
-  if (
-    lastMessage?.role !== 'user' ||
-    lastMessage.content.length > AI_ADVISOR_MESSAGE_MAX_LENGTH
-  ) {
+  if (isUserTurn) {
+    if (!lastUserText || lastUserText.length > AI_ADVISOR_MESSAGE_MAX_LENGTH) {
+      return new Response('Invalid message', { status: 400 })
+    }
+  } else if (lastMessage?.role !== 'assistant') {
     return new Response('Invalid message', { status: 400 })
+  }
+
+  // Strict UIMessage validation (tool parts included) happens here — the
+  // system-boundary cast is guarded by the zod structural check above and
+  // convertToModelMessages throwing on anything malformed.
+  let modelMessages
+  try {
+    modelMessages = await convertToModelMessages(
+      rawMessages.slice(-HISTORY_WINDOW) as unknown as UIMessage[],
+    )
+  } catch {
+    return new Response('Invalid request body', { status: 400 })
   }
 
   const rateCheck = await checkAdvisorRateLimit({
@@ -231,12 +246,14 @@ export async function POST(req: Request) {
     activeConversationId = created.id
   }
 
-  await db.insert(aiAdvisorMessages).values({
-    conversationId: activeConversationId,
-    storeId: store.id,
-    role: 'user',
-    content: lastMessage.content,
-  })
+  if (isUserTurn && lastUserText) {
+    await db.insert(aiAdvisorMessages).values({
+      conversationId: activeConversationId,
+      storeId: store.id,
+      role: 'user',
+      content: lastUserText,
+    })
+  }
 
   const advisorCtx: AdvisorChatContext = {
     storeId: store.id,
@@ -257,7 +274,7 @@ export async function POST(req: Request) {
   const result = streamText({
     model: getAdvisorAIModel(),
     system: systemPrompt,
-    messages,
+    messages: modelMessages,
     tools: createAdvisorTools(advisorCtx),
     stopWhen: stepCountIs(8),
     onFinish: async ({ text, steps }) => {
