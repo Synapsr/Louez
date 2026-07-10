@@ -1,138 +1,131 @@
-import type { ComponentType, PropsWithChildren } from 'react'
+import type { ComponentType, PropsWithChildren } from "react";
 import {
   Document as BaseDocument,
   Page as BasePage,
   Text as BaseText,
   View as BaseView,
   Image as BaseImage,
-} from '@react-pdf/renderer'
-import { createInspectionStyles } from './inspection-styles'
-import { formatStoreDate } from '@/lib/utils/store-date'
+} from "@react-pdf/renderer";
+import { createInspectionStyles } from "./inspection-styles";
+import { formatStoreDate } from "@/lib/utils/store-date";
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
-type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>
-const Document = BaseDocument as unknown as PdfComponent
-const Page = BasePage as unknown as PdfComponent
-const Text = BaseText as unknown as PdfComponent
-const View = BaseView as unknown as PdfComponent
-const Image = BaseImage as unknown as PdfComponent
+type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>;
+const Document = BaseDocument as unknown as PdfComponent;
+const Page = BasePage as unknown as PdfComponent;
+const Text = BaseText as unknown as PdfComponent;
+const View = BaseView as unknown as PdfComponent;
+const Image = BaseImage as unknown as PdfComponent;
 
-export type SupportedLocale = 'fr' | 'en'
+export type SupportedLocale = "fr" | "en";
 
 export interface InspectionTranslations {
   documentType: {
-    departure: string
-    return: string
-  }
-  documentNumber: string
-  reservationNumber: string
+    departure: string;
+    return: string;
+  };
+  documentNumber: string;
+  reservationNumber: string;
   sections: {
-    inspectionDetails: string
-    equipment: string
-    signature: string
-    notes: string
-  }
+    inspectionDetails: string;
+    equipment: string;
+    signature: string;
+    notes: string;
+  };
   parties: {
-    store: string
-    customer: string
-  }
+    store: string;
+    customer: string;
+  };
   period: {
-    date: string
-    time: string
-    performedBy: string
-  }
+    date: string;
+    time: string;
+    performedBy: string;
+  };
   condition: {
-    excellent: string
-    good: string
-    fair: string
-    damaged: string
-    label: string
-  }
+    excellent: string;
+    good: string;
+    fair: string;
+    damaged: string;
+    label: string;
+  };
   table: {
-    equipment: string
-    condition: string
-    photos: string
-    notes: string
-  }
+    equipment: string;
+    condition: string;
+    photos: string;
+    notes: string;
+  };
   signature: {
-    customerSignature: string
-    signedAt: string
-    ipAddress: string
-    notSigned: string
-  }
+    customerSignature: string;
+    signedAt: string;
+    ipAddress: string;
+    notSigned: string;
+  };
   footer: {
-    poweredBy: string
-    generatedOn: string
-    page: string
-    of: string
-  }
+    poweredBy: string;
+    generatedOn: string;
+    page: string;
+    of: string;
+  };
   summary: {
-    totalItems: string
-    withIssues: string
-    photos: string
-    damageDetected: string
-    noDamage: string
-  }
+    totalItems: string;
+    withIssues: string;
+    photos: string;
+    damageDetected: string;
+    noDamage: string;
+  };
 }
 
 interface Store {
-  name: string
-  logoUrl?: string | null
-  address?: string | null
-  phone?: string | null
-  email?: string | null
-  primaryColor?: string
-}
-
-interface Customer {
-  firstName: string
-  lastName: string
-  email: string
-  phone?: string | null
+  name: string;
+  logoUrl?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  primaryColor?: string;
 }
 
 interface InspectionPhoto {
-  url: string
-  caption?: string | null
+  url: string;
+  caption?: string | null;
 }
 
 interface InspectionItem {
-  productName: string
-  condition: 'excellent' | 'good' | 'fair' | 'damaged'
-  notes?: string | null
-  photos: InspectionPhoto[]
+  productName: string;
+  condition: "excellent" | "good" | "fair" | "damaged";
+  notes?: string | null;
+  photos: InspectionPhoto[];
 }
 
 interface Inspection {
-  id: string
-  type: 'departure' | 'return'
-  status: 'draft' | 'completed' | 'signed'
-  reservationNumber: string
-  customerName: string
-  hasDamage: boolean
-  notes?: string | null
-  performedByName?: string | null
-  createdAt: Date
-  signedAt?: Date | null
-  signatureIp?: string | null
-  customerSignature?: string | null
-  items: InspectionItem[]
+  id: string;
+  type: "departure" | "return";
+  status: "draft" | "completed" | "signed";
+  reservationNumber: string;
+  customerName: string;
+  hasDamage: boolean;
+  notes?: string | null;
+  performedByName?: string | null;
+  createdAt: Date;
+  signedAt?: Date | null;
+  signatureIp?: string | null;
+  customerSignature?: string | null;
+  items: InspectionItem[];
 }
 
 interface InspectionReportProps {
-  inspection: Inspection
-  store: Store
+  inspection: Inspection;
+  store: Store;
   document: {
-    number: string
-    generatedAt: Date
-  }
-  locale: SupportedLocale
-  translations: InspectionTranslations
-  timezone?: string
+    number: string;
+    generatedAt: Date;
+  };
+  locale: SupportedLocale;
+  translations: InspectionTranslations;
+  timezone?: string;
 }
 
 function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1)
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 export function InspectionReportDocument({
@@ -143,27 +136,25 @@ export function InspectionReportDocument({
   translations: t,
   timezone,
 }: InspectionReportProps) {
-  const primaryColor = store.primaryColor || '#0066FF'
-  const styles = createInspectionStyles(primaryColor)
+  const primaryColor = store.primaryColor || "#0066FF";
+  const styles = createInspectionStyles(primaryColor);
 
   // Date formatting helpers using store timezone
-  const formatFullDate = (date: Date) => formatStoreDate(date, timezone, 'FULL_DATE', locale)
-  const formatTime = (date: Date) => formatStoreDate(date, timezone, 'TIME_ONLY', locale)
-  const formatDateTimePrecise = (date: Date) => formatStoreDate(date, timezone, 'PRECISE_DATETIME', locale)
+  const formatFullDate = (date: Date) => formatStoreDate(date, timezone, "FULL_DATE", locale);
+  const formatTime = (date: Date) => formatStoreDate(date, timezone, "TIME_ONLY", locale);
+  const formatDateTimePrecise = (date: Date) =>
+    formatStoreDate(date, timezone, "PRECISE_DATETIME", locale);
 
   // Calculate summary stats
-  const totalItems = inspection.items.length
-  const itemsWithIssues = inspection.items.filter(
-    (item) => item.condition === 'fair' || item.condition === 'damaged' || item.notes
-  ).length
-  const totalPhotos = inspection.items.reduce((sum, item) => sum + item.photos.length, 0)
+  const totalItems = inspection.items.length;
+  const totalPhotos = inspection.items.reduce((sum, item) => sum + item.photos.length, 0);
 
   const conditionColors: Record<string, string> = {
-    excellent: '#059669',
-    good: '#2563eb',
-    fair: '#d97706',
-    damaged: '#dc2626',
-  }
+    excellent: "#059669",
+    good: "#2563eb",
+    fair: "#d97706",
+    damaged: "#dc2626",
+  };
 
   return (
     <Document>
@@ -183,15 +174,15 @@ export function InspectionReportDocument({
           <View style={styles.headerRight}>
             <View style={styles.documentTypeContainer}>
               <Text style={styles.documentType}>
-                {inspection.type === 'departure' ? t.documentType.departure : t.documentType.return}
+                {inspection.type === "departure" ? t.documentType.departure : t.documentType.return}
               </Text>
             </View>
             <View style={styles.documentInfo}>
               <Text style={styles.documentNumber}>
-                {t.documentNumber.replace('{number}', doc.number)}
+                {t.documentNumber.replace("{number}", doc.number)}
               </Text>
               <Text style={styles.documentDate}>
-                {t.reservationNumber.replace('{number}', inspection.reservationNumber)}
+                {t.reservationNumber.replace("{number}", inspection.reservationNumber)}
               </Text>
             </View>
           </View>
@@ -247,7 +238,7 @@ export function InspectionReportDocument({
                     : styles.summaryValue
                 }
               >
-                {inspection.hasDamage ? '!' : '✓'}
+                {inspection.hasDamage ? "!" : "✓"}
               </Text>
               <Text
                 style={
@@ -358,118 +349,118 @@ export function InspectionReportDocument({
         </View>
       </Page>
     </Document>
-  )
+  );
 }
 
 // Default translations
 export const defaultTranslationsFr: InspectionTranslations = {
   documentType: {
-    departure: 'État des lieux - Départ',
-    return: 'État des lieux - Retour',
+    departure: "État des lieux - Départ",
+    return: "État des lieux - Retour",
   },
-  documentNumber: 'N° {number}',
-  reservationNumber: 'Réservation #{number}',
+  documentNumber: "N° {number}",
+  reservationNumber: "Réservation #{number}",
   sections: {
     inspectionDetails: "Détails de l'inspection",
-    equipment: 'Équipements inspectés',
-    signature: 'Signature',
-    notes: 'Notes générales',
+    equipment: "Équipements inspectés",
+    signature: "Signature",
+    notes: "Notes générales",
   },
   parties: {
-    store: 'Loueur',
-    customer: 'Client',
+    store: "Loueur",
+    customer: "Client",
   },
   period: {
-    date: 'Date',
-    time: 'Heure',
-    performedBy: 'Effectué par',
+    date: "Date",
+    time: "Heure",
+    performedBy: "Effectué par",
   },
   condition: {
-    excellent: 'Excellent',
-    good: 'Bon état',
-    fair: 'Usure',
-    damaged: 'Endommagé',
-    label: 'État',
+    excellent: "Excellent",
+    good: "Bon état",
+    fair: "Usure",
+    damaged: "Endommagé",
+    label: "État",
   },
   table: {
-    equipment: 'Équipement',
-    condition: 'État',
-    photos: 'Photos',
-    notes: 'Remarques',
+    equipment: "Équipement",
+    condition: "État",
+    photos: "Photos",
+    notes: "Remarques",
   },
   signature: {
-    customerSignature: 'Signature du client',
-    signedAt: 'Signé le',
-    ipAddress: 'Adresse IP',
-    notSigned: 'Non signé',
+    customerSignature: "Signature du client",
+    signedAt: "Signé le",
+    ipAddress: "Adresse IP",
+    notSigned: "Non signé",
   },
   footer: {
-    poweredBy: 'Généré par Louez.io',
-    generatedOn: 'Généré le',
-    page: 'Page',
-    of: 'sur',
+    poweredBy: "Généré par Louez.io",
+    generatedOn: "Généré le",
+    page: "Page",
+    of: "sur",
   },
   summary: {
-    totalItems: 'équipements',
-    withIssues: 'avec remarques',
-    photos: 'photos',
-    damageDetected: 'Dommage détecté',
-    noDamage: 'Aucun dommage',
+    totalItems: "équipements",
+    withIssues: "avec remarques",
+    photos: "photos",
+    damageDetected: "Dommage détecté",
+    noDamage: "Aucun dommage",
   },
-}
+};
 
 export const defaultTranslationsEn: InspectionTranslations = {
   documentType: {
-    departure: 'Inspection Report - Departure',
-    return: 'Inspection Report - Return',
+    departure: "Inspection Report - Departure",
+    return: "Inspection Report - Return",
   },
-  documentNumber: 'No. {number}',
-  reservationNumber: 'Reservation #{number}',
+  documentNumber: "No. {number}",
+  reservationNumber: "Reservation #{number}",
   sections: {
-    inspectionDetails: 'Inspection Details',
-    equipment: 'Inspected Equipment',
-    signature: 'Signature',
-    notes: 'General Notes',
+    inspectionDetails: "Inspection Details",
+    equipment: "Inspected Equipment",
+    signature: "Signature",
+    notes: "General Notes",
   },
   parties: {
-    store: 'Rental Company',
-    customer: 'Customer',
+    store: "Rental Company",
+    customer: "Customer",
   },
   period: {
-    date: 'Date',
-    time: 'Time',
-    performedBy: 'Performed by',
+    date: "Date",
+    time: "Time",
+    performedBy: "Performed by",
   },
   condition: {
-    excellent: 'Excellent',
-    good: 'Good',
-    fair: 'Fair',
-    damaged: 'Damaged',
-    label: 'Condition',
+    excellent: "Excellent",
+    good: "Good",
+    fair: "Fair",
+    damaged: "Damaged",
+    label: "Condition",
   },
   table: {
-    equipment: 'Equipment',
-    condition: 'Condition',
-    photos: 'Photos',
-    notes: 'Notes',
+    equipment: "Equipment",
+    condition: "Condition",
+    photos: "Photos",
+    notes: "Notes",
   },
   signature: {
-    customerSignature: 'Customer Signature',
-    signedAt: 'Signed at',
-    ipAddress: 'IP Address',
-    notSigned: 'Not signed',
+    customerSignature: "Customer Signature",
+    signedAt: "Signed at",
+    ipAddress: "IP Address",
+    notSigned: "Not signed",
   },
   footer: {
-    poweredBy: 'Powered by Louez.io',
-    generatedOn: 'Generated on',
-    page: 'Page',
-    of: 'of',
+    poweredBy: "Powered by Louez.io",
+    generatedOn: "Generated on",
+    page: "Page",
+    of: "of",
   },
   summary: {
-    totalItems: 'items',
-    withIssues: 'with issues',
-    photos: 'photos',
-    damageDetected: 'Damage detected',
-    noDamage: 'No damage',
+    totalItems: "items",
+    withIssues: "with issues",
+    photos: "photos",
+    damageDetected: "Damage detected",
+    noDamage: "No damage",
   },
-}
+};

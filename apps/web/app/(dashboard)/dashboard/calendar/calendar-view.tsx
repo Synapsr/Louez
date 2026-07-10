@@ -9,14 +9,12 @@ import {
   useTransition,
 } from 'react';
 
-import Link from 'next/link';
 
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Download,
-  Plus,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {

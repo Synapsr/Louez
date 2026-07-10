@@ -5,7 +5,6 @@ import { useTranslations } from 'next-intl'
 import { toastManager } from '@louez/ui'
 import Link from 'next/link'
 import {
-  Mail,
   Phone,
   MessageSquare,
   Loader2,

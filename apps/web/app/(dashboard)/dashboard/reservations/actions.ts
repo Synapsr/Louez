@@ -2304,7 +2304,7 @@ async function resolveReservationTulipQuotePreview(params: {
     const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed');
 
     console.warn(params.logMessage, {
-      ...(params.logContext ?? {}),
+      ...params.logContext,
       error,
     });
 

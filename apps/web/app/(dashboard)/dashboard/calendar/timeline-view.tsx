@@ -1,51 +1,42 @@
-'use client'
+"use client";
 
-import { useMemo, useRef, useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
-import { Package } from 'lucide-react'
-import { cn, formatDateShort } from '@louez/utils'
-import { ScrollArea, ScrollBar } from '@louez/ui'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@louez/ui'
-import { ReservationBar } from './reservation-bar'
+import { useMemo, useRef, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Package } from "lucide-react";
+import { cn } from "@louez/utils";
+import { ScrollArea, ScrollBar } from "@louez/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@louez/ui";
+import { ReservationBar } from "./reservation-bar";
 import {
   groupReservationsByProduct,
   calculateTimelinePosition,
   assignRowsToReservations,
   isSameDay,
   generateDateRange,
-} from './calendar-utils'
-import type {
-  Reservation,
-  Product,
-  TimelineConfig,
-  PositionedReservation,
-} from './types'
+} from "./calendar-utils";
+import type { Reservation, Product, TimelineConfig, PositionedReservation } from "./types";
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-const ROW_HEIGHT = 40 // Height of each product row in pixels
-const HEADER_HEIGHT = 48 // Height of the date header
-const PRODUCT_COLUMN_WIDTH = 200 // Width of the product name column
-const MIN_DAY_WIDTH = 80 // Minimum width per day column
-const BAR_HEIGHT = 28 // Height of reservation bars
-const BAR_GAP = 4 // Gap between stacked bars
-const BAR_MARGIN_Y = 6 // Vertical margin in the row
+const ROW_HEIGHT = 40; // Height of each product row in pixels
+const HEADER_HEIGHT = 48; // Height of the date header
+const PRODUCT_COLUMN_WIDTH = 200; // Width of the product name column
+const _MIN_DAY_WIDTH = 80; // Minimum width per day column
+const BAR_HEIGHT = 28; // Height of reservation bars
+const BAR_GAP = 4; // Gap between stacked bars
+const BAR_MARGIN_Y = 6; // Vertical margin in the row
 
 // =============================================================================
 // Types
 // =============================================================================
 
 interface TimelineViewProps {
-  reservations: Reservation[]
-  products: Product[]
-  config: TimelineConfig
-  selectedProductId?: string
+  reservations: Reservation[];
+  products: Product[];
+  config: TimelineConfig;
+  selectedProductId?: string;
 }
 
 // =============================================================================
@@ -58,72 +49,69 @@ export function TimelineView({
   config,
   selectedProductId,
 }: TimelineViewProps) {
-  const t = useTranslations('dashboard.calendar')
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [todayPosition, setTodayPosition] = useState<number | null>(null)
+  const t = useTranslations("dashboard.calendar");
+  const _scrollRef = useRef<HTMLDivElement>(null);
+  const [todayPosition, setTodayPosition] = useState<number | null>(null);
 
   // Filter products if a specific one is selected
   const displayProducts = useMemo(() => {
-    if (selectedProductId && selectedProductId !== 'all') {
-      return products.filter((p) => p.id === selectedProductId)
+    if (selectedProductId && selectedProductId !== "all") {
+      return products.filter((p) => p.id === selectedProductId);
     }
-    return products
-  }, [products, selectedProductId])
+    return products;
+  }, [products, selectedProductId]);
 
   // Generate date range for the timeline
   const dates = useMemo(
     () => generateDateRange(config.startDate, config.daysCount),
-    [config.startDate, config.daysCount]
-  )
+    [config.startDate, config.daysCount],
+  );
 
   // Group reservations by product
   const productRows = useMemo(
     () => groupReservationsByProduct(reservations, displayProducts),
-    [reservations, displayProducts]
-  )
+    [reservations, displayProducts],
+  );
 
   // Calculate positioned reservations for each product
   const positionedByProduct = useMemo(() => {
-    const result = new Map<string, PositionedReservation[]>()
+    const result = new Map<string, PositionedReservation[]>();
 
     productRows.forEach(({ product, reservations: productReservations }) => {
-      const positioned = productReservations.map((r) =>
-        calculateTimelinePosition(r, config)
-      )
-      const withRows = assignRowsToReservations(positioned)
-      result.set(product.id, withRows)
-    })
+      const positioned = productReservations.map((r) => calculateTimelinePosition(r, config));
+      const withRows = assignRowsToReservations(positioned);
+      result.set(product.id, withRows);
+    });
 
-    return result
-  }, [productRows, config])
+    return result;
+  }, [productRows, config]);
 
   // Calculate maximum rows per product for proper height
   const maxRowsByProduct = useMemo(() => {
-    const result = new Map<string, number>()
+    const result = new Map<string, number>();
     positionedByProduct.forEach((positions, productId) => {
-      const maxRow = positions.reduce((max, p) => Math.max(max, p.row), 0)
-      result.set(productId, maxRow + 1)
-    })
-    return result
-  }, [positionedByProduct])
+      const maxRow = positions.reduce((max, p) => Math.max(max, p.row), 0);
+      result.set(productId, maxRow + 1);
+    });
+    return result;
+  }, [positionedByProduct]);
 
   // Calculate today's position
   useEffect(() => {
-    const today = new Date()
-    const todayIndex = dates.findIndex((d) => isSameDay(d, today))
+    const today = new Date();
+    const todayIndex = dates.findIndex((d) => isSameDay(d, today));
     if (todayIndex >= 0) {
-      const position =
+      const _position =
         PRODUCT_COLUMN_WIDTH +
-        (todayIndex * (100 - (PRODUCT_COLUMN_WIDTH / window.innerWidth) * 100)) /
-          config.daysCount
-      setTodayPosition(todayIndex)
+        (todayIndex * (100 - (PRODUCT_COLUMN_WIDTH / window.innerWidth) * 100)) / config.daysCount;
+      setTodayPosition(todayIndex);
     } else {
-      setTodayPosition(null)
+      setTodayPosition(null);
     }
-  }, [dates, config.daysCount])
+  }, [dates, config.daysCount]);
 
   // Day width calculation
-  const dayWidth = `${100 / config.daysCount}%`
+  const dayWidth = `${100 / config.daysCount}%`;
 
   return (
     <div className="relative overflow-hidden rounded-lg border bg-card">
@@ -135,48 +123,50 @@ export function TimelineView({
           style={{ width: PRODUCT_COLUMN_WIDTH, height: HEADER_HEIGHT }}
         >
           <span className="text-sm font-medium text-muted-foreground">
-            {t('timeline.products')}
+            {t("timeline.products")}
           </span>
         </div>
 
         {/* Date headers */}
         <div className="flex flex-1">
           {dates.map((date, index) => {
-            const isToday = isSameDay(date, new Date())
-            const isWeekend = date.getDay() === 0 || date.getDay() === 6
+            const isToday = isSameDay(date, new Date());
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
             return (
               <div
                 key={index}
                 className={cn(
-                  'flex flex-col items-center justify-center border-r px-1 text-center last:border-r-0',
-                  isWeekend && 'bg-muted/30',
-                  isToday && 'bg-primary/10'
+                  "flex flex-col items-center justify-center border-r px-1 text-center last:border-r-0",
+                  isWeekend && "bg-muted/30",
+                  isToday && "bg-primary/10",
                 )}
                 style={{ width: dayWidth, height: HEADER_HEIGHT }}
               >
                 <span
                   className={cn(
-                    'text-xs font-medium',
+                    "text-xs font-medium",
                     isToday
-                      ? 'text-primary'
+                      ? "text-primary"
                       : isWeekend
-                        ? 'text-muted-foreground'
-                        : 'text-foreground'
+                        ? "text-muted-foreground"
+                        : "text-foreground",
                   )}
                 >
-                  {t(`dayNames.${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()]}`)}
+                  {t(
+                    `dayNames.${["sun", "mon", "tue", "wed", "thu", "fri", "sat"][date.getDay()]}`,
+                  )}
                 </span>
                 <span
                   className={cn(
-                    'text-sm font-semibold',
-                    isToday && 'rounded-full bg-primary px-2 text-primary-foreground'
+                    "text-sm font-semibold",
+                    isToday && "rounded-full bg-primary px-2 text-primary-foreground",
                   )}
                 >
                   {date.getDate()}
                 </span>
               </div>
-            )
+            );
           })}
         </div>
       </div>
@@ -186,12 +176,12 @@ export function TimelineView({
         <div className="relative min-w-full">
           {/* Product rows */}
           {productRows.map(({ product, reservations: productReservations }) => {
-            const positions = positionedByProduct.get(product.id) || []
-            const maxRows = maxRowsByProduct.get(product.id) || 1
+            const positions = positionedByProduct.get(product.id) || [];
+            const maxRows = maxRowsByProduct.get(product.id) || 1;
             const rowHeight = Math.max(
               ROW_HEIGHT,
-              maxRows * (BAR_HEIGHT + BAR_GAP) + BAR_MARGIN_Y * 2
-            )
+              maxRows * (BAR_HEIGHT + BAR_GAP) + BAR_MARGIN_Y * 2,
+            );
 
             return (
               <div key={product.id} className="flex border-b last:border-b-0">
@@ -209,7 +199,7 @@ export function TimelineView({
                       <div>
                         <div className="font-medium">{product.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {t('timeline.quantity', { count: product.quantity })}
+                          {t("timeline.quantity", { count: product.quantity })}
                         </div>
                       </div>
                     </TooltipContent>
@@ -226,20 +216,20 @@ export function TimelineView({
                   {/* Background grid */}
                   <div className="absolute inset-0 flex">
                     {dates.map((date, index) => {
-                      const isToday = isSameDay(date, new Date())
-                      const isWeekend = date.getDay() === 0 || date.getDay() === 6
+                      const isToday = isSameDay(date, new Date());
+                      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
                       return (
                         <div
                           key={index}
                           className={cn(
-                            'border-r last:border-r-0',
-                            isWeekend && 'bg-muted/20',
-                            isToday && 'bg-primary/5'
+                            "border-r last:border-r-0",
+                            isWeekend && "bg-muted/20",
+                            isToday && "bg-primary/5",
                           )}
                           style={{ width: dayWidth }}
                         />
-                      )
+                      );
                     })}
                   </div>
 
@@ -275,19 +265,19 @@ export function TimelineView({
                   {positions.length === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-xs text-muted-foreground/50">
-                        {t('timeline.available')}
+                        {t("timeline.available")}
                       </span>
                     </div>
                   )}
                 </div>
               </div>
-            )
+            );
           })}
 
           {/* Empty state when no products */}
           {displayProducts.length === 0 && (
             <div className="flex h-40 items-center justify-center text-muted-foreground">
-              {t('timeline.noProducts')}
+              {t("timeline.noProducts")}
             </div>
           )}
         </div>
@@ -295,5 +285,5 @@ export function TimelineView({
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
     </div>
-  )
+  );
 }

@@ -1,25 +1,23 @@
-'use client';
+"use client";
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState } from "react";
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
-import { REGEXP_ONLY_DIGITS } from 'input-otp';
-import { ArrowRight, KeyRound, Loader2, Mail, RotateCcw } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import { z } from 'zod';
+import { REGEXP_ONLY_DIGITS } from "input-otp";
+import { ArrowRight, KeyRound, Loader2, Mail, RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { z } from "zod";
 
-import { toastManager } from '@louez/ui';
-import { Button } from '@louez/ui';
-import { Input } from '@louez/ui';
-import { Label } from '@louez/ui';
-import { InputOTP, InputOTPGroup, InputOTPSlot } from '@louez/ui';
-import { Card, CardContent } from '@louez/ui';
+import { toastManager } from "@louez/ui";
+import { Button } from "@louez/ui";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@louez/ui";
+import { Card, CardContent } from "@louez/ui";
 
-import { useAppForm } from '@/hooks/form/form';
-import { useStorefrontUrl } from '@/hooks/use-storefront-url';
+import { useAppForm } from "@/hooks/form/form";
+import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 
-import { sendVerificationCode, verifyCode } from '../actions';
+import { sendVerificationCode, verifyCode } from "../actions";
 
 interface LoginFormProps {
   storeId: string;
@@ -28,25 +26,23 @@ interface LoginFormProps {
 
 export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
   const router = useRouter();
-  const t = useTranslations('storefront.account');
-  const tErrors = useTranslations('errors');
+  const t = useTranslations("storefront.account");
+  const tErrors = useTranslations("errors");
   const { getUrl } = useStorefrontUrl(storeSlug);
-  const [step, setStep] = useState<'email' | 'code'>('email');
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [step, setStep] = useState<"email" | "code">("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const getErrorMessage = (errorKey: string) =>
-    errorKey.startsWith('errors.')
-      ? tErrors(errorKey.replace('errors.', ''))
-      : errorKey;
+    errorKey.startsWith("errors.") ? tErrors(errorKey.replace("errors.", "")) : errorKey;
 
   const emailSchema = z.object({
-    email: z.email(t('codeError')),
+    email: z.email(t("codeError")),
   });
 
   const emailForm = useAppForm({
-    defaultValues: { email: '' },
+    defaultValues: { email: "" },
     validators: {
       onSubmit: emailSchema,
     },
@@ -56,15 +52,15 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
         const result = await sendVerificationCode(storeId, value.email);
 
         if (result.error) {
-          toastManager.add({ title: getErrorMessage(result.error), type: 'error' });
+          toastManager.add({ title: getErrorMessage(result.error), type: "error" });
           return;
         }
 
         setEmail(value.email);
-        setStep('code');
-        toastManager.add({ title: t('codeSent'), type: 'success' });
+        setStep("code");
+        toastManager.add({ title: t("codeSent"), type: "success" });
       } catch {
-        toastManager.add({ title: tErrors('generic'), type: 'error' });
+        toastManager.add({ title: tErrors("generic"), type: "error" });
       } finally {
         setIsLoading(false);
       }
@@ -80,15 +76,15 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
         const result = await verifyCode(storeId, email, codeValue);
 
         if (result.error) {
-          toastManager.add({ title: getErrorMessage(result.error), type: 'error' });
+          toastManager.add({ title: getErrorMessage(result.error), type: "error" });
           return;
         }
 
-        toastManager.add({ title: t('loginSuccess'), type: 'success' });
-        router.push(getUrl('/account'));
+        toastManager.add({ title: t("loginSuccess"), type: "success" });
+        router.push(getUrl("/account"));
         router.refresh();
       } catch {
-        toastManager.add({ title: tErrors('generic'), type: 'error' });
+        toastManager.add({ title: tErrors("generic"), type: "error" });
       } finally {
         setIsLoading(false);
       }
@@ -113,19 +109,19 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
       const result = await sendVerificationCode(storeId, email);
 
       if (result.error) {
-        toastManager.add({ title: getErrorMessage(result.error), type: 'error' });
+        toastManager.add({ title: getErrorMessage(result.error), type: "error" });
         return;
       }
 
-      toastManager.add({ title: t('newCodeSent'), type: 'success' });
+      toastManager.add({ title: t("newCodeSent"), type: "success" });
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (step === 'code') {
+  if (step === "code") {
     return (
       <Card className="border-0 shadow-lg">
         <CardContent className="p-6 sm:p-8">
@@ -134,10 +130,9 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
             <div className="bg-primary/10 mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full">
               <KeyRound className="text-primary h-6 w-6" />
             </div>
-            <h2 className="mb-1 text-lg font-semibold">{t('enterCode')}</h2>
+            <h2 className="mb-1 text-lg font-semibold">{t("enterCode")}</h2>
             <p className="text-muted-foreground text-sm">
-              {t('codeDescription')}{' '}
-              <span className="text-foreground font-medium">{email}</span>
+              {t("codeDescription")} <span className="text-foreground font-medium">{email}</span>
             </p>
           </div>
           <div className="space-y-6">
@@ -151,30 +146,12 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
                 autoFocus
               >
                 <InputOTPGroup>
-                  <InputOTPSlot
-                    index={0}
-                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
-                  />
-                  <InputOTPSlot
-                    index={1}
-                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
-                  />
-                  <InputOTPSlot
-                    index={2}
-                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
-                  />
-                  <InputOTPSlot
-                    index={3}
-                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
-                  />
-                  <InputOTPSlot
-                    index={4}
-                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
-                  />
-                  <InputOTPSlot
-                    index={5}
-                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
-                  />
+                  <InputOTPSlot index={0} className="h-12 w-10 text-lg sm:h-14 sm:w-12" />
+                  <InputOTPSlot index={1} className="h-12 w-10 text-lg sm:h-14 sm:w-12" />
+                  <InputOTPSlot index={2} className="h-12 w-10 text-lg sm:h-14 sm:w-12" />
+                  <InputOTPSlot index={3} className="h-12 w-10 text-lg sm:h-14 sm:w-12" />
+                  <InputOTPSlot index={4} className="h-12 w-10 text-lg sm:h-14 sm:w-12" />
+                  <InputOTPSlot index={5} className="h-12 w-10 text-lg sm:h-14 sm:w-12" />
                 </InputOTPGroup>
               </InputOTP>
             </div>
@@ -188,11 +165,11 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('verifying')}
+                  {t("verifying")}
                 </>
               ) : (
                 <>
-                  {t('verify')}
+                  {t("verify")}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
@@ -200,9 +177,7 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
 
             <div className="flex flex-col items-center gap-3 pt-2">
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">
-                  {t('resendCodeQuestion')}
-                </span>
+                <span className="text-muted-foreground">{t("resendCodeQuestion")}</span>
                 <Button
                   type="button"
                   variant="link"
@@ -211,20 +186,20 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
                   disabled={isLoading}
                 >
                   <RotateCcw className="h-3 w-3" />
-                  {t('resendCode')}
+                  {t("resendCode")}
                 </Button>
               </div>
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => {
-                  setStep('email');
-                  setCode('');
+                  setStep("email");
+                  setCode("");
                 }}
                 disabled={isLoading}
                 className="text-muted-foreground"
               >
-                {t('changeEmail')}
+                {t("changeEmail")}
               </Button>
             </div>
           </div>
@@ -241,19 +216,17 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
           <div className="bg-primary/10 mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full">
             <Mail className="text-primary h-6 w-6" />
           </div>
-          <h2 className="mb-1 text-lg font-semibold">{t('yourEmail')}</h2>
-          <p className="text-muted-foreground text-sm">
-            {t('loginDescription')}
-          </p>
+          <h2 className="mb-1 text-lg font-semibold">{t("yourEmail")}</h2>
+          <p className="text-muted-foreground text-sm">{t("loginDescription")}</p>
         </div>
         <emailForm.AppForm>
           <emailForm.Form className="space-y-6">
             <emailForm.AppField name="email">
               {(field) => (
                 <field.Input
-                  label={t('emailAddress')}
+                  label={t("emailAddress")}
                   type="email"
-                  placeholder={t('emailPlaceholder')}
+                  placeholder={t("emailPlaceholder")}
                 />
               )}
             </emailForm.AppField>
@@ -262,11 +235,11 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('sending')}
+                  {t("sending")}
                 </>
               ) : (
                 <>
-                  {t('sendCode')}
+                  {t("sendCode")}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}

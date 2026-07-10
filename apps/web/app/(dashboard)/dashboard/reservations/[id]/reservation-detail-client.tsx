@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
-import { useQuery } from '@tanstack/react-query'
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   Building2,
@@ -15,9 +15,9 @@ import {
   Truck,
   Shield,
   User,
-} from 'lucide-react'
+} from "lucide-react";
 
-import { Badge, Button } from '@louez/ui'
+import { Badge, Button } from "@louez/ui";
 import {
   Card,
   CardContent,
@@ -29,97 +29,94 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@louez/ui'
-import { getCurrencySymbol } from '@louez/utils'
+} from "@louez/ui";
+import { getCurrencySymbol } from "@louez/utils";
 
-import { formatStoreDate } from '@/lib/utils/store-date'
-import { orpc } from '@/lib/orpc/react'
+import { formatStoreDate } from "@/lib/utils/store-date";
+import { orpc } from "@/lib/orpc/react";
 
-import { ActivityTimelineV2 } from './activity-timeline-v2'
-import { EmailContactPopover } from '@/components/dashboard/email-contact-popover'
-import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
-import { ReservationHeader } from './reservation-header'
-import {
-  ReservationCustomerNotes,
-  ReservationNotes,
-} from './reservation-notes'
-import { SmartReservationActions } from './smart-reservation-actions'
-import { UnifiedPaymentSection } from './unified-payment-section'
-import { UnitAssignmentSelector } from '@/components/dashboard/unit-assignment-selector'
-import { InspectionStatusCard } from '@/components/dashboard/inspection-status-card'
+import { ActivityTimelineV2 } from "./activity-timeline-v2";
+import { EmailContactPopover } from "@/components/dashboard/email-contact-popover";
+import { PhoneContactPopover } from "@/components/dashboard/phone-contact-popover";
+import { ReservationHeader } from "./reservation-header";
+import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes";
+import { SmartReservationActions } from "./smart-reservation-actions";
+import { UnifiedPaymentSection } from "./unified-payment-section";
+import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-selector";
+import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
 
 type ReservationStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'ongoing'
-  | 'completed'
-  | 'cancelled'
-  | 'rejected'
+  | "pending"
+  | "confirmed"
+  | "ongoing"
+  | "completed"
+  | "cancelled"
+  | "rejected";
 
 type DepositStatus =
-  | 'none'
-  | 'pending'
-  | 'card_saved'
-  | 'authorized'
-  | 'captured'
-  | 'released'
-  | 'failed'
+  | "none"
+  | "pending"
+  | "card_saved"
+  | "authorized"
+  | "captured"
+  | "released"
+  | "failed";
 
-type InspectionMode = 'optional' | 'recommended' | 'required'
+type InspectionMode = "optional" | "recommended" | "required";
 
-type BookingAttributeAxis = { key: string; label: string; position?: number }
+type BookingAttributeAxis = { key: string; label: string; position?: number };
 
-type ReservationLike = any
+type ReservationLike = any;
 
 interface InspectionData {
-  id: string
-  type: 'departure' | 'return'
-  status: 'draft' | 'completed' | 'signed'
-  hasDamage: boolean
-  itemCount: number
-  photoCount: number
-  createdAt: Date | string
-  signedAt?: Date | string | null
+  id: string;
+  type: "departure" | "return";
+  status: "draft" | "completed" | "signed";
+  hasDamage: boolean;
+  itemCount: number;
+  photoCount: number;
+  createdAt: Date | string;
+  signedAt?: Date | string | null;
 }
 
 interface InspectionSettingsLike {
-  enabled: boolean
-  mode: InspectionMode
+  enabled: boolean;
+  mode: InspectionMode;
 }
 
 interface ReservationDetailClientProps {
-  reservationId: string
-  initialReservation: ReservationLike
-  storeSlug: string
-  currency: string
-  storeTimezone?: string
-  smsConfigured: boolean
-  stripeConfigured: boolean
-  inspectionSettings: InspectionSettingsLike
-  departureInspection: InspectionData | null
-  returnInspection: InspectionData | null
+  reservationId: string;
+  initialReservation: ReservationLike;
+  storeSlug: string;
+  currency: string;
+  storeTimezone?: string;
+  smsConfigured: boolean;
+  stripeConfigured: boolean;
+  inspectionSettings: InspectionSettingsLike;
+  departureInspection: InspectionData | null;
+  returnInspection: InspectionData | null;
 }
 
 function toDate(value: Date | string | null | undefined) {
-  if (!value) return null
-  return value instanceof Date ? value : new Date(value)
+  if (!value) return null;
+  return value instanceof Date ? value : new Date(value);
 }
 
 function getRentalAmount(reservation: {
-  subtotalAmount?: string | null
-  depositAmount?: string | null
-  totalAmount?: string | null
+  subtotalAmount?: string | null;
+  depositAmount?: string | null;
+  totalAmount?: string | null;
 }) {
-  const subtotal = parseFloat(reservation.subtotalAmount || '0')
-  const deposit = parseFloat(reservation.depositAmount || '0')
-  const total = parseFloat(reservation.totalAmount || '0')
+  const subtotal = parseFloat(reservation.subtotalAmount || "0");
+  const deposit = parseFloat(reservation.depositAmount || "0");
+  const total = parseFloat(reservation.totalAmount || "0");
 
-  if (!Number.isFinite(total) || total <= 0) return subtotal
+  if (!Number.isFinite(total) || total <= 0) return subtotal;
   if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit)
+    return Math.max(0, total - deposit);
   }
 
-  return total
+  return total;
 }
 
 export function ReservationDetailClient({
@@ -128,14 +125,14 @@ export function ReservationDetailClient({
   storeSlug,
   currency,
   storeTimezone,
-  smsConfigured,
+  smsConfigured: _smsConfigured,
   stripeConfigured,
   inspectionSettings,
   departureInspection,
   returnInspection,
 }: ReservationDetailClientProps) {
-  const t = useTranslations('dashboard.reservations')
-  const tCommon = useTranslations('common')
+  const t = useTranslations("dashboard.reservations");
+  const tCommon = useTranslations("common");
 
   const reservationQuery = useQuery({
     ...orpc.dashboard.reservations.getById.queryOptions({
@@ -143,61 +140,57 @@ export function ReservationDetailClient({
     }),
     initialData: initialReservation,
     placeholderData: (prev) => prev,
-  })
+  });
 
-  const reservation = reservationQuery.data
-  if (!reservation) return null
+  const reservation = reservationQuery.data;
+  if (!reservation) return null;
 
-  const currencySymbol = getCurrencySymbol(currency)
+  const currencySymbol = getCurrencySymbol(currency);
 
-  const status = (reservation.status || 'pending') as ReservationStatus
+  const status = (reservation.status || "pending") as ReservationStatus;
 
-  const startDate = toDate(reservation.startDate) || new Date()
-  const endDate = toDate(reservation.endDate) || new Date()
+  const startDate = toDate(reservation.startDate) || new Date();
+  const endDate = toDate(reservation.endDate) || new Date();
   // Precise duration in days and hours
-  const diffMs = endDate.getTime() - startDate.getTime()
-  const totalHours = Math.floor(diffMs / (1000 * 60 * 60))
-  const durationDays = Math.floor(totalHours / 24)
-  const durationHours = totalHours % 24
+  const diffMs = endDate.getTime() - startDate.getTime();
+  const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const durationDays = Math.floor(totalHours / 24);
+  const durationHours = totalHours % 24;
 
-  const rental = getRentalAmount(reservation)
-  const deposit = parseFloat(reservation.depositAmount || '0')
+  const rental = getRentalAmount(reservation);
+  const deposit = parseFloat(reservation.depositAmount || "0");
 
   const rentalPaid = (reservation.payments || [])
-    .filter((p: any) => p.type === 'rental' && p.status === 'completed')
-    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0)
+    .filter((p: any) => p.type === "rental" && p.status === "completed")
+    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
 
   const depositCollected = (reservation.payments || [])
-    .filter((p: any) => p.type === 'deposit' && p.status === 'completed')
-    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0)
+    .filter((p: any) => p.type === "deposit" && p.status === "completed")
+    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
 
   const depositReturned = (reservation.payments || [])
-    .filter((p: any) => p.type === 'deposit_return' && p.status === 'completed')
-    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0)
+    .filter((p: any) => p.type === "deposit_return" && p.status === "completed")
+    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
 
   const hasOnlinePaymentPending = (reservation.payments || []).some(
-    (p: any) => p.method === 'stripe' && p.type === 'rental' && p.status === 'pending',
-  )
+    (p: any) => p.method === "stripe" && p.type === "rental" && p.status === "pending",
+  );
 
-  const hasContract = (reservation.documents || []).some(
-    (d: any) => d.type === 'contract',
-  )
   const insuredProductIds = new Set<string>(
     Array.isArray(reservation.insuredProductIds)
       ? reservation.insuredProductIds.filter(
           (productId: unknown): productId is string =>
-            typeof productId === 'string' && productId.trim().length > 0,
+            typeof productId === "string" && productId.trim().length > 0,
         )
       : [],
-  )
+  );
   const tulipContractId =
-    typeof reservation.tulipContractId === 'string' &&
-    reservation.tulipContractId.trim().length > 0
+    typeof reservation.tulipContractId === "string" && reservation.tulipContractId.trim().length > 0
       ? reservation.tulipContractId.trim()
-      : null
+      : null;
   const tulipContractUrl = tulipContractId
     ? `https://app.mycolibri.io/fr/contrat/${encodeURIComponent(tulipContractId)}`
-    : null
+    : null;
 
   const formattedDepartureInspection = departureInspection
     ? {
@@ -205,7 +198,7 @@ export function ReservationDetailClient({
         createdAt: toDate(departureInspection.createdAt) || new Date(),
         signedAt: toDate(departureInspection.signedAt),
       }
-    : null
+    : null;
 
   const formattedReturnInspection = returnInspection
     ? {
@@ -213,13 +206,11 @@ export function ReservationDetailClient({
         createdAt: toDate(returnInspection.createdAt) || new Date(),
         signedAt: toDate(returnInspection.signedAt),
       }
-    : null
-  const depositAuthorizationExpiresAt = toDate(
-    reservation.depositAuthorizationExpiresAt,
-  )
+    : null;
+  const depositAuthorizationExpiresAt = toDate(reservation.depositAuthorizationExpiresAt);
   const hasActiveDepositAuthorization =
-    reservation.depositStatus === 'authorized' &&
-    (!depositAuthorizationExpiresAt || depositAuthorizationExpiresAt > new Date())
+    reservation.depositStatus === "authorized" &&
+    (!depositAuthorizationExpiresAt || depositAuthorizationExpiresAt > new Date());
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -252,7 +243,7 @@ export function ReservationDetailClient({
           <div className="flex items-start justify-between gap-2 p-3 sm:p-4 rounded-lg border bg-card">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                {reservation.customer.customerType === 'business' ? (
+                {reservation.customer.customerType === "business" ? (
                   <Building2 className="h-5 w-5 text-primary" />
                 ) : (
                   <User className="h-5 w-5 text-primary" />
@@ -261,21 +252,19 @@ export function ReservationDetailClient({
               <div className="min-w-0 flex-1 space-y-1">
                 {/* Name(s) */}
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  {reservation.customer.customerType === 'business' &&
+                  {reservation.customer.customerType === "business" &&
                   reservation.customer.companyName ? (
                     <>
                       <span className="font-medium truncate">
                         {reservation.customer.companyName}
                       </span>
                       <span className="text-sm text-muted-foreground truncate">
-                        {reservation.customer.firstName}{' '}
-                        {reservation.customer.lastName}
+                        {reservation.customer.firstName} {reservation.customer.lastName}
                       </span>
                     </>
                   ) : (
                     <span className="font-medium truncate">
-                      {reservation.customer.firstName}{' '}
-                      {reservation.customer.lastName}
+                      {reservation.customer.firstName} {reservation.customer.lastName}
                     </span>
                   )}
                 </div>
@@ -287,9 +276,7 @@ export function ReservationDetailClient({
                     className="min-w-0 truncate"
                   />
                   {reservation.customer.phone && (
-                    <PhoneContactPopover
-                      phone={reservation.customer.phone}
-                    />
+                    <PhoneContactPopover phone={reservation.customer.phone} />
                   )}
                 </div>
 
@@ -299,8 +286,7 @@ export function ReservationDetailClient({
                     <span className="truncate">
                       {reservation.customer.address}
                       {reservation.customer.city && `, ${reservation.customer.city}`}
-                      {reservation.customer.postalCode &&
-                        ` ${reservation.customer.postalCode}`}
+                      {reservation.customer.postalCode && ` ${reservation.customer.postalCode}`}
                     </span>
                   </p>
                 )}
@@ -310,7 +296,7 @@ export function ReservationDetailClient({
               variant="ghost"
               size="icon"
               className="shrink-0 sm:hidden"
-              title={t('viewCustomer')}
+              title={t("viewCustomer")}
               render={<Link href={`/dashboard/customers/${reservation.customer.id}`} />}
             >
               <ExternalLink className="h-4 w-4" />
@@ -320,7 +306,7 @@ export function ReservationDetailClient({
               className="shrink-0 hidden sm:inline-flex"
               render={<Link href={`/dashboard/customers/${reservation.customer.id}`} />}
             >
-              {t('viewCustomer')}
+              {t("viewCustomer")}
               <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
             </Button>
           </div>
@@ -329,24 +315,20 @@ export function ReservationDetailClient({
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Package className="h-4 w-4" />
-                {t('items')}
+                {t("items")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 text-sm">
                 <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
-                  <span>
-                    {formatStoreDate(startDate, storeTimezone, 'SHORT_DATETIME')}
-                  </span>
+                  <span>{formatStoreDate(startDate, storeTimezone, "SHORT_DATETIME")}</span>
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>
-                    {formatStoreDate(endDate, storeTimezone, 'SHORT_DATETIME')}
-                  </span>
+                  <span>{formatStoreDate(endDate, storeTimezone, "SHORT_DATETIME")}</span>
                   <span className="text-muted-foreground">
-                    ({durationDays > 0 && tCommon('days', { count: durationDays })}
-                    {durationDays > 0 && durationHours > 0 && ` ${tCommon('and')} `}
-                    {durationHours > 0 && tCommon('hours', { count: durationHours })})
+                    ({durationDays > 0 && tCommon("days", { count: durationDays })}
+                    {durationDays > 0 && durationHours > 0 && ` ${tCommon("and")} `}
+                    {durationHours > 0 && tCommon("hours", { count: durationHours })})
                   </span>
                 </div>
               </div>
@@ -355,41 +337,31 @@ export function ReservationDetailClient({
                 <Table className="min-w-[520px]">
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead>{t('productName')}</TableHead>
-                      <TableHead className="text-center w-20">
-                        {t('productQty')}
-                      </TableHead>
-                      <TableHead className="text-right w-28">
-                        {t('productUnitPrice')}
-                      </TableHead>
-                      <TableHead className="text-right w-28">
-                        {t('productTotal')}
-                      </TableHead>
+                      <TableHead>{t("productName")}</TableHead>
+                      <TableHead className="text-center w-20">{t("productQty")}</TableHead>
+                      <TableHead className="text-right w-28">{t("productUnitPrice")}</TableHead>
+                      <TableHead className="text-right w-28">{t("productTotal")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {(reservation.items || []).map((item: any) => {
                       const itemProductId =
-                        typeof item.productId === 'string' ? item.productId : null
+                        typeof item.productId === "string" ? item.productId : null;
                       const isTulipInsured =
-                        itemProductId !== null &&
-                        insuredProductIds.has(itemProductId)
-                      const trackUnits = item.product?.trackUnits || false
+                        itemProductId !== null && insuredProductIds.has(itemProductId);
+                      const trackUnits = item.product?.trackUnits || false;
                       const assignedUnitIds =
-                        item.assignedUnits?.map((au: any) => au.productUnitId) ||
-                        []
+                        item.assignedUnits?.map((au: any) => au.productUnitId) || [];
                       const displayAttributes =
-                        item.selectedAttributes ||
-                        item.productSnapshot?.selectedAttributes ||
-                        null
+                        item.selectedAttributes || item.productSnapshot?.selectedAttributes || null;
                       const attributeLabelsByKey =
                         item.product?.bookingAttributeAxes?.reduce(
                           (acc: Record<string, string>, axis: BookingAttributeAxis) => {
-                            acc[axis.key] = axis.label
-                            return acc
+                            acc[axis.key] = axis.label;
+                            return acc;
                           },
                           {},
-                        ) || null
+                        ) || null;
 
                       return (
                         <TableRow key={item.id}>
@@ -406,9 +378,7 @@ export function ReservationDetailClient({
                                       {item.productSnapshot?.name || item.product?.name}
                                     </Link>
                                   ) : (
-                                    <span>
-                                      {item.productSnapshot?.name || item.product?.name}
-                                    </span>
+                                    <span>{item.productSnapshot?.name || item.product?.name}</span>
                                   )}
                                   {isTulipInsured && (
                                     <Badge
@@ -416,32 +386,27 @@ export function ReservationDetailClient({
                                       className="border-emerald-300 bg-emerald-50 text-emerald-700"
                                     >
                                       <Shield className="mr-1 h-3 w-3" />
-                                      {t('tulipInsuredBadge')}
+                                      {t("tulipInsuredBadge")}
                                     </Badge>
                                   )}
                                 </div>
-                                {displayAttributes &&
-                                  Object.keys(displayAttributes).length > 0 && (
-                                    <div className="flex flex-wrap gap-1">
-                                      {Object.entries(displayAttributes)
-                                        .filter(([, value]) =>
-                                          Boolean(value && String(value).trim()),
-                                        )
-                                        .sort(([a], [b]) =>
-                                          a.localeCompare(b, 'en'),
-                                        )
-                                        .map(([key, value]) => (
-                                          <Badge
-                                            key={`${item.id}-${key}`}
-                                            variant="outline"
-                                            className="text-xs"
-                                          >
-                                            {(attributeLabelsByKey?.[key] || key)}:{' '}
-                                            {String(value).trim()}
-                                          </Badge>
-                                        ))}
-                                    </div>
-                                  )}
+                                {displayAttributes && Object.keys(displayAttributes).length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {Object.entries(displayAttributes)
+                                      .filter(([, value]) => Boolean(value && String(value).trim()))
+                                      .sort(([a], [b]) => a.localeCompare(b, "en"))
+                                      .map(([key, value]) => (
+                                        <Badge
+                                          key={`${item.id}-${key}`}
+                                          variant="outline"
+                                          className="text-xs"
+                                        >
+                                          {attributeLabelsByKey?.[key] || key}:{" "}
+                                          {String(value).trim()}
+                                        </Badge>
+                                      ))}
+                                  </div>
+                                )}
                               </div>
 
                               {trackUnits && (
@@ -449,9 +414,7 @@ export function ReservationDetailClient({
                                   reservationId={reservation.id}
                                   reservationItemId={item.id}
                                   productName={
-                                    item.productSnapshot?.name ||
-                                    item.product?.name ||
-                                    ''
+                                    item.productSnapshot?.name || item.product?.name || ""
                                   }
                                   quantity={item.quantity}
                                   trackUnits={trackUnits}
@@ -474,7 +437,7 @@ export function ReservationDetailClient({
                             {currencySymbol}
                           </TableCell>
                         </TableRow>
-                      )
+                      );
                     })}
                   </TableBody>
                 </Table>
@@ -486,28 +449,35 @@ export function ReservationDetailClient({
                   {reservation.taxAmount && parseFloat(reservation.taxAmount) > 0 ? (
                     <>
                       <div className="flex justify-between text-muted-foreground">
-                        <span>{t('subtotalExclTax')}</span>
+                        <span>{t("subtotalExclTax")}</span>
                         <span>
-                          {parseFloat(reservation.subtotalExclTax || reservation.subtotalAmount).toFixed(2)}
+                          {parseFloat(
+                            reservation.subtotalExclTax || reservation.subtotalAmount,
+                          ).toFixed(2)}
                           {currencySymbol}
                         </span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
-                        <span>{t('taxLine', { rate: reservation.taxRate || '0' })}</span>
-                        <span>{parseFloat(reservation.taxAmount).toFixed(2)}{currencySymbol}</span>
+                        <span>{t("taxLine", { rate: reservation.taxRate || "0" })}</span>
+                        <span>
+                          {parseFloat(reservation.taxAmount).toFixed(2)}
+                          {currencySymbol}
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>{t('subtotalInclTax')}</span>
+                        <span>{t("subtotalInclTax")}</span>
                         <span className="font-medium">
-                          {parseFloat(reservation.subtotalAmount).toFixed(2)}{currencySymbol}
+                          {parseFloat(reservation.subtotalAmount).toFixed(2)}
+                          {currencySymbol}
                         </span>
                       </div>
                     </>
                   ) : (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('subtotalRental')}</span>
+                      <span className="text-muted-foreground">{t("subtotalRental")}</span>
                       <span className="font-medium">
-                        {parseFloat(reservation.subtotalAmount).toFixed(2)}{currencySymbol}
+                        {parseFloat(reservation.subtotalAmount).toFixed(2)}
+                        {currencySymbol}
                       </span>
                     </div>
                   )}
@@ -516,14 +486,20 @@ export function ReservationDetailClient({
                     <div className="flex justify-between text-green-600">
                       <span className="flex items-center gap-1.5">
                         <Tag className="h-3.5 w-3.5" />
-                        {t('promoDiscount')}
+                        {t("promoDiscount")}
                         {reservation.promoCodeSnapshot && (
-                          <Badge variant="secondary" className="ml-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                          <Badge
+                            variant="secondary"
+                            className="ml-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                          >
                             {(reservation.promoCodeSnapshot as { code: string }).code}
                           </Badge>
                         )}
                       </span>
-                      <span>-{parseFloat(reservation.discountAmount).toFixed(2)}{currencySymbol}</span>
+                      <span>
+                        -{parseFloat(reservation.discountAmount).toFixed(2)}
+                        {currencySymbol}
+                      </span>
                     </div>
                   )}
 
@@ -531,21 +507,30 @@ export function ReservationDetailClient({
                     <div className="flex justify-between text-muted-foreground">
                       <span className="flex items-center gap-1.5">
                         <Truck className="h-3.5 w-3.5" />
-                        {t('deliveryFeeLabel')}
+                        {t("deliveryFeeLabel")}
                       </span>
-                      <span>{parseFloat(reservation.deliveryFee).toFixed(2)}{currencySymbol}</span>
+                      <span>
+                        {parseFloat(reservation.deliveryFee).toFixed(2)}
+                        {currencySymbol}
+                      </span>
                     </div>
                   )}
 
                   <div className="flex justify-between border-t pt-2 font-semibold">
-                    <span>{t('totalAmount')}</span>
-                    <span>{rental.toFixed(2)}{currencySymbol}</span>
+                    <span>{t("totalAmount")}</span>
+                    <span>
+                      {rental.toFixed(2)}
+                      {currencySymbol}
+                    </span>
                   </div>
 
                   {parseFloat(reservation.depositAmount) > 0 && (
                     <div className="flex justify-between text-muted-foreground">
-                      <span>{t('totalDeposit')}</span>
-                      <span>{parseFloat(reservation.depositAmount).toFixed(2)}{currencySymbol}</span>
+                      <span>{t("totalDeposit")}</span>
+                      <span>
+                        {parseFloat(reservation.depositAmount).toFixed(2)}
+                        {currencySymbol}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -569,28 +554,20 @@ export function ReservationDetailClient({
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  {t('tulipContractCardTitle')}
+                  {t("tulipContractCardTitle")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  {t('tulipContractCardDescription')}
-                </p>
+                <p className="text-sm text-muted-foreground">{t("tulipContractCardDescription")}</p>
                 <p className="text-xs font-mono text-muted-foreground break-all">
                   {tulipContractId}
                 </p>
                 <Button
                   variant="outline"
                   className="w-full"
-                  render={
-                    <a
-                      href={tulipContractUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    />
-                  }
+                  render={<a href={tulipContractUrl} target="_blank" rel="noopener noreferrer" />}
                 >
-                  {t('actions.viewContract')}
+                  {t("actions.viewContract")}
                   <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
                 </Button>
               </CardContent>
@@ -617,25 +594,26 @@ export function ReservationDetailClient({
           />
 
           {/* Delivery & Return card */}
-          {(reservation.outboundMethod === 'address' ||
-            reservation.returnMethod === 'address' ||
-            reservation.deliveryOption === 'delivery' ||
+          {(reservation.outboundMethod === "address" ||
+            reservation.returnMethod === "address" ||
+            reservation.deliveryOption === "delivery" ||
             reservation.pickupLocationSnapshot ||
             reservation.returnLocationSnapshot) && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Truck className="h-4 w-4" />
-                  {t('deliveryAndReturn')}
+                  {t("deliveryAndReturn")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 {/* Outbound leg */}
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {t('outboundLegLabel')}
+                    {t("outboundLegLabel")}
                   </p>
-                  {reservation.outboundMethod === 'address' || (!reservation.outboundMethod && reservation.deliveryAddress) ? (
+                  {reservation.outboundMethod === "address" ||
+                  (!reservation.outboundMethod && reservation.deliveryAddress) ? (
                     <>
                       <div className="flex items-start gap-2">
                         <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
@@ -656,7 +634,7 @@ export function ReservationDetailClient({
                       <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <div>
                         <p className="text-sm">
-                          {reservation.pickupLocationSnapshot?.name ?? t('storePickup')}
+                          {reservation.pickupLocationSnapshot?.name ?? t("storePickup")}
                         </p>
                         {reservation.pickupLocationSnapshot?.address && (
                           <p className="text-muted-foreground text-xs">
@@ -671,9 +649,10 @@ export function ReservationDetailClient({
                 {/* Return leg */}
                 <div className="space-y-1.5 border-t pt-3">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {t('returnLegLabel')}
+                    {t("returnLegLabel")}
                   </p>
-                  {reservation.returnMethod === 'address' || (!reservation.returnMethod && reservation.returnAddress) ? (
+                  {reservation.returnMethod === "address" ||
+                  (!reservation.returnMethod && reservation.returnAddress) ? (
                     <>
                       <div className="flex items-start gap-2">
                         <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
@@ -696,7 +675,7 @@ export function ReservationDetailClient({
                         <p className="text-sm">
                           {reservation.returnLocationSnapshot?.name ??
                             reservation.pickupLocationSnapshot?.name ??
-                            t('storeReturn')}
+                            t("storeReturn")}
                         </p>
                         {(reservation.returnLocationSnapshot?.address ||
                           reservation.pickupLocationSnapshot?.address) && (
@@ -712,9 +691,10 @@ export function ReservationDetailClient({
 
                 {reservation.deliveryFee && parseFloat(reservation.deliveryFee) > 0 && (
                   <div className="flex justify-between items-center border-t pt-3 text-sm">
-                    <span className="text-muted-foreground">{t('deliveryFeeLabel')}</span>
+                    <span className="text-muted-foreground">{t("deliveryFeeLabel")}</span>
                     <span className="font-medium">
-                      {parseFloat(reservation.deliveryFee).toFixed(2)}{currencySymbol}
+                      {parseFloat(reservation.deliveryFee).toFixed(2)}
+                      {currencySymbol}
                     </span>
                   </div>
                 )}
@@ -751,14 +731,14 @@ export function ReservationDetailClient({
             stripeConfigured={stripeConfigured}
           />
 
-          <ReservationCustomerNotes notes={reservation.customerNotes || ''} />
+          <ReservationCustomerNotes notes={reservation.customerNotes || ""} />
 
           <ReservationNotes
             reservationId={reservation.id}
-            initialNotes={reservation.internalNotes || ''}
+            initialNotes={reservation.internalNotes || ""}
           />
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -14,7 +14,6 @@ import {
   Phone,
   User,
   Clock,
-  ArrowUpRight,
   AlertTriangle,
   Eye,
   CalendarDays,
@@ -22,7 +21,6 @@ import {
   Plus,
   Sparkles,
 } from 'lucide-react'
-import Link from 'next/link'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
 import { Badge } from '@louez/ui'

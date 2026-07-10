@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { useTranslations, useLocale } from 'next-intl'
 
-import { cn, formatCurrency } from '@louez/utils'
+import { cn } from '@louez/utils'
 import {
   Badge,
   Button,

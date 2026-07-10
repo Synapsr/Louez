@@ -1,9 +1,9 @@
-'use client'
+"use client";
 
-import { useMemo } from 'react'
-import { format, type Locale } from 'date-fns'
-import { fr, enUS, de, es, it, nl, pl, pt } from 'date-fns/locale'
-import type { EmailLocale } from '@/lib/email/i18n'
+import { useMemo } from "react";
+import { format, type Locale } from "date-fns";
+import { fr, enUS, de, es, it, nl, pl, pt } from "date-fns/locale";
+import type { EmailLocale } from "@/lib/email/i18n";
 
 const DATE_LOCALES: Record<EmailLocale, Locale> = {
   fr,
@@ -14,26 +14,26 @@ const DATE_LOCALES: Record<EmailLocale, Locale> = {
   nl,
   pl,
   pt,
-}
+};
 
 interface EmailPreviewProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeEmail?: string | null
-  storePhone?: string | null
-  storeAddress?: string | null
-  locale: EmailLocale
-  subject: string
-  title: string
-  greeting: string
-  bodyContent: React.ReactNode
-  additionalMessage?: string
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  storeAddress?: string | null;
+  locale: EmailLocale;
+  subject: string;
+  title: string;
+  greeting: string;
+  bodyContent: React.ReactNode;
+  additionalMessage?: string;
   ctaButton?: {
-    text: string
-    url?: string
-  }
-  footerNote?: string
+    text: string;
+    url?: string;
+  };
+  footerNote?: string;
 }
 
 /**
@@ -42,11 +42,11 @@ interface EmailPreviewProps {
 export function EmailPreview({
   storeName,
   logoUrl,
-  primaryColor = '#0066FF',
+  primaryColor = "#0066FF",
   storeEmail,
-  storePhone,
+  storePhone: _storePhone,
   storeAddress,
-  locale,
+  locale: _locale,
   subject,
   title,
   greeting,
@@ -70,7 +70,7 @@ export function EmailPreview({
           <div className="flex gap-2">
             <span className="text-muted-foreground w-12">De:</span>
             <span className="font-medium">
-              {storeName} &lt;{storeEmail || 'noreply@louez.io'}&gt;
+              {storeName} &lt;{storeEmail || "noreply@louez.io"}&gt;
             </span>
           </div>
           <div className="flex gap-2">
@@ -137,7 +137,7 @@ export function EmailPreview({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ============================================================================
@@ -145,17 +145,17 @@ export function EmailPreview({
 // ============================================================================
 
 interface EmailPreviewCompactProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  subject: string
-  additionalMessage?: string
-  locale: EmailLocale
-  eventType: string
-  customerName: string
-  reservationNumber: string
-  startDate: Date
-  endDate: Date
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  subject: string;
+  additionalMessage?: string;
+  locale: EmailLocale;
+  eventType: string;
+  customerName: string;
+  reservationNumber: string;
+  startDate: Date;
+  endDate: Date;
 }
 
 /**
@@ -164,7 +164,7 @@ interface EmailPreviewCompactProps {
 export function EmailPreviewCompact({
   storeName,
   logoUrl,
-  primaryColor = '#0066FF',
+  primaryColor = "#0066FF",
   subject,
   additionalMessage,
   locale,
@@ -174,84 +174,84 @@ export function EmailPreviewCompact({
   startDate,
   endDate,
 }: EmailPreviewCompactProps) {
-  const dateLocale = DATE_LOCALES[locale] || fr
+  const dateLocale = DATE_LOCALES[locale] || fr;
 
   const content = useMemo(() => {
-    const formattedStartDate = format(startDate, 'PPP', { locale: dateLocale })
-    const formattedEndDate = format(endDate, 'PPP', { locale: dateLocale })
+    const formattedStartDate = format(startDate, "PPP", { locale: dateLocale });
+    const formattedEndDate = format(endDate, "PPP", { locale: dateLocale });
 
     const titles: Record<string, Record<EmailLocale, string>> = {
       customer_request_received: {
-        fr: 'Demande de réservation reçue',
-        en: 'Reservation request received',
-        de: 'Reservierungsanfrage erhalten',
-        es: 'Solicitud de reserva recibida',
-        it: 'Richiesta di prenotazione ricevuta',
-        nl: 'Reserveringsaanvraag ontvangen',
-        pl: 'Otrzymano prośbę o rezerwację',
-        pt: 'Pedido de reserva recebido',
+        fr: "Demande de réservation reçue",
+        en: "Reservation request received",
+        de: "Reservierungsanfrage erhalten",
+        es: "Solicitud de reserva recibida",
+        it: "Richiesta di prenotazione ricevuta",
+        nl: "Reserveringsaanvraag ontvangen",
+        pl: "Otrzymano prośbę o rezerwację",
+        pt: "Pedido de reserva recebido",
       },
       customer_request_accepted: {
-        fr: 'Demande acceptée !',
-        en: 'Request accepted!',
-        de: 'Anfrage akzeptiert!',
-        es: '¡Solicitud aceptada!',
-        it: 'Richiesta accettata!',
-        nl: 'Aanvraag geaccepteerd!',
-        pl: 'Prośba zaakceptowana!',
-        pt: 'Pedido aceito!',
+        fr: "Demande acceptée !",
+        en: "Request accepted!",
+        de: "Anfrage akzeptiert!",
+        es: "¡Solicitud aceptada!",
+        it: "Richiesta accettata!",
+        nl: "Aanvraag geaccepteerd!",
+        pl: "Prośba zaakceptowana!",
+        pt: "Pedido aceito!",
       },
       customer_request_rejected: {
-        fr: 'Demande non disponible',
-        en: 'Request unavailable',
-        de: 'Anfrage nicht verfügbar',
-        es: 'Solicitud no disponible',
-        it: 'Richiesta non disponibile',
-        nl: 'Aanvraag niet beschikbaar',
-        pl: 'Prośba niedostępna',
-        pt: 'Pedido não disponível',
+        fr: "Demande non disponible",
+        en: "Request unavailable",
+        de: "Anfrage nicht verfügbar",
+        es: "Solicitud no disponible",
+        it: "Richiesta non disponibile",
+        nl: "Aanvraag niet beschikbaar",
+        pl: "Prośba niedostępna",
+        pt: "Pedido não disponível",
       },
       customer_reservation_confirmed: {
-        fr: 'Réservation confirmée',
-        en: 'Reservation confirmed',
-        de: 'Reservierung bestätigt',
-        es: 'Reserva confirmada',
-        it: 'Prenotazione confermata',
-        nl: 'Reservering bevestigd',
-        pl: 'Rezerwacja potwierdzona',
-        pt: 'Reserva confirmada',
+        fr: "Réservation confirmée",
+        en: "Reservation confirmed",
+        de: "Reservierung bestätigt",
+        es: "Reserva confirmada",
+        it: "Prenotazione confermata",
+        nl: "Reservering bevestigd",
+        pl: "Rezerwacja potwierdzona",
+        pt: "Reserva confirmada",
       },
       customer_reminder_pickup: {
-        fr: 'Rappel: retrait demain',
-        en: 'Reminder: pickup tomorrow',
-        de: 'Erinnerung: Abholung morgen',
-        es: 'Recordatorio: recogida mañana',
-        it: 'Promemoria: ritiro domani',
-        nl: 'Herinnering: ophalen morgen',
-        pl: 'Przypomnienie: odbiór jutro',
-        pt: 'Lembrete: retirada amanhã',
+        fr: "Rappel: retrait demain",
+        en: "Reminder: pickup tomorrow",
+        de: "Erinnerung: Abholung morgen",
+        es: "Recordatorio: recogida mañana",
+        it: "Promemoria: ritiro domani",
+        nl: "Herinnering: ophalen morgen",
+        pl: "Przypomnienie: odbiór jutro",
+        pt: "Lembrete: retirada amanhã",
       },
       customer_reminder_return: {
-        fr: 'Rappel: retour demain',
-        en: 'Reminder: return tomorrow',
-        de: 'Erinnerung: Rückgabe morgen',
-        es: 'Recordatorio: devolución mañana',
-        it: 'Promemoria: restituzione domani',
-        nl: 'Herinnering: terugbrengen morgen',
-        pl: 'Przypomnienie: zwrot jutro',
-        pt: 'Lembrete: devolução amanhã',
+        fr: "Rappel: retour demain",
+        en: "Reminder: return tomorrow",
+        de: "Erinnerung: Rückgabe morgen",
+        es: "Recordatorio: devolución mañana",
+        it: "Promemoria: restituzione domani",
+        nl: "Herinnering: terugbrengen morgen",
+        pl: "Przypomnienie: zwrot jutro",
+        pt: "Lembrete: devolução amanhã",
       },
       thank_you_review: {
-        fr: 'Merci pour votre location !',
-        en: 'Thank you for your rental!',
-        de: 'Vielen Dank für Ihre Miete!',
-        es: '¡Gracias por su alquiler!',
-        it: 'Grazie per il tuo noleggio!',
-        nl: 'Bedankt voor uw verhuur!',
-        pl: 'Dziękujemy za wynajem!',
-        pt: 'Obrigado pelo seu aluguel!',
+        fr: "Merci pour votre location !",
+        en: "Thank you for your rental!",
+        de: "Vielen Dank für Ihre Miete!",
+        es: "¡Gracias por su alquiler!",
+        it: "Grazie per il tuo noleggio!",
+        nl: "Bedankt voor uw verhuur!",
+        pl: "Dziękujemy za wynajem!",
+        pt: "Obrigado pelo seu aluguel!",
       },
-    }
+    };
 
     const greetings: Record<EmailLocale, string> = {
       fr: `Bonjour ${customerName},`,
@@ -262,7 +262,7 @@ export function EmailPreviewCompact({
       nl: `Hallo ${customerName},`,
       pl: `Cześć ${customerName},`,
       pt: `Olá ${customerName},`,
-    }
+    };
 
     const reservationInfo: Record<EmailLocale, string> = {
       fr: `Réservation #${reservationNumber} • Du ${formattedStartDate} au ${formattedEndDate}`,
@@ -273,14 +273,14 @@ export function EmailPreviewCompact({
       nl: `Reservering #${reservationNumber} • Van ${formattedStartDate} tot ${formattedEndDate}`,
       pl: `Rezerwacja #${reservationNumber} • Od ${formattedStartDate} do ${formattedEndDate}`,
       pt: `Reserva #${reservationNumber} • De ${formattedStartDate} a ${formattedEndDate}`,
-    }
+    };
 
     return {
-      title: titles[eventType]?.[locale] || titles['customer_request_received'][locale],
+      title: titles[eventType]?.[locale] || titles["customer_request_received"][locale],
       greeting: greetings[locale],
       reservationInfo: reservationInfo[locale],
-    }
-  }, [eventType, locale, customerName, reservationNumber, startDate, endDate, dateLocale])
+    };
+  }, [eventType, locale, customerName, reservationNumber, startDate, endDate, dateLocale]);
 
   return (
     <div className="rounded-lg border bg-muted/30 overflow-hidden">
@@ -331,14 +331,12 @@ export function EmailPreviewCompact({
 
           {/* Footer */}
           <div className="bg-gray-50 px-4 py-2 border-t text-center">
-            <p className="text-[10px] text-gray-400">
-              {storeName} • Propulsé par Louez.io
-            </p>
+            <p className="text-[10px] text-gray-400">{storeName} • Propulsé par Louez.io</p>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ============================================================================
@@ -346,20 +344,20 @@ export function EmailPreviewCompact({
 // ============================================================================
 
 interface EventEmailPreviewProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeEmail?: string | null
-  storePhone?: string | null
-  storeAddress?: string | null
-  locale: EmailLocale
-  customerName: string
-  reservationNumber: string
-  startDate: Date
-  endDate: Date
-  subject: string
-  additionalMessage?: string
-  eventType: string
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  storeAddress?: string | null;
+  locale: EmailLocale;
+  customerName: string;
+  reservationNumber: string;
+  startDate: Date;
+  endDate: Date;
+  subject: string;
+  additionalMessage?: string;
+  eventType: string;
 }
 
 export function EventEmailPreview(props: EventEmailPreviewProps) {
@@ -378,86 +376,86 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
     subject,
     additionalMessage,
     eventType,
-  } = props
+  } = props;
 
-  const dateLocale = DATE_LOCALES[locale] || fr
+  const dateLocale = DATE_LOCALES[locale] || fr;
 
   const content = useMemo(() => {
-    const formattedStartDate = format(startDate, 'PPP', { locale: dateLocale })
-    const formattedEndDate = format(endDate, 'PPP', { locale: dateLocale })
+    const formattedStartDate = format(startDate, "PPP", { locale: dateLocale });
+    const formattedEndDate = format(endDate, "PPP", { locale: dateLocale });
 
     const titles: Record<string, Record<EmailLocale, string>> = {
       customer_request_received: {
-        fr: 'Demande de réservation reçue',
-        en: 'Reservation request received',
-        de: 'Reservierungsanfrage erhalten',
-        es: 'Solicitud de reserva recibida',
-        it: 'Richiesta di prenotazione ricevuta',
-        nl: 'Reserveringsaanvraag ontvangen',
-        pl: 'Otrzymano prośbę o rezerwację',
-        pt: 'Pedido de reserva recebido',
+        fr: "Demande de réservation reçue",
+        en: "Reservation request received",
+        de: "Reservierungsanfrage erhalten",
+        es: "Solicitud de reserva recibida",
+        it: "Richiesta di prenotazione ricevuta",
+        nl: "Reserveringsaanvraag ontvangen",
+        pl: "Otrzymano prośbę o rezerwację",
+        pt: "Pedido de reserva recebido",
       },
       customer_request_accepted: {
-        fr: 'Demande acceptée !',
-        en: 'Request accepted!',
-        de: 'Anfrage akzeptiert!',
-        es: '¡Solicitud aceptada!',
-        it: 'Richiesta accettata!',
-        nl: 'Aanvraag geaccepteerd!',
-        pl: 'Prośba zaakceptowana!',
-        pt: 'Pedido aceito!',
+        fr: "Demande acceptée !",
+        en: "Request accepted!",
+        de: "Anfrage akzeptiert!",
+        es: "¡Solicitud aceptada!",
+        it: "Richiesta accettata!",
+        nl: "Aanvraag geaccepteerd!",
+        pl: "Prośba zaakceptowana!",
+        pt: "Pedido aceito!",
       },
       customer_request_rejected: {
-        fr: 'Demande non disponible',
-        en: 'Request unavailable',
-        de: 'Anfrage nicht verfügbar',
-        es: 'Solicitud no disponible',
-        it: 'Richiesta non disponibile',
-        nl: 'Aanvraag niet beschikbaar',
-        pl: 'Prośba niedostępna',
-        pt: 'Pedido não disponível',
+        fr: "Demande non disponible",
+        en: "Request unavailable",
+        de: "Anfrage nicht verfügbar",
+        es: "Solicitud no disponible",
+        it: "Richiesta non disponibile",
+        nl: "Aanvraag niet beschikbaar",
+        pl: "Prośba niedostępna",
+        pt: "Pedido não disponível",
       },
       customer_reservation_confirmed: {
-        fr: 'Réservation confirmée',
-        en: 'Reservation confirmed',
-        de: 'Reservierung bestätigt',
-        es: 'Reserva confirmada',
-        it: 'Prenotazione confermata',
-        nl: 'Reservering bevestigd',
-        pl: 'Rezerwacja potwierdzona',
-        pt: 'Reserva confirmada',
+        fr: "Réservation confirmée",
+        en: "Reservation confirmed",
+        de: "Reservierung bestätigt",
+        es: "Reserva confirmada",
+        it: "Prenotazione confermata",
+        nl: "Reservering bevestigd",
+        pl: "Rezerwacja potwierdzona",
+        pt: "Reserva confirmada",
       },
       customer_reminder_pickup: {
-        fr: 'Rappel: retrait demain',
-        en: 'Reminder: pickup tomorrow',
-        de: 'Erinnerung: Abholung morgen',
-        es: 'Recordatorio: recogida mañana',
-        it: 'Promemoria: ritiro domani',
-        nl: 'Herinnering: ophalen morgen',
-        pl: 'Przypomnienie: odbiór jutro',
-        pt: 'Lembrete: retirada amanhã',
+        fr: "Rappel: retrait demain",
+        en: "Reminder: pickup tomorrow",
+        de: "Erinnerung: Abholung morgen",
+        es: "Recordatorio: recogida mañana",
+        it: "Promemoria: ritiro domani",
+        nl: "Herinnering: ophalen morgen",
+        pl: "Przypomnienie: odbiór jutro",
+        pt: "Lembrete: retirada amanhã",
       },
       customer_reminder_return: {
-        fr: 'Rappel: retour demain',
-        en: 'Reminder: return tomorrow',
-        de: 'Erinnerung: Rückgabe morgen',
-        es: 'Recordatorio: devolución mañana',
-        it: 'Promemoria: restituzione domani',
-        nl: 'Herinnering: terugbrengen morgen',
-        pl: 'Przypomnienie: zwrot jutro',
-        pt: 'Lembrete: devolução amanhã',
+        fr: "Rappel: retour demain",
+        en: "Reminder: return tomorrow",
+        de: "Erinnerung: Rückgabe morgen",
+        es: "Recordatorio: devolución mañana",
+        it: "Promemoria: restituzione domani",
+        nl: "Herinnering: terugbrengen morgen",
+        pl: "Przypomnienie: zwrot jutro",
+        pt: "Lembrete: devolução amanhã",
       },
       thank_you_review: {
-        fr: 'Merci pour votre location !',
-        en: 'Thank you for your rental!',
-        de: 'Vielen Dank für Ihre Miete!',
-        es: '¡Gracias por su alquiler!',
-        it: 'Grazie per il tuo noleggio!',
-        nl: 'Bedankt voor uw verhuur!',
-        pl: 'Dziękujemy za wynajem!',
-        pt: 'Obrigado pelo seu aluguel!',
+        fr: "Merci pour votre location !",
+        en: "Thank you for your rental!",
+        de: "Vielen Dank für Ihre Miete!",
+        es: "¡Gracias por su alquiler!",
+        it: "Grazie per il tuo noleggio!",
+        nl: "Bedankt voor uw verhuur!",
+        pl: "Dziękujemy za wynajem!",
+        pt: "Obrigado pelo seu aluguel!",
       },
-    }
+    };
 
     const greetings: Record<EmailLocale, string> = {
       fr: `Bonjour ${customerName},`,
@@ -468,7 +466,7 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
       nl: `Hallo ${customerName},`,
       pl: `Cześć ${customerName},`,
       pt: `Olá ${customerName},`,
-    }
+    };
 
     const defaultBody: Record<EmailLocale, React.ReactNode> = {
       fr: (
@@ -535,14 +533,14 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
           </p>
         </div>
       ),
-    }
+    };
 
     return {
-      title: titles[eventType]?.[locale] || titles['customer_request_received'][locale],
+      title: titles[eventType]?.[locale] || titles["customer_request_received"][locale],
       greeting: greetings[locale],
       body: defaultBody[locale],
-    }
-  }, [eventType, locale, customerName, reservationNumber, startDate, endDate, dateLocale])
+    };
+  }, [eventType, locale, customerName, reservationNumber, startDate, endDate, dateLocale]);
 
   return (
     <EmailPreview
@@ -559,5 +557,5 @@ export function EventEmailPreview(props: EventEmailPreviewProps) {
       bodyContent={content.body}
       additionalMessage={additionalMessage}
     />
-  )
+  );
 }

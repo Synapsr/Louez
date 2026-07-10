@@ -40,14 +40,15 @@ packages:
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "lint": "turbo lint",
-    "format": "prettier --write .",
+    "lint": "oxlint && turbo lint",
+    "format": "oxfmt --write",
+    "format:check": "oxfmt --check",
     "check-types": "turbo check-types"
   },
   "devDependencies": {
-    "turbo": "latest",
-    "eslint": "latest",
-    "prettier": "latest"
+    "oxfmt": "latest",
+    "oxlint": "latest",
+    "turbo": "latest"
   },
   "packageManager": "pnpm@latest"
 }

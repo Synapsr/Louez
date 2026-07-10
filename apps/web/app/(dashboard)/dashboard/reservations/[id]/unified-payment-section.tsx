@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CreditCard,
   Plus,
@@ -21,21 +21,15 @@ import {
   ShieldCheck,
   Clock,
   Wifi,
-  X,
   Send,
-} from 'lucide-react'
-import { toastManager } from '@louez/ui'
-import { formatDistanceToNow } from 'date-fns'
-import { fr } from 'date-fns/locale'
+} from "lucide-react";
+import { toastManager } from "@louez/ui";
+import { formatDistanceToNow } from "date-fns";
+import { fr } from "date-fns/locale";
 
-import { Button } from '@louez/ui'
-import { Badge } from '@louez/ui'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui'
+import { Button } from "@louez/ui";
+import { Badge } from "@louez/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
 import {
   Dialog,
   DialogPopup,
@@ -44,7 +38,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@louez/ui'
+} from "@louez/ui";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -53,80 +47,83 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@louez/ui'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@louez/ui'
-import { Input } from '@louez/ui'
-import { Label } from '@louez/ui'
-import { Textarea } from '@louez/ui'
-import { Progress } from '@louez/ui'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@louez/ui'
-import { cn, getCurrencySymbol } from '@louez/utils'
+} from "@louez/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@louez/ui";
+import { Input } from "@louez/ui";
+import { Label } from "@louez/ui";
+import { Textarea } from "@louez/ui";
+import { Progress } from "@louez/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez/ui";
+import { cn, getCurrencySymbol } from "@louez/utils";
 
-import { formatStoreDate } from '@/lib/utils/store-date'
-import { useStoreTimezone } from '@/contexts/store-context'
-import { ReferralNudge } from '@/components/dashboard/referral-nudge'
-import { orpc } from '@/lib/orpc/react'
-import { invalidateReservationAll } from '@/lib/orpc/invalidation'
-import { RequestPaymentModal } from './request-payment-modal'
+import { formatStoreDate } from "@/lib/utils/store-date";
+import { useStoreTimezone } from "@/contexts/store-context";
+import { ReferralNudge } from "@/components/dashboard/referral-nudge";
+import { orpc } from "@/lib/orpc/react";
+import { invalidateReservationAll } from "@/lib/orpc/invalidation";
+import { RequestPaymentModal } from "./request-payment-modal";
 
 interface Payment {
-  id: string
-  amount: string
-  type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture' | 'adjustment'
-  method: 'stripe' | 'cash' | 'card' | 'transfer' | 'check' | 'other'
-  status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
-  createdAt: Date
-  paidAt: Date | null
-  notes: string | null
-  stripeChargeId?: string | null
-  stripePaymentIntentId?: string | null
-  stripeCheckoutSessionId?: string | null
+  id: string;
+  amount: string;
+  type:
+    | "rental"
+    | "deposit"
+    | "deposit_return"
+    | "damage"
+    | "deposit_hold"
+    | "deposit_capture"
+    | "adjustment";
+  method: "stripe" | "cash" | "card" | "transfer" | "check" | "other";
+  status: "pending" | "completed" | "failed" | "refunded" | "authorized" | "cancelled";
+  createdAt: Date;
+  paidAt: Date | null;
+  notes: string | null;
+  stripeChargeId?: string | null;
+  stripePaymentIntentId?: string | null;
+  stripeCheckoutSessionId?: string | null;
 }
 
 interface PaymentMethodInfo {
-  id: string
-  brand: string | null
-  last4: string | null
-  expMonth: number | null
-  expYear: number | null
+  id: string;
+  brand: string | null;
+  last4: string | null;
+  expMonth: number | null;
+  expYear: number | null;
 }
 
-type PaymentType = 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'adjustment'
-type PaymentMethod = 'cash' | 'card' | 'transfer' | 'check' | 'other'
+type PaymentType = "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
+type PaymentMethod = "cash" | "card" | "transfer" | "check" | "other";
 
-type DepositStatus = 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed'
+type DepositStatus =
+  | "none"
+  | "pending"
+  | "card_saved"
+  | "authorized"
+  | "captured"
+  | "released"
+  | "failed";
 
 interface UnifiedPaymentSectionProps {
-  reservationId: string
-  reservationNumber: string
-  subtotalAmount: string
-  depositAmount: string
-  totalAmount: string
-  payments: Payment[]
-  status: string
-  currency?: string
+  reservationId: string;
+  reservationNumber: string;
+  subtotalAmount: string;
+  depositAmount: string;
+  totalAmount: string;
+  payments: Payment[];
+  status: string;
+  currency?: string;
   // Deposit authorization props
-  depositStatus: DepositStatus | null
-  depositAuthorizationExpiresAt: Date | null
-  stripePaymentMethodId: string | null
+  depositStatus: DepositStatus | null;
+  depositAuthorizationExpiresAt: Date | null;
+  stripePaymentMethodId: string | null;
   // Request payment props
   customer: {
-    firstName: string
-    email: string
-    phone?: string | null
-  }
-  stripeConfigured: boolean
+    firstName: string;
+    email: string;
+    phone?: string | null;
+  };
+  stripeConfigured: boolean;
 }
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
@@ -136,39 +133,39 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
   check: <Receipt className="h-3.5 w-3.5" />,
   stripe: <CreditCard className="h-3.5 w-3.5 text-[#635BFF]" />,
   other: <Wallet className="h-3.5 w-3.5" />,
-}
+};
 
 const CARD_BRANDS: Record<string, string> = {
-  visa: 'Visa',
-  mastercard: 'Mastercard',
-  amex: 'American Express',
-  discover: 'Discover',
-  diners: 'Diners Club',
-  jcb: 'JCB',
-  unionpay: 'UnionPay',
-}
+  visa: "Visa",
+  mastercard: "Mastercard",
+  amex: "American Express",
+  discover: "Discover",
+  diners: "Diners Club",
+  jcb: "JCB",
+  unionpay: "UnionPay",
+};
 
-const VISIBLE_HISTORY_COUNT = 3
+const VISIBLE_HISTORY_COUNT = 3;
 
 function getRentalAmount({
   subtotalAmount,
   depositAmount,
   totalAmount,
 }: {
-  subtotalAmount: string
-  depositAmount: string
-  totalAmount: string
+  subtotalAmount: string;
+  depositAmount: string;
+  totalAmount: string;
 }) {
-  const subtotal = parseFloat(subtotalAmount || '0')
-  const deposit = parseFloat(depositAmount || '0')
-  const total = parseFloat(totalAmount || '0')
+  const subtotal = parseFloat(subtotalAmount || "0");
+  const deposit = parseFloat(depositAmount || "0");
+  const total = parseFloat(totalAmount || "0");
 
-  if (!Number.isFinite(total) || total <= 0) return subtotal
+  if (!Number.isFinite(total) || total <= 0) return subtotal;
   if (deposit > 0 && total - subtotal >= deposit - 0.01) {
-    return Math.max(0, total - deposit)
+    return Math.max(0, total - deposit);
   }
 
-  return total
+  return total;
 }
 
 export function UnifiedPaymentSection({
@@ -179,219 +176,219 @@ export function UnifiedPaymentSection({
   totalAmount,
   payments,
   status,
-  currency = 'EUR',
+  currency = "EUR",
   depositStatus: depositStatusProp,
   depositAuthorizationExpiresAt,
   stripePaymentMethodId,
   customer,
   stripeConfigured,
 }: UnifiedPaymentSectionProps) {
-  const t = useTranslations('dashboard.reservations')
-  const tCommon = useTranslations('common')
-  const tErrors = useTranslations('errors')
-  const timezone = useStoreTimezone()
-  const currencySymbol = getCurrencySymbol(currency)
-  const queryClient = useQueryClient()
+  const t = useTranslations("dashboard.reservations");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
+  const timezone = useStoreTimezone();
+  const currencySymbol = getCurrencySymbol(currency);
+  const queryClient = useQueryClient();
 
-  const [isLoading, setIsLoading] = useState(false)
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
-  const [depositReturnModalOpen, setDepositReturnModalOpen] = useState(false)
-  const [damageModalOpen, setDamageModalOpen] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null)
-  const [historyExpanded, setHistoryExpanded] = useState(false)
-  const [captureModalOpen, setCaptureModalOpen] = useState(false)
-  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false)
-  const [requestPaymentModalOpen, setRequestPaymentModalOpen] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodInfo | null>(null)
+  const [isLoading, setIsLoading] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [depositReturnModalOpen, setDepositReturnModalOpen] = useState(false);
+  const [damageModalOpen, setDamageModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [captureModalOpen, setCaptureModalOpen] = useState(false);
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [requestPaymentModalOpen, setRequestPaymentModalOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodInfo | null>(null);
 
   // Form state
-  const [paymentType, setPaymentType] = useState<PaymentType>('rental')
-  const [paymentAmount, setPaymentAmount] = useState('')
-  const [paymentMethodType, setPaymentMethodType] = useState<PaymentMethod>('cash')
-  const [paymentNotes, setPaymentNotes] = useState('')
-  const [captureAmount, setCaptureAmount] = useState('')
-  const [captureReason, setCaptureReason] = useState('')
+  const [paymentType, setPaymentType] = useState<PaymentType>("rental");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethodType, setPaymentMethodType] = useState<PaymentMethod>("cash");
+  const [paymentNotes, setPaymentNotes] = useState("");
+  const [captureAmount, setCaptureAmount] = useState("");
+  const [captureReason, setCaptureReason] = useState("");
 
   // Option arrays for selects
   const paymentTypeOptions = [
-    { value: 'rental', label: t('payment.types.rental') },
-    { value: 'deposit', label: t('payment.types.deposit') },
-    { value: 'adjustment', label: t('payment.types.adjustment') },
-  ]
+    { value: "rental", label: t("payment.types.rental") },
+    { value: "deposit", label: t("payment.types.deposit") },
+    { value: "adjustment", label: t("payment.types.adjustment") },
+  ];
 
   const paymentMethodOptions = [
-    { value: 'cash', label: t('payment.methods.cash') },
-    { value: 'card', label: t('payment.methods.card') },
-    { value: 'transfer', label: t('payment.methods.transfer') },
-    { value: 'check', label: t('payment.methods.check') },
-    { value: 'other', label: t('payment.methods.other') },
-  ]
+    { value: "cash", label: t("payment.methods.cash") },
+    { value: "card", label: t("payment.methods.card") },
+    { value: "transfer", label: t("payment.methods.transfer") },
+    { value: "check", label: t("payment.methods.check") },
+    { value: "other", label: t("payment.methods.other") },
+  ];
 
   // totalAmount should exclude the deposit, but older rows may include it.
-  const rental = getRentalAmount({ subtotalAmount, depositAmount, totalAmount })
-  const deposit = parseFloat(depositAmount)
-  const depositStatusVal = depositStatusProp || 'none'
+  const rental = getRentalAmount({ subtotalAmount, depositAmount, totalAmount });
+  const deposit = parseFloat(depositAmount);
+  const depositStatusVal = depositStatusProp || "none";
 
   const rentalPaid = payments
-    .filter((p) => p.type === 'rental' && p.status === 'completed')
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+    .filter((p) => p.type === "rental" && p.status === "completed")
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
   const depositCollected = payments
-    .filter((p) => p.type === 'deposit' && p.status === 'completed')
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+    .filter((p) => p.type === "deposit" && p.status === "completed")
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
   const depositReturned = payments
-    .filter((p) => p.type === 'deposit_return' && p.status === 'completed')
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+    .filter((p) => p.type === "deposit_return" && p.status === "completed")
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
   const damagesPaid = payments
-    .filter((p) => p.type === 'damage' && p.status === 'completed')
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+    .filter((p) => p.type === "damage" && p.status === "completed")
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
-  const rentalRemaining = Math.max(0, rental - rentalPaid)
-  const depositRemaining = Math.max(0, deposit - depositCollected)
-  const depositToReturn = depositCollected - depositReturned
-  const rentalProgress = rental > 0 ? Math.min(100, (rentalPaid / rental) * 100) : 100
+  const rentalRemaining = Math.max(0, rental - rentalPaid);
+  const depositRemaining = Math.max(0, deposit - depositCollected);
+  const depositToReturn = depositCollected - depositReturned;
+  const rentalProgress = rental > 0 ? Math.min(100, (rentalPaid / rental) * 100) : 100;
 
-  const isRentalFullyPaid = rentalRemaining === 0
-  const isDepositFullyCollected = depositRemaining === 0
-  const isDepositFullyReturned = depositToReturn <= 0 && depositCollected > 0
+  const isRentalFullyPaid = rentalRemaining === 0;
+  const isDepositFullyCollected = depositRemaining === 0;
+  const isDepositFullyReturned = depositToReturn <= 0 && depositCollected > 0;
 
-  const isReservationFinished = ['completed', 'cancelled', 'rejected'].includes(status)
+  const isReservationFinished = ["completed", "cancelled", "rejected"].includes(status);
 
   // Stripe payment info
   const stripeRentalPayment = payments.find(
-    (p) => p.method === 'stripe' && p.type === 'rental' && p.status === 'completed'
-  )
-  const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000 // 30 minutes (matches Stripe expires_at)
+    (p) => p.method === "stripe" && p.type === "rental" && p.status === "completed",
+  );
+  const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes (matches Stripe expires_at)
   const stripePendingPayment = payments.find(
     (p) =>
-      p.method === 'stripe' &&
-      p.type === 'rental' &&
-      p.status === 'pending' &&
-      new Date(p.createdAt).getTime() + CHECKOUT_SESSION_TTL_MS > Date.now()
-  )
+      p.method === "stripe" &&
+      p.type === "rental" &&
+      p.status === "pending" &&
+      new Date(p.createdAt).getTime() + CHECKOUT_SESSION_TTL_MS > Date.now(),
+  );
 
   // Authorization expiration
   const authorizationExpired = depositAuthorizationExpiresAt
     ? new Date(depositAuthorizationExpiresAt) < new Date()
-    : false
+    : false;
 
   const authorizationTimeRemaining = depositAuthorizationExpiresAt
     ? formatDistanceToNow(new Date(depositAuthorizationExpiresAt), {
         locale: fr,
         addSuffix: false,
       })
-    : null
+    : null;
 
   const getAuthorizationProgress = () => {
-    if (!depositAuthorizationExpiresAt) return 0
-    const expiresAt = new Date(depositAuthorizationExpiresAt).getTime()
-    const now = Date.now()
-    const sevenDays = 7 * 24 * 60 * 60 * 1000
-    const createdAt = expiresAt - sevenDays
-    const elapsed = now - createdAt
-    const progress = Math.max(0, Math.min(100, (elapsed / sevenDays) * 100))
-    return 100 - progress
-  }
+    if (!depositAuthorizationExpiresAt) return 0;
+    const expiresAt = new Date(depositAuthorizationExpiresAt).getTime();
+    const now = Date.now();
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    const createdAt = expiresAt - sevenDays;
+    const elapsed = now - createdAt;
+    const progress = Math.max(0, Math.min(100, (elapsed / sevenDays) * 100));
+    return 100 - progress;
+  };
 
   // Fetch payment method details
   const paymentMethodQuery = useQuery({
     ...orpc.dashboard.reservations.getPaymentMethod.queryOptions({
       input: { reservationId },
     }),
-    enabled: Boolean(stripePaymentMethodId && depositStatusVal !== 'none'),
-  })
+    enabled: Boolean(stripePaymentMethodId && depositStatusVal !== "none"),
+  });
 
   useEffect(() => {
-    setPaymentMethod((paymentMethodQuery.data as PaymentMethodInfo | null) || null)
-  }, [paymentMethodQuery.data])
+    setPaymentMethod((paymentMethodQuery.data as PaymentMethodInfo | null) || null);
+  }, [paymentMethodQuery.data]);
 
   const recordPaymentMutation = useMutation(
     orpc.dashboard.reservations.recordPayment.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationAll(queryClient, reservationId)
+        await invalidateReservationAll(queryClient, reservationId);
       },
     }),
-  )
+  );
 
   const deletePaymentMutation = useMutation(
     orpc.dashboard.reservations.deletePayment.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationAll(queryClient, reservationId)
+        await invalidateReservationAll(queryClient, reservationId);
       },
     }),
-  )
+  );
 
   const returnDepositMutation = useMutation(
     orpc.dashboard.reservations.returnDeposit.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationAll(queryClient, reservationId)
+        await invalidateReservationAll(queryClient, reservationId);
       },
     }),
-  )
+  );
 
   const recordDamageMutation = useMutation(
     orpc.dashboard.reservations.recordDamage.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationAll(queryClient, reservationId)
+        await invalidateReservationAll(queryClient, reservationId);
       },
     }),
-  )
+  );
 
   const createHoldMutation = useMutation(
     orpc.dashboard.reservations.createDepositHold.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationAll(queryClient, reservationId)
+        await invalidateReservationAll(queryClient, reservationId);
       },
     }),
-  )
+  );
 
   const captureHoldMutation = useMutation(
     orpc.dashboard.reservations.captureDepositHold.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationAll(queryClient, reservationId)
+        await invalidateReservationAll(queryClient, reservationId);
       },
     }),
-  )
+  );
 
   const releaseHoldMutation = useMutation(
     orpc.dashboard.reservations.releaseDepositHold.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationAll(queryClient, reservationId)
+        await invalidateReservationAll(queryClient, reservationId);
       },
     }),
-  )
+  );
 
   // Filter history payments (exclude pending Stripe)
   const historyPayments = payments.filter(
-    (p) => !(p.method === 'stripe' && p.status === 'pending')
-  )
+    (p) => !(p.method === "stripe" && p.status === "pending"),
+  );
   const visiblePayments = historyExpanded
     ? historyPayments
-    : historyPayments.slice(0, VISIBLE_HISTORY_COUNT)
-  const hasMorePayments = historyPayments.length > VISIBLE_HISTORY_COUNT
+    : historyPayments.slice(0, VISIBLE_HISTORY_COUNT);
+  const hasMorePayments = historyPayments.length > VISIBLE_HISTORY_COUNT;
 
   const resetForm = () => {
-    setPaymentAmount('')
-    setPaymentMethodType('cash')
-    setPaymentNotes('')
-  }
+    setPaymentAmount("");
+    setPaymentMethodType("cash");
+    setPaymentNotes("");
+  };
 
   // Payment handlers
   const handleRecordPayment = async () => {
-    const amount = parseFloat(paymentAmount)
+    const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || amount === 0) {
-      toastManager.add({ title: t('payment.invalidAmount'), type: 'error' })
-      return
+      toastManager.add({ title: t("payment.invalidAmount"), type: "error" });
+      return;
     }
-    if (amount < 0 && paymentType !== 'adjustment') {
-      toastManager.add({ title: t('payment.negativeAmountOnlyForAdjustment'), type: 'error' })
-      return
+    if (amount < 0 && paymentType !== "adjustment") {
+      toastManager.add({ title: t("payment.negativeAmountOnlyForAdjustment"), type: "error" });
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       await recordPaymentMutation.mutateAsync({
         reservationId,
@@ -401,31 +398,31 @@ export function UnifiedPaymentSection({
           method: paymentMethodType,
           notes: paymentNotes || undefined,
         },
-      })
+      });
 
-      toastManager.add({ title: t('payment.recorded'), type: 'success' })
-      setPaymentModalOpen(false)
-      resetForm()
+      toastManager.add({ title: t("payment.recorded"), type: "success" });
+      setPaymentModalOpen(false);
+      resetForm();
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleReturnDeposit = async () => {
-    const amount = parseFloat(paymentAmount)
+    const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || amount <= 0) {
-      toastManager.add({ title: t('payment.invalidAmount'), type: 'error' })
-      return
+      toastManager.add({ title: t("payment.invalidAmount"), type: "error" });
+      return;
     }
 
     if (amount > depositToReturn) {
-      toastManager.add({ title: t('payment.amountExceedsDeposit'), type: 'error' })
-      return
+      toastManager.add({ title: t("payment.amountExceedsDeposit"), type: "error" });
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       await returnDepositMutation.mutateAsync({
         reservationId,
@@ -434,31 +431,31 @@ export function UnifiedPaymentSection({
           method: paymentMethodType,
           notes: paymentNotes || undefined,
         },
-      })
+      });
 
-      toastManager.add({ title: t('payment.depositReturned'), type: 'success' })
-      setDepositReturnModalOpen(false)
-      resetForm()
+      toastManager.add({ title: t("payment.depositReturned"), type: "success" });
+      setDepositReturnModalOpen(false);
+      resetForm();
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleRecordDamage = async () => {
-    const amount = parseFloat(paymentAmount)
+    const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || amount <= 0) {
-      toastManager.add({ title: t('payment.invalidAmount'), type: 'error' })
-      return
+      toastManager.add({ title: t("payment.invalidAmount"), type: "error" });
+      return;
     }
 
     if (!paymentNotes.trim()) {
-      toastManager.add({ title: t('payment.damageNotesRequired'), type: 'error' })
-      return
+      toastManager.add({ title: t("payment.damageNotesRequired"), type: "error" });
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       await recordDamageMutation.mutateAsync({
         reservationId,
@@ -467,65 +464,65 @@ export function UnifiedPaymentSection({
           method: paymentMethodType,
           notes: paymentNotes,
         },
-      })
+      });
 
-      toastManager.add({ title: t('payment.damageRecorded'), type: 'success' })
-      setDamageModalOpen(false)
-      resetForm()
+      toastManager.add({ title: t("payment.damageRecorded"), type: "success" });
+      setDamageModalOpen(false);
+      resetForm();
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleDeletePayment = async () => {
-    if (!paymentToDelete) return
+    if (!paymentToDelete) return;
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await deletePaymentMutation.mutateAsync({ paymentId: paymentToDelete.id })
-      toastManager.add({ title: t('payment.deleted'), type: 'success' })
-      setDeleteDialogOpen(false)
-      setPaymentToDelete(null)
+      await deletePaymentMutation.mutateAsync({ paymentId: paymentToDelete.id });
+      toastManager.add({ title: t("payment.deleted"), type: "success" });
+      setDeleteDialogOpen(false);
+      setPaymentToDelete(null);
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   // Deposit authorization handlers
   const handleCreateHold = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await createHoldMutation.mutateAsync({ reservationId })
-      toastManager.add({ title: t('deposit.holdCreated'), type: 'success' })
+      await createHoldMutation.mutateAsync({ reservationId });
+      toastManager.add({ title: t("deposit.holdCreated"), type: "success" });
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleCapture = async () => {
-    const captureAmountNum = parseFloat(captureAmount)
+    const captureAmountNum = parseFloat(captureAmount);
     if (isNaN(captureAmountNum) || captureAmountNum <= 0) {
-      toastManager.add({ title: t('deposit.invalidCaptureAmount'), type: 'error' })
-      return
+      toastManager.add({ title: t("deposit.invalidCaptureAmount"), type: "error" });
+      return;
     }
 
     if (captureAmountNum > deposit) {
-      toastManager.add({ title: t('deposit.captureExceedsDeposit'), type: 'error' })
-      return
+      toastManager.add({ title: t("deposit.captureExceedsDeposit"), type: "error" });
+      return;
     }
 
     if (!captureReason.trim()) {
-      toastManager.add({ title: t('deposit.reasonRequired'), type: 'error' })
-      return
+      toastManager.add({ title: t("deposit.reasonRequired"), type: "error" });
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       await captureHoldMutation.mutateAsync({
         reservationId,
@@ -533,72 +530,60 @@ export function UnifiedPaymentSection({
           amount: captureAmountNum,
           reason: captureReason,
         },
-      })
-      toastManager.add({ title: t('deposit.captured'), type: 'success' })
-      setCaptureModalOpen(false)
-      setCaptureAmount('')
-      setCaptureReason('')
+      });
+      toastManager.add({ title: t("deposit.captured"), type: "success" });
+      setCaptureModalOpen(false);
+      setCaptureAmount("");
+      setCaptureReason("");
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleRelease = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      await releaseHoldMutation.mutateAsync({ reservationId })
-      toastManager.add({ title: t('deposit.released'), type: 'success' })
-      setReleaseDialogOpen(false)
+      await releaseHoldMutation.mutateAsync({ reservationId });
+      toastManager.add({ title: t("deposit.released"), type: "success" });
+      setReleaseDialogOpen(false);
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const openPaymentModal = (type: PaymentType, suggestedAmount?: number) => {
-    setPaymentType(type)
-    setPaymentAmount(suggestedAmount?.toFixed(2) || '')
-    setPaymentModalOpen(true)
-  }
+    setPaymentType(type);
+    setPaymentAmount(suggestedAmount?.toFixed(2) || "");
+    setPaymentModalOpen(true);
+  };
 
-  const suggestedReturnAmount = Math.max(0, depositToReturn - damagesPaid)
+  const suggestedReturnAmount = Math.max(0, depositToReturn - damagesPaid);
 
   const openDepositReturnModal = () => {
-    setPaymentAmount(suggestedReturnAmount.toFixed(2))
-    setDepositReturnModalOpen(true)
-  }
-
-  const getMethodLabel = (method: string) => {
-    const labels: Record<string, string> = {
-      cash: t('payment.methods.cash'),
-      card: t('payment.methods.card'),
-      transfer: t('payment.methods.transfer'),
-      check: t('payment.methods.check'),
-      stripe: t('payment.methods.stripe'),
-      other: t('payment.methods.other'),
-    }
-    return labels[method] || method
-  }
+    setPaymentAmount(suggestedReturnAmount.toFixed(2));
+    setDepositReturnModalOpen(true);
+  };
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      rental: t('payment.types.rental'),
-      deposit: t('payment.types.deposit'),
-      deposit_return: t('payment.types.depositReturn'),
-      damage: t('payment.types.damage'),
-      deposit_hold: t('payment.types.depositHold'),
-      deposit_capture: t('payment.types.depositCapture'),
-      adjustment: t('payment.types.adjustment'),
-    }
-    return labels[type] || type
-  }
+      rental: t("payment.types.rental"),
+      deposit: t("payment.types.deposit"),
+      deposit_return: t("payment.types.depositReturn"),
+      damage: t("payment.types.damage"),
+      deposit_hold: t("payment.types.depositHold"),
+      deposit_capture: t("payment.types.depositCapture"),
+      adjustment: t("payment.types.adjustment"),
+    };
+    return labels[type] || type;
+  };
 
   // Global payment status
-  const isFullyPaid = isRentalFullyPaid && (deposit === 0 || isDepositFullyCollected)
-  const hasDepositToReturn = deposit > 0 && depositToReturn > 0 && !isDepositFullyReturned
+  const isFullyPaid = isRentalFullyPaid && (deposit === 0 || isDepositFullyCollected);
+  const hasDepositToReturn = deposit > 0 && depositToReturn > 0 && !isDepositFullyReturned;
 
   return (
     <TooltipProvider>
@@ -607,7 +592,7 @@ export function UnifiedPaymentSection({
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
-              {t('payment.title')}
+              {t("payment.title")}
             </CardTitle>
             {isFullyPaid && !hasDepositToReturn ? (
               <Badge
@@ -615,7 +600,7 @@ export function UnifiedPaymentSection({
                 className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
               >
                 <Check className="h-3 w-3 mr-1" />
-                {t('payment.allPaidBadge')}
+                {t("payment.allPaidBadge")}
               </Badge>
             ) : hasDepositToReturn ? (
               <Badge
@@ -623,7 +608,7 @@ export function UnifiedPaymentSection({
                 className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
               >
                 <ArrowDownLeft className="h-3 w-3 mr-1" />
-                {t('payment.depositToReturnBadge')}
+                {t("payment.depositToReturnBadge")}
               </Badge>
             ) : (
               <Badge
@@ -631,7 +616,7 @@ export function UnifiedPaymentSection({
                 className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
               >
                 <AlertCircle className="h-3 w-3 mr-1" />
-                {t('payment.pendingBadge')}
+                {t("payment.pendingBadge")}
               </Badge>
             )}
           </div>
@@ -647,12 +632,15 @@ export function UnifiedPaymentSection({
                     <Loader2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 animate-spin" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{t('onlinePayment.paymentInProgress')}</p>
-                    <p className="text-xs text-muted-foreground">{t('onlinePayment.paymentInProgressDescription')}</p>
+                    <p className="text-sm font-medium">{t("onlinePayment.paymentInProgress")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("onlinePayment.paymentInProgressDescription")}
+                    </p>
                   </div>
                 </div>
                 <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
-                  {parseFloat(stripePendingPayment.amount).toFixed(2)}{currencySymbol}
+                  {parseFloat(stripePendingPayment.amount).toFixed(2)}
+                  {currencySymbol}
                 </span>
               </div>
             </div>
@@ -667,16 +655,21 @@ export function UnifiedPaymentSection({
                     <Wifi className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{t('onlinePayment.received')}</p>
+                    <p className="text-sm font-medium">{t("onlinePayment.received")}</p>
                     <p className="text-xs text-muted-foreground">
                       {stripeRentalPayment.paidAt
-                        ? formatStoreDate(new Date(stripeRentalPayment.paidAt), timezone, 'SHORT_DATE_AT_TIME')
-                        : ''}
+                        ? formatStoreDate(
+                            new Date(stripeRentalPayment.paidAt),
+                            timezone,
+                            "SHORT_DATE_AT_TIME",
+                          )
+                        : ""}
                     </p>
                   </div>
                 </div>
                 <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                  +{parseFloat(stripeRentalPayment.amount).toFixed(2)}{currencySymbol}
+                  +{parseFloat(stripeRentalPayment.amount).toFixed(2)}
+                  {currencySymbol}
                 </span>
               </div>
             </div>
@@ -685,17 +678,19 @@ export function UnifiedPaymentSection({
           {/* Rental Payment Row */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">{t('payment.rental')}</span>
+              <span className="text-sm font-medium">{t("payment.rental")}</span>
               <span className="text-sm text-muted-foreground">
-                {rentalPaid.toFixed(2)}{currencySymbol} / {rental.toFixed(2)}{currencySymbol}
+                {rentalPaid.toFixed(2)}
+                {currencySymbol} / {rental.toFixed(2)}
+                {currencySymbol}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <Progress
                 value={rentalProgress}
                 className={cn(
-                  'h-2 flex-1',
-                  isRentalFullyPaid ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'
+                  "h-2 flex-1",
+                  isRentalFullyPaid ? "[&>div]:bg-emerald-500" : "[&>div]:bg-amber-500",
                 )}
               />
               {isRentalFullyPaid ? (
@@ -704,23 +699,28 @@ export function UnifiedPaymentSection({
                   className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs px-2"
                 >
                   <Check className="h-3 w-3 mr-1" />
-                  {t('payment.paid')}
+                  {t("payment.paid")}
                 </Badge>
               ) : (
                 <div className="flex items-center gap-1.5">
                   <Badge variant="error" className="font-mono text-xs">
-                    -{rentalRemaining.toFixed(2)}{currencySymbol}
+                    -{rentalRemaining.toFixed(2)}
+                    {currencySymbol}
                   </Badge>
                   <Tooltip>
-                    <TooltipTrigger render={<Button
-                        size="icon"
-                        variant="outline"
-                        className="h-7 w-7"
-                        onClick={() => openPaymentModal('rental', rentalRemaining)}
-                      />}>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7"
+                          onClick={() => openPaymentModal("rental", rentalRemaining)}
+                        />
+                      }
+                    >
                       <Plus className="h-3.5 w-3.5" />
                     </TooltipTrigger>
-                    <TooltipContent>{t('payment.recordRental')}</TooltipContent>
+                    <TooltipContent>{t("payment.recordRental")}</TooltipContent>
                   </Tooltip>
                 </div>
               )}
@@ -733,35 +733,44 @@ export function UnifiedPaymentSection({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{t('payment.deposit')}</span>
+                  <span className="text-sm font-medium">{t("payment.deposit")}</span>
                 </div>
-                <span className="text-sm font-medium">{deposit.toFixed(2)}{currencySymbol}</span>
+                <span className="text-sm font-medium">
+                  {deposit.toFixed(2)}
+                  {currencySymbol}
+                </span>
               </div>
 
               {/* Deposit Collection Status */}
               <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
                 <div className="flex items-center gap-2">
-                  <div className={cn(
-                    'w-2 h-2 rounded-full',
-                    isDepositFullyCollected ? 'bg-emerald-500' : 'bg-red-500'
-                  )} />
+                  <div
+                    className={cn(
+                      "w-2 h-2 rounded-full",
+                      isDepositFullyCollected ? "bg-emerald-500" : "bg-red-500",
+                    )}
+                  />
                   <span className="text-sm text-muted-foreground">
                     {isDepositFullyCollected
-                      ? `${t('payment.collected')}: ${depositCollected.toFixed(2)}${currencySymbol}`
-                      : `${t('payment.toCollect')}: ${depositRemaining.toFixed(2)}${currencySymbol}`}
+                      ? `${t("payment.collected")}: ${depositCollected.toFixed(2)}${currencySymbol}`
+                      : `${t("payment.toCollect")}: ${depositRemaining.toFixed(2)}${currencySymbol}`}
                   </span>
                 </div>
                 {!isDepositFullyCollected && (
                   <Tooltip>
-                    <TooltipTrigger render={<Button
-                        size="icon"
-                        variant="outline"
-                        className="h-7 w-7"
-                        onClick={() => openPaymentModal('deposit', depositRemaining)}
-                      />}>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7"
+                          onClick={() => openPaymentModal("deposit", depositRemaining)}
+                        />
+                      }
+                    >
                       <Plus className="h-3.5 w-3.5" />
                     </TooltipTrigger>
-                    <TooltipContent>{t('payment.recordDeposit')}</TooltipContent>
+                    <TooltipContent>{t("payment.recordDeposit")}</TooltipContent>
                   </Tooltip>
                 )}
               </div>
@@ -770,79 +779,96 @@ export function UnifiedPaymentSection({
               {depositCollected > 0 && (
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2">
-                    <div className={cn(
-                      'w-2 h-2 rounded-full',
-                      isDepositFullyReturned ? 'bg-gray-400' : 'bg-blue-500'
-                    )} />
+                    <div
+                      className={cn(
+                        "w-2 h-2 rounded-full",
+                        isDepositFullyReturned ? "bg-gray-400" : "bg-blue-500",
+                      )}
+                    />
                     <span className="text-sm text-muted-foreground">
                       {isDepositFullyReturned
-                        ? t('payment.fullyReturned')
-                        : `${t('payment.toReturn')}: ${depositToReturn.toFixed(2)}${currencySymbol}`}
+                        ? t("payment.fullyReturned")
+                        : `${t("payment.toReturn")}: ${depositToReturn.toFixed(2)}${currencySymbol}`}
                     </span>
                   </div>
                   {depositToReturn > 0 && (
                     <Tooltip>
-                      <TooltipTrigger render={<Button
-                          size="icon"
-                          variant="outline"
-                          className="h-7 w-7"
-                          onClick={openDepositReturnModal}
-                        />}>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-7 w-7"
+                            onClick={openDepositReturnModal}
+                          />
+                        }
+                      >
                         <ArrowDownLeft className="h-3.5 w-3.5" />
                       </TooltipTrigger>
-                      <TooltipContent>{t('payment.returnDeposit')}</TooltipContent>
+                      <TooltipContent>{t("payment.returnDeposit")}</TooltipContent>
                     </Tooltip>
                   )}
                 </div>
               )}
 
               {/* Empreinte Bancaire (Authorization) */}
-              {(depositStatusVal === 'card_saved' || depositStatusVal === 'authorized') && (
-                <div className={cn(
-                  'p-3 rounded-lg border',
-                  depositStatusVal === 'authorized' && !authorizationExpired
-                    ? 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20'
-                    : depositStatusVal === 'authorized' && authorizationExpired
-                    ? 'border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20'
-                    : 'border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20'
-                )}>
+              {(depositStatusVal === "card_saved" || depositStatusVal === "authorized") && (
+                <div
+                  className={cn(
+                    "p-3 rounded-lg border",
+                    depositStatusVal === "authorized" && !authorizationExpired
+                      ? "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
+                      : depositStatusVal === "authorized" && authorizationExpired
+                        ? "border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20"
+                        : "border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20",
+                  )}
+                >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className={cn(
-                        'h-4 w-4',
-                        depositStatusVal === 'authorized' && !authorizationExpired
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : depositStatusVal === 'authorized' && authorizationExpired
-                          ? 'text-red-600 dark:text-red-400'
-                          : 'text-blue-600 dark:text-blue-400'
-                      )} />
+                      <ShieldCheck
+                        className={cn(
+                          "h-4 w-4",
+                          depositStatusVal === "authorized" && !authorizationExpired
+                            ? "text-amber-600 dark:text-amber-400"
+                            : depositStatusVal === "authorized" && authorizationExpired
+                              ? "text-red-600 dark:text-red-400"
+                              : "text-blue-600 dark:text-blue-400",
+                        )}
+                      />
                       <span className="text-sm font-medium">
-                        {depositStatusVal === 'authorized' ? t('deposit.status.authorized') : t('deposit.status.cardSaved')}
+                        {depositStatusVal === "authorized"
+                          ? t("deposit.status.authorized")
+                          : t("deposit.status.cardSaved")}
                       </span>
                     </div>
                     {paymentMethod && (
                       <span className="text-xs text-muted-foreground">
-                        {CARD_BRANDS[paymentMethod.brand || ''] || paymentMethod.brand} ****{paymentMethod.last4}
+                        {CARD_BRANDS[paymentMethod.brand || ""] || paymentMethod.brand} ****
+                        {paymentMethod.last4}
                       </span>
                     )}
                   </div>
 
-                  {depositStatusVal === 'authorized' && depositAuthorizationExpiresAt && (
+                  {depositStatusVal === "authorized" && depositAuthorizationExpiresAt && (
                     <div className="space-y-2 mb-3">
                       <div className="flex items-center gap-2">
-                        <Clock className={cn(
-                          'h-3.5 w-3.5',
-                          authorizationExpired ? 'text-red-500' : 'text-amber-500'
-                        )} />
-                        <span className={cn(
-                          'text-xs',
-                          authorizationExpired
-                            ? 'text-red-600 dark:text-red-400'
-                            : 'text-amber-600 dark:text-amber-400'
-                        )}>
+                        <Clock
+                          className={cn(
+                            "h-3.5 w-3.5",
+                            authorizationExpired ? "text-red-500" : "text-amber-500",
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            "text-xs",
+                            authorizationExpired
+                              ? "text-red-600 dark:text-red-400"
+                              : "text-amber-600 dark:text-amber-400",
+                          )}
+                        >
                           {authorizationExpired
-                            ? t('deposit.expired')
-                            : t('deposit.expiresIn', { time: authorizationTimeRemaining ?? '' })}
+                            ? t("deposit.expired")
+                            : t("deposit.expiresIn", { time: authorizationTimeRemaining ?? "" })}
                         </span>
                       </div>
                       {!authorizationExpired && (
@@ -852,22 +878,18 @@ export function UnifiedPaymentSection({
                   )}
 
                   <div className="flex gap-2">
-                    {depositStatusVal === 'card_saved' && (
-                      <Button
-                        onClick={handleCreateHold}
-                        disabled={isLoading}
-                        className="flex-1"
-                      >
+                    {depositStatusVal === "card_saved" && (
+                      <Button onClick={handleCreateHold} disabled={isLoading} className="flex-1">
                         {isLoading ? (
                           <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <ShieldCheck className="mr-2 h-3.5 w-3.5" />
                         )}
-                        {t('deposit.createHold')}
+                        {t("deposit.createHold")}
                       </Button>
                     )}
 
-                    {depositStatusVal === 'authorized' && !authorizationExpired && (
+                    {depositStatusVal === "authorized" && !authorizationExpired && (
                       <>
                         <Button
                           variant="outline"
@@ -876,19 +898,19 @@ export function UnifiedPaymentSection({
                           className="flex-1"
                         >
                           <Check className="mr-2 h-3.5 w-3.5" />
-                          {t('deposit.release')}
+                          {t("deposit.release")}
                         </Button>
                         <Button
                           variant="destructive"
                           onClick={() => {
-                            setCaptureAmount(deposit.toFixed(2))
-                            setCaptureModalOpen(true)
+                            setCaptureAmount(deposit.toFixed(2));
+                            setCaptureModalOpen(true);
                           }}
                           disabled={isLoading}
                           className="flex-1"
                         >
                           <Banknote className="mr-2 h-3.5 w-3.5" />
-                          {t('deposit.capture')}
+                          {t("deposit.capture")}
                         </Button>
                       </>
                     )}
@@ -897,20 +919,20 @@ export function UnifiedPaymentSection({
               )}
 
               {/* Released/Captured status */}
-              {depositStatusVal === 'released' && (
+              {depositStatusVal === "released" && (
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900">
                   <Check className="h-4 w-4 text-emerald-500" />
                   <span className="text-sm text-emerald-700 dark:text-emerald-400">
-                    {t('deposit.releasedDescription')}
+                    {t("deposit.releasedDescription")}
                   </span>
                 </div>
               )}
 
-              {depositStatusVal === 'captured' && (
+              {depositStatusVal === "captured" && (
                 <div className="flex items-center gap-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
                   <Banknote className="h-4 w-4 text-red-500" />
                   <span className="text-sm text-red-700 dark:text-red-400">
-                    {t('deposit.capturedDescription')}
+                    {t("deposit.capturedDescription")}
                   </span>
                 </div>
               )}
@@ -923,14 +945,12 @@ export function UnifiedPaymentSection({
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-red-500" />
                 <span className="text-sm font-medium text-red-700 dark:text-red-400">
-                  {t('payment.damages')}
+                  {t("payment.damages")}
                 </span>
               </div>
-              <Badge
-                variant="error"
-                className="font-mono"
-              >
-                +{damagesPaid.toFixed(2)}{currencySymbol}
+              <Badge variant="error" className="font-mono">
+                +{damagesPaid.toFixed(2)}
+                {currencySymbol}
               </Badge>
             </div>
           )}
@@ -943,21 +963,25 @@ export function UnifiedPaymentSection({
               onClick={() => setDamageModalOpen(true)}
             >
               <AlertCircle className="h-3.5 w-3.5 mr-1.5" />
-              {t('payment.recordDamage')}
+              {t("payment.recordDamage")}
             </Button>
           )}
 
           {/* Request Payment Button */}
-          {stripeConfigured && (rentalRemaining >= 0.5 || (deposit > 0 && depositStatusVal !== 'authorized' && depositStatusVal !== 'captured')) && (
-            <Button
-              variant="outline"
-              className="w-full text-xs border-primary/50 text-primary hover:bg-primary/5"
-              onClick={() => setRequestPaymentModalOpen(true)}
-            >
-              <Send className="h-3.5 w-3.5 mr-1.5" />
-              {t('payment.requestPayment')}
-            </Button>
-          )}
+          {stripeConfigured &&
+            (rentalRemaining >= 0.5 ||
+              (deposit > 0 &&
+                depositStatusVal !== "authorized" &&
+                depositStatusVal !== "captured")) && (
+              <Button
+                variant="outline"
+                className="w-full text-xs border-primary/50 text-primary hover:bg-primary/5"
+                onClick={() => setRequestPaymentModalOpen(true)}
+              >
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                {t("payment.requestPayment")}
+              </Button>
+            )}
 
           {/* Payment History with Fade Effect */}
           {historyPayments.length > 0 && (
@@ -966,7 +990,9 @@ export function UnifiedPaymentSection({
                 onClick={() => setHistoryExpanded(!historyExpanded)}
                 className="flex items-center justify-between w-full text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
               >
-                <span>{t('payment.history')} ({historyPayments.length})</span>
+                <span>
+                  {t("payment.history")} ({historyPayments.length})
+                </span>
                 {historyExpanded ? (
                   <ChevronUp className="h-3.5 w-3.5" />
                 ) : (
@@ -980,22 +1006,27 @@ export function UnifiedPaymentSection({
                     <div
                       key={payment.id}
                       className={cn(
-                        'flex items-center justify-between p-2 rounded-lg border bg-card text-xs transition-opacity',
-                        payment.method === 'stripe' && 'border-l-2 border-l-[#635BFF]',
-                        !historyExpanded && index === VISIBLE_HISTORY_COUNT - 1 && hasMorePayments && 'opacity-50'
+                        "flex items-center justify-between p-2 rounded-lg border bg-card text-xs transition-opacity",
+                        payment.method === "stripe" && "border-l-2 border-l-[#635BFF]",
+                        !historyExpanded &&
+                          index === VISIBLE_HISTORY_COUNT - 1 &&
+                          hasMorePayments &&
+                          "opacity-50",
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        <div className={cn(
-                          'flex items-center justify-center w-6 h-6 rounded-full',
-                          payment.method === 'stripe' ? 'bg-[#635BFF]/10' : 'bg-muted'
-                        )}>
+                        <div
+                          className={cn(
+                            "flex items-center justify-center w-6 h-6 rounded-full",
+                            payment.method === "stripe" ? "bg-[#635BFF]/10" : "bg-muted",
+                          )}
+                        >
                           {METHOD_ICONS[payment.method]}
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-medium">{getTypeLabel(payment.type)}</span>
-                            {payment.method === 'stripe' && (
+                            {payment.method === "stripe" && (
                               <Badge
                                 variant="secondary"
                                 className="h-4 px-1 text-[9px] bg-[#635BFF]/10 text-[#635BFF] border-0"
@@ -1003,66 +1034,83 @@ export function UnifiedPaymentSection({
                                 Stripe
                               </Badge>
                             )}
-                            {payment.status === 'authorized' && (
+                            {payment.status === "authorized" && (
                               <Badge
                                 variant="secondary"
                                 className="h-4 px-1 text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0"
                               >
-                                {t('payment.statusAuthorized')}
+                                {t("payment.statusAuthorized")}
                               </Badge>
                             )}
-                            {payment.status === 'refunded' && (
+                            {payment.status === "refunded" && (
                               <Badge
                                 variant="secondary"
                                 className="h-4 px-1 text-[9px] bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-0"
                               >
-                                {t('payment.statusRefunded')}
+                                {t("payment.statusRefunded")}
                               </Badge>
                             )}
-                            {payment.status === 'cancelled' && (
+                            {payment.status === "cancelled" && (
                               <Badge
                                 variant="secondary"
                                 className="h-4 px-1 text-[9px] bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-0"
                               >
-                                {t('payment.statusCancelled')}
+                                {t("payment.statusCancelled")}
                               </Badge>
                             )}
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {payment.paidAt
-                              ? formatStoreDate(new Date(payment.paidAt), timezone, 'TIMESTAMP')
-                              : '-'}
+                              ? formatStoreDate(new Date(payment.paidAt), timezone, "TIMESTAMP")
+                              : "-"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className={cn(
-                          'font-mono font-medium',
-                          payment.type === 'deposit_return' && 'text-emerald-600 dark:text-emerald-400',
-                          payment.type === 'damage' && 'text-red-600 dark:text-red-400',
-                          payment.type === 'deposit_capture' && 'text-red-600 dark:text-red-400',
-                          payment.type === 'adjustment' && parseFloat(payment.amount) < 0 && 'text-red-600 dark:text-red-400',
-                          payment.type === 'adjustment' && parseFloat(payment.amount) > 0 && 'text-emerald-600 dark:text-emerald-400',
-                          payment.status === 'cancelled' && 'text-muted-foreground line-through'
-                        )}>
-                          {payment.type === 'deposit_return' ? '-' :
-                           payment.type === 'adjustment' ? (parseFloat(payment.amount) < 0 ? '' : '+') : '+'}
-                          {parseFloat(payment.amount).toFixed(2)}{currencySymbol}
+                        <span
+                          className={cn(
+                            "font-mono font-medium",
+                            payment.type === "deposit_return" &&
+                              "text-emerald-600 dark:text-emerald-400",
+                            payment.type === "damage" && "text-red-600 dark:text-red-400",
+                            payment.type === "deposit_capture" && "text-red-600 dark:text-red-400",
+                            payment.type === "adjustment" &&
+                              parseFloat(payment.amount) < 0 &&
+                              "text-red-600 dark:text-red-400",
+                            payment.type === "adjustment" &&
+                              parseFloat(payment.amount) > 0 &&
+                              "text-emerald-600 dark:text-emerald-400",
+                            payment.status === "cancelled" && "text-muted-foreground line-through",
+                          )}
+                        >
+                          {payment.type === "deposit_return"
+                            ? "-"
+                            : payment.type === "adjustment"
+                              ? parseFloat(payment.amount) < 0
+                                ? ""
+                                : "+"
+                              : "+"}
+                          {parseFloat(payment.amount).toFixed(2)}
+                          {currencySymbol}
                         </span>
-                        {payment.method !== 'stripe' && (
+                        {payment.method !== "stripe" && (
                           <Tooltip>
-                            <TooltipTrigger render={<Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                onClick={() => {
-                                  setPaymentToDelete(payment)
-                                  setDeleteDialogOpen(true)
-                                }}
-                              />}>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                  onClick={() => {
+                                    setPaymentToDelete(payment);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                />
+                              }
+                            >
                               <Trash2 className="h-3 w-3" />
                             </TooltipTrigger>
-                            <TooltipContent>{tCommon('delete')}</TooltipContent>
+                            <TooltipContent>{tCommon("delete")}</TooltipContent>
                           </Tooltip>
                         )}
                       </div>
@@ -1082,7 +1130,7 @@ export function UnifiedPaymentSection({
                   className="w-full mt-2 text-xs"
                   onClick={() => setHistoryExpanded(true)}
                 >
-                  {t('payment.showAll', { count: historyPayments.length })}
+                  {t("payment.showAll", { count: historyPayments.length })}
                 </Button>
               )}
             </div>
@@ -1091,112 +1139,126 @@ export function UnifiedPaymentSection({
       </Card>
 
       {/* Niveau-B referral nudge at the satisfaction moment (reservation fully paid). */}
-      {isFullyPaid && !hasDepositToReturn ? (
-        <ReferralNudge className="mt-4" />
-      ) : null}
+      {isFullyPaid && !hasDepositToReturn ? <ReferralNudge className="mt-4" /> : null}
 
       {/* Record Payment Modal */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
         <DialogPopup className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{t('payment.recordPayment')}</DialogTitle>
+            <DialogTitle>{t("payment.recordPayment")}</DialogTitle>
             <DialogDescription>
-              {paymentType === 'rental'
-                ? t('payment.recordRentalDescription')
-                : paymentType === 'adjustment'
-                  ? t('payment.recordAdjustmentDescription')
-                  : t('payment.recordDepositDescription')}
+              {paymentType === "rental"
+                ? t("payment.recordRentalDescription")
+                : paymentType === "adjustment"
+                  ? t("payment.recordAdjustmentDescription")
+                  : t("payment.recordDepositDescription")}
             </DialogDescription>
           </DialogHeader>
 
           <DialogPanel>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t('payment.type')}</Label>
-              <Select value={paymentType} onValueChange={(v) => { if (v !== null) setPaymentType(v as PaymentType) }}>
-                <SelectTrigger>
-                  <SelectValue>{paymentTypeOptions.find((o) => o.value === paymentType)?.label}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {paymentTypeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} label={option.label}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t('payment.amount')}</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min={paymentType === 'adjustment' ? undefined : '0'}
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder={paymentType === 'adjustment' ? '-0.00' : '0.00'}
-                  className="pr-8"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                  {currencySymbol}
-                </span>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("payment.type")}</Label>
+                <Select
+                  value={paymentType}
+                  onValueChange={(v) => {
+                    if (v !== null) setPaymentType(v as PaymentType);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {paymentTypeOptions.find((o) => o.value === paymentType)?.label}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value} label={option.label}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              {paymentType === 'adjustment' ? (
-                <p className="text-xs text-muted-foreground">
-                  {t('payment.adjustmentHint')}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {paymentType === 'rental'
-                    ? t('payment.rentalRemaining', { formattedAmount: `${rentalRemaining.toFixed(2)}${currencySymbol}` })
-                    : t('payment.depositRemaining', { formattedAmount: `${depositRemaining.toFixed(2)}${currencySymbol}` })}
-                </p>
-              )}
-            </div>
 
-            <div className="space-y-2">
-              <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
-                <SelectTrigger>
-                  <SelectValue>{paymentMethodOptions.find((o) => o.value === paymentMethodType)?.label}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {paymentMethodOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} label={option.label}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-2">
+                <Label>{t("payment.amount")}</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min={paymentType === "adjustment" ? undefined : "0"}
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder={paymentType === "adjustment" ? "-0.00" : "0.00"}
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    {currencySymbol}
+                  </span>
+                </div>
+                {paymentType === "adjustment" ? (
+                  <p className="text-xs text-muted-foreground">{t("payment.adjustmentHint")}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {paymentType === "rental"
+                      ? t("payment.rentalRemaining", {
+                          formattedAmount: `${rentalRemaining.toFixed(2)}${currencySymbol}`,
+                        })
+                      : t("payment.depositRemaining", {
+                          formattedAmount: `${depositRemaining.toFixed(2)}${currencySymbol}`,
+                        })}
+                  </p>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label>
-                {t('payment.notes')}
-                <span className="text-muted-foreground font-normal ml-1">
-                  ({tCommon('optional')})
-                </span>
-              </Label>
-              <Textarea
-                value={paymentNotes}
-                onChange={(e) => setPaymentNotes(e.target.value)}
-                placeholder={t('payment.notesPlaceholder')}
-                rows={2}
-                className="resize-none"
-              />
+              <div className="space-y-2">
+                <Label>{t("payment.method")}</Label>
+                <Select
+                  value={paymentMethodType}
+                  onValueChange={(v) => {
+                    if (v !== null) setPaymentMethodType(v as PaymentMethod);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {paymentMethodOptions.find((o) => o.value === paymentMethodType)?.label}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentMethodOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value} label={option.label}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  {t("payment.notes")}
+                  <span className="text-muted-foreground font-normal ml-1">
+                    ({tCommon("optional")})
+                  </span>
+                </Label>
+                <Textarea
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  placeholder={t("payment.notesPlaceholder")}
+                  rows={2}
+                  className="resize-none"
+                />
+              </div>
             </div>
-          </div>
           </DialogPanel>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentModalOpen(false)}>
-              {tCommon('cancel')}
+              {tCommon("cancel")}
             </Button>
             <Button onClick={handleRecordPayment} disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('payment.record')}
+              {t("payment.record")}
             </Button>
           </DialogFooter>
         </DialogPopup>
@@ -1206,97 +1268,114 @@ export function UnifiedPaymentSection({
       <Dialog open={depositReturnModalOpen} onOpenChange={setDepositReturnModalOpen}>
         <DialogPopup className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{t('payment.returnDeposit')}</DialogTitle>
-            <DialogDescription>
-              {t('payment.returnDepositDescription')}
-            </DialogDescription>
+            <DialogTitle>{t("payment.returnDeposit")}</DialogTitle>
+            <DialogDescription>{t("payment.returnDepositDescription")}</DialogDescription>
           </DialogHeader>
 
           <DialogPanel>
-          <div className="space-y-4">
-            <div className="p-3 rounded-lg bg-muted space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span>{t('payment.depositCollected')}</span>
-                <span className="font-medium">{depositCollected.toFixed(2)}{currencySymbol}</span>
-              </div>
-              {depositReturned > 0 && (
-                <div className="flex justify-between text-muted-foreground">
-                  <span>{t('payment.alreadyReturned')}</span>
-                  <span>-{depositReturned.toFixed(2)}{currencySymbol}</span>
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span>{t("payment.depositCollected")}</span>
+                  <span className="font-medium">
+                    {depositCollected.toFixed(2)}
+                    {currencySymbol}
+                  </span>
                 </div>
-              )}
-              {damagesPaid > 0 && (
-                <div className="flex justify-between text-red-600 dark:text-red-400">
-                  <span>{t('payment.damagesDeducted')}</span>
-                  <span>-{damagesPaid.toFixed(2)}{currencySymbol}</span>
+                {depositReturned > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>{t("payment.alreadyReturned")}</span>
+                    <span>
+                      -{depositReturned.toFixed(2)}
+                      {currencySymbol}
+                    </span>
+                  </div>
+                )}
+                {damagesPaid > 0 && (
+                  <div className="flex justify-between text-red-600 dark:text-red-400">
+                    <span>{t("payment.damagesDeducted")}</span>
+                    <span>
+                      -{damagesPaid.toFixed(2)}
+                      {currencySymbol}
+                    </span>
+                  </div>
+                )}
+                <div className="border-t pt-2 flex justify-between font-medium">
+                  <span>{t("payment.suggestedReturn")}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    {suggestedReturnAmount.toFixed(2)}
+                    {currencySymbol}
+                  </span>
                 </div>
-              )}
-              <div className="border-t pt-2 flex justify-between font-medium">
-                <span>{t('payment.suggestedReturn')}</span>
-                <span className="text-emerald-600 dark:text-emerald-400">{suggestedReturnAmount.toFixed(2)}{currencySymbol}</span>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label>{t('payment.amountToReturn')}</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max={depositToReturn}
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="pr-8"
+              <div className="space-y-2">
+                <Label>{t("payment.amountToReturn")}</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={depositToReturn}
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    {currencySymbol}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("payment.method")}</Label>
+                <Select
+                  value={paymentMethodType}
+                  onValueChange={(v) => {
+                    if (v !== null) setPaymentMethodType(v as PaymentMethod);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {paymentMethodOptions.find((o) => o.value === paymentMethodType)?.label}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentMethodOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value} label={option.label}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  {t("payment.notes")}
+                  <span className="text-muted-foreground font-normal ml-1">
+                    ({tCommon("optional")})
+                  </span>
+                </Label>
+                <Textarea
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  placeholder={t("payment.returnNotesPlaceholder")}
+                  rows={2}
+                  className="resize-none"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                  {currencySymbol}
-                </span>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
-                <SelectTrigger>
-                  <SelectValue>{paymentMethodOptions.find((o) => o.value === paymentMethodType)?.label}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {paymentMethodOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} label={option.label}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>
-                {t('payment.notes')}
-                <span className="text-muted-foreground font-normal ml-1">
-                  ({tCommon('optional')})
-                </span>
-              </Label>
-              <Textarea
-                value={paymentNotes}
-                onChange={(e) => setPaymentNotes(e.target.value)}
-                placeholder={t('payment.returnNotesPlaceholder')}
-                rows={2}
-                className="resize-none"
-              />
-            </div>
-          </div>
           </DialogPanel>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDepositReturnModalOpen(false)}>
-              {tCommon('cancel')}
+              {tCommon("cancel")}
             </Button>
             <Button onClick={handleReturnDeposit} disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('payment.return')}
+              {t("payment.return")}
             </Button>
           </DialogFooter>
         </DialogPopup>
@@ -1306,77 +1385,76 @@ export function UnifiedPaymentSection({
       <Dialog open={damageModalOpen} onOpenChange={setDamageModalOpen}>
         <DialogPopup className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{t('payment.recordDamage')}</DialogTitle>
-            <DialogDescription>
-              {t('payment.recordDamageDescription')}
-            </DialogDescription>
+            <DialogTitle>{t("payment.recordDamage")}</DialogTitle>
+            <DialogDescription>{t("payment.recordDamageDescription")}</DialogDescription>
           </DialogHeader>
 
           <DialogPanel>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t('payment.damageAmount')}</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="pr-8"
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>{t("payment.damageAmount")}</Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    {currencySymbol}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("payment.method")}</Label>
+                <Select
+                  value={paymentMethodType}
+                  onValueChange={(v) => {
+                    if (v !== null) setPaymentMethodType(v as PaymentMethod);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue>
+                      {paymentMethodOptions.find((o) => o.value === paymentMethodType)?.label}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentMethodOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value} label={option.label}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  {t("payment.damageDescription")} <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  value={paymentNotes}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
+                  placeholder={t("payment.damageNotesPlaceholder")}
+                  rows={3}
+                  className="resize-none"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                  {currencySymbol}
-                </span>
+                <p className="text-xs text-muted-foreground">{t("payment.damageNotesHint")}</p>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
-                <SelectTrigger>
-                  <SelectValue>{paymentMethodOptions.find((o) => o.value === paymentMethodType)?.label}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {paymentMethodOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value} label={option.label}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>
-                {t('payment.damageDescription')} <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                value={paymentNotes}
-                onChange={(e) => setPaymentNotes(e.target.value)}
-                placeholder={t('payment.damageNotesPlaceholder')}
-                rows={3}
-                className="resize-none"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t('payment.damageNotesHint')}
-              </p>
-            </div>
-          </div>
           </DialogPanel>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDamageModalOpen(false)}>
-              {tCommon('cancel')}
+              {tCommon("cancel")}
             </Button>
-            <Button
-              onClick={handleRecordDamage}
-              disabled={isLoading}
-              variant="destructive"
-            >
+            <Button onClick={handleRecordDamage} disabled={isLoading} variant="destructive">
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('payment.recordDamage')}
+              {t("payment.recordDamage")}
             </Button>
           </DialogFooter>
         </DialogPopup>
@@ -1386,19 +1464,19 @@ export function UnifiedPaymentSection({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('payment.deleteConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('payment.deleteConfirmDescription')}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("payment.deleteConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("payment.deleteConfirmDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('cancel')}</AlertDialogClose>
+            <AlertDialogClose render={<Button variant="outline" />}>
+              {tCommon("cancel")}
+            </AlertDialogClose>
             <AlertDialogClose
               render={<Button variant="destructive" />}
               onClick={handleDeletePayment}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {tCommon('delete')}
+              {tCommon("delete")}
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1410,59 +1488,58 @@ export function UnifiedPaymentSection({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-500" />
-              {t('deposit.captureTitle')}
+              {t("deposit.captureTitle")}
             </DialogTitle>
-            <DialogDescription>
-              {t('deposit.captureDescription')}
-            </DialogDescription>
+            <DialogDescription>{t("deposit.captureDescription")}</DialogDescription>
           </DialogHeader>
 
           <DialogPanel>
-          <div className="space-y-4">
-            <div className="p-3 rounded-lg bg-muted text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('deposit.maxCapturable')}</span>
-                <span className="font-medium">{deposit.toFixed(2)}{currencySymbol}</span>
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-muted text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">{t("deposit.maxCapturable")}</span>
+                  <span className="font-medium">
+                    {deposit.toFixed(2)}
+                    {currencySymbol}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="captureAmount">{t('deposit.captureAmount')}</Label>
-              <div className="relative">
-                <Input
-                  id="captureAmount"
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max={deposit}
-                  value={captureAmount}
-                  onChange={(e) => setCaptureAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="pr-12"
+              <div className="space-y-2">
+                <Label htmlFor="captureAmount">{t("deposit.captureAmount")}</Label>
+                <div className="relative">
+                  <Input
+                    id="captureAmount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={deposit}
+                    value={captureAmount}
+                    onChange={(e) => setCaptureAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="pr-12"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                    {currencySymbol}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="captureReason">
+                  {t("deposit.captureReason")} <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="captureReason"
+                  value={captureReason}
+                  onChange={(e) => setCaptureReason(e.target.value)}
+                  placeholder={t("deposit.captureReasonPlaceholder")}
+                  rows={3}
+                  className="resize-none"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                  {currencySymbol}
-                </span>
+                <p className="text-xs text-muted-foreground">{t("deposit.captureReasonHint")}</p>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="captureReason">
-                {t('deposit.captureReason')} <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id="captureReason"
-                value={captureReason}
-                onChange={(e) => setCaptureReason(e.target.value)}
-                placeholder={t('deposit.captureReasonPlaceholder')}
-                rows={3}
-                className="resize-none"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t('deposit.captureReasonHint')}
-              </p>
-            </div>
-          </div>
           </DialogPanel>
 
           <DialogFooter>
@@ -1471,15 +1548,11 @@ export function UnifiedPaymentSection({
               onClick={() => setCaptureModalOpen(false)}
               disabled={isLoading}
             >
-              {tCommon('cancel')}
+              {tCommon("cancel")}
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleCapture}
-              disabled={isLoading}
-            >
+            <Button variant="destructive" onClick={handleCapture} disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('deposit.confirmCapture')}
+              {t("deposit.confirmCapture")}
             </Button>
           </DialogFooter>
         </DialogPopup>
@@ -1491,15 +1564,17 @@ export function UnifiedPaymentSection({
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-emerald-500" />
-              {t('deposit.releaseTitle')}
+              {t("deposit.releaseTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deposit.releaseDescription', { amount: `${deposit.toFixed(2)}${currencySymbol}` })}
+              {t("deposit.releaseDescription", {
+                amount: `${deposit.toFixed(2)}${currencySymbol}`,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogClose render={<Button variant="outline" />} disabled={isLoading}>
-              {tCommon('cancel')}
+              {tCommon("cancel")}
             </AlertDialogClose>
             <AlertDialogClose
               render={<Button className="bg-emerald-600 text-white hover:bg-emerald-700" />}
@@ -1507,7 +1582,7 @@ export function UnifiedPaymentSection({
               disabled={isLoading}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('deposit.confirmRelease')}
+              {t("deposit.confirmRelease")}
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1528,5 +1603,5 @@ export function UnifiedPaymentSection({
         stripeConfigured={stripeConfigured}
       />
     </TooltipProvider>
-  )
+  );
 }

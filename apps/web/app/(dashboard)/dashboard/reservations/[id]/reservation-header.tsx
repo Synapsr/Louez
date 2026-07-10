@@ -1,8 +1,8 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import { useState } from "react";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
 import {
   ArrowLeft,
   Mail,
@@ -14,134 +14,151 @@ import {
   Check,
   Pencil,
   Loader2,
-} from 'lucide-react'
-import { toastManager } from '@louez/ui'
-import { useRouter, useSearchParams } from 'next/navigation'
+} from "lucide-react";
+import { toastManager } from "@louez/ui";
+import { useRouter, useSearchParams } from "next/navigation";
 
-import { Button } from '@louez/ui'
-import { Badge } from '@louez/ui'
+import { Button } from "@louez/ui";
+import { Badge } from "@louez/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@louez/ui'
-import { cn } from '@louez/utils'
+} from "@louez/ui";
+import { cn } from "@louez/utils";
 
-import { PaymentStatusBadge } from './payment-status-badge'
-import { SendEmailModal } from './send-email-modal'
-import { generateAccessUrl } from '@/app/(dashboard)/dashboard/reservations/actions'
-import { getDashboardReservationBackHref } from '@/lib/dashboard/util.reservation-navigation'
+import { PaymentStatusBadge } from "./payment-status-badge";
+import { SendEmailModal } from "./send-email-modal";
+import { generateAccessUrl } from "@/app/(dashboard)/dashboard/reservations/actions";
+import { getDashboardReservationBackHref } from "@/lib/dashboard/util.reservation-navigation";
 
-type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
+type ReservationStatus =
+  | "pending"
+  | "confirmed"
+  | "ongoing"
+  | "completed"
+  | "cancelled"
+  | "rejected"
+  | "quote"
+  | "declined";
 
 interface Customer {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 interface ReservationHeaderProps {
-  reservationId: string
-  reservationNumber: string
-  status: ReservationStatus
-  createdAt: Date
-  startDate: Date
-  endDate: Date
-  customer: Customer
-  storeSlug: string
+  reservationId: string;
+  reservationNumber: string;
+  status: ReservationStatus;
+  createdAt: Date;
+  startDate: Date;
+  endDate: Date;
+  customer: Customer;
+  storeSlug: string;
   // Payment data
-  rentalAmount: number
-  rentalPaid: number
-  depositAmount: number
-  depositCollected: number
-  depositReturned: number
-  totalAmount: number
+  rentalAmount: number;
+  rentalPaid: number;
+  depositAmount: number;
+  depositCollected: number;
+  depositReturned: number;
+  totalAmount: number;
   // Optional
-  sentEmails?: string[]
-  currency?: string
+  sentEmails?: string[];
+  currency?: string;
 }
 
 const STATUS_CLASSES: Record<ReservationStatus, string> = {
-  pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-  confirmed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-  ongoing: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
-  completed: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700',
-  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
-  rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
-  quote: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border-violet-200 dark:border-violet-800',
-  declined: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700',
-}
+  pending:
+    "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-amber-200 dark:border-amber-800",
+  confirmed:
+    "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800",
+  ongoing:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800",
+  completed:
+    "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700",
+  cancelled:
+    "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800",
+  rejected:
+    "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800",
+  quote:
+    "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border-violet-200 dark:border-violet-800",
+  declined:
+    "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700",
+};
 
 export function ReservationHeader({
   reservationId,
   reservationNumber,
   status,
-  createdAt,
-  startDate,
-  endDate,
+  createdAt: _createdAt,
+  startDate: _startDate,
+  endDate: _endDate,
   customer,
-  storeSlug,
+  storeSlug: _storeSlug,
   rentalAmount,
   rentalPaid,
   depositAmount,
   depositCollected,
   depositReturned,
-  totalAmount,
+  totalAmount: _totalAmount,
   sentEmails = [],
-  currency = 'EUR',
+  currency: _currency = "EUR",
 }: ReservationHeaderProps) {
-  const t = useTranslations('dashboard.reservations')
-  const tCommon = useTranslations('common')
+  const t = useTranslations("dashboard.reservations");
+  const tCommon = useTranslations("common");
 
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const backHref = getDashboardReservationBackHref(searchParams.get('returnTo'))
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const backHref = getDashboardReservationBackHref(searchParams.get("returnTo"));
 
-  const [emailModalOpen, setEmailModalOpen] = useState(false)
-  const [copiedLink, setCopiedLink] = useState(false)
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false)
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
-  const isFullyPaid = rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount)
-  const canEdit = !['completed', 'cancelled', 'rejected', 'declined'].includes(status)
+  const isFullyPaid =
+    rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount);
+  const canEdit = !["completed", "cancelled", "rejected", "declined"].includes(status);
 
   const handleGenerateAccessUrl = async () => {
-    setIsGeneratingLink(true)
+    setIsGeneratingLink(true);
     try {
-      const result = await generateAccessUrl(reservationId)
-      if ('error' in result) {
-        toastManager.add({ title: t('accessLink.sendError'), type: 'error' })
-        return null
+      const result = await generateAccessUrl(reservationId);
+      if ("error" in result) {
+        toastManager.add({ title: t("accessLink.sendError"), type: "error" });
+        return null;
       }
-      return result.url
+      return result.url;
     } catch {
-      toastManager.add({ title: t('accessLink.sendError'), type: 'error' })
-      return null
+      toastManager.add({ title: t("accessLink.sendError"), type: "error" });
+      return null;
     } finally {
-      setIsGeneratingLink(false)
+      setIsGeneratingLink(false);
     }
-  }
+  };
 
   const handleViewAsCustomer = async () => {
-    const url = await handleGenerateAccessUrl()
-    if (url) window.open(url, '_blank')
-  }
+    const url = await handleGenerateAccessUrl();
+    if (url) window.open(url, "_blank");
+  };
 
   const handleCopyLink = async () => {
-    const url = await handleGenerateAccessUrl()
+    const url = await handleGenerateAccessUrl();
     if (url) {
-      navigator.clipboard.writeText(url)
-      setCopiedLink(true)
-      toastManager.add({ title: t('linkCopied'), type: 'success' })
-      setTimeout(() => setCopiedLink(false), 2000)
+      navigator.clipboard.writeText(url);
+      setCopiedLink(true);
+      toastManager.add({ title: t("linkCopied"), type: "success" });
+      setTimeout(() => setCopiedLink(false), 2000);
     }
-  }
+  };
 
   const handleDownloadContract = () => {
-    window.open(`/api/reservations/${reservationId}/contract`, '_blank')
-  }
+    window.open(`/api/reservations/${reservationId}/contract`, "_blank");
+  };
 
   return (
     <>
@@ -156,19 +173,14 @@ export function ReservationHeader({
               className="shrink-0 -ml-2 mt-0.5"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className="sr-only">{tCommon('back')}</span>
+              <span className="sr-only">{tCommon("back")}</span>
             </Button>
 
             <div className="space-y-1">
               {/* Reservation number + Status badges */}
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-bold tracking-tight">
-                  #{reservationNumber}
-                </h1>
-                <Badge
-                  variant="outline"
-                  className={cn('font-medium', STATUS_CLASSES[status])}
-                >
+                <h1 className="text-2xl font-bold tracking-tight">#{reservationNumber}</h1>
+                <Badge variant="outline" className={cn("font-medium", STATUS_CLASSES[status])}>
                   {t(`status.${status}`)}
                 </Badge>
                 <PaymentStatusBadge
@@ -191,48 +203,42 @@ export function ReservationHeader({
               className="hidden sm:flex"
             >
               <Mail className="h-4 w-4 mr-2" />
-              {t('actions.sendEmail')}
+              {t("actions.sendEmail")}
             </Button>
 
             {/* Contract download button - always visible */}
-            <Button
-              variant="outline"
-              onClick={handleDownloadContract}
-              className="hidden sm:flex"
-            >
+            <Button variant="outline" onClick={handleDownloadContract} className="hidden sm:flex">
               <FileText className="h-4 w-4 mr-2" />
-              {t('contract.download')}
+              {t("contract.download")}
             </Button>
 
             {/* More actions dropdown */}
             <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" size="icon" className="h-9 w-9" />}>
+              <DropdownMenuTrigger
+                render={<Button variant="outline" size="icon" className="h-9 w-9" />}
+              >
                 <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">{tCommon('actions')}</span>
+                <span className="sr-only">{tCommon("actions")}</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 {/* Mobile-only items */}
-                <DropdownMenuItem
-                  onClick={() => setEmailModalOpen(true)}
-                  className="sm:hidden"
-                >
+                <DropdownMenuItem onClick={() => setEmailModalOpen(true)} className="sm:hidden">
                   <Mail className="h-4 w-4 mr-2" />
-                  {t('actions.sendEmail')}
+                  {t("actions.sendEmail")}
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleDownloadContract}
-                  className="sm:hidden"
-                >
+                <DropdownMenuItem onClick={handleDownloadContract} className="sm:hidden">
                   <FileText className="h-4 w-4 mr-2" />
-                  {t('contract.download')}
+                  {t("contract.download")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="sm:hidden" />
 
                 {/* Edit reservation */}
                 {canEdit && (
-                  <DropdownMenuItem onClick={() => router.push(`/dashboard/reservations/${reservationId}/edit`)}>
+                  <DropdownMenuItem
+                    onClick={() => router.push(`/dashboard/reservations/${reservationId}/edit`)}
+                  >
                     <Pencil className="h-4 w-4 mr-2" />
-                    {t('edit.button')}
+                    {t("edit.button")}
                   </DropdownMenuItem>
                 )}
                 {canEdit && <DropdownMenuSeparator />}
@@ -240,7 +246,7 @@ export function ReservationHeader({
                 {/* Common items */}
                 <DropdownMenuItem onClick={() => window.print()}>
                   <Printer className="h-4 w-4 mr-2" />
-                  {t('actions.print')}
+                  {t("actions.print")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleCopyLink}>
@@ -249,7 +255,7 @@ export function ReservationHeader({
                   ) : (
                     <Copy className="h-4 w-4 mr-2" />
                   )}
-                  {t('actions.copyLink')}
+                  {t("actions.copyLink")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleViewAsCustomer} disabled={isGeneratingLink}>
                   {isGeneratingLink ? (
@@ -257,13 +263,12 @@ export function ReservationHeader({
                   ) : (
                     <ExternalLink className="h-4 w-4 mr-2" />
                   )}
-                  {t('actions.viewAsCustomer')}
+                  {t("actions.viewAsCustomer")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
-
       </div>
 
       {/* Email Modal */}
@@ -278,5 +283,5 @@ export function ReservationHeader({
         sentEmails={sentEmails}
       />
     </>
-  )
+  );
 }

@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@louez/ui'
-import { Progress } from '@louez/ui'
 import {
   Collapsible,
   CollapsibleContent,

@@ -47,5 +47,5 @@ export const referralProgramConfigSchema = z
 export function resolveReferralProgramConfig(
   input?: Partial<ReferralProgramConfig> | null,
 ): ReferralProgramConfig {
-  return { ...DEFAULT_REFERRAL_PROGRAM_CONFIG, ...(input ?? {}) };
+  return { ...DEFAULT_REFERRAL_PROGRAM_CONFIG, ...input };
 }

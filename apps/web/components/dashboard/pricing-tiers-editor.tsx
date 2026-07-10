@@ -1,28 +1,15 @@
-'use client'
+"use client";
 
-import { useState, useMemo } from 'react'
-import { Plus, Trash2, TrendingDown, HelpCircle } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useState, useMemo } from "react";
+import { Plus, Trash2, TrendingDown, HelpCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { Button } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { Label } from '@louez/ui'
-import { Switch } from '@louez/ui'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@louez/ui'
+import { Button } from "@louez/ui";
+import { Input } from "@louez/ui";
+import { Label } from "@louez/ui";
+import { Switch } from "@louez/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@louez/ui";
 import {
   Dialog,
   DialogClose,
@@ -33,30 +20,26 @@ import {
   DialogPanel,
   DialogTitle,
   DialogTrigger,
-} from '@louez/ui'
-import { Badge } from '@louez/ui'
-import { cn, formatCurrency } from '@louez/utils'
-import type { PricingMode, PricingTier } from '@louez/types'
-import {
-  calculateRentalPrice,
-  getUnitLabel,
-  formatDuration,
-} from '@louez/utils'
+} from "@louez/ui";
+import { Badge } from "@louez/ui";
+import { cn, formatCurrency } from "@louez/utils";
+import type { PricingMode, PricingTier } from "@louez/types";
+import { calculateRentalPrice, getUnitLabel, formatDuration } from "@louez/utils";
 
 interface PricingTierInput {
-  id?: string
-  minDuration: number
-  discountPercent: number
+  id?: string;
+  minDuration: number;
+  discountPercent: number;
 }
 
 interface PricingTiersEditorProps {
-  basePrice: number
-  pricingMode: PricingMode
-  tiers: PricingTierInput[]
-  onChange: (tiers: PricingTierInput[]) => void
-  enforceStrictTiers: boolean
-  onEnforceStrictTiersChange: (value: boolean) => void
-  disabled?: boolean
+  basePrice: number;
+  pricingMode: PricingMode;
+  tiers: PricingTierInput[];
+  onChange: (tiers: PricingTierInput[]) => void;
+  enforceStrictTiers: boolean;
+  onEnforceStrictTiersChange: (value: boolean) => void;
+  disabled?: boolean;
 }
 
 export function PricingTiersEditor({
@@ -68,39 +51,37 @@ export function PricingTiersEditor({
   onEnforceStrictTiersChange,
   disabled = false,
 }: PricingTiersEditorProps) {
-  const t = useTranslations('dashboard.products.form.pricingTiers')
-  const tCommon = useTranslations('common')
-  const [isEnabled, setIsEnabled] = useState(tiers.length > 0)
-  const [editingDurations, setEditingDurations] = useState<Record<number, string>>({})
-  const [editingDiscounts, setEditingDiscounts] = useState<Record<number, string>>({})
-  const [editingPrices, setEditingPrices] = useState<Record<number, string>>({})
-  const [editingTotals, setEditingTotals] = useState<Record<number, string>>({})
+  const t = useTranslations("dashboard.products.form.pricingTiers");
+  const tCommon = useTranslations("common");
+  const [isEnabled, setIsEnabled] = useState(tiers.length > 0);
+  const [editingDurations, setEditingDurations] = useState<Record<number, string>>({});
+  const [editingDiscounts, setEditingDiscounts] = useState<Record<number, string>>({});
+  const [editingPrices, setEditingPrices] = useState<Record<number, string>>({});
+  const [editingTotals, setEditingTotals] = useState<Record<number, string>>({});
 
-  const unitLabel = getUnitLabel(pricingMode, 'plural')
-  const unitLabelSingular = getUnitLabel(pricingMode, 'singular')
-
+  const unitLabel = getUnitLabel(pricingMode, "plural");
   // Preview durations: when strict tiers are enforced, show only the exact
   // durations customers will be able to book (tier brackets + base unit)
   const previewDurations = useMemo(() => {
     if (enforceStrictTiers && tiers.length > 0) {
-      const durations = new Set([1, ...tiers.map((t) => t.minDuration)])
-      return [...durations].sort((a, b) => a - b)
+      const durations = new Set([1, ...tiers.map((t) => t.minDuration)]);
+      return [...durations].sort((a, b) => a - b);
     }
 
     switch (pricingMode) {
-      case 'hour':
-        return [1, 2, 4, 8, 24]
-      case 'week':
-        return [1, 2, 4, 8, 12]
-      case 'day':
+      case "hour":
+        return [1, 2, 4, 8, 24];
+      case "week":
+        return [1, 2, 4, 8, 12];
+      case "day":
       default:
-        return [1, 3, 7, 14, 30]
+        return [1, 3, 7, 14, 30];
     }
-  }, [pricingMode, enforceStrictTiers, tiers])
+  }, [pricingMode, enforceStrictTiers, tiers]);
 
   // Calculate previews
   const previews = useMemo(() => {
-    if (basePrice <= 0) return []
+    if (basePrice <= 0) return [];
 
     const pricing = {
       basePrice,
@@ -111,10 +92,10 @@ export function PricingTiersEditor({
         id: t.id || `temp-${i}`,
         displayOrder: i,
       })) as PricingTier[],
-    }
+    };
 
     return previewDurations.map((duration) => {
-      const result = calculateRentalPrice(pricing, duration, 1)
+      const result = calculateRentalPrice(pricing, duration, 1);
       return {
         duration,
         label: formatDuration(duration, pricingMode),
@@ -122,66 +103,62 @@ export function PricingTiersEditor({
         pricePerUnit: result.effectivePricePerUnit,
         savings: result.savings,
         discountPercent: result.discountPercent,
-      }
-    })
-  }, [basePrice, pricingMode, tiers, previewDurations])
+      };
+    });
+  }, [basePrice, pricingMode, tiers, previewDurations]);
 
   const handleToggle = (enabled: boolean) => {
-    setIsEnabled(enabled)
+    setIsEnabled(enabled);
     if (!enabled) {
-      onChange([])
-      onEnforceStrictTiersChange(false)
+      onChange([]);
+      onEnforceStrictTiersChange(false);
     } else if (tiers.length === 0) {
       // Add a default tier when enabling
-      const defaultMinDuration = pricingMode === 'hour' ? 4 : pricingMode === 'week' ? 2 : 3
-      onChange([{ minDuration: defaultMinDuration, discountPercent: 10 }])
+      const defaultMinDuration = pricingMode === "hour" ? 4 : pricingMode === "week" ? 2 : 3;
+      onChange([{ minDuration: defaultMinDuration, discountPercent: 10 }]);
     }
-  }
+  };
 
   const addTier = () => {
     // Find a sensible default for the new tier
-    const existingDurations = tiers.map((t) => t.minDuration)
-    const maxExisting = Math.max(0, ...existingDurations)
-    const maxDiscount = Math.max(0, ...tiers.map((t) => t.discountPercent))
+    const existingDurations = tiers.map((t) => t.minDuration);
+    const maxExisting = Math.max(0, ...existingDurations);
+    const maxDiscount = Math.max(0, ...tiers.map((t) => t.discountPercent));
 
-    let newMinDuration: number
-    if (pricingMode === 'hour') {
-      newMinDuration = maxExisting > 0 ? maxExisting * 2 : 4
-    } else if (pricingMode === 'week') {
-      newMinDuration = maxExisting > 0 ? maxExisting + 2 : 2
+    let newMinDuration: number;
+    if (pricingMode === "hour") {
+      newMinDuration = maxExisting > 0 ? maxExisting * 2 : 4;
+    } else if (pricingMode === "week") {
+      newMinDuration = maxExisting > 0 ? maxExisting + 2 : 2;
     } else {
-      newMinDuration = maxExisting > 0 ? maxExisting + 4 : 7
+      newMinDuration = maxExisting > 0 ? maxExisting + 4 : 7;
     }
 
-    const newDiscount = Math.min(99, maxDiscount + 10)
+    const newDiscount = Math.min(99, maxDiscount + 10);
 
-    onChange([...tiers, { minDuration: newMinDuration, discountPercent: newDiscount }])
-  }
+    onChange([...tiers, { minDuration: newMinDuration, discountPercent: newDiscount }]);
+  };
 
   const removeTier = (index: number) => {
-    const newTiers = tiers.filter((_, i) => i !== index)
-    onChange(newTiers)
+    const newTiers = tiers.filter((_, i) => i !== index);
+    onChange(newTiers);
     if (newTiers.length === 0) {
-      setIsEnabled(false)
-      onEnforceStrictTiersChange(false)
+      setIsEnabled(false);
+      onEnforceStrictTiersChange(false);
     }
-  }
+  };
 
-  const updateTier = (
-    index: number,
-    field: 'minDuration' | 'discountPercent',
-    value: number
-  ) => {
-    const newTiers = [...tiers]
-    newTiers[index] = { ...newTiers[index], [field]: value }
-    onChange(newTiers)
-  }
+  const updateTier = (index: number, field: "minDuration" | "discountPercent", value: number) => {
+    const newTiers = [...tiers];
+    newTiers[index] = { ...newTiers[index], [field]: value };
+    onChange(newTiers);
+  };
 
   // Check for duplicate durations
   const hasDuplicates = useMemo(() => {
-    const durations = tiers.map((t) => t.minDuration)
-    return new Set(durations).size !== durations.length
-  }, [tiers])
+    const durations = tiers.map((t) => t.minDuration);
+    return new Set(durations).size !== durations.length;
+  }, [tiers]);
 
   return (
     <div className="space-y-6">
@@ -189,11 +166,9 @@ export function PricingTiersEditor({
       <div className="flex items-center justify-between rounded-lg border p-4">
         <div className="space-y-0.5">
           <Label htmlFor="pricing-tiers-toggle" className="text-base font-medium">
-            {t('enableTiers')}
+            {t("enableTiers")}
           </Label>
-          <p className="text-sm text-muted-foreground">
-            {t('enableTiersDescription')}
-          </p>
+          <p className="text-sm text-muted-foreground">{t("enableTiersDescription")}</p>
         </div>
         <Switch
           id="pricing-tiers-toggle"
@@ -210,22 +185,17 @@ export function PricingTiersEditor({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{t('tiersTitle')}</span>
+                <span className="font-medium">{t("tiersTitle")}</span>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addTier}
-                disabled={disabled}
-              >
+              <Button type="button" variant="outline" onClick={addTier} disabled={disabled}>
                 <Plus className="mr-2 h-4 w-4" />
-                {t('addTier')}
+                {t("addTier")}
               </Button>
             </div>
 
             {hasDuplicates && (
               <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {t('duplicateDurationError')}
+                {t("duplicateDurationError")}
               </div>
             )}
 
@@ -233,13 +203,13 @@ export function PricingTiersEditor({
               {tiers
                 .slice()
                 .sort((a, b) => a.minDuration - b.minDuration)
-                .map((tier, sortedIndex) => {
+                .map((tier) => {
                   // Find original index for update/remove
                   const originalIndex = tiers.findIndex(
                     (t) =>
                       t.minDuration === tier.minDuration &&
-                      t.discountPercent === tier.discountPercent
-                  )
+                      t.discountPercent === tier.discountPercent,
+                  );
 
                   return (
                     <div
@@ -248,25 +218,20 @@ export function PricingTiersEditor({
                     >
                       <div
                         className={cn(
-                          'flex-1 grid gap-x-4 gap-y-3',
-                          basePrice > 0
-                            ? 'grid-cols-2 sm:grid-cols-4'
-                            : 'grid-cols-2'
+                          "flex-1 grid gap-x-4 gap-y-3",
+                          basePrice > 0 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2",
                         )}
                       >
                         <div className="space-y-2">
                           <Label className="text-xs text-muted-foreground">
-                            {t('fromDuration')}
+                            {t("fromDuration")}
                           </Label>
                           <div className="flex items-center gap-2">
                             <Input
                               type="number"
                               min={1}
                               max={999}
-                              value={
-                                editingDurations[originalIndex] ??
-                                tier.minDuration
-                              }
+                              value={editingDurations[originalIndex] ?? tier.minDuration}
                               onFocus={(e) =>
                                 setEditingDurations((prev) => ({
                                   ...prev,
@@ -277,42 +242,38 @@ export function PricingTiersEditor({
                                 setEditingDurations((prev) => ({
                                   ...prev,
                                   [originalIndex]: e.target.value,
-                                }))
+                                }));
                               }}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.currentTarget.blur()
+                                if (e.key === "Enter") {
+                                  e.currentTarget.blur();
                                 }
                               }}
                               onBlur={() => {
-                                const raw = editingDurations[originalIndex]
+                                const raw = editingDurations[originalIndex];
                                 if (raw !== undefined) {
-                                  const parsed = parseInt(raw)
+                                  const parsed = parseInt(raw);
                                   updateTier(
                                     originalIndex,
-                                    'minDuration',
-                                    Math.min(999, Math.max(1, isNaN(parsed) ? 1 : parsed))
-                                  )
+                                    "minDuration",
+                                    Math.min(999, Math.max(1, isNaN(parsed) ? 1 : parsed)),
+                                  );
                                 }
                                 setEditingDurations((prev) => {
-                                  const next = { ...prev }
-                                  delete next[originalIndex]
-                                  return next
-                                })
+                                  const next = { ...prev };
+                                  delete next[originalIndex];
+                                  return next;
+                                });
                               }}
                               className="w-20"
                               disabled={disabled}
                             />
-                            <span className="text-sm text-muted-foreground">
-                              {unitLabel}
-                            </span>
+                            <span className="text-sm text-muted-foreground">{unitLabel}</span>
                           </div>
                         </div>
 
                         <div className="space-y-2">
-                          <Label className="text-xs text-muted-foreground">
-                            {t('discount')}
-                          </Label>
+                          <Label className="text-xs text-muted-foreground">{t("discount")}</Label>
                           <div className="flex items-center gap-2">
                             <span className="text-sm text-muted-foreground">-</span>
                             <Input
@@ -320,10 +281,7 @@ export function PricingTiersEditor({
                               step="any"
                               min={1}
                               max={99}
-                              value={
-                                editingDiscounts[originalIndex] ??
-                                tier.discountPercent
-                              }
+                              value={editingDiscounts[originalIndex] ?? tier.discountPercent}
                               onFocus={(e) =>
                                 setEditingDiscounts((prev) => ({
                                   ...prev,
@@ -334,28 +292,28 @@ export function PricingTiersEditor({
                                 setEditingDiscounts((prev) => ({
                                   ...prev,
                                   [originalIndex]: e.target.value,
-                                }))
+                                }));
                               }}
                               onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.currentTarget.blur()
+                                if (e.key === "Enter") {
+                                  e.currentTarget.blur();
                                 }
                               }}
                               onBlur={() => {
-                                const raw = editingDiscounts[originalIndex]
+                                const raw = editingDiscounts[originalIndex];
                                 if (raw !== undefined) {
-                                  const parsed = parseFloat(raw)
+                                  const parsed = parseFloat(raw);
                                   updateTier(
                                     originalIndex,
-                                    'discountPercent',
-                                    Math.min(99, Math.max(1, isNaN(parsed) ? 1 : parsed))
-                                  )
+                                    "discountPercent",
+                                    Math.min(99, Math.max(1, isNaN(parsed) ? 1 : parsed)),
+                                  );
                                 }
                                 setEditingDiscounts((prev) => {
-                                  const next = { ...prev }
-                                  delete next[originalIndex]
-                                  return next
-                                })
+                                  const next = { ...prev };
+                                  delete next[originalIndex];
+                                  return next;
+                                });
                               }}
                               className="w-20"
                               disabled={disabled}
@@ -368,7 +326,7 @@ export function PricingTiersEditor({
                         {basePrice > 0 && (
                           <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground">
-                              {t('targetPrice')}
+                              {t("targetPrice")}
                             </Label>
                             <div className="flex items-center gap-1">
                               <Input
@@ -378,10 +336,7 @@ export function PricingTiersEditor({
                                 value={
                                   editingPrices[originalIndex] ??
                                   parseFloat(
-                                    (
-                                      basePrice *
-                                      (1 - tier.discountPercent / 100)
-                                    ).toFixed(2)
+                                    (basePrice * (1 - tier.discountPercent / 100)).toFixed(2),
                                   )
                                 }
                                 onFocus={(e) =>
@@ -391,12 +346,12 @@ export function PricingTiersEditor({
                                   }))
                                 }
                                 onChange={(e) => {
-                                  const raw = e.target.value
+                                  const raw = e.target.value;
                                   setEditingPrices((prev) => ({
                                     ...prev,
                                     [originalIndex]: raw,
-                                  }))
-                                  const targetPrice = parseFloat(raw)
+                                  }));
+                                  const targetPrice = parseFloat(raw);
                                   if (
                                     !isNaN(targetPrice) &&
                                     targetPrice > 0 &&
@@ -404,35 +359,33 @@ export function PricingTiersEditor({
                                   ) {
                                     const discount =
                                       Math.round(
-                                        ((basePrice - targetPrice) / basePrice) *
-                                          100 *
-                                          1e6
-                                      ) / 1e6
+                                        ((basePrice - targetPrice) / basePrice) * 100 * 1e6,
+                                      ) / 1e6;
                                     updateTier(
                                       originalIndex,
-                                      'discountPercent',
-                                      Math.min(99, Math.max(1, discount))
-                                    )
+                                      "discountPercent",
+                                      Math.min(99, Math.max(1, discount)),
+                                    );
                                   }
                                 }}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.currentTarget.blur()
+                                  if (e.key === "Enter") {
+                                    e.currentTarget.blur();
                                   }
                                 }}
                                 onBlur={() =>
                                   setEditingPrices((prev) => {
-                                    const next = { ...prev }
-                                    delete next[originalIndex]
-                                    return next
+                                    const next = { ...prev };
+                                    delete next[originalIndex];
+                                    return next;
                                   })
                                 }
                                 className="w-24"
                                 disabled={disabled}
-                                aria-label={t('targetPrice')}
+                                aria-label={t("targetPrice")}
                               />
                               <span className="text-sm text-muted-foreground whitespace-nowrap">
-                                /{getUnitLabel(pricingMode, 'short')}
+                                /{getUnitLabel(pricingMode, "short")}
                               </span>
                             </div>
                           </div>
@@ -442,7 +395,7 @@ export function PricingTiersEditor({
                         {basePrice > 0 && (
                           <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground">
-                              {t('tierTotal')}
+                              {t("tierTotal")}
                             </Label>
                             <div className="flex items-center gap-1">
                               <Input
@@ -456,7 +409,7 @@ export function PricingTiersEditor({
                                       basePrice *
                                       (1 - tier.discountPercent / 100) *
                                       tier.minDuration
-                                    ).toFixed(2)
+                                    ).toFixed(2),
                                   )
                                 }
                                 onFocus={(e) =>
@@ -466,55 +419,46 @@ export function PricingTiersEditor({
                                   }))
                                 }
                                 onChange={(e) => {
-                                  const raw = e.target.value
+                                  const raw = e.target.value;
                                   setEditingTotals((prev) => ({
                                     ...prev,
                                     [originalIndex]: raw,
-                                  }))
-                                  const totalCost = parseFloat(raw)
-                                  if (
-                                    !isNaN(totalCost) &&
-                                    totalCost > 0 &&
-                                    tier.minDuration > 0
-                                  ) {
-                                    const pricePerUnit =
-                                      totalCost / tier.minDuration
+                                  }));
+                                  const totalCost = parseFloat(raw);
+                                  if (!isNaN(totalCost) && totalCost > 0 && tier.minDuration > 0) {
+                                    const pricePerUnit = totalCost / tier.minDuration;
                                     if (pricePerUnit < basePrice) {
                                       const discount =
                                         Math.round(
-                                          ((basePrice - pricePerUnit) /
-                                            basePrice) *
-                                            100 *
-                                            1e6
-                                        ) / 1e6
+                                          ((basePrice - pricePerUnit) / basePrice) * 100 * 1e6,
+                                        ) / 1e6;
                                       updateTier(
                                         originalIndex,
-                                        'discountPercent',
-                                        Math.min(99, Math.max(1, discount))
-                                      )
+                                        "discountPercent",
+                                        Math.min(99, Math.max(1, discount)),
+                                      );
                                     }
                                   }
                                 }}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.currentTarget.blur()
+                                  if (e.key === "Enter") {
+                                    e.currentTarget.blur();
                                   }
                                 }}
                                 onBlur={() =>
                                   setEditingTotals((prev) => {
-                                    const next = { ...prev }
-                                    delete next[originalIndex]
-                                    return next
+                                    const next = { ...prev };
+                                    delete next[originalIndex];
+                                    return next;
                                   })
                                 }
                                 className="w-24"
                                 disabled={disabled}
-                                aria-label={t('tierTotal')}
+                                aria-label={t("tierTotal")}
                               />
                             </div>
                             <p className="text-xs text-muted-foreground tabular-nums">
-                              {t('insteadOf')}{' '}
-                              {formatCurrency(basePrice * tier.minDuration)}
+                              {t("insteadOf")} {formatCurrency(basePrice * tier.minDuration)}
                             </p>
                           </div>
                         )}
@@ -531,14 +475,12 @@ export function PricingTiersEditor({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  )
+                  );
                 })}
 
               {tiers.length === 0 && (
                 <div className="rounded-lg border border-dashed p-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    {t('noTiers')}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t("noTiers")}</p>
                   <Button
                     type="button"
                     variant="outline"
@@ -547,7 +489,7 @@ export function PricingTiersEditor({
                     disabled={disabled}
                   >
                     <Plus className="mr-2 h-4 w-4" />
-                    {t('addFirstTier')}
+                    {t("addFirstTier")}
                   </Button>
                 </div>
               )}
@@ -560,11 +502,8 @@ export function PricingTiersEditor({
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 space-y-0.5">
                   <div className="flex items-center gap-1.5">
-                    <Label
-                      htmlFor="enforce-strict-tiers-toggle"
-                      className="text-base font-medium"
-                    >
-                      {t('progressive.label')}
+                    <Label htmlFor="enforce-strict-tiers-toggle" className="text-base font-medium">
+                      {t("progressive.label")}
                     </Label>
                     <Dialog>
                       <DialogTrigger
@@ -579,54 +518,46 @@ export function PricingTiersEditor({
                       </DialogTrigger>
                       <DialogContent className="max-w-lg">
                         <DialogHeader>
-                          <DialogTitle>
-                            {t('progressive.modal.title')}
-                          </DialogTitle>
-                          <DialogDescription>
-                            {t('progressive.modal.intro')}
-                          </DialogDescription>
+                          <DialogTitle>{t("progressive.modal.title")}</DialogTitle>
+                          <DialogDescription>{t("progressive.modal.intro")}</DialogDescription>
                         </DialogHeader>
                         <DialogPanel>
                           <div className="space-y-3">
                             <div className="rounded-lg border p-3">
                               <p className="text-sm font-medium">
-                                {t('progressive.modal.withoutTitle')}
+                                {t("progressive.modal.withoutTitle")}
                               </p>
                               <p className="text-muted-foreground mt-1 text-sm">
-                                {t('progressive.modal.withoutText')}
+                                {t("progressive.modal.withoutText")}
                               </p>
                               <div className="bg-muted/50 mt-2 rounded-md px-3 py-2 text-sm">
-                                {t('progressive.modal.withoutExample')}
+                                {t("progressive.modal.withoutExample")}
                               </div>
                             </div>
                             <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
                               <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                                {t('progressive.modal.withTitle')}
+                                {t("progressive.modal.withTitle")}
                               </p>
                               <p className="text-muted-foreground mt-1 text-sm">
-                                {t('progressive.modal.withText')}
+                                {t("progressive.modal.withText")}
                               </p>
                               <div className="mt-2 rounded-md bg-emerald-100/50 px-3 py-2 text-sm dark:bg-emerald-950/30">
-                                {t('progressive.modal.withExample')}
+                                {t("progressive.modal.withExample")}
                               </div>
                             </div>
                           </div>
                         </DialogPanel>
                         <DialogFooter>
                           <DialogClose
-                            render={
-                              <Button type="button" variant="outline" size="sm" />
-                            }
+                            render={<Button type="button" variant="outline" size="sm" />}
                           >
-                            {tCommon('close')}
+                            {tCommon("close")}
                           </DialogClose>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t('progressive.description')}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t("progressive.description")}</p>
                 </div>
                 <Switch
                   id="enforce-strict-tiers-toggle"
@@ -642,38 +573,38 @@ export function PricingTiersEditor({
           {basePrice > 0 && tiers.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">{t('preview')}</CardTitle>
-                <CardDescription>{t('previewDescription')}</CardDescription>
+                <CardTitle className="text-base">{t("preview")}</CardTitle>
+                <CardDescription>{t("previewDescription")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{t('duration')}</TableHead>
-                      <TableHead className="text-right">{t('pricePerUnit')}</TableHead>
-                      <TableHead className="text-right">{t('total')}</TableHead>
-                      <TableHead className="text-right">{t('savings')}</TableHead>
+                      <TableHead>{t("duration")}</TableHead>
+                      <TableHead className="text-right">{t("pricePerUnit")}</TableHead>
+                      <TableHead className="text-right">{t("total")}</TableHead>
+                      <TableHead className="text-right">{t("savings")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {previews.map((preview) => (
                       <TableRow
                         key={preview.duration}
-                        className={preview.discountPercent ? 'bg-green-50/50 dark:bg-green-950/20' : ''}
+                        className={
+                          preview.discountPercent ? "bg-green-50/50 dark:bg-green-950/20" : ""
+                        }
                       >
                         <TableCell className="font-medium">
                           {preview.label}
                           {preview.discountPercent && (
-                            <Badge
-                              variant="success"
-                              className="ml-2"
-                            >
+                            <Badge variant="success" className="ml-2">
                               -{Math.floor(preview.discountPercent)}%
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(preview.pricePerUnit)}/{getUnitLabel(pricingMode, 'short')}
+                          {formatCurrency(preview.pricePerUnit)}/
+                          {getUnitLabel(pricingMode, "short")}
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(preview.total)}
@@ -697,5 +628,5 @@ export function PricingTiersEditor({
         </>
       )}
     </div>
-  )
+  );
 }

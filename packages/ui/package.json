@@ -29,10 +29,6 @@
     "react-phone-number-input": "^3.4.17",
     "reicon-react": "^1.1.2"
   },
-  "peerDependencies": {
-    "react": "^19",
-    "react-dom": "^19"
-  },
   "devDependencies": {
     "@louez/config": "workspace:*",
     "@types/react": "^19",
@@ -40,6 +36,10 @@
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5"
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19",
+    "react-dom": "^19"
   }
 }

@@ -17,7 +17,7 @@ self.addEventListener('push', (event) => {
   let payload;
   try {
     payload = event.data.json();
-  } catch (e) {
+  } catch  {
     payload = { title: 'Louez', body: event.data.text() };
   }
 
@@ -67,7 +67,7 @@ self.addEventListener('notificationclick', (event) => {
           if ('navigate' in client && client.url !== targetUrl) {
             try {
               await client.navigate(targetUrl);
-            } catch (e) {
+            } catch  {
               /* navigation across origins can throw — ignore */
             }
           }

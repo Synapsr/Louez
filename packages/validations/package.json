@@ -17,6 +17,6 @@
   "devDependencies": {
     "@louez/config": "workspace:*",
     "@types/node": "^20.19.27",
-    "typescript": "^5"
+    "typescript": "catalog:"
   }
 }

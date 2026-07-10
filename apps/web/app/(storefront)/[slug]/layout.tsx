@@ -1,46 +1,46 @@
-import type { Metadata, Viewport } from 'next'
-import { notFound } from 'next/navigation'
-import { headers } from 'next/headers'
-import { NextIntlClientProvider } from 'next-intl'
-import { getMessages } from 'next-intl/server'
-import { db } from '@louez/db'
-import { stores } from '@louez/db'
-import { eq } from 'drizzle-orm'
-import { StoreHeaderWrapper } from '@/components/storefront/store-header-wrapper'
-import { StoreFooter } from '@/components/storefront/store-footer'
-import { ThemeWrapper } from '@/components/storefront/theme-wrapper'
-import { CartProvider } from '@/contexts/cart-context'
-import { StoreProvider } from '@/contexts/store-context'
-import { AnalyticsProvider } from '@/contexts/analytics-context'
-import { OpenReplayProvider } from '@/components/openreplay-provider'
-import { PostHogProvider } from '@/components/posthog-provider'
-import { generateStoreMetadata, stripHtml } from '@/lib/seo'
-import type { StoreTheme, StoreSettings } from '@louez/types'
+import type { Metadata, Viewport } from "next";
+import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
+import { db } from "@louez/db";
+import { stores } from "@louez/db";
+import { eq } from "drizzle-orm";
+import { StoreHeaderWrapper } from "@/components/storefront/store-header-wrapper";
+import { StoreFooter } from "@/components/storefront/store-footer";
+import { ThemeWrapper } from "@/components/storefront/theme-wrapper";
+import { CartProvider } from "@/contexts/cart-context";
+import { StoreProvider } from "@/contexts/store-context";
+import { AnalyticsProvider } from "@/contexts/analytics-context";
+import { OpenReplayProvider } from "@/components/openreplay-provider";
+import { PostHogProvider } from "@/components/posthog-provider";
+import { generateStoreMetadata, stripHtml } from "@/lib/seo";
+import type { StoreTheme, StoreSettings } from "@louez/types";
 
 interface StorefrontLayoutProps {
-  children: React.ReactNode
-  params: Promise<{ slug: string }>
+  children: React.ReactNode;
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ slug: string }>
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params
+  const { slug } = await params;
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
-  })
+  });
 
   if (!store || !store.onboardingCompleted) {
     return {
-      title: 'Boutique introuvable',
-    }
+      title: "Boutique introuvable",
+    };
   }
 
-  const theme = (store.theme as StoreTheme) || {}
-  const settings = (store.settings as StoreSettings) || {}
+  const theme = (store.theme as StoreTheme) || {};
+  const settings = (store.settings as StoreSettings) || {};
 
   return generateStoreMetadata(
     {
@@ -61,62 +61,64 @@ export async function generateMetadata({
       description: store.description
         ? stripHtml(store.description)
         : `Location de matériel chez ${store.name}. Réservez facilement en ligne.`,
-    }
-  )
+    },
+  );
 }
 
-export function generateViewport({}: {
-  params: Promise<{ slug: string }>
-}): Viewport {
+export function generateViewport(): Viewport {
   return {
     themeColor: [
-      { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-      { media: '(prefers-color-scheme: dark)', color: '#000000' },
+      { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+      { media: "(prefers-color-scheme: dark)", color: "#000000" },
     ],
-    width: 'device-width',
+    width: "device-width",
     initialScale: 1,
-  }
+  };
 }
 
-export default async function StorefrontLayout({
-  children,
-  params,
-}: StorefrontLayoutProps) {
-  const { slug } = await params
+export default async function StorefrontLayout({ children, params }: StorefrontLayoutProps) {
+  const { slug } = await params;
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
-  })
+  });
 
   if (!store || !store.onboardingCompleted) {
-    notFound()
+    notFound();
   }
 
-  const messages = await getMessages()
+  const messages = await getMessages();
 
-  const theme = (store.theme as StoreTheme) || { mode: 'light', primaryColor: '#0066FF' }
-  const settings = (store.settings as StoreSettings) || {}
-  const currency = settings.currency || 'EUR'
+  const theme = (store.theme as StoreTheme) || { mode: "light", primaryColor: "#0066FF" };
+  const settings = (store.settings as StoreSettings) || {};
+  const currency = settings.currency || "EUR";
 
   // Detect embed mode from proxy header or URL path
-  const headersList = await headers()
-  const isEmbed = headersList.get('x-embed-mode') === '1'
-    || headersList.get('x-next-url')?.includes('/embed')
-    || headersList.get('x-invoke-path')?.includes('/embed')
+  const headersList = await headers();
+  const isEmbed =
+    headersList.get("x-embed-mode") === "1" ||
+    headersList.get("x-next-url")?.includes("/embed") ||
+    headersList.get("x-invoke-path")?.includes("/embed");
 
   // Embed mode: minimal layout without header/footer/analytics.
   // Transparent background lets the host site's background show through the iframe.
   if (isEmbed) {
     return (
       <NextIntlClientProvider messages={messages}>
-        <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name} timezone={settings.timezone} maxDiscountPercent={theme.maxDiscountPercent}>
+        <StoreProvider
+          currency={currency}
+          storeSlug={store.slug}
+          storeName={store.name}
+          timezone={settings.timezone}
+          maxDiscountPercent={theme.maxDiscountPercent}
+        >
           <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
             <style>{`html, body { background: transparent !important; }`}</style>
             {children}
           </ThemeWrapper>
         </StoreProvider>
       </NextIntlClientProvider>
-    )
+    );
   }
 
   return (
@@ -126,25 +128,31 @@ export default async function StorefrontLayout({
           surface="storefront"
           store={{ id: store.id, name: store.name, slug: store.slug }}
         >
-          <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name} timezone={settings.timezone} maxDiscountPercent={theme.maxDiscountPercent}>
+          <StoreProvider
+            currency={currency}
+            storeSlug={store.slug}
+            storeName={store.name}
+            timezone={settings.timezone}
+            maxDiscountPercent={theme.maxDiscountPercent}
+          >
             <CartProvider>
               <AnalyticsProvider storeSlug={store.slug}>
                 <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
-                    <div className="flex min-h-screen flex-col bg-background">
-                      <StoreHeaderWrapper
-                        storeName={store.name}
-                        storeSlug={store.slug}
-                        logoUrl={store.logoUrl}
-                      />
-                      <main className="flex-1 pt-20 md:pt-24">{children}</main>
-                      <StoreFooter
-                        storeName={store.name}
-                        storeSlug={store.slug}
-                        email={store.email}
-                        phone={store.phone}
-                        address={store.address}
-                      />
-                    </div>
+                  <div className="flex min-h-screen flex-col bg-background">
+                    <StoreHeaderWrapper
+                      storeName={store.name}
+                      storeSlug={store.slug}
+                      logoUrl={store.logoUrl}
+                    />
+                    <main className="flex-1 pt-20 md:pt-24">{children}</main>
+                    <StoreFooter
+                      storeName={store.name}
+                      storeSlug={store.slug}
+                      email={store.email}
+                      phone={store.phone}
+                      address={store.address}
+                    />
+                  </div>
                 </ThemeWrapper>
               </AnalyticsProvider>
             </CartProvider>
@@ -152,5 +160,5 @@ export default async function StorefrontLayout({
         </OpenReplayProvider>
       </PostHogProvider>
     </NextIntlClientProvider>
-  )
+  );
 }

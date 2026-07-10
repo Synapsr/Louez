@@ -8,7 +8,6 @@ import { useStore } from '@tanstack/react-form'
 
 import { Button, Label } from '@louez/ui'
 import { Input } from '@louez/ui'
-import { Textarea } from '@louez/ui'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Switch } from '@louez/ui'
 import {
@@ -25,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@louez/ui'
-import { customerSchema, type CustomerInput } from '@louez/validations'
+import { customerSchema } from '@louez/validations'
 import { createCustomer, updateCustomer } from './actions'
 import { useAppForm } from '@/hooks/form/form'
 import { getFieldError } from '@/hooks/form/form-context'

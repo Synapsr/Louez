@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Loader2, Shuffle, Percent, Banknote } from 'lucide-react'
 import { nanoid } from 'nanoid'
-import { cn, formatCurrency } from '@louez/utils'
+import { cn } from '@louez/utils'
 import {
   Button,
   Dialog,

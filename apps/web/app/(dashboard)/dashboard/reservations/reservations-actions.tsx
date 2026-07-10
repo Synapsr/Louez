@@ -1,9 +1,9 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useTranslations } from 'next-intl'
-import { Loader2 } from 'lucide-react'
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
+import { Loader2 } from "lucide-react";
 
 import {
   AlertDialog,
@@ -15,257 +15,266 @@ import {
   AlertDialogTitle,
   Button,
   toastManager,
-} from '@louez/ui'
+} from "@louez/ui";
 
-import { invalidateReservationAll } from '@/lib/orpc/invalidation'
-import { orpc } from '@/lib/orpc/react'
-import type { Reservation, ReservationStatus } from './reservations-types'
+import { invalidateReservationAll } from "@/lib/orpc/invalidation";
+import { orpc } from "@/lib/orpc/react";
+import type { Reservation, ReservationStatus } from "./reservations-types";
 
 interface UseReservationActionsReturn {
-  loadingAction: string | null
-  handleStatusChange: (e: React.MouseEvent, reservation: Reservation, newStatus: ReservationStatus) => Promise<void>
-  openRejectDialog: (e: React.MouseEvent, reservation: Reservation) => void
-  openCancelDialog: (e: React.MouseEvent, reservation: Reservation) => void
-  confirmDialogsProps: ConfirmDialogsProps
+  loadingAction: string | null;
+  handleStatusChange: (
+    e: React.MouseEvent,
+    reservation: Reservation,
+    newStatus: ReservationStatus,
+  ) => Promise<void>;
+  openRejectDialog: (e: React.MouseEvent, reservation: Reservation) => void;
+  openCancelDialog: (e: React.MouseEvent, reservation: Reservation) => void;
+  confirmDialogsProps: ConfirmDialogsProps;
 }
 
 interface ConfirmDialogsProps {
-  rejectDialogOpen: boolean
-  setRejectDialogOpen: (open: boolean) => void
-  cancelDialogOpen: boolean
-  setCancelDialogOpen: (open: boolean) => void
-  handleReject: () => Promise<void>
-  handleCancel: () => Promise<void>
-  loadingAction: string | null
+  rejectDialogOpen: boolean;
+  setRejectDialogOpen: (open: boolean) => void;
+  cancelDialogOpen: boolean;
+  setCancelDialogOpen: (open: boolean) => void;
+  handleReject: () => Promise<void>;
+  handleCancel: () => Promise<void>;
+  loadingAction: string | null;
 }
 
 type ActionWarning = {
-  key: string
-  params?: Record<string, string | number>
-}
+  key: string;
+  params?: Record<string, string | number>;
+};
 
 export function useReservationActions(): UseReservationActionsReturn {
-  const t = useTranslations('dashboard.reservations')
-  const tCommon = useTranslations('common')
-  const tErrors = useTranslations('errors')
-  const queryClient = useQueryClient()
+  const t = useTranslations("dashboard.reservations");
+  const tErrors = useTranslations("errors");
+  const queryClient = useQueryClient();
 
-  const [loadingAction, setLoadingAction] = useState<string | null>(null)
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
-  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
 
   const formatWarning = (warning: ActionWarning) => {
-    const key = warning.key.replace('errors.', '')
-    return tErrors(key, warning.params || {})
-  }
+    const key = warning.key.replace("errors.", "");
+    return tErrors(key, warning.params || {});
+  };
 
   const showWarnings = (warnings: unknown, newStatus: ReservationStatus) => {
     if (!Array.isArray(warnings) || warnings.length === 0) {
-      return
+      return;
     }
 
     const parsedWarnings: ActionWarning[] = warnings
       .filter(
         (warning): warning is ActionWarning =>
           Boolean(warning) &&
-          typeof warning === 'object' &&
-          'key' in warning &&
-          typeof (warning as { key?: unknown }).key === 'string',
+          typeof warning === "object" &&
+          "key" in warning &&
+          typeof (warning as { key?: unknown }).key === "string",
       )
       .map((warning) => ({
         key: warning.key,
         params: warning.params,
-      }))
+      }));
 
     if (parsedWarnings.length === 0) {
-      return
+      return;
     }
 
-    if (newStatus === 'confirmed') {
+    if (newStatus === "confirmed") {
       const tulipWarnings = parsedWarnings.filter((warning) =>
-        warning.key.startsWith('errors.tulip'),
-      )
+        warning.key.startsWith("errors.tulip"),
+      );
 
       if (tulipWarnings.length > 0) {
         toastManager.add({
-          title: tulipWarnings.map(formatWarning).join(' • '),
-          type: 'warning',
-        })
+          title: tulipWarnings.map(formatWarning).join(" • "),
+          type: "warning",
+        });
       }
 
       const otherWarnings = parsedWarnings.filter(
-        (warning) => !warning.key.startsWith('errors.tulip'),
-      )
+        (warning) => !warning.key.startsWith("errors.tulip"),
+      );
       if (otherWarnings.length > 0) {
         toastManager.add({
-          title: otherWarnings.map(formatWarning).join(' • '),
-          type: 'warning',
-        })
+          title: otherWarnings.map(formatWarning).join(" • "),
+          type: "warning",
+        });
       }
 
-      return
+      return;
     }
 
     toastManager.add({
-      title: parsedWarnings.map(formatWarning).join(' • '),
-      type: 'warning',
-    })
-  }
+      title: parsedWarnings.map(formatWarning).join(" • "),
+      type: "warning",
+    });
+  };
 
   const updateStatusMutation = useMutation(
     orpc.dashboard.reservations.updateStatus.mutationOptions({
       onMutate: async (input) => {
         await queryClient.cancelQueries({
           queryKey: orpc.dashboard.reservations.list.key(),
-        })
+        });
 
         const previous = queryClient.getQueriesData({
           queryKey: orpc.dashboard.reservations.list.key(),
-        })
+        });
 
         queryClient.setQueriesData(
           { queryKey: orpc.dashboard.reservations.list.key() },
           (current: any) => {
-            if (!current?.reservations) return current
+            if (!current?.reservations) return current;
             return {
               ...current,
               reservations: current.reservations.map((r: Reservation) =>
                 r.id === input.reservationId ? { ...r, status: input.status } : r,
               ),
-            }
+            };
           },
-        )
+        );
 
-        return { previous }
+        return { previous };
       },
       onError: (_error, _input, ctx) => {
         if (ctx?.previous) {
           for (const [key, data] of ctx.previous) {
-            queryClient.setQueryData(key, data)
+            queryClient.setQueryData(key, data);
           }
         }
       },
     }),
-  )
+  );
 
   const cancelMutation = useMutation(
     orpc.dashboard.reservations.cancel.mutationOptions({
       onMutate: async (input) => {
         await queryClient.cancelQueries({
           queryKey: orpc.dashboard.reservations.list.key(),
-        })
+        });
 
         const previous = queryClient.getQueriesData({
           queryKey: orpc.dashboard.reservations.list.key(),
-        })
+        });
 
         queryClient.setQueriesData(
           { queryKey: orpc.dashboard.reservations.list.key() },
           (current: any) => {
-            if (!current?.reservations) return current
+            if (!current?.reservations) return current;
             return {
               ...current,
               reservations: current.reservations.map((r: Reservation) =>
-                r.id === input.reservationId ? { ...r, status: 'cancelled' } : r,
+                r.id === input.reservationId ? { ...r, status: "cancelled" } : r,
               ),
-            }
+            };
           },
-        )
+        );
 
-        return { previous }
+        return { previous };
       },
       onError: (_error, _input, ctx) => {
         if (ctx?.previous) {
           for (const [key, data] of ctx.previous) {
-            queryClient.setQueryData(key, data)
+            queryClient.setQueryData(key, data);
           }
         }
       },
     }),
-  )
+  );
 
   const handleStatusChange = async (
     e: React.MouseEvent,
     reservation: Reservation,
-    newStatus: ReservationStatus
+    newStatus: ReservationStatus,
   ) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault();
+    e.stopPropagation();
 
-    setLoadingAction(`${reservation.id}-${newStatus}`)
+    setLoadingAction(`${reservation.id}-${newStatus}`);
     try {
       const result = await updateStatusMutation.mutateAsync({
         reservationId: reservation.id,
         status: newStatus,
-      })
+      });
 
-      const warnings = result && typeof result === 'object' && 'warnings' in result ? (result as any).warnings : undefined
-      showWarnings(warnings, newStatus)
+      const warnings =
+        result && typeof result === "object" && "warnings" in result
+          ? (result as any).warnings
+          : undefined;
+      showWarnings(warnings, newStatus);
 
-      toastManager.add({ title: t('statusUpdated'), type: 'success' })
-      await invalidateReservationAll(queryClient, reservation.id)
+      toastManager.add({ title: t("statusUpdated"), type: "success" });
+      await invalidateReservationAll(queryClient, reservation.id);
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setLoadingAction(null)
+      setLoadingAction(null);
     }
-  }
+  };
 
   const handleReject = async () => {
-    if (!selectedReservation) return
+    if (!selectedReservation) return;
 
-    setLoadingAction(`${selectedReservation.id}-reject`)
+    setLoadingAction(`${selectedReservation.id}-reject`);
     try {
       const result = await updateStatusMutation.mutateAsync({
         reservationId: selectedReservation.id,
-        status: 'rejected',
-      })
+        status: "rejected",
+      });
 
-      const warnings = result && typeof result === 'object' && 'warnings' in result ? (result as any).warnings : undefined
-      showWarnings(warnings, 'rejected')
+      const warnings =
+        result && typeof result === "object" && "warnings" in result
+          ? (result as any).warnings
+          : undefined;
+      showWarnings(warnings, "rejected");
 
-      toastManager.add({ title: t('reservationRejected'), type: 'success' })
-      await invalidateReservationAll(queryClient, selectedReservation.id)
+      toastManager.add({ title: t("reservationRejected"), type: "success" });
+      await invalidateReservationAll(queryClient, selectedReservation.id);
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setLoadingAction(null)
-      setRejectDialogOpen(false)
-      setSelectedReservation(null)
+      setLoadingAction(null);
+      setRejectDialogOpen(false);
+      setSelectedReservation(null);
     }
-  }
+  };
 
   const handleCancel = async () => {
-    if (!selectedReservation) return
+    if (!selectedReservation) return;
 
-    setLoadingAction(`${selectedReservation.id}-cancel`)
+    setLoadingAction(`${selectedReservation.id}-cancel`);
     try {
-      await cancelMutation.mutateAsync({ reservationId: selectedReservation.id })
-      toastManager.add({ title: t('reservationCancelled'), type: 'success' })
-      await invalidateReservationAll(queryClient, selectedReservation.id)
+      await cancelMutation.mutateAsync({ reservationId: selectedReservation.id });
+      toastManager.add({ title: t("reservationCancelled"), type: "success" });
+      await invalidateReservationAll(queryClient, selectedReservation.id);
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setLoadingAction(null)
-      setCancelDialogOpen(false)
-      setSelectedReservation(null)
+      setLoadingAction(null);
+      setCancelDialogOpen(false);
+      setSelectedReservation(null);
     }
-  }
+  };
 
   const openRejectDialog = (e: React.MouseEvent, reservation: Reservation) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setSelectedReservation(reservation)
-    setRejectDialogOpen(true)
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedReservation(reservation);
+    setRejectDialogOpen(true);
+  };
 
   const openCancelDialog = (e: React.MouseEvent, reservation: Reservation) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setSelectedReservation(reservation)
-    setCancelDialogOpen(true)
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedReservation(reservation);
+    setCancelDialogOpen(true);
+  };
 
   return {
     loadingAction,
@@ -281,7 +290,7 @@ export function useReservationActions(): UseReservationActionsReturn {
       handleCancel,
       loadingAction,
     },
-  }
+  };
 }
 
 export function ReservationConfirmDialogs({
@@ -293,8 +302,8 @@ export function ReservationConfirmDialogs({
   handleCancel,
   loadingAction,
 }: ConfirmDialogsProps) {
-  const t = useTranslations('dashboard.reservations')
-  const tCommon = useTranslations('common')
+  const t = useTranslations("dashboard.reservations");
+  const tCommon = useTranslations("common");
 
   return (
     <>
@@ -302,21 +311,18 @@ export function ReservationConfirmDialogs({
       <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('rejectConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('rejectConfirmDescription')}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("rejectConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("rejectConfirmDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('back')}</AlertDialogClose>
-            <AlertDialogClose
-              render={<Button variant="destructive" />}
-              onClick={handleReject}
-            >
-              {loadingAction?.includes('reject') ? (
+            <AlertDialogClose render={<Button variant="outline" />}>
+              {tCommon("back")}
+            </AlertDialogClose>
+            <AlertDialogClose render={<Button variant="destructive" />} onClick={handleReject}>
+              {loadingAction?.includes("reject") ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              {t('rejectRequest')}
+              {t("rejectRequest")}
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -326,25 +332,22 @@ export function ReservationConfirmDialogs({
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('cancelConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('cancelConfirmDescription')}
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t("cancelConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("cancelConfirmDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('back')}</AlertDialogClose>
-            <AlertDialogClose
-              render={<Button variant="destructive" />}
-              onClick={handleCancel}
-            >
-              {loadingAction?.includes('cancel') ? (
+            <AlertDialogClose render={<Button variant="outline" />}>
+              {tCommon("back")}
+            </AlertDialogClose>
+            <AlertDialogClose render={<Button variant="destructive" />} onClick={handleCancel}>
+              {loadingAction?.includes("cancel") ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
-              {t('cancelReservation')}
+              {t("cancelReservation")}
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

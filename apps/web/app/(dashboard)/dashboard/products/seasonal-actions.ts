@@ -7,7 +7,7 @@ import {
   productSeasonalPricing,
   productSeasonalPricingTiers,
 } from '@louez/db'
-import { eq, and, ne, lte, gte, sql } from 'drizzle-orm'
+import { eq, and, ne, lte, gte } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
 import { z } from 'zod'

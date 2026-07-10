@@ -660,7 +660,7 @@ export function RatesEditor({
             <Switch
               checked={progressiveDiscountEnabled}
               onCheckedChange={(checked) =>
-                onEnforceStrictTiersChange(!Boolean(checked))
+                onEnforceStrictTiersChange(!checked)
               }
               disabled={disabled}
             />

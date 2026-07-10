@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import {
   AreaChart,
@@ -9,44 +9,41 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-} from 'recharts'
-import type { TooltipContentProps } from 'recharts'
-import type { NameType, ValueType, Payload } from 'recharts/types/component/DefaultTooltipContent'
-import { TrendingUp } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+} from "recharts";
+import type { TooltipContentProps } from "recharts";
+import type { NameType, ValueType, Payload } from "recharts/types/component/DefaultTooltipContent";
+import { TrendingUp } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 export interface TrendDataPoint {
-  date: string
-  label: string
-  visitors: number
-  pageViews: number
-  conversions: number
+  date: string;
+  label: string;
+  visitors: number;
+  pageViews: number;
+  conversions: number;
 }
 
 interface TrendChartProps {
-  data: TrendDataPoint[]
-  showConversions?: boolean
+  data: TrendDataPoint[];
+  showConversions?: boolean;
 }
 
 export function TrendChart({ data, showConversions = true }: TrendChartProps) {
-  const t = useTranslations('dashboard.analytics')
+  const t = useTranslations("dashboard.analytics");
 
-  if (data.length === 0 || data.every((d) => d.visitors === 0 && d.pageViews === 0)) {
+  if (data.every((d) => d.visitors === 0 && d.pageViews === 0)) {
     return (
       <div className="flex h-[350px] flex-col items-center justify-center text-muted-foreground">
         <TrendingUp className="mb-2 h-8 w-8" />
-        <p>{t('noData')}</p>
+        <p>{t("noData")}</p>
       </div>
-    )
+    );
   }
 
   return (
     <div className="h-[350px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
-          data={data}
-          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-        >
+        <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="colorVisitors" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
@@ -60,13 +57,13 @@ export function TrendChart({ data, showConversions = true }: TrendChartProps) {
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
           <XAxis
             dataKey="label"
-            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+            tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
             tickLine={false}
             axisLine={false}
             dy={10}
           />
           <YAxis
-            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+            tick={{ fontSize: 12, fill: "var(--muted-foreground)" }}
             tickLine={false}
             axisLine={false}
             dx={-10}
@@ -79,18 +76,14 @@ export function TrendChart({ data, showConversions = true }: TrendChartProps) {
                   <div className="rounded-lg border bg-background p-3 shadow-lg">
                     <p className="mb-2 font-medium">{label}</p>
                     {payload.map((entry: Payload<ValueType, NameType>, index: number) => (
-                      <p
-                        key={index}
-                        className="text-sm"
-                        style={{ color: entry.color }}
-                      >
+                      <p key={index} className="text-sm" style={{ color: entry.color }}>
                         {entry.name}: {entry.value?.toLocaleString()}
                       </p>
                     ))}
                   </div>
-                )
+                );
               }
-              return null
+              return null;
             }}
           />
           <Legend
@@ -104,7 +97,7 @@ export function TrendChart({ data, showConversions = true }: TrendChartProps) {
           <Area
             type="monotone"
             dataKey="visitors"
-            name={t('visitors')}
+            name={t("visitors")}
             stroke="var(--primary)"
             strokeWidth={2}
             fillOpacity={1}
@@ -114,7 +107,7 @@ export function TrendChart({ data, showConversions = true }: TrendChartProps) {
             <Area
               type="monotone"
               dataKey="conversions"
-              name={t('conversions')}
+              name={t("conversions")}
               stroke="#22c55e"
               strokeWidth={2}
               fillOpacity={1}
@@ -124,5 +117,5 @@ export function TrendChart({ data, showConversions = true }: TrendChartProps) {
         </AreaChart>
       </ResponsiveContainer>
     </div>
-  )
+  );
 }
