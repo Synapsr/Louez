@@ -129,6 +129,11 @@ export const env = createEnv({
     AI_PROVIDER: z.enum(['anthropic', 'openai', 'google']).optional(),
     AI_MODEL: z.string().optional(),
     AI_API_KEY: z.string().optional(),
+    // Storefront AI advisor: optional cheaper model for public traffic
+    // (falls back to AI_MODEL, then the provider default) and a per-store
+    // daily message cap protecting token spend.
+    AI_ADVISOR_MODEL: z.string().optional(),
+    AI_ADVISOR_DAILY_STORE_LIMIT: z.coerce.number().int().min(1).optional(),
 
     // ===== fromHello (Optional — engagement & growth) =====
     FROMHELLO_API_URL: z.url().optional(),
@@ -302,6 +307,8 @@ export const env = createEnv({
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,
     AI_API_KEY: process.env.AI_API_KEY,
+    AI_ADVISOR_MODEL: process.env.AI_ADVISOR_MODEL,
+    AI_ADVISOR_DAILY_STORE_LIMIT: process.env.AI_ADVISOR_DAILY_STORE_LIMIT,
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,

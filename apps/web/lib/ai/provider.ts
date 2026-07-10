@@ -11,27 +11,11 @@ const DEFAULT_MODELS: Record<string, string> = {
   google: 'gemini-2.0-flash',
 }
 
-/**
- * Create an AI language model from environment variables.
- *
- * Required env vars:
- * - AI_PROVIDER: 'anthropic' | 'openai' | 'google'
- * - AI_API_KEY: The provider's API key
- * - AI_MODEL (optional): Override the default model
- */
-export function getAIModel(): LanguageModel {
-  const provider = env.AI_PROVIDER
-  const apiKey = env.AI_API_KEY
-  const model = env.AI_MODEL
-
-  if (!provider || !apiKey) {
-    throw new Error(
-      'AI chat requires AI_PROVIDER and AI_API_KEY environment variables.',
-    )
-  }
-
-  const modelId = model || DEFAULT_MODELS[provider]
-
+function createModel(
+  provider: string,
+  apiKey: string,
+  modelId: string,
+): LanguageModel {
   switch (provider) {
     case 'anthropic': {
       const anthropic = createAnthropic({ apiKey })
@@ -48,6 +32,46 @@ export function getAIModel(): LanguageModel {
     default:
       throw new Error(`Unsupported AI provider: ${provider}`)
   }
+}
+
+function requireProviderConfig(): { provider: string; apiKey: string } {
+  const provider = env.AI_PROVIDER
+  const apiKey = env.AI_API_KEY
+
+  if (!provider || !apiKey) {
+    throw new Error(
+      'AI chat requires AI_PROVIDER and AI_API_KEY environment variables.',
+    )
+  }
+
+  return { provider, apiKey }
+}
+
+/**
+ * Create an AI language model from environment variables.
+ *
+ * Required env vars:
+ * - AI_PROVIDER: 'anthropic' | 'openai' | 'google'
+ * - AI_API_KEY: The provider's API key
+ * - AI_MODEL (optional): Override the default model
+ */
+export function getAIModel(): LanguageModel {
+  const { provider, apiKey } = requireProviderConfig()
+  return createModel(provider, apiKey, env.AI_MODEL || DEFAULT_MODELS[provider])
+}
+
+/**
+ * Model for the storefront AI advisor. Same provider and API key as the
+ * dashboard assistant, but the model can be overridden separately
+ * (AI_ADVISOR_MODEL) — public traffic usually warrants a cheaper model.
+ */
+export function getAdvisorAIModel(): LanguageModel {
+  const { provider, apiKey } = requireProviderConfig()
+  return createModel(
+    provider,
+    apiKey,
+    env.AI_ADVISOR_MODEL || env.AI_MODEL || DEFAULT_MODELS[provider],
+  )
 }
 
 /**
