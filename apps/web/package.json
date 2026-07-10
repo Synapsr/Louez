@@ -34,6 +34,7 @@
     "@orpc/client": "^1.13.4",
     "@orpc/react-query": "^1.13.4",
     "@orpc/server": "^1.13.4",
+    "@outpacelabs/avatars": "^0.2.1",
     "@react-email/components": "^1.0.3",
     "@react-email/render": "^2.0.1",
     "@react-pdf/renderer": "^4.3.2",
