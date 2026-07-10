@@ -58,6 +58,12 @@ export const users = mysqlTable('users', {
   acquisitionChannelOther: varchar('acquisition_channel_other', {
     length: 255,
   }),
+  // Self-reported segment ("you are: independent / established store /
+  // association"), optional, captured on the profile onboarding step.
+  businessType: varchar('business_type', { length: 32 }),
+  // Set once the user has been through the "introduce yourself" onboarding
+  // step. Google users get a prefilled name but still confirm it once.
+  profileCompletedAt: timestamp('profile_completed_at', { mode: 'date' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 });

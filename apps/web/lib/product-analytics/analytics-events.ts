@@ -8,6 +8,8 @@ export const productAnalyticsEvents = {
   quoteDeclined: 'quote_declined',
   onboardingStoreInfoSaved: 'onboarding_store_info_saved',
   onboardingCompleted: 'onboarding_completed',
+  onboardingProfileCompleted: 'onboarding_profile_completed',
+  acquisitionChannelReported: 'acquisition_channel_reported',
 } as const;
 
 export type ProductAnalyticsEvent =

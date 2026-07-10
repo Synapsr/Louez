@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {heure} other {heures}}",
     "weekUnit": "{count, plural, one {semaine} other {semaines}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "phoneInput": {
+      "selectCountry": "Sélectionner un pays",
+      "searchCountry": "Rechercher un pays...",
+      "noResults": "Aucun pays trouvé"
+    },
     "addressInput": {
       "placeholder": "Rechercher une adresse...",
       "coordinatesSaved": "Coordonnées enregistrées",
@@ -5097,6 +5102,23 @@
       "title": "Bienvenue sur Louez.io",
       "description": "Configurez votre boutique en quelques étapes"
     },
+    "profile": {
+      "title": "Faisons connaissance",
+      "description": "Dites-nous en un peu plus sur vous pour personnaliser votre expérience.",
+      "photo": "Photo de profil",
+      "photoHelp": "PNG ou JPG, 2 Mo max",
+      "photoError": "Veuillez sélectionner une image",
+      "photoSizeError": "L'image ne doit pas dépasser 2 Mo",
+      "name": "Votre nom",
+      "namePlaceholder": "Jean Dupont",
+      "businessType": "Vous êtes",
+      "businessTypePlaceholder": "Sélectionnez une option",
+      "businessTypes": {
+        "independent": "Indépendant",
+        "establishedStore": "Boutique établie",
+        "association": "Association"
+      }
+    },
     "store": {
       "title": "Informations de votre boutique",
       "description": "Ces informations seront visibles par vos clients",
@@ -5183,11 +5205,32 @@
       "viewStore": "Voir ma boutique",
       "goToDashboard": "Accéder au tableau de bord"
     },
+    "preview": {
+      "reserve": "Réserver",
+      "pay": "Payer"
+    },
+    "source": {
+      "title": "Une dernière chose…",
+      "description": "Comment avez-vous connu Louez ?",
+      "wordOfMouth": "Bouche à oreille",
+      "searchEngine": "Moteur de recherche (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "Assistant IA (ChatGPT…)",
+      "ads": "Publicité",
+      "other": "Autre",
+      "otherPlaceholder": "Précisez…",
+      "skip": "Passer",
+      "finish": "Terminer"
+    },
     "steps": {
       "store": "Boutique",
       "branding": "Personnalisation",
       "product": "Premier produit",
-      "payment": "Paiements"
+      "payment": "Paiements",
+      "profile": "Profil",
+      "source": "Source"
     }
   },
   "categories": {

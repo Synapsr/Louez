@@ -414,6 +414,7 @@ const nextConfig: NextConfig = {
     '*.louez.localify',
     'feat-inventory.louez.localify',
     '*.feat-inventory.louez.localify',
+    'worktree-onboarding-redesign.louez.localify',
   ],
 }
 

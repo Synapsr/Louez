@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {ora} other {ore}}",
     "weekUnit": "{count, plural, one {settimana} other {settimane}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "phoneInput": {
+      "selectCountry": "Seleziona un paese",
+      "searchCountry": "Cerca un paese...",
+      "noResults": "Nessun paese trovato"
+    },
     "addressInput": {
       "placeholder": "Cerca un indirizzo...",
       "coordinatesSaved": "Coordinate salvate",
@@ -4984,6 +4989,23 @@
       "title": "Benvenuto su Louez.io",
       "description": "Configura il tuo negozio in pochi passi"
     },
+    "profile": {
+      "title": "Facciamo conoscenza",
+      "description": "Raccontaci qualcosa di te per personalizzare la tua esperienza.",
+      "photo": "Foto profilo",
+      "photoHelp": "PNG o JPG, max 2 MB",
+      "photoError": "Seleziona un'immagine",
+      "photoSizeError": "L'immagine non deve superare i 2 MB",
+      "name": "Il tuo nome",
+      "namePlaceholder": "Mario Rossi",
+      "businessType": "Sei",
+      "businessTypePlaceholder": "Seleziona un'opzione",
+      "businessTypes": {
+        "independent": "Indipendente",
+        "establishedStore": "Negozio avviato",
+        "association": "Associazione"
+      }
+    },
     "store": {
       "title": "Informazioni del tuo negozio",
       "description": "Queste informazioni saranno visibili ai tuoi clienti",
@@ -5070,11 +5092,32 @@
       "viewStore": "Vedi il mio negozio",
       "goToDashboard": "Vai alla dashboard"
     },
+    "preview": {
+      "reserve": "Prenota",
+      "pay": "Paga"
+    },
+    "source": {
+      "title": "Un'ultima cosa…",
+      "description": "Come hai conosciuto Louez?",
+      "wordOfMouth": "Passaparola",
+      "searchEngine": "Motore di ricerca (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "Assistente IA (ChatGPT…)",
+      "ads": "Pubblicità",
+      "other": "Altro",
+      "otherPlaceholder": "Specifica…",
+      "skip": "Salta",
+      "finish": "Termina"
+    },
     "steps": {
       "store": "Negozio",
       "branding": "Personalizzazione",
       "product": "Primo prodotto",
-      "payment": "Pagamenti"
+      "payment": "Pagamenti",
+      "profile": "Profilo",
+      "source": "Fonte"
     }
   },
   "categories": {

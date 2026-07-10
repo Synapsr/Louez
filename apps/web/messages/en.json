@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {hour} other {hours}}",
     "weekUnit": "{count, plural, one {week} other {weeks}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "phoneInput": {
+      "selectCountry": "Select a country",
+      "searchCountry": "Search for a country...",
+      "noResults": "No country found"
+    },
     "addressInput": {
       "placeholder": "Search for an address...",
       "coordinatesSaved": "Coordinates saved",
@@ -5097,6 +5102,23 @@
       "title": "Welcome to Louez.io",
       "description": "Set up your store in a few steps"
     },
+    "profile": {
+      "title": "Let's get to know you",
+      "description": "Tell us a bit about yourself to personalize your experience.",
+      "photo": "Profile picture",
+      "photoHelp": "PNG or JPG, 2 MB max",
+      "photoError": "Please select an image",
+      "photoSizeError": "The image must not exceed 2 MB",
+      "name": "Your name",
+      "namePlaceholder": "John Smith",
+      "businessType": "You are",
+      "businessTypePlaceholder": "Select an option",
+      "businessTypes": {
+        "independent": "Independent",
+        "establishedStore": "Established store",
+        "association": "Association"
+      }
+    },
     "store": {
       "title": "Your store information",
       "description": "This information will be visible to your customers",
@@ -5183,11 +5205,32 @@
       "viewStore": "View my store",
       "goToDashboard": "Go to dashboard"
     },
+    "preview": {
+      "reserve": "Book",
+      "pay": "Pay"
+    },
+    "source": {
+      "title": "One last thing…",
+      "description": "How did you hear about Louez?",
+      "wordOfMouth": "Word of mouth",
+      "searchEngine": "Search engine (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "AI assistant (ChatGPT…)",
+      "ads": "Advertising",
+      "other": "Other",
+      "otherPlaceholder": "Tell us more…",
+      "skip": "Skip",
+      "finish": "Finish"
+    },
     "steps": {
       "store": "Store",
       "branding": "Customization",
       "product": "First product",
-      "payment": "Payments"
+      "payment": "Payments",
+      "profile": "Profile",
+      "source": "Source"
     }
   },
   "categories": {

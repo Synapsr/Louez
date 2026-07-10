@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {Stunde} other {Stunden}}",
     "weekUnit": "{count, plural, one {Woche} other {Wochen}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "phoneInput": {
+      "selectCountry": "Land auswählen",
+      "searchCountry": "Land suchen...",
+      "noResults": "Kein Land gefunden"
+    },
     "addressInput": {
       "placeholder": "Adresse suchen...",
       "coordinatesSaved": "Koordinaten gespeichert",
@@ -4984,6 +4989,23 @@
       "title": "Willkommen bei Louez.io",
       "description": "Richten Sie Ihren Shop in wenigen Schritten ein"
     },
+    "profile": {
+      "title": "Lernen wir uns kennen",
+      "description": "Erzählen Sie uns etwas über sich, um Ihr Erlebnis zu personalisieren.",
+      "photo": "Profilbild",
+      "photoHelp": "PNG oder JPG, max. 2 MB",
+      "photoError": "Bitte wählen Sie ein Bild aus",
+      "photoSizeError": "Das Bild darf 2 MB nicht überschreiten",
+      "name": "Ihr Name",
+      "namePlaceholder": "Max Mustermann",
+      "businessType": "Sie sind",
+      "businessTypePlaceholder": "Option auswählen",
+      "businessTypes": {
+        "independent": "Selbstständig",
+        "establishedStore": "Etabliertes Geschäft",
+        "association": "Verein"
+      }
+    },
     "store": {
       "title": "Ihre Shop-Informationen",
       "description": "Diese Informationen werden Ihren Kunden angezeigt",
@@ -5070,11 +5092,32 @@
       "viewStore": "Meinen Shop ansehen",
       "goToDashboard": "Zum Dashboard"
     },
+    "preview": {
+      "reserve": "Reservieren",
+      "pay": "Bezahlen"
+    },
+    "source": {
+      "title": "Eine letzte Frage…",
+      "description": "Wie haben Sie von Louez erfahren?",
+      "wordOfMouth": "Mundpropaganda",
+      "searchEngine": "Suchmaschine (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "KI-Assistent (ChatGPT…)",
+      "ads": "Werbung",
+      "other": "Sonstiges",
+      "otherPlaceholder": "Bitte angeben…",
+      "skip": "Überspringen",
+      "finish": "Fertigstellen"
+    },
     "steps": {
       "store": "Shop",
       "branding": "Anpassung",
       "product": "Erstes Produkt",
-      "payment": "Zahlungen"
+      "payment": "Zahlungen",
+      "profile": "Profil",
+      "source": "Quelle"
     }
   },
   "categories": {

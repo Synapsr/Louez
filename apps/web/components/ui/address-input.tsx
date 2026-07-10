@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useQueryClient } from '@tanstack/react-query';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, MapPin, Search, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { createPortal } from 'react-dom';
 import { useDebouncedCallback } from 'use-debounce';
 
 import type { AddressSuggestion } from '@louez/types';
@@ -18,6 +18,7 @@ import {
 import { cn } from '@louez/utils';
 
 import { AddressMapModal } from '@/components/ui/address-map-modal';
+
 import { orpc } from '@/lib/orpc/react';
 
 interface AddressInputProps {
@@ -110,29 +111,32 @@ export function AddressInput({
     };
   }, [isOpen, suggestions.length]);
 
-  const searchAddresses = useCallback(async (query: string) => {
-    if (query.length < 3) {
-      setSuggestions([]);
-      return;
-    }
+  const searchAddresses = useCallback(
+    async (query: string) => {
+      if (query.length < 3) {
+        setSuggestions([]);
+        return;
+      }
 
-    setIsLoading(true);
-    try {
-      const data = await queryClient.fetchQuery(
-        orpc.public.address.autocomplete.queryOptions({
-          input: { query },
-        }),
-      );
-      setSuggestions(data.suggestions || []);
-      setIsOpen((data.suggestions || []).length > 0);
-      setSelectedIndex(-1);
-    } catch (error) {
-      console.error('Address search error:', error);
-      setSuggestions([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [queryClient]);
+      setIsLoading(true);
+      try {
+        const data = await queryClient.fetchQuery(
+          orpc.public.address.autocomplete.queryOptions({
+            input: { query },
+          }),
+        );
+        setSuggestions(data.suggestions || []);
+        setIsOpen((data.suggestions || []).length > 0);
+        setSelectedIndex(-1);
+      } catch (error) {
+        console.error('Address search error:', error);
+        setSuggestions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [queryClient],
+  );
 
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
 
@@ -144,7 +148,11 @@ export function AddressInput({
       longitude !== null &&
       longitude !== undefined;
 
-    if (query.length < 3 || (hasCoordinates && query === displayAddress) || disabled) {
+    if (
+      query.length < 3 ||
+      (hasCoordinates && query === displayAddress) ||
+      disabled
+    ) {
       return;
     }
 
@@ -160,11 +168,7 @@ export function AddressInput({
         return;
       }
 
-      const {
-        formattedAddress,
-        latitude: lat,
-        longitude: lng,
-      } = data.details;
+      const { formattedAddress, latitude: lat, longitude: lng } = data.details;
 
       setInputValue(formattedAddress);
       onChange(formattedAddress, lat, lng, formattedAddress, additionalInfo);
@@ -195,24 +199,36 @@ export function AddressInput({
     }
   };
 
-  const handleSelect = useCallback(async (suggestion: AddressSuggestion) => {
-    setIsLoading(true);
-    try {
-      const data = await queryClient.fetchQuery(
-        orpc.public.address.details.queryOptions({
-          input: { placeId: suggestion.placeId },
-        }),
-      );
+  const handleSelect = useCallback(
+    async (suggestion: AddressSuggestion) => {
+      setIsLoading(true);
+      try {
+        const data = await queryClient.fetchQuery(
+          orpc.public.address.details.queryOptions({
+            input: { placeId: suggestion.placeId },
+          }),
+        );
 
-      if (data.details) {
-        const {
-          formattedAddress,
-          latitude: lat,
-          longitude: lng,
-        } = data.details;
-        setInputValue(formattedAddress);
-        onChange(formattedAddress, lat, lng, formattedAddress, '');
-      } else {
+        if (data.details) {
+          const {
+            formattedAddress,
+            latitude: lat,
+            longitude: lng,
+          } = data.details;
+          setInputValue(formattedAddress);
+          onChange(formattedAddress, lat, lng, formattedAddress, '');
+        } else {
+          setInputValue(suggestion.description);
+          onChange(
+            suggestion.description,
+            null,
+            null,
+            suggestion.description,
+            '',
+          );
+        }
+      } catch (error) {
+        console.error('Error fetching address details:', error);
         setInputValue(suggestion.description);
         onChange(
           suggestion.description,
@@ -221,18 +237,15 @@ export function AddressInput({
           suggestion.description,
           '',
         );
+      } finally {
+        setSuggestions([]);
+        setIsOpen(false);
+        setIsLoading(false);
+        inputRef.current?.blur();
       }
-    } catch (error) {
-      console.error('Error fetching address details:', error);
-      setInputValue(suggestion.description);
-      onChange(suggestion.description, null, null, suggestion.description, '');
-    } finally {
-      setSuggestions([]);
-      setIsOpen(false);
-      setIsLoading(false);
-      inputRef.current?.blur();
-    }
-  }, [onChange, queryClient]);
+    },
+    [onChange, queryClient],
+  );
 
   const handleClear = () => {
     setInputValue('');
@@ -314,7 +327,6 @@ export function AddressInput({
     <>
       <div ref={containerRef} className={cn('relative', className)}>
         <InputGroup>
-
           <InputGroupInput
             ref={inputRef}
             type="text"
@@ -333,15 +345,14 @@ export function AddressInput({
             data-lpignore="true"
             className="py-0.5"
           />
-          <InputGroupAddon align="inline-end" className="gap-0.5 ">
+          <InputGroupAddon align="inline-end" className="gap-0.5">
             {isLoading && (
               <InputGroupButton
                 type="button"
                 size="icon-sm"
-
                 title={t('editLocation')}
               >
-              <Loader2 className="text-muted-foreground size-4 animate-spin" />
+                <Loader2 className="text-muted-foreground size-4 animate-spin" />
               </InputGroupButton>
             )}
             {!isLoading && (
@@ -371,7 +382,6 @@ export function AddressInput({
             )}
           </InputGroupAddon>
         </InputGroup>
-
       </div>
 
       {/* Suggestions dropdown (portal to escape overflow clipping) */}
@@ -400,9 +410,7 @@ export function AddressInput({
               >
                 <Search className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">
-                    {suggestion.mainText}
-                  </p>
+                  <p className="truncate font-medium">{suggestion.mainText}</p>
                   {suggestion.secondaryText && (
                     <p className="text-muted-foreground truncate text-xs">
                       {suggestion.secondaryText}

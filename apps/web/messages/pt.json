@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {hora} other {horas}}",
     "weekUnit": "{count, plural, one {semana} other {semanas}}",
     "minuteUnit": "{count, plural, one {minuto} other {minutos}}",
+    "phoneInput": {
+      "selectCountry": "Selecionar um país",
+      "searchCountry": "Pesquisar um país...",
+      "noResults": "Nenhum país encontrado"
+    },
     "addressInput": {
       "placeholder": "Pesquisar um endereco...",
       "coordinatesSaved": "Coordenadas salvas",
@@ -4984,6 +4989,23 @@
       "title": "Bem-vindo ao Louez.io",
       "description": "Configure sua loja em poucos passos"
     },
+    "profile": {
+      "title": "Vamos nos conhecer",
+      "description": "Conte-nos um pouco sobre você para personalizar a sua experiência.",
+      "photo": "Foto de perfil",
+      "photoHelp": "PNG ou JPG, máx. 2 MB",
+      "photoError": "Selecione uma imagem",
+      "photoSizeError": "A imagem não deve exceder 2 MB",
+      "name": "O seu nome",
+      "namePlaceholder": "João Silva",
+      "businessType": "Você é",
+      "businessTypePlaceholder": "Selecione uma opção",
+      "businessTypes": {
+        "independent": "Independente",
+        "establishedStore": "Loja estabelecida",
+        "association": "Associação"
+      }
+    },
     "store": {
       "title": "Informacoes da sua loja",
       "description": "Estas informacoes serao visiveis para seus clientes",
@@ -5070,11 +5092,32 @@
       "viewStore": "Ver minha loja",
       "goToDashboard": "Ir para o painel"
     },
+    "preview": {
+      "reserve": "Reservar",
+      "pay": "Pagar"
+    },
+    "source": {
+      "title": "Uma última coisa…",
+      "description": "Como conheceu a Louez?",
+      "wordOfMouth": "Boca a boca",
+      "searchEngine": "Motor de busca (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "Assistente de IA (ChatGPT…)",
+      "ads": "Publicidade",
+      "other": "Outro",
+      "otherPlaceholder": "Especifique…",
+      "skip": "Ignorar",
+      "finish": "Concluir"
+    },
     "steps": {
       "store": "Loja",
       "branding": "Personalizacao",
       "product": "Primeiro produto",
-      "payment": "Pagamentos"
+      "payment": "Pagamentos",
+      "profile": "Perfil",
+      "source": "Origem"
     }
   },
   "categories": {

@@ -2,20 +2,25 @@
 
 import * as React from 'react';
 
-import { Input } from '@louez/ui';
+import { ChevronsUpDownIcon, GlobeIcon } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button, Input } from '@louez/ui';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxPopup,
+  ComboboxTrigger,
 } from '@louez/ui';
 import { cn } from '@louez/utils';
 
 import {
+  type CountryPhoneOption,
   formatPhoneInput,
   getCountriesSortedForDisplay,
-  getCountryPhoneData,
   getDefaultPhoneCountry,
   getPhoneInputCountry,
   getPhoneNationalNumber,
@@ -36,7 +41,7 @@ export interface PhoneInputProps extends Omit<
  * PhoneInput component with country selector
  *
  * Features:
- * - Country dropdown with flags for all libphonenumber-js supported countries
+ * - Searchable country combobox for all libphonenumber-js supported countries
  * - Auto-formats national and international numbers
  * - Outputs E.164 format (+33612345678)
  * - Handles various input formats (0612..., +33612..., 0033612...)
@@ -53,27 +58,45 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
     },
     ref,
   ) => {
+    const t = useTranslations('common.phoneInput');
     const countries = React.useMemo(() => getCountriesSortedForDisplay(), []);
     const initialParsed = React.useMemo(
       () => parsePhoneInput(value, defaultCountry),
       [defaultCountry, value],
     );
 
-    const [selectedCountry, setSelectedCountry] = React.useState(
-      initialParsed.country,
+    const [selectedCountry, setSelectedCountry] = React.useState<string | null>(
+      value.trim() ? initialParsed.country : null,
     );
     const [inputValue, setInputValue] = React.useState(
       initialParsed.displayValue,
     );
 
-    // Update internal state when value changes externally
+    // Update internal state when value or defaultCountry changes externally.
+    // While no number is typed, the country follows defaultCountry updates
+    // (e.g. the user picking their country elsewhere in the form) but stays
+    // unselected on mount so the globe placeholder shows.
+    const prevDefaultCountryRef = React.useRef(defaultCountry);
     React.useEffect(() => {
+      const defaultCountryChanged =
+        prevDefaultCountryRef.current !== defaultCountry;
+      prevDefaultCountryRef.current = defaultCountry;
+
       const parsed = parsePhoneInput(value, defaultCountry);
-      setSelectedCountry(parsed.country);
+      if (value.trim()) {
+        setSelectedCountry(parsed.country);
+      } else if (defaultCountryChanged) {
+        setSelectedCountry(getDefaultPhoneCountry(defaultCountry));
+      } else {
+        setSelectedCountry(null);
+      }
       setInputValue(parsed.displayValue);
     }, [defaultCountry, value]);
 
-    const countryData = getCountryPhoneData(selectedCountry);
+    const selectedOption = React.useMemo(
+      () => countries.find((country) => country.iso === selectedCountry) ?? null,
+      [countries, selectedCountry],
+    );
 
     // Build E.164 formatted number and call onChange
     const emitChange = React.useCallback(
@@ -89,9 +112,9 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
       [onChange],
     );
 
-    const handleCountryChange = (iso: string | null) => {
-      if (iso === null) return;
-      const country = getDefaultPhoneCountry(iso);
+    const handleCountryChange = (option: CountryPhoneOption | null) => {
+      if (option === null) return;
+      const country = getDefaultPhoneCountry(option.iso);
       const nationalNumber = getPhoneNationalNumber(inputValue);
       const nextInputValue = formatPhoneInput(nationalNumber, country);
 
@@ -102,51 +125,73 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
 
     const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const input = e.target.value;
-      const formatted = formatPhoneInput(input, selectedCountry);
-      const nextCountry = getPhoneInputCountry(input, selectedCountry);
+      const fallbackCountry = selectedCountry ?? defaultCountry;
+      const formatted = formatPhoneInput(input, fallbackCountry);
+      const nextCountry = input.trim()
+        ? getPhoneInputCountry(input, fallbackCountry)
+        : null;
 
       setSelectedCountry(nextCountry);
       setInputValue(formatted);
-      emitChange(nextCountry, input);
+      emitChange(nextCountry ?? fallbackCountry, input);
     };
 
     return (
       <div className={cn('flex gap-2', className)}>
-        <Select
-          value={selectedCountry}
+        <Combobox
+          items={countries}
+          value={selectedOption}
           onValueChange={handleCountryChange}
+          itemToStringLabel={(item) =>
+            item ? `${item.name} +${item.code}` : ''
+          }
+          isItemEqualToValue={(a, b) => a?.iso === b?.iso}
           disabled={disabled}
         >
-          <SelectTrigger className="w-[100px] flex-shrink-0">
-            <SelectValue>
-              <span className="flex items-center gap-1.5">
-                <span className="text-base leading-none">
-                  {countryData.flag}
-                </span>
-                <span className="text-muted-foreground">
-                  +{countryData.code}
-                </span>
+          <ComboboxTrigger
+            aria-label={selectedOption?.name ?? t('selectCountry')}
+            render={
+              <Button
+                variant="outline"
+                className="w-[84px] shrink-0 justify-between px-3 font-normal"
+              />
+            }
+          >
+            {selectedOption ? (
+              <span className="text-muted-foreground">
+                +{selectedOption.code}
               </span>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {countries.map((country) => (
-              <SelectItem
-                key={country.iso}
-                value={country.iso}
-                label={`${country.name} +${country.code}`}
-              >
-                <span className="flex items-center gap-2">
-                  <span className="text-base leading-none">{country.flag}</span>
-                  <span>{country.name}</span>
-                  <span className="text-muted-foreground ml-auto">
-                    +{country.code}
+            ) : (
+              <GlobeIcon className="text-muted-foreground" />
+            )}
+            <ChevronsUpDownIcon className="text-muted-foreground -me-1 size-4" />
+          </ComboboxTrigger>
+          <ComboboxPopup className="w-72">
+            <div className="border-b p-1.5">
+              <ComboboxInput
+                showTrigger={false}
+                size="sm"
+                placeholder={t('searchCountry')}
+              />
+            </div>
+            <ComboboxEmpty>{t('noResults')}</ComboboxEmpty>
+            <ComboboxList>
+              {(country: CountryPhoneOption) => (
+                <ComboboxItem key={country.iso} value={country}>
+                  <span className="flex items-center gap-2">
+                    <span className="text-base leading-none">
+                      {country.flag}
+                    </span>
+                    <span className="truncate">{country.name}</span>
+                    <span className="text-muted-foreground ml-auto">
+                      +{country.code}
+                    </span>
                   </span>
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxPopup>
+        </Combobox>
         <Input
           ref={ref}
           type="tel"

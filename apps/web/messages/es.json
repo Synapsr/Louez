@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {hora} other {horas}}",
     "weekUnit": "{count, plural, one {semana} other {semanas}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "phoneInput": {
+      "selectCountry": "Seleccionar un país",
+      "searchCountry": "Buscar un país...",
+      "noResults": "No se encontró ningún país"
+    },
     "addressInput": {
       "placeholder": "Buscar una direccion...",
       "coordinatesSaved": "Coordenadas guardadas",
@@ -4990,6 +4995,23 @@
       "title": "Bienvenido a Louez.io",
       "description": "Configure su tienda en unos pocos pasos"
     },
+    "profile": {
+      "title": "Conozcámonos",
+      "description": "Cuéntanos un poco sobre ti para personalizar tu experiencia.",
+      "photo": "Foto de perfil",
+      "photoHelp": "PNG o JPG, máx. 2 MB",
+      "photoError": "Por favor selecciona una imagen",
+      "photoSizeError": "La imagen no debe superar los 2 MB",
+      "name": "Tu nombre",
+      "namePlaceholder": "Juan Pérez",
+      "businessType": "Eres",
+      "businessTypePlaceholder": "Selecciona una opción",
+      "businessTypes": {
+        "independent": "Independiente",
+        "establishedStore": "Tienda establecida",
+        "association": "Asociación"
+      }
+    },
     "store": {
       "title": "Informacion de su tienda",
       "description": "Esta informacion sera visible para sus clientes",
@@ -5076,11 +5098,32 @@
       "viewStore": "Ver mi tienda",
       "goToDashboard": "Ir al panel"
     },
+    "preview": {
+      "reserve": "Reservar",
+      "pay": "Pagar"
+    },
+    "source": {
+      "title": "Una última cosa…",
+      "description": "¿Cómo conociste Louez?",
+      "wordOfMouth": "Boca a boca",
+      "searchEngine": "Motor de búsqueda (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "Asistente de IA (ChatGPT…)",
+      "ads": "Publicidad",
+      "other": "Otro",
+      "otherPlaceholder": "Cuéntanos…",
+      "skip": "Omitir",
+      "finish": "Finalizar"
+    },
     "steps": {
       "store": "Tienda",
       "branding": "Personalizacion",
       "product": "Primer producto",
-      "payment": "Pagos"
+      "payment": "Pagos",
+      "profile": "Perfil",
+      "source": "Fuente"
     }
   },
   "categories": {

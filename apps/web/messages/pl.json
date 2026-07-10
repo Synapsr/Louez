@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {godzina} few {godziny} many {godzin} other {godzin}}",
     "weekUnit": "{count, plural, one {tydzień} few {tygodnie} many {tygodni} other {tygodni}}",
     "minuteUnit": "{count, plural, one {minuta} few {minuty} many {minut} other {minut}}",
+    "phoneInput": {
+      "selectCountry": "Wybierz kraj",
+      "searchCountry": "Szukaj kraju...",
+      "noResults": "Nie znaleziono kraju"
+    },
     "addressInput": {
       "placeholder": "Wyszukaj adres...",
       "coordinatesSaved": "Współrzędne zapisane",
@@ -4984,6 +4989,23 @@
       "title": "Witamy w Louez.io",
       "description": "Skonfiguruj swój sklep w kilku krokach"
     },
+    "profile": {
+      "title": "Poznajmy się",
+      "description": "Opowiedz nam trochę o sobie, aby spersonalizować Twoje doświadczenie.",
+      "photo": "Zdjęcie profilowe",
+      "photoHelp": "PNG lub JPG, maks. 2 MB",
+      "photoError": "Wybierz obraz",
+      "photoSizeError": "Obraz nie może przekraczać 2 MB",
+      "name": "Twoje imię i nazwisko",
+      "namePlaceholder": "Jan Kowalski",
+      "businessType": "Jesteś",
+      "businessTypePlaceholder": "Wybierz opcję",
+      "businessTypes": {
+        "independent": "Niezależny",
+        "establishedStore": "Istniejący sklep",
+        "association": "Stowarzyszenie"
+      }
+    },
     "store": {
       "title": "Informacje o sklepie",
       "description": "Te informacje będą widoczne dla Twoich klientów",
@@ -5070,11 +5092,32 @@
       "viewStore": "Zobacz mój sklep",
       "goToDashboard": "Przejdź do panelu"
     },
+    "preview": {
+      "reserve": "Zarezerwuj",
+      "pay": "Zapłać"
+    },
+    "source": {
+      "title": "Ostatnia rzecz…",
+      "description": "Skąd znasz Louez?",
+      "wordOfMouth": "Polecenie znajomych",
+      "searchEngine": "Wyszukiwarka (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "Asystent AI (ChatGPT…)",
+      "ads": "Reklama",
+      "other": "Inne",
+      "otherPlaceholder": "Doprecyzuj…",
+      "skip": "Pomiń",
+      "finish": "Zakończ"
+    },
     "steps": {
       "store": "Sklep",
       "branding": "Personalizacja",
       "product": "Pierwszy produkt",
-      "payment": "Płatności"
+      "payment": "Płatności",
+      "profile": "Profil",
+      "source": "Źródło"
     }
   },
   "categories": {

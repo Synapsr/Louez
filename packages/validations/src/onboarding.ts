@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { isValidImageUrl, isValidImageUrlClient } from './image';
+import { isPossiblePhoneNumberInput } from './phone';
 
 // ===== RESERVED SLUGS =====
 // These slugs are reserved to prevent namespace conflicts and potential phishing
@@ -108,6 +109,58 @@ export function isReservedSlug(slug: string): boolean {
   );
 }
 
+// ===== USER PROFILE & ACQUISITION =====
+
+export const BUSINESS_TYPES = [
+  'independent',
+  'established_store',
+  'association',
+] as const;
+export type BusinessType = (typeof BUSINESS_TYPES)[number];
+
+// User-selectable channels. 'skipped' and 'invitation' are also stored in
+// users.acquisitionChannel but are set programmatically, never shown as options.
+export const ACQUISITION_CHANNELS = [
+  'word_of_mouth',
+  'search_engine',
+  'instagram_tiktok',
+  'facebook',
+  'youtube',
+  'ai_assistant',
+  'ads',
+  'other',
+] as const;
+export type AcquisitionChannel = (typeof ACQUISITION_CHANNELS)[number];
+
+export const createProfileSchema = (
+  t: (key: string, params?: Record<string, string | number | Date>) => string,
+) =>
+  z.object({
+    name: z
+      .string()
+      .trim()
+      .min(2, t('minLength', { min: 2 }))
+      .max(255, t('maxLength', { max: 255 })),
+    businessType: z.enum(BUSINESS_TYPES).nullable(),
+  });
+
+export const profileSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, 'validation.minLength')
+    .max(255, 'validation.maxLength'),
+  businessType: z.enum(BUSINESS_TYPES).nullable(),
+});
+
+export const acquisitionSchema = z.object({
+  channel: z.enum([...ACQUISITION_CHANNELS, 'skipped']),
+  other: z.string().trim().max(255).optional().or(z.literal('')),
+});
+
+export type ProfileInput = z.infer<typeof profileSchema>;
+export type AcquisitionInput = z.infer<typeof acquisitionSchema>;
+
 // ===== SCHEMA FACTORIES =====
 // These schemas accept a translation function for client-side validation with i18n
 
@@ -131,7 +184,11 @@ export const createStoreInfoSchema = (
     latitude: z.number().nullable(),
     longitude: z.number().nullable(),
     email: z.email(t('email')).or(z.literal('')),
-    phone: z.string().or(z.literal('')),
+    phone: z
+      .string()
+      .refine((value) => !value || isPossiblePhoneNumberInput(value), {
+        message: t('phone'),
+      }),
   });
 
 export const createBrandingSchema = (
@@ -197,7 +254,13 @@ export const storeInfoSchema = z.object({
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
   email: z.email('validation.email').optional().or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
+  phone: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine((value) => !value || isPossiblePhoneNumberInput(value), {
+      message: 'validation.phone',
+    }),
 });
 
 export const brandingSchema = z.object({

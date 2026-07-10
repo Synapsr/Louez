@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {uur} other {uren}}",
     "weekUnit": "{count, plural, one {week} other {weken}}",
     "minuteUnit": "{count, plural, one {minuut} other {minuten}}",
+    "phoneInput": {
+      "selectCountry": "Selecteer een land",
+      "searchCountry": "Zoek een land...",
+      "noResults": "Geen land gevonden"
+    },
     "addressInput": {
       "placeholder": "Zoek een adres...",
       "coordinatesSaved": "Coördinaten opgeslagen",
@@ -4984,6 +4989,23 @@
       "title": "Welkom bij Louez.io",
       "description": "Stel uw winkel in enkele stappen in"
     },
+    "profile": {
+      "title": "Laten we kennismaken",
+      "description": "Vertel ons iets over jezelf om je ervaring te personaliseren.",
+      "photo": "Profielfoto",
+      "photoHelp": "PNG of JPG, max. 2 MB",
+      "photoError": "Selecteer een afbeelding",
+      "photoSizeError": "De afbeelding mag niet groter zijn dan 2 MB",
+      "name": "Je naam",
+      "namePlaceholder": "Jan Jansen",
+      "businessType": "Je bent",
+      "businessTypePlaceholder": "Selecteer een optie",
+      "businessTypes": {
+        "independent": "Zelfstandige",
+        "establishedStore": "Gevestigde winkel",
+        "association": "Vereniging"
+      }
+    },
     "store": {
       "title": "Uw winkelinformatie",
       "description": "Deze informatie is zichtbaar voor uw klanten",
@@ -5070,11 +5092,32 @@
       "viewStore": "Mijn winkel bekijken",
       "goToDashboard": "Naar dashboard"
     },
+    "preview": {
+      "reserve": "Reserveren",
+      "pay": "Betalen"
+    },
+    "source": {
+      "title": "Nog één ding…",
+      "description": "Hoe heb je Louez leren kennen?",
+      "wordOfMouth": "Mond-tot-mond",
+      "searchEngine": "Zoekmachine (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "AI-assistent (ChatGPT…)",
+      "ads": "Advertenties",
+      "other": "Anders",
+      "otherPlaceholder": "Vertel meer…",
+      "skip": "Overslaan",
+      "finish": "Afronden"
+    },
     "steps": {
       "store": "Winkel",
       "branding": "Aanpassing",
       "product": "Eerste product",
-      "payment": "Betalingen"
+      "payment": "Betalingen",
+      "profile": "Profiel",
+      "source": "Bron"
     }
   },
   "categories": {
