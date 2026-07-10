@@ -38,11 +38,11 @@ type AdvisorWidgetProps = {
   welcomeMessage?: string;
 };
 
-export function AdvisorWidget({
+export const AdvisorWidget = ({
   storeSlug,
   displayName,
   welcomeMessage,
-}: AdvisorWidgetProps) {
+}: AdvisorWidgetProps) => {
   const {
     isOpen,
     open,
@@ -320,4 +320,4 @@ export function AdvisorWidget({
       />
     </>
   );
-}
+};

@@ -14,7 +14,7 @@ type AdvisorLauncherProps = {
  * Floating advisor button. Sits above the mobile cart button (bottom-4) and
  * in the bottom-right corner on desktop where no cart button exists.
  */
-export function AdvisorLauncher({ isOpen, onClick }: AdvisorLauncherProps) {
+export const AdvisorLauncher = ({ isOpen, onClick }: AdvisorLauncherProps) => {
   const t = useTranslations('storefront.advisor');
 
   return (
@@ -33,4 +33,4 @@ export function AdvisorLauncher({ isOpen, onClick }: AdvisorLauncherProps) {
       <MessageCircleQuestion className="h-6 w-6" />
     </button>
   );
-}
+};

@@ -15,7 +15,7 @@ type AdvisorInputProps = {
   isLoading: boolean;
 };
 
-export function AdvisorInput({ onSend, isLoading }: AdvisorInputProps) {
+export const AdvisorInput = ({ onSend, isLoading }: AdvisorInputProps) => {
   const t = useTranslations('storefront.advisor');
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -75,4 +75,4 @@ export function AdvisorInput({ onSend, isLoading }: AdvisorInputProps) {
       </Button>
     </div>
   );
-}
+};

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH } from './ai-advisor';
+
 // Image URL validation - allows http/https URLs and legacy base64 data URIs
 // Note: base64 is allowed for backwards compatibility with old products,
 // but new uploads should go through S3
@@ -159,7 +161,12 @@ export const createProductSchema = (
         .min(2, t('minLength', { min: 2 }))
         .max(255, t('maxLength', { max: 255 })),
       description: z.string(),
-      aiContext: z.string().max(2000, t('maxLength', { max: 2000 })),
+      aiContext: z
+        .string()
+        .max(
+          AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH,
+          t('maxLength', { max: AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH }),
+        ),
       categoryId: z.string().nullable(),
       price: z
         .string()
@@ -351,7 +358,10 @@ export const productSchema = z
       .min(2, 'validation.minLength')
       .max(255, 'validation.maxLength'),
     description: z.string().optional(),
-    aiContext: z.string().max(2000, 'validation.maxLength').optional(),
+    aiContext: z
+      .string()
+      .max(AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH, 'validation.maxLength')
+      .optional(),
     categoryId: z.string().optional().nullable(),
     price: z
       .string()

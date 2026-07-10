@@ -1,10 +1,10 @@
 'use client';
 
 import type { UIMessage } from '@ai-sdk/react';
-import { Sparkles } from 'lucide-react';
 
 import { cn } from '@louez/utils';
 
+import { AdvisorAssistantAvatar } from './advisor-assistant-avatar';
 import { AdvisorProductCards } from './advisor-product-cards';
 import type { AdvisorRecommendedProduct } from './advisor-product-cards';
 
@@ -15,21 +15,15 @@ type AdvisorMessagesProps = {
   welcomeText: string;
 };
 
-const AssistantAvatar = () => (
-  <div className="mr-2.5 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-    <Sparkles className="h-3 w-3 text-primary" />
-  </div>
-);
-
-export function AdvisorMessages({
+export const AdvisorMessages = ({
   messages,
   isLoading,
   welcomeText,
-}: AdvisorMessagesProps) {
+}: AdvisorMessagesProps) => {
   return (
     <div className="space-y-4 pb-2">
       <div className="flex justify-start">
-        <AssistantAvatar />
+        <AdvisorAssistantAvatar />
         <div className="max-w-[85%] pt-0.5 text-sm leading-relaxed text-foreground">
           {welcomeText}
         </div>
@@ -43,7 +37,7 @@ export function AdvisorMessages({
             message.role === 'user' ? 'justify-end' : 'justify-start',
           )}
         >
-          {message.role === 'assistant' && <AssistantAvatar />}
+          {message.role === 'assistant' && <AdvisorAssistantAvatar />}
           <div
             className={cn(
               'max-w-[85%] text-sm leading-relaxed',
@@ -82,7 +76,7 @@ export function AdvisorMessages({
 
       {isLoading && messages[messages.length - 1]?.role === 'user' && (
         <div className="flex items-start">
-          <AssistantAvatar />
+          <AdvisorAssistantAvatar />
           <span className="flex gap-1.5 pt-2.5">
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/40 [animation-delay:0ms]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/40 [animation-delay:150ms]" />
@@ -92,4 +86,4 @@ export function AdvisorMessages({
       )}
     </div>
   );
-}
+};

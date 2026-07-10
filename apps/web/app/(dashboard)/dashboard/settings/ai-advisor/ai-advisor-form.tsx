@@ -22,7 +22,9 @@ import {
   toastManager,
 } from '@louez/ui'
 import {
+  AI_ADVISOR_DISPLAY_NAME_MAX_LENGTH,
   AI_ADVISOR_STORE_CONTEXT_MAX_LENGTH,
+  AI_ADVISOR_WELCOME_MESSAGE_MAX_LENGTH,
   defaultAiAdvisorSettings,
 } from '@louez/validations'
 import type { AiAdvisorSettings } from '@louez/types'
@@ -45,8 +47,18 @@ const createAiAdvisorSettingsSchema = (
         AI_ADVISOR_STORE_CONTEXT_MAX_LENGTH,
         t('maxLength', { max: AI_ADVISOR_STORE_CONTEXT_MAX_LENGTH }),
       ),
-    welcomeMessage: z.string().max(500, t('maxLength', { max: 500 })),
-    displayName: z.string().max(60, t('maxLength', { max: 60 })),
+    welcomeMessage: z
+      .string()
+      .max(
+        AI_ADVISOR_WELCOME_MESSAGE_MAX_LENGTH,
+        t('maxLength', { max: AI_ADVISOR_WELCOME_MESSAGE_MAX_LENGTH }),
+      ),
+    displayName: z
+      .string()
+      .max(
+        AI_ADVISOR_DISPLAY_NAME_MAX_LENGTH,
+        t('maxLength', { max: AI_ADVISOR_DISPLAY_NAME_MAX_LENGTH }),
+      ),
   })
 
 interface Store {
@@ -260,7 +272,7 @@ export const AiAdvisorForm = ({
                           label={`${t('displayName')} (${tCommon('optional')})`}
                           description={t('displayNameDescription')}
                           placeholder={t('displayNamePlaceholder')}
-                          maxLength={60}
+                          maxLength={AI_ADVISOR_DISPLAY_NAME_MAX_LENGTH}
                         />
                       )}
                     </form.AppField>
@@ -271,7 +283,7 @@ export const AiAdvisorForm = ({
                           label={`${t('welcomeMessage')} (${tCommon('optional')})`}
                           description={t('welcomeMessageDescription')}
                           placeholder={t('welcomeMessagePlaceholder')}
-                          maxLength={500}
+                          maxLength={AI_ADVISOR_WELCOME_MESSAGE_MAX_LENGTH}
                         />
                       )}
                     </form.AppField>

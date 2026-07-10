@@ -7,10 +7,9 @@ import {
   customers,
   reservations,
 } from '@louez/db/schema'
+import type { AdvisorConversationFilter } from '@louez/validations'
 
 import { ApiServiceError } from './errors'
-
-export type AdvisorConversationFilter = 'all' | 'converted' | 'not_converted'
 
 const DEFAULT_PAGE_SIZE = 20
 

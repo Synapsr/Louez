@@ -1,9 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
-import { eq } from 'drizzle-orm'
 
-import { db } from '@louez/db'
-import { stores } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { getStorePlan } from '@/lib/plan-limits'
 import { isAIChatConfigured } from '@/lib/ai/provider'
@@ -17,13 +14,7 @@ export default async function AiAdvisorSettingsPage() {
     redirect('/onboarding')
   }
 
-  const [plan, settingsRows] = await Promise.all([
-    getStorePlan(store.id),
-    db
-      .select({ aiAdvisorSettings: stores.aiAdvisorSettings })
-      .from(stores)
-      .where(eq(stores.id, store.id)),
-  ])
+  const plan = await getStorePlan(store.id)
 
   const t = await getTranslations('dashboard.settings')
 
@@ -36,7 +27,7 @@ export default async function AiAdvisorSettingsPage() {
       <AiAdvisorForm
         store={{
           id: store.id,
-          aiAdvisorSettings: settingsRows[0]?.aiAdvisorSettings ?? null,
+          aiAdvisorSettings: store.aiAdvisorSettings,
         }}
         hasFeatureAccess={plan.features.aiAdvisor}
         aiConfigured={isAIChatConfigured()}

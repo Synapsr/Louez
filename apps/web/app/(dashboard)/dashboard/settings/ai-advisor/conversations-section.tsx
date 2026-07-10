@@ -36,18 +36,21 @@ import {
   TabsList,
   TabsTab,
 } from '@louez/ui'
-import { cn } from '@louez/utils'
+import type { AdvisorConversationFilter } from '@louez/validations'
+
+import {
+  AdvisorCollectedData,
+  AdvisorTranscriptMessages,
+} from '@/components/dashboard/advisor-transcript'
 import { orpc } from '@/lib/orpc/react'
 
 const PAGE_SIZE = 20
-
-type ConversationFilter = 'all' | 'converted' | 'not_converted'
 
 export const AdvisorConversationsSection = () => {
   const t = useTranslations('dashboard.settings.aiAdvisor.conversations')
   const format = useFormatter()
 
-  const [filter, setFilter] = useState<ConversationFilter>('all')
+  const [filter, setFilter] = useState<AdvisorConversationFilter>('all')
   const [page, setPage] = useState(1)
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
@@ -79,12 +82,6 @@ export const AdvisorConversationsSection = () => {
   }
 
   const transcript = transcriptQuery.data
-  const summary = transcript?.collectedData?.summary
-  const collectedEntries = transcript?.collectedData
-    ? Object.entries(transcript.collectedData).filter(
-        ([key]) => key !== 'summary',
-      )
-    : []
 
   return (
     <Card>
@@ -247,51 +244,8 @@ export const AdvisorConversationsSection = () => {
               </div>
             ) : transcript ? (
               <>
-                {(summary || collectedEntries.length > 0) && (
-                  <div className="space-y-3 rounded-lg bg-muted/50 p-4">
-                    {summary && <p className="text-sm">{summary}</p>}
-                    {collectedEntries.length > 0 && (
-                      <dl className="grid gap-1.5">
-                        {collectedEntries.map(([key, value]) => (
-                          <div
-                            key={key}
-                            className="flex items-baseline gap-2 text-sm"
-                          >
-                            <dt className="shrink-0 font-medium text-muted-foreground">
-                              {key}
-                            </dt>
-                            <dd className="min-w-0 break-words">{value}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    )}
-                  </div>
-                )}
-
-                <div className="space-y-3">
-                  {transcript.messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        'flex',
-                        message.role === 'user'
-                          ? 'justify-end'
-                          : 'justify-start',
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'max-w-[85%] whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm',
-                          message.role === 'user'
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted',
-                        )}
-                      >
-                        {message.content}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <AdvisorCollectedData collectedData={transcript.collectedData} />
+                <AdvisorTranscriptMessages messages={transcript.messages} />
               </>
             ) : (
               <p className="text-sm text-muted-foreground">

@@ -24,7 +24,9 @@ type AdvisorProductCardsProps = {
 };
 
 /** Renders a recommend_products tool result as tappable product cards. */
-export function AdvisorProductCards({ products }: AdvisorProductCardsProps) {
+export const AdvisorProductCards = ({
+  products,
+}: AdvisorProductCardsProps) => {
   const t = useTranslations('storefront.product');
   const { currency, storeSlug } = useStore();
   const { getUrl } = useStorefrontUrl(storeSlug);
@@ -69,4 +71,4 @@ export function AdvisorProductCards({ products }: AdvisorProductCardsProps) {
       ))}
     </div>
   );
-}
+};

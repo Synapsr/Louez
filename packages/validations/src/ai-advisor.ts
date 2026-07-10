@@ -4,6 +4,8 @@ import type { AiAdvisorSettings } from '@louez/types'
 export const AI_ADVISOR_STORE_CONTEXT_MAX_LENGTH = 4000
 export const AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH = 2000
 export const AI_ADVISOR_MESSAGE_MAX_LENGTH = 2000
+export const AI_ADVISOR_WELCOME_MESSAGE_MAX_LENGTH = 500
+export const AI_ADVISOR_DISPLAY_NAME_MAX_LENGTH = 60
 
 export const aiAdvisorModeSchema = z.enum([
   'optional',
@@ -15,8 +17,11 @@ export const aiAdvisorSettingsSchema = z.object({
   enabled: z.boolean(),
   mode: aiAdvisorModeSchema,
   storeContext: z.string().max(AI_ADVISOR_STORE_CONTEXT_MAX_LENGTH),
-  welcomeMessage: z.string().max(500).optional(),
-  displayName: z.string().max(60).optional(),
+  welcomeMessage: z
+    .string()
+    .max(AI_ADVISOR_WELCOME_MESSAGE_MAX_LENGTH)
+    .optional(),
+  displayName: z.string().max(AI_ADVISOR_DISPLAY_NAME_MAX_LENGTH).optional(),
 })
 
 export type AiAdvisorSettingsInput = z.infer<typeof aiAdvisorSettingsSchema>
@@ -49,8 +54,18 @@ export type AdvisorCartSnapshot = z.infer<typeof advisorCartSnapshotSchema>
 // oRPC input/output schemas
 // ============================================================================
 
+export const advisorConversationFilterSchema = z.enum([
+  'all',
+  'converted',
+  'not_converted',
+])
+
+export type AdvisorConversationFilter = z.infer<
+  typeof advisorConversationFilterSchema
+>
+
 export const advisorConversationsListInputSchema = z.object({
-  filter: z.enum(['all', 'converted', 'not_converted']).optional(),
+  filter: advisorConversationFilterSchema.optional(),
   page: z.number().int().min(1).optional(),
   pageSize: z.number().int().min(1).max(50).optional(),
 })

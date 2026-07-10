@@ -19,7 +19,9 @@ type CheckoutAdvisorGateProps = {
  * - required mode: blocking card until the advisor validates the cart
  * - recommended mode: dismissible, non-blocking suggestion
  */
-export function CheckoutAdvisorGateCard({ gate }: CheckoutAdvisorGateProps) {
+export const CheckoutAdvisorGateCard = ({
+  gate,
+}: CheckoutAdvisorGateProps) => {
   const t = useTranslations('storefront.checkout.advisor');
   const [dismissed, setDismissed] = useState(false);
 
@@ -88,4 +90,4 @@ export function CheckoutAdvisorGateCard({ gate }: CheckoutAdvisorGateProps) {
       </CardContent>
     </Card>
   );
-}
+};

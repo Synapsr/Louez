@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@louez/ui'
+import { AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH } from '@louez/validations'
 
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { getFieldError } from '@/hooks/form/form-context'
@@ -113,7 +114,7 @@ export function ProductFormStepInfo({
                 placeholder={t('aiContextPlaceholder')}
                 description={t('aiContextHint')}
                 rows={4}
-                maxLength={2000}
+                maxLength={AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH}
               />
             )}
           </form.AppField>

@@ -29,7 +29,7 @@ type AdvisorPanelProps = {
   onRestart: () => void;
 };
 
-export function AdvisorPanel({
+export const AdvisorPanel = ({
   isOpen,
   onClose,
   displayName,
@@ -42,7 +42,7 @@ export function AdvisorPanel({
   errorCode,
   onSend,
   onRestart,
-}: AdvisorPanelProps) {
+}: AdvisorPanelProps) => {
   const t = useTranslations('storefront.advisor');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -207,4 +207,4 @@ export function AdvisorPanel({
       </div>
     </>
   );
-}
+};
