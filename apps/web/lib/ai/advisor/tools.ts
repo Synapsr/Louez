@@ -1,5 +1,5 @@
 import { tool } from 'ai'
-import { and, eq, inArray, like } from 'drizzle-orm'
+import { and, eq, inArray, like, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -11,6 +11,7 @@ import {
   categories,
   db,
   effectiveProductQuantitySql,
+  productPricingTiers,
   products,
   stores,
 } from '@louez/db'
@@ -24,12 +25,16 @@ export type AdvisorChatContext = {
   cart: AdvisorCartSnapshot | null
 }
 
-/** Public product fields the advisor may see and discuss. */
+/**
+ * Public product fields the advisor may return from tools. Server-tool
+ * outputs are streamed to the customer's browser as UI message parts, so
+ * aiContext must NEVER appear here — the owner guidance reaches the model
+ * through the system prompt instead (see buildAdvisorSystemPrompt).
+ */
 const advisorProductColumns = {
   id: products.id,
   name: products.name,
   description: products.description,
-  aiContext: products.aiContext,
   price: products.price,
   deposit: products.deposit,
   pricingMode: products.pricingMode,
@@ -45,7 +50,7 @@ export function createAdvisorTools(ctx: AdvisorChatContext) {
   return {
     list_products: tool({
       description:
-        'List the store catalog (active products only). Each product may carry owner guidance in aiContext — always honor it when advising.',
+        'List the store catalog (active products only). Owner guidance per product is in your system prompt — always honor it when advising.',
       inputSchema: z.object({
         search: z.string().optional().describe('Search by product name'),
         categoryId: z.string().optional().describe('Filter by category ID'),
@@ -76,51 +81,42 @@ export function createAdvisorTools(ctx: AdvisorChatContext) {
 
     get_product: tool({
       description:
-        'Get details of one product: description, owner guidance (aiContext), pricing tiers, options.',
+        'Get details of one product: description, pricing tiers, options.',
       inputSchema: z.object({
         productId: z.string().describe('The product ID'),
       }),
       execute: async ({ productId }) => {
-        const product = await db.query.products.findFirst({
-          where: and(
-            eq(products.storeId, ctx.storeId),
-            eq(products.id, productId),
-            eq(products.status, 'active'),
-          ),
+        const [row] = await db
+          .select({
+            ...advisorProductColumns,
+            quantity: effectiveProductQuantitySql(),
+            bookingAttributeAxes: products.bookingAttributeAxes,
+            categoryName: categories.name,
+          })
+          .from(products)
+          .leftJoin(categories, eq(products.categoryId, categories.id))
+          .where(
+            and(
+              eq(products.storeId, ctx.storeId),
+              eq(products.id, productId),
+              eq(products.status, 'active'),
+            ),
+          )
+          .limit(1)
+
+        if (!row) return { error: 'Product not found' }
+
+        const pricingTiers = await db.query.productPricingTiers.findMany({
+          where: eq(productPricingTiers.productId, productId),
           columns: {
-            id: true,
-            name: true,
-            description: true,
-            aiContext: true,
+            minDuration: true,
+            period: true,
+            discountPercent: true,
             price: true,
-            deposit: true,
-            pricingMode: true,
-            quantity: true,
-            trackUnits: true,
-            bookingAttributeAxes: true,
-          },
-          with: {
-            category: { columns: { id: true, name: true } },
-            pricingTiers: {
-              columns: {
-                minDuration: true,
-                period: true,
-                discountPercent: true,
-                price: true,
-              },
-            },
-            units: { columns: { lifecycleStatus: true } },
           },
         })
 
-        if (!product) return { error: 'Product not found' }
-
-        const { units, ...publicProduct } = product
-        const effectiveQuantity = product.trackUnits
-          ? units.filter((unit) => unit.lifecycleStatus === 'active').length
-          : product.quantity
-
-        return { product: { ...publicProduct, quantity: effectiveQuantity } }
+        return { product: { ...row, pricingTiers } }
       },
     }),
 
@@ -237,7 +233,7 @@ export function createAdvisorTools(ctx: AdvisorChatContext) {
 
     record_qualification: tool({
       description:
-        'Record the facts you verified about the customer (e.g. vehicle model, licence type, event size) so the store owner can see them. Call it as soon as you learn a relevant fact. Set ready=true ONLY once every owner requirement is verified for EVERY product in the cart — this validates the reservation.',
+        'Record the facts you verified about the customer (e.g. vehicle model, licence type, event size) so the store owner can see them. Call it as soon as you learn a relevant fact. Set ready=true ONLY once every owner requirement is verified for EVERY product in the cart, for the exact rental dates — this validates the reservation. Set ready=false when a check fails or the situation changed: it revokes any previous validation.',
       inputSchema: z.object({
         facts: z
           .record(z.string(), z.string())
@@ -251,36 +247,37 @@ export function createAdvisorTools(ctx: AdvisorChatContext) {
           .describe('true only when all requirements are verified for the whole cart'),
       }),
       execute: async ({ facts, summary, ready }) => {
-        const conversation = await db.query.aiAdvisorConversations.findFirst({
-          where: and(
-            eq(aiAdvisorConversations.id, ctx.conversationId),
-            eq(aiAdvisorConversations.storeId, ctx.storeId),
-          ),
-          columns: { collectedData: true },
-        })
-        if (!conversation) return { error: 'Conversation not found' }
+        // The validated cart (items, quantities and rental period) is frozen
+        // server-side from the request cart — never from model arguments —
+        // and checkout later requires an exact match (anti-bypass).
+        const validatedCart = ready
+          ? {
+              items: ctx.cart?.items ?? [],
+              startDate: ctx.cart?.startDate ?? null,
+              endDate: ctx.cart?.endDate ?? null,
+            }
+          : null
 
-        // The validated product list is derived server-side from the request
-        // cart — never from model arguments (anti-bypass).
-        const cartProductIds = ctx.cart?.items.map((item) => item.productId) ?? []
-
-        await db
+        // Single atomic update: facts merge into the existing JSON in SQL
+        // (no read-then-write window), validation is set or revoked.
+        const result = await db
           .update(aiAdvisorConversations)
           .set({
-            collectedData: {
-              ...conversation.collectedData,
-              ...facts,
-              summary,
-            },
-            ...(ready
-              ? {
-                  validatedAt: new Date(),
-                  validatedProductIds: cartProductIds,
-                }
-              : {}),
+            collectedData: sql`JSON_MERGE_PATCH(COALESCE(${aiAdvisorConversations.collectedData}, '{}'), ${JSON.stringify({ ...facts, summary })})`,
+            validatedAt: ready ? new Date() : null,
+            validatedCart,
             updatedAt: new Date(),
           })
-          .where(eq(aiAdvisorConversations.id, ctx.conversationId))
+          .where(
+            and(
+              eq(aiAdvisorConversations.id, ctx.conversationId),
+              eq(aiAdvisorConversations.storeId, ctx.storeId),
+            ),
+          )
+
+        if (result[0].affectedRows === 0) {
+          return { error: 'Conversation not found' }
+        }
 
         return { saved: true, validated: ready }
       },

@@ -16,8 +16,7 @@ import { StoreProvider } from "@/contexts/store-context";
 import { AnalyticsProvider } from "@/contexts/analytics-context";
 import { OpenReplayProvider } from "@/components/openreplay-provider";
 import { PostHogProvider } from "@/components/posthog-provider";
-import { isAIChatConfigured } from "@/lib/ai/provider";
-import { getStorePlan } from "@/lib/plan-limits";
+import { isAdvisorActiveForStore } from "@/lib/ai/advisor/eligibility";
 import { generateStoreMetadata, stripHtml } from "@/lib/seo";
 import type { StoreTheme, StoreSettings } from "@louez/types";
 
@@ -100,10 +99,7 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
   // AI advisor: opt-in per store, requires the platform AI config and the
   // plan feature. Never rendered in embed mode.
   const advisorSettings = store.aiAdvisorSettings;
-  const advisorEnabled =
-    Boolean(advisorSettings?.enabled) &&
-    isAIChatConfigured() &&
-    (await getStorePlan(store.id)).features.aiAdvisor;
+  const advisorEnabled = await isAdvisorActiveForStore(store);
 
   // Detect embed mode from proxy header or URL path
   const headersList = await headers();

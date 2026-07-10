@@ -25,6 +25,13 @@ const addToCartInputSchema = z.object({
   endDate: z.string(),
 });
 
+/** Strict ISO 8601 (with offset) or undefined — never an invalid string. */
+function toStrictIso(value: string | null): string | undefined {
+  if (!value) return undefined;
+  const time = Date.parse(value);
+  return Number.isNaN(time) ? undefined : new Date(time).toISOString();
+}
+
 type AdvisorWidgetProps = {
   storeSlug: string;
   displayName?: string;
@@ -53,18 +60,8 @@ export function AdvisorWidget({
   const conversationIdRef = useRef<string | null>(conversationId);
   conversationIdRef.current = conversationId;
 
-  const cartSnapshotRef = useRef<AdvisorCartSnapshot>({ items: [] });
-  cartSnapshotRef.current = {
-    items: cart.items.map((item) => ({
-      productId: item.productId,
-      quantity: item.quantity,
-    })),
-    startDate: cart.globalStartDate ?? undefined,
-    endDate: cart.globalEndDate ?? undefined,
-  };
-
-  const cartActionsRef = useRef(cart);
-  cartActionsRef.current = cart;
+  const cartRef = useRef(cart);
+  cartRef.current = cart;
 
   // Capture the conversation id issued by the API on first message
   const customFetch = useCallback(
@@ -87,10 +84,25 @@ export function AdvisorWidget({
       new DefaultChatTransport({
         api: '/api/storefront/chat',
         headers: () => ({ 'x-store-slug': storeSlug }),
-        body: () => ({
-          conversationId: conversationIdRef.current ?? undefined,
-          cart: cartSnapshotRef.current,
-        }),
+        body: (): {
+          conversationId: string | undefined;
+          cart: AdvisorCartSnapshot;
+        } => {
+          const currentCart = cartRef.current;
+          return {
+            conversationId: conversationIdRef.current ?? undefined,
+            cart: {
+              items: currentCart.items.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+              })),
+              // Cart dates come from localStorage — normalize to strict ISO
+              // (the API schema requires an offset) and drop invalid values.
+              startDate: toStrictIso(currentCart.globalStartDate),
+              endDate: toStrictIso(currentCart.globalEndDate),
+            },
+          };
+        },
         fetch: customFetch,
       }),
     [storeSlug, customFetch],
@@ -117,7 +129,7 @@ export function AdvisorWidget({
       }
       const startDate = new Date(startMs).toISOString();
       const endDate = new Date(endMs).toISOString();
-      const currentCart = cartActionsRef.current;
+      const currentCart = cartRef.current;
 
       // The cart has one global rental period: adding with different dates
       // to a non-empty cart is a conflict the model must resolve with the
@@ -179,7 +191,14 @@ export function AdvisorWidget({
           currentCart.setGlobalDates(startDate, endDate);
         }
 
-        return { success: true as const, productName: line.productName };
+        return {
+          success: true as const,
+          productName: line.productName,
+          // addItem merges same-product lines and caps at availability —
+          // tell the model so it never overstates what is in the cart.
+          requestedQuantity: quantity,
+          maxAvailableQuantity: line.maxQuantity,
+        };
       } catch {
         return { success: false as const, reason: 'error' };
       }
@@ -209,6 +228,42 @@ export function AdvisorWidget({
       }
     },
   });
+
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
+  // Rehydrate the thread after a page reload: the conversation id survives
+  // in localStorage but useChat state does not. A stale/unknown id resets
+  // to a fresh conversation instead of erroring.
+  const hydratedConversationRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!conversationId || hydratedConversationRef.current === conversationId) {
+      return;
+    }
+    hydratedConversationRef.current = conversationId;
+    if (messagesRef.current.length > 0) return;
+
+    let cancelled = false;
+    orpcClient.storefront.aiAdvisor
+      .getMessages({ conversationId })
+      .then(({ messages: stored }) => {
+        if (cancelled || stored.length === 0) return;
+        if (messagesRef.current.length > 0) return;
+        setMessages(
+          stored.map((message) => ({
+            id: message.id,
+            role: message.role,
+            parts: [{ type: 'text' as const, text: message.content }],
+          })),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setConversationId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, setConversationId, setMessages]);
 
   // Surface advisor validation to the checkout gate (record_qualification
   // tool output with validated=true).

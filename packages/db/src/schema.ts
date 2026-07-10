@@ -18,6 +18,7 @@ import {
 import { nanoid } from 'nanoid';
 
 import type {
+  AdvisorValidatedCart,
   AiAdvisorSettings,
   BookingAttributeAxis,
   CustomerNotificationSettings,
@@ -3183,9 +3184,10 @@ export const aiAdvisorConversations = mysqlTable(
     // Set by the record_qualification tool once the advisor has verified the
     // customer's constraints against the cart.
     validatedAt: timestamp('validated_at', { mode: 'date' }),
-    // Cart product ids frozen at validation time (server-derived). Checkout in
-    // 'required' mode rejects reservations containing unvalidated products.
-    validatedProductIds: json('validated_product_ids').$type<string[]>(),
+    // Cart snapshot (items, quantities, rental period) frozen at validation
+    // time, server-derived. Checkout in 'required' mode rejects reservations
+    // that do not match it exactly.
+    validatedCart: json('validated_cart').$type<AdvisorValidatedCart>(),
     // Facts gathered by the advisor (e.g. vehicle model, licence type).
     collectedData: json('collected_data').$type<Record<string, string>>(),
 

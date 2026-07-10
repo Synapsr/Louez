@@ -1,11 +1,16 @@
 import { db } from '@louez/db';
 import {
+  advisorConversationMessagesInputSchema,
+  advisorConversationMessagesOutputSchema,
   advisorConversationStatusInputSchema,
   advisorConversationStatusOutputSchema,
 } from '@louez/validations';
 
 import { storefrontProcedure } from '../../procedures';
-import { getAdvisorConversationStatus } from '../../services';
+import {
+  getAdvisorConversationMessages,
+  getAdvisorConversationStatus,
+} from '../../services';
 import { toORPCError } from '../../utils/orpc-error';
 
 /**
@@ -28,6 +33,23 @@ const getConversationStatus = storefrontProcedure
     }
   });
 
+/** Conversation history for widget rehydration after a page reload. */
+const getMessages = storefrontProcedure
+  .input(advisorConversationMessagesInputSchema)
+  .output(advisorConversationMessagesOutputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      return await getAdvisorConversationMessages({
+        db,
+        storeId: context.store.id,
+        conversationId: input.conversationId,
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
 export const storefrontAiAdvisorRouter = {
   getConversationStatus,
+  getMessages,
 };

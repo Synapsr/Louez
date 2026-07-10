@@ -125,7 +125,10 @@ function toTranscript(
           message,
         ): message is (typeof conversation.messages)[number] & {
           role: 'user' | 'assistant'
-        } => message.role === 'user' || message.role === 'assistant',
+        } =>
+          // Tool-only turns have no text — skip them in transcripts.
+          (message.role === 'user' || message.role === 'assistant') &&
+          Boolean(message.content),
       )
       .map((message) => ({
         id: message.id,
@@ -217,7 +220,7 @@ export async function getAdvisorConversationStatus(params: {
         eq(aiAdvisorConversations.id, params.conversationId),
         eq(aiAdvisorConversations.storeId, params.storeId),
       ),
-      columns: { validatedAt: true, validatedProductIds: true },
+      columns: { validatedAt: true, validatedCart: true },
     })
 
   if (!conversation) {
@@ -226,6 +229,55 @@ export async function getAdvisorConversationStatus(params: {
 
   return {
     validated: conversation.validatedAt !== null,
-    validatedProductIds: conversation.validatedProductIds ?? [],
+    validatedCart: conversation.validatedAt !== null
+      ? (conversation.validatedCart ?? null)
+      : null,
+  }
+}
+
+/**
+ * Messages of a conversation, for widget rehydration after a page reload.
+ * Same anonymous access model as above: possession of the id grants access.
+ */
+export async function getAdvisorConversationMessages(params: {
+  db: Database
+  storeId: string
+  conversationId: string
+}) {
+  const conversation =
+    await params.db.query.aiAdvisorConversations.findFirst({
+      where: and(
+        eq(aiAdvisorConversations.id, params.conversationId),
+        eq(aiAdvisorConversations.storeId, params.storeId),
+      ),
+      columns: { id: true },
+      with: {
+        messages: {
+          columns: { id: true, role: true, content: true },
+          orderBy: (messages, { asc }) => [asc(messages.createdAt)],
+        },
+      },
+    })
+
+  if (!conversation) {
+    throw new ApiServiceError('NOT_FOUND', 'errors.conversationNotFound')
+  }
+
+  return {
+    messages: conversation.messages
+      .filter(
+        (
+          message,
+        ): message is (typeof conversation.messages)[number] & {
+          role: 'user' | 'assistant'
+        } =>
+          (message.role === 'user' || message.role === 'assistant') &&
+          Boolean(message.content),
+      )
+      .map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content ?? '',
+      })),
   }
 }

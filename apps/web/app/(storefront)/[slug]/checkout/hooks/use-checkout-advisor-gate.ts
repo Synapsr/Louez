@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 import type { AiAdvisorMode } from '@louez/types';
+import { advisorValidationCovers } from '@louez/utils';
 
 import { useAdvisor } from '@/contexts/advisor-context';
 import { useCart } from '@/contexts/cart-context';
@@ -15,8 +16,9 @@ export interface CheckoutAdvisorGate {
   isActive: boolean;
   isRequired: boolean;
   /**
-   * Validated for the CURRENT cart: the conversation is validated and covers
-   * every cart product (mirrors the server-side check in createReservation).
+   * Validated for the CURRENT cart — same products, quantities and rental
+   * period (mirrors the server-side check in createReservation, through the
+   * shared advisorValidationCovers helper).
    */
   isValidated: boolean;
   isStatusLoading: boolean;
@@ -33,7 +35,7 @@ export function useCheckoutAdvisorGate(
 ): CheckoutAdvisorGate {
   const { enabled, open, isOpen, conversationId, validationVersion } =
     useAdvisor();
-  const { items } = useCart();
+  const { items, globalStartDate, globalEndDate } = useCart();
 
   const isActive =
     enabled && (advisorMode === 'recommended' || advisorMode === 'required');
@@ -47,28 +49,37 @@ export function useCheckoutAdvisorGate(
   });
   const refetchStatus = statusQuery.refetch;
 
-  // Re-check when the widget signals a validation or closes.
+  // Re-check when the widget signals a fresh validation or closes.
   const wasOpenRef = useRef(isOpen);
+  const seenValidationVersionRef = useRef(validationVersion);
   useEffect(() => {
     const widgetJustClosed = wasOpenRef.current && !isOpen;
     wasOpenRef.current = isOpen;
-    if (isRequired && conversationId && (widgetJustClosed || validationVersion > 0)) {
+    const validationChanged =
+      validationVersion !== seenValidationVersionRef.current;
+    seenValidationVersionRef.current = validationVersion;
+    if (isRequired && conversationId && (widgetJustClosed || validationChanged)) {
       refetchStatus();
     }
   }, [isOpen, validationVersion, isRequired, conversationId, refetchStatus]);
 
-  const validatedProductIds = new Set(
-    statusQuery.data?.validatedProductIds ?? [],
-  );
   const isValidated =
     Boolean(statusQuery.data?.validated) &&
-    items.every((item) => validatedProductIds.has(item.productId));
+    advisorValidationCovers(statusQuery.data?.validatedCart, {
+      items: items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+      startDate: globalStartDate,
+      endDate: globalEndDate,
+    });
 
   return {
     isActive,
     isRequired,
     isValidated,
-    isStatusLoading: isRequired && conversationId !== null && statusQuery.isPending,
+    isStatusLoading:
+      isRequired && conversationId !== null && statusQuery.isPending,
     conversationId,
     openAdvisor: () => open({ intent: 'checkout' }),
   };

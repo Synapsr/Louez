@@ -4,7 +4,7 @@ CREATE TABLE `ai_advisor_conversations` (
 	`customer_id` varchar(21),
 	`reservation_id` varchar(21),
 	`validated_at` timestamp,
-	`validated_product_ids` json,
+	`validated_cart` json,
 	`collected_data` json,
 	`locale` varchar(10),
 	`created_at` timestamp NOT NULL DEFAULT (now()),

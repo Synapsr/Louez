@@ -42,6 +42,7 @@ import type {
 } from '@louez/types';
 import type { Rate } from '@louez/types';
 import {
+  advisorValidationCovers,
   calculateTaxFromExclusive,
   extractExclusiveFromInclusive,
   getEffectiveTaxRate,
@@ -57,7 +58,7 @@ import {
 import type { SeasonalPricingConfig } from '@louez/utils';
 import type { PricingMode } from '@louez/utils';
 
-import { isAIChatConfigured } from '@/lib/ai/provider';
+import { isAdvisorActiveForStore } from '@/lib/ai/advisor/eligibility';
 import { notifyNewReservation } from '@/lib/discord/platform-notifications';
 import { getLocaleFromCountry } from '@/lib/email/i18n';
 import { sendNewRequestLandlordEmail } from '@/lib/email/send';
@@ -74,7 +75,6 @@ import {
   getStoreBilling,
   planStripeFees,
 } from '@/lib/pay-as-you-go';
-import { getStorePlan } from '@/lib/plan-limits';
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -551,44 +551,6 @@ export async function createReservation(input: CreateReservationInput) {
       return { error: 'errors.invalidData' };
     }
 
-    // AI advisor: resolve the referenced conversation (if any) and, when the
-    // store REQUIRES advisor validation, enforce it server-side. The check is
-    // inert when the platform AI is not configured or the plan lacks the
-    // feature — a checkout must never be blocked by an absent advisor.
-    const advisorSettings = store.aiAdvisorSettings;
-    const advisorConversation = input.advisorConversationId
-      ? ((await db.query.aiAdvisorConversations.findFirst({
-          where: and(
-            eq(aiAdvisorConversations.id, input.advisorConversationId),
-            eq(aiAdvisorConversations.storeId, store.id),
-          ),
-          columns: {
-            id: true,
-            validatedAt: true,
-            validatedProductIds: true,
-            reservationId: true,
-          },
-        })) ?? null)
-      : null;
-
-    if (
-      advisorSettings?.enabled &&
-      advisorSettings.mode === 'required' &&
-      isAIChatConfigured() &&
-      (await getStorePlan(store.id)).features.aiAdvisor
-    ) {
-      const validatedProductIds = new Set(
-        advisorConversation?.validatedProductIds ?? [],
-      );
-      const isValidated =
-        advisorConversation?.validatedAt != null &&
-        input.items.every((item) => validatedProductIds.has(item.productId));
-
-      if (!isValidated) {
-        return { error: 'errors.advisorValidationRequired' };
-      }
-    }
-
     // Calculate the overall rental period from items
     const itemStartDates = input.items.map((item) => new Date(item.startDate));
     const itemEndDates = input.items.map((item) => new Date(item.endDate));
@@ -598,6 +560,52 @@ export async function createReservation(input: CreateReservationInput) {
     const rentalEndDate = new Date(
       Math.max(...itemEndDates.map((d) => d.getTime())),
     );
+
+    // AI advisor: resolve the referenced conversation (if any) and, when the
+    // store REQUIRES advisor validation, enforce it server-side. The check is
+    // inert when the advisor is inactive (platform AI unconfigured, plan
+    // without the feature) — a checkout must never be blocked by an absent
+    // advisor.
+    if (
+      input.advisorConversationId !== undefined &&
+      !/^[A-Za-z0-9_-]{21}$/.test(input.advisorConversationId)
+    ) {
+      return { error: 'errors.invalidData' };
+    }
+    const advisorConversation = input.advisorConversationId
+      ? ((await db.query.aiAdvisorConversations.findFirst({
+          where: and(
+            eq(aiAdvisorConversations.id, input.advisorConversationId),
+            eq(aiAdvisorConversations.storeId, store.id),
+          ),
+          columns: {
+            id: true,
+            validatedAt: true,
+            validatedCart: true,
+            reservationId: true,
+          },
+        })) ?? null)
+      : null;
+
+    if (
+      store.aiAdvisorSettings?.mode === 'required' &&
+      (await isAdvisorActiveForStore(store))
+    ) {
+      const isValidated =
+        advisorConversation?.validatedAt != null &&
+        advisorValidationCovers(advisorConversation.validatedCart, {
+          items: input.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+          startDate: rentalStartDate.toISOString(),
+          endDate: rentalEndDate.toISOString(),
+        });
+
+      if (!isValidated) {
+        return { error: 'errors.advisorValidationRequired' };
+      }
+    }
 
     // Validate business hours for the rental period (using store's timezone for proper time comparison)
     const businessHoursValidation = validateRentalPeriod(

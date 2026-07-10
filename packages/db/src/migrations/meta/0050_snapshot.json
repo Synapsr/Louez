@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "698ea951-8bcb-4aed-b78c-f6bd35841768",
+  "id": "75f68b01-7e95-4163-8e3d-34b50cf81edd",
   "prevId": "daa8bb77-2c33-4542-8283-12254d2150c0",
   "tables": {
     "accounts": {
@@ -238,8 +238,8 @@
           "notNull": false,
           "autoincrement": false
         },
-        "validated_product_ids": {
-          "name": "validated_product_ids",
+        "validated_cart": {
+          "name": "validated_cart",
           "type": "json",
           "primaryKey": false,
           "notNull": false,

@@ -1,6 +1,6 @@
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 import type { UIMessage } from 'ai'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 
@@ -18,11 +18,11 @@ import {
 import type { AdvisorCartSnapshot } from '@louez/validations'
 
 import { getCustomerSession } from '@/app/(storefront)/[slug]/account/actions'
-import { getAdvisorAIModel, isAIChatConfigured } from '@/lib/ai/provider'
 import { checkAdvisorRateLimit } from '@/lib/ai/advisor/rate-limit'
 import { buildAdvisorSystemPrompt } from '@/lib/ai/advisor/system-prompt'
 import { createAdvisorTools } from '@/lib/ai/advisor/tools'
 import type { AdvisorChatContext } from '@/lib/ai/advisor/tools'
+import { getAdvisorAIModel, isAIChatConfigured } from '@/lib/ai/provider'
 import { log } from '@/lib/evlog'
 import { getStorePlan } from '@/lib/plan-limits'
 import { getClientIp } from '@/lib/request'
@@ -35,6 +35,12 @@ import { defaultLocale, locales } from '@/i18n/config'
 
 // Keep the model context bounded: older turns stay in DB, not in the prompt.
 const HISTORY_WINDOW = 20
+// Hard cap on the raw request size (a message history full of tool parts
+// stays well under this; anything bigger is abuse).
+const MAX_BODY_BYTES = 256 * 1024
+// Bounds for the owner guidance injected into the system prompt.
+const GUIDANCE_MAX_PER_PRODUCT = 600
+const GUIDANCE_MAX_TOTAL = 15_000
 
 // Structural validation only — convertToModelMessages() performs the strict
 // UIMessage validation (tool parts included) and throws on malformed input.
@@ -49,7 +55,7 @@ const advisorChatRequestSchema = z.object({
         .loose(),
     )
     .min(1)
-    .max(HISTORY_WINDOW * 3),
+    .max(200),
   conversationId: z.string().length(21).optional(),
   cart: advisorCartSnapshotSchema.optional(),
 })
@@ -84,7 +90,43 @@ async function resolveLocale(acceptLanguage: string | null): Promise<string> {
   return defaultLocale
 }
 
-/** Cart lines with product names and owner guidance, for the system prompt. */
+/**
+ * Per-product owner guidance (products.aiContext) for the system prompt.
+ * This is the only channel through which aiContext reaches the model — tool
+ * outputs are streamed to the customer's browser and must never contain it.
+ */
+async function buildProductGuidance(storeId: string): Promise<string | null> {
+  const rows = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      aiContext: products.aiContext,
+    })
+    .from(products)
+    .where(
+      and(
+        eq(products.storeId, storeId),
+        eq(products.status, 'active'),
+        isNotNull(products.aiContext),
+      ),
+    )
+    .limit(100)
+
+  const lines: string[] = []
+  let total = 0
+  for (const row of rows) {
+    const guidance = row.aiContext?.trim()
+    if (!guidance) continue
+    const line = `- "${row.name}" (productId: ${row.id}): ${guidance.slice(0, GUIDANCE_MAX_PER_PRODUCT)}`
+    if (total + line.length > GUIDANCE_MAX_TOTAL) break
+    lines.push(line)
+    total += line.length
+  }
+
+  return lines.length > 0 ? lines.join('\n') : null
+}
+
+/** Cart lines with product names, for the system prompt. */
 async function buildCartSummary(
   storeId: string,
   cart: AdvisorCartSnapshot | undefined,
@@ -92,11 +134,7 @@ async function buildCartSummary(
   if (!cart || cart.items.length === 0) return null
 
   const rows = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      aiContext: products.aiContext,
-    })
+    .select({ id: products.id, name: products.name })
     .from(products)
     .where(
       and(
@@ -112,13 +150,9 @@ async function buildCartSummary(
   const productById = new Map(rows.map((row) => [row.id, row]))
   const lines = cart.items.flatMap((item) => {
     const product = productById.get(item.productId)
-    if (!product) return []
-    const guidance = product.aiContext?.trim()
-    return [
-      `- ${item.quantity} × "${product.name}" (productId: ${product.id})${
-        guidance ? ` — owner guidance: ${guidance.slice(0, 300)}` : ''
-      }`,
-    ]
+    return product
+      ? [`- ${item.quantity} × "${product.name}" (productId: ${product.id})`]
+      : []
   })
   if (lines.length === 0) return null
 
@@ -130,6 +164,11 @@ async function buildCartSummary(
 }
 
 export async function POST(req: Request) {
+  const contentLength = Number(req.headers.get('content-length') ?? 0)
+  if (contentLength > MAX_BODY_BYTES) {
+    return new Response('Payload too large', { status: 413 })
+  }
+
   const storeSlug = req.headers.get('x-store-slug')
   if (!storeSlug) {
     return new Response('Missing store context', { status: 400 })
@@ -161,11 +200,6 @@ export async function POST(req: Request) {
     return new Response('AI advisor is not configured', { status: 503 })
   }
 
-  const plan = await getStorePlan(store.id)
-  if (!plan.features.aiAdvisor) {
-    return new Response('upgrade_required', { status: 403 })
-  }
-
   const body = advisorChatRequestSchema.safeParse(await req.json())
   if (!body.success) {
     return new Response('Invalid request body', { status: 400 })
@@ -175,7 +209,8 @@ export async function POST(req: Request) {
 
   // A request is either a new user turn, or the automatic continuation sent
   // after a client-side tool (add_to_cart) resolved — its history then ends
-  // with the assistant message carrying the tool result.
+  // with the assistant message carrying the tool result. Continuations must
+  // reference an existing conversation: they never mint one.
   const lastMessage = rawMessages[rawMessages.length - 1]
   const isUserTurn = lastMessage?.role === 'user'
   const lastUserText = isUserTurn ? messageText(lastMessage) : null
@@ -184,7 +219,7 @@ export async function POST(req: Request) {
     if (!lastUserText || lastUserText.length > AI_ADVISOR_MESSAGE_MAX_LENGTH) {
       return new Response('Invalid message', { status: 400 })
     }
-  } else if (lastMessage?.role !== 'assistant') {
+  } else if (lastMessage?.role !== 'assistant' || !conversationId) {
     return new Response('Invalid message', { status: 400 })
   }
 
@@ -200,11 +235,19 @@ export async function POST(req: Request) {
     return new Response('Invalid request body', { status: 400 })
   }
 
-  const rateCheck = await checkAdvisorRateLimit({
-    storeId: store.id,
-    conversationId: conversationId ?? null,
-    ip: getClientIp(req.headers),
-  })
+  const [plan, rateCheck] = await Promise.all([
+    getStorePlan(store.id),
+    checkAdvisorRateLimit({
+      storeId: store.id,
+      conversationId: conversationId ?? null,
+      ip: getClientIp(req.headers),
+    }),
+  ])
+
+  if (!plan.features.aiAdvisor) {
+    return new Response('upgrade_required', { status: 403 })
+  }
+
   if (!rateCheck.allowed) {
     return new Response(rateCheck.code, {
       status: 429,
@@ -216,37 +259,51 @@ export async function POST(req: Request) {
     })
   }
 
-  // Resolve or create the conversation
-  let activeConversationId = conversationId
-  if (activeConversationId) {
-    const existing = await db.query.aiAdvisorConversations.findFirst({
-      where: and(
-        eq(aiAdvisorConversations.id, activeConversationId),
-        eq(aiAdvisorConversations.storeId, store.id),
-      ),
-      columns: { id: true },
-    })
-    if (!existing) {
-      return new Response('Conversation not found', { status: 404 })
-    }
+  const [existingConversation, cartSummary, productGuidance, locale] =
+    await Promise.all([
+      conversationId
+        ? db.query.aiAdvisorConversations.findFirst({
+            where: and(
+              eq(aiAdvisorConversations.id, conversationId),
+              eq(aiAdvisorConversations.storeId, store.id),
+            ),
+            columns: { id: true },
+          })
+        : Promise.resolve(undefined),
+      buildCartSummary(store.id, cart),
+      buildProductGuidance(store.id),
+      resolveLocale(req.headers.get('accept-language')),
+    ])
+
+  if (conversationId && !existingConversation) {
+    return new Response('Conversation not found', { status: 404 })
   }
 
-  const locale = await resolveLocale(req.headers.get('accept-language'))
-
+  // Resolve or create the conversation, then persist the user turn — one
+  // transaction so a failure never leaves a conversation without its message.
+  let activeConversationId = conversationId
   if (!activeConversationId) {
     const customerSession = await getCustomerSession(store.slug)
-    const [created] = await db
-      .insert(aiAdvisorConversations)
-      .values({
-        storeId: store.id,
-        customerId: customerSession?.customerId ?? null,
-        locale,
-      })
-      .$returningId()
-    activeConversationId = created.id
-  }
-
-  if (isUserTurn && lastUserText) {
+    activeConversationId = await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(aiAdvisorConversations)
+        .values({
+          storeId: store.id,
+          customerId: customerSession?.customerId ?? null,
+          locale,
+        })
+        .$returningId()
+      if (lastUserText) {
+        await tx.insert(aiAdvisorMessages).values({
+          conversationId: created.id,
+          storeId: store.id,
+          role: 'user',
+          content: lastUserText,
+        })
+      }
+      return created.id
+    })
+  } else if (isUserTurn && lastUserText) {
     await db.insert(aiAdvisorMessages).values({
       conversationId: activeConversationId,
       storeId: store.id,
@@ -266,7 +323,8 @@ export async function POST(req: Request) {
     storeName: store.name,
     storeDescription: store.description,
     settings: store.aiAdvisorSettings,
-    cartSummary: await buildCartSummary(store.id, cart),
+    cartSummary,
+    productGuidance,
     locale,
     currency: store.settings?.currency ?? 'EUR',
   })
@@ -277,7 +335,7 @@ export async function POST(req: Request) {
     messages: modelMessages,
     tools: createAdvisorTools(advisorCtx),
     stopWhen: stepCountIs(8),
-    onFinish: async ({ text, steps }) => {
+    onFinish: async ({ steps }) => {
       try {
         const allToolCalls = steps.flatMap((step) =>
           step.content.filter(
@@ -285,19 +343,28 @@ export async function POST(req: Request) {
               'type' in part && part.type === 'tool-call',
           ),
         )
+        // `text` alone would only be the LAST step's text — join every step
+        // so nothing streamed to the customer is missing from the transcript.
+        const content = steps
+          .map((step) => step.text)
+          .filter(Boolean)
+          .join('\n\n')
 
-        await db.insert(aiAdvisorMessages).values({
-          conversationId: activeConversationId,
-          storeId: store.id,
-          role: 'assistant',
-          content: text,
-          toolInvocations: allToolCalls.length > 0 ? allToolCalls : null,
+        if (!content && allToolCalls.length === 0) return
+
+        await db.transaction(async (tx) => {
+          await tx.insert(aiAdvisorMessages).values({
+            conversationId: activeConversationId,
+            storeId: store.id,
+            role: 'assistant',
+            content,
+            toolInvocations: allToolCalls.length > 0 ? allToolCalls : null,
+          })
+          await tx
+            .update(aiAdvisorConversations)
+            .set({ updatedAt: new Date() })
+            .where(eq(aiAdvisorConversations.id, activeConversationId))
         })
-
-        await db
-          .update(aiAdvisorConversations)
-          .set({ updatedAt: new Date() })
-          .where(eq(aiAdvisorConversations.id, activeConversationId))
       } catch (error) {
         log.error(
           'advisor',

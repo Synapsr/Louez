@@ -503,6 +503,17 @@ export interface AiAdvisorSettings {
   displayName?: string;
 }
 
+/**
+ * Cart snapshot frozen when the advisor validates a conversation
+ * (required mode). Checkout only passes when the reservation matches it —
+ * same products, quantities and rental period.
+ */
+export interface AdvisorValidatedCart {
+  items: { productId: string; quantity: number }[];
+  startDate: string | null;
+  endDate: string | null;
+}
+
 // ============================================================================
 // Notification Settings (Admin notifications)
 // ============================================================================

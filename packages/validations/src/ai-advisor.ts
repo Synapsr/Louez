@@ -109,9 +109,31 @@ export const advisorConversationTranscriptSchema = z.object({
   ),
 })
 
+export const advisorValidatedCartSchema = z.object({
+  items: z.array(
+    z.object({ productId: z.string(), quantity: z.number().int().min(1) }),
+  ),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+})
+
 export const advisorConversationStatusOutputSchema = z.object({
   validated: z.boolean(),
-  validatedProductIds: z.array(z.string()),
+  validatedCart: advisorValidatedCartSchema.nullable(),
+})
+
+export const advisorConversationMessagesInputSchema = z.object({
+  conversationId: z.string().length(21),
+})
+
+export const advisorConversationMessagesOutputSchema = z.object({
+  messages: z.array(
+    z.object({
+      id: z.string(),
+      role: z.enum(['user', 'assistant']),
+      content: z.string(),
+    }),
+  ),
 })
 
 export type AdvisorConversationsListInput = z.infer<

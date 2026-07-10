@@ -3,9 +3,13 @@
  *
  * Three layers, all fail-closed:
  * - per IP: in-memory sliding window (fast pre-check, mirrors /api/track)
- * - per conversation: 30 user messages per rolling day (DB-backed)
- * - per store: 500 user messages per rolling day by default (DB-backed,
+ * - per conversation: 60 model runs per rolling day (DB-backed)
+ * - per store: 500 model runs per rolling day by default (DB-backed,
  *   override with AI_ADVISOR_DAILY_STORE_LIMIT) — protects token spend.
+ *
+ * A "run" = one streamText execution = one persisted assistant message.
+ * Counting assistant rows (not user rows) also covers tool-result
+ * continuation requests, which execute the model without a new user message.
  */
 
 import { and, eq, gte, sql } from 'drizzle-orm'
@@ -16,8 +20,8 @@ import { env } from '@/env'
 import { log } from '@/lib/evlog'
 
 const IP_LIMIT_PER_MINUTE = 10
-const CONVERSATION_LIMIT_PER_DAY = 30
-const DEFAULT_STORE_LIMIT_PER_DAY = 500
+const CONVERSATION_RUNS_PER_DAY = 60
+const DEFAULT_STORE_RUNS_PER_DAY = 500
 const MAX_IP_ENTRIES = 10_000
 
 export type AdvisorRateLimitCode =
@@ -68,7 +72,7 @@ export async function checkAdvisorRateLimit(params: {
   try {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const storeLimit =
-      env.AI_ADVISOR_DAILY_STORE_LIMIT ?? DEFAULT_STORE_LIMIT_PER_DAY
+      env.AI_ADVISOR_DAILY_STORE_LIMIT ?? DEFAULT_STORE_RUNS_PER_DAY
 
     const [result] = await db
       .select({
@@ -83,12 +87,13 @@ export async function checkAdvisorRateLimit(params: {
       .where(
         and(
           eq(aiAdvisorMessages.storeId, storeId),
-          eq(aiAdvisorMessages.role, 'user'),
+          // One assistant row per model run — the unit of token spend.
+          eq(aiAdvisorMessages.role, 'assistant'),
           gte(aiAdvisorMessages.createdAt, oneDayAgo),
         ),
       )
 
-    if ((result?.conversationCount ?? 0) >= CONVERSATION_LIMIT_PER_DAY) {
+    if ((result?.conversationCount ?? 0) >= CONVERSATION_RUNS_PER_DAY) {
       return {
         allowed: false,
         code: 'rate_limit:conversation',
