@@ -8,8 +8,6 @@ import { Gift } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { usePostHog } from 'posthog-js/react';
 
-import { Logo } from '@louez/ui';
-
 import {
   referralAnalyticsBaseProperties,
   referralAnalyticsEvents,

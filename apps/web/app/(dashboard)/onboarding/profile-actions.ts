@@ -91,11 +91,9 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
       business_type: parsed.data.businessType,
       avatar_action:
         imageUrl === undefined ? 'kept' : imageUrl ? 'uploaded' : 'removed',
-      $set: {
-        ...(parsed.data.businessType
-          ? { business_type: parsed.data.businessType }
-          : {}),
-      },
+      $set: parsed.data.businessType
+        ? { business_type: parsed.data.businessType }
+        : {},
     },
   });
 

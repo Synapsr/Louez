@@ -1,6 +1,5 @@
 'use client';
 
-import { GradientAvatar } from '@outpacelabs/avatars';
 import { useTranslations } from 'next-intl';
 
 import { cn } from '@louez/utils';
