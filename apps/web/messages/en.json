@@ -1058,7 +1058,10 @@
               "margin": "Margin / day"
             }
           }
-        }
+        },
+        "aiContext": "AI advisor context",
+        "aiContextPlaceholder": "E.g. requires a B licence, not suitable for children under 12, always ask for the event date and group size…",
+        "aiContextHint": "Extra details only the AI advisor can see — it uses them to advise customers and check requirements. Never shown on the storefront."
       },
       "deleteConfirm": {
         "title": "Delete this product?",
@@ -2072,6 +2075,13 @@
         "smsSendSuccess": "Access link sent via SMS",
         "smsSendError": "Failed to send SMS",
         "noPhone": "Customer has no phone number"
+      },
+      "advisor": {
+        "cardTitle": "AI advisor",
+        "validated": "Validated",
+        "viewConversation": "View conversation",
+        "sheetTitle": "Advisor conversation",
+        "sheetDescription": "Chat between the customer and the AI advisor for this reservation."
       }
     },
     "customers": {
@@ -4216,7 +4226,67 @@
           "reversed": "Reversed"
         }
       },
-      "referrals": "Referrals"
+      "referrals": "Referrals",
+      "aiAdvisor": {
+        "title": "AI Advisor",
+        "description": "Let an AI assistant welcome your customers on your storefront, answer their questions and guide them to the right rental",
+        "saved": "AI Advisor settings saved",
+        "enableSection": "AI Advisor",
+        "enableSectionDescription": "Configure the assistant that chats with your customers on your storefront",
+        "enabled": "Enable the AI advisor",
+        "enabledDescription": "Show the chat widget on your storefront",
+        "mode": "Checkout mode",
+        "modeDescription": "Choose how the advisor takes part in the booking process",
+        "modeOptional": "Optional",
+        "modeOptionalDescription": "Customers can chat with the advisor, checkout is unchanged",
+        "modeRecommended": "Recommended",
+        "modeRecommendedDescription": "A non-blocking suggestion to chat is shown at checkout",
+        "modeRequired": "Required",
+        "modeRequiredDescription": "Checkout is blocked until the advisor validates the conversation",
+        "storeContext": "Store instructions",
+        "storeContextDescription": "Write what you would tell a new employee: constraints, verifications to run, tone and policies",
+        "storeContextPlaceholder": "E.g. Always ask for the customer's height before recommending a bike size, mention that helmets are included, delivery is only available within 10 km...",
+        "personalizationSection": "Personalization",
+        "displayName": "Display name",
+        "displayNameDescription": "Widget title shown to customers (defaults to a translated title)",
+        "displayNamePlaceholder": "E.g. Leo, your rental advisor",
+        "welcomeMessage": "Welcome message",
+        "welcomeMessageDescription": "First message shown when the chat opens (defaults to a translated message)",
+        "welcomeMessagePlaceholder": "E.g. Hi! Tell me about your project and I'll help you pick the right gear.",
+        "notConfigured": {
+          "title": "AI provider not configured",
+          "description": "The platform operator must set the AI_PROVIDER and AI_API_KEY environment variables before the advisor can answer customers. You can still prepare your settings below."
+        },
+        "locked": {
+          "title": "Unlock the AI Advisor",
+          "description": "Turn storefront visitors into reservations with an AI assistant",
+          "upgrade": "Upgrade to Pro",
+          "featureLocked": "Feature locked",
+          "upgradeToUnlock": "Upgrade to Pro to enable this feature"
+        },
+        "conversations": {
+          "title": "Conversations",
+          "description": "Review what customers asked the advisor and which chats led to a reservation",
+          "filterAll": "All",
+          "filterConverted": "Converted",
+          "filterNotConverted": "Not converted",
+          "empty": "No conversations yet",
+          "emptyDescription": "Conversations will appear here once customers start chatting with the advisor on your storefront",
+          "emptyFilteredDescription": "No conversations match this filter",
+          "columnDate": "Date",
+          "columnFirstMessage": "First message",
+          "columnMessages": "Messages",
+          "columnStatus": "Status",
+          "statusConverted": "Converted",
+          "statusValidated": "Validated",
+          "statusNotConverted": "Not converted",
+          "pagination": "Page {page} of {totalPages}",
+          "previousPage": "Previous page",
+          "nextPage": "Next page",
+          "transcriptTitle": "Conversation",
+          "transcriptError": "Unable to load this conversation"
+        }
+      }
     },
     "aiChat": {
       "open": "AI Assistant",
@@ -4790,7 +4860,17 @@
         "promoCodeMinimumNotMet": "Minimum amount of {amount} required",
         "promoCodeNotStarted": "This promo code is not yet active"
       },
-      "lineNeedsUpdate": "Some lines are no longer available. Update your cart before submitting."
+      "lineNeedsUpdate": "Some lines are no longer available. Update your cart before submitting.",
+      "advisor": {
+        "recommendedHint": "Not sure about your choice? The advisor can check it with you.",
+        "askAdvisor": "Ask the advisor",
+        "dismiss": "Dismiss",
+        "requiredTitle": "A short verification is required",
+        "requiredDescription": "This store asks the advisor to check a few details before you can book.",
+        "startVerification": "Start verification",
+        "validatedTitle": "Verification complete",
+        "validatedDescription": "The advisor has validated your reservation — you can book."
+      }
     },
     "confirmation": {
       "title": "Reservation confirmed!",
@@ -5082,6 +5162,27 @@
         "selectStartDate": "Select a pickup date",
         "selectEndDate": "Select a return date",
         "endTimeAfterStart": "Return time must be after pickup time"
+      }
+    },
+    "advisor": {
+      "open": "Ask the advisor",
+      "title": "AI advisor",
+      "subtitle": "Answers instantly",
+      "welcome": "Hi! I'm this store's advisor. Tell me about your project and I'll help you pick the right equipment.",
+      "placeholder": "Ask your question…",
+      "send": "Send",
+      "close": "Close",
+      "restart": "New conversation",
+      "disclaimer": "AI-generated answers — double-check important details",
+      "validateChip": "I'd like to validate my reservation",
+      "suggestions": {
+        "recommend": "What would you recommend for me?",
+        "question": "I have a question about a product",
+        "practical": "Opening hours and practical info"
+      },
+      "errors": {
+        "generic": "Something went wrong. Please try again.",
+        "rateLimited": "Too many messages for now — please try again later."
       }
     }
   },
@@ -5791,7 +5892,10 @@
     "tulipContractProductsIncompatible": "The insured Tulip products in this reservation are not all compatible with this contract type.",
     "tulipProductTypeDisabled": "This Tulip product category is not enabled for this store.",
     "unitAlreadyRetired": "This unit is already retired",
-    "unitNotRetired": "This unit is not retired"
+    "unitNotRetired": "This unit is not retired",
+    "advisorValidationRequired": "This store requires a short check with the advisor before booking",
+    "conversationNotFound": "Conversation not found",
+    "featureNotAvailable": "This feature is not available on your plan"
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

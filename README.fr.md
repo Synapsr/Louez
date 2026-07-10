@@ -256,6 +256,10 @@ Construit avec des technologies modernes et éprouvées :
 | `S3_BUCKET`           |        | Nom du bucket S3                     |
 | `S3_ACCESS_KEY`       |        | Clé d'accès S3                       |
 | `S3_SECRET_KEY`       |        | Clé secrète S3                       |
+| `AI_PROVIDER`         |        | `anthropic`, `openai` ou `google` — active l'assistant IA et le conseiller boutique |
+| `AI_API_KEY`          |        | Clé API du fournisseur d'IA choisi   |
+| `AI_MODEL`            |        | Modèle IA (optionnel)                |
+| `AI_ADVISOR_MODEL`    |        | Modèle plus économique pour le conseiller boutique (optionnel) |
 
 </details>
 

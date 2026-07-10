@@ -1058,7 +1058,10 @@
         "seasonalSettingsHint": "La TVA, la caution et les remises progressives sont configurées dans les tarifs de base.",
         "switchToBasePricing": "Revenir aux tarifs de base",
         "savingPeriod": "Sauvegarde...",
-        "periodSaved": "Tarifs sauvegardés"
+        "periodSaved": "Tarifs sauvegardés",
+        "aiContext": "Contexte pour l'assistant IA",
+        "aiContextPlaceholder": "Ex. permis B requis, ne convient pas aux enfants de moins de 12 ans, demandez toujours la date de l'événement et la taille du groupe…",
+        "aiContextHint": "Informations supplémentaires visibles uniquement par l'assistant IA — il les utilise pour conseiller les clients et vérifier les prérequis. Jamais affichées sur la boutique."
       },
       "deleteConfirm": {
         "title": "Supprimer ce produit ?",
@@ -2072,7 +2075,14 @@
           }
         }
       },
-      "linkCopied": "Lien copié dans le presse-papier"
+      "linkCopied": "Lien copié dans le presse-papier",
+      "advisor": {
+        "cardTitle": "Assistant IA",
+        "validated": "Validée",
+        "viewConversation": "Voir la conversation",
+        "sheetTitle": "Conversation avec l'assistant",
+        "sheetDescription": "Échange entre le client et l'assistant IA pour cette réservation."
+      }
     },
     "customers": {
       "title": "Clients",
@@ -4216,7 +4226,67 @@
           "reversed": "Remboursé"
         }
       },
-      "referrals": "Parrainage"
+      "referrals": "Parrainage",
+      "aiAdvisor": {
+        "title": "Conseiller IA",
+        "description": "Laissez un assistant IA accueillir vos clients sur votre vitrine, répondre à leurs questions et les guider vers la bonne location",
+        "saved": "Paramètres du conseiller IA enregistrés",
+        "enableSection": "Conseiller IA",
+        "enableSectionDescription": "Configurez l'assistant qui échange avec vos clients sur votre vitrine",
+        "enabled": "Activer le conseiller IA",
+        "enabledDescription": "Affiche le widget de discussion sur votre vitrine",
+        "mode": "Mode au moment de la réservation",
+        "modeDescription": "Choisissez comment le conseiller intervient dans le processus de réservation",
+        "modeOptional": "Optionnel",
+        "modeOptionalDescription": "Les clients peuvent discuter avec le conseiller, la réservation reste inchangée",
+        "modeRecommended": "Recommandé",
+        "modeRecommendedDescription": "Une suggestion non bloquante de discuter est affichée au moment de la réservation",
+        "modeRequired": "Obligatoire",
+        "modeRequiredDescription": "La réservation est bloquée tant que le conseiller n'a pas validé la conversation",
+        "storeContext": "Instructions pour votre boutique",
+        "storeContextDescription": "Écrivez ce que vous diriez à un nouvel employé : contraintes, vérifications à effectuer, ton et politiques",
+        "storeContextPlaceholder": "Ex. : Demandez toujours la taille du client avant de recommander une taille de vélo, précisez que les casques sont inclus, la livraison n'est disponible que dans un rayon de 10 km...",
+        "personalizationSection": "Personnalisation",
+        "displayName": "Nom affiché",
+        "displayNameDescription": "Titre du widget affiché aux clients (par défaut, un titre traduit)",
+        "displayNamePlaceholder": "Ex. : Léo, votre conseiller location",
+        "welcomeMessage": "Message d'accueil",
+        "welcomeMessageDescription": "Premier message affiché à l'ouverture de la discussion (par défaut, un message traduit)",
+        "welcomeMessagePlaceholder": "Ex. : Bonjour ! Parlez-moi de votre projet et je vous aiderai à choisir le bon matériel.",
+        "notConfigured": {
+          "title": "Fournisseur d'IA non configuré",
+          "description": "L'opérateur de la plateforme doit définir les variables d'environnement AI_PROVIDER et AI_API_KEY pour que le conseiller puisse répondre aux clients. Vous pouvez tout de même préparer vos réglages ci-dessous."
+        },
+        "locked": {
+          "title": "Débloquez le conseiller IA",
+          "description": "Transformez les visiteurs de votre vitrine en réservations grâce à un assistant IA",
+          "upgrade": "Passer au plan Pro",
+          "featureLocked": "Fonctionnalité verrouillée",
+          "upgradeToUnlock": "Passez au plan Pro pour activer cette fonctionnalité"
+        },
+        "conversations": {
+          "title": "Conversations",
+          "description": "Consultez les questions posées au conseiller et les discussions qui ont abouti à une réservation",
+          "filterAll": "Toutes",
+          "filterConverted": "Converties",
+          "filterNotConverted": "Non converties",
+          "empty": "Aucune conversation pour le moment",
+          "emptyDescription": "Les conversations apparaîtront ici dès que des clients discuteront avec le conseiller sur votre vitrine",
+          "emptyFilteredDescription": "Aucune conversation ne correspond à ce filtre",
+          "columnDate": "Date",
+          "columnFirstMessage": "Premier message",
+          "columnMessages": "Messages",
+          "columnStatus": "Statut",
+          "statusConverted": "Convertie",
+          "statusValidated": "Validée",
+          "statusNotConverted": "Non convertie",
+          "pagination": "Page {page} sur {totalPages}",
+          "previousPage": "Page précédente",
+          "nextPage": "Page suivante",
+          "transcriptTitle": "Conversation",
+          "transcriptError": "Impossible de charger cette conversation"
+        }
+      }
     },
     "aiChat": {
       "open": "Assistant IA",
@@ -4790,7 +4860,17 @@
         "promoCodeMinimumNotMet": "Montant minimum de {amount} requis",
         "promoCodeNotStarted": "Ce code promo n'est pas encore actif"
       },
-      "lineNeedsUpdate": "Certaines lignes ne sont plus disponibles. Mettez à jour votre panier avant de valider."
+      "lineNeedsUpdate": "Certaines lignes ne sont plus disponibles. Mettez à jour votre panier avant de valider.",
+      "advisor": {
+        "recommendedHint": "Un doute sur votre choix ? Le conseiller peut le vérifier avec vous.",
+        "askAdvisor": "Demander conseil",
+        "dismiss": "Ignorer",
+        "requiredTitle": "Une courte vérification est requise",
+        "requiredDescription": "Cette boutique demande au conseiller de vérifier quelques informations avant de réserver.",
+        "startVerification": "Commencer la vérification",
+        "validatedTitle": "Vérification terminée",
+        "validatedDescription": "Le conseiller a validé votre réservation — vous pouvez réserver."
+      }
     },
     "confirmation": {
       "title": "Réservation confirmée !",
@@ -5082,6 +5162,27 @@
         "selectStartDate": "Sélectionnez une date de retrait",
         "selectEndDate": "Sélectionnez une date de retour",
         "endTimeAfterStart": "L'heure de retour doit être après l'heure de retrait"
+      }
+    },
+    "advisor": {
+      "open": "Demander conseil",
+      "title": "Conseiller IA",
+      "subtitle": "Répond instantanément",
+      "welcome": "Bonjour ! Je suis le conseiller de cette boutique. Parlez-moi de votre projet et je vous aiderai à choisir le bon matériel.",
+      "placeholder": "Posez votre question…",
+      "send": "Envoyer",
+      "close": "Fermer",
+      "restart": "Nouvelle conversation",
+      "disclaimer": "Réponses générées par IA — vérifiez les informations importantes",
+      "validateChip": "Je souhaite valider ma réservation",
+      "suggestions": {
+        "recommend": "Que me conseillez-vous ?",
+        "question": "J'ai une question sur un produit",
+        "practical": "Horaires et infos pratiques"
+      },
+      "errors": {
+        "generic": "Une erreur est survenue. Veuillez réessayer.",
+        "rateLimited": "Trop de messages pour le moment — réessayez plus tard."
       }
     }
   },
@@ -5791,7 +5892,10 @@
     "promoCodeMinimumNotMet": "Montant minimum de {amount} € requis pour utiliser ce code",
     "promoCodeNotStarted": "Ce code promo n'est pas encore actif",
     "unitAlreadyRetired": "Cette unité est déjà retirée du parc",
-    "unitNotRetired": "Cette unité n’est pas retirée du parc"
+    "unitNotRetired": "Cette unité n’est pas retirée du parc",
+    "advisorValidationRequired": "Cette boutique demande une courte vérification avec le conseiller avant de réserver",
+    "conversationNotFound": "Conversation introuvable",
+    "featureNotAvailable": "Cette fonctionnalité n'est pas disponible avec votre forfait"
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

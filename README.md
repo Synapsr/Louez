@@ -258,6 +258,10 @@ Built with modern, battle-tested technologies:
 | `S3_BUCKET` | | S3 bucket name |
 | `S3_ACCESS_KEY` | | S3 access key |
 | `S3_SECRET_KEY` | | S3 secret key |
+| `AI_PROVIDER` | | `anthropic`, `openai` or `google` — enables the AI assistant & storefront advisor |
+| `AI_API_KEY` | | API key for the chosen AI provider |
+| `AI_MODEL` | | Optional AI model override |
+| `AI_ADVISOR_MODEL` | | Optional cheaper model for the storefront advisor |
 
 </details>
 
