@@ -71,4 +71,6 @@ specs/
 SPECIFICATIONS*.md
 
 # Internal scripts (root level only)
-/scripts/
+/scripts/*
+# ...except build-critical scripts referenced by package.json
+!/scripts/audit-duplicates.mjs
