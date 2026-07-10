@@ -89,7 +89,7 @@ function buildCspDirectives() {
   ],
 
   // Styles: self + inline (required for Tailwind and component libraries)
-  'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://api.fontshare.com', 'https://unpkg.com', 'https://gleapjs.com'],
+  'style-src': ["'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://gleapjs.com'],
 
   // Images: self + data URIs + blob + all allowed image providers
   'img-src': [
@@ -135,8 +135,8 @@ function buildCspDirectives() {
     ...(fromhelloOrigin ? [fromhelloOrigin] : []),
   ],
 
-  // Fonts: self + Google Fonts + Fontshare
-  'font-src': ["'self'", 'https://fonts.gstatic.com', 'https://cdn.fontshare.com', 'data:'],
+  // Fonts: self-hosted app assets
+  'font-src': ["'self'", 'data:'],
 
   // Connect: API calls and WebSocket
   'connect-src': [
@@ -157,9 +157,6 @@ function buildCspDirectives() {
     // Map tiles
     'https://*.basemaps.cartocdn.com',
     'https://*.tile.openstreetmap.org',
-    // Fontshare fonts
-    'https://api.fontshare.com',
-    'https://cdn.fontshare.com',
     // Development: Next.js WebSocket for hot reload
     ...(isDev ? ['ws://localhost:*', 'ws://127.0.0.1:*'] : []),
     // fromHello: snippet POSTs to /api/events, /api/profiles/merge, etc.

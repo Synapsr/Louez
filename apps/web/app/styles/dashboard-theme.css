@@ -732,7 +732,7 @@
 
 /* Main title - "Bienvenue sur Louez.io" */
 .welcome-overlay__title {
-  font-family: 'Cabinet Grotesk', var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   font-size: clamp(2rem, 9vw, 5.5rem);
   font-weight: 800;
   letter-spacing: -0.02em;
