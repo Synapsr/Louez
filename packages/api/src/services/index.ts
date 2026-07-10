@@ -1,4 +1,5 @@
 export * from './address';
+export * from './ai-advisor';
 export * from './availability';
 export * from './cart';
 export * from './combination-resolver';

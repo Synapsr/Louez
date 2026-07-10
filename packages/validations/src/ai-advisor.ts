@@ -44,3 +44,82 @@ export const advisorCartSnapshotSchema = z.object({
 })
 
 export type AdvisorCartSnapshot = z.infer<typeof advisorCartSnapshotSchema>
+
+// ============================================================================
+// oRPC input/output schemas
+// ============================================================================
+
+export const advisorConversationsListInputSchema = z.object({
+  filter: z.enum(['all', 'converted', 'not_converted']).optional(),
+  page: z.number().int().min(1).optional(),
+  pageSize: z.number().int().min(1).max(50).optional(),
+})
+
+export const advisorConversationGetInputSchema = z.object({
+  conversationId: z.string().length(21),
+})
+
+export const advisorConversationByReservationInputSchema = z.object({
+  reservationId: z.string().length(21),
+})
+
+export const advisorConversationStatusInputSchema = z.object({
+  conversationId: z.string().length(21),
+})
+
+const advisorConversationListItemSchema = z.object({
+  id: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  customerId: z.string().nullable(),
+  customerName: z.string().nullable(),
+  reservationId: z.string().nullable(),
+  reservationNumber: z.string().nullable(),
+  validatedAt: z.date().nullable(),
+  locale: z.string().nullable(),
+  messageCount: z.number(),
+  firstUserMessage: z.string().nullable(),
+})
+
+export const advisorConversationsListOutputSchema = z.object({
+  conversations: z.array(advisorConversationListItemSchema),
+  totalCount: z.number(),
+  page: z.number(),
+  pageSize: z.number(),
+})
+
+export const advisorConversationTranscriptSchema = z.object({
+  id: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  customerId: z.string().nullable(),
+  customerName: z.string().nullable(),
+  reservationId: z.string().nullable(),
+  reservationNumber: z.string().nullable(),
+  validatedAt: z.date().nullable(),
+  collectedData: z.record(z.string(), z.string()).nullable(),
+  locale: z.string().nullable(),
+  messages: z.array(
+    z.object({
+      id: z.string(),
+      role: z.enum(['user', 'assistant']),
+      content: z.string(),
+      createdAt: z.date(),
+    }),
+  ),
+})
+
+export const advisorConversationStatusOutputSchema = z.object({
+  validated: z.boolean(),
+  validatedProductIds: z.array(z.string()),
+})
+
+export type AdvisorConversationsListInput = z.infer<
+  typeof advisorConversationsListInputSchema
+>
+export type AdvisorConversationsListOutput = z.infer<
+  typeof advisorConversationsListOutputSchema
+>
+export type AdvisorConversationTranscript = z.infer<
+  typeof advisorConversationTranscriptSchema
+>
