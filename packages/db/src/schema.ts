@@ -18,6 +18,7 @@ import {
 import { nanoid } from 'nanoid';
 
 import type {
+  AiAdvisorSettings,
   BookingAttributeAxis,
   CustomerNotificationSettings,
   EmailSettings,
@@ -516,6 +517,11 @@ export const stores = mysqlTable(
       'review_booster_settings',
     ).$type<ReviewBoosterSettings>(),
 
+    // AI Advisor settings (storefront customer-facing assistant)
+    aiAdvisorSettings: json(
+      'ai_advisor_settings',
+    ).$type<AiAdvisorSettings>(),
+
     // Notification settings (admin notifications)
     notificationSettings: json(
       'notification_settings',
@@ -785,6 +791,10 @@ export const products = mysqlTable(
     // Information
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
+
+    // Free-text context read by the storefront AI advisor (constraints,
+    // ideal use cases, requirements). Never rendered on the storefront.
+    aiContext: text('ai_context'),
 
     // Images (array of URLs)
     images: json('images').$type<string[]>().default([]),
@@ -3154,3 +3164,99 @@ export const aiChatMessagesRelations = relations(aiChatMessages, ({ one }) => ({
     references: [aiChats.id],
   }),
 }));
+
+// ============================================================================
+// AI Advisor (storefront customer-facing assistant)
+// ============================================================================
+
+export const aiAdvisorConversations = mysqlTable(
+  'ai_advisor_conversations',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    // Linked when a logged-in customer chats; set null if the customer is
+    // deleted (conversation is kept, anonymized).
+    customerId: varchar('customer_id', { length: 21 }),
+    // Set inside the checkout transaction when the conversation converts.
+    reservationId: varchar('reservation_id', { length: 21 }),
+
+    // Set by the record_qualification tool once the advisor has verified the
+    // customer's constraints against the cart.
+    validatedAt: timestamp('validated_at', { mode: 'date' }),
+    // Cart product ids frozen at validation time (server-derived). Checkout in
+    // 'required' mode rejects reservations containing unvalidated products.
+    validatedProductIds: json('validated_product_ids').$type<string[]>(),
+    // Facts gathered by the advisor (e.g. vehicle model, licence type).
+    collectedData: json('collected_data').$type<Record<string, string>>(),
+
+    locale: varchar('locale', { length: 10 }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeCreatedIdx: index('ai_advisor_conversations_store_created_idx').on(
+      table.storeId,
+      table.createdAt,
+    ),
+    customerIdx: index('ai_advisor_conversations_customer_idx').on(
+      table.customerId,
+    ),
+    // One conversation per reservation (MySQL allows multiple NULLs).
+    reservationUnique: unique('ai_advisor_conversations_reservation_unique').on(
+      table.reservationId,
+    ),
+  }),
+);
+
+export const aiAdvisorMessages = mysqlTable(
+  'ai_advisor_messages',
+  {
+    id: id(),
+    conversationId: varchar('conversation_id', { length: 21 }).notNull(),
+    // Denormalized from the conversation so per-store rate limiting is a
+    // single indexed count on the hot path (no join per chat request).
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    role: mysqlEnum('role', ['user', 'assistant', 'system', 'tool']).notNull(),
+    content: longtext('content'),
+    toolInvocations: json('tool_invocations').$type<unknown[]>(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    conversationCreatedIdx: index(
+      'ai_advisor_messages_conversation_created_idx',
+    ).on(table.conversationId, table.createdAt),
+    storeCreatedIdx: index('ai_advisor_messages_store_created_idx').on(
+      table.storeId,
+      table.createdAt,
+    ),
+  }),
+);
+
+export const aiAdvisorConversationsRelations = relations(
+  aiAdvisorConversations,
+  ({ one, many }) => ({
+    store: one(stores, {
+      fields: [aiAdvisorConversations.storeId],
+      references: [stores.id],
+    }),
+    customer: one(customers, {
+      fields: [aiAdvisorConversations.customerId],
+      references: [customers.id],
+    }),
+    reservation: one(reservations, {
+      fields: [aiAdvisorConversations.reservationId],
+      references: [reservations.id],
+    }),
+    messages: many(aiAdvisorMessages),
+  }),
+);
+
+export const aiAdvisorMessagesRelations = relations(
+  aiAdvisorMessages,
+  ({ one }) => ({
+    conversation: one(aiAdvisorConversations, {
+      fields: [aiAdvisorMessages.conversationId],
+      references: [aiAdvisorConversations.id],
+    }),
+  }),
+);

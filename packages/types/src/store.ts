@@ -430,6 +430,7 @@ export interface PlanFeatures {
   onlinePayment: boolean;
   customerPortal: boolean;
   reviewBooster: boolean;
+  aiAdvisor: boolean;
   phoneSupport: boolean;
   dedicatedManager: boolean;
 }
@@ -472,6 +473,34 @@ export interface ReviewBoosterSettings {
   smsDelayHours: number;
   // Custom template
   template?: ReviewBoosterTemplate;
+}
+
+// ============================================================================
+// AI Advisor (storefront customer-facing assistant)
+// ============================================================================
+
+/**
+ * How the advisor participates in checkout:
+ * - 'optional': available in the widget, checkout unchanged
+ * - 'recommended': non-blocking suggestion shown at checkout
+ * - 'required': checkout is blocked until the advisor validates the conversation
+ */
+export type AiAdvisorMode = 'optional' | 'recommended' | 'required';
+
+export interface AiAdvisorSettings {
+  /** Whether the advisor widget is shown on the storefront */
+  enabled: boolean;
+  /** How the advisor participates in checkout */
+  mode: AiAdvisorMode;
+  /**
+   * Free-text store-level context read by the advisor — what the owner would
+   * tell a new employee (constraints, verifications to run, tone, policies).
+   */
+  storeContext: string;
+  /** First assistant bubble shown when the widget opens (falls back to i18n) */
+  welcomeMessage?: string;
+  /** Widget title (falls back to i18n) */
+  displayName?: string;
 }
 
 // ============================================================================

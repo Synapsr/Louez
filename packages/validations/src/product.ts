@@ -159,6 +159,7 @@ export const createProductSchema = (
         .min(2, t('minLength', { min: 2 }))
         .max(255, t('maxLength', { max: 255 })),
       description: z.string(),
+      aiContext: z.string().max(2000, t('maxLength', { max: 2000 })),
       categoryId: z.string().nullable(),
       price: z
         .string()
@@ -350,6 +351,7 @@ export const productSchema = z
       .min(2, 'validation.minLength')
       .max(255, 'validation.maxLength'),
     description: z.string().optional(),
+    aiContext: z.string().max(2000, 'validation.maxLength').optional(),
     categoryId: z.string().optional().nullable(),
     price: z
       .string()

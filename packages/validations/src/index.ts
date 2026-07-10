@@ -1,3 +1,4 @@
+export * from './ai-advisor'
 export * from './business-hours'
 export * from './api'
 export * from './customer'
