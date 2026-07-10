@@ -132,7 +132,7 @@ services:
   louez:
     image: synapsr/louez:latest
     ports:
-      - '3000:3000'
+      - "3000:3000"
     environment:
       - DATABASE_URL=mysql://louez:password@db:3306/louez
       - AUTH_SECRET=changez-moi-avec-une-chaine-de-32-caracteres
@@ -157,7 +157,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5

@@ -23,10 +23,10 @@ Louez supports **tiered pricing** for rental products: the longer a customer ren
 
 This document specifies two phases of improvement:
 
-| Phase | Name | Goal | Scope |
-|-------|------|------|-------|
-| **1** | Discount precision | Eliminate rounding errors in bidirectional price editing | Schema + server actions + frontend |
-| **2** | Fixed bracket pricing | Allow store owners to enforce exact tier durations | Schema + pricing engine + storefront + dashboard |
+| Phase | Name                  | Goal                                                     | Scope                                            |
+| ----- | --------------------- | -------------------------------------------------------- | ------------------------------------------------ |
+| **1** | Discount precision    | Eliminate rounding errors in bidirectional price editing | Schema + server actions + frontend               |
+| **2** | Fixed bracket pricing | Allow store owners to enforce exact tier durations       | Schema + pricing engine + storefront + dashboard |
 
 Both phases share a single schema migration and are designed to be backward-compatible. Existing products are unaffected.
 
@@ -59,12 +59,12 @@ products
 
 Each tier row displays 4 editable fields in a responsive grid:
 
-| Column | Field | Example |
-|--------|-------|---------|
-| **Duration** | `minDuration` (integer) | `3 jours` |
-| **Discount** | `discountPercent` (percentage) | `-25%` |
-| **Target price** | Computed unit price (editable) | `60.00 /j.` |
-| **Total cost** | Computed total for tier duration (editable) | `180.00` |
+| Column           | Field                                       | Example     |
+| ---------------- | ------------------------------------------- | ----------- |
+| **Duration**     | `minDuration` (integer)                     | `3 jours`   |
+| **Discount**     | `discountPercent` (percentage)              | `-25%`      |
+| **Target price** | Computed unit price (editable)              | `60.00 /j.` |
+| **Total cost**   | Computed total for tier duration (editable) | `180.00`    |
 
 All four fields are **bidirectionally linked** through `discountPercent`. Editing any one field recomputes the others instantly.
 
@@ -111,13 +111,13 @@ The residual error (0.000008 EUR) is **625x below** the 0.005 EUR rounding thres
 
 **Edge case validation:**
 
-| Base price | Duration | Target total | Exact % | Stored (6 dec.) | Recalculated total | Error |
-|------------|----------|-------------|---------|------------------|--------------------|-------|
-| 80 EUR | 3 days | 160.00 EUR | 33.333...% | 33.333333% | 160.000008 → 160.00 | 0.00 |
-| 100 EUR | 7 days | 490.00 EUR | 30.000% | 30.000000% | 490.000000 → 490.00 | 0.00 |
-| 3 EUR | 7 days | 10.00 EUR | 52.380952...% | 52.380952% | 10.000000 → 10.00 | 0.00 |
-| 7 EUR | 11 days | 50.00 EUR | 35.064935...% | 35.064935% | 50.000005 → 50.00 | 0.00 |
-| 150 EUR | 3 days | 270.00 EUR | 40.000% | 40.000000% | 270.000000 → 270.00 | 0.00 |
+| Base price | Duration | Target total | Exact %       | Stored (6 dec.) | Recalculated total  | Error |
+| ---------- | -------- | ------------ | ------------- | --------------- | ------------------- | ----- |
+| 80 EUR     | 3 days   | 160.00 EUR   | 33.333...%    | 33.333333%      | 160.000008 → 160.00 | 0.00  |
+| 100 EUR    | 7 days   | 490.00 EUR   | 30.000%       | 30.000000%      | 490.000000 → 490.00 | 0.00  |
+| 3 EUR      | 7 days   | 10.00 EUR    | 52.380952...% | 52.380952%      | 10.000000 → 10.00   | 0.00  |
+| 7 EUR      | 11 days  | 50.00 EUR    | 35.064935...% | 35.064935%      | 50.000005 → 50.00   | 0.00  |
+| 150 EUR    | 3 days   | 270.00 EUR   | 40.000%       | 40.000000%      | 270.000000 → 270.00 | 0.00  |
 
 ### Changes required
 
@@ -134,6 +134,7 @@ discountPercent: decimal('discount_percent', { precision: 10, scale: 6 }).notNul
 ```
 
 **Migration command:**
+
 - Development: `pnpm db:push`
 - Production: `pnpm db:generate` then `pnpm db:migrate`
 
@@ -163,10 +164,10 @@ The bidirectional conversion formulas in `onChange` handlers must preserve full 
 
 ```typescript
 // Before — rounds to 2 decimal places (insufficient)
-const discount = Math.round(((basePrice - targetPrice) / basePrice) * 100 * 100) / 100
+const discount = Math.round(((basePrice - targetPrice) / basePrice) * 100 * 100) / 100;
 
 // After — rounds to 6 decimal places (lossless for DECIMAL(10,6))
-const discount = Math.round(((basePrice - targetPrice) / basePrice) * 100 * 1e6) / 1e6
+const discount = Math.round(((basePrice - targetPrice) / basePrice) * 100 * 1e6) / 1e6;
 ```
 
 This applies to both the **target price** onChange and the **total cost** onChange.
@@ -179,13 +180,13 @@ For **badges and labels** (storefront, preview table), percentages are already d
 
 #### What does NOT change
 
-| Component | Reason |
-|-----------|--------|
-| Pricing engine (`calculate.ts`) | Already uses floating-point arithmetic |
-| Zod validation (`product.ts`) | Validates range 0-99, not decimal precision |
-| TypeScript types (`store.ts`) | `discountPercent: number` — no precision constraint |
-| Storefront components | `parseFloat()` handles any decimal string |
-| User-facing behavior | Users never see `33.333333%` in badges or labels |
+| Component                       | Reason                                              |
+| ------------------------------- | --------------------------------------------------- |
+| Pricing engine (`calculate.ts`) | Already uses floating-point arithmetic              |
+| Zod validation (`product.ts`)   | Validates range 0-99, not decimal precision         |
+| TypeScript types (`store.ts`)   | `discountPercent: number` — no precision constraint |
+| Storefront components           | `parseFloat()` handles any decimal string           |
+| User-facing behavior            | Users never see `33.333333%` in badges or labels    |
 
 ---
 
@@ -200,29 +201,30 @@ Some store owners want **fixed bracket pricing** (also called "package pricing")
 ### Example scenario
 
 A car rental company with:
+
 - Base price: 80 EUR/day
 - 3-day tier: 180 EUR total (= 60 EUR/day, -25%)
 - 7-day tier: 350 EUR total (= 50 EUR/day, -37.5%)
 
 **Progressive mode (current):**
 
-| Customer wants | Duration charged | Price | Explanation |
-|----------------|-----------------|-------|-------------|
-| 1 day | 1 day | 80 EUR | Base price |
-| 2 days | 2 days | 160 EUR | 80 x 2, no tier applies |
-| 3 days | 3 days | 180 EUR | 60 x 3, 3-day tier |
-| 5 days | 5 days | 300 EUR | 60 x 5, 3-day tier |
-| 7 days | 7 days | 350 EUR | 50 x 7, 7-day tier |
+| Customer wants | Duration charged | Price   | Explanation             |
+| -------------- | ---------------- | ------- | ----------------------- |
+| 1 day          | 1 day            | 80 EUR  | Base price              |
+| 2 days         | 2 days           | 160 EUR | 80 x 2, no tier applies |
+| 3 days         | 3 days           | 180 EUR | 60 x 3, 3-day tier      |
+| 5 days         | 5 days           | 300 EUR | 60 x 5, 3-day tier      |
+| 7 days         | 7 days           | 350 EUR | 50 x 7, 7-day tier      |
 
 **Fixed bracket mode (new):**
 
-| Customer wants | Duration charged | Price | Explanation |
-|----------------|-----------------|-------|-------------|
-| 1 day | 1 day | 80 EUR | Base price (= 1-day bracket) |
-| 2 days | 3 days | 180 EUR | Snaps up to 3-day bracket |
-| 3 days | 3 days | 180 EUR | Exact 3-day bracket |
-| 5 days | 7 days | 350 EUR | Snaps up to 7-day bracket |
-| 7 days | 7 days | 350 EUR | Exact 7-day bracket |
+| Customer wants | Duration charged | Price   | Explanation                  |
+| -------------- | ---------------- | ------- | ---------------------------- |
+| 1 day          | 1 day            | 80 EUR  | Base price (= 1-day bracket) |
+| 2 days         | 3 days           | 180 EUR | Snaps up to 3-day bracket    |
+| 3 days         | 3 days           | 180 EUR | Exact 3-day bracket          |
+| 5 days         | 7 days           | 350 EUR | Snaps up to 7-day bracket    |
+| 7 days         | 7 days           | 350 EUR | Exact 7-day bracket          |
 
 The key difference: **there is no 2-day or 5-day option**. The customer picks from the available brackets.
 
@@ -248,24 +250,23 @@ This is a **product-level** setting (not store-level), because different product
  */
 export function getAvailableDurations(
   tiers: PricingTier[],
-  enforceStrictTiers: boolean
+  enforceStrictTiers: boolean,
 ): number[] | null {
-  if (!enforceStrictTiers || tiers.length === 0) return null
+  if (!enforceStrictTiers || tiers.length === 0) return null;
   // Always include "1" (base price) plus all tier durations
-  const durations = new Set([1, ...tiers.map((t) => t.minDuration)])
-  return [...durations].sort((a, b) => a - b)
+  const durations = new Set([1, ...tiers.map((t) => t.minDuration)]);
+  return [...durations].sort((a, b) => a - b);
 }
 
 /**
  * Snap a duration to the next valid tier bracket (round up).
  * Used when enforceStrictTiers is true.
  */
-export function snapToNearestTier(
-  duration: number,
-  availableDurations: number[]
-): number {
-  return availableDurations.find((d) => d >= duration)
-    ?? availableDurations[availableDurations.length - 1]
+export function snapToNearestTier(duration: number, availableDurations: number[]): number {
+  return (
+    availableDurations.find((d) => d >= duration) ??
+    availableDurations[availableDurations.length - 1]
+  );
 }
 ```
 
@@ -309,6 +310,7 @@ The toggle appears **inside** the pricing tiers card, below the tier rows and ab
 ```
 
 **Preview table behavior:**
+
 - **Progressive mode:** Shows predefined sample durations (1, 3, 7, 14, 30 days) with interpolated prices.
 - **Fixed bracket mode:** Shows **only** the tier-defined durations (1 day + each tier). No intermediate durations appear, making it immediately clear which "packages" the customer can choose.
 
@@ -319,11 +321,13 @@ When `enforceStrictTiers` is `true`:
 1. **Date picker:** The end date is constrained to only produce valid tier durations from the selected start date. Intermediate dates are greyed out or not selectable.
 
 2. **Duration selector (alternative):** Instead of a date range, show a dropdown or button group with the available brackets:
+
    ```
    [1 jour - 80 EUR] [3 jours - 180 EUR] [7 jours - 350 EUR]
    ```
 
 3. **Pricing display:** Show packages as a clear table instead of "from X EUR/day":
+
    ```
    ┌───────────┬──────────┐
    │ 1 jour    │   80 EUR │
@@ -337,13 +341,13 @@ When `enforceStrictTiers` is `true`:
 
 ### Edge cases
 
-| Case | Behavior |
-|------|----------|
-| No tiers defined + strict mode enabled | Strict mode toggle is hidden (requires at least 1 tier) |
-| Duration exceeds all tiers | Snaps to highest tier (e.g., 10 days → 7-day bracket) |
-| Single tier (e.g., 7 days only) | Available: 1 day, 7 days. Nothing in between. |
-| Product pricing mode changes | Tier durations are in the product's pricing unit (hours, days, weeks) |
-| `enforceStrictTiers` toggled off | Instantly reverts to progressive pricing, no data loss |
+| Case                                   | Behavior                                                              |
+| -------------------------------------- | --------------------------------------------------------------------- |
+| No tiers defined + strict mode enabled | Strict mode toggle is hidden (requires at least 1 tier)               |
+| Duration exceeds all tiers             | Snaps to highest tier (e.g., 10 days → 7-day bracket)                 |
+| Single tier (e.g., 7 days only)        | Available: 1 day, 7 days. Nothing in between.                         |
+| Product pricing mode changes           | Tier durations are in the product's pricing unit (hours, days, weeks) |
+| `enforceStrictTiers` toggled off       | Instantly reverts to progressive pricing, no data loss                |
 
 ---
 
@@ -367,10 +371,10 @@ When `enforceStrictTiers` is `true`:
 
 The 4-column tier grid is responsive:
 
-| Breakpoint | Layout |
-|------------|--------|
+| Breakpoint      | Layout                                                                   |
+| --------------- | ------------------------------------------------------------------------ |
 | `< sm` (mobile) | 2 columns per row (Duration + Discount on row 1, Price + Total on row 2) |
-| `>= sm` | 4 columns in a single row |
+| `>= sm`         | 4 columns in a single row                                                |
 
 ```typescript
 className={cn(
@@ -394,41 +398,42 @@ This keeps the columns compact and avoids disproportionate widths.
 
 ### Existing keys (`dashboard.products.form.pricingTiers`)
 
-| Key | FR | EN | DE |
-|-----|----|----|-----|
-| `enableTiers` | Reductions longue duree | Long-term discounts | Langzeitrabatte |
-| `enableTiersDescription` | Proposez des reductions automatiques pour les locations plus longues | Offer automatic discounts for longer rentals | Bieten Sie automatische Rabatte fur langere Mieten an |
-| `tiersTitle` | Paliers de reduction | Discount tiers | Rabattstufen |
-| `addTier` | Ajouter un palier | Add a tier | Stufe hinzufugen |
-| `addFirstTier` | Ajouter un premier palier | Add first tier | Erste Stufe hinzufugen |
-| `noTiers` | Aucun palier de reduction configure | No discount tiers configured | Keine Rabattstufen konfiguriert |
-| `fromDuration` | A partir de | From | Ab |
-| `discount` | Reduction | Discount | Rabatt |
-| `targetPrice` | Prix cible | Target price | Zielpreis |
-| `tierTotal` | Cout total | Total cost | Gesamtkosten |
-| `insteadOf` | au lieu de | instead of | statt |
-| `duplicateDurationError` | Chaque palier doit avoir une duree minimum differente | Each tier must have a different minimum duration | Jede Stufe muss eine andere Mindestdauer haben |
-| `preview` | Apercu des tarifs | Price preview | Preisvorschau |
-| `previewDescription` | Voici comment les prix seront calcules pour differentes durees | Here's how prices will be calculated for different durations | So werden die Preise fur verschiedene Dauern berechnet |
-| `previewTooltip` | Les reductions s'appliquent automatiquement en fonction de la duree de location | Discounts are automatically applied based on rental duration | Rabatte werden automatisch basierend auf der Mietdauer angewendet |
-| `duration` | Duree | Duration | Dauer |
-| `pricePerUnit` | Prix unitaire | Unit price | Stuckpreis |
-| `total` | Total | Total | Gesamt |
-| `savings` | Economie | Savings | Ersparnis |
+| Key                      | FR                                                                              | EN                                                           | DE                                                                |
+| ------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `enableTiers`            | Reductions longue duree                                                         | Long-term discounts                                          | Langzeitrabatte                                                   |
+| `enableTiersDescription` | Proposez des reductions automatiques pour les locations plus longues            | Offer automatic discounts for longer rentals                 | Bieten Sie automatische Rabatte fur langere Mieten an             |
+| `tiersTitle`             | Paliers de reduction                                                            | Discount tiers                                               | Rabattstufen                                                      |
+| `addTier`                | Ajouter un palier                                                               | Add a tier                                                   | Stufe hinzufugen                                                  |
+| `addFirstTier`           | Ajouter un premier palier                                                       | Add first tier                                               | Erste Stufe hinzufugen                                            |
+| `noTiers`                | Aucun palier de reduction configure                                             | No discount tiers configured                                 | Keine Rabattstufen konfiguriert                                   |
+| `fromDuration`           | A partir de                                                                     | From                                                         | Ab                                                                |
+| `discount`               | Reduction                                                                       | Discount                                                     | Rabatt                                                            |
+| `targetPrice`            | Prix cible                                                                      | Target price                                                 | Zielpreis                                                         |
+| `tierTotal`              | Cout total                                                                      | Total cost                                                   | Gesamtkosten                                                      |
+| `insteadOf`              | au lieu de                                                                      | instead of                                                   | statt                                                             |
+| `duplicateDurationError` | Chaque palier doit avoir une duree minimum differente                           | Each tier must have a different minimum duration             | Jede Stufe muss eine andere Mindestdauer haben                    |
+| `preview`                | Apercu des tarifs                                                               | Price preview                                                | Preisvorschau                                                     |
+| `previewDescription`     | Voici comment les prix seront calcules pour differentes durees                  | Here's how prices will be calculated for different durations | So werden die Preise fur verschiedene Dauern berechnet            |
+| `previewTooltip`         | Les reductions s'appliquent automatiquement en fonction de la duree de location | Discounts are automatically applied based on rental duration | Rabatte werden automatisch basierend auf der Mietdauer angewendet |
+| `duration`               | Duree                                                                           | Duration                                                     | Dauer                                                             |
+| `pricePerUnit`           | Prix unitaire                                                                   | Unit price                                                   | Stuckpreis                                                        |
+| `total`                  | Total                                                                           | Total                                                        | Gesamt                                                            |
+| `savings`                | Economie                                                                        | Savings                                                      | Ersparnis                                                         |
 
-*(ES, IT, NL, PL, PT follow the same pattern — see `src/messages/*.json`)*
+_(ES, IT, NL, PL, PT follow the same pattern — see `src/messages/*.json`)_
 
 ### New keys for Phase 2
 
-| Key | FR | EN |
-|-----|----|----|
-| `enforceStrictTiers` | Proposer uniquement ces durees | Only offer these durations |
+| Key                             | FR                                                                                                                                           | EN                                                                                                                             |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `enforceStrictTiers`            | Proposer uniquement ces durees                                                                                                               | Only offer these durations                                                                                                     |
 | `enforceStrictTiersDescription` | Lorsque active, les clients ne peuvent reserver que pour les durees exactes de vos paliers. Les durees intermediaires ne sont pas proposees. | When enabled, customers can only book for the exact durations defined by your tiers. Intermediate durations are not available. |
-| `packagesLabel` | Forfaits | Packages |
-| `availableDurations` | Durees disponibles : {durations} | Available durations: {durations} |
-| `selectAvailableDuration` | Ce produit est disponible pour les durees suivantes : {durations}. | This product is available for the following durations: {durations}. |
+| `packagesLabel`                 | Forfaits                                                                                                                                     | Packages                                                                                                                       |
+| `availableDurations`            | Durees disponibles : {durations}                                                                                                             | Available durations: {durations}                                                                                               |
+| `selectAvailableDuration`       | Ce produit est disponible pour les durees suivantes : {durations}.                                                                           | This product is available for the following durations: {durations}.                                                            |
 
 **Wording rationale:**
+
 - "Proposer uniquement ces durees" is neutral and action-oriented. It avoids technical jargon ("strict", "enforce", "bracket") and clearly describes the outcome.
 - "Les durees intermediaires ne sont pas proposees" reassures the store owner about what happens to in-between values.
 - The storefront message uses "disponible" (available) rather than "autorise" (allowed) — softer, customer-friendly tone.
@@ -437,30 +442,30 @@ This keeps the columns compact and avoids disproportionate widths.
 
 ## Technical Constraints
 
-| Constraint | Value | Rationale |
-|------------|-------|-----------|
-| `discountPercent` range | 0 - 99 | 100% = free rental, not supported |
-| `discountPercent` storage | `DECIMAL(10,6)` | 6 decimals for lossless round-trip from target price |
-| `minDuration` | >= 1, integer | Fractional durations not supported |
-| Max tiers per product | 5 | UX simplicity, can be increased later |
-| Unique constraint | `(productId, minDuration)` | No two tiers with the same threshold |
-| `enforceStrictTiers` | Per-product boolean, default `false` | Different products can use different strategies |
+| Constraint                | Value                                | Rationale                                            |
+| ------------------------- | ------------------------------------ | ---------------------------------------------------- |
+| `discountPercent` range   | 0 - 99                               | 100% = free rental, not supported                    |
+| `discountPercent` storage | `DECIMAL(10,6)`                      | 6 decimals for lossless round-trip from target price |
+| `minDuration`             | >= 1, integer                        | Fractional durations not supported                   |
+| Max tiers per product     | 5                                    | UX simplicity, can be increased later                |
+| Unique constraint         | `(productId, minDuration)`           | No two tiers with the same threshold                 |
+| `enforceStrictTiers`      | Per-product boolean, default `false` | Different products can use different strategies      |
 
 ### Conversion formulas
 
 ```typescript
 // Price → Discount
-discountPercent = ((basePrice - targetPrice) / basePrice) * 100
+discountPercent = ((basePrice - targetPrice) / basePrice) * 100;
 
 // Total → Discount
-unitPrice = totalCost / minDuration
-discountPercent = ((basePrice - unitPrice) / basePrice) * 100
+unitPrice = totalCost / minDuration;
+discountPercent = ((basePrice - unitPrice) / basePrice) * 100;
 
 // Discount → Price
-effectivePrice = basePrice * (1 - discountPercent / 100)
+effectivePrice = basePrice * (1 - discountPercent / 100);
 
 // Discount → Total
-total = basePrice * (1 - discountPercent / 100) * minDuration
+total = basePrice * (1 - discountPercent / 100) * minDuration;
 ```
 
 All conversions round `discountPercent` to 6 decimal places (`Math.round(x * 1e6) / 1e6`) before storage.
@@ -469,16 +474,16 @@ All conversions round `discountPercent` to 6 decimal places (`Math.round(x * 1e6
 
 ## Files Reference
 
-| File | Role | Phase |
-|------|------|-------|
-| `src/lib/db/schema.ts` | Database schema (Drizzle ORM) | 1 + 2 |
-| `src/lib/pricing/calculate.ts` | Pricing engine | 2 |
-| `src/lib/pricing/types.ts` | Pricing TypeScript types | 2 |
-| `src/lib/validations/product.ts` | Zod validation schemas | 2 |
-| `src/types/store.ts` | Shared TypeScript interfaces | - |
-| `src/components/dashboard/pricing-tiers-editor.tsx` | Dashboard tier editor | 1 + 2 |
-| `src/app/(dashboard)/dashboard/products/actions.ts` | Server actions (CRUD) | 1 |
-| `src/app/(dashboard)/dashboard/products/product-form.tsx` | Product form | 2 |
-| `src/components/storefront/pricing-tiers-display.tsx` | Storefront tier display | 2 |
-| `src/app/(storefront)/[slug]/product/*/add-to-cart-form.tsx` | Add to cart form | 2 |
-| `src/messages/*.json` | i18n translations (8 languages) | 1 + 2 |
+| File                                                         | Role                            | Phase |
+| ------------------------------------------------------------ | ------------------------------- | ----- |
+| `src/lib/db/schema.ts`                                       | Database schema (Drizzle ORM)   | 1 + 2 |
+| `src/lib/pricing/calculate.ts`                               | Pricing engine                  | 2     |
+| `src/lib/pricing/types.ts`                                   | Pricing TypeScript types        | 2     |
+| `src/lib/validations/product.ts`                             | Zod validation schemas          | 2     |
+| `src/types/store.ts`                                         | Shared TypeScript interfaces    | -     |
+| `src/components/dashboard/pricing-tiers-editor.tsx`          | Dashboard tier editor           | 1 + 2 |
+| `src/app/(dashboard)/dashboard/products/actions.ts`          | Server actions (CRUD)           | 1     |
+| `src/app/(dashboard)/dashboard/products/product-form.tsx`    | Product form                    | 2     |
+| `src/components/storefront/pricing-tiers-display.tsx`        | Storefront tier display         | 2     |
+| `src/app/(storefront)/[slug]/product/*/add-to-cart-form.tsx` | Add to cart form                | 2     |
+| `src/messages/*.json`                                        | i18n translations (8 languages) | 1 + 2 |

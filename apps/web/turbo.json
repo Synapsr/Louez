@@ -1,11 +1,10 @@
 {
-	"$schema": "https://turbo.build/schema.json",
-	"extends": ["//"],
-	"tasks": {
-		"dev:web": {
-			"cache": false,
-			"persistent": true
-		}
-
-	}
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "dev:web": {
+      "cache": false,
+      "persistent": true
+    }
+  }
 }

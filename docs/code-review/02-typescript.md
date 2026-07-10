@@ -11,6 +11,7 @@ Never use `any`. Use `unknown` when the type is truly unknown, then narrow with 
 ### [TS-02] Prefer inference over annotation
 
 Don't annotate what TypeScript can infer. Explicit types are for:
+
 - Function parameters
 - Function return types on exported/public functions
 - Complex objects where inference is ambiguous
@@ -53,7 +54,10 @@ Use string union types instead of enums:
 
 ```typescript
 // Bad
-enum Status { Active = "active", Inactive = "inactive" }
+enum Status {
+  Active = "active",
+  Inactive = "inactive",
+}
 
 // Good
 type Status = "active" | "inactive";

@@ -7,6 +7,7 @@
 ### [SY-01] Tailwind only, no custom CSS
 
 Use Tailwind utility classes for all styling. Custom CSS is acceptable only for:
+
 - Global resets / base styles
 - Animations that can't be expressed with Tailwind
 - Third-party component overrides

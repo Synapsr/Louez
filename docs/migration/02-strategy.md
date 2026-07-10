@@ -24,6 +24,7 @@ Big-bang rewrites fail. Migrate incrementally — one module at a time, keeping 
 ```
 
 Why this order:
+
 - **Tooling first** because it catches future violations automatically
 - **Types second** because strict mode reveals hidden bugs
 - **Data layer before UI** because component refactoring is easier when data flow is clean
@@ -31,6 +32,7 @@ Why this order:
 ## When big-bang is acceptable
 
 Only when:
+
 - The app is small (< 20 files)
 - There are no users yet (no production traffic)
 - The entire team agrees and can dedicate a sprint to it

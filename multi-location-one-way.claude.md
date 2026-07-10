@@ -5,6 +5,7 @@
 Bike rental stores (and other rental businesses) need customers to choose different pickup and return locations. Example: pick up bikes in Brest (the shop), return in Quimper. The store defines predefined locations where they operate, each with a delivery fee. This is opt-in -- only stores that enable it see the feature. Existing delivery flow (distance-based to customer's address) remains untouched.
 
 Client requests:
+
 - Customer chooses pickup location and return location
 - Fees calculated per location
 - Reservation list shows pickup/return cities under dates
@@ -20,25 +21,26 @@ Add new types:
 
 ```typescript
 export interface LocationPoint {
-  id: string            // nanoid
-  name: string          // "Brest - Boutique", "Quimper - Gare"
-  address: string
-  city: string
-  latitude: number
-  longitude: number
-  fee: number           // fixed fee per use (0 = free, i.e. home base)
-  isHome: boolean       // the store's main location
-  displayOrder: number
+  id: string; // nanoid
+  name: string; // "Brest - Boutique", "Quimper - Gare"
+  address: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  fee: number; // fixed fee per use (0 = free, i.e. home base)
+  isHome: boolean; // the store's main location
+  displayOrder: number;
 }
 
 export interface LocationsSettings {
-  enabled: boolean
-  allowOneWay: boolean
-  locations: LocationPoint[]
+  enabled: boolean;
+  allowOneWay: boolean;
+  locations: LocationPoint[];
 }
 ```
 
 Extend `StoreSettings`:
+
 ```typescript
 locations?: LocationsSettings  // add after delivery
 ```
@@ -71,6 +73,7 @@ All nullable -- existing reservations unaffected. Names/cities denormalized so d
 ## 3. Dashboard: Location Settings Page
 
 **New files:**
+
 - `apps/web/app/(dashboard)/dashboard/settings/locations/page.tsx` -- server page
 - `apps/web/app/(dashboard)/dashboard/settings/locations/locations-settings-form.tsx` -- client form
 - `apps/web/app/(dashboard)/dashboard/settings/locations/actions.ts` -- server action
@@ -78,6 +81,7 @@ All nullable -- existing reservations unaffected. Names/cities denormalized so d
 **Pattern:** Follow existing delivery settings page structure (`apps/web/app/(dashboard)/dashboard/settings/delivery/`)
 
 **UI:**
+
 1. Enable toggle -- master on/off
 2. Allow one-way toggle
 3. Location list (sortable) -- each entry has:
@@ -102,13 +106,13 @@ All nullable -- existing reservations unaffected. Names/cities denormalized so d
 **File: `apps/web/app/(storefront)/[slug]/checkout/types.ts`**
 
 ```typescript
-export type StepId = 'contact' | 'locations' | 'delivery' | 'address' | 'confirm'  // add 'locations'
+export type StepId = "contact" | "locations" | "delivery" | "address" | "confirm"; // add 'locations'
 
 export interface SelectedLocation {
-  locationId: string
-  name: string
-  city: string
-  fee: number
+  locationId: string;
+  name: string;
+  city: string;
+  fee: number;
 }
 ```
 
@@ -119,6 +123,7 @@ Extend `CheckoutFormProps` with `locationsSettings?: LocationsSettings`
 **New file: `apps/web/app/(storefront)/[slug]/checkout/hooks/use-checkout-locations.ts`**
 
 Manages:
+
 - `pickupLocation` / `returnLocation` state
 - Auto-selects home location as default for both
 - Computes `isOneWay`, `totalLocationFee`
@@ -131,6 +136,7 @@ Manages:
 **New file: `apps/web/app/(storefront)/[slug]/checkout/components/checkout-locations-step.tsx`**
 
 UI:
+
 - **Pickup location**: Radio cards listing all locations with name + fee
 - **Return location**: Same list (only shown if `allowOneWay`; otherwise locked to same as pickup)
 - Fee summary: "Retrait: Brest (Gratuit) -- Retour: Quimper (30,00 EUR)"
@@ -152,11 +158,13 @@ When locations is enabled, it **replaces** the delivery step entirely. No mixing
 ### 4e. Checkout form wiring
 
 **File: `apps/web/app/(storefront)/[slug]/checkout/checkout-form.tsx`**
+
 - Wire `useCheckoutLocations` hook
 - Render `CheckoutLocationsStep`
 - Include location fees in `totalWithDelivery`
 
 **File: `apps/web/app/(storefront)/[slug]/checkout/page.tsx`**
+
 - Pass `locationsSettings` to `CheckoutForm`
 
 ### 4f. Order summary
@@ -170,6 +178,7 @@ Add location fee lines when applicable (pickup fee + return fee with `MapPin` ic
 **File: `apps/web/app/(storefront)/[slug]/checkout/reservation-payload.ts`**
 
 Add `locations` field to payload:
+
 ```typescript
 locations?: {
   pickupLocationId, pickupLocationName, pickupLocationCity,
@@ -184,6 +193,7 @@ locations?: {
 **File: `apps/web/app/(storefront)/[slug]/checkout/actions.ts`**
 
 After the existing delivery validation block, add location validation:
+
 1. Check `locationsSettings.enabled`
 2. Validate pickup/return location IDs exist in store's settings
 3. If different IDs, check `allowOneWay`
@@ -197,20 +207,24 @@ After the existing delivery validation block, add location validation:
 ## 6. Dashboard: Reservation List Display
 
 ### Table view
+
 **File: `apps/web/app/(dashboard)/dashboard/reservations/reservations-table-view.tsx`**
 
 Under the dates cell, add:
+
 ```
 Brest → Quimper     (one-way)
 Brest               (same location)
 ```
 
 ### Card view
+
 **File: `apps/web/app/(dashboard)/dashboard/reservations/reservations-card-view.tsx`**
 
 Same pattern under dates.
 
 ### Types
+
 **File: `apps/web/app/(dashboard)/dashboard/reservations/reservations-types.ts`**
 
 Add `pickupLocationCity`, `returnLocationCity`, `pickupLocationName`, `returnLocationName`, `isOneWay` to reservation type.
@@ -235,6 +249,7 @@ Add location fields to calendar reservation type.
 **File: `apps/web/app/(dashboard)/dashboard/reservations/[id]/reservation-detail-client.tsx`**
 
 Add a "Locations" card when location data exists:
+
 - Pickup location: name + fee
 - Return location: name + fee
 - One-way badge if applicable
@@ -244,19 +259,23 @@ Add a "Locations" card when location data exists:
 ## 9. Dashboard: New / Edit Reservation
 
 ### New reservation
+
 **File: `apps/web/app/(dashboard)/dashboard/reservations/new/new-reservation-form.tsx`**
 
 Add location selectors (conditional on `locations.enabled`):
+
 - Pickup location dropdown
 - Return location dropdown (if `allowOneWay`)
 - Fee display
 
 ### Edit reservation
+
 **File: `apps/web/app/(dashboard)/dashboard/reservations/[id]/edit/edit-reservation-form.tsx`**
 
 Same selectors, pre-populated with current values.
 
 ### ORPC mutations
+
 **File: `packages/api/src/routers/dashboard/reservations.ts`** -- accept location fields in `createManualReservation` and `updateReservation`
 
 ---
@@ -264,15 +283,18 @@ Same selectors, pre-populated with current values.
 ## 10. Email Templates
 
 **Files:**
+
 - `apps/web/lib/email/templates/reservation-confirmation.tsx`
 - `apps/web/lib/email/templates/reservation-cancelled.tsx`
 - `apps/web/lib/email/templates/reservation-completed.tsx`
 
 Add location section after dates:
+
 ```
 Lieu de retrait : Brest - Boutique
 Lieu de retour : Quimper - Gare
 ```
+
 Only rendered when location data exists.
 
 ---
@@ -280,6 +302,7 @@ Only rendered when location data exists.
 ## 11. i18n
 
 Add translation keys to `fr.json` and `en.json`:
+
 - `dashboard.settings.locations.*` -- settings page
 - `storefront.checkout.locations.*` -- checkout step
 - `dashboard.reservations.locations.*` -- list/detail display
@@ -289,25 +312,25 @@ Add translation keys to `fr.json` and `en.json`:
 
 ## Edge Cases
 
-| Case | Handling |
-|------|----------|
-| Store removes a location referenced by old reservations | Denormalized data on reservation preserved |
-| Store disables locations after bookings exist | Old reservations keep their data, new ones skip locations |
-| Same pickup and return location | `isOneWay = false`, fee charged **once** (pickup fee only; return fee = 0). The fee covers the round-trip transport. |
-| Home location | Fee = 0 by default, represents the physical store |
-| Both delivery + locations enabled on same store | **Locations replaces delivery** in checkout. When locations is enabled, the distance-based delivery step is hidden. Stores must disable locations to use standard delivery. |
-| `allowOneWay = false` | Return location locked to same as pickup |
+| Case                                                    | Handling                                                                                                                                                                    |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Store removes a location referenced by old reservations | Denormalized data on reservation preserved                                                                                                                                  |
+| Store disables locations after bookings exist           | Old reservations keep their data, new ones skip locations                                                                                                                   |
+| Same pickup and return location                         | `isOneWay = false`, fee charged **once** (pickup fee only; return fee = 0). The fee covers the round-trip transport.                                                        |
+| Home location                                           | Fee = 0 by default, represents the physical store                                                                                                                           |
+| Both delivery + locations enabled on same store         | **Locations replaces delivery** in checkout. When locations is enabled, the distance-based delivery step is hidden. Stores must disable locations to use standard delivery. |
+| `allowOneWay = false`                                   | Return location locked to same as pickup                                                                                                                                    |
 
 ---
 
 ## Pricing Summary
 
-| Scenario | Pickup fee | Return fee | Total |
-|----------|-----------|------------|-------|
-| Home → Home | 0 | 0 | 0 |
-| Quimper → Quimper (fee: 30) | 30 | 0 (same loc) | 30 |
-| Home → Quimper (fee: 30) | 0 | 30 | 30 |
-| Quimper (30) → Morlaix (25) | 30 | 25 | 55 |
+| Scenario                    | Pickup fee | Return fee   | Total |
+| --------------------------- | ---------- | ------------ | ----- |
+| Home → Home                 | 0          | 0            | 0     |
+| Quimper → Quimper (fee: 30) | 30         | 0 (same loc) | 30    |
+| Home → Quimper (fee: 30)    | 0          | 30           | 30    |
+| Quimper (30) → Morlaix (25) | 30         | 25           | 55    |
 
 ---
 

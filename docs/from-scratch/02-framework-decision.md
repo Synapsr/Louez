@@ -26,6 +26,7 @@ Is the project primarily...
 **Use when:** SSR/SSG matters, SEO is important, content-heavy, forms with server actions.
 
 Key conventions:
+
 - App Router (not Pages Router)
 - Server Components by default, `"use client"` only when needed
 - Server Actions for mutations
@@ -37,6 +38,7 @@ Key conventions:
 **Use when:** the UI is an SPA with minimal SEO needs, heavy client interactivity, real-time updates.
 
 Key conventions:
+
 - File-based routing via TanStack Router
 - Loaders for data fetching
 - Full client-side rendering by default

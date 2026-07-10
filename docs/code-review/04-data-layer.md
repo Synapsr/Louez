@@ -40,13 +40,13 @@ Every ORPC route defines its input schema with Zod. No unvalidated inputs reach 
 
 ### [DL-07] React Query conventions
 
-| Pattern | Convention |
-|---------|-----------|
-| Query options factory | `lib/queries/<domain>.queries.ts` — exports typed options |
-| Query options | `orpc.<domain>.<action>.queryOptions({ input })` — keys are auto-managed |
-| Mutation options | `orpc.<domain>.<action>.mutationOptions()` |
-| Broad invalidation | `queryClient.invalidateQueries({ queryKey: orpc.<domain>.key() })` |
-| Specific cache | `orpc.<domain>.<action>.queryKey({ input })` |
+| Pattern               | Convention                                                               |
+| --------------------- | ------------------------------------------------------------------------ |
+| Query options factory | `lib/queries/<domain>.queries.ts` — exports typed options                |
+| Query options         | `orpc.<domain>.<action>.queryOptions({ input })` — keys are auto-managed |
+| Mutation options      | `orpc.<domain>.<action>.mutationOptions()`                               |
+| Broad invalidation    | `queryClient.invalidateQueries({ queryKey: orpc.<domain>.key() })`       |
+| Specific cache        | `orpc.<domain>.<action>.queryKey({ input })`                             |
 
 Never define manual query keys — oRPC generates them automatically.
 

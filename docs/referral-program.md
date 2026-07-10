@@ -5,13 +5,13 @@
 
 ## Problem Statement
 
-En tant que loueur satisfait de Louez, je n'ai aujourd'hui aucune raison concrète ni aucun moyen simple d'en faire profiter d'autres loueurs : je peux parler de l'outil, mais je n'y gagne rien. Et un nouveau loueur qui arrive sur recommandation d'un ami n'a aucun avantage à passer par lui plutôt qu'à s'inscrire seul. Le parrainage existant enregistre bien *qui a parrainé qui*, mais il ne récompense personne — il ne génère donc aucune croissance.
+En tant que loueur satisfait de Louez, je n'ai aujourd'hui aucune raison concrète ni aucun moyen simple d'en faire profiter d'autres loueurs : je peux parler de l'outil, mais je n'y gagne rien. Et un nouveau loueur qui arrive sur recommandation d'un ami n'a aucun avantage à passer par lui plutôt qu'à s'inscrire seul. Le parrainage existant enregistre bien _qui a parrainé qui_, mais il ne récompense personne — il ne génère donc aucune croissance.
 
 ## Solution
 
 Un **Referral Program double-face**. Un Referrer partage son lien ; quand le Referred Store réalise sa première vraie vente en ligne (≥ 20 €), **les deux côtés gagnent 30 réservations offertes** — le Referrer reçoit un crédit € équivalent s'il est abonné. Le Referred Store, lui, reçoit ses 30 réservations offertes dès l'inscription via le lien (au lieu des 15 de base). Le tout est visible depuis un hub de parrainage enrichi (et accessible aussi depuis les settings), avec des incitations contextuelles au bon moment et une notification quand un reward est débloqué.
 
-Le reward reste une **valeur de compte non-cash** (réservations offertes / avoir sur facture), affichée comme *« X réservations offertes ≈ Y € économisés »* — jamais un solde retirable.
+Le reward reste une **valeur de compte non-cash** (réservations offertes / avoir sur facture), affichée comme _« X réservations offertes ≈ Y € économisés »_ — jamais un solde retirable.
 
 ## User Stories
 
@@ -47,39 +47,47 @@ Le reward reste une **valeur de compte non-cash** (réservations offertes / avoi
 ## Implementation Decisions
 
 **Réutilisation de l'existant**
+
 - Les codes de parrainage (`referralCode`, format `LOUEZ…`), la résolution `referredByUserId` / `referredByStoreId` à l'onboarding, et le hub `/dashboard/referrals` + ses stats existent déjà.
 - La mécanique « réservation offerte » existe : allocation `freeReservationsGranted` snapshotée par Store, consommation dérivée du ledger `platformFees` avec `source='free'`. Le Referred Reward et le Referrer Reward (PAYG) réutilisent cette mécanique.
 - Le clawback s'appuie sur les webhooks Stripe Connect refund/dispute déjà en place.
 
 **Reward**
+
 - Nouveau registre de **Referral Reward** : un enregistrement par filleul qualifié, reliant le Referrer, le Referred Store et le paiement qualifiant, avec un statut (`pending` → `granted` → `clawed_back`). One-time par filleul.
 - **Plan-aware** : si le Referrer est pay-as-you-go → incrément de son allocation de réservations offertes ; s'il est abonné → crédit € sur sa facture Louez (avoir / customer balance Stripe).
 - **Referred Reward** : à l'onboarding via lien, l'allocation de réservations offertes du nouveau Store est portée à 30 (au lieu de 15).
 - **Affichage** : tout gain de Referrer est présenté comme « N réservations offertes ≈ Y € économisés » (Y = N × tarif PAYG applicable, ou directement le crédit € pour un abonné). Jamais un solde retirable (ADR 0003).
 
 **Qualifying Event**
+
 - Détecté dans le flux de paiement **en ligne** du Referred Store (webhook Stripe Connect d'encaissement) : premier paiement de réservation en ligne ≥ montant minimum réglable. Une saisie manuelle ne qualifie pas. Le déblocage du Referrer Reward part de là.
 
 **Attribution** (ADR 0002)
+
 - Cookie `louez_referral` scopé `domain=.louez.io`, `max-age` 30 jours, `SameSite=Lax`, **last-click**.
 - Posé par un **middleware** sur la vitrine (`Louez-Website`, en étendant le middleware i18n existant — le `Set-Cookie` doit être attaché aussi aux réponses de redirection de locale) **et** par un **middleware** côté app. Le capteur JS login-only actuel est supprimé.
 - Le lien partagé généré pointe vers `louez.io/?ref=<code>`.
 - L'attribution se fige à la **fin de l'onboarding** (création du Store), pas au clic.
 
 **Anti-fraude (Referral Guardrails)**
+
 - Self-referral bloqué (le `userId` du Referred Store doit différer de celui du Referrer) — toujours actif.
 - Clawback sur refund/dispute du paiement qualifiant dans une fenêtre réglable (30 j au lancement) — toujours actif.
 - Montant minimum (20 €) actif et réglable ; plafond mensuel par Referrer construit mais permissif (illimité) au lancement.
 
 **Surfaçage (niveau B)**
+
 - Hub `/dashboard/referrals` enrichi (lien, filleuls + statut, gains en réservations/€) + entrée « Parrainage » dans les settings menant au hub.
 - Incitations contextuelles aux pics de satisfaction (après un paiement encaissé), discrètes.
 - Notification de reward au Referrer : email + in-app.
 
 **Admin / configuration**
+
 - Les paramètres du programme (réservations offertes de chaque côté, montant minimum, plafond mensuel, fenêtre de clawback) sont configurables, dans la même philosophie que la config PAYG existante (valeurs par défaut + override).
 
 **Légal**
+
 - Section « Conditions du parrainage » dans les pages légales (`(legal)/terms`) : éligibilité, reward non-cash/non-transférable/non-convertible, condition de déblocage, anti-abus + clawback, droit de modifier/arrêter. Rédaction à valider par un avocat.
 - Cadrage comptable : remise commerciale / avoir, jamais un revenu versé. À valider par un comptable.
 
@@ -89,7 +97,7 @@ Le reward reste une **valeur de compte non-cash** (réservations offertes / avoi
 - **Prior art** : `apps/web/lib/pay-as-you-go/config.test.ts` (teste `graduatedTotalCents`, `priceForLocationIndex`, …). Les nouveaux tests le miment.
 - **Fonctions pures à extraire et tester** :
   1. **Qualification** — (paiement : montant, canal en-ligne/manuel ; config min) → qualifie ou non.
-  2. **Calcul du reward plan-aware** — (mode de facturation du Referrer, taille du reward) → grant (N réservations offertes *ou* crédit €) + valeur d'affichage « N ≈ Y € ».
+  2. **Calcul du reward plan-aware** — (mode de facturation du Referrer, taille du reward) → grant (N réservations offertes _ou_ crédit €) + valeur d'affichage « N ≈ Y € ».
   3. **Résolution d'attribution** — (code ref, Store referrer, userId courant) → `referredBy…` ou `null` (self-referral, code invalide, Store inconnu). Logique extraite du flux d'onboarding.
   4. **Clawback** — (reward accordé, refund/dispute dans la fenêtre, réservations déjà consommées) → quantité à révoquer.
   5. **Plafond mensuel** — (nb de filleuls récompensés ce mois, cap) → autorisé / refusé.

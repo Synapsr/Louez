@@ -27,14 +27,14 @@ Louez is production-ready with core rental management features:
 
 Automatically detect and handle overdue rentals.
 
-| Feature | Description |
-|---------|-------------|
-| **Auto-detection** | Automatic alerts when a rental exceeds its return date |
-| **Dashboard widget** | "Overdue returns" counter visible on home dashboard |
-| **Multi-channel alerts** | Notify store owner via email, SMS, or Discord |
-| **Customer reminders** | Optional automatic reminder to customer |
-| **Late fees** | Ability to charge additional fees for late returns |
-| **Grace period** | Configure a tolerance period before triggering alerts |
+| Feature                  | Description                                            |
+| ------------------------ | ------------------------------------------------------ |
+| **Auto-detection**       | Automatic alerts when a rental exceeds its return date |
+| **Dashboard widget**     | "Overdue returns" counter visible on home dashboard    |
+| **Multi-channel alerts** | Notify store owner via email, SMS, or Discord          |
+| **Customer reminders**   | Optional automatic reminder to customer                |
+| **Late fees**            | Ability to charge additional fees for late returns     |
+| **Grace period**         | Configure a tolerance period before triggering alerts  |
 
 > Useful for: Protecting your inventory, reducing losses, maintaining rental schedule integrity.
 
@@ -46,15 +46,15 @@ Automatically detect and handle overdue rentals.
 
 Attract and reward customers with discount codes.
 
-| Feature | Description |
-|---------|-------------|
-| **Discount types** | Percentage off, fixed amount, or free delivery |
-| **Usage limits** | Set maximum uses per code or per customer |
-| **Validity period** | Start and end dates for promotions |
-| **Minimum order** | Require minimum cart value to apply |
+| Feature                  | Description                                    |
+| ------------------------ | ---------------------------------------------- |
+| **Discount types**       | Percentage off, fixed amount, or free delivery |
+| **Usage limits**         | Set maximum uses per code or per customer      |
+| **Validity period**      | Start and end dates for promotions             |
+| **Minimum order**        | Require minimum cart value to apply            |
 | **Product restrictions** | Limit codes to specific products or categories |
-| **Tracking** | See which codes are used and by whom |
-| **Checkout integration** | Easy code entry field during checkout |
+| **Tracking**             | See which codes are used and by whom           |
+| **Checkout integration** | Easy code entry field during checkout          |
 
 > Useful for: Seasonal promotions, loyalty rewards, marketing campaigns, first-time customer incentives.
 
@@ -66,15 +66,15 @@ Attract and reward customers with discount codes.
 
 Create professional quotes for B2B and large orders.
 
-| Feature | Description |
-|---------|-------------|
-| **Quote creation** | Generate quotes from dashboard with selected products |
-| **PDF export** | Professional quote document with your branding |
-| **Validity period** | Set expiration date for quotes (7, 15, 30 days) |
-| **Convert to reservation** | One-click conversion from accepted quote |
-| **Quote status** | Track draft, sent, accepted, expired, declined |
-| **Customer portal** | Customers can view and accept quotes online |
-| **Price negotiation** | Adjust prices specifically for the quote |
+| Feature                    | Description                                           |
+| -------------------------- | ----------------------------------------------------- |
+| **Quote creation**         | Generate quotes from dashboard with selected products |
+| **PDF export**             | Professional quote document with your branding        |
+| **Validity period**        | Set expiration date for quotes (7, 15, 30 days)       |
+| **Convert to reservation** | One-click conversion from accepted quote              |
+| **Quote status**           | Track draft, sent, accepted, expired, declined        |
+| **Customer portal**        | Customers can view and accept quotes online           |
+| **Price negotiation**      | Adjust prices specifically for the quote              |
 
 > Useful for: B2B customers, event rentals, large orders, corporate clients who need approval workflows.
 
@@ -86,14 +86,14 @@ Create professional quotes for B2B and large orders.
 
 Offer multiple pricing options on the same product.
 
-| Feature | Description |
-|---------|-------------|
-| **Multi-mode pricing** | Set both hourly AND daily rates on the same product |
-| **Customer choice** | Let customers choose their preferred billing unit |
-| **Smart suggestions** | Recommend the best option based on rental duration |
+| Feature                 | Description                                         |
+| ----------------------- | --------------------------------------------------- |
+| **Multi-mode pricing**  | Set both hourly AND daily rates on the same product |
+| **Customer choice**     | Let customers choose their preferred billing unit   |
+| **Smart suggestions**   | Recommend the best option based on rental duration  |
 | **Automatic switching** | Auto-switch to daily rate when hourly exceeds daily |
-| **Per-product config** | Enable multi-mode on specific products only |
-| **Clear display** | Show all available rates on product page |
+| **Per-product config**  | Enable multi-mode on specific products only         |
+| **Clear display**       | Show all available rates on product page            |
 
 > Useful for: Equipment that can be rented for a few hours (events, photo shoots) or multiple days (projects, vacations). Maximizes flexibility without creating duplicate products.
 
@@ -105,16 +105,16 @@ Offer multiple pricing options on the same product.
 
 Louez supports multiple languages out of the box.
 
-| Language | Status |
-|----------|--------|
-| 🇫🇷 French | ✅ Available |
-| 🇬🇧 English | ✅ Available |
-| 🇮🇹 Italian | ✅ Available |
-| 🇳🇱 Dutch | ✅ Available |
+| Language      | Status       |
+| ------------- | ------------ |
+| 🇫🇷 French     | ✅ Available |
+| 🇬🇧 English    | ✅ Available |
+| 🇮🇹 Italian    | ✅ Available |
+| 🇳🇱 Dutch      | ✅ Available |
 | 🇵🇹 Portuguese | ✅ Available |
-| 🇩🇪 German | ✅ Available |
-| 🇪🇸 Spanish | ✅ Available |
-| 🇵🇱 Polish | ✅ Available |
+| 🇩🇪 German     | ✅ Available |
+| 🇪🇸 Spanish    | ✅ Available |
+| 🇵🇱 Polish     | ✅ Available |
 
 > **Want to contribute a translation?** We welcome community translations! Check our [contributing guide](README.md#-contributing) to help translate Louez into your language.
 >
@@ -128,12 +128,12 @@ Louez supports multiple languages out of the box.
 
 Handle taxes flexibly to match your local regulations.
 
-| Feature | Description |
-|---------|-------------|
-| **Custom tax rates** | Define multiple tax rates (VAT, sales tax, etc.) |
-| **Tax per product** | Assign different tax rates to different products |
-| **Display mode** | Choose to show prices excluding tax (HT) or including tax (TTC) on storefront |
-| **Invoice compliance** | Tax breakdown displayed on contracts and invoices |
+| Feature                | Description                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| **Custom tax rates**   | Define multiple tax rates (VAT, sales tax, etc.)                              |
+| **Tax per product**    | Assign different tax rates to different products                              |
+| **Display mode**       | Choose to show prices excluding tax (HT) or including tax (TTC) on storefront |
+| **Invoice compliance** | Tax breakdown displayed on contracts and invoices                             |
 
 > Useful for: Businesses operating in different tax jurisdictions, B2B vs B2C pricing display preferences.
 
@@ -145,12 +145,12 @@ Handle taxes flexibly to match your local regulations.
 
 Fine-tune rental prices for each reservation.
 
-| Feature | Description |
-|---------|-------------|
-| **Price override** | Adjust the rental price up or down from the calculated amount |
-| **Custom discounts** | Apply manual discounts for specific customers or situations |
-| **Price justification** | Add notes explaining price adjustments |
-| **Original vs final** | View both calculated and final prices in reservation details |
+| Feature                 | Description                                                   |
+| ----------------------- | ------------------------------------------------------------- |
+| **Price override**      | Adjust the rental price up or down from the calculated amount |
+| **Custom discounts**    | Apply manual discounts for specific customers or situations   |
+| **Price justification** | Add notes explaining price adjustments                        |
+| **Original vs final**   | View both calculated and final prices in reservation details  |
 
 > Useful for: Negotiated rates, loyal customer discounts, special circumstances, promotional pricing.
 
@@ -162,12 +162,12 @@ Fine-tune rental prices for each reservation.
 
 Separate your billing address from your store location.
 
-| Feature | Description |
-|---------|-------------|
-| **Distinct billing address** | Set a different address for invoices and contracts |
-| **Store location** | Keep your physical pickup location visible to customers |
-| **Legal compliance** | Display registered business address on official documents |
-| **Per-document control** | Choose which address appears on each document type |
+| Feature                      | Description                                               |
+| ---------------------------- | --------------------------------------------------------- |
+| **Distinct billing address** | Set a different address for invoices and contracts        |
+| **Store location**           | Keep your physical pickup location visible to customers   |
+| **Legal compliance**         | Display registered business address on official documents |
+| **Per-document control**     | Choose which address appears on each document type        |
 
 > Useful for: Businesses with headquarters separate from rental locations, legal entity requirements.
 
@@ -179,17 +179,17 @@ Separate your billing address from your store location.
 
 Accept payments directly through your storefront.
 
-| Feature | Description |
-|---------|-------------|
-| **Stripe Connect** | Seamless onboarding for cloud and self-hosted users |
-| **Deposit holds** | Authorize deposits without charging, release or capture later |
-| **Card on file** | Securely save customer payment methods |
-| **Refunds** | Process full or partial refunds directly from dashboard |
-| **Self-hosted support** | Connect your own Stripe account on self-hosted instances |
+| Feature                 | Description                                                   |
+| ----------------------- | ------------------------------------------------------------- |
+| **Stripe Connect**      | Seamless onboarding for cloud and self-hosted users           |
+| **Deposit holds**       | Authorize deposits without charging, release or capture later |
+| **Card on file**        | Securely save customer payment methods                        |
+| **Refunds**             | Process full or partial refunds directly from dashboard       |
+| **Self-hosted support** | Connect your own Stripe account on self-hosted instances      |
 
 > Works on both Louez Cloud (managed onboarding) and self-hosted installations (bring your own Stripe account).
 >
-> *Future*: Additional payment providers (PayPal, Mollie, etc.) via a connector system.
+> _Future_: Additional payment providers (PayPal, Mollie, etc.) via a connector system.
 
 ---
 
@@ -199,11 +199,11 @@ Accept payments directly through your storefront.
 
 Keep your team informed in real-time.
 
-| Integration | Use Case |
-|-------------|----------|
-| **Discord** | Get notified in your Discord server when new reservations arrive |
-| **Slack** | Receive alerts in Slack channels for your team |
-| **Webhooks** | Connect to any service via custom webhooks |
+| Integration  | Use Case                                                         |
+| ------------ | ---------------------------------------------------------------- |
+| **Discord**  | Get notified in your Discord server when new reservations arrive |
+| **Slack**    | Receive alerts in Slack channels for your team                   |
+| **Webhooks** | Connect to any service via custom webhooks                       |
 
 ---
 
@@ -213,13 +213,13 @@ Keep your team informed in real-time.
 
 Reach customers directly on their phones.
 
-| Feature | Description |
-|---------|-------------|
-| **SMS Partner integration** | Send SMS via SMS Partner (more providers coming) |
-| **Reservation reminders** | Automatic pickup/return reminders via SMS |
-| **Instant access links** | Send reservation access links via SMS |
-| **Plan-based limits** | SMS quotas based on your subscription plan |
-| **Credit top-up** | Purchase additional SMS credits via Stripe (January 18, 2026) |
+| Feature                     | Description                                                   |
+| --------------------------- | ------------------------------------------------------------- |
+| **SMS Partner integration** | Send SMS via SMS Partner (more providers coming)              |
+| **Reservation reminders**   | Automatic pickup/return reminders via SMS                     |
+| **Instant access links**    | Send reservation access links via SMS                         |
+| **Plan-based limits**       | SMS quotas based on your subscription plan                    |
+| **Credit top-up**           | Purchase additional SMS credits via Stripe (January 18, 2026) |
 
 > Currently supports SMS Partner. Additional providers (Twilio, Vonage, etc.) planned for future releases.
 
@@ -231,12 +231,12 @@ Reach customers directly on their phones.
 
 Flexible subscription management for seasonal businesses.
 
-| Feature | Description |
-|---------|-------------|
-| **Pause subscription** | Put your monthly subscription on hold anytime |
-| **Data preservation** | Keep all products, customers, and reservation history intact |
+| Feature                | Description                                                    |
+| ---------------------- | -------------------------------------------------------------- |
+| **Pause subscription** | Put your monthly subscription on hold anytime                  |
+| **Data preservation**  | Keep all products, customers, and reservation history intact   |
 | **Storefront message** | Display a custom message to visitors when your store is paused |
-| **Easy reactivation** | Resume your subscription and reopen bookings instantly |
+| **Easy reactivation**  | Resume your subscription and reopen bookings instantly         |
 
 > Useful for: Seasonal rental businesses (ski equipment, beach gear, event rentals, etc.) who don't need the tool year-round but want to keep their setup ready for the next season.
 
@@ -248,13 +248,13 @@ Flexible subscription management for seasonal businesses.
 
 Share your reservations with external calendars.
 
-| Feature | Description |
-|---------|-------------|
-| **ICS link** | Generate a shareable ICS link for your calendar |
-| **Google Calendar** | Subscribe to reservations in Google Calendar |
-| **Apple Calendar** | Add reservations to iCal/Apple Calendar |
-| **Outlook sync** | Subscribe from Microsoft Outlook |
-| **Secure token** | Regenerate link anytime to revoke access |
+| Feature             | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| **ICS link**        | Generate a shareable ICS link for your calendar |
+| **Google Calendar** | Subscribe to reservations in Google Calendar    |
+| **Apple Calendar**  | Add reservations to iCal/Apple Calendar         |
+| **Outlook sync**    | Subscribe from Microsoft Outlook                |
+| **Secure token**    | Regenerate link anytime to revoke access        |
 
 > Useful for: Viewing reservations alongside personal appointments, sharing availability with team members.
 
@@ -266,12 +266,12 @@ Share your reservations with external calendars.
 
 Import external calendars to automatically block availability.
 
-| Feature | Description |
-|---------|-------------|
-| **ICS import** | Subscribe to external calendars (Google, Outlook, iCal) |
+| Feature              | Description                                                    |
+| -------------------- | -------------------------------------------------------------- |
+| **ICS import**       | Subscribe to external calendars (Google, Outlook, iCal)        |
 | **Auto-block slots** | Automatically block rental availability during external events |
-| **Vacation sync** | Block dates from your personal calendar |
-| **Multiple sources** | Connect several external calendars |
+| **Vacation sync**    | Block dates from your personal calendar                        |
+| **Multiple sources** | Connect several external calendars                             |
 
 > Useful for: Blocking vacation days automatically, syncing with other booking platforms, preventing double-bookings.
 
@@ -283,12 +283,12 @@ Import external calendars to automatically block availability.
 
 Grow your online reputation automatically.
 
-| Feature | Description |
-|---------|-------------|
-| **Automated requests** | Send review requests via email or SMS after completed rentals |
-| **Google Reviews link** | Direct customers to leave a Google review |
-| **Timing control** | Configure when to send (e.g., 24h after return) |
-| **Multi-language support** | Send review requests in the customer's preferred language |
+| Feature                    | Description                                                   |
+| -------------------------- | ------------------------------------------------------------- |
+| **Automated requests**     | Send review requests via email or SMS after completed rentals |
+| **Google Reviews link**    | Direct customers to leave a Google review                     |
+| **Timing control**         | Configure when to send (e.g., 24h after return)               |
+| **Multi-language support** | Send review requests in the customer's preferred language     |
 
 ---
 
@@ -298,11 +298,11 @@ Grow your online reputation automatically.
 
 Showcase your reputation on your storefront.
 
-| Feature | Description |
-|---------|-------------|
-| **Auto-sync** | Automatically fetch and display your Google reviews |
-| **Review widget** | Beautiful widget showing rating and recent reviews |
-| **Responsive design** | Adapts to any screen size |
+| Feature               | Description                                           |
+| --------------------- | ----------------------------------------------------- |
+| **Auto-sync**         | Automatically fetch and display your Google reviews   |
+| **Review widget**     | Beautiful widget showing rating and recent reviews    |
+| **Responsive design** | Adapts to any screen size                             |
 | **Localized display** | Reviews displayed in the appropriate language context |
 
 ---
@@ -313,13 +313,13 @@ Showcase your reputation on your storefront.
 
 Document equipment condition before and after rentals.
 
-| Feature | Description |
-|---------|-------------|
-| **Photo capture** | Take photos at pickup and return |
+| Feature                     | Description                              |
+| --------------------------- | ---------------------------------------- |
+| **Photo capture**           | Take photos at pickup and return         |
 | **Before/after comparison** | Side-by-side view of equipment condition |
-| **Damage notes** | Add comments and annotations |
-| **Attach to contract** | Include photos in rental agreements |
-| **Mobile-friendly** | Easy capture from phone or tablet |
+| **Damage notes**            | Add comments and annotations             |
+| **Attach to contract**      | Include photos in rental agreements      |
+| **Mobile-friendly**         | Easy capture from phone or tablet        |
 
 ---
 
@@ -329,12 +329,12 @@ Document equipment condition before and after rentals.
 
 Suggest complementary items to increase average order value.
 
-| Feature | Description |
-|---------|-------------|
-| **Product linking** | Associate related products (e.g., helmet with bike) |
-| **Storefront suggestions** | Display related items on product pages |
-| **Quick add to cart** | Customers can add accessories with one click |
-| **Automatic pricing** | Accessories use their own pricing tiers |
+| Feature                    | Description                                         |
+| -------------------------- | --------------------------------------------------- |
+| **Product linking**        | Associate related products (e.g., helmet with bike) |
+| **Storefront suggestions** | Display related items on product pages              |
+| **Quick add to cart**      | Customers can add accessories with one click        |
+| **Automatic pricing**      | Accessories use their own pricing tiers             |
 
 > Useful for: Upselling accessories, safety equipment bundles, complete rental packages.
 
@@ -383,7 +383,7 @@ Have an idea that's not on this list?
 
 <div align="center">
 
-*This roadmap is a living document. Priorities may shift based on community feedback.*
+_This roadmap is a living document. Priorities may shift based on community feedback._
 
 **Last updated**: January 29, 2026
 

@@ -103,14 +103,14 @@ Snapshot type:
 
 ```ts
 export interface ReservationLocationSnapshot {
-  type: 'primary' | 'additional'
-  name: string
-  address: string | null
-  city: string | null
-  postalCode: string | null
-  country: string | null
-  latitude?: number | null
-  longitude?: number | null
+  type: "primary" | "additional";
+  name: string;
+  address: string | null;
+  city: string | null;
+  postalCode: string | null;
+  country: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 ```
 

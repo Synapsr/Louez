@@ -33,20 +33,21 @@ Domain-specific components live in `components/<domain>/` (e.g., `components/pod
 
 ### [ST-03] File naming
 
-| Type | Convention | Example |
-|------|-----------|---------|
-| Components | `kebab-case.tsx` | `podcast-card.tsx` |
-| Hooks | `use-<name>.ts` | `use-podcast-list.ts` |
-| Utils | `util.<name>.ts` | `util.format-date.ts` |
-| Types | `<domain>.types.ts` | `podcast.types.ts` |
-| Constants | `<domain>.constants.ts` | `podcast.constants.ts` |
-| Query options | `<domain>.queries.ts` | `podcast.queries.ts` |
-| Validators | `validator.<name>.ts` | `validator.podcast.ts` |
-| Server routes | `route.<domain>.ts` | `route.podcast.ts` |
+| Type          | Convention              | Example                |
+| ------------- | ----------------------- | ---------------------- |
+| Components    | `kebab-case.tsx`        | `podcast-card.tsx`     |
+| Hooks         | `use-<name>.ts`         | `use-podcast-list.ts`  |
+| Utils         | `util.<name>.ts`        | `util.format-date.ts`  |
+| Types         | `<domain>.types.ts`     | `podcast.types.ts`     |
+| Constants     | `<domain>.constants.ts` | `podcast.constants.ts` |
+| Query options | `<domain>.queries.ts`   | `podcast.queries.ts`   |
+| Validators    | `validator.<name>.ts`   | `validator.podcast.ts` |
+| Server routes | `route.<domain>.ts`     | `route.podcast.ts`     |
 
 ### [ST-04] No barrel files unless necessary
 
 Don't create `index.ts` files that just re-export. Only use them for:
+
 - Package entry points (`packages/*/src/index.ts`)
 
 ### [ST-05] Imports use path aliases
