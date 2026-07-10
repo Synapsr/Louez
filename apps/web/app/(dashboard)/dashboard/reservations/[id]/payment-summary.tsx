@@ -481,7 +481,7 @@ export function PaymentSummary({
                     <Tooltip>
                       <TooltipTrigger render={<Button
                           size="icon"
-                          variant="success-outline"
+                          variant="outline"
                           className="h-7 w-7"
                           onClick={openDepositReturnModal}
                         />}>

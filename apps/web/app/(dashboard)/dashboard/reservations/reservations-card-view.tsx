@@ -185,7 +185,7 @@ export function ReservationsCardView({
                         <div className="flex items-center gap-1.5">
                           <Tooltip>
                             <TooltipTrigger render={<Button
-                                variant="success"
+                                variant="default"
                                 className="h-8 gap-1.5"
                                 onClick={(e) => handleStatusChange(e, reservation, 'confirmed')}
                                 disabled={isLoading}
@@ -201,7 +201,7 @@ export function ReservationsCardView({
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger render={<Button
-                                variant="destructive-outline"
+                                variant="destructive"
                                 className="h-8 gap-1.5"
                                 onClick={(e) => openRejectDialog(e, reservation)}
                                 disabled={isLoading}

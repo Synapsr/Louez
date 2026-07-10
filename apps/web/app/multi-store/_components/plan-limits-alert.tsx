@@ -144,7 +144,7 @@ export function PlanLimitsAlert({ limits, translations }: PlanLimitsAlertProps) 
                     </div>
                   </div>
                   <Button
-                    variant="warning-outline"
+                    variant="outline"
                     onClick={() => handleUpgradeClick(limit.storeId)}
                     className="shrink-0"
                   >
