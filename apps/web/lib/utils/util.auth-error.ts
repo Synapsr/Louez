@@ -20,6 +20,14 @@ export function mapAuthErrorCodeToMessageKey(
   }
 }
 
+export function resolveAuthErrorMessage(
+  t: (key: string) => string,
+  errorCode: string | null,
+): string {
+  const messageKey = mapAuthErrorCodeToMessageKey(errorCode);
+  return t(messageKey ?? 'errors.default');
+}
+
 export function hasAuthError(result: unknown): result is { error: unknown } {
   const errorDescriptor =
     typeof result === 'object' && result !== null

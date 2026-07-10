@@ -1,82 +1,81 @@
 'use client';
 
-import { Mail } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
-import {
-  Button,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui';
+import { Button } from '@louez/ui';
 
 import { LoginErrorAlert } from './login-error-alert';
-import type { LoginFormState } from './use-login-form';
+import { useOtpStep } from './use-otp-step';
 
 interface LoginOtpStepProps {
-  state: LoginFormState;
+  email: string;
+  onUseDifferentEmail: () => void;
 }
 
-export const LoginOtpStep = ({ state }: LoginOtpStepProps) => {
-  const {
-    handleUseDifferentEmail,
-    isPending,
-    otpForm,
-    rootError,
-    submittedEmail,
-    t,
-  } = state;
+export const LoginOtpStep = ({
+  email,
+  onUseDifferentEmail,
+}: LoginOtpStepProps) => {
+  const t = useTranslations('auth');
+  const { form, isPending, rootError } = useOtpStep({ email });
 
   return (
-    <div className="space-y-6 px-4">
-      <div className="space-y-3 text-center">
-        <div className="bg-primary/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
-          <Mail className="text-primary h-8 w-8" />
-        </div>
+    <div className="space-y-8">
+      <div className="space-y-4 text-center">
         <div className="space-y-2">
-          <h2 className="text-2xl font-bold">{t('enterCode')}</h2>
-          <p className="text-muted-foreground text-base">
-            {t('codeSentTo')} <strong>{submittedEmail}</strong>
+          <h2 className="text-2xl font-semibold">{t('verifyEmailTitle')}</h2>
+          <p className="text-muted-foreground mx-auto max-w-sm text-sm leading-relaxed text-balance">
+            {t.rich('codeSentDescription', {
+              email,
+              strong: (chunks) => (
+                <strong className="text-foreground font-semibold">
+                  {chunks}
+                </strong>
+              ),
+            })}
           </p>
         </div>
       </div>
-      <div className="space-y-2">
-        <otpForm.AppForm>
-          <otpForm.Form className="space-y-6" formName="auth.login.otp">
-            <otpForm.AppField name="otp">
-              {(field) => (
-                <>
-                  <field.Otp
-                    autoFocus
-                    disabled={isPending}
-                    containerClassName="justify-center"
-                    onComplete={() => {
-                      void otpForm.handleSubmit();
-                    }}
-                  />
-                  <Button
-                    type="submit"
-                    size="xl"
-                    className="w-full"
-                    disabled={field.state.value.length !== 6}
-                    isPending={isPending}
-                  >
-                    {t('verify')}
-                  </Button>
-                </>
-              )}
-            </otpForm.AppField>
-          </otpForm.Form>
-        </otpForm.AppForm>
 
-        <Button
-          variant="outline"
-          onClick={handleUseDifferentEmail}
-          className="w-full"
-          disabled={isPending}
-        >
-          {t('tryDifferentEmail')}
-        </Button>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <form.AppForm>
+            <form.Form className="space-y-6" formName="auth.login.otp">
+              <form.AppField name="otp">
+                {(field) => (
+                  <>
+                    <field.Otp
+                      autoFocus
+                      disabled={isPending}
+                      separatorAt={3}
+                      containerClassName="justify-center gap-3"
+                      onComplete={() => {
+                        void form.handleSubmit();
+                      }}
+                    />
+                    <form.SubscribeButton
+                      size="xl"
+                      className="w-full"
+                      disabled={field.state.value.length !== 6}
+                    >
+                      {t('verify')}
+                    </form.SubscribeButton>
+                  </>
+                )}
+              </form.AppField>
+            </form.Form>
+          </form.AppForm>
+
+          <Button
+            variant="ghost"
+            size="xl"
+            onClick={onUseDifferentEmail}
+            className="w-full"
+            disabled={isPending}
+          >
+            {t('tryDifferentEmail')}
+          </Button>
+        </div>
 
         <LoginErrorAlert message={rootError} />
       </div>
