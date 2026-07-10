@@ -1013,7 +1013,10 @@
               "margin": "Marge / dag"
             }
           }
-        }
+        },
+        "aiContext": "Context voor de AI-adviseur",
+        "aiContextPlaceholder": "Bijv. rijbewijs B vereist, niet geschikt voor kinderen onder de 12 jaar, vraag altijd naar de datum van het evenement en de groepsgrootte…",
+        "aiContextHint": "Extra informatie die alleen de AI-adviseur ziet — hij gebruikt deze om klanten te adviseren en vereisten te controleren. Wordt nooit in uw winkel getoond."
       },
       "deleteConfirm": {
         "title": "Dit product verwijderen?",
@@ -2009,7 +2012,14 @@
       },
       "tulipInsuredBadge": "Tulip verzekerd",
       "tulipContractCardTitle": "Verzekeringscontract",
-      "tulipContractCardDescription": "Open het contract in Colibri."
+      "tulipContractCardDescription": "Open het contract in Colibri.",
+      "advisor": {
+        "cardTitle": "AI-adviseur",
+        "validated": "Gevalideerd",
+        "viewConversation": "Gesprek bekijken",
+        "sheetTitle": "Gesprek met de adviseur",
+        "sheetDescription": "Chat tussen de klant en de AI-adviseur voor deze reservering."
+      }
     },
     "customers": {
       "title": "Klanten",
@@ -4109,7 +4119,67 @@
           "reversed": "Teruggestort"
         }
       },
-      "referrals": "Referrals"
+      "referrals": "Referrals",
+      "aiAdvisor": {
+        "title": "AI-adviseur",
+        "description": "Laat een AI-assistent uw klanten verwelkomen in uw winkel, hun vragen beantwoorden en hen naar de juiste verhuur begeleiden",
+        "saved": "AI-adviseur instellingen opgeslagen",
+        "enableSection": "AI-adviseur",
+        "enableSectionDescription": "Configureer de assistent die met uw klanten chat in uw winkel",
+        "enabled": "AI-adviseur inschakelen",
+        "enabledDescription": "Toon de chatwidget in uw winkel",
+        "mode": "Modus bij het reserveren",
+        "modeDescription": "Kies hoe de adviseur deelneemt aan het reserveringsproces",
+        "modeOptional": "Optioneel",
+        "modeOptionalDescription": "Klanten kunnen met de adviseur chatten, het afrekenen blijft ongewijzigd",
+        "modeRecommended": "Aanbevolen",
+        "modeRecommendedDescription": "Bij het afrekenen wordt een niet-blokkerende suggestie getoond om te chatten",
+        "modeRequired": "Verplicht",
+        "modeRequiredDescription": "Het afrekenen is geblokkeerd totdat de adviseur het gesprek valideert",
+        "storeContext": "Instructies voor uw winkel",
+        "storeContextDescription": "Schrijf wat u tegen een nieuwe medewerker zou zeggen: beperkingen, uit te voeren controles, toon en beleid",
+        "storeContextPlaceholder": "Bijv. Vraag altijd naar de lengte van de klant voordat u een fietsmaat aanbeveelt, vermeld dat helmen zijn inbegrepen, bezorging is alleen mogelijk binnen 10 km...",
+        "personalizationSection": "Personalisatie",
+        "displayName": "Weergavenaam",
+        "displayNameDescription": "Widgettitel die klanten zien (standaard een vertaalde titel)",
+        "displayNamePlaceholder": "Bijv. Leo, uw verhuuradviseur",
+        "welcomeMessage": "Welkomstbericht",
+        "welcomeMessageDescription": "Eerste bericht dat wordt getoond wanneer de chat opent (standaard een vertaald bericht)",
+        "welcomeMessagePlaceholder": "Bijv. Hallo! Vertel me over uw project en ik help u de juiste apparatuur te kiezen.",
+        "notConfigured": {
+          "title": "AI-provider niet geconfigureerd",
+          "description": "De platformbeheerder moet de omgevingsvariabelen AI_PROVIDER en AI_API_KEY instellen voordat de adviseur klanten kan antwoorden. U kunt uw instellingen hieronder alvast voorbereiden."
+        },
+        "locked": {
+          "title": "Ontgrendel de AI-adviseur",
+          "description": "Zet bezoekers van uw winkel om in reserveringen met een AI-assistent",
+          "upgrade": "Upgrade naar Pro",
+          "featureLocked": "Functie vergrendeld",
+          "upgradeToUnlock": "Upgrade naar Pro om deze functie in te schakelen"
+        },
+        "conversations": {
+          "title": "Gesprekken",
+          "description": "Bekijk wat klanten de adviseur vroegen en welke gesprekken tot een reservering leidden",
+          "filterAll": "Alle",
+          "filterConverted": "Geconverteerd",
+          "filterNotConverted": "Niet geconverteerd",
+          "empty": "Nog geen gesprekken",
+          "emptyDescription": "Gesprekken verschijnen hier zodra klanten met de adviseur in uw winkel beginnen te chatten",
+          "emptyFilteredDescription": "Geen gesprekken komen overeen met dit filter",
+          "columnDate": "Datum",
+          "columnFirstMessage": "Eerste bericht",
+          "columnMessages": "Berichten",
+          "columnStatus": "Status",
+          "statusConverted": "Geconverteerd",
+          "statusValidated": "Gevalideerd",
+          "statusNotConverted": "Niet geconverteerd",
+          "pagination": "Pagina {page} van {totalPages}",
+          "previousPage": "Vorige pagina",
+          "nextPage": "Volgende pagina",
+          "transcriptTitle": "Gesprek",
+          "transcriptError": "Kan dit gesprek niet laden"
+        }
+      }
     },
     "aiChat": {
       "open": "AI-assistent",
@@ -4677,7 +4747,17 @@
       "resolvedAttributesLabel": "Definitief",
       "lineCheckingAvailability": "Beschikbaarheid controleren...",
       "lineNeedsUpdateInline": "Deze regel is niet meer beschikbaar. Pas het aantal of de kenmerken aan.",
-      "lineNeedsUpdate": "Sommige regels zijn niet meer beschikbaar. Pas uw winkelwagen aan voordat u verstuurt."
+      "lineNeedsUpdate": "Sommige regels zijn niet meer beschikbaar. Pas uw winkelwagen aan voordat u verstuurt.",
+      "advisor": {
+        "recommendedHint": "Twijfelt u over uw keuze? De adviseur kan deze samen met u controleren.",
+        "askAdvisor": "Vraag de adviseur",
+        "dismiss": "Verbergen",
+        "requiredTitle": "Een korte verificatie is vereist",
+        "requiredDescription": "Deze winkel laat de adviseur enkele gegevens controleren voordat u kunt reserveren.",
+        "startVerification": "Verificatie starten",
+        "validatedTitle": "Verificatie voltooid",
+        "validatedDescription": "De adviseur heeft uw reservering gevalideerd — u kunt reserveren."
+      }
     },
     "confirmation": {
       "title": "Reservering bevestigd!",
@@ -4969,6 +5049,27 @@
         "selectStartDate": "Selecteer een ophaaldatum",
         "selectEndDate": "Selecteer een retourdatum",
         "endTimeAfterStart": "De retourtijd moet na de ophaaltijd liggen"
+      }
+    },
+    "advisor": {
+      "open": "Vraag de adviseur",
+      "title": "AI-adviseur",
+      "subtitle": "Antwoordt direct",
+      "welcome": "Hallo! Ik ben de adviseur van deze winkel. Vertel me over uw project en ik help u de juiste apparatuur te kiezen.",
+      "placeholder": "Stel uw vraag…",
+      "send": "Verzenden",
+      "close": "Sluiten",
+      "restart": "Nieuw gesprek",
+      "disclaimer": "Door AI gegenereerde antwoorden — controleer belangrijke informatie",
+      "validateChip": "Ik wil mijn reservering laten valideren",
+      "suggestions": {
+        "recommend": "Wat raadt u mij aan?",
+        "question": "Ik heb een vraag over een product",
+        "practical": "Openingstijden en praktische info"
+      },
+      "errors": {
+        "generic": "Er is iets misgegaan. Probeer het opnieuw.",
+        "rateLimited": "Te veel berichten op dit moment — probeer het later opnieuw."
       }
     }
   },
@@ -5656,7 +5757,10 @@
     "tulipContractProductMarkedMissing": "Tulip vereist de echte identificatie van elk verzekerd item. Wijs een unit of fysieke identificatie toe aan elk verzekerd product voordat je het contract aanmaakt of synchroniseert.",
     "tulipContractTypeDisabled": "Het Tulip contracttype dat vereist is voor deze duur is niet ingeschakeld voor deze winkel.",
     "unitAlreadyRetired": "Deze eenheid is al uitgefaseerd",
-    "unitNotRetired": "Deze eenheid is niet uitgefaseerd"
+    "unitNotRetired": "Deze eenheid is niet uitgefaseerd",
+    "advisorValidationRequired": "Deze winkel vereist een korte verificatie met de adviseur voordat u kunt reserveren",
+    "conversationNotFound": "Gesprek niet gevonden",
+    "featureNotAvailable": "Deze functie is niet beschikbaar in uw plan"
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

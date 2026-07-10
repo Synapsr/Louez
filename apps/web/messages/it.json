@@ -1013,7 +1013,10 @@
               "margin": "Margine / giorno"
             }
           }
-        }
+        },
+        "aiContext": "Contesto per il consulente IA",
+        "aiContextPlaceholder": "Es: richiede patente B, non adatto ai bambini sotto i 12 anni, chiedi sempre la data dell'evento e la dimensione del gruppo…",
+        "aiContextHint": "Informazioni aggiuntive visibili solo al consulente IA — le usa per consigliare i clienti e verificare i requisiti. Non vengono mai mostrate nel negozio."
       },
       "deleteConfirm": {
         "title": "Eliminare questo prodotto?",
@@ -2009,7 +2012,14 @@
       },
       "tulipInsuredBadge": "Assicurato Tulip",
       "tulipContractCardTitle": "Contratto assicurativo",
-      "tulipContractCardDescription": "Apri il contratto in Colibri."
+      "tulipContractCardDescription": "Apri il contratto in Colibri.",
+      "advisor": {
+        "cardTitle": "Consulente IA",
+        "validated": "Convalidata",
+        "viewConversation": "Vedi conversazione",
+        "sheetTitle": "Conversazione con il consulente",
+        "sheetDescription": "Conversazione tra il cliente e il consulente IA per questa prenotazione."
+      }
     },
     "customers": {
       "title": "Clienti",
@@ -4109,7 +4119,67 @@
           "reversed": "Rimborsato"
         }
       },
-      "referrals": "Referral"
+      "referrals": "Referral",
+      "aiAdvisor": {
+        "title": "Consulente IA",
+        "description": "Lascia che un assistente IA accolga i tuoi clienti nel tuo negozio, risponda alle loro domande e li guidi verso il noleggio giusto",
+        "saved": "Impostazioni del consulente IA salvate",
+        "enableSection": "Consulente IA",
+        "enableSectionDescription": "Configura l'assistente che chatta con i tuoi clienti nel tuo negozio",
+        "enabled": "Attiva il consulente IA",
+        "enabledDescription": "Mostra il widget di chat nel tuo negozio",
+        "mode": "Modalità al momento della prenotazione",
+        "modeDescription": "Scegli come il consulente interviene nel processo di prenotazione",
+        "modeOptional": "Opzionale",
+        "modeOptionalDescription": "I clienti possono chattare con il consulente, la prenotazione resta invariata",
+        "modeRecommended": "Consigliato",
+        "modeRecommendedDescription": "Al momento della prenotazione viene mostrato un suggerimento non bloccante per chattare",
+        "modeRequired": "Obbligatorio",
+        "modeRequiredDescription": "La prenotazione è bloccata finché il consulente non convalida la conversazione",
+        "storeContext": "Istruzioni per il tuo negozio",
+        "storeContextDescription": "Scrivi ciò che diresti a un nuovo dipendente: vincoli, verifiche da effettuare, tono e regole",
+        "storeContextPlaceholder": "Es: Chiedi sempre l'altezza del cliente prima di consigliare una taglia di bici, precisa che i caschi sono inclusi, la consegna è disponibile solo entro 10 km...",
+        "personalizationSection": "Personalizzazione",
+        "displayName": "Nome visualizzato",
+        "displayNameDescription": "Titolo del widget mostrato ai clienti (per impostazione predefinita, un titolo tradotto)",
+        "displayNamePlaceholder": "Es: Leo, il tuo consulente per il noleggio",
+        "welcomeMessage": "Messaggio di benvenuto",
+        "welcomeMessageDescription": "Primo messaggio mostrato all'apertura della chat (per impostazione predefinita, un messaggio tradotto)",
+        "welcomeMessagePlaceholder": "Es: Ciao! Raccontami il tuo progetto e ti aiuterò a scegliere l'attrezzatura giusta.",
+        "notConfigured": {
+          "title": "Provider IA non configurato",
+          "description": "L'operatore della piattaforma deve impostare le variabili d'ambiente AI_PROVIDER e AI_API_KEY perché il consulente possa rispondere ai clienti. Puoi comunque preparare le tue impostazioni qui sotto."
+        },
+        "locked": {
+          "title": "Sblocca il Consulente IA",
+          "description": "Trasforma i visitatori del tuo negozio in prenotazioni con un assistente IA",
+          "upgrade": "Passa a Pro",
+          "featureLocked": "Funzione bloccata",
+          "upgradeToUnlock": "Passa a Pro per abilitare questa funzione"
+        },
+        "conversations": {
+          "title": "Conversazioni",
+          "description": "Consulta le domande poste al consulente e le conversazioni che hanno portato a una prenotazione",
+          "filterAll": "Tutte",
+          "filterConverted": "Convertite",
+          "filterNotConverted": "Non convertite",
+          "empty": "Ancora nessuna conversazione",
+          "emptyDescription": "Le conversazioni appariranno qui quando i clienti inizieranno a chattare con il consulente nel tuo negozio",
+          "emptyFilteredDescription": "Nessuna conversazione corrisponde a questo filtro",
+          "columnDate": "Data",
+          "columnFirstMessage": "Primo messaggio",
+          "columnMessages": "Messaggi",
+          "columnStatus": "Stato",
+          "statusConverted": "Convertita",
+          "statusValidated": "Convalidata",
+          "statusNotConverted": "Non convertita",
+          "pagination": "Pagina {page} di {totalPages}",
+          "previousPage": "Pagina precedente",
+          "nextPage": "Pagina successiva",
+          "transcriptTitle": "Conversazione",
+          "transcriptError": "Impossibile caricare questa conversazione"
+        }
+      }
     },
     "aiChat": {
       "open": "Assistente IA",
@@ -4677,7 +4747,17 @@
       "resolvedAttributesLabel": "Finale",
       "lineCheckingAvailability": "Verifica disponibilita...",
       "lineNeedsUpdateInline": "Questa riga non e piu disponibile. Aggiorni la quantita o gli attributi.",
-      "lineNeedsUpdate": "Alcune righe non sono piu disponibili. Aggiorni il carrello prima di inviare."
+      "lineNeedsUpdate": "Alcune righe non sono piu disponibili. Aggiorni il carrello prima di inviare.",
+      "advisor": {
+        "recommendedHint": "Hai dubbi sulla tua scelta? Il consulente può verificarla con te.",
+        "askAdvisor": "Chiedi al consulente",
+        "dismiss": "Ignora",
+        "requiredTitle": "È richiesta una breve verifica",
+        "requiredDescription": "Questo negozio chiede al consulente di verificare alcune informazioni prima di poter prenotare.",
+        "startVerification": "Inizia la verifica",
+        "validatedTitle": "Verifica completata",
+        "validatedDescription": "Il consulente ha convalidato la tua prenotazione — puoi prenotare."
+      }
     },
     "confirmation": {
       "title": "Prenotazione confermata!",
@@ -4969,6 +5049,27 @@
         "selectStartDate": "Seleziona una data di ritiro",
         "selectEndDate": "Seleziona una data di restituzione",
         "endTimeAfterStart": "L'orario di restituzione deve essere successivo al ritiro"
+      }
+    },
+    "advisor": {
+      "open": "Chiedi al consulente",
+      "title": "Consulente IA",
+      "subtitle": "Risponde all'istante",
+      "welcome": "Ciao! Sono il consulente di questo negozio. Raccontami il tuo progetto e ti aiuterò a scegliere l'attrezzatura giusta.",
+      "placeholder": "Fai la tua domanda…",
+      "send": "Invia",
+      "close": "Chiudi",
+      "restart": "Nuova conversazione",
+      "disclaimer": "Risposte generate dall'IA — verifica le informazioni importanti",
+      "validateChip": "Vorrei convalidare la mia prenotazione",
+      "suggestions": {
+        "recommend": "Cosa mi consigli?",
+        "question": "Ho una domanda su un prodotto",
+        "practical": "Orari e informazioni pratiche"
+      },
+      "errors": {
+        "generic": "Si è verificato un errore. Riprova.",
+        "rateLimited": "Troppi messaggi per ora — riprova più tardi."
       }
     }
   },
@@ -5656,7 +5757,10 @@
     "tulipContractProductMarkedMissing": "Tulip richiede l'identificativo reale di ogni articolo assicurato. Assegna un'unità o un identificativo fisico a ogni prodotto assicurato prima di creare o sincronizzare il contratto.",
     "tulipContractTypeDisabled": "Il tipo di contratto Tulip richiesto per questa durata non e abilitato per questo negozio.",
     "unitAlreadyRetired": "Questa unità è già ritirata dal parco",
-    "unitNotRetired": "Questa unità non è ritirata dal parco"
+    "unitNotRetired": "Questa unità non è ritirata dal parco",
+    "advisorValidationRequired": "Questo negozio richiede una breve verifica con il consulente prima di prenotare",
+    "conversationNotFound": "Conversazione non trovata",
+    "featureNotAvailable": "Questa funzione non è disponibile nel tuo piano"
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

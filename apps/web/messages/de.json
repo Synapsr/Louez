@@ -1052,7 +1052,10 @@
               "margin": "Marge / Tag"
             }
           }
-        }
+        },
+        "aiContext": "Kontext für den KI-Berater",
+        "aiContextPlaceholder": "z. B. Führerschein Klasse B erforderlich, nicht geeignet für Kinder unter 12 Jahren, fragen Sie immer nach Veranstaltungsdatum und Gruppengröße…",
+        "aiContextHint": "Zusätzliche Angaben, die nur der KI-Berater sieht — er nutzt sie, um Kunden zu beraten und Voraussetzungen zu prüfen. Werden nie im Shop angezeigt."
       },
       "deleteConfirm": {
         "title": "Dieses Produkt löschen?",
@@ -2048,7 +2051,14 @@
       },
       "tulipInsuredBadge": "Tulip-versichert",
       "tulipContractCardTitle": "Versicherungsvertrag",
-      "tulipContractCardDescription": "Vertrag in Colibri öffnen."
+      "tulipContractCardDescription": "Vertrag in Colibri öffnen.",
+      "advisor": {
+        "cardTitle": "KI-Berater",
+        "validated": "Validiert",
+        "viewConversation": "Gespräch ansehen",
+        "sheetTitle": "Gespräch mit dem Berater",
+        "sheetDescription": "Chat zwischen dem Kunden und dem KI-Berater für diese Reservierung."
+      }
     },
     "customers": {
       "title": "Kunden",
@@ -4109,7 +4119,67 @@
           "reversed": "Erstattet"
         }
       },
-      "referrals": "Empfehlungen"
+      "referrals": "Empfehlungen",
+      "aiAdvisor": {
+        "title": "KI-Berater",
+        "description": "Lassen Sie einen KI-Assistenten Ihre Kunden im Shop begrüßen, ihre Fragen beantworten und sie zur passenden Vermietung führen",
+        "saved": "KI-Berater-Einstellungen gespeichert",
+        "enableSection": "KI-Berater",
+        "enableSectionDescription": "Konfigurieren Sie den Assistenten, der in Ihrem Shop mit Ihren Kunden chattet",
+        "enabled": "KI-Berater aktivieren",
+        "enabledDescription": "Zeigt das Chat-Widget in Ihrem Shop an",
+        "mode": "Modus bei der Reservierung",
+        "modeDescription": "Legen Sie fest, wie der Berater in den Reservierungsprozess eingebunden wird",
+        "modeOptional": "Optional",
+        "modeOptionalDescription": "Kunden können mit dem Berater chatten, die Reservierung bleibt unverändert",
+        "modeRecommended": "Empfohlen",
+        "modeRecommendedDescription": "Beim Abschluss der Reservierung wird ein unverbindlicher Hinweis auf den Chat angezeigt",
+        "modeRequired": "Erforderlich",
+        "modeRequiredDescription": "Die Reservierung ist blockiert, bis der Berater das Gespräch validiert hat",
+        "storeContext": "Anweisungen für Ihren Shop",
+        "storeContextDescription": "Schreiben Sie, was Sie einem neuen Mitarbeiter sagen würden: Einschränkungen, durchzuführende Prüfungen, Tonfall und Richtlinien",
+        "storeContextPlaceholder": "z. B. Fragen Sie immer nach der Körpergröße des Kunden, bevor Sie eine Fahrradgröße empfehlen, erwähnen Sie, dass Helme inklusive sind, Lieferung nur im Umkreis von 10 km...",
+        "personalizationSection": "Personalisierung",
+        "displayName": "Anzeigename",
+        "displayNameDescription": "Widget-Titel, der Kunden angezeigt wird (standardmäßig ein übersetzter Titel)",
+        "displayNamePlaceholder": "z. B. Leo, Ihr Vermietungsberater",
+        "welcomeMessage": "Begrüßungsnachricht",
+        "welcomeMessageDescription": "Erste Nachricht beim Öffnen des Chats (standardmäßig eine übersetzte Nachricht)",
+        "welcomeMessagePlaceholder": "z. B. Hallo! Erzählen Sie mir von Ihrem Vorhaben und ich helfe Ihnen, die passende Ausrüstung zu finden.",
+        "notConfigured": {
+          "title": "KI-Anbieter nicht konfiguriert",
+          "description": "Der Plattformbetreiber muss die Umgebungsvariablen AI_PROVIDER und AI_API_KEY setzen, damit der Berater Kunden antworten kann. Sie können Ihre Einstellungen unten trotzdem vorbereiten."
+        },
+        "locked": {
+          "title": "KI-Berater freischalten",
+          "description": "Verwandeln Sie Shop-Besucher mit einem KI-Assistenten in Reservierungen",
+          "upgrade": "Auf Pro upgraden",
+          "featureLocked": "Funktion gesperrt",
+          "upgradeToUnlock": "Upgraden Sie auf Pro, um diese Funktion zu aktivieren"
+        },
+        "conversations": {
+          "title": "Gespräche",
+          "description": "Sehen Sie, was Kunden den Berater gefragt haben und welche Gespräche zu einer Reservierung geführt haben",
+          "filterAll": "Alle",
+          "filterConverted": "Konvertiert",
+          "filterNotConverted": "Nicht konvertiert",
+          "empty": "Noch keine Gespräche",
+          "emptyDescription": "Gespräche erscheinen hier, sobald Kunden in Ihrem Shop mit dem Berater chatten",
+          "emptyFilteredDescription": "Keine Gespräche entsprechen diesem Filter",
+          "columnDate": "Datum",
+          "columnFirstMessage": "Erste Nachricht",
+          "columnMessages": "Nachrichten",
+          "columnStatus": "Status",
+          "statusConverted": "Konvertiert",
+          "statusValidated": "Validiert",
+          "statusNotConverted": "Nicht konvertiert",
+          "pagination": "Seite {page} von {totalPages}",
+          "previousPage": "Vorherige Seite",
+          "nextPage": "Nächste Seite",
+          "transcriptTitle": "Gespräch",
+          "transcriptError": "Dieses Gespräch konnte nicht geladen werden"
+        }
+      }
     },
     "aiChat": {
       "open": "KI-Assistent",
@@ -4677,7 +4747,17 @@
       "resolvedAttributesLabel": "Endgültig",
       "lineCheckingAvailability": "Verfügbarkeit wird geprüft...",
       "lineNeedsUpdateInline": "Diese Zeile ist nicht mehr verfügbar. Aktualisieren Sie Menge oder Attribute.",
-      "lineNeedsUpdate": "Einige Zeilen sind nicht mehr verfügbar. Aktualisieren Sie Ihren Warenkorb vor dem Absenden."
+      "lineNeedsUpdate": "Einige Zeilen sind nicht mehr verfügbar. Aktualisieren Sie Ihren Warenkorb vor dem Absenden.",
+      "advisor": {
+        "recommendedHint": "Unsicher bei Ihrer Wahl? Der Berater kann sie mit Ihnen prüfen.",
+        "askAdvisor": "Berater fragen",
+        "dismiss": "Ausblenden",
+        "requiredTitle": "Eine kurze Überprüfung ist erforderlich",
+        "requiredDescription": "Dieser Shop lässt den Berater einige Angaben prüfen, bevor Sie reservieren können.",
+        "startVerification": "Überprüfung starten",
+        "validatedTitle": "Überprüfung abgeschlossen",
+        "validatedDescription": "Der Berater hat Ihre Reservierung validiert — Sie können jetzt reservieren."
+      }
     },
     "confirmation": {
       "title": "Reservierung bestätigt!",
@@ -4969,6 +5049,27 @@
         "selectStartDate": "Wählen Sie ein Abholdatum",
         "selectEndDate": "Wählen Sie ein Rückgabedatum",
         "endTimeAfterStart": "Die Rückgabezeit muss nach der Abholzeit liegen"
+      }
+    },
+    "advisor": {
+      "open": "Berater fragen",
+      "title": "KI-Berater",
+      "subtitle": "Antwortet sofort",
+      "welcome": "Hallo! Ich bin der Berater dieses Shops. Erzählen Sie mir von Ihrem Vorhaben und ich helfe Ihnen, die passende Ausrüstung zu finden.",
+      "placeholder": "Stellen Sie Ihre Frage…",
+      "send": "Senden",
+      "close": "Schließen",
+      "restart": "Neues Gespräch",
+      "disclaimer": "KI-generierte Antworten — prüfen Sie wichtige Angaben",
+      "validateChip": "Ich möchte meine Reservierung validieren lassen",
+      "suggestions": {
+        "recommend": "Was würden Sie mir empfehlen?",
+        "question": "Ich habe eine Frage zu einem Produkt",
+        "practical": "Öffnungszeiten und praktische Infos"
+      },
+      "errors": {
+        "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+        "rateLimited": "Zu viele Nachrichten im Moment — bitte versuchen Sie es später erneut."
       }
     }
   },
@@ -5656,7 +5757,10 @@
     "tulipContractProductMarkedMissing": "Tulip benötigt die echte Kennung jedes versicherten Artikels. Weisen Sie jedem versicherten Produkt vor der Erstellung oder Synchronisierung des Vertrags eine Einheit oder physische Kennung zu.",
     "tulipContractTypeDisabled": "Der für diese Dauer erforderliche Tulip-Vertragstyp ist für diesen Shop nicht aktiviert.",
     "unitAlreadyRetired": "Diese Einheit ist bereits ausgemustert",
-    "unitNotRetired": "Diese Einheit ist nicht ausgemustert"
+    "unitNotRetired": "Diese Einheit ist nicht ausgemustert",
+    "advisorValidationRequired": "Dieser Shop erfordert vor der Reservierung eine kurze Überprüfung mit dem Berater",
+    "conversationNotFound": "Gespräch nicht gefunden",
+    "featureNotAvailable": "Diese Funktion ist in Ihrem Plan nicht verfügbar"
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

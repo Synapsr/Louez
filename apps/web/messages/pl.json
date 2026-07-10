@@ -1013,7 +1013,10 @@
               "margin": "Marża / dzień"
             }
           }
-        }
+        },
+        "aiContext": "Kontekst dla doradcy AI",
+        "aiContextPlaceholder": "Np. wymagane prawo jazdy kat. B, nieodpowiednie dla dzieci poniżej 12 lat, zawsze pytaj o datę wydarzenia i liczebność grupy…",
+        "aiContextHint": "Dodatkowe informacje widoczne tylko dla doradcy AI — używa ich, aby doradzać klientom i sprawdzać wymagania. Nigdy nie są wyświetlane w sklepie."
       },
       "deleteConfirm": {
         "title": "Usunąć ten produkt?",
@@ -2009,7 +2012,14 @@
       },
       "tulipInsuredBadge": "Ubezpieczono Tulip",
       "tulipContractCardTitle": "Umowa ubezpieczeniowa",
-      "tulipContractCardDescription": "Otwórz umowę w Colibri."
+      "tulipContractCardDescription": "Otwórz umowę w Colibri.",
+      "advisor": {
+        "cardTitle": "Doradca AI",
+        "validated": "Zatwierdzona",
+        "viewConversation": "Zobacz rozmowę",
+        "sheetTitle": "Rozmowa z doradcą",
+        "sheetDescription": "Rozmowa między klientem a doradcą AI dotycząca tej rezerwacji."
+      }
     },
     "customers": {
       "title": "Klienci",
@@ -4109,7 +4119,67 @@
           "reversed": "Zwrócone"
         }
       },
-      "referrals": "Polecenia"
+      "referrals": "Polecenia",
+      "aiAdvisor": {
+        "title": "Doradca AI",
+        "description": "Pozwól asystentowi AI witać klientów w Twoim sklepie, odpowiadać na ich pytania i prowadzić ich do odpowiedniego wynajmu",
+        "saved": "Zapisano ustawienia doradcy AI",
+        "enableSection": "Doradca AI",
+        "enableSectionDescription": "Skonfiguruj asystenta, który rozmawia z Twoimi klientami w sklepie",
+        "enabled": "Włącz doradcę AI",
+        "enabledDescription": "Wyświetla widżet czatu w Twoim sklepie",
+        "mode": "Tryb podczas rezerwacji",
+        "modeDescription": "Wybierz, jak doradca uczestniczy w procesie rezerwacji",
+        "modeOptional": "Opcjonalny",
+        "modeOptionalDescription": "Klienci mogą rozmawiać z doradcą, rezerwacja pozostaje bez zmian",
+        "modeRecommended": "Zalecany",
+        "modeRecommendedDescription": "Podczas rezerwacji wyświetlana jest nieblokująca sugestia rozmowy",
+        "modeRequired": "Wymagany",
+        "modeRequiredDescription": "Rezerwacja jest zablokowana, dopóki doradca nie zatwierdzi rozmowy",
+        "storeContext": "Instrukcje dla Twojego sklepu",
+        "storeContextDescription": "Napisz to, co powiedziałbyś nowemu pracownikowi: ograniczenia, weryfikacje do przeprowadzenia, ton i zasady",
+        "storeContextPlaceholder": "Np. Zawsze pytaj o wzrost klienta przed poleceniem rozmiaru roweru, wspomnij, że kaski są w cenie, dostawa jest dostępna tylko w promieniu 10 km...",
+        "personalizationSection": "Personalizacja",
+        "displayName": "Wyświetlana nazwa",
+        "displayNameDescription": "Tytuł widżetu widoczny dla klientów (domyślnie przetłumaczony tytuł)",
+        "displayNamePlaceholder": "Np. Leo, Twój doradca wynajmu",
+        "welcomeMessage": "Wiadomość powitalna",
+        "welcomeMessageDescription": "Pierwsza wiadomość wyświetlana po otwarciu czatu (domyślnie przetłumaczona wiadomość)",
+        "welcomeMessagePlaceholder": "Np. Cześć! Opowiedz mi o swoim projekcie, a pomogę Ci wybrać odpowiedni sprzęt.",
+        "notConfigured": {
+          "title": "Dostawca AI nie został skonfigurowany",
+          "description": "Operator platformy musi ustawić zmienne środowiskowe AI_PROVIDER i AI_API_KEY, aby doradca mógł odpowiadać klientom. Mimo to możesz przygotować swoje ustawienia poniżej."
+        },
+        "locked": {
+          "title": "Odblokuj Doradcę AI",
+          "description": "Zamień odwiedzających Twój sklep w rezerwacje dzięki asystentowi AI",
+          "upgrade": "Przejdź na Pro",
+          "featureLocked": "Funkcja zablokowana",
+          "upgradeToUnlock": "Przejdź na Pro, aby włączyć tę funkcję"
+        },
+        "conversations": {
+          "title": "Rozmowy",
+          "description": "Sprawdź, o co klienci pytali doradcę i które rozmowy zakończyły się rezerwacją",
+          "filterAll": "Wszystkie",
+          "filterConverted": "Z rezerwacją",
+          "filterNotConverted": "Bez rezerwacji",
+          "empty": "Brak rozmów",
+          "emptyDescription": "Rozmowy pojawią się tutaj, gdy klienci zaczną rozmawiać z doradcą w Twoim sklepie",
+          "emptyFilteredDescription": "Żadna rozmowa nie pasuje do tego filtra",
+          "columnDate": "Data",
+          "columnFirstMessage": "Pierwsza wiadomość",
+          "columnMessages": "Wiadomości",
+          "columnStatus": "Status",
+          "statusConverted": "Z rezerwacją",
+          "statusValidated": "Zatwierdzona",
+          "statusNotConverted": "Bez rezerwacji",
+          "pagination": "Strona {page} z {totalPages}",
+          "previousPage": "Poprzednia strona",
+          "nextPage": "Następna strona",
+          "transcriptTitle": "Rozmowa",
+          "transcriptError": "Nie można załadować tej rozmowy"
+        }
+      }
     },
     "aiChat": {
       "open": "Asystent AI",
@@ -4677,7 +4747,17 @@
       "resolvedAttributesLabel": "Końcowe",
       "lineCheckingAvailability": "Sprawdzanie dostępności...",
       "lineNeedsUpdateInline": "Ta linia nie jest już dostępna. Zaktualizuj ilość lub atrybuty.",
-      "lineNeedsUpdate": "Niektóre linie nie są już dostępne. Zaktualizuj koszyk przed wysłaniem."
+      "lineNeedsUpdate": "Niektóre linie nie są już dostępne. Zaktualizuj koszyk przed wysłaniem.",
+      "advisor": {
+        "recommendedHint": "Masz wątpliwości co do wyboru? Doradca może go z Tobą sprawdzić.",
+        "askAdvisor": "Zapytaj doradcę",
+        "dismiss": "Ukryj",
+        "requiredTitle": "Wymagana jest krótka weryfikacja",
+        "requiredDescription": "Ten sklep prosi doradcę o sprawdzenie kilku informacji przed dokonaniem rezerwacji.",
+        "startVerification": "Rozpocznij weryfikację",
+        "validatedTitle": "Weryfikacja zakończona",
+        "validatedDescription": "Doradca zatwierdził Twoją rezerwację — możesz zarezerwować."
+      }
     },
     "confirmation": {
       "title": "Rezerwacja potwierdzona!",
@@ -4969,6 +5049,27 @@
         "selectStartDate": "Wybierz datę odbioru",
         "selectEndDate": "Wybierz datę zwrotu",
         "endTimeAfterStart": "Godzina zwrotu musi być późniejsza niż godzina odbioru"
+      }
+    },
+    "advisor": {
+      "open": "Zapytaj doradcę",
+      "title": "Doradca AI",
+      "subtitle": "Odpowiada natychmiast",
+      "welcome": "Cześć! Jestem doradcą tego sklepu. Opowiedz mi o swoim projekcie, a pomogę Ci wybrać odpowiedni sprzęt.",
+      "placeholder": "Zadaj pytanie…",
+      "send": "Wyślij",
+      "close": "Zamknij",
+      "restart": "Nowa rozmowa",
+      "disclaimer": "Odpowiedzi generowane przez AI — sprawdź ważne informacje",
+      "validateChip": "Chcę zatwierdzić moją rezerwację",
+      "suggestions": {
+        "recommend": "Co mi polecasz?",
+        "question": "Mam pytanie o produkt",
+        "practical": "Godziny otwarcia i informacje praktyczne"
+      },
+      "errors": {
+        "generic": "Coś poszło nie tak. Spróbuj ponownie.",
+        "rateLimited": "Zbyt wiele wiadomości — spróbuj ponownie później."
       }
     }
   },
@@ -5656,7 +5757,10 @@
     "tulipContractProductMarkedMissing": "Tulip wymaga rzeczywistego identyfikatora każdego ubezpieczonego przedmiotu. Przypisz jednostkę lub fizyczny identyfikator do każdego ubezpieczonego produktu przed utworzeniem lub synchronizacją umowy.",
     "tulipContractTypeDisabled": "Typ umowy Tulip wymagany dla tego czasu trwania nie jest włączony dla tego sklepu.",
     "unitAlreadyRetired": "Ta jednostka jest już wycofana",
-    "unitNotRetired": "Ta jednostka nie jest wycofana"
+    "unitNotRetired": "Ta jednostka nie jest wycofana",
+    "advisorValidationRequired": "Ten sklep wymaga krótkiej weryfikacji z doradcą przed dokonaniem rezerwacji",
+    "conversationNotFound": "Nie znaleziono rozmowy",
+    "featureNotAvailable": "Ta funkcja nie jest dostępna w Twoim planie"
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",
