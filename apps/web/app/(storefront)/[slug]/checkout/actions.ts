@@ -1,6 +1,6 @@
 'use server';
 
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import {
@@ -10,6 +10,7 @@ import {
 } from '@louez/api/services';
 import { db } from '@louez/db';
 import {
+  aiAdvisorConversations,
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   customers,
@@ -56,6 +57,7 @@ import {
 import type { SeasonalPricingConfig } from '@louez/utils';
 import type { PricingMode } from '@louez/utils';
 
+import { isAIChatConfigured } from '@/lib/ai/provider';
 import { notifyNewReservation } from '@/lib/discord/platform-notifications';
 import { getLocaleFromCountry } from '@/lib/email/i18n';
 import { sendNewRequestLandlordEmail } from '@/lib/email/send';
@@ -72,6 +74,7 @@ import {
   getStoreBilling,
   planStripeFees,
 } from '@/lib/pay-as-you-go';
+import { getStorePlan } from '@/lib/plan-limits';
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -149,6 +152,7 @@ interface CreateReservationInput {
   locale?: 'fr' | 'en';
   delivery?: DeliveryInput;
   promoCode?: string;
+  advisorConversationId?: string;
 }
 
 function getErrorKey(error: unknown, fallback: string): string {
@@ -545,6 +549,44 @@ export async function createReservation(input: CreateReservationInput) {
       : null;
     if (input.customer.phone && !customerPhone) {
       return { error: 'errors.invalidData' };
+    }
+
+    // AI advisor: resolve the referenced conversation (if any) and, when the
+    // store REQUIRES advisor validation, enforce it server-side. The check is
+    // inert when the platform AI is not configured or the plan lacks the
+    // feature — a checkout must never be blocked by an absent advisor.
+    const advisorSettings = store.aiAdvisorSettings;
+    const advisorConversation = input.advisorConversationId
+      ? ((await db.query.aiAdvisorConversations.findFirst({
+          where: and(
+            eq(aiAdvisorConversations.id, input.advisorConversationId),
+            eq(aiAdvisorConversations.storeId, store.id),
+          ),
+          columns: {
+            id: true,
+            validatedAt: true,
+            validatedProductIds: true,
+            reservationId: true,
+          },
+        })) ?? null)
+      : null;
+
+    if (
+      advisorSettings?.enabled &&
+      advisorSettings.mode === 'required' &&
+      isAIChatConfigured() &&
+      (await getStorePlan(store.id)).features.aiAdvisor
+    ) {
+      const validatedProductIds = new Set(
+        advisorConversation?.validatedProductIds ?? [],
+      );
+      const isValidated =
+        advisorConversation?.validatedAt != null &&
+        input.items.every((item) => validatedProductIds.has(item.productId));
+
+      if (!isValidated) {
+        return { error: 'errors.advisorValidationRequired' };
+      }
     }
 
     // Calculate the overall rental period from items
@@ -1683,9 +1725,26 @@ export async function createReservation(input: CreateReservationInput) {
           ...(tulipQuoteFallbackError && {
             tulipQuoteFallbackError,
           }),
+          ...(advisorConversation && {
+            advisorConversationId: advisorConversation.id,
+          }),
         },
         createdAt: new Date(),
       });
+
+      // Link the advisor conversation to its reservation (conversion). The
+      // reservation_id filter keeps the first link authoritative.
+      if (advisorConversation && !advisorConversation.reservationId) {
+        await tx
+          .update(aiAdvisorConversations)
+          .set({ reservationId, updatedAt: new Date() })
+          .where(
+            and(
+              eq(aiAdvisorConversations.id, advisorConversation.id),
+              isNull(aiAdvisorConversations.reservationId),
+            ),
+          );
+      }
 
       return {
         ok: true as const,

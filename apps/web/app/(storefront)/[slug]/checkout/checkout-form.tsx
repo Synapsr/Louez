@@ -19,12 +19,14 @@ import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
 
 import { createReservation, getTulipQuotePreview } from './actions';
+import { CheckoutAdvisorGateCard } from './components/checkout-advisor-gate';
 import { CheckoutConfirmStep } from './components/checkout-confirm-step';
 import { CheckoutContactStep } from './components/checkout-contact-step';
 import { CheckoutDeliveryStep } from './components/checkout-delivery-step';
 import { CheckoutEmptyCartState } from './components/checkout-empty-cart-state';
 import { CheckoutOrderSummary } from './components/checkout-order-summary';
 import { CheckoutWizardStepper } from './components/checkout-wizard-stepper';
+import { useCheckoutAdvisorGate } from './hooks/use-checkout-advisor-gate';
 import { useCheckoutDelivery } from './hooks/use-checkout-delivery';
 import { useCheckoutLineResolutions } from './hooks/use-checkout-line-resolutions';
 import { useCheckoutStepFlow } from './hooks/use-checkout-step-flow';
@@ -111,6 +113,7 @@ export function CheckoutForm({
   locations,
   tulipInsurance,
   hasActivePromoCodes,
+  advisorMode,
 }: CheckoutFormProps) {
   const router = useRouter();
   const locale = useLocale() as 'fr' | 'en';
@@ -137,6 +140,8 @@ export function CheckoutForm({
   const total = getTotal();
   const totalSavings = getTotalSavings();
   const originalSubtotal = getOriginalSubtotal();
+
+  const advisorGate = useCheckoutAdvisorGate(advisorMode ?? null);
 
   const [appliedPromo, setAppliedPromo] = useState<ValidatedPromo | null>(null);
 
@@ -501,6 +506,10 @@ export function CheckoutForm({
       if (!canSubmitCheckoutWithTulip) {
         throw new CheckoutSubmitError('lineNeedsUpdate');
       }
+      // Client-side mirror of the server-enforced advisor gate
+      if (advisorGate.isRequired && !advisorGate.isValidated) {
+        throw new CheckoutSubmitError('errors.advisorValidationRequired');
+      }
 
       const payload = buildReservationPayload({
         storeId,
@@ -519,6 +528,7 @@ export function CheckoutForm({
         returnLocationId,
         tulipInsuranceMode,
         promoCode: appliedPromo?.code,
+        advisorConversationId: advisorGate.conversationId ?? undefined,
       });
 
       const result = await createReservation(payload);
@@ -663,24 +673,31 @@ export function CheckoutForm({
                   )}
 
                 {currentStep === 'confirm' && (
-                  <CheckoutConfirmStep
-                    form={form}
-                    cgv={cgv}
-                    hasDeliveryLegs={
-                      outboundMethod === 'address' || returnMethod === 'address'
-                    }
-                    logisticsLabel={logisticsLabel}
-                    reservationMode={reservationMode}
-                    depositPercentage={depositPercentage}
-                    subtotal={subtotalWithEstimatedInsurance}
-                    totalWithDelivery={totalWithEstimatedInsurance}
-                    currency={currency}
-                    tulipInsurance={tulipInsurance}
-                    canSubmitCheckout={canSubmitCheckoutWithTulip}
-                    discountAmount={discountAmount}
-                    onBack={goToPreviousStep}
-                    onEditContact={() => goToStep('contact')}
-                  />
+                  <>
+                    <CheckoutAdvisorGateCard gate={advisorGate} />
+                    <CheckoutConfirmStep
+                      form={form}
+                      cgv={cgv}
+                      hasDeliveryLegs={
+                        outboundMethod === 'address' ||
+                        returnMethod === 'address'
+                      }
+                      logisticsLabel={logisticsLabel}
+                      reservationMode={reservationMode}
+                      depositPercentage={depositPercentage}
+                      subtotal={subtotalWithEstimatedInsurance}
+                      totalWithDelivery={totalWithEstimatedInsurance}
+                      currency={currency}
+                      tulipInsurance={tulipInsurance}
+                      canSubmitCheckout={
+                        canSubmitCheckoutWithTulip &&
+                        (!advisorGate.isRequired || advisorGate.isValidated)
+                      }
+                      discountAmount={discountAmount}
+                      onBack={goToPreviousStep}
+                      onEditContact={() => goToStep('contact')}
+                    />
+                  </>
                 )}
               </StepContent>
             </form.Form>

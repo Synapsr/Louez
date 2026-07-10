@@ -1,6 +1,6 @@
 import { db } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { categories } from '@louez/db'
+import { categories, stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
@@ -20,6 +20,13 @@ export default async function NewProductPage() {
     orderBy: [categories.order],
   })
 
+  // StoreWithFullData does not expose aiAdvisorSettings, so fetch just that column
+  const storeAdvisorRow = await db.query.stores.findFirst({
+    where: eq(stores.id, store.id),
+    columns: { aiAdvisorSettings: true },
+  })
+  const showAiContext = storeAdvisorRow?.aiAdvisorSettings?.enabled === true
+
   return (
     <div className="space-y-6">
       <div>
@@ -32,6 +39,7 @@ export default async function NewProductPage() {
       <ProductForm
         categories={categoriesList}
         storeTaxSettings={store.settings?.tax}
+        showAiContext={showAiContext}
       />
     </div>
   )

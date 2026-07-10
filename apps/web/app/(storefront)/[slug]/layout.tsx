@@ -6,14 +6,18 @@ import { getMessages } from "next-intl/server";
 import { db } from "@louez/db";
 import { stores } from "@louez/db";
 import { eq } from "drizzle-orm";
+import { AdvisorWidget } from "@/components/storefront/advisor/advisor-widget";
 import { StoreHeaderWrapper } from "@/components/storefront/store-header-wrapper";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { ThemeWrapper } from "@/components/storefront/theme-wrapper";
+import { AdvisorProvider } from "@/contexts/advisor-context";
 import { CartProvider } from "@/contexts/cart-context";
 import { StoreProvider } from "@/contexts/store-context";
 import { AnalyticsProvider } from "@/contexts/analytics-context";
 import { OpenReplayProvider } from "@/components/openreplay-provider";
 import { PostHogProvider } from "@/components/posthog-provider";
+import { isAIChatConfigured } from "@/lib/ai/provider";
+import { getStorePlan } from "@/lib/plan-limits";
 import { generateStoreMetadata, stripHtml } from "@/lib/seo";
 import type { StoreTheme, StoreSettings } from "@louez/types";
 
@@ -93,6 +97,14 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
   const settings = (store.settings as StoreSettings) || {};
   const currency = settings.currency || "EUR";
 
+  // AI advisor: opt-in per store, requires the platform AI config and the
+  // plan feature. Never rendered in embed mode.
+  const advisorSettings = store.aiAdvisorSettings;
+  const advisorEnabled =
+    Boolean(advisorSettings?.enabled) &&
+    isAIChatConfigured() &&
+    (await getStorePlan(store.id)).features.aiAdvisor;
+
   // Detect embed mode from proxy header or URL path
   const headersList = await headers();
   const isEmbed =
@@ -138,21 +150,30 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
             <CartProvider>
               <AnalyticsProvider storeSlug={store.slug}>
                 <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
-                  <div className="flex min-h-screen flex-col bg-background">
-                    <StoreHeaderWrapper
-                      storeName={store.name}
-                      storeSlug={store.slug}
-                      logoUrl={store.logoUrl}
-                    />
-                    <main className="flex-1 pt-20 md:pt-24">{children}</main>
-                    <StoreFooter
-                      storeName={store.name}
-                      storeSlug={store.slug}
-                      email={store.email}
-                      phone={store.phone}
-                      address={store.address}
-                    />
-                  </div>
+                  <AdvisorProvider storeSlug={store.slug} enabled={advisorEnabled}>
+                    <div className="flex min-h-screen flex-col bg-background">
+                      <StoreHeaderWrapper
+                        storeName={store.name}
+                        storeSlug={store.slug}
+                        logoUrl={store.logoUrl}
+                      />
+                      <main className="flex-1 pt-20 md:pt-24">{children}</main>
+                      <StoreFooter
+                        storeName={store.name}
+                        storeSlug={store.slug}
+                        email={store.email}
+                        phone={store.phone}
+                        address={store.address}
+                      />
+                    </div>
+                    {advisorEnabled && advisorSettings && (
+                      <AdvisorWidget
+                        storeSlug={store.slug}
+                        displayName={advisorSettings.displayName}
+                        welcomeMessage={advisorSettings.welcomeMessage}
+                      />
+                    )}
+                  </AdvisorProvider>
                 </ThemeWrapper>
               </AnalyticsProvider>
             </CartProvider>

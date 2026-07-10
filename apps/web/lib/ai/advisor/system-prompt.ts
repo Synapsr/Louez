@@ -29,6 +29,7 @@ export function buildAdvisorSystemPrompt(params: AdvisorPromptParams): string {
 
 - Respond in the customer's language (the storefront is displayed in "${locale}"; switch if the customer writes in another language).
 - Keep answers short and conversational — this is a small chat widget.
+- Write plain sentences only: no markdown syntax, no headers, no bullet lists.
 - Ground every claim in tool results. Never invent products, prices, availability, discounts or policies.
 - Prices are in ${currency}. Never negotiate or promise anything the tools do not confirm.
 - Only discuss this store and its rentals. Politely decline any other topic.

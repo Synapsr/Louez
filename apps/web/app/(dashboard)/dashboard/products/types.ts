@@ -70,6 +70,7 @@ export interface Product {
   id: string;
   name: string;
   description: string | null;
+  aiContext?: string | null;
   categoryId: string | null;
   price: string;
   deposit: string | null;
@@ -101,6 +102,7 @@ export interface ProductFormProps {
   currency?: string;
   storeTaxSettings?: TaxSettings;
   availableAccessories?: AvailableAccessory[];
+  showAiContext?: boolean;
 }
 
 export type ProductFormValues = Omit<ProductInput, 'taxSettings'> & {

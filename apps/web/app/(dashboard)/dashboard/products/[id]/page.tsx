@@ -11,6 +11,7 @@ import {
   reservationItemUnits,
   reservationItems,
   reservations,
+  stores,
 } from '@louez/db';
 
 import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-breadcrumbs-context';
@@ -126,6 +127,13 @@ export default async function EditProductPage({
     ? effectiveQuantities.get(product.id) ?? 0
     : product.quantity;
 
+  // StoreWithFullData does not expose aiAdvisorSettings, so fetch just that column
+  const storeAdvisorRow = await db.query.stores.findFirst({
+    where: eq(stores.id, store.id),
+    columns: { aiAdvisorSettings: true },
+  });
+  const showAiContext = storeAdvisorRow?.aiAdvisorSettings?.enabled === true;
+
   return (
     <div className="space-y-6">
       <DashboardBreadcrumbLabel label={product.name} />
@@ -151,6 +159,7 @@ export default async function EditProductPage({
         categories={categoriesList}
         storeTaxSettings={store.settings?.tax}
         availableAccessories={availableAccessories}
+        showAiContext={showAiContext}
       />
     </div>
   );

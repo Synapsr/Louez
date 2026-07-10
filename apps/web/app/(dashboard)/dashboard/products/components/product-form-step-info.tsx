@@ -36,6 +36,7 @@ import type { Category, ProductFormComponentApi } from '../types'
 
 interface ProductFormStepInfoProps {
   form: ProductFormComponentApi
+  showAiContext: boolean
   categories: Category[]
   categoryDialogOpen: boolean
   newCategoryName: string
@@ -48,6 +49,7 @@ interface ProductFormStepInfoProps {
 
 export function ProductFormStepInfo({
   form,
+  showAiContext,
   categories,
   categoryDialogOpen,
   newCategoryName,
@@ -102,6 +104,20 @@ export function ProductFormStepInfo({
             </div>
           )}
         </form.Field>
+
+        {showAiContext && (
+          <form.AppField name="aiContext">
+            {(field) => (
+              <field.Textarea
+                label={t('aiContext')}
+                placeholder={t('aiContextPlaceholder')}
+                description={t('aiContextHint')}
+                rows={4}
+                maxLength={2000}
+              />
+            )}
+          </form.AppField>
+        )}
 
         <form.Field name="categoryId">
           {(field) => (
