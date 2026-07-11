@@ -51,6 +51,11 @@ COPY apps/web/package.json ./apps/web/
 RUN corepack enable pnpm && \
     pnpm install --frozen-lockfile
 
+# @louez/config ships only TS config JSON and has no dependencies, so pnpm
+# creates no node_modules for it. Ensure the directory exists so the
+# builder-stage `COPY --from=deps .../packages/config/node_modules` succeeds.
+RUN mkdir -p packages/config/node_modules
+
 # -----------------------------------------------------------------------------
 # Stage 2: Builder
 # Build the Next.js application with standalone output using Turborepo
