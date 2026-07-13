@@ -5291,9 +5291,9 @@
       "seeTomorrow": "À demain !"
     },
     "reminderReturn": {
-      "subject": "Rappel : retour de votre matériel aujourd'hui",
+      "subject": "Rappel : retour de votre matériel le {date}",
       "title": "Pensez à rendre votre matériel",
-      "body": "Ceci est un rappel pour votre réservation #{number}. Le retour du matériel est prévu pour aujourd'hui.",
+      "body": "Ceci est un rappel pour votre réservation #{number}. Le retour du matériel est prévu le {date}.",
       "scheduledReturn": "Retour prévu",
       "returnInfo": "Merci de rapporter le matériel en bon état. La caution vous sera restituée après vérification.",
       "thanks": "Merci de votre confiance !"

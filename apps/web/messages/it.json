@@ -5169,9 +5169,9 @@
       "seeTomorrow": "Ci vediamo domani!"
     },
     "reminderReturn": {
-      "subject": "Promemoria: ritorno attrezzatura oggi",
+      "subject": "Promemoria: ritorno attrezzatura il {date}",
       "title": "Ricordati di restituire la tua attrezzatura",
-      "body": "Questo e un promemoria per la tua prenotazione #{number}. Il ritorno dell'attrezzatura e previsto per oggi.",
+      "body": "Questo e un promemoria per la tua prenotazione #{number}. Il ritorno dell'attrezzatura e previsto per il {date}.",
       "scheduledReturn": "Ritorno programmato",
       "returnInfo": "Restituisci l'attrezzatura in buone condizioni. Il deposito sara restituito dopo la verifica.",
       "thanks": "Grazie per la tua fiducia!"

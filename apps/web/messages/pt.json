@@ -5169,9 +5169,9 @@
       "seeTomorrow": "Ate amanha!"
     },
     "reminderReturn": {
-      "subject": "Lembrete: devolucao do equipamento hoje",
+      "subject": "Lembrete: devolucao do equipamento em {date}",
       "title": "Lembre-se de devolver seu equipamento",
-      "body": "Este e um lembrete para sua reserva #{number}. A devolucao do equipamento esta agendada para hoje.",
+      "body": "Este e um lembrete para sua reserva #{number}. A devolucao do equipamento esta agendada para {date}.",
       "scheduledReturn": "Devolucao agendada",
       "returnInfo": "Por favor, devolva o equipamento em boas condicoes. A caucao sera devolvida apos verificacao.",
       "thanks": "Obrigado pela sua confianca!"

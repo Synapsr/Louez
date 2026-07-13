@@ -5184,9 +5184,9 @@
       "seeTomorrow": "Hasta manana!"
     },
     "reminderReturn": {
-      "subject": "Recordatorio: devolucion de equipo hoy",
+      "subject": "Recordatorio: devolucion de equipo el {date}",
       "title": "Recuerde devolver su equipo",
-      "body": "Este es un recordatorio para su reserva #{number}. La devolucion del equipo esta programada para hoy.",
+      "body": "Este es un recordatorio para su reserva #{number}. La devolucion del equipo esta programada para el {date}.",
       "scheduledReturn": "Devolucion programada",
       "returnInfo": "Por favor devuelva el equipo en buenas condiciones. El deposito sera devuelto despues de la verificacion.",
       "thanks": "Gracias por su confianza!"

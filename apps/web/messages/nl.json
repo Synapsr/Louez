@@ -5178,9 +5178,9 @@
       "seeTomorrow": "Tot morgen!"
     },
     "reminderReturn": {
-      "subject": "Herinnering: materiaal retourneren vandaag",
+      "subject": "Herinnering: materiaal retourneren op {date}",
       "title": "Vergeet niet uw materiaal terug te brengen",
-      "body": "Dit is een herinnering voor uw reservering #{number}. De materiaalretour is gepland voor vandaag.",
+      "body": "Dit is een herinnering voor uw reservering #{number}. De materiaalretour is gepland voor {date}.",
       "scheduledReturn": "Gepland retour",
       "returnInfo": "Breng het materiaal alstublieft in goede staat terug. De borg wordt na verificatie geretourneerd.",
       "thanks": "Bedankt voor uw vertrouwen!"
