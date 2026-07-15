@@ -7,32 +7,35 @@ import { createAccountLink } from '@/lib/stripe'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Button } from '@louez/ui'
 import Link from 'next/link'
-import { env } from '@/env'
 
-const APP_URL = env.NEXT_PUBLIC_APP_URL
+import { sanitizeStripeNextPath, stripeReturnUrls } from '../stripe-return'
 
-export default async function StripeRefreshPage() {
+export default async function StripeRefreshPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>
+}) {
   const store = await getCurrentStore()
 
   if (!store) {
     redirect('/onboarding')
   }
 
+  // Preserve the launching flow's return path across link regeneration
+  const next = sanitizeStripeNextPath((await searchParams).next)
+
   const t = await getTranslations('dashboard.settings.payments')
 
   // If no Stripe account, redirect back
   if (!store.stripeAccountId) {
-    redirect('/dashboard/settings/payments')
+    redirect(next ?? '/dashboard/settings/payments')
   }
 
   // Create new onboarding link
   let newUrl: string | null = null
   try {
-    newUrl = await createAccountLink(
-      store.stripeAccountId,
-      `${APP_URL}/dashboard/settings/payments/callback`,
-      `${APP_URL}/dashboard/settings/payments/refresh`
-    )
+    const { returnUrl, refreshUrl } = stripeReturnUrls(next)
+    newUrl = await createAccountLink(store.stripeAccountId, returnUrl, refreshUrl)
   } catch {
     // Failed to create link, show manual option
   }
