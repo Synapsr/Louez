@@ -1,49 +1,23 @@
-import { z } from 'zod'
-import { env } from './env'
+import { z } from "zod";
+import { env } from "./env";
 
 // ===== IMAGE VALIDATION =====
 // Validates image URLs and data URIs to prevent malicious uploads
 
 /**
- * Allowed image MIME types
- */
-export const ALLOWED_IMAGE_TYPES = [
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/svg+xml',
-] as const
-
-export type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number]
-
-/**
  * Maximum image size in bytes (15MB)
  */
-export const MAX_IMAGE_SIZE = 15 * 1024 * 1024
-
-/**
- * Maximum data URI length (roughly 20MB to account for base64 encoding overhead)
- * Base64 increases size by ~33%, so 15MB image → ~20MB data URI
- */
-export const MAX_DATA_URI_LENGTH = 20 * 1024 * 1024
+export const MAX_IMAGE_SIZE = 15 * 1024 * 1024;
 
 /**
  * Maximum logo size in bytes (2MB - logos should be smaller)
  */
-export const MAX_LOGO_SIZE = 2 * 1024 * 1024
+export const MAX_LOGO_SIZE = 2 * 1024 * 1024;
 
 /**
  * Maximum hero image size in bytes (5MB)
  */
-export const MAX_HERO_SIZE = 5 * 1024 * 1024
-
-/**
- * Pattern to extract MIME type from data URI
- * Captures: data:image/png;base64,... → image/png
- */
-const DATA_URI_PATTERN = /^data:(image\/(?:jpeg|jpg|png|gif|webp|svg\+xml));base64,/i
+export const MAX_HERO_SIZE = 5 * 1024 * 1024;
 
 /**
  * Client-safe image URL validation for use in browser-side Zod schemas.
@@ -61,16 +35,16 @@ const DATA_URI_PATTERN = /^data:(image\/(?:jpeg|jpg|png|gif|webp|svg\+xml));base
  * isValidImageUrl() which enforces the strict S3 origin check.
  */
 export function isValidImageUrlClient(url: string): boolean {
-  if (!url || url === '') return true
+  if (!url || url === "") return true;
 
   // SECURITY: Reject data URIs — must be uploaded to S3
-  if (url.startsWith('data:')) return false
+  if (url.startsWith("data:")) return false;
 
   try {
-    const parsed = new URL(url)
-    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
   } catch {
-    return false
+    return false;
   }
 }
 
@@ -83,35 +57,24 @@ export function isValidImageUrlClient(url: string): boolean {
  */
 export function isValidImageUrl(url: string): boolean {
   // Empty is valid (optional)
-  if (!url || url === '') return true
+  if (!url || url === "") return true;
 
   // SECURITY: Reject data URIs (base64) - must be uploaded to S3
-  if (url.startsWith('data:')) {
-    return false
+  if (url.startsWith("data:")) {
+    return false;
   }
 
-  // Check for S3 URLs
-  const s3PublicUrl = env.S3_PUBLIC_URL
-  if (url.startsWith(s3PublicUrl)) {
-    // Validate URL format and extension
-    try {
-      const parsed = new URL(url)
-      const pathname = parsed.pathname.toLowerCase()
-      // Validate image extension using regex for stricter matching
-      // Ensures extension is at the end of the filename (not followed by other characters)
-      const imageExtRegex = /\.(jpg|jpeg|png|gif|webp|svg)$/i
-      return imageExtRegex.test(pathname)
-    } catch {
-      return false
-    }
+  const storagePath = getStorageRelativePath(url);
+  if (storagePath !== null) {
+    return /\.(jpg|jpeg|png|gif|webp)$/i.test(storagePath);
   }
 
   // For development, also allow localhost URLs
-  if (env.NODE_ENV === 'development') {
+  if (env.NODE_ENV === "development") {
     try {
-      const parsed = new URL(url)
-      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
-        return true
+      const parsed = new URL(url);
+      if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+        return true;
       }
     } catch {
       // Invalid URL
@@ -119,48 +82,31 @@ export function isValidImageUrl(url: string): boolean {
   }
 
   // Reject all other URLs
-  return false
+  return false;
 }
 
-/**
- * Validates that a data URI contains a valid image
- * Returns the detected MIME type or null if invalid
- */
-export function validateDataUri(dataUri: string): AllowedImageType | null {
-  const match = dataUri.match(DATA_URI_PATTERN)
-  if (!match) return null
+function getStorageRelativePath(url: string): string | null {
+  try {
+    const publicUrl = new URL(env.S3_PUBLIC_URL);
+    const parsed = new URL(url);
+    if (parsed.origin !== publicUrl.origin) return null;
 
-  const mimeType = match[1].toLowerCase() as AllowedImageType
+    const publicPath = publicUrl.pathname.replace(/\/+$/, "");
+    const pathPrefix = publicPath ? `${publicPath}/` : "/";
+    if (!parsed.pathname.startsWith(pathPrefix)) return null;
 
-  // Normalize jpg to jpeg
-  if (mimeType === 'image/jpg') {
-    return 'image/jpeg'
+    return parsed.pathname.slice(pathPrefix.length);
+  } catch {
+    return null;
   }
-
-  if (!ALLOWED_IMAGE_TYPES.includes(mimeType as AllowedImageType)) {
-    return null
-  }
-
-  return mimeType as AllowedImageType
 }
 
-/**
- * Extracts the base64 data from a data URI
- */
-export function extractBase64(dataUri: string): string | null {
-  const commaIndex = dataUri.indexOf(',')
-  if (commaIndex === -1) return null
-  return dataUri.slice(commaIndex + 1)
-}
+export function isOwnedImageUrl(url: string, ownerPrefix: string): boolean {
+  const storagePath = getStorageRelativePath(url);
+  if (storagePath === null) return false;
 
-/**
- * Estimates the decoded size of a base64 string
- */
-export function estimateBase64Size(base64: string): number {
-  // Remove padding characters
-  const padding = (base64.match(/=/g) || []).length
-  // Base64 encodes 3 bytes in 4 characters
-  return Math.floor((base64.length * 3) / 4) - padding
+  const normalizedPrefix = ownerPrefix.replace(/^\/+|\/+$/g, "");
+  return storagePath.startsWith(`${normalizedPrefix}/`) && isValidImageUrl(url);
 }
 
 /**
@@ -168,9 +114,9 @@ export function estimateBase64Size(base64: string): number {
  * Returns the URL if valid, empty string otherwise
  */
 export function sanitizeImageUrl(url: string | undefined | null): string {
-  if (!url) return ''
-  if (isValidImageUrl(url)) return url
-  return ''
+  if (!url) return "";
+  if (isValidImageUrl(url)) return url;
+  return "";
 }
 
 // ===== ZOD SCHEMAS =====
@@ -184,14 +130,14 @@ export const imageUrlSchema = z
   .string()
   .refine(
     (val) => {
-      if (!val || val === '') return true
-      return isValidImageUrl(val)
+      if (!val || val === "") return true;
+      return isValidImageUrl(val);
     },
     {
-      message: 'Invalid image URL. Base64 images are not allowed. Please upload to S3.',
-    }
+      message: "Invalid image URL. Base64 images are not allowed. Please upload to S3.",
+    },
   )
-  .transform((val) => sanitizeImageUrl(val))
+  .transform((val) => sanitizeImageUrl(val));
 
 /**
  * Zod schema for validating an array of image URLs
@@ -200,8 +146,8 @@ export const imageUrlArraySchema = z
   .array(z.string())
   .transform((urls) => urls.filter((url) => isValidImageUrl(url)))
   .refine((urls) => urls.length <= 10, {
-    message: 'Maximum 10 images allowed',
-  })
+    message: "Maximum 10 images allowed",
+  });
 
 /**
  * Validates image data before storage
@@ -209,31 +155,31 @@ export const imageUrlArraySchema = z
  * Use this on the server side before saving to DB
  */
 export function validateImageForStorage(url: string): {
-  valid: boolean
-  error?: string
-  sanitized: string
+  valid: boolean;
+  error?: string;
+  sanitized: string;
 } {
-  if (!url || url === '') {
-    return { valid: true, sanitized: '' }
+  if (!url || url === "") {
+    return { valid: true, sanitized: "" };
   }
 
   // SECURITY: Reject data URIs (base64) - must be uploaded to S3
-  if (url.startsWith('data:')) {
+  if (url.startsWith("data:")) {
     return {
       valid: false,
-      error: 'Base64 images are not allowed. Please upload images to S3.',
-      sanitized: '',
-    }
+      error: "Base64 images are not allowed. Please upload images to S3.",
+      sanitized: "",
+    };
   }
 
   // S3 URL validation
   if (isValidImageUrl(url)) {
-    return { valid: true, sanitized: url }
+    return { valid: true, sanitized: url };
   }
 
   return {
     valid: false,
-    error: 'Invalid image URL. Images must be uploaded through our system.',
-    sanitized: '',
-  }
+    error: "Invalid image URL. Images must be uploaded through our system.",
+    sanitized: "",
+  };
 }

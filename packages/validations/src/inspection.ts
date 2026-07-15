@@ -1,21 +1,15 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 // ============================================================================
 // Enums
 // ============================================================================
 
-export const inspectionTypeSchema = z.enum(['departure', 'return'])
-export const inspectionStatusSchema = z.enum(['draft', 'completed', 'signed'])
-export const conditionRatingSchema = z.enum(['excellent', 'good', 'fair', 'damaged'])
-export const inspectionTemplateScopeSchema = z.enum(['store', 'category', 'product'])
-export const inspectionFieldTypeSchema = z.enum([
-  'checkbox',
-  'rating',
-  'text',
-  'number',
-  'select',
-])
-export const inspectionModeSchema = z.enum(['optional', 'recommended', 'required'])
+export const inspectionTypeSchema = z.enum(["departure", "return"]);
+export const inspectionStatusSchema = z.enum(["draft", "completed", "signed"]);
+export const conditionRatingSchema = z.enum(["excellent", "good", "fair", "damaged"]);
+export const inspectionTemplateScopeSchema = z.enum(["store", "category", "product"]);
+export const inspectionFieldTypeSchema = z.enum(["checkbox", "rating", "text", "number", "select"]);
+export const inspectionModeSchema = z.enum(["optional", "recommended", "required"]);
 
 // ============================================================================
 // Settings
@@ -30,9 +24,9 @@ export const inspectionSettingsSchema = z.object({
   requireCustomerSignature: z.boolean(),
   autoGeneratePdf: z.boolean(),
   maxPhotosPerItem: z.number().int().min(1).max(50),
-})
+});
 
-export type InspectionSettingsInput = z.infer<typeof inspectionSettingsSchema>
+export type InspectionSettingsInput = z.infer<typeof inspectionSettingsSchema>;
 
 // ============================================================================
 // Template Fields
@@ -53,9 +47,9 @@ export const inspectionTemplateFieldSchema = z.object({
   isRequired: z.boolean().default(false),
   sectionName: z.string().max(100).optional().nullable(),
   displayOrder: z.number().int().min(0).default(0),
-})
+});
 
-export type InspectionTemplateFieldInput = z.infer<typeof inspectionTemplateFieldSchema>
+export type InspectionTemplateFieldInput = z.infer<typeof inspectionTemplateFieldSchema>;
 
 // ============================================================================
 // Templates
@@ -77,22 +71,21 @@ export const inspectionTemplateSchema = z
   .refine(
     (data) => {
       // Category scope requires categoryId
-      if (data.scope === 'category' && !data.categoryId) {
-        return false
+      if (data.scope === "category" && !data.categoryId) {
+        return false;
       }
       // Product scope requires productId
-      if (data.scope === 'product' && !data.productId) {
-        return false
+      if (data.scope === "product" && !data.productId) {
+        return false;
       }
-      return true
+      return true;
     },
     {
-      message:
-        'Category ID required for category scope, Product ID required for product scope',
-    }
-  )
+      message: "Category ID required for category scope, Product ID required for product scope",
+    },
+  );
 
-export type InspectionTemplateInput = z.infer<typeof inspectionTemplateSchema>
+export type InspectionTemplateInput = z.infer<typeof inspectionTemplateSchema>;
 
 // ============================================================================
 // Field Values
@@ -109,9 +102,17 @@ export const inspectionFieldValueSchema = z.object({
   numberValue: z.number().optional().nullable(),
   selectValue: z.string().max(255).optional().nullable(),
   hasIssue: z.boolean().default(false),
-})
+});
 
-export type InspectionFieldValueInput = z.infer<typeof inspectionFieldValueSchema>
+export type InspectionFieldValueInput = z.infer<typeof inspectionFieldValueSchema>;
+
+export const inspectionPhotoSchema = z.object({
+  key: z.string().regex(/^[a-zA-Z0-9_-]+\.(?:jpe?g|png|gif|webp)$/),
+  url: z.string().url(),
+  caption: z.string().max(500).optional().nullable(),
+});
+
+export type InspectionPhotoInput = z.infer<typeof inspectionPhotoSchema>;
 
 // ============================================================================
 // Inspection Items
@@ -126,9 +127,10 @@ export const inspectionItemSchema = z.object({
   overallCondition: conditionRatingSchema,
   notes: z.string().max(5000).optional().nullable(),
   fieldValues: z.array(inspectionFieldValueSchema).default([]),
-})
+  photos: z.array(inspectionPhotoSchema).max(50).default([]),
+});
 
-export type InspectionItemInput = z.infer<typeof inspectionItemSchema>
+export type InspectionItemInput = z.infer<typeof inspectionItemSchema>;
 
 // ============================================================================
 // Create Inspection
@@ -143,9 +145,9 @@ export const createInspectionSchema = z.object({
   templateId: z.string().length(21).optional().nullable(),
   notes: z.string().max(10000).optional().nullable(),
   items: z.array(inspectionItemSchema).min(1),
-})
+});
 
-export type CreateInspectionInput = z.infer<typeof createInspectionSchema>
+export type CreateInspectionInput = z.infer<typeof createInspectionSchema>;
 
 // ============================================================================
 // Update Inspection
@@ -156,7 +158,7 @@ export type CreateInspectionInput = z.infer<typeof createInspectionSchema>
  */
 export const updateInspectionNotesSchema = z.object({
   notes: z.string().max(10000).optional().nullable(),
-})
+});
 
 /**
  * Schema for updating an inspection item
@@ -165,7 +167,7 @@ export const updateInspectionItemSchema = z.object({
   overallCondition: conditionRatingSchema.optional(),
   notes: z.string().max(5000).optional().nullable(),
   fieldValues: z.array(inspectionFieldValueSchema).optional(),
-})
+});
 
 // ============================================================================
 // Complete Inspection
@@ -185,9 +187,9 @@ export const completeInspectionSchema = z.object({
     .optional()
     .nullable()
     .transform((val) => (val === undefined ? null : val)),
-})
+});
 
-export type CompleteInspectionInput = z.infer<typeof completeInspectionSchema>
+export type CompleteInspectionInput = z.infer<typeof completeInspectionSchema>;
 
 // ============================================================================
 // Sign Inspection
@@ -198,24 +200,9 @@ export type CompleteInspectionInput = z.infer<typeof completeInspectionSchema>
  */
 export const signInspectionSchema = z.object({
   customerSignature: z.string().min(100).max(500000), // Base64 signature image
-})
+});
 
-export type SignInspectionInput = z.infer<typeof signInspectionSchema>
-
-// ============================================================================
-// Photo Upload
-// ============================================================================
-
-/**
- * Schema for photo upload
- */
-export const uploadInspectionPhotoSchema = z.object({
-  inspectionItemId: z.string().length(21),
-  fieldValueId: z.string().length(21).optional().nullable(),
-  caption: z.string().max(500).optional().nullable(),
-})
-
-export type UploadInspectionPhotoInput = z.infer<typeof uploadInspectionPhotoSchema>
+export type SignInspectionInput = z.infer<typeof signInspectionSchema>;
 
 // ============================================================================
 // Damage Recording
@@ -229,6 +216,6 @@ export const recordDamageSchema = z.object({
   description: z.string().min(10).max(2000),
   estimatedCost: z.number().min(0).max(1000000).optional().nullable(),
   setUnitToMaintenance: z.boolean().default(true),
-})
+});
 
-export type RecordDamageInput = z.infer<typeof recordDamageSchema>
+export type RecordDamageInput = z.infer<typeof recordDamageSchema>;

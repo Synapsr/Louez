@@ -265,12 +265,6 @@ const nextConfig: NextConfig = {
   env: {
     SKIP_ENV_VALIDATION: process.env.SKIP_ENV_VALIDATION ?? "",
   },
-  // Increase body size limit for server actions (image uploads)
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "10mb",
-    },
-  },
   // Security headers for all routes
   async headers() {
     // Build at request time so env vars (e.g. NEXT_PUBLIC_FROMHELLO_API_URL)

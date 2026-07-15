@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 
 import {
   ChevronLeftIcon,
@@ -10,10 +10,10 @@ import {
   RefreshCcwIcon,
   ZoomInIcon,
   ZoomOutIcon,
-} from 'lucide-react';
-import { useTranslations } from 'next-intl';
-import type { PercentCrop, PixelCrop } from 'react-image-crop';
-import ReactCrop from 'react-image-crop';
+} from "lucide-react";
+import { useTranslations } from "next-intl";
+import type { PercentCrop, PixelCrop } from "react-image-crop";
+import ReactCrop from "react-image-crop";
 
 import {
   Button,
@@ -24,9 +24,11 @@ import {
   DialogPopup,
   DialogTitle,
   Slider,
-} from '@louez/ui';
+} from "@louez/ui";
 
-import type { ProductImageCropQueueItem } from '../hooks/use-product-form-media';
+import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
+
+import type { ProductImageCropQueueItem } from "../hooks/use-product-form-media";
 import {
   PRODUCT_IMAGE_ASPECT_RATIO,
   type ProductImagePercentCropRect,
@@ -36,7 +38,7 @@ import {
   getPixelCropFromPercentRect,
   normalizePercentCropRect,
   scaleCropRectToPercent,
-} from '../utils/product-image-crop';
+} from "../utils/product-image-crop";
 
 const CROP_SIZE_STEP = 10;
 const CROP_SIZE_MIN = 20;
@@ -57,10 +59,7 @@ interface ProductImageCropDialogProps {
   onPrevious: () => void;
   onNext: () => void;
   onCropChange: (itemId: string, crop: ProductImagePercentCropRect) => void;
-  onCropComplete: (
-    itemId: string,
-    croppedAreaPixels: ProductImagePixelCropRect,
-  ) => void;
+  onCropComplete: (itemId: string, croppedAreaPixels: ProductImagePixelCropRect) => void;
   onCropSizeChange: (itemId: string, cropSizePercent: number) => void;
   onApplyCrop: () => void | Promise<void>;
   onSkipCrop: () => void | Promise<void>;
@@ -73,7 +72,7 @@ function toPercentCropRect(
 ): ProductImagePercentCropRect {
   return normalizePercentCropRect(
     {
-      unit: '%',
+      unit: "%",
       x: crop.x,
       y: crop.y,
       width: crop.width,
@@ -88,9 +87,7 @@ function isSamePixelCrop(
   b: ProductImagePixelCropRect | null,
 ): boolean {
   if (!a || !b) return a === b;
-  return (
-    a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
-  );
+  return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -118,8 +115,8 @@ export function ProductImageCropDialog({
   onSkipCrop,
   onReplaceCurrentImage,
 }: ProductImageCropDialogProps) {
-  const t = useTranslations('dashboard.products.form');
-  const tCommon = useTranslations('common');
+  const t = useTranslations("dashboard.products.form");
+  const tCommon = useTranslations("common");
   const currentItem = items[selectedIndex] ?? null;
   const isMultiImageSession = items.length > 1;
 
@@ -241,10 +238,7 @@ export function ProductImageCropDialog({
         cropSizePercent: normalizedPercent,
         aspect: PRODUCT_IMAGE_ASPECT_RATIO,
       });
-      const nextPixels = getPixelCropFromPercentRect(
-        nextCrop,
-        currentItem.imageSize,
-      );
+      const nextPixels = getPixelCropFromPercentRect(nextCrop, currentItem.imageSize);
 
       onCropChange(currentItem.id, nextCrop);
       onCropSizeChange(currentItem.id, normalizedPercent);
@@ -273,19 +267,16 @@ export function ProductImageCropDialog({
       if (file) {
         void onReplaceCurrentImage(file);
       }
-      event.target.value = '';
+      event.target.value = "";
     },
     [onReplaceCurrentImage],
   );
 
   // During drag: only update local state — no parent re-renders, no preview work
-  const handleCropChange = useCallback(
-    (_renderedCrop: PixelCrop, percentCrop: PercentCrop) => {
-      isDraggingRef.current = true;
-      setLocalDragCrop(percentCrop);
-    },
-    [],
-  );
+  const handleCropChange = useCallback((_renderedCrop: PixelCrop, percentCrop: PercentCrop) => {
+    isDraggingRef.current = true;
+    setLocalDragCrop(percentCrop);
+  }, []);
 
   // On drag end: flush everything to parent + commit preview
   const handleCropComplete = useCallback(
@@ -300,10 +291,7 @@ export function ProductImageCropDialog({
         getPixelCropFromPercentRect(nextCrop, currentItem.imageSize);
 
       onCropChange(currentItem.id, nextCrop);
-      onCropSizeChange(
-        currentItem.id,
-        getCropSizePercentFromRect(nextCrop, currentItem.imageSize),
-      );
+      onCropSizeChange(currentItem.id, getCropSizePercentFromRect(nextCrop, currentItem.imageSize));
       commitPreviewCrop(nextPixels);
     },
     [
@@ -318,8 +306,7 @@ export function ProductImageCropDialog({
   const previewImageStyle = useMemo(() => {
     if (!currentItem) return null;
     if (!committedPreviewCrop) return null;
-    if (previewFrameSize.width <= 0 || previewFrameSize.height <= 0)
-      return null;
+    if (previewFrameSize.width <= 0 || previewFrameSize.height <= 0) return null;
 
     const area = committedPreviewCrop;
     if (area.width <= 0 || area.height <= 0) return null;
@@ -347,10 +334,8 @@ export function ProductImageCropDialog({
         <DialogHeader className="border-b px-5 pt-5 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <DialogTitle>{t('cropDialogTitle')}</DialogTitle>
-              <DialogDescription>
-                {t('cropDialogDescription')}
-              </DialogDescription>
+              <DialogTitle>{t("cropDialogTitle")}</DialogTitle>
+              <DialogDescription>{t("cropDialogDescription")}</DialogDescription>
             </div>
             {isMultiImageSession && (
               <div className="flex shrink-0 items-center gap-1">
@@ -359,12 +344,12 @@ export function ProductImageCropDialog({
                   size="icon-sm"
                   onClick={onPrevious}
                   disabled={!canGoToPrevious || isUploading}
-                  aria-label={t('cropPrevious')}
+                  aria-label={t("cropPrevious")}
                 >
                   <ChevronLeftIcon className="size-4" />
                 </Button>
                 <span className="text-muted-foreground text-xs font-medium whitespace-nowrap tabular-nums">
-                  {t('cropCounter', {
+                  {t("cropCounter", {
                     current: selectedIndex + 1,
                     total: items.length,
                   })}
@@ -374,7 +359,7 @@ export function ProductImageCropDialog({
                   size="icon-sm"
                   onClick={onNext}
                   disabled={!canGoToNext || isUploading}
-                  aria-label={t('cropNext')}
+                  aria-label={t("cropNext")}
                 >
                   <ChevronRightIcon className="size-4" />
                 </Button>
@@ -396,17 +381,17 @@ export function ProductImageCropDialog({
                     onClick={() => onSelectIndex(index)}
                     className={`relative size-11 shrink-0 overflow-hidden rounded-lg border-2 transition-all sm:size-12 ${
                       isActive
-                        ? 'border-primary ring-primary/20 scale-[1.04] ring-2'
-                        : 'border-transparent opacity-60 hover:opacity-100'
+                        ? "border-primary ring-primary/20 scale-[1.04] ring-2"
+                        : "border-transparent opacity-60 hover:opacity-100"
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={item.originalDataUrl}
-                      alt={t('cropThumbnailAlt', { index: index + 1 })}
+                      alt={t("cropThumbnailAlt", { index: index + 1 })}
                       className="size-full object-cover"
                     />
-                    {item.resultMode === 'cropped' && (
+                    {item.resultMode === "cropped" && (
                       <div className="bg-primary absolute right-0.5 bottom-0.5 size-2 rounded-full shadow-sm" />
                     )}
                   </button>
@@ -439,7 +424,7 @@ export function ProductImageCropDialog({
                     <img
                       ref={editorImageRef}
                       src={currentItem.originalDataUrl}
-                      alt={t('cropThumbnailAlt', {
+                      alt={t("cropThumbnailAlt", {
                         index: selectedIndex + 1,
                       })}
                       className="max-h-[55vh] max-w-full select-none lg:max-h-[62vh]"
@@ -454,11 +439,8 @@ export function ProductImageCropDialog({
                     variant="ghost"
                     size="icon-sm"
                     onClick={handleZoomOut}
-                    disabled={
-                      currentItem.cropSizePercent >= CROP_SIZE_MAX ||
-                      isUploading
-                    }
-                    aria-label={t('cropZoom')}
+                    disabled={currentItem.cropSizePercent >= CROP_SIZE_MAX || isUploading}
+                    aria-label={t("cropZoom")}
                   >
                     <ZoomOutIcon className="size-3.5" />
                   </Button>
@@ -471,7 +453,7 @@ export function ProductImageCropDialog({
                       step={1}
                       onValueChange={(value) => {
                         const next = Array.isArray(value) ? value[0] : value;
-                        if (typeof next === 'number') handleZoomChange(next);
+                        if (typeof next === "number") handleZoomChange(next);
                       }}
                     />
                   </div>
@@ -480,11 +462,8 @@ export function ProductImageCropDialog({
                     variant="ghost"
                     size="icon-sm"
                     onClick={handleZoomIn}
-                    disabled={
-                      currentItem.cropSizePercent <= CROP_SIZE_MIN ||
-                      isUploading
-                    }
-                    aria-label={t('cropZoom')}
+                    disabled={currentItem.cropSizePercent <= CROP_SIZE_MIN || isUploading}
+                    aria-label={t("cropZoom")}
                   >
                     <ZoomInIcon className="size-3.5" />
                   </Button>
@@ -498,7 +477,7 @@ export function ProductImageCropDialog({
                   <input
                     ref={replaceImageInputRef}
                     type="file"
-                    accept="image/*"
+                    accept={IMAGE_UPLOAD_MIME_TYPES.join(",")}
                     className="sr-only"
                     onChange={handleReplaceImageChange}
                     disabled={isUploading}
@@ -511,7 +490,7 @@ export function ProductImageCropDialog({
                     className="text-muted-foreground hover:text-foreground gap-1.5"
                   >
                     <RefreshCcwIcon className="size-3.5" />
-                    <span className="hidden sm:inline">{tCommon('edit')}</span>
+                    <span className="hidden sm:inline">{tCommon("edit")}</span>
                   </Button>
                 </div>
               </div>
@@ -520,12 +499,8 @@ export function ProductImageCropDialog({
               <div className="flex w-fit flex-col border-t md:flex-[.65] lg:w-72 lg:border-t-0 lg:border-l xl:w-80">
                 <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
                   <div>
-                    <p className="text-sm font-semibold">
-                      {t('cropPreviewTitle')}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      {t('cropPreviewDescription')}
-                    </p>
+                    <p className="text-sm font-semibold">{t("cropPreviewTitle")}</p>
+                    <p className="text-muted-foreground text-xs">{t("cropPreviewDescription")}</p>
                   </div>
 
                   {/* Storefront-style preview card */}
@@ -539,7 +514,7 @@ export function ProductImageCropDialog({
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={previewDataUrl}
-                            alt={t('cropThumbnailAlt', {
+                            alt={t("cropThumbnailAlt", {
                               index: selectedIndex + 1,
                             })}
                             className="size-full object-cover"
@@ -551,7 +526,7 @@ export function ProductImageCropDialog({
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={currentItem.originalDataUrl}
-                            alt={t('cropThumbnailAlt', {
+                            alt={t("cropThumbnailAlt", {
                               index: selectedIndex + 1,
                             })}
                             className="absolute top-0 left-0 max-w-none select-none"
@@ -564,7 +539,7 @@ export function ProductImageCropDialog({
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={currentItem.originalDataUrl}
-                            alt={t('cropThumbnailAlt', {
+                            alt={t("cropThumbnailAlt", {
                               index: selectedIndex + 1,
                             })}
                             className="size-full object-cover"
@@ -575,16 +550,10 @@ export function ProductImageCropDialog({
                     </div>
 
                     <div className="space-y-1 p-3">
-                      <p className="line-clamp-1 text-sm font-semibold">
-                        {previewProductName}
-                      </p>
+                      <p className="line-clamp-1 text-sm font-semibold">{previewProductName}</p>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-primary text-sm font-bold">
-                          {previewPrice}
-                        </span>
-                        <span className="text-muted-foreground text-xs">
-                          {previewPriceLabel}
-                        </span>
+                        <span className="text-primary text-sm font-bold">{previewPrice}</span>
+                        <span className="text-muted-foreground text-xs">{previewPriceLabel}</span>
                       </div>
                     </div>
                   </div>
@@ -594,7 +563,7 @@ export function ProductImageCropDialog({
           ) : (
             <div className="text-muted-foreground flex min-h-40 flex-1 items-center justify-center gap-2">
               <ImageIcon className="size-5" />
-              <span>{t('cropNoImage')}</span>
+              <span>{t("cropNoImage")}</span>
             </div>
           )}
         </div>
@@ -602,14 +571,10 @@ export function ProductImageCropDialog({
         {/* Sticky footer — always visible */}
         <DialogFooter>
           <Button variant="outline" onClick={onSkipCrop} disabled={isUploading}>
-            {t('cropSkip')}
+            {t("cropSkip")}
           </Button>
-          <Button
-            variant="default"
-            onClick={onApplyCrop}
-            disabled={isUploading}
-          >
-            {t('cropApply')}
+          <Button variant="default" onClick={onApplyCrop} disabled={isUploading}>
+            {t("cropApply")}
           </Button>
         </DialogFooter>
       </DialogPopup>

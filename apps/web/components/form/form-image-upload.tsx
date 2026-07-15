@@ -1,32 +1,35 @@
-'use client';
+"use client";
 
-import { ImageIcon, Loader2, Upload } from 'lucide-react';
+import { ImageIcon, Loader2, Upload } from "lucide-react";
 
-import { Button, Label, buttonVariants, toastManager } from '@louez/ui';
-import { cn } from '@louez/utils';
+import { Button, Label, buttonVariants, toastManager } from "@louez/ui";
+import { cn } from "@louez/utils";
 
 import {
-  type ImageFileIssue,
-  getImageFileIssue,
-  readFileAsDataUri,
-} from '@/lib/utils/util.image-file';
+  IMAGE_UPLOAD_MIME_TYPES,
+  type ImageUploadIssue,
+  type ImageUploadKind,
+  getImageUploadIssue,
+} from "@/lib/uploads/image-upload";
 
-import { getFieldError, useFieldContext } from '@/hooks/form/form-context';
+import { getFieldError, useFieldContext } from "@/hooks/form/form-context";
 
 interface FormImageUploadProps {
   label?: string;
   description?: string;
   uploadLabel: string;
   removeLabel: string;
+  kind: ImageUploadKind;
   /** Toast messages shown when the selected file is rejected or unreadable. */
-  messages: Record<ImageFileIssue | 'readFailed', string>;
+  messages: Record<ImageUploadIssue, string>;
   /** Rendered in the preview slot when the field is empty. */
   fallback?: React.ReactNode;
-  shape?: 'circle' | 'square';
+  /** Local-only preview that must not be written to the validated form value. */
+  previewUrl?: string | null;
+  shape?: "circle" | "square";
   /** Show a spinner in the preview slot (e.g. while an async upload runs). */
   isUploading?: boolean;
-  /** Override what happens with the selected file (default: put the data URI in the field). */
-  onFileSelected?: (dataUri: string) => void | Promise<void>;
+  onFileSelected: (file: File) => void | Promise<void>;
   /** Override removal (default: set the field to null). */
   onRemove?: () => void;
 }
@@ -36,42 +39,34 @@ export function FormImageUpload({
   description,
   uploadLabel,
   removeLabel,
+  kind,
   messages,
   fallback,
-  shape = 'square',
+  previewUrl,
+  shape = "square",
   isUploading = false,
   onFileSelected,
   onRemove,
 }: FormImageUploadProps) {
   const field = useFieldContext<string | null>();
   const value = field.state.value || null;
+  const displayValue = previewUrl || value;
   const errors = field.state.meta.errors;
   const error = errors[0];
 
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    event.target.value = '';
+    event.target.value = "";
 
     if (!file) return;
 
-    const issue = getImageFileIssue(file);
+    const issue = getImageUploadIssue(file, kind);
     if (issue) {
-      toastManager.add({ title: messages[issue], type: 'error' });
+      toastManager.add({ title: messages[issue], type: "error" });
       return;
     }
 
-    try {
-      const dataUri = await readFileAsDataUri(file);
-      if (onFileSelected) {
-        await onFileSelected(dataUri);
-      } else {
-        field.handleChange(dataUri);
-      }
-    } catch {
-      toastManager.add({ title: messages.readFailed, type: 'error' });
-    }
+    await onFileSelected(file);
   };
 
   const handleRemove = onRemove ?? (() => field.handleChange(null));
@@ -82,38 +77,40 @@ export function FormImageUpload({
       <div className="flex items-center gap-3">
         <div
           className={cn(
-            'flex shrink-0 items-center justify-center overflow-hidden border',
-            shape === 'circle'
-              ? 'size-12 rounded-full'
-              : 'bg-muted/50 size-10 rounded-lg',
+            "flex shrink-0 items-center justify-center overflow-hidden border",
+            shape === "circle" ? "size-12 rounded-full" : "bg-muted/50 size-10 rounded-lg",
           )}
         >
           {isUploading ? (
             <Loader2 className="text-muted-foreground size-4 animate-spin" />
-          ) : value ? (
+          ) : displayValue ? (
             <img
-              src={value}
+              src={displayValue}
               alt=""
-              className={cn(
-                'size-full',
-                shape === 'circle' ? 'object-cover' : 'object-contain',
-              )}
+              className={cn("size-full", shape === "circle" ? "object-cover" : "object-contain")}
             />
           ) : (
             (fallback ?? <ImageIcon className="text-muted-foreground size-4" />)
           )}
         </div>
-        <label className={buttonVariants({ size: 'lg', variant: 'outline' })}>
+        <label
+          aria-disabled={isUploading}
+          className={cn(
+            buttonVariants({ size: "lg", variant: "outline" }),
+            isUploading && "pointer-events-none opacity-50",
+          )}
+        >
           <Upload className="size-3.5" />
           {uploadLabel}
           <input
             type="file"
-            accept="image/*"
+            accept={IMAGE_UPLOAD_MIME_TYPES.join(",")}
+            disabled={isUploading}
             className="sr-only"
             onChange={handleFileChange}
           />
         </label>
-        {value && !isUploading && (
+        {displayValue && !isUploading && (
           <Button
             variant="ghost"
             size="lg"
@@ -124,12 +121,8 @@ export function FormImageUpload({
           </Button>
         )}
       </div>
-      {description && (
-        <p className="text-muted-foreground text-xs">{description}</p>
-      )}
-      {error && (
-        <p className="text-destructive text-sm">{getFieldError(error)}</p>
-      )}
+      {description && <p className="text-muted-foreground text-xs">{description}</p>}
+      {error && <p className="text-destructive text-sm">{getFieldError(error)}</p>}
     </div>
   );
 }

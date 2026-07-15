@@ -1,19 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { eq } from "drizzle-orm";
 
-import { db, stores } from '@louez/db';
-import {
-  type AllowedImageType,
-  type BrandingInput,
-  MAX_HERO_SIZE,
-  MAX_IMAGE_SIZE,
-  MAX_LOGO_SIZE,
-  type StripeSetupInput,
-  estimateBase64Size,
-  extractBase64,
-  validateDataUri,
-} from '@louez/validations';
+import { db, stores } from "@louez/db";
+import { type BrandingInput, type StripeSetupInput, isOwnedImageUrl } from "@louez/validations";
 
-import { ApiServiceError } from './errors';
+import { ApiServiceError } from "./errors";
 
 interface UpdateOnboardingBrandingParams {
   storeId: string;
@@ -28,7 +18,7 @@ interface CompleteOnboardingParams {
     name: string;
     slug: string;
     userId: string;
-    reservationMode: StripeSetupInput['reservationMode'];
+    reservationMode: StripeSetupInput["reservationMode"];
   }) => Promise<void>;
 }
 
@@ -36,56 +26,12 @@ interface GetOnboardingDraftParams {
   storeId: string;
 }
 
-interface UploadOnboardingImageParams {
-  storeId: string;
-  image: string;
-  type: 'logo' | 'hero' | 'product';
-  filename?: string;
-  uploadImageToStorage: (params: {
-    key: string;
-    body: Buffer;
-    contentType: string;
-  }) => Promise<string>;
-  getStorageKey: (
-    storeId: string,
-    type: 'logo' | 'products' | 'documents' | 'inspections',
-    ...parts: string[]
-  ) => string;
-}
-
-const MIME_TO_EXT: Record<AllowedImageType, string> = {
-  'image/jpeg': 'jpg',
-  'image/jpg': 'jpg',
-  'image/png': 'png',
-  'image/gif': 'gif',
-  'image/webp': 'webp',
-  'image/svg+xml': 'svg',
-};
-
-const SIZE_LIMITS = {
-  logo: MAX_LOGO_SIZE,
-  hero: MAX_HERO_SIZE,
-  product: MAX_IMAGE_SIZE,
-} as const;
-
-function sanitizeFilename(filename: string): string {
-  return filename
-    .replace(/\.\./g, '')
-    .replace(/[^a-zA-Z0-9_-]/g, '')
-    .slice(0, 50);
-}
-
-function formatSizeLimit(bytes: number): string {
-  if (bytes >= 1024 * 1024) {
-    return `${Math.round(bytes / (1024 * 1024))}MB`;
-  }
-  return `${Math.round(bytes / 1024)}KB`;
-}
-
-export async function updateOnboardingBranding(
-  params: UpdateOnboardingBrandingParams,
-) {
+export async function updateOnboardingBranding(params: UpdateOnboardingBrandingParams) {
   const { storeId, input } = params;
+
+  if (input.logoUrl && !isOwnedImageUrl(input.logoUrl, `${storeId}/logo`)) {
+    throw new ApiServiceError("BAD_REQUEST", "errors.invalidData");
+  }
 
   await db
     .update(stores)
@@ -110,7 +56,7 @@ export async function completeOnboarding(params: CompleteOnboardingParams) {
   });
 
   if (!store) {
-    throw new ApiServiceError('NOT_FOUND', 'errors.storeNotFound');
+    throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
   }
 
   const currentSettings = store.settings || {
@@ -154,7 +100,7 @@ export async function getOnboardingDraft(params: GetOnboardingDraftParams) {
   });
 
   if (!store) {
-    throw new ApiServiceError('NOT_FOUND', 'errors.storeNotFound');
+    throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
   }
 
   const settings = store.settings;
@@ -162,17 +108,13 @@ export async function getOnboardingDraft(params: GetOnboardingDraftParams) {
   const currency = settings?.currency ?? null;
 
   const latitude =
-    store.latitude !== null && store.latitude !== undefined
-      ? Number(store.latitude)
-      : null;
+    store.latitude !== null && store.latitude !== undefined ? Number(store.latitude) : null;
   const longitude =
-    store.longitude !== null && store.longitude !== undefined
-      ? Number(store.longitude)
-      : null;
+    store.longitude !== null && store.longitude !== undefined ? Number(store.longitude) : null;
 
   const theme = store.theme;
-  const primaryColor = theme?.primaryColor ?? '#0066FF';
-  const mode = theme?.mode === 'dark' ? 'dark' : 'light';
+  const primaryColor = theme?.primaryColor ?? "#0066FF";
+  const mode = theme?.mode === "dark" ? "dark" : "light";
 
   return {
     store: {
@@ -180,71 +122,16 @@ export async function getOnboardingDraft(params: GetOnboardingDraftParams) {
       slug: store.slug,
       country,
       currency,
-      address: store.address ?? '',
+      address: store.address ?? "",
       latitude: Number.isFinite(latitude) ? latitude : null,
       longitude: Number.isFinite(longitude) ? longitude : null,
-      email: store.email ?? '',
-      phone: store.phone ?? '',
+      email: store.email ?? "",
+      phone: store.phone ?? "",
     },
     branding: {
-      logoUrl: store.logoUrl ?? '',
+      logoUrl: store.logoUrl ?? "",
       primaryColor,
-      theme: mode as 'light' | 'dark',
+      theme: mode as "light" | "dark",
     },
-  };
-}
-
-export async function uploadOnboardingImage(
-  params: UploadOnboardingImageParams,
-) {
-  const {
-    storeId,
-    image,
-    type,
-    filename,
-    uploadImageToStorage,
-    getStorageKey,
-  } = params;
-
-  const mimeType = validateDataUri(image);
-  if (!mimeType) {
-    throw new ApiServiceError('BAD_REQUEST', 'errors.invalidData');
-  }
-
-  const base64Data = extractBase64(image);
-  if (!base64Data) {
-    throw new ApiServiceError('BAD_REQUEST', 'errors.invalidData');
-  }
-
-  const fileSize = estimateBase64Size(base64Data);
-  const maxSize = SIZE_LIMITS[type];
-
-  if (fileSize > maxSize) {
-    throw new ApiServiceError(
-      'BAD_REQUEST',
-      `Image too large. Maximum size for ${type} is ${formatSizeLimit(maxSize)}.`,
-    );
-  }
-
-  const extension = MIME_TO_EXT[mimeType] || 'jpg';
-  const uniqueId = crypto.randomUUID().slice(0, 10);
-  const safeFilename = filename ? sanitizeFilename(filename) : type;
-  const finalFilename = `${safeFilename}-${uniqueId}.${extension}`;
-  const storageType = type === 'product' ? 'products' : 'logo';
-  const key = getStorageKey(storeId, storageType, finalFilename);
-
-  const buffer = Buffer.from(base64Data, 'base64');
-  const url = await uploadImageToStorage({
-    key,
-    body: buffer,
-    contentType: mimeType,
-  });
-
-  return {
-    url,
-    key,
-    filename: finalFilename,
-    size: fileSize,
-    mimeType,
   };
 }

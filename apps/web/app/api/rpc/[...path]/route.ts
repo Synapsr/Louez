@@ -1,15 +1,14 @@
-import { onError } from '@orpc/server';
-import { RPCHandler } from '@orpc/server/fetch';
+import { onError } from "@orpc/server";
+import { RPCHandler } from "@orpc/server/fetch";
 
-import { appRouter } from '@louez/api/router';
+import { appRouter } from "@louez/api/router";
 
-import { notifyStoreCreated as sendStoreCreatedNotification } from '@/lib/discord/platform-notifications';
-import { log, useLogger, withEvlog } from '@/lib/evlog';
-import { generateContract } from '@/lib/pdf/generate';
-import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
-import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
-import { getStorageKey, uploadFile } from '@/lib/storage/client';
-import { getCurrentStore } from '@/lib/store-context';
+import { notifyStoreCreated as sendStoreCreatedNotification } from "@/lib/discord/platform-notifications";
+import { log, useLogger, withEvlog } from "@/lib/evlog";
+import { generateContract } from "@/lib/pdf/generate";
+import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
+import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { getCurrentStore } from "@/lib/store-context";
 
 import {
   assignUnitsToReservationItem,
@@ -33,8 +32,8 @@ import {
   sendReservationModificationEmail,
   updateReservation,
   updateReservationStatus,
-} from '@/app/(dashboard)/dashboard/reservations/actions';
-import { getReferralRewardSummary } from '@/app/(dashboard)/dashboard/referrals/actions';
+} from "@/app/(dashboard)/dashboard/reservations/actions";
+import { getReferralRewardSummary } from "@/app/(dashboard)/dashboard/referrals/actions";
 import {
   connectTulipApiKeyAction,
   createTulipProductAction,
@@ -52,19 +51,18 @@ import {
   updateGoogleCalendarSettingsAction,
   updateTulipConfigurationAction,
   upsertTulipProductMappingAction,
-} from '@/app/(dashboard)/dashboard/settings/integrations/actions';
-import { getCustomerSession } from '@/app/(storefront)/[slug]/account/actions';
+} from "@/app/(dashboard)/dashboard/settings/integrations/actions";
+import { getCustomerSession } from "@/app/(storefront)/[slug]/account/actions";
 
 const handler = new RPCHandler(appRouter, {
   interceptors: [
     onError((error) => {
-      const rpcError =
-        error instanceof Error ? error : new Error('Unknown oRPC error');
+      const rpcError = error instanceof Error ? error : new Error("Unknown oRPC error");
 
       try {
-        useLogger().error(rpcError, { step: 'orpc' });
+        useLogger().error(rpcError, { step: "orpc" });
       } catch {
-        log.error('orpc', rpcError.message);
+        log.error("orpc", rpcError.message);
       }
     }),
   ],
@@ -82,7 +80,7 @@ async function handleRequest(request: Request) {
   });
 
   const { response } = await handler.handle(request, {
-    prefix: '/api/rpc',
+    prefix: "/api/rpc",
     context: {
       headers: request.headers,
       getCurrentStore,
@@ -142,7 +140,7 @@ async function handleRequest(request: Request) {
         name: string;
         slug: string;
         userId?: string;
-        reservationMode?: 'payment' | 'request';
+        reservationMode?: "payment" | "request";
       }) => {
         await Promise.allSettled([
           sendStoreCreatedNotification(store),
@@ -150,38 +148,18 @@ async function handleRequest(request: Request) {
             distinctId: store.userId,
             event: productAnalyticsEvents.onboardingCompleted,
             properties: {
-              feature: 'onboarding',
-              surface: 'dashboard',
+              feature: "onboarding",
+              surface: "dashboard",
               store_id: store.id,
               reservation_mode: store.reservationMode ?? null,
             },
           }),
         ]);
       },
-      uploadImageToStorage: async ({
-        key,
-        body,
-        contentType,
-      }: {
-        key: string;
-        body: Buffer;
-        contentType: string;
-      }) => {
-        return uploadFile({
-          key,
-          body,
-          contentType,
-        });
-      },
-      getStorageKey: (
-        storeId: string,
-        type: 'logo' | 'products' | 'documents' | 'inspections',
-        ...parts: string[]
-      ) => getStorageKey(storeId, type, ...parts),
     },
   });
 
-  return response ?? new Response('Not found', { status: 404 });
+  return response ?? new Response("Not found", { status: 404 });
 }
 
 export const GET = withEvlog(handleRequest);
