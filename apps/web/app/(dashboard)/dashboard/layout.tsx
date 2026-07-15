@@ -1,40 +1,31 @@
-import { Suspense } from 'react';
+import { Suspense } from "react";
 
-import { redirect } from 'next/navigation';
+import { redirect } from "next/navigation";
 
-import type { StoreSettings } from '@louez/types';
-import {
-  Separator,
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@louez/ui';
+import type { StoreSettings } from "@louez/types";
+import { Separator, SidebarInset, SidebarProvider, SidebarTrigger } from "@louez/ui";
 
-import { DashboardBreadcrumbs } from '@/components/dashboard/dashboard-breadcrumbs';
-import { DashboardBreadcrumbsProvider } from '@/components/dashboard/dashboard-breadcrumbs-context';
-import { DashboardHeaderActions } from '@/components/dashboard/dashboard-header-actions';
-import { ReservationPollingProvider } from '@/components/dashboard/reservation-polling-provider';
-import { DashboardSidebar } from '@/components/dashboard/sidebar';
-import { WelcomeOverlay } from '@/components/dashboard/welcome-overlay';
+import { DashboardBreadcrumbs } from "@/components/dashboard/dashboard-breadcrumbs";
+import { DashboardBreadcrumbsProvider } from "@/components/dashboard/dashboard-breadcrumbs-context";
+import { DashboardHeaderActions } from "@/components/dashboard/dashboard-header-actions";
+import { ReservationPollingProvider } from "@/components/dashboard/reservation-polling-provider";
+import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { WelcomeOverlay } from "@/components/dashboard/welcome-overlay";
 
-import { isAIChatConfigured } from '@/lib/ai/provider';
-import { auth } from '@/lib/auth';
-import { getStoreLimits } from '@/lib/plan-limits';
-import { isCurrentUserPlatformAdmin } from '@/lib/platform-admin';
-import { getCurrentStore, getUserStores } from '@/lib/store-context';
-import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions';
+import { isAIChatConfigured } from "@/lib/ai/provider";
+import { auth } from "@/lib/auth";
+import { getStoreLimits } from "@/lib/plan-limits";
+import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
+import { getCurrentStore, getUserStores } from "@/lib/store-context";
+import { getCurrentPlanSlug } from "@/lib/stripe/subscriptions";
 
-import { StoreProvider } from '@/contexts/store-context';
+import { StoreProvider } from "@/contexts/store-context";
 
-export default async function DashboardMainLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardMainLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect("/login");
   }
 
   // Get all user's stores
@@ -42,7 +33,7 @@ export default async function DashboardMainLayout({
 
   // If no stores, redirect to onboarding
   if (userStores.length === 0) {
-    redirect('/onboarding');
+    redirect("/onboarding");
   }
 
   // Get current active store
@@ -50,7 +41,7 @@ export default async function DashboardMainLayout({
 
   // If no store or onboarding not completed, redirect to onboarding
   if (!store || !store.onboardingCompleted) {
-    redirect('/onboarding');
+    redirect("/onboarding");
   }
 
   const settings = (store.settings as StoreSettings) || {};
@@ -65,7 +56,7 @@ export default async function DashboardMainLayout({
 
   return (
     <StoreProvider
-      currency={settings.currency || 'EUR'}
+      currency={settings.currency || "EUR"}
       storeSlug={store.slug}
       storeName={store.name}
       timezone={settings.timezone}
@@ -79,7 +70,8 @@ export default async function DashboardMainLayout({
                 stores={userStores}
                 currentStoreId={store.id}
                 storeSlug={store.slug}
-                userEmail={session.user.email || ''}
+                userId={session.user.id}
+                userEmail={session.user.email || ""}
                 userImage={session.user.image}
                 isPlatformAdmin={isPlatformAdmin}
               />

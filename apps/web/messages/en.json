@@ -602,7 +602,6 @@
         "title": "Getting started",
         "description": "A few steps to get started",
         "stepsCompleted": "steps completed",
-        "dismissForNow": "Hide for now",
         "steps": {
           "createAccount": "Create your account",
           "configureStore": "Configure your store",
@@ -610,6 +609,12 @@
           "connectStripe": "Activate online payments",
           "firstReservation": "Receive your first reservation",
           "firstCompleted": "Complete your first rental"
+        },
+        "descriptions": {
+          "addFirstProduct": "Add your first product so customers can start booking.",
+          "connectStripe": "Connect Stripe to accept online card payments when customers book.",
+          "firstReservation": "Share your store with customers or create a reservation manually.",
+          "firstCompleted": "Once the rental is returned, mark the reservation as completed."
         },
         "start": "Start",
         "addProductHint": "Add your first product so customers can start booking.",
@@ -4231,6 +4236,22 @@
         }
       },
       "referrals": "Referrals"
+    },
+    "commandPalette": {
+      "title": "Command palette",
+      "trigger": "Search for an action…",
+      "placeholder": "Search for an action or page…",
+      "empty": "No actions found.",
+      "groups": {
+        "create": "Create",
+        "navigate": "Go to",
+        "tools": "Tools"
+      },
+      "footer": {
+        "navigate": "Navigate",
+        "open": "Open",
+        "close": "Close"
+      }
     },
     "aiChat": {
       "open": "AI Assistant",

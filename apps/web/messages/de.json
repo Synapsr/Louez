@@ -602,7 +602,6 @@
         "title": "Erste Schritte",
         "description": "Einige Schritte zum Starten",
         "stepsCompleted": "Schritte abgeschlossen",
-        "dismissForNow": "Vorerst ausblenden",
         "steps": {
           "createAccount": "Konto erstellen",
           "configureStore": "Shop konfigurieren",
@@ -610,6 +609,12 @@
           "connectStripe": "Online-Zahlungen aktivieren",
           "firstReservation": "Erste Reservierung erhalten",
           "firstCompleted": "Erste Vermietung abschließen"
+        },
+        "descriptions": {
+          "addFirstProduct": "Fügen Sie Ihr erstes Produkt hinzu, damit Kunden buchen können.",
+          "connectStripe": "Verbinden Sie Stripe, um Kartenzahlungen bei der Buchung zu akzeptieren.",
+          "firstReservation": "Teilen Sie Ihren Shop mit Kunden oder erstellen Sie eine Reservierung manuell.",
+          "firstCompleted": "Sobald die Vermietung zurückgegeben wurde, markieren Sie die Reservierung als abgeschlossen."
         },
         "start": "Starten",
         "addProductHint": "Fügen Sie Ihr erstes Produkt hinzu, damit Kunden buchen können.",
@@ -4124,6 +4129,22 @@
         }
       },
       "referrals": "Empfehlungen"
+    },
+    "commandPalette": {
+      "title": "Befehlspalette",
+      "trigger": "Aktion suchen…",
+      "placeholder": "Aktion oder Seite suchen…",
+      "empty": "Keine Aktion gefunden.",
+      "groups": {
+        "create": "Erstellen",
+        "navigate": "Gehe zu",
+        "tools": "Werkzeuge"
+      },
+      "footer": {
+        "navigate": "Navigieren",
+        "open": "Öffnen",
+        "close": "Schließen"
+      }
     },
     "aiChat": {
       "open": "KI-Assistent",

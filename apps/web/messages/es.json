@@ -602,7 +602,6 @@
         "title": "Primeros pasos",
         "description": "Algunos pasos para comenzar",
         "stepsCompleted": "pasos completados",
-        "dismissForNow": "Ocultar por ahora",
         "steps": {
           "createAccount": "Crear su cuenta",
           "configureStore": "Configurar su tienda",
@@ -610,6 +609,12 @@
           "connectStripe": "Activa los pagos online",
           "firstReservation": "Recibir su primera reserva",
           "firstCompleted": "Completar su primer alquiler"
+        },
+        "descriptions": {
+          "addFirstProduct": "Añada su primer producto para que sus clientes puedan reservar.",
+          "connectStripe": "Conecte Stripe para aceptar pagos con tarjeta al reservar.",
+          "firstReservation": "Comparta su tienda con sus clientes o cree una reserva manualmente.",
+          "firstCompleted": "Una vez devuelto el alquiler, marque la reserva como completada."
         },
         "start": "Comenzar",
         "addProductHint": "Agregue su primer producto para que los clientes puedan reservar.",
@@ -4130,6 +4135,22 @@
         }
       },
       "referrals": "Referidos"
+    },
+    "commandPalette": {
+      "title": "Paleta de comandos",
+      "trigger": "Buscar una acción…",
+      "placeholder": "Buscar una acción o página…",
+      "empty": "No se encontraron acciones.",
+      "groups": {
+        "create": "Crear",
+        "navigate": "Ir a",
+        "tools": "Herramientas"
+      },
+      "footer": {
+        "navigate": "Navegar",
+        "open": "Abrir",
+        "close": "Cerrar"
+      }
     },
     "aiChat": {
       "open": "Asistente IA",

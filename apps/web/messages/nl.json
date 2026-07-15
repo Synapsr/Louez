@@ -563,7 +563,6 @@
         "title": "Aan de slag",
         "description": "Enkele stappen om te beginnen",
         "stepsCompleted": "stappen voltooid",
-        "dismissForNow": "Voorlopig verbergen",
         "steps": {
           "createAccount": "Account aanmaken",
           "configureStore": "Winkel configureren",
@@ -571,6 +570,12 @@
           "connectStripe": "Activeer online betalingen",
           "firstReservation": "Eerste reservering ontvangen",
           "firstCompleted": "Eerste verhuur voltooien"
+        },
+        "descriptions": {
+          "addFirstProduct": "Voeg je eerste product toe zodat klanten kunnen boeken.",
+          "connectStripe": "Koppel Stripe om kaartbetalingen bij het boeken te accepteren.",
+          "firstReservation": "Deel je winkel met klanten of maak handmatig een reservering aan.",
+          "firstCompleted": "Zodra de verhuur is teruggebracht, markeer je de reservering als voltooid."
         },
         "start": "Starten",
         "addProductHint": "Voeg uw eerste product toe zodat klanten kunnen boeken.",
@@ -4124,6 +4129,22 @@
         }
       },
       "referrals": "Referrals"
+    },
+    "commandPalette": {
+      "title": "Opdrachtenpalet",
+      "trigger": "Actie zoeken…",
+      "placeholder": "Actie of pagina zoeken…",
+      "empty": "Geen acties gevonden.",
+      "groups": {
+        "create": "Maken",
+        "navigate": "Ga naar",
+        "tools": "Hulpmiddelen"
+      },
+      "footer": {
+        "navigate": "Navigeren",
+        "open": "Openen",
+        "close": "Sluiten"
+      }
     },
     "aiChat": {
       "open": "AI-assistent",

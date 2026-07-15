@@ -563,7 +563,6 @@
         "title": "Primi passi",
         "description": "Alcuni passaggi per iniziare",
         "stepsCompleted": "passaggi completati",
-        "dismissForNow": "Nascondi per ora",
         "steps": {
           "createAccount": "Crea il tuo account",
           "configureStore": "Configura il tuo negozio",
@@ -571,6 +570,12 @@
           "connectStripe": "Attiva i pagamenti online",
           "firstReservation": "Ricevi la tua prima prenotazione",
           "firstCompleted": "Completa il tuo primo noleggio"
+        },
+        "descriptions": {
+          "addFirstProduct": "Aggiungi il tuo primo prodotto così i clienti possono prenotare.",
+          "connectStripe": "Collega Stripe per accettare pagamenti con carta al momento della prenotazione.",
+          "firstReservation": "Condividi il tuo negozio con i clienti o crea una prenotazione manualmente.",
+          "firstCompleted": "Una volta restituito il noleggio, segna la prenotazione come completata."
         },
         "start": "Inizia",
         "addProductHint": "Aggiungi il tuo primo prodotto per permettere ai clienti di prenotare.",
@@ -4124,6 +4129,22 @@
         }
       },
       "referrals": "Referral"
+    },
+    "commandPalette": {
+      "title": "Tavolozza dei comandi",
+      "trigger": "Cerca un'azione…",
+      "placeholder": "Cerca un'azione o una pagina…",
+      "empty": "Nessuna azione trovata.",
+      "groups": {
+        "create": "Crea",
+        "navigate": "Vai a",
+        "tools": "Strumenti"
+      },
+      "footer": {
+        "navigate": "Naviga",
+        "open": "Apri",
+        "close": "Chiudi"
+      }
     },
     "aiChat": {
       "open": "Assistente IA",

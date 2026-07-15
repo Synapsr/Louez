@@ -602,7 +602,6 @@
         "title": "Mise en route",
         "description": "Quelques étapes pour bien démarrer",
         "stepsCompleted": "étapes terminées",
-        "dismissForNow": "Masquer pour l'instant",
         "steps": {
           "createAccount": "Créer votre compte",
           "configureStore": "Configurer votre boutique",
@@ -610,6 +609,12 @@
           "connectStripe": "Activez les paiements en ligne",
           "firstReservation": "Recevoir votre première réservation",
           "firstCompleted": "Terminer votre première location"
+        },
+        "descriptions": {
+          "addFirstProduct": "Ajoutez votre premier produit pour que vos clients puissent réserver.",
+          "connectStripe": "Connectez Stripe pour accepter les paiements par carte lors de la réservation.",
+          "firstReservation": "Partagez votre boutique avec vos clients ou créez une réservation manuellement.",
+          "firstCompleted": "Une fois la location rendue, marquez la réservation comme terminée."
         },
         "start": "Commencer",
         "addProductHint": "Ajoutez votre premier produit pour que vos clients puissent réserver.",
@@ -4231,6 +4236,22 @@
         }
       },
       "referrals": "Parrainage"
+    },
+    "commandPalette": {
+      "title": "Palette de commandes",
+      "trigger": "Rechercher une action…",
+      "placeholder": "Rechercher une action ou une page…",
+      "empty": "Aucune action trouvée.",
+      "groups": {
+        "create": "Créer",
+        "navigate": "Aller à",
+        "tools": "Outils"
+      },
+      "footer": {
+        "navigate": "Naviguer",
+        "open": "Ouvrir",
+        "close": "Fermer"
+      }
     },
     "aiChat": {
       "open": "Assistant IA",

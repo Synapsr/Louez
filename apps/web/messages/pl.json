@@ -563,7 +563,6 @@
         "title": "Pierwsze kroki",
         "description": "Kilka kroków na początek",
         "stepsCompleted": "kroków ukończonych",
-        "dismissForNow": "Ukryj na razie",
         "steps": {
           "createAccount": "Utwórz konto",
           "configureStore": "Skonfiguruj sklep",
@@ -571,6 +570,12 @@
           "connectStripe": "Aktywuj płatności online",
           "firstReservation": "Otrzymaj pierwszą rezerwację",
           "firstCompleted": "Zakończ pierwszy wynajem"
+        },
+        "descriptions": {
+          "addFirstProduct": "Dodaj swój pierwszy produkt, aby klienci mogli rezerwować.",
+          "connectStripe": "Połącz Stripe, aby przyjmować płatności kartą przy rezerwacji.",
+          "firstReservation": "Udostępnij swój sklep klientom lub utwórz rezerwację ręcznie.",
+          "firstCompleted": "Po zwrocie wynajmu oznacz rezerwację jako zakończoną."
         },
         "start": "Rozpocznij",
         "addProductHint": "Dodaj swój pierwszy produkt, aby klienci mogli rezerwować.",
@@ -4124,6 +4129,22 @@
         }
       },
       "referrals": "Polecenia"
+    },
+    "commandPalette": {
+      "title": "Paleta poleceń",
+      "trigger": "Wyszukaj działanie…",
+      "placeholder": "Wyszukaj działanie lub stronę…",
+      "empty": "Nie znaleziono działań.",
+      "groups": {
+        "create": "Utwórz",
+        "navigate": "Przejdź do",
+        "tools": "Narzędzia"
+      },
+      "footer": {
+        "navigate": "Nawiguj",
+        "open": "Otwórz",
+        "close": "Zamknij"
+      }
     },
     "aiChat": {
       "open": "Asystent AI",
