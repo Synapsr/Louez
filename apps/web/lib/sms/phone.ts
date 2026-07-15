@@ -181,7 +181,7 @@ export function parsePhoneInput(
     return {
       country: phoneNumber.country ?? formatter.getCountry() ?? defaultCountry,
       displayValue: phoneNumber.isPossible()
-        ? phoneNumber.formatNational()
+        ? phoneNumber.formatInternational()
         : displayValue,
       nationalNumber: phoneNumber.nationalNumber,
       normalized: phoneNumber.isPossible() ? phoneNumber.number : null,

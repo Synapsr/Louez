@@ -10,6 +10,8 @@ import { FormReservationDatePicker } from '@/components/form/form-reservation-da
 import { FormOtp } from '@/components/form/form-otp'
 import { FormImageUpload } from '@/components/form/form-image-upload'
 import { FormPhoneInput } from '@/components/form/form-phone-input'
+import { FormCountrySelect } from '@/components/form/form-country-select'
+import { FormCurrencySelect } from '@/components/form/form-currency-select'
 import { SubscribeButton } from '@/components/form/subscribe-button'
 import { FormForm } from '@/components/form/form-form'
 
@@ -23,6 +25,8 @@ export const { useAppForm, withForm } = createFormHook({
     Otp: FormOtp,
     ImageUpload: FormImageUpload,
     PhoneInput: FormPhoneInput,
+    CountrySelect: FormCountrySelect,
+    CurrencySelect: FormCurrencySelect,
     PriceDuration: FormPriceDuration,
     ReservationDatePicker: FormReservationDatePicker,
   },
