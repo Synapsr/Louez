@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
   Check,
+  CreditCard,
   Package,
   Calendar,
   Star,
@@ -24,9 +25,18 @@ interface StoreMetrics {
   completedReservations: number;
 }
 
+/**
+ * Whether the checklist shows the "activate online payments" step: hidden for
+ * stores that chose request mode, otherwise tracks Stripe chargeability (the
+ * KYC can be left pending during onboarding — payment mode silently degrades
+ * to request mode until it's done).
+ */
+export type OnlinePaymentsStep = "hidden" | "todo" | "done";
+
 interface SetupChecklistProps {
   metrics: StoreMetrics;
   storeSlug: string;
+  onlinePaymentsStep?: OnlinePaymentsStep;
   className?: string;
 }
 
@@ -87,7 +97,11 @@ function CircularProgress({
   );
 }
 
-export function SetupChecklist({ metrics, storeSlug: _storeSlug }: SetupChecklistProps) {
+export function SetupChecklist({
+  metrics,
+  storeSlug: _storeSlug,
+  onlinePaymentsStep = "hidden",
+}: SetupChecklistProps) {
   const t = useTranslations("dashboard.home");
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -123,6 +137,17 @@ export function SetupChecklist({ metrics, storeSlug: _storeSlug }: SetupChecklis
       href: "/dashboard/products/new",
       action: "setup.addFirstProduct",
     },
+    ...(onlinePaymentsStep !== "hidden"
+      ? [
+          {
+            key: "connectStripe",
+            icon: CreditCard,
+            completed: onlinePaymentsStep === "done",
+            href: "/dashboard/settings/payments",
+            action: "setup.connectStripe",
+          },
+        ]
+      : []),
     {
       key: "firstReservation",
       icon: Calendar,

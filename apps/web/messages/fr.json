@@ -607,6 +607,7 @@
           "createAccount": "Créer votre compte",
           "configureStore": "Configurer votre boutique",
           "addFirstProduct": "Ajouter votre premier produit",
+          "connectStripe": "Activez les paiements en ligne",
           "firstReservation": "Recevoir votre première réservation",
           "firstCompleted": "Terminer votre première location"
         },
@@ -615,7 +616,8 @@
         "addFirstProduct": "Ajouter un produit",
         "shareHint": "Partagez votre boutique pour recevoir vos premières réservations.",
         "viewStore": "Voir ma boutique",
-        "createReservation": "Créer une réservation"
+        "createReservation": "Créer une réservation",
+        "connectStripe": "Connecter Stripe"
       },
       "stats": {
         "products": "Produits",
@@ -5124,10 +5126,11 @@
       "description": "Ces informations seront visibles par vos clients",
       "name": "Nom de la boutique",
       "namePlaceholder": "Ma boutique de location",
-      "slug": "Adresse de la boutique",
+      "slug": "Adresse web de la boutique",
       "slugPlaceholder": "ma-boutique",
       "slugHelp": "Votre boutique sera accessible sur {slug}.{domain}",
       "slugDefault": "votre-boutique",
+      "resetSlug": "Utiliser l'URL suggérée",
       "pricingMode": "Mode de tarification",
       "pricingDay": "Journée",
       "pricingDayDesc": "Prix par jour",
@@ -5182,22 +5185,49 @@
       "quantityHelp": "Nombre d'unités de ce produit disponibles à la location"
     },
     "stripe": {
-      "title": "Mode de réservation",
-      "description": "Choisissez comment vous souhaitez gérer les réservations",
-      "requestMode": "Demande de réservation",
-      "recommended": "Recommandé",
-      "requestModeDescription": "Les clients envoient une demande. Vous validez manuellement et gérez le paiement vous-même (espèces, virement, CB sur place).",
+      "title": "Encaissez vos réservations en ligne",
+      "description": "Choisissez comment vos clients réservent. Vous pourrez changer à tout moment.",
       "paymentMode": "Paiement en ligne",
-      "paymentModeDescription": "Les clients paient directement lors de la réservation. Encaissez automatiquement via Stripe.",
-      "howItWorks": "Comment ça fonctionne ?",
-      "step1": "1. Le client fait une demande de réservation",
-      "step2": "2. Vous recevez un email de notification",
-      "step3": "3. Vous acceptez ou refusez la demande",
-      "step4": "4. Le client reçoit la confirmation par email",
-      "step5": "5. Vous gérez le paiement lors du retrait",
-      "paymentSetupTitle": "Configuration rapide",
-      "paymentSetupDescription": "Après la création de votre boutique, rendez-vous dans Paramètres → Paiement en ligne pour connecter votre compte Stripe et commencer à recevoir des paiements.",
-      "configComplete": "Configuration terminée !"
+      "recommended": "Recommandé",
+      "paymentModeDescription": "Vos clients paient au moment de la réservation. Encaissement sécurisé via Stripe.",
+      "paymentModeNote": "L'activation de Stripe demande une vérification d'identité (5 à 10 min), maintenant ou plus tard depuis votre dashboard. En attendant, vos réservations passent automatiquement en validation manuelle.",
+      "requestMode": "Demande de réservation",
+      "requestModeDescription": "Les clients envoient une demande. Vous validez et encaissez vous-même (espèces, virement, CB sur place).",
+      "requestModeNote": "Vous gérez la validation et le paiement de chaque réservation. Vous pourrez passer au paiement en ligne à tout moment depuis les paramètres.",
+      "configComplete": "Configuration terminée !",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Pourquoi le paiement en ligne ?",
+          "benefit1": "Encaissement immédiat, dès la réservation",
+          "benefit2": "Moins de no-shows grâce au prépaiement",
+          "benefit3": "Caution par empreinte bancaire, sans débit",
+          "benefit4": "Virements automatiques sur votre compte",
+          "kycTitle": "Activer Stripe",
+          "kycStep1": "Créez votre compte — 2 minutes",
+          "kycStep2": "Vérifiez votre identité — pièce d'identité et IBAN, 5 à 10 min",
+          "kycStep3": "Le paiement en ligne s'active automatiquement",
+          "configureNow": "Configurer Stripe maintenant",
+          "resumeNow": "Reprendre la configuration Stripe",
+          "configureLater": "Ou plus tard depuis votre dashboard — en attendant, vos réservations passent en validation manuelle."
+        },
+        "request": {
+          "howTitle": "Comment ça marche ?",
+          "step1": "Le client envoie une demande",
+          "step2": "Vous recevez un email",
+          "step3": "Vous acceptez ou refusez",
+          "step4": "Le client reçoit la confirmation",
+          "step5": "Vous encaissez au retrait",
+          "prosTitle": "Ce que vous gagnez",
+          "pros1": "Un contrôle total sur chaque réservation",
+          "pros2": "Aucune configuration",
+          "pros3": "Espèces, virement ou CB sur place",
+          "consTitle": "Ce que vous perdez",
+          "cons1": "Relances et impayés à gérer vous-même",
+          "cons2": "Plus de no-shows sans prépaiement",
+          "cons3": "Pas de caution automatique",
+          "switchNote": "Passez au paiement en ligne à tout moment depuis les paramètres."
+        }
+      }
     },
     "complete": {
       "title": "Votre boutique est prête !",
@@ -5222,7 +5252,13 @@
       "other": "Autre",
       "otherPlaceholder": "Précisez…",
       "skip": "Passer",
-      "finish": "Terminer"
+      "finish": "Terminer",
+      "panel": {
+        "title": "Un mot de l'équipe",
+        "p1": "Bienvenue sur Louez, et merci de votre confiance. Votre boutique est prête — on a hâte de voir vos premières réservations.",
+        "p2": "Une question ou une idée ? Écrivez-nous via la bulle de chat en bas à droite — on lit tout.",
+        "signature": "Les fondateurs de Louez"
+      }
     },
     "steps": {
       "store": "Boutique",

@@ -568,6 +568,7 @@
           "createAccount": "Account aanmaken",
           "configureStore": "Winkel configureren",
           "addFirstProduct": "Eerste product toevoegen",
+          "connectStripe": "Activeer online betalingen",
           "firstReservation": "Eerste reservering ontvangen",
           "firstCompleted": "Eerste verhuur voltooien"
         },
@@ -576,7 +577,8 @@
         "addFirstProduct": "Product toevoegen",
         "shareHint": "Deel uw winkel om uw eerste reserveringen te ontvangen.",
         "viewStore": "Mijn winkel bekijken",
-        "createReservation": "Reservering aanmaken"
+        "createReservation": "Reservering aanmaken",
+        "connectStripe": "Stripe koppelen"
       },
       "stats": {
         "products": "Producten",
@@ -5011,10 +5013,11 @@
       "description": "Deze informatie is zichtbaar voor uw klanten",
       "name": "Winkelnaam",
       "namePlaceholder": "Mijn verhuurwinkel",
-      "slug": "Winkeladres",
+      "slug": "Webadres van de winkel",
       "slugPlaceholder": "mijn-winkel",
       "slugHelp": "Uw winkel is toegankelijk op {slug}.{domain}",
       "slugDefault": "uw-winkel",
+      "resetSlug": "Voorgestelde URL gebruiken",
       "pricingMode": "Prijsmodus",
       "pricingDay": "Dagelijks",
       "pricingDayDesc": "Prijs per dag",
@@ -5069,22 +5072,49 @@
       "quantityHelp": "Aantal eenheden van dit product beschikbaar voor verhuur"
     },
     "stripe": {
-      "title": "Reserveringsmodus",
-      "description": "Kies hoe u reserveringen wilt beheren",
-      "requestMode": "Reserveringsaanvraag",
-      "recommended": "Aanbevolen",
-      "requestModeDescription": "Klanten sturen een aanvraag. U valideert handmatig en beheert de betaling zelf (contant, overboeking, pin ter plaatse).",
+      "title": "Ontvang online betalingen",
+      "description": "Kies hoe je klanten reserveren. Je kunt dit altijd wijzigen.",
       "paymentMode": "Online betaling",
-      "paymentModeDescription": "Klanten betalen direct bij boeking. Ontvang automatisch betalingen via Stripe.",
-      "howItWorks": "Hoe werkt het?",
-      "step1": "1. Klant doet een reserveringsaanvraag",
-      "step2": "2. U ontvangt een e-mailmelding",
-      "step3": "3. U accepteert of wijst de aanvraag af",
-      "step4": "4. Klant ontvangt bevestiging per e-mail",
-      "step5": "5. U beheert de betaling bij ophalen",
-      "paymentSetupTitle": "Snelle configuratie",
-      "paymentSetupDescription": "Na het aanmaken van uw winkel gaat u naar Instellingen → Online betaling om uw Stripe-account te verbinden en betalingen te ontvangen.",
-      "configComplete": "Configuratie voltooid!"
+      "recommended": "Aanbevolen",
+      "paymentModeDescription": "Klanten betalen bij het reserveren. Veilig afrekenen via Stripe.",
+      "paymentModeNote": "Het activeren van Stripe vereist een identiteitscontrole (5–10 min), nu of later via je dashboard. Tot die tijd vallen je reserveringen automatisch terug op handmatige goedkeuring.",
+      "requestMode": "Reserveringsaanvraag",
+      "requestModeDescription": "Klanten sturen een aanvraag. Jij keurt goed en int zelf de betaling (contant, overschrijving, kaart ter plaatse).",
+      "requestModeNote": "Je keurt elke reservering goed en int zelf de betaling. Je kunt via de instellingen altijd overstappen op online betaling.",
+      "configComplete": "Configuratie voltooid!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Waarom online betaling?",
+          "benefit1": "Direct betaald, bij het reserveren",
+          "benefit2": "Minder no-shows dankzij vooruitbetaling",
+          "benefit3": "Borg via kaartreservering, zonder afschrijving",
+          "benefit4": "Automatische uitbetalingen naar je rekening",
+          "kycTitle": "Stripe activeren",
+          "kycStep1": "Maak je account aan — 2 minuten",
+          "kycStep2": "Verifieer je identiteit — ID en IBAN, 5 tot 10 min",
+          "kycStep3": "Online betaling wordt automatisch geactiveerd",
+          "configureNow": "Stripe nu instellen",
+          "resumeNow": "Stripe-configuratie hervatten",
+          "configureLater": "Of later via je dashboard — tot die tijd vallen reserveringen terug op handmatige goedkeuring."
+        },
+        "request": {
+          "howTitle": "Hoe werkt het?",
+          "step1": "De klant stuurt een aanvraag",
+          "step2": "Je ontvangt een e-mail",
+          "step3": "Je accepteert of weigert",
+          "step4": "De klant ontvangt een bevestiging",
+          "step5": "Je int bij het ophalen",
+          "prosTitle": "Wat je wint",
+          "pros1": "Volledige controle over elke reservering",
+          "pros2": "Geen configuratie",
+          "pros3": "Contant, overschrijving of kaart ter plaatse",
+          "consTitle": "Wat je opgeeft",
+          "cons1": "Herinneringen en openstaande betalingen zelf beheren",
+          "cons2": "Meer no-shows zonder vooruitbetaling",
+          "cons3": "Geen automatische borg",
+          "switchNote": "Stap via de instellingen altijd over op online betaling."
+        }
+      }
     },
     "complete": {
       "title": "Uw winkel is klaar!",
@@ -5109,7 +5139,13 @@
       "other": "Anders",
       "otherPlaceholder": "Vertel meer…",
       "skip": "Overslaan",
-      "finish": "Afronden"
+      "finish": "Afronden",
+      "panel": {
+        "title": "Een woordje van het team",
+        "p1": "Welkom bij Louez, en bedankt voor je vertrouwen. Je winkel is klaar — we kijken uit naar je eerste reserveringen.",
+        "p2": "Een vraag of een idee? Schrijf ons via de chatbubbel rechtsonder — we lezen alles.",
+        "signature": "De oprichters van Louez"
+      }
     },
     "steps": {
       "store": "Winkel",

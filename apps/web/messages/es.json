@@ -607,6 +607,7 @@
           "createAccount": "Crear su cuenta",
           "configureStore": "Configurar su tienda",
           "addFirstProduct": "Agregar su primer producto",
+          "connectStripe": "Activa los pagos online",
           "firstReservation": "Recibir su primera reserva",
           "firstCompleted": "Completar su primer alquiler"
         },
@@ -615,7 +616,8 @@
         "addFirstProduct": "Agregar un producto",
         "shareHint": "Comparta su tienda para recibir sus primeras reservas.",
         "viewStore": "Ver mi tienda",
-        "createReservation": "Crear una reserva"
+        "createReservation": "Crear una reserva",
+        "connectStripe": "Conectar Stripe"
       },
       "stats": {
         "products": "Productos",
@@ -5017,10 +5019,11 @@
       "description": "Esta informacion sera visible para sus clientes",
       "name": "Nombre de la tienda",
       "namePlaceholder": "Mi tienda de alquiler",
-      "slug": "Direccion de la tienda",
+      "slug": "Direccion web de la tienda",
       "slugPlaceholder": "mi-tienda",
       "slugHelp": "Su tienda sera accesible en {slug}.{domain}",
       "slugDefault": "su-tienda",
+      "resetSlug": "Usar la URL sugerida",
       "pricingMode": "Modo de precios",
       "pricingDay": "Diario",
       "pricingDayDesc": "Precio por dia",
@@ -5075,22 +5078,49 @@
       "quantityHelp": "Numero de unidades de este producto disponibles para alquilar"
     },
     "stripe": {
-      "title": "Modo de reserva",
-      "description": "Elija como desea gestionar las reservas",
-      "requestMode": "Solicitud de reserva",
+      "title": "Cobra tus reservas online",
+      "description": "Elige cómo reservan tus clientes. Podrás cambiarlo en cualquier momento.",
+      "paymentMode": "Pago online",
       "recommended": "Recomendado",
-      "requestModeDescription": "Los clientes envian una solicitud. Usted valida manualmente y gestiona el pago usted mismo (efectivo, transferencia, tarjeta en el local).",
-      "paymentMode": "Pago en linea",
-      "paymentModeDescription": "Los clientes pagan directamente al reservar. Reciba pagos automaticamente via Stripe.",
-      "howItWorks": "Como funciona?",
-      "step1": "1. El cliente hace una solicitud de reserva",
-      "step2": "2. Usted recibe una notificacion por correo",
-      "step3": "3. Usted acepta o rechaza la solicitud",
-      "step4": "4. El cliente recibe confirmacion por correo",
-      "step5": "5. Usted gestiona el pago en la recogida",
-      "paymentSetupTitle": "Configuracion rapida",
-      "paymentSetupDescription": "Despues de crear su tienda, vaya a Configuracion → Pago en linea para conectar su cuenta Stripe y comenzar a recibir pagos.",
-      "configComplete": "Configuracion completa!"
+      "paymentModeDescription": "Los clientes pagan al reservar. Cobro seguro a través de Stripe.",
+      "paymentModeNote": "Activar Stripe requiere una verificación de identidad (5–10 min), ahora o más tarde desde tu panel. Mientras tanto, tus reservas pasan automáticamente a validación manual.",
+      "requestMode": "Solicitud de reserva",
+      "requestModeDescription": "Los clientes envían una solicitud. Tú validas y cobras por tu cuenta (efectivo, transferencia, tarjeta en el local).",
+      "requestModeNote": "Tú validas y cobras cada reserva. Podrás pasar al pago online en cualquier momento desde los ajustes.",
+      "configComplete": "¡Configuración completada!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "¿Por qué el pago online?",
+          "benefit1": "Cobro inmediato, al reservar",
+          "benefit2": "Menos ausencias gracias al prepago",
+          "benefit3": "Fianza con retención en tarjeta, sin cargo",
+          "benefit4": "Transferencias automáticas a tu cuenta",
+          "kycTitle": "Activar Stripe",
+          "kycStep1": "Crea tu cuenta — 2 minutos",
+          "kycStep2": "Verifica tu identidad — DNI e IBAN, de 5 a 10 min",
+          "kycStep3": "El pago online se activa automáticamente",
+          "configureNow": "Configurar Stripe ahora",
+          "resumeNow": "Reanudar la configuración de Stripe",
+          "configureLater": "O más tarde desde tu panel — mientras tanto, las reservas pasan a validación manual."
+        },
+        "request": {
+          "howTitle": "¿Cómo funciona?",
+          "step1": "El cliente envía una solicitud",
+          "step2": "Recibes un email",
+          "step3": "Aceptas o rechazas",
+          "step4": "El cliente recibe la confirmación",
+          "step5": "Cobras en la recogida",
+          "prosTitle": "Lo que ganas",
+          "pros1": "Control total sobre cada reserva",
+          "pros2": "Sin configuración",
+          "pros3": "Efectivo, transferencia o tarjeta en el local",
+          "consTitle": "Lo que pierdes",
+          "cons1": "Recordatorios e impagos a tu cargo",
+          "cons2": "Más ausencias sin prepago",
+          "cons3": "Sin fianza automática",
+          "switchNote": "Pasa al pago online en cualquier momento desde los ajustes."
+        }
+      }
     },
     "complete": {
       "title": "Su tienda esta lista!",
@@ -5115,7 +5145,13 @@
       "other": "Otro",
       "otherPlaceholder": "Cuéntanos…",
       "skip": "Omitir",
-      "finish": "Finalizar"
+      "finish": "Finalizar",
+      "panel": {
+        "title": "Unas palabras del equipo",
+        "p1": "Bienvenido a Louez, y gracias por tu confianza. Tu tienda está lista: estamos deseando ver tus primeras reservas.",
+        "p2": "¿Una pregunta o una idea? Escríbenos por la burbuja de chat abajo a la derecha: lo leemos todo.",
+        "signature": "Los fundadores de Louez"
+      }
     },
     "steps": {
       "store": "Tienda",

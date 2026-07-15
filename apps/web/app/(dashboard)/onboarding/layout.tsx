@@ -1,17 +1,13 @@
-import { eq } from 'drizzle-orm';
+import { eq } from "drizzle-orm";
 
-import { db, users } from '@louez/db';
+import { db, users } from "@louez/db";
 
-import { auth } from '@/lib/auth';
+import { auth } from "@/lib/auth";
 
-import { OnboardingShell } from './_components/onboarding-shell';
-import { getOnboardingSteps } from './_lib/steps';
+import { OnboardingShell } from "./_components/onboarding-shell";
+import { getOnboardingSteps } from "./_lib/steps";
 
-export default async function OnboardingLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   // The (dashboard) layout above already redirects unauthenticated users.
   const session = await auth();
   const user = session?.user?.id
@@ -32,9 +28,9 @@ export default async function OnboardingLayout({
     <OnboardingShell
       steps={steps}
       initialPreview={{
-        userName: user?.name ?? '',
+        userName: user?.name ?? "",
         userImage: user?.image ?? null,
-        userSeed: user?.id ?? 'louez',
+        userSeed: user?.id ?? "louez",
       }}
     >
       {children}

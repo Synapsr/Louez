@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { GradientAvatar } from '@outpacelabs/avatars';
+import { GradientAvatar } from "@outpacelabs/avatars";
 
-import { Avatar, AvatarFallback, AvatarImage, Logo } from '@louez/ui';
-import { cn } from '@louez/utils';
+import { Avatar, AvatarFallback, AvatarImage, Logo } from "@louez/ui";
+import { cn } from "@louez/utils";
 
-import { useOnboardingPreview } from '../_lib/preview-context';
+import { useOnboardingPreview } from "../_lib/preview-context";
 
 const navigationItems = [
-  { key: 'home', width: 'w-24' },
-  { key: 'calendar', width: 'w-28' },
-  { key: 'reservations', width: 'w-32' },
-  { key: 'customers', width: 'w-24' },
-  { key: 'products', width: 'w-28' },
-  { key: 'inventory', width: 'w-24' },
+  { key: "home", width: "w-24" },
+  { key: "calendar", width: "w-28" },
+  { key: "reservations", width: "w-32" },
+  { key: "customers", width: "w-24" },
+  { key: "products", width: "w-28" },
+  { key: "inventory", width: "w-24" },
   // { key: 'analytics', width: 'w-32' },
   // { key: 'settings', width: 'w-20' },
 ] as const;
@@ -25,7 +25,7 @@ export const DashboardPreview = () => {
     .split(/\s+/)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
-    .join('');
+    .join("");
 
   return (
     <div className="bg-card relative h-144 overflow-hidden rounded-2xl border shadow-xs">
@@ -49,12 +49,7 @@ export const DashboardPreview = () => {
             {navigationItems.map(({ key, width }) => (
               <div key={key} className="flex h-9 items-center gap-3 px-3">
                 <div className="bg-sidebar-foreground/8 size-4 shrink-0 rounded" />
-                <div
-                  className={cn(
-                    'bg-sidebar-foreground/8 h-2.5 rounded-full',
-                    width,
-                  )}
-                />
+                <div className={cn("bg-sidebar-foreground/8 h-2.5 rounded-full", width)} />
               </div>
             ))}
           </nav>
@@ -96,7 +91,7 @@ export const DashboardPreview = () => {
             </div>
 
             <div className="grid grid-cols-3 gap-3">
-              {['departures', 'returns', 'bookings'].map((item) => (
+              {["departures", "returns", "bookings"].map((item) => (
                 <div key={item} className="h-24 rounded-xl border p-4">
                   <div className="bg-muted h-2.5 w-20 rounded-full" />
                   <div className="bg-muted mt-5 h-5 w-8 rounded-md" />

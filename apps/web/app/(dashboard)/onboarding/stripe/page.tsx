@@ -1,17 +1,17 @@
-import { redirect } from 'next/navigation';
+import { redirect } from "next/navigation";
 
-import { eq } from 'drizzle-orm';
+import { eq } from "drizzle-orm";
 
-import { db, users } from '@louez/db';
+import { db, users } from "@louez/db";
 
-import { auth } from '@/lib/auth';
+import { auth } from "@/lib/auth";
 
-import { OnboardingStripeClientPage } from './stripe-client-page';
+import { OnboardingStripeClientPage } from "./stripe-client-page";
 
 export default async function OnboardingStripePage() {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect("/login");
   }
 
   const user = await db.query.users.findFirst({
@@ -19,9 +19,7 @@ export default async function OnboardingStripePage() {
   });
 
   // Ask "how did you hear about us?" once, at the very end of the flow.
-  const nextPath = user?.acquisitionChannel
-    ? '/dashboard'
-    : '/onboarding/source';
+  const nextPath = user?.acquisitionChannel ? "/dashboard" : "/onboarding/source";
 
   return <OnboardingStripeClientPage nextPath={nextPath} />;
 }

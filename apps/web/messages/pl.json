@@ -568,6 +568,7 @@
           "createAccount": "Utwórz konto",
           "configureStore": "Skonfiguruj sklep",
           "addFirstProduct": "Dodaj pierwszy produkt",
+          "connectStripe": "Aktywuj płatności online",
           "firstReservation": "Otrzymaj pierwszą rezerwację",
           "firstCompleted": "Zakończ pierwszy wynajem"
         },
@@ -576,7 +577,8 @@
         "addFirstProduct": "Dodaj produkt",
         "shareHint": "Udostępnij swój sklep, aby otrzymać pierwsze rezerwacje.",
         "viewStore": "Zobacz mój sklep",
-        "createReservation": "Utwórz rezerwację"
+        "createReservation": "Utwórz rezerwację",
+        "connectStripe": "Połącz Stripe"
       },
       "stats": {
         "products": "Produkty",
@@ -5011,10 +5013,11 @@
       "description": "Te informacje będą widoczne dla Twoich klientów",
       "name": "Nazwa sklepu",
       "namePlaceholder": "Mój sklep wynajmu",
-      "slug": "Adres sklepu",
+      "slug": "Adres internetowy sklepu",
       "slugPlaceholder": "moj-sklep",
       "slugHelp": "Twój sklep będzie dostępny pod {slug}.{domain}",
       "slugDefault": "twoj-sklep",
+      "resetSlug": "Użyj sugerowanego adresu URL",
       "pricingMode": "Tryb cenowy",
       "pricingDay": "Dzienny",
       "pricingDayDesc": "Cena za dzień",
@@ -5069,22 +5072,49 @@
       "quantityHelp": "Liczba jednostek tego produktu dostępnych do wynajmu"
     },
     "stripe": {
-      "title": "Tryb rezerwacji",
-      "description": "Wybierz sposób zarządzania rezerwacjami",
-      "requestMode": "Żądanie rezerwacji",
-      "recommended": "Zalecane",
-      "requestModeDescription": "Klienci wysyłają żądanie. Ręcznie zatwierdzasz i sam zarządzasz płatnością (gotówka, przelew, karta na miejscu).",
+      "title": "Przyjmuj płatności online",
+      "description": "Wybierz, jak klienci rezerwują. Możesz to zmienić w dowolnym momencie.",
       "paymentMode": "Płatność online",
-      "paymentModeDescription": "Klienci płacą bezpośrednio przy rezerwacji. Automatycznie otrzymuj płatności przez Stripe.",
-      "howItWorks": "Jak to działa?",
-      "step1": "1. Klient składa żądanie rezerwacji",
-      "step2": "2. Otrzymujesz powiadomienie email",
-      "step3": "3. Akceptujesz lub odrzucasz żądanie",
-      "step4": "4. Klient otrzymuje potwierdzenie emailem",
-      "step5": "5. Zarządzasz płatnością przy odbiorze",
-      "paymentSetupTitle": "Szybka konfiguracja",
-      "paymentSetupDescription": "Po utworzeniu sklepu przejdź do Ustawienia → Płatność online, aby połączyć konto Stripe i zacząć otrzymywać płatności.",
-      "configComplete": "Konfiguracja zakończona!"
+      "recommended": "Zalecane",
+      "paymentModeDescription": "Klienci płacą podczas rezerwacji. Bezpieczne płatności przez Stripe.",
+      "paymentModeNote": "Aktywacja Stripe wymaga weryfikacji tożsamości (5–10 min), teraz lub później z poziomu panelu. Do tego czasu rezerwacje automatycznie przechodzą na ręczne zatwierdzanie.",
+      "requestMode": "Prośba o rezerwację",
+      "requestModeDescription": "Klienci wysyłają prośbę. Ty zatwierdzasz i pobierasz płatność samodzielnie (gotówka, przelew, karta na miejscu).",
+      "requestModeNote": "Zatwierdzasz i pobierasz płatność za każdą rezerwację. W każdej chwili możesz przejść na płatności online w ustawieniach.",
+      "configComplete": "Konfiguracja zakończona!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Dlaczego płatność online?",
+          "benefit1": "Natychmiastowa zapłata, przy rezerwacji",
+          "benefit2": "Mniej nieobecności dzięki przedpłacie",
+          "benefit3": "Kaucja przez blokadę na karcie, bez obciążenia",
+          "benefit4": "Automatyczne wypłaty na Twoje konto",
+          "kycTitle": "Aktywacja Stripe",
+          "kycStep1": "Utwórz konto — 2 minuty",
+          "kycStep2": "Zweryfikuj tożsamość — dokument i IBAN, 5 do 10 min",
+          "kycStep3": "Płatność online aktywuje się automatycznie",
+          "configureNow": "Skonfiguruj Stripe teraz",
+          "resumeNow": "Wznów konfigurację Stripe",
+          "configureLater": "Lub później z panelu — do tego czasu rezerwacje przechodzą na ręczne zatwierdzanie."
+        },
+        "request": {
+          "howTitle": "Jak to działa?",
+          "step1": "Klient wysyła prośbę",
+          "step2": "Otrzymujesz e-mail",
+          "step3": "Akceptujesz lub odrzucasz",
+          "step4": "Klient otrzymuje potwierdzenie",
+          "step5": "Pobierasz płatność przy odbiorze",
+          "prosTitle": "Co zyskujesz",
+          "pros1": "Pełna kontrola nad każdą rezerwacją",
+          "pros2": "Brak konfiguracji",
+          "pros3": "Gotówka, przelew lub karta na miejscu",
+          "consTitle": "Co tracisz",
+          "cons1": "Przypomnienia i zaległości po Twojej stronie",
+          "cons2": "Więcej nieobecności bez przedpłaty",
+          "cons3": "Brak automatycznej kaucji",
+          "switchNote": "W każdej chwili przejdź na płatności online w ustawieniach."
+        }
+      }
     },
     "complete": {
       "title": "Twój sklep jest gotowy!",
@@ -5109,7 +5139,13 @@
       "other": "Inne",
       "otherPlaceholder": "Doprecyzuj…",
       "skip": "Pomiń",
-      "finish": "Zakończ"
+      "finish": "Zakończ",
+      "panel": {
+        "title": "Słowo od zespołu",
+        "p1": "Witamy w Louez i dziękujemy za zaufanie. Twój sklep jest gotowy — nie możemy się doczekać Twoich pierwszych rezerwacji.",
+        "p2": "Pytanie lub pomysł? Napisz do nas przez bąbelek czatu w prawym dolnym rogu — czytamy wszystko.",
+        "signature": "Założyciele Louez"
+      }
     },
     "steps": {
       "store": "Sklep",

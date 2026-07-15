@@ -1,18 +1,18 @@
-import { redirect } from 'next/navigation';
+import { redirect } from "next/navigation";
 
-import { eq } from 'drizzle-orm';
+import { eq } from "drizzle-orm";
 
-import { db, users } from '@louez/db';
-import { BUSINESS_TYPES, type BusinessType } from '@louez/validations';
+import { db, users } from "@louez/db";
+import { BUSINESS_TYPES, type BusinessType } from "@louez/validations";
 
-import { auth } from '@/lib/auth';
+import { auth } from "@/lib/auth";
 
-import { ProfileClientPage } from './profile-client-page';
+import { ProfileClientPage } from "./profile-client-page";
 
 export default async function OnboardingProfilePage() {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect('/login');
+    redirect("/login");
   }
 
   const user = await db.query.users.findFirst({
@@ -20,14 +20,13 @@ export default async function OnboardingProfilePage() {
   });
 
   const businessType =
-    user?.businessType &&
-    (BUSINESS_TYPES as readonly string[]).includes(user.businessType)
+    user?.businessType && (BUSINESS_TYPES as readonly string[]).includes(user.businessType)
       ? (user.businessType as BusinessType)
       : null;
 
   return (
     <ProfileClientPage
-      initialName={user?.name ?? ''}
+      initialName={user?.name ?? ""}
       initialImage={user?.image ?? null}
       initialBusinessType={businessType}
       avatarSeed={session.user.id}

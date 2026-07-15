@@ -1,75 +1,40 @@
-'use server';
+"use server";
 
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql } from "drizzle-orm";
 
-import { db, users } from '@louez/db';
+import { db, users } from "@louez/db";
 import {
   type AcquisitionInput,
-  type AllowedImageType,
-  MAX_LOGO_SIZE,
-  type ProfileInput,
   acquisitionSchema,
-  estimateBase64Size,
-  extractBase64,
+  isOwnedImageUrl,
   profileSchema,
-  validateDataUri,
-} from '@louez/validations';
+} from "@louez/validations";
+import { z } from "zod";
 
-import { auth } from '@/lib/auth';
-import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
-import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
-import { uploadFile } from '@/lib/storage/client';
+import { auth } from "@/lib/auth";
+import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
+import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+const updateUserProfileSchema = profileSchema.extend({
+  // undefined = keep the current image, null = remove it, string = uploaded URL.
+  imageUrl: z.string().url().nullable().optional(),
+});
 
-const MIME_TO_EXT: Record<AllowedImageType, string> = {
-  'image/jpeg': 'jpg',
-  'image/jpg': 'jpg',
-  'image/png': 'png',
-  'image/gif': 'gif',
-  'image/webp': 'webp',
-  'image/svg+xml': 'svg',
-};
-
-interface UpdateUserProfileInput extends ProfileInput {
-  // undefined = keep the current image, null = remove it, string = new data URI
-  imageDataUri?: string | null;
-}
+type UpdateUserProfileInput = z.infer<typeof updateUserProfileSchema>;
 
 export async function updateUserProfile(input: UpdateUserProfileInput) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
-  const parsed = profileSchema.safeParse(input);
+  const parsed = updateUserProfileSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
   }
 
-  let imageUrl: string | null | undefined;
-  if (input.imageDataUri === null) {
-    imageUrl = null;
-  } else if (input.imageDataUri) {
-    const mimeType = validateDataUri(input.imageDataUri);
-    if (!mimeType) {
-      return { error: 'errors.invalidData' };
-    }
-
-    const base64Data = extractBase64(input.imageDataUri);
-    if (!base64Data) {
-      return { error: 'errors.invalidData' };
-    }
-
-    if (estimateBase64Size(base64Data) > MAX_LOGO_SIZE) {
-      return { error: 'errors.invalidData' };
-    }
-
-    const extension = MIME_TO_EXT[mimeType] || 'jpg';
-    const key = `users/${session.user.id}/avatar-${crypto.randomUUID().slice(0, 10)}.${extension}`;
-    imageUrl = await uploadFile({
-      key,
-      body: Buffer.from(base64Data, 'base64'),
-      contentType: mimeType,
-    });
+  const imageUrl = parsed.data.imageUrl;
+  if (imageUrl && !isOwnedImageUrl(imageUrl, `users/${session.user.id}`)) {
+    return { error: "errors.invalidData" };
   }
 
   await db
@@ -89,11 +54,8 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
     event: productAnalyticsEvents.onboardingProfileCompleted,
     properties: {
       business_type: parsed.data.businessType,
-      avatar_action:
-        imageUrl === undefined ? 'kept' : imageUrl ? 'uploaded' : 'removed',
-      $set: parsed.data.businessType
-        ? { business_type: parsed.data.businessType }
-        : {},
+      avatar_action: imageUrl === undefined ? "kept" : imageUrl ? "uploaded" : "removed",
+      $set: parsed.data.businessType ? { business_type: parsed.data.businessType } : {},
     },
   });
 
@@ -103,19 +65,19 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
 export async function saveAcquisitionChannel(input: AcquisitionInput) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const parsed = acquisitionSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
   }
 
   const user = await db.query.users.findFirst({
     where: eq(users.id, session.user.id),
   });
   if (!user) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   // Never overwrite an existing answer ('invitation', a previous reply, …)
@@ -123,8 +85,7 @@ export async function saveAcquisitionChannel(input: AcquisitionInput) {
     return { success: true as const };
   }
 
-  const other =
-    parsed.data.channel === 'other' ? parsed.data.other?.trim() || null : null;
+  const other = parsed.data.channel === "other" ? parsed.data.other?.trim() || null : null;
 
   await db
     .update(users)
@@ -135,7 +96,7 @@ export async function saveAcquisitionChannel(input: AcquisitionInput) {
     })
     .where(eq(users.id, session.user.id));
 
-  if (parsed.data.channel !== 'skipped') {
+  if (parsed.data.channel !== "skipped") {
     await captureProductServerEvent({
       distinctId: session.user.id,
       event: productAnalyticsEvents.acquisitionChannelReported,
@@ -145,6 +106,18 @@ export async function saveAcquisitionChannel(input: AcquisitionInput) {
         $set: {
           acquisition_channel: parsed.data.channel,
         },
+      },
+    });
+  } else {
+    // A dedicated event (rather than acquisition_channel_reported with
+    // channel=skipped) keeps the channel breakdowns clean while still
+    // closing the funnel for users who skip the question.
+    await captureProductServerEvent({
+      distinctId: session.user.id,
+      event: productAnalyticsEvents.onboardingSourceSkipped,
+      properties: {
+        feature: "onboarding",
+        surface: "dashboard",
       },
     });
   }

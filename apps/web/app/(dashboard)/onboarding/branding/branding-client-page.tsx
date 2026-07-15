@@ -1,58 +1,66 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 
-import { Button } from '@louez/ui';
-import { Input } from '@louez/ui';
-import { Label } from '@louez/ui';
-import { Radio, RadioGroup } from '@louez/ui';
+import { Button } from "@louez/ui";
+import { Input } from "@louez/ui";
+import { Label } from "@louez/ui";
+import { Radio, RadioGroup } from "@louez/ui";
 
-import { getFieldError } from '@/hooks/form/form-context';
+import { getFieldError } from "@/hooks/form/form-context";
 
-import { OnboardingStepHeader } from '../_components/step-header';
-import { useBrandingStep } from './use-branding-step';
+import { OnboardingStepHeader } from "../_components/step-header";
+import { ThemeDashboardPreview } from "./theme-dashboard-preview";
+import { useBrandingStep } from "./use-branding-step";
+import { cn } from "@louez/utils";
 
 const PRESET_COLORS = [
-  '#0066FF',
-  '#10B981',
-  '#F59E0B',
-  '#EF4444',
-  '#8B5CF6',
-  '#EC4899',
-  '#06B6D4',
-  '#84CC16',
+  "#0066FF",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#EC4899",
+  "#06B6D4",
+  "#84CC16",
 ];
+
+const THEME_OPTIONS = [
+  { value: "light", label: "themeLight" },
+  { value: "dark", label: "themeDark" },
+] as const;
 
 export function BrandingClientPage() {
   const router = useRouter();
-  const t = useTranslations('onboarding.branding');
-  const tCommon = useTranslations('common');
-  const tErrors = useTranslations('errors');
-  const { form, handleLogoSelected, isUploading, isBusy } = useBrandingStep();
+  const t = useTranslations("onboarding.branding");
+  const tCommon = useTranslations("common");
+  const { form, logoPreviewUrl, handleLogoSelected, handleLogoRemove, isUploading, isBusy } =
+    useBrandingStep();
 
   return (
     <>
-      <OnboardingStepHeader title={t('title')} description={t('description')} />
+      <OnboardingStepHeader title={t("title")} description={t("description")} />
       <form.AppForm>
         <form.Form className="space-y-6">
           <form.AppField name="logoUrl">
             {(field) => (
               <field.ImageUpload
-                label={t('logo')}
-                description={t('logoHelp')}
-                uploadLabel={tCommon('upload')}
-                removeLabel={tCommon('remove')}
+                label={t("logo")}
+                description={t("logoHelp")}
+                uploadLabel={tCommon("upload")}
+                removeLabel={tCommon("remove")}
+                kind="logo"
                 shape="square"
+                previewUrl={logoPreviewUrl}
                 isUploading={isUploading}
                 messages={{
-                  invalidType: t('logoError'),
-                  tooLarge: t('logoSizeError'),
-                  readFailed: tErrors('generic'),
+                  invalidType: t("logoError"),
+                  tooLarge: t("logoSizeError"),
                 }}
                 onFileSelected={handleLogoSelected}
-                onRemove={() => field.handleChange('')}
+                onRemove={handleLogoRemove}
               />
             )}
           </form.AppField>
@@ -60,7 +68,7 @@ export function BrandingClientPage() {
           <form.Field name="primaryColor">
             {(field) => (
               <div className="space-y-2">
-                <Label>{t('primaryColor')}</Label>
+                <Label>{t("primaryColor")}</Label>
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
                     {PRESET_COLORS.map((color) => (
@@ -70,13 +78,11 @@ export function BrandingClientPage() {
                         aria-label={color}
                         className={`size-7 rounded-full transition-all ${
                           field.state.value === color
-                            ? 'ring-foreground ring-offset-background ring-2 ring-offset-2'
-                            : 'hover:scale-110'
+                            ? "ring-foreground ring-offset-background ring-2 ring-offset-2"
+                            : "hover:scale-110"
                         }`}
                         style={{ backgroundColor: color }}
-                        onClick={() =>
-                          form.setFieldValue('primaryColor', color)
-                        }
+                        onClick={() => form.setFieldValue("primaryColor", color)}
                       />
                     ))}
                   </div>
@@ -87,9 +93,7 @@ export function BrandingClientPage() {
                     />
                     <Input
                       value={field.state.value}
-                      onChange={(event) =>
-                        field.handleChange(event.target.value)
-                      }
+                      onChange={(event) => field.handleChange(event.target.value)}
                       onBlur={field.handleBlur}
                       placeholder="#0066FF"
                       className="font-mono"
@@ -108,28 +112,25 @@ export function BrandingClientPage() {
           <form.Field name="theme">
             {(field) => (
               <div className="space-y-2">
-                <Label>{t('theme')}</Label>
+                <Label>{t("theme")}</Label>
                 <RadioGroup
                   value={field.state.value}
-                  onValueChange={(value) =>
-                    field.handleChange(value as 'light' | 'dark')
-                  }
+                  onValueChange={(value) => field.handleChange(value as "light" | "dark")}
                   className="grid grid-cols-2 gap-3"
                 >
-                  <Label className="hover:bg-accent/30 has-data-checked:border-foreground/30 has-data-checked:bg-accent/50 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border p-4 transition-colors">
-                    <Radio value="light" className="hidden" />
-                    <div className="h-8 w-12 rounded-md border border-zinc-200 bg-white" />
-                    <span className="text-sm font-medium">
-                      {t('themeLight')}
-                    </span>
-                  </Label>
-                  <Label className="hover:bg-accent/30 has-data-checked:border-foreground/30 has-data-checked:bg-accent/50 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border p-4 transition-colors">
-                    <Radio value="dark" className="hidden" />
-                    <div className="h-8 w-12 rounded-md border border-zinc-700 bg-zinc-900" />
-                    <span className="text-sm font-medium">
-                      {t('themeDark')}
-                    </span>
-                  </Label>
+                  {THEME_OPTIONS.map((option) => (
+                    <Label
+                      key={option.value}
+                      className={cn(
+                        "bg-muted/50 hover:bg-accent/30 has-data-checked:border-border has-data-checked:bg-muted flex cursor-pointer flex-col gap-0 rounded-xl border border-muted p-1 transition-colors",
+                        "has-data-checked:outline-primary has-data-checked:outline-2 ",
+                      )}
+                    >
+                      <Radio value={option.value} className="hidden" />
+                      <ThemeDashboardPreview theme={option.value} />
+                      <span className="text-sm font-medium p-1.5">{t(option.label)}</span>
+                    </Label>
+                  ))}
                 </RadioGroup>
                 {field.state.meta.errors.length > 0 && (
                   <p className="text-destructive text-sm font-medium">
@@ -144,13 +145,13 @@ export function BrandingClientPage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => router.push('/onboarding')}
+              onClick={() => router.push("/onboarding")}
               disabled={isBusy}
             >
-              {tCommon('back')}
+              {tCommon("back")}
             </Button>
             <form.SubscribeButton className="flex-1" disabled={isBusy}>
-              {tCommon('next')}
+              {tCommon("next")}
             </form.SubscribeButton>
           </div>
         </form.Form>

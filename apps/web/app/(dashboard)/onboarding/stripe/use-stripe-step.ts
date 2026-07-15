@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
-import { useStore } from '@tanstack/react-form';
-import { useMutation } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
+import { useStore } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 
-import { toastManager } from '@louez/ui';
-import { isValidImageUrlClient, stripeSetupSchema } from '@louez/validations';
+import { toastManager } from "@louez/ui";
+import { isValidImageUrlClient, stripeSetupSchema } from "@louez/validations";
 
-import { orpc } from '@/lib/orpc/react';
+import { orpc } from "@/lib/orpc/react";
 
-import { useAppForm } from '@/hooks/form/form';
+import { useAppForm } from "@/hooks/form/form";
 
-import { useOnboardingErrorToast } from '../_lib/onboarding-error-toast';
-import { useOnboardingPreview } from '../_lib/preview-context';
-import { useOnboardingDraft } from '../_lib/use-onboarding-draft';
+import { useOnboardingErrorToast } from "../_lib/onboarding-error-toast";
+import { useOnboardingPreview } from "../_lib/preview-context";
+import { useOnboardingDraft } from "../_lib/use-onboarding-draft";
 
 interface UseStripeStepParams {
   nextPath: string;
@@ -25,7 +25,7 @@ interface UseStripeStepParams {
 
 export const useStripeStep = ({ nextPath }: UseStripeStepParams) => {
   const router = useRouter();
-  const t = useTranslations('onboarding.stripe');
+  const t = useTranslations("onboarding.stripe");
   const showError = useOnboardingErrorToast();
   const { updatePreview } = useOnboardingPreview();
 
@@ -37,7 +37,7 @@ export const useStripeStep = ({ nextPath }: UseStripeStepParams) => {
 
   const form = useAppForm({
     defaultValues: {
-      reservationMode: 'request' as 'request' | 'payment',
+      reservationMode: "payment" as "request" | "payment",
     },
     validators: {
       onSubmit: stripeSetupSchema,
@@ -45,9 +45,9 @@ export const useStripeStep = ({ nextPath }: UseStripeStepParams) => {
     onSubmit: async ({ value }) => {
       try {
         await completeOnboardingMutation.mutateAsync(value);
-        toastManager.add({ title: t('configComplete'), type: 'success' });
+        toastManager.add({ title: t("configComplete"), type: "success" });
         // Signal the welcome animation via sessionStorage (more reliable than URL params)
-        sessionStorage.setItem('louez-show-welcome', '1');
+        sessionStorage.setItem("louez-show-welcome", "1");
         router.push(nextPath);
       } catch (error) {
         showError(error);
@@ -64,16 +64,14 @@ export const useStripeStep = ({ nextPath }: UseStripeStepParams) => {
 
     const branding = data.branding;
     updatePreview({
-      storeName: data.store.name || '',
-      slug: data.store.slug || '',
+      storeName: data.store.name || "",
+      slug: data.store.slug || "",
       ...(branding
         ? {
             logoUrl:
-              branding.logoUrl && isValidImageUrlClient(branding.logoUrl)
-                ? branding.logoUrl
-                : null,
-            primaryColor: branding.primaryColor || '#0066FF',
-            theme: branding.theme === 'dark' ? 'dark' : 'light',
+              branding.logoUrl && isValidImageUrlClient(branding.logoUrl) ? branding.logoUrl : null,
+            primaryColor: branding.primaryColor || "#0066FF",
+            theme: branding.theme === "dark" ? "dark" : "light",
           }
         : {}),
     });

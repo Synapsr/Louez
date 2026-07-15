@@ -1,35 +1,29 @@
-'use client';
+"use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 export interface OnboardingPreviewState {
   storeName: string;
   slug: string;
   logoUrl: string | null;
   primaryColor: string;
-  theme: 'light' | 'dark';
-  reservationMode: 'request' | 'payment';
+  theme: "light" | "dark";
+  reservationMode: "request" | "payment";
   userName: string;
   userImage: string | null;
   userSeed: string;
 }
 
 const DEFAULT_PREVIEW: OnboardingPreviewState = {
-  storeName: '',
-  slug: '',
+  storeName: "",
+  slug: "",
   logoUrl: null,
-  primaryColor: '#0066FF',
-  theme: 'light',
-  reservationMode: 'request',
-  userName: '',
+  primaryColor: "#0066FF",
+  theme: "light",
+  reservationMode: "payment",
+  userName: "",
   userImage: null,
-  userSeed: 'louez',
+  userSeed: "louez",
 };
 
 interface OnboardingPreviewContextValue {
@@ -37,8 +31,7 @@ interface OnboardingPreviewContextValue {
   updatePreview: (patch: Partial<OnboardingPreviewState>) => void;
 }
 
-const OnboardingPreviewContext =
-  createContext<OnboardingPreviewContextValue | null>(null);
+const OnboardingPreviewContext = createContext<OnboardingPreviewContextValue | null>(null);
 
 export function OnboardingPreviewProvider({
   children,
@@ -49,31 +42,21 @@ export function OnboardingPreviewProvider({
 }) {
   const [preview, setPreview] = useState({ ...DEFAULT_PREVIEW, ...initial });
 
-  const updatePreview = useCallback(
-    (patch: Partial<OnboardingPreviewState>) => {
-      setPreview((prev) => ({ ...prev, ...patch }));
-    },
-    [],
-  );
+  const updatePreview = useCallback((patch: Partial<OnboardingPreviewState>) => {
+    setPreview((prev) => ({ ...prev, ...patch }));
+  }, []);
 
-  const value = useMemo(
-    () => ({ preview, updatePreview }),
-    [preview, updatePreview],
-  );
+  const value = useMemo(() => ({ preview, updatePreview }), [preview, updatePreview]);
 
   return (
-    <OnboardingPreviewContext.Provider value={value}>
-      {children}
-    </OnboardingPreviewContext.Provider>
+    <OnboardingPreviewContext.Provider value={value}>{children}</OnboardingPreviewContext.Provider>
   );
 }
 
 export function useOnboardingPreview() {
   const context = useContext(OnboardingPreviewContext);
   if (!context) {
-    throw new Error(
-      'useOnboardingPreview must be used within OnboardingPreviewProvider',
-    );
+    throw new Error("useOnboardingPreview must be used within OnboardingPreviewProvider");
   }
   return context;
 }

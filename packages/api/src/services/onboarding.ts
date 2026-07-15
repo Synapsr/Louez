@@ -133,5 +133,10 @@ export async function getOnboardingDraft(params: GetOnboardingDraftParams) {
       primaryColor,
       theme: mode as "light" | "dark",
     },
+    stripe: {
+      // A Connect account exists but the KYC isn't finished — lets the UI say
+      // "resume the setup" instead of "start it".
+      hasPendingAccount: Boolean(store.stripeAccountId && !store.stripeChargesEnabled),
+    },
   };
 }

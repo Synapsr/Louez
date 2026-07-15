@@ -607,6 +607,7 @@
           "createAccount": "Create your account",
           "configureStore": "Configure your store",
           "addFirstProduct": "Add your first product",
+          "connectStripe": "Activate online payments",
           "firstReservation": "Receive your first reservation",
           "firstCompleted": "Complete your first rental"
         },
@@ -615,7 +616,8 @@
         "addFirstProduct": "Add a product",
         "shareHint": "Share your store to receive your first reservations.",
         "viewStore": "View my store",
-        "createReservation": "Create a reservation"
+        "createReservation": "Create a reservation",
+        "connectStripe": "Connect Stripe"
       },
       "stats": {
         "products": "Products",
@@ -5124,10 +5126,11 @@
       "description": "This information will be visible to your customers",
       "name": "Store name",
       "namePlaceholder": "My rental store",
-      "slug": "Store address",
+      "slug": "Store URL",
       "slugPlaceholder": "my-store",
       "slugHelp": "Your store will be accessible at {slug}.{domain}",
       "slugDefault": "your-store",
+      "resetSlug": "Use suggested URL",
       "pricingMode": "Pricing mode",
       "pricingDay": "Daily",
       "pricingDayDesc": "Price per day",
@@ -5182,22 +5185,49 @@
       "quantityHelp": "Number of units of this product available for rent"
     },
     "stripe": {
-      "title": "Reservation mode",
-      "description": "Choose how you want to manage reservations",
-      "requestMode": "Reservation request",
-      "recommended": "Recommended",
-      "requestModeDescription": "Customers send a request. You validate manually and manage payment yourself (cash, transfer, card on site).",
+      "title": "Get paid online",
+      "description": "Choose how your customers book. You can change this anytime.",
       "paymentMode": "Online payment",
-      "paymentModeDescription": "Customers pay directly when booking. Automatically collect payments via Stripe.",
-      "howItWorks": "How does it work?",
-      "step1": "1. Customer makes a reservation request",
-      "step2": "2. You receive an email notification",
-      "step3": "3. You accept or reject the request",
-      "step4": "4. Customer receives confirmation by email",
-      "step5": "5. You manage payment at pickup",
-      "paymentSetupTitle": "Quick setup",
-      "paymentSetupDescription": "After creating your store, go to Settings → Online Payment to connect your Stripe account and start receiving payments.",
-      "configComplete": "Setup complete!"
+      "recommended": "Recommended",
+      "paymentModeDescription": "Customers pay when they book. Secure checkout powered by Stripe.",
+      "paymentModeNote": "Activating Stripe requires an identity check (5–10 min), now or later from your dashboard. Until then, your reservations automatically fall back to manual approval.",
+      "requestMode": "Booking request",
+      "requestModeDescription": "Customers send a request. You approve and collect payment yourself (cash, bank transfer, card on site).",
+      "requestModeNote": "You approve and collect payment for every booking. You can switch to online payment anytime from settings.",
+      "configComplete": "Setup complete!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Why online payment?",
+          "benefit1": "Get paid instantly, at booking time",
+          "benefit2": "Fewer no-shows thanks to prepayment",
+          "benefit3": "Card-hold deposits, without charging",
+          "benefit4": "Automatic payouts to your bank account",
+          "kycTitle": "Activate Stripe",
+          "kycStep1": "Create your account — 2 minutes",
+          "kycStep2": "Verify your identity — ID and bank details, 5 to 10 min",
+          "kycStep3": "Online payment activates automatically",
+          "configureNow": "Set up Stripe now",
+          "resumeNow": "Resume Stripe setup",
+          "configureLater": "Or later from your dashboard — until then, reservations fall back to manual approval."
+        },
+        "request": {
+          "howTitle": "How does it work?",
+          "step1": "The customer sends a request",
+          "step2": "You get an email",
+          "step3": "You accept or decline",
+          "step4": "The customer gets a confirmation",
+          "step5": "You collect payment at pickup",
+          "prosTitle": "What you gain",
+          "pros1": "Full control over every booking",
+          "pros2": "No setup",
+          "pros3": "Cash, bank transfer or card on site",
+          "consTitle": "What you give up",
+          "cons1": "Reminders and unpaid bookings to handle",
+          "cons2": "More no-shows without prepayment",
+          "cons3": "No automatic deposits",
+          "switchNote": "Switch to online payment anytime from settings."
+        }
+      }
     },
     "complete": {
       "title": "Your store is ready!",
@@ -5222,7 +5252,13 @@
       "other": "Other",
       "otherPlaceholder": "Tell us more…",
       "skip": "Skip",
-      "finish": "Finish"
+      "finish": "Finish",
+      "panel": {
+        "title": "A note from the team",
+        "p1": "Welcome to Louez, and thank you for your trust. Your store is ready — we can't wait to see your first bookings.",
+        "p2": "A question or an idea? Write to us through the chat bubble at the bottom right — we read everything.",
+        "signature": "The founders of Louez"
+      }
     },
     "steps": {
       "store": "Store",

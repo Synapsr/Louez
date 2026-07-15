@@ -568,6 +568,7 @@
           "createAccount": "Crea il tuo account",
           "configureStore": "Configura il tuo negozio",
           "addFirstProduct": "Aggiungi il tuo primo prodotto",
+          "connectStripe": "Attiva i pagamenti online",
           "firstReservation": "Ricevi la tua prima prenotazione",
           "firstCompleted": "Completa il tuo primo noleggio"
         },
@@ -576,7 +577,8 @@
         "addFirstProduct": "Aggiungi un prodotto",
         "shareHint": "Condividi il tuo negozio per ricevere le tue prime prenotazioni.",
         "viewStore": "Vedi il mio negozio",
-        "createReservation": "Crea una prenotazione"
+        "createReservation": "Crea una prenotazione",
+        "connectStripe": "Collega Stripe"
       },
       "stats": {
         "products": "Prodotti",
@@ -5011,10 +5013,11 @@
       "description": "Queste informazioni saranno visibili ai tuoi clienti",
       "name": "Nome negozio",
       "namePlaceholder": "Il mio negozio di noleggio",
-      "slug": "Indirizzo negozio",
+      "slug": "Indirizzo web del negozio",
       "slugPlaceholder": "mio-negozio",
       "slugHelp": "Il tuo negozio sara accessibile su {slug}.{domain}",
       "slugDefault": "tuo-negozio",
+      "resetSlug": "Usa l'URL suggerito",
       "pricingMode": "Modalita di prezzo",
       "pricingDay": "Giornaliero",
       "pricingDayDesc": "Prezzo al giorno",
@@ -5069,22 +5072,49 @@
       "quantityHelp": "Numero di unita di questo prodotto disponibili per il noleggio"
     },
     "stripe": {
-      "title": "Modalita prenotazione",
-      "description": "Scegli come vuoi gestire le prenotazioni",
-      "requestMode": "Richiesta di prenotazione",
-      "recommended": "Consigliato",
-      "requestModeDescription": "I clienti inviano una richiesta. Validi manualmente e gestisci il pagamento tu stesso (contanti, bonifico, carta in loco).",
+      "title": "Incassa le prenotazioni online",
+      "description": "Scegli come prenotano i tuoi clienti. Potrai cambiare in qualsiasi momento.",
       "paymentMode": "Pagamento online",
-      "paymentModeDescription": "I clienti pagano direttamente al momento della prenotazione. Ricevi pagamenti automaticamente tramite Stripe.",
-      "howItWorks": "Come funziona?",
-      "step1": "1. Il cliente fa una richiesta di prenotazione",
-      "step2": "2. Ricevi una notifica via email",
-      "step3": "3. Accetti o rifiuti la richiesta",
-      "step4": "4. Il cliente riceve la conferma via email",
-      "step5": "5. Gestisci il pagamento al ritiro",
-      "paymentSetupTitle": "Configurazione rapida",
-      "paymentSetupDescription": "Dopo aver creato il tuo negozio, vai in Impostazioni → Pagamento online per collegare il tuo account Stripe e iniziare a ricevere pagamenti.",
-      "configComplete": "Configurazione completata!"
+      "recommended": "Consigliato",
+      "paymentModeDescription": "I clienti pagano al momento della prenotazione. Incasso sicuro tramite Stripe.",
+      "paymentModeNote": "L'attivazione di Stripe richiede una verifica dell'identità (5–10 min), ora o più tardi dalla dashboard. Nel frattempo le prenotazioni passano automaticamente alla conferma manuale.",
+      "requestMode": "Richiesta di prenotazione",
+      "requestModeDescription": "I clienti inviano una richiesta. Confermi e incassi tu stesso (contanti, bonifico, carta in negozio).",
+      "requestModeNote": "Confermi e incassi ogni prenotazione. Potrai passare al pagamento online in qualsiasi momento dalle impostazioni.",
+      "configComplete": "Configurazione completata!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Perché il pagamento online?",
+          "benefit1": "Incasso immediato, alla prenotazione",
+          "benefit2": "Meno no-show grazie al pagamento anticipato",
+          "benefit3": "Cauzione con blocco su carta, senza addebito",
+          "benefit4": "Bonifici automatici sul tuo conto",
+          "kycTitle": "Attivare Stripe",
+          "kycStep1": "Crea il tuo account — 2 minuti",
+          "kycStep2": "Verifica la tua identità — documento e IBAN, da 5 a 10 min",
+          "kycStep3": "Il pagamento online si attiva automaticamente",
+          "configureNow": "Configura Stripe ora",
+          "resumeNow": "Riprendi la configurazione di Stripe",
+          "configureLater": "Oppure più tardi dalla dashboard — nel frattempo le prenotazioni passano alla conferma manuale."
+        },
+        "request": {
+          "howTitle": "Come funziona?",
+          "step1": "Il cliente invia una richiesta",
+          "step2": "Ricevi un'email",
+          "step3": "Accetti o rifiuti",
+          "step4": "Il cliente riceve la conferma",
+          "step5": "Incassi al ritiro",
+          "prosTitle": "Cosa guadagni",
+          "pros1": "Controllo totale su ogni prenotazione",
+          "pros2": "Nessuna configurazione",
+          "pros3": "Contanti, bonifico o carta in negozio",
+          "consTitle": "Cosa perdi",
+          "cons1": "Solleciti e insoluti da gestire",
+          "cons2": "Più no-show senza pagamento anticipato",
+          "cons3": "Nessuna cauzione automatica",
+          "switchNote": "Passa al pagamento online in qualsiasi momento dalle impostazioni."
+        }
+      }
     },
     "complete": {
       "title": "Il tuo negozio e pronto!",
@@ -5109,7 +5139,13 @@
       "other": "Altro",
       "otherPlaceholder": "Specifica…",
       "skip": "Salta",
-      "finish": "Termina"
+      "finish": "Termina",
+      "panel": {
+        "title": "Due parole dal team",
+        "p1": "Benvenuto su Louez, e grazie per la fiducia. Il tuo negozio è pronto: non vediamo l'ora delle tue prime prenotazioni.",
+        "p2": "Una domanda o un'idea? Scrivici dalla bolla di chat in basso a destra — leggiamo tutto.",
+        "signature": "I fondatori di Louez"
+      }
     },
     "steps": {
       "store": "Negozio",

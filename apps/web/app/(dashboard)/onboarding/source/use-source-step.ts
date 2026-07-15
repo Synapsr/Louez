@@ -1,27 +1,25 @@
-'use client';
+"use client";
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
-import { revalidateLogic, useStore } from '@tanstack/react-form';
-import { useMutation } from '@tanstack/react-query';
-import { z } from 'zod';
+import { revalidateLogic, useStore } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
 
 import {
   ACQUISITION_CHANNELS,
   type AcquisitionChannel,
   type AcquisitionInput,
-} from '@louez/validations';
+} from "@louez/validations";
 
-import { useAppForm } from '@/hooks/form/form';
+import { useAppForm } from "@/hooks/form/form";
 
-import { useOnboardingErrorToast } from '../_lib/onboarding-error-toast';
-import { saveAcquisitionChannel } from '../profile-actions';
+import { useOnboardingErrorToast } from "../_lib/onboarding-error-toast";
+import { saveAcquisitionChannel } from "../profile-actions";
 
 // Form-shaped schema: the channel starts empty until the user picks one
 const sourceFormSchema = z.object({
-  channel: z
-    .union([z.enum(ACQUISITION_CHANNELS), z.literal('')])
-    .refine((value) => value !== ''),
+  channel: z.union([z.enum(ACQUISITION_CHANNELS), z.literal("")]).refine((value) => value !== ""),
   other: z.string().max(255),
 });
 
@@ -41,12 +39,12 @@ export const useSourceStep = () => {
 
   const form = useAppForm({
     defaultValues: {
-      channel: '' as AcquisitionChannel | '',
-      other: '',
+      channel: "" as AcquisitionChannel | "",
+      other: "",
     },
     validationLogic: revalidateLogic({
-      mode: 'submit',
-      modeAfterSubmission: 'change',
+      mode: "submit",
+      modeAfterSubmission: "change",
     }),
     validators: { onSubmit: sourceFormSchema },
     onSubmit: async ({ value }) => {
@@ -56,7 +54,7 @@ export const useSourceStep = () => {
           channel: value.channel,
           other: value.other,
         });
-        router.push('/dashboard');
+        router.push("/dashboard");
       } catch (error) {
         showError(error);
       }
@@ -67,11 +65,11 @@ export const useSourceStep = () => {
 
   const handleSkip = async () => {
     try {
-      await mutation.mutateAsync({ channel: 'skipped', other: '' });
+      await mutation.mutateAsync({ channel: "skipped", other: "" });
     } catch {
       // Skipping must never block the user from reaching the dashboard.
     }
-    router.push('/dashboard');
+    router.push("/dashboard");
   };
 
   return { form, channel, handleSkip, isPending: mutation.isPending };
