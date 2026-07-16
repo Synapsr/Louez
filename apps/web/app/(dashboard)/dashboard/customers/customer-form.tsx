@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useTransition, useState } from 'react'
+import { useEffect, useTransition, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useStore } from '@tanstack/react-form'
@@ -29,6 +29,11 @@ import { createCustomer, updateCustomer } from './actions'
 import { useAppForm } from '@/hooks/form/form'
 import { getFieldError } from '@/hooks/form/form-context'
 import { RootError } from '@/components/form/root-error'
+import { trackOpenReplayEvent } from '@/lib/openreplay/client'
+import {
+  openReplayEvents,
+  type DashboardCreationSource,
+} from '@/lib/openreplay/events'
 
 interface Customer {
   id: string
@@ -47,11 +52,15 @@ interface Customer {
 
 interface CustomerFormProps {
   customer?: Customer
+  openReplaySource?: DashboardCreationSource
 }
 
 const COUNTRY_CODES = ['FR', 'BE', 'CH', 'LU', 'MC', 'CA'] as const
 
-export function CustomerForm({ customer }: CustomerFormProps) {
+export function CustomerForm({
+  customer,
+  openReplaySource = 'direct',
+}: CustomerFormProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.customers.form')
   const tCountries = useTranslations('dashboard.customers.countries')
@@ -59,6 +68,18 @@ export function CustomerForm({ customer }: CustomerFormProps) {
   const [isPending, startTransition] = useTransition()
   const isEditing = !!customer
   const [rootError, setRootError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isEditing) {
+      return
+    }
+
+    trackOpenReplayEvent(openReplayEvents.dashboardCustomerCreationStarted, {
+      journey: 'customer_creation',
+      step: 'started',
+      source: openReplaySource,
+    })
+  }, [isEditing, openReplaySource])
 
   const form = useAppForm({
     defaultValues: {
@@ -95,6 +116,17 @@ export function CustomerForm({ customer }: CustomerFormProps) {
         if (result.error) {
           setRootError(result.error)
           return
+        }
+
+        if (!isEditing) {
+          trackOpenReplayEvent(
+            openReplayEvents.dashboardCustomerCreationCompleted,
+            {
+              journey: 'customer_creation',
+              step: 'completed',
+              source: openReplaySource,
+            },
+          )
         }
 
         if (isEditing) {

@@ -60,7 +60,7 @@ export function QuickActions({ storeState, className }: QuickActionsProps) {
         {
           key: 'addReservation',
           icon: CalendarDays,
-          href: '/dashboard/reservations/new',
+          href: '/dashboard/reservations/new?source=quick_action',
           primary: true,
         },
       ]
@@ -76,7 +76,7 @@ export function QuickActions({ storeState, className }: QuickActionsProps) {
       {
         key: 'addReservation',
         icon: CalendarDays,
-        href: '/dashboard/reservations/new',
+        href: '/dashboard/reservations/new?source=quick_action',
         primary: false,
       },
     ]

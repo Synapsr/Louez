@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 
 import { env } from '@/env';
+import { markOpenReplayReady } from '@/lib/openreplay/client';
 
 const OPENREPLAY_DASHBOARD_PROJECT_KEY =
   env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY || 'W9AU13WEWMDZ4m8KQzWZ';
@@ -137,6 +138,12 @@ export function OpenReplayProvider({
             ...(store.slug && { storeSlug: store.slug }),
           }),
         },
+      });
+
+      void window.__louezOpenReplayStartPromise.then(() => {
+        markOpenReplayReady(({ name, payload }) => {
+          tracker.event(name, payload);
+        });
       });
     });
   }, [store, surface, user]);
