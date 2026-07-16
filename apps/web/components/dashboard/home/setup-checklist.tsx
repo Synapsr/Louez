@@ -127,7 +127,7 @@ export function SetupChecklist({ metrics, storeSlug: _storeSlug }: SetupChecklis
       key: "firstReservation",
       icon: Calendar,
       completed: metrics.totalReservations > 0,
-      href: "/dashboard/reservations/new",
+      href: "/dashboard/reservations/new?source=onboarding",
       action: "setup.createReservation",
     },
     {

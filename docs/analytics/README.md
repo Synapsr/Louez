@@ -50,5 +50,6 @@ Chaque nouvelle page analytics devrait contenir :
 ## Pages
 
 - [Core Product Analytics](core-product.md)
+- [OpenReplay — parcours de creation dashboard](openreplay-creation-journeys.md)
 - [Referral Program](referral-program.md)
 - [Revue du setup analytics — juillet 2026](setup-review-2026-07.md) : etat des lieux, config appliquee, roadmap des manques

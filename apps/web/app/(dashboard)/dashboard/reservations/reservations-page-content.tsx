@@ -158,7 +158,12 @@ export function ReservationsPageContent({
       <p className="text-muted-foreground mt-2 max-w-sm text-center text-sm">
         {t("noReservationsDescription")}
       </p>
-      <Button render={<Link href="/dashboard/reservations/new" />} className="mt-6">
+      <Button
+        render={
+          <Link href="/dashboard/reservations/new?source=reservations_page" />
+        }
+        className="mt-6"
+      >
         {t("createReservation")}
       </Button>
     </div>
