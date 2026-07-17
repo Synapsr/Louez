@@ -5418,9 +5418,9 @@
       "seeTomorrow": "See you tomorrow!"
     },
     "reminderReturn": {
-      "subject": "Reminder: equipment return today",
+      "subject": "Reminder: equipment return on {date}",
       "title": "Remember to return your equipment",
-      "body": "This is a reminder for your reservation #{number}. The equipment return is scheduled for today.",
+      "body": "This is a reminder for your reservation #{number}. The equipment return is scheduled for {date}.",
       "scheduledReturn": "Scheduled return",
       "returnInfo": "Please return the equipment in good condition. The deposit will be returned after verification.",
       "thanks": "Thank you for your trust!"

@@ -173,7 +173,7 @@ export function SetupChecklist({
     {
       key: "firstReservation",
       completed: metrics.totalReservations > 0,
-      href: "/dashboard/reservations/new",
+      href: "/dashboard/reservations/new?source=onboarding",
       action: "setup.createReservation",
       description: "firstReservation",
       showStoreLink: true,

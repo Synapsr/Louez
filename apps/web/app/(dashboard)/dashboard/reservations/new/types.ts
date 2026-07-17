@@ -11,6 +11,8 @@ import type {
 } from '@louez/types';
 import type { SeasonalPricingConfig } from '@louez/utils';
 
+import type { DashboardCreationSource } from '@/lib/openreplay/events';
+
 export interface Customer {
   id: string;
   email: string;
@@ -118,6 +120,7 @@ export interface DeliveryLegState {
 }
 
 export interface NewReservationFormProps {
+  openReplaySource: DashboardCreationSource;
   customers: Customer[];
   products: Product[];
   tulipInsuranceMode: TulipPublicMode;

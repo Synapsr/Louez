@@ -5296,9 +5296,9 @@
       "seeTomorrow": "Bis morgen!"
     },
     "reminderReturn": {
-      "subject": "Erinnerung: Ausrüstungsrückgabe heute",
+      "subject": "Erinnerung: Ausrüstungsrückgabe am {date}",
       "title": "Denken Sie an die Rückgabe Ihrer Ausrüstung",
-      "body": "Dies ist eine Erinnerung für Ihre Reservierung #{number}. Die Rückgabe der Ausrüstung ist für heute geplant.",
+      "body": "Dies ist eine Erinnerung für Ihre Reservierung #{number}. Die Rückgabe der Ausrüstung ist für den {date} geplant.",
       "scheduledReturn": "Geplante Rückgabe",
       "returnInfo": "Bitte geben Sie die Ausrüstung in gutem Zustand zurück. Die Kaution wird nach Prüfung zurückgegeben.",
       "thanks": "Vielen Dank für Ihr Vertrauen!"

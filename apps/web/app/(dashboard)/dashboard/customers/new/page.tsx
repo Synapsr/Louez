@@ -4,12 +4,21 @@ import { ArrowLeft } from 'lucide-react'
 import { getTranslations } from 'next-intl/server'
 
 import { getCurrentStore } from '@/lib/store-context'
+import { resolveDashboardCreationSource } from '@/lib/openreplay/events'
 import { Button } from '@louez/ui'
 import { CustomerForm } from '../customer-form'
 
-export default async function NewCustomerPage() {
+interface NewCustomerPageProps {
+  searchParams: Promise<{ source?: string | string[] }>
+}
+
+export default async function NewCustomerPage({
+  searchParams,
+}: NewCustomerPageProps) {
   const t = await getTranslations('dashboard.customers')
   const store = await getCurrentStore()
+  const { source } = await searchParams
+  const openReplaySource = resolveDashboardCreationSource(source)
 
   if (!store) {
     redirect('/onboarding')
@@ -29,7 +38,7 @@ export default async function NewCustomerPage() {
         </div>
       </div>
 
-      <CustomerForm />
+      <CustomerForm openReplaySource={openReplaySource} />
     </div>
   )
 }

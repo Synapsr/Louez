@@ -5296,9 +5296,9 @@
       "seeTomorrow": "Do zobaczenia jutro!"
     },
     "reminderReturn": {
-      "subject": "Przypomnienie: zwrot sprzętu dzisiaj",
+      "subject": "Przypomnienie: zwrot sprzętu — {date}",
       "title": "Pamiętaj o zwrocie sprzętu",
-      "body": "To przypomnienie o Twojej rezerwacji #{number}. Zwrot sprzętu zaplanowany jest na dzisiaj.",
+      "body": "To przypomnienie o Twojej rezerwacji #{number}. Zwrot sprzętu zaplanowany jest na {date}.",
       "scheduledReturn": "Zaplanowany zwrot",
       "returnInfo": "Prosimy o zwrot sprzętu w dobrym stanie. Kaucja zostanie zwrócona po weryfikacji.",
       "thanks": "Dziękujemy za zaufanie!"

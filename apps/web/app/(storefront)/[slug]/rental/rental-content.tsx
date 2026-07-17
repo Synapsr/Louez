@@ -46,6 +46,7 @@ import {
 } from "@/lib/utils/duration";
 
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
+import { useBrowserTimezoneCity } from "@/hooks/use-browser-timezone-city";
 
 import { useCart } from "@/contexts/cart-context";
 
@@ -208,15 +209,7 @@ export function RentalContent({
     [endDate, storeTimezone],
   );
 
-  // Detect if user's browser timezone differs from the store's timezone
-  const timezoneCity = useMemo(() => {
-    if (!storeTimezone) return null;
-    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (browserTimezone === storeTimezone) return null;
-    // Extract city name from IANA timezone (e.g., "Europe/Paris" → "Paris")
-    const city = storeTimezone.split("/").pop()?.replace(/_/g, " ");
-    return city || storeTimezone;
-  }, [storeTimezone]);
+  const timezoneCity = useBrowserTimezoneCity(storeTimezone);
 
   // Set global dates in cart context
   useEffect(() => {

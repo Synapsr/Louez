@@ -61,7 +61,7 @@ export const DashboardHeaderActions = ({
         ) : (
           <Button
             size={isMobile ? "icon" : "default"}
-            render={<Link href="/dashboard/reservations/new" />}
+            render={<Link href="/dashboard/reservations/new?source=dashboard_header" />}
             variant="outline"
           >
             <Plus className="h-4 w-4" />

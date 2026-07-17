@@ -1,6 +1,11 @@
 import { Heading, Section, Text } from '@react-email/components'
 import { BaseLayout } from './base-layout'
-import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from '../i18n'
+import {
+  getEmailTranslator,
+  getEmailTranslations,
+  getDateFormatPatterns,
+  type EmailLocale,
+} from '../i18n'
 import type { EmailCustomContent } from '@louez/types'
 import {
   formatEmailDateInStoreTimezone,
@@ -39,9 +44,17 @@ export function ReminderReturnEmail({
   locale = 'fr',
 }: ReminderReturnEmailProps) {
   const t = getEmailTranslations(locale)
+  const translate = getEmailTranslator(locale)
   const messages = t.reminderReturn
   const tc = t.common
   const datePatterns = getDateFormatPatterns(locale)
+  const formattedEndDate = formatEmailDateInStoreTimezone(
+    endDate,
+    locale,
+    datePatterns.full,
+    storeTimezone,
+    storeCountry
+  )
   const timezoneLabel = getStoreTimezoneLabel(endDate, storeTimezone, storeCountry)
   const timezoneLine =
     typeof tc.timezone === 'string'
@@ -63,7 +76,10 @@ export function ReminderReturnEmail({
 
   return (
     <BaseLayout
-      preview={customContent?.subject || messages.subject}
+      preview={
+        customContent?.subject ||
+        translate('reminderReturn.subject', { date: formattedEndDate })
+      }
       storeName={storeName}
       logoUrl={logoUrl}
       primaryColor={primaryColor}
@@ -77,7 +93,10 @@ export function ReminderReturnEmail({
       <Text style={paragraph}>{greeting}</Text>
 
       <Text style={paragraph}>
-        {messages.body.replace('{number}', reservationNumber)}
+        {translate('reminderReturn.body', {
+          number: reservationNumber,
+          date: formattedEndDate,
+        })}
       </Text>
 
       {/* Custom message from store settings */}
@@ -87,15 +106,7 @@ export function ReminderReturnEmail({
 
       <Section style={infoBox}>
         <Text style={infoTitle}>{messages.scheduledReturn}</Text>
-        <Text style={infoDate}>
-          {formatEmailDateInStoreTimezone(
-            endDate,
-            locale,
-            datePatterns.full,
-            storeTimezone,
-            storeCountry
-          )}
-        </Text>
+        <Text style={infoDate}>{formattedEndDate}</Text>
         <Text style={timezoneText}>{timezoneLine}</Text>
         {storeAddress && (
           <>
