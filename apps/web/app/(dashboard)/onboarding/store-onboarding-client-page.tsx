@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { useTranslations } from "next-intl";
 
-import { Label } from "@louez/ui";
+import { Button, Label } from "@louez/ui";
 
 import { StoreSwitcher } from "@/components/dashboard/store-switcher";
 import { FormStoreNameSlug } from "@/components/form/form-store-name-slug";
@@ -13,6 +15,7 @@ import { getFieldError } from "@/hooks/form/form-context";
 import { env } from "@/env";
 
 import { OnboardingStepHeader } from "./_components/step-header";
+import { useOnboardingSteps } from "./_lib/steps-context";
 import { useStoreStep } from "./use-store-step";
 
 interface StoreWithRole {
@@ -38,6 +41,7 @@ export function StoreOnboardingClientPage({
   initialCountry,
   shouldDetectBrowserCountry,
 }: StoreOnboardingClientPageProps) {
+  const router = useRouter();
   const t = useTranslations("onboarding.store");
   const tCommon = useTranslations("common");
   const { form, clearSlugSubmitError, handleCountrySelection, country, latitude, longitude } =
@@ -45,6 +49,11 @@ export function StoreOnboardingClientPage({
 
   const domain = env.NEXT_PUBLIC_APP_DOMAIN;
   const canSwitchAccount = Boolean(currentStoreId && stores.length > 0);
+  // Back to profile only when it is part of this flow (first onboarding):
+  // the step list is snapshotted per page load, so it still includes the
+  // profile step right after completing it — exactly when "go fix a typo"
+  // matters — and excludes it on later store creations.
+  const hasProfileStep = useOnboardingSteps().some((step) => step.key === "profile");
 
   return (
     <>
@@ -157,7 +166,18 @@ export function StoreOnboardingClientPage({
             </form.Field>
           </div>
 
-          <form.SubscribeButton className="mt-2 w-full">{tCommon("next")}</form.SubscribeButton>
+          <div className="mt-2 flex items-center gap-3">
+            {hasProfileStep && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => router.push("/onboarding/profile")}
+              >
+                {tCommon("back")}
+              </Button>
+            )}
+            <form.SubscribeButton className="flex-1">{tCommon("next")}</form.SubscribeButton>
+          </div>
         </form.Form>
       </form.AppForm>
     </>
