@@ -119,7 +119,7 @@ export function StoreOnboardingClientPage({
                 )}
               </form.AppField>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
               <form.AppField name="email">
                 {(field) => (
                   <field.Input

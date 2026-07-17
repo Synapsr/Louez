@@ -267,7 +267,7 @@ export const DashboardCommandPalette = ({
 
         <CommandDialogTrigger
           aria-label={t("commandPalette.title")}
-          render={<Button type="button" variant="outline" size="icon-lg" className="lg:hidden" />}
+          render={<Button type="button" variant="outline" size="icon" className="lg:hidden" />}
         >
           <Search className="size-4" />
         </CommandDialogTrigger>
