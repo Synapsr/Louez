@@ -68,6 +68,7 @@ ARG DATABASE_URL
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_APP_DOMAIN
 ARG NEXT_PUBLIC_DASHBOARD_SUBDOMAIN
+ARG NEXT_PUBLIC_APP_VERSION
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_POSTHOG_KEY
 ARG NEXT_PUBLIC_POSTHOG_HOST
@@ -114,8 +115,11 @@ ENV NEXT_PUBLIC_FROMHELLO_API_URL=${NEXT_PUBLIC_FROMHELLO_API_URL}
 ENV NEXT_PUBLIC_FROMHELLO_KEY=${NEXT_PUBLIC_FROMHELLO_KEY}
 ENV NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN=${NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN}
 
-# Build the application using Turborepo
-RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web --env-mode=loose
+# Build the application using Turborepo. CI supplies the commit SHA; direct
+# EasyPanel builds fall back to a unique build identifier without manual input.
+RUN corepack enable pnpm && \
+    APP_VERSION="${NEXT_PUBLIC_APP_VERSION:-build-$(date -u +%Y%m%d%H%M%S)}" && \
+    NEXT_PUBLIC_APP_VERSION="${APP_VERSION}" pnpm turbo run build --filter=@louez/web --env-mode=loose
 
 # -----------------------------------------------------------------------------
 # Stage 3: Migrator
