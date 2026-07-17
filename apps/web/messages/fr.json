@@ -5296,8 +5296,8 @@
       "finish": "Terminer",
       "panel": {
         "title": "Un mot de l'équipe",
-        "p1": "Bienvenue sur Louez, et merci de votre confiance. Votre boutique est prête — on a hâte de voir vos premières réservations.",
-        "p2": "Une question ou une idée ? Écrivez-nous via la bulle de chat en bas à droite — on lit tout.",
+        "p1": "Bienvenue sur Louez, et merci de votre confiance. Votre boutique est prête, on a hâte de voir vos premières réservations.",
+        "p2": "Une question ou une idée ? Écrivez-nous via le bouton d'aide en bas à gauche, on lit tout.",
         "signature": "Les fondateurs de Louez"
       }
     },

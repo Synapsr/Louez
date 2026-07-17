@@ -5296,8 +5296,8 @@
       "finish": "Finish",
       "panel": {
         "title": "A note from the team",
-        "p1": "Welcome to Louez, and thank you for your trust. Your store is ready — we can't wait to see your first bookings.",
-        "p2": "A question or an idea? Write to us through the chat bubble at the bottom right — we read everything.",
+        "p1": "Welcome to Louez, and thank you for your trust. Your store is ready, we can't wait to see your first bookings.",
+        "p2": "A question or an idea? Write to us through the help button at the bottom left, we read everything.",
         "signature": "The founders of Louez"
       }
     },
