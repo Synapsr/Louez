@@ -23,9 +23,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@louez/ui'
-import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Separator } from '@louez/ui'
+
+import { UserAvatar } from '@/components/dashboard/shared/user-avatar'
+
 import { addTeamMember, removeMember, cancelInvitation, resendInvitation } from './actions'
 
 interface Member {
@@ -127,18 +129,6 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
         toastManager.add({ title: t('invitationResent'), type: 'success' })
       }
     })
-  }
-
-  const getInitials = (name: string | null, email: string) => {
-    if (name) {
-      return name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    }
-    return email.slice(0, 2).toUpperCase()
   }
 
   // Determine limit state
@@ -321,12 +311,7 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
                   {index > 0 && <Separator className="my-3" />}
                   <div className="flex items-center justify-between py-2">
                     <div className="flex items-center gap-4">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={member.user.image || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary">
-                          {getInitials(member.user.name, member.user.email)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <UserAvatar src={member.user.image} seed={member.user.id} size={40} />
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium">
