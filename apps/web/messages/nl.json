@@ -5026,7 +5026,27 @@
       "businessTypes": {
         "independent": "Zelfstandige",
         "establishedStore": "Gevestigde winkel",
-        "association": "Vereniging"
+        "association": "Vereniging",
+        "individual": "Particulier"
+      },
+      "productCategory": "Wat wil je verhuren",
+      "productCategoryPlaceholder": "Selecteer een categorie",
+      "productCategories": {
+        "bikes": "Fietsen",
+        "sportsOutdoor": "Sport & outdoor",
+        "partyEvents": "Evenementen & geluid",
+        "toolsDiy": "Gereedschap & klussen",
+        "vehicles": "Voertuigen",
+        "electronics": "Elektronica",
+        "other": "Anders"
+      },
+      "fleetSize": "Hoeveel artikelen wil je verhuren",
+      "fleetSizePlaceholder": "Selecteer een bereik",
+      "fleetSizes": {
+        "upTo5": "1 tot 5",
+        "upTo20": "6 tot 20",
+        "upTo50": "21 tot 50",
+        "moreThan50": "Meer dan 50"
       }
     },
     "store": {

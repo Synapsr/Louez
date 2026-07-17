@@ -5032,7 +5032,27 @@
       "businessTypes": {
         "independent": "Independiente",
         "establishedStore": "Tienda establecida",
-        "association": "Asociación"
+        "association": "Asociación",
+        "individual": "Particular"
+      },
+      "productCategory": "Qué quieres alquilar",
+      "productCategoryPlaceholder": "Selecciona una categoría",
+      "productCategories": {
+        "bikes": "Bicicletas",
+        "sportsOutdoor": "Deporte y aire libre",
+        "partyEvents": "Eventos y sonido",
+        "toolsDiy": "Herramientas y bricolaje",
+        "vehicles": "Vehículos",
+        "electronics": "Electrónica",
+        "other": "Otro"
+      },
+      "fleetSize": "Cuántos artículos quieres alquilar",
+      "fleetSizePlaceholder": "Selecciona un rango",
+      "fleetSizes": {
+        "upTo5": "1 a 5",
+        "upTo20": "6 a 20",
+        "upTo50": "21 a 50",
+        "moreThan50": "Más de 50"
       }
     },
     "store": {

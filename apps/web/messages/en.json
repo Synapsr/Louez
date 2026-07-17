@@ -5139,7 +5139,27 @@
       "businessTypes": {
         "independent": "Independent",
         "establishedStore": "Established store",
-        "association": "Association"
+        "association": "Association",
+        "individual": "Individual"
+      },
+      "productCategory": "What do you plan to rent out",
+      "productCategoryPlaceholder": "Select a category",
+      "productCategories": {
+        "bikes": "Bikes",
+        "sportsOutdoor": "Sports & outdoor",
+        "partyEvents": "Party & events",
+        "toolsDiy": "Tools & DIY",
+        "vehicles": "Vehicles",
+        "electronics": "Electronics",
+        "other": "Other"
+      },
+      "fleetSize": "How many items to rent out",
+      "fleetSizePlaceholder": "Select a range",
+      "fleetSizes": {
+        "upTo5": "1 to 5",
+        "upTo20": "6 to 20",
+        "upTo50": "21 to 50",
+        "moreThan50": "More than 50"
       }
     },
     "store": {

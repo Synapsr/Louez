@@ -5026,7 +5026,27 @@
       "businessTypes": {
         "independent": "Indipendente",
         "establishedStore": "Negozio avviato",
-        "association": "Associazione"
+        "association": "Associazione",
+        "individual": "Privato"
+      },
+      "productCategory": "Cosa vuoi noleggiare",
+      "productCategoryPlaceholder": "Seleziona una categoria",
+      "productCategories": {
+        "bikes": "Biciclette",
+        "sportsOutdoor": "Sport e outdoor",
+        "partyEvents": "Eventi e audio",
+        "toolsDiy": "Attrezzi e fai da te",
+        "vehicles": "Veicoli",
+        "electronics": "Elettronica",
+        "other": "Altro"
+      },
+      "fleetSize": "Quanti articoli vuoi noleggiare",
+      "fleetSizePlaceholder": "Seleziona un intervallo",
+      "fleetSizes": {
+        "upTo5": "Da 1 a 5",
+        "upTo20": "Da 6 a 20",
+        "upTo50": "Da 21 a 50",
+        "moreThan50": "Più di 50"
       }
     },
     "store": {

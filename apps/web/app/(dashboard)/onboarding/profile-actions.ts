@@ -42,6 +42,8 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
     .set({
       name: parsed.data.name,
       businessType: parsed.data.businessType,
+      productCategory: parsed.data.productCategory,
+      fleetSize: parsed.data.fleetSize,
       ...(imageUrl !== undefined ? { image: imageUrl } : {}),
       // Keep the first completion date if the user re-submits the step
       profileCompletedAt: sql`COALESCE(${users.profileCompletedAt}, NOW())`,
@@ -54,8 +56,14 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
     event: productAnalyticsEvents.onboardingProfileCompleted,
     properties: {
       business_type: parsed.data.businessType,
+      product_category: parsed.data.productCategory,
+      fleet_size: parsed.data.fleetSize,
       avatar_action: imageUrl === undefined ? "kept" : imageUrl ? "uploaded" : "removed",
-      $set: parsed.data.businessType ? { business_type: parsed.data.businessType } : {},
+      $set: {
+        ...(parsed.data.businessType ? { business_type: parsed.data.businessType } : {}),
+        ...(parsed.data.productCategory ? { product_category: parsed.data.productCategory } : {}),
+        ...(parsed.data.fleetSize ? { fleet_size: parsed.data.fleetSize } : {}),
+      },
     },
   });
 

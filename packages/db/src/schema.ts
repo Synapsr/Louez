@@ -59,8 +59,13 @@ export const users = mysqlTable('users', {
     length: 255,
   }),
   // Self-reported segment ("you are: independent / established store /
-  // association"), optional, captured on the profile onboarding step.
+  // association / individual"), optional, captured on the profile onboarding step.
   businessType: varchar('business_type', { length: 32 }),
+  // Self-reported rental intent, optional, captured once on the profile
+  // onboarding step: what they plan to rent out and roughly how many items.
+  // Analytics segmentation only (ICP discovery) — never gates features.
+  productCategory: varchar('product_category', { length: 32 }),
+  fleetSize: varchar('fleet_size', { length: 16 }),
   // Set once the user has been through the "introduce yourself" onboarding
   // step. Google users get a prefilled name but still confirm it once.
   profileCompletedAt: timestamp('profile_completed_at', { mode: 'date' }),

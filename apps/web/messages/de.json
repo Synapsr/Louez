@@ -5026,7 +5026,27 @@
       "businessTypes": {
         "independent": "Selbstständig",
         "establishedStore": "Etabliertes Geschäft",
-        "association": "Verein"
+        "association": "Verein",
+        "individual": "Privatperson"
+      },
+      "productCategory": "Was möchten Sie vermieten",
+      "productCategoryPlaceholder": "Kategorie auswählen",
+      "productCategories": {
+        "bikes": "Fahrräder",
+        "sportsOutdoor": "Sport & Outdoor",
+        "partyEvents": "Events & Ton",
+        "toolsDiy": "Werkzeug & Heimwerken",
+        "vehicles": "Fahrzeuge",
+        "electronics": "Elektronik",
+        "other": "Sonstiges"
+      },
+      "fleetSize": "Wie viele Artikel möchten Sie vermieten",
+      "fleetSizePlaceholder": "Bereich auswählen",
+      "fleetSizes": {
+        "upTo5": "1 bis 5",
+        "upTo20": "6 bis 20",
+        "upTo50": "21 bis 50",
+        "moreThan50": "Mehr als 50"
       }
     },
     "store": {

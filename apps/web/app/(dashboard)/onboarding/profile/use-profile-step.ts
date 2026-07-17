@@ -9,7 +9,12 @@ import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { z } from "zod";
 
-import { type BusinessType, createProfileSchema } from "@louez/validations";
+import {
+  type BusinessType,
+  type FleetSize,
+  type ProductCategory,
+  createProfileSchema,
+} from "@louez/validations";
 
 import { useAppForm } from "@/hooks/form/form";
 import { useImageUpload } from "@/hooks/use-image-upload";
@@ -21,6 +26,8 @@ import { updateUserProfile } from "../profile-actions";
 interface ProfileFormValues {
   name: string;
   businessType: BusinessType | null;
+  productCategory: ProductCategory | null;
+  fleetSize: FleetSize | null;
   // Local object URL for a new photo, null when removed, initialImage when untouched.
   image: string | null;
 }
@@ -29,12 +36,16 @@ interface UseProfileStepParams {
   initialName: string;
   initialImage: string | null;
   initialBusinessType: BusinessType | null;
+  initialProductCategory: ProductCategory | null;
+  initialFleetSize: FleetSize | null;
 }
 
 export const useProfileStep = ({
   initialName,
   initialImage,
   initialBusinessType,
+  initialProductCategory,
+  initialFleetSize,
 }: UseProfileStepParams) => {
   const router = useRouter();
   const tValidation = useTranslations("validation");
@@ -73,6 +84,8 @@ export const useProfileStep = ({
         const result = await updateUserProfile({
           name: value.name,
           businessType: value.businessType,
+          productCategory: value.productCategory,
+          fleetSize: value.fleetSize,
           imageUrl,
         });
         if (result.error) {
@@ -99,6 +112,8 @@ export const useProfileStep = ({
     defaultValues: {
       name: initialName,
       businessType: initialBusinessType as BusinessType | null,
+      productCategory: initialProductCategory as ProductCategory | null,
+      fleetSize: initialFleetSize as FleetSize | null,
       image: initialImage,
     } as ProfileFormValues,
     validationLogic: revalidateLogic({

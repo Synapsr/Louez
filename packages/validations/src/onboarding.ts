@@ -115,8 +115,27 @@ export const BUSINESS_TYPES = [
   'independent',
   'established_store',
   'association',
+  // "Particulier": measures demand for P2P rental before building for it.
+  'individual',
 ] as const;
 export type BusinessType = (typeof BUSINESS_TYPES)[number];
+
+// Self-reported intent, captured once on the profile onboarding step. Both are
+// optional and exist to segment analytics (ICP discovery), not to gate features.
+export const PRODUCT_CATEGORIES = [
+  'bikes',
+  'sports_outdoor',
+  'party_events',
+  'tools_diy',
+  'vehicles',
+  'electronics',
+  'other',
+] as const;
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number];
+
+// Ranges on purpose: faster to answer than an exact count, precise enough to segment.
+export const FLEET_SIZES = ['1_5', '6_20', '21_50', '50_plus'] as const;
+export type FleetSize = (typeof FLEET_SIZES)[number];
 
 // User-selectable channels. 'skipped' and 'invitation' are also stored in
 // users.acquisitionChannel but are set programmatically, never shown as options.
@@ -142,6 +161,8 @@ export const createProfileSchema = (
       .min(2, t('minLength', { min: 2 }))
       .max(255, t('maxLength', { max: 255 })),
     businessType: z.enum(BUSINESS_TYPES).nullable(),
+    productCategory: z.enum(PRODUCT_CATEGORIES).nullable(),
+    fleetSize: z.enum(FLEET_SIZES).nullable(),
   });
 
 export const profileSchema = z.object({
@@ -151,6 +172,8 @@ export const profileSchema = z.object({
     .min(2, 'validation.minLength')
     .max(255, 'validation.maxLength'),
   businessType: z.enum(BUSINESS_TYPES).nullable(),
+  productCategory: z.enum(PRODUCT_CATEGORIES).nullable(),
+  fleetSize: z.enum(FLEET_SIZES).nullable(),
 });
 
 export const acquisitionSchema = z.object({

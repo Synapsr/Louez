@@ -5139,7 +5139,27 @@
       "businessTypes": {
         "independent": "Indépendant",
         "establishedStore": "Boutique établie",
-        "association": "Association"
+        "association": "Association",
+        "individual": "Particulier"
+      },
+      "productCategory": "Que souhaitez-vous louer",
+      "productCategoryPlaceholder": "Sélectionnez une catégorie",
+      "productCategories": {
+        "bikes": "Vélos",
+        "sportsOutdoor": "Sport & plein air",
+        "partyEvents": "Événementiel & son",
+        "toolsDiy": "Outillage & bricolage",
+        "vehicles": "Véhicules",
+        "electronics": "Électronique",
+        "other": "Autre"
+      },
+      "fleetSize": "Combien d'articles à louer",
+      "fleetSizePlaceholder": "Sélectionnez une tranche",
+      "fleetSizes": {
+        "upTo5": "1 à 5",
+        "upTo20": "6 à 20",
+        "upTo50": "21 à 50",
+        "moreThan50": "Plus de 50"
       }
     },
     "store": {

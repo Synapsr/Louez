@@ -5026,7 +5026,27 @@
       "businessTypes": {
         "independent": "Niezależny",
         "establishedStore": "Istniejący sklep",
-        "association": "Stowarzyszenie"
+        "association": "Stowarzyszenie",
+        "individual": "Osoba prywatna"
+      },
+      "productCategory": "Co chcesz wynajmować",
+      "productCategoryPlaceholder": "Wybierz kategorię",
+      "productCategories": {
+        "bikes": "Rowery",
+        "sportsOutdoor": "Sport i outdoor",
+        "partyEvents": "Imprezy i nagłośnienie",
+        "toolsDiy": "Narzędzia i majsterkowanie",
+        "vehicles": "Pojazdy",
+        "electronics": "Elektronika",
+        "other": "Inne"
+      },
+      "fleetSize": "Ile przedmiotów chcesz wynajmować",
+      "fleetSizePlaceholder": "Wybierz zakres",
+      "fleetSizes": {
+        "upTo5": "1 do 5",
+        "upTo20": "6 do 20",
+        "upTo50": "21 do 50",
+        "moreThan50": "Ponad 50"
       }
     },
     "store": {

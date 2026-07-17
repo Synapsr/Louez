@@ -5,7 +5,7 @@
 - Outil : PostHog
 - Projet : `Louez.io` / `Default project` / id `118395`
 - Periode par defaut : `-30d` pour le funnel courant, `-90d` pour les tendances (flow recent, volume faible)
-- Dashboard : `Louez Onboarding` — a creer via `node scripts/posthog/setup-onboarding-dashboard.mjs` (necessite `POSTHOG_PERSONAL_API_KEY`), puis remplacer cette ligne par l'URL.
+- Dashboard : [Louez Onboarding](https://eu.posthog.com/project/118395/dashboard/824728) (cree le 2026-07-16). `scripts/posthog/setup-onboarding-dashboard.mjs` permet de le recreer a l'identique si besoin (necessite `POSTHOG_PERSONAL_API_KEY`).
 
 ## Questions produit
 
@@ -23,7 +23,7 @@ Tous les evenements portent `feature: onboarding`, `surface: dashboard`, `analyt
 | Evenement                           | Cote    | Moment d'emission                                                   | Proprietes principales                                                                                                       |
 | ----------------------------------- | ------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `onboarding_step_viewed`            | client  | Arrivee sur une etape (changement de pathname dans la shell)        | `step` (profile/store/branding/payment/source), `step_index`, `steps_total`, `includes_profile_step`, `includes_source_step` |
-| `onboarding_profile_completed`      | serveur | Sauvegarde de l'etape profil                                        | `business_type`, `avatar_action`, `$set.business_type`                                                                       |
+| `onboarding_profile_completed`      | serveur | Sauvegarde de l'etape profil                                        | `business_type`, `product_category`, `fleet_size`, `avatar_action`, `$set` des trois segments                                |
 | `onboarding_store_info_saved`       | serveur | Sauvegarde de l'etape infos store                                   | `store_id`, `country`, `currency`, `referral_outcome`, flags de completude                                                   |
 | `onboarding_branding_saved`         | client  | Mutation branding reussie, avant navigation vers l'etape paiement   | `has_logo`, `theme`, `primary_color`, `is_default_primary_color`                                                             |
 | `onboarding_stripe_connect_started` | client  | Clic sur "configurer maintenant" (panneau paiement), avant redirect | `is_resume` (KYC repris vs demarre)                                                                                          |
@@ -36,22 +36,24 @@ Pas de PII dans les proprietes : pas de nom, email, adresse, ni message d'erreur
 
 ## Funnels et insights
 
-Crees par `scripts/posthog/setup-onboarding-dashboard.mjs` :
+Tous sur le dashboard [Louez Onboarding](https://eu.posthog.com/project/118395/dashboard/824728) :
 
-- Funnel store : `onboarding_step_viewed (step=store)` -> `onboarding_store_info_saved` -> `onboarding_branding_saved` -> `onboarding_step_viewed (step=payment)` -> `onboarding_completed` (fenetre 14j)
-- Funnel activation : `onboarding_step_viewed` -> `onboarding_completed` -> `product_created` (fenetre 30j, -90d)
-- Funnel profil : `onboarding_step_viewed (step=profile)` -> `onboarding_profile_completed`
-- Trend : onboardings completes par semaine (uniques)
-- Breakdown : `onboarding_completed` par `reservation_mode`
-- Breakdown : `acquisition_channel_reported` par `acquisition_channel` + volume `onboarding_source_skipped`
-- Breakdown : `onboarding_error_shown` par `step`
-- Trend : `onboarding_stripe_connect_started` vs `onboarding_completed (reservation_mode=payment)`
+- [Funnel store](https://eu.posthog.com/project/118395/insights/wmsCD626) : `onboarding_step_viewed (step=store)` -> `onboarding_store_info_saved` -> `onboarding_branding_saved` -> `onboarding_step_viewed (step=payment)` -> `onboarding_completed` (fenetre 14j)
+- [Funnel activation](https://eu.posthog.com/project/118395/insights/jazeZo5U) : `onboarding_step_viewed` -> `onboarding_completed` -> `product_created` (fenetre 30j, -90d)
+- [Funnel profil](https://eu.posthog.com/project/118395/insights/ymm6ogUN) : `onboarding_step_viewed (step=profile)` -> `onboarding_profile_completed`
+- [Trend completion](https://eu.posthog.com/project/118395/insights/VMFnS8EW) : onboardings completes par semaine (uniques)
+- [Mode de reservation](https://eu.posthog.com/project/118395/insights/D4GTkaF6) : `onboarding_completed` par `reservation_mode`
+- [Canaux d'acquisition](https://eu.posthog.com/project/118395/insights/fgiGXDMz) : `acquisition_channel_reported` par `acquisition_channel` + volume `onboarding_source_skipped`
+- [Erreurs par etape](https://eu.posthog.com/project/118395/insights/kG9GFJgh) : `onboarding_error_shown` par `step`
+- [Adoption Stripe Connect](https://eu.posthog.com/project/118395/insights/SRqTfDqb) : `onboarding_stripe_connect_started` vs `onboarding_completed (reservation_mode=payment)`
+- [Categories de produits](https://eu.posthog.com/project/118395/insights/cF7sK5z0) : `onboarding_profile_completed` par `product_category`
+- [Taille de flotte](https://eu.posthog.com/project/118395/insights/hXlMQoI9) : `onboarding_profile_completed` par `fleet_size`
 
 ## Segments utiles
 
 - `includes_profile_step` / `includes_source_step` : compare le flow court (store existant) au flow long (premier store)
 - `country`, `currency` sur `onboarding_store_info_saved`
-- `business_type` (person property, via `$set`)
+- `business_type`, `product_category`, `fleet_size` (person properties, via `$set`) : les trois segments ICP declares a l'etape profil. `business_type = individual` mesure la demande particuliers (P2P) avant de construire pour eux.
 - `acquisition_channel` (person property) : croise le canal avec l'activation en aval
 - `referral_outcome` : les marchands parraines convertissent-ils mieux ?
 
@@ -67,5 +69,7 @@ Crees par `scripts/posthog/setup-onboarding-dashboard.mjs` :
 
 - Temps median par etape (funnel avec time-to-convert) une fois le volume suffisant.
 - Correler `acquisition_channel` avec l'activation (`product_created`, premiere reservation).
+- Activation et retention par `product_category` et `fleet_size` : quel segment convertit le mieux ? Decide l'elargissement au-dela du vertical velo.
+- Volume de `business_type = individual` : si significatif, evaluer l'offre particuliers (P2P) — attention aux implications KYC Stripe personnes physiques et DAC7 avant de construire.
 - Completion du KYC Stripe apres `onboarding_stripe_connect_started` (necessite un event serveur sur `charges_enabled`, non instrumente aujourd'hui).
 - A/B sur l'ordre des etapes ou le wording du mode paiement si le drop sur l'etape payment est confirme.
