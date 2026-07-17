@@ -5,6 +5,7 @@ import { createFilesRouter, type FilesApi } from "files-sdk/api";
 
 import { env as authEnv } from "@louez/auth/env";
 
+import { env } from "@/env";
 import { auth } from "@/lib/auth";
 import { getImageFiles } from "@/lib/storage/files";
 import { getCurrentStore } from "@/lib/store-context";
@@ -12,6 +13,11 @@ import { getCurrentStore } from "@/lib/store-context";
 import { IMAGE_UPLOAD_CONFIG, type ImageUploadKind } from "./image-upload";
 
 const routers = new Map<ImageUploadKind, FilesApi>();
+const appUrl = new URL(env.NEXT_PUBLIC_APP_URL);
+const dashboardOrigin = new URL(
+  `${appUrl.protocol}//${env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN}.${env.NEXT_PUBLIC_APP_DOMAIN}`,
+).origin;
+const allowedOrigins = [...new Set([appUrl.origin, dashboardOrigin])];
 
 const getKeyPrefix = async (kind: ImageUploadKind) => {
   if (kind === "avatar") {
@@ -35,6 +41,7 @@ const createImageFilesRouter = (kind: ImageUploadKind) =>
   createFilesRouter({
     files: () => getImageFiles(),
     operations: ["upload", "url", "delete"],
+    allowedOrigins,
     maxUploadSize: IMAGE_UPLOAD_CONFIG[kind].maxSize,
     secret: `louez-image-upload:${authEnv.AUTH_SECRET}`,
     authorize: async () => ({
