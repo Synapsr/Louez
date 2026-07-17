@@ -74,3 +74,4 @@ SPECIFICATIONS*.md
 /scripts/*
 # ...except build-critical scripts referenced by package.json
 !/scripts/audit-duplicates.mjs
+.playwright-cli
