@@ -151,11 +151,7 @@ export function StorefrontPreview() {
         >
           <div className="flex min-w-0 items-center gap-2.5">
             {preview.logoUrl ? (
-              <img
-                src={preview.logoUrl}
-                alt=""
-                className="size-7 shrink-0 rounded-md object-contain"
-              />
+              <img src={preview.logoUrl} alt="" className="size-7 shrink-0  object-contain" />
             ) : (
               <div
                 className="flex size-7 shrink-0 items-center justify-center rounded-md text-xs font-semibold transition-colors duration-500"

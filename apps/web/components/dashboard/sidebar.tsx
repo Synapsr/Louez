@@ -249,12 +249,12 @@ const UserMenu = ({
         render={
           <Button
             variant="ghost"
-            className="hover:bg-sidebar-accent h-12 w-full justify-start gap-3 px-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
+            className="hover:bg-sidebar-accent min-w-0 *:w-full h-12 w-full justify-start gap-3 px-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
           />
         }
       >
         <UserAvatar src={userImage} seed={userId} size={32} />
-        <span className="truncate text-left text-sm font-medium group-data-[collapsible=icon]:hidden">
+        <span className="truncate min-w-0 text-left text-sm font-medium group-data-[collapsible=icon]:hidden">
           {userEmail}
         </span>
       </DropdownMenuTrigger>

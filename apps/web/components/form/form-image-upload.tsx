@@ -87,7 +87,7 @@ export function FormImageUpload({
             <img
               src={displayValue}
               alt=""
-              className={cn("size-full", shape === "circle" ? "object-cover" : "object-contain")}
+              className={cn("size-full", shape === "circle" ? "object-cover" : "object-cover")}
             />
           ) : (
             (fallback ?? <ImageIcon className="text-muted-foreground size-4" />)
