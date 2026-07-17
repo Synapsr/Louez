@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@louez/ui";
 import { ScrollArea } from "@louez/ui";
 import { cn } from "@louez/utils";
 import { useCart } from "@/contexts/cart-context";
+import { useBrowserTimezoneCity } from "@/hooks/use-browser-timezone-city";
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 import { type PricingMode } from "@/lib/utils/duration";
 import {
@@ -267,13 +268,7 @@ export function HeroDatePicker({
     return true;
   }, [startDate, endDate, startTime, endTime, isSameDay, minRentalMinutes, timezone]);
 
-  const timezoneCity = useMemo(() => {
-    if (!timezone) return null;
-    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (browserTimezone === timezone) return null;
-    const city = timezone.split("/").pop()?.replace(/_/g, " ");
-    return city || timezone;
-  }, [timezone]);
+  const timezoneCity = useBrowserTimezoneCity(timezone);
 
   const durationWarning = useMemo(() => {
     if (!startDate || !endDate || !startTime || !endTime) return null;

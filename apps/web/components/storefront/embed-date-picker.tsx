@@ -31,6 +31,7 @@ import {
   isCalendarDateBeforeSelectedDate,
   useRentalDateCore,
 } from '@/components/storefront/date-picker/core/use-rental-date-core'
+import { useBrowserTimezoneCity } from '@/hooks/use-browser-timezone-city'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -344,13 +345,7 @@ export function EmbedDatePicker({
     tEmbed,
   ])
 
-  const timezoneCity = useMemo(() => {
-    if (!timezone) return null
-    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    if (browserTimezone === timezone) return null
-    const city = timezone.split('/').pop()?.replace(/_/g, ' ')
-    return city || timezone
-  }, [timezone])
+  const timezoneCity = useBrowserTimezoneCity(timezone)
 
   const handleSubmit = () => {
     if (validationError) {
