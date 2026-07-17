@@ -10,6 +10,8 @@ export * from './components/badge'
 
 // Button
 export * from './components/button'
+export * from './components/animated-icon-swap'
+export * from './components/spinner'
 
 // Calendar
 export * from './components/calendar'

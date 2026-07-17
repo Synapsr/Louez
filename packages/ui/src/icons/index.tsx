@@ -1,3 +1,5 @@
+export { Star as StarIcon, StarSolid as StarSolidIcon } from "@mynaui/icons-react";
+
 export {
   BarChart3 as AnalyticsIcon,
   CalendarDays as CalendarDaysIcon,
@@ -18,8 +20,9 @@ export {
   Users as UsersIcon,
   Warehouse as WarehouseIcon,
   Loader as LoaderIcon,
-  Star as StarIcon,
   Zap as ZapIcon,
-} from 'lucide-react';
+  ArrowRight as ArrowRightIcon,
+  ArrowLeft as ArrowLeftIcon,
+} from "lucide-react";
 
-export { GoogleCalendar as GoogleCalendarIcon } from './icon.google-calendar';
+export { GoogleCalendar as GoogleCalendarIcon } from "./icon.google-calendar";

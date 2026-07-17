@@ -11,18 +11,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Button } from '@louez/ui'
 import Link from 'next/link'
 
-export default async function StripeCallbackPage() {
+import { sanitizeStripeNextPath } from '../stripe-return'
+
+export default async function StripeCallbackPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>
+}) {
   const store = await getCurrentStore()
 
   if (!store) {
     redirect('/onboarding')
   }
 
+  // Where the flow that launched the KYC wants the user back (e.g. the
+  // onboarding source step). Allowlisted; null for the regular settings flow.
+  const next = sanitizeStripeNextPath((await searchParams).next)
+
   const t = await getTranslations('dashboard.settings.payments')
 
   // If no Stripe account, redirect back
   if (!store.stripeAccountId) {
-    redirect('/dashboard/settings/payments')
+    redirect(next ? '/onboarding/stripe' : '/dashboard/settings/payments')
   }
 
   // Get latest status from Stripe
@@ -30,7 +40,8 @@ export default async function StripeCallbackPage() {
   try {
     status = await getAccountStatus(store.stripeAccountId)
   } catch {
-    redirect('/dashboard/settings/payments')
+    // Status unknown: don't move the onboarding flow forward blindly
+    redirect(next ? '/onboarding/stripe' : '/dashboard/settings/payments')
   }
 
   // Update store with latest status
@@ -42,6 +53,14 @@ export default async function StripeCallbackPage() {
       updatedAt: new Date(),
     })
     .where(eq(stores.id, store.id))
+
+  // Status synced — resume the interrupted flow without the settings screen.
+  // Stripe also sends users here when they bail out of the KYC ("Return to
+  // Louez"): only move the flow forward once the form was actually submitted;
+  // otherwise land back on the reservation-mode step so they can re-choose.
+  if (next) {
+    redirect(status.detailsSubmitted ? next : '/onboarding/stripe')
+  }
 
   const isActive = status.chargesEnabled && status.detailsSubmitted
 

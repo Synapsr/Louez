@@ -10,6 +10,7 @@
     "**/dist/**",
     "**/node_modules/**",
     "**/routeTree.gen.ts",
-    "**/*.generated.ts"
+    "**/*.generated.ts",
+    "packages/db/src/migrations/**"
   ]
 }

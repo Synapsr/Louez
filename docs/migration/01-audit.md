@@ -44,11 +44,11 @@ Before fixing anything, understand what you have.
 
 Sort findings into:
 
-| Category | Impact | Example |
-|----------|--------|---------|
-| **Blocking** | Prevents scaling or causes bugs | Circular deps, `any` in API layer, missing auth checks |
-| **Structural** | Makes code hard to navigate | No domain folders in `components/`, inconsistent naming |
-| **Cosmetic** | Annoying but not harmful | Mixed naming styles, unused imports |
+| Category       | Impact                          | Example                                                 |
+| -------------- | ------------------------------- | ------------------------------------------------------- |
+| **Blocking**   | Prevents scaling or causes bugs | Circular deps, `any` in API layer, missing auth checks  |
+| **Structural** | Makes code hard to navigate     | No domain folders in `components/`, inconsistent naming |
+| **Cosmetic**   | Annoying but not harmful        | Mixed naming styles, unused imports                     |
 
 ## Step 3: Prioritize
 
@@ -59,6 +59,7 @@ Sort findings into:
 ## Output
 
 The audit produces a document listing:
+
 - Current structure vs target structure
 - List of violations by category
 - Recommended migration order (see [02-strategy.md](02-strategy.md))

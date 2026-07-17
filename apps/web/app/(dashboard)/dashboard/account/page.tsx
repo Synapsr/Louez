@@ -16,8 +16,10 @@ import {
   CardTitle,
 } from '@louez/ui'
 import { Button } from '@louez/ui'
-import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
 import { Badge } from '@louez/ui'
+import { Separator } from '@louez/ui'
+
+import { AccountInfoForm } from './account-info-form'
 
 export default async function AccountSettingsPage() {
   const session = await auth()
@@ -35,8 +37,6 @@ export default async function AccountSettingsPage() {
 
   const t = await getTranslations('dashboard.settings')
   const tCommon = await getTranslations('common')
-
-  const initials = user.email.slice(0, 2).toUpperCase()
 
   return (
     <div className="space-y-8">
@@ -56,16 +56,13 @@ export default async function AccountSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage src={user.image || undefined} />
-              <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-medium">{user.name || t('accountSettings.user')}</p>
-              <p className="text-sm text-muted-foreground">{user.email}</p>
-            </div>
-          </div>
+          <AccountInfoForm
+            initialName={user.name || ''}
+            initialImage={user.image}
+            avatarSeed={user.id}
+          />
+
+          <Separator />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

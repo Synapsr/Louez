@@ -1,54 +1,48 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
+import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from "drizzle-orm";
+import { z } from "zod";
 
-import { db } from '@louez/db';
-import { storeMembers, stores, subscriptions } from '@louez/db';
-import { type StoreInfoInput, storeInfoSchema } from '@louez/validations';
-import { defaultBusinessHours } from '@louez/validations';
+import { db } from "@louez/db";
+import { storeMembers, stores, subscriptions } from "@louez/db";
+import { type StoreInfoInput, storeInfoSchema } from "@louez/validations";
+import { defaultBusinessHours } from "@louez/validations";
 
-import { auth } from '@/lib/auth';
+import { auth } from "@/lib/auth";
 import {
   getDefaultFreeReservations,
   getDefaultPayAsYouGoConfigSnapshot,
-} from '@/lib/pay-as-you-go/defaults';
-import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
-import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
-import { captureReferralServerEvent } from '@/lib/referral/analytics';
-import { referralAnalyticsEvents } from '@/lib/referral/analytics-events';
-import {
-  type ReferralAttribution,
-  resolveReferralAttribution,
-} from '@/lib/referral/attribution';
-import { getReferralProgramConfig } from '@/lib/referral/defaults';
-import {
-  referralCookieDomain,
-  referralCookieSecure,
-} from '@/lib/referral/link';
-import { getActiveStoreId, setActiveStoreId } from '@/lib/store-context';
-import { getTimezoneForCountry } from '@/lib/utils/countries';
-import {
-  generateReferralCode,
-  isValidReferralCode,
-} from '@/lib/utils/referral';
+} from "@/lib/pay-as-you-go/defaults";
+import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
+import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { captureReferralServerEvent } from "@/lib/referral/analytics";
+import { referralAnalyticsEvents } from "@/lib/referral/analytics-events";
+import { type ReferralAttribution, resolveReferralAttribution } from "@/lib/referral/attribution";
+import { getReferralProgramConfig } from "@/lib/referral/defaults";
+import { referralCookieDomain, referralCookieSecure } from "@/lib/referral/link";
+import { getActiveStoreId, setActiveStoreId } from "@/lib/store-context";
+import { getTimezoneForCountry } from "@/lib/utils/countries";
+import { generateReferralCode, isValidReferralCode } from "@/lib/utils/referral";
 
 type ReferralAttributionOutcome =
-  | 'no_cookie'
-  | 'invalid_code'
-  | 'existing_owner'
-  | 'unknown_referrer'
-  | 'self_referral'
-  | 'already_attributed'
-  | 'attributed';
+  | "no_cookie"
+  | "invalid_code"
+  | "existing_owner"
+  | "unknown_referrer"
+  | "self_referral"
+  | "already_attributed"
+  | "attributed";
 
 interface PendingReferralAttribution {
   referralCookie: string | null;
   attribution: ReferralAttribution | null;
   outcome: ReferralAttributionOutcome;
 }
+
+const editingStoreIdSchema = z.string().length(21).nullable();
 
 async function resolvePendingReferralAttribution({
   currentUserId,
@@ -58,31 +52,28 @@ async function resolvePendingReferralAttribution({
   ignoredOwnedStoreId?: string;
 }): Promise<PendingReferralAttribution> {
   const cookieStore = await cookies();
-  const referralCookie = cookieStore.get('louez_referral')?.value ?? null;
+  const referralCookie = cookieStore.get("louez_referral")?.value ?? null;
 
   if (!referralCookie) {
-    return { referralCookie, attribution: null, outcome: 'no_cookie' };
+    return { referralCookie, attribution: null, outcome: "no_cookie" };
   }
 
   if (!isValidReferralCode(referralCookie)) {
-    return { referralCookie, attribution: null, outcome: 'invalid_code' };
+    return { referralCookie, attribution: null, outcome: "invalid_code" };
   }
 
   const ownsAStore = await db.query.storeMembers.findFirst({
     where: ignoredOwnedStoreId
       ? and(
           eq(storeMembers.userId, currentUserId),
-          eq(storeMembers.role, 'owner'),
+          eq(storeMembers.role, "owner"),
           ne(storeMembers.storeId, ignoredOwnedStoreId),
         )
-      : and(
-          eq(storeMembers.userId, currentUserId),
-          eq(storeMembers.role, 'owner'),
-        ),
+      : and(eq(storeMembers.userId, currentUserId), eq(storeMembers.role, "owner")),
     columns: { id: true },
   });
   if (ownsAStore) {
-    return { referralCookie, attribution: null, outcome: 'existing_owner' };
+    return { referralCookie, attribution: null, outcome: "existing_owner" };
   }
 
   const referrerStore = await db.query.stores.findFirst({
@@ -91,7 +82,7 @@ async function resolvePendingReferralAttribution({
   });
 
   if (!referrerStore) {
-    return { referralCookie, attribution: null, outcome: 'unknown_referrer' };
+    return { referralCookie, attribution: null, outcome: "unknown_referrer" };
   }
 
   const attribution = resolveReferralAttribution({
@@ -101,13 +92,13 @@ async function resolvePendingReferralAttribution({
   });
 
   if (!attribution) {
-    return { referralCookie, attribution: null, outcome: 'self_referral' };
+    return { referralCookie, attribution: null, outcome: "self_referral" };
   }
 
   return {
     referralCookie,
     attribution,
-    outcome: 'attributed',
+    outcome: "attributed",
   };
 }
 
@@ -118,17 +109,17 @@ async function consumeReferralCookie(referralCookie: string | null) {
   const cookieDomain = referralCookieDomain();
   const secure = referralCookieSecure();
   const clearOptions = {
-    path: '/',
+    path: "/",
     maxAge: 0,
     httpOnly: true,
-    sameSite: 'lax' as const,
+    sameSite: "lax" as const,
     secure,
   };
 
-  cookieStore.set('louez_referral', '', clearOptions);
+  cookieStore.set("louez_referral", "", clearOptions);
   if (!cookieDomain) return;
 
-  cookieStore.set('louez_referral', '', {
+  cookieStore.set("louez_referral", "", {
     ...clearOptions,
     domain: cookieDomain,
   });
@@ -141,8 +132,7 @@ async function grantReferredStoreWelcomeReward({
   storeId: string;
   currency: string;
 }) {
-  const referredReward =
-    getReferralProgramConfig().referredRewardFreeReservations;
+  const referredReward = getReferralProgramConfig().referredRewardFreeReservations;
 
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
@@ -162,8 +152,8 @@ async function grantReferredStoreWelcomeReward({
 
   await db.insert(subscriptions).values({
     storeId,
-    planSlug: 'pay_as_you_go',
-    billingMode: 'pay_as_you_go',
+    planSlug: "pay_as_you_go",
+    billingMode: "pay_as_you_go",
     payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(currency),
     freeReservationsGranted: referredReward,
   });
@@ -190,16 +180,14 @@ async function trackReferralAttributionResolved({
     distinctId: userId,
     event: referralAnalyticsEvents.attributionResolved,
     properties: {
-      placement: 'onboarding_store_create',
+      placement: "onboarding_store_create",
       referral_attribution_outcome: pendingReferral.outcome,
       has_referral_cookie: Boolean(pendingReferral.referralCookie),
       is_existing_incomplete_store: isExistingIncompleteStore,
       referred_store_id: storeId,
       referrer_store_id: pendingReferral.attribution?.referredByStoreId ?? null,
-      referred_reward_free_reservations:
-        programConfig.referredRewardFreeReservations,
-      referrer_reward_free_reservations:
-        programConfig.referrerRewardFreeReservations,
+      referred_reward_free_reservations: programConfig.referredRewardFreeReservations,
+      referrer_reward_free_reservations: programConfig.referrerRewardFreeReservations,
       min_qualifying_amount_cents: programConfig.minQualifyingAmountCents,
       monthly_cap_per_referrer: programConfig.monthlyCapPerReferrer,
       clawback_window_days: programConfig.clawbackWindowDays,
@@ -224,25 +212,29 @@ async function trackReferredRewardGranted({
     distinctId: userId,
     event: referralAnalyticsEvents.referredRewardGranted,
     properties: {
-      placement: 'onboarding_store_create',
+      placement: "onboarding_store_create",
       referred_store_id: storeId,
       referrer_store_id: referrerStoreId,
-      referred_reward_free_reservations:
-        getReferralProgramConfig().referredRewardFreeReservations,
+      referred_reward_free_reservations: getReferralProgramConfig().referredRewardFreeReservations,
       currency,
     },
   });
 }
 
-export async function createStore(data: StoreInfoInput) {
+export async function createStore(data: StoreInfoInput, editingStoreId: string | null = null) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const validated = storeInfoSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
+  }
+
+  const validatedEditingStoreId = editingStoreIdSchema.safeParse(editingStoreId);
+  if (!validatedEditingStoreId.success) {
+    return { error: "errors.invalidData" };
   }
 
   // Check if we're updating an existing incomplete store or creating a new one
@@ -252,13 +244,34 @@ export async function createStore(data: StoreInfoInput) {
   let analyticsIsExistingIncompleteStore = false;
   let analyticsReferralOutcome: ReferralAttributionOutcome | null = null;
 
-  if (activeStoreId) {
+  if (validatedEditingStoreId.data) {
+    const membership = await db.query.storeMembers.findFirst({
+      where: and(
+        eq(storeMembers.storeId, validatedEditingStoreId.data),
+        eq(storeMembers.userId, session.user.id),
+        eq(storeMembers.role, "owner"),
+      ),
+      columns: { id: true },
+    });
+
+    if (!membership) {
+      return { error: "errors.unauthorized" };
+    }
+
+    storeToUpdate = await db.query.stores.findFirst({
+      where: eq(stores.id, validatedEditingStoreId.data),
+    });
+
+    if (!storeToUpdate) {
+      return { error: "errors.invalidData" };
+    }
+  } else if (activeStoreId) {
     // Check if user has access to this store and it's not completed
     const membership = await db.query.storeMembers.findFirst({
       where: and(
         eq(storeMembers.storeId, activeStoreId),
         eq(storeMembers.userId, session.user.id),
-        eq(storeMembers.role, 'owner'),
+        eq(storeMembers.role, "owner"),
       ),
     });
 
@@ -275,10 +288,7 @@ export async function createStore(data: StoreInfoInput) {
   // Fallback: if active-store cookie is missing, reuse any incomplete store owned by the user
   if (!storeToUpdate) {
     const incompleteOwnedStores = await db.query.stores.findMany({
-      where: and(
-        eq(stores.userId, session.user.id),
-        eq(stores.onboardingCompleted, false),
-      ),
+      where: and(eq(stores.userId, session.user.id), eq(stores.onboardingCompleted, false)),
       orderBy: (storeFields, { desc }) => [desc(storeFields.updatedAt)],
     });
 
@@ -290,40 +300,39 @@ export async function createStore(data: StoreInfoInput) {
     }
   }
 
-  // Slug conflict check: allow keeping/editing the current incomplete store slug
+  // Slug conflict check: allow keeping/editing the explicitly targeted store slug.
   const existingStore = await db.query.stores.findFirst({
     where: eq(stores.slug, validated.data.slug),
   });
   if (existingStore) {
     const canReuseExistingStore =
-      existingStore.userId === session.user.id &&
-      existingStore.onboardingCompleted === false;
+      existingStore.userId === session.user.id && existingStore.onboardingCompleted === false;
 
     if (!storeToUpdate && canReuseExistingStore) {
       storeToUpdate = existingStore;
     }
 
     if (!storeToUpdate || existingStore.id !== storeToUpdate.id) {
-      return { error: 'errors.slugTaken' };
+      return { error: "errors.slugTaken" };
     }
   }
 
   if (storeToUpdate) {
-    const pendingReferral = storeToUpdate.referredByStoreId
-      ? ({
-          referralCookie: null,
-          attribution: null,
-          outcome: 'already_attributed',
-        } satisfies PendingReferralAttribution)
-      : await resolvePendingReferralAttribution({
-          currentUserId: session.user.id,
-          ignoredOwnedStoreId: storeToUpdate.id,
-        });
+    const isExistingIncompleteStore = storeToUpdate.onboardingCompleted !== true;
+    const pendingReferral =
+      !isExistingIncompleteStore || storeToUpdate.referredByStoreId
+        ? ({
+            referralCookie: null,
+            attribution: null,
+            outcome: "already_attributed",
+          } satisfies PendingReferralAttribution)
+        : await resolvePendingReferralAttribution({
+            currentUserId: session.user.id,
+            ignoredOwnedStoreId: storeToUpdate.id,
+          });
 
-    // Update existing incomplete store, preserving businessHours if they exist
-    const existingSettings = storeToUpdate.settings as {
-      businessHours?: typeof defaultBusinessHours;
-    } | null;
+    // Preserve settings that are configured after onboarding when the owner revisits this step.
+    const existingSettings = storeToUpdate.settings;
     const existingBusinessHours =
       existingSettings?.businessHours?.enabled !== undefined
         ? existingSettings.businessHours
@@ -339,17 +348,16 @@ export async function createStore(data: StoreInfoInput) {
         email: validated.data.email || null,
         phone: validated.data.phone || null,
         referredByUserId:
-          pendingReferral.attribution?.referredByUserId ??
-          storeToUpdate.referredByUserId,
+          pendingReferral.attribution?.referredByUserId ?? storeToUpdate.referredByUserId,
         referredByStoreId:
-          pendingReferral.attribution?.referredByStoreId ??
-          storeToUpdate.referredByStoreId,
+          pendingReferral.attribution?.referredByStoreId ?? storeToUpdate.referredByStoreId,
         settings: {
-          reservationMode: 'payment',
-          minRentalMinutes: 60,
-          maxRentalMinutes: null,
-          advanceNoticeMinutes: 1440,
-          turnoverBufferMinutes: 0,
+          ...existingSettings,
+          reservationMode: existingSettings?.reservationMode ?? "payment",
+          minRentalMinutes: existingSettings?.minRentalMinutes ?? 60,
+          maxRentalMinutes: existingSettings?.maxRentalMinutes ?? null,
+          advanceNoticeMinutes: existingSettings?.advanceNoticeMinutes ?? 1440,
+          turnoverBufferMinutes: existingSettings?.turnoverBufferMinutes ?? 0,
           businessHours: existingBusinessHours,
           country: validated.data.country,
           timezone: getTimezoneForCountry(validated.data.country),
@@ -359,38 +367,40 @@ export async function createStore(data: StoreInfoInput) {
       })
       .where(eq(stores.id, storeToUpdate.id));
 
-    if (pendingReferral.attribution) {
-      await grantReferredStoreWelcomeReward({
-        storeId: storeToUpdate.id,
-        currency: validated.data.currency,
-      });
-      await trackReferredRewardGranted({
+    if (isExistingIncompleteStore) {
+      if (pendingReferral.attribution) {
+        await grantReferredStoreWelcomeReward({
+          storeId: storeToUpdate.id,
+          currency: validated.data.currency,
+        });
+        await trackReferredRewardGranted({
+          userId: session.user.id,
+          storeId: storeToUpdate.id,
+          referrerStoreId: pendingReferral.attribution.referredByStoreId,
+          currency: validated.data.currency,
+        });
+      }
+      await consumeReferralCookie(pendingReferral.referralCookie);
+
+      await trackReferralAttributionResolved({
         userId: session.user.id,
         storeId: storeToUpdate.id,
-        referrerStoreId: pendingReferral.attribution.referredByStoreId,
+        pendingReferral,
+        isExistingIncompleteStore: true,
         currency: validated.data.currency,
+        country: validated.data.country,
       });
     }
-    await consumeReferralCookie(pendingReferral.referralCookie);
-
-    await trackReferralAttributionResolved({
-      userId: session.user.id,
-      storeId: storeToUpdate.id,
-      pendingReferral,
-      isExistingIncompleteStore: true,
-      currency: validated.data.currency,
-      country: validated.data.country,
-    });
 
     analyticsStoreId = storeToUpdate.id;
-    analyticsIsExistingIncompleteStore = true;
-    analyticsReferralOutcome = pendingReferral.outcome;
+    analyticsIsExistingIncompleteStore = isExistingIncompleteStore;
+    analyticsReferralOutcome = isExistingIncompleteStore ? pendingReferral.outcome : null;
 
     // Ensure the updated store stays active for subsequent onboarding steps
     const setStoreResult = await setActiveStoreId(storeToUpdate.id);
     if (!setStoreResult.success) {
       console.error(
-        '[SECURITY] Failed to set active store after onboarding update:',
+        "[SECURITY] Failed to set active store after onboarding update:",
         setStoreResult.error,
       );
     }
@@ -399,10 +409,8 @@ export async function createStore(data: StoreInfoInput) {
     const pendingReferral = await resolvePendingReferralAttribution({
       currentUserId: session.user.id,
     });
-    const referredByUserId =
-      pendingReferral.attribution?.referredByUserId ?? null;
-    const referredByStoreId =
-      pendingReferral.attribution?.referredByStoreId ?? null;
+    const referredByUserId = pendingReferral.attribution?.referredByUserId ?? null;
+    const referredByStoreId = pendingReferral.attribution?.referredByStoreId ?? null;
 
     // Consume the referral cookie exactly once, clearing it with the SAME domain it was set
     // with — a bare delete() emits a host-only expiry that does not match the .louez.io
@@ -435,7 +443,7 @@ export async function createStore(data: StoreInfoInput) {
         referredByUserId,
         referredByStoreId,
         settings: {
-          reservationMode: 'payment',
+          reservationMode: "payment",
           minRentalMinutes: 60,
           maxRentalMinutes: null,
           advanceNoticeMinutes: 1440,
@@ -452,7 +460,7 @@ export async function createStore(data: StoreInfoInput) {
     await db.insert(storeMembers).values({
       storeId: newStore.id,
       userId: session.user.id,
-      role: 'owner',
+      role: "owner",
     });
 
     // New stores default to pay-as-you-go billing (the owner can switch to a
@@ -461,11 +469,9 @@ export async function createStore(data: StoreInfoInput) {
     // so the store keeps these tariffs for life even if the offer later changes.
     await db.insert(subscriptions).values({
       storeId: newStore.id,
-      planSlug: 'pay_as_you_go',
-      billingMode: 'pay_as_you_go',
-      payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(
-        validated.data.currency,
-      ),
+      planSlug: "pay_as_you_go",
+      billingMode: "pay_as_you_go",
+      payAsYouGoConfig: getDefaultPayAsYouGoConfigSnapshot(validated.data.currency),
       // Welcome gift: free reservations (commission waived) for the new store. A store
       // that signed up through a referral gets the larger Referred Reward instead.
       freeReservationsGranted: referredByStoreId
@@ -498,10 +504,7 @@ export async function createStore(data: StoreInfoInput) {
     const setStoreResult = await setActiveStoreId(newStore.id);
     if (!setStoreResult.success) {
       // This should not happen since we just created the store and membership
-      console.error(
-        '[SECURITY] Failed to set active store after creation:',
-        setStoreResult.error,
-      );
+      console.error("[SECURITY] Failed to set active store after creation:", setStoreResult.error);
     }
   }
 
@@ -510,8 +513,8 @@ export async function createStore(data: StoreInfoInput) {
       distinctId: session.user.id,
       event: productAnalyticsEvents.onboardingStoreInfoSaved,
       properties: {
-        feature: 'onboarding',
-        surface: 'dashboard',
+        feature: "onboarding",
+        surface: "dashboard",
         store_id: analyticsStoreId,
         is_existing_incomplete_store: analyticsIsExistingIncompleteStore,
         referral_outcome: analyticsReferralOutcome,
@@ -527,6 +530,6 @@ export async function createStore(data: StoreInfoInput) {
     });
   }
 
-  revalidatePath('/onboarding');
+  revalidatePath("/onboarding");
   return { success: true };
 }

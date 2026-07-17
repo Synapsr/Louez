@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {ora} other {ore}}",
     "weekUnit": "{count, plural, one {settimana} other {settimane}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "phoneInput": {
+      "selectCountry": "Seleziona un paese",
+      "searchCountry": "Cerca un paese...",
+      "noResults": "Nessun paese trovato"
+    },
     "addressInput": {
       "placeholder": "Cerca un indirizzo...",
       "coordinatesSaved": "Coordinate salvate",
@@ -136,19 +141,14 @@
     "sendCode": "Invia codice",
     "enterCode": "Inserisci il codice",
     "codeSentTo": "Un codice di verifica è stato inviato a",
+    "verifyEmailTitle": "Verifica la tua email",
+    "codeSentDescription": "Abbiamo inviato un codice di sicurezza monouso a <strong>{email}</strong>. Dovrebbe arrivare entro pochi minuti. Se non lo vedi, controlla la cartella spam o posta indesiderata e inseriscilo qui sotto.",
     "verify": "Verifica",
     "verifying": "Verifica in corso...",
     "or": "o",
-    "loginTitle": "Benvenuto",
+    "loginTitle": "Benvenuto su louez",
     "loginDescription": "Inserisci la tua email per continuare. Se non hai un account, verrà creato automaticamente.",
     "linkWillBeSent": "Un link sicuro ti verrà inviato via email. Nessuna password da ricordare.",
-    "heroTitle": "Gestisci i tuoi noleggi con facilita",
-    "heroSubtitle": "La piattaforma tutto-in-uno per i professionisti del noleggio. Crea il tuo negozio online, gestisci le prenotazioni e fai crescere la tua attivita.",
-    "featureProducts": "Catalogo prodotti illimitato",
-    "featureReservations": "Gestione prenotazioni automatizzata",
-    "featureCustomers": "Database clienti centralizzato",
-    "featureStats": "Statistiche e analisi dettagliate",
-    "trustedBy": "Unisciti a centinaia di professionisti del noleggio che si fidano di noi",
     "checkEmail": "Controlla la tua email",
     "emailSentTo": "Un link di accesso e stato inviato a",
     "clickLinkToSignIn": "Clicca sul link nell'email per accedere. Il link scade tra 24 ore.",
@@ -169,7 +169,19 @@
       "default": "Si e verificato un errore. Riprova."
     },
     "referralBanner": "{storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
-    "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite."
+    "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
+    "socialProofRating": "4,9/5",
+    "socialProofTrusted": "Oltre 450 noleggiatori si affidano a noi per gestire i loro noleggi",
+    "review1Quote": "Abbiamo lasciato il nostro vecchio software quando i prezzi sono diventati troppo alti e siamo passati a Louez.io… e onestamente, nessun rimpianto! Semplice, flessibile, economico ed efficace.",
+    "review1Role": "Socio amministratore · Bicy, Dijon",
+    "review2Quote": "La configurazione è stata semplice e veloce. Lo strumento è intuitivo, sia per noi nella gestione sia per i nostri clienti al momento della prenotazione. Un vero risparmio di tempo ogni giorno.",
+    "review2Role": "Co-fondatore · Bloom",
+    "review3Quote": "Louez.io è una piattaforma affidabile, chiara e precisa. La gestione della stagione sarà molto più semplice e veloce.",
+    "review3Role": "Co-fondatore · Les Frères Complices",
+    "perk1": "Le tue prime 15 prenotazioni in omaggio",
+    "perk2": "Poi 1 € a prenotazione — 0% di commissioni, nessun abbonamento",
+    "perk3": "Il tuo negozio online pronto in 5 minuti",
+    "visitShop": "Vedi il negozio"
   },
   "invitation": {
     "inviteToJoin": "{name} ti invita a unirti al team",
@@ -551,20 +563,27 @@
         "title": "Primi passi",
         "description": "Alcuni passaggi per iniziare",
         "stepsCompleted": "passaggi completati",
-        "dismissForNow": "Nascondi per ora",
         "steps": {
           "createAccount": "Crea il tuo account",
           "configureStore": "Configura il tuo negozio",
           "addFirstProduct": "Aggiungi il tuo primo prodotto",
+          "connectStripe": "Attiva i pagamenti online",
           "firstReservation": "Ricevi la tua prima prenotazione",
           "firstCompleted": "Completa il tuo primo noleggio"
+        },
+        "descriptions": {
+          "addFirstProduct": "Aggiungi il tuo primo prodotto così i clienti possono prenotare.",
+          "connectStripe": "Collega Stripe per accettare pagamenti con carta al momento della prenotazione.",
+          "firstReservation": "Condividi il tuo negozio con i clienti o crea una prenotazione manualmente.",
+          "firstCompleted": "Una volta restituito il noleggio, segna la prenotazione come completata."
         },
         "start": "Inizia",
         "addProductHint": "Aggiungi il tuo primo prodotto per permettere ai clienti di prenotare.",
         "addFirstProduct": "Aggiungi un prodotto",
         "shareHint": "Condividi il tuo negozio per ricevere le tue prime prenotazioni.",
         "viewStore": "Vedi il mio negozio",
-        "createReservation": "Crea una prenotazione"
+        "createReservation": "Crea una prenotazione",
+        "connectStripe": "Collega Stripe"
       },
       "stats": {
         "products": "Prodotti",
@@ -4111,6 +4130,22 @@
       },
       "referrals": "Referral"
     },
+    "commandPalette": {
+      "title": "Tavolozza dei comandi",
+      "trigger": "Cerca un'azione…",
+      "placeholder": "Cerca un'azione o una pagina…",
+      "empty": "Nessuna azione trovata.",
+      "groups": {
+        "create": "Crea",
+        "navigate": "Vai a",
+        "tools": "Strumenti"
+      },
+      "footer": {
+        "navigate": "Naviga",
+        "open": "Apri",
+        "close": "Chiudi"
+      }
+    },
     "aiChat": {
       "open": "Assistente IA",
       "badge": "IA",
@@ -4977,15 +5012,53 @@
       "title": "Benvenuto su Louez.io",
       "description": "Configura il tuo negozio in pochi passi"
     },
+    "profile": {
+      "title": "Facciamo conoscenza",
+      "description": "Raccontaci qualcosa di te per personalizzare la tua esperienza.",
+      "photo": "Foto profilo",
+      "photoHelp": "PNG o JPG, max 2 MB",
+      "photoError": "Seleziona un'immagine",
+      "photoSizeError": "L'immagine non deve superare i 2 MB",
+      "name": "Il tuo nome",
+      "namePlaceholder": "Mario Rossi",
+      "businessType": "Sei",
+      "businessTypePlaceholder": "Seleziona un'opzione",
+      "businessTypes": {
+        "independent": "Indipendente",
+        "establishedStore": "Negozio avviato",
+        "association": "Associazione",
+        "individual": "Privato"
+      },
+      "productCategory": "Cosa vuoi noleggiare",
+      "productCategoryPlaceholder": "Seleziona una categoria",
+      "productCategories": {
+        "bikes": "Biciclette",
+        "sportsOutdoor": "Sport e outdoor",
+        "partyEvents": "Eventi e audio",
+        "toolsDiy": "Attrezzi e fai da te",
+        "vehicles": "Veicoli",
+        "electronics": "Elettronica",
+        "other": "Altro"
+      },
+      "fleetSize": "Quanti articoli vuoi noleggiare",
+      "fleetSizePlaceholder": "Seleziona un intervallo",
+      "fleetSizes": {
+        "upTo5": "Da 1 a 5",
+        "upTo20": "Da 6 a 20",
+        "upTo50": "Da 21 a 50",
+        "moreThan50": "Più di 50"
+      }
+    },
     "store": {
       "title": "Informazioni del tuo negozio",
       "description": "Queste informazioni saranno visibili ai tuoi clienti",
       "name": "Nome negozio",
       "namePlaceholder": "Il mio negozio di noleggio",
-      "slug": "Indirizzo negozio",
+      "slug": "Indirizzo web del negozio",
       "slugPlaceholder": "mio-negozio",
       "slugHelp": "Il tuo negozio sara accessibile su {slug}.{domain}",
       "slugDefault": "tuo-negozio",
+      "resetSlug": "Usa l'URL suggerito",
       "pricingMode": "Modalita di prezzo",
       "pricingDay": "Giornaliero",
       "pricingDayDesc": "Prezzo al giorno",
@@ -5040,22 +5113,49 @@
       "quantityHelp": "Numero di unita di questo prodotto disponibili per il noleggio"
     },
     "stripe": {
-      "title": "Modalita prenotazione",
-      "description": "Scegli come vuoi gestire le prenotazioni",
-      "requestMode": "Richiesta di prenotazione",
-      "recommended": "Consigliato",
-      "requestModeDescription": "I clienti inviano una richiesta. Validi manualmente e gestisci il pagamento tu stesso (contanti, bonifico, carta in loco).",
+      "title": "Incassa le prenotazioni online",
+      "description": "Scegli come prenotano i tuoi clienti. Potrai cambiare in qualsiasi momento.",
       "paymentMode": "Pagamento online",
-      "paymentModeDescription": "I clienti pagano direttamente al momento della prenotazione. Ricevi pagamenti automaticamente tramite Stripe.",
-      "howItWorks": "Come funziona?",
-      "step1": "1. Il cliente fa una richiesta di prenotazione",
-      "step2": "2. Ricevi una notifica via email",
-      "step3": "3. Accetti o rifiuti la richiesta",
-      "step4": "4. Il cliente riceve la conferma via email",
-      "step5": "5. Gestisci il pagamento al ritiro",
-      "paymentSetupTitle": "Configurazione rapida",
-      "paymentSetupDescription": "Dopo aver creato il tuo negozio, vai in Impostazioni → Pagamento online per collegare il tuo account Stripe e iniziare a ricevere pagamenti.",
-      "configComplete": "Configurazione completata!"
+      "recommended": "Consigliato",
+      "paymentModeDescription": "I clienti pagano al momento della prenotazione. Incasso sicuro tramite Stripe.",
+      "paymentModeNote": "L'attivazione di Stripe richiede una verifica dell'identità (5–10 min), ora o più tardi dalla dashboard. Nel frattempo le prenotazioni passano automaticamente alla conferma manuale.",
+      "requestMode": "Richiesta di prenotazione",
+      "requestModeDescription": "I clienti inviano una richiesta. Confermi e incassi tu stesso (contanti, bonifico, carta in negozio).",
+      "requestModeNote": "Confermi e incassi ogni prenotazione. Potrai passare al pagamento online in qualsiasi momento dalle impostazioni.",
+      "configComplete": "Configurazione completata!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Perché il pagamento online?",
+          "benefit1": "Incasso immediato, alla prenotazione",
+          "benefit2": "Meno no-show grazie al pagamento anticipato",
+          "benefit3": "Cauzione con blocco su carta, senza addebito",
+          "benefit4": "Bonifici automatici sul tuo conto",
+          "kycTitle": "Attivare Stripe",
+          "kycStep1": "Crea il tuo account — 2 minuti",
+          "kycStep2": "Verifica la tua identità — documento e IBAN, da 5 a 10 min",
+          "kycStep3": "Il pagamento online si attiva automaticamente",
+          "configureNow": "Configura Stripe ora",
+          "resumeNow": "Riprendi la configurazione di Stripe",
+          "configureLater": "Oppure più tardi dalla dashboard — nel frattempo le prenotazioni passano alla conferma manuale."
+        },
+        "request": {
+          "howTitle": "Come funziona?",
+          "step1": "Il cliente invia una richiesta",
+          "step2": "Ricevi un'email",
+          "step3": "Accetti o rifiuti",
+          "step4": "Il cliente riceve la conferma",
+          "step5": "Incassi al ritiro",
+          "prosTitle": "Cosa guadagni",
+          "pros1": "Controllo totale su ogni prenotazione",
+          "pros2": "Nessuna configurazione",
+          "pros3": "Contanti, bonifico o carta in negozio",
+          "consTitle": "Cosa perdi",
+          "cons1": "Solleciti e insoluti da gestire",
+          "cons2": "Più no-show senza pagamento anticipato",
+          "cons3": "Nessuna cauzione automatica",
+          "switchNote": "Passa al pagamento online in qualsiasi momento dalle impostazioni."
+        }
+      }
     },
     "complete": {
       "title": "Il tuo negozio e pronto!",
@@ -5063,11 +5163,38 @@
       "viewStore": "Vedi il mio negozio",
       "goToDashboard": "Vai alla dashboard"
     },
+    "preview": {
+      "reserve": "Prenota",
+      "pay": "Paga"
+    },
+    "source": {
+      "title": "Un'ultima cosa…",
+      "description": "Come hai conosciuto Louez?",
+      "wordOfMouth": "Passaparola",
+      "searchEngine": "Motore di ricerca (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "Assistente IA (ChatGPT…)",
+      "ads": "Pubblicità",
+      "other": "Altro",
+      "otherPlaceholder": "Specifica…",
+      "skip": "Salta",
+      "finish": "Termina",
+      "panel": {
+        "title": "Due parole dal team",
+        "p1": "Benvenuto su Louez, e grazie per la fiducia. Il tuo negozio è pronto: non vediamo l'ora delle tue prime prenotazioni.",
+        "p2": "Una domanda o un'idea? Scrivici dalla bolla di chat in basso a destra, leggiamo tutto.",
+        "signature": "I fondatori di Louez"
+      }
+    },
     "steps": {
       "store": "Negozio",
       "branding": "Personalizzazione",
       "product": "Primo prodotto",
-      "payment": "Pagamenti"
+      "payment": "Pagamenti",
+      "profile": "Profilo",
+      "source": "Fonte"
     }
   },
   "categories": {

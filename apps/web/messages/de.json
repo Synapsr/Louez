@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {Stunde} other {Stunden}}",
     "weekUnit": "{count, plural, one {Woche} other {Wochen}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "phoneInput": {
+      "selectCountry": "Land auswählen",
+      "searchCountry": "Land suchen...",
+      "noResults": "Kein Land gefunden"
+    },
     "addressInput": {
       "placeholder": "Adresse suchen...",
       "coordinatesSaved": "Koordinaten gespeichert",
@@ -136,19 +141,14 @@
     "sendCode": "Code senden",
     "enterCode": "Code eingeben",
     "codeSentTo": "Ein Bestätigungscode wurde gesendet an",
+    "verifyEmailTitle": "Bestätigen Sie Ihre E-Mail",
+    "codeSentDescription": "Wir haben einen einmaligen Sicherheitscode an <strong>{email}</strong> gesendet. Er sollte in wenigen Minuten ankommen. Falls Sie ihn nicht sehen, prüfen Sie Ihren Spam-Ordner und geben Sie ihn dann unten ein.",
     "verify": "Bestätigen",
     "verifying": "Wird überprüft...",
     "or": "oder",
-    "loginTitle": "Willkommen",
+    "loginTitle": "Willkommen bei louez",
     "loginDescription": "Geben Sie Ihre E-Mail ein, um fortzufahren. Wenn Sie kein Konto haben, wird automatisch eines erstellt.",
     "linkWillBeSent": "Ein sicherer Link wird an Ihre E-Mail gesendet. Kein Passwort zu merken.",
-    "heroTitle": "Verwalten Sie Ihre Vermietungen mit Leichtigkeit",
-    "heroSubtitle": "Die All-in-One-Plattform für Vermietungsprofis. Erstellen Sie Ihren Online-Shop, verwalten Sie Ihre Reservierungen und erweitern Sie Ihr Geschäft.",
-    "featureProducts": "Unbegrenzter Produktkatalog",
-    "featureReservations": "Automatisierte Reservierungsverwaltung",
-    "featureCustomers": "Zentralisierte Kundendatenbank",
-    "featureStats": "Detaillierte Statistiken und Analysen",
-    "trustedBy": "Schließen Sie sich hunderten Vermietungsprofis an, die uns vertrauen",
     "checkEmail": "Überprüfen Sie Ihre E-Mail",
     "emailSentTo": "Ein Anmeldelink wurde gesendet an",
     "clickLinkToSignIn": "Klicken Sie auf den Link in der E-Mail, um sich anzumelden. Der Link läuft in 24 Stunden ab.",
@@ -169,7 +169,19 @@
       "default": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
     },
     "referralBanner": "{storeName} hat Sie zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen.",
-    "referralBannerGeneric": "🎁 Sie wurden zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen."
+    "referralBannerGeneric": "🎁 Sie wurden zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen.",
+    "socialProofRating": "4,9/5",
+    "socialProofTrusted": "Über 450 Vermieter vertrauen uns bei der Verwaltung ihrer Vermietungen",
+    "review1Quote": "Wir haben unsere alte Software verlassen, als die Preise zu hoch wurden, und sind zu Louez.io gewechselt … und ehrlich gesagt: kein Bedauern! Einfach, flexibel, günstig und effizient.",
+    "review1Role": "Geschäftsführender Gesellschafter · Bicy, Dijon",
+    "review2Quote": "Die Einrichtung war einfach und schnell. Das Tool ist intuitiv – für uns in der Verwaltung und für unsere Kunden beim Buchen. Eine echte Zeitersparnis im Alltag.",
+    "review2Role": "Mitgründer · Bloom",
+    "review3Quote": "Louez.io ist eine zuverlässige, klare und präzise Plattform. Die Verwaltung der Saison wird viel einfacher und schneller.",
+    "review3Role": "Mitgründer · Les Frères Complices",
+    "perk1": "Ihre ersten 15 Reservierungen geschenkt",
+    "perk2": "Danach 1 € pro Reservierung – 0 % Provision, kein Abo",
+    "perk3": "Ihr Online-Shop in 5 Minuten startklar",
+    "visitShop": "Shop ansehen"
   },
   "invitation": {
     "inviteToJoin": "{name} lädt Sie ein, dem Team beizutreten",
@@ -590,20 +602,27 @@
         "title": "Erste Schritte",
         "description": "Einige Schritte zum Starten",
         "stepsCompleted": "Schritte abgeschlossen",
-        "dismissForNow": "Vorerst ausblenden",
         "steps": {
           "createAccount": "Konto erstellen",
           "configureStore": "Shop konfigurieren",
           "addFirstProduct": "Erstes Produkt hinzufügen",
+          "connectStripe": "Online-Zahlungen aktivieren",
           "firstReservation": "Erste Reservierung erhalten",
           "firstCompleted": "Erste Vermietung abschließen"
+        },
+        "descriptions": {
+          "addFirstProduct": "Fügen Sie Ihr erstes Produkt hinzu, damit Kunden buchen können.",
+          "connectStripe": "Verbinden Sie Stripe, um Kartenzahlungen bei der Buchung zu akzeptieren.",
+          "firstReservation": "Teilen Sie Ihren Shop mit Kunden oder erstellen Sie eine Reservierung manuell.",
+          "firstCompleted": "Sobald die Vermietung zurückgegeben wurde, markieren Sie die Reservierung als abgeschlossen."
         },
         "start": "Starten",
         "addProductHint": "Fügen Sie Ihr erstes Produkt hinzu, damit Kunden buchen können.",
         "addFirstProduct": "Produkt hinzufügen",
         "shareHint": "Teilen Sie Ihren Shop, um Ihre ersten Reservierungen zu erhalten.",
         "viewStore": "Meinen Shop ansehen",
-        "createReservation": "Reservierung erstellen"
+        "createReservation": "Reservierung erstellen",
+        "connectStripe": "Stripe verbinden"
       },
       "stats": {
         "products": "Produkte",
@@ -4111,6 +4130,22 @@
       },
       "referrals": "Empfehlungen"
     },
+    "commandPalette": {
+      "title": "Befehlspalette",
+      "trigger": "Aktion suchen…",
+      "placeholder": "Aktion oder Seite suchen…",
+      "empty": "Keine Aktion gefunden.",
+      "groups": {
+        "create": "Erstellen",
+        "navigate": "Gehe zu",
+        "tools": "Werkzeuge"
+      },
+      "footer": {
+        "navigate": "Navigieren",
+        "open": "Öffnen",
+        "close": "Schließen"
+      }
+    },
     "aiChat": {
       "open": "KI-Assistent",
       "badge": "KI",
@@ -4977,15 +5012,53 @@
       "title": "Willkommen bei Louez.io",
       "description": "Richten Sie Ihren Shop in wenigen Schritten ein"
     },
+    "profile": {
+      "title": "Lernen wir uns kennen",
+      "description": "Erzählen Sie uns etwas über sich, um Ihr Erlebnis zu personalisieren.",
+      "photo": "Profilbild",
+      "photoHelp": "PNG oder JPG, max. 2 MB",
+      "photoError": "Bitte wählen Sie ein Bild aus",
+      "photoSizeError": "Das Bild darf 2 MB nicht überschreiten",
+      "name": "Ihr Name",
+      "namePlaceholder": "Max Mustermann",
+      "businessType": "Sie sind",
+      "businessTypePlaceholder": "Option auswählen",
+      "businessTypes": {
+        "independent": "Selbstständig",
+        "establishedStore": "Etabliertes Geschäft",
+        "association": "Verein",
+        "individual": "Privatperson"
+      },
+      "productCategory": "Was möchten Sie vermieten",
+      "productCategoryPlaceholder": "Kategorie auswählen",
+      "productCategories": {
+        "bikes": "Fahrräder",
+        "sportsOutdoor": "Sport & Outdoor",
+        "partyEvents": "Events & Ton",
+        "toolsDiy": "Werkzeug & Heimwerken",
+        "vehicles": "Fahrzeuge",
+        "electronics": "Elektronik",
+        "other": "Sonstiges"
+      },
+      "fleetSize": "Wie viele Artikel möchten Sie vermieten",
+      "fleetSizePlaceholder": "Bereich auswählen",
+      "fleetSizes": {
+        "upTo5": "1 bis 5",
+        "upTo20": "6 bis 20",
+        "upTo50": "21 bis 50",
+        "moreThan50": "Mehr als 50"
+      }
+    },
     "store": {
       "title": "Ihre Shop-Informationen",
       "description": "Diese Informationen werden Ihren Kunden angezeigt",
       "name": "Shop-Name",
       "namePlaceholder": "Mein Vermietungsshop",
-      "slug": "Shop-Adresse",
+      "slug": "Web-Adresse des Shops",
       "slugPlaceholder": "mein-shop",
       "slugHelp": "Ihr Shop wird unter {slug}.{domain} erreichbar sein",
       "slugDefault": "ihr-shop",
+      "resetSlug": "Vorgeschlagene URL verwenden",
       "pricingMode": "Preismodus",
       "pricingDay": "Täglich",
       "pricingDayDesc": "Preis pro Tag",
@@ -5040,22 +5113,49 @@
       "quantityHelp": "Anzahl der zur Vermietung verfügbaren Einheiten"
     },
     "stripe": {
-      "title": "Reservierungsmodus",
-      "description": "Wählen Sie, wie Sie Reservierungen verwalten möchten",
-      "requestMode": "Reservierungsanfrage",
-      "recommended": "Empfohlen",
-      "requestModeDescription": "Kunden senden eine Anfrage. Sie validieren manuell und verwalten die Zahlung selbst (Bargeld, Überweisung, Karte vor Ort).",
+      "title": "Lassen Sie sich online bezahlen",
+      "description": "Wählen Sie, wie Ihre Kunden buchen. Sie können dies jederzeit ändern.",
       "paymentMode": "Online-Zahlung",
-      "paymentModeDescription": "Kunden zahlen direkt bei der Buchung. Zahlungen automatisch über Stripe einziehen.",
-      "howItWorks": "Wie funktioniert es?",
-      "step1": "1. Kunde stellt eine Reservierungsanfrage",
-      "step2": "2. Sie erhalten eine E-Mail-Benachrichtigung",
-      "step3": "3. Sie nehmen die Anfrage an oder lehnen sie ab",
-      "step4": "4. Kunde erhält Bestätigung per E-Mail",
-      "step5": "5. Sie verwalten die Zahlung bei der Abholung",
-      "paymentSetupTitle": "Schnelle Einrichtung",
-      "paymentSetupDescription": "Nach dem Erstellen Ihres Shops gehen Sie zu Einstellungen → Online-Zahlung, um Ihr Stripe-Konto zu verbinden und Zahlungen zu empfangen.",
-      "configComplete": "Einrichtung abgeschlossen!"
+      "recommended": "Empfohlen",
+      "paymentModeDescription": "Kunden zahlen direkt bei der Buchung. Sichere Zahlung über Stripe.",
+      "paymentModeNote": "Die Stripe-Aktivierung erfordert eine Identitätsprüfung (5–10 Min.), jetzt oder später über Ihr Dashboard. Bis dahin werden Ihre Reservierungen automatisch manuell bestätigt.",
+      "requestMode": "Buchungsanfrage",
+      "requestModeDescription": "Kunden senden eine Anfrage. Sie bestätigen und kassieren selbst (bar, Überweisung, Karte vor Ort).",
+      "requestModeNote": "Sie bestätigen und kassieren jede Buchung selbst. Sie können jederzeit in den Einstellungen zur Online-Zahlung wechseln.",
+      "configComplete": "Einrichtung abgeschlossen!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Warum Online-Zahlung?",
+          "benefit1": "Sofortige Bezahlung, direkt bei der Buchung",
+          "benefit2": "Weniger No-Shows dank Vorauszahlung",
+          "benefit3": "Kaution per Kartenreservierung, ohne Abbuchung",
+          "benefit4": "Automatische Auszahlungen auf Ihr Konto",
+          "kycTitle": "Stripe aktivieren",
+          "kycStep1": "Konto erstellen — 2 Minuten",
+          "kycStep2": "Identität bestätigen — Ausweis und IBAN, 5 bis 10 Min.",
+          "kycStep3": "Die Online-Zahlung wird automatisch aktiviert",
+          "configureNow": "Stripe jetzt einrichten",
+          "resumeNow": "Stripe-Einrichtung fortsetzen",
+          "configureLater": "Oder später über Ihr Dashboard — bis dahin laufen Reservierungen über die manuelle Bestätigung."
+        },
+        "request": {
+          "howTitle": "Wie funktioniert es?",
+          "step1": "Der Kunde sendet eine Anfrage",
+          "step2": "Sie erhalten eine E-Mail",
+          "step3": "Sie nehmen an oder lehnen ab",
+          "step4": "Der Kunde erhält eine Bestätigung",
+          "step5": "Sie kassieren bei der Abholung",
+          "prosTitle": "Was Sie gewinnen",
+          "pros1": "Volle Kontrolle über jede Buchung",
+          "pros2": "Keine Einrichtung",
+          "pros3": "Bar, Überweisung oder Karte vor Ort",
+          "consTitle": "Was Sie aufgeben",
+          "cons1": "Mahnungen und offene Zahlungen selbst verwalten",
+          "cons2": "Mehr No-Shows ohne Vorauszahlung",
+          "cons3": "Keine automatische Kaution",
+          "switchNote": "Wechseln Sie jederzeit in den Einstellungen zur Online-Zahlung."
+        }
+      }
     },
     "complete": {
       "title": "Ihr Shop ist bereit!",
@@ -5063,11 +5163,38 @@
       "viewStore": "Meinen Shop ansehen",
       "goToDashboard": "Zum Dashboard"
     },
+    "preview": {
+      "reserve": "Reservieren",
+      "pay": "Bezahlen"
+    },
+    "source": {
+      "title": "Eine letzte Frage…",
+      "description": "Wie haben Sie von Louez erfahren?",
+      "wordOfMouth": "Mundpropaganda",
+      "searchEngine": "Suchmaschine (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "KI-Assistent (ChatGPT…)",
+      "ads": "Werbung",
+      "other": "Sonstiges",
+      "otherPlaceholder": "Bitte angeben…",
+      "skip": "Überspringen",
+      "finish": "Fertigstellen",
+      "panel": {
+        "title": "Ein Wort vom Team",
+        "p1": "Willkommen bei Louez, und danke für Ihr Vertrauen. Ihr Shop ist bereit — wir freuen uns auf Ihre ersten Buchungen.",
+        "p2": "Eine Frage oder eine Idee? Schreiben Sie uns über den Hilfe-Button unten links, wir lesen alles.",
+        "signature": "Die Gründer von Louez"
+      }
+    },
     "steps": {
       "store": "Shop",
       "branding": "Anpassung",
       "product": "Erstes Produkt",
-      "payment": "Zahlungen"
+      "payment": "Zahlungen",
+      "profile": "Profil",
+      "source": "Quelle"
     }
   },
   "categories": {

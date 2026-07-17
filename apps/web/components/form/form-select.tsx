@@ -15,12 +15,17 @@ export function FormSelect({
   placeholder,
   children,
   className,
+  items,
 }: {
   label?: string
   description?: string
   placeholder?: string
   children: React.ReactNode
   className?: string
+  /** Maps values to display labels in the trigger (Base UI `Select.Root` items). */
+  items?:
+    | Record<string, React.ReactNode>
+    | ReadonlyArray<{ value: string; label: React.ReactNode }>
 }) {
   const field = useFieldContext<string>()
   const errors = field.state.meta.errors
@@ -33,10 +38,11 @@ export function FormSelect({
         </Label>
       )}
       <Select
+        items={items}
         onValueChange={(value) => {
           if (value !== null) field.handleChange(value)
         }}
-        value={field.state.value || undefined}
+        value={field.state.value || null}
       >
         <SelectTrigger className={className}>
           <SelectValue placeholder={placeholder} />

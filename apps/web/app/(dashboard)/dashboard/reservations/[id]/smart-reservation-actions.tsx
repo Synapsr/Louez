@@ -354,7 +354,7 @@ export function SmartReservationActions({
               <p className="text-xs text-muted-foreground">{t('pendingCard.description')}</p>
               <div className="space-y-2">
                 <Button
-                  variant="success"
+                  variant="default"
                   className="w-full"
                   onClick={() => handleStatusChange('confirmed')}
                   disabled={isLoading}
@@ -367,7 +367,7 @@ export function SmartReservationActions({
                   {t('acceptRequest')}
                 </Button>
                 <Button
-                  variant="destructive-outline"
+                  variant="destructive"
                   className="w-full"
                   onClick={() => setRejectDialogOpen(true)}
                   disabled={isLoading}
@@ -589,7 +589,7 @@ export function SmartReservationActions({
               <p className="text-xs text-muted-foreground">{t('quoteCard.description')}</p>
               <div className="space-y-2">
                 <Button
-                  variant="success"
+                  variant="default"
                   className="w-full"
                   onClick={() => handleStatusChange('confirmed')}
                   disabled={isLoading}

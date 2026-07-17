@@ -479,7 +479,7 @@ export function DepositSection({
             {status === 'authorized' && !authorizationExpired && (
               <>
                 <Button
-                  variant="success-outline"
+                  variant="outline"
                   onClick={() => setReleaseDialogOpen(true)}
                   disabled={isLoading}
                   className="flex-1"
@@ -488,7 +488,7 @@ export function DepositSection({
                   {t('release')}
                 </Button>
                 <Button
-                  variant="destructive-outline"
+                  variant="destructive"
                   onClick={() => {
                     setCaptureAmount(amount.toFixed(2))
                     setCaptureModalOpen(true)

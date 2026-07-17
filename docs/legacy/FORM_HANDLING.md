@@ -52,7 +52,7 @@ If you need a field type that doesn't exist yet (e.g. textarea, select, checkbox
 Creates the React context that connects `useAppForm` to field/form components:
 
 ```tsx
-import { createFormHookContexts } from '@tanstack/react-form';
+import { createFormHookContexts } from "@tanstack/react-form";
 
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts();
@@ -63,12 +63,12 @@ export const { fieldContext, formContext, useFieldContext, useFormContext } =
 Wraps `createFormHook` with registered field and form components:
 
 ```tsx
-import { Button, type ButtonProps } from '@hushletter/ui/components';
-import { createFormHook, useStore } from '@tanstack/react-form';
+import { Button, type ButtonProps } from "@hushletter/ui/components";
+import { createFormHook, useStore } from "@tanstack/react-form";
 
-import { FormForm } from '@/components/form/form-form';
+import { FormForm } from "@/components/form/form-form";
 
-import { fieldContext, formContext, useFormContext } from './form-context';
+import { fieldContext, formContext, useFormContext } from "./form-context";
 
 export const { useAppForm, withForm, withFieldGroup } = createFormHook({
   fieldComponents: {
@@ -123,13 +123,13 @@ Use Zod schemas with TanStack Form's `validators` option.
 Use `revalidateLogic` to control when validation fires before and after the first submission. This avoids showing errors too early while giving instant feedback once the user has attempted to submit.
 
 ```tsx
-import { revalidateLogic } from '@tanstack/react-form';
+import { revalidateLogic } from "@tanstack/react-form";
 
 const form = useAppForm({
   // ...
   validationLogic: revalidateLogic({
-    mode: 'submit', // before first submit: only validate on submit
-    modeAfterSubmission: 'change', // after first submit: validate on every change
+    mode: "submit", // before first submit: only validate on submit
+    modeAfterSubmission: "change", // after first submit: validate on every change
   }),
   validators: {
     onSubmit: schema,
@@ -149,19 +149,19 @@ The recommended default for most forms is `mode: "submit"` + `modeAfterSubmissio
 ```tsx
 // Login — validate on change
 const loginSchema = z.object({
-  email: z.email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
+  email: z.email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
 });
 
 // Signup — validate on change
 const signupSchema = z.object({
-  email: z.email('Please enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 // Settings — validate on change + async on submit
 const profileNameSchema = z.object({
-  name: z.string().max(100, 'Name must be 100 characters or less'),
+  name: z.string().max(100, "Name must be 100 characters or less"),
 });
 ```
 
@@ -174,16 +174,16 @@ For simple forms, inline schemas are fine. For shared or complex schemas, extrac
 A typical form using `useAppForm` with Zod validation and a mutation:
 
 ```tsx
-import { revalidateLogic } from '@tanstack/react-form';
-import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { z } from 'zod';
+import { revalidateLogic } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { z } from "zod";
 
-import { useAppForm } from '@/hooks/form/form';
+import { useAppForm } from "@/hooks/form/form";
 
 const schema = z.object({
-  email: z.email('Please enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export function LoginForm() {
@@ -203,24 +203,24 @@ export function LoginForm() {
       return result;
     },
     onError: (error) => {
-      toast.error(error.message || 'An error occurred');
+      toast.error(error.message || "An error occurred");
     },
     onSuccess: () => {
-      navigate({ to: '/newsletters' });
+      navigate({ to: "/newsletters" });
     },
   });
 
   const form = useAppForm({
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
     onSubmit: async ({ value }) => {
       await mutation.mutateAsync(value);
     },
     validationLogic: revalidateLogic({
-      mode: 'submit',
-      modeAfterSubmission: 'change',
+      mode: "submit",
+      modeAfterSubmission: "change",
     }),
     validators: {
       onSubmit: schema,
@@ -231,19 +231,12 @@ export function LoginForm() {
     <form.AppForm>
       <form.Form className="space-y-4">
         <form.AppField name="email">
-          {(field) => (
-            <field.Input label="Email" placeholder="e.g. johndoe@email.com" />
-          )}
+          {(field) => <field.Input label="Email" placeholder="e.g. johndoe@email.com" />}
         </form.AppField>
 
         <form.AppField name="password">
           {(field) => (
-            <field.Input
-              label="Password"
-              type="password"
-              placeholder="**********"
-              isRevealable
-            />
+            <field.Input label="Password" type="password" placeholder="**********" isRevealable />
           )}
         </form.AppField>
 
@@ -288,7 +281,7 @@ Combine `onChange` for client-side checks with `onSubmitAsync` for server checks
 
 ```tsx
 const form = useForm({
-  defaultValues: { name: currentName ?? '' },
+  defaultValues: { name: currentName ?? "" },
   validators: {
     onChange: profileNameSchema,
     onSubmitAsync: async ({ value }) => {
@@ -338,7 +331,7 @@ const mutation = useMutation({
     return await createFolder({ name: value.name });
   },
   onError: (error) => {
-    toast.error(error.message || 'An error occurred');
+    toast.error(error.message || "An error occurred");
   },
   onSuccess: () => {
     form.reset();

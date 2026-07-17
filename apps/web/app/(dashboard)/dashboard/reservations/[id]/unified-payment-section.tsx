@@ -797,7 +797,7 @@ export function UnifiedPaymentSection({
                         render={
                           <Button
                             size="icon"
-                            variant="success-outline"
+                            variant="outline"
                             className="h-7 w-7"
                             onClick={openDepositReturnModal}
                           />
@@ -892,7 +892,7 @@ export function UnifiedPaymentSection({
                     {depositStatusVal === "authorized" && !authorizationExpired && (
                       <>
                         <Button
-                          variant="success-outline"
+                          variant="outline"
                           onClick={() => setReleaseDialogOpen(true)}
                           disabled={isLoading}
                           className="flex-1"
@@ -901,7 +901,7 @@ export function UnifiedPaymentSection({
                           {t("deposit.release")}
                         </Button>
                         <Button
-                          variant="destructive-outline"
+                          variant="destructive"
                           onClick={() => {
                             setCaptureAmount(deposit.toFixed(2));
                             setCaptureModalOpen(true);
@@ -958,7 +958,7 @@ export function UnifiedPaymentSection({
           {/* Damage button for finished reservations */}
           {isReservationFinished && depositToReturn > 0 && (
             <Button
-              variant="destructive-outline"
+              variant="destructive"
               className="w-full text-xs"
               onClick={() => setDamageModalOpen(true)}
             >

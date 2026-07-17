@@ -27,10 +27,12 @@ Resultat : le prix affiche etait `basePrice x duration x quantity` sans aucune o
 La premiere approche a ete d'utiliser un algorithme de programmation dynamique (DP) qui cherchait la combinaison optimale de paliers pour couvrir la duree.
 
 Exemple concret avec la config :
+
 - Base : 20EUR / 4h (240 min)
 - Paliers : 50EUR/1j, 92.8EUR/2j, 160EUR/3j, 422.4EUR/11j
 
 Pour une location de **2j 2h** (3000 min) :
+
 - Le DP decompose : 1x palier 2j (92.8EUR) + 1x base 4h (20EUR) = **112.80EUR**
 - C'est mathematiquement optimal (combinaison la moins chere)
 
@@ -39,6 +41,7 @@ Pour une location de **2j 2h** (3000 min) :
 ### Le vrai probleme
 
 Le loueur configure ses paliers comme des "forfaits" ou des "tranches tarifaires", pas comme des briques combinables. Le DP qui melange les paliers produit des prix incoherents du point de vue commercial :
+
 - Le client ne comprend pas comment 112.80EUR est calcule
 - Ca ne correspond ni a un forfait ni a un prorata
 - C'est different de ce que le storefront affiche (partiellement)
@@ -56,6 +59,7 @@ Le champ `enforceStrictTiers` (booleen par produit, colonne `products.enforce_st
 Seules les durees exactes des paliers sont proposees. Si la duree tombe entre deux paliers, on arrondit au palier **superieur**.
 
 **Algorithme** :
+
 ```
 1. Lister toutes les periodes disponibles : [basePeriod, ...tier.period]
 2. Trouver la plus petite periode >= duree de la location
@@ -63,6 +67,7 @@ Seules les durees exactes des paliers sont proposees. Si la duree tombe entre de
 ```
 
 **Exemple** : Location de 2j 2h (3000 min)
+
 - Periodes disponibles : [240, 1440, 2880, 4320, 15840]
 - Plus petite >= 3000 → 4320 (3j)
 - **Prix = 160EUR**
@@ -78,6 +83,7 @@ Seules les durees exactes des paliers sont proposees. Si la duree tombe entre de
 On cherche le palier le plus haut dont la periode est inferieure ou egale a la duree, on calcule le tarif a la minute depuis ce palier, et on multiplie par la duree reelle.
 
 **Algorithme actuel** :
+
 ```
 1. Lister tous les tarifs : [{base}, ...tiers], tries par periode croissante
 2. Trouver le plus grand tarif avec periode <= duree de la location
@@ -86,6 +92,7 @@ On cherche le palier le plus haut dont la periode est inferieure ou egale a la d
 ```
 
 **Exemple** : Location de 2j 2h (3000 min)
+
 - Palier applicable : 2j (period=2880, price=92.8EUR) car 2880 <= 3000
 - Tarif/minute : 92.8 / 2880 = 0.03222 EUR/min
 - **Total = 0.03222 x 3000 = 96.67EUR**
@@ -145,6 +152,7 @@ La cause fondamentale : l'algo utilise un taux/minute **constant** entre deux pa
 Les paliers definis par le loueur sont des **points d'ancrage** sur une courbe prix/duree. Entre deux paliers consecutifs, le prix doit evoluer en **ligne droite** de l'un a l'autre.
 
 **Algorithme cible** :
+
 ```
 1. Trier tous les tarifs (base incluse) par periode croissante
 2. Pour une duree d :
@@ -219,6 +227,7 @@ Prix EUR                                    Prix EUR
 ### Prix de reference (sans remise)
 
 Pour les deux modes :
+
 ```
 originalSubtotal = ceil(durationMinutes / basePeriodMinutes) x basePrice x quantity
 ```
@@ -238,18 +247,19 @@ reductionPercent = (savings / originalSubtotal) x 100
 
 Config : base 20EUR/4h, paliers 1j=50EUR, 2j=92.80EUR, 3j=160EUR
 
-| Duree | DP (rejete) | Strict | Progressif actuel (taux plancher) | Progressif cible (interpolation) |
-|-------|------------|--------|-----------------------------------|----------------------------------|
-| 2h (120 min) | 20EUR | 20EUR (snap base) | 20EUR (min 1 base) | 20EUR (min base) |
-| 4h (240 min) | 20EUR | 20EUR | 20EUR | 20EUR |
-| 12h (720 min) | 60EUR | 50EUR (snap 1j) | 60EUR | 32EUR |
-| 23h59 (1439 min) | 119.92EUR | 50EUR (snap 1j) | 119.92EUR | 49.97EUR |
-| 1j (1440 min) | 50EUR | 50EUR | 50EUR | 50EUR |
-| 2j (2880 min) | 92.80EUR | 92.80EUR | 92.80EUR | 92.80EUR |
-| 2j 2h (3000 min) | 112.80EUR | 160EUR (snap 3j) | 96.67EUR | 101.13EUR |
-| 3j (4320 min) | 160EUR | 160EUR | 160EUR | 160EUR |
+| Duree            | DP (rejete) | Strict            | Progressif actuel (taux plancher) | Progressif cible (interpolation) |
+| ---------------- | ----------- | ----------------- | --------------------------------- | -------------------------------- |
+| 2h (120 min)     | 20EUR       | 20EUR (snap base) | 20EUR (min 1 base)                | 20EUR (min base)                 |
+| 4h (240 min)     | 20EUR       | 20EUR             | 20EUR                             | 20EUR                            |
+| 12h (720 min)    | 60EUR       | 50EUR (snap 1j)   | 60EUR                             | 32EUR                            |
+| 23h59 (1439 min) | 119.92EUR   | 50EUR (snap 1j)   | 119.92EUR                         | 49.97EUR                         |
+| 1j (1440 min)    | 50EUR       | 50EUR             | 50EUR                             | 50EUR                            |
+| 2j (2880 min)    | 92.80EUR    | 92.80EUR          | 92.80EUR                          | 92.80EUR                         |
+| 2j 2h (3000 min) | 112.80EUR   | 160EUR (snap 3j)  | 96.67EUR                          | 101.13EUR                        |
+| 3j (4320 min)    | 160EUR      | 160EUR            | 160EUR                            | 160EUR                           |
 
 Observations :
+
 - **DP** : prix incoherents (melange de paliers), rejete
 - **Strict** : snap au palier superieur, pas de prix intermediaires
 - **Progressif actuel** : cliffs de 70EUR aux frontieres, 12h (60EUR) > 1j (50EUR)
@@ -269,6 +279,7 @@ Observations :
 ### Inversion du toggle UI
 
 Attention a l'inversion semantique :
+
 - Toggle **OFF** (decoche) = `enforceStrictTiers = true` = mode strict
 - Toggle **ON** (coche, "Autoriser une remise progressive") = `enforceStrictTiers = false` = mode progressif
 
@@ -277,6 +288,7 @@ Attention a l'inversion semantique :
 **Fonction centrale** : `packages/utils/src/pricing/calculate.ts` → `calculateRateBasedPrice()`
 
 **Consommateurs qui passent `enforceStrictTiers`** :
+
 - Dashboard : `use-new-reservation-pricing.ts`, `reservations/actions.ts` (3 call sites)
 - Storefront : `add-to-cart-form.tsx`, `product-card-available.tsx`, `product-modal.tsx`, `checkout/actions.ts`
 - Cart : `cart-context.tsx` (2 call sites)
@@ -297,6 +309,7 @@ Les trois doivent utiliser exactement la meme logique. Le serveur (actions.ts) r
 ### 2. Affichage du mode strict sur le storefront
 
 Quand `enforceStrictTiers = true`, le storefront devrait idealement :
+
 - Restreindre le date picker aux durees correspondant aux paliers
 - Ou afficher clairement "Facture sur X jours" quand la duree est arrondie
 

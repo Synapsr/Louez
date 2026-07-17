@@ -9,6 +9,11 @@ import {
   getTimeOfDay,
 } from '@/lib/dashboard/metrics'
 import {
+  getIntendedReservationMode,
+  isStripeChargeable,
+} from '@/lib/reservation-mode'
+import type { OnlinePaymentsStep } from '@/components/dashboard/home'
+import {
   DashboardAlert,
   SetupChecklist,
   AdaptiveHeader,
@@ -99,12 +104,14 @@ interface DashboardContentProps {
   storeId: string
   storeSlug: string
   firstName: string
+  onlinePaymentsStep: OnlinePaymentsStep
 }
 
 async function DashboardContent({
   storeId,
   storeSlug,
   firstName,
+  onlinePaymentsStep,
 }: DashboardContentProps) {
   // Fetch all data in parallel
   const [metrics, departures, returns, pending] = await Promise.all([
@@ -137,7 +144,11 @@ async function DashboardContent({
 
         {/* Setup Checklist for new stores */}
         {(storeState === 'virgin' || storeState === 'building') && (
-          <SetupChecklist metrics={metrics} storeSlug={storeSlug} />
+          <SetupChecklist
+            metrics={metrics}
+            storeSlug={storeSlug}
+            onlinePaymentsStep={onlinePaymentsStep}
+          />
         )}
 
         {/* Adaptive Stats */}
@@ -172,11 +183,22 @@ export default async function DashboardHomePage() {
   const session = await auth()
   const firstName = session?.user?.name?.split(' ')[0] || ''
 
+  // Stores that want online payments get a checklist step tracking the
+  // Stripe KYC left pending during onboarding (payment mode silently degrades
+  // to request mode until Stripe is chargeable — see lib/reservation-mode.ts).
+  const onlinePaymentsStep: OnlinePaymentsStep =
+    getIntendedReservationMode(store) === 'payment'
+      ? isStripeChargeable(store)
+        ? 'done'
+        : 'todo'
+      : 'hidden'
+
   return (
     <DashboardContent
       storeId={store.id}
       storeSlug={store.slug}
       firstName={firstName}
+      onlinePaymentsStep={onlinePaymentsStep}
     />
   )
 }

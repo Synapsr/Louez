@@ -1,18 +1,22 @@
 # Storefront Reservation Flow (Feature Inventory)
 
 ## Goal
+
 Document the current customer journey from product selection to reservation submission and reservation viewing, so design can improve UX without losing existing behavior.
 
 ## Scope
+
 - Storefront customer flow only (`/{slug}/*`)
 - Product selection, cart, checkout, submit, confirmation, and account reservation viewing
 
 ## 1. Entry Points
+
 - Home page (`/{slug}`) with hero date picker that routes to `/rental` with selected period.
 - Catalog/home featured product cards can open a product preview modal for quick date selection.
 - Direct product page (`/{slug}/product/{productId}`) supports full add-to-cart with dates/quantity/options.
 
 ## 2. Date & Availability Selection
+
 - Date/time selection supports business-hours-aware slots and advance notice constraints.
 - Timezone mismatch notice is shown when store timezone differs from browser timezone.
 - Rental listing (`/{slug}/rental`) calls availability API and shows:
@@ -22,6 +26,7 @@ Document the current customer journey from product selection to reservation subm
   - Date change modal (without leaving page)
 
 ## 3. Product Selection Features
+
 - Product cards show:
   - Current period price (with tier/rate reductions when applicable)
   - Availability badges
@@ -36,6 +41,7 @@ Document the current customer journey from product selection to reservation subm
   - Optional accessories upsell modal after add
 
 ## 4. Cart Features
+
 - Cart is persisted in `localStorage` and scoped to one store slug.
 - Supports multi-line cart entries for same product with different attribute selections.
 - Quantity editing per cart line.
@@ -47,17 +53,21 @@ Document the current customer journey from product selection to reservation subm
 - Checkout CTA from sidebar/sheet (`/{slug}/checkout`).
 
 ## 5. Checkout UX (Wizard)
+
 Dynamic steps based on store settings and user choices:
+
 - `contact` (always)
 - `delivery` (only when store delivery is enabled)
 - `address` (when delivery is selected OR store requires customer address)
 - `confirm` (always)
 
 ### Contact Step
+
 - First name, last name, email, phone.
 - Business toggle with conditional company field.
 
 ### Delivery Step
+
 - Pickup vs delivery selection (if delivery optional).
 - Forced delivery modes supported (`required` / `included`).
 - Address autocomplete input for delivery.
@@ -65,9 +75,11 @@ Dynamic steps based on store settings and user choices:
 - Continue blocked when delivery address is invalid/incomplete.
 
 ### Address Step
+
 - Address, postal code, city, notes.
 
 ### Confirm Step
+
 - Customer recap (with edit shortcut to contact step).
 - CGV/terms display and required acceptance checkbox.
 - Submit CTA changes by reservation mode:
@@ -75,13 +87,16 @@ Dynamic steps based on store settings and user choices:
   - `request`: request submission label
 
 ### Order Summary Panel
+
 - Shows selected period and all lines.
 - Displays requested vs resolved attributes (tracked-unit flows).
 - Indicates lines still resolving availability or invalid.
 - Shows delivery fee when applicable, totals, savings, tax display mode, and deposit info.
 
 ## 6. Submit Logic (Server-Side Behaviors)
+
 When checkout submits (`createReservation`):
+
 - Validates store, rental period, business hours, advance notice, min/max duration.
 - Re-fetches products and recalculates all prices server-side (never trusts client totals).
 - Validates stock and tracked-unit combination availability.
@@ -92,22 +107,28 @@ When checkout submits (`createReservation`):
 - Sends customer/admin notifications (email/SMS/Discord integrations where configured).
 
 ## 7. Branching After Submit
+
 ### Request mode
+
 - User is redirected to confirmation page (`/{slug}/confirmation/{reservationId}`).
 - Page shows reservation summary, next steps, and CTA to account area.
 
 ### Payment mode
+
 - If Stripe is configured, user is redirected to Stripe Checkout.
 - Return URL lands on `/{slug}/checkout/success?reservation=...&session_id=...`.
 - Success page verifies payment status (backup to webhook race), updates reservation/payment state, and shows final summary.
 
 ## 8. Reservation Viewing (Post-Submit)
+
 ### Account access
+
 - Customer account login via email OTP (`/{slug}/account/login`).
 - Session cookie-based customer portal (`/{slug}/account`).
 - Reservation list split into active vs history with status/payment badges.
 
 ### Reservation detail page
+
 - `/{slug}/account/reservations/{reservationId}`
 - Includes:
   - Status card and timeline dates
@@ -118,10 +139,12 @@ When checkout submits (`createReservation`):
   - Customer notes + store contact shortcuts
 
 ### Instant access links
+
 - `/{slug}/r/{reservationId}?token=...` can auto-create customer session and deep-link to reservation detail.
 - `/{slug}/account/success?...` supports token-based auto-login after payment flows.
 
 ## 9. Feature Matrix (Design-Critical Branches)
+
 - Reservation mode:
   - `request`: submit request, no immediate payment
   - `payment`: Stripe checkout (full or partial/deposit %)
@@ -134,6 +157,7 @@ When checkout submits (`createReservation`):
   - Tracked-unit combinations with attribute-based resolution
 
 ## 10. Main Screens To Redesign
+
 - Home hero date selection block
 - Rental listing (filters + availability cards + date header)
 - Product modal / product details add-to-cart module

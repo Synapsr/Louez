@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {uur} other {uren}}",
     "weekUnit": "{count, plural, one {week} other {weken}}",
     "minuteUnit": "{count, plural, one {minuut} other {minuten}}",
+    "phoneInput": {
+      "selectCountry": "Selecteer een land",
+      "searchCountry": "Zoek een land...",
+      "noResults": "Geen land gevonden"
+    },
     "addressInput": {
       "placeholder": "Zoek een adres...",
       "coordinatesSaved": "Coördinaten opgeslagen",
@@ -136,19 +141,14 @@
     "sendCode": "Code versturen",
     "enterCode": "Voer uw code in",
     "codeSentTo": "Een verificatiecode is verzonden naar",
+    "verifyEmailTitle": "Verifieer je e-mail",
+    "codeSentDescription": "We hebben een eenmalige beveiligingscode gestuurd naar <strong>{email}</strong>. Deze zou binnen enkele minuten moeten aankomen. Zie je hem niet, controleer dan je spam- of ongewenste-mailmap en voer hem hieronder in.",
     "verify": "Verifiëren",
     "verifying": "Verifiëren...",
     "or": "of",
-    "loginTitle": "Welkom",
+    "loginTitle": "Welkom bij louez",
     "loginDescription": "Voer uw e-mail in om door te gaan. Als u geen account heeft, wordt er automatisch een aangemaakt.",
     "linkWillBeSent": "Een beveiligde link wordt naar uw e-mail gestuurd. Geen wachtwoord te onthouden.",
-    "heroTitle": "Beheer uw verhuur met gemak",
-    "heroSubtitle": "Het alles-in-één platform voor verhuurprofessionals. Maak uw online winkel, beheer uw reserveringen en laat uw bedrijf groeien.",
-    "featureProducts": "Onbeperkte productcatalogus",
-    "featureReservations": "Geautomatiseerd reserveringsbeheer",
-    "featureCustomers": "Gecentraliseerde klantendatabase",
-    "featureStats": "Gedetailleerde statistieken en analyses",
-    "trustedBy": "Sluit u aan bij honderden verhuurprofessionals die ons vertrouwen",
     "checkEmail": "Controleer uw e-mail",
     "emailSentTo": "Een inloglink is verzonden naar",
     "clickLinkToSignIn": "Klik op de link in de e-mail om in te loggen. De link verloopt over 24 uur.",
@@ -169,7 +169,19 @@
       "default": "Er is een fout opgetreden. Probeer het opnieuw."
     },
     "referralBanner": "{storeName} heeft je uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
-    "referralBannerGeneric": "🎁 Je bent uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen."
+    "referralBannerGeneric": "🎁 Je bent uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
+    "socialProofRating": "4,9/5",
+    "socialProofTrusted": "Meer dan 450 verhuurders vertrouwen op ons voor het beheer van hun verhuur",
+    "review1Quote": "We verlieten onze oude software toen de prijzen te hoog werden en stapten over naar Louez.io… en eerlijk gezegd: geen spijt! Eenvoudig, flexibel, voordelig en efficiënt.",
+    "review1Role": "Beherend vennoot · Bicy, Dijon",
+    "review2Quote": "De installatie was eenvoudig en snel. De tool is intuïtief, zowel voor ons beheer als voor onze klanten bij het reserveren. Een echte tijdsbesparing, elke dag.",
+    "review2Role": "Medeoprichter · Bloom",
+    "review3Quote": "Louez.io is een betrouwbaar, duidelijk en nauwkeurig platform. Het beheer van het seizoen wordt veel eenvoudiger en sneller.",
+    "review3Role": "Medeoprichter · Les Frères Complices",
+    "perk1": "Je eerste 15 reserveringen gratis",
+    "perk2": "Daarna € 1 per reservering — 0% commissie, geen abonnement",
+    "perk3": "Je webshop klaar in 5 minuten",
+    "visitShop": "Bekijk de winkel"
   },
   "invitation": {
     "inviteToJoin": "{name} nodigt u uit om lid te worden van het team",
@@ -551,20 +563,27 @@
         "title": "Aan de slag",
         "description": "Enkele stappen om te beginnen",
         "stepsCompleted": "stappen voltooid",
-        "dismissForNow": "Voorlopig verbergen",
         "steps": {
           "createAccount": "Account aanmaken",
           "configureStore": "Winkel configureren",
           "addFirstProduct": "Eerste product toevoegen",
+          "connectStripe": "Activeer online betalingen",
           "firstReservation": "Eerste reservering ontvangen",
           "firstCompleted": "Eerste verhuur voltooien"
+        },
+        "descriptions": {
+          "addFirstProduct": "Voeg je eerste product toe zodat klanten kunnen boeken.",
+          "connectStripe": "Koppel Stripe om kaartbetalingen bij het boeken te accepteren.",
+          "firstReservation": "Deel je winkel met klanten of maak handmatig een reservering aan.",
+          "firstCompleted": "Zodra de verhuur is teruggebracht, markeer je de reservering als voltooid."
         },
         "start": "Starten",
         "addProductHint": "Voeg uw eerste product toe zodat klanten kunnen boeken.",
         "addFirstProduct": "Product toevoegen",
         "shareHint": "Deel uw winkel om uw eerste reserveringen te ontvangen.",
         "viewStore": "Mijn winkel bekijken",
-        "createReservation": "Reservering aanmaken"
+        "createReservation": "Reservering aanmaken",
+        "connectStripe": "Stripe koppelen"
       },
       "stats": {
         "products": "Producten",
@@ -4111,6 +4130,22 @@
       },
       "referrals": "Referrals"
     },
+    "commandPalette": {
+      "title": "Opdrachtenpalet",
+      "trigger": "Actie zoeken…",
+      "placeholder": "Actie of pagina zoeken…",
+      "empty": "Geen acties gevonden.",
+      "groups": {
+        "create": "Maken",
+        "navigate": "Ga naar",
+        "tools": "Hulpmiddelen"
+      },
+      "footer": {
+        "navigate": "Navigeren",
+        "open": "Openen",
+        "close": "Sluiten"
+      }
+    },
     "aiChat": {
       "open": "AI-assistent",
       "badge": "AI",
@@ -4977,15 +5012,53 @@
       "title": "Welkom bij Louez.io",
       "description": "Stel uw winkel in enkele stappen in"
     },
+    "profile": {
+      "title": "Laten we kennismaken",
+      "description": "Vertel ons iets over jezelf om je ervaring te personaliseren.",
+      "photo": "Profielfoto",
+      "photoHelp": "PNG of JPG, max. 2 MB",
+      "photoError": "Selecteer een afbeelding",
+      "photoSizeError": "De afbeelding mag niet groter zijn dan 2 MB",
+      "name": "Je naam",
+      "namePlaceholder": "Jan Jansen",
+      "businessType": "Je bent",
+      "businessTypePlaceholder": "Selecteer een optie",
+      "businessTypes": {
+        "independent": "Zelfstandige",
+        "establishedStore": "Gevestigde winkel",
+        "association": "Vereniging",
+        "individual": "Particulier"
+      },
+      "productCategory": "Wat wil je verhuren",
+      "productCategoryPlaceholder": "Selecteer een categorie",
+      "productCategories": {
+        "bikes": "Fietsen",
+        "sportsOutdoor": "Sport & outdoor",
+        "partyEvents": "Evenementen & geluid",
+        "toolsDiy": "Gereedschap & klussen",
+        "vehicles": "Voertuigen",
+        "electronics": "Elektronica",
+        "other": "Anders"
+      },
+      "fleetSize": "Hoeveel artikelen wil je verhuren",
+      "fleetSizePlaceholder": "Selecteer een bereik",
+      "fleetSizes": {
+        "upTo5": "1 tot 5",
+        "upTo20": "6 tot 20",
+        "upTo50": "21 tot 50",
+        "moreThan50": "Meer dan 50"
+      }
+    },
     "store": {
       "title": "Uw winkelinformatie",
       "description": "Deze informatie is zichtbaar voor uw klanten",
       "name": "Winkelnaam",
       "namePlaceholder": "Mijn verhuurwinkel",
-      "slug": "Winkeladres",
+      "slug": "Webadres van de winkel",
       "slugPlaceholder": "mijn-winkel",
       "slugHelp": "Uw winkel is toegankelijk op {slug}.{domain}",
       "slugDefault": "uw-winkel",
+      "resetSlug": "Voorgestelde URL gebruiken",
       "pricingMode": "Prijsmodus",
       "pricingDay": "Dagelijks",
       "pricingDayDesc": "Prijs per dag",
@@ -5040,22 +5113,49 @@
       "quantityHelp": "Aantal eenheden van dit product beschikbaar voor verhuur"
     },
     "stripe": {
-      "title": "Reserveringsmodus",
-      "description": "Kies hoe u reserveringen wilt beheren",
-      "requestMode": "Reserveringsaanvraag",
-      "recommended": "Aanbevolen",
-      "requestModeDescription": "Klanten sturen een aanvraag. U valideert handmatig en beheert de betaling zelf (contant, overboeking, pin ter plaatse).",
+      "title": "Ontvang online betalingen",
+      "description": "Kies hoe je klanten reserveren. Je kunt dit altijd wijzigen.",
       "paymentMode": "Online betaling",
-      "paymentModeDescription": "Klanten betalen direct bij boeking. Ontvang automatisch betalingen via Stripe.",
-      "howItWorks": "Hoe werkt het?",
-      "step1": "1. Klant doet een reserveringsaanvraag",
-      "step2": "2. U ontvangt een e-mailmelding",
-      "step3": "3. U accepteert of wijst de aanvraag af",
-      "step4": "4. Klant ontvangt bevestiging per e-mail",
-      "step5": "5. U beheert de betaling bij ophalen",
-      "paymentSetupTitle": "Snelle configuratie",
-      "paymentSetupDescription": "Na het aanmaken van uw winkel gaat u naar Instellingen → Online betaling om uw Stripe-account te verbinden en betalingen te ontvangen.",
-      "configComplete": "Configuratie voltooid!"
+      "recommended": "Aanbevolen",
+      "paymentModeDescription": "Klanten betalen bij het reserveren. Veilig afrekenen via Stripe.",
+      "paymentModeNote": "Het activeren van Stripe vereist een identiteitscontrole (5–10 min), nu of later via je dashboard. Tot die tijd vallen je reserveringen automatisch terug op handmatige goedkeuring.",
+      "requestMode": "Reserveringsaanvraag",
+      "requestModeDescription": "Klanten sturen een aanvraag. Jij keurt goed en int zelf de betaling (contant, overschrijving, kaart ter plaatse).",
+      "requestModeNote": "Je keurt elke reservering goed en int zelf de betaling. Je kunt via de instellingen altijd overstappen op online betaling.",
+      "configComplete": "Configuratie voltooid!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Waarom online betaling?",
+          "benefit1": "Direct betaald, bij het reserveren",
+          "benefit2": "Minder no-shows dankzij vooruitbetaling",
+          "benefit3": "Borg via kaartreservering, zonder afschrijving",
+          "benefit4": "Automatische uitbetalingen naar je rekening",
+          "kycTitle": "Stripe activeren",
+          "kycStep1": "Maak je account aan — 2 minuten",
+          "kycStep2": "Verifieer je identiteit — ID en IBAN, 5 tot 10 min",
+          "kycStep3": "Online betaling wordt automatisch geactiveerd",
+          "configureNow": "Stripe nu instellen",
+          "resumeNow": "Stripe-configuratie hervatten",
+          "configureLater": "Of later via je dashboard — tot die tijd vallen reserveringen terug op handmatige goedkeuring."
+        },
+        "request": {
+          "howTitle": "Hoe werkt het?",
+          "step1": "De klant stuurt een aanvraag",
+          "step2": "Je ontvangt een e-mail",
+          "step3": "Je accepteert of weigert",
+          "step4": "De klant ontvangt een bevestiging",
+          "step5": "Je int bij het ophalen",
+          "prosTitle": "Wat je wint",
+          "pros1": "Volledige controle over elke reservering",
+          "pros2": "Geen configuratie",
+          "pros3": "Contant, overschrijving of kaart ter plaatse",
+          "consTitle": "Wat je opgeeft",
+          "cons1": "Herinneringen en openstaande betalingen zelf beheren",
+          "cons2": "Meer no-shows zonder vooruitbetaling",
+          "cons3": "Geen automatische borg",
+          "switchNote": "Stap via de instellingen altijd over op online betaling."
+        }
+      }
     },
     "complete": {
       "title": "Uw winkel is klaar!",
@@ -5063,11 +5163,38 @@
       "viewStore": "Mijn winkel bekijken",
       "goToDashboard": "Naar dashboard"
     },
+    "preview": {
+      "reserve": "Reserveren",
+      "pay": "Betalen"
+    },
+    "source": {
+      "title": "Nog één ding…",
+      "description": "Hoe heb je Louez leren kennen?",
+      "wordOfMouth": "Mond-tot-mond",
+      "searchEngine": "Zoekmachine (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "AI-assistent (ChatGPT…)",
+      "ads": "Advertenties",
+      "other": "Anders",
+      "otherPlaceholder": "Vertel meer…",
+      "skip": "Overslaan",
+      "finish": "Afronden",
+      "panel": {
+        "title": "Een woordje van het team",
+        "p1": "Welkom bij Louez, en bedankt voor je vertrouwen. Je winkel is klaar, we kijken uit naar je eerste reserveringen.",
+        "p2": "Een vraag of een idee? Schrijf ons via de helpknop onderaan links, we lezen alles.",
+        "signature": "De oprichters van Louez"
+      }
+    },
     "steps": {
       "store": "Winkel",
       "branding": "Aanpassing",
       "product": "Eerste product",
-      "payment": "Betalingen"
+      "payment": "Betalingen",
+      "profile": "Profiel",
+      "source": "Bron"
     }
   },
   "categories": {

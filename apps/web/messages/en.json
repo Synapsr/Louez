@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {hour} other {hours}}",
     "weekUnit": "{count, plural, one {week} other {weeks}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "phoneInput": {
+      "selectCountry": "Select a country",
+      "searchCountry": "Search for a country...",
+      "noResults": "No country found"
+    },
     "addressInput": {
       "placeholder": "Search for an address...",
       "coordinatesSaved": "Coordinates saved",
@@ -136,19 +141,14 @@
     "sendCode": "Send code",
     "enterCode": "Enter your code",
     "codeSentTo": "A verification code has been sent to",
+    "verifyEmailTitle": "Verify your email",
+    "codeSentDescription": "We've emailed a one-time security code to <strong>{email}</strong>. It should arrive within a few minutes. If you don't see it, please check your spam or junk folder, then enter it below.",
     "verify": "Verify",
     "verifying": "Verifying...",
     "or": "or",
-    "loginTitle": "Welcome",
+    "loginTitle": "Welcome to louez",
     "loginDescription": "Enter your email to continue. If you don't have an account, one will be created for you.",
     "linkWillBeSent": "A secure link will be sent to your email. No password to remember.",
-    "heroTitle": "Manage your rentals with ease",
-    "heroSubtitle": "The all-in-one platform for rental professionals. Create your online store, manage your reservations and grow your business.",
-    "featureProducts": "Unlimited product catalog",
-    "featureReservations": "Automated reservation management",
-    "featureCustomers": "Centralized customer database",
-    "featureStats": "Detailed statistics and analytics",
-    "trustedBy": "Join hundreds of rental professionals who trust us",
     "checkEmail": "Check your email",
     "emailSentTo": "A login link has been sent to",
     "clickLinkToSignIn": "Click the link in the email to sign in. The link expires in 24 hours.",
@@ -169,7 +169,19 @@
       "default": "An error occurred. Please try again."
     },
     "referralBanner": "{storeName} invited you to Louez — create your store and start with {count} free reservations.",
-    "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations."
+    "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations.",
+    "socialProofRating": "4.9/5",
+    "socialProofTrusted": "450+ rental businesses trust us to run their rentals",
+    "review1Quote": "We left our old software when prices got too high for Louez.io… and honestly, no regrets! Simple, flexible, affordable and efficient.",
+    "review1Role": "Managing partner · Bicy, Dijon",
+    "review2Quote": "Setup was quick and easy. The tool is intuitive, both for us managing rentals and for our customers when booking. A real time-saver every day.",
+    "review2Role": "Co-founder · Bloom",
+    "review3Quote": "Louez.io is a reliable, clear and precise platform. Managing the season will be so much simpler and faster.",
+    "review3Role": "Co-founder · Les Frères Complices",
+    "perk1": "Your first 15 reservations are free",
+    "perk2": "Then €1 per reservation — 0% commission, no subscription",
+    "perk3": "Your online store ready in 5 minutes",
+    "visitShop": "Visit the store"
   },
   "invitation": {
     "inviteToJoin": "{name} invites you to join the team",
@@ -590,20 +602,27 @@
         "title": "Getting started",
         "description": "A few steps to get started",
         "stepsCompleted": "steps completed",
-        "dismissForNow": "Hide for now",
         "steps": {
           "createAccount": "Create your account",
           "configureStore": "Configure your store",
           "addFirstProduct": "Add your first product",
+          "connectStripe": "Activate online payments",
           "firstReservation": "Receive your first reservation",
           "firstCompleted": "Complete your first rental"
+        },
+        "descriptions": {
+          "addFirstProduct": "Add your first product so customers can start booking.",
+          "connectStripe": "Connect Stripe to accept online card payments when customers book.",
+          "firstReservation": "Share your store with customers or create a reservation manually.",
+          "firstCompleted": "Once the rental is returned, mark the reservation as completed."
         },
         "start": "Start",
         "addProductHint": "Add your first product so customers can start booking.",
         "addFirstProduct": "Add a product",
         "shareHint": "Share your store to receive your first reservations.",
         "viewStore": "View my store",
-        "createReservation": "Create a reservation"
+        "createReservation": "Create a reservation",
+        "connectStripe": "Connect Stripe"
       },
       "stats": {
         "products": "Products",
@@ -4218,6 +4237,22 @@
       },
       "referrals": "Referrals"
     },
+    "commandPalette": {
+      "title": "Command palette",
+      "trigger": "Search for an action…",
+      "placeholder": "Search for an action or page…",
+      "empty": "No actions found.",
+      "groups": {
+        "create": "Create",
+        "navigate": "Go to",
+        "tools": "Tools"
+      },
+      "footer": {
+        "navigate": "Navigate",
+        "open": "Open",
+        "close": "Close"
+      }
+    },
     "aiChat": {
       "open": "AI Assistant",
       "badge": "AI",
@@ -5090,15 +5125,53 @@
       "title": "Welcome to Louez.io",
       "description": "Set up your store in a few steps"
     },
+    "profile": {
+      "title": "Let's get to know you",
+      "description": "Tell us a bit about yourself to personalize your experience.",
+      "photo": "Profile picture",
+      "photoHelp": "PNG or JPG, 2 MB max",
+      "photoError": "Please select an image",
+      "photoSizeError": "The image must not exceed 2 MB",
+      "name": "Your name",
+      "namePlaceholder": "John Smith",
+      "businessType": "You are",
+      "businessTypePlaceholder": "Select an option",
+      "businessTypes": {
+        "independent": "Independent",
+        "establishedStore": "Established store",
+        "association": "Association",
+        "individual": "Individual"
+      },
+      "productCategory": "What do you plan to rent out",
+      "productCategoryPlaceholder": "Select a category",
+      "productCategories": {
+        "bikes": "Bikes",
+        "sportsOutdoor": "Sports & outdoor",
+        "partyEvents": "Party & events",
+        "toolsDiy": "Tools & DIY",
+        "vehicles": "Vehicles",
+        "electronics": "Electronics",
+        "other": "Other"
+      },
+      "fleetSize": "How many items to rent out",
+      "fleetSizePlaceholder": "Select a range",
+      "fleetSizes": {
+        "upTo5": "1 to 5",
+        "upTo20": "6 to 20",
+        "upTo50": "21 to 50",
+        "moreThan50": "More than 50"
+      }
+    },
     "store": {
       "title": "Your store information",
       "description": "This information will be visible to your customers",
       "name": "Store name",
       "namePlaceholder": "My rental store",
-      "slug": "Store address",
+      "slug": "Store URL",
       "slugPlaceholder": "my-store",
       "slugHelp": "Your store will be accessible at {slug}.{domain}",
       "slugDefault": "your-store",
+      "resetSlug": "Use suggested URL",
       "pricingMode": "Pricing mode",
       "pricingDay": "Daily",
       "pricingDayDesc": "Price per day",
@@ -5153,22 +5226,49 @@
       "quantityHelp": "Number of units of this product available for rent"
     },
     "stripe": {
-      "title": "Reservation mode",
-      "description": "Choose how you want to manage reservations",
-      "requestMode": "Reservation request",
-      "recommended": "Recommended",
-      "requestModeDescription": "Customers send a request. You validate manually and manage payment yourself (cash, transfer, card on site).",
+      "title": "Get paid online",
+      "description": "Choose how your customers book. You can change this anytime.",
       "paymentMode": "Online payment",
-      "paymentModeDescription": "Customers pay directly when booking. Automatically collect payments via Stripe.",
-      "howItWorks": "How does it work?",
-      "step1": "1. Customer makes a reservation request",
-      "step2": "2. You receive an email notification",
-      "step3": "3. You accept or reject the request",
-      "step4": "4. Customer receives confirmation by email",
-      "step5": "5. You manage payment at pickup",
-      "paymentSetupTitle": "Quick setup",
-      "paymentSetupDescription": "After creating your store, go to Settings → Online Payment to connect your Stripe account and start receiving payments.",
-      "configComplete": "Setup complete!"
+      "recommended": "Recommended",
+      "paymentModeDescription": "Customers pay when they book. Secure checkout powered by Stripe.",
+      "paymentModeNote": "Activating Stripe requires an identity check (5–10 min), now or later from your dashboard. Until then, your reservations automatically fall back to manual approval.",
+      "requestMode": "Booking request",
+      "requestModeDescription": "Customers send a request. You approve and collect payment yourself (cash, bank transfer, card on site).",
+      "requestModeNote": "You approve and collect payment for every booking. You can switch to online payment anytime from settings.",
+      "configComplete": "Setup complete!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Why online payment?",
+          "benefit1": "Get paid instantly, at booking time",
+          "benefit2": "Fewer no-shows thanks to prepayment",
+          "benefit3": "Card-hold deposits, without charging",
+          "benefit4": "Automatic payouts to your bank account",
+          "kycTitle": "Activate Stripe",
+          "kycStep1": "Create your account — 2 minutes",
+          "kycStep2": "Verify your identity — ID and bank details, 5 to 10 min",
+          "kycStep3": "Online payment activates automatically",
+          "configureNow": "Set up Stripe now",
+          "resumeNow": "Resume Stripe setup",
+          "configureLater": "Or later from your dashboard — until then, reservations fall back to manual approval."
+        },
+        "request": {
+          "howTitle": "How does it work?",
+          "step1": "The customer sends a request",
+          "step2": "You get an email",
+          "step3": "You accept or decline",
+          "step4": "The customer gets a confirmation",
+          "step5": "You collect payment at pickup",
+          "prosTitle": "What you gain",
+          "pros1": "Full control over every booking",
+          "pros2": "No setup",
+          "pros3": "Cash, bank transfer or card on site",
+          "consTitle": "What you give up",
+          "cons1": "Reminders and unpaid bookings to handle",
+          "cons2": "More no-shows without prepayment",
+          "cons3": "No automatic deposits",
+          "switchNote": "Switch to online payment anytime from settings."
+        }
+      }
     },
     "complete": {
       "title": "Your store is ready!",
@@ -5176,11 +5276,38 @@
       "viewStore": "View my store",
       "goToDashboard": "Go to dashboard"
     },
+    "preview": {
+      "reserve": "Book",
+      "pay": "Pay"
+    },
+    "source": {
+      "title": "One last thing…",
+      "description": "How did you hear about Louez?",
+      "wordOfMouth": "Word of mouth",
+      "searchEngine": "Search engine (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "AI assistant (ChatGPT…)",
+      "ads": "Advertising",
+      "other": "Other",
+      "otherPlaceholder": "Tell us more…",
+      "skip": "Skip",
+      "finish": "Finish",
+      "panel": {
+        "title": "A note from the team",
+        "p1": "Welcome to Louez, and thank you for your trust. Your store is ready, we can't wait to see your first bookings.",
+        "p2": "A question or an idea? Write to us through the help button at the bottom left, we read everything.",
+        "signature": "The founders of Louez"
+      }
+    },
     "steps": {
       "store": "Store",
       "branding": "Customization",
       "product": "First product",
-      "payment": "Payments"
+      "payment": "Payments",
+      "profile": "Profile",
+      "source": "Source"
     }
   },
   "categories": {

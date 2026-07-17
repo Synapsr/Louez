@@ -1,11 +1,11 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath } from "next/cache";
 
-import { and, eq, gte, inArray, ne, not, or } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
+import { and, eq, gte, inArray, ne, not, or } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
-import { db, getEffectiveProductQuantities } from '@louez/db';
+import { db, getEffectiveProductQuantities } from "@louez/db";
 import {
   categories,
   getBlockingReservationStatuses,
@@ -16,8 +16,8 @@ import {
   reservationItemUnits,
   reservationItems,
   reservations,
-} from '@louez/db';
-import type { BookingAttributeAxis, UnitAttributes } from '@louez/types';
+} from "@louez/db";
+import type { BookingAttributeAxis, UnitAttributes } from "@louez/types";
 import {
   DEFAULT_COMBINATION_KEY,
   buildCombinationKey,
@@ -26,29 +26,27 @@ import {
   priceDurationToMinutes,
   pricingModeToMinutes,
   validatePricingTiers,
-} from '@louez/utils';
+} from "@louez/utils";
 import {
   type CategoryInput,
   type ProductInput,
   type ProductUnitInput,
   categorySchema,
+  isOwnedImageUrl,
   productSchema,
-} from '@louez/validations';
+} from "@louez/validations";
 
-import { auth } from '@/lib/auth';
-import {
-  notifyProductCreated,
-  notifyProductUpdated,
-} from '@/lib/discord/platform-notifications';
-import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
-import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
-import { getCurrentStore } from '@/lib/store-context';
+import { auth } from "@/lib/auth";
+import { notifyProductCreated, notifyProductUpdated } from "@/lib/discord/platform-notifications";
+import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
+import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { getCurrentStore } from "@/lib/store-context";
 import {
   type UpdateUnitMutation,
   createUnits,
   deleteUnits,
   updateUnits,
-} from '@/lib/utils/unit-mutations';
+} from "@/lib/utils/unit-mutations";
 
 async function getStoreForUser() {
   return getCurrentStore();
@@ -60,11 +58,11 @@ async function getActorUserId(): Promise<string | null> {
 }
 
 const UNIT_LIFECYCLE = {
-  active: 'active',
-} satisfies { active: 'active' };
+  active: "active",
+} satisfies { active: "active" };
 
 function normalizeBookingAttributeAxes(
-  axes: ProductInput['bookingAttributeAxes'],
+  axes: ProductInput["bookingAttributeAxes"],
 ): BookingAttributeAxis[] {
   if (!axes || axes.length === 0) {
     return [];
@@ -83,51 +81,40 @@ function resolveUnitAttributes(
   axes: BookingAttributeAxis[],
   unit: ProductUnitInput,
 ): UnitAttributes {
-  return canonicalizeAttributes(
-    axes,
-    unit.attributes as UnitAttributes | undefined,
-  );
+  return canonicalizeAttributes(axes, unit.attributes as UnitAttributes | undefined);
 }
 
 function normalizePriceInput(value: string | undefined): string {
-  return (value || '0').replace(',', '.');
+  return (value || "0").replace(",", ".");
 }
 
-function normalizeNullablePriceInput(
-  value: string | null | undefined,
-): string | null {
+function normalizeNullablePriceInput(value: string | null | undefined): string | null {
   if (value == null) {
     return null;
   }
 
-  return value.trim().replace(',', '.') || null;
+  return value.trim().replace(",", ".") || null;
 }
 
-function normalizeNullableDateInput(
-  value: string | Date | null | undefined,
-): Date | null {
+function normalizeNullableDateInput(value: string | Date | null | undefined): Date | null {
   if (!value) {
     return null;
   }
 
-  const date = typeof value === 'string' ? new Date(value) : value;
+  const date = typeof value === "string" ? new Date(value) : value;
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function getNewUnitNotesInput(unit: ProductUnitInput): string | undefined {
-  return 'notes' in unit ? unit.notes : undefined;
+  return "notes" in unit ? unit.notes : undefined;
 }
 
-function getNewUnitPurchasePriceInput(
-  unit: ProductUnitInput,
-): string | null | undefined {
-  return 'purchasePrice' in unit ? unit.purchasePrice : undefined;
+function getNewUnitPurchasePriceInput(unit: ProductUnitInput): string | null | undefined {
+  return "purchasePrice" in unit ? unit.purchasePrice : undefined;
 }
 
-function getNewUnitPurchasedAtInput(
-  unit: ProductUnitInput,
-): string | Date | null | undefined {
-  return 'purchasedAt' in unit ? unit.purchasedAt : undefined;
+function getNewUnitPurchasedAtInput(unit: ProductUnitInput): string | Date | null | undefined {
+  return "purchasedAt" in unit ? unit.purchasedAt : undefined;
 }
 
 async function getAssignedBlockingUnitIds({
@@ -143,20 +130,12 @@ async function getAssignedBlockingUnitIds({
     return [];
   }
 
-  const blockingStatuses = getBlockingReservationStatuses(
-    pendingBlocksAvailability,
-  );
+  const blockingStatuses = getBlockingReservationStatuses(pendingBlocksAvailability);
   const rows = await db
     .select({ productUnitId: reservationItemUnits.productUnitId })
     .from(reservationItemUnits)
-    .innerJoin(
-      reservationItems,
-      eq(reservationItemUnits.reservationItemId, reservationItems.id),
-    )
-    .innerJoin(
-      reservations,
-      eq(reservationItems.reservationId, reservations.id),
-    )
+    .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))
+    .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
     .where(
       and(
         inArray(reservationItemUnits.productUnitId, unitIds),
@@ -165,19 +144,15 @@ async function getAssignedBlockingUnitIds({
       ),
     );
 
-  return [
-    ...new Set(
-      rows.flatMap((row) => (row.productUnitId ? [row.productUnitId] : [])),
-    ),
-  ];
+  return [...new Set(rows.flatMap((row) => (row.productUnitId ? [row.productUnitId] : [])))];
 }
 
 function getLegacyPricingModeFromUnit(
-  unit: 'minute' | 'hour' | 'day' | 'week',
-): 'hour' | 'day' | 'week' {
-  if (unit === 'week') return 'week';
-  if (unit === 'day') return 'day';
-  return 'hour';
+  unit: "minute" | "hour" | "day" | "week",
+): "hour" | "day" | "week" {
+  if (unit === "week") return "week";
+  if (unit === "day") return "day";
+  return "hour";
 }
 
 function buildRateTierRows(
@@ -238,9 +213,7 @@ function hasDuplicateRatePeriods(rows: Array<{ period: number }>): boolean {
   return false;
 }
 
-function getDuplicateRatePeriodIndexes(
-  rows: Array<{ period: number }>,
-): number[] {
+function getDuplicateRatePeriodIndexes(rows: Array<{ period: number }>): number[] {
   const byPeriod = new Map<number, number[]>();
 
   rows.forEach((row, index) => {
@@ -264,12 +237,16 @@ function getDuplicateRatePeriodIndexes(
 export async function createProduct(data: ProductInput) {
   const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const validated = productSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
+  }
+
+  if (validated.data.images?.some((image) => !isOwnedImageUrl(image, `${store.id}/products`))) {
+    return { error: "errors.invalidData" };
   }
 
   // Validate legacy pricing tiers if provided (fallback compatibility only)
@@ -282,30 +259,20 @@ export async function createProduct(data: ProductInput) {
   }
 
   const basePriceDuration = validated.data.basePriceDuration;
-  const price = normalizePriceInput(
-    basePriceDuration?.price || validated.data.price,
-  );
+  const price = normalizePriceInput(basePriceDuration?.price || validated.data.price);
   const basePeriodMinutes = basePriceDuration
     ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
-    : pricingModeToMinutes(
-        (validated.data.pricingMode || 'day') as 'hour' | 'day' | 'week',
-      );
+    : pricingModeToMinutes((validated.data.pricingMode || "day") as "hour" | "day" | "week");
   const legacyPricingMode = basePriceDuration
     ? getLegacyPricingModeFromUnit(basePriceDuration.unit)
-    : ((validated.data.pricingMode || 'day') as 'hour' | 'day' | 'week');
-  const deposit = validated.data.deposit
-    ? normalizePriceInput(validated.data.deposit)
-    : '0';
-  const rateTierRows = buildRateTierRows(
-    validated.data,
-    parseFloat(price) || 0,
-    basePeriodMinutes,
-  );
+    : ((validated.data.pricingMode || "day") as "hour" | "day" | "week");
+  const deposit = validated.data.deposit ? normalizePriceInput(validated.data.deposit) : "0";
+  const rateTierRows = buildRateTierRows(validated.data, parseFloat(price) || 0, basePeriodMinutes);
   if (hasDuplicateRatePeriods(rateTierRows)) {
     return {
-      error: 'errors.invalidData',
+      error: "errors.invalidData",
       details: {
-        code: 'duplicate_rate_periods',
+        code: "duplicate_rate_periods",
         duplicateRateTierIndexes: getDuplicateRatePeriodIndexes(rateTierRows),
       },
     };
@@ -320,8 +287,7 @@ export async function createProduct(data: ProductInput) {
   const manualQuantity = parseInt(validated.data.quantity, 10);
 
   const productId = nanoid();
-  const actorUserId =
-    trackUnits && units.length > 0 ? await getActorUserId() : null;
+  const actorUserId = trackUnits && units.length > 0 ? await getActorUserId() : null;
 
   try {
     await db.transaction(async (tx) => {
@@ -343,9 +309,7 @@ export async function createProduct(data: ProductInput) {
         enforceStrictTiers: validated.data.enforceStrictTiers || false,
         trackUnits: trackUnits,
         bookingAttributeAxes:
-          trackUnits && bookingAttributeAxes.length > 0
-            ? bookingAttributeAxes
-            : null,
+          trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
       });
 
       // Create pricing tiers if provided
@@ -370,20 +334,13 @@ export async function createProduct(data: ProductInput) {
 
           return {
             attributes,
-            combinationKey: buildCombinationKey(
-              bookingAttributeAxes,
-              attributes,
-            ),
+            combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
             id: nanoid(),
             productId: productId,
             identifier: unit.identifier.trim(),
             notes: getNewUnitNotesInput(unit)?.trim() || null,
-            purchasePrice: normalizeNullablePriceInput(
-              getNewUnitPurchasePriceInput(unit),
-            ),
-            purchasedAt: normalizeNullableDateInput(
-              getNewUnitPurchasedAtInput(unit),
-            ),
+            purchasePrice: normalizeNullablePriceInput(getNewUnitPurchasePriceInput(unit)),
+            purchasedAt: normalizeNullableDateInput(getNewUnitPurchasedAtInput(unit)),
             lifecycleStatus: UNIT_LIFECYCLE.active,
           };
         });
@@ -407,8 +364,8 @@ export async function createProduct(data: ProductInput) {
       }
     });
   } catch (error) {
-    console.error('Error creating product:', error);
-    return { error: 'errors.invalidData' };
+    console.error("Error creating product:", error);
+    return { error: "errors.invalidData" };
   }
 
   notifyProductCreated(
@@ -420,12 +377,12 @@ export async function createProduct(data: ProductInput) {
     distinctId: store.userId,
     event: productAnalyticsEvents.productCreated,
     properties: {
-      feature: 'product_catalog',
-      surface: 'dashboard',
+      feature: "product_catalog",
+      surface: "dashboard",
       store_id: store.id,
       product_id: productId,
       product_status: validated.data.status,
-      created_from: 'dashboard',
+      created_from: "dashboard",
       track_units: trackUnits,
       available_unit_count: trackUnits ? units.length : null,
       manual_quantity: trackUnits ? null : manualQuantity,
@@ -441,20 +398,20 @@ export async function createProduct(data: ProductInput) {
     },
   });
 
-  revalidatePath('/dashboard/products');
-  revalidatePath('/dashboard/inventory');
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
   return { success: true, productId };
 }
 
 export async function updateProduct(productId: string, data: ProductInput) {
   const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const validated = productSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
   }
 
   // Validate legacy pricing tiers only when V2 rates are not provided.
@@ -472,40 +429,35 @@ export async function updateProduct(productId: string, data: ProductInput) {
   });
 
   if (!product) {
-    return { error: 'errors.productNotFound' };
+    return { error: "errors.productNotFound" };
+  }
+
+  const existingImages = new Set(product.images ?? []);
+  if (
+    validated.data.images?.some(
+      (image) => !existingImages.has(image) && !isOwnedImageUrl(image, `${store.id}/products`),
+    )
+  ) {
+    return { error: "errors.invalidData" };
   }
 
   const basePriceDuration = validated.data.basePriceDuration;
-  const price = normalizePriceInput(
-    basePriceDuration?.price || validated.data.price,
-  );
+  const price = normalizePriceInput(basePriceDuration?.price || validated.data.price);
   const basePeriodMinutes = basePriceDuration
     ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
     : pricingModeToMinutes(
-        (validated.data.pricingMode || product.pricingMode || 'day') as
-          | 'hour'
-          | 'day'
-          | 'week',
+        (validated.data.pricingMode || product.pricingMode || "day") as "hour" | "day" | "week",
       );
   const legacyPricingMode = basePriceDuration
     ? getLegacyPricingModeFromUnit(basePriceDuration.unit)
-    : ((validated.data.pricingMode || product.pricingMode || 'day') as
-        | 'hour'
-        | 'day'
-        | 'week');
-  const deposit = validated.data.deposit
-    ? normalizePriceInput(validated.data.deposit)
-    : '0';
-  const rateTierRows = buildRateTierRows(
-    validated.data,
-    parseFloat(price) || 0,
-    basePeriodMinutes,
-  );
+    : ((validated.data.pricingMode || product.pricingMode || "day") as "hour" | "day" | "week");
+  const deposit = validated.data.deposit ? normalizePriceInput(validated.data.deposit) : "0";
+  const rateTierRows = buildRateTierRows(validated.data, parseFloat(price) || 0, basePeriodMinutes);
   if (hasDuplicateRatePeriods(rateTierRows)) {
     return {
-      error: 'errors.invalidData',
+      error: "errors.invalidData",
       details: {
-        code: 'duplicate_rate_periods',
+        code: "duplicate_rate_periods",
         duplicateRateTierIndexes: getDuplicateRatePeriodIndexes(rateTierRows),
       },
     };
@@ -526,10 +478,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
     const conflictingVariantReservations = await db
       .select({ id: reservationItems.id })
       .from(reservationItems)
-      .innerJoin(
-        reservations,
-        eq(reservationItems.reservationId, reservations.id),
-      )
+      .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
       .where(
         and(
           eq(reservationItems.productId, productId),
@@ -541,7 +490,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
       .limit(1);
 
     if (conflictingVariantReservations.length > 0) {
-      return { error: 'errors.cannotDisableUnitTrackingWithCombinations' };
+      return { error: "errors.cannotDisableUnitTrackingWithCombinations" };
     }
   }
 
@@ -554,36 +503,27 @@ export async function updateProduct(productId: string, data: ProductInput) {
   const editableExistingUnits = existingUnits.filter(
     (unit) => unit.lifecycleStatus === UNIT_LIFECYCLE.active,
   );
-  const existingUnitsById = new Map(
-    editableExistingUnits.map((unit) => [unit.id, unit]),
-  );
+  const existingUnitsById = new Map(editableExistingUnits.map((unit) => [unit.id, unit]));
   const existingUnitIds = new Set(editableExistingUnits.map((unit) => unit.id));
-  const unitsToUpdate = units.filter(
-    (unit) => unit.id && existingUnitIds.has(unit.id),
-  );
+  const unitsToUpdate = units.filter((unit) => unit.id && existingUnitIds.has(unit.id));
   const unitsToInsert = units.filter((unit) => !unit.id);
   const unitIdsToKeep = new Set(
     trackUnits
-      ? units.flatMap((unit) =>
-          unit.id && existingUnitIds.has(unit.id) ? [unit.id] : [],
-        )
+      ? units.flatMap((unit) => (unit.id && existingUnitIds.has(unit.id) ? [unit.id] : []))
       : [],
   );
-  const unitsToDelete = editableExistingUnits.filter(
-    (unit) => !unitIdsToKeep.has(unit.id),
-  );
+  const unitsToDelete = editableExistingUnits.filter((unit) => !unitIdsToKeep.has(unit.id));
   const manualQuantity = parseInt(validated.data.quantity, 10);
 
   if (unitsToDelete.length > 0) {
     const failedUnitIds = await getAssignedBlockingUnitIds({
       unitIds: unitsToDelete.map((unit) => unit.id),
       storeId: store.id,
-      pendingBlocksAvailability:
-        store.settings?.pendingBlocksAvailability ?? true,
+      pendingBlocksAvailability: store.settings?.pendingBlocksAvailability ?? true,
     });
 
     if (failedUnitIds.length > 0) {
-      return { error: 'errors.unitAssigned', failedUnitIds };
+      return { error: "errors.unitAssigned", failedUnitIds };
     }
   }
 
@@ -595,13 +535,10 @@ export async function updateProduct(productId: string, data: ProductInput) {
     for (const unit of unitsToUpdate) {
       if (!unit.id) continue;
       const existingUnit = existingUnitsById.get(unit.id);
-      if (existingUnit?.lifecycleStatus !== 'active') continue;
+      if (existingUnit?.lifecycleStatus !== "active") continue;
 
       const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
-      const combinationKey = buildCombinationKey(
-        bookingAttributeAxes,
-        attributes,
-      );
+      const combinationKey = buildCombinationKey(bookingAttributeAxes, attributes);
       proposedAvailableByCombination.set(
         combinationKey,
         (proposedAvailableByCombination.get(combinationKey) || 0) + 1,
@@ -610,10 +547,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
     for (const unit of unitsToInsert) {
       const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
-      const combinationKey = buildCombinationKey(
-        bookingAttributeAxes,
-        attributes,
-      );
+      const combinationKey = buildCombinationKey(bookingAttributeAxes, attributes);
       proposedAvailableByCombination.set(
         combinationKey,
         (proposedAvailableByCombination.get(combinationKey) || 0) + 1,
@@ -626,10 +560,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
         quantity: reservationItems.quantity,
       })
       .from(reservationItems)
-      .innerJoin(
-        reservations,
-        eq(reservationItems.reservationId, reservations.id),
-      )
+      .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
       .where(
         and(
           eq(reservationItems.productId, productId),
@@ -649,14 +580,13 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
     const hasCapacityConflict = [...reservedByCombination.entries()].some(
       ([combinationKey, reservedQty]) => {
-        const availableQty =
-          proposedAvailableByCombination.get(combinationKey) || 0;
+        const availableQty = proposedAvailableByCombination.get(combinationKey) || 0;
         return reservedQty > availableQty;
       },
     );
 
     if (hasCapacityConflict) {
-      return { error: 'errors.unitStatusConflictsWithReservations' };
+      return { error: "errors.unitStatusConflictsWithReservations" };
     }
   }
 
@@ -678,17 +608,13 @@ export async function updateProduct(productId: string, data: ProductInput) {
       enforceStrictTiers: validated.data.enforceStrictTiers || false,
       trackUnits: trackUnits,
       bookingAttributeAxes:
-        trackUnits && bookingAttributeAxes.length > 0
-          ? bookingAttributeAxes
-          : null,
+        trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId));
 
   // Update pricing tiers: delete all existing and insert new ones
-  await db
-    .delete(productPricingTiers)
-    .where(eq(productPricingTiers.productId, productId));
+  await db.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId));
 
   if (rateTierRows.length > 0) {
     await db.insert(productPricingTiers).values(
@@ -707,73 +633,63 @@ export async function updateProduct(productId: string, data: ProductInput) {
   // Update product units: sync with provided units
   if (trackUnits || product.trackUnits) {
     const actorUserId =
-      unitsToDelete.length > 0 ||
-      unitsToUpdate.length > 0 ||
-      unitsToInsert.length > 0
+      unitsToDelete.length > 0 || unitsToUpdate.length > 0 || unitsToInsert.length > 0
         ? await getActorUserId()
         : null;
 
-    const updateMutations: UpdateUnitMutation[] = unitsToUpdate.flatMap(
-      (unit) => {
-        if (!unit.id) return [];
-        const existingUnit = existingUnitsById.get(unit.id);
-        if (!existingUnit) return [];
+    const updateMutations: UpdateUnitMutation[] = unitsToUpdate.flatMap((unit) => {
+      if (!unit.id) return [];
+      const existingUnit = existingUnitsById.get(unit.id);
+      if (!existingUnit) return [];
 
-        const identifier = unit.identifier.trim();
-        const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
-        const combinationKey = buildCombinationKey(
-          bookingAttributeAxes,
-          attributes,
-        );
-        const changes: Record<string, { from: unknown; to: unknown }> = {};
+      const identifier = unit.identifier.trim();
+      const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
+      const combinationKey = buildCombinationKey(bookingAttributeAxes, attributes);
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
 
-        if (identifier !== existingUnit.identifier) {
-          changes.identifier = {
-            from: existingUnit.identifier,
-            to: identifier,
-          };
-        }
+      if (identifier !== existingUnit.identifier) {
+        changes.identifier = {
+          from: existingUnit.identifier,
+          to: identifier,
+        };
+      }
 
-        if (combinationKey !== existingUnit.combinationKey) {
-          changes.combinationKey = {
-            from: existingUnit.combinationKey,
-            to: combinationKey,
-          };
-        }
+      if (combinationKey !== existingUnit.combinationKey) {
+        changes.combinationKey = {
+          from: existingUnit.combinationKey,
+          to: combinationKey,
+        };
+      }
 
-        if (
-          JSON.stringify(attributes) !==
-          JSON.stringify(existingUnit.attributes ?? {})
-        ) {
-          changes.attributes = {
-            from: existingUnit.attributes ?? {},
-            to: attributes,
-          };
-        }
+      if (JSON.stringify(attributes) !== JSON.stringify(existingUnit.attributes ?? {})) {
+        changes.attributes = {
+          from: existingUnit.attributes ?? {},
+          to: attributes,
+        };
+      }
 
-        if (Object.keys(changes).length === 0) {
-          return [];
-        }
+      if (Object.keys(changes).length === 0) {
+        return [];
+      }
 
-        return [
-          {
-            unitId: unit.id,
-            values: {
-              identifier,
-              attributes,
-              combinationKey,
-            },
-            event: {
-              storeId: store.id,
-              type: 'updated',
-              actorUserId,
-              identifierSnapshot: identifier,
-              payload: { changes },
-            },
+      return [
+        {
+          unitId: unit.id,
+          values: {
+            identifier,
+            attributes,
+            combinationKey,
           },
-        ];
-      },
-    );
+          event: {
+            storeId: store.id,
+            type: "updated",
+            actorUserId,
+            identifierSnapshot: identifier,
+            payload: { changes },
+          },
+        },
+      ];
+    });
 
     const unitRows = unitsToInsert.map((unit) => {
       const attributes = resolveUnitAttributes(bookingAttributeAxes, unit);
@@ -782,12 +698,8 @@ export async function updateProduct(productId: string, data: ProductInput) {
         productId: productId,
         identifier: unit.identifier.trim(),
         notes: getNewUnitNotesInput(unit)?.trim() || null,
-        purchasePrice: normalizeNullablePriceInput(
-          getNewUnitPurchasePriceInput(unit),
-        ),
-        purchasedAt: normalizeNullableDateInput(
-          getNewUnitPurchasedAtInput(unit),
-        ),
+        purchasePrice: normalizeNullablePriceInput(getNewUnitPurchasePriceInput(unit)),
+        purchasedAt: normalizeNullableDateInput(getNewUnitPurchasedAtInput(unit)),
         lifecycleStatus: UNIT_LIFECYCLE.active,
         attributes,
         combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
@@ -801,7 +713,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
           unitId: unit.id,
           event: {
             storeId: store.id,
-            type: 'deleted',
+            type: "deleted",
             actorUserId,
             identifierSnapshot: unit.identifier,
             payload: {
@@ -834,9 +746,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
   // Update accessories: delete all existing and insert new ones
   const accessoryIds = validated.data.accessoryIds || [];
-  await db
-    .delete(productAccessories)
-    .where(eq(productAccessories.productId, productId));
+  await db.delete(productAccessories).where(eq(productAccessories.productId, productId));
 
   if (accessoryIds.length > 0) {
     // Verify all accessories belong to the same store and are not the product itself
@@ -868,19 +778,19 @@ export async function updateProduct(productId: string, data: ProductInput) {
     validated.data.name,
   ).catch(() => {});
 
-  revalidatePath('/dashboard/products');
-  revalidatePath('/dashboard/inventory');
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/inventory");
   revalidatePath(`/dashboard/products/${productId}`);
   return { success: true };
 }
 
 export async function updateProductStatus(
   productId: string,
-  status: 'draft' | 'active' | 'archived',
+  status: "draft" | "active" | "archived",
 ) {
   const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const product = await db.query.products.findFirst({
@@ -888,7 +798,7 @@ export async function updateProductStatus(
   });
 
   if (!product) {
-    return { error: 'errors.productNotFound' };
+    return { error: "errors.productNotFound" };
   }
 
   await db
@@ -899,14 +809,14 @@ export async function updateProductStatus(
     })
     .where(eq(products.id, productId));
 
-  revalidatePath('/dashboard/products');
+  revalidatePath("/dashboard/products");
   return { success: true };
 }
 
 export async function deleteProduct(productId: string) {
   const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const product = await db.query.products.findFirst({
@@ -914,7 +824,7 @@ export async function deleteProduct(productId: string) {
   });
 
   if (!product) {
-    return { error: 'errors.productNotFound' };
+    return { error: "errors.productNotFound" };
   }
 
   const unitsToDelete = await db.query.productUnits.findMany({
@@ -923,13 +833,12 @@ export async function deleteProduct(productId: string) {
   const failedUnitIds = await getAssignedBlockingUnitIds({
     unitIds: unitsToDelete.map((unit) => unit.id),
     storeId: store.id,
-    pendingBlocksAvailability:
-      store.settings?.pendingBlocksAvailability ?? true,
+    pendingBlocksAvailability: store.settings?.pendingBlocksAvailability ?? true,
   });
 
   if (failedUnitIds.length > 0) {
     return {
-      error: 'errors.unitAssigned',
+      error: "errors.unitAssigned",
       failedUnitIds,
       failedUnitIdentifiers: unitsToDelete
         .filter((unit) => failedUnitIds.includes(unit.id))
@@ -956,7 +865,7 @@ export async function deleteProduct(productId: string) {
         unitId: unit.id,
         event: {
           storeId: store.id,
-          type: 'deleted',
+          type: "deleted",
           actorUserId,
           identifierSnapshot: unit.identifier,
           payload: {
@@ -971,14 +880,14 @@ export async function deleteProduct(productId: string) {
     await tx.delete(products).where(eq(products.id, productId));
   });
 
-  revalidatePath('/dashboard/products');
+  revalidatePath("/dashboard/products");
   return { success: true };
 }
 
 export async function duplicateProduct(productId: string) {
   const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const product = await db.query.products.findFirst({
@@ -989,15 +898,13 @@ export async function duplicateProduct(productId: string) {
   });
 
   if (!product) {
-    return { error: 'errors.productNotFound' };
+    return { error: "errors.productNotFound" };
   }
 
   const newProductId = nanoid();
-  const effectiveQuantities = await getEffectiveProductQuantities(db, [
-    product.id,
-  ]);
+  const effectiveQuantities = await getEffectiveProductQuantities(db, [product.id]);
   const duplicateQuantity = product.trackUnits
-    ? effectiveQuantities.get(product.id) ?? 0
+    ? (effectiveQuantities.get(product.id) ?? 0)
     : product.quantity;
 
   // Note: the "(copy)" suffix will be translated on the client side
@@ -1014,7 +921,7 @@ export async function duplicateProduct(productId: string) {
     pricingMode: product.pricingMode,
     basePeriodMinutes: product.basePeriodMinutes,
     quantity: duplicateQuantity,
-    status: 'draft',
+    status: "draft",
     images: product.images,
     videoUrl: product.videoUrl,
     taxSettings: product.taxSettings,
@@ -1030,8 +937,7 @@ export async function duplicateProduct(productId: string) {
         id: nanoid(),
         productId: newProductId,
         minDuration: tier.period && tier.price ? null : tier.minDuration,
-        discountPercent:
-          tier.period && tier.price ? null : tier.discountPercent,
+        discountPercent: tier.period && tier.price ? null : tier.discountPercent,
         period: tier.period,
         price: tier.price,
         displayOrder: tier.displayOrder,
@@ -1039,7 +945,7 @@ export async function duplicateProduct(productId: string) {
     );
   }
 
-  revalidatePath('/dashboard/products');
+  revalidatePath("/dashboard/products");
   return { success: true };
 }
 
@@ -1087,7 +993,7 @@ export async function getAvailableAccessories(excludeProductId?: string) {
   }
 
   const allProducts = await db.query.products.findMany({
-    where: and(eq(products.storeId, store.id), eq(products.status, 'active')),
+    where: and(eq(products.storeId, store.id), eq(products.status, "active")),
     columns: {
       id: true,
       name: true,
@@ -1109,12 +1015,12 @@ export async function getAvailableAccessories(excludeProductId?: string) {
 export async function createCategory(data: CategoryInput) {
   const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const validated = categorySchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
   }
 
   // Get max order
@@ -1130,20 +1036,20 @@ export async function createCategory(data: CategoryInput) {
     order: maxOrder + 1,
   });
 
-  revalidatePath('/dashboard/products');
-  revalidatePath('/dashboard/categories');
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/categories");
   return { success: true };
 }
 
 export async function updateCategory(categoryId: string, data: CategoryInput) {
   const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const validated = categorySchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
   }
 
   const category = await db.query.categories.findFirst({
@@ -1151,7 +1057,7 @@ export async function updateCategory(categoryId: string, data: CategoryInput) {
   });
 
   if (!category) {
-    return { error: 'errors.categoryNotFound' };
+    return { error: "errors.categoryNotFound" };
   }
 
   await db
@@ -1163,15 +1069,15 @@ export async function updateCategory(categoryId: string, data: CategoryInput) {
     })
     .where(eq(categories.id, categoryId));
 
-  revalidatePath('/dashboard/products');
-  revalidatePath('/dashboard/categories');
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/categories");
   return { success: true };
 }
 
 export async function deleteCategory(categoryId: string) {
   const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const category = await db.query.categories.findFirst({
@@ -1179,19 +1085,16 @@ export async function deleteCategory(categoryId: string) {
   });
 
   if (!category) {
-    return { error: 'errors.categoryNotFound' };
+    return { error: "errors.categoryNotFound" };
   }
 
   // Remove category from products
-  await db
-    .update(products)
-    .set({ categoryId: null })
-    .where(eq(products.categoryId, categoryId));
+  await db.update(products).set({ categoryId: null }).where(eq(products.categoryId, categoryId));
 
   await db.delete(categories).where(eq(categories.id, categoryId));
 
-  revalidatePath('/dashboard/products');
-  revalidatePath('/dashboard/categories');
+  revalidatePath("/dashboard/products");
+  revalidatePath("/dashboard/categories");
   return { success: true };
 }
 
@@ -1210,7 +1113,7 @@ export async function getCategories() {
 export async function updateProductsOrder(productIds: string[]) {
   const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   // Verify all products belong to this store
@@ -1236,6 +1139,6 @@ export async function updateProductsOrder(productIds: string[]) {
     ),
   );
 
-  revalidatePath('/dashboard/products');
+  revalidatePath("/dashboard/products");
   return { success: true };
 }

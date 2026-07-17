@@ -7,10 +7,50 @@ export { stripe, getStripe }
 // Connect Account Management
 // ============================================================================
 
+// MCC 7394: "Equipment, Tool, Furniture, and Appliance Rental and Leasing" —
+// the closest generic industry code for a rental business. Prefilled on the
+// connected account so the hosted KYC's Industry dropdown starts on it; the
+// merchant can still pick a more specific vertical in the Stripe form.
+export const RENTAL_MCC = '7394'
+
+/**
+ * Normalize a store name into a valid Stripe statement descriptor: what the
+ * end customer sees on their card statement. Stripe requires 5–22 characters,
+ * at least one letter, no `<>\'"*`. Returns undefined when the name can't
+ * make a valid descriptor (better to let the merchant type one in the KYC).
+ */
+export function toStatementDescriptor(name: string): string | undefined {
+  const normalized = name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip diacritics
+    .replace(/[<>\\'"*]/g, '')
+    .replace(/[^\x20-\x7e]/g, '') // Stripe only accepts printable ASCII
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase()
+    .slice(0, 22)
+    .trim()
+
+  if (normalized.length < 5 || !/[a-zA-Z]/.test(normalized)) {
+    return undefined
+  }
+  return normalized
+}
+
 interface CreateConnectAccountParams {
   email: string
   country: string
   businessType?: 'individual' | 'company'
+  businessProfile?: {
+    name?: string
+    url?: string
+    mcc?: string
+    productDescription?: string
+    supportEmail?: string
+    supportPhone?: string
+    supportUrl?: string
+  }
+  statementDescriptor?: string
   metadata?: Record<string, string>
 }
 
@@ -18,6 +58,8 @@ export async function createConnectAccount({
   email,
   country,
   businessType,
+  businessProfile,
+  statementDescriptor,
   metadata,
 }: CreateConnectAccountParams) {
   const account = await stripe.accounts.create({
@@ -30,6 +72,22 @@ export async function createConnectAccount({
     email,
     country,
     business_type: businessType,
+    // Prefill what the platform already knows; the hosted onboarding shows
+    // these fields for review and lets the merchant edit them.
+    business_profile: businessProfile
+      ? {
+          name: businessProfile.name,
+          url: businessProfile.url,
+          mcc: businessProfile.mcc,
+          product_description: businessProfile.productDescription,
+          support_email: businessProfile.supportEmail,
+          support_phone: businessProfile.supportPhone,
+          support_url: businessProfile.supportUrl,
+        }
+      : undefined,
+    settings: statementDescriptor
+      ? { payments: { statement_descriptor: statementDescriptor } }
+      : undefined,
     capabilities: {
       card_payments: { requested: true },
       transfers: { requested: true },
@@ -75,6 +133,7 @@ export async function getAccountStatus(accountId: string) {
   const account = await stripe.accounts.retrieve(accountId)
 
   return {
+    country: account.country ?? null,
     chargesEnabled: account.charges_enabled ?? false,
     payoutsEnabled: account.payouts_enabled ?? false,
     detailsSubmitted: account.details_submitted ?? false,

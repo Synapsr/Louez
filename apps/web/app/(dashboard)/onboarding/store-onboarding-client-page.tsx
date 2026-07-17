@@ -1,440 +1,185 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
+import { useRouter } from "next/navigation";
 
-import { useRouter } from 'next/navigation';
+import { useTranslations } from "next-intl";
 
-import { revalidateLogic, useStore } from '@tanstack/react-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Globe, Store } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { Button, Label } from "@louez/ui";
 
-import { toastManager } from '@louez/ui';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui';
-import { Label } from '@louez/ui';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@louez/ui';
-import { type StoreInfoInput, createStoreInfoSchema } from '@louez/validations';
+import { StoreSwitcher } from "@/components/dashboard/store-switcher";
+import { FormStoreNameSlug } from "@/components/form/form-store-name-slug";
+import { AddressInput } from "@/components/ui/address-input";
 
-import { StoreSwitcher } from '@/components/dashboard/store-switcher';
-import { FormStoreNameSlug } from '@/components/form/form-store-name-slug';
-import { AddressInput } from '@/components/ui/address-input';
+import { getFieldError } from "@/hooks/form/form-context";
 
-import { orpc } from '@/lib/orpc/react';
-import {
-  getCountriesSortedByName,
-  getCountryName,
-} from '@/lib/utils/countries';
-import {
-  SUPPORTED_CURRENCIES,
-  getDefaultCurrencyForCountry,
-} from '@/lib/utils/currency';
-import {
-  ONBOARDING_FALLBACK_COUNTRY,
-  detectCountryFromBrowser,
-  getBrowserLanguage,
-} from '@/lib/utils/util.browser-country-detection';
+import { env } from "@/env";
 
-import { useAppForm } from '@/hooks/form/form';
-import { getFieldError } from '@/hooks/form/form-context';
-
-import { env } from '@/env';
-
-import { createStore } from './actions';
+import { OnboardingStepHeader } from "./_components/step-header";
+import { useOnboardingSteps } from "./_lib/steps-context";
+import { useStoreStep } from "./use-store-step";
 
 interface StoreWithRole {
   id: string;
   name: string;
   slug: string;
   logoUrl: string | null;
-  role: 'owner' | 'member' | 'platform_admin';
+  role: "owner" | "member" | "platform_admin";
 }
 
 interface StoreOnboardingClientPageProps {
   stores: StoreWithRole[];
   currentStoreId: string | null;
+  editingStoreId: string | null;
+  initialCountry: string;
+  shouldDetectBrowserCountry: boolean;
 }
 
 export function StoreOnboardingClientPage({
   stores,
   currentStoreId,
+  editingStoreId,
+  initialCountry,
+  shouldDetectBrowserCountry,
 }: StoreOnboardingClientPageProps) {
   const router = useRouter();
-  const t = useTranslations('onboarding.store');
-  const tCommon = useTranslations('common');
-  const tErrors = useTranslations('errors');
-  const tValidation = useTranslations('validation');
+  const t = useTranslations("onboarding.store");
+  const tCommon = useTranslations("common");
+  const { form, clearSlugSubmitError, handleCountrySelection, country, latitude, longitude } =
+    useStoreStep({ editingStoreId, initialCountry, shouldDetectBrowserCountry });
 
-  const storeInfoSchema = createStoreInfoSchema(tValidation);
-
-  const mutation = useMutation({
-    mutationFn: async (value: StoreInfoInput) => {
-      const result = await createStore(value);
-      if (result.error) {
-        throw new Error(result.error);
-      }
-      return result;
-    },
-  });
-
-  const setSlugTakenError = () => {
-    form.setFieldMeta('slug', (prev) => ({
-      ...prev,
-      isTouched: true,
-      errorMap: {
-        ...prev.errorMap,
-        onSubmit: tErrors('slugTaken'),
-      },
-    }));
-  };
-
-  const clearSlugSubmitError = () => {
-    form.setFieldMeta('slug', (prev) => ({
-      ...prev,
-      errorMap: {
-        ...prev.errorMap,
-        onSubmit: undefined,
-      },
-    }));
-  };
-
-  const form = useAppForm({
-    defaultValues: {
-      name: '',
-      slug: '',
-      country: ONBOARDING_FALLBACK_COUNTRY,
-      currency: getDefaultCurrencyForCountry(
-        ONBOARDING_FALLBACK_COUNTRY,
-      ) as string,
-      address: '',
-      latitude: null as number | null,
-      longitude: null as number | null,
-      email: '',
-      phone: '',
-    },
-    validationLogic: revalidateLogic({
-      mode: 'submit',
-      modeAfterSubmission: 'change',
-    }),
-    validators: {
-      onSubmit: storeInfoSchema,
-    },
-    onSubmit: async ({ value }) => {
-      try {
-        await mutation.mutateAsync(value);
-        router.push('/onboarding/branding');
-      } catch (error) {
-        if (error instanceof Error) {
-          // Map server errors to field-level errors
-          if (error.message === 'errors.slugTaken') {
-            setSlugTakenError();
-            return;
-          }
-          // Generic errors as toast
-          const msg = error.message.startsWith('errors.')
-            ? tErrors(error.message.replace('errors.', ''))
-            : tErrors('generic');
-          toastManager.add({ title: msg, type: 'error' });
-        }
-      }
-    },
-  });
-
-  const draftQuery = useQuery({
-    ...orpc.dashboard.onboarding.getDraft.queryOptions({
-      input: {},
-    }),
-    retry: false,
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
-
-  const hasHydratedDraft = useRef(false);
-  const hasAppliedBrowserDefaults = useRef(false);
-  const formValues = useStore(form.store, (s) => s.values);
-
-  useEffect(() => {
-    if (hasHydratedDraft.current) return;
-
-    const draft = draftQuery.data?.store;
-    if (!draft) return;
-
-    const hasLocalInput = Boolean(
-      formValues.name ||
-      formValues.slug ||
-      formValues.address ||
-      formValues.email ||
-      formValues.phone,
-    );
-    if (hasLocalInput) {
-      hasHydratedDraft.current = true;
-      return;
-    }
-
-    form.setFieldValue('name', draft.name || '');
-    form.setFieldValue('slug', draft.slug || '');
-    form.setFieldValue('address', draft.address || '');
-    form.setFieldValue('latitude', draft.latitude ?? null);
-    form.setFieldValue('longitude', draft.longitude ?? null);
-    form.setFieldValue('email', draft.email || '');
-    form.setFieldValue('phone', draft.phone || '');
-    if (draft.country) {
-      form.setFieldValue('country', draft.country);
-    }
-    if (draft.currency) {
-      form.setFieldValue('currency', draft.currency);
-    }
-
-    hasHydratedDraft.current = true;
-    hasAppliedBrowserDefaults.current = true;
-  }, [
-    draftQuery.data,
-    form,
-    formValues.address,
-    formValues.email,
-    formValues.name,
-    formValues.phone,
-    formValues.slug,
-  ]);
-
-  useEffect(() => {
-    if (hasAppliedBrowserDefaults.current) return;
-
-    const detection = detectCountryFromBrowser();
-    const detectedCurrency = getDefaultCurrencyForCountry(detection.country);
-
-    form.setFieldValue('country', detection.country);
-    form.setFieldValue('currency', detectedCurrency);
-
-    hasAppliedBrowserDefaults.current = true;
-  }, [form]);
-
-  const latitude = formValues.latitude;
-  const longitude = formValues.longitude;
   const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-
-  const handleCountryChange = (
-    newCountry: string,
-    onChange: (value: string) => void,
-  ) => {
-    onChange(newCountry);
-    form.setFieldValue('currency', getDefaultCurrencyForCountry(newCountry));
-  };
-
-  const locale = getBrowserLanguage();
-  const sortedCountries = getCountriesSortedByName(locale);
-  const sortedCurrencies = SUPPORTED_CURRENCIES.slice().sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
   const canSwitchAccount = Boolean(currentStoreId && stores.length > 0);
+  // Back to profile only when it is part of this flow (first onboarding):
+  // the step list is snapshotted per page load, so it still includes the
+  // profile step right after completing it — exactly when "go fix a typo"
+  // matters — and excludes it on later store creations.
+  const hasProfileStep = useOnboardingSteps().some((step) => step.key === "profile");
 
   return (
     <>
       {canSwitchAccount && currentStoreId && (
-        <div className="mb-4">
+        <div className="mb-6">
           <StoreSwitcher stores={stores} currentStoreId={currentStoreId} />
         </div>
       )}
-      <Card>
-        <CardHeader className="text-center">
-          <div className="bg-primary/10 mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full">
-            <Store className="text-primary h-6 w-6" />
-          </div>
-          <CardTitle>{t('title')}</CardTitle>
-          <CardDescription>{t('description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form.AppForm>
-            <form.Form className="space-y-6">
-              {/* Store Name + Slug Preview */}
-              <form.Field name="name">
-                {(nameField) => (
-                  <form.Field name="slug">
-                    {(slugField) => (
-                      <FormStoreNameSlug
-                        nameValue={nameField.state.value}
-                        nameErrors={nameField.state.meta.errors}
-                        slugValue={slugField.state.value}
-                        slugErrors={slugField.state.meta.errors}
-                        onNameChange={nameField.handleChange}
-                        onNameBlur={nameField.handleBlur}
-                        onSlugChange={(value) => {
-                          clearSlugSubmitError();
-                          slugField.handleChange(value);
-                        }}
-                        label={t('name')}
-                        namePlaceholder={t('namePlaceholder')}
-                        slugPlaceholder={t('slugPlaceholder')}
-                        slugDefault={t('slugDefault')}
-                        domain={domain}
-                        confirmAriaLabel={tCommon('confirm')}
-                        cancelAriaLabel={tCommon('cancel')}
-                      />
-                    )}
-                  </form.Field>
+      <OnboardingStepHeader title={t("title")} description={t("description")} />
+      <form.AppForm>
+        <form.Form className="space-y-6">
+          {/* Store Name + Slug Preview */}
+          <form.Field name="name">
+            {(nameField) => (
+              <form.Field name="slug">
+                {(slugField) => (
+                  <FormStoreNameSlug
+                    nameValue={nameField.state.value}
+                    nameErrors={nameField.state.meta.errors}
+                    slugValue={slugField.state.value}
+                    slugErrors={slugField.state.meta.errors}
+                    onNameChange={nameField.handleChange}
+                    onNameBlur={nameField.handleBlur}
+                    onSlugChange={(value) => {
+                      clearSlugSubmitError();
+                      slugField.handleChange(value);
+                    }}
+                    label={t("name")}
+                    slugLabel={t("slug")}
+                    namePlaceholder={t("namePlaceholder")}
+                    slugPlaceholder={t("slugPlaceholder")}
+                    domain={domain}
+                    resetAriaLabel={t("resetSlug")}
+                  />
                 )}
               </form.Field>
+            )}
+          </form.Field>
 
-              {/* Location & Contact Section */}
-              <div className="space-y-4 border-t pt-4">
-                <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-                  <Globe className="h-4 w-4" />
-                  {t('locationSection')}
-                </div>
+          {/* Location & Contact Section */}
+          <div className="space-y-4 border-t pt-4">
+            {/* <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+              <Globe className="h-4 w-4" />
+              {t('locationSection')}
+            </div> */}
+            <div className="grid grid-cols-2 gap-4">
+              <form.AppField name="country">
+                {(field) => (
+                  <field.CountrySelect
+                    label={t("country")}
+                    placeholder={t("countryPlaceholder")}
+                    onValueChange={handleCountrySelection}
+                  />
+                )}
+              </form.AppField>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <form.Field name="country">
-                    {(field) => (
-                      <div className="grid gap-2">
-                        <Label htmlFor="country">{t('country')}</Label>
-                        <Select
-                          value={field.state.value}
-                          onValueChange={(value) => {
-                            if (value !== null)
-                              handleCountryChange(value, (v: string) =>
-                                field.handleChange(v),
-                              );
-                          }}
-                        >
-                          <SelectTrigger id="country">
-                            <SelectValue placeholder={t('countryPlaceholder')}>
-                              {field.state.value &&
-                                (() => {
-                                  const selectedCountry = sortedCountries.find(
-                                    (c) => c.code === field.state.value,
-                                  );
-                                  const countryName = getCountryName(
-                                    field.state.value,
-                                    locale,
-                                  );
-                                  return selectedCountry ? (
-                                    <span className="inline-flex items-center gap-2">
-                                      <span>{selectedCountry.flag}</span>
-                                      <span>{countryName}</span>
-                                    </span>
-                                  ) : null;
-                                })()}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {sortedCountries.map((country) => {
-                              const countryName = getCountryName(
-                                country.code,
-                                locale,
-                              );
+              <form.AppField name="currency">
+                {(field) => (
+                  <field.CurrencySelect
+                    label={t("currency")}
+                    placeholder={t("currencyPlaceholder")}
+                  />
+                )}
+              </form.AppField>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <form.AppField name="email">
+                {(field) => (
+                  <field.Input
+                    label={t("contactEmail")}
+                    type="email"
+                    placeholder={t("emailPlaceholder")}
+                  />
+                )}
+              </form.AppField>
 
-                              return (
-                                <SelectItem
-                                  key={country.code}
-                                  value={country.code}
-                                  label={countryName}
-                                >
-                                  <span className="sr-only">{countryName}</span>
-                                  <span
-                                    aria-hidden
-                                    className="inline-flex items-center gap-2"
-                                  >
-                                    <span>{country.flag}</span>
-                                    <span>{countryName}</span>
-                                  </span>
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-destructive text-sm">
-                            {getFieldError(field.state.meta.errors[0])}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </form.Field>
-
-                  <form.AppField name="currency">
-                    {(field) => (
-                      <field.Select
-                        label={t('currency')}
-                        placeholder={t('currencyPlaceholder')}
-                      >
-                        {sortedCurrencies.map((currency) => (
-                          <SelectItem key={currency.code} value={currency.code}>
-                            {currency.symbol} {currency.name} ({currency.code})
-                          </SelectItem>
-                        ))}
-                      </field.Select>
-                    )}
-                  </form.AppField>
-                </div>
-
-                <form.Field name="address">
-                  {(field) => (
-                    <div className="grid gap-2">
-                      <Label htmlFor="address">{t('address')}</Label>
-                      <AddressInput
-                        value={field.state.value || ''}
-                        latitude={latitude}
-                        longitude={longitude}
-                        onChange={(address, lat, lng) => {
-                          field.handleChange(address);
-                          form.setFieldValue('latitude', lat);
-                          form.setFieldValue('longitude', lng);
-                        }}
-                        placeholder={t('addressPlaceholder')}
-                      />
-                      <p className="text-muted-foreground text-sm">
-                        {t('addressHelp')}
-                      </p>
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-destructive text-sm">
-                          {getFieldError(field.state.meta.errors[0])}
-                        </p>
-                      )}
-                    </div>
+              <form.AppField name="phone">
+                {(field) => (
+                  <field.PhoneInput
+                    label={t("contactPhone")}
+                    defaultCountry={country}
+                    placeholder={t("phonePlaceholder")}
+                  />
+                )}
+              </form.AppField>
+            </div>
+            <form.Field name="address">
+              {(field) => (
+                <div className="grid gap-2">
+                  <Label htmlFor="address">{t("address")}</Label>
+                  <AddressInput
+                    value={field.state.value || ""}
+                    latitude={latitude}
+                    longitude={longitude}
+                    onChange={(address, lat, lng) => {
+                      field.handleChange(address);
+                      form.setFieldValue("latitude", lat);
+                      form.setFieldValue("longitude", lng);
+                    }}
+                    placeholder={t("addressPlaceholder")}
+                  />
+                  <p className="text-muted-foreground text-sm">{t("addressHelp")}</p>
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-destructive text-sm">
+                      {getFieldError(field.state.meta.errors[0])}
+                    </p>
                   )}
-                </form.Field>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <form.AppField name="email">
-                    {(field) => (
-                      <field.Input
-                        label={t('contactEmail')}
-                        type="email"
-                        placeholder={t('emailPlaceholder')}
-                      />
-                    )}
-                  </form.AppField>
-
-                  <form.AppField name="phone">
-                    {(field) => (
-                      <field.Input
-                        label={t('contactPhone')}
-                        type="tel"
-                        placeholder={t('phonePlaceholder')}
-                      />
-                    )}
-                  </form.AppField>
                 </div>
-              </div>
+              )}
+            </form.Field>
+          </div>
 
-              <form.SubscribeButton className="w-full">
-                {tCommon('next')}
-              </form.SubscribeButton>
-            </form.Form>
-          </form.AppForm>
-        </CardContent>
-      </Card>
+          <div className="mt-2 flex items-center gap-3">
+            {hasProfileStep && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => router.push("/onboarding/profile")}
+              >
+                {tCommon("back")}
+              </Button>
+            )}
+            <form.SubscribeButton className="flex-1">{tCommon("next")}</form.SubscribeButton>
+          </div>
+        </form.Form>
+      </form.AppForm>
     </>
   );
 }

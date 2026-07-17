@@ -1,21 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import {
-  Check,
-  Package,
-  Calendar,
-  Star,
-  ArrowRight,
-  ChevronUp,
-  ChevronDown,
-  Sparkles,
-  X,
-  Rocket,
-} from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, Check, ChevronDown, ExternalLink } from "lucide-react";
+
+import { Button } from "@louez/ui";
 import { cn } from "@louez/utils";
+
+import { env } from "@/env";
+
+import { useMeasuredSize } from "./use-measured-size";
 
 // Types defined inline to avoid server-only module import
 interface StoreMetrics {
@@ -24,116 +20,168 @@ interface StoreMetrics {
   completedReservations: number;
 }
 
+/**
+ * Whether the checklist shows the "activate online payments" step: hidden for
+ * stores that chose request mode, otherwise tracks Stripe chargeability (the
+ * KYC can be left pending during onboarding — payment mode silently degrades
+ * to request mode until it's done).
+ */
+export type OnlinePaymentsStep = "hidden" | "todo" | "done";
+
 interface SetupChecklistProps {
   metrics: StoreMetrics;
   storeSlug: string;
+  onlinePaymentsStep?: OnlinePaymentsStep;
   className?: string;
 }
 
 interface ChecklistItem {
   key: string;
-  icon: React.ElementType;
   completed: boolean;
   href?: string;
   action?: string;
+  /** Translation key under setup.descriptions — makes the step expandable */
+  description?: string;
+  showStoreLink?: boolean;
 }
 
-// Circular progress component
-function CircularProgress({
-  progress,
-  size = 48,
-  strokeWidth = 4,
-}: {
-  progress: number;
-  size?: number;
-  strokeWidth?: number;
-}) {
-  const radius = (size - strokeWidth) / 2;
+const EASE_OUT_CUBIC = [0.215, 0.61, 0.355, 1] as const;
+
+const MORPH_RING = "0 0 0 1px var(--border)";
+const SHELL_TRANSITION = {
+  duration: 0.58,
+  ease: EASE_OUT_CUBIC,
+} as const;
+const CONTENT_TRANSITION = {
+  duration: 0.48,
+  ease: EASE_OUT_CUBIC,
+} as const;
+
+function ProgressRing({ progress }: { progress: number }) {
+  const radius = 10;
   const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      {/* Background circle */}
-      <svg className="absolute inset-0 -rotate-90" width={size} height={size}>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          className="text-muted/50"
-        />
-        {/* Progress circle */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          className="text-primary transition-all duration-500"
-        />
-      </svg>
-      {/* Center content */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xs font-bold text-primary">{progress}%</span>
-      </div>
-    </div>
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="size-4 shrink-0 -rotate-90">
+      <circle
+        cx="12"
+        cy="12"
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3.5"
+        className="text-border"
+      />
+      <circle
+        cx="12"
+        cy="12"
+        r={radius}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3.5"
+        strokeDasharray={circumference}
+        strokeDashoffset={circumference - (progress / 100) * circumference}
+        strokeLinecap="round"
+        className="text-primary transition-[stroke-dashoffset] duration-500 ease-out"
+      />
+    </svg>
   );
 }
 
-export function SetupChecklist({ metrics, storeSlug: _storeSlug }: SetupChecklistProps) {
+function StepIndicator({
+  completed,
+  isCurrent,
+  index,
+  reducedMotion,
+}: {
+  completed: boolean;
+  isCurrent: boolean;
+  index: number;
+  reducedMotion: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium tabular-nums",
+        completed
+          ? "bg-primary/10 text-primary border border-primary border-dashed "
+          : isCurrent
+            ? "border border-primary border-dashed text-muted-foreground"
+            : "border border-border border-dashed text-muted-foreground",
+      )}
+    >
+      {completed ? (
+        <motion.span
+          initial={reducedMotion ? false : { scale: 0.4, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.2, ease: EASE_OUT_CUBIC, delay: index * 0.04 }}
+          className="flex"
+        >
+          <Check className="size-3" strokeWidth={3} />
+        </motion.span>
+      ) : null}
+    </span>
+  );
+}
+
+export function SetupChecklist({
+  metrics,
+  storeSlug,
+  onlinePaymentsStep = "hidden",
+}: SetupChecklistProps) {
   const t = useTranslations("dashboard.home");
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
+  const tCommon = useTranslations("common");
+  const reducedMotion = useReducedMotion() ?? false;
 
-  // Check if dismissed in this session
-  useEffect(() => {
-    const dismissed = sessionStorage.getItem("setup-checklist-dismissed");
-    if (dismissed === "true") {
-      setIsDismissed(true);
-    }
-  }, []);
-
-  const handleDismiss = () => {
-    setIsDismissed(true);
-    sessionStorage.setItem("setup-checklist-dismissed", "true");
-  };
+  const [open, setOpen] = useState(false);
+  const [expandedLayout, setExpandedLayout] = useState(false);
+  const [itemHeightIsAnimating, setItemHeightIsAnimating] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const {
+    ref: measureRef,
+    measureNow,
+    size: measuredSize,
+  } = useMeasuredSize({ observeHeight: !itemHeightIsAnimating });
 
   const items: ChecklistItem[] = [
     {
       key: "createAccount",
-      icon: Check,
       completed: true,
     },
     {
       key: "configureStore",
-      icon: Check,
       completed: true,
     },
     {
       key: "addFirstProduct",
-      icon: Package,
       completed: metrics.activeProductCount > 0,
       href: "/dashboard/products/new",
       action: "setup.addFirstProduct",
+      description: "addFirstProduct",
     },
+    ...(onlinePaymentsStep !== "hidden"
+      ? [
+          {
+            key: "connectStripe",
+            completed: onlinePaymentsStep === "done",
+            href: "/dashboard/settings/payments",
+            action: "setup.connectStripe",
+            description: "connectStripe",
+          },
+        ]
+      : []),
     {
       key: "firstReservation",
-      icon: Calendar,
       completed: metrics.totalReservations > 0,
       href: "/dashboard/reservations/new?source=onboarding",
       action: "setup.createReservation",
+      description: "firstReservation",
+      showStoreLink: true,
     },
     {
       key: "firstCompleted",
-      icon: Star,
       completed: metrics.completedReservations > 0,
+      description: "firstCompleted",
     },
   ];
 
@@ -144,104 +192,223 @@ export function SetupChecklist({ metrics, storeSlug: _storeSlug }: SetupChecklis
   // Find the next uncompleted step
   const nextStep = items.find((item) => !item.completed);
 
-  // Don't render if all completed or dismissed
-  if (allCompleted || isDismissed) {
+  const [expandedKey, setExpandedKey] = useState<string | null>(nextStep?.key ?? null);
+
+  const toggleChecklist = () => {
+    measureNow();
+
+    if (open) {
+      setOpen(false);
+      setExpandedLayout(false);
+      return;
+    }
+
+    setExpandedLayout(true);
+    setOpen(true);
+  };
+
+  const toggleChecklistItem = (itemKey: string, isExpanded: boolean) => {
+    setItemHeightIsAnimating(true);
+    setExpandedKey(isExpanded ? null : itemKey);
+  };
+
+  const handleItemHeightAnimationComplete = () => {
+    measureNow();
+    setItemHeightIsAnimating(false);
+  };
+
+  // The panel stays open on outside clicks; only Escape or the header toggles it.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        measureNow();
+        setOpen(false);
+        setExpandedLayout(false);
+        triggerRef.current?.focus({ preventScroll: true });
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [measureNow, open]);
+
+  if (allCompleted) {
     return null;
   }
 
+  const storeUrl = `https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}`;
+
   return (
-    <div className="setup-widget-container">
-      <div className={cn("setup-widget", isExpanded && "setup-widget--expanded")}>
-        {/* Header - Always visible */}
-        <div className="setup-widget-header">
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="flex flex-1 items-center gap-3"
-          >
-            <CircularProgress progress={progress} size={44} strokeWidth={3} />
-            <div className="min-w-0 flex-1 text-left">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold">{t("setup.title")}</span>
-                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {completedCount}/{items.length} {t("setup.stepsCompleted")}
-              </p>
-            </div>
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted/80">
-              {isExpanded ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+    <div className="fixed right-6 bottom-0 z-50 max-sm:right-4 max-sm:bottom-4">
+      <motion.div
+        initial={false}
+        animate={
+          measuredSize.width > 0 && measuredSize.height > 0
+            ? {
+                width: measuredSize.width,
+                height: itemHeightIsAnimating ? "auto" : measuredSize.height,
+                borderRadius: expandedLayout ? 14 : 12,
+              }
+            : undefined
+        }
+        transition={
+          reducedMotion
+            ? { duration: 0 }
+            : {
+                width: SHELL_TRANSITION,
+                height: itemHeightIsAnimating ? { duration: 0 } : SHELL_TRANSITION,
+                borderRadius: SHELL_TRANSITION,
+              }
+        }
+        className="bg-popover text-popover-foreground overflow-hidden"
+        style={{ borderRadius: expandedLayout ? 14 : 12, boxShadow: MORPH_RING }}
+      >
+        <div
+          ref={measureRef}
+          className={cn("relative", expandedLayout ? "w-80 max-w-[calc(100vw-2rem)]" : "w-max")}
+        >
+          <div className={cn(expandedLayout && "bg-background p-1")}>
+            <button
+              ref={triggerRef}
+              type="button"
+              aria-expanded={open}
+              title={open ? tCommon("close") : undefined}
+              onClick={toggleChecklist}
+              className={cn(
+                "hover:bg-muted/50 group/header focus-visible:outline-ring/50 relative flex w-full items-center gap-2 px-3 py-2 text-left outline-none transition-colors duration-150 focus-visible:outline-2 focus-visible:-outline-offset-2",
+                expandedLayout && "rounded-lg",
               )}
-            </div>
-          </button>
-          <button
-            onClick={handleDismiss}
-            className="ml-1 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-            title={t("setup.dismissForNow")}
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Expanded content */}
-        {isExpanded && (
-          <div className="setup-widget-content">
-            {/* Checklist items */}
-            <ul className="space-y-1">
-              {items.map((item, index) => (
-                <li
-                  key={item.key}
-                  className={cn(
-                    "setup-widget-item",
-                    item.completed && "setup-widget-item--completed",
-                    !item.completed && nextStep?.key === item.key && "setup-widget-item--current",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "setup-widget-item-icon",
-                      item.completed && "setup-widget-item-icon--completed",
-                    )}
+            >
+              <span className="flex">
+                <ProgressRing progress={progress} />
+              </span>
+              <span className="text-sm font-medium whitespace-nowrap">{t("setup.title")}</span>
+              <span className="text-muted-foreground ml-auto text-sm whitespace-nowrap tabular-nums">
+                {completedCount}/{items.length}
+              </span>
+              <AnimatePresence initial={false} mode="popLayout">
+                {open && (
+                  <motion.span
+                    initial={reducedMotion ? false : { opacity: 0, rotate: -90 }}
+                    animate={{ opacity: 1, rotate: 0 }}
+                    exit={{ opacity: 0, rotate: -90 }}
+                    transition={reducedMotion ? { duration: 0 } : CONTENT_TRANSITION}
+                    className="flex"
                   >
-                    {item.completed ? (
-                      <Check className="h-3.5 w-3.5" />
-                    ) : (
-                      <span className="text-[10px] font-bold">{index + 1}</span>
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "flex-1 text-sm",
-                      item.completed && "text-muted-foreground line-through",
-                    )}
-                  >
-                    {t(`setup.steps.${item.key}`)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-
-            {/* Next step CTA */}
-            {nextStep && nextStep.href && (
-              <Link href={nextStep.href} className="setup-widget-cta">
-                <Rocket className="h-4 w-4" />
-                <span>{t(nextStep.action || "setup.start")}</span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            )}
+                    <ChevronDown className="text-muted-foreground group-hover/header:text-foreground size-4 shrink-0 transition-colors duration-150" />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
           </div>
-        )}
 
-        {/* Collapsed: Quick CTA */}
-        {!isExpanded && nextStep && nextStep.href && (
-          <Link href={nextStep.href} className="setup-widget-quick-cta">
-            <span className="truncate text-xs">{t(`setup.steps.${nextStep.key}`)}</span>
-            <ArrowRight className="h-3.5 w-3.5 shrink-0" />
-          </Link>
-        )}
-      </div>
+          <AnimatePresence initial={false} mode="popLayout">
+            {open && (
+              <motion.div
+                initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                transition={reducedMotion ? { duration: 0 } : CONTENT_TRANSITION}
+              >
+                <ul className="space-y-1 border-t p-1">
+                  {items.map((item, index) => {
+                    const isCurrent = !item.completed && nextStep?.key === item.key;
+                    const isExpandable = !item.completed && Boolean(item.description);
+                    const isExpanded = isExpandable && expandedKey === item.key;
+
+                    return (
+                      <li key={item.key} className="relative">
+                        <button
+                          type="button"
+                          disabled={!isExpandable}
+                          aria-expanded={isExpandable ? isExpanded : undefined}
+                          onClick={() => toggleChecklistItem(item.key, isExpanded)}
+                          className={cn(
+                            "group/trigger flex w-full items-center gap-2.5 rounded-lg px-4 py-2.5 text-left",
+                            isExpandable && "hover:bg-muted/50 transition-colors duration-150",
+                          )}
+                        >
+                          <StepIndicator
+                            completed={item.completed}
+                            isCurrent={isCurrent}
+                            index={index}
+                            reducedMotion={reducedMotion}
+                          />
+                          <span
+                            className={cn(
+                              "flex-1 text-[13px]",
+                              item.completed &&
+                                "text-muted-foreground/70 line-through decoration-muted-foreground/40",
+                              isCurrent && "font-medium",
+                            )}
+                          >
+                            {t(`setup.steps.${item.key}`)}
+                          </span>
+                          {isExpandable && (
+                            <ChevronDown
+                              className={cn(
+                                "text-muted-foreground size-3.5 shrink-0 transition-transform duration-200",
+                                "group-hover/trigger:text-foreground",
+                                isExpanded && "rotate-180 text-foreground",
+                              )}
+                            />
+                          )}
+                        </button>
+
+                        <AnimatePresence initial={false}>
+                          {isExpanded && (
+                            <motion.div
+                              initial={reducedMotion ? false : { height: 0 }}
+                              animate={{ height: "auto" }}
+                              exit={{ height: 0 }}
+                              transition={reducedMotion ? { duration: 0 } : SHELL_TRANSITION}
+                              onAnimationComplete={handleItemHeightAnimationComplete}
+                              className="overflow-hidden"
+                            >
+                              <div className="px-4 pb-3.5 pl-11.5">
+                                <p className="text-muted-foreground text-xs leading-relaxed">
+                                  {t(`setup.descriptions.${item.description}`)}
+                                </p>
+                                {(item.href || item.showStoreLink) && (
+                                  <div className="mt-2.5 flex flex-col  gap-1 items-start">
+                                    {item.href && (
+                                      <Button
+                                        className="h-7.5 text-xs"
+                                        render={<Link href={item.href} />}
+                                      >
+                                        {t(item.action || "setup.start")}
+                                        <ArrowRight />
+                                      </Button>
+                                    )}
+                                    {item.showStoreLink && (
+                                      <Button
+                                        variant="ghost"
+                                        className="text-muted-foreground h-7.5 text-xs"
+                                        render={
+                                          <a href={storeUrl} target="_blank" rel="noreferrer" />
+                                        }
+                                      >
+                                        {t("setup.viewStore")}
+                                        <ExternalLink />
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
     </div>
   );
 }

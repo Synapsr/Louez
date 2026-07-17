@@ -9,6 +9,8 @@
   - [Louez Activation & Revenue](https://eu.posthog.com/project/118395/dashboard/787983) : funnels onboarding/checkout, reservations par canal, revenue encaisse, boutiques actives
   - [Louez Core Metrics](https://eu.posthog.com/project/118395/dashboard/768690) : trafic, identification, friction, web vitals
 
+L'instrumentation detaillee du flow onboarding (steps, branding, erreurs, Stripe Connect, canal d'acquisition) est documentee dans [onboarding.md](onboarding.md).
+
 ## Role des outils
 
 PostHog est la source pour les evenements produit, funnels, cohorts, web vitals et signaux de friction comme rage clicks, dead clicks et exceptions.

@@ -56,7 +56,7 @@ TanStack Form's `createFormHook` lets you register reusable field and form compo
 
 ```tsx
 // src/hooks/form/form-context.tsx
-import { createFormHookContexts } from '@tanstack/react-form';
+import { createFormHookContexts } from "@tanstack/react-form";
 
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts();
@@ -66,13 +66,13 @@ export const { fieldContext, formContext, useFieldContext, useFormContext } =
 
 ```tsx
 // src/hooks/form/form.tsx
-import { createFormHook } from '@tanstack/react-form';
+import { createFormHook } from "@tanstack/react-form";
 
-import { FormForm } from '@/components/form/form-form';
-import { FormInput } from '@/components/form/form-input';
-import { FormTextarea } from '@/components/form/form-textarea';
+import { FormForm } from "@/components/form/form-form";
+import { FormInput } from "@/components/form/form-input";
+import { FormTextarea } from "@/components/form/form-textarea";
 
-import { fieldContext, formContext } from './form-context';
+import { fieldContext, formContext } from "./form-context";
 
 export const { useAppForm, withForm } = createFormHook({
   fieldComponents: {
@@ -97,13 +97,13 @@ This replaces the pattern of manually checking `formState.isSubmitting`:
 
 ```tsx
 // Inside src/hooks/form/form.tsx
-import { useStore } from '@tanstack/react-form';
+import { useStore } from "@tanstack/react-form";
 
 function SubscribeButton({
   children,
   isDefaultValueDisabled = false,
   ...props
-}: React.ComponentProps<'button'> & {
+}: React.ComponentProps<"button"> & {
   isDefaultValueDisabled?: boolean;
 }) {
   const form = useFormContext();
@@ -125,7 +125,7 @@ function SubscribeButton({
       }}
       {...props}
     >
-      {isSubmitting ? 'Submitting...' : children}
+      {isSubmitting ? "Submitting..." : children}
     </button>
   );
 }
@@ -150,9 +150,7 @@ function InputField({ name, label, control, ...props }) {
         <div>
           <label>{label}</label>
           <input {...field} {...props} />
-          {fieldState.error && (
-            <p className="text-red-500">{fieldState.error.message}</p>
-          )}
+          {fieldState.error && <p className="text-red-500">{fieldState.error.message}</p>}
         </div>
       )}
     />
@@ -164,14 +162,11 @@ function InputField({ name, label, control, ...props }) {
 
 ```tsx
 // src/components/form/form-input.tsx
-import { useStore } from '@tanstack/react-form';
+import { useStore } from "@tanstack/react-form";
 
-import { useFieldContext } from '@/hooks/form/form-context';
+import { useFieldContext } from "@/hooks/form/form-context";
 
-export function FormInput({
-  label,
-  ...props
-}: { label?: string } & React.ComponentProps<'input'>) {
+export function FormInput({ label, ...props }: { label?: string } & React.ComponentProps<"input">) {
   const field = useFieldContext<string>();
 
   const errors = useStore(field.store, (s) => s.meta.errors);
@@ -187,9 +182,7 @@ export function FormInput({
         onBlur={field.handleBlur}
         {...props}
       />
-      {errors.length > 0 && (
-        <p className="text-sm text-red-500">{String(errors[0])}</p>
-      )}
+      {errors.length > 0 && <p className="text-sm text-red-500">{String(errors[0])}</p>}
     </div>
   );
 }
@@ -211,9 +204,9 @@ The key difference: no `name` prop or `control` prop needed. The context provide
 
 ```tsx
 // src/components/form/form-form.tsx
-import { useFormContext } from '@/hooks/form/form-context';
+import { useFormContext } from "@/hooks/form/form-context";
 
-export function FormForm({ children, ...props }: React.ComponentProps<'form'>) {
+export function FormForm({ children, ...props }: React.ComponentProps<"form">) {
   const form = useFormContext();
 
   return (
@@ -238,13 +231,13 @@ export function FormForm({ children, ...props }: React.ComponentProps<'form'>) {
 ### Before (react-hook-form)
 
 ```tsx
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const schema = z.object({
-  email: z.email('Invalid email'),
-  password: z.string().min(8, 'Min 8 characters'),
+  email: z.email("Invalid email"),
+  password: z.string().min(8, "Min 8 characters"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -256,7 +249,7 @@ function LoginForm() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (data: FormData) => {
@@ -267,24 +260,18 @@ function LoginForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
         <label>Email</label>
-        <input
-          {...register('email')}
-          type="email"
-          placeholder="john@example.com"
-        />
+        <input {...register("email")} type="email" placeholder="john@example.com" />
         {errors.email && <p className="text-red-500">{errors.email.message}</p>}
       </div>
 
       <div>
         <label>Password</label>
-        <input {...register('password')} type="password" />
-        {errors.password && (
-          <p className="text-red-500">{errors.password.message}</p>
-        )}
+        <input {...register("password")} type="password" />
+        {errors.password && <p className="text-red-500">{errors.password.message}</p>}
       </div>
 
       <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Signing in...' : 'Sign in'}
+        {isSubmitting ? "Signing in..." : "Sign in"}
       </button>
     </form>
   );
@@ -294,16 +281,16 @@ function LoginForm() {
 ### After (TanStack Form)
 
 ```tsx
-import { revalidateLogic } from '@tanstack/react-form';
-import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { z } from 'zod';
+import { revalidateLogic } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { z } from "zod";
 
-import { useAppForm } from '@/hooks/form/form';
+import { useAppForm } from "@/hooks/form/form";
 
 const schema = z.object({
-  email: z.email('Invalid email'),
-  password: z.string().min(8, 'Min 8 characters'),
+  email: z.email("Invalid email"),
+  password: z.string().min(8, "Min 8 characters"),
 });
 
 function LoginForm() {
@@ -312,17 +299,17 @@ function LoginForm() {
       return await loginApi(value);
     },
     onError: (error) => toast.error(error.message),
-    onSuccess: () => navigate('/dashboard'),
+    onSuccess: () => navigate("/dashboard"),
   });
 
   const form = useAppForm({
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: "", password: "" },
     onSubmit: async ({ value }) => {
       await mutation.mutateAsync(value);
     },
     validationLogic: revalidateLogic({
-      mode: 'submit', // validate on submit initially
-      modeAfterSubmission: 'change', // then on every change
+      mode: "submit", // validate on submit initially
+      modeAfterSubmission: "change", // then on every change
     }),
     validators: {
       onSubmit: schema,
@@ -333,13 +320,7 @@ function LoginForm() {
     <form.AppForm>
       <form.Form className="space-y-4">
         <form.AppField name="email">
-          {(field) => (
-            <field.Input
-              label="Email"
-              type="email"
-              placeholder="john@example.com"
-            />
-          )}
+          {(field) => <field.Input label="Email" type="email" placeholder="john@example.com" />}
         </form.AppField>
 
         <form.AppField name="password">
@@ -373,8 +354,8 @@ Use `revalidateLogic` for the best UX — quiet until first submit, then real-ti
 ```tsx
 const form = useAppForm({
   validationLogic: revalidateLogic({
-    mode: 'submit',
-    modeAfterSubmission: 'change',
+    mode: "submit",
+    modeAfterSubmission: "change",
   }),
   validators: {
     onSubmit: schema,
@@ -393,7 +374,7 @@ This replaces the common RHF pattern of `mode: "onSubmit"` + `reValidateMode: "o
   rules={{
     validate: async (value) => {
       const exists = await checkUsername(value);
-      return exists ? 'Username taken' : true;
+      return exists ? "Username taken" : true;
     },
   }}
 />;
@@ -404,7 +385,7 @@ const form = useAppForm({
     onChange: schema,
     onSubmitAsync: async ({ value }) => {
       const exists = await checkUsername(value.username);
-      if (exists) return { fields: { username: 'Username taken' } };
+      if (exists) return { fields: { username: "Username taken" } };
       return undefined;
     },
   },
@@ -467,12 +448,12 @@ const mutation = useMutation({
   onError: (error) => toast.error(error.message),
   onSuccess: () => {
     form.reset();
-    queryClient.invalidateQueries({ queryKey: ['items'] });
+    queryClient.invalidateQueries({ queryKey: ["items"] });
   },
 });
 
 const form = useAppForm({
-  defaultValues: { name: '' },
+  defaultValues: { name: "" },
   onSubmit: async ({ value }) => {
     await mutation.mutateAsync(value);
   },
@@ -483,18 +464,16 @@ const form = useAppForm({
 
 ```tsx
 // RHF: conditional rendering with watch()
-const type = watch('type');
+const type = watch("type");
 {
-  type === 'business' && <input {...register('company')} />;
+  type === "business" && <input {...register("company")} />;
 }
 
 // TanStack Form: subscribe to field value
 <form.Subscribe selector={(s) => s.values.type}>
   {(type) =>
-    type === 'business' && (
-      <form.AppField name="company">
-        {(field) => <field.Input label="Company" />}
-      </form.AppField>
+    type === "business" && (
+      <form.AppField name="company">{(field) => <field.Input label="Company" />}</form.AppField>
     )
   }
 </form.Subscribe>;

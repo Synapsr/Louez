@@ -9,7 +9,9 @@ import { mysqlTable, varchar, char, timestamp } from "drizzle-orm/mysql-core";
 import { nanoid } from "nanoid";
 
 export const podcastTable = mysqlTable("podcast", {
-  id: char("id", { length: 21 }).primaryKey().$defaultFn(() => nanoid()),
+  id: char("id", { length: 21 })
+    .primaryKey()
+    .$defaultFn(() => nanoid()),
   title: varchar("title", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -18,6 +20,7 @@ export const podcastTable = mysqlTable("podcast", {
 ```
 
 Rules:
+
 - Table variable: `<name>Table` (singular)
 - Column names: `snake_case` in SQL, `camelCase` in TypeScript
 - Every table has `createdAt` and `updatedAt`
@@ -49,11 +52,13 @@ import { os, ORPCError } from "@orpc/server";
 import { z } from "zod";
 
 const listPodcasts = os
-  .input(z.object({
-    channelId: z.string(),
-    limit: z.number().int().min(1).max(100).optional(),
-    cursor: z.number().int().min(0).default(0),
-  }))
+  .input(
+    z.object({
+      channelId: z.string(),
+      limit: z.number().int().min(1).max(100).optional(),
+      cursor: z.number().int().min(0).default(0),
+    }),
+  )
   .handler(async ({ input }) => {
     // ...
   });
@@ -64,19 +69,15 @@ const listPodcasts = os
 Use middleware to enrich context (e.g., auth check):
 
 ```typescript
-const authed = os
-  .$context<{ headers: Headers }>()
-  .use(({ context, next }) => {
-    const user = await getSession(context.headers);
-    if (!user) throw new ORPCError("UNAUTHORIZED");
-    return next({ context: { user } });
-  });
+const authed = os.$context<{ headers: Headers }>().use(({ context, next }) => {
+  const user = await getSession(context.headers);
+  if (!user) throw new ORPCError("UNAUTHORIZED");
+  return next({ context: { user } });
+});
 
-const createPodcast = authed
-  .input(podcastCreateSchema)
-  .handler(async ({ input, context }) => {
-    // context.user is typed and guaranteed
-  });
+const createPodcast = authed.input(podcastCreateSchema).handler(async ({ input, context }) => {
+  // context.user is typed and guaranteed
+});
 ```
 
 ### Router structure
@@ -186,6 +187,7 @@ const mutation = useMutation(podcastMutations.create());
 ```
 
 Key patterns:
+
 - Options factories in `lib/queries/<domain>.queries.ts`
 - `orpc.<domain>.<action>.queryOptions()` for queries
 - `orpc.<domain>.<action>.mutationOptions()` for mutations

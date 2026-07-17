@@ -1,18 +1,9 @@
-'use client';
+"use client";
 
-import type { ChangeEvent, DragEvent } from 'react';
+import type { ChangeEvent, DragEvent } from "react";
 
-import {
-  Crop,
-  ImageIcon,
-  Loader2,
-  Plus,
-  Star,
-  Upload,
-  Video,
-  X,
-} from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { Crop, ImageIcon, Loader2, Plus, Star, Upload, Video, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   Badge,
@@ -23,11 +14,12 @@ import {
   CardHeader,
   CardTitle,
   Label,
-} from '@louez/ui';
+} from "@louez/ui";
 
-import { getFieldError } from '@/hooks/form/form-context';
+import { getFieldError } from "@/hooks/form/form-context";
+import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
 
-import type { ProductFormComponentApi } from '../types';
+import type { ProductFormComponentApi } from "../types";
 
 interface ProductFormStepPhotosProps {
   form: ProductFormComponentApi;
@@ -60,16 +52,16 @@ export function ProductFormStepPhotos({
   recropImage,
   canRecrop,
 }: ProductFormStepPhotosProps) {
-  const t = useTranslations('dashboard.products.form');
+  const t = useTranslations("dashboard.products.form");
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ImageIcon className="h-5 w-5" />
-          {t('photos')}
+          {t("photos")}
         </CardTitle>
-        <CardDescription>{t('photosDescription')}</CardDescription>
+        <CardDescription>{t("photosDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <form.Field name="images">
@@ -80,10 +72,10 @@ export function ProductFormStepPhotos({
                   <label
                     className={`bg-muted/20 flex h-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
                       isUploadingImages
-                        ? 'border-primary bg-primary/10 cursor-wait'
+                        ? "border-primary bg-primary/10 cursor-wait"
                         : isDragging
-                          ? 'border-primary bg-primary/10'
-                          : 'border-muted-foreground/25 hover:border-primary/50'
+                          ? "border-primary bg-primary/10"
+                          : "border-muted-foreground/25 hover:border-primary/50"
                     }`}
                     onDragOver={handleDragOver}
                     onDragEnter={handleDragEnter}
@@ -93,26 +85,22 @@ export function ProductFormStepPhotos({
                     {isUploadingImages ? (
                       <>
                         <Loader2 className="text-primary mb-3 h-10 w-10 animate-spin" />
-                        <span className="text-sm font-medium">
-                          {t('uploading')}
-                        </span>
+                        <span className="text-sm font-medium">{t("uploading")}</span>
                       </>
                     ) : (
                       <>
                         <Upload
-                          className={`mb-3 h-10 w-10 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`}
+                          className={`mb-3 h-10 w-10 ${isDragging ? "text-primary" : "text-muted-foreground"}`}
                         />
-                        <span className="text-sm font-medium">
-                          {t('addImage')}
-                        </span>
+                        <span className="text-sm font-medium">{t("addImage")}</span>
                         <span className="text-muted-foreground mt-1 text-xs">
-                          {t('dragImages')}
+                          {t("dragImages")}
                         </span>
                       </>
                     )}
                     <input
                       type="file"
-                      accept="image/*"
+                      accept={IMAGE_UPLOAD_MIME_TYPES.join(",")}
                       multiple
                       className="sr-only"
                       onChange={handleImageUpload}
@@ -139,7 +127,7 @@ export function ProductFormStepPhotos({
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => setMainImage(index)}
-                              title={t('setAsMain')}
+                              title={t("setAsMain")}
                             >
                               <Star className="h-4 w-4" />
                             </Button>
@@ -151,7 +139,7 @@ export function ProductFormStepPhotos({
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => recropImage(index)}
-                              title={t('recropImage')}
+                              title={t("recropImage")}
                             >
                               <Crop className="h-4 w-4" />
                             </Button>
@@ -167,11 +155,8 @@ export function ProductFormStepPhotos({
                           </Button>
                         </div>
                         {index === 0 && (
-                          <Badge
-                            className="absolute -top-2 -left-2"
-                            variant="default"
-                          >
-                            {t('mainBadge')}
+                          <Badge className="absolute -top-2 -left-2" variant="default">
+                            {t("mainBadge")}
                           </Badge>
                         )}
                       </div>
@@ -181,10 +166,10 @@ export function ProductFormStepPhotos({
                       <label
                         className={`flex aspect-[4/3] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
                           isUploadingImages
-                            ? 'border-primary bg-primary/10 cursor-wait'
+                            ? "border-primary bg-primary/10 cursor-wait"
                             : isDragging
-                              ? 'border-primary bg-primary/10'
-                              : 'border-muted-foreground/25 hover:border-primary/50'
+                              ? "border-primary bg-primary/10"
+                              : "border-muted-foreground/25 hover:border-primary/50"
                         }`}
                         onDragOver={handleDragOver}
                         onDragEnter={handleDragEnter}
@@ -196,16 +181,16 @@ export function ProductFormStepPhotos({
                         ) : (
                           <>
                             <Plus
-                              className={`h-6 w-6 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`}
+                              className={`h-6 w-6 ${isDragging ? "text-primary" : "text-muted-foreground"}`}
                             />
                             <span className="text-muted-foreground mt-1 text-xs">
-                              {t('addImage')}
+                              {t("addImage")}
                             </span>
                           </>
                         )}
                         <input
                           type="file"
-                          accept="image/*"
+                          accept={IMAGE_UPLOAD_MIME_TYPES.join(",")}
                           multiple
                           className="sr-only"
                           onChange={handleImageUpload}
@@ -217,7 +202,7 @@ export function ProductFormStepPhotos({
                 )}
 
                 <p className="text-muted-foreground text-xs">
-                  {t('imagesHint', { count: 5 - imagesPreviews.length })}
+                  {t("imagesHint", { count: 5 - imagesPreviews.length })}
                 </p>
               </div>
               {field.state.meta.errors.length > 0 && (
@@ -235,12 +220,10 @@ export function ProductFormStepPhotos({
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Video className="h-4 w-4" />
-                  {t('videoUrl')}
+                  {t("videoUrl")}
                 </Label>
-                <field.Input placeholder={t('videoUrlPlaceholder')} />
-                <p className="text-muted-foreground text-sm">
-                  {t('videoUrlHelp')}
-                </p>
+                <field.Input placeholder={t("videoUrlPlaceholder")} />
+                <p className="text-muted-foreground text-sm">{t("videoUrlHelp")}</p>
               </div>
             )}
           </form.AppField>

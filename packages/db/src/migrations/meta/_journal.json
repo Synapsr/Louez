@@ -372,6 +372,20 @@
       "when": 1783095320546,
       "tag": "0049_nostalgic_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
+      "when": 1783608328688,
+      "tag": "0050_add_user_profile_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "5",
+      "when": 1784207037151,
+      "tag": "0051_abnormal_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

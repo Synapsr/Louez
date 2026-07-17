@@ -1,38 +1,36 @@
-'use client'
+"use client";
 
-import { useState, useRef, useCallback } from 'react'
-import { useTranslations } from 'next-intl'
-import { Camera, X, Plus, Loader2, ImageIcon, Trash2 } from 'lucide-react'
-import { toastManager } from '@louez/ui'
-import { cn } from '@louez/utils'
-import { Button } from '@louez/ui'
-import {
-  Dialog,
-  DialogPopup,
-  DialogHeader,
-  DialogTitle,
-} from '@louez/ui'
+import { useState, useRef, useCallback } from "react";
+import { useTranslations } from "next-intl";
+import { Camera, X, Plus, Loader2, ImageIcon, Trash2 } from "lucide-react";
+import { toastManager } from "@louez/ui";
+import { cn } from "@louez/utils";
+import { Button } from "@louez/ui";
+import { useImageUpload } from "@/hooks/use-image-upload";
+import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
+import { Dialog, DialogPopup, DialogHeader, DialogTitle } from "@louez/ui";
 
 export interface CapturedPhoto {
-  id: string
-  url: string
-  thumbnailUrl?: string
-  caption?: string
-  isUploading?: boolean
+  id: string;
+  key: string;
+  url: string;
+  thumbnailUrl?: string;
+  caption?: string;
+  isUploading?: boolean;
 }
 
 interface PhotoCaptureProps {
-  photos: CapturedPhoto[]
-  onPhotosChange: (photos: CapturedPhoto[]) => void
-  maxPhotos?: number
-  disabled?: boolean
+  photos: CapturedPhoto[];
+  onPhotosChange: (photos: CapturedPhoto[]) => void;
+  maxPhotos?: number;
+  disabled?: boolean;
 }
 
 /**
  * Generate a unique ID for photos
  */
 function generatePhotoId(): string {
-  return `photo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+  return `photo_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
 /**
@@ -41,39 +39,50 @@ function generatePhotoId(): string {
 async function compressImage(
   file: File,
   maxWidth: number = 1200,
-  quality: number = 0.8
-): Promise<string> {
+  quality: number = 0.8,
+): Promise<File> {
   return new Promise((resolve, reject) => {
-    const img = document.createElement('img')
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
+    const img = document.createElement("img");
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
 
     img.onload = () => {
-      URL.revokeObjectURL(img.src)
+      URL.revokeObjectURL(img.src);
 
-      let { width, height } = img
+      let { width, height } = img;
 
       // Scale down if needed
       if (width > maxWidth) {
-        height = (height * maxWidth) / width
-        width = maxWidth
+        height = (height * maxWidth) / width;
+        width = maxWidth;
       }
 
-      canvas.width = width
-      canvas.height = height
+      canvas.width = width;
+      canvas.height = height;
 
       if (ctx) {
-        ctx.drawImage(img, 0, 0, width, height)
-        // Return as data URL for local storage
-        resolve(canvas.toDataURL('image/webp', quality))
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error("Failed to compress image"));
+              return;
+            }
+            resolve(
+              new File([blob], `inspection-${crypto.randomUUID()}.webp`, { type: "image/webp" }),
+            );
+          },
+          "image/webp",
+          quality,
+        );
       } else {
-        reject(new Error('Failed to get canvas context'))
+        reject(new Error("Failed to get canvas context"));
       }
-    }
+    };
 
-    img.onerror = () => reject(new Error('Failed to load image'))
-    img.src = URL.createObjectURL(file)
-  })
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 export function PhotoCapture({
@@ -82,77 +91,83 @@ export function PhotoCapture({
   maxPhotos = 10,
   disabled = false,
 }: PhotoCaptureProps) {
-  const t = useTranslations('dashboard.settings.inspection')
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [previewPhoto, setPreviewPhoto] = useState<CapturedPhoto | null>(null)
-  const [isCapturing, setIsCapturing] = useState(false)
+  const t = useTranslations("dashboard.settings.inspection");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadImage, deleteImage } = useImageUpload("inspection");
+  const [previewPhoto, setPreviewPhoto] = useState<CapturedPhoto | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
 
-  const canAddMore = photos.length < maxPhotos
+  const canAddMore = photos.length < maxPhotos;
 
   const handleFileSelect = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = event.target.files
-      if (!files || files.length === 0) return
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
 
-      const remainingSlots = maxPhotos - photos.length
-      const filesToProcess = Array.from(files).slice(0, remainingSlots)
+      const remainingSlots = maxPhotos - photos.length;
+      const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
-      setIsCapturing(true)
+      setIsCapturing(true);
 
-      const newPhotos: CapturedPhoto[] = []
+      const newPhotos: CapturedPhoto[] = [];
 
       for (const file of filesToProcess) {
         // Validate file type
-        if (!file.type.startsWith('image/')) {
-          toastManager.add({ title: t('wizard.photoInvalidType'), type: 'error' })
-          continue
+        if (!file.type.startsWith("image/")) {
+          toastManager.add({ title: t("wizard.photoInvalidType"), type: "error" });
+          continue;
         }
 
         // Validate file size (max 20MB before compression)
         if (file.size > 20 * 1024 * 1024) {
-          toastManager.add({ title: t('wizard.photoTooLarge'), type: 'error' })
-          continue
+          toastManager.add({ title: t("wizard.photoTooLarge"), type: "error" });
+          continue;
         }
 
         try {
-          // Compress and convert to data URL
-          const dataUrl = await compressImage(file)
+          const compressedFile = await compressImage(file);
+          const uploaded = await uploadImage(compressedFile);
 
           newPhotos.push({
             id: generatePhotoId(),
-            url: dataUrl,
+            key: uploaded.key,
+            url: uploaded.url,
             isUploading: false,
-          })
+          });
         } catch {
-          toastManager.add({ title: t('wizard.photoError'), type: 'error' })
+          toastManager.add({ title: t("wizard.photoError"), type: "error" });
         }
       }
 
       if (newPhotos.length > 0) {
-        onPhotosChange([...photos, ...newPhotos])
+        onPhotosChange([...photos, ...newPhotos]);
       }
 
-      setIsCapturing(false)
+      setIsCapturing(false);
 
       // Reset file input
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+        fileInputRef.current.value = "";
       }
     },
-    [photos, maxPhotos, onPhotosChange, t]
-  )
+    [maxPhotos, onPhotosChange, photos, t, uploadImage],
+  );
 
   const handleRemovePhoto = useCallback(
     (photoId: string) => {
-      onPhotosChange(photos.filter((p) => p.id !== photoId))
-      setPreviewPhoto(null)
+      const photo = photos.find((candidate) => candidate.id === photoId);
+      if (photo) {
+        void deleteImage(photo.key).catch(() => undefined);
+      }
+      onPhotosChange(photos.filter((p) => p.id !== photoId));
+      setPreviewPhoto(null);
     },
-    [photos, onPhotosChange]
-  )
+    [deleteImage, onPhotosChange, photos],
+  );
 
   const handleTriggerCapture = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
+    fileInputRef.current?.click();
+  }, []);
 
   return (
     <div className="space-y-3">
@@ -165,9 +180,9 @@ export function PhotoCapture({
             onClick={() => setPreviewPhoto(photo)}
             disabled={photo.isUploading}
             className={cn(
-              'group relative aspect-square overflow-hidden rounded-xl border bg-muted',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-              photo.isUploading && 'cursor-wait'
+              "group relative aspect-square overflow-hidden rounded-xl border bg-muted",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              photo.isUploading && "cursor-wait",
             )}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -200,10 +215,10 @@ export function PhotoCapture({
             onClick={handleTriggerCapture}
             disabled={disabled || isCapturing}
             className={cn(
-              'flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed',
-              'transition-colors hover:border-primary hover:bg-primary/5',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
-              (disabled || isCapturing) && 'cursor-not-allowed opacity-50'
+              "flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed",
+              "transition-colors hover:border-primary hover:bg-primary/5",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              (disabled || isCapturing) && "cursor-not-allowed opacity-50",
             )}
           >
             {isCapturing ? (
@@ -226,12 +241,12 @@ export function PhotoCapture({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={IMAGE_UPLOAD_MIME_TYPES.join(",")}
         capture="environment"
         multiple
         onChange={handleFileSelect}
         className="hidden"
-        aria-label={t('wizard.addPhoto')}
+        aria-label={t("wizard.addPhoto")}
       />
 
       {/* Quick capture button for mobile */}
@@ -244,7 +259,7 @@ export function PhotoCapture({
           className="w-full sm:hidden"
         >
           <Camera className="mr-2 h-4 w-4" />
-          {t('wizard.takePhoto')}
+          {t("wizard.takePhoto")}
         </Button>
       )}
 
@@ -252,7 +267,7 @@ export function PhotoCapture({
       <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
         <DialogPopup className="max-w-2xl p-0">
           <DialogHeader className="sr-only">
-            <DialogTitle>{t('wizard.photoPreview')}</DialogTitle>
+            <DialogTitle>{t("wizard.photoPreview")}</DialogTitle>
           </DialogHeader>
 
           {previewPhoto && (
@@ -260,11 +275,7 @@ export function PhotoCapture({
               {/* Image */}
               <div className="relative aspect-[4/3] w-full bg-black">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={previewPhoto.url}
-                  alt=""
-                  className="h-full w-full object-contain"
-                />
+                <img src={previewPhoto.url} alt="" className="h-full w-full object-contain" />
               </div>
 
               {/* Actions */}
@@ -275,7 +286,7 @@ export function PhotoCapture({
                   className="gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
-                  {t('wizard.deletePhoto')}
+                  {t("wizard.deletePhoto")}
                 </Button>
               </div>
 
@@ -286,22 +297,22 @@ export function PhotoCapture({
                 className="absolute right-4 top-4 rounded-full bg-black/50 p-2 text-white transition-colors hover:bg-black/70"
               >
                 <X className="h-5 w-5" />
-                <span className="sr-only">{t('wizard.close')}</span>
+                <span className="sr-only">{t("wizard.close")}</span>
               </button>
             </div>
           )}
         </DialogPopup>
       </Dialog>
     </div>
-  )
+  );
 }
 
 /**
  * Minimal photo display for comparison views
  */
 interface PhotoGridProps {
-  photos: CapturedPhoto[]
-  onPhotoClick?: (photo: CapturedPhoto) => void
+  photos: CapturedPhoto[];
+  onPhotoClick?: (photo: CapturedPhoto) => void;
 }
 
 export function PhotoGrid({ photos, onPhotoClick }: PhotoGridProps) {
@@ -313,7 +324,7 @@ export function PhotoGrid({ photos, onPhotoClick }: PhotoGridProps) {
           <p className="mt-2 text-sm">Aucune photo</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -334,5 +345,5 @@ export function PhotoGrid({ photos, onPhotoClick }: PhotoGridProps) {
         </button>
       ))}
     </div>
-  )
+  );
 }

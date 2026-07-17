@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import Script from 'next/script';
 
 import { Agentation } from 'agentation';
@@ -17,11 +16,6 @@ import { ORPCProvider } from '@/lib/orpc/provider';
 import messages from '@/messages/fr.json';
 
 import './globals.css';
-
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: {
@@ -49,7 +43,7 @@ export default function RootLayout({
     <>
       {process.env.NODE_ENV === 'development' && <Agentation />}
 
-      <html lang="fr" suppressHydrationWarning className='overscroll-none'>
+      <html lang="fr" suppressHydrationWarning className="overscroll-none">
         <UmamiAnalytics />
 
         {env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
@@ -63,11 +57,14 @@ export default function RootLayout({
 
         <head>
           <link
-            href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800&display=swap"
-            rel="stylesheet"
+            rel="preload"
+            href="/fonts/Inter-4.1/web/InterVariable.woff2"
+            as="font"
+            type="font/woff2"
+            crossOrigin="anonymous"
           />
         </head>
-        <body className={`${inter.variable} font-sans antialiased`}>
+        <body className="font-sans antialiased">
           <NuqsAdapter>
             <EvlogProvider>
               <ORPCProvider>

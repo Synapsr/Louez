@@ -110,6 +110,7 @@ import { Heart } from "lucide-react";
 The goal is to have a single place where we can swap any icon (e.g. replace `HeartIcon` from Lucide with one from our own library) and have the change propagate to every app automatically.
 
 When adding a new icon:
+
 1. Add a named export with the `Icon` suffix in `packages/ui/src/icons/index.tsx`.
 2. Import it from `@louez/ui/icons` in app code.
 
@@ -135,6 +136,7 @@ packages/utils/
 ```
 
 Conventions:
+
 - Pure functions only, no side effects
 - No React dependencies (that goes in `@louez/ui`)
 
@@ -187,7 +189,7 @@ export const env = createEnv({
   client: {
     // NEXT_PUBLIC_* vars
   },
-  runtimeEnv: { /* ... */ },
+  runtimeEnv: {/* ... */},
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true,
 });
@@ -205,28 +207,27 @@ export const env = createEnv({
 
 - `@louez/config` — shared `tsconfig.json` base, ESLint config, Prettier config
 
-
 These are consumed via `extends` / imports in app-level configs.
 
 ## Core packages
 
 These packages are active and wired into `apps/web`:
 
-| Package | Purpose | Depends on |
-|---------|---------|------------|
-| `@louez/db` | Drizzle ORM schemas + connection + env | — |
-| `@louez/auth` | Better Auth config + env | `@louez/db`, `@louez/email` |
-| `@louez/api` | oRPC routers + services | `@louez/auth`, `@louez/db`, `@louez/validations` |
-| `@louez/types` | Shared TypeScript types | — |
-| `@louez/validations` | Shared Zod schemas + env | `@louez/types` |
+| Package              | Purpose                                | Depends on                                       |
+| -------------------- | -------------------------------------- | ------------------------------------------------ |
+| `@louez/db`          | Drizzle ORM schemas + connection + env | —                                                |
+| `@louez/auth`        | Better Auth config + env               | `@louez/db`, `@louez/email`                      |
+| `@louez/api`         | oRPC routers + services                | `@louez/auth`, `@louez/db`, `@louez/validations` |
+| `@louez/types`       | Shared TypeScript types                | —                                                |
+| `@louez/validations` | Shared Zod schemas + env               | `@louez/types`                                   |
 
 ## Additional packages
 
-| Package | Purpose |
-|---------|---------|
+| Package        | Purpose                                         |
+| -------------- | ----------------------------------------------- |
 | `@louez/email` | Transactional emails (React Email + Nodemailer) |
-| `@louez/pdf` | PDF generation (@react-pdf/renderer) |
-| `@louez/mcp` | Model Context Protocol server |
+| `@louez/pdf`   | PDF generation (@react-pdf/renderer)            |
+| `@louez/mcp`   | Model Context Protocol server                   |
 
 ### `@louez/email`
 
@@ -303,6 +304,7 @@ export async function sendEmail({ to, subject, react, from }: SendEmailProps) {
 ```
 
 Why a wrapper:
+
 - **Single entry point** — all emails go through one function
 - **Fallback-ready** — add a secondary provider (SES, Postmark) later without touching app code
 - **Consistent error handling** — one place to log, retry, or queue
@@ -310,10 +312,10 @@ Why a wrapper:
 
 #### Environment variables
 
-| Variable | Description |
-|----------|-------------|
+| Variable       | Description                        |
+| -------------- | ---------------------------------- |
 | `RESEND_TOKEN` | Resend API key (starts with `re_`) |
-| `RESEND_FROM` | Default sender address |
+| `RESEND_FROM`  | Default sender address             |
 
 See [01-monorepo-setup.md](01-monorepo-setup.md#environment-variables) for the global env validation pattern.
 

@@ -16,7 +16,7 @@ export interface Session {
  * Store data with role information
  * Matches StoreWithFullData from apps/web/lib/store-context.ts
  */
-export type MemberRole = 'owner' | 'member' | 'platform_admin';
+export type MemberRole = "owner" | "member" | "platform_admin";
 
 /**
  * Base store data (without member role)
@@ -77,7 +77,7 @@ type CalendarIntegrationState = {
     lastSyncAt: string | null;
     lastError: string | null;
     syncPendingReservations: boolean;
-    cancelledReservationBehavior: 'show' | 'hide';
+    cancelledReservationBehavior: "show" | "hide";
     pendingEvents: number;
     failedEvents: number;
   };
@@ -93,9 +93,7 @@ type CalendarIntegrationState = {
 export interface BaseContext {
   headers: Headers;
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
-  getCustomerSession?: (
-    storeSlug: string,
-  ) => Promise<{ customer: CustomerData } | null>;
+  getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
   dashboardReservationActions?: {
     cancelReservation?: (reservationId: string) => Promise<{
@@ -106,14 +104,14 @@ export interface BaseContext {
     updateReservationStatus?: (
       reservationId: string,
       status:
-        | 'pending'
-        | 'confirmed'
-        | 'ongoing'
-        | 'completed'
-        | 'cancelled'
-        | 'rejected'
-        | 'quote'
-        | 'declined',
+        | "pending"
+        | "confirmed"
+        | "ongoing"
+        | "completed"
+        | "cancelled"
+        | "rejected"
+        | "quote"
+        | "declined",
       rejectionReason?: string,
     ) => Promise<
       | { success?: boolean; error?: string }
@@ -137,7 +135,7 @@ export interface BaseContext {
           unitPrice: number;
           depositPerUnit: number;
           isManualPrice?: boolean;
-          pricingMode?: 'hour' | 'day' | 'week';
+          pricingMode?: "hour" | "day" | "week";
           productSnapshot: {
             name: string;
             description?: string | null;
@@ -149,7 +147,7 @@ export interface BaseContext {
         overrideTurnoverBuffer?: boolean;
         delivery?: {
           outbound: {
-            method: 'store' | 'address';
+            method: "store" | "address";
             locationId?: string | null;
             address?: string;
             city?: string;
@@ -159,7 +157,7 @@ export interface BaseContext {
             longitude?: number;
           };
           return: {
-            method: 'store' | 'address';
+            method: "store" | "address";
             locationId?: string | null;
             address?: string;
             city?: string;
@@ -170,9 +168,7 @@ export interface BaseContext {
           };
         };
       },
-    ) => Promise<
-      { success?: boolean; error?: string } & Record<string, unknown>
-    >;
+    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
     previewReservationTulipQuote?: (
       reservationId: string,
       data: {
@@ -185,7 +181,7 @@ export interface BaseContext {
         }>;
       },
     ) => Promise<{
-      mode: 'required' | 'optional' | 'no_public';
+      mode: "required" | "optional" | "no_public";
       connected: boolean;
       inclusionEnabled: boolean;
       quoteUnavailable: boolean;
@@ -213,7 +209,7 @@ export interface BaseContext {
         quantity: number;
       }>;
     }) => Promise<{
-      mode: 'required' | 'optional' | 'no_public';
+      mode: "required" | "optional" | "no_public";
       connected: boolean;
       inclusionEnabled: boolean;
       quoteUnavailable: boolean;
@@ -247,11 +243,11 @@ export interface BaseContext {
         unitPrice: number;
         deposit: number;
         quantity: number;
-        pricingMode: 'hour' | 'day' | 'week';
+        pricingMode: "hour" | "day" | "week";
       }>;
       delivery?: {
         outbound: {
-          method: 'store' | 'address';
+          method: "store" | "address";
           address?: string;
           city?: string;
           postalCode?: string;
@@ -260,7 +256,7 @@ export interface BaseContext {
           longitude?: number;
         };
         return: {
-          method: 'store' | 'address';
+          method: "store" | "address";
           address?: string;
           city?: string;
           postalCode?: string;
@@ -286,9 +282,7 @@ export interface BaseContext {
         available: number;
       }>;
     }>;
-    getAvailableUnitsForReservationItem?: (
-      reservationItemId: string,
-    ) => Promise<{
+    getAvailableUnitsForReservationItem?: (reservationItemId: string) => Promise<{
       units?: Array<{ id: string; identifier: string; notes: string | null }>;
       assigned?: string[];
       error?: string;
@@ -311,7 +305,7 @@ export interface BaseContext {
     requestPayment?: (
       reservationId: string,
       data: {
-        type: 'rental' | 'deposit' | 'custom';
+        type: "rental" | "deposit" | "custom";
         amount?: number;
         channels: { email: boolean; sms: boolean };
         customMessage?: string;
@@ -320,21 +314,19 @@ export interface BaseContext {
     recordPayment?: (
       reservationId: string,
       data: {
-        type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'adjustment';
+        type: "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
         amount: number;
-        method: 'cash' | 'card' | 'transfer' | 'check' | 'other';
+        method: "cash" | "card" | "transfer" | "check" | "other";
         paidAt?: Date;
         notes?: string;
       },
     ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>;
-    deletePayment?: (
-      paymentId: string,
-    ) => Promise<{ success?: boolean; error?: string }>;
+    deletePayment?: (paymentId: string) => Promise<{ success?: boolean; error?: string }>;
     returnDeposit?: (
       reservationId: string,
       data: {
         amount: number;
-        method: 'cash' | 'card' | 'transfer' | 'check' | 'other';
+        method: "cash" | "card" | "transfer" | "check" | "other";
         notes?: string;
       },
     ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>;
@@ -342,29 +334,21 @@ export interface BaseContext {
       reservationId: string,
       data: {
         amount: number;
-        method: 'cash' | 'card' | 'transfer' | 'check' | 'other';
+        method: "cash" | "card" | "transfer" | "check" | "other";
         notes: string;
       },
     ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>;
     createDepositHold?: (
       reservationId: string,
-    ) => Promise<
-      { success?: boolean; error?: string } & Record<string, unknown>
-    >;
+    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
     captureDepositHold?: (
       reservationId: string,
       data: { amount: number; reason: string },
-    ) => Promise<
-      { success?: boolean; error?: string } & Record<string, unknown>
-    >;
+    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
     releaseDepositHold?: (
       reservationId: string,
-    ) => Promise<
-      { success?: boolean; error?: string } & Record<string, unknown>
-    >;
-    getReservationPaymentMethod?: (
-      reservationId: string,
-    ) => Promise<unknown | null>;
+    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
+    getReservationPaymentMethod?: (reservationId: string) => Promise<unknown | null>;
     sendReservationEmail?: (
       reservationId: string,
       data: {
@@ -379,14 +363,10 @@ export interface BaseContext {
     ) => Promise<{ success?: boolean; error?: string }>;
     sendAccessLink?: (
       reservationId: string,
-    ) => Promise<
-      { success?: boolean; error?: string } & Record<string, unknown>
-    >;
+    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
     sendAccessLinkBySms?: (
       reservationId: string,
-    ) => Promise<
-      { success?: boolean; error?: string } & Record<string, unknown>
-    >;
+    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>;
   };
   dashboardIntegrationActions?: {
     listIntegrationsCatalog?: (input: {}) => Promise<
@@ -414,12 +394,10 @@ export interface BaseContext {
       integrationId: string;
       enabled: boolean;
     }) => Promise<{ success?: boolean; error?: string }>;
-    getCalendarIntegrationState?: () => Promise<
-      CalendarIntegrationState | { error: string }
-    >;
+    getCalendarIntegrationState?: () => Promise<CalendarIntegrationState | { error: string }>;
     updateGoogleCalendarSettings?: (input: {
       syncPendingReservations: boolean;
-      cancelledReservationBehavior: 'show' | 'hide';
+      cancelledReservationBehavior: "show" | "hide";
     }) => Promise<{ success?: boolean; error?: string }>;
     resyncGoogleCalendar?: () => Promise<
       | {
@@ -441,7 +419,7 @@ export interface BaseContext {
           connectionIssue: string | null;
           calendlyUrl: string;
           settings: {
-            publicMode: 'required' | 'optional' | 'no_public';
+            publicMode: "required" | "optional" | "no_public";
             renterUid: string | null;
           };
           renters: Array<{ uid: string; enabled: boolean }>;
@@ -482,7 +460,7 @@ export interface BaseContext {
           connectionIssue: string | null;
           calendlyUrl: string;
           settings: {
-            publicMode: 'required' | 'optional' | 'no_public';
+            publicMode: "required" | "optional" | "no_public";
           };
           tulipCatalog: Array<{
             type: string;
@@ -517,7 +495,7 @@ export interface BaseContext {
       renterUid: string;
     }) => Promise<{ success?: boolean; error?: string }>;
     updateTulipConfiguration?: (input: {
-      publicMode: 'required' | 'optional' | 'no_public';
+      publicMode: "required" | "optional" | "no_public";
     }) => Promise<{ success?: boolean; error?: string }>;
     upsertTulipProductMapping?: (input: {
       productId: string;
@@ -554,7 +532,7 @@ export interface BaseContext {
       currency: string;
       freeReservationsRemaining: number;
       freeReservationsGranted: number;
-      rewardKind: 'free_reservations' | 'invoice_credit';
+      rewardKind: "free_reservations" | "invoice_credit";
     } | null>;
   };
   notifyStoreCreated?: (store: {
@@ -562,18 +540,8 @@ export interface BaseContext {
     name: string;
     slug: string;
     userId?: string;
-    reservationMode?: 'payment' | 'request';
+    reservationMode?: "payment" | "request";
   }) => Promise<void>;
-  uploadImageToStorage?: (params: {
-    key: string;
-    body: Buffer;
-    contentType: string;
-  }) => Promise<string>;
-  getStorageKey?: (
-    storeId: string,
-    type: 'logo' | 'products' | 'documents' | 'inspections',
-    ...parts: string[]
-  ) => string;
 }
 
 /**

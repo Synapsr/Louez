@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowLeft,
@@ -16,34 +16,26 @@ import {
   Loader2,
   Package,
   PenLine,
-} from 'lucide-react';
-import { useTranslations } from 'next-intl';
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import type { ConditionRating, InspectionType } from '@louez/types';
-import { toastManager } from '@louez/ui';
-import { Button } from '@louez/ui';
-import { Textarea } from '@louez/ui';
-import { Label } from '@louez/ui';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui';
-import { Badge } from '@louez/ui';
-import { Progress } from '@louez/ui';
-import { cn } from '@louez/utils';
+import type { ConditionRating, InspectionType } from "@louez/types";
+import { toastManager } from "@louez/ui";
+import { Button } from "@louez/ui";
+import { Textarea } from "@louez/ui";
+import { Label } from "@louez/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
+import { Badge } from "@louez/ui";
+import { Progress } from "@louez/ui";
+import { cn } from "@louez/utils";
 
-import { invalidateReservationDetail } from '@/lib/orpc/invalidation';
+import { invalidateReservationDetail } from "@/lib/orpc/invalidation";
+import { useImageUpload } from "@/hooks/use-image-upload";
 
-import {
-  QuickConditionSelector,
-  quickToFullCondition,
-} from './condition-selector';
-import { type CapturedPhoto, PhotoCapture } from './photo-capture';
-import { RepairDowntimeSuggestionDialog } from './repair-downtime-suggestion-dialog';
-import { SignaturePad } from './signature-pad';
+import { QuickConditionSelector, quickToFullCondition } from "./condition-selector";
+import { type CapturedPhoto, PhotoCapture } from "./photo-capture";
+import { RepairDowntimeSuggestionDialog } from "./repair-downtime-suggestion-dialog";
+import { SignaturePad } from "./signature-pad";
 
 // ============================================================================
 // Types
@@ -76,7 +68,7 @@ interface InspectionWizardProps {
 interface ItemInspection {
   reservationItemId: string;
   productUnitId: string | null;
-  condition: 'ok' | 'wear' | 'damage';
+  condition: "ok" | "wear" | "damage";
   notes: string;
   photos: CapturedPhoto[];
 }
@@ -89,7 +81,7 @@ interface RepairDowntimeSuggestionState {
   }>;
 }
 
-type WizardStep = 'overview' | 'items' | 'summary' | 'signature';
+type WizardStep = "overview" | "items" | "summary" | "signature";
 
 // ============================================================================
 // Step Components
@@ -110,7 +102,7 @@ function StepOverview({
   itemCount,
   onAllOk,
 }: StepOverviewProps) {
-  const t = useTranslations('dashboard.settings.inspection');
+  const t = useTranslations("dashboard.settings.inspection");
 
   return (
     <div className="space-y-6">
@@ -123,7 +115,7 @@ function StepOverview({
           <div className="flex-1 space-y-1">
             <h3 className="font-semibold">{t(`wizard.${type}Inspection`)}</h3>
             <p className="text-muted-foreground text-sm">
-              {t('wizard.reservation')} #{reservationNumber}
+              {t("wizard.reservation")} #{reservationNumber}
             </p>
             <p className="text-muted-foreground text-sm">{customerName}</p>
           </div>
@@ -140,7 +132,7 @@ function StepOverview({
             <div>
               <p className="text-2xl font-bold">{itemCount}</p>
               <p className="text-muted-foreground text-sm">
-                {t('wizard.itemsToInspect', { count: itemCount })}
+                {t("wizard.itemsToInspect", { count: itemCount })}
               </p>
             </div>
           </CardContent>
@@ -149,9 +141,7 @@ function StepOverview({
 
       {/* Instructions */}
       <div className="space-y-3">
-        <h4 className="text-muted-foreground text-sm font-medium">
-          {t('wizard.instructions')}
-        </h4>
+        <h4 className="text-muted-foreground text-sm font-medium">{t("wizard.instructions")}</h4>
         <ul className="space-y-2 text-sm">
           <li className="flex items-start gap-2">
             <Check className="text-primary mt-0.5 h-4 w-4 shrink-0" />
@@ -159,11 +149,11 @@ function StepOverview({
           </li>
           <li className="flex items-start gap-2">
             <Check className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-            <span>{t('wizard.instruction2')}</span>
+            <span>{t("wizard.instruction2")}</span>
           </li>
           <li className="flex items-start gap-2">
             <Check className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-            <span>{t('wizard.instruction3')}</span>
+            <span>{t("wizard.instruction3")}</span>
           </li>
         </ul>
       </div>
@@ -171,7 +161,7 @@ function StepOverview({
       {/* Quick action */}
       <Button variant="outline" className="w-full" onClick={onAllOk}>
         <CheckCircle2 className="mr-2 h-4 w-4" />
-        {t('wizard.allItemsOk')}
+        {t("wizard.allItemsOk")}
       </Button>
     </div>
   );
@@ -194,18 +184,18 @@ function StepItems({
   onInspectionChange,
   onItemIndexChange,
 }: StepItemsProps) {
-  const t = useTranslations('dashboard.settings.inspection');
+  const t = useTranslations("dashboard.settings.inspection");
 
   const currentItem = items[currentItemIndex];
   const currentInspection = inspections.get(currentItem.id) || {
     reservationItemId: currentItem.reservationItemId,
     productUnitId: currentItem.productUnitId,
-    condition: 'ok' as const,
-    notes: '',
+    condition: "ok" as const,
+    notes: "",
     photos: [],
   };
 
-  const handleConditionChange = (condition: 'ok' | 'wear' | 'damage') => {
+  const handleConditionChange = (condition: "ok" | "wear" | "damage") => {
     onInspectionChange(currentItem.id, { condition });
   };
 
@@ -224,9 +214,7 @@ function StepItems({
         <div className="flex justify-center gap-1.5">
           {items.map((item, index) => {
             const inspection = inspections.get(item.id);
-            const hasIssue =
-              inspection?.condition === 'wear' ||
-              inspection?.condition === 'damage';
+            const hasIssue = inspection?.condition === "wear" || inspection?.condition === "damage";
 
             return (
               <button
@@ -234,16 +222,16 @@ function StepItems({
                 type="button"
                 onClick={() => onItemIndexChange(index)}
                 className={cn(
-                  'h-2 rounded-full transition-all',
+                  "h-2 rounded-full transition-all",
                   index === currentItemIndex
-                    ? 'bg-primary w-6'
+                    ? "bg-primary w-6"
                     : hasIssue
-                      ? 'w-2 bg-amber-500'
+                      ? "w-2 bg-amber-500"
                       : inspection
-                        ? 'w-2 bg-emerald-500'
-                        : 'bg-muted-foreground/30 w-2',
+                        ? "w-2 bg-emerald-500"
+                        : "bg-muted-foreground/30 w-2",
                 )}
-                aria-label={`${t('table.equipment')} ${index + 1}`}
+                aria-label={`${t("table.equipment")} ${index + 1}`}
               />
             );
           })}
@@ -265,15 +253,13 @@ function StepItems({
               </div>
             )}
             <div className="flex-1">
-              <CardTitle className="text-lg">
-                {currentItem.product.name}
-              </CardTitle>
+              <CardTitle className="text-lg">{currentItem.product.name}</CardTitle>
               <CardDescription>
                 {currentItem.unitIdentifier
-                  ? t('wizard.unitReference', {
+                  ? t("wizard.unitReference", {
                       identifier: currentItem.unitIdentifier,
                     })
-                  : `${t('wizard.quantity')}: ${currentItem.quantity}`}
+                  : `${t("wizard.quantity")}: ${currentItem.quantity}`}
               </CardDescription>
             </div>
           </div>
@@ -282,7 +268,7 @@ function StepItems({
         <CardContent className="space-y-6">
           {/* Condition selector */}
           <div className="space-y-3">
-            <Label>{t('wizard.condition')}</Label>
+            <Label>{t("wizard.condition")}</Label>
             <QuickConditionSelector
               value={currentInspection.condition}
               onChange={handleConditionChange}
@@ -291,7 +277,7 @@ function StepItems({
 
           {/* Photos */}
           <div className="space-y-3">
-            <Label>{t('wizard.photos')}</Label>
+            <Label>{t("wizard.photos")}</Label>
             <PhotoCapture
               photos={currentInspection.photos}
               onPhotosChange={handlePhotosChange}
@@ -300,15 +286,14 @@ function StepItems({
           </div>
 
           {/* Notes (expanded for issues) */}
-          {(currentInspection.condition === 'wear' ||
-            currentInspection.condition === 'damage') && (
+          {(currentInspection.condition === "wear" || currentInspection.condition === "damage") && (
             <div className="space-y-3">
-              <Label htmlFor="item-notes">{t('wizard.notes')}</Label>
+              <Label htmlFor="item-notes">{t("wizard.notes")}</Label>
               <Textarea
                 id="item-notes"
                 value={currentInspection.notes}
                 onChange={(e) => handleNotesChange(e.target.value)}
-                placeholder={t('wizard.notesPlaceholder')}
+                placeholder={t("wizard.notesPlaceholder")}
                 rows={3}
               />
             </div>
@@ -326,13 +311,8 @@ interface StepSummaryProps {
   onGlobalNotesChange: (notes: string) => void;
 }
 
-function StepSummary({
-  items,
-  inspections,
-  globalNotes,
-  onGlobalNotesChange,
-}: StepSummaryProps) {
-  const t = useTranslations('dashboard.settings.inspection');
+function StepSummary({ items, inspections, globalNotes, onGlobalNotesChange }: StepSummaryProps) {
+  const t = useTranslations("dashboard.settings.inspection");
 
   const summary = useMemo(() => {
     let ok = 0;
@@ -341,13 +321,13 @@ function StepSummary({
 
     inspections.forEach((inspection) => {
       switch (inspection.condition) {
-        case 'ok':
+        case "ok":
           ok++;
           break;
-        case 'wear':
+        case "wear":
           wear++;
           break;
-        case 'damage':
+        case "damage":
           damage++;
           break;
       }
@@ -363,10 +343,8 @@ function StepSummary({
       {/* Summary header */}
       <div
         className={cn(
-          'rounded-2xl p-6',
-          hasDamage
-            ? 'bg-red-50 dark:bg-red-950/30'
-            : 'bg-emerald-50 dark:bg-emerald-950/30',
+          "rounded-2xl p-6",
+          hasDamage ? "bg-red-50 dark:bg-red-950/30" : "bg-emerald-50 dark:bg-emerald-950/30",
         )}
       >
         <div className="flex items-center gap-4">
@@ -377,10 +355,10 @@ function StepSummary({
           )}
           <div>
             <h3 className="font-semibold">
-              {hasDamage ? t('wizard.damageDetected') : t('wizard.allGood')}
+              {hasDamage ? t("wizard.damageDetected") : t("wizard.allGood")}
             </h3>
             <p className="text-muted-foreground text-sm">
-              {t('wizard.summaryItems', { count: items.length })}
+              {t("wizard.summaryItems", { count: items.length })}
             </p>
           </div>
         </div>
@@ -390,30 +368,26 @@ function StepSummary({
       <div className="grid grid-cols-3 gap-3">
         <div className="rounded-xl border p-3 text-center">
           <p className="text-2xl font-bold text-emerald-600">{summary.ok}</p>
-          <p className="text-muted-foreground text-xs">{t('conditions.ok')}</p>
+          <p className="text-muted-foreground text-xs">{t("conditions.ok")}</p>
         </div>
         <div className="rounded-xl border p-3 text-center">
           <p className="text-2xl font-bold text-amber-600">{summary.wear}</p>
-          <p className="text-muted-foreground text-xs">
-            {t('conditions.wear')}
-          </p>
+          <p className="text-muted-foreground text-xs">{t("conditions.wear")}</p>
         </div>
         <div className="rounded-xl border p-3 text-center">
           <p className="text-2xl font-bold text-red-600">{summary.damage}</p>
-          <p className="text-muted-foreground text-xs">
-            {t('conditions.damage')}
-          </p>
+          <p className="text-muted-foreground text-xs">{t("conditions.damage")}</p>
         </div>
       </div>
 
       {/* Items with issues */}
       {(summary.wear > 0 || summary.damage > 0) && (
         <div className="space-y-3">
-          <h4 className="text-sm font-medium">{t('wizard.itemsWithIssues')}</h4>
+          <h4 className="text-sm font-medium">{t("wizard.itemsWithIssues")}</h4>
           <div className="space-y-2">
             {items.map((item) => {
               const inspection = inspections.get(item.id);
-              if (!inspection || inspection.condition === 'ok') return null;
+              if (!inspection || inspection.condition === "ok") return null;
 
               return (
                 <div
@@ -432,23 +406,17 @@ function StepSummary({
                       </div>
                     )}
                     <span className="min-w-0">
-                      <span className="block text-sm font-medium">
-                        {item.product.name}
-                      </span>
+                      <span className="block text-sm font-medium">{item.product.name}</span>
                       {item.unitIdentifier ? (
                         <span className="text-muted-foreground block text-xs">
-                          {t('wizard.unitReference', {
+                          {t("wizard.unitReference", {
                             identifier: item.unitIdentifier,
                           })}
                         </span>
                       ) : null}
                     </span>
                   </div>
-                  <Badge
-                    variant={
-                      inspection.condition === 'damage' ? 'error' : 'secondary'
-                    }
-                  >
+                  <Badge variant={inspection.condition === "damage" ? "error" : "secondary"}>
                     {t(`conditions.${inspection.condition}`)}
                   </Badge>
                 </div>
@@ -460,12 +428,12 @@ function StepSummary({
 
       {/* Global notes */}
       <div className="space-y-3">
-        <Label htmlFor="global-notes">{t('wizard.globalNotes')}</Label>
+        <Label htmlFor="global-notes">{t("wizard.globalNotes")}</Label>
         <Textarea
           id="global-notes"
           value={globalNotes}
           onChange={(e) => onGlobalNotesChange(e.target.value)}
-          placeholder={t('wizard.globalNotesPlaceholder')}
+          placeholder={t("wizard.globalNotesPlaceholder")}
           rows={4}
         />
       </div>
@@ -479,12 +447,8 @@ interface StepSignatureProps {
   onSignatureChange: (signature: string | null) => void;
 }
 
-function StepSignature({
-  customerName,
-  signature,
-  onSignatureChange,
-}: StepSignatureProps) {
-  const t = useTranslations('dashboard.settings.inspection');
+function StepSignature({ customerName, signature, onSignatureChange }: StepSignatureProps) {
+  const t = useTranslations("dashboard.settings.inspection");
 
   return (
     <div className="space-y-6">
@@ -495,20 +459,14 @@ function StepSignature({
             <PenLine className="h-6 w-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
-            <h3 className="font-semibold">{t('wizard.signatureTitle')}</h3>
-            <p className="text-muted-foreground text-sm">
-              {t('wizard.signatureDescription')}
-            </p>
+            <h3 className="font-semibold">{t("wizard.signatureTitle")}</h3>
+            <p className="text-muted-foreground text-sm">{t("wizard.signatureDescription")}</p>
           </div>
         </div>
       </div>
 
       {/* Signature pad */}
-      <SignaturePad
-        value={signature}
-        onChange={onSignatureChange}
-        signerName={customerName}
-      />
+      <SignaturePad value={signature} onChange={onSignatureChange} signerName={customerName} />
     </div>
   );
 }
@@ -529,37 +487,59 @@ export function InspectionWizard({
 }: InspectionWizardProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const t = useTranslations('dashboard.settings.inspection');
+  const t = useTranslations("dashboard.settings.inspection");
+  const { deleteImage } = useImageUpload("inspection");
 
   // Wizard state
-  const [currentStep, setCurrentStep] = useState<WizardStep>('overview');
+  const [currentStep, setCurrentStep] = useState<WizardStep>("overview");
   const [currentItemIndex, setCurrentItemIndex] = useState(0);
-  const [inspections, setInspections] = useState<Map<string, ItemInspection>>(
-    () => {
-      const map = new Map<string, ItemInspection>();
-      items.forEach((item) => {
-        map.set(item.id, {
-          reservationItemId: item.reservationItemId,
-          productUnitId: item.productUnitId,
-          condition: 'ok',
-          notes: '',
-          photos: [],
-        });
+  const [inspections, setInspections] = useState<Map<string, ItemInspection>>(() => {
+    const map = new Map<string, ItemInspection>();
+    items.forEach((item) => {
+      map.set(item.id, {
+        reservationItemId: item.reservationItemId,
+        productUnitId: item.productUnitId,
+        condition: "ok",
+        notes: "",
+        photos: [],
       });
-      return map;
-    },
-  );
-  const [globalNotes, setGlobalNotes] = useState('');
+    });
+    return map;
+  });
+  const [globalNotes, setGlobalNotes] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [repairDowntimeSuggestion, setRepairDowntimeSuggestion] =
     useState<RepairDowntimeSuggestionState | null>(null);
+  const pendingPhotoKeysRef = useRef<string[]>([]);
+  const deleteImageRef = useRef(deleteImage);
+  const inspectionPersistedRef = useRef(false);
+
+  useEffect(() => {
+    pendingPhotoKeysRef.current = Array.from(inspections.values()).flatMap((inspection) =>
+      inspection.photos.map((photo) => photo.key),
+    );
+  }, [inspections]);
+
+  useEffect(() => {
+    deleteImageRef.current = deleteImage;
+  }, [deleteImage]);
+
+  useEffect(
+    () => () => {
+      if (inspectionPersistedRef.current) return;
+      void Promise.allSettled(
+        pendingPhotoKeysRef.current.map((key) => deleteImageRef.current(key)),
+      );
+    },
+    [],
+  );
 
   // Determine active steps
   const activeSteps = useMemo(() => {
-    const steps: WizardStep[] = ['overview', 'items', 'summary'];
+    const steps: WizardStep[] = ["overview", "items", "summary"];
     if (requireSignature) {
-      steps.push('signature');
+      steps.push("signature");
     }
     return steps;
   }, [requireSignature]);
@@ -569,14 +549,14 @@ export function InspectionWizard({
 
   const canProceed = useMemo(() => {
     switch (currentStep) {
-      case 'overview':
+      case "overview":
         return true;
-      case 'items':
+      case "items":
         // All items must have been viewed
         return true;
-      case 'summary':
+      case "summary":
         return true;
-      case 'signature':
+      case "signature":
         return !!signature;
       default:
         return false;
@@ -591,8 +571,8 @@ export function InspectionWizard({
         const current = updated.get(itemId) || {
           reservationItemId: item?.reservationItemId ?? itemId,
           productUnitId: item?.productUnitId ?? null,
-          condition: 'ok' as const,
-          notes: '',
+          condition: "ok" as const,
+          notes: "",
           photos: [],
         };
         updated.set(itemId, { ...current, ...data });
@@ -603,20 +583,25 @@ export function InspectionWizard({
   );
 
   const handleAllOk = useCallback(() => {
+    const photoKeys = Array.from(inspections.values()).flatMap((inspection) =>
+      inspection.photos.map((photo) => photo.key),
+    );
+    void Promise.allSettled(photoKeys.map((key) => deleteImage(key)));
+
     // Mark all items as OK and skip to summary
     const updated = new Map<string, ItemInspection>();
     items.forEach((item) => {
       updated.set(item.id, {
         reservationItemId: item.reservationItemId,
         productUnitId: item.productUnitId,
-        condition: 'ok',
-        notes: '',
+        condition: "ok",
+        notes: "",
         photos: [],
       });
     });
     setInspections(updated);
-    setCurrentStep('summary');
-  }, [items]);
+    setCurrentStep("summary");
+  }, [deleteImage, inspections, items]);
 
   const finishInspectionFlow = useCallback(() => {
     setRepairDowntimeSuggestion(null);
@@ -626,7 +611,7 @@ export function InspectionWizard({
 
   const handleNext = useCallback(() => {
     // When on items step, navigate through items first
-    if (currentStep === 'items' && currentItemIndex < items.length - 1) {
+    if (currentStep === "items" && currentItemIndex < items.length - 1) {
       setCurrentItemIndex(currentItemIndex + 1);
       return;
     }
@@ -636,17 +621,11 @@ export function InspectionWizard({
     if (nextIndex < activeSteps.length) {
       setCurrentStep(activeSteps[nextIndex]);
     }
-  }, [
-    currentStep,
-    currentStepIndex,
-    currentItemIndex,
-    items.length,
-    activeSteps,
-  ]);
+  }, [currentStep, currentStepIndex, currentItemIndex, items.length, activeSteps]);
 
   const handleBack = useCallback(() => {
     // When on items step, navigate through items first
-    if (currentStep === 'items' && currentItemIndex > 0) {
+    if (currentStep === "items" && currentItemIndex > 0) {
       setCurrentItemIndex(currentItemIndex - 1);
       return;
     }
@@ -656,42 +635,35 @@ export function InspectionWizard({
     if (prevIndex >= 0) {
       setCurrentStep(activeSteps[prevIndex]);
       // If going back to items step, go to the last item
-      if (activeSteps[prevIndex] === 'items') {
+      if (activeSteps[prevIndex] === "items") {
         setCurrentItemIndex(items.length - 1);
       }
     }
-  }, [
-    currentStep,
-    currentStepIndex,
-    currentItemIndex,
-    activeSteps,
-    items.length,
-  ]);
+  }, [currentStep, currentStepIndex, currentItemIndex, activeSteps, items.length]);
 
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
 
     try {
       // Convert inspections to API format
-      const itemsData = Array.from(inspections.entries()).map(
-        ([, inspection]) => ({
-          reservationItemId: inspection.reservationItemId,
-          productUnitId: inspection.productUnitId,
-          overallCondition: quickToFullCondition(
-            inspection.condition,
-          ) as ConditionRating,
-          notes: inspection.notes || null,
-          fieldValues: [],
-        }),
-      );
+      const itemsData = Array.from(inspections.entries()).map(([, inspection]) => ({
+        reservationItemId: inspection.reservationItemId,
+        productUnitId: inspection.productUnitId,
+        overallCondition: quickToFullCondition(inspection.condition) as ConditionRating,
+        notes: inspection.notes || null,
+        fieldValues: [],
+        photos: inspection.photos.map((photo) => ({
+          key: photo.key,
+          url: photo.url,
+          caption: photo.caption || null,
+        })),
+      }));
 
-      const hasDamage = Array.from(inspections.values()).some(
-        (i) => i.condition === 'damage',
-      );
+      const hasDamage = Array.from(inspections.values()).some((i) => i.condition === "damage");
 
       // Import and call server action
       const { createInspection, completeInspection, signInspection } =
-        await import('../../actions');
+        await import("../../actions");
 
       // Create inspection
       const createResult = await createInspection({
@@ -702,25 +674,23 @@ export function InspectionWizard({
       });
 
       if (createResult.error || !createResult.inspectionId) {
-        throw new Error(createResult.error || 'Failed to create inspection');
+        throw new Error(createResult.error || "Failed to create inspection");
       }
+      inspectionPersistedRef.current = true;
 
       // Complete inspection
-      const completeResult = await completeInspection(
-        createResult.inspectionId,
-        {
-          notes: globalNotes || null,
-          hasDamage,
-          damageDescription: hasDamage
-            ? Array.from(inspections.values())
-                .filter((i) => i.condition === 'damage')
-                .map((i) => i.notes)
-                .filter(Boolean)
-                .join('; ') || null
-            : null,
-          estimatedDamageCost: null,
-        },
-      );
+      const completeResult = await completeInspection(createResult.inspectionId, {
+        notes: globalNotes || null,
+        hasDamage,
+        damageDescription: hasDamage
+          ? Array.from(inspections.values())
+              .filter((i) => i.condition === "damage")
+              .map((i) => i.notes)
+              .filter(Boolean)
+              .join("; ") || null
+          : null,
+        estimatedDamageCost: null,
+      });
 
       if (completeResult.error) {
         throw new Error(completeResult.error);
@@ -738,23 +708,20 @@ export function InspectionWizard({
       }
 
       toastManager.add({
-        title: t('wizard.inspectionComplete'),
-        type: 'success',
+        title: t("wizard.inspectionComplete"),
+        type: "success",
       });
       await invalidateReservationDetail(queryClient, reservationId);
 
-      if (
-        type === 'return' &&
-        completeResult.repairDowntimeSuggestion?.units.length
-      ) {
+      if (type === "return" && completeResult.repairDowntimeSuggestion?.units.length) {
         setRepairDowntimeSuggestion(completeResult.repairDowntimeSuggestion);
         return;
       }
 
       finishInspectionFlow();
     } catch (error) {
-      console.error('Inspection error:', error);
-      toastManager.add({ title: t('wizard.inspectionError'), type: 'error' });
+      console.error("Inspection error:", error);
+      toastManager.add({ title: t("wizard.inspectionError"), type: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -771,7 +738,7 @@ export function InspectionWizard({
   ]);
 
   const isLastStep = currentStepIndex === activeSteps.length - 1;
-  const isOnItemsStep = currentStep === 'items';
+  const isOnItemsStep = currentStep === "items";
   const isLastItem = currentItemIndex === items.length - 1;
   const reservationItemIds = useMemo(
     () => [...new Set(items.map((item) => item.reservationItemId))],
@@ -797,19 +764,15 @@ export function InspectionWizard({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 shrink-0"
-                onClick={() =>
-                  router.push(`/dashboard/reservations/${reservationId}`)
-                }
+                onClick={() => router.push(`/dashboard/reservations/${reservationId}`)}
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span className="sr-only">{t('wizard.back')}</span>
+                <span className="sr-only">{t("wizard.back")}</span>
               </Button>
               <div>
-                <h1 className="text-sm font-semibold">
-                  {t(`wizard.${type}Inspection`)}
-                </h1>
+                <h1 className="text-sm font-semibold">{t(`wizard.${type}Inspection`)}</h1>
                 <p className="text-muted-foreground text-xs">
-                  {t('wizard.reservation')} #{reservationNumber}
+                  {t("wizard.reservation")} #{reservationNumber}
                 </p>
               </div>
             </div>
@@ -826,7 +789,7 @@ export function InspectionWizard({
       {/* Content */}
       <div className="flex-1 overflow-auto">
         <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8">
-          {currentStep === 'overview' && (
+          {currentStep === "overview" && (
             <StepOverview
               type={type}
               reservationNumber={reservationNumber}
@@ -836,7 +799,7 @@ export function InspectionWizard({
             />
           )}
 
-          {currentStep === 'items' && (
+          {currentStep === "items" && (
             <StepItems
               items={items}
               inspections={inspections}
@@ -847,7 +810,7 @@ export function InspectionWizard({
             />
           )}
 
-          {currentStep === 'summary' && (
+          {currentStep === "summary" && (
             <StepSummary
               items={items}
               inspections={inspections}
@@ -856,7 +819,7 @@ export function InspectionWizard({
             />
           )}
 
-          {currentStep === 'signature' && (
+          {currentStep === "signature" && (
             <StepSignature
               customerName={customerName}
               signature={signature}
@@ -869,13 +832,9 @@ export function InspectionWizard({
       {/* Footer */}
       <div className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky bottom-0 border-t backdrop-blur">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <Button
-            variant="ghost"
-            onClick={handleBack}
-            disabled={isBackDisabled}
-          >
+          <Button variant="ghost" onClick={handleBack} disabled={isBackDisabled}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            {t('wizard.back')}
+            {t("wizard.back")}
           </Button>
 
           {/* Item counter when on items step */}
@@ -886,22 +845,17 @@ export function InspectionWizard({
           )}
 
           {isLastStep ? (
-            <Button
-              onClick={handleSubmit}
-              disabled={!canProceed || isSubmitting}
-            >
+            <Button onClick={handleSubmit} disabled={!canProceed || isSubmitting}>
               {isSubmitting ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <FileCheck className="mr-2 h-4 w-4" />
               )}
-              {t('wizard.complete')}
+              {t("wizard.complete")}
             </Button>
           ) : (
             <Button onClick={handleNext} disabled={!canProceed}>
-              {isOnItemsStep && !isLastItem
-                ? t('wizard.next')
-                : t('wizard.continue')}
+              {isOnItemsStep && !isLastItem ? t("wizard.next") : t("wizard.continue")}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}

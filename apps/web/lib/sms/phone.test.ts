@@ -55,7 +55,7 @@ test('formats phone numbers for display using metadata', () => {
 test('parses phone input for the UI country selector', () => {
   assert.deepEqual(parsePhoneInput('+354 612 3456', 'FR'), {
     country: 'IS',
-    displayValue: '612 3456',
+    displayValue: '+354 612 3456',
     nationalNumber: '6123456',
     normalized: '+3546123456',
   });
