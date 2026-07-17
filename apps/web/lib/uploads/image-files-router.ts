@@ -11,6 +11,7 @@ import { getImageFiles } from "@/lib/storage/files";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { IMAGE_UPLOAD_CONFIG, type ImageUploadKind } from "./image-upload";
+import { createPublicFilesRequest } from "./util.public-files-request";
 
 const routers = new Map<ImageUploadKind, FilesApi>();
 const appUrl = new URL(env.NEXT_PUBLIC_APP_URL);
@@ -37,8 +38,8 @@ const getKeyPrefix = async (kind: ImageUploadKind) => {
   return `${store.id}/${folder}/`;
 };
 
-const createImageFilesRouter = (kind: ImageUploadKind) =>
-  createFilesRouter({
+const createImageFilesRouter = (kind: ImageUploadKind) => {
+  const router = createFilesRouter({
     files: () => getImageFiles(),
     operations: ["upload", "url", "delete"],
     allowedOrigins,
@@ -49,6 +50,12 @@ const createImageFilesRouter = (kind: ImageUploadKind) =>
       disposition: "inline",
     }),
   });
+
+  return {
+    handle: (request: Request) =>
+      router.handle(createPublicFilesRequest(request, allowedOrigins, appUrl.origin)),
+  };
+};
 
 export const getImageFilesRouter = (kind: ImageUploadKind) => {
   const existing = routers.get(kind);
