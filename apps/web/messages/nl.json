@@ -1393,6 +1393,7 @@
         "addItem": "Artikel toevoegen",
         "searchProductsPlaceholder": "Zoeken in {count} artikelen...",
         "noProductsFound": "Geen artikelen gevonden",
+        "unavailableForPeriod": "Niet beschikbaar",
         "subtotal": "Subtotaal",
         "summary": "Samenvatting",
         "before": "Ervoor",

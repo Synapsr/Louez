@@ -1393,6 +1393,7 @@
         "addItem": "Dodaj przedmiot",
         "searchProductsPlaceholder": "Szukaj wsrod {count} przedmiotow...",
         "noProductsFound": "Nie znaleziono przedmiotow",
+        "unavailableForPeriod": "Niedostępny",
         "subtotal": "Suma częściowa",
         "summary": "Podsumowanie",
         "before": "Przed",

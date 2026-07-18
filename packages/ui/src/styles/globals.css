@@ -149,6 +149,12 @@
   --radius-4xl: calc(var(--radius) + 16px);
   --animate-skeleton: skeleton 2s -1s infinite linear;
 
+  /* badges */
+  --color-badge-gray-background: var(--badge-gray-background);
+  --color-badge-gray-foreground: var(--badge-gray-foreground);
+  --color-badge-warning-background: var(--badge-warning-background);
+  --color-badge-warning-foreground: var(--badge-warning-foreground);
+
   --thumb-size: var(--spacing)*5;
 
   @keyframes skeleton {
@@ -257,6 +263,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* badges */
+  --badge-gray-background: oklch(95.8% 0 0deg);
+  --badge-gray-foreground: oklch(56.9% 0 0deg);
+  --badge-warning-background: oklch(97.4% 0.0143 50.8deg);
+  --badge-warning-foreground: oklch(76.1% 0.127 64.2deg);
 }
 
 .dark {

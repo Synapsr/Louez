@@ -1442,6 +1442,7 @@
         "addItem": "Ajouter un article",
         "searchProductsPlaceholder": "Rechercher parmi {count} articles...",
         "noProductsFound": "Aucun article trouvé",
+        "unavailableForPeriod": "Indisponible",
         "subtotal": "Sous-total",
         "summary": "Récapitulatif",
         "before": "Avant",

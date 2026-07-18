@@ -1,23 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 
 import {
   AlertTriangle,
-  Check,
   ChevronsUpDown,
+  ImageIcon,
   Lock,
   Minus,
-  Package,
   PenLine,
   Plus,
   Shield,
   Trash2,
   Unlock,
-} from 'lucide-react';
-import { useTranslations } from 'next-intl';
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import type { PricingMode } from '@louez/types';
+import type { PricingMode } from "@louez/types";
 import {
   Badge,
   Button,
@@ -36,35 +35,24 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@louez/ui';
-import { cn } from '@louez/utils';
+} from "@louez/ui";
+import { cn } from "@louez/utils";
 
-import type {
-  AvailabilityWarning,
-  Product,
-  ReservationCalculations,
-} from '../types';
+import type { AvailabilityWarning, Product, ReservationCalculations } from "../types";
 
 interface EditReservationItemsSectionProps {
   calculations: ReservationCalculations;
   availabilityWarnings: AvailabilityWarning[];
   availableToAdd: Product[];
+  availableQuantityByProduct: Map<string, number>;
   itemsCount: number;
   currencySymbol: string;
   getDurationUnit: (mode: PricingMode) => string;
   onOpenCustomItemDialog: () => void;
   onAddProduct: (productId: string) => void;
   onQuantityChange: (itemId: string, quantity: number) => void;
-  onPriceChange: (
-    itemId: string,
-    price: number,
-    pricingMode?: PricingMode,
-  ) => void;
-  onTotalPriceChange: (
-    itemId: string,
-    totalPrice: number,
-    pricingMode?: PricingMode,
-  ) => void;
+  onPriceChange: (itemId: string, price: number, pricingMode?: PricingMode) => void;
+  onTotalPriceChange: (itemId: string, totalPrice: number, pricingMode?: PricingMode) => void;
   onDepositChange: (itemId: string, depositPerUnit: number) => void;
   onToggleManualPrice: (
     itemId: string,
@@ -114,23 +102,23 @@ function PriceInput({
         value={localValue}
         onChange={(event) => {
           const raw = event.target.value;
-          if (raw === '' || /^\d*[.,]?\d{0,2}$/.test(raw)) {
+          if (raw === "" || /^\d*[.,]?\d{0,2}$/.test(raw)) {
             setLocalValue(raw);
-            const parsed = parseFloat(raw.replace(',', '.'));
+            const parsed = parseFloat(raw.replace(",", "."));
             if (!Number.isNaN(parsed)) {
               onChange(parsed);
             }
           }
         }}
         onBlur={() => {
-          const parsed = parseFloat(localValue.replace(',', '.'));
+          const parsed = parseFloat(localValue.replace(",", "."));
           const final = Number.isNaN(parsed) ? 0 : parsed;
           setLocalValue(final.toFixed(2));
           onChange(final);
           onCommit?.();
         }}
         onKeyDown={(event) => {
-          if (event.key === 'Escape') {
+          if (event.key === "Escape") {
             event.preventDefault();
             const resetValue = revertValue ?? value;
             setLocalValue(resetValue.toFixed(2));
@@ -139,9 +127,9 @@ function PriceInput({
             return;
           }
 
-          if (event.key === 'Enter') {
+          if (event.key === "Enter") {
             event.preventDefault();
-            const parsed = parseFloat(localValue.replace(',', '.'));
+            const parsed = parseFloat(localValue.replace(",", "."));
             const final = Number.isNaN(parsed) ? 0 : parsed;
             setLocalValue(final.toFixed(2));
             onChange(final);
@@ -152,8 +140,8 @@ function PriceInput({
         aria-label={ariaLabel}
         autoFocus={autoFocus}
         className={cn(
-          'h-8 w-28 [appearance:textfield] pr-8 text-right tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
-          isManual && 'border-amber-300 bg-amber-50 dark:bg-amber-950/20',
+          "h-8 w-28 [appearance:textfield] pr-8 text-right tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+          isManual && "border-amber-300 bg-amber-50 dark:bg-amber-950/20",
         )}
       />
       <span
@@ -241,19 +229,25 @@ function TotalPriceEditor({
 
 function ProductAddCombobox({
   products,
+  availableQuantityByProduct,
   onAddProduct,
   placeholder,
   searchPlaceholder,
   emptyLabel,
+  unavailableLabel,
+  availableLabel,
 }: {
   products: Product[];
+  availableQuantityByProduct: Map<string, number>;
   onAddProduct: (productId: string) => void;
   placeholder: string;
   searchPlaceholder: string;
   emptyLabel: string;
+  unavailableLabel: string;
+  availableLabel: string;
 }) {
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()),
@@ -267,17 +261,23 @@ function ProductAddCombobox({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="h-9 w-full justify-between sm:w-[220px]"
+            className="h-9 w-fit justify-between  group"
           />
         }
       >
-        <span className="flex min-w-0 items-center gap-2">
-          <Plus className="h-4 w-4 shrink-0" />
+        {/* <Plus data-slot="icon" className="size-4 shrink-0" /> */}
+        <span className="flex-1 min-w-0 justify-start gap-2 w-full">
           <span className="truncate">{placeholder}</span>
         </span>
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        <ChevronsUpDown
+          data-slot="icon"
+          className="transition-opacity size-4 opacity-70 group-hover:opacity-100"
+        />
       </PopoverTrigger>
-      <PopoverContent className="w-(--radix-popover-trigger-width) sm:w-[360px] p-0 pt-2 *:p-0" align="end">
+      <PopoverContent
+        className="w-(--radix-popover-trigger-width) sm:w-[360px] p-0 pt-1 *:p-0"
+        align="end"
+      >
         <Command open items={filteredProducts} filter={null}>
           <CommandInput
             placeholder={searchPlaceholder}
@@ -285,26 +285,64 @@ function ProductAddCombobox({
             onChange={(event) => setSearchQuery(event.target.value)}
           />
           <CommandEmpty>{emptyLabel}</CommandEmpty>
-          <CommandList className="max-h-[320px]">
+          <CommandList className="max-h-[320px] not-empty:pt-0">
             <CommandGroup>
-              {filteredProducts.map((product) => (
-                <CommandItem
-                  key={product.id}
-                  value={product.id}
-                  onClick={() => {
-                    onAddProduct(product.id);
-                    setOpen(false);
-                    setSearchQuery('');
-                  }}
-                  className="flex items-center gap-2"
-                >
-                  <Package className="text-muted-foreground h-4 w-4 shrink-0" />
-                  <span className="min-w-0 flex-1 truncate">
-                    {product.name}
-                  </span>
-                  <Check className="h-4 w-4 shrink-0 opacity-0" />
-                </CommandItem>
-              ))}
+              {filteredProducts.map((product) => {
+                const remaining = availableQuantityByProduct.get(product.id);
+                const isUnavailable = remaining !== undefined && remaining <= 0;
+
+                return (
+                  <CommandItem
+                    key={product.id}
+                    value={product.id}
+                    onClick={() => {
+                      onAddProduct(product.id);
+                      setOpen(false);
+                      setSearchQuery("");
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <div className="bg-muted relative h-auto aspect-4/3 w-8 shrink-0 overflow-hidden rounded-md">
+                      {product.images && product.images.length > 0 ? (
+                        // Product thumbnails already use direct URLs in this feature.
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={product.images[0]}
+                          alt=""
+                          className={cn(
+                            "h-full  w-full object-cover",
+                            isUnavailable && "opacity-40",
+                          )}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <ImageIcon className="text-muted-foreground h-3.5 w-3.5" />
+                        </div>
+                      )}
+                    </div>
+
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1 truncate",
+                        isUnavailable && "text-muted-foreground",
+                      )}
+                    >
+                      {product.name}
+                    </span>
+                    {isUnavailable ? (
+                      <Badge variant="warning" size="default">
+                        {unavailableLabel}
+                      </Badge>
+                    ) : (
+                      remaining !== undefined && (
+                        <Badge variant="tertiary" className={cn("tabular-nums")}>
+                          {remaining} {availableLabel}
+                        </Badge>
+                      )
+                    )}
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>
@@ -317,6 +355,7 @@ export function EditReservationItemsSection({
   calculations,
   availabilityWarnings,
   availableToAdd,
+  availableQuantityByProduct,
   itemsCount,
   currencySymbol,
   getDurationUnit,
@@ -329,31 +368,32 @@ export function EditReservationItemsSection({
   onToggleManualPrice,
   onRemoveItem,
 }: EditReservationItemsSectionProps) {
-  const t = useTranslations('dashboard.reservations');
-  const tForm = useTranslations('dashboard.reservations.manualForm');
-  const tCommon = useTranslations('common');
+  const t = useTranslations("dashboard.reservations");
+  const tForm = useTranslations("dashboard.reservations.manualForm");
+  const tCommon = useTranslations("common");
 
   return (
     <Card>
       <CardContent className="p-4 sm:p-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-muted-foreground text-sm font-medium">
-            {t('edit.items')}
-          </h2>
+          <h2 className="text-muted-foreground text-sm font-medium">{t("edit.items")}</h2>
           <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
             <Button variant="outline" onClick={onOpenCustomItemDialog}>
-              <PenLine className="mr-2 h-4 w-4" />
-              {tForm('customItem.button')}
+              <PenLine data-slot="icon" className="size-4" />
+              {tForm("customItem.button")}
             </Button>
             {availableToAdd.length > 0 && (
               <ProductAddCombobox
                 products={availableToAdd}
+                availableQuantityByProduct={availableQuantityByProduct}
                 onAddProduct={onAddProduct}
-                placeholder={t('edit.addItem')}
-                searchPlaceholder={t('edit.searchProductsPlaceholder', {
+                placeholder={t("edit.addItem")}
+                searchPlaceholder={t("edit.searchProductsPlaceholder", {
                   count: availableToAdd.length,
                 })}
-                emptyLabel={t('edit.noProductsFound')}
+                emptyLabel={t("edit.noProductsFound")}
+                unavailableLabel={t("edit.unavailableForPeriod")}
+                availableLabel={tForm("available")}
               />
             )}
           </div>
@@ -369,23 +409,18 @@ export function EditReservationItemsSection({
               <div
                 key={item.id}
                 className={cn(
-                  'bg-background rounded-lg border p-3 sm:p-4 transition-colors',
+                  "bg-background rounded-lg border p-3 sm:p-4 transition-colors",
                   hasWarning &&
-                    'border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20',
+                    "border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20",
                 )}
               >
                 <div className="space-y-2">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
-                      <p className="truncate font-medium">
-                        {item.productSnapshot.name}
-                      </p>
+                      <p className="truncate font-medium">{item.productSnapshot.name}</p>
                       {!item.product && (
-                        <Badge
-                          variant="outline"
-                          className="shrink-0 text-[10px]"
-                        >
-                          {tForm('customItem.badge')}
+                        <Badge variant="outline" className="shrink-0 text-[10px]">
+                          {tForm("customItem.badge")}
                         </Badge>
                       )}
                       {item.isManualPrice && item.product && (
@@ -398,14 +433,12 @@ export function EditReservationItemsSection({
                       )}
                     </div>
                     {item.tierLabel && !item.isManualPrice && (
-                      <p className="mt-0.5 text-xs text-emerald-600">
-                        {item.tierLabel}
-                      </p>
+                      <p className="mt-0.5 text-xs text-emerald-600">{item.tierLabel}</p>
                     )}
                     {hasWarning && (
                       <p className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                         <AlertTriangle className="h-3 w-3" />
-                        {tForm('warnings.insufficientStock')}
+                        {tForm("warnings.insufficientStock")}
                       </p>
                     )}
                   </div>
@@ -413,17 +446,15 @@ export function EditReservationItemsSection({
                     <div
                       className="flex items-center gap-1"
                       role="group"
-                      aria-label={`${t('edit.qty')}, ${item.productSnapshot.name}`}
+                      aria-label={`${t("edit.qty")}, ${item.productSnapshot.name}`}
                     >
                       <Button
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() =>
-                          onQuantityChange(item.id, item.quantity - 1)
-                        }
+                        onClick={() => onQuantityChange(item.id, item.quantity - 1)}
                         disabled={item.quantity <= 1}
-                        aria-label={`${t('edit.qty')} −1`}
+                        aria-label={`${t("edit.qty")} −1`}
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
@@ -432,22 +463,17 @@ export function EditReservationItemsSection({
                         min="1"
                         value={item.quantity}
                         onChange={(event) =>
-                          onQuantityChange(
-                            item.id,
-                            parseInt(event.target.value) || 1,
-                          )
+                          onQuantityChange(item.id, parseInt(event.target.value) || 1)
                         }
-                        aria-label={t('edit.qty')}
+                        aria-label={t("edit.qty")}
                         className="h-8 w-14 [appearance:textfield] text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                       />
                       <Button
                         variant="outline"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() =>
-                          onQuantityChange(item.id, item.quantity + 1)
-                        }
-                        aria-label={`${t('edit.qty')} +1`}
+                        onClick={() => onQuantityChange(item.id, item.quantity + 1)}
+                        aria-label={`${t("edit.qty")} +1`}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
@@ -455,17 +481,11 @@ export function EditReservationItemsSection({
 
                     <div className="flex items-center gap-1">
                       <PriceInput
-                        value={
-                          item.isManualPrice
-                            ? item.unitPrice
-                            : item.effectiveUnitPrice
-                        }
-                        onChange={(price) =>
-                          onPriceChange(item.id, price, item.displayPricingMode)
-                        }
+                        value={item.isManualPrice ? item.unitPrice : item.effectiveUnitPrice}
+                        onChange={(price) => onPriceChange(item.id, price, item.displayPricingMode)}
                         isManual={item.isManualPrice}
                         suffix={`${currencySymbol}/${getDurationUnit(item.displayPricingMode)}`}
-                        ariaLabel={`${t('edit.unitPrice')}, ${item.productSnapshot.name}`}
+                        ariaLabel={`${t("edit.unitPrice")}, ${item.productSnapshot.name}`}
                       />
                       {item.product && (
                         <Tooltip>
@@ -492,9 +512,7 @@ export function EditReservationItemsSection({
                             )}
                           </TooltipTrigger>
                           <TooltipContent>
-                            {item.isManualPrice
-                              ? t('edit.unlockPrice')
-                              : t('edit.lockPrice')}
+                            {item.isManualPrice ? t("edit.unlockPrice") : t("edit.lockPrice")}
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -506,13 +524,9 @@ export function EditReservationItemsSection({
                       isManual={item.isManualPrice}
                       currencySymbol={currencySymbol}
                       onChange={(totalPrice) =>
-                        onTotalPriceChange(
-                          item.id,
-                          totalPrice,
-                          item.displayPricingMode,
-                        )
+                        onTotalPriceChange(item.id, totalPrice, item.displayPricingMode)
                       }
-                      ariaLabel={`${tForm('customItem.totalPrice')}, ${item.productSnapshot.name}`}
+                      ariaLabel={`${tForm("customItem.totalPrice")}, ${item.productSnapshot.name}`}
                     />
 
                     <div className="flex items-center gap-1">
@@ -522,11 +536,9 @@ export function EditReservationItemsSection({
                       />
                       <PriceInput
                         value={item.depositPerUnit}
-                        onChange={(depositPerUnit) =>
-                          onDepositChange(item.id, depositPerUnit)
-                        }
+                        onChange={(depositPerUnit) => onDepositChange(item.id, depositPerUnit)}
                         suffix={currencySymbol}
-                        ariaLabel={`${t('edit.deposit')}, ${item.productSnapshot.name}`}
+                        ariaLabel={`${t("edit.deposit")}, ${item.productSnapshot.name}`}
                       />
                     </div>
 
@@ -542,9 +554,9 @@ export function EditReservationItemsSection({
                           />
                         }
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="size-4" />
                       </TooltipTrigger>
-                      <TooltipContent>{tCommon('delete')}</TooltipContent>
+                      <TooltipContent>{tCommon("delete")}</TooltipContent>
                     </Tooltip>
                   </div>
                 </div>

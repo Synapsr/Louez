@@ -169,7 +169,7 @@ function Button({
   ...props
 }: ButtonProps) {
   const shouldReduceMotion = useReducedMotion();
-  const usesNativeButton = nativeButton ?? (render === undefined);
+  const usesNativeButton = nativeButton ?? render === undefined;
 
   const isIconOnly = size?.startsWith("icon") ?? false;
   const { endIcon, label, startIcon } = splitChildren(children);

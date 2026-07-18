@@ -30,6 +30,12 @@ async function getProductsWithTiers(storeId: string) {
   // Fetch products with their pricing tiers and seasonal pricings
   const result = await db.query.products.findMany({
     where: and(eq(products.storeId, storeId), eq(products.status, 'active')),
+    // Storefront catalog order, with a predictable alphabetical fallback
+    // for stores that never configured displayOrder
+    orderBy: (products, { asc }) => [
+      asc(products.displayOrder),
+      asc(products.name),
+    ],
     with: {
       pricingTiers: true,
       seasonalPricings: {

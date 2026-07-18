@@ -1432,6 +1432,7 @@
         "addItem": "Artikel hinzufügen",
         "searchProductsPlaceholder": "In {count} Artikeln suchen...",
         "noProductsFound": "Keine Artikel gefunden",
+        "unavailableForPeriod": "Nicht verfügbar",
         "subtotal": "Zwischensumme",
         "summary": "Zusammenfassung",
         "before": "Vorher",

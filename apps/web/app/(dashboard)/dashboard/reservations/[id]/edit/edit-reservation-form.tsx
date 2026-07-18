@@ -499,13 +499,15 @@ export function EditReservationForm({
       originalSubtotal,
       fixedChargesTotal: fixedTulipInsuranceAmount,
     })
-  const { availabilityWarnings } = useEditReservationAvailability({
-    startDate,
-    endDate,
-    items,
-    existingReservations,
-    turnoverBufferMinutes: storeSettings?.turnoverBufferMinutes ?? 0,
-  })
+  const { availabilityWarnings, availableQuantityByProduct } =
+    useEditReservationAvailability({
+      startDate,
+      endDate,
+      items,
+      products: availableProducts,
+      existingReservations,
+      turnoverBufferMinutes: storeSettings?.turnoverBufferMinutes ?? 0,
+    })
 
   // Delivery state
   const delivery = useEditReservationDelivery({
@@ -1238,6 +1240,7 @@ export function EditReservationForm({
                 calculations={calculations}
                 availabilityWarnings={availabilityWarnings}
                 availableToAdd={availableToAdd}
+                availableQuantityByProduct={availableQuantityByProduct}
                 itemsCount={items.length}
                 currencySymbol={currencySymbol}
                 getDurationUnit={getDurationUnit}

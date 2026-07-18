@@ -16,24 +16,21 @@ const badgeVariants = cva(
     variants: {
       size: {
         default:
-          "h-5.5 min-w-5.5 px-[calc(var(--spacing)*1_-_1px)] text-sm sm:h-4.5 sm:min-w-4.5 sm:text-xs",
-        lg: "h-6.5 min-w-6.5 px-[calc(var(--spacing)*1.5_-_1px)] text-base sm:h-5.5 sm:min-w-5.5 sm:text-sm",
-        sm: "h-5 min-w-5 rounded-[calc(var(--radius-sm)-2px)] px-[calc(var(--spacing)*1_-_1px)] text-xs sm:h-4 sm:min-w-4 sm:text-[.625rem]",
+          "h-5.5 min-w-5.5 px-[calc(var(--spacing)*1-1px)] text-sm p-2 sm:min-w-4.5 sm:text-xs",
+        lg: "h-6.5 min-w-6.5 px-[calc(var(--spacing)*1.5-1px)] text-base sm:h-5.5 sm:min-w-5.5 sm:text-sm",
+        sm: "h-5 min-w-5 rounded-[calc(var(--radius-sm)-2px)] px-[calc(var(--spacing)*1-1px)] text-xs sm:h-4 sm:min-w-4 sm:text-[.625rem]",
       },
       variant: {
-        default:
-          "bg-primary text-primary-foreground [button,a&]:hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white [button,a&]:hover:bg-destructive/90",
-        error:
-          "bg-destructive/8 text-destructive dark:bg-destructive/16",
+        default: "bg-primary text-primary-foreground [button,a&]:hover:bg-primary/90",
+        destructive: "bg-destructive text-white [button,a&]:hover:bg-destructive/90",
+        error: "bg-destructive/8 text-destructive dark:bg-destructive/16",
         info: "bg-info/8 text-info dark:bg-info/16",
         outline:
           "border-input bg-background text-foreground dark:bg-input/32 [button,a&]:hover:bg-accent/50 dark:[button,a&]:hover:bg-input/48",
-        secondary:
-          "bg-secondary text-secondary-foreground [button,a&]:hover:bg-secondary/90",
+        secondary: "bg-secondary text-secondary-foreground [button,a&]:hover:bg-secondary/90",
         success: "bg-success/8 text-success dark:bg-success/16",
-        warning: "bg-warning/8 text-warning-foreground dark:bg-warning/16",
+        warning: "bg-badge-warning-background text-badge-warning-foreground font-medium",
+        tertiary: "bg-badge-gray-background text-badge-gray-foreground font-medium",
       },
     },
   },
