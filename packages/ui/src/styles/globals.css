@@ -147,6 +147,7 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --shadow-border: var(--shadow-border);
   --animate-skeleton: skeleton 2s -1s infinite linear;
 
   /* badges */
@@ -166,6 +167,7 @@
 
 :root {
   --radius: 0.625rem;
+  --shadow-border: 0px 0px 0px 1px rgba(0, 0, 0, 0.15);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -272,6 +274,7 @@
 }
 
 .dark {
+  --shadow-border: inset 0 0 0 1px rgb(255 255 255 / 15%), 0 0 0 1px rgb(255 255 255 / 10%);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
