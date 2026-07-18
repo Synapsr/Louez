@@ -290,7 +290,14 @@ export default async function EditReservationPage({
     getDashboardTulipInsuranceModeFromSettings(tulipSettings);
   const effectiveQuantities = await getEffectiveProductQuantities(
     db,
-    availableProducts.map((product) => product.id),
+    Array.from(
+      new Set([
+        ...availableProducts.map((product) => product.id),
+        ...reservation.items.flatMap((item) =>
+          item.product ? [item.product.id] : [],
+        ),
+      ]),
+    ),
   );
   const availableProductsWithEffectiveQuantity = availableProducts.map(
     (product) => ({
@@ -380,7 +387,14 @@ export default async function EditReservationPage({
           isCustomItem: item.isCustomItem,
           pricingBreakdown: item.pricingBreakdown,
           productSnapshot: item.productSnapshot,
-          product: item.product ? mapProduct(item.product) : null,
+          product: item.product
+            ? mapProduct({
+                ...item.product,
+                quantity: item.product.trackUnits
+                  ? (effectiveQuantities.get(item.product.id) ?? 0)
+                  : item.product.quantity,
+              })
+            : null,
         })),
         customer: {
           firstName: reservation.customer.firstName,
