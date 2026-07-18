@@ -93,8 +93,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/validations
       '@openreplay/tracker':
-        specifier: 17.2.9
-        version: 17.2.9
+        specifier: 18.0.6
+        version: 18.0.6
       '@orpc/client':
         specifier: ^1.13.4
         version: 1.13.4(@opentelemetry/api@1.9.0)
@@ -1750,8 +1750,8 @@ packages:
   '@openreplay/network-proxy@1.2.4':
     resolution: {integrity: sha512-egSeDXscqPXllrBKf7QIDRbEDWLyKsCmtnNgtL0ORG/99rVAJpYny6KnZLggfbBbwQedIGeliQzZDhmIZOkkxQ==}
 
-  '@openreplay/tracker@17.2.9':
-    resolution: {integrity: sha512-eZ8bm61cPUPBPV8yYn3MBvuoeDwCKWAjjvN9DSZm3cqFEEtzgiYoPBXnyjLPfwvUvVsofI8JnYDakSu/0R3G/g==}
+  '@openreplay/tracker@18.0.6':
+    resolution: {integrity: sha512-UlwpZQrPNys5qARbwZbEcuCLiNi1tHe/L+6UL1t7TWc+lOTqno8Bmo3WVnSDwCOQMTVqypC6jufeEBIH99Q6Tg==}
     engines: {node: '>=14.0'}
 
   '@opentelemetry/api-logs@0.208.0':
@@ -7709,7 +7709,7 @@ snapshots:
 
   '@openreplay/network-proxy@1.2.4': {}
 
-  '@openreplay/tracker@17.2.9':
+  '@openreplay/tracker@18.0.6':
     dependencies:
       '@openreplay/network-proxy': 1.2.4
       error-stack-parser: 2.1.4
