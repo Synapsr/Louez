@@ -1148,35 +1148,6 @@ export function EditReservationForm({
             </Alert>
           )}
 
-          {/* Warnings */}
-          {availabilityWarnings.length > 0 && (
-            <Alert variant="warning" className="mb-4 sm:mb-6">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="ml-2">
-                <div className="flex flex-col gap-1">
-                  {availabilityWarnings.map((warning) => (
-                    <span key={warning.productId} className="font-medium text-amber-800 dark:text-amber-200">
-                      <strong>{warning.productName}</strong>: {tForm('warnings.productConflictDetails', {
-                        requested: warning.requestedQuantity,
-                        available: warning.availableQuantity,
-                      })}
-                      {(warning.turnoverBufferMinutes ?? 0) > 0 && (
-                        <span className="block text-sm font-normal text-amber-700 dark:text-amber-300">
-                          {tForm('warnings.turnoverBufferConflictDetails', {
-                            duration: warning.turnoverBufferMinutes ?? 0,
-                          })}
-                        </span>
-                      )}
-                    </span>
-                  ))}
-                  <span className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                    {tForm('warnings.conflictCanContinue')}
-                  </span>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-
           <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-4 sm:space-y-6 min-w-0">
@@ -1364,6 +1335,7 @@ export function EditReservationForm({
 
               {/* Summary Card */}
               <EditReservationSummarySection
+                availabilityWarnings={availabilityWarnings}
                 originalSubtotal={originalSubtotal}
                 originalDeposit={originalDeposit}
                 originalDeliveryFee={originalDeliveryFee}

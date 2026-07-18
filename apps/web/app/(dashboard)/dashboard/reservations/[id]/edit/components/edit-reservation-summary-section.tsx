@@ -1,14 +1,15 @@
 'use client'
 
-import { ChevronRight, Loader2 } from 'lucide-react'
+import { AlertTriangle, ChevronRight, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import { Button, Card, CardContent, Checkbox, Separator } from '@louez/ui'
 import { cn } from '@louez/utils'
 
-import type { ReservationCalculations } from '../types'
+import type { AvailabilityWarning, ReservationCalculations } from '../types'
 
 interface EditReservationSummarySectionProps {
+  availabilityWarnings: AvailabilityWarning[]
   originalSubtotal: number
   originalDeposit: number
   originalDeliveryFee: number
@@ -25,6 +26,7 @@ interface EditReservationSummarySectionProps {
 }
 
 export function EditReservationSummarySection({
+  availabilityWarnings,
   originalSubtotal,
   originalDeposit,
   originalDeliveryFee,
@@ -44,6 +46,19 @@ export function EditReservationSummarySection({
   const newTotal = calculations.subtotal + deliveryFee
   const originalTotal = originalSubtotal + originalDeliveryFee
   const difference = newTotal - originalTotal
+
+  const scrollToFirstConflict = () => {
+    const target = document.getElementById(
+      `edit-item-product-${availabilityWarnings[0]?.productId}`,
+    )
+    const reducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    target?.scrollIntoView({
+      behavior: reducedMotion ? 'auto' : 'smooth',
+      block: 'center',
+    })
+  }
 
   return (
     <Card className="lg:sticky lg:top-24">
@@ -149,6 +164,31 @@ export function EditReservationSummarySection({
             </span>
           </div>
         </div>
+
+        {availabilityWarnings.length > 0 && (
+          <>
+            <Separator className="my-4" />
+            <div className="flex items-center justify-between gap-2 text-sm">
+              <span className="flex min-w-0 items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">
+                  {t('edit.availabilityConflicts', {
+                    count: availabilityWarnings.length,
+                  })}
+                </span>
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 px-2 text-xs"
+                onClick={scrollToFirstConflict}
+              >
+                {t('edit.seeConflict')}
+              </Button>
+            </div>
+          </>
+        )}
 
         <Separator className="my-4" />
 
