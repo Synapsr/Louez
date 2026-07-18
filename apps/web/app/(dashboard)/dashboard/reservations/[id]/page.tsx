@@ -1,5 +1,12 @@
-import { db, inspections, inspectionItems, inspectionPhotos } from '@louez/db'
-import { eq } from 'drizzle-orm'
+import {
+  db,
+  inspections,
+  inspectionItems,
+  inspectionPhotos,
+  payments,
+  reservations,
+} from '@louez/db'
+import { and, desc, eq, ne } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 
 import { getDashboardReservationById } from '@louez/api/services'
@@ -47,6 +54,26 @@ export default async function ReservationDetailPage({
   const stripeConfigured = Boolean(store.stripeAccountId)
   const inspectionSettings =
     store.settings?.inspection || DEFAULT_INSPECTION_SETTINGS
+
+  // Default the payment method select to the store's last manually recorded method
+  const [lastManualPayment] = await db
+    .select({ method: payments.method })
+    .from(payments)
+    .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+    .where(
+      and(
+        eq(reservations.storeId, store.id),
+        eq(payments.status, 'completed'),
+        ne(payments.method, 'stripe'),
+      ),
+    )
+    .orderBy(desc(payments.createdAt))
+    .limit(1)
+
+  const defaultPaymentMethod =
+    lastManualPayment && lastManualPayment.method !== 'stripe'
+      ? lastManualPayment.method
+      : 'cash'
 
   const reservationInspections = await db
     .select({
@@ -131,6 +158,7 @@ export default async function ReservationDetailPage({
         storeTimezone={storeTimezone}
         smsConfigured={smsConfigured}
         stripeConfigured={stripeConfigured}
+        defaultPaymentMethod={defaultPaymentMethod}
         inspectionSettings={inspectionSettings}
         departureInspection={formattedDepartureInspection}
         returnInspection={formattedReturnInspection}
