@@ -24,6 +24,8 @@ type AiCreditsTopupModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   packages: AiCreditPackage[]
+  /** Where Stripe returns after checkout (defaults to the AI advisor page). */
+  returnPath?: string
 }
 
 function formatPrice(cents: number): string {
@@ -34,6 +36,7 @@ export function AiCreditsTopupModal({
   open,
   onOpenChange,
   packages,
+  returnPath,
 }: AiCreditsTopupModalProps) {
   const t = useTranslations('dashboard.aiCredits.topup')
   const locale = useLocale()
@@ -50,7 +53,11 @@ export function AiCreditsTopupModal({
     setLoading(true)
     setError(null)
     try {
-      const result = await createAiCreditTopupCheckout(selectedIndex, locale)
+      const result = await createAiCreditTopupCheckout(
+        selectedIndex,
+        locale,
+        returnPath,
+      )
       if (result.success && result.url) {
         window.location.href = result.url
       } else {

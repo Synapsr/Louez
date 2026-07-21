@@ -4,6 +4,8 @@ import { useFormatter } from 'next-intl';
 
 import { cn } from '@louez/utils';
 
+import { VERIFICATION_KICKOFF_PROMPT } from '@/lib/ai/advisor/kickoff';
+
 const SUMMARY_KEY = 'summary';
 
 // Collected facts keys are free-form snake/kebab-case strings produced by the
@@ -69,9 +71,18 @@ export const AdvisorTranscriptMessages = ({
 }: AdvisorTranscriptMessagesProps) => {
   const format = useFormatter();
 
+  // Hide the internal verification kickoff signal from the merchant transcript.
+  const visibleMessages = messages.filter(
+    (message) =>
+      !(
+        message.role === 'user' &&
+        message.content === VERIFICATION_KICKOFF_PROMPT
+      ),
+  );
+
   return (
     <div className="space-y-4">
-      {messages.map((message) => (
+      {visibleMessages.map((message) => (
         <div
           key={message.id}
           className={cn(

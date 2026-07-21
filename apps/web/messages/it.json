@@ -4297,6 +4297,7 @@
       "creditsUnit": "crediti",
       "breakdown": "{monthly} inclusi questo mese · {prepaid} prepagati",
       "breakdownUnlimited": "Illimitato questo mese · {prepaid} prepagati",
+      "breakdownPrepaidOnly": "{prepaid} prepagati",
       "conversationsHint": "≈ {count} conversazioni",
       "recharge": "Ricarica",
       "autoTopup": {
@@ -4834,6 +4835,7 @@
         "validatedDescription": "Il consulente ha convalidato la tua prenotazione — puoi prenotare.",
         "badgeRequired": "Obbligatorio",
         "verifyNotice": "Il consulente ha bisogno solo di qualche informazione per confermare la tua prenotazione.",
+        "placeholder": "Rispondi alla domanda…",
         "continueToPayment": "Continua",
         "staleTitle": "La tua prenotazione è cambiata",
         "staleDescription": "Invia un altro messaggio così il consulente può riconfermare la tua prenotazione.",

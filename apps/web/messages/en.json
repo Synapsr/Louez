@@ -4404,6 +4404,7 @@
       "creditsUnit": "credits",
       "breakdown": "{monthly} included this month · {prepaid} prepaid",
       "breakdownUnlimited": "Unlimited this month · {prepaid} prepaid",
+      "breakdownPrepaidOnly": "{prepaid} prepaid",
       "conversationsHint": "≈ {count} conversations",
       "recharge": "Recharge",
       "autoTopup": {
@@ -4947,6 +4948,7 @@
         "validatedDescription": "The advisor has validated your reservation — you can book.",
         "badgeRequired": "Required",
         "verifyNotice": "The advisor just needs a few details to confirm your booking.",
+        "placeholder": "Answer the question…",
         "continueToPayment": "Continue",
         "staleTitle": "Your booking changed",
         "staleDescription": "Send one more message so the advisor can re-confirm your booking.",

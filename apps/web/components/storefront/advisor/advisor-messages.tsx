@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 
 import { cn } from '@louez/utils';
 
+import { isVerificationKickoff } from '@/lib/ai/advisor/kickoff';
+
 import { AdvisorAssistantAvatar } from './advisor-assistant-avatar';
 import { AdvisorProductCards } from './advisor-product-cards';
 import type { AdvisorRecommendedProduct } from './advisor-product-cards';
@@ -14,25 +16,36 @@ type AdvisorMessagesProps = {
   isLoading: boolean;
   /** Static assistant-styled welcome bubble shown before any exchange. */
   welcomeText: string;
+  /** Suppress the welcome bubble (required-mode inline verification). */
+  hideWelcome?: boolean;
 };
 
 export const AdvisorMessages = ({
   messages,
   isLoading,
   welcomeText,
+  hideWelcome = false,
 }: AdvisorMessagesProps) => {
   const t = useTranslations('storefront.advisor');
 
+  // The hidden verification kickoff is a real user turn (persisted + sent to
+  // the model) but must never render as a customer message on any surface.
+  const visibleMessages = messages.filter(
+    (message) => !isVerificationKickoff(message),
+  );
+
   return (
     <div className="space-y-4 pb-2">
-      <div className="flex justify-start">
-        <AdvisorAssistantAvatar />
-        <div className="max-w-[85%] pt-0.5 text-sm leading-relaxed text-foreground">
-          {welcomeText}
+      {!hideWelcome && (
+        <div className="flex justify-start">
+          <AdvisorAssistantAvatar />
+          <div className="max-w-[85%] pt-0.5 text-sm leading-relaxed text-foreground">
+            {welcomeText}
+          </div>
         </div>
-      </div>
+      )}
 
-      {messages.map((message) => (
+      {visibleMessages.map((message) => (
         <div
           key={message.id}
           className={cn(

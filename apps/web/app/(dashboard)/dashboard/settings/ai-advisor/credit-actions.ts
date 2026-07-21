@@ -52,6 +52,7 @@ const STRIPE_TRANSLATIONS: Record<
 export async function createAiCreditTopupCheckout(
   packIndex: number,
   locale: string,
+  returnPath?: string,
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   const store = await getCurrentStore()
   if (!store) {
@@ -68,12 +69,26 @@ export async function createAiCreditTopupCheckout(
 
   const translations = STRIPE_TRANSLATIONS[locale] || STRIPE_TRANSLATIONS.fr
 
+  // Return to the page the recharge was launched from. Restricted to internal
+  // dashboard paths so the checkout redirect can never be pointed off-site.
+  const safeReturn =
+    returnPath && returnPath.startsWith('/dashboard/')
+      ? returnPath
+      : '/dashboard/settings/ai-advisor'
+
+  // Build the return URLs safely so an existing query string in the path can't
+  // produce a malformed `?a=b?topup=…`.
+  const successUrl = new URL(`${env.NEXT_PUBLIC_APP_URL}${safeReturn}`)
+  successUrl.searchParams.set('topup', 'success')
+  const cancelUrl = new URL(`${env.NEXT_PUBLIC_APP_URL}${safeReturn}`)
+  cancelUrl.searchParams.set('topup', 'cancelled')
+
   try {
     const result = await createAiCreditTopupCheckoutSession({
       storeId: store.id,
       pack,
-      successUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/ai-advisor?topup=success`,
-      cancelUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/ai-advisor?topup=cancelled`,
+      successUrl: successUrl.toString(),
+      cancelUrl: cancelUrl.toString(),
       translations,
     })
     return { success: true, url: result.url || undefined }

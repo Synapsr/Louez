@@ -4297,6 +4297,7 @@
       "creditsUnit": "credits",
       "breakdown": "{monthly} deze maand inbegrepen · {prepaid} prepaid",
       "breakdownUnlimited": "Deze maand onbeperkt · {prepaid} prepaid",
+      "breakdownPrepaidOnly": "{prepaid} prepaid",
       "conversationsHint": "≈ {count} gesprekken",
       "recharge": "Opwaarderen",
       "autoTopup": {
@@ -4834,6 +4835,7 @@
         "validatedDescription": "De adviseur heeft uw reservering gevalideerd — u kunt reserveren.",
         "badgeRequired": "Verplicht",
         "verifyNotice": "De adviseur heeft slechts een paar gegevens nodig om je reservering te bevestigen.",
+        "placeholder": "Beantwoord de vraag…",
         "continueToPayment": "Doorgaan",
         "staleTitle": "Je reservering is gewijzigd",
         "staleDescription": "Stuur nog één bericht zodat de adviseur je reservering opnieuw kan bevestigen.",

@@ -7,6 +7,15 @@ export const AI_ADVISOR_MESSAGE_MAX_LENGTH = 2000
 export const AI_ADVISOR_WELCOME_MESSAGE_MAX_LENGTH = 500
 export const AI_ADVISOR_DISPLAY_NAME_MAX_LENGTH = 60
 
+/**
+ * Hidden control turn the storefront sends to auto-start the required-mode
+ * checkout verification, so the advisor opens directly on its first
+ * verification question. Recognised by the required-mode system prompt and
+ * filtered from every customer- and merchant-facing transcript. Shared here so
+ * the storefront client and the API/server agree on the exact string.
+ */
+export const VERIFICATION_KICKOFF_PROMPT = '[BEGIN_VERIFICATION]'
+
 export const aiAdvisorModeSchema = z.enum([
   'optional',
   'recommended',

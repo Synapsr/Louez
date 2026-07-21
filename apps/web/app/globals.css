@@ -135,9 +135,42 @@
   animation: timeline-dash-flow 1.4s linear infinite;
 }
 
+/* One-shot double-pulse that draws attention to the checkout verification
+   composer when the required-mode panel first appears. */
+@keyframes attention-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+  15% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 24%, transparent);
+  }
+  30% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+  45% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 24%, transparent);
+  }
+  60%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 0%, transparent);
+  }
+}
+
+.animate-attention-pulse {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  animation: attention-pulse 1.4s ease-out;
+}
+
+/* A focused composer must always show its real focus ring, so cancel the pulse
+   (which animates box-shadow) while the field is focused. */
+.animate-attention-pulse:focus-within {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .timeline-dot-pulse,
-  .timeline-dash-flow {
+  .timeline-dash-flow,
+  .animate-attention-pulse {
     animation: none;
   }
 }

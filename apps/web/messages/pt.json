@@ -4297,6 +4297,7 @@
       "creditsUnit": "créditos",
       "breakdown": "{monthly} incluídos este mês · {prepaid} pré-pagos",
       "breakdownUnlimited": "Ilimitado este mês · {prepaid} pré-pagos",
+      "breakdownPrepaidOnly": "{prepaid} pré-pagos",
       "conversationsHint": "≈ {count} conversas",
       "recharge": "Recarregar",
       "autoTopup": {
@@ -4834,6 +4835,7 @@
         "validatedDescription": "O consultor validou a sua reserva — você já pode reservar.",
         "badgeRequired": "Obrigatório",
         "verifyNotice": "O consultor só precisa de alguns detalhes para confirmar a sua reserva.",
+        "placeholder": "Responda à pergunta…",
         "continueToPayment": "Continuar",
         "staleTitle": "A sua reserva foi alterada",
         "staleDescription": "Envie mais uma mensagem para que o consultor possa reconfirmar a sua reserva.",

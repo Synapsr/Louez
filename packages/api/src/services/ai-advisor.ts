@@ -7,7 +7,10 @@ import {
   customers,
   reservations,
 } from '@louez/db/schema'
-import type { AdvisorConversationFilter } from '@louez/validations'
+import {
+  VERIFICATION_KICKOFF_PROMPT,
+  type AdvisorConversationFilter,
+} from '@louez/validations'
 
 import { ApiServiceError } from './errors'
 
@@ -52,11 +55,14 @@ export async function listAdvisorConversations(params: {
         messageCount: sql<number>`(
           SELECT COUNT(*) FROM ${aiAdvisorMessages}
           WHERE ${aiAdvisorMessages.conversationId} = ${aiAdvisorConversations.id}
+            AND (${aiAdvisorMessages.content} IS NULL
+              OR ${aiAdvisorMessages.content} <> ${VERIFICATION_KICKOFF_PROMPT})
         )`.mapWith(Number),
         firstUserMessage: sql<string | null>`(
           SELECT LEFT(${aiAdvisorMessages.content}, 160) FROM ${aiAdvisorMessages}
           WHERE ${aiAdvisorMessages.conversationId} = ${aiAdvisorConversations.id}
             AND ${aiAdvisorMessages.role} = 'user'
+            AND ${aiAdvisorMessages.content} <> ${VERIFICATION_KICKOFF_PROMPT}
           ORDER BY ${aiAdvisorMessages.createdAt} ASC
           LIMIT 1
         )`,
@@ -125,9 +131,11 @@ function toTranscript(
         ): message is (typeof conversation.messages)[number] & {
           role: 'user' | 'assistant'
         } =>
-          // Tool-only turns have no text — skip them in transcripts.
+          // Tool-only turns have no text — skip them in transcripts. The hidden
+          // verification kickoff is a control signal, never shown to the owner.
           (message.role === 'user' || message.role === 'assistant') &&
-          Boolean(message.content),
+          Boolean(message.content) &&
+          message.content !== VERIFICATION_KICKOFF_PROMPT,
       )
       .map((message) => ({
         id: message.id,

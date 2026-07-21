@@ -4297,6 +4297,7 @@
       "creditsUnit": "Credits",
       "breakdown": "{monthly} diesen Monat inklusive · {prepaid} Prepaid",
       "breakdownUnlimited": "Diesen Monat unbegrenzt · {prepaid} Prepaid",
+      "breakdownPrepaidOnly": "{prepaid} Prepaid",
       "conversationsHint": "≈ {count} Gespräche",
       "recharge": "Aufladen",
       "autoTopup": {
@@ -4834,6 +4835,7 @@
         "validatedDescription": "Der Berater hat Ihre Reservierung validiert — Sie können jetzt reservieren.",
         "badgeRequired": "Erforderlich",
         "verifyNotice": "Der Berater benötigt nur ein paar Angaben, um Ihre Buchung zu bestätigen.",
+        "placeholder": "Beantworten Sie die Frage…",
         "continueToPayment": "Weiter",
         "staleTitle": "Ihre Buchung hat sich geändert",
         "staleDescription": "Senden Sie eine weitere Nachricht, damit der Berater Ihre Buchung erneut bestätigen kann.",

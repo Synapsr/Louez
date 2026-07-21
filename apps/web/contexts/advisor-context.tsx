@@ -21,6 +21,10 @@ import { z } from 'zod';
 
 import type { AdvisorCartSnapshot } from '@louez/validations';
 
+import {
+  VERIFICATION_KICKOFF_PROMPT,
+  isVerificationKickoff,
+} from '@/lib/ai/advisor/kickoff';
 import { useCart } from '@/contexts/cart-context';
 import { orpcClient } from '@/lib/orpc';
 
@@ -66,9 +70,17 @@ interface AdvisorControlValue {
 interface AdvisorRuntimeValue {
   messages: UIMessage[];
   isLoading: boolean;
+  /** True while the persisted conversation is being rehydrated on load. */
+  isHydrating: boolean;
   hasError: boolean;
   errorCode: string;
   send: (text: string) => void;
+  /**
+   * Auto-start the required-mode checkout verification: sends a hidden kickoff
+   * turn so the advisor opens directly on its first verification question. A
+   * no-op once the conversation already has messages.
+   */
+  startVerification: () => void;
   restart: () => void;
   displayName?: string;
   welcomeMessage?: string;
@@ -117,14 +129,22 @@ export function AdvisorProvider({
   );
   const [validationVersion, setValidationVersion] = useState(0);
   const [inlineActive, setInlineActive] = useState(false);
+  // False until the initial conversation state is known (no stored id, or a
+  // rehydration attempt has finished) — gates the checkout auto-start so it
+  // never races the transcript fetch on reload.
+  const [hydrated, setHydrated] = useState(false);
 
   const cart = useCart();
 
   useEffect(() => {
     try {
-      setConversationIdState(localStorage.getItem(storageKey(storeSlug)));
+      const stored = localStorage.getItem(storageKey(storeSlug));
+      setConversationIdState(stored);
+      // No stored conversation → nothing to rehydrate; hydration is done.
+      if (!stored) setHydrated(true);
     } catch {
       // Storage unavailable — the conversation just won't persist
+      setHydrated(true);
     }
   }, [storeSlug]);
 
@@ -343,12 +363,18 @@ export function AdvisorProvider({
   // disabled store fires no chat network calls.
   const hydratedConversationRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setHydrated(true);
+      return;
+    }
     if (!conversationId || hydratedConversationRef.current === conversationId) {
       return;
     }
     hydratedConversationRef.current = conversationId;
-    if (messagesRef.current.length > 0) return;
+    if (messagesRef.current.length > 0) {
+      setHydrated(true);
+      return;
+    }
 
     let cancelled = false;
     orpcClient.storefront.aiAdvisor
@@ -366,6 +392,9 @@ export function AdvisorProvider({
       })
       .catch(() => {
         if (!cancelled) setConversationId(null);
+      })
+      .finally(() => {
+        if (!cancelled) setHydrated(true);
       });
     return () => {
       cancelled = true;
@@ -402,6 +431,16 @@ export function AdvisorProvider({
     },
     [enabled, isLoading, clearError, sendMessage],
   );
+
+  const startVerification = useCallback(() => {
+    if (!enabled || isLoading) return;
+    // Fire once per conversation: bail only if a kickoff sentinel is already in
+    // the thread (fresh, rehydrated, or validated). Prior *browsing* messages
+    // must NOT block the verification from starting.
+    if (messagesRef.current.some(isVerificationKickoff)) return;
+    clearError();
+    sendMessage({ text: VERIFICATION_KICKOFF_PROMPT });
+  }, [enabled, isLoading, clearError, sendMessage]);
 
   const restart = useCallback(() => {
     setConversationId(null);
@@ -443,14 +482,26 @@ export function AdvisorProvider({
     () => ({
       messages,
       isLoading,
+      isHydrating: !hydrated,
       hasError: Boolean(error),
       errorCode: error?.message?.trim() ?? '',
       send,
+      startVerification,
       restart,
       displayName,
       welcomeMessage,
     }),
-    [messages, isLoading, error, send, restart, displayName, welcomeMessage],
+    [
+      messages,
+      isLoading,
+      hydrated,
+      error,
+      send,
+      startVerification,
+      restart,
+      displayName,
+      welcomeMessage,
+    ],
   );
 
   return (

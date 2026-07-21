@@ -48,6 +48,10 @@ export type AiCreditsSectionProps = {
   packages: AiCreditPackage[]
   history: AiCreditsHistoryRow[]
   topupStatus: 'success' | 'cancelled' | null
+  /** Balance + recharge only, hiding auto-recharge and history (billing page). */
+  compact?: boolean
+  /** Where Stripe returns after checkout (defaults to the AI advisor page). */
+  returnPath?: string
 }
 
 const LOW_BALANCE_CREDITS = 5
@@ -68,6 +72,8 @@ export function AiCreditsSection({
   packages,
   history,
   topupStatus,
+  compact = false,
+  returnPath,
 }: AiCreditsSectionProps) {
   const t = useTranslations('dashboard.aiCredits')
   const [modalOpen, setModalOpen] = useState(false)
@@ -83,6 +89,8 @@ export function AiCreditsSection({
   const [saved, setSaved] = useState(false)
 
   const isUnlimited = monthlyIncludedCredits === null
+  const hasMonthlyAllowance =
+    monthlyIncludedCredits !== null && monthlyIncludedCredits > 0
   const totalAvailable = isUnlimited
     ? null
     : (monthlyRemainingCredits ?? 0) + prepaidCredits
@@ -154,10 +162,14 @@ export function AiCreditsSection({
                 ? t('breakdownUnlimited', {
                     prepaid: fmtCredits(prepaidCredits),
                   })
-                : t('breakdown', {
-                    monthly: fmtCredits(monthlyRemainingCredits ?? 0),
-                    prepaid: fmtCredits(prepaidCredits),
-                  })}
+                : hasMonthlyAllowance
+                  ? t('breakdown', {
+                      monthly: fmtCredits(monthlyRemainingCredits ?? 0),
+                      prepaid: fmtCredits(prepaidCredits),
+                    })
+                  : t('breakdownPrepaidOnly', {
+                      prepaid: fmtCredits(prepaidCredits),
+                    })}
             </p>
             {!isUnlimited && (
               <p className="mt-0.5 text-xs text-muted-foreground/70">
@@ -185,7 +197,7 @@ export function AiCreditsSection({
         )}
 
         {/* Auto-recharge */}
-        {canTopup && (
+        {!compact && canTopup && (
           <div className="space-y-3 rounded-xl border p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -267,7 +279,7 @@ export function AiCreditsSection({
         )}
 
         {/* History */}
-        {history.length > 0 && (
+        {!compact && history.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">
               {t('history.title')}
@@ -308,6 +320,7 @@ export function AiCreditsSection({
           open={modalOpen}
           onOpenChange={setModalOpen}
           packages={packages}
+          returnPath={returnPath}
         />
       )}
     </Card>

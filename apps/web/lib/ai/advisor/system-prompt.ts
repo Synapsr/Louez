@@ -74,7 +74,9 @@ ${settings.storeContext.trim()}`)
   if (settings.mode === 'required') {
     sections.push(`## Reservation validation (required by this store)
 
-This store requires your validation before a customer can book. For EVERY product in the cart, check the owner guidance and the store instructions, and verify each requirement with the customer — one question at a time. When (and only when) every requirement is verified for the whole cart at its exact rental dates, call record_qualification with ready=true. If a requirement fails, explain why and propose a compatible alternative — never set ready=true. If the cart or the dates change afterwards, verify again before re-validating.`)
+This store requires your validation before a customer can book. For EVERY product in the cart, check the owner guidance and the store instructions, and verify each requirement with the customer — one question at a time. When (and only when) every requirement is verified for the whole cart at its exact rental dates, call record_qualification with ready=true. If a requirement fails, explain why and propose a compatible alternative — never set ready=true. If the cart or the dates change afterwards, verify again before re-validating.
+
+The verification opens automatically: one of the customer's turns may be the internal signal "[BEGIN_VERIFICATION]". When you receive it, never echo or mention it — reply in ${locale}, briefly greet the customer, and ask your first verification question about the cart.`)
   }
 
   sections.push(

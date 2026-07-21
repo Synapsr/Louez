@@ -15,12 +15,18 @@ type AdvisorInputProps = {
   isLoading: boolean;
   /** Overrides the default horizontal margin (floating panel vs inline). */
   className?: string;
+  /** Overrides the default placeholder/aria-label (e.g. verification context). */
+  placeholder?: string;
+  /** One-shot attention pulse to draw the eye to the composer. */
+  highlight?: boolean;
 };
 
 export const AdvisorInput = ({
   onSend,
   isLoading,
   className,
+  placeholder,
+  highlight = false,
 }: AdvisorInputProps) => {
   const t = useTranslations('storefront.advisor');
   const [input, setInput] = useState('');
@@ -48,6 +54,7 @@ export const AdvisorInput = ({
         'mb-1 flex items-end gap-2 rounded-xl border px-3 py-1.5',
         'transition-all duration-200',
         'focus-within:border-primary/30 focus-within:shadow-[0_0_0_3px] focus-within:shadow-primary/5',
+        highlight && 'animate-attention-pulse',
         className ?? 'mx-3',
       )}
     >
@@ -56,8 +63,8 @@ export const AdvisorInput = ({
         value={input}
         onChange={(event) => setInput(event.target.value)}
         onKeyDown={onKeyDown}
-        placeholder={t('placeholder')}
-        aria-label={t('placeholder')}
+        placeholder={placeholder ?? t('placeholder')}
+        aria-label={placeholder ?? t('placeholder')}
         // readOnly (not disabled) while loading keeps the field focusable, so
         // focus and the mobile keyboard survive between turns.
         readOnly={isLoading}
