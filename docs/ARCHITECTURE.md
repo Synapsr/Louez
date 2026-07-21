@@ -77,6 +77,12 @@ When in doubt, default to **Next.js**.
 
 ## Documents
 
+### Domain References
+
+| File                                     | Topic                                       |
+| ---------------------------------------- | ------------------------------------------- |
+| [domain/glossary.md](domain/glossary.md) | Canonical Louez product and domain language |
+
 ### From Scratch — Starting a new project
 
 | File                                                              | Topic                                   |

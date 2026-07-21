@@ -1,4 +1,4 @@
-# Louez
+# Louez Domain Glossary
 
 Louez is a rental management platform where each store manages its own reservations, customers, payments, accounting-facing exports, and integrations. This context records domain language that must stay clear in product, support, and implementation discussions.
 
@@ -237,3 +237,12 @@ _Avoid_: log, audit row, activity
 - "indisponible" could mean a retired unit, a unit under repair, or fully-booked stock; resolved: **Retirement** for leaving the fleet, **Downtime** for temporary unavailability, and plain unavailability for booked-out stock.
 - "archived" (Product status) and "retired" (Unit) are different lifecycles; a Product can stay active while some of its Units are retired.
 - "inventaire" vs "stock" in French UI; resolved: "Inventaire" names the global fleet view, "stock" stays a quantity.
+
+---
+
+## Related
+
+- [Architecture Reference](../ARCHITECTURE.md) — Stack and core domain model
+- [Integrations Architecture](../integrations/architecture.md) — Provider, integration, connection, and workflow boundaries
+- [ADR 0002](../adr/0002-referral-attribution-shared-cookie.md) — Referral attribution through the shared `.louez.io` cookie
+- [ADR 0003](../adr/0003-referral-reward-non-cash.md) — Referral rewards as non-cash account value

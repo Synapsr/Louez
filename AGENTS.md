@@ -76,6 +76,13 @@ Run [docs/code-review/07-checklist.md](docs/code-review/07-checklist.md) against
 
 Every doc in `docs/` ends with a **Related** section pointing at adjacent docs you may need. If you open a doc and the Related block doesn't cover something you need, check the other two directories (`code-review/`, `from-scratch/`, `migration/`) manually — they're meant to complement each other.
 
+## Agent working documents
+
+- The tracked domain glossary lives in [docs/domain/glossary.md](docs/domain/glossary.md).
+- A root `CONTEXT.md` may exist locally for skill compatibility. It is intentionally ignored and must not become a second tracked source of truth.
+- Put temporary plans, audits, handoffs, QA reports, and other agent-only documents in `.agent-docs/`. Its contents are ignored by Git.
+- Do not add ad hoc Markdown documents to the repository root.
+
 ## Agent hooks (Claude Code + Codex)
 
 This repo ships automated reminders that inject context when an agent edits specific files. They live in [.agents/](.agents/) as shell scripts, wired from [.claude/settings.json](.claude/settings.json) and [.codex/hooks.json](.codex/hooks.json) — same scripts, both tools.

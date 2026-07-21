@@ -10,7 +10,7 @@
  *   audience measurement (CNIL) — nothing is written to the visitor's
  *   device (memory persistence), no replay, no autocapture, no heatmaps,
  *   anonymous events. This keeps merchant storefronts banner-free; widening
- *   any of it requires a consent banner. See docs/analytics/setup-review-2026-07.md.
+ *   any of it requires a consent banner.
  *
  * @see https://posthog.com/docs/libraries/next-js
  */

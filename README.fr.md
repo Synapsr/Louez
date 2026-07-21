@@ -16,7 +16,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/Synapsr/Louez?style=for-the-badge&logo=github)](https://github.com/Synapsr/Louez)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 
-[☁️ Cloud](https://louez.io) • [🚀 Auto-hébergé](#-déployer-en-30-secondes) • [✨ Fonctionnalités](#-fonctionnalités) • [🗺️ Roadmap](ROADMAP.md) • [📋 Changelog](CHANGELOG.md)
+[☁️ Cloud](https://louez.io) • [🚀 Auto-hébergé](#-déployer-en-30-secondes) • [✨ Fonctionnalités](#-fonctionnalités) • [📋 Changelog](CHANGELOG.md)
 
 </div>
 

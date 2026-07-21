@@ -65,6 +65,11 @@ next-env.d.ts
 .claude/settings.local.json
 .claude/worktrees/
 
+# Local agent context and working documents
+/CONTEXT.md
+/.agent-docs/*
+!/.agent-docs/.gitkeep
+
 # Internal documentation (not for public release)
 tasks/
 specs/

@@ -34,12 +34,12 @@ When uncertain, prefer: Tailwind, Typescript, Pnpm, React.
 
 Rankings, higher = better. Cost reflects what I actually pay (OpenAI is near-free for me due to a deal), not list price. Intelligence is how hard a problem you can hand the model unsupervised. Taste covers UI/UX, code quality, API design, and copy.
 
-| Model    | Cost | Intelligence | Taste |
-| :------- | ---: | -----------: | ----: |
-| gpt-5.5  |    9 |            8 |     5 |
-| sonnet-5 |    5 |            5 |     7 |
-| opus-4.8 |    4 |            7 |     8 |
-| fable-5  |    2 |            9 |     9 |
+| Model       | Cost | Intelligence | Taste |
+| :---------- | ---: | -----------: | ----: |
+| gpt-5.6 sol |    9 |            8 |     5 |
+| sonnet-5    |    5 |            5 |     7 |
+| opus-4.8    |    4 |            7 |     8 |
+| fable-5     |    2 |            9 |     9 |
 
 How to apply:
 

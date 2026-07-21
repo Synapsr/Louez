@@ -291,7 +291,6 @@ See [code-review/05-styling.md](../code-review/05-styling.md) for Tailwind conve
 
 - [04-backend.md](04-backend.md) — oRPC + TanStack Query integration (where component data comes from)
 - [03-packages.md](03-packages.md) — `@louez/ui` (primitives, icons, component library)
-- [../legacy/FORM_HANDLING.md](../legacy/FORM_HANDLING.md) — Louez legacy form-handling notes kept for migration context
 - [code-review/03-react-patterns.md](../code-review/03-react-patterns.md) — React component rules (rationale)
 - [code-review/04-data-layer.md](../code-review/04-data-layer.md) — React Query usage rules in components
 - [code-review/05-styling.md](../code-review/05-styling.md) — Tailwind conventions
