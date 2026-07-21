@@ -18,12 +18,19 @@ import {
 import type { AdvisorCartSnapshot } from '@louez/validations'
 
 import { getCustomerSession } from '@/app/(storefront)/[slug]/account/actions'
+import { maybeTriggerAutoTopup } from '@/lib/ai/advisor/auto-topup'
+import {
+  checkAdvisorCredits,
+  recordAdvisorRunDebit,
+} from '@/lib/ai/advisor/credits'
 import { checkAdvisorRateLimit } from '@/lib/ai/advisor/rate-limit'
 import { buildAdvisorSystemPrompt } from '@/lib/ai/advisor/system-prompt'
 import { createAdvisorTools } from '@/lib/ai/advisor/tools'
 import type { AdvisorChatContext } from '@/lib/ai/advisor/tools'
+import { normalizeUsage } from '@/lib/ai/pricing'
 import { getAdvisorAIModel, isAIChatConfigured } from '@/lib/ai/provider'
 import { log } from '@/lib/evlog'
+import { areAiCreditsEnabled } from '@/lib/plans'
 import { getStorePlan } from '@/lib/plan-limits'
 import { getClientIp } from '@/lib/request'
 import { defaultLocale, locales } from '@/i18n/config'
@@ -259,6 +266,17 @@ export async function POST(req: Request) {
     })
   }
 
+  // AI credit gate (cloud commercial layer). Inert unless enabled; fail-closed.
+  // Keyed on the store's credits (monthly-included allowance + prepaid balance).
+  if (areAiCreditsEnabled()) {
+    const creditCheck = await checkAdvisorCredits(store.id, plan)
+    if (!creditCheck.allowed) {
+      return new Response(creditCheck.code ?? 'credits_exhausted', {
+        status: 402,
+      })
+    }
+  }
+
   const [existingConversation, cartSummary, productGuidance, locale] =
     await Promise.all([
       conversationId
@@ -335,7 +353,7 @@ export async function POST(req: Request) {
     messages: modelMessages,
     tools: createAdvisorTools(advisorCtx),
     stopWhen: stepCountIs(8),
-    onFinish: async ({ steps }) => {
+    onFinish: async ({ steps, totalUsage }) => {
       try {
         const allToolCalls = steps.flatMap((step) =>
           step.content.filter(
@@ -353,18 +371,43 @@ export async function POST(req: Request) {
         if (!content && allToolCalls.length === 0) return
 
         await db.transaction(async (tx) => {
-          await tx.insert(aiAdvisorMessages).values({
-            conversationId: activeConversationId,
-            storeId: store.id,
-            role: 'assistant',
-            content,
-            toolInvocations: allToolCalls.length > 0 ? allToolCalls : null,
-          })
+          const [inserted] = await tx
+            .insert(aiAdvisorMessages)
+            .values({
+              conversationId: activeConversationId,
+              storeId: store.id,
+              role: 'assistant',
+              content,
+              toolInvocations: allToolCalls.length > 0 ? allToolCalls : null,
+            })
+            .$returningId()
           await tx
             .update(aiAdvisorConversations)
             .set({ updatedAt: new Date() })
             .where(eq(aiAdvisorConversations.id, activeConversationId))
+
+          // Meter this run's real token cost against the store's AI credits
+          // (only when the credit layer is enabled). Same transaction as the
+          // assistant-message insert, so accounting commits atomically.
+          if (areAiCreditsEnabled() && inserted) {
+            const usage = normalizeUsage(totalUsage ?? {})
+            if (usage.inputTokens > 0 || usage.outputTokens > 0) {
+              await recordAdvisorRunDebit(tx, {
+                storeId: store.id,
+                conversationId: activeConversationId,
+                assistantMessageId: inserted.id,
+                usage,
+                plan,
+              })
+            }
+          }
         })
+
+        // Off the customer's critical path (stream already finished): recharge
+        // the merchant's balance off-session if it dropped below their threshold.
+        if (areAiCreditsEnabled()) {
+          await maybeTriggerAutoTopup(store.id)
+        }
       } catch (error) {
         log.error(
           'advisor',

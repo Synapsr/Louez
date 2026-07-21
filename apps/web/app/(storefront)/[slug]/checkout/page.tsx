@@ -10,7 +10,7 @@ import type { StoreSettings, StoreTheme } from '@louez/types';
 
 import { PageTracker } from '@/components/storefront/page-tracker';
 
-import { isAdvisorActiveForStore } from '@/lib/ai/advisor/eligibility';
+import { isAdvisorReachableForStore } from '@/lib/ai/advisor/eligibility';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { generateStoreMetadata } from '@/lib/seo';
 
@@ -136,7 +136,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 
   // AI advisor checkout participation — inert unless the advisor is active
   // (store opt-in + platform AI configured + plan feature).
-  const advisorMode = (await isAdvisorActiveForStore(store))
+  const advisorMode = (await isAdvisorReachableForStore(store))
     ? (store.aiAdvisorSettings?.mode ?? null)
     : null;
 

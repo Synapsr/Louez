@@ -4255,6 +4255,51 @@
       "emptyTitle": "Nulla da rivedere",
       "emptyDescription": "Le nuove richieste appariranno qui.",
       "viewAllPending": "Vedi tutte le richieste in attesa"
+    },
+    "aiCredits": {
+      "title": "Crediti IA",
+      "description": "I crediti alimentano il consulente IA del tuo negozio.",
+      "lowBalance": "Basso",
+      "lowBalanceHint": "Stai esaurendo i crediti IA. Ricarica per mantenere il consulente disponibile per i tuoi clienti.",
+      "topupSuccess": "Pagamento riuscito — i tuoi crediti sono stati aggiunti.",
+      "topupCancelled": "Pagamento annullato.",
+      "unlimited": "Illimitato",
+      "creditsUnit": "crediti",
+      "breakdown": "{monthly} inclusi questo mese · {prepaid} prepagati",
+      "breakdownUnlimited": "Illimitato questo mese · {prepaid} prepagati",
+      "conversationsHint": "≈ {count} conversazioni",
+      "recharge": "Ricarica",
+      "autoTopup": {
+        "title": "Ricarica automatica",
+        "description": "Ricarica automaticamente quando il saldo è basso.",
+        "thresholdLabel": "Ricarica quando sotto (crediti)",
+        "packLabel": "Pacchetto da aggiungere",
+        "pack": "{credits} cr · {amount}",
+        "cardNote": "Richiede una carta salvata (aggiunta alla prima ricarica).",
+        "save": "Salva",
+        "saved": "Salvato"
+      },
+      "history": {
+        "title": "Attività recente",
+        "type": {
+          "grant": "Crediti di benvenuto",
+          "topup": "Ricarica",
+          "auto_topup": "Ricarica automatica",
+          "adjustment": "Rettifica"
+        }
+      },
+      "topup": {
+        "title": "Ricarica crediti IA",
+        "description": "Scegli un pacchetto. I crediti vengono aggiunti subito dopo il pagamento.",
+        "credits": "crediti",
+        "info": "Un credito copre circa una conversazione completa con il consulente.",
+        "cancel": "Annulla",
+        "processing": "Elaborazione…",
+        "pay": "Paga {amount}",
+        "errors": {
+          "generic": "Qualcosa è andato storto. Riprova."
+        }
+      }
     }
   },
   "storefront": {
@@ -4756,7 +4801,15 @@
         "requiredDescription": "Questo negozio chiede al consulente di verificare alcune informazioni prima di poter prenotare.",
         "startVerification": "Inizia la verifica",
         "validatedTitle": "Verifica completata",
-        "validatedDescription": "Il consulente ha convalidato la tua prenotazione — puoi prenotare."
+        "validatedDescription": "Il consulente ha convalidato la tua prenotazione — puoi prenotare.",
+        "badgeRequired": "Obbligatorio",
+        "verifyNotice": "Il consulente ha bisogno solo di qualche informazione per confermare la tua prenotazione.",
+        "continueToPayment": "Continua",
+        "staleTitle": "La tua prenotazione è cambiata",
+        "staleDescription": "Invia un altro messaggio così il consulente può riconfermare la tua prenotazione.",
+        "statusChecking": "Verifica in corso…",
+        "transcriptLabel": "Conversazione di verifica",
+        "completeVerificationHint": "Completa la verifica qui sopra per continuare."
       }
     },
     "confirmation": {
@@ -5069,8 +5122,10 @@
       },
       "errors": {
         "generic": "Si è verificato un errore. Riprova.",
-        "rateLimited": "Troppi messaggi per ora — riprova più tardi."
-      }
+        "rateLimited": "Troppi messaggi per ora — riprova più tardi.",
+        "unavailable": "Il consulente non è disponibile al momento. Riprova più tardi."
+      },
+      "typing": "Il consulente sta scrivendo"
     }
   },
   "onboarding": {

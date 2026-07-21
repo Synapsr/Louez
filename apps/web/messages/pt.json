@@ -4255,6 +4255,51 @@
       "emptyTitle": "Nada para rever",
       "emptyDescription": "Novos pedidos aparecerão aqui.",
       "viewAllPending": "Ver todos os pedidos pendentes"
+    },
+    "aiCredits": {
+      "title": "Créditos IA",
+      "description": "Os créditos alimentam o consultor de IA da sua loja.",
+      "lowBalance": "Baixo",
+      "lowBalanceHint": "Está a ficar sem créditos IA. Recarregue para manter o consultor disponível para os seus clientes.",
+      "topupSuccess": "Pagamento efetuado — os seus créditos foram adicionados.",
+      "topupCancelled": "Pagamento cancelado.",
+      "unlimited": "Ilimitado",
+      "creditsUnit": "créditos",
+      "breakdown": "{monthly} incluídos este mês · {prepaid} pré-pagos",
+      "breakdownUnlimited": "Ilimitado este mês · {prepaid} pré-pagos",
+      "conversationsHint": "≈ {count} conversas",
+      "recharge": "Recarregar",
+      "autoTopup": {
+        "title": "Recarga automática",
+        "description": "Recarregue automaticamente quando o saldo estiver baixo.",
+        "thresholdLabel": "Recarregar quando abaixo de (créditos)",
+        "packLabel": "Pacote a adicionar",
+        "pack": "{credits} cr · {amount}",
+        "cardNote": "Requer um cartão guardado (adicionado na primeira recarga).",
+        "save": "Guardar",
+        "saved": "Guardado"
+      },
+      "history": {
+        "title": "Atividade recente",
+        "type": {
+          "grant": "Créditos de boas-vindas",
+          "topup": "Recarga",
+          "auto_topup": "Recarga automática",
+          "adjustment": "Ajuste"
+        }
+      },
+      "topup": {
+        "title": "Recarregar créditos IA",
+        "description": "Escolha um pacote. Os créditos são adicionados de imediato após o pagamento.",
+        "credits": "créditos",
+        "info": "Um crédito cobre cerca de uma conversa completa com o consultor.",
+        "cancel": "Cancelar",
+        "processing": "A processar…",
+        "pay": "Pagar {amount}",
+        "errors": {
+          "generic": "Algo correu mal. Tente novamente."
+        }
+      }
     }
   },
   "storefront": {
@@ -4756,7 +4801,15 @@
         "requiredDescription": "Esta loja pede ao consultor que verifique algumas informações antes de você poder reservar.",
         "startVerification": "Iniciar verificação",
         "validatedTitle": "Verificação concluída",
-        "validatedDescription": "O consultor validou a sua reserva — você já pode reservar."
+        "validatedDescription": "O consultor validou a sua reserva — você já pode reservar.",
+        "badgeRequired": "Obrigatório",
+        "verifyNotice": "O consultor só precisa de alguns detalhes para confirmar a sua reserva.",
+        "continueToPayment": "Continuar",
+        "staleTitle": "A sua reserva foi alterada",
+        "staleDescription": "Envie mais uma mensagem para que o consultor possa reconfirmar a sua reserva.",
+        "statusChecking": "A verificar a sua validação…",
+        "transcriptLabel": "Conversa de verificação",
+        "completeVerificationHint": "Conclua a verificação acima para continuar."
       }
     },
     "confirmation": {
@@ -5069,8 +5122,10 @@
       },
       "errors": {
         "generic": "Ocorreu um erro. Tente novamente.",
-        "rateLimited": "Muitas mensagens por agora — tente novamente mais tarde."
-      }
+        "rateLimited": "Muitas mensagens por agora — tente novamente mais tarde.",
+        "unavailable": "O consultor não está disponível de momento. Tente novamente mais tarde."
+      },
+      "typing": "O consultor está a escrever"
     }
   },
   "onboarding": {

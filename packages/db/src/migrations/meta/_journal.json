@@ -379,6 +379,13 @@
       "when": 1783725000648,
       "tag": "0050_curvy_lorna_dane",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "5",
+      "when": 1784634618125,
+      "tag": "0051_majestic_talisman",
+      "breakpoints": true
     }
   ]
 }

@@ -70,10 +70,13 @@ export const AdvisorPanel = ({
   };
 
   const isRateLimited = errorCode.startsWith('rate_limit');
+  const isUnavailable = errorCode === 'credits_exhausted';
   const errorMessage = hasError
     ? isRateLimited
       ? t('errors.rateLimited')
-      : t('errors.generic')
+      : isUnavailable
+        ? t('errors.unavailable')
+        : t('errors.generic')
     : null;
 
   const suggestions = [

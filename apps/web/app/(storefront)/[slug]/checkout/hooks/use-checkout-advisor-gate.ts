@@ -21,6 +21,13 @@ export interface CheckoutAdvisorGate {
    * shared advisorValidationCovers helper).
    */
   isValidated: boolean;
+  /** The conversation was validated at some point (regardless of the cart). */
+  serverValidated: boolean;
+  /**
+   * Validated before, but the cart or dates changed since — the customer must
+   * re-confirm. `serverValidated && !isValidated`.
+   */
+  validationStale: boolean;
   isStatusLoading: boolean;
   conversationId: string | null;
   openAdvisor: () => void;
@@ -63,8 +70,9 @@ export function useCheckoutAdvisorGate(
     }
   }, [isOpen, validationVersion, isRequired, conversationId, refetchStatus]);
 
+  const serverValidated = Boolean(statusQuery.data?.validated);
   const isValidated =
-    Boolean(statusQuery.data?.validated) &&
+    serverValidated &&
     advisorValidationCovers(statusQuery.data?.validatedCart, {
       items: items.map((item) => ({
         productId: item.productId,
@@ -78,6 +86,8 @@ export function useCheckoutAdvisorGate(
     isActive,
     isRequired,
     isValidated,
+    serverValidated,
+    validationStale: serverValidated && !isValidated,
     isStatusLoading:
       isRequired && conversationId !== null && statusQuery.isPending,
     conversationId,

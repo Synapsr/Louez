@@ -146,7 +146,12 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
             <CartProvider>
               <AnalyticsProvider storeSlug={store.slug}>
                 <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
-                  <AdvisorProvider storeSlug={store.slug} enabled={advisorEnabled}>
+                  <AdvisorProvider
+                    storeSlug={store.slug}
+                    enabled={advisorEnabled}
+                    displayName={advisorSettings?.displayName}
+                    welcomeMessage={advisorSettings?.welcomeMessage}
+                  >
                     <div className="flex min-h-screen flex-col bg-background">
                       <StoreHeaderWrapper
                         storeName={store.name}
@@ -162,13 +167,7 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
                         address={store.address}
                       />
                     </div>
-                    {advisorEnabled && advisorSettings && (
-                      <AdvisorWidget
-                        storeSlug={store.slug}
-                        displayName={advisorSettings.displayName}
-                        welcomeMessage={advisorSettings.welcomeMessage}
-                      />
-                    )}
+                    {advisorEnabled && <AdvisorWidget />}
                   </AdvisorProvider>
                 </ThemeWrapper>
               </AnalyticsProvider>

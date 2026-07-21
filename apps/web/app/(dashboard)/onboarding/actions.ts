@@ -12,9 +12,14 @@ import { defaultBusinessHours } from '@louez/validations';
 
 import { auth } from '@/lib/auth';
 import {
+  creditAiCredits,
+  getDefaultAiCredits,
+} from '@/lib/ai/advisor/credits';
+import {
   getDefaultFreeReservations,
   getDefaultPayAsYouGoConfigSnapshot,
 } from '@/lib/pay-as-you-go/defaults';
+import { areAiCreditsEnabled } from '@/lib/plans';
 import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
 import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
 import { captureReferralServerEvent } from '@/lib/referral/analytics';
@@ -472,6 +477,17 @@ export async function createStore(data: StoreInfoInput) {
         ? getReferralProgramConfig().referredRewardFreeReservations
         : getDefaultFreeReservations(),
     });
+
+    // Welcome AI advisor credits (cloud commercial layer). Idempotent per store
+    // (dedup key) and inert unless the credit layer is enabled.
+    if (areAiCreditsEnabled()) {
+      await creditAiCredits({
+        storeId: newStore.id,
+        credits: getDefaultAiCredits(),
+        type: 'grant',
+        dedupKey: `grant:${newStore.id}`,
+      });
+    }
 
     await trackReferralAttributionResolved({
       userId: session.user.id,

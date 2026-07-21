@@ -135,6 +135,29 @@ export const env = createEnv({
     AI_ADVISOR_MODEL: z.string().optional(),
     AI_ADVISOR_DAILY_STORE_LIMIT: z.coerce.number().int().min(1).optional(),
 
+    // ===== AI Advisor credits (Optional — cloud commercial layer) =====
+    // The whole credit / metering / top-up layer is INERT unless
+    // AI_CREDITS_ENABLED === 'true'. Self-host default (unset) → the advisor
+    // runs on rate-limits only: no credits, no metering, no billing UI. No
+    // commercial value ships in code — token prices, credit value and pack
+    // prices ALL live here, so the repo never reveals cost or margin.
+    AI_CREDITS_ENABLED: z.string().optional(),
+    // Real advisor-model token cost, USD per 1M tokens (metering input only,
+    // never surfaced to anyone).
+    AI_ADVISOR_INPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
+    AI_ADVISOR_OUTPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
+    AI_ADVISOR_CACHED_INPUT_USD_PER_MTOK: z.coerce.number().min(0).optional(),
+    // USD cost that equals "1 credit" when metering a conversation. Set it to
+    // the typical conversation cost so 1 credit ≈ 1 conversation.
+    AI_CREDIT_COST_BASIS_USD: z.coerce.number().positive().optional(),
+    // Prepaid credits gifted to a NEW store at account creation.
+    FREE_AI_CREDITS: z.coerce.number().int().min(0).max(1_000_000).default(0),
+    // Monthly INCLUDED credits per plan slug, JSON e.g. {"pro":200,"ultra":1000}.
+    // Injected into the resolved plan at runtime — never hardcoded in plans.ts.
+    AI_CREDIT_MONTHLY_INCLUDED: z.string().optional(),
+    // Sold credit packs, JSON e.g. [{"credits":100,"priceCents":1200}, ...].
+    AI_CREDIT_PACKAGES: z.string().optional(),
+
     // ===== fromHello (Optional — engagement & growth) =====
     FROMHELLO_API_URL: z.url().optional(),
     FROMHELLO_API_KEY: z.string().optional(),
@@ -309,6 +332,15 @@ export const env = createEnv({
     AI_API_KEY: process.env.AI_API_KEY,
     AI_ADVISOR_MODEL: process.env.AI_ADVISOR_MODEL,
     AI_ADVISOR_DAILY_STORE_LIMIT: process.env.AI_ADVISOR_DAILY_STORE_LIMIT,
+    AI_CREDITS_ENABLED: process.env.AI_CREDITS_ENABLED,
+    AI_ADVISOR_INPUT_USD_PER_MTOK: process.env.AI_ADVISOR_INPUT_USD_PER_MTOK,
+    AI_ADVISOR_OUTPUT_USD_PER_MTOK: process.env.AI_ADVISOR_OUTPUT_USD_PER_MTOK,
+    AI_ADVISOR_CACHED_INPUT_USD_PER_MTOK:
+      process.env.AI_ADVISOR_CACHED_INPUT_USD_PER_MTOK,
+    AI_CREDIT_COST_BASIS_USD: process.env.AI_CREDIT_COST_BASIS_USD,
+    FREE_AI_CREDITS: process.env.FREE_AI_CREDITS,
+    AI_CREDIT_MONTHLY_INCLUDED: process.env.AI_CREDIT_MONTHLY_INCLUDED,
+    AI_CREDIT_PACKAGES: process.env.AI_CREDIT_PACKAGES,
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,

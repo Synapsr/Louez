@@ -1,6 +1,7 @@
 'use client';
 
 import type { UIMessage } from '@ai-sdk/react';
+import { useTranslations } from 'next-intl';
 
 import { cn } from '@louez/utils';
 
@@ -20,6 +21,8 @@ export const AdvisorMessages = ({
   isLoading,
   welcomeText,
 }: AdvisorMessagesProps) => {
+  const t = useTranslations('storefront.advisor');
+
   return (
     <div className="space-y-4 pb-2">
       <div className="flex justify-start">
@@ -77,11 +80,12 @@ export const AdvisorMessages = ({
       {isLoading && messages[messages.length - 1]?.role === 'user' && (
         <div className="flex items-start">
           <AdvisorAssistantAvatar />
-          <span className="flex gap-1.5 pt-2.5">
+          <span className="flex gap-1.5 pt-2.5" aria-hidden="true">
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/40 [animation-delay:0ms]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/40 [animation-delay:150ms]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/40 [animation-delay:300ms]" />
           </span>
+          <span className="sr-only">{t('typing')}</span>
         </div>
       )}
     </div>

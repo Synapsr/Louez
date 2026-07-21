@@ -4255,6 +4255,51 @@
       "emptyTitle": "Nic do sprawdzenia",
       "emptyDescription": "Nowe prośby pojawią się tutaj.",
       "viewAllPending": "Zobacz wszystkie oczekujące prośby"
+    },
+    "aiCredits": {
+      "title": "Kredyty AI",
+      "description": "Kredyty zasilają doradcę AI Twojego sklepu.",
+      "lowBalance": "Niski",
+      "lowBalanceHint": "Kończą Ci się kredyty AI. Doładuj, aby doradca pozostał dostępny dla Twoich klientów.",
+      "topupSuccess": "Płatność powiodła się — kredyty zostały dodane.",
+      "topupCancelled": "Płatność anulowana.",
+      "unlimited": "Bez limitu",
+      "creditsUnit": "kredytów",
+      "breakdown": "{monthly} w tym miesiącu w pakiecie · {prepaid} przedpłacone",
+      "breakdownUnlimited": "Bez limitu w tym miesiącu · {prepaid} przedpłacone",
+      "conversationsHint": "≈ {count} rozmów",
+      "recharge": "Doładuj",
+      "autoTopup": {
+        "title": "Automatyczne doładowanie",
+        "description": "Doładuj automatycznie, gdy saldo jest niskie.",
+        "thresholdLabel": "Doładuj, gdy poniżej (kredytów)",
+        "packLabel": "Pakiet do dodania",
+        "pack": "{credits} kr · {amount}",
+        "cardNote": "Wymaga zapisanej karty (dodanej przy pierwszym doładowaniu).",
+        "save": "Zapisz",
+        "saved": "Zapisano"
+      },
+      "history": {
+        "title": "Ostatnia aktywność",
+        "type": {
+          "grant": "Kredyty powitalne",
+          "topup": "Doładowanie",
+          "auto_topup": "Automatyczne doładowanie",
+          "adjustment": "Korekta"
+        }
+      },
+      "topup": {
+        "title": "Doładuj kredyty AI",
+        "description": "Wybierz pakiet. Kredyty są dodawane natychmiast po płatności.",
+        "credits": "kredytów",
+        "info": "Jeden kredyt pokrywa około jednej pełnej rozmowy z doradcą.",
+        "cancel": "Anuluj",
+        "processing": "Przetwarzanie…",
+        "pay": "Zapłać {amount}",
+        "errors": {
+          "generic": "Coś poszło nie tak. Spróbuj ponownie."
+        }
+      }
     }
   },
   "storefront": {
@@ -4756,7 +4801,15 @@
         "requiredDescription": "Ten sklep prosi doradcę o sprawdzenie kilku informacji przed dokonaniem rezerwacji.",
         "startVerification": "Rozpocznij weryfikację",
         "validatedTitle": "Weryfikacja zakończona",
-        "validatedDescription": "Doradca zatwierdził Twoją rezerwację — możesz zarezerwować."
+        "validatedDescription": "Doradca zatwierdził Twoją rezerwację — możesz zarezerwować.",
+        "badgeRequired": "Wymagane",
+        "verifyNotice": "Doradca potrzebuje tylko kilku informacji, aby potwierdzić Twoją rezerwację.",
+        "continueToPayment": "Kontynuuj",
+        "staleTitle": "Twoja rezerwacja się zmieniła",
+        "staleDescription": "Wyślij jeszcze jedną wiadomość, aby doradca mógł ponownie potwierdzić Twoją rezerwację.",
+        "statusChecking": "Sprawdzanie weryfikacji…",
+        "transcriptLabel": "Rozmowa weryfikacyjna",
+        "completeVerificationHint": "Ukończ weryfikację powyżej, aby kontynuować."
       }
     },
     "confirmation": {
@@ -5069,8 +5122,10 @@
       },
       "errors": {
         "generic": "Coś poszło nie tak. Spróbuj ponownie.",
-        "rateLimited": "Zbyt wiele wiadomości — spróbuj ponownie później."
-      }
+        "rateLimited": "Zbyt wiele wiadomości — spróbuj ponownie później.",
+        "unavailable": "Doradca jest obecnie niedostępny. Spróbuj ponownie później."
+      },
+      "typing": "Doradca pisze"
     }
   },
   "onboarding": {

@@ -22,6 +22,67 @@ export const SMS_TOPUP_PRICING: Record<string, number | null> = {
 export const SMS_TOPUP_PACKAGES = [50, 100, 250, 500] as const;
 export type SmsTopupPackage = (typeof SMS_TOPUP_PACKAGES)[number];
 
+// ── AI advisor credits ──────────────────────────────────────────────────────
+// Every commercial value below is read from env — nothing is hardcoded, so the
+// repo never reveals token cost, credit value or margin.
+
+/**
+ * Whether the paid AI-credit layer is active. When off (self-host default), the
+ * advisor runs on rate-limits only: no metering, no gate, no billing UI.
+ */
+export function areAiCreditsEnabled(): boolean {
+  return env.AI_CREDITS_ENABLED === 'true' || env.AI_CREDITS_ENABLED === '1';
+}
+
+/** Monthly INCLUDED credits per plan slug, parsed from env JSON. `{}` when unset. */
+function getAiCreditsMonthlyIncluded(): Record<string, number> {
+  const raw = env.AI_CREDIT_MONTHLY_INCLUDED;
+  if (!raw) return {};
+  try {
+    const parsed: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!parsed || typeof parsed !== 'object') return {};
+    const out: Record<string, number> = {};
+    for (const [slug, v] of Object.entries(parsed as Record<string, unknown>)) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n >= 0) out[slug] = Math.trunc(n);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export interface AiCreditPackage {
+  credits: number;
+  priceCents: number;
+}
+
+/** Credit packs sold via top-up, parsed from env JSON. Empty → top-up unavailable. */
+export function getAiCreditPackages(): AiCreditPackage[] {
+  const raw = env.AI_CREDIT_PACKAGES;
+  if (!raw) return [];
+  try {
+    const parsed: unknown = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((p) => ({
+        credits: Math.trunc(Number((p as { credits?: unknown })?.credits)),
+        priceCents: Math.trunc(
+          Number((p as { priceCents?: unknown })?.priceCents),
+        ),
+      }))
+      .filter(
+        (p) =>
+          Number.isFinite(p.credits) &&
+          p.credits > 0 &&
+          Number.isFinite(p.priceCents) &&
+          p.priceCents > 0,
+      );
+  } catch {
+    return [];
+  }
+}
+
 export interface PlanPrices {
   monthly?: string;
   yearly?: string;
@@ -60,6 +121,7 @@ const BASE_PLANS: Record<
       maxCustomers: 500,
       maxCollaborators: 2,
       maxSmsPerMonth: 50,
+      aiCreditsPerMonth: 0, // injected from env in getPlans()
       onlinePayment: true,
       analytics: true,
       emailNotifications: true,
@@ -85,6 +147,7 @@ const BASE_PLANS: Record<
       maxCustomers: null, // unlimited
       maxCollaborators: null, // unlimited
       maxSmsPerMonth: 500,
+      aiCreditsPerMonth: 0, // injected from env in getPlans()
       onlinePayment: true,
       analytics: true,
       emailNotifications: true,
@@ -119,6 +182,7 @@ export const PAY_AS_YOU_GO_PLAN: Plan = {
     maxCustomers: null,
     maxCollaborators: null,
     maxSmsPerMonth: 0,
+    aiCreditsPerMonth: 0, // PAYG: no monthly allowance, prepaid credits only
     onlinePayment: true,
     analytics: true,
     emailNotifications: true,
@@ -143,9 +207,15 @@ export function getPayAsYouGoPlan(): Plan {
  * This ensures env vars are read at request time, not build time
  */
 export function getPlans(): Plan[] {
+  // Monthly included AI credits are injected here from env, never hardcoded.
+  const aiMonthly = getAiCreditsMonthlyIncluded();
   return [
     {
       ...BASE_PLANS.pro,
+      features: {
+        ...BASE_PLANS.pro.features,
+        aiCreditsPerMonth: aiMonthly.pro ?? 0,
+      },
       // Legacy EUR prices (backwards compatibility)
       stripePriceMonthly: env.STRIPE_PRICE_PRO_MONTHLY,
       stripePriceYearly: env.STRIPE_PRICE_PRO_YEARLY,
@@ -163,6 +233,10 @@ export function getPlans(): Plan[] {
     },
     {
       ...BASE_PLANS.ultra,
+      features: {
+        ...BASE_PLANS.ultra.features,
+        aiCreditsPerMonth: aiMonthly.ultra ?? 0,
+      },
       // Legacy EUR prices (backwards compatibility)
       stripePriceMonthly: env.STRIPE_PRICE_ULTRA_MONTHLY,
       stripePriceYearly: env.STRIPE_PRICE_ULTRA_YEARLY,

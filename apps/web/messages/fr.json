@@ -4362,6 +4362,51 @@
       "emptyTitle": "Rien à traiter",
       "emptyDescription": "Les nouvelles demandes apparaîtront ici.",
       "viewAllPending": "Voir toutes les demandes en attente"
+    },
+    "aiCredits": {
+      "title": "Crédits IA",
+      "description": "Les crédits alimentent le conseiller IA de votre boutique.",
+      "lowBalance": "Bas",
+      "lowBalanceHint": "Vos crédits IA s'épuisent. Rechargez pour que le conseiller reste disponible pour vos clients.",
+      "topupSuccess": "Paiement réussi — vos crédits ont été ajoutés.",
+      "topupCancelled": "Paiement annulé.",
+      "unlimited": "Illimité",
+      "creditsUnit": "crédits",
+      "breakdown": "{monthly} inclus ce mois · {prepaid} prépayés",
+      "breakdownUnlimited": "Illimité ce mois · {prepaid} prépayés",
+      "conversationsHint": "≈ {count} conversations",
+      "recharge": "Recharger",
+      "autoTopup": {
+        "title": "Recharge automatique",
+        "description": "Rechargez automatiquement quand le solde est bas.",
+        "thresholdLabel": "Recharger en dessous de (crédits)",
+        "packLabel": "Pack à ajouter",
+        "pack": "{credits} cr · {amount}",
+        "cardNote": "Nécessite une carte enregistrée (ajoutée lors de la première recharge).",
+        "save": "Enregistrer",
+        "saved": "Enregistré"
+      },
+      "history": {
+        "title": "Activité récente",
+        "type": {
+          "grant": "Crédits offerts",
+          "topup": "Recharge",
+          "auto_topup": "Recharge automatique",
+          "adjustment": "Ajustement"
+        }
+      },
+      "topup": {
+        "title": "Recharger des crédits IA",
+        "description": "Choisissez un pack. Les crédits sont ajoutés immédiatement après le paiement.",
+        "credits": "crédits",
+        "info": "Un crédit couvre environ une conversation complète avec le conseiller.",
+        "cancel": "Annuler",
+        "processing": "Traitement…",
+        "pay": "Payer {amount}",
+        "errors": {
+          "generic": "Une erreur est survenue. Veuillez réessayer."
+        }
+      }
     }
   },
   "storefront": {
@@ -4869,7 +4914,15 @@
         "requiredDescription": "Cette boutique demande au conseiller de vérifier quelques informations avant de réserver.",
         "startVerification": "Commencer la vérification",
         "validatedTitle": "Vérification terminée",
-        "validatedDescription": "Le conseiller a validé votre réservation — vous pouvez réserver."
+        "validatedDescription": "Le conseiller a validé votre réservation — vous pouvez réserver.",
+        "badgeRequired": "Requis",
+        "verifyNotice": "Le conseiller a juste besoin de quelques informations pour confirmer votre réservation.",
+        "continueToPayment": "Continuer",
+        "staleTitle": "Votre réservation a changé",
+        "staleDescription": "Envoyez un dernier message pour que le conseiller revalide votre réservation.",
+        "statusChecking": "Vérification en cours…",
+        "transcriptLabel": "Conversation de vérification",
+        "completeVerificationHint": "Terminez la vérification ci-dessus pour continuer."
       }
     },
     "confirmation": {
@@ -5182,8 +5235,10 @@
       },
       "errors": {
         "generic": "Une erreur est survenue. Veuillez réessayer.",
-        "rateLimited": "Trop de messages pour le moment — réessayez plus tard."
-      }
+        "rateLimited": "Trop de messages pour le moment — réessayez plus tard.",
+        "unavailable": "Le conseiller n'est pas disponible pour le moment. Réessayez plus tard ou contactez la boutique."
+      },
+      "typing": "Le conseiller écrit"
     }
   },
   "onboarding": {

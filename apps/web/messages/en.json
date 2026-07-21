@@ -4362,6 +4362,51 @@
       "emptyTitle": "Nothing to review",
       "emptyDescription": "New requests will appear here.",
       "viewAllPending": "View all pending requests"
+    },
+    "aiCredits": {
+      "title": "AI credits",
+      "description": "Credits power your storefront AI advisor.",
+      "lowBalance": "Low",
+      "lowBalanceHint": "You're running low on AI credits. Recharge to keep the advisor available to your customers.",
+      "topupSuccess": "Payment successful — your credits have been added.",
+      "topupCancelled": "Payment cancelled.",
+      "unlimited": "Unlimited",
+      "creditsUnit": "credits",
+      "breakdown": "{monthly} included this month · {prepaid} prepaid",
+      "breakdownUnlimited": "Unlimited this month · {prepaid} prepaid",
+      "conversationsHint": "≈ {count} conversations",
+      "recharge": "Recharge",
+      "autoTopup": {
+        "title": "Automatic recharge",
+        "description": "Recharge automatically when your balance runs low.",
+        "thresholdLabel": "Recharge when below (credits)",
+        "packLabel": "Pack to add",
+        "pack": "{credits} cr · {amount}",
+        "cardNote": "Requires a saved card (added on your first recharge).",
+        "save": "Save",
+        "saved": "Saved"
+      },
+      "history": {
+        "title": "Recent activity",
+        "type": {
+          "grant": "Welcome credits",
+          "topup": "Recharge",
+          "auto_topup": "Automatic recharge",
+          "adjustment": "Adjustment"
+        }
+      },
+      "topup": {
+        "title": "Recharge AI credits",
+        "description": "Choose a pack. Credits are added instantly after payment.",
+        "credits": "credits",
+        "info": "One credit covers about one complete advisor conversation.",
+        "cancel": "Cancel",
+        "processing": "Processing…",
+        "pay": "Pay {amount}",
+        "errors": {
+          "generic": "Something went wrong. Please try again."
+        }
+      }
     }
   },
   "storefront": {
@@ -4869,7 +4914,15 @@
         "requiredDescription": "This store asks the advisor to check a few details before you can book.",
         "startVerification": "Start verification",
         "validatedTitle": "Verification complete",
-        "validatedDescription": "The advisor has validated your reservation — you can book."
+        "validatedDescription": "The advisor has validated your reservation — you can book.",
+        "badgeRequired": "Required",
+        "verifyNotice": "The advisor just needs a few details to confirm your booking.",
+        "continueToPayment": "Continue",
+        "staleTitle": "Your booking changed",
+        "staleDescription": "Send one more message so the advisor can re-confirm your booking.",
+        "statusChecking": "Checking your verification…",
+        "transcriptLabel": "Verification conversation",
+        "completeVerificationHint": "Complete the verification above to continue."
       }
     },
     "confirmation": {
@@ -5182,8 +5235,10 @@
       },
       "errors": {
         "generic": "Something went wrong. Please try again.",
-        "rateLimited": "Too many messages for now — please try again later."
-      }
+        "rateLimited": "Too many messages for now — please try again later.",
+        "unavailable": "The advisor isn't available right now. Please try again later or contact the store."
+      },
+      "typing": "The advisor is typing"
     }
   },
   "onboarding": {

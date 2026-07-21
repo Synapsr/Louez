@@ -4255,6 +4255,51 @@
       "emptyTitle": "Nichts zu prüfen",
       "emptyDescription": "Neue Anfragen erscheinen hier.",
       "viewAllPending": "Alle offenen Anfragen ansehen"
+    },
+    "aiCredits": {
+      "title": "KI-Guthaben",
+      "description": "Guthaben betreibt den KI-Berater Ihres Shops.",
+      "lowBalance": "Niedrig",
+      "lowBalanceHint": "Ihr KI-Guthaben wird knapp. Laden Sie auf, damit der Berater für Ihre Kunden verfügbar bleibt.",
+      "topupSuccess": "Zahlung erfolgreich — Ihr Guthaben wurde hinzugefügt.",
+      "topupCancelled": "Zahlung abgebrochen.",
+      "unlimited": "Unbegrenzt",
+      "creditsUnit": "Credits",
+      "breakdown": "{monthly} diesen Monat inklusive · {prepaid} Prepaid",
+      "breakdownUnlimited": "Diesen Monat unbegrenzt · {prepaid} Prepaid",
+      "conversationsHint": "≈ {count} Gespräche",
+      "recharge": "Aufladen",
+      "autoTopup": {
+        "title": "Automatische Aufladung",
+        "description": "Automatisch aufladen, wenn das Guthaben zur Neige geht.",
+        "thresholdLabel": "Aufladen, wenn unter (Credits)",
+        "packLabel": "Aufzuladendes Paket",
+        "pack": "{credits} Cr · {amount}",
+        "cardNote": "Erfordert eine gespeicherte Karte (bei der ersten Aufladung hinterlegt).",
+        "save": "Speichern",
+        "saved": "Gespeichert"
+      },
+      "history": {
+        "title": "Letzte Aktivität",
+        "type": {
+          "grant": "Willkommensguthaben",
+          "topup": "Aufladung",
+          "auto_topup": "Automatische Aufladung",
+          "adjustment": "Anpassung"
+        }
+      },
+      "topup": {
+        "title": "KI-Guthaben aufladen",
+        "description": "Wählen Sie ein Paket. Das Guthaben wird nach der Zahlung sofort hinzugefügt.",
+        "credits": "Credits",
+        "info": "Ein Credit entspricht etwa einem vollständigen Beratergespräch.",
+        "cancel": "Abbrechen",
+        "processing": "Wird verarbeitet…",
+        "pay": "{amount} zahlen",
+        "errors": {
+          "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+        }
+      }
     }
   },
   "storefront": {
@@ -4756,7 +4801,15 @@
         "requiredDescription": "Dieser Shop lässt den Berater einige Angaben prüfen, bevor Sie reservieren können.",
         "startVerification": "Überprüfung starten",
         "validatedTitle": "Überprüfung abgeschlossen",
-        "validatedDescription": "Der Berater hat Ihre Reservierung validiert — Sie können jetzt reservieren."
+        "validatedDescription": "Der Berater hat Ihre Reservierung validiert — Sie können jetzt reservieren.",
+        "badgeRequired": "Erforderlich",
+        "verifyNotice": "Der Berater benötigt nur ein paar Angaben, um Ihre Buchung zu bestätigen.",
+        "continueToPayment": "Weiter",
+        "staleTitle": "Ihre Buchung hat sich geändert",
+        "staleDescription": "Senden Sie eine weitere Nachricht, damit der Berater Ihre Buchung erneut bestätigen kann.",
+        "statusChecking": "Überprüfung läuft…",
+        "transcriptLabel": "Verifizierungsgespräch",
+        "completeVerificationHint": "Schließen Sie die Überprüfung oben ab, um fortzufahren."
       }
     },
     "confirmation": {
@@ -5069,8 +5122,10 @@
       },
       "errors": {
         "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
-        "rateLimited": "Zu viele Nachrichten im Moment — bitte versuchen Sie es später erneut."
-      }
+        "rateLimited": "Zu viele Nachrichten im Moment — bitte versuchen Sie es später erneut.",
+        "unavailable": "Der Berater ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut."
+      },
+      "typing": "Der Berater schreibt"
     }
   },
   "onboarding": {

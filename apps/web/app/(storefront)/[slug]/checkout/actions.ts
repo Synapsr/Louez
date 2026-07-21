@@ -58,7 +58,7 @@ import {
 import type { SeasonalPricingConfig } from '@louez/utils';
 import type { PricingMode } from '@louez/utils';
 
-import { isAdvisorActiveForStore } from '@/lib/ai/advisor/eligibility';
+import { isAdvisorReachableForStore } from '@/lib/ai/advisor/eligibility';
 import { notifyNewReservation } from '@/lib/discord/platform-notifications';
 import { getLocaleFromCountry } from '@/lib/email/i18n';
 import { sendNewRequestLandlordEmail } from '@/lib/email/send';
@@ -589,7 +589,7 @@ export async function createReservation(input: CreateReservationInput) {
 
     if (
       store.aiAdvisorSettings?.mode === 'required' &&
-      (await isAdvisorActiveForStore(store))
+      (await isAdvisorReachableForStore(store))
     ) {
       const isValidated =
         advisorConversation?.validatedAt != null &&

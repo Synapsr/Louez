@@ -20,6 +20,7 @@ import { useStoreCurrency } from '@/contexts/store-context';
 
 import { createReservation, getTulipQuotePreview } from './actions';
 import { CheckoutAdvisorGateCard } from './components/checkout-advisor-gate';
+import { CheckoutAdvisorVerificationPanel } from './components/checkout-advisor-verification-panel';
 import { CheckoutConfirmStep } from './components/checkout-confirm-step';
 import { CheckoutContactStep } from './components/checkout-contact-step';
 import { CheckoutDeliveryStep } from './components/checkout-delivery-step';
@@ -675,6 +676,9 @@ export function CheckoutForm({
                 {currentStep === 'confirm' && (
                   <>
                     <CheckoutAdvisorGateCard gate={advisorGate} />
+                    {advisorGate.isRequired && (
+                      <CheckoutAdvisorVerificationPanel gate={advisorGate} />
+                    )}
                     <CheckoutConfirmStep
                       form={form}
                       cgv={cgv}
@@ -692,6 +696,9 @@ export function CheckoutForm({
                       canSubmitCheckout={
                         canSubmitCheckoutWithTulip &&
                         (!advisorGate.isRequired || advisorGate.isValidated)
+                      }
+                      showVerificationHint={
+                        advisorGate.isRequired && !advisorGate.isValidated
                       }
                       discountAmount={discountAmount}
                       onBack={goToPreviousStep}

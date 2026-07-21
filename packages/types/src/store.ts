@@ -419,6 +419,9 @@ export interface PlanFeatures {
   maxCustomers: number | null; // null = unlimited
   maxCollaborators: number | null; // null = unlimited, 0 = none
   maxSmsPerMonth: number | null; // null = unlimited, 0 = none
+  // Monthly INCLUDED AI advisor credits (null = unlimited, 0 = none). Value is
+  // injected from env at runtime (getPlans), never a hardcoded commercial number.
+  aiCreditsPerMonth: number | null;
 
   // Features
   customDomain: boolean;

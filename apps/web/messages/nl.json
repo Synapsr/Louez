@@ -4255,6 +4255,51 @@
       "emptyTitle": "Niets te controleren",
       "emptyDescription": "Nieuwe aanvragen verschijnen hier.",
       "viewAllPending": "Alle openstaande aanvragen bekijken"
+    },
+    "aiCredits": {
+      "title": "AI-tegoed",
+      "description": "Tegoed voedt de AI-adviseur van je winkel.",
+      "lowBalance": "Laag",
+      "lowBalanceHint": "Je AI-tegoed raakt op. Waardeer op zodat de adviseur beschikbaar blijft voor je klanten.",
+      "topupSuccess": "Betaling geslaagd — je tegoed is toegevoegd.",
+      "topupCancelled": "Betaling geannuleerd.",
+      "unlimited": "Onbeperkt",
+      "creditsUnit": "credits",
+      "breakdown": "{monthly} deze maand inbegrepen · {prepaid} prepaid",
+      "breakdownUnlimited": "Deze maand onbeperkt · {prepaid} prepaid",
+      "conversationsHint": "≈ {count} gesprekken",
+      "recharge": "Opwaarderen",
+      "autoTopup": {
+        "title": "Automatisch opwaarderen",
+        "description": "Waardeer automatisch op wanneer je saldo laag is.",
+        "thresholdLabel": "Opwaarderen wanneer onder (credits)",
+        "packLabel": "Toe te voegen pakket",
+        "pack": "{credits} cr · {amount}",
+        "cardNote": "Vereist een opgeslagen kaart (toegevoegd bij je eerste opwaardering).",
+        "save": "Opslaan",
+        "saved": "Opgeslagen"
+      },
+      "history": {
+        "title": "Recente activiteit",
+        "type": {
+          "grant": "Welkomsttegoed",
+          "topup": "Opwaardering",
+          "auto_topup": "Automatische opwaardering",
+          "adjustment": "Aanpassing"
+        }
+      },
+      "topup": {
+        "title": "AI-tegoed opwaarderen",
+        "description": "Kies een pakket. Tegoed wordt direct na betaling toegevoegd.",
+        "credits": "credits",
+        "info": "Eén credit dekt ongeveer één volledig adviseursgesprek.",
+        "cancel": "Annuleren",
+        "processing": "Bezig…",
+        "pay": "{amount} betalen",
+        "errors": {
+          "generic": "Er ging iets mis. Probeer het opnieuw."
+        }
+      }
     }
   },
   "storefront": {
@@ -4756,7 +4801,15 @@
         "requiredDescription": "Deze winkel laat de adviseur enkele gegevens controleren voordat u kunt reserveren.",
         "startVerification": "Verificatie starten",
         "validatedTitle": "Verificatie voltooid",
-        "validatedDescription": "De adviseur heeft uw reservering gevalideerd — u kunt reserveren."
+        "validatedDescription": "De adviseur heeft uw reservering gevalideerd — u kunt reserveren.",
+        "badgeRequired": "Verplicht",
+        "verifyNotice": "De adviseur heeft slechts een paar gegevens nodig om je reservering te bevestigen.",
+        "continueToPayment": "Doorgaan",
+        "staleTitle": "Je reservering is gewijzigd",
+        "staleDescription": "Stuur nog één bericht zodat de adviseur je reservering opnieuw kan bevestigen.",
+        "statusChecking": "Verificatie controleren…",
+        "transcriptLabel": "Verificatiegesprek",
+        "completeVerificationHint": "Voltooi de verificatie hierboven om door te gaan."
       }
     },
     "confirmation": {
@@ -5069,8 +5122,10 @@
       },
       "errors": {
         "generic": "Er is iets misgegaan. Probeer het opnieuw.",
-        "rateLimited": "Te veel berichten op dit moment — probeer het later opnieuw."
-      }
+        "rateLimited": "Te veel berichten op dit moment — probeer het later opnieuw.",
+        "unavailable": "De adviseur is momenteel niet beschikbaar. Probeer het later opnieuw."
+      },
+      "typing": "De adviseur is aan het typen"
     }
   },
   "onboarding": {

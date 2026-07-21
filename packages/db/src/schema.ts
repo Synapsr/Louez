@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   date,
   decimal,
@@ -3191,6 +3192,13 @@ export const aiAdvisorConversations = mysqlTable(
     // Facts gathered by the advisor (e.g. vehicle model, licence type).
     collectedData: json('collected_data').$type<Record<string, string>>(),
 
+    // Accrued AI-credit consumption for this conversation, in micro-credits
+    // (1 credit = 1_000_000). Capped at 1 credit so a long conversation never
+    // costs more than one credit. Only used when the credit layer is enabled.
+    accruedCreditsMicro: bigint('accrued_credits_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+
     locale: varchar('locale', { length: 10 }),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
@@ -3258,6 +3266,180 @@ export const aiAdvisorMessagesRelations = relations(
   ({ one }) => ({
     conversation: one(aiAdvisorConversations, {
       fields: [aiAdvisorMessages.conversationId],
+      references: [aiAdvisorConversations.id],
+    }),
+  }),
+);
+
+// ============================================================================
+// AI advisor credits — prepaid balance + priced consumption ledger
+// Micro-credit unit: 1 credit = 1_000_000 micro-credits (integer, no float drift).
+// ============================================================================
+
+/**
+ * Prepaid AI-credit balance per store (never-resetting). Mirrors `sms_credits`.
+ * The monthly INCLUDED allowance (per plan) is separate and DERIVED from the
+ * debit ledger, not stored here. Off-session auto-top-up config lives here too.
+ */
+export const aiCredits = mysqlTable(
+  'ai_credits',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull().unique(),
+
+    balanceMicro: bigint('balance_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    totalGrantedMicro: bigint('total_granted_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    totalPurchasedMicro: bigint('total_purchased_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    totalUsedMicro: bigint('total_used_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+
+    // Off-session auto-top-up, configured by the merchant.
+    autoTopupEnabled: boolean('auto_topup_enabled').notNull().default(false),
+    autoTopupThresholdMicro: bigint('auto_topup_threshold_micro', {
+      mode: 'number',
+    }),
+    autoTopupCredits: int('auto_topup_credits'),
+    autoTopupPriceCents: int('auto_topup_price_cents'),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('ai_credits_store_idx').on(table.storeId),
+  }),
+);
+
+export const aiCreditTransactionType = mysqlEnum('ai_credit_txn_type', [
+  'grant', // free welcome allowance
+  'topup', // one-off Stripe purchase
+  'auto_topup', // off-session auto recharge
+  'adjustment', // manual admin correction
+]);
+
+export const aiCreditTransactionStatus = mysqlEnum('ai_credit_txn_status', [
+  'pending',
+  'completed',
+  'failed',
+]);
+
+/**
+ * Ledger of credit ACQUISITIONS (grants + purchases). Mirrors
+ * `sms_topup_transactions`, with a UNIQUE `dedupKey` for exactly-once webhook
+ * crediting (`checkout:<sessionId>` / `invoice:<id>` / `grant:<storeId>`).
+ */
+export const aiCreditTransactions = mysqlTable(
+  'ai_credit_transactions',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    type: aiCreditTransactionType.notNull(),
+
+    creditsMicro: bigint('credits_micro', { mode: 'number' }).notNull(),
+    amountCents: int('amount_cents').notNull().default(0),
+    currency: varchar('currency', { length: 3 }).notNull().default('eur'),
+
+    dedupKey: varchar('dedup_key', { length: 120 }).unique(),
+
+    stripeSessionId: varchar('stripe_session_id', { length: 255 }),
+    stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
+    stripeInvoiceId: varchar('stripe_invoice_id', { length: 255 }),
+
+    status: aiCreditTransactionStatus.default('pending').notNull(),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { mode: 'date' }),
+  },
+  (table) => ({
+    storeIdx: index('ai_credit_txn_store_idx').on(table.storeId),
+    statusIdx: index('ai_credit_txn_status_idx').on(table.status),
+    stripeSessionIdx: index('ai_credit_txn_stripe_session_idx').on(
+      table.stripeSessionId,
+    ),
+  }),
+);
+
+/**
+ * Append-only ledger of credit CONSUMPTION — one row per model run. Idempotent
+ * via `dedupKey` (`run:<assistantMessageId>`); amounts are frozen at write time.
+ * `costMicroUsd` records the real token cost for audit; the debit is split into
+ * `fromMonthlyMicro` (plan's included allowance) and `fromPrepaidMicro` (prepaid
+ * balance) so monthly usage this period = SUM(fromMonthlyMicro).
+ */
+export const aiCreditDebits = mysqlTable(
+  'ai_credit_debits',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    conversationId: varchar('conversation_id', { length: 21 }).notNull(),
+
+    dedupKey: varchar('dedup_key', { length: 120 }).notNull().unique(),
+
+    inputTokens: int('input_tokens').notNull().default(0),
+    outputTokens: int('output_tokens').notNull().default(0),
+    cachedInputTokens: int('cached_input_tokens').notNull().default(0),
+    // Frozen real cost in micro-USD (1 USD = 1_000_000), for audit/reporting.
+    costMicroUsd: bigint('cost_micro_usd', { mode: 'number' })
+      .notNull()
+      .default(0),
+    // Total credits debited (micro-credits), after the per-conversation cap.
+    debitedMicro: bigint('debited_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    // Split of `debitedMicro` across the two pockets.
+    fromMonthlyMicro: bigint('from_monthly_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    fromPrepaidMicro: bigint('from_prepaid_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Hot path: sum a store's monthly-pocket usage within the period.
+    storeCreatedIdx: index('ai_credit_debits_store_created_idx').on(
+      table.storeId,
+      table.createdAt,
+    ),
+    conversationIdx: index('ai_credit_debits_conversation_idx').on(
+      table.conversationId,
+    ),
+  }),
+);
+
+export const aiCreditsRelations = relations(aiCredits, ({ one }) => ({
+  store: one(stores, {
+    fields: [aiCredits.storeId],
+    references: [stores.id],
+  }),
+}));
+
+export const aiCreditTransactionsRelations = relations(
+  aiCreditTransactions,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [aiCreditTransactions.storeId],
+      references: [stores.id],
+    }),
+  }),
+);
+
+export const aiCreditDebitsRelations = relations(
+  aiCreditDebits,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [aiCreditDebits.storeId],
+      references: [stores.id],
+    }),
+    conversation: one(aiAdvisorConversations, {
+      fields: [aiCreditDebits.conversationId],
       references: [aiAdvisorConversations.id],
     }),
   }),
