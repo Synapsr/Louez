@@ -2,8 +2,9 @@
 
 import { getStorePlan } from '@/lib/plan-limits'
 import { getCurrentStore } from '@/lib/store-context'
-import { getVoiceCatalog } from '@/lib/voice/config'
+import { getRecommendedVoiceIds, getVoiceCatalog } from '@/lib/voice/config'
 import {
+  fetchVoiceById,
   isVoicePreviewEnabled,
   listElevenLabsVoices,
 } from '@/lib/voice/elevenlabs'
@@ -24,22 +25,40 @@ export async function listVoiceOptions(): Promise<
   const plan = await getStorePlan(store.id)
   if (!plan.features.aiPhone) return { error: 'errors.featureNotAvailable' }
 
+  const recommendedIds = getRecommendedVoiceIds()
   const previewEnabled = isVoicePreviewEnabled()
+
+  let voices: PhoneVoiceOption[] = []
   if (previewEnabled) {
-    const voices = await listElevenLabsVoices()
-    if (voices.length > 0) return { voices, previewEnabled: true }
+    voices = await listElevenLabsVoices()
+    // Ensure every recommended voice appears, even if it isn't in the main list.
+    const present = new Set(voices.map((v) => v.id))
+    const missing = [...recommendedIds].filter((id) => !present.has(id))
+    if (missing.length > 0) {
+      const extra = await Promise.all(missing.map((id) => fetchVoiceById(id)))
+      for (const voice of extra) if (voice) voices.push(voice)
+    }
   }
 
-  const catalog = getVoiceCatalog()
-  const seen = new Set<string>()
-  const voices: PhoneVoiceOption[] = []
-  for (const list of Object.values(catalog)) {
-    for (const voice of list) {
-      if (!seen.has(voice.id)) {
-        seen.add(voice.id)
-        voices.push(voice)
+  if (voices.length === 0) {
+    const catalog = getVoiceCatalog()
+    const seen = new Set<string>()
+    for (const list of Object.values(catalog)) {
+      for (const voice of list) {
+        if (!seen.has(voice.id)) {
+          seen.add(voice.id)
+          voices.push(voice)
+        }
       }
     }
   }
-  return { voices, previewEnabled }
+
+  // Mark recommended voices and float them to the top.
+  const marked = voices.map((voice) => ({
+    ...voice,
+    recommended: recommendedIds.has(voice.id),
+  }))
+  marked.sort((a, b) => Number(b.recommended) - Number(a.recommended))
+
+  return { voices: marked, previewEnabled }
 }

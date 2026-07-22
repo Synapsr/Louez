@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { CheckCircle2, Circle, Loader2, Pause, Play } from 'lucide-react'
 
-import { Button, Label } from '@louez/ui'
+import { Badge, Button, Label } from '@louez/ui'
 import { cn } from '@louez/utils'
 
 import { listVoiceOptions } from './voice-catalog-actions'
@@ -13,9 +13,15 @@ import { listVoiceOptions } from './voice-catalog-actions'
 interface VoicePickerProps {
   value: string
   onChange: (voiceId: string) => void
+  /** App locale — the preview is generated in this language when possible. */
+  language: string
 }
 
-export const VoicePicker = ({ value, onChange }: VoicePickerProps) => {
+export const VoicePicker = ({
+  value,
+  onChange,
+  language,
+}: VoicePickerProps) => {
   const t = useTranslations('dashboard.settings.aiVoiceAgent')
 
   const [gender, setGender] = useState<'female' | 'male' | null>(null)
@@ -53,7 +59,9 @@ export const VoicePicker = ({ value, onChange }: VoicePickerProps) => {
     }
     stop()
     const audio = new Audio(
-      `/api/voice/preview?voiceId=${encodeURIComponent(voiceId)}`,
+      `/api/voice/preview?voiceId=${encodeURIComponent(
+        voiceId,
+      )}&language=${encodeURIComponent(language)}`,
     )
     audioRef.current = audio
     setLoadingId(voiceId)
@@ -136,6 +144,11 @@ export const VoicePicker = ({ value, onChange }: VoicePickerProps) => {
               <span className="text-muted-foreground shrink-0 text-xs">
                 {t(`voiceGender.${voice.gender}`)}
               </span>
+              {voice.recommended && (
+                <Badge variant="info" className="shrink-0">
+                  {t('voiceRecommended')}
+                </Badge>
+              )}
             </button>
             {previewEnabled && (
               <Button

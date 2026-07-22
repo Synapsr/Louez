@@ -83,6 +83,8 @@ export interface PhoneVoiceOption {
   /** Human label shown in the picker (e.g. a first name). */
   label: string
   gender: 'male' | 'female'
+  /** Operator-recommended voice — shown first with a badge. */
+  recommended?: boolean
 }
 
 /** Per-locale voice catalog the store picks from. Empty when unconfigured. */

@@ -224,6 +224,9 @@ export const env = createEnv({
     // populated automatically from the account's voices (name + gender) and the
     // store can PREVIEW a voice speaking a sample in the chosen language.
     ELEVENLABS_API_KEY: z.string().optional(),
+    // Voice ids to surface first with a "recommended" badge in the picker,
+    // comma-separated. Operator-curated, kept in env (never in the repo).
+    AI_PHONE_RECOMMENDED_VOICES: z.string().optional(),
 
     // ===== fromHello (Optional — engagement & growth) =====
     FROMHELLO_API_URL: z.url().optional(),
@@ -427,6 +430,7 @@ export const env = createEnv({
     AI_PHONE_DEFAULT_VOICE: process.env.AI_PHONE_DEFAULT_VOICE,
     AI_PHONE_VOICE_CATALOG: process.env.AI_PHONE_VOICE_CATALOG,
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+    AI_PHONE_RECOMMENDED_VOICES: process.env.AI_PHONE_RECOMMENDED_VOICES,
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,

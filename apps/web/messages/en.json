@@ -4364,7 +4364,8 @@
           "female": "Female",
           "male": "Male"
         },
-        "voicePreview": "Preview"
+        "voicePreview": "Preview",
+        "voiceRecommended": "Recommended"
       }
     },
     "aiChat": {

@@ -140,6 +140,8 @@ export const VoiceAgentForm = ({
 
   const isDirty = useStore(form.store, (s) => s.isDirty)
   const isEnabled = useStore(form.store, (s) => s.values.enabled)
+  // The voice preview is generated in the currently selected language.
+  const selectedLanguage = useStore(form.store, (s) => s.values.language)
 
   // Locked state for plans without access — reuses the advisor upgrade copy.
   if (!hasFeatureAccess) {
@@ -245,6 +247,7 @@ export const VoiceAgentForm = ({
                     <VoicePicker
                       value={field.state.value}
                       onChange={(id) => field.handleChange(id)}
+                      language={selectedLanguage}
                     />
                   )}
                 </form.Field>

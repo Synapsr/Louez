@@ -4257,7 +4257,8 @@
           "female": "Donna",
           "male": "Uomo"
         },
-        "voicePreview": "Ascolta"
+        "voicePreview": "Ascolta",
+        "voiceRecommended": "Consigliata"
       }
     },
     "aiChat": {

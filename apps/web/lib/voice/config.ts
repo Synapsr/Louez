@@ -58,6 +58,18 @@ function parseVoiceMap(): Record<string, string> {
   }
 }
 
+/** Operator-recommended voice ids (AI_PHONE_RECOMMENDED_VOICES), surfaced first. */
+export function getRecommendedVoiceIds(): Set<string> {
+  const raw = env.AI_PHONE_RECOMMENDED_VOICES?.trim()
+  if (!raw) return new Set()
+  return new Set(
+    raw
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean),
+  )
+}
+
 /**
  * Voices a store may pick from, per locale, from AI_PHONE_VOICE_CATALOG. Powers
  * the dashboard voice picker. Returns {} when unconfigured or malformed.
