@@ -5467,6 +5467,15 @@
       "viewRequest": "Vedi richiesta",
       "connectToManage": "Accedi alla tua dashboard per accettare o rifiutare questa richiesta."
     },
+    "phoneCallbackLandlord": {
+      "subject": "Un cliente da richiamare — {store}",
+      "title": "Un cliente da richiamare",
+      "body": "Il tuo assistente vocale non è riuscito a completare una richiesta su {storeName} e ti inoltra questo messaggio.",
+      "phone": "Numero da richiamare:",
+      "message": "Messaggio:",
+      "listen": "Apri la chiamata",
+      "footer": "Apri la conversazione per leggere lo scambio e riascoltare la registrazione della chiamata."
+    },
     "teamInvitation": {
       "subject": "{inviterName} ti invita a unirti a {storeName}",
       "title": "Invito al team",

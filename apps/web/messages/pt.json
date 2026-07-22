@@ -5467,6 +5467,15 @@
       "viewRequest": "Ver solicitacao",
       "connectToManage": "Entre no seu painel para aceitar ou rejeitar esta solicitacao."
     },
+    "phoneCallbackLandlord": {
+      "subject": "Um cliente para ligar de volta — {store}",
+      "title": "Um cliente para ligar de volta",
+      "body": "O seu assistente de voz não conseguiu concluir um pedido na {storeName} e transmite-lhe esta mensagem.",
+      "phone": "Número para ligar de volta:",
+      "message": "Mensagem:",
+      "listen": "Abrir a chamada",
+      "footer": "Abra a conversa para ler a troca e voltar a ouvir a gravação da chamada."
+    },
     "teamInvitation": {
       "subject": "{inviterName} convida voce para se juntar a {storeName}",
       "title": "Convite para a equipe",

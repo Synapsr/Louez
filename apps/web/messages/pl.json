@@ -5467,6 +5467,15 @@
       "viewRequest": "Zobacz żądanie",
       "connectToManage": "Zaloguj się do panelu, aby zaakceptować lub odrzucić to żądanie."
     },
+    "phoneCallbackLandlord": {
+      "subject": "Klient do oddzwonienia — {store}",
+      "title": "Klient do oddzwonienia",
+      "body": "Twój asystent głosowy nie mógł dokończyć prośby w {storeName} i przekazuje Ci tę wiadomość.",
+      "phone": "Numer do oddzwonienia:",
+      "message": "Wiadomość:",
+      "listen": "Otwórz rozmowę",
+      "footer": "Otwórz rozmowę, aby przeczytać jej treść i ponownie odsłuchać nagranie."
+    },
     "teamInvitation": {
       "subject": "{inviterName} zaprasza Cię do {storeName}",
       "title": "Zaproszenie do zespołu",

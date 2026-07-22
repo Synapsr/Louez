@@ -5589,6 +5589,15 @@
       "viewRequest": "Voir la demande",
       "connectToManage": "Connectez-vous à votre tableau de bord pour accepter ou refuser cette demande."
     },
+    "phoneCallbackLandlord": {
+      "subject": "Un client à rappeler — {store}",
+      "title": "Un client à rappeler",
+      "body": "Votre assistant vocal n'a pas pu finaliser une demande sur {storeName} et vous transmet ce message.",
+      "phone": "Numéro à rappeler :",
+      "message": "Message :",
+      "listen": "Ouvrir l'appel",
+      "footer": "Ouvrez la conversation pour lire l'échange et réécouter l'enregistrement de l'appel."
+    },
     "teamInvitation": {
       "subject": "{inviterName} vous invite à rejoindre {storeName}",
       "title": "Invitation à rejoindre l'équipe",

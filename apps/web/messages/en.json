@@ -5589,6 +5589,15 @@
       "viewRequest": "View request",
       "connectToManage": "Log in to your dashboard to accept or reject this request."
     },
+    "phoneCallbackLandlord": {
+      "subject": "A caller to call back — {store}",
+      "title": "A caller to call back",
+      "body": "Your voice assistant couldn't complete a request on {storeName} and is passing this message on to you.",
+      "phone": "Callback number:",
+      "message": "Message:",
+      "listen": "Open the call",
+      "footer": "Open the conversation to read the exchange and replay the call recording."
+    },
     "teamInvitation": {
       "subject": "{inviterName} invites you to join {storeName}",
       "title": "Team invitation",

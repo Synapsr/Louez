@@ -5482,6 +5482,15 @@
       "viewRequest": "Ver solicitud",
       "connectToManage": "Inicie sesion en su panel para aceptar o rechazar esta solicitud."
     },
+    "phoneCallbackLandlord": {
+      "subject": "Un cliente al que llamar — {store}",
+      "title": "Un cliente al que llamar",
+      "body": "Tu asistente de voz no pudo completar una solicitud en {storeName} y te transmite este mensaje.",
+      "phone": "Número para devolver la llamada:",
+      "message": "Mensaje:",
+      "listen": "Abrir la llamada",
+      "footer": "Abre la conversación para leer el intercambio y volver a escuchar la grabación de la llamada."
+    },
     "teamInvitation": {
       "subject": "{inviterName} le invita a unirse a {storeName}",
       "title": "Invitacion al equipo",

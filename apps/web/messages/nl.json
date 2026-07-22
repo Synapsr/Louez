@@ -5476,6 +5476,15 @@
       "viewRequest": "Aanvraag bekijken",
       "connectToManage": "Log in op uw dashboard om deze aanvraag te accepteren of af te wijzen."
     },
+    "phoneCallbackLandlord": {
+      "subject": "Een beller om terug te bellen — {store}",
+      "title": "Een beller om terug te bellen",
+      "body": "Je spraakassistent kon een verzoek op {storeName} niet afronden en geeft dit bericht aan je door.",
+      "phone": "Terugbelnummer:",
+      "message": "Bericht:",
+      "listen": "Gesprek openen",
+      "footer": "Open het gesprek om de uitwisseling te lezen en de opname van het gesprek opnieuw te beluisteren."
+    },
     "teamInvitation": {
       "subject": "{inviterName} nodigt u uit om lid te worden van {storeName}",
       "title": "Teamuitnodiging",

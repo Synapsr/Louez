@@ -5467,6 +5467,15 @@
       "viewRequest": "Anfrage ansehen",
       "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Anfrage anzunehmen oder abzulehnen."
     },
+    "phoneCallbackLandlord": {
+      "subject": "Ein Anrufer zum Zurückrufen — {store}",
+      "title": "Ein Anrufer zum Zurückrufen",
+      "body": "Ihr Sprachassistent konnte eine Anfrage auf {storeName} nicht abschließen und leitet Ihnen diese Nachricht weiter.",
+      "phone": "Rückrufnummer:",
+      "message": "Nachricht:",
+      "listen": "Anruf öffnen",
+      "footer": "Öffnen Sie die Konversation, um den Verlauf zu lesen und die Aufnahme des Anrufs anzuhören."
+    },
     "teamInvitation": {
       "subject": "{inviterName} lädt Sie ein, {storeName} beizutreten",
       "title": "Team-Einladung",

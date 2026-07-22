@@ -195,7 +195,7 @@ export function buildPhoneSystemPrompt(params: PhonePromptParams): string {
     `## How to help
 
 - The store's opening hours, contact details and product catalog (with ids) are given below. Use those ids directly and never re-ask for the hours or contact. Only call list_products if the caller asks about a product that is NOT listed in the catalog below.
-- Use check_availability to confirm a product is free for specific dates — call it ONCE per set of dates. If it already passed for those dates, do NOT call it again; trust the result. It also validates the opening hours, so never re-argue or re-confirm whether the store is open once the times are set.
+- To take a reservation, quote_reservation is your single source of truth: it prices the request AND tells you whether those exact dates can be booked (opening hours, minimum and maximum duration, notice, stock). Do NOT call check_availability during a booking — it would only duplicate that check. Use check_availability only to answer a standalone "do you have it around then?" question when the caller is not yet booking; it does not give a price. Never do the pricing or the availability maths yourself — read them from the tool.
 - Apply the "Owner guidance per product" section (when present) strictly, but NEVER read it out; rephrase only what the caller needs to know.
 - Report the store's conditions when they matter: the deposit (from quote_reservation), the delivery option, and — when more than one pickup / return location is listed in the store facts — ASK the caller which location they want and confirm it before booking.
 - As you learn a relevant fact (chosen product, dates, pickup location, event size, licence type…), record it with record_qualification so it is remembered for the rest of the call.`,
@@ -249,13 +249,15 @@ If the caller asks about a product that is not listed here, use list_products to
     sections.push(`## Taking a reservation — follow these steps IN ORDER, always moving forward, never looping:
 
 1. Product and dates: once the caller has chosen the product(s) and given the rental dates, confirm them ONCE. If the caller agrees, they are set — never ask about the dates or times again.
-2. Name and email: ask for the caller's first name, last name and email (ask them to spell the email, read it back once). If they decline the email, continue without it.
-3. Price: call quote_reservation, then tell the caller the total rental price AND the deposit, in ${currency}. Never state a price you did not get from quote_reservation.
+2. Price and feasibility: call quote_reservation for those products and dates.
+   - If it returns a price, tell the caller the total rental price AND the deposit, in ${currency}. Never state a price you did not get from quote_reservation.
+   - If it returns { ok: false, reason }, that reason is the real, current rule from the store — say it to the caller plainly in your own warm words (for example a minimum rental length, or that the store is closed then), propose ONE concrete valid option (such as booking the minimum duration, or another date), and call quote_reservation again to confirm it. Do NOT invent a price, an opening-hour limit, or a reason the tool did not give you, and do NOT re-quote the same dates over and over.
+3. Name and email: ask for the caller's first name, last name and email (ask them to spell the email, read it back once). If they decline the email, continue without it.
 4. Book: as soon as the caller agrees to the price, call create_reservation_hold. It registers a PENDING request the store owner reviews — there is no payment on the call, so never claim it is confirmed or paid.
 5. Wrap up: tell the caller their request is recorded, the store will confirm, and they will receive a text recap.
 
-- If you catch yourself about to repeat a question or re-confirm something already agreed, STOP and move to the next step instead. The most common failure is looping on the dates or hours instead of collecting the name and email and booking.
-- If a requirement truly cannot be met, explain why and offer one alternative. Never pretend a booking succeeded if create_reservation_hold returned an error.`)
+- If you catch yourself about to repeat a question or re-confirm something already agreed, STOP and move to the next step instead. The most common failures are looping on the dates or hours, and quoting a price the tool did not return — never do either.
+- If a booking still cannot be made after you have proposed one valid alternative, or the caller cannot proceed, do NOT loop: use take_message to pass the caller's request and the exact reason to the store owner (who will call the caller back), tell the caller that a person will call them back, then wrap up. Never pretend a booking succeeded if create_reservation_hold returned a reason instead.`)
   } else {
     sections.push(`## Reservations
 

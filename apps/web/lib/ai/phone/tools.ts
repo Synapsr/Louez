@@ -2,12 +2,23 @@ import { tool } from 'ai'
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { aiAdvisorConversations, db, products } from '@louez/db'
+import {
+  aiAdvisorConversations,
+  db,
+  products,
+  storeMembers,
+  stores,
+  users,
+} from '@louez/db'
 
 import { createReservation } from '@/app/(storefront)/[slug]/checkout/actions'
 import { createAdvisorTools } from '@/lib/ai/advisor/tools'
+import { describePhoneQuoteError } from '@/lib/ai/phone/errors'
+import { sendPhoneCallbackLandlordEmail } from '@/lib/email/send'
+import type { EmailLocale } from '@/lib/email/i18n'
 import { log } from '@/lib/evlog'
 import { sendSms } from '@/lib/sms/client'
+import { env } from '@/env'
 
 export type PhoneToolContext = {
   storeId: string
@@ -59,6 +70,60 @@ function buildRecapSms(
 function fallbackEmail(phone: string): string {
   const digits = phone.replace(/[^0-9]/g, '')
   return `caller-${digits || 'unknown'}@phone.invalid`
+}
+
+const EMAIL_LOCALES = ['fr', 'en', 'de', 'es', 'it', 'nl', 'pl', 'pt'] as const
+
+function emailLocale(language: string): EmailLocale {
+  return (EMAIL_LOCALES as readonly string[]).includes(language)
+    ? (language as EmailLocale)
+    : 'en'
+}
+
+/**
+ * Email the store owner a callback request when the agent couldn't complete the
+ * caller's need (booking blocked, phone bookings off, human unavailable). Sends
+ * to the store email, falling back to the owner member. The link points at the
+ * dashboard conversation so the owner can read it and — once the recording lands
+ * after the call — replay it. Best-effort: the caller is never made to wait.
+ */
+async function notifyOwnerOfCallback(
+  ctx: PhoneToolContext,
+  params: { message: string; callbackNumber: string },
+): Promise<void> {
+  const [storeRow] = await db
+    .select({ email: stores.email })
+    .from(stores)
+    .where(eq(stores.id, ctx.storeId))
+    .limit(1)
+
+  let to = storeRow?.email ?? null
+  if (!to) {
+    const owner = await db
+      .select({ email: users.email })
+      .from(storeMembers)
+      .innerJoin(users, eq(storeMembers.userId, users.id))
+      .where(
+        and(
+          eq(storeMembers.storeId, ctx.storeId),
+          eq(storeMembers.role, 'owner'),
+        ),
+      )
+      .limit(1)
+    to = owner[0]?.email ?? null
+  }
+  if (!to) return
+
+  const conversationUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/ai-advisor?conversation=${ctx.conversationId}`
+  await sendPhoneCallbackLandlordEmail({
+    to,
+    storeId: ctx.storeId,
+    storeName: ctx.storeName,
+    callerPhone: params.callbackNumber,
+    message: params.message,
+    conversationUrl,
+    locale: emailLocale(ctx.language),
+  })
 }
 
 type PhoneItemInput = {
@@ -222,10 +287,14 @@ export function createPhoneTools(ctx: PhoneToolContext) {
         !result.reservationNumber
       ) {
         return {
-          error:
-            result && 'error' in result && result.error
-              ? result.error
-              : 'Could not create the reservation.',
+          ok: false,
+          reason: describePhoneQuoteError(
+            result && 'error' in result ? result.error : undefined,
+            result && 'errorParams' in result
+              ? (result as { errorParams?: Record<string, unknown> }).errorParams
+              : undefined,
+            ctx.language,
+          ),
         }
       }
 
@@ -262,6 +331,7 @@ export function createPhoneTools(ctx: PhoneToolContext) {
       }
 
       return {
+        ok: true,
         booked: true,
         reservationNumber: result.reservationNumber,
         smsSent: Boolean(phone),
@@ -271,7 +341,7 @@ export function createPhoneTools(ctx: PhoneToolContext) {
 
   const quote_reservation = tool({
     description:
-      'Compute the exact rental price and deposit for the requested items and dates WITHOUT booking anything. Call this before create_reservation_hold so you can tell the caller the real total and deposit, in the store currency, and get their explicit agreement. The amounts are authoritative (server-computed) — never quote a price you did not get from this tool.',
+      'For the requested products and dates, this is the single source of truth: it returns { ok: true, total, deposit, currency } with the exact server-computed price, OR { ok: false, reason } when those dates cannot be booked (outside opening hours, below the minimum or above the maximum rental duration, not enough notice, or out of stock). It already checks availability, so you do NOT need check_availability during a booking. Call it before create_reservation_hold. If ok is false, tell the caller the reason plainly and propose one valid alternative — never invent a price, an opening-hour limit, or a reason it did not give you.',
     inputSchema: z.object({
       items: z
         .array(
@@ -287,7 +357,12 @@ export function createPhoneTools(ctx: PhoneToolContext) {
     }),
     execute: async ({ items }) => {
       const built = await buildPhoneReservationItems(ctx.storeId, items)
-      if ('error' in built) return { error: built.error }
+      if ('error' in built) {
+        return {
+          ok: false,
+          reason: describePhoneQuoteError('productNotFound', undefined, ctx.language),
+        }
+      }
 
       const result = await createReservation({
         storeId: ctx.storeId,
@@ -302,27 +377,36 @@ export function createPhoneTools(ctx: PhoneToolContext) {
         quoteOnly: true,
       })
 
+      // A quote runs the exact same validations as a real booking (opening
+      // hours, advance notice, min/max duration, per-item stock). On failure we
+      // hand the model a spoken reason it can relay — never a raw error key.
       if (!result || !('quote' in result) || !result.quote) {
         return {
-          error:
-            result && 'error' in result && result.error
-              ? result.error
-              : 'Could not price the reservation.',
+          ok: false,
+          reason: describePhoneQuoteError(
+            result && 'error' in result ? result.error : undefined,
+            result && 'errorParams' in result
+              ? (result as { errorParams?: Record<string, unknown> }).errorParams
+              : undefined,
+            ctx.language,
+          ),
         }
       }
       const { subtotal, deposit, total, currency } = result.quote
-      return { subtotal, deposit, total, currency }
+      return { ok: true, subtotal, deposit, total, currency }
     },
   })
 
   const take_message = tool({
     description:
-      "Record a message or callback request from the caller when you can't complete their request (e.g. bookings are off, or they want a human who is unavailable). The store owner will see it.",
+      "Hand the caller off to the store owner when you can't complete their request yourself — a booking that can't be made for a given reason, phone bookings being off, or a caller who wants a human who isn't available. The owner is emailed the message and will call the caller back, and it is also saved on the call record. Use this instead of looping when a booking keeps failing.",
     inputSchema: z.object({
       message: z
         .string()
         .max(1000)
-        .describe('The caller message, in the caller language'),
+        .describe(
+          'What to pass to the owner, in the caller language: what the caller wants and — if a booking failed — the exact reason it could not be made.',
+        ),
       callbackNumber: z
         .string()
         .max(32)
@@ -348,6 +432,19 @@ export function createPhoneTools(ctx: PhoneToolContext) {
         )
       if (result[0].affectedRows === 0) {
         return { error: 'Conversation not found' }
+      }
+
+      // Email the owner so they can call the caller back — best-effort, never
+      // blocks or fails the call.
+      try {
+        await notifyOwnerOfCallback(ctx, payload)
+      } catch (error) {
+        log.error(
+          'phone',
+          `owner callback email failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        )
       }
       return { saved: true }
     },

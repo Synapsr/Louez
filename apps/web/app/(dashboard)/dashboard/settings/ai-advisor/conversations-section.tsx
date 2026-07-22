@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useFormatter, useTranslations } from 'next-intl'
 import {
@@ -58,12 +59,20 @@ function formatCallDuration(seconds: number): string {
 export const AdvisorConversationsSection = () => {
   const t = useTranslations('dashboard.settings.aiAdvisor.conversations')
   const format = useFormatter()
+  const searchParams = useSearchParams()
 
   const [filter, setFilter] = useState<AdvisorConversationFilter>('all')
   const [page, setPage] = useState(1)
   const [selectedConversationId, setSelectedConversationId] = useState<
     string | null
   >(null)
+
+  // Deep link (e.g. from the owner callback email): ?conversation=<id> opens
+  // that call directly so the owner can read it and replay the recording.
+  useEffect(() => {
+    const id = searchParams.get('conversation')
+    if (id) setSelectedConversationId(id)
+  }, [searchParams])
 
   const conversationsQuery = useQuery({
     ...orpc.dashboard.aiAdvisor.listConversations.queryOptions({

@@ -23,6 +23,7 @@ import {
   ReminderDigestAdminEmail,
   type DigestEntry,
   NewRequestLandlordEmail,
+  PhoneCallbackLandlordEmail,
   TeamInvitationEmail,
   RewardUnlockedEmail,
   InstantAccessEmail,
@@ -1009,6 +1010,63 @@ export async function sendNewRequestLandlordEmail({
       to,
       subject,
       templateType: 'new_request_landlord',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Phone callback request to the store owner (AI voice agent couldn't finish)
+export async function sendPhoneCallbackLandlordEmail({
+  to,
+  storeId,
+  storeName,
+  primaryColor,
+  callerPhone,
+  message,
+  conversationUrl,
+  locale = 'fr',
+}: {
+  to: string
+  storeId: string
+  storeName: string
+  primaryColor?: string
+  callerPhone: string
+  message: string
+  conversationUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.phoneCallbackLandlord.subject.replace('{store}', storeName)
+  const html = await render(
+    PhoneCallbackLandlordEmail({
+      storeName,
+      primaryColor: primaryColor || '#0066FF',
+      callerPhone,
+      message,
+      conversationUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: storeName })
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: 'phone_callback_landlord',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: 'phone_callback_landlord',
       status: 'failed',
       error: String(error),
     })
