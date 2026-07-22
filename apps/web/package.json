@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit",
     "db:seed": "tsx scripts/seed/index.ts",
     "pwa:icons": "tsx scripts/generate-pwa-icons.ts",
-    "dev-localify": "echo Localify URL: https://louez.localify && AUTH_URL=https://louez.localify NEXT_PUBLIC_APP_URL=https://louez.localify NEXT_PUBLIC_APP_DOMAIN=louez.localify next dev --hostname 127.0.0.1 --port 61092 --turbopack"
+    "dev-localify": "echo Localify URL: https://louez.localify && AUTH_URL=https://louez.localify NEXT_PUBLIC_APP_URL=https://louez.localify NEXT_PUBLIC_APP_DOMAIN=louez.localify next dev --hostname 127.0.0.1 --port 60441 --turbopack"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",

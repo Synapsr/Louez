@@ -755,16 +755,6 @@
         "archived": "Archiviert"
       },
       "form": {
-        "steps": {
-          "photos": "Fotos",
-          "photosDescription": "Produktbilder",
-          "info": "Informationen",
-          "infoDescription": "Name und Beschreibung",
-          "pricing": "Preise",
-          "pricingDescription": "Preis und Tarife",
-          "preview": "Veröffentlichen",
-          "previewDescription": "Überprüfen und veröffentlichen"
-        },
         "photos": "Fotos",
         "photosDescription": "Fügen Sie bis zu 5 Fotos Ihres Produkts hinzu",
         "addImage": "Hinzufügen",
@@ -889,7 +879,9 @@
             "strictLine": "Feste Stufen",
             "progressiveLine": "Progressiv",
             "savings": "Kundenersparnis",
-            "basePricing": "Basistarife"
+            "basePricing": "Basistarife",
+            "title": "Preissimulation",
+            "subtitle": "Gesamtpreis nach Mietdauer"
           }
         },
         "unitTracking": {
@@ -945,7 +937,10 @@
           "purchaseDetails": "Kaufdetails",
           "unitDetails": "Details",
           "existingUnitDetailsHint": "Kaufdetails, Notizen und Lebenszyklus werden im Inventar verwaltet.",
-          "openInventoryDetails": "Inventar öffnen"
+          "openInventoryDetails": "Inventar öffnen",
+          "benefitIdentify": "Kennzeichnen Sie jedes Exemplar mit Seriennummer oder Referenz",
+          "benefitAvailability": "Verfolgen Sie Verfügbarkeit und Vermietungen jedes Exemplars",
+          "benefitInventory": "Erfassen Sie Kaufpreis und Kaufdatum für Ihr Inventar"
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",
@@ -953,8 +948,6 @@
         "noName": "Kein Name",
         "units": "Einheit(en)",
         "recommended": "Empfohlen",
-        "previous": "Zurück",
-        "next": "Weiter",
         "videoUrl": "YouTube-Video",
         "videoUrlPlaceholder": "https://www.youtube.com/watch?v=...",
         "videoUrlHelp": "Optional - Fügen Sie ein Präsentationsvideo für Ihr Produkt hinzu",
@@ -1071,7 +1064,21 @@
               "margin": "Marge / Tag"
             }
           }
-        }
+        },
+        "productSection": "Produkt",
+        "productSectionDescription": "Name, Fotos und Beschreibung Ihres Produkts",
+        "addVideo": "YouTube-Video hinzufügen",
+        "categorySearchPlaceholder": "Suchen oder erstellen…",
+        "categoryCreateOption": "„{name}“ erstellen",
+        "categoryNoResults": "Keine Kategorie gefunden",
+        "summary": {
+          "checklistTitle": "Fortschritt",
+          "required": "Erforderlich"
+        },
+        "videoTileLabel": "Video",
+        "videoInvalid": "Ungültiger YouTube-Link",
+        "editVideo": "Video bearbeiten",
+        "removeVideo": "Video entfernen"
       },
       "deleteConfirm": {
         "title": "Dieses Produkt löschen?",

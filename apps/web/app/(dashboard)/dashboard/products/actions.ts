@@ -1029,7 +1029,9 @@ export async function createCategory(data: CategoryInput) {
   });
   const maxOrder = Math.max(0, ...existingCategories.map((c) => c.order || 0));
 
+  const categoryId = nanoid();
   await db.insert(categories).values({
+    id: categoryId,
     storeId: store.id,
     name: validated.data.name,
     description: validated.data.description || null,
@@ -1038,7 +1040,7 @@ export async function createCategory(data: CategoryInput) {
 
   revalidatePath("/dashboard/products");
   revalidatePath("/dashboard/categories");
-  return { success: true };
+  return { success: true, category: { id: categoryId, name: validated.data.name } };
 }
 
 export async function updateCategory(categoryId: string, data: CategoryInput) {

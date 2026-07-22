@@ -5,14 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { revalidateLogic, useStore } from "@tanstack/react-form";
-import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { PricingMode } from "@louez/types";
 import { toastManager } from "@louez/ui";
 import { Button } from "@louez/ui";
-import { Card, CardContent } from "@louez/ui";
-import { StepActions, StepContent, Stepper } from "@louez/ui";
+import { StepActions } from "@louez/ui";
 import { getCurrencySymbol, minutesToPriceDuration, priceDurationToMinutes } from "@louez/utils";
 import {
   type PricingTierInput as LegacyPricingTierInput,
@@ -28,18 +27,19 @@ import { useAppForm } from "@/hooks/form/form";
 import { ProductAssuranceSection } from "./components/product-assurance-section";
 import { ProductFormEditToc } from "./components/product-form-edit-toc";
 import { ProductFormSectionAccessories } from "./components/product-form-section-accessories";
+import { ProductFormSectionProduct } from "./components/product-form-section-product";
 import { ProductFormSectionStock } from "./components/product-form-section-stock";
 import { ProductFormStepInfo } from "./components/product-form-step-info";
 import { ProductFormStepPhotos } from "./components/product-form-step-photos";
-import { ProductFormStepPreview } from "./components/product-form-step-preview";
 import { ProductFormStepPricing } from "./components/product-form-step-pricing";
+import { ProductFormSummaryPanel } from "./components/product-form-summary-panel";
 import { ProductImageCropDialog } from "./components/product-image-crop-dialog";
 import { useProductFormMedia } from "./hooks/use-product-form-media";
 import { useProductFormMutations } from "./hooks/use-product-form-mutations";
-import { useProductFormStepFlow } from "./hooks/use-product-form-step-flow";
 import { getProductSeasonalPricings } from "./seasonal-actions";
 import type {
   BookingAttributeAxisData,
+  Category,
   ProductFormComponentApi,
   ProductFormProps,
   SeasonalPricingData,
@@ -95,8 +95,7 @@ export function ProductForm({
   const currencySymbol = getCurrencySymbol(currency);
 
   const isEditMode = !!product;
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [localCategories, setLocalCategories] = useState<Category[]>([]);
   const {
     isSaving,
     isCreatingCategory,
@@ -212,6 +211,15 @@ export function ProductForm({
 
   const productFormSchema = useMemo(() => createProductSchema(tValidation), [tValidation]);
 
+  const scrollToFirstError = useCallback(() => {
+    if (typeof window === "undefined") return;
+    window.setTimeout(() => {
+      document
+        .querySelector('[aria-invalid="true"], [data-invalid="true"], p.text-destructive')
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+  }, []);
+
   const initialBasePriceDuration = (() => {
     if (product?.basePeriodMinutes) {
       const period = minutesToPriceDuration(product.basePeriodMinutes);
@@ -256,6 +264,9 @@ export function ProductForm({
       modeAfterSubmission: "change",
     }),
     validators: { onSubmit: productFormSchema },
+    onSubmitInvalid: () => {
+      scrollToFirstError();
+    },
     onSubmit: async ({ value }) => {
       try {
         await submitProduct(value);
@@ -318,34 +329,42 @@ export function ProductForm({
     form.reset();
   }, [form]);
 
-  const handleCreateCategory = async () => {
-    const name = newCategoryName.trim();
-    if (!name) return;
+  const handleCreateCategory = useCallback(
+    async (name: string): Promise<string | null> => {
+      const trimmed = name.trim();
+      if (!trimmed) return null;
 
-    try {
-      await createCategoryByName(name);
-      toastManager.add({ title: t("categoryCreated"), type: "success" });
-      setNewCategoryName("");
-      setCategoryDialogOpen(false);
-      router.refresh();
-    } catch (error) {
-      toastManager.add({ title: getActionErrorMessage(error), type: "error" });
-    }
-  };
+      try {
+        const result = await createCategoryByName(trimmed);
+        const created =
+          result && typeof result === "object" && "category" in result && result.category
+            ? (result.category as Category)
+            : null;
 
-  const setSubmitError = useCallback(
-    (name: "name" | "price" | "quantity" | "units", message: string) => {
-      form.setFieldMeta(name, (prev) => ({
-        ...prev,
-        isTouched: true,
-        errorMap: {
-          ...prev?.errorMap,
-          onSubmit: message,
-        },
-      }));
+        if (created) {
+          setLocalCategories((prev) =>
+            prev.some((category) => category.id === created.id) ? prev : [...prev, created],
+          );
+        }
+
+        toastManager.add({ title: t("categoryCreated"), type: "success" });
+        router.refresh();
+        return created?.id ?? null;
+      } catch (error) {
+        toastManager.add({ title: getActionErrorMessage(error), type: "error" });
+        return null;
+      }
     },
-    [form],
+    [createCategoryByName, getActionErrorMessage, router, t],
   );
+
+  const allCategories = useMemo(() => {
+    const byId = new Map(categories.map((category) => [category.id, category]));
+    for (const category of localCategories) {
+      if (!byId.has(category.id)) byId.set(category.id, category);
+    }
+    return Array.from(byId.values());
+  }, [categories, localCategories]);
 
   const clearSubmitError = useCallback(
     (name: "name" | "price" | "quantity" | "units" | "rateTiers") => {
@@ -378,74 +397,6 @@ export function ProductForm({
     [duplicateRateTierIndexes, localDuplicateRateTierIndexes],
   );
 
-  const validateCurrentStep = useCallback(
-    (step: number) => {
-      const nameValue = watchedValues.name ?? "";
-      const quantityValue = watchedValues.quantity ?? "";
-
-      let isValid = true;
-
-      if (step === 1) {
-        const trimmed = nameValue.trim();
-        if (!trimmed) {
-          setSubmitError("name", tValidation("required"));
-          isValid = false;
-        } else if (trimmed.length < 2) {
-          setSubmitError("name", tValidation("minLength", { min: 2 }));
-          isValid = false;
-        } else {
-          clearSubmitError("name");
-        }
-      }
-
-      if (step === 2) {
-        const ratePriceValue = watchedValues.basePriceDuration?.price ?? "";
-
-        if (!ratePriceValue.trim()) {
-          setSubmitError("price", tValidation("required"));
-          isValid = false;
-        } else if (!/^\d+([.,]\d{1,2})?$/.test(ratePriceValue.trim())) {
-          setSubmitError("price", tValidation("positive"));
-          isValid = false;
-        } else {
-          clearSubmitError("price");
-        }
-
-        if (!quantityValue.trim()) {
-          setSubmitError("quantity", tValidation("required"));
-          isValid = false;
-        } else if (!/^\d+$/.test(quantityValue.trim())) {
-          setSubmitError("quantity", tValidation("integer"));
-          isValid = false;
-        } else {
-          clearSubmitError("quantity");
-        }
-
-        if (watchedValues.trackUnits) {
-          const hasMissingUnitIdentifier = (watchedValues.units ?? []).some(
-            (unit) => !unit.identifier.trim(),
-          );
-          if (hasMissingUnitIdentifier) {
-            setSubmitError("units", tValidation("required"));
-            isValid = false;
-          } else {
-            clearSubmitError("units");
-          }
-        } else {
-          clearSubmitError("units");
-        }
-      }
-
-      return isValid;
-    },
-    [clearSubmitError, setSubmitError, tValidation, watchedValues],
-  );
-
-  const { steps, currentStep, stepDirection, goToNextStep, goToPreviousStep, goToStep } =
-    useProductFormStepFlow({
-      validateCurrentStep,
-    });
-
   useEffect(() => {
     if (!pendingDuplicateRateTierIndexes?.length) return;
 
@@ -459,9 +410,7 @@ export function ProductForm({
       },
     }));
 
-    if (!isEditMode) {
-      goToStep(2);
-    } else if (typeof window !== "undefined") {
+    if (typeof window !== "undefined") {
       window.requestAnimationFrame(() => {
         document
           .getElementById("section-pricing")
@@ -470,7 +419,7 @@ export function ProductForm({
     }
 
     setPendingDuplicateRateTierIndexes(null);
-  }, [form, goToStep, isEditMode, pendingDuplicateRateTierIndexes, t]);
+  }, [form, pendingDuplicateRateTierIndexes, t]);
 
   useEffect(() => {
     const hasDuplicateRates = localDuplicateRateTierIndexes.length > 0;
@@ -490,10 +439,6 @@ export function ProductForm({
       },
     }));
 
-    if (!isEditMode && currentStep > 2) {
-      goToStep(2);
-    }
-
     if (!hasShownDuplicateRateToastRef.current) {
       toastManager.add({
         title: t("pricingTiers.duplicateDurationError"),
@@ -501,18 +446,9 @@ export function ProductForm({
       });
       hasShownDuplicateRateToastRef.current = true;
     }
-  }, [
-    currentStep,
-    form,
-    goToStep,
-    isEditMode,
-    localDuplicateRateTierIndexes,
-    submissionAttempts,
-    t,
-    rateTiersSubmitError,
-  ]);
+  }, [form, localDuplicateRateTierIndexes, submissionAttempts, t, rateTiersSubmitError]);
 
-  const selectedCategory = categories.find((c) => c.id === watchedValues.categoryId);
+  const selectedCategory = allCategories.find((c) => c.id === watchedValues.categoryId);
 
   const effectivePricingMode: PricingMode =
     watchedValues.basePriceDuration?.unit === "week"
@@ -563,11 +499,7 @@ export function ProductForm({
                 <div id="section-information" className="scroll-mt-8">
                   <ProductFormStepInfo
                     form={form as unknown as ProductFormComponentApi}
-                    categories={categories}
-                    categoryDialogOpen={categoryDialogOpen}
-                    newCategoryName={newCategoryName}
-                    setNewCategoryName={setNewCategoryName}
-                    onCategoryDialogOpenChange={setCategoryDialogOpen}
+                    categories={allCategories}
                     onCreateCategory={handleCreateCategory}
                     isCreatingCategory={isCreatingCategory}
                     onNameInputChange={(event, handleChange) => {
@@ -655,123 +587,88 @@ export function ProductForm({
     );
   }
 
-  // Create mode: stepper flow
+  // Create mode: single page with form sections + sticky summary panel
   return (
     <>
       <form.AppForm>
         <form.Form className="space-y-6">
-          {/* Stepper */}
-          <Card>
-            <CardContent className="pt-6">
-              <Stepper steps={steps} currentStep={currentStep} onStepClick={goToStep} />
-            </CardContent>
-          </Card>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+            <div className="min-w-0 flex-1 space-y-6">
+              <div id="section-product" className="scroll-mt-8">
+                <ProductFormSectionProduct
+                  form={form as unknown as ProductFormComponentApi}
+                  categories={allCategories}
+                  onCreateCategory={handleCreateCategory}
+                  isCreatingCategory={isCreatingCategory}
+                  onNameInputChange={(event, handleChange) => {
+                    form.setFieldMeta("name", (prev) => ({
+                      ...prev,
+                      errorMap: { ...prev?.errorMap, onSubmit: undefined },
+                    }));
+                    handleChange(event.target.value);
+                  }}
+                  imagesPreviews={imagesPreviews}
+                  isDragging={media.isDragging}
+                  isUploadingImages={media.isUploadingImages}
+                  handleImageUpload={media.handleImageUpload}
+                  handleDragOver={media.handleDragOver}
+                  handleDragEnter={media.handleDragEnter}
+                  handleDragLeave={media.handleDragLeave}
+                  handleDrop={media.handleDrop}
+                  removeImage={media.removeImage}
+                  setMainImage={media.setMainImage}
+                  recropImage={media.recropImage}
+                  canRecrop={false}
+                />
+              </div>
 
-          {/* Step Content */}
-          {currentStep === 0 && (
-            <StepContent direction={stepDirection}>
-              <ProductFormStepPhotos
-                form={form as unknown as ProductFormComponentApi}
-                imagesPreviews={imagesPreviews}
-                isDragging={media.isDragging}
-                isUploadingImages={media.isUploadingImages}
-                handleImageUpload={media.handleImageUpload}
-                handleDragOver={media.handleDragOver}
-                handleDragEnter={media.handleDragEnter}
-                handleDragLeave={media.handleDragLeave}
-                handleDrop={media.handleDrop}
-                removeImage={media.removeImage}
-                setMainImage={media.setMainImage}
-                recropImage={media.recropImage}
-                canRecrop={false}
-              />
-            </StepContent>
-          )}
+              <div id="section-pricing" className="scroll-mt-8">
+                <ProductFormStepPricing
+                  form={form as unknown as ProductFormComponentApi}
+                  watchedValues={watchedValues}
+                  currency={currency}
+                  currencySymbol={currencySymbol}
+                  isSaving={isSaving}
+                  duplicateRateTierIndexes={effectiveDuplicateRateTierIndexes}
+                  onRateTiersEdit={clearDuplicateRateTierErrors}
+                  storeTaxSettings={storeTaxSettings}
+                  availableAccessories={availableAccessories}
+                  showAccessories={false}
+                  showUnitValidationErrors={hasUnitsSubmitError || submissionAttempts > 0}
+                />
+              </div>
+            </div>
 
-          {currentStep === 1 && (
-            <StepContent direction={stepDirection}>
-              <ProductFormStepInfo
-                form={form as unknown as ProductFormComponentApi}
-                categories={categories}
-                categoryDialogOpen={categoryDialogOpen}
-                newCategoryName={newCategoryName}
-                setNewCategoryName={setNewCategoryName}
-                onCategoryDialogOpenChange={setCategoryDialogOpen}
-                onCreateCategory={handleCreateCategory}
-                isCreatingCategory={isCreatingCategory}
-                onNameInputChange={(event, handleChange) => {
-                  form.setFieldMeta("name", (prev) => ({
-                    ...prev,
-                    errorMap: { ...prev?.errorMap, onSubmit: undefined },
-                  }));
-                  handleChange(event.target.value);
-                }}
-              />
-            </StepContent>
-          )}
-
-          {currentStep === 2 && (
-            <StepContent direction={stepDirection}>
-              <ProductFormStepPricing
-                form={form as unknown as ProductFormComponentApi}
-                watchedValues={watchedValues}
-                currency={currency}
-                currencySymbol={currencySymbol}
-                isSaving={isSaving}
-                duplicateRateTierIndexes={effectiveDuplicateRateTierIndexes}
-                onRateTiersEdit={clearDuplicateRateTierErrors}
-                storeTaxSettings={storeTaxSettings}
-                availableAccessories={availableAccessories}
-                showAccessories={false}
-                showUnitValidationErrors={hasUnitsSubmitError || submissionAttempts > 0}
-              />
-            </StepContent>
-          )}
-
-          {currentStep === 3 && (
-            <StepContent direction={stepDirection}>
-              <ProductFormStepPreview
+            <aside className="w-full shrink-0 lg:sticky lg:top-6 lg:w-80 xl:w-88">
+              <ProductFormSummaryPanel
                 form={form as unknown as ProductFormComponentApi}
                 watchedValues={watchedValues}
                 imagesPreviews={imagesPreviews}
                 selectedCategory={selectedCategory}
                 priceLabel={priceLabel}
+                currency={currency}
               />
-            </StepContent>
-          )}
+            </aside>
+          </div>
 
-          {/* Navigation */}
+          {/* Actions */}
           <StepActions>
             <div>
-              {currentStep > 0 ? (
-                <Button type="button" variant="outline" onClick={goToPreviousStep}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  {t("previous")}
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/dashboard/products")}
-                >
-                  {tCommon("cancel")}
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push("/dashboard/products")}
+              >
+                {tCommon("cancel")}
+              </Button>
             </div>
 
             <div className="flex gap-3">
-              {currentStep < steps.length - 1 ? (
-                <Button key="next" type="button" onClick={goToNextStep}>
-                  {t("next")}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button key="submit" type="submit" disabled={isSaving}>
-                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <Check className="mr-2 h-4 w-4" />
-                  {product ? t("save") : t("createProduct")}
-                </Button>
-              )}
+              <Button type="submit" disabled={isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Check className="mr-2 h-4 w-4" />
+                {t("createProduct")}
+              </Button>
             </div>
           </StepActions>
         </form.Form>

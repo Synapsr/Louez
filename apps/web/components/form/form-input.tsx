@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Input, type InputProps, Label } from '@louez/ui';
+import { Input, type InputProps, Label } from "@louez/ui";
 
-import { getFieldError, useFieldContext } from '@/hooks/form/form-context';
+import { getFieldError, useFieldContext } from "@/hooks/form/form-context";
 
 export function FormInput({
   label,
@@ -28,12 +28,12 @@ export function FormInput({
       onBlur={field.handleBlur}
       aria-invalid={errors.length > 0}
       {...props}
-      className={suffix ? `pr-8 ${className ?? ''}`.trim() : className}
+      className={suffix ? `pr-8 ${className ?? ""}`.trim() : className}
     />
   );
 
   return (
-    <div className="space-y-2 min-w-0">
+    <div className="flex flex-col gap-2 min-w-0">
       {label && (
         <Label htmlFor={field.name} data-error={errors.length > 0}>
           {label}
@@ -49,12 +49,8 @@ export function FormInput({
       ) : (
         inputElement
       )}
-      {description && (
-        <p className="text-muted-foreground text-sm">{description}</p>
-      )}
-      {error && (
-        <p className="text-destructive text-sm">{getFieldError(error)}</p>
-      )}
+      {description && <p className="text-muted-foreground text-sm">{description}</p>}
+      {error && <p className="text-destructive text-sm">{getFieldError(error)}</p>}
     </div>
   );
 }

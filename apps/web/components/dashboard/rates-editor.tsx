@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
-import { HelpCircle, Plus, Trash2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { ChartSpline, HelpCircle, Plus, Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   AreaChart,
   Area,
@@ -14,9 +15,9 @@ import {
   ResponsiveContainer,
   Legend,
   ReferenceDot,
-} from 'recharts';
+} from "recharts";
 
-import type { Rate } from '@louez/types';
+import type { Rate } from "@louez/types";
 import {
   Button,
   Dialog,
@@ -36,19 +37,16 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
-} from '@louez/ui';
+} from "@louez/ui";
 import {
   type DurationUnit,
   calculateRateBasedPrice,
   computeReductionPercent,
   formatCurrency,
   priceDurationToMinutes,
-} from '@louez/utils';
+} from "@louez/utils";
 
-import {
-  PriceDurationInput,
-  type PriceDurationValue,
-} from '@/components/ui/price-duration-input';
+import { PriceDurationInput, type PriceDurationValue } from "@/components/ui/price-duration-input";
 
 interface RateEditorRow {
   id?: string;
@@ -73,11 +71,11 @@ interface RatesEditorProps {
 }
 
 export interface ChartDataPoint {
-  durationMinutes: number
-  durationLabel: string
-  strictTotal: number
-  progressiveTotal: number
-  isTierAnchor: boolean
+  durationMinutes: number;
+  durationLabel: string;
+  strictTotal: number;
+  progressiveTotal: number;
+  isTierAnchor: boolean;
 }
 
 /**
@@ -92,29 +90,29 @@ function formatDurationShort(
 ): string {
   const abbrev = (unit: DurationUnit, count: number) => {
     const key =
-      unit === 'minute'
-        ? 'minuteUnit'
-        : unit === 'hour'
-          ? 'hourUnit'
-          : unit === 'week'
-            ? 'weekUnit'
-            : 'dayUnit';
+      unit === "minute"
+        ? "minuteUnit"
+        : unit === "hour"
+          ? "hourUnit"
+          : unit === "week"
+            ? "weekUnit"
+            : "dayUnit";
     return `${count}${tCommon(key, { count }).charAt(0).toLowerCase()}`;
   };
 
   if (minutes >= 10080 && minutes % 10080 === 0) {
-    return abbrev('week', minutes / 10080);
+    return abbrev("week", minutes / 10080);
   }
   if (minutes >= 1440) {
     const days = Math.floor(minutes / 1440);
     const remainingHours = Math.round((minutes % 1440) / 60);
-    if (remainingHours === 0) return abbrev('day', days);
-    return `${abbrev('day', days)} ${abbrev('hour', remainingHours)}`;
+    if (remainingHours === 0) return abbrev("day", days);
+    return `${abbrev("day", days)} ${abbrev("hour", remainingHours)}`;
   }
   if (minutes >= 60) {
-    return abbrev('hour', Math.round(minutes / 60));
+    return abbrev("hour", Math.round(minutes / 60));
   }
-  return abbrev('minute', minutes);
+  return abbrev("minute", minutes);
 }
 
 /**
@@ -127,29 +125,29 @@ function formatDurationLong(
 ): string {
   const full = (unit: DurationUnit, count: number) => {
     const key =
-      unit === 'minute'
-        ? 'minuteUnit'
-        : unit === 'hour'
-          ? 'hourUnit'
-          : unit === 'week'
-            ? 'weekUnit'
-            : 'dayUnit';
+      unit === "minute"
+        ? "minuteUnit"
+        : unit === "hour"
+          ? "hourUnit"
+          : unit === "week"
+            ? "weekUnit"
+            : "dayUnit";
     return `${count} ${tCommon(key, { count })}`;
   };
 
   if (minutes >= 10080 && minutes % 10080 === 0) {
-    return full('week', minutes / 10080);
+    return full("week", minutes / 10080);
   }
   if (minutes >= 1440) {
     const days = Math.floor(minutes / 1440);
     const remainingHours = Math.round((minutes % 1440) / 60);
-    if (remainingHours === 0) return full('day', days);
-    return `${full('day', days)} ${full('hour', remainingHours)}`;
+    if (remainingHours === 0) return full("day", days);
+    return `${full("day", days)} ${full("hour", remainingHours)}`;
   }
   if (minutes >= 60) {
-    return full('hour', Math.round(minutes / 60));
+    return full("hour", Math.round(minutes / 60));
   }
-  return full('minute', minutes);
+  return full("minute", minutes);
 }
 
 const DURATION_MULTIPLIERS_BY_UNIT: Record<DurationUnit, number[]> = {
@@ -160,15 +158,14 @@ const DURATION_MULTIPLIERS_BY_UNIT: Record<DurationUnit, number[]> = {
 };
 
 function toNumber(value: string): number {
-  const parsed = Number.parseFloat(value.replace(',', '.'));
+  const parsed = Number.parseFloat(value.replace(",", "."));
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function sortRatesByDuration(rates: RateEditorRow[]): RateEditorRow[] {
   return [...rates].sort((a, b) => {
     const durationDiff =
-      priceDurationToMinutes(a.duration, a.unit) -
-      priceDurationToMinutes(b.duration, b.unit);
+      priceDurationToMinutes(a.duration, a.unit) - priceDurationToMinutes(b.duration, b.unit);
 
     if (durationDiff !== 0) return durationDiff;
 
@@ -196,20 +193,20 @@ function nextTierDuration(params: {
 const CLEAN_STEPS = [15, 30, 60, 120, 240, 360, 720, 1440, 2880, 4320, 10080];
 const ONE_WEEK_MINUTES = 10080;
 const THREE_MONTHS_MINUTES = 60 * 24 * 90;
-export const SHOW_DEV_CHART_RANGE_SELECTOR = process.env.NODE_ENV !== 'production';
+export const SHOW_DEV_CHART_RANGE_SELECTOR = process.env.NODE_ENV !== "production";
 
-export type ChartRangePreset = 'auto' | '1w' | '2w' | '1m' | '3m';
+export type ChartRangePreset = "auto" | "1w" | "2w" | "1m" | "3m";
 
 export const CHART_RANGE_PRESETS: Array<{
   value: ChartRangePreset;
   label: string;
   minutes: number | null;
 }> = [
-  { value: 'auto', label: 'Auto', minutes: null },
-  { value: '1w', label: '1w', minutes: ONE_WEEK_MINUTES },
-  { value: '2w', label: '2w', minutes: ONE_WEEK_MINUTES * 2 },
-  { value: '1m', label: '1m', minutes: 60 * 24 * 30 },
-  { value: '3m', label: '3m', minutes: THREE_MONTHS_MINUTES },
+  { value: "auto", label: "Auto", minutes: null },
+  { value: "1w", label: "1w", minutes: ONE_WEEK_MINUTES },
+  { value: "2w", label: "2w", minutes: ONE_WEEK_MINUTES * 2 },
+  { value: "1m", label: "1m", minutes: 60 * 24 * 30 },
+  { value: "3m", label: "3m", minutes: THREE_MONTHS_MINUTES },
 ];
 
 function pickStep(range: number): number {
@@ -229,9 +226,7 @@ export function buildChartData(
 ): ChartDataPoint[] {
   if (!chartBasePrice || !basePeriod) return [];
 
-  const anchors = [basePeriod, ...chartRates.map((r) => r.period)].sort(
-    (a, b) => a - b,
-  );
+  const anchors = [basePeriod, ...chartRates.map((r) => r.period)].sort((a, b) => a - b);
   const anchorSet = new Set(anchors);
   const hasAdditionalRates = chartRates.length > 0;
 
@@ -275,11 +270,8 @@ export function buildChartData(
     .map((mins) => ({
       durationMinutes: mins,
       durationLabel: formatDurationShort(mins, tCommon),
-      strictTotal: calculateRateBasedPrice(
-        { ...pricingBase, enforceStrictTiers: true },
-        mins,
-        1,
-      ).subtotal,
+      strictTotal: calculateRateBasedPrice({ ...pricingBase, enforceStrictTiers: true }, mins, 1)
+        .subtotal,
       progressiveTotal: calculateRateBasedPrice(
         { ...pricingBase, enforceStrictTiers: false },
         mins,
@@ -292,9 +284,7 @@ export function buildChartData(
 export function buildChartTicks(data: ChartDataPoint[]): number[] {
   if (data.length === 0) return [];
 
-  const ticks = data
-    .filter((point) => point.isTierAnchor)
-    .map((point) => point.durationMinutes);
+  const ticks = data.filter((point) => point.isTierAnchor).map((point) => point.durationMinutes);
   const lastTick = data[data.length - 1]?.durationMinutes;
 
   if (lastTick && ticks[ticks.length - 1] !== lastTick) {
@@ -304,9 +294,7 @@ export function buildChartTicks(data: ChartDataPoint[]): number[] {
   return ticks;
 }
 
-export function resolveChartMaxMinutes(
-  preset: ChartRangePreset,
-): number | null {
+export function resolveChartMaxMinutes(preset: ChartRangePreset): number | null {
   return CHART_RANGE_PRESETS.find((option) => option.value === preset)?.minutes ?? null;
 }
 
@@ -322,14 +310,10 @@ export function RatesEditor({
   disabled = false,
   hideProgressiveToggle = false,
 }: RatesEditorProps) {
-  const t = useTranslations('dashboard.products.form');
-  const tCommon = useTranslations('common');
-  const [chartRangePreset, setChartRangePreset] =
-    useState<ChartRangePreset>('auto');
-  const invalidIndexes = useMemo(
-    () => new Set(invalidRateIndexes),
-    [invalidRateIndexes],
-  );
+  const t = useTranslations("dashboard.products.form");
+  const tCommon = useTranslations("common");
+  const [chartRangePreset, setChartRangePreset] = useState<ChartRangePreset>("auto");
+  const invalidIndexes = useMemo(() => new Set(invalidRateIndexes), [invalidRateIndexes]);
   const basePrice = basePriceDuration ? toNumber(basePriceDuration.price) : 0;
   const basePeriod = basePriceDuration
     ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
@@ -354,14 +338,7 @@ export function RatesEditor({
   );
 
   const chartData = useMemo(
-    () =>
-      buildChartData(
-        basePrice,
-        basePeriod,
-        validRates,
-        tCommon,
-        chartMaxMinutes,
-      ),
+    () => buildChartData(basePrice, basePeriod, validRates, tCommon, chartMaxMinutes),
     [basePeriod, basePrice, validRates, tCommon, chartMaxMinutes],
   );
 
@@ -379,13 +356,10 @@ export function RatesEditor({
     }
 
     const lastRate = rates.at(-1);
-    const referenceUnit = lastRate?.unit ?? basePriceDuration?.unit ?? 'day';
-    const currentDuration =
-      lastRate?.duration ?? basePriceDuration?.duration ?? 1;
+    const referenceUnit = lastRate?.unit ?? basePriceDuration?.unit ?? "day";
+    const currentDuration = lastRate?.duration ?? basePriceDuration?.duration ?? 1;
     const baseDurationForUnit =
-      basePriceDuration?.unit === referenceUnit
-        ? basePriceDuration.duration
-        : undefined;
+      basePriceDuration?.unit === referenceUnit ? basePriceDuration.duration : undefined;
     const duration = nextTierDuration({
       unit: referenceUnit,
       currentDuration,
@@ -393,7 +367,7 @@ export function RatesEditor({
     });
     const period = priceDurationToMinutes(duration, referenceUnit);
 
-    let price = '';
+    let price = "";
     let discountPercent: number | undefined = undefined;
 
     if (hasBaseRate) {
@@ -406,10 +380,7 @@ export function RatesEditor({
             basePrice,
             basePeriod,
             toNumber(lastRateWithPrice.price),
-            priceDurationToMinutes(
-              lastRateWithPrice.duration,
-              lastRateWithPrice.unit,
-            ),
+            priceDurationToMinutes(lastRateWithPrice.duration, lastRateWithPrice.unit),
           ))
         : 0;
       const nextDiscount = Math.min(
@@ -468,28 +439,21 @@ export function RatesEditor({
         const tierPeriod = priceDurationToMinutes(rate.duration, rate.unit);
         const computedReduction =
           basePrice > 0 && basePeriod > 0 && tierPrice > 0
-            ? computeReductionPercent(
-                basePrice,
-                basePeriod,
-                tierPrice,
-                tierPeriod,
-              )
+            ? computeReductionPercent(basePrice, basePeriod, tierPrice, tierPeriod)
             : 0;
         const basePriceForDuration =
           basePrice > 0 && basePeriod > 0 && tierPeriod > 0
             ? (basePrice / basePeriod) * tierPeriod
             : 0;
         const hasDiscount =
-          tierPrice > 0 &&
-          basePriceForDuration > 0 &&
-          tierPrice < basePriceForDuration;
+          tierPrice > 0 && basePriceForDuration > 0 && tierPrice < basePriceForDuration;
         const discountPct = rate.discountPercent ?? computedReduction;
 
         return (
           <div
             key={rate.id ?? `new-${index}`}
             className={`group bg-card relative overflow-hidden rounded-lg border ${
-              isInvalidRate ? 'border-destructive/70 bg-destructive/5' : ''
+              isInvalidRate ? "border-destructive/70 bg-destructive/5" : ""
             }`}
           >
             <div className="flex flex-wrap items-center gap-3 p-2.5 sm:flex-nowrap">
@@ -516,17 +480,13 @@ export function RatesEditor({
                 {hasDiscount && (
                   <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
                     <span>
-                      {t('pricingTiers.insteadOf')}{' '}
+                      {t("pricingTiers.insteadOf")}{" "}
                       <span className="line-through">
                         {formatCurrency(basePriceForDuration, currency)}
                       </span>
                     </span>
                     <span className="font-medium text-emerald-600">
-                      −
-                      {formatCurrency(
-                        basePriceForDuration - tierPrice,
-                        currency,
-                      )}
+                      −{formatCurrency(basePriceForDuration - tierPrice, currency)}
                     </span>
                   </div>
                 )}
@@ -547,7 +507,7 @@ export function RatesEditor({
                 )}
 
                 <ReductionInput
-                  label={t('rateReduction')}
+                  label={t("rateReduction")}
                   value={rate.discountPercent ?? computedReduction}
                   onCommit={(v) => updateReductionPercent(index, v)}
                   disabled={disabled || !basePriceDuration}
@@ -567,7 +527,7 @@ export function RatesEditor({
             </div>
             {isInvalidRate && (
               <div className="px-2.5 pb-2 text-sm font-medium text-red-600">
-                {t('pricingTiers.duplicateDurationError')}
+                {t("pricingTiers.duplicateDurationError")}
               </div>
             )}
           </div>
@@ -575,15 +535,9 @@ export function RatesEditor({
       })}
 
       <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={addRate}
-          disabled={disabled}
-        >
+        <Button type="button" variant="outline" size="sm" onClick={addRate} disabled={disabled}>
           <Plus className="mr-2 h-4 w-4" />
-          {t('addRate')}
+          {t("addRate")}
         </Button>
       </div>
 
@@ -592,9 +546,7 @@ export function RatesEditor({
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0 space-y-0.5">
               <div className="flex items-center gap-1.5">
-                <Label className="text-sm font-medium">
-                  {t('pricingTiers.progressive.label')}
-                </Label>
+                <Label className="text-sm font-medium">{t("pricingTiers.progressive.label")}</Label>
                 <Dialog>
                   <DialogTrigger
                     render={
@@ -608,100 +560,88 @@ export function RatesEditor({
                   </DialogTrigger>
                   <DialogContent className="max-w-lg">
                     <DialogHeader>
-                      <DialogTitle>
-                        {t('pricingTiers.progressive.modal.title')}
-                      </DialogTitle>
+                      <DialogTitle>{t("pricingTiers.progressive.modal.title")}</DialogTitle>
                       <DialogDescription>
-                        {t('pricingTiers.progressive.modal.intro')}
+                        {t("pricingTiers.progressive.modal.intro")}
                       </DialogDescription>
                     </DialogHeader>
                     <DialogPanel>
                       <div className="space-y-3">
                         <div className="rounded-lg border p-3">
                           <p className="text-sm font-medium">
-                            {t('pricingTiers.progressive.modal.withoutTitle')}
+                            {t("pricingTiers.progressive.modal.withoutTitle")}
                           </p>
                           <p className="text-muted-foreground mt-1 text-sm">
-                            {t('pricingTiers.progressive.modal.withoutText')}
+                            {t("pricingTiers.progressive.modal.withoutText")}
                           </p>
                           <div className="bg-muted/50 mt-2 rounded-md px-3 py-2 text-sm">
-                            {t('pricingTiers.progressive.modal.withoutExample')}
+                            {t("pricingTiers.progressive.modal.withoutExample")}
                           </div>
                         </div>
                         <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
                           <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                            {t('pricingTiers.progressive.modal.withTitle')}
+                            {t("pricingTiers.progressive.modal.withTitle")}
                           </p>
                           <p className="text-muted-foreground mt-1 text-sm">
-                            {t('pricingTiers.progressive.modal.withText')}
+                            {t("pricingTiers.progressive.modal.withText")}
                           </p>
                           <div className="mt-2 rounded-md bg-emerald-100/50 px-3 py-2 text-sm dark:bg-emerald-950/30">
-                            {t('pricingTiers.progressive.modal.withExample')}
+                            {t("pricingTiers.progressive.modal.withExample")}
                           </div>
                         </div>
                       </div>
                     </DialogPanel>
                     <DialogFooter>
-                      <DialogClose
-                        render={
-                          <Button type="button" variant="outline" size="sm" />
-                        }
-                      >
-                        {tCommon('close')}
+                      <DialogClose render={<Button type="button" variant="outline" size="sm" />}>
+                        {tCommon("close")}
                       </DialogClose>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
               </div>
               <p className="text-muted-foreground text-sm">
-                {t('pricingTiers.progressive.description')}
+                {t("pricingTiers.progressive.description")}
               </p>
             </div>
             <Switch
               checked={progressiveDiscountEnabled}
-              onCheckedChange={(checked) =>
-                onEnforceStrictTiersChange(!checked)
-              }
+              onCheckedChange={(checked) => onEnforceStrictTiersChange(!checked)}
               disabled={disabled}
             />
           </div>
-
-          {/* Base pricing chart */}
-          {chartData.length > 0 && (
-            <div className="mt-4">
-              {SHOW_DEV_CHART_RANGE_SELECTOR && (
-                <div className="mb-3 flex justify-end">
-                  <Select
-                    value={chartRangePreset}
-                    onValueChange={(value) =>
-                      setChartRangePreset(value as ChartRangePreset)
-                    }
-                  >
-                    <SelectTrigger className="w-[110px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CHART_RANGE_PRESETS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <PricingChart
-                data={chartData}
-                anchorTicks={chartAnchorTicks}
-                isProgressive={progressiveDiscountEnabled}
-                gradientId="base"
-                currency={currency}
-                tCommon={tCommon}
-                t={t}
-              />
-            </div>
-          )}
         </div>
+      )}
+
+      {/* Base pricing chart */}
+      {hasBaseRate && !hideProgressiveToggle && chartData.length > 0 && (
+        <PricingChart
+          data={chartData}
+          anchorTicks={chartAnchorTicks}
+          isProgressive={progressiveDiscountEnabled}
+          gradientId="base"
+          currency={currency}
+          tCommon={tCommon}
+          t={t}
+          headerAddon={
+            SHOW_DEV_CHART_RANGE_SELECTOR ? (
+              <Select
+                value={chartRangePreset}
+                onValueChange={(value) => setChartRangePreset(value as ChartRangePreset)}
+              >
+                <SelectTrigger className="h-8 w-[90px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHART_RANGE_PRESETS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null
+          }
+        />
       )}
     </div>
   );
@@ -742,7 +682,7 @@ function ReductionInput({
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === "Enter") {
             e.preventDefault();
             commit();
             ref.current?.blur();
@@ -767,6 +707,7 @@ export function PricingChart({
   currency,
   tCommon,
   t,
+  headerAddon,
 }: {
   data: ChartDataPoint[];
   anchorTicks: number[];
@@ -775,22 +716,23 @@ export function PricingChart({
   currency: string;
   tCommon: (key: string, opts: { count: number }) => string;
   t: (key: string) => string;
+  headerAddon?: ReactNode;
 }) {
   const strictGradId = `strictGradient-${gradientId}`;
   const progressiveGradId = `progressiveGradient-${gradientId}`;
-  const activeColor = isProgressive ? '#22c55e' : '#3b82f6';
-  const inactiveColor = isProgressive ? '#3b82f6' : '#22c55e';
-  const activeKey: keyof ChartDataPoint = isProgressive ? 'progressiveTotal' : 'strictTotal';
-  const inactiveKey: keyof ChartDataPoint = isProgressive ? 'strictTotal' : 'progressiveTotal';
+  const activeColor = isProgressive ? "#22c55e" : "#3b82f6";
+  const inactiveColor = isProgressive ? "#3b82f6" : "#22c55e";
+  const activeKey: keyof ChartDataPoint = isProgressive ? "progressiveTotal" : "strictTotal";
+  const inactiveKey: keyof ChartDataPoint = isProgressive ? "strictTotal" : "progressiveTotal";
   const activeName = isProgressive
-    ? t('pricingTiers.chart.progressiveLine')
-    : t('pricingTiers.chart.strictLine');
+    ? t("pricingTiers.chart.progressiveLine")
+    : t("pricingTiers.chart.strictLine");
   const inactiveName = isProgressive
-    ? t('pricingTiers.chart.strictLine')
-    : t('pricingTiers.chart.progressiveLine');
+    ? t("pricingTiers.chart.strictLine")
+    : t("pricingTiers.chart.progressiveLine");
   const activeGradId = isProgressive ? progressiveGradId : strictGradId;
-  const activeType = isProgressive ? 'monotone' : 'linear';
-  const inactiveType = isProgressive ? 'linear' : 'monotone';
+  const activeType = isProgressive ? "monotone" : "linear";
+  const inactiveType = isProgressive ? "linear" : "monotone";
 
   const renderTooltip = useCallback(
     ({ active, payload }: any) => {
@@ -799,8 +741,8 @@ export function PricingChart({
       const label = formatDurationLong(point.durationMinutes, tCommon);
       const activePrice = point[activeKey] as number;
       const inactivePrice = point[inactiveKey] as number;
-      const activeBg = isProgressive ? 'bg-emerald-500' : 'bg-blue-500';
-      const inactiveBg = isProgressive ? 'bg-blue-500' : 'bg-emerald-500';
+      const activeBg = isProgressive ? "bg-emerald-500" : "bg-blue-500";
+      const inactiveBg = isProgressive ? "bg-blue-500" : "bg-emerald-500";
       const savings = point.strictTotal - point.progressiveTotal;
 
       return (
@@ -809,9 +751,7 @@ export function PricingChart({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-6">
               <div className="flex items-center gap-2">
-                <span
-                  className={`inline-block h-0.5 w-3 rounded ${activeBg}`}
-                />
+                <span className={`inline-block h-0.5 w-3 rounded ${activeBg}`} />
                 <span className="font-medium">{activeName}</span>
               </div>
               <span className="font-semibold tabular-nums">
@@ -820,9 +760,7 @@ export function PricingChart({
             </div>
             <div className="flex items-center justify-between gap-6">
               <div className="flex items-center gap-2">
-                <span
-                  className={`inline-block h-0.5 w-3 rounded ${inactiveBg} opacity-40`}
-                />
+                <span className={`inline-block h-0.5 w-3 rounded ${inactiveBg} opacity-40`} />
                 <span className="text-muted-foreground">{inactiveName}</span>
               </div>
               <span className="text-muted-foreground tabular-nums">
@@ -831,7 +769,7 @@ export function PricingChart({
             </div>
             {savings > 0 && (
               <p className="mt-1 border-t pt-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-                {t('pricingTiers.chart.savings')}: −{formatCurrency(savings, currency)}
+                {t("pricingTiers.chart.savings")}: −{formatCurrency(savings, currency)}
               </p>
             )}
           </div>
@@ -842,48 +780,43 @@ export function PricingChart({
   );
 
   return (
-    <div className="mx-auto max-w-2xl rounded-lg border bg-card p-3">
-      <div className="h-[200px] w-full">
+    <div className="bg-card rounded-lg border">
+      <div className="flex items-start justify-between gap-3 px-4 pt-3.5">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-sm font-medium">
+            <ChartSpline className="text-muted-foreground h-4 w-4" />
+            {t("pricingTiers.chart.title")}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs">{t("pricingTiers.chart.subtitle")}</p>
+        </div>
+        {headerAddon}
+      </div>
+      <div className="h-[200px] w-full px-2 pb-2 pt-1">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart
-            data={data}
-            margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
-          >
+          <AreaChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id={strictGradId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
                 <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
               </linearGradient>
-              <linearGradient
-                id={progressiveGradId}
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
+              <linearGradient id={progressiveGradId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
                 <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="var(--border)"
-              vertical={false}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="durationMinutes"
               type="number"
-              domain={['dataMin', 'dataMax']}
+              domain={["dataMin", "dataMax"]}
               ticks={anchorTicks}
-              tickFormatter={(mins: number) =>
-                formatDurationShort(mins, tCommon)
-              }
-              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+              tickFormatter={(mins: number) => formatDurationShort(mins, tCommon)}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) => formatCurrency(v, currency)}
@@ -900,7 +833,7 @@ export function PricingChart({
             />
             {/* Background: inactive mode */}
             <Area
-              type={inactiveType as 'linear' | 'monotone'}
+              type={inactiveType as "linear" | "monotone"}
               dataKey={inactiveKey}
               name={inactiveName}
               stroke={inactiveColor}
@@ -912,7 +845,7 @@ export function PricingChart({
             />
             {/* Foreground: active mode */}
             <Area
-              type={activeType as 'linear' | 'monotone'}
+              type={activeType as "linear" | "monotone"}
               dataKey={activeKey}
               name={activeName}
               stroke={activeColor}

@@ -7,6 +7,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ImageIcon,
+  Loader2,
   RefreshCcwIcon,
   ZoomInIcon,
   ZoomOutIcon,
@@ -574,7 +575,8 @@ export function ProductImageCropDialog({
             {t("cropSkip")}
           </Button>
           <Button variant="default" onClick={onApplyCrop} disabled={isUploading}>
-            {t("cropApply")}
+            {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isUploading ? t("uploading") : t("cropApply")}
           </Button>
         </DialogFooter>
       </DialogPopup>

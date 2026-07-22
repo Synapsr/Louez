@@ -716,16 +716,6 @@
         "archived": "Zarchiwizowane"
       },
       "form": {
-        "steps": {
-          "photos": "Zdjęcia",
-          "photosDescription": "Zdjęcia produktu",
-          "info": "Informacje",
-          "infoDescription": "Nazwa i opis",
-          "pricing": "Cennik",
-          "pricingDescription": "Cena i stawki",
-          "preview": "Publikacja",
-          "previewDescription": "Sprawdź i opublikuj"
-        },
         "photos": "Zdjęcia",
         "photosDescription": "Dodaj do 5 zdjęć produktu",
         "addImage": "Dodaj",
@@ -850,7 +840,9 @@
             "strictLine": "Stałe progi",
             "progressiveLine": "Progresywny",
             "savings": "Oszczędność klienta",
-            "basePricing": "Cennik bazowy"
+            "basePricing": "Cennik bazowy",
+            "title": "Symulacja ceny",
+            "subtitle": "Łączna cena według czasu wynajmu"
           }
         },
         "unitTracking": {
@@ -906,7 +898,10 @@
           "purchaseDetails": "Szczegóły zakupu",
           "unitDetails": "Szczegóły",
           "existingUnitDetailsHint": "Szczegóły zakupu, notatki i cykl życia są zarządzane w inwentarzu.",
-          "openInventoryDetails": "Otwórz inwentarz"
+          "openInventoryDetails": "Otwórz inwentarz",
+          "benefitIdentify": "Oznacz każdy egzemplarz numerem seryjnym lub referencją",
+          "benefitAvailability": "Śledź dostępność i wynajmy każdego egzemplarza",
+          "benefitInventory": "Zapisz cenę i datę zakupu do swojego inwentarza"
         },
         "previewTitle": "Podgląd",
         "previewDescription": "Zobacz jak produkt będzie wyglądał w katalogu",
@@ -914,8 +909,6 @@
         "noName": "Bez nazwy",
         "units": "szt.",
         "recommended": "Zalecane",
-        "previous": "Poprzedni",
-        "next": "Następny",
         "videoUrl": "Film YouTube",
         "videoUrlPlaceholder": "https://www.youtube.com/watch?v=...",
         "videoUrlHelp": "Opcjonalne - Dodaj film prezentacyjny produktu",
@@ -1032,7 +1025,21 @@
               "margin": "Marża / dzień"
             }
           }
-        }
+        },
+        "productSection": "Produkt",
+        "productSectionDescription": "Nazwa, zdjęcia i opis produktu",
+        "addVideo": "Dodaj film z YouTube",
+        "categorySearchPlaceholder": "Szukaj lub utwórz…",
+        "categoryCreateOption": "Utwórz „{name}”",
+        "categoryNoResults": "Nie znaleziono kategorii",
+        "summary": {
+          "checklistTitle": "Postęp",
+          "required": "Wymagane"
+        },
+        "videoTileLabel": "Wideo",
+        "videoInvalid": "Nieprawidłowy link YouTube",
+        "editVideo": "Edytuj wideo",
+        "removeVideo": "Usuń wideo"
       },
       "deleteConfirm": {
         "title": "Usunąć ten produkt?",

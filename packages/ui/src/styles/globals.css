@@ -156,7 +156,7 @@
   --color-badge-warning-background: var(--badge-warning-background);
   --color-badge-warning-foreground: var(--badge-warning-foreground);
 
-  --thumb-size: var(--spacing)*5;
+  --thumb-size: var(--spacing) * 5;
 
   @keyframes skeleton {
     to {

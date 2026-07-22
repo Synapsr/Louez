@@ -1,28 +1,31 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 
-import Link from 'next/link';
+import Link from "next/link";
 
 import {
   AlertCircle,
+  CalendarCheck,
   ChevronDown,
   Lightbulb,
   Package,
   Plus,
+  Receipt,
   Settings2,
   Sparkles,
+  Tag,
   Trash2,
-} from 'lucide-react';
-import { useTranslations } from 'next-intl';
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { Button } from '@louez/ui';
-import { Input } from '@louez/ui';
-import { Label } from '@louez/ui';
-import { Switch } from '@louez/ui';
-import { Badge } from '@louez/ui';
-import { Textarea } from '@louez/ui';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@louez/ui';
+import { Button } from "@louez/ui";
+import { Input } from "@louez/ui";
+import { Label } from "@louez/ui";
+import { Switch } from "@louez/ui";
+import { Badge } from "@louez/ui";
+import { Textarea } from "@louez/ui";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@louez/ui";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -31,7 +34,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@louez/ui';
+} from "@louez/ui";
 import {
   Dialog,
   DialogClose,
@@ -42,16 +45,11 @@ import {
   DialogPopup,
   DialogTitle,
   DialogTrigger,
-} from '@louez/ui';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@louez/ui';
-import { cn, normalizeAxisKey, toDatePickerValue } from '@louez/utils';
+} from "@louez/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez/ui";
+import { cn, normalizeAxisKey, toDatePickerValue } from "@louez/utils";
 
-import { DatePicker } from '@/components/ui/date-time-picker';
+import { DatePicker } from "@/components/ui/date-time-picker";
 
 interface ProductUnitInput {
   id?: string;
@@ -102,8 +100,7 @@ function AttributeValueCombobox({
 
   const trimmed = localValue.trim();
   const isNewValue =
-    trimmed.length > 0 &&
-    !suggestions.some((s) => s.toLowerCase() === trimmed.toLowerCase());
+    trimmed.length > 0 && !suggestions.some((s) => s.toLowerCase() === trimmed.toLowerCase());
 
   return (
     <div className="relative">
@@ -116,7 +113,7 @@ function AttributeValueCombobox({
           if (localValue !== value) onChange(localValue);
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === "Enter") {
             e.preventDefault();
             onChange(localValue);
             setOpen(false);
@@ -125,9 +122,7 @@ function AttributeValueCombobox({
         }}
         placeholder={placeholder}
         disabled={disabled}
-        className={cn(
-          hasError && !localValue.trim() && 'border-destructive/60',
-        )}
+        className={cn(hasError && !localValue.trim() && "border-destructive/60")}
       />
       {open && (filtered.length > 0 || isNewValue) && (
         <div className="bg-popover absolute z-50 mt-1 max-h-[200px] w-full overflow-y-auto rounded-lg border p-1 shadow-lg">
@@ -136,8 +131,8 @@ function AttributeValueCombobox({
               key={s}
               type="button"
               className={cn(
-                'hover:bg-accent hover:text-accent-foreground w-full cursor-default rounded-sm px-2 py-1.5 text-left text-sm outline-none',
-                s === localValue && 'bg-accent/50 font-medium',
+                "hover:bg-accent hover:text-accent-foreground w-full cursor-default rounded-sm px-2 py-1.5 text-left text-sm outline-none",
+                s === localValue && "bg-accent/50 font-medium",
               )}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -150,9 +145,7 @@ function AttributeValueCombobox({
             </button>
           ))}
           {isNewValue && (
-            <p className="text-muted-foreground px-2 py-1.5 text-xs">
-              {createHint(trimmed)}
-            </p>
+            <p className="text-muted-foreground px-2 py-1.5 text-xs">{createHint(trimmed)}</p>
           )}
         </div>
       )}
@@ -171,30 +164,23 @@ function BookingAttributesDialog({
   onRemoveAxis: (key: string) => void;
   disabled: boolean;
 }) {
-  const t = useTranslations('dashboard.products.form.unitTracking');
-  const [newAxisLabel, setNewAxisLabel] = useState('');
+  const t = useTranslations("dashboard.products.form.unitTracking");
+  const [newAxisLabel, setNewAxisLabel] = useState("");
 
   const handleAdd = () => {
     const label = newAxisLabel.trim();
     if (!label) return;
     onAddAxis(label);
-    setNewAxisLabel('');
+    setNewAxisLabel("");
   };
 
   return (
     <Dialog>
       <DialogTrigger
-        render={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled}
-          />
-        }
+        render={<Button type="button" variant="outline" size="sm" disabled={disabled} />}
       >
         <Settings2 className="h-4 w-4" />
-        {t('manageAttributes')}
+        {t("manageAttributes")}
         {axes.length > 0 && (
           <Badge variant="secondary" className="ml-1">
             {axes.length}/3
@@ -203,10 +189,8 @@ function BookingAttributesDialog({
       </DialogTrigger>
       <DialogPopup className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('bookingAttributesTitle')}</DialogTitle>
-          <DialogDescription>
-            {t('manageAttributesDescription')}
-          </DialogDescription>
+          <DialogTitle>{t("bookingAttributesTitle")}</DialogTitle>
+          <DialogDescription>{t("manageAttributesDescription")}</DialogDescription>
         </DialogHeader>
         <DialogPanel>
           <div className="space-y-4">
@@ -215,10 +199,10 @@ function BookingAttributesDialog({
                 <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                 <div className="space-y-1">
                   <p className="text-xs text-blue-800 dark:text-blue-300">
-                    {t('manageAttributesExample')}
+                    {t("manageAttributesExample")}
                   </p>
                   <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                    {t('manageAttributesMax')}
+                    {t("manageAttributesMax")}
                   </p>
                 </div>
               </div>
@@ -229,12 +213,12 @@ function BookingAttributesDialog({
                 value={newAxisLabel}
                 onChange={(e) => setNewAxisLabel(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === "Enter") {
                     e.preventDefault();
                     handleAdd();
                   }
                 }}
-                placeholder={t('bookingAttributePlaceholder')}
+                placeholder={t("bookingAttributePlaceholder")}
                 disabled={disabled || axes.length >= 3}
                 className="flex-1"
               />
@@ -246,7 +230,7 @@ function BookingAttributesDialog({
                 disabled={disabled || !newAxisLabel.trim() || axes.length >= 3}
               >
                 <Plus className="h-3.5 w-3.5" />
-                {t('addAttribute')}
+                {t("addAttribute")}
               </Button>
             </div>
 
@@ -262,9 +246,7 @@ function BookingAttributesDialog({
                         {axis.position + 1}
                       </span>
                       <span className="text-sm font-medium">{axis.label}</span>
-                      <span className="text-muted-foreground font-mono text-xs">
-                        {axis.key}
-                      </span>
+                      <span className="text-muted-foreground font-mono text-xs">{axis.key}</span>
                     </div>
                     <Button
                       type="button"
@@ -281,17 +263,13 @@ function BookingAttributesDialog({
               </div>
             ) : (
               <div className="rounded-lg border border-dashed p-4 text-center">
-                <p className="text-muted-foreground text-sm">
-                  {t('bookingAttributesEmpty')}
-                </p>
+                <p className="text-muted-foreground text-sm">{t("bookingAttributesEmpty")}</p>
               </div>
             )}
           </div>
         </DialogPanel>
         <DialogFooter variant="bare">
-          <DialogClose render={<Button variant="outline" />}>
-            {t('confirm')}
-          </DialogClose>
+          <DialogClose render={<Button variant="outline" />}>{t("confirm")}</DialogClose>
         </DialogFooter>
       </DialogPopup>
     </Dialog>
@@ -329,25 +307,24 @@ function UnitRow({
   onTouch: (index: number) => void;
   onApplyPurchaseToAll: (index: number) => void;
 }) {
-  const t = useTranslations('dashboard.products.form.unitTracking');
-  const tReservationForm = useTranslations('dashboard.reservations.manualForm');
+  const t = useTranslations("dashboard.products.form.unitTracking");
+  const tReservationForm = useTranslations("dashboard.reservations.manualForm");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const hasAxes = bookingAttributeAxes.length > 0;
   const isExistingUnit = Boolean(unit.id);
   const hasActiveAssignment = unit.hasActiveAssignment ?? false;
   const hasPurchase =
-    !!(typeof unit.purchasePrice === 'string' && unit.purchasePrice.trim()) ||
-    !!unit.purchasedAt;
+    !!(typeof unit.purchasePrice === "string" && unit.purchasePrice.trim()) || !!unit.purchasedAt;
   const canApplyToAll = !isExistingUnit && unitCount > 1 && hasPurchase;
   const inventoryHref = productId
     ? `/dashboard/inventory?productId=${productId}`
-    : '/dashboard/inventory';
+    : "/dashboard/inventory";
 
   return (
     <div
       className={cn(
-        'rounded-lg border transition-colors',
-        isDuplicate && 'border-destructive bg-destructive/5',
+        "rounded-lg border transition-colors",
+        isDuplicate && "border-destructive bg-destructive/5",
       )}
     >
       <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
@@ -356,24 +333,19 @@ function UnitRow({
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                'h-2 w-2 shrink-0 rounded-full',
-                hasActiveAssignment ? 'bg-amber-500' : 'bg-green-500',
+                "h-2 w-2 shrink-0 rounded-full",
+                hasActiveAssignment ? "bg-amber-500" : "bg-green-500",
               )}
             />
             <Input
-              placeholder={t('identifierPlaceholder')}
+              placeholder={t("identifierPlaceholder")}
               value={unit.identifier}
               onChange={(e) => onUpdate(index, { identifier: e.target.value })}
               onBlur={() => onTouch(index)}
-              className={cn(
-                'h-8 flex-1',
-                (isDuplicate || isEmpty) && 'border-destructive',
-              )}
+              className={cn("h-8 flex-1", (isDuplicate || isEmpty) && "border-destructive")}
               disabled={disabled}
             />
-            {hasActiveAssignment && (
-              <Badge variant="outline">{t('assignedUnit')}</Badge>
-            )}
+            {hasActiveAssignment && <Badge variant="outline">{t("assignedUnit")}</Badge>}
             <CollapsibleTrigger
               render={
                 <Button
@@ -382,14 +354,14 @@ function UnitRow({
                   size="icon"
                   className="text-muted-foreground h-8 w-8 shrink-0"
                   disabled={disabled}
-                  aria-label={t('unitDetails')}
+                  aria-label={t("unitDetails")}
                 />
               }
             >
               <ChevronDown
                 className={cn(
-                  'h-4 w-4 transition-transform duration-200 ease-out',
-                  detailsOpen && 'rotate-180',
+                  "h-4 w-4 transition-transform duration-200 ease-out",
+                  detailsOpen && "rotate-180",
                 )}
               />
             </CollapsibleTrigger>
@@ -410,47 +382,35 @@ function UnitRow({
                   <Trash2 className="h-4 w-4" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>
-                    {hasActiveAssignment
-                      ? t('deleteWarning')
-                      : t('deleteConfirm')}
-                  </p>
+                  <p>{hasActiveAssignment ? t("deleteWarning") : t("deleteConfirm")}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
 
-          {isEmpty && (
-            <p className="text-destructive mt-1.5 text-xs">
-              {t('identifierRequired')}
-            </p>
-          )}
+          {isEmpty && <p className="text-destructive mt-1.5 text-xs">{t("identifierRequired")}</p>}
 
           {/* Line 2: attribute values (only when axes exist — required data) */}
           {hasAxes && (
             <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {bookingAttributeAxes.map((axis) => {
                 const suggestions = existingValuesByAxis[axis.key] || [];
-                const currentValue = unit.attributes?.[axis.key] || '';
+                const currentValue = unit.attributes?.[axis.key] || "";
                 const hasError = !currentValue.trim();
 
                 return (
                   <div key={axis.key} className="space-y-1">
-                    <Label className="text-muted-foreground text-xs">
-                      {axis.label}
-                    </Label>
+                    <Label className="text-muted-foreground text-xs">{axis.label}</Label>
                     <AttributeValueCombobox
                       value={currentValue}
-                      onChange={(val) =>
-                        onUpdateAttribute(index, axis.key, val)
-                      }
+                      onChange={(val) => onUpdateAttribute(index, axis.key, val)}
                       suggestions={suggestions}
-                      placeholder={t('bookingAttributeValuePlaceholder', {
+                      placeholder={t("bookingAttributeValuePlaceholder", {
                         label: axis.label,
                       })}
                       disabled={disabled}
                       hasError={hasError}
-                      createHint={(v) => t('pressEnterToCreate', { value: v })}
+                      createHint={(v) => t("pressEnterToCreate", { value: v })}
                     />
                   </div>
                 );
@@ -464,12 +424,12 @@ function UnitRow({
           <div className="space-y-3 border-t px-3 pt-3 pb-3">
             {isExistingUnit ? (
               <p className="text-muted-foreground text-sm">
-                {t('existingUnitDetailsHint')}{' '}
+                {t("existingUnitDetailsHint")}{" "}
                 <Link
                   href={inventoryHref}
                   className="text-primary font-medium underline-offset-4 hover:underline"
                 >
-                  {t('openInventoryDetails')}
+                  {t("openInventoryDetails")}
                 </Link>
               </p>
             ) : (
@@ -477,7 +437,7 @@ function UnitRow({
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground text-xs font-medium">
-                      {t('purchaseDetails')}
+                      {t("purchaseDetails")}
                     </span>
                     {canApplyToAll && (
                       <Button
@@ -488,23 +448,17 @@ function UnitRow({
                         onClick={() => onApplyPurchaseToAll(index)}
                         disabled={disabled}
                       >
-                        {t('applyPurchaseToAll')}
+                        {t("applyPurchaseToAll")}
                       </Button>
                     )}
                   </div>
                   <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
                     <Input
                       inputMode="decimal"
-                      placeholder={t('purchasePricePlaceholder')}
-                      aria-label={t('purchasePrice')}
-                      value={
-                        typeof unit.purchasePrice === 'string'
-                          ? unit.purchasePrice
-                          : ''
-                      }
-                      onChange={(e) =>
-                        onUpdate(index, { purchasePrice: e.target.value })
-                      }
+                      placeholder={t("purchasePricePlaceholder")}
+                      aria-label={t("purchasePrice")}
+                      value={typeof unit.purchasePrice === "string" ? unit.purchasePrice : ""}
+                      onChange={(e) => onUpdate(index, { purchasePrice: e.target.value })}
                       disabled={disabled}
                     />
                     <DatePicker
@@ -515,17 +469,15 @@ function UnitRow({
                         })
                       }
                       disabled={disabled}
-                      placeholder={tReservationForm('pickDate')}
+                      placeholder={tReservationForm("pickDate")}
                     />
                   </div>
                 </div>
                 <div>
-                  <span className="text-muted-foreground text-xs font-medium">
-                    {t('notes')}
-                  </span>
+                  <span className="text-muted-foreground text-xs font-medium">{t("notes")}</span>
                   <Textarea
-                    placeholder={t('notesPlaceholder')}
-                    value={unit.notes || ''}
+                    placeholder={t("notesPlaceholder")}
+                    value={unit.notes || ""}
                     onChange={(e) => onUpdate(index, { notes: e.target.value })}
                     className="mt-1.5 min-h-[60px] text-sm"
                     disabled={disabled}
@@ -557,14 +509,8 @@ interface UnitTrackingEditorProps {
 
 const MAX_GENERATED_UNITS = 100;
 
-function getNextSequenceNumber(
-  units: ProductUnitInput[],
-  prefix: string,
-): number {
-  const pattern = new RegExp(
-    `^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}0*(\\d+)$`,
-    'i',
-  );
+function getNextSequenceNumber(units: ProductUnitInput[], prefix: string): number {
+  const pattern = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}0*(\\d+)$`, "i");
   let max = 0;
   for (const unit of units) {
     const match = unit.identifier.trim().match(pattern);
@@ -585,15 +531,15 @@ export function UnitTrackingEditor({
   onChange,
   quantity,
   onQuantityChange,
-  defaultPrefix = '',
+  defaultPrefix = "",
   disabled = false,
   showValidationErrors = false,
   productId,
 }: UnitTrackingEditorProps) {
-  const t = useTranslations('dashboard.products.form.unitTracking');
+  const t = useTranslations("dashboard.products.form.unitTracking");
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
-  const [genPrefix, setGenPrefix] = useState('');
-  const [genCount, setGenCount] = useState('5');
+  const [genPrefix, setGenPrefix] = useState("");
+  const [genCount, setGenCount] = useState("5");
   const [touchedUnits, setTouchedUnits] = useState<Set<number>>(new Set());
 
   const effectivePrefix = genPrefix || defaultPrefix;
@@ -629,9 +575,7 @@ export function UnitTrackingEditor({
   const missingAttributeCount = useMemo(() => {
     if (bookingAttributeAxes.length === 0) return 0;
     return units.filter((unit) => {
-      return bookingAttributeAxes.some(
-        (axis) => !unit.attributes?.[axis.key]?.trim(),
-      );
+      return bookingAttributeAxes.some((axis) => !unit.attributes?.[axis.key]?.trim());
     }).length;
   }, [bookingAttributeAxes, units]);
 
@@ -641,9 +585,9 @@ export function UnitTrackingEditor({
     const from = getNextSequenceNumber(units, effectivePrefix.trim());
     const to = from + count - 1;
     const padLength = Math.max(2, String(to).length);
-    const first = `${effectivePrefix.trim()}${String(from).padStart(padLength, '0')}`;
+    const first = `${effectivePrefix.trim()}${String(from).padStart(padLength, "0")}`;
     if (count === 1) return first;
-    const last = `${effectivePrefix.trim()}${String(to).padStart(padLength, '0')}`;
+    const last = `${effectivePrefix.trim()}${String(to).padStart(padLength, "0")}`;
     return `${first} … ${last}`;
   }, [effectivePrefix, genCount, units]);
 
@@ -674,9 +618,9 @@ export function UnitTrackingEditor({
     onChange([
       ...units,
       {
-        identifier: '',
-        notes: '',
-        purchasePrice: '',
+        identifier: "",
+        notes: "",
+        purchasePrice: "",
         purchasedAt: null,
         attributes: {},
       },
@@ -693,11 +637,7 @@ export function UnitTrackingEditor({
     onChange(newUnits);
   };
 
-  const updateUnitAttribute = (
-    index: number,
-    axisKey: string,
-    value: string,
-  ) => {
+  const updateUnitAttribute = (index: number, axisKey: string, value: string) => {
     const newUnits = [...units];
     const currentAttributes = newUnits[index].attributes || {};
     newUnits[index] = {
@@ -767,16 +707,12 @@ export function UnitTrackingEditor({
 
     const newUnits: ProductUnitInput[] = [];
     for (let i = from; i <= to; i++) {
-      const identifier = `${prefix}${String(i).padStart(padLength, '0')}`;
-      if (
-        !units.some(
-          (u) => u.identifier.toLowerCase() === identifier.toLowerCase(),
-        )
-      ) {
+      const identifier = `${prefix}${String(i).padStart(padLength, "0")}`;
+      if (!units.some((u) => u.identifier.toLowerCase() === identifier.toLowerCase())) {
         newUnits.push({
           identifier,
-          notes: '',
-          purchasePrice: '',
+          notes: "",
+          purchasePrice: "",
           purchasedAt: null,
           attributes: {},
         });
@@ -793,7 +729,7 @@ export function UnitTrackingEditor({
       {/* Quantity field (only shown when tracking is disabled) */}
       {!trackUnits && (
         <div className="grid gap-2">
-          <Label htmlFor="quantity">{t('quantityLabel')}</Label>
+          <Label htmlFor="quantity">{t("quantityLabel")}</Label>
           <Input
             id="quantity"
             type="number"
@@ -807,24 +743,38 @@ export function UnitTrackingEditor({
       )}
 
       {/* Toggle */}
-      <div className="flex items-center justify-between rounded-lg border p-4">
-        <div className="space-y-0.5">
-          <Label
-            htmlFor="unit-tracking-toggle"
-            className="text-base font-medium"
-          >
-            {t('toggle')}
-          </Label>
-          <p className="text-muted-foreground text-sm">
-            {t('toggleDescription')}
-          </p>
+      <div className="rounded-lg border p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <Label htmlFor="unit-tracking-toggle" className="text-base font-medium">
+              {t("toggle")}
+            </Label>
+            <p className="text-muted-foreground text-sm">{t("toggleDescription")}</p>
+          </div>
+          <Switch
+            id="unit-tracking-toggle"
+            checked={trackUnits}
+            onCheckedChange={handleToggle}
+            disabled={disabled}
+          />
         </div>
-        <Switch
-          id="unit-tracking-toggle"
-          checked={trackUnits}
-          onCheckedChange={handleToggle}
-          disabled={disabled}
-        />
+
+        {!trackUnits && (
+          <ul className="text-muted-foreground mt-3 space-y-1.5 border-t pt-3 text-sm">
+            <li className="flex items-start gap-2">
+              <Tag className="mt-0.5 h-4 w-4 shrink-0" />
+              {t("benefitIdentify")}
+            </li>
+            <li className="flex items-start gap-2">
+              <CalendarCheck className="mt-0.5 h-4 w-4 shrink-0" />
+              {t("benefitAvailability")}
+            </li>
+            <li className="flex items-start gap-2">
+              <Receipt className="mt-0.5 h-4 w-4 shrink-0" />
+              {t("benefitInventory")}
+            </li>
+          </ul>
+        )}
       </div>
 
       {trackUnits && (
@@ -833,11 +783,9 @@ export function UnitTrackingEditor({
           <div className="bg-muted/40 rounded-lg border p-3">
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-[120px] flex-1 space-y-1">
-                <Label className="text-muted-foreground text-xs">
-                  {t('bulkPrefix')}
-                </Label>
+                <Label className="text-muted-foreground text-xs">{t("bulkPrefix")}</Label>
                 <Input
-                  placeholder={defaultPrefix || t('bulkPrefixPlaceholder')}
+                  placeholder={defaultPrefix || t("bulkPrefixPlaceholder")}
                   value={genPrefix}
                   onChange={(e) => setGenPrefix(e.target.value)}
                   disabled={disabled}
@@ -845,9 +793,7 @@ export function UnitTrackingEditor({
                 />
               </div>
               <div className="w-24 space-y-1">
-                <Label className="text-muted-foreground text-xs">
-                  {t('generatorCount')}
-                </Label>
+                <Label className="text-muted-foreground text-xs">{t("generatorCount")}</Label>
                 <Input
                   type="number"
                   min="1"
@@ -865,13 +811,13 @@ export function UnitTrackingEditor({
                 disabled={disabled || !effectivePrefix.trim()}
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {t('bulkGenerate')}
+                {t("bulkGenerate")}
               </Button>
             </div>
             <p className="text-muted-foreground mt-2 text-xs">
               {generationPreview
-                ? `${t('bulkPreview')} : ${generationPreview}`
-                : t('generatorHint')}
+                ? `${t("bulkPreview")} : ${generationPreview}`
+                : t("generatorHint")}
             </p>
           </div>
 
@@ -879,10 +825,8 @@ export function UnitTrackingEditor({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Package className="text-muted-foreground h-4 w-4" />
-              <span className="font-medium">{t('title')}</span>
-              <Badge variant="outline">
-                {t('trackedUnits', { count: trackedUnitsCount })}
-              </Badge>
+              <span className="font-medium">{t("title")}</span>
+              <Badge variant="outline">{t("trackedUnits", { count: trackedUnitsCount })}</Badge>
             </div>
             <div className="flex items-center gap-2">
               <BookingAttributesDialog
@@ -899,7 +843,7 @@ export function UnitTrackingEditor({
                 disabled={disabled}
               >
                 <Plus className="h-4 w-4" />
-                {t('addUnit')}
+                {t("addUnit")}
               </Button>
             </div>
           </div>
@@ -907,15 +851,9 @@ export function UnitTrackingEditor({
           {/* Attribute axes summary (read-only badges) */}
           {bookingAttributeAxes.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-muted-foreground text-xs">
-                {t('bookingAttributesTitle')}:
-              </span>
+              <span className="text-muted-foreground text-xs">{t("bookingAttributesTitle")}:</span>
               {bookingAttributeAxes.map((axis) => (
-                <Badge
-                  key={axis.key}
-                  variant="secondary"
-                  className="gap-1 pr-1"
-                >
+                <Badge key={axis.key} variant="secondary" className="gap-1 pr-1">
                   {axis.label}
                   <button
                     type="button"
@@ -933,22 +871,17 @@ export function UnitTrackingEditor({
           {/* Unit rows or empty hint */}
           {units.length === 0 ? (
             <div className="rounded-lg border border-dashed p-6 text-center">
-              <p className="text-sm font-medium">{t('noUnitsRegistered')}</p>
-              <p className="text-muted-foreground mt-1 text-xs">
-                {t('noUnitsHint')}
-              </p>
+              <p className="text-sm font-medium">{t("noUnitsRegistered")}</p>
+              <p className="text-muted-foreground mt-1 text-xs">{t("noUnitsHint")}</p>
             </div>
           ) : (
             <div className="space-y-2">
               {units.map((unit, index) => {
                 const isDuplicate =
                   unit.identifier.trim() &&
-                  duplicateIdentifiers.has(
-                    unit.identifier.trim().toLowerCase(),
-                  );
+                  duplicateIdentifiers.has(unit.identifier.trim().toLowerCase());
                 const isEmpty =
-                  (touchedUnits.has(index) || showValidationErrors) &&
-                  !unit.identifier.trim();
+                  (touchedUnits.has(index) || showValidationErrors) && !unit.identifier.trim();
 
                 return (
                   <UnitRow
@@ -965,9 +898,7 @@ export function UnitTrackingEditor({
                     onUpdate={updateUnit}
                     onUpdateAttribute={updateUnitAttribute}
                     onRemove={removeUnit}
-                    onTouch={(i) =>
-                      setTouchedUnits((prev) => new Set(prev).add(i))
-                    }
+                    onTouch={(i) => setTouchedUnits((prev) => new Set(prev).add(i))}
                     onApplyPurchaseToAll={applyPurchaseToAll}
                   />
                 );
@@ -979,7 +910,7 @@ export function UnitTrackingEditor({
           {duplicateIdentifiers.size > 0 && (
             <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-3 text-sm">
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{t('duplicateIdentifier')}</span>
+              <span>{t("duplicateIdentifier")}</span>
             </div>
           )}
 
@@ -987,7 +918,7 @@ export function UnitTrackingEditor({
             <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-md p-3 text-sm">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>
-                {t('missingAttributesWarning', {
+                {t("missingAttributesWarning", {
                   count: missingAttributeCount,
                 })}
               </span>
@@ -997,23 +928,18 @@ export function UnitTrackingEditor({
       )}
 
       {/* Disable confirmation dialog */}
-      <AlertDialog
-        open={showDisableConfirm}
-        onOpenChange={setShowDisableConfirm}
-      >
+      <AlertDialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('disableConfirm')}</AlertDialogTitle>
+            <AlertDialogTitle>{t("disableConfirm")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('disableDescription', { count: trackedUnitsCount })}
+              {t("disableDescription", { count: trackedUnitsCount })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>
-              {t('cancel')}
-            </AlertDialogClose>
+            <AlertDialogClose render={<Button variant="outline" />}>{t("cancel")}</AlertDialogClose>
             <AlertDialogClose render={<Button />} onClick={confirmDisable}>
-              {t('confirm')}
+              {t("confirm")}
             </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>

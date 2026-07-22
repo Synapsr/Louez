@@ -716,16 +716,6 @@
         "archived": "Gearchiveerd"
       },
       "form": {
-        "steps": {
-          "photos": "Foto's",
-          "photosDescription": "Productafbeeldingen",
-          "info": "Informatie",
-          "infoDescription": "Naam en beschrijving",
-          "pricing": "Prijzen",
-          "pricingDescription": "Prijs en tarieven",
-          "preview": "Publiceren",
-          "previewDescription": "Controleren en publiceren"
-        },
         "photos": "Foto's",
         "photosDescription": "Voeg tot 5 foto's van uw product toe",
         "addImage": "Toevoegen",
@@ -850,7 +840,9 @@
             "strictLine": "Vaste stappen",
             "progressiveLine": "Progressief",
             "savings": "Klantbesparing",
-            "basePricing": "Basistarieven"
+            "basePricing": "Basistarieven",
+            "title": "Prijssimulatie",
+            "subtitle": "Totale prijs per huurperiode"
           }
         },
         "unitTracking": {
@@ -906,7 +898,10 @@
           "purchaseDetails": "Aankoopgegevens",
           "unitDetails": "Details",
           "existingUnitDetailsHint": "Aankoopdetails, notities en levenscyclus worden beheerd vanuit de inventaris.",
-          "openInventoryDetails": "Inventaris openen"
+          "openInventoryDetails": "Inventaris openen",
+          "benefitIdentify": "Geef elk exemplaar een serienummer of referentie",
+          "benefitAvailability": "Volg de beschikbaarheid en verhuur van elk exemplaar",
+          "benefitInventory": "Registreer aankoopprijs en -datum voor je inventaris"
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",
@@ -914,8 +909,6 @@
         "noName": "Geen naam",
         "units": "eenhe(i)d(en)",
         "recommended": "Aanbevolen",
-        "previous": "Vorige",
-        "next": "Volgende",
         "videoUrl": "YouTube video",
         "videoUrlPlaceholder": "https://www.youtube.com/watch?v=...",
         "videoUrlHelp": "Optioneel - Voeg een presentatievideo voor uw product toe",
@@ -1032,7 +1025,21 @@
               "margin": "Marge / dag"
             }
           }
-        }
+        },
+        "productSection": "Product",
+        "productSectionDescription": "Naam, foto's en beschrijving van je product",
+        "addVideo": "Een YouTube-video toevoegen",
+        "categorySearchPlaceholder": "Zoeken of aanmaken…",
+        "categoryCreateOption": "'{name}' aanmaken",
+        "categoryNoResults": "Geen categorie gevonden",
+        "summary": {
+          "checklistTitle": "Voortgang",
+          "required": "Verplicht"
+        },
+        "videoTileLabel": "Video",
+        "videoInvalid": "Ongeldige YouTube-link",
+        "editVideo": "Video bewerken",
+        "removeVideo": "Video verwijderen"
       },
       "deleteConfirm": {
         "title": "Dit product verwijderen?",

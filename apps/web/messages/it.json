@@ -716,16 +716,6 @@
         "archived": "Archiviati"
       },
       "form": {
-        "steps": {
-          "photos": "Foto",
-          "photosDescription": "Immagini del prodotto",
-          "info": "Informazioni",
-          "infoDescription": "Nome e descrizione",
-          "pricing": "Prezzi",
-          "pricingDescription": "Prezzo e tariffe",
-          "preview": "Pubblica",
-          "previewDescription": "Rivedi e pubblica"
-        },
         "photos": "Foto",
         "photosDescription": "Aggiungi fino a 5 foto del tuo prodotto",
         "addImage": "Aggiungi",
@@ -850,7 +840,9 @@
             "strictLine": "Livelli fissi",
             "progressiveLine": "Progressivo",
             "savings": "Risparmio cliente",
-            "basePricing": "Tariffe base"
+            "basePricing": "Tariffe base",
+            "title": "Simulazione del prezzo",
+            "subtitle": "Prezzo totale in base alla durata del noleggio"
           }
         },
         "unitTracking": {
@@ -906,7 +898,10 @@
           "purchaseDetails": "Dettagli di acquisto",
           "unitDetails": "Dettagli",
           "existingUnitDetailsHint": "Dettagli di acquisto, note e ciclo di vita sono gestiti dall'inventario.",
-          "openInventoryDetails": "Apri inventario"
+          "openInventoryDetails": "Apri inventario",
+          "benefitIdentify": "Identifica ogni esemplare con un numero di serie o un riferimento",
+          "benefitAvailability": "Monitora la disponibilità e i noleggi di ogni esemplare",
+          "benefitInventory": "Registra prezzo e data di acquisto per il tuo inventario"
         },
         "previewTitle": "Anteprima",
         "previewDescription": "Ecco come apparira il tuo prodotto nel catalogo",
@@ -914,8 +909,6 @@
         "noName": "Senza nome",
         "units": "unita",
         "recommended": "Consigliato",
-        "previous": "Precedente",
-        "next": "Avanti",
         "videoUrl": "Video YouTube",
         "videoUrlPlaceholder": "https://www.youtube.com/watch?v=...",
         "videoUrlHelp": "Opzionale - Aggiungi un video di presentazione per il tuo prodotto",
@@ -1032,7 +1025,21 @@
               "margin": "Margine / giorno"
             }
           }
-        }
+        },
+        "productSection": "Prodotto",
+        "productSectionDescription": "Nome, foto e descrizione del tuo prodotto",
+        "addVideo": "Aggiungi un video YouTube",
+        "categorySearchPlaceholder": "Cerca o crea…",
+        "categoryCreateOption": "Crea «{name}»",
+        "categoryNoResults": "Nessuna categoria trovata",
+        "summary": {
+          "checklistTitle": "Avanzamento",
+          "required": "Obbligatorio"
+        },
+        "videoTileLabel": "Video",
+        "videoInvalid": "Link YouTube non valido",
+        "editVideo": "Modifica il video",
+        "removeVideo": "Rimuovi il video"
       },
       "deleteConfirm": {
         "title": "Eliminare questo prodotto?",

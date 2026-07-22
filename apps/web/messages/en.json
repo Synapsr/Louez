@@ -755,16 +755,6 @@
         "archived": "Archived"
       },
       "form": {
-        "steps": {
-          "photos": "Photos",
-          "photosDescription": "Product images",
-          "info": "Information",
-          "infoDescription": "Name and description",
-          "pricing": "Pricing",
-          "pricingDescription": "Price and rates",
-          "preview": "Publish",
-          "previewDescription": "Review and publish"
-        },
         "photos": "Photos",
         "photosDescription": "Add up to 5 photos of your product",
         "addImage": "Add",
@@ -889,7 +879,9 @@
             "strictLine": "Fixed tiers",
             "progressiveLine": "Progressive",
             "savings": "Customer savings",
-            "basePricing": "Base pricing"
+            "basePricing": "Base pricing",
+            "title": "Price simulation",
+            "subtitle": "Total price charged by rental duration"
           }
         },
         "unitTracking": {
@@ -945,7 +937,10 @@
           "purchaseDetails": "Purchase details",
           "unitDetails": "Details",
           "existingUnitDetailsHint": "Purchase details, notes, and lifecycle are managed from inventory.",
-          "openInventoryDetails": "Open inventory"
+          "openInventoryDetails": "Open inventory",
+          "benefitIdentify": "Give each item a serial number or reference",
+          "benefitAvailability": "Track each item's availability and rentals",
+          "benefitInventory": "Record purchase price and date for your inventory"
         },
         "previewTitle": "Preview",
         "previewDescription": "Here's how your product will appear in the catalog",
@@ -953,8 +948,6 @@
         "noName": "No name",
         "units": "unit(s)",
         "recommended": "Recommended",
-        "previous": "Previous",
-        "next": "Next",
         "videoUrl": "YouTube Video",
         "videoUrlPlaceholder": "https://www.youtube.com/watch?v=...",
         "videoUrlHelp": "Optional - Add a presentation video for your product",
@@ -1077,7 +1070,21 @@
               "margin": "Margin / day"
             }
           }
-        }
+        },
+        "productSection": "Product",
+        "productSectionDescription": "Name, photos and description of your product",
+        "addVideo": "Add a YouTube video",
+        "categorySearchPlaceholder": "Search or create…",
+        "categoryCreateOption": "Create “{name}”",
+        "categoryNoResults": "No category found",
+        "summary": {
+          "checklistTitle": "Progress",
+          "required": "Required"
+        },
+        "videoTileLabel": "Video",
+        "videoInvalid": "Invalid YouTube link",
+        "editVideo": "Edit video",
+        "removeVideo": "Remove video"
       },
       "deleteConfirm": {
         "title": "Delete this product?",

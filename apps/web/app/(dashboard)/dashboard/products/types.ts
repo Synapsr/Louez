@@ -1,12 +1,8 @@
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType, ReactNode } from "react";
 
-import type {
-  PricingMode,
-  ProductTaxSettings,
-  TaxSettings,
-} from '@louez/types';
-import type { DurationUnit } from '@louez/utils';
-import type { ProductInput } from '@louez/validations';
+import type { PricingMode, ProductTaxSettings, TaxSettings } from "@louez/types";
+import type { DurationUnit } from "@louez/utils";
+import type { ProductInput } from "@louez/validations";
 
 export interface Category {
   id: string;
@@ -77,7 +73,7 @@ export interface Product {
   basePeriodMinutes?: number | null;
   pricingTiers?: PricingTierData[];
   quantity: number;
-  status: 'draft' | 'active' | 'archived' | null;
+  status: "draft" | "active" | "archived" | null;
   images: string[] | null;
   videoUrl: string | null;
   taxSettings?: ProductTaxSettings | null;
@@ -103,17 +99,9 @@ export interface ProductFormProps {
   availableAccessories?: AvailableAccessory[];
 }
 
-export type ProductFormValues = Omit<ProductInput, 'taxSettings'> & {
+export type ProductFormValues = Omit<ProductInput, "taxSettings"> & {
   taxSettings: ProductTaxSettings;
 };
-
-export interface ProductStep {
-  id: 'photos' | 'info' | 'pricing' | 'preview';
-  title: string;
-  description: string;
-}
-
-export type StepDirection = 'forward' | 'backward';
 
 export interface ProductFormComponentApi {
   AppField: ComponentType<{

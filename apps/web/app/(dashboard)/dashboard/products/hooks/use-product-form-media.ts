@@ -53,11 +53,27 @@ function createCandidateId(index: number) {
   return `product-image-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// Decoded manually instead of fetch(dataUrl): third-party fetch wrappers
+// (e.g. Gleap's network logger) break fetch on data: URLs.
 const dataUrlToFile = async (dataUrl: string, filename: string) => {
-  const response = await fetch(dataUrl);
-  const blob = await response.blob();
-  const extension = blob.type === "image/jpeg" ? "jpg" : blob.type.replace("image/", "");
-  return new File([blob], `${filename}.${extension}`, { type: blob.type });
+  const [header = "", payload = ""] = dataUrl.split(",");
+  const mimeType = header.match(/^data:([^;,]+)/)?.[1] || "image/jpeg";
+
+  let bytes: Uint8Array<ArrayBuffer>;
+  if (header.includes(";base64")) {
+    const binary = atob(payload);
+    bytes = new Uint8Array(new ArrayBuffer(binary.length));
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+  } else {
+    const encoded = new TextEncoder().encode(decodeURIComponent(payload));
+    bytes = new Uint8Array(new ArrayBuffer(encoded.length));
+    bytes.set(encoded);
+  }
+
+  const extension = mimeType === "image/jpeg" ? "jpg" : mimeType.replace("image/", "");
+  return new File([bytes], `${filename}.${extension}`, { type: mimeType });
 };
 
 export function useProductFormMedia({ form, imagesPreviews }: UseProductFormMediaParams) {

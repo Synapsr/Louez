@@ -755,16 +755,6 @@
         "archived": "Archivés"
       },
       "form": {
-        "steps": {
-          "photos": "Photos",
-          "photosDescription": "Images du produit",
-          "info": "Informations",
-          "infoDescription": "Nom et description",
-          "pricing": "Tarification",
-          "pricingDescription": "Prix et tarifs",
-          "preview": "Publication",
-          "previewDescription": "Vérifier et publier"
-        },
         "photos": "Photos",
         "photosDescription": "Ajoutez jusqu'à 5 photos de votre produit",
         "addImage": "Ajouter",
@@ -889,7 +879,9 @@
             "strictLine": "Paliers fixes",
             "progressiveLine": "Progressif",
             "savings": "Économie client",
-            "basePricing": "Tarifs de base"
+            "basePricing": "Tarifs de base",
+            "title": "Simulation du prix",
+            "subtitle": "Prix total facturé selon la durée de location"
           }
         },
         "unitTracking": {
@@ -945,7 +937,10 @@
           "purchaseDetails": "Détails d'achat",
           "unitDetails": "Détails",
           "existingUnitDetailsHint": "Les détails d'achat, les notes et le cycle de vie se gèrent depuis l'inventaire.",
-          "openInventoryDetails": "Ouvrir l'inventaire"
+          "openInventoryDetails": "Ouvrir l'inventaire",
+          "benefitIdentify": "Identifiez chaque exemplaire avec un numéro de série ou une référence",
+          "benefitAvailability": "Suivez la disponibilité et les locations de chaque exemplaire",
+          "benefitInventory": "Renseignez le prix et la date d'achat pour votre inventaire"
         },
         "previewTitle": "Aperçu",
         "previewDescription": "Voici comment votre produit apparaîtra dans le catalogue",
@@ -953,8 +948,6 @@
         "noName": "Sans nom",
         "units": "unité(s)",
         "recommended": "Recommandé",
-        "previous": "Précédent",
-        "next": "Suivant",
         "videoUrl": "Vidéo YouTube",
         "videoUrlPlaceholder": "https://www.youtube.com/watch?v=...",
         "videoUrlHelp": "Optionnel - Ajoutez une vidéo de présentation de votre produit",
@@ -1077,7 +1070,21 @@
         "seasonalSettingsHint": "La TVA, la caution et les remises progressives sont configurées dans les tarifs de base.",
         "switchToBasePricing": "Revenir aux tarifs de base",
         "savingPeriod": "Sauvegarde...",
-        "periodSaved": "Tarifs sauvegardés"
+        "periodSaved": "Tarifs sauvegardés",
+        "productSection": "Produit",
+        "productSectionDescription": "Nom, photos et description de votre produit",
+        "addVideo": "Ajouter une vidéo YouTube",
+        "categorySearchPlaceholder": "Rechercher ou créer…",
+        "categoryCreateOption": "Créer « {name} »",
+        "categoryNoResults": "Aucune catégorie trouvée",
+        "summary": {
+          "checklistTitle": "Progression",
+          "required": "Requis"
+        },
+        "videoTileLabel": "Vidéo",
+        "videoInvalid": "Lien YouTube invalide",
+        "editVideo": "Modifier la vidéo",
+        "removeVideo": "Retirer la vidéo"
       },
       "deleteConfirm": {
         "title": "Supprimer ce produit ?",
