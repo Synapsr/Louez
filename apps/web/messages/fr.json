@@ -2224,6 +2224,7 @@
       "legend": "Légende",
       "moreItems": "+{count} autres",
       "noCustomer": "Sans client",
+      "viewReservation": "Voir la réservation",
       "dayNames": {
         "mon": "Lun",
         "tue": "Mar",
@@ -2242,6 +2243,18 @@
         "rejected": "Refusée",
         "quote": "Devis",
         "declined": "Devis refusé"
+      },
+      "logistics": {
+        "legend": "Livraison / retour client",
+        "delivery": "Livraison",
+        "return": "Retour client",
+        "deliveryAndReturn": "Livraison + retour client",
+        "deliveryLocation": "Lieu de livraison",
+        "returnLocation": "Lieu de reprise"
+      },
+      "maps": {
+        "openAddress": "Ouvrir l'adresse dans Google Maps",
+        "openWith": "Ouvrir avec"
       },
       "viewMode": {
         "label": "Mode d'affichage",

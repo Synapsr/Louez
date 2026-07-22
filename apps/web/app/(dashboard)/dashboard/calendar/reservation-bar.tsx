@@ -1,10 +1,12 @@
 'use client';
 
-import { forwardRef } from 'react';
+import { forwardRef, useState } from 'react';
+import type { MouseEvent } from 'react';
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
+import { Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@louez/ui';
@@ -15,7 +17,9 @@ import {
   createDashboardReturnTo,
 } from '@/lib/dashboard/util.reservation-navigation';
 
+import { ReservationLogisticsLocations } from './reservation-logistics-locations';
 import type { Reservation, ReservationStatus } from './types';
+import { getReservationLogisticsKind } from './util.reservation-logistics';
 
 // =============================================================================
 // Status Colors
@@ -155,6 +159,11 @@ export const ReservationBar = forwardRef<
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const status = reservation.status || 'pending';
+  const logisticsKind = getReservationLogisticsKind(reservation);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const logisticsLabel = logisticsKind
+    ? t(`logistics.${logisticsKind}`)
+    : null;
   const reservationHref = createDashboardReservationHref({
     reservationId: reservation.id,
     returnTo: createDashboardReturnTo(pathname, searchParams),
@@ -162,16 +171,26 @@ export const ReservationBar = forwardRef<
 
   const customerName = `${reservation.customer.firstName} ${reservation.customer.lastName}`;
   const productNames = formatReservationItems(reservation.items);
+  const handleReservationClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      logisticsKind &&
+      window.matchMedia('(pointer: coarse)').matches
+    ) {
+      event.preventDefault();
+      setTooltipOpen(true);
+    }
+  };
 
   // Minimal mode: just a colored dot
   if (minimal) {
     return (
-      <Tooltip>
+      <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
         <TooltipTrigger
           render={
             <Link
               ref={ref}
               href={reservationHref}
+              onClick={handleReservationClick}
               className={cn(
                 'block h-2 w-2 rounded-full transition-transform hover:scale-125',
                 className,
@@ -186,6 +205,7 @@ export const ReservationBar = forwardRef<
             reservation={reservation}
             customerName={customerName}
             statusLabel={t(`status.${status}`)}
+            reservationHref={reservationHref}
           />
         </TooltipContent>
       </Tooltip>
@@ -193,13 +213,14 @@ export const ReservationBar = forwardRef<
   }
 
   return (
-    <Tooltip>
+    <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
       <TooltipTrigger
         delay={75}
         render={
           <Link
             ref={ref}
             href={reservationHref}
+            onClick={handleReservationClick}
             className={cn(
               'group relative block overflow-hidden transition-all',
               'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
@@ -242,6 +263,15 @@ export const ReservationBar = forwardRef<
             continuesAfter && 'pr-2',
           )}
         >
+          {logisticsLabel && (
+            <span
+              className="bg-warning/20 text-warning-foreground dark:text-warning mr-1 flex h-4 w-4 shrink-0 items-center justify-center rounded-sm"
+              title={logisticsLabel}
+            >
+              <Truck className="h-3 w-3" aria-hidden="true" />
+              <span className="sr-only">{logisticsLabel}</span>
+            </span>
+          )}
           <span className="truncate font-medium">{customerName}</span>
           {!compact && productNames && (
             <span className="ml-1 hidden truncate opacity-80 sm:inline">
@@ -267,6 +297,7 @@ export const ReservationBar = forwardRef<
           reservation={reservation}
           customerName={customerName}
           statusLabel={t(`status.${status}`)}
+          reservationHref={reservationHref}
         />
       </TooltipContent>
     </Tooltip>
@@ -281,15 +312,19 @@ interface TooltipContentProps {
   reservation: Reservation;
   customerName: string;
   statusLabel: string;
+  reservationHref: string;
 }
 
 function ReservationTooltipContent({
   reservation,
   customerName,
   statusLabel,
+  reservationHref,
 }: TooltipContentProps) {
   const status = reservation.status || 'pending';
   const items = getReservationItemsList(reservation.items);
+  const t = useTranslations('dashboard.calendar');
+  const logisticsKind = getReservationLogisticsKind(reservation);
 
   return (
     <div className="min-w-48 space-y-2 p-1.5">
@@ -306,6 +341,18 @@ function ReservationTooltipContent({
           {statusLabel}
         </span>
       </div>
+
+      {logisticsKind && (
+        <div className="flex items-center gap-1.5 text-xs font-medium">
+          <Truck
+            className="text-warning h-3.5 w-3.5"
+            aria-hidden="true"
+          />
+          <span>{t(`logistics.${logisticsKind}`)}</span>
+        </div>
+      )}
+
+      <ReservationLogisticsLocations reservation={reservation} />
 
       {/* Products list */}
       {items.length > 0 && (
@@ -348,6 +395,13 @@ function ReservationTooltipContent({
           <span className="font-mono">#{reservation.number}</span>
         </div>
       </div>
+
+      <Link
+        href={reservationHref}
+        className="text-primary inline-flex text-xs font-medium underline-offset-2 hover:underline"
+      >
+        {t('viewReservation')}
+      </Link>
     </div>
   );
 }

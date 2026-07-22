@@ -2161,6 +2161,7 @@
       "legend": "Legenda",
       "moreItems": "+{count} mais",
       "noCustomer": "Sem cliente",
+      "viewReservation": "Ver reserva",
       "dayNames": {
         "mon": "Seg",
         "tue": "Ter",
@@ -2179,6 +2180,18 @@
         "rejected": "Rejeitada",
         "quote": "Orçamento",
         "declined": "Orçamento recusado"
+      },
+      "logistics": {
+        "legend": "Entrega / recolha no cliente",
+        "delivery": "Entrega",
+        "return": "Recolha no cliente",
+        "deliveryAndReturn": "Entrega + recolha no cliente",
+        "deliveryLocation": "Local de entrega",
+        "returnLocation": "Local de recolha"
+      },
+      "maps": {
+        "openAddress": "Abrir endereço no Google Maps",
+        "openWith": "Abrir com"
       },
       "viewMode": {
         "label": "Modo de visualização",

@@ -2161,6 +2161,7 @@
       "legend": "Legenda",
       "moreItems": "+{count} więcej",
       "noCustomer": "Brak klienta",
+      "viewReservation": "Wyświetl rezerwację",
       "dayNames": {
         "mon": "Pon",
         "tue": "Wt",
@@ -2179,6 +2180,18 @@
         "rejected": "Odrzucona",
         "quote": "Wycena",
         "declined": "Wycena odrzucona"
+      },
+      "logistics": {
+        "legend": "Dostawa / odbiór od klienta",
+        "delivery": "Dostawa",
+        "return": "Odbiór od klienta",
+        "deliveryAndReturn": "Dostawa + odbiór od klienta",
+        "deliveryLocation": "Miejsce dostawy",
+        "returnLocation": "Miejsce odbioru"
+      },
+      "maps": {
+        "openAddress": "Otwórz adres w Google Maps",
+        "openWith": "Otwórz za pomocą"
       },
       "viewMode": {
         "label": "Tryb widoku",

@@ -2206,6 +2206,7 @@
       "legend": "Leyenda",
       "moreItems": "+{count} mas",
       "noCustomer": "Sin cliente",
+      "viewReservation": "Ver reserva",
       "dayNames": {
         "mon": "Lun",
         "tue": "Mar",
@@ -2224,6 +2225,18 @@
         "rejected": "Rechazada",
         "quote": "Presupuesto",
         "declined": "Presupuesto rechazado"
+      },
+      "logistics": {
+        "legend": "Entrega / recogida al cliente",
+        "delivery": "Entrega",
+        "return": "Recogida al cliente",
+        "deliveryAndReturn": "Entrega + recogida al cliente",
+        "deliveryLocation": "Lugar de entrega",
+        "returnLocation": "Lugar de recogida"
+      },
+      "maps": {
+        "openAddress": "Abrir la dirección en Google Maps",
+        "openWith": "Abrir con"
       },
       "viewMode": {
         "label": "Modo de vista",

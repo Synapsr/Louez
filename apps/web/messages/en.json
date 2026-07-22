@@ -2224,6 +2224,7 @@
       "legend": "Legend",
       "moreItems": "+{count} more",
       "noCustomer": "No customer",
+      "viewReservation": "View reservation",
       "dayNames": {
         "mon": "Mon",
         "tue": "Tue",
@@ -2242,6 +2243,18 @@
         "rejected": "Rejected",
         "quote": "Quote",
         "declined": "Quote declined"
+      },
+      "logistics": {
+        "legend": "Delivery / customer return",
+        "delivery": "Delivery",
+        "return": "Customer return",
+        "deliveryAndReturn": "Delivery + customer return",
+        "deliveryLocation": "Delivery location",
+        "returnLocation": "Collection location"
+      },
+      "maps": {
+        "openAddress": "Open address in Google Maps",
+        "openWith": "Open with"
       },
       "viewMode": {
         "label": "View mode",

@@ -2161,6 +2161,7 @@
       "legend": "Legenda",
       "moreItems": "+{count} meer",
       "noCustomer": "Geen klant",
+      "viewReservation": "Reservering bekijken",
       "dayNames": {
         "mon": "Ma",
         "tue": "Di",
@@ -2179,6 +2180,18 @@
         "rejected": "Afgewezen",
         "quote": "Offerte",
         "declined": "Offerte geweigerd"
+      },
+      "logistics": {
+        "legend": "Levering / ophalen bij klant",
+        "delivery": "Levering",
+        "return": "Ophalen bij klant",
+        "deliveryAndReturn": "Levering + ophalen bij klant",
+        "deliveryLocation": "Afleverlocatie",
+        "returnLocation": "Ophaallocatie"
+      },
+      "maps": {
+        "openAddress": "Adres openen in Google Maps",
+        "openWith": "Openen met"
       },
       "viewMode": {
         "label": "Weergavemodus",

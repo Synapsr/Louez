@@ -2200,6 +2200,7 @@
       "legend": "Legende",
       "moreItems": "+{count} weitere",
       "noCustomer": "Kein Kunde",
+      "viewReservation": "Reservierung anzeigen",
       "dayNames": {
         "mon": "Mo",
         "tue": "Di",
@@ -2218,6 +2219,18 @@
         "rejected": "Abgelehnt",
         "quote": "Angebot",
         "declined": "Angebot abgelehnt"
+      },
+      "logistics": {
+        "legend": "Lieferung / Abholung beim Kunden",
+        "delivery": "Lieferung",
+        "return": "Abholung beim Kunden",
+        "deliveryAndReturn": "Lieferung + Abholung beim Kunden",
+        "deliveryLocation": "Lieferort",
+        "returnLocation": "Abholort"
+      },
+      "maps": {
+        "openAddress": "Adresse in Google Maps öffnen",
+        "openWith": "Öffnen mit"
       },
       "viewMode": {
         "label": "Ansichtsmodus",

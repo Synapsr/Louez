@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Truck,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import {
@@ -474,6 +475,14 @@ export function CalendarView({
                 </span>
               </div>
             ))}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="bg-warning/20 text-warning-foreground dark:text-warning flex h-4 w-4 shrink-0 items-center justify-center rounded-sm">
+                <Truck className="h-3 w-3" aria-hidden="true" />
+              </div>
+              <span className="text-muted-foreground text-xs sm:text-sm">
+                {t('logistics.legend')}
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>

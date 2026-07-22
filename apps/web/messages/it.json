@@ -2161,6 +2161,7 @@
       "legend": "Legenda",
       "moreItems": "+{count} altri",
       "noCustomer": "Nessun cliente",
+      "viewReservation": "Visualizza prenotazione",
       "dayNames": {
         "mon": "Lun",
         "tue": "Mar",
@@ -2179,6 +2180,18 @@
         "rejected": "Rifiutata",
         "quote": "Preventivo",
         "declined": "Preventivo rifiutato"
+      },
+      "logistics": {
+        "legend": "Consegna / ritiro dal cliente",
+        "delivery": "Consegna",
+        "return": "Ritiro dal cliente",
+        "deliveryAndReturn": "Consegna + ritiro dal cliente",
+        "deliveryLocation": "Luogo di consegna",
+        "returnLocation": "Luogo di ritiro"
+      },
+      "maps": {
+        "openAddress": "Apri l'indirizzo in Google Maps",
+        "openWith": "Apri con"
       },
       "viewMode": {
         "label": "Modalità di visualizzazione",

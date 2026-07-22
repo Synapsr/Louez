@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
+import { Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Badge } from '@louez/ui';
@@ -21,7 +23,9 @@ import {
   reservationIncludesDay,
   startOfDay,
 } from './calendar-utils';
+import { ReservationLogisticsLocations } from './reservation-logistics-locations';
 import type { Reservation, ReservationStatus } from './types';
+import { getReservationLogisticsKind } from './util.reservation-logistics';
 
 // =============================================================================
 // Constants
@@ -238,13 +242,28 @@ function SpanningReservationBar({
   const customerName =
     `${reservation.customer?.firstName || ''} ${reservation.customer?.lastName || ''}`.trim() ||
     t('noCustomer');
+  const logisticsKind = getReservationLogisticsKind(reservation);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const logisticsLabel = logisticsKind
+    ? t(`logistics.${logisticsKind}`)
+    : null;
+  const handleReservationClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (
+      logisticsKind &&
+      window.matchMedia('(pointer: coarse)').matches
+    ) {
+      event.preventDefault();
+      setTooltipOpen(true);
+    }
+  };
 
   return (
-    <Tooltip>
+    <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
       <TooltipTrigger
         render={
           <Link
             href={reservationHref}
+            onClick={handleReservationClick}
             className={cn(
               'absolute flex items-center gap-1.5 px-2 text-xs font-medium transition-all',
               'hover:shadow-md hover:brightness-110',
@@ -267,6 +286,15 @@ function SpanningReservationBar({
         }
       >
         {continuesBefore && <span className="mr-0.5 opacity-70">◂</span>}
+        {logisticsLabel && (
+          <span
+            className="bg-warning/20 text-warning-foreground dark:text-warning flex h-4 w-4 shrink-0 items-center justify-center rounded-sm"
+            title={logisticsLabel}
+          >
+            <Truck className="h-3 w-3" aria-hidden="true" />
+            <span className="sr-only">{logisticsLabel}</span>
+          </span>
+        )}
         <span className="truncate">{customerName}</span>
         {reservation.number && (
           <span className="shrink-0 opacity-70">#{reservation.number}</span>
@@ -276,6 +304,16 @@ function SpanningReservationBar({
       <TooltipContent side="bottom" className="max-w-xs">
         <div className="space-y-1">
           <div className="font-medium">{customerName}</div>
+          {logisticsLabel && (
+            <div className="flex items-center gap-1.5 text-xs font-medium">
+              <Truck
+                className="text-warning h-3.5 w-3.5"
+                aria-hidden="true"
+              />
+              <span>{logisticsLabel}</span>
+            </div>
+          )}
+          <ReservationLogisticsLocations reservation={reservation} />
           {reservation.number && (
             <div className="text-muted-foreground text-xs">
               #{reservation.number}
@@ -293,6 +331,12 @@ function SpanningReservationBar({
           <Badge variant="outline" className="text-xs">
             {t(`status.${reservation.status}`)}
           </Badge>
+          <Link
+            href={reservationHref}
+            className="text-primary inline-flex text-xs font-medium underline-offset-2 hover:underline"
+          >
+            {t('viewReservation')}
+          </Link>
         </div>
       </TooltipContent>
     </Tooltip>
