@@ -13,11 +13,9 @@ import { listVoiceOptions } from './voice-catalog-actions'
 interface VoicePickerProps {
   value: string
   onChange: (voiceId: string) => void
-  /** App locale — the preview is spoken in this language. */
-  language: string
 }
 
-export const VoicePicker = ({ value, onChange, language }: VoicePickerProps) => {
+export const VoicePicker = ({ value, onChange }: VoicePickerProps) => {
   const t = useTranslations('dashboard.settings.aiVoiceAgent')
 
   const [gender, setGender] = useState<'female' | 'male' | null>(null)
@@ -55,9 +53,7 @@ export const VoicePicker = ({ value, onChange, language }: VoicePickerProps) => 
     }
     stop()
     const audio = new Audio(
-      `/api/voice/preview?voiceId=${encodeURIComponent(
-        voiceId,
-      )}&language=${encodeURIComponent(language)}`,
+      `/api/voice/preview?voiceId=${encodeURIComponent(voiceId)}`,
     )
     audioRef.current = audio
     setLoadingId(voiceId)

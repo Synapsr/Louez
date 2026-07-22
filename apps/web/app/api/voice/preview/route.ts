@@ -1,10 +1,10 @@
 import { getStorePlan } from '@/lib/plan-limits'
 import { getCurrentStore } from '@/lib/store-context'
-import { generateVoiceSample } from '@/lib/voice/elevenlabs'
+import { fetchVoicePreview } from '@/lib/voice/elevenlabs'
 
-// Dashboard-only: streams a short spoken sample of a voice in a language, so the
-// store can hear a voice before choosing it. Session-authenticated and gated by
-// the aiPhone plan; the ElevenLabs key stays server-side.
+// Dashboard-only: streams a voice's static preview sample so the store can hear
+// it before choosing. Uses no TTS credits (proxies the voice's preview_url).
+// Session-authenticated and gated by the aiPhone plan; the key stays server-side.
 
 export async function GET(req: Request) {
   const store = await getCurrentStore()
@@ -15,12 +15,10 @@ export async function GET(req: Request) {
     return new Response('Forbidden', { status: 403 })
   }
 
-  const url = new URL(req.url)
-  const voiceId = (url.searchParams.get('voiceId') ?? '').trim()
-  const language = (url.searchParams.get('language') ?? 'en').trim()
+  const voiceId = (new URL(req.url).searchParams.get('voiceId') ?? '').trim()
   if (!voiceId || voiceId.length > 80) {
     return new Response('Bad request', { status: 400 })
   }
 
-  return generateVoiceSample(voiceId, language)
+  return fetchVoicePreview(voiceId)
 }
