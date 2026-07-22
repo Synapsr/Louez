@@ -290,9 +290,7 @@ export function createPhoneTools(ctx: PhoneToolContext) {
           ok: false,
           reason: describePhoneQuoteError(
             result && 'error' in result ? result.error : undefined,
-            result && 'errorParams' in result
-              ? (result as { errorParams?: Record<string, unknown> }).errorParams
-              : undefined,
+            result && 'errorParams' in result ? result.errorParams : undefined,
             ctx.language,
           ),
         }
@@ -385,9 +383,7 @@ export function createPhoneTools(ctx: PhoneToolContext) {
           ok: false,
           reason: describePhoneQuoteError(
             result && 'error' in result ? result.error : undefined,
-            result && 'errorParams' in result
-              ? (result as { errorParams?: Record<string, unknown> }).errorParams
-              : undefined,
+            result && 'errorParams' in result ? result.errorParams : undefined,
             ctx.language,
           ),
         }
