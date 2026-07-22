@@ -1,7 +1,12 @@
 import { generateText, stepCountIs, streamText } from 'ai'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
-import { aiAdvisorConversations, aiAdvisorMessages, db } from '@louez/db'
+import {
+  aiAdvisorConversations,
+  aiAdvisorMessages,
+  db,
+  storeLocations,
+} from '@louez/db'
 import type { AiPhoneSettings, BusinessHours } from '@louez/types'
 
 import { normalizeUsage, type AdvisorUsage } from '@/lib/ai/pricing'
@@ -43,6 +48,8 @@ export interface PhoneTurnParams {
     businessHours: BusinessHours | null
     timezone: string | null
     deliveryEnabled: boolean | null
+    /** Delivery offering: 'optional' | 'required' | 'included', or null. */
+    deliveryMode: string | null
   }
   conversationId: string
   callerPhone: string
@@ -109,14 +116,25 @@ async function preparePhoneTurn(params: PhoneTurnParams): Promise<{
     messages.shift()
   }
 
-  // Ground the model in what is static (catalog) and what it already gathered
-  // (collected facts), so it never has to re-fetch mid-call and stays consistent.
-  const [catalog, conversation] = await Promise.all([
+  // Ground the model in what is static (catalog, pickup locations) and what it
+  // already gathered (collected facts), so it never has to re-fetch mid-call and
+  // stays consistent.
+  const [catalog, conversation, locations] = await Promise.all([
     buildStoreCatalog(store.id),
     db.query.aiAdvisorConversations.findFirst({
       where: eq(aiAdvisorConversations.id, conversationId),
       columns: { collectedData: true },
     }),
+    db
+      .select({ name: storeLocations.name, city: storeLocations.city })
+      .from(storeLocations)
+      .where(
+        and(
+          eq(storeLocations.storeId, store.id),
+          eq(storeLocations.isActive, true),
+        ),
+      )
+      .limit(20),
   ])
 
   const system = buildPhoneSystemPrompt({
@@ -132,6 +150,8 @@ async function preparePhoneTurn(params: PhoneTurnParams): Promise<{
     businessHours: store.businessHours,
     timezone: store.timezone,
     deliveryEnabled: store.deliveryEnabled,
+    deliveryMode: store.deliveryMode,
+    pickupLocations: locations,
     catalog,
     collectedFacts: conversation?.collectedData ?? null,
     storeContext: params.storeContext,

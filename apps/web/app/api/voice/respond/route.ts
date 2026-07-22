@@ -133,6 +133,7 @@ export async function POST(req: Request) {
         businessHours: store.settings?.businessHours ?? null,
         timezone: store.settings?.timezone ?? null,
         deliveryEnabled: store.settings?.delivery?.enabled ?? null,
+        deliveryMode: store.settings?.delivery?.mode ?? null,
       },
       conversationId,
       callerPhone: conversation.callerPhone ?? call.from,

@@ -27,6 +27,10 @@ export type PhonePromptParams = {
   timezone: string | null
   /** Whether the store offers delivery (kept out of tools, so state it here). */
   deliveryEnabled: boolean | null
+  /** Delivery offering: 'optional' | 'required' | 'included', or null. */
+  deliveryMode: string | null
+  /** Active pickup/return locations — ask which one when there is more than one. */
+  pickupLocations: { name: string; city: string | null }[]
   /** Compact active-product catalog (name + id + short desc), or null. */
   catalog: string | null
   /** Facts already gathered this call (record_qualification), or null. */
@@ -189,7 +193,8 @@ export function buildPhoneSystemPrompt(params: PhonePromptParams): string {
 - The store's opening hours, contact details and product catalog (with ids) are given below. Use those ids directly and never re-ask for the hours or contact. Only call list_products if the caller asks about a product that is NOT listed in the catalog below.
 - Use check_availability only to confirm specific dates for a specific product. It also validates the opening hours for those dates, so TRUST its result over your own reasoning — never contradict yourself about whether the store is open.
 - Apply the "Owner guidance per product" section (when present) strictly, but NEVER read it out; rephrase only what the caller needs to know.
-- As you learn a relevant fact (chosen product, dates, event size, licence type…), record it with record_qualification so it is remembered for the rest of the call.`,
+- Report the store's conditions when they matter: the deposit (from quote_reservation), the delivery option, and — when more than one pickup / return location is listed in the store facts — ASK the caller which location they want and confirm it before booking.
+- As you learn a relevant fact (chosen product, dates, pickup location, event size, licence type…), record it with record_qualification so it is remembered for the rest of the call.`,
   ]
 
   const storeFacts: string[] = []
@@ -207,13 +212,20 @@ export function buildPhoneSystemPrompt(params: PhonePromptParams): string {
     storeFacts.push(`Exceptional closures (store closed): ${closures}`)
   }
   if (params.deliveryEnabled != null) {
-    storeFacts.push(
-      `Delivery: ${
-        params.deliveryEnabled
-          ? 'available'
-          : 'not available (pickup at the store only)'
-      }`,
-    )
+    const deliveryText = !params.deliveryEnabled
+      ? 'not available (pickup at the store only)'
+      : params.deliveryMode === 'required'
+        ? 'required (the order is delivered, not picked up)'
+        : params.deliveryMode === 'included'
+          ? 'included (delivery is part of the price)'
+          : 'available on request, or pickup at the store'
+    storeFacts.push(`Delivery: ${deliveryText}`)
+  }
+  if (params.pickupLocations.length > 0) {
+    const locs = params.pickupLocations
+      .map((l) => (l.city ? `${l.name} (${l.city})` : l.name))
+      .join('; ')
+    storeFacts.push(`Pickup / return locations: ${locs}`)
   }
   if (storeFacts.length > 0) {
     sections.push(`## Store facts (already known — do not look these up)
