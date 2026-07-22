@@ -76,6 +76,18 @@ export type VoiceAction =
     }
   | { type: 'hangup' }
 
+/** A phone number available to provision, normalized across providers. */
+export interface AvailableNumber {
+  /** E.164 number, e.g. '+33756781234'. */
+  phoneNumber: string
+  /** Human label (provider friendly name), falls back to the number. */
+  friendlyName: string
+  /** City/locality, when the provider returns one. */
+  locality: string | null
+  /** Region/state, when the provider returns one. */
+  region: string | null
+}
+
 /** Inbound call fields, normalized across providers. */
 export interface InboundCall {
   /** Provider call identifier (Twilio CallSid). */
@@ -149,4 +161,30 @@ export interface VoiceProvider {
     recordingSid: string
     range?: string | null
   }): Promise<Response>
+
+  /**
+   * Search phone numbers available to provision. `country` is an ISO-3166
+   * alpha-2 code; `areaCode`/`contains` narrow the search. Throws on a provider
+   * or credential error.
+   */
+  searchAvailableNumbers(input: {
+    country: string
+    areaCode?: string
+    contains?: string
+    limit?: number
+  }): Promise<AvailableNumber[]>
+
+  /**
+   * Provision (buy) a number and point its voice webhooks at the app. Returns
+   * the provider's number id (for later release) and the E.164 number. Throws
+   * on failure — provisioning spends money, so callers surface the error.
+   */
+  provisionNumber(input: {
+    phoneNumber: string
+    voiceUrl: string
+    statusCallbackUrl: string
+  }): Promise<{ e164: string; providerNumberId: string }>
+
+  /** Release a previously provisioned number back to the provider. */
+  releaseNumber(providerNumberId: string): Promise<void>
 }

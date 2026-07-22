@@ -70,25 +70,18 @@ const createAiPhoneSettingsSchema = (
     transferNumber: z
       .string()
       .refine((value) => value === '' || E164_RE.test(value), t('phoneFormat')),
-    phoneNumber: z
-      .string()
-      .refine((value) => value === '' || E164_RE.test(value), t('phoneFormat')),
   })
 
 interface VoiceAgentFormProps {
   store: { id: string; aiPhoneSettings: AiPhoneSettings | null }
-  boundNumber: string | null
   hasFeatureAccess: boolean
   phoneConfigured: boolean
-  webhookUrl: string
 }
 
 export const VoiceAgentForm = ({
   store,
-  boundNumber,
   hasFeatureAccess,
   phoneConfigured,
-  webhookUrl,
 }: VoiceAgentFormProps) => {
   const router = useRouter()
   const t = useTranslations('dashboard.settings.aiVoiceAgent')
@@ -113,7 +106,6 @@ export const VoiceAgentForm = ({
       answerMode: current.answerMode,
       greeting: current.greeting || '',
       transferNumber: current.transferNumber || '',
-      phoneNumber: boundNumber || '',
     },
     validators: { onSubmit: schema },
     validationLogic: revalidateLogic({
@@ -205,19 +197,6 @@ export const VoiceAgentForm = ({
 
             {isEnabled && (
               <div className="space-y-6 border-t pt-6">
-                {/* Inbound number binding */}
-                <form.AppField name="phoneNumber">
-                  {(field) => (
-                    <field.Input
-                      label={t('phoneNumber')}
-                      description={t('phoneNumberDescription', {
-                        url: webhookUrl,
-                      })}
-                      placeholder="+33123456789"
-                    />
-                  )}
-                </form.AppField>
-
                 {/* Language */}
                 <form.AppField name="language">
                   {(field) => (

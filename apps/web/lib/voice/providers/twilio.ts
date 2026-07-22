@@ -4,6 +4,7 @@ import { env } from '@/env'
 import { log } from '@/lib/evlog'
 
 import type {
+  AvailableNumber,
   InboundCall,
   VoiceAction,
   VoiceProvider,
@@ -309,5 +310,113 @@ export class TwilioVoiceProvider implements VoiceProvider {
     if (contentRange) out.set('content-range', contentRange)
 
     return new Response(upstream.body, { status: upstream.status, headers: out })
+  }
+
+  async searchAvailableNumbers(input: {
+    country: string
+    areaCode?: string
+    contains?: string
+    limit?: number
+  }): Promise<AvailableNumber[]> {
+    const auth = this.authHeader()
+    const sid = env.TWILIO_ACCOUNT_SID
+    if (!auth || !sid) return []
+
+    const country = input.country.toUpperCase()
+    const params = new URLSearchParams({
+      PageSize: String(Math.min(Math.max(input.limit ?? 10, 1), 30)),
+      // Only surface numbers that can actually receive inbound calls.
+      VoiceEnabled: 'true',
+    })
+    if (input.areaCode) params.set('AreaCode', input.areaCode)
+    if (input.contains) params.set('Contains', input.contains)
+    const url = `${TWILIO_REST_BASE}/Accounts/${encodeURIComponent(
+      sid,
+    )}/AvailablePhoneNumbers/${encodeURIComponent(
+      country,
+    )}/Local.json?${params.toString()}`
+
+    const res = await fetch(url, { headers: { authorization: auth } })
+    if (!res.ok) throw new Error(`number search failed: HTTP ${res.status}`)
+    const data = (await res.json()) as {
+      available_phone_numbers?: Array<{
+        phone_number?: string
+        friendly_name?: string
+        locality?: string | null
+        region?: string | null
+      }>
+    }
+    const list: AvailableNumber[] = []
+    for (const n of data.available_phone_numbers ?? []) {
+      if (typeof n.phone_number !== 'string') continue
+      list.push({
+        phoneNumber: n.phone_number,
+        friendlyName: n.friendly_name || n.phone_number,
+        locality: n.locality ?? null,
+        region: n.region ?? null,
+      })
+    }
+    return list
+  }
+
+  async provisionNumber(input: {
+    phoneNumber: string
+    voiceUrl: string
+    statusCallbackUrl: string
+  }): Promise<{ e164: string; providerNumberId: string }> {
+    const auth = this.authHeader()
+    const sid = env.TWILIO_ACCOUNT_SID
+    if (!auth || !sid) throw new Error('Telephony provider not configured')
+
+    const body = new URLSearchParams({
+      PhoneNumber: input.phoneNumber,
+      VoiceUrl: input.voiceUrl,
+      VoiceMethod: 'POST',
+      StatusCallback: input.statusCallbackUrl,
+      StatusCallbackMethod: 'POST',
+    })
+    const url = `${TWILIO_REST_BASE}/Accounts/${encodeURIComponent(
+      sid,
+    )}/IncomingPhoneNumbers.json`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        authorization: auth,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body,
+    })
+    if (!res.ok) {
+      let message = `provisioning failed: HTTP ${res.status}`
+      try {
+        const err = (await res.json()) as { message?: string }
+        if (err.message) message = err.message
+      } catch {
+        // keep the default message
+      }
+      throw new Error(message)
+    }
+    const data = (await res.json()) as { sid?: string; phone_number?: string }
+    if (!data.sid || !data.phone_number) {
+      throw new Error('provisioning returned an unexpected response')
+    }
+    return { e164: data.phone_number, providerNumberId: data.sid }
+  }
+
+  async releaseNumber(providerNumberId: string): Promise<void> {
+    const auth = this.authHeader()
+    const sid = env.TWILIO_ACCOUNT_SID
+    if (!auth || !sid) return
+    const url = `${TWILIO_REST_BASE}/Accounts/${encodeURIComponent(
+      sid,
+    )}/IncomingPhoneNumbers/${encodeURIComponent(providerNumberId)}.json`
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: { authorization: auth },
+    })
+    // 404 = already released upstream; treat as success (idempotent).
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`release failed: HTTP ${res.status}`)
+    }
   }
 }

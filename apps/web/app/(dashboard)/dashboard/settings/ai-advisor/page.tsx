@@ -17,6 +17,7 @@ import {
 import { areAiCreditsEnabled, getAiCreditPackages } from '@/lib/plans'
 import { AiAdvisorForm } from './ai-advisor-form'
 import { VoiceAgentForm } from './voice-agent-form'
+import { VoiceNumberProvisioning } from './voice-number-provisioning'
 import {
   AiCreditsSection,
   type AiCreditsSectionProps,
@@ -89,7 +90,7 @@ export default async function AiAdvisorSettingsPage({
       eq(storePhoneNumbers.storeId, store.id),
       eq(storePhoneNumbers.status, 'active'),
     ),
-    columns: { e164: true },
+    columns: { e164: true, providerNumberId: true },
   })
 
   return (
@@ -112,11 +113,19 @@ export default async function AiAdvisorSettingsPage({
           id: store.id,
           aiPhoneSettings: store.aiPhoneSettings,
         }}
-        boundNumber={phoneBinding?.e164 ?? null}
         hasFeatureAccess={plan.features.aiPhone}
         phoneConfigured={isVoiceAgentConfigured()}
-        webhookUrl={`${env.NEXT_PUBLIC_APP_URL}/api/voice/incoming`}
       />
+
+      {plan.features.aiPhone && (
+        <VoiceNumberProvisioning
+          boundNumber={phoneBinding?.e164 ?? null}
+          isProvisioned={Boolean(phoneBinding?.providerNumberId)}
+          webhookUrl={`${env.NEXT_PUBLIC_APP_URL}/api/voice/incoming`}
+          defaultCountry="FR"
+          disabled={!isVoiceAgentConfigured()}
+        />
+      )}
 
       {credits && <AiCreditsSection {...credits} />}
 
