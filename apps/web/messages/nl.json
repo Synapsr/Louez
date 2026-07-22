@@ -4212,14 +4212,19 @@
           "released": "Nummer vrijgegeven",
           "advanced": "Ik heb al een nummer",
           "manualNumber": "Je nummer (internationaal formaat)",
-          "manualHint": "Richt de voice-webhook op {url} en koppel het nummer hier.",
+          "manualHint": "Richt de voice-webhook van je nummer op onderstaand adres en koppel het dan hier.",
           "link": "Koppelen",
           "linked": "Nummer gekoppeld",
           "cancel": "Annuleren",
           "releaseConfirmTitle": "Dit nummer vrijgeven?",
           "releaseConfirmBody": "Het nummer {number} wordt teruggegeven aan de provider en oproepen bereiken je spraakagent niet meer. Dit kan niet ongedaan worden gemaakt.",
           "unlinkConfirmTitle": "Dit nummer ontkoppelen?",
-          "unlinkConfirmBody": "Het nummer {number} wordt ontkoppeld van je spraakagent. Je behoudt het nummer bij je provider."
+          "unlinkConfirmBody": "Het nummer {number} wordt ontkoppeld van je spraakagent. Je behoudt het nummer bij je provider.",
+          "searching": "Beschikbare nummers zoeken…",
+          "searchHint": "Kies een land en zoek een beschikbaar nummer om te voorzien.",
+          "areaCodePlaceholder": "bijv. 20",
+          "manualSetup": "Een bestaand nummer koppelen",
+          "copy": "Kopiëren"
         },
         "notConfigured": {
           "title": "Telefonie niet geconfigureerd",

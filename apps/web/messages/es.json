@@ -4218,14 +4218,19 @@
           "released": "Número liberado",
           "advanced": "Ya tengo un número",
           "manualNumber": "Tu número (formato internacional)",
-          "manualHint": "Apunta su webhook de voz a {url} y vincúlalo aquí.",
+          "manualHint": "Apunta el webhook de voz de tu número a la dirección de abajo y luego vincúlalo aquí.",
           "link": "Vincular",
           "linked": "Número vinculado",
           "cancel": "Cancelar",
           "releaseConfirmTitle": "¿Liberar este número?",
           "releaseConfirmBody": "El número {number} se devolverá al proveedor y las llamadas dejarán de llegar a tu agente de voz. No se puede deshacer.",
           "unlinkConfirmTitle": "¿Desvincular este número?",
-          "unlinkConfirmBody": "El número {number} se desvinculará de tu agente de voz. Conservas el número con tu proveedor."
+          "unlinkConfirmBody": "El número {number} se desvinculará de tu agente de voz. Conservas el número con tu proveedor.",
+          "searching": "Buscando números disponibles…",
+          "searchHint": "Elige un país y busca un número disponible para aprovisionar.",
+          "areaCodePlaceholder": "ej. 91",
+          "manualSetup": "Cómo vincular un número existente",
+          "copy": "Copiar"
         },
         "notConfigured": {
           "title": "Telefonía no configurada",

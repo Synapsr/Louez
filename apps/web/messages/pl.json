@@ -4212,14 +4212,19 @@
           "released": "Numer zwolniony",
           "advanced": "Mam już numer",
           "manualNumber": "Twój numer (format międzynarodowy)",
-          "manualHint": "Skieruj jego webhook głosowy na {url}, a następnie podłącz numer tutaj.",
+          "manualHint": "Skieruj webhook głosowy swojego numeru na poniższy adres, a następnie podłącz go tutaj.",
           "link": "Podłącz",
           "linked": "Numer podłączony",
           "cancel": "Anuluj",
           "releaseConfirmTitle": "Zwolnić ten numer?",
           "releaseConfirmBody": "Numer {number} zostanie zwrócony do dostawcy, a połączenia przestaną docierać do agenta głosowego. Tej operacji nie można cofnąć.",
           "unlinkConfirmTitle": "Odłączyć ten numer?",
-          "unlinkConfirmBody": "Numer {number} zostanie odłączony od agenta głosowego. Zachowasz numer u swojego dostawcy."
+          "unlinkConfirmBody": "Numer {number} zostanie odłączony od agenta głosowego. Zachowasz numer u swojego dostawcy.",
+          "searching": "Wyszukiwanie dostępnych numerów…",
+          "searchHint": "Wybierz kraj i wyszukaj dostępny numer do udostępnienia.",
+          "areaCodePlaceholder": "np. 22",
+          "manualSetup": "Jak podłączyć istniejący numer",
+          "copy": "Kopiuj"
         },
         "notConfigured": {
           "title": "Telefonia nie jest skonfigurowana",

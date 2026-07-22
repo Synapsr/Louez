@@ -4212,14 +4212,19 @@
           "released": "Número libertado",
           "advanced": "Já tenho um número",
           "manualNumber": "O seu número (formato internacional)",
-          "manualHint": "Aponte o webhook de voz para {url} e associe o número aqui.",
+          "manualHint": "Aponte o webhook de voz do seu número para o endereço abaixo e depois associe-o aqui.",
           "link": "Associar",
           "linked": "Número associado",
           "cancel": "Cancelar",
           "releaseConfirmTitle": "Libertar este número?",
           "releaseConfirmBody": "O número {number} será devolvido ao fornecedor e as chamadas deixarão de chegar ao seu agente de voz. Não é possível anular.",
           "unlinkConfirmTitle": "Desassociar este número?",
-          "unlinkConfirmBody": "O número {number} será desassociado do seu agente de voz. Mantém o número com o seu fornecedor."
+          "unlinkConfirmBody": "O número {number} será desassociado do seu agente de voz. Mantém o número com o seu fornecedor.",
+          "searching": "A procurar números disponíveis…",
+          "searchHint": "Escolha um país e procure um número disponível para provisionar.",
+          "areaCodePlaceholder": "ex. 21",
+          "manualSetup": "Como associar um número existente",
+          "copy": "Copiar"
         },
         "notConfigured": {
           "title": "Telefonia não configurada",

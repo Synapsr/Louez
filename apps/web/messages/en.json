@@ -4319,14 +4319,19 @@
           "released": "Number released",
           "advanced": "I already have a number",
           "manualNumber": "Your number (international format)",
-          "manualHint": "Point its voice webhook to {url}, then link it here.",
+          "manualHint": "Point your number's voice webhook to the address below, then link it here.",
           "link": "Link",
           "linked": "Number linked",
           "cancel": "Cancel",
           "releaseConfirmTitle": "Release this number?",
           "releaseConfirmBody": "The number {number} will be returned to the provider and calls will stop reaching your voice agent. This cannot be undone.",
           "unlinkConfirmTitle": "Unlink this number?",
-          "unlinkConfirmBody": "The number {number} will be unlinked from your voice agent. You keep the number with your provider."
+          "unlinkConfirmBody": "The number {number} will be unlinked from your voice agent. You keep the number with your provider.",
+          "searching": "Searching for available numbers…",
+          "searchHint": "Choose a country and search for an available number to provision.",
+          "areaCodePlaceholder": "e.g. 75",
+          "manualSetup": "How to link an existing number",
+          "copy": "Copy"
         },
         "notConfigured": {
           "title": "Telephony not configured",

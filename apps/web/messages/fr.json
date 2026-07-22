@@ -4319,14 +4319,19 @@
           "released": "Numéro libéré",
           "advanced": "J'ai déjà un numéro",
           "manualNumber": "Votre numéro (format international)",
-          "manualHint": "Pointez son webhook vocal vers {url}, puis reliez-le ici.",
+          "manualHint": "Pointez le webhook vocal de votre numéro vers l'adresse ci-dessous, puis reliez-le ici.",
           "link": "Relier",
           "linked": "Numéro relié",
           "cancel": "Annuler",
           "releaseConfirmTitle": "Libérer ce numéro ?",
           "releaseConfirmBody": "Le numéro {number} sera restitué au fournisseur et les appels ne joindront plus votre agent vocal. Action irréversible.",
           "unlinkConfirmTitle": "Détacher ce numéro ?",
-          "unlinkConfirmBody": "Le numéro {number} sera détaché de votre agent vocal. Vous conservez le numéro chez votre fournisseur."
+          "unlinkConfirmBody": "Le numéro {number} sera détaché de votre agent vocal. Vous conservez le numéro chez votre fournisseur.",
+          "searching": "Recherche de numéros disponibles…",
+          "searchHint": "Choisissez un pays et recherchez un numéro disponible à provisionner.",
+          "areaCodePlaceholder": "ex. 75",
+          "manualSetup": "Comment relier un numéro existant",
+          "copy": "Copier"
         },
         "notConfigured": {
           "title": "Téléphonie non configurée",
