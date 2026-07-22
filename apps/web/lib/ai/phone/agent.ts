@@ -161,44 +161,64 @@ async function persistAssistantTurn(params: {
   usage: AdvisorUsage
 }): Promise<void> {
   const { store, conversationId, plan, text, toolCalls, usage } = params
-  try {
-    await db.transaction(async (tx) => {
-      const [inserted] = await tx
-        .insert(aiAdvisorMessages)
-        .values({
-          conversationId,
-          storeId: store.id,
-          role: 'assistant',
-          content: text || null,
-          toolInvocations: toolCalls.length > 0 ? toolCalls : null,
-        })
-        .$returningId()
-      await tx
-        .update(aiAdvisorConversations)
-        .set({ updatedAt: new Date() })
-        .where(eq(aiAdvisorConversations.id, conversationId))
 
-      if (
-        areAiCreditsEnabled() &&
-        inserted &&
-        (usage.inputTokens > 0 || usage.outputTokens > 0)
-      ) {
-        await recordCallTurnDebit(tx, {
-          storeId: store.id,
-          conversationId,
-          assistantMessageId: inserted.id,
-          usage,
-          plan,
-        })
-      }
-    })
+  // Persist the assistant message FIRST, on its own. The transcript and the
+  // model's memory of its own reply must NEVER be lost to a metering failure —
+  // bundling them made a debit error roll back the whole turn, so the model
+  // stopped seeing its replies and re-greeted the caller.
+  let assistantMessageId: string | null = null
+  try {
+    const [inserted] = await db
+      .insert(aiAdvisorMessages)
+      .values({
+        conversationId,
+        storeId: store.id,
+        role: 'assistant',
+        content: text || null,
+        toolInvocations: toolCalls.length > 0 ? toolCalls : null,
+      })
+      .$returningId()
+    assistantMessageId = inserted?.id ?? null
+    await db
+      .update(aiAdvisorConversations)
+      .set({ updatedAt: new Date() })
+      .where(eq(aiAdvisorConversations.id, conversationId))
   } catch (error) {
     log.error(
       'phone',
-      `failed to persist phone turn: ${
+      `failed to persist assistant turn: ${
         error instanceof Error ? error.message : String(error)
       }`,
     )
+    return
+  }
+
+  // Meter this turn's tokens best-effort, in a SEPARATE transaction: a metering
+  // failure logs but must never roll back the transcript above.
+  if (
+    areAiCreditsEnabled() &&
+    assistantMessageId &&
+    (usage.inputTokens > 0 || usage.outputTokens > 0)
+  ) {
+    const id = assistantMessageId
+    try {
+      await db.transaction((tx) =>
+        recordCallTurnDebit(tx, {
+          storeId: store.id,
+          conversationId,
+          assistantMessageId: id,
+          usage,
+          plan,
+        }),
+      )
+    } catch (error) {
+      log.error(
+        'phone',
+        `failed to meter phone turn: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
   }
 }
 
