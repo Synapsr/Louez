@@ -221,6 +221,11 @@ export const VoiceAgentForm = ({
                     <field.Select
                       label={t('language')}
                       description={t('languageDescription')}
+                      renderValue={(value) =>
+                        `${localeFlags[value as (typeof AI_PHONE_LANGUAGES)[number]]} ${
+                          localeNames[value as (typeof AI_PHONE_LANGUAGES)[number]]
+                        }`
+                      }
                     >
                       {AI_PHONE_LANGUAGES.map((code) => (
                         <SelectItem key={code} value={code}>

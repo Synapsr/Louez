@@ -1,5 +1,7 @@
 'use client'
 
+import type { ReactNode } from 'react'
+
 import { useFieldContext, getFieldError } from '@/hooks/form/form-context'
 import {
   Label,
@@ -15,12 +17,19 @@ export function FormSelect({
   placeholder,
   children,
   className,
+  renderValue,
 }: {
   label?: string
   description?: string
   placeholder?: string
   children: React.ReactNode
   className?: string
+  /**
+   * Render the selected value in the trigger. Use when the value differs from
+   * what should be shown (e.g. a locale code vs. its flag + name) — otherwise
+   * the trigger shows the raw value.
+   */
+  renderValue?: (value: string) => ReactNode
 }) {
   const field = useFieldContext<string>()
   const errors = field.state.meta.errors
@@ -39,7 +48,15 @@ export function FormSelect({
         value={field.state.value || undefined}
       >
         <SelectTrigger className={className}>
-          <SelectValue placeholder={placeholder} />
+          {renderValue ? (
+            <SelectValue placeholder={placeholder}>
+              {(value) =>
+                typeof value === 'string' && value ? renderValue(value) : null
+              }
+            </SelectValue>
+          ) : (
+            <SelectValue placeholder={placeholder} />
+          )}
         </SelectTrigger>
         <SelectContent>{children}</SelectContent>
       </Select>
