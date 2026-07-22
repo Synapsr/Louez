@@ -153,6 +153,17 @@ interface CreateReservationInput {
   delivery?: DeliveryInput;
   promoCode?: string;
   advisorConversationId?: string;
+  /**
+   * Reservation origin. 'phone' = AI receptionist call: forces a pending
+   * REQUEST the owner reviews and NEVER an online payment, whatever the store's
+   * reservation mode — there is no card on a phone call.
+   */
+  source?: 'online' | 'phone';
+  /**
+   * Compute and return the authoritative server amounts WITHOUT creating
+   * anything. Used to tell a phone caller the real total before they agree.
+   */
+  quoteOnly?: boolean;
 }
 
 function getErrorKey(error: unknown, fallback: string): string {
@@ -894,9 +905,15 @@ export async function createReservation(input: CreateReservationInput) {
       serverSubtotal += pricingResult.subtotal;
       serverTotalDeposit += pricingResult.deposit;
 
-      // Log price mismatch for monitoring (potential fraud attempt)
+      // Log price mismatch for monitoring (potential fraud attempt). Skipped for
+      // the phone source: the server-side receptionist tool passes the flat base
+      // price as a best-effort input and cannot pre-compute tiered/seasonal
+      // pricing, so a mismatch here is expected, not a fraud signal.
       const clientItemSubtotal = item.unitPrice * item.quantity * duration;
-      if (Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01) {
+      if (
+        input.source !== 'phone' &&
+        Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01
+      ) {
         console.warn('[SECURITY] Price mismatch detected', {
           productId: item.productId,
           clientSubtotal: clientItemSubtotal,
@@ -1072,33 +1089,38 @@ export async function createReservation(input: CreateReservationInput) {
     // Client `totalAmount` excludes deposit and includes delivery fee.
     const serverClientComparableTotal = serverSubtotal + deliveryFee;
 
-    if (Math.abs(input.subtotalAmount - serverSubtotal) > 0.01) {
-      console.warn('[SECURITY] Subtotal mismatch detected', {
-        clientSubtotal: input.subtotalAmount,
-        serverSubtotal,
-        difference: input.subtotalAmount - serverSubtotal,
-      });
-    }
+    // Client-submitted amounts only exist for the web checkout. A 'phone'
+    // reservation is created by the trusted server-side receptionist tool, which
+    // cannot pre-compute rental pricing, so these mismatch checks don't apply.
+    if (input.source !== 'phone') {
+      if (Math.abs(input.subtotalAmount - serverSubtotal) > 0.01) {
+        console.warn('[SECURITY] Subtotal mismatch detected', {
+          clientSubtotal: input.subtotalAmount,
+          serverSubtotal,
+          difference: input.subtotalAmount - serverSubtotal,
+        });
+      }
 
-    if (Math.abs(input.depositAmount - serverTotalDeposit) > 0.01) {
-      console.warn('[SECURITY] Deposit mismatch detected', {
-        clientDeposit: input.depositAmount,
-        serverDeposit: serverTotalDeposit,
-        difference: input.depositAmount - serverTotalDeposit,
-      });
-    }
+      if (Math.abs(input.depositAmount - serverTotalDeposit) > 0.01) {
+        console.warn('[SECURITY] Deposit mismatch detected', {
+          clientDeposit: input.depositAmount,
+          serverDeposit: serverTotalDeposit,
+          difference: input.depositAmount - serverTotalDeposit,
+        });
+      }
 
-    // Log total mismatch for monitoring (client total = subtotal + delivery, without deposit)
-    if (Math.abs(input.totalAmount - serverClientComparableTotal) > 0.01) {
-      console.warn('[SECURITY] Total amount mismatch detected', {
-        clientTotal: input.totalAmount,
-        serverTotal: serverClientComparableTotal,
-        clientSubtotal: input.subtotalAmount,
-        serverSubtotal,
-        clientDeposit: input.depositAmount,
-        serverDeposit: serverTotalDeposit,
-        serverDeliveryFee: deliveryFee,
-      });
+      // Log total mismatch for monitoring (client total = subtotal + delivery, without deposit)
+      if (Math.abs(input.totalAmount - serverClientComparableTotal) > 0.01) {
+        console.warn('[SECURITY] Total amount mismatch detected', {
+          clientTotal: input.totalAmount,
+          serverTotal: serverClientComparableTotal,
+          clientSubtotal: input.subtotalAmount,
+          serverSubtotal,
+          clientDeposit: input.depositAmount,
+          serverDeposit: serverTotalDeposit,
+          serverDeliveryFee: deliveryFee,
+        });
+      }
     }
 
     // ===== TULIP INSURANCE PREVIEW =====
@@ -1235,6 +1257,22 @@ export async function createReservation(input: CreateReservationInput) {
     const finalDeliveryFee = deliveryFee;
     // totalAmount excludes deposit — deposit is tracked separately in depositAmount
     const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee;
+
+    // Quote-only (phone receptionist): return the authoritative server-computed
+    // amounts WITHOUT creating anything, so the caller can be told the real price
+    // and agree BEFORE the booking is registered. Reuses the exact pricing above.
+    if (input.quoteOnly) {
+      return {
+        quote: {
+          subtotal: finalSubtotal,
+          discount: finalDiscount,
+          deposit: finalDeposit,
+          deliveryFee: finalDeliveryFee,
+          total: finalTotal,
+          currency: store.settings?.currency ?? 'EUR',
+        },
+      };
+    }
 
     const startDates = input.items.map((item) => new Date(item.startDate));
     const endDates = input.items.map((item) => new Date(item.endDate));
@@ -1574,7 +1612,7 @@ export async function createReservation(input: CreateReservationInput) {
         taxAmount: taxAmount?.toFixed(2) ?? null,
         taxRate: taxRate?.toFixed(2) ?? null,
         customerNotes: input.customerNotes || null,
-        source: 'online',
+        source: input.source ?? 'online',
         outboundMethod: outboundLeg?.method || 'store',
         returnMethod: returnLeg?.method || 'store',
         deliveryOption: hasAnyDelivery ? 'delivery' : 'pickup',
@@ -1978,8 +2016,11 @@ export async function createReservation(input: CreateReservationInput) {
       ).catch(() => {});
     }
 
-    // Check if we should process payment via Stripe
+    // Check if we should process payment via Stripe. A 'phone' reservation is
+    // always a pending REQUEST (no card on the call), so it never enters the
+    // online-payment flow even when the store is in immediate-payment mode.
     const shouldProcessPayment =
+      input.source !== 'phone' &&
       store.settings?.reservationMode === 'payment' &&
       store.stripeAccountId &&
       store.stripeChargesEnabled;

@@ -61,6 +61,78 @@ function fallbackEmail(phone: string): string {
   return `caller-${digits || 'unknown'}@phone.invalid`
 }
 
+type PhoneItemInput = {
+  productId: string
+  quantity: number
+  startDate: string
+  endDate: string
+}
+
+/**
+ * Resolve requested items to the reservation-item shape createReservation
+ * expects (with a product snapshot). Prices here are only best-effort inputs —
+ * createReservation recomputes the authoritative amounts server-side. Shared by
+ * quote_reservation and create_reservation_hold so both see the same items.
+ */
+async function buildPhoneReservationItems(
+  storeId: string,
+  items: PhoneItemInput[],
+) {
+  const productIds = [...new Set(items.map((item) => item.productId))]
+  const rows = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      images: products.images,
+      price: products.price,
+      deposit: products.deposit,
+    })
+    .from(products)
+    .where(
+      and(
+        eq(products.storeId, storeId),
+        eq(products.status, 'active'),
+        inArray(products.id, productIds),
+      ),
+    )
+  const productById = new Map(rows.map((row) => [row.id, row]))
+
+  let subtotalAmount = 0
+  let depositAmount = 0
+  const reservationItems: Array<{
+    productId: string
+    quantity: number
+    startDate: string
+    endDate: string
+    unitPrice: number
+    depositPerUnit: number
+    productSnapshot: { name: string; description: string | null; images: string[] }
+  }> = []
+  for (const item of items) {
+    const product = productById.get(item.productId)
+    if (!product) return { error: 'One or more products were not found.' as const }
+    const unitPrice = Number(product.price) || 0
+    const depositPerUnit = Number(product.deposit) || 0
+    subtotalAmount += unitPrice * item.quantity
+    depositAmount += depositPerUnit * item.quantity
+    reservationItems.push({
+      productId: item.productId,
+      quantity: item.quantity,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      unitPrice,
+      depositPerUnit,
+      productSnapshot: {
+        name: product.name,
+        description: product.description ?? null,
+        images: product.images ?? [],
+      },
+    })
+  }
+  return { reservationItems, subtotalAmount, depositAmount }
+}
+
 /**
  * Tools for the AI phone receptionist. Reuses the advisor's READ tools verbatim
  * (catalog, availability, store info, qualification) and adds voice-specific
@@ -119,65 +191,9 @@ export function createPhoneTools(ctx: PhoneToolContext) {
       }),
     }),
     execute: async ({ items, customer }) => {
-      const productIds = [...new Set(items.map((item) => item.productId))]
-      const rows = await db
-        .select({
-          id: products.id,
-          name: products.name,
-          description: products.description,
-          images: products.images,
-          price: products.price,
-          deposit: products.deposit,
-        })
-        .from(products)
-        .where(
-          and(
-            eq(products.storeId, ctx.storeId),
-            eq(products.status, 'active'),
-            inArray(products.id, productIds),
-          ),
-        )
-
-      const productById = new Map(rows.map((row) => [row.id, row]))
-
-      let subtotalAmount = 0
-      let depositAmount = 0
-      const reservationItems: Array<{
-        productId: string
-        quantity: number
-        startDate: string
-        endDate: string
-        unitPrice: number
-        depositPerUnit: number
-        productSnapshot: {
-          name: string
-          description: string | null
-          images: string[]
-        }
-      }> = []
-      for (const item of items) {
-        const product = productById.get(item.productId)
-        if (!product) {
-          return { error: 'One or more products were not found.' }
-        }
-        const unitPrice = Number(product.price) || 0
-        const depositPerUnit = Number(product.deposit) || 0
-        subtotalAmount += unitPrice * item.quantity
-        depositAmount += depositPerUnit * item.quantity
-        reservationItems.push({
-          productId: item.productId,
-          quantity: item.quantity,
-          startDate: item.startDate,
-          endDate: item.endDate,
-          unitPrice,
-          depositPerUnit,
-          productSnapshot: {
-            name: product.name,
-            description: product.description ?? null,
-            images: product.images ?? [],
-          },
-        })
-      }
+      const built = await buildPhoneReservationItems(ctx.storeId, items)
+      if ('error' in built) return { error: built.error }
+      const { reservationItems, subtotalAmount, depositAmount } = built
 
       const phone = customer.phone?.trim() || ctx.callerPhone
       const email = customer.email?.trim() || fallbackEmail(phone)
@@ -192,15 +208,27 @@ export function createPhoneTools(ctx: PhoneToolContext) {
         },
         items: reservationItems,
         // Amounts are recomputed authoritatively server-side; these best-effort
-        // values only feed mismatch logging.
+        // values only feed mismatch logging (skipped for the phone source).
         subtotalAmount,
         depositAmount,
         totalAmount: subtotalAmount,
         locale: ctx.language === 'en' ? 'en' : 'fr',
+        // A phone booking is always a pending REQUEST — never an online payment.
+        source: 'phone',
       })
 
-      if (!result || 'error' in result) {
-        return { error: result?.error ?? 'Could not create the reservation.' }
+      if (
+        !result ||
+        'error' in result ||
+        !('reservationId' in result) ||
+        !result.reservationNumber
+      ) {
+        return {
+          error:
+            result && 'error' in result && result.error
+              ? result.error
+              : 'Could not create the reservation.',
+        }
       }
 
       // Link the phone conversation to the reservation (first link wins), so the
@@ -240,6 +268,52 @@ export function createPhoneTools(ctx: PhoneToolContext) {
         reservationNumber: result.reservationNumber,
         smsSent: Boolean(phone),
       }
+    },
+  })
+
+  const quote_reservation = tool({
+    description:
+      'Compute the exact rental price and deposit for the requested items and dates WITHOUT booking anything. Call this before create_reservation_hold so you can tell the caller the real total and deposit, in the store currency, and get their explicit agreement. The amounts are authoritative (server-computed) — never quote a price you did not get from this tool.',
+    inputSchema: z.object({
+      items: z
+        .array(
+          z.object({
+            productId: z.string().describe('The product ID'),
+            quantity: z.number().int().min(1).max(999),
+            startDate: z.string().describe('Rental start (ISO 8601 datetime)'),
+            endDate: z.string().describe('Rental end (ISO 8601 datetime)'),
+          }),
+        )
+        .min(1)
+        .max(20),
+    }),
+    execute: async ({ items }) => {
+      const built = await buildPhoneReservationItems(ctx.storeId, items)
+      if ('error' in built) return { error: built.error }
+
+      const result = await createReservation({
+        storeId: ctx.storeId,
+        // Unused by the quote path (it returns before customer creation).
+        customer: { email: '', firstName: '', lastName: '' },
+        items: built.reservationItems,
+        subtotalAmount: 0,
+        depositAmount: 0,
+        totalAmount: 0,
+        locale: ctx.language === 'en' ? 'en' : 'fr',
+        source: 'phone',
+        quoteOnly: true,
+      })
+
+      if (!result || !('quote' in result) || !result.quote) {
+        return {
+          error:
+            result && 'error' in result && result.error
+              ? result.error
+              : 'Could not price the reservation.',
+        }
+      }
+      const { subtotal, deposit, total, currency } = result.quote
+      return { subtotal, deposit, total, currency }
     },
   })
 
@@ -302,7 +376,9 @@ export function createPhoneTools(ctx: PhoneToolContext) {
     record_qualification,
     take_message,
     end_call,
-    ...(ctx.canTakeReservations ? { create_reservation_hold } : {}),
+    ...(ctx.canTakeReservations
+      ? { quote_reservation, create_reservation_hold }
+      : {}),
     ...(ctx.transferNumber ? { transfer_to_human } : {}),
   }
 }

@@ -131,10 +131,15 @@ export async function POST(req: Request) {
 
   const strings = phoneStrings(settings.language)
 
-  // Hard duration cap (bounds cost + toll-fraud): say goodbye and end.
+  // Hard duration cap (bounds cost + toll-fraud): say goodbye and end. Coerce
+  // the env value defensively — when env validation is skipped at runtime the
+  // Zod default is gone, and `> undefined` is always false (cap never fires).
+  const maxCallSeconds = Number(env.AI_PHONE_MAX_CALL_SECONDS)
+  const durationCapSeconds =
+    Number.isFinite(maxCallSeconds) && maxCallSeconds > 0 ? maxCallSeconds : 600
   const elapsedSeconds =
     (Date.now() - conversation.createdAt.getTime()) / 1000
-  if (elapsedSeconds > env.AI_PHONE_MAX_CALL_SECONDS) {
+  if (elapsedSeconds > durationCapSeconds) {
     return speakAndEnd(strings.goodbye)
   }
 

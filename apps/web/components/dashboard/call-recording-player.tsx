@@ -38,7 +38,13 @@ export const CallRecordingPlayer = ({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(durationSeconds ?? 0)
+  const [metaDuration, setMetaDuration] = useState(0)
+
+  // The provider-reported recording length is authoritative. A streamed / Range
+  // mp3 often reports a wrong (under-estimated) duration from its metadata, so
+  // only fall back to it when the server value is missing.
+  const total =
+    durationSeconds && durationSeconds > 0 ? durationSeconds : metaDuration
 
   const toggle = () => {
     const audio = audioRef.current
@@ -61,7 +67,7 @@ export const CallRecordingPlayer = ({
     setCurrentTime(value)
   }
 
-  const max = duration > 0 ? duration : (durationSeconds ?? 0)
+  const max = total
 
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2">
@@ -108,7 +114,7 @@ export const CallRecordingPlayer = ({
         preload="none"
         onLoadedMetadata={(event) => {
           const value = event.currentTarget.duration
-          if (Number.isFinite(value) && value > 0) setDuration(value)
+          if (Number.isFinite(value) && value > 0) setMetaDuration(value)
         }}
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
         onPlay={() => setPlaying(true)}

@@ -78,7 +78,7 @@ async function applyCallDebit(
   const costMicroUsd =
     runCostMicroUsd(usage) + audioCostMicroUsd(audioSeconds)
   const rawCreditsMicro = costMicroUsdToCreditsMicro(costMicroUsd)
-  if (rawCreditsMicro <= 0) return 0
+  if (!Number.isFinite(rawCreditsMicro) || rawCreditsMicro <= 0) return 0
 
   // Serialize a store's debits by locking the ai_credits row up front (creating
   // it on demand) so the per-call cap and the monthly split are race-free.
@@ -97,14 +97,22 @@ async function applyCallDebit(
     columns: { accruedCreditsMicro: true },
   })
 
-  const capMicro =
-    Math.max(1, env.AI_PHONE_MAX_CREDITS_PER_CALL) * CREDIT_MICRO
+  // Env numbers can arrive unparsed (string/undefined) when env validation is
+  // skipped at runtime (SKIP_ENV_VALIDATION), which would make the Zod default
+  // vanish and Math.max(1, undefined) === NaN poison the whole debit. Coerce
+  // defensively so a missing cap falls back to 20 credits, never NaN.
+  const maxCreditsPerCall = Math.trunc(Number(env.AI_PHONE_MAX_CREDITS_PER_CALL))
+  const capCredits =
+    Number.isFinite(maxCreditsPerCall) && maxCreditsPerCall >= 1
+      ? maxCreditsPerCall
+      : 20
+  const capMicro = capCredits * CREDIT_MICRO
   const capRemaining = Math.max(
     0,
     capMicro - (conv?.accruedCreditsMicro ?? 0),
   )
   const debitMicro = Math.min(rawCreditsMicro, capRemaining)
-  if (debitMicro <= 0) return 0
+  if (!Number.isFinite(debitMicro) || debitMicro <= 0) return 0
 
   const perMonth = plan.features.aiCreditsPerMonth
   let fromMonthly = 0
