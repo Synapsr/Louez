@@ -4296,15 +4296,15 @@
           }
         }
       },
-      "aiReceptionist": {
-        "description": "An AI phone line that answers calls, informs your customers and takes reservations, in the language you choose.",
-        "enableSection": "AI phone receptionist",
-        "enableSectionDescription": "Configure the voice assistant that answers when your customers call",
-        "enabled": "Enable the phone receptionist",
+      "aiVoiceAgent": {
+        "description": "An AI voice agent that answers your phone line — it informs your customers and takes reservations, in the language you choose.",
+        "enableSection": "AI voice agent",
+        "enableSectionDescription": "Configure the voice agent that answers when your customers call",
+        "enabled": "Enable the AI voice agent",
         "enabledDescription": "The AI answers inbound calls to your number",
         "notConfigured": {
           "title": "Telephony not configured",
-          "description": "The platform operator must configure a telephony provider (AI_PHONE_ENABLED, VOICE_PROVIDER and the credentials) to enable the receptionist."
+          "description": "The platform operator must configure a telephony provider (AI_PHONE_ENABLED, VOICE_PROVIDER and the credentials) to enable the voice agent."
         },
         "phoneNumber": "Phone number",
         "phoneNumberDescription": "Point your number's Voice webhook to {url}, then enter the number here in international format.",
@@ -4314,19 +4314,19 @@
         "canTakeReservationsDescription": "Allow the assistant to record a reservation (otherwise it only informs)",
         "recordCalls": "Record calls",
         "recordCallsDescription": "Callers are told at pickup that the call is recorded. You can replay recordings from the conversations list.",
-        "answerMode": "When to answer",
-        "answerModeDescription": "Choose when the AI picks up the call",
-        "answerModeAlways": "Always",
-        "answerModeAlwaysDescription": "The AI answers every call",
-        "answerModeAfterHours": "After hours",
-        "answerModeAfterHoursDescription": "During business hours the call is transferred; outside them, the AI answers",
+        "answerMode": "Role",
+        "answerModeDescription": "How the voice agent is used on this line",
+        "answerModeAlways": "Direct line",
+        "answerModeAlwaysDescription": "This number is the AI agent — it answers every call as your main line",
+        "answerModeAfterHours": "Receptionist",
+        "answerModeAfterHoursDescription": "The AI backs up your team — during opening hours calls go to your human line, outside them the AI answers",
         "greeting": "Greeting",
         "greetingDescription": "Added after the mandatory automated disclosure",
         "greetingPlaceholder": "How can I help you?",
         "transferNumber": "Transfer number",
         "transferNumberDescription": "A human number for transfers and after-hours mode (international format)",
         "phoneFormat": "Invalid number. Use international format, e.g. +33123456789",
-        "saved": "Phone receptionist settings saved"
+        "saved": "AI voice agent settings saved"
       }
     },
     "aiChat": {

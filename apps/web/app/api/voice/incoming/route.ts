@@ -4,8 +4,8 @@ import { aiAdvisorConversations, aiAdvisorMessages, db } from '@louez/db'
 
 import { checkPhoneCredits } from '@/lib/ai/phone/credits'
 import {
-  isPhoneReceptionistActiveForStore,
-  isPhoneReceptionistConfigured,
+  isVoiceAgentActiveForStore,
+  isVoiceAgentConfigured,
 } from '@/lib/ai/phone/eligibility'
 import { phoneStrings } from '@/lib/ai/phone/messages'
 import {
@@ -34,7 +34,7 @@ import {
 // it and the store opted in.
 
 export async function POST(req: Request) {
-  if (!isPhoneReceptionistConfigured()) {
+  if (!isVoiceAgentConfigured()) {
     return new Response('Not found', { status: 404 })
   }
 
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
   const settings = store.aiPhoneSettings
   const strings = phoneStrings(settings?.language ?? 'en')
 
-  if (!settings || !(await isPhoneReceptionistActiveForStore(store))) {
+  if (!settings || !(await isVoiceAgentActiveForStore(store))) {
     return voiceResponse({
       type: 'say_hangup',
       speak: {

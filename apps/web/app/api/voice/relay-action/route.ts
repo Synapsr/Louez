@@ -3,8 +3,8 @@ import { and, eq } from 'drizzle-orm'
 import { aiAdvisorConversations, db } from '@louez/db'
 
 import {
-  isPhoneReceptionistActiveForStore,
-  isPhoneReceptionistConfigured,
+  isVoiceAgentActiveForStore,
+  isVoiceAgentConfigured,
 } from '@/lib/ai/phone/eligibility'
 import { phoneStrings } from '@/lib/ai/phone/messages'
 import {
@@ -20,7 +20,7 @@ import { getVoiceProvider } from '@/lib/voice/client'
 // TwiML verb — transfer to a human (<Dial>) or hang up.
 
 export async function POST(req: Request) {
-  if (!isPhoneReceptionistConfigured()) {
+  if (!isVoiceAgentConfigured()) {
     return new Response('Not found', { status: 404 })
   }
 
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       store &&
       settings &&
       transferNumber &&
-      (await isPhoneReceptionistActiveForStore(store))
+      (await isVoiceAgentActiveForStore(store))
     ) {
       const strings = phoneStrings(settings.language)
       return voiceResponse({

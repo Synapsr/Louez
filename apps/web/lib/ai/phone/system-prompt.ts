@@ -1,4 +1,4 @@
-import type { BusinessHours } from '@louez/types'
+import type { AiPhoneAnswerMode, BusinessHours } from '@louez/types'
 import { normalizeDaySchedule } from '@louez/utils'
 
 import { getUpcomingClosures } from '@/lib/utils/business-hours'
@@ -10,8 +10,14 @@ export type PhonePromptParams = {
   /** App locale the receptionist speaks (e.g. 'fr'). */
   language: string
   currency: string
-  /** Whether the receptionist may create pending reservations. */
+  /** Whether the agent may create pending reservations. */
   canTakeReservations: boolean
+  /**
+   * The agent's role on this line: 'always' = direct line (the store's own
+   * number, the agent IS the main contact); 'after_hours' = backup/receptionist
+   * (answering because the team could not pick up).
+   */
+  answerMode: AiPhoneAnswerMode
   /** Public contact details, injected so the model never has to look them up. */
   storeEmail: string | null
   storePhone: string | null
@@ -139,12 +145,20 @@ export function buildPhoneSystemPrompt(params: PhonePromptParams): string {
   const closures = formatClosures(params.businessHours, today)
   const facts = formatCollectedFacts(params.collectedFacts)
 
+  const storeLabel = `"${storeName}"${
+    storeDescription ? ` (${storeDescription})` : ''
+  }`
+  const roleIntro =
+    params.answerMode === 'after_hours'
+      ? `You are the AI voice agent of the rental store ${storeLabel}, answering this call because the store's team could not pick up right now. You are on a LIVE PHONE CALL. Be efficient and genuinely helpful: answer what you can about the products, prices and availability${
+          canTakeReservations ? ', take a reservation' : ''
+        }, take a message when useful, and offer a callback or a human transfer when it would help the caller.`
+      : `You are the AI voice agent of the rental store ${storeLabel} — the store's phone line that customers call directly to reach it. You are on a LIVE PHONE CALL and you are their main point of contact. Help them warmly and completely with the products, prices and availability${
+          canTakeReservations ? ', and take a reservation' : ''
+        }.`
+
   const sections = [
-    `You are the phone receptionist of the rental store "${storeName}"${
-      storeDescription ? ` (${storeDescription})` : ''
-    }. You are on a LIVE PHONE CALL with a customer who called the store. You help them learn about the products, prices and availability${
-      canTakeReservations ? ', and take a reservation' : ''
-    }.`,
+    roleIntro,
 
     `## Voice conduct
 

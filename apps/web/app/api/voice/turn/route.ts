@@ -8,8 +8,8 @@ import { aiAdvisorConversations, db } from '@louez/db'
 import { streamPhoneTurn } from '@/lib/ai/phone/agent'
 import { checkPhoneCredits } from '@/lib/ai/phone/credits'
 import {
-  isPhoneReceptionistActiveForStore,
-  isPhoneReceptionistConfigured,
+  isVoiceAgentActiveForStore,
+  isVoiceAgentConfigured,
 } from '@/lib/ai/phone/eligibility'
 import { phoneStrings } from '@/lib/ai/phone/messages'
 import { loadCallStore } from '@/lib/ai/phone/webhook'
@@ -82,7 +82,7 @@ function speakAndEnd(text: string): Response {
 }
 
 export async function POST(req: Request) {
-  if (!isPhoneReceptionistConfigured() || !isRelayTransport()) {
+  if (!isVoiceAgentConfigured() || !isRelayTransport()) {
     return new Response('Not found', { status: 404 })
   }
 
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
 
   const store = await loadCallStore(conversation.storeId)
   const settings = store?.aiPhoneSettings
-  if (!store || !settings || !(await isPhoneReceptionistActiveForStore(store))) {
+  if (!store || !settings || !(await isVoiceAgentActiveForStore(store))) {
     return new Response('Forbidden', { status: 403 })
   }
 

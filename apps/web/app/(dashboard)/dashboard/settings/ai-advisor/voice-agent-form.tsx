@@ -6,7 +6,15 @@ import { revalidateLogic, useStore } from '@tanstack/react-form'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { ArrowRight, Lock, Phone, TriangleAlert, Zap } from 'lucide-react'
+import {
+  ArrowRight,
+  Lock,
+  Phone,
+  PhoneCall,
+  TriangleAlert,
+  Voicemail,
+  Zap,
+} from 'lucide-react'
 
 import {
   Alert,
@@ -67,7 +75,7 @@ const createAiPhoneSettingsSchema = (
       .refine((value) => value === '' || E164_RE.test(value), t('phoneFormat')),
   })
 
-interface AiPhoneFormProps {
+interface VoiceAgentFormProps {
   store: { id: string; aiPhoneSettings: AiPhoneSettings | null }
   boundNumber: string | null
   hasFeatureAccess: boolean
@@ -75,15 +83,15 @@ interface AiPhoneFormProps {
   webhookUrl: string
 }
 
-export const AiPhoneForm = ({
+export const VoiceAgentForm = ({
   store,
   boundNumber,
   hasFeatureAccess,
   phoneConfigured,
   webhookUrl,
-}: AiPhoneFormProps) => {
+}: VoiceAgentFormProps) => {
   const router = useRouter()
-  const t = useTranslations('dashboard.settings.aiReceptionist')
+  const t = useTranslations('dashboard.settings.aiVoiceAgent')
   const tAdvisor = useTranslations('dashboard.settings.aiAdvisor')
   const tValidation = useTranslations('validation')
   const tCommon = useTranslations('common')
@@ -249,11 +257,13 @@ export const AiPhoneForm = ({
                           value: 'always',
                           label: t('answerModeAlways'),
                           description: t('answerModeAlwaysDescription'),
+                          icon: <PhoneCall className="h-4 w-4" />,
                         },
                         {
                           value: 'after_hours',
                           label: t('answerModeAfterHours'),
                           description: t('answerModeAfterHoursDescription'),
+                          icon: <Voicemail className="h-4 w-4" />,
                         },
                       ]}
                       errors={field.state.meta.errors}

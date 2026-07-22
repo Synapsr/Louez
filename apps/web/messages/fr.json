@@ -4296,15 +4296,15 @@
           }
         }
       },
-      "aiReceptionist": {
-        "description": "Un standard téléphonique IA qui répond aux appels, renseigne vos clients et prend des réservations, dans la langue que vous choisissez.",
-        "enableSection": "Répondeur téléphonique IA",
-        "enableSectionDescription": "Configurez l'assistant vocal qui répond quand vos clients appellent",
-        "enabled": "Activer le répondeur téléphonique",
+      "aiVoiceAgent": {
+        "description": "Un agent vocal IA qui répond sur votre ligne téléphonique — il informe vos clients et prend des réservations, dans la langue de votre choix.",
+        "enableSection": "Agent vocal IA",
+        "enableSectionDescription": "Configurez l'agent vocal qui répond quand vos clients appellent",
+        "enabled": "Activer l'agent vocal IA",
         "enabledDescription": "L'IA décroche les appels entrants sur votre numéro",
         "notConfigured": {
           "title": "Téléphonie non configurée",
-          "description": "L'opérateur de la plateforme doit configurer un fournisseur de téléphonie (AI_PHONE_ENABLED, VOICE_PROVIDER et les identifiants) pour activer le répondeur."
+          "description": "L'opérateur de la plateforme doit configurer un fournisseur de téléphonie (AI_PHONE_ENABLED, VOICE_PROVIDER et les identifiants) pour activer l'agent vocal."
         },
         "phoneNumber": "Numéro de téléphone",
         "phoneNumberDescription": "Pointez le webhook « Voix » de votre numéro vers {url}, puis saisissez ici le numéro au format international.",
@@ -4314,19 +4314,19 @@
         "canTakeReservationsDescription": "Autoriser l'assistant à enregistrer une réservation (sinon il informe seulement)",
         "recordCalls": "Enregistrer les appels",
         "recordCallsDescription": "L'appelant est informé dès le décroché que l'appel est enregistré. Vous pouvez réécouter les enregistrements depuis la liste des conversations.",
-        "answerMode": "Quand répondre ?",
-        "answerModeDescription": "Choisissez quand l'IA prend l'appel",
-        "answerModeAlways": "Toujours",
-        "answerModeAlwaysDescription": "L'IA répond à tous les appels",
-        "answerModeAfterHours": "Hors horaires",
-        "answerModeAfterHoursDescription": "Pendant vos horaires d'ouverture l'appel est transféré ; en dehors, l'IA répond",
+        "answerMode": "Rôle",
+        "answerModeDescription": "Comment l'agent vocal est utilisé sur cette ligne",
+        "answerModeAlways": "Ligne directe",
+        "answerModeAlwaysDescription": "Ce numéro est l'agent IA — il répond à chaque appel comme votre ligne principale",
+        "answerModeAfterHours": "Répondeur",
+        "answerModeAfterHoursDescription": "L'IA prend le relais de votre équipe — pendant les horaires les appels vont vers votre ligne humaine, en dehors l'IA répond",
         "greeting": "Message d'accueil",
         "greetingDescription": "Ajouté après l'annonce automatique obligatoire",
         "greetingPlaceholder": "Comment puis-je vous aider ?",
         "transferNumber": "Numéro de transfert",
         "transferNumberDescription": "Numéro d'un humain pour les transferts et le mode hors horaires (format international)",
         "phoneFormat": "Numéro invalide. Utilisez le format international, ex. +33123456789",
-        "saved": "Paramètres du répondeur enregistrés"
+        "saved": "Paramètres de l'agent vocal IA enregistrés"
       }
     },
     "aiChat": {

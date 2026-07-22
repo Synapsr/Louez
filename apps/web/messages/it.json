@@ -4189,15 +4189,15 @@
           }
         }
       },
-      "aiReceptionist": {
-        "description": "Un centralino telefonico IA che risponde alle chiamate, informa i clienti e prende prenotazioni, nella lingua che scegli.",
-        "enableSection": "Centralino telefonico IA",
-        "enableSectionDescription": "Configura l'assistente vocale che risponde quando i clienti chiamano",
-        "enabled": "Attiva il centralino telefonico",
+      "aiVoiceAgent": {
+        "description": "Un agente vocale IA che risponde alla tua linea telefonica — informa i tuoi clienti e registra prenotazioni, nella lingua che scegli.",
+        "enableSection": "Agente vocale IA",
+        "enableSectionDescription": "Configura l'agente vocale che risponde quando i tuoi clienti chiamano",
+        "enabled": "Attiva l'agente vocale IA",
         "enabledDescription": "L'IA risponde alle chiamate in arrivo sul tuo numero",
         "notConfigured": {
           "title": "Telefonia non configurata",
-          "description": "L'operatore della piattaforma deve configurare un provider di telefonia (AI_PHONE_ENABLED, VOICE_PROVIDER e le credenziali) per attivare il centralino."
+          "description": "L'operatore della piattaforma deve configurare un fornitore di telefonia (AI_PHONE_ENABLED, VOICE_PROVIDER e le credenziali) per attivare l'agente vocale."
         },
         "phoneNumber": "Numero di telefono",
         "phoneNumberDescription": "Punta il webhook « Voce » del tuo numero verso {url}, poi inserisci qui il numero in formato internazionale.",
@@ -4207,19 +4207,19 @@
         "canTakeReservationsDescription": "Consenti all'assistente di registrare una prenotazione (altrimenti informa soltanto)",
         "recordCalls": "Registra le chiamate",
         "recordCallsDescription": "Chi chiama viene informato all'inizio che la chiamata è registrata. Puoi riascoltare le registrazioni dall'elenco delle conversazioni.",
-        "answerMode": "Quando rispondere",
-        "answerModeDescription": "Scegli quando l'IA risponde alla chiamata",
-        "answerModeAlways": "Sempre",
-        "answerModeAlwaysDescription": "L'IA risponde a tutte le chiamate",
-        "answerModeAfterHours": "Fuori orario",
-        "answerModeAfterHoursDescription": "Durante gli orari di apertura la chiamata viene trasferita; fuori orario risponde l'IA",
+        "answerMode": "Ruolo",
+        "answerModeDescription": "Come viene usato l'agente vocale su questa linea",
+        "answerModeAlways": "Linea diretta",
+        "answerModeAlwaysDescription": "Questo numero è l'agente IA — risponde a ogni chiamata come la tua linea principale",
+        "answerModeAfterHours": "Segreteria",
+        "answerModeAfterHoursDescription": "L'IA supporta il tuo team — durante gli orari le chiamate vanno alla tua linea umana, fuori risponde l'IA",
         "greeting": "Messaggio di benvenuto",
         "greetingDescription": "Aggiunto dopo l'annuncio automatico obbligatorio",
         "greetingPlaceholder": "Come posso aiutarla?",
         "transferNumber": "Numero di trasferimento",
         "transferNumberDescription": "Numero di una persona per i trasferimenti e la modalità fuori orario (formato internazionale)",
         "phoneFormat": "Numero non valido. Usa il formato internazionale, es. +33123456789",
-        "saved": "Impostazioni del centralino salvate"
+        "saved": "Impostazioni dell'agente vocale IA salvate"
       }
     },
     "aiChat": {

@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm'
 
 import { aiAdvisorConversations, db } from '@louez/db'
 
-import { isPhoneReceptionistConfigured } from '@/lib/ai/phone/eligibility'
+import { isVoiceAgentConfigured } from '@/lib/ai/phone/eligibility'
 import { readVoiceWebhook } from '@/lib/ai/phone/webhook'
 import { getVoiceProvider } from '@/lib/voice/client'
 
@@ -13,7 +13,7 @@ import { getVoiceProvider } from '@/lib/voice/client'
 // proxied on demand (see /api/voice/recording/[conversationId]).
 
 export async function POST(req: Request) {
-  if (!isPhoneReceptionistConfigured()) {
+  if (!isVoiceAgentConfigured()) {
     return new Response('Not found', { status: 404 })
   }
 

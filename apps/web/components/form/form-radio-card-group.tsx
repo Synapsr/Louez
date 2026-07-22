@@ -1,5 +1,7 @@
 'use client'
 
+import type { ReactNode } from 'react'
+
 import { getFieldError } from '@/hooks/form/form-context'
 import { Label, Radio, RadioGroup } from '@louez/ui'
 import { cn } from '@louez/utils'
@@ -8,6 +10,8 @@ type RadioCardOption<TValue extends string> = {
   value: TValue
   label: string
   description?: string
+  /** Optional leading icon shown next to the option label. */
+  icon?: ReactNode
 }
 
 type FormRadioCardGroupProps<TValue extends string> = {
@@ -44,7 +48,14 @@ export function FormRadioCardGroup<TValue extends string>({
           >
             <Radio value={option.value} />
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold">{option.label}</p>
+              <div className="flex items-center gap-2">
+                {option.icon && (
+                  <span className="text-muted-foreground shrink-0">
+                    {option.icon}
+                  </span>
+                )}
+                <p className="text-sm font-semibold">{option.label}</p>
+              </div>
               {option.description && (
                 <p className="text-muted-foreground text-xs">
                   {option.description}

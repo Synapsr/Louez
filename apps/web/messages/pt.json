@@ -4189,15 +4189,15 @@
           }
         }
       },
-      "aiReceptionist": {
-        "description": "Uma linha telefónica com IA que atende chamadas, informa os seus clientes e regista reservas, no idioma que escolher.",
-        "enableSection": "Atendedor telefónico IA",
-        "enableSectionDescription": "Configure o assistente de voz que atende quando os seus clientes ligam",
-        "enabled": "Ativar o atendedor telefónico",
+      "aiVoiceAgent": {
+        "description": "Um agente de voz com IA que atende a sua linha telefónica — informa os seus clientes e regista reservas, no idioma que escolher.",
+        "enableSection": "Agente de voz IA",
+        "enableSectionDescription": "Configure o agente de voz que atende quando os seus clientes ligam",
+        "enabled": "Ativar o agente de voz IA",
         "enabledDescription": "A IA atende as chamadas recebidas no seu número",
         "notConfigured": {
           "title": "Telefonia não configurada",
-          "description": "O operador da plataforma deve configurar um fornecedor de telefonia (AI_PHONE_ENABLED, VOICE_PROVIDER e as credenciais) para ativar o atendedor."
+          "description": "O operador da plataforma deve configurar um fornecedor de telefonia (AI_PHONE_ENABLED, VOICE_PROVIDER e as credenciais) para ativar o agente de voz."
         },
         "phoneNumber": "Número de telefone",
         "phoneNumberDescription": "Aponte o webhook « Voz » do seu número para {url} e introduza aqui o número em formato internacional.",
@@ -4207,19 +4207,19 @@
         "canTakeReservationsDescription": "Permitir que o assistente registe uma reserva (caso contrário apenas informa)",
         "recordCalls": "Gravar chamadas",
         "recordCallsDescription": "Quem liga é informado no atendimento de que a chamada é gravada. Pode reouvir as gravações a partir da lista de conversas.",
-        "answerMode": "Quando atender",
-        "answerModeDescription": "Escolha quando a IA atende a chamada",
-        "answerModeAlways": "Sempre",
-        "answerModeAlwaysDescription": "A IA atende todas as chamadas",
-        "answerModeAfterHours": "Fora de horário",
-        "answerModeAfterHoursDescription": "Durante o horário de funcionamento a chamada é transferida; fora dele, a IA atende",
+        "answerMode": "Função",
+        "answerModeDescription": "Como o agente de voz é usado nesta linha",
+        "answerModeAlways": "Linha direta",
+        "answerModeAlwaysDescription": "Este número é o agente IA — atende todas as chamadas como a sua linha principal",
+        "answerModeAfterHours": "Atendedor",
+        "answerModeAfterHoursDescription": "A IA apoia a sua equipa — durante o horário as chamadas vão para a sua linha humana, fora dele a IA atende",
         "greeting": "Mensagem de boas-vindas",
         "greetingDescription": "Adicionada após o aviso automático obrigatório",
         "greetingPlaceholder": "Como posso ajudar?",
         "transferNumber": "Número de transferência",
         "transferNumberDescription": "Número de uma pessoa para transferências e o modo fora de horário (formato internacional)",
         "phoneFormat": "Número inválido. Use o formato internacional, ex. +33123456789",
-        "saved": "Definições do atendedor guardadas"
+        "saved": "Definições do agente de voz IA guardadas"
       }
     },
     "aiChat": {

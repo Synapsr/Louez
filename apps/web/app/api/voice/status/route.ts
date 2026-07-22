@@ -4,7 +4,7 @@ import { aiAdvisorConversations, db } from '@louez/db'
 
 import { maybeTriggerAutoTopup } from '@/lib/ai/advisor/auto-topup'
 import { recordCallAudioDebit } from '@/lib/ai/phone/credits'
-import { isPhoneReceptionistConfigured } from '@/lib/ai/phone/eligibility'
+import { isVoiceAgentConfigured } from '@/lib/ai/phone/eligibility'
 import {
   readVoiceWebhook,
   voiceWebhookParamsSchema,
@@ -19,7 +19,7 @@ import { getVoiceProvider } from '@/lib/voice/client'
 // Configure the number's "Call status changes" webhook to POST here.
 
 export async function POST(req: Request) {
-  if (!isPhoneReceptionistConfigured()) {
+  if (!isVoiceAgentConfigured()) {
     return new Response('Not found', { status: 404 })
   }
 

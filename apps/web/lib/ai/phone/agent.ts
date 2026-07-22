@@ -125,6 +125,7 @@ async function preparePhoneTurn(params: PhoneTurnParams): Promise<{
     language: settings.language,
     currency: store.currency,
     canTakeReservations: settings.canTakeReservations,
+    answerMode: settings.answerMode,
     storeEmail: store.email,
     storePhone: store.phone,
     storeAddress: store.address,

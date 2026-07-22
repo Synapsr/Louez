@@ -4,8 +4,8 @@ import { aiAdvisorConversations, db } from '@louez/db'
 
 import { runPhoneTurn } from '@/lib/ai/phone/agent'
 import {
-  isPhoneReceptionistActiveForStore,
-  isPhoneReceptionistConfigured,
+  isVoiceAgentActiveForStore,
+  isVoiceAgentConfigured,
 } from '@/lib/ai/phone/eligibility'
 import { phoneStrings } from '@/lib/ai/phone/messages'
 import {
@@ -26,7 +26,7 @@ import { getVoiceProvider } from '@/lib/voice/client'
 // cannot be forged.
 
 export async function POST(req: Request) {
-  if (!isPhoneReceptionistConfigured()) {
+  if (!isVoiceAgentConfigured()) {
     return new Response('Not found', { status: 404 })
   }
 
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
   if (
     !store ||
     !settings ||
-    !(await isPhoneReceptionistActiveForStore(store))
+    !(await isVoiceAgentActiveForStore(store))
   ) {
     return voiceResponse({
       type: 'say_hangup',

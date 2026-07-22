@@ -40,7 +40,7 @@ export function getVoiceProvider(): VoiceProvider {
 /**
  * Whether the telephony layer is usable: the operator flipped AI_PHONE_ENABLED
  * on AND the selected provider has its credentials. This does NOT check the AI
- * layer — see isPhoneReceptionistConfigured() in lib/ai/phone/eligibility.ts
+ * layer — see isVoiceAgentConfigured() in lib/ai/phone/eligibility.ts
  * for the full gate.
  */
 export function isVoiceConfigured(): boolean {
