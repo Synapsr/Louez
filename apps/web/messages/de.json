@@ -4248,7 +4248,15 @@
         "transferNumber": "Weiterleitungsnummer",
         "transferNumberDescription": "Nummer einer Person für Weiterleitungen und den Modus außerhalb der Öffnungszeiten (internationales Format)",
         "phoneFormat": "Ungültige Nummer. Verwenden Sie das internationale Format, z. B. +33123456789",
-        "saved": "Einstellungen des KI-Sprachagenten gespeichert"
+        "saved": "Einstellungen des KI-Sprachagenten gespeichert",
+        "voice": "Stimme",
+        "voiceDescription": "Die Stimme Ihres Agenten. Wählen Sie eine für die gewählte Sprache.",
+        "voicePlaceholder": "Standardstimme",
+        "voiceGender": {
+          "all": "Alle",
+          "female": "Weiblich",
+          "male": "Männlich"
+        }
       }
     },
     "aiChat": {

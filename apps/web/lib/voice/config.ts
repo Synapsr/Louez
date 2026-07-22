@@ -7,6 +7,8 @@
  */
 import { env } from '@/env'
 
+import type { PhoneVoiceCatalog, PhoneVoiceOption } from './types'
+
 /**
  * Whether the streaming ConversationRelay transport is enabled AND fully
  * configured. When false, the phone channel uses the turn-based <Gather> path.
@@ -49,6 +51,48 @@ function parseVoiceMap(): Record<string, string> {
     const out: Record<string, string> = {}
     for (const [locale, id] of Object.entries(parsed)) {
       if (typeof id === 'string' && id.trim()) out[locale] = id.trim()
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Voices a store may pick from, per locale, from AI_PHONE_VOICE_CATALOG. Powers
+ * the dashboard voice picker. Returns {} when unconfigured or malformed.
+ */
+export function getVoiceCatalog(): PhoneVoiceCatalog {
+  const raw = env.AI_PHONE_VOICE_CATALOG?.trim()
+  if (!raw) return {}
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const out: PhoneVoiceCatalog = {}
+    for (const [locale, list] of Object.entries(parsed)) {
+      if (!Array.isArray(list)) continue
+      const voices: PhoneVoiceOption[] = []
+      for (const entry of list) {
+        if (
+          entry &&
+          typeof entry === 'object' &&
+          typeof (entry as { id?: unknown }).id === 'string' &&
+          (entry as { id: string }).id.trim()
+        ) {
+          const id = (entry as { id: string }).id.trim()
+          const label = (entry as { label?: unknown }).label
+          voices.push({
+            id,
+            label:
+              typeof label === 'string' && label.trim() ? label.trim() : id,
+            gender:
+              (entry as { gender?: unknown }).gender === 'male'
+                ? 'male'
+                : 'female',
+          })
+        }
+      }
+      if (voices.length > 0) out[locale] = voices
     }
     return out
   } catch {

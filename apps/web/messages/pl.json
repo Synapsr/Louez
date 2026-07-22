@@ -4248,7 +4248,15 @@
         "transferNumber": "Numer przekazania",
         "transferNumberDescription": "Numer osoby do przekazywania połączeń i trybu poza godzinami (format międzynarodowy)",
         "phoneFormat": "Nieprawidłowy numer. Użyj formatu międzynarodowego, np. +33123456789",
-        "saved": "Zapisano ustawienia głosowego agenta IA"
+        "saved": "Zapisano ustawienia głosowego agenta IA",
+        "voice": "Głos",
+        "voiceDescription": "Głos Twojego agenta. Wybierz jeden dla wybranego języka.",
+        "voicePlaceholder": "Domyślny głos",
+        "voiceGender": {
+          "all": "Wszystkie",
+          "female": "Kobieta",
+          "male": "Mężczyzna"
+        }
       }
     },
     "aiChat": {

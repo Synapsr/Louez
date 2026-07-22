@@ -4248,7 +4248,15 @@
         "transferNumber": "Doorschakelnummer",
         "transferNumberDescription": "Een nummer van een persoon voor doorschakelen en de modus buiten openingstijden (internationaal formaat)",
         "phoneFormat": "Ongeldig nummer. Gebruik het internationale formaat, bijv. +33123456789",
-        "saved": "Instellingen AI-spraakagent opgeslagen"
+        "saved": "Instellingen AI-spraakagent opgeslagen",
+        "voice": "Stem",
+        "voiceDescription": "De stem van je agent. Kies er een voor de gekozen taal.",
+        "voicePlaceholder": "Standaardstem",
+        "voiceGender": {
+          "all": "Alle",
+          "female": "Vrouw",
+          "male": "Man"
+        }
       }
     },
     "aiChat": {

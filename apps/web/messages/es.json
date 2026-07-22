@@ -4254,7 +4254,15 @@
         "transferNumber": "Número de transferencia",
         "transferNumberDescription": "Número de una persona para transferencias y el modo fuera de horario (formato internacional)",
         "phoneFormat": "Número no válido. Usa el formato internacional, p. ej. +33123456789",
-        "saved": "Ajustes del agente de voz IA guardados"
+        "saved": "Ajustes del agente de voz IA guardados",
+        "voice": "Voz",
+        "voiceDescription": "La voz de tu agente. Elige una para el idioma seleccionado.",
+        "voicePlaceholder": "Voz predeterminada",
+        "voiceGender": {
+          "all": "Todas",
+          "female": "Mujer",
+          "male": "Hombre"
+        }
       }
     },
     "aiChat": {

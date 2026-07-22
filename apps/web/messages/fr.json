@@ -4355,7 +4355,15 @@
         "transferNumber": "Numéro de transfert",
         "transferNumberDescription": "Numéro d'un humain pour les transferts et le mode hors horaires (format international)",
         "phoneFormat": "Numéro invalide. Utilisez le format international, ex. +33123456789",
-        "saved": "Paramètres de l'agent vocal IA enregistrés"
+        "saved": "Paramètres de l'agent vocal IA enregistrés",
+        "voice": "Voix",
+        "voiceDescription": "La voix de votre agent. Choisissez-en une pour la langue sélectionnée.",
+        "voicePlaceholder": "Voix par défaut",
+        "voiceGender": {
+          "all": "Toutes",
+          "female": "Femme",
+          "male": "Homme"
+        }
       }
     },
     "aiChat": {

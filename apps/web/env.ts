@@ -215,6 +215,11 @@ export const env = createEnv({
     AI_PHONE_VOICES: z.string().optional(),
     // Fallback voice id when a locale is absent from AI_PHONE_VOICES and the store set none.
     AI_PHONE_DEFAULT_VOICE: z.string().optional(),
+    // Catalog of voices a STORE can pick from, per app locale (JSON):
+    // {"fr":[{"id":"<id>","label":"Léa","gender":"female"}, ...], ...}. Powers the
+    // in-dashboard voice picker; the chosen id is saved as the store voice. Voice
+    // ids stay in env, never in the repo.
+    AI_PHONE_VOICE_CATALOG: z.string().optional(),
 
     // ===== fromHello (Optional — engagement & growth) =====
     FROMHELLO_API_URL: z.url().optional(),
@@ -416,6 +421,7 @@ export const env = createEnv({
     AI_PHONE_STT_PROVIDER: process.env.AI_PHONE_STT_PROVIDER,
     AI_PHONE_VOICES: process.env.AI_PHONE_VOICES,
     AI_PHONE_DEFAULT_VOICE: process.env.AI_PHONE_DEFAULT_VOICE,
+    AI_PHONE_VOICE_CATALOG: process.env.AI_PHONE_VOICE_CATALOG,
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,

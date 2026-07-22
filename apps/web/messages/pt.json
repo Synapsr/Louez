@@ -4248,7 +4248,15 @@
         "transferNumber": "Número de transferência",
         "transferNumberDescription": "Número de uma pessoa para transferências e o modo fora de horário (formato internacional)",
         "phoneFormat": "Número inválido. Use o formato internacional, ex. +33123456789",
-        "saved": "Definições do agente de voz IA guardadas"
+        "saved": "Definições do agente de voz IA guardadas",
+        "voice": "Voz",
+        "voiceDescription": "A voz do seu agente. Escolha uma para o idioma selecionado.",
+        "voicePlaceholder": "Voz predefinida",
+        "voiceGender": {
+          "all": "Todas",
+          "female": "Mulher",
+          "male": "Homem"
+        }
       }
     },
     "aiChat": {

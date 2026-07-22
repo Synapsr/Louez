@@ -76,6 +76,18 @@ export type VoiceAction =
     }
   | { type: 'hangup' }
 
+/** One selectable TTS voice offered to a store (from the operator's catalog). */
+export interface PhoneVoiceOption {
+  /** Provider voice id (e.g. ElevenLabs voice id). */
+  id: string
+  /** Human label shown in the picker (e.g. a first name). */
+  label: string
+  gender: 'male' | 'female'
+}
+
+/** Per-locale voice catalog the store picks from. Empty when unconfigured. */
+export type PhoneVoiceCatalog = Record<string, PhoneVoiceOption[]>
+
 /** A phone number available to provision, normalized across providers. */
 export interface AvailableNumber {
   /** E.164 number, e.g. '+33756781234'. */

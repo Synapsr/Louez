@@ -4248,7 +4248,15 @@
         "transferNumber": "Numero di trasferimento",
         "transferNumberDescription": "Numero di una persona per i trasferimenti e la modalità fuori orario (formato internazionale)",
         "phoneFormat": "Numero non valido. Usa il formato internazionale, es. +33123456789",
-        "saved": "Impostazioni dell'agente vocale IA salvate"
+        "saved": "Impostazioni dell'agente vocale IA salvate",
+        "voice": "Voce",
+        "voiceDescription": "La voce del tuo agente. Scegline una per la lingua selezionata.",
+        "voicePlaceholder": "Voce predefinita",
+        "voiceGender": {
+          "all": "Tutte",
+          "female": "Donna",
+          "male": "Uomo"
+        }
       }
     },
     "aiChat": {

@@ -26,7 +26,12 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Label,
+  Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
   toastManager,
 } from '@louez/ui'
@@ -36,6 +41,7 @@ import {
   defaultAiPhoneSettings,
 } from '@louez/validations'
 import type { AiPhoneSettings } from '@louez/types'
+import type { PhoneVoiceCatalog } from '@/lib/voice/types'
 
 import { updateAiPhoneSettings } from './phone-actions'
 import { VoiceNumberProvisioning } from './voice-number-provisioning'
@@ -59,6 +65,7 @@ const createAiPhoneSettingsSchema = (
   z.object({
     enabled: z.boolean(),
     language: z.enum(AI_PHONE_LANGUAGES),
+    voice: z.string(),
     canTakeReservations: z.boolean(),
     recordCalls: z.boolean(),
     answerMode: z.enum(['always', 'after_hours']),
@@ -81,6 +88,7 @@ interface VoiceAgentFormProps {
   isProvisioned: boolean
   webhookUrl: string
   defaultCountry: string
+  voiceCatalog: PhoneVoiceCatalog
 }
 
 export const VoiceAgentForm = ({
@@ -91,6 +99,7 @@ export const VoiceAgentForm = ({
   isProvisioned,
   webhookUrl,
   defaultCountry,
+  voiceCatalog,
 }: VoiceAgentFormProps) => {
   const router = useRouter()
   const t = useTranslations('dashboard.settings.aiVoiceAgent')
@@ -110,6 +119,7 @@ export const VoiceAgentForm = ({
       // Persisted locale string coerced to the known set; the Zod schema below
       // and the server action re-validate it, so an unknown value can't slip in.
       language: current.language as (typeof AI_PHONE_LANGUAGES)[number],
+      voice: current.voice || '',
       canTakeReservations: current.canTakeReservations,
       recordCalls: current.recordCalls ?? false,
       answerMode: current.answerMode,
@@ -137,6 +147,17 @@ export const VoiceAgentForm = ({
 
   const isDirty = useStore(form.store, (s) => s.isDirty)
   const isEnabled = useStore(form.store, (s) => s.values.enabled)
+
+  // Voice picker: the choices depend on the currently selected language; the
+  // gender toggle is a display-only filter over the operator's voice catalog.
+  const selectedLanguage = useStore(form.store, (s) => s.values.language)
+  const [voiceGender, setVoiceGender] = useState<'female' | 'male' | null>(null)
+  const availableVoices = voiceCatalog[selectedLanguage] ?? []
+  const voiceGenders = Array.from(new Set(availableVoices.map((v) => v.gender)))
+  const showGenderFilter = voiceGenders.length > 1
+  const filteredVoices = voiceGender
+    ? availableVoices.filter((v) => v.gender === voiceGender)
+    : availableVoices
 
   // Locked state for plans without access — reuses the advisor upgrade copy.
   if (!hasFeatureAccess) {
@@ -235,6 +256,70 @@ export const VoiceAgentForm = ({
                     </field.Select>
                   )}
                 </form.AppField>
+
+                {/* Voice — pick from the operator's catalog for this language */}
+                {availableVoices.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Label>{t('voice')}</Label>
+                      {showGenderFilter && (
+                        <div className="flex gap-1">
+                          {([null, 'female', 'male'] as const).map((g) => {
+                            if (g !== null && !voiceGenders.includes(g)) {
+                              return null
+                            }
+                            return (
+                              <Button
+                                key={g ?? 'all'}
+                                type="button"
+                                size="sm"
+                                variant={
+                                  voiceGender === g ? 'default' : 'outline'
+                                }
+                                onClick={() => setVoiceGender(g)}
+                              >
+                                {g === null
+                                  ? t('voiceGender.all')
+                                  : t(`voiceGender.${g}`)}
+                              </Button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <form.Field name="voice">
+                      {(field) => (
+                        <Select
+                          value={field.state.value || undefined}
+                          onValueChange={(value) =>
+                            value && field.handleChange(value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('voicePlaceholder')}>
+                              {(value) => {
+                                const match = availableVoices.find(
+                                  (x) => x.id === value,
+                                )
+                                return match ? match.label : null
+                              }}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredVoices.map((v) => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {v.label} · {t(`voiceGender.${v.gender}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </form.Field>
+                    <p className="text-muted-foreground text-sm">
+                      {t('voiceDescription')}
+                    </p>
+                  </div>
+                )}
 
                 {/* Can take reservations */}
                 <form.AppField name="canTakeReservations">
