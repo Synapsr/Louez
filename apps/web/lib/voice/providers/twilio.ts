@@ -375,6 +375,10 @@ export class TwilioVoiceProvider implements VoiceProvider {
       StatusCallback: input.statusCallbackUrl,
       StatusCallbackMethod: 'POST',
     })
+    // Many countries (e.g. FR) require a regulatory address, and stricter ones a
+    // bundle, to purchase a number. Sent when the operator configured them.
+    if (env.TWILIO_ADDRESS_SID) body.set('AddressSid', env.TWILIO_ADDRESS_SID)
+    if (env.TWILIO_BUNDLE_SID) body.set('BundleSid', env.TWILIO_BUNDLE_SID)
     const url = `${TWILIO_REST_BASE}/Accounts/${encodeURIComponent(
       sid,
     )}/IncomingPhoneNumbers.json`

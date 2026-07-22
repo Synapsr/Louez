@@ -290,7 +290,13 @@ export const VoiceNumberProvisioning = ({
                 onValueChange={(value) => value && selectCountry(value)}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {(value) =>
+                      typeof value === 'string' && value
+                        ? countryLabel(value)
+                        : null
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {COUNTRIES.map((code) => (

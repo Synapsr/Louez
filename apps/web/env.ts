@@ -172,6 +172,12 @@ export const env = createEnv({
     // to provision numbers). Shared with a future Twilio SMS provider.
     TWILIO_ACCOUNT_SID: z.string().optional(),
     TWILIO_AUTH_TOKEN: z.string().optional(),
+    // Regulatory data required to PROVISION numbers in many countries (e.g. FR):
+    // a Twilio Address SID (AD...) and, for stricter countries, a Regulatory
+    // Bundle SID (BU...). Created once in the operator's Twilio account and sent
+    // with the purchase. Optional — only needed for auto-provisioning.
+    TWILIO_ADDRESS_SID: z.string().optional(),
+    TWILIO_BUNDLE_SID: z.string().optional(),
     // Optional cheaper/faster model for the phone agent (falls back to
     // AI_ADVISOR_MODEL, then AI_MODEL, then the provider default).
     AI_PHONE_MODEL: z.string().optional(),
@@ -397,6 +403,8 @@ export const env = createEnv({
     VOICE_PROVIDER: process.env.VOICE_PROVIDER,
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
+    TWILIO_ADDRESS_SID: process.env.TWILIO_ADDRESS_SID,
+    TWILIO_BUNDLE_SID: process.env.TWILIO_BUNDLE_SID,
     AI_PHONE_MODEL: process.env.AI_PHONE_MODEL,
     AI_VOICE_AUDIO_USD_PER_MIN: process.env.AI_VOICE_AUDIO_USD_PER_MIN,
     AI_PHONE_MAX_CREDITS_PER_CALL: process.env.AI_PHONE_MAX_CREDITS_PER_CALL,
