@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useLocale, useTranslations } from 'next-intl'
 import {
   Check,
@@ -28,7 +28,10 @@ import {
   Input,
   Label,
   Select,
+  SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
   toastManager,
 } from '@louez/ui'
 
@@ -100,8 +103,8 @@ export const VoiceNumberProvisioning = ({
       ? defaultCountry
       : 'FR',
   )
-  const [areaCode, setAreaCode] = useState('')
-  const [results, setResults] = useState<AvailableNumber[] | null>(null)
+  const [areaInput, setAreaInput] = useState('')
+  const [appliedAreaCode, setAppliedAreaCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [showManual, setShowManual] = useState(false)
   const [showWebhook, setShowWebhook] = useState(false)
@@ -128,19 +131,35 @@ export const VoiceNumberProvisioning = ({
     )
   }
 
-  const searchMutation = useMutation({
-    mutationFn: searchVoiceNumbers,
-    onError,
-    onSuccess: (result) => {
-      if ('error' in result) {
-        setError(showError(result.error))
-        setResults(null)
-        return
-      }
-      setError(null)
-      setResults(result.numbers)
-    },
+  // Selecting a country (and optionally an area code) loads the available
+  // numbers directly — no separate "search" step. Results are cached per query.
+  const numbersQuery = useQuery({
+    queryKey: ['voice-numbers', country, appliedAreaCode],
+    queryFn: () =>
+      searchVoiceNumbers({
+        country,
+        areaCode: appliedAreaCode || undefined,
+      }),
+    enabled: !disabled && !boundNumber,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
   })
+
+  const numbersResult = numbersQuery.data
+  const listError =
+    numbersResult && 'error' in numbersResult
+      ? showError(numbersResult.error)
+      : numbersQuery.isError
+        ? showError('errors.unexpected')
+        : null
+  const numbers: AvailableNumber[] =
+    numbersResult && 'numbers' in numbersResult ? numbersResult.numbers : []
+
+  const selectCountry = (value: string) => {
+    setCountry(value)
+    setAreaInput('')
+    setAppliedAreaCode('')
+  }
 
   const provisionMutation = useMutation({
     mutationFn: provisionVoiceNumber,
@@ -261,66 +280,78 @@ export const VoiceNumberProvisioning = ({
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Step 1 — pick a country and search */}
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+          {/* Pick a country — numbers load right away. Area code is an optional
+              refinement applied on top. */}
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>{t('country')}</Label>
               <Select
                 value={country}
-                onValueChange={(value) => value && setCountry(value)}
+                onValueChange={(value) => value && selectCountry(value)}
               >
-                {COUNTRIES.map((code) => (
-                  <SelectItem key={code} value={code}>
-                    {countryLabel(code)}
-                  </SelectItem>
-                ))}
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COUNTRIES.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {countryLabel(code)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="grid gap-1.5">
               <Label>{t('areaCode')}</Label>
-              <Input
-                value={areaCode}
-                onChange={(event) => setAreaCode(event.target.value)}
-                placeholder={t('areaCodePlaceholder')}
-                inputMode="numeric"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={areaInput}
+                  onChange={(event) => setAreaInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      setAppliedAreaCode(areaInput.trim())
+                    }
+                  }}
+                  placeholder={t('areaCodePlaceholder')}
+                  inputMode="numeric"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label={t('search')}
+                  disabled={disabled || numbersQuery.isFetching}
+                  onClick={() => setAppliedAreaCode(areaInput.trim())}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <Button
-              type="button"
-              disabled={disabled || searchMutation.isPending}
-              onClick={() => {
-                setError(null)
-                searchMutation.mutate({ country, areaCode })
-              }}
-              className="gap-2"
-            >
-              {searchMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-              {t('search')}
-            </Button>
           </div>
 
-          {/* Step 2 — results / guidance */}
-          {searchMutation.isPending ? (
+          {listError ? (
+            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              {listError}
+            </div>
+          ) : numbersQuery.isFetching ? (
             <div className="text-muted-foreground flex items-center justify-center gap-2 rounded-lg border border-dashed py-8 text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
               {t('searching')}
             </div>
-          ) : results === null ? (
+          ) : !numbersResult ? (
             <div className="text-muted-foreground rounded-lg border border-dashed px-4 py-8 text-center text-sm">
               {t('searchHint')}
             </div>
-          ) : results.length === 0 ? (
+          ) : numbers.length === 0 ? (
             <div className="text-muted-foreground rounded-lg border border-dashed px-4 py-8 text-center text-sm">
               {t('noResults')}
             </div>
           ) : (
             <div className="space-y-2">
               <div className="divide-y rounded-lg border">
-                {results.map((number) => (
+                {numbers.map((number) => (
                   <div
                     key={number.phoneNumber}
                     className="flex items-center justify-between gap-3 p-3"
