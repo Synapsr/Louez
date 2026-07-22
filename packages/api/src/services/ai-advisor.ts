@@ -52,6 +52,9 @@ export async function listAdvisorConversations(params: {
         reservationNumber: reservations.number,
         validatedAt: aiAdvisorConversations.validatedAt,
         locale: aiAdvisorConversations.locale,
+        channel: aiAdvisorConversations.channel,
+        durationSeconds: aiAdvisorConversations.durationSeconds,
+        recordingSid: aiAdvisorConversations.recordingSid,
         messageCount: sql<number>`(
           SELECT COUNT(*) FROM ${aiAdvisorMessages}
           WHERE ${aiAdvisorMessages.conversationId} = ${aiAdvisorConversations.id}
@@ -99,6 +102,9 @@ export async function listAdvisorConversations(params: {
       locale: row.locale,
       messageCount: row.messageCount,
       firstUserMessage: row.firstUserMessage,
+      channel: row.channel,
+      durationSeconds: row.durationSeconds,
+      hasRecording: Boolean(row.recordingSid),
     })),
     totalCount: totalResult[0]?.count ?? 0,
     page,
@@ -124,6 +130,10 @@ function toTranscript(
     validatedAt: conversation.validatedAt,
     collectedData: conversation.collectedData,
     locale: conversation.locale,
+    channel: conversation.channel,
+    durationSeconds: conversation.durationSeconds,
+    hasRecording: Boolean(conversation.recordingSid),
+    recordingDurationSeconds: conversation.recordingDurationSeconds,
     messages: conversation.messages
       .filter(
         (
@@ -161,6 +171,10 @@ function findConversationWithMessages(
       validatedAt: true,
       collectedData: true,
       locale: true,
+      channel: true,
+      durationSeconds: true,
+      recordingSid: true,
+      recordingDurationSeconds: true,
     },
     with: {
       customer: { columns: { firstName: true, lastName: true } },

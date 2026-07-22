@@ -103,6 +103,10 @@ const advisorConversationListItemSchema = z.object({
   locale: z.string().nullable(),
   messageCount: z.number(),
   firstUserMessage: z.string().nullable(),
+  // 'web' = storefront chat, 'phone' = AI receptionist call.
+  channel: z.enum(['web', 'phone']),
+  durationSeconds: z.number().nullable(),
+  hasRecording: z.boolean(),
 })
 
 export const advisorConversationsListOutputSchema = z.object({
@@ -123,6 +127,12 @@ export const advisorConversationTranscriptSchema = z.object({
   validatedAt: z.date().nullable(),
   collectedData: z.record(z.string(), z.string()).nullable(),
   locale: z.string().nullable(),
+  // 'web' = storefront chat, 'phone' = AI receptionist call.
+  channel: z.enum(['web', 'phone']),
+  durationSeconds: z.number().nullable(),
+  // Recording metadata (phone + opt-in only); hasRecording gates the player.
+  hasRecording: z.boolean(),
+  recordingDurationSeconds: z.number().nullable(),
   messages: z.array(
     z.object({
       id: z.string(),

@@ -569,6 +569,12 @@ export interface AiPhoneSettings {
   transferNumber?: string;
   /** Provider-specific TTS voice id/name. Falls back to a provider default. */
   voice?: string;
+  /**
+   * Opt-in call recording. When true, the caller is told at pickup that the
+   * call is recorded (GDPR/CNIL) and the merchant can replay it from the
+   * dashboard. Defaults to false — recording is never on without consent.
+   */
+  recordCalls?: boolean;
 }
 
 // ============================================================================

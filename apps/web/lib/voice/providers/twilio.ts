@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 
 import { env } from '@/env'
+import { log } from '@/lib/evlog'
 
 import type {
   InboundCall,
@@ -8,6 +9,11 @@ import type {
   VoiceProvider,
   VoiceSpeech,
 } from '../types'
+
+const TWILIO_REST_BASE = 'https://api.twilio.com/2010-04-01'
+
+const delay = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
  * App locale → Twilio <Say>/<Gather> locale + a sensible default neural voice
@@ -184,5 +190,124 @@ export class TwilioVoiceProvider implements VoiceProvider {
       body: `<?xml version="1.0" encoding="UTF-8"?><Response>${inner}</Response>`,
       contentType,
     }
+  }
+
+  /** Basic-auth header for the Twilio REST API, or null if not configured. */
+  private authHeader(): string | null {
+    const sid = env.TWILIO_ACCOUNT_SID
+    const token = env.TWILIO_AUTH_TOKEN
+    if (!sid || !token) return null
+    return `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`
+  }
+
+  async startCallRecording(input: {
+    callId: string
+    statusCallbackUrl: string
+  }): Promise<void> {
+    const auth = this.authHeader()
+    const sid = env.TWILIO_ACCOUNT_SID
+    if (!auth || !sid) return
+
+    const body = new URLSearchParams({
+      RecordingStatusCallback: input.statusCallbackUrl,
+      RecordingStatusCallbackEvent: 'completed',
+      RecordingStatusCallbackMethod: 'POST',
+      RecordingTrack: 'both',
+    })
+    const url = `${TWILIO_REST_BASE}/Accounts/${encodeURIComponent(
+      sid,
+    )}/Calls/${encodeURIComponent(input.callId)}/Recordings.json`
+
+    // The call may not be in-progress the instant the webhook returns, which
+    // Twilio rejects with a 400 — retry once after a short delay.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await delay(800)
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            authorization: auth,
+            'content-type': 'application/x-www-form-urlencoded',
+          },
+          body,
+        })
+        if (res.ok) return
+        if (res.status !== 400) {
+          log.error('phone', `startCallRecording failed: HTTP ${res.status}`)
+          return
+        }
+      } catch (error) {
+        log.error(
+          'phone',
+          `startCallRecording error: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        )
+        return
+      }
+    }
+    log.error('phone', 'startCallRecording: call not recordable after retry')
+  }
+
+  parseRecordingCallback(params: Record<string, string>): {
+    callId: string
+    recordingSid: string
+    durationSeconds: number | null
+  } | null {
+    if (params.RecordingStatus !== 'completed') return null
+    const recordingSid = params.RecordingSid
+    const callId = params.CallSid
+    if (!recordingSid || !callId) return null
+    const duration = params.RecordingDuration
+      ? Number.parseInt(params.RecordingDuration, 10)
+      : null
+    return {
+      callId,
+      recordingSid,
+      durationSeconds:
+        duration !== null && Number.isFinite(duration) ? duration : null,
+    }
+  }
+
+  async fetchRecordingMedia(input: {
+    recordingSid: string
+    range?: string | null
+  }): Promise<Response> {
+    const auth = this.authHeader()
+    const sid = env.TWILIO_ACCOUNT_SID
+    if (!auth || !sid) {
+      return new Response('Recording unavailable', { status: 503 })
+    }
+
+    const url = `${TWILIO_REST_BASE}/Accounts/${encodeURIComponent(
+      sid,
+    )}/Recordings/${encodeURIComponent(input.recordingSid)}.mp3`
+    const headers: Record<string, string> = { authorization: auth }
+    if (input.range) headers.range = input.range
+
+    let upstream: Response
+    try {
+      upstream = await fetch(url, { headers })
+    } catch {
+      return new Response('Recording unavailable', { status: 502 })
+    }
+    if (!upstream.ok && upstream.status !== 206) {
+      return new Response('Recording unavailable', {
+        status: upstream.status === 404 ? 404 : 502,
+      })
+    }
+
+    // Forward only the headers a player needs; never leak provider headers.
+    const out = new Headers({
+      'content-type': 'audio/mpeg',
+      'accept-ranges': 'bytes',
+      'cache-control': 'private, no-store',
+    })
+    const contentLength = upstream.headers.get('content-length')
+    if (contentLength) out.set('content-length', contentLength)
+    const contentRange = upstream.headers.get('content-range')
+    if (contentRange) out.set('content-range', contentRange)
+
+    return new Response(upstream.body, { status: upstream.status, headers: out })
   }
 }

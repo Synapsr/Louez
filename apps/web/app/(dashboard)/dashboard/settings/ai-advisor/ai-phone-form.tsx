@@ -51,6 +51,7 @@ const createAiPhoneSettingsSchema = (
     enabled: z.boolean(),
     language: z.enum(AI_PHONE_LANGUAGES),
     canTakeReservations: z.boolean(),
+    recordCalls: z.boolean(),
     answerMode: z.enum(['always', 'after_hours']),
     greeting: z
       .string()
@@ -100,6 +101,7 @@ export const AiPhoneForm = ({
       // and the server action re-validate it, so an unknown value can't slip in.
       language: current.language as (typeof AI_PHONE_LANGUAGES)[number],
       canTakeReservations: current.canTakeReservations,
+      recordCalls: current.recordCalls ?? false,
       answerMode: current.answerMode,
       greeting: current.greeting || '',
       transferNumber: current.transferNumber || '',
@@ -259,6 +261,16 @@ export const AiPhoneForm = ({
                     />
                   )}
                 </form.Field>
+
+                {/* Call recording (opt-in; caller is told at pickup) */}
+                <form.AppField name="recordCalls">
+                  {(field) => (
+                    <field.Switch
+                      label={t('recordCalls')}
+                      description={t('recordCallsDescription')}
+                    />
+                  )}
+                </form.AppField>
 
                 {/* Personalization */}
                 <div className="grid gap-4 sm:grid-cols-2">

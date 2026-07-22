@@ -7,6 +7,8 @@
 export interface PhoneStrings {
   /** MANDATORY opener: tells the caller they reached an automated AI. */
   disclosure: (store: string) => string
+  /** GDPR/CNIL notice appended to the opener when call recording is enabled. */
+  recordingNotice: string
   /** Default follow-up when the merchant set no custom greeting. */
   ask: string
   /** Spoken when no speech was recognized. */
@@ -23,6 +25,7 @@ const STRINGS: Record<string, PhoneStrings> = {
   fr: {
     disclosure: (store) =>
       `Bonjour, vous êtes en relation avec l'assistant vocal automatisé de ${store}.`,
+    recordingNotice: 'Cet appel peut être enregistré.',
     ask: 'Comment puis-je vous aider ?',
     reprompt: "Je n'ai pas bien entendu. Pouvez-vous répéter ?",
     goodbye: 'Merci de votre appel. Bonne journée, au revoir !',
@@ -33,6 +36,7 @@ const STRINGS: Record<string, PhoneStrings> = {
   en: {
     disclosure: (store) =>
       `Hello, you've reached the automated voice assistant of ${store}.`,
+    recordingNotice: 'This call may be recorded.',
     ask: 'How can I help you?',
     reprompt: "Sorry, I didn't catch that. Could you say it again?",
     goodbye: 'Thanks for calling. Have a great day, goodbye!',
@@ -43,6 +47,7 @@ const STRINGS: Record<string, PhoneStrings> = {
   it: {
     disclosure: (store) =>
       `Salve, è in contatto con l'assistente vocale automatico di ${store}.`,
+    recordingNotice: 'Questa chiamata potrebbe essere registrata.',
     ask: 'Come posso aiutarla?',
     reprompt: 'Scusi, non ho capito bene. Può ripetere?',
     goodbye: 'Grazie per la chiamata. Buona giornata, arrivederci!',
@@ -53,6 +58,7 @@ const STRINGS: Record<string, PhoneStrings> = {
   nl: {
     disclosure: (store) =>
       `Hallo, u bent verbonden met de geautomatiseerde spraakassistent van ${store}.`,
+    recordingNotice: 'Dit gesprek kan worden opgenomen.',
     ask: 'Waarmee kan ik u helpen?',
     reprompt: 'Sorry, dat heb ik niet goed verstaan. Kunt u het herhalen?',
     goodbye: 'Bedankt voor uw telefoontje. Fijne dag, tot ziens!',
@@ -63,6 +69,7 @@ const STRINGS: Record<string, PhoneStrings> = {
   pt: {
     disclosure: (store) =>
       `Olá, está em contacto com o assistente de voz automático da ${store}.`,
+    recordingNotice: 'Esta chamada pode ser gravada.',
     ask: 'Como posso ajudar?',
     reprompt: 'Desculpe, não percebi bem. Pode repetir?',
     goodbye: 'Obrigado pela chamada. Bom dia, até logo!',
@@ -73,6 +80,7 @@ const STRINGS: Record<string, PhoneStrings> = {
   de: {
     disclosure: (store) =>
       `Hallo, Sie sprechen mit dem automatischen Sprachassistenten von ${store}.`,
+    recordingNotice: 'Dieser Anruf kann aufgezeichnet werden.',
     ask: 'Wie kann ich Ihnen helfen?',
     reprompt: 'Entschuldigung, das habe ich nicht verstanden. Können Sie es wiederholen?',
     goodbye: 'Danke für Ihren Anruf. Einen schönen Tag, auf Wiederhören!',
@@ -83,6 +91,7 @@ const STRINGS: Record<string, PhoneStrings> = {
   es: {
     disclosure: (store) =>
       `Hola, está hablando con el asistente de voz automático de ${store}.`,
+    recordingNotice: 'Esta llamada puede ser grabada.',
     ask: '¿En qué puedo ayudarle?',
     reprompt: 'Perdón, no le he entendido bien. ¿Puede repetirlo?',
     goodbye: 'Gracias por llamar. Que tenga un buen día, ¡hasta luego!',
@@ -93,6 +102,7 @@ const STRINGS: Record<string, PhoneStrings> = {
   pl: {
     disclosure: (store) =>
       `Dzień dobry, łączysz się z automatycznym asystentem głosowym ${store}.`,
+    recordingNotice: 'Ta rozmowa może być nagrywana.',
     ask: 'W czym mogę pomóc?',
     reprompt: 'Przepraszam, nie zrozumiałem. Czy może Pan/Pani powtórzyć?',
     goodbye: 'Dziękuję za telefon. Miłego dnia, do usłyszenia!',

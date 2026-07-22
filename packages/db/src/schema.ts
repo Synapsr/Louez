@@ -3213,6 +3213,11 @@ export const aiAdvisorConversations = mysqlTable(
     callerPhone: varchar('caller_phone', { length: 32 }),
     providerCallId: varchar('provider_call_id', { length: 64 }),
     durationSeconds: int('duration_seconds'),
+    // Call recording (opt-in per store). Only the provider recording id is
+    // stored, never a URL — playback is proxied through the app with the
+    // provider credentials, so no recording is ever publicly reachable.
+    recordingSid: varchar('recording_sid', { length: 64 }),
+    recordingDurationSeconds: int('recording_duration_seconds'),
 
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),

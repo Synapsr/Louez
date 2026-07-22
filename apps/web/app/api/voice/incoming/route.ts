@@ -126,7 +126,12 @@ export async function POST(req: Request) {
   }
 
   // Create the phone conversation and persist the greeting as the first turn.
-  const greeting = `${strings.disclosure(store.name)} ${
+  // When recording is opted in, the mandatory recording notice is spoken right
+  // after the AI disclosure, before anything else is said (GDPR/CNIL consent).
+  const recordingNotice = settings.recordCalls
+    ? ` ${strings.recordingNotice}`
+    : ''
+  const greeting = `${strings.disclosure(store.name)}${recordingNotice} ${
     settings.greeting?.trim() || strings.ask
   }`.trim()
 
@@ -149,6 +154,18 @@ export async function POST(req: Request) {
     })
     return created.id
   })
+
+  // Opt-in recording: start it out-of-band via the provider REST API so it never
+  // adds latency to call setup. Fire-and-forget — the provider logs its own
+  // errors and a recording failure must never break the live call.
+  if (settings.recordCalls && call.callId) {
+    void getVoiceProvider()
+      .startCallRecording({
+        callId: call.callId,
+        statusCallbackUrl: `${read.origin}/api/voice/recording`,
+      })
+      .catch(() => {})
+  }
 
   // Streaming transport (ConversationRelay): hand off to the worker over a
   // signed wss url — the provider runs STT/TTS/barge-in and the per-turn loop

@@ -50,6 +50,7 @@ export async function updateAiPhoneSettings(data: UpdateAiPhoneInput) {
     greeting: validated.data.greeting || undefined,
     transferNumber: validated.data.transferNumber || undefined,
     voice: validated.data.voice || undefined,
+    recordCalls: validated.data.recordCalls,
   }
 
   // Bind / rebind / release the inbound number.

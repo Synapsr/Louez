@@ -4284,7 +4284,16 @@
           "previousPage": "Page précédente",
           "nextPage": "Page suivante",
           "transcriptTitle": "Conversation",
-          "transcriptError": "Impossible de charger cette conversation"
+          "transcriptError": "Impossible de charger cette conversation",
+          "channelPhone": "Appel téléphonique",
+          "channelWeb": "Chat",
+          "recording": {
+            "play": "Écouter l'enregistrement",
+            "pause": "Pause",
+            "retry": "Réessayer",
+            "seek": "Position",
+            "error": "Enregistrement indisponible"
+          }
         }
       },
       "aiReceptionist": {
@@ -4303,6 +4312,8 @@
         "languageDescription": "La langue dans laquelle l'assistant parle aux appelants",
         "canTakeReservations": "Prendre des réservations",
         "canTakeReservationsDescription": "Autoriser l'assistant à enregistrer une réservation (sinon il informe seulement)",
+        "recordCalls": "Enregistrer les appels",
+        "recordCallsDescription": "L'appelant est informé dès le décroché que l'appel est enregistré. Vous pouvez réécouter les enregistrements depuis la liste des conversations.",
         "answerMode": "Quand répondre ?",
         "answerModeDescription": "Choisissez quand l'IA prend l'appel",
         "answerModeAlways": "Toujours",

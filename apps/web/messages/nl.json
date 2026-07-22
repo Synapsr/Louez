@@ -4177,7 +4177,16 @@
           "previousPage": "Vorige pagina",
           "nextPage": "Volgende pagina",
           "transcriptTitle": "Gesprek",
-          "transcriptError": "Kan dit gesprek niet laden"
+          "transcriptError": "Kan dit gesprek niet laden",
+          "channelPhone": "Telefoongesprek",
+          "channelWeb": "Chat",
+          "recording": {
+            "play": "Opname afspelen",
+            "pause": "Pauze",
+            "retry": "Opnieuw",
+            "seek": "Positie",
+            "error": "Opname niet beschikbaar"
+          }
         }
       },
       "aiReceptionist": {
@@ -4196,6 +4205,8 @@
         "languageDescription": "De taal waarin de assistent met bellers spreekt",
         "canTakeReservations": "Reserveringen aannemen",
         "canTakeReservationsDescription": "Sta de assistent toe een reservering vast te leggen (anders informeert hij alleen)",
+        "recordCalls": "Gesprekken opnemen",
+        "recordCallsDescription": "Bellers worden bij het opnemen geïnformeerd dat het gesprek wordt opgenomen. U kunt opnames afspelen vanuit de gesprekkenlijst.",
         "answerMode": "Wanneer beantwoorden",
         "answerModeDescription": "Kies wanneer de AI de oproep aanneemt",
         "answerModeAlways": "Altijd",

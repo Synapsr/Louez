@@ -43,6 +43,7 @@ export const aiPhoneSettingsSchema = z.object({
   // Allow clearing the transfer number with an empty string; otherwise require E.164.
   transferNumber: z.union([z.literal(''), e164Schema]).optional(),
   voice: z.string().max(AI_PHONE_VOICE_MAX_LENGTH).optional(),
+  recordCalls: z.boolean(),
 })
 
 export type AiPhoneSettingsInput = z.infer<typeof aiPhoneSettingsSchema>

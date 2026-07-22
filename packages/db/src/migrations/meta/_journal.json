@@ -393,6 +393,13 @@
       "when": 1784707074722,
       "tag": "0052_ai_phone_receptionist",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "5",
+      "when": 1784723046733,
+      "tag": "0053_ai_phone_call_recording",
+      "breakpoints": true
     }
   ]
 }

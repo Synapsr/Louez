@@ -4177,7 +4177,16 @@
           "previousPage": "Pagina precedente",
           "nextPage": "Pagina successiva",
           "transcriptTitle": "Conversazione",
-          "transcriptError": "Impossibile caricare questa conversazione"
+          "transcriptError": "Impossibile caricare questa conversazione",
+          "channelPhone": "Telefonata",
+          "channelWeb": "Chat",
+          "recording": {
+            "play": "Riproduci registrazione",
+            "pause": "Pausa",
+            "retry": "Riprova",
+            "seek": "Posizione",
+            "error": "Registrazione non disponibile"
+          }
         }
       },
       "aiReceptionist": {
@@ -4196,6 +4205,8 @@
         "languageDescription": "La lingua in cui l'assistente parla con i chiamanti",
         "canTakeReservations": "Prendere prenotazioni",
         "canTakeReservationsDescription": "Consenti all'assistente di registrare una prenotazione (altrimenti informa soltanto)",
+        "recordCalls": "Registra le chiamate",
+        "recordCallsDescription": "Chi chiama viene informato all'inizio che la chiamata è registrata. Puoi riascoltare le registrazioni dall'elenco delle conversazioni.",
         "answerMode": "Quando rispondere",
         "answerModeDescription": "Scegli quando l'IA risponde alla chiamata",
         "answerModeAlways": "Sempre",

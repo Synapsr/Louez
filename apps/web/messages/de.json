@@ -4177,7 +4177,16 @@
           "previousPage": "Vorherige Seite",
           "nextPage": "Nächste Seite",
           "transcriptTitle": "Gespräch",
-          "transcriptError": "Dieses Gespräch konnte nicht geladen werden"
+          "transcriptError": "Dieses Gespräch konnte nicht geladen werden",
+          "channelPhone": "Telefonanruf",
+          "channelWeb": "Chat",
+          "recording": {
+            "play": "Aufnahme abspielen",
+            "pause": "Pause",
+            "retry": "Erneut versuchen",
+            "seek": "Position",
+            "error": "Aufnahme nicht verfügbar"
+          }
         }
       },
       "aiReceptionist": {
@@ -4196,6 +4205,8 @@
         "languageDescription": "Die Sprache, in der der Assistent mit Anrufern spricht",
         "canTakeReservations": "Reservierungen aufnehmen",
         "canTakeReservationsDescription": "Dem Assistenten erlauben, eine Reservierung aufzunehmen (sonst informiert er nur)",
+        "recordCalls": "Anrufe aufzeichnen",
+        "recordCallsDescription": "Anrufer werden bei Gesprächsbeginn darüber informiert, dass der Anruf aufgezeichnet wird. Die Aufnahmen können Sie in der Konversationsliste anhören.",
         "answerMode": "Wann antworten",
         "answerModeDescription": "Wählen Sie, wann die KI den Anruf annimmt",
         "answerModeAlways": "Immer",

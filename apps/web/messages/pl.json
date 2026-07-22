@@ -4177,7 +4177,16 @@
           "previousPage": "Poprzednia strona",
           "nextPage": "Następna strona",
           "transcriptTitle": "Rozmowa",
-          "transcriptError": "Nie można załadować tej rozmowy"
+          "transcriptError": "Nie można załadować tej rozmowy",
+          "channelPhone": "Rozmowa telefoniczna",
+          "channelWeb": "Czat",
+          "recording": {
+            "play": "Odtwórz nagranie",
+            "pause": "Pauza",
+            "retry": "Spróbuj ponownie",
+            "seek": "Pozycja",
+            "error": "Nagranie niedostępne"
+          }
         }
       },
       "aiReceptionist": {
@@ -4196,6 +4205,8 @@
         "languageDescription": "Język, w którym asystent rozmawia z dzwoniącymi",
         "canTakeReservations": "Przyjmowanie rezerwacji",
         "canTakeReservationsDescription": "Pozwól asystentowi zapisać rezerwację (w przeciwnym razie tylko informuje)",
+        "recordCalls": "Nagrywaj rozmowy",
+        "recordCallsDescription": "Dzwoniący jest informowany na początku rozmowy, że jest ona nagrywana. Nagrania możesz odsłuchać z listy rozmów.",
         "answerMode": "Kiedy odbierać",
         "answerModeDescription": "Wybierz, kiedy IA odbiera połączenie",
         "answerModeAlways": "Zawsze",

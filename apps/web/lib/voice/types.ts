@@ -118,4 +118,35 @@ export interface VoiceProvider {
 
   /** Render an action into a provider-specific response body + content type. */
   renderResponse(action: VoiceAction): { body: string; contentType: string }
+
+  /**
+   * Start recording the live call out-of-band (provider REST API). The
+   * recording finalizes after the call ends and the provider POSTs the id +
+   * duration to `statusCallbackUrl`. Best-effort: recording must never break
+   * the call, so implementations swallow and log their own errors.
+   */
+  startCallRecording(input: {
+    callId: string
+    statusCallbackUrl: string
+  }): Promise<void>
+
+  /**
+   * Normalize a recording status callback into the fields we persist, or null
+   * when it is not a terminal event with a usable recording.
+   */
+  parseRecordingCallback(params: Record<string, string>): {
+    callId: string
+    recordingSid: string
+    durationSeconds: number | null
+  } | null
+
+  /**
+   * Fetch a completed recording's audio, proxying the provider credentials so
+   * the media is never publicly reachable. Forwards an optional Range header
+   * for seeking and returns a ready-to-send audio Response.
+   */
+  fetchRecordingMedia(input: {
+    recordingSid: string
+    range?: string | null
+  }): Promise<Response>
 }

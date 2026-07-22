@@ -4284,7 +4284,16 @@
           "previousPage": "Previous page",
           "nextPage": "Next page",
           "transcriptTitle": "Conversation",
-          "transcriptError": "Unable to load this conversation"
+          "transcriptError": "Unable to load this conversation",
+          "channelPhone": "Phone call",
+          "channelWeb": "Chat",
+          "recording": {
+            "play": "Play recording",
+            "pause": "Pause",
+            "retry": "Retry",
+            "seek": "Seek",
+            "error": "Recording unavailable"
+          }
         }
       },
       "aiReceptionist": {
@@ -4303,6 +4312,8 @@
         "languageDescription": "The language the assistant speaks to callers in",
         "canTakeReservations": "Take reservations",
         "canTakeReservationsDescription": "Allow the assistant to record a reservation (otherwise it only informs)",
+        "recordCalls": "Record calls",
+        "recordCallsDescription": "Callers are told at pickup that the call is recorded. You can replay recordings from the conversations list.",
         "answerMode": "When to answer",
         "answerModeDescription": "Choose when the AI picks up the call",
         "answerModeAlways": "Always",

@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Loader2,
   MessagesSquare,
+  Phone,
 } from 'lucide-react'
 
 import {
@@ -42,9 +43,17 @@ import {
   AdvisorCollectedData,
   AdvisorTranscriptMessages,
 } from '@/components/dashboard/advisor-transcript'
+import { CallRecordingPlayer } from '@/components/dashboard/call-recording-player'
 import { orpc } from '@/lib/orpc/react'
 
 const PAGE_SIZE = 20
+
+/** mm:ss for a call/recording length in whole seconds. */
+function formatCallDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
 
 export const AdvisorConversationsSection = () => {
   const t = useTranslations('dashboard.settings.aiAdvisor.conversations')
@@ -142,14 +151,32 @@ export const AdvisorConversationsSection = () => {
                       })}
                     </TableCell>
                     <TableCell className="max-w-[280px]">
-                      <p className="truncate text-sm">
-                        {conversation.firstUserMessage || '—'}
-                      </p>
-                      {conversation.customerName && (
-                        <p className="truncate text-xs text-muted-foreground">
-                          {conversation.customerName}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {conversation.channel === 'phone' ? (
+                          <Phone
+                            className="h-4 w-4 shrink-0 text-muted-foreground"
+                            aria-label={t('channelPhone')}
+                          />
+                        ) : (
+                          <MessagesSquare
+                            className="h-4 w-4 shrink-0 text-muted-foreground"
+                            aria-label={t('channelWeb')}
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm">
+                            {conversation.firstUserMessage ||
+                              (conversation.channel === 'phone'
+                                ? t('channelPhone')
+                                : '—')}
+                          </p>
+                          {conversation.customerName && (
+                            <p className="truncate text-xs text-muted-foreground">
+                              {conversation.customerName}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary">
@@ -244,6 +271,25 @@ export const AdvisorConversationsSection = () => {
               </div>
             ) : transcript ? (
               <>
+                {transcript.channel === 'phone' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="h-4 w-4 shrink-0" />
+                      <span>
+                        {t('channelPhone')}
+                        {transcript.durationSeconds
+                          ? ` · ${formatCallDuration(transcript.durationSeconds)}`
+                          : ''}
+                      </span>
+                    </div>
+                    {transcript.hasRecording && (
+                      <CallRecordingPlayer
+                        conversationId={transcript.id}
+                        durationSeconds={transcript.recordingDurationSeconds}
+                      />
+                    )}
+                  </div>
+                )}
                 <AdvisorCollectedData collectedData={transcript.collectedData} />
                 <AdvisorTranscriptMessages messages={transcript.messages} />
               </>
