@@ -4214,7 +4214,12 @@
           "manualNumber": "Je nummer (internationaal formaat)",
           "manualHint": "Richt de voice-webhook op {url} en koppel het nummer hier.",
           "link": "Koppelen",
-          "linked": "Nummer gekoppeld"
+          "linked": "Nummer gekoppeld",
+          "cancel": "Annuleren",
+          "releaseConfirmTitle": "Dit nummer vrijgeven?",
+          "releaseConfirmBody": "Het nummer {number} wordt teruggegeven aan de provider en oproepen bereiken je spraakagent niet meer. Dit kan niet ongedaan worden gemaakt.",
+          "unlinkConfirmTitle": "Dit nummer ontkoppelen?",
+          "unlinkConfirmBody": "Het nummer {number} wordt ontkoppeld van je spraakagent. Je behoudt het nummer bij je provider."
         },
         "notConfigured": {
           "title": "Telefonie niet geconfigureerd",

@@ -4220,7 +4220,12 @@
           "manualNumber": "Tu número (formato internacional)",
           "manualHint": "Apunta su webhook de voz a {url} y vincúlalo aquí.",
           "link": "Vincular",
-          "linked": "Número vinculado"
+          "linked": "Número vinculado",
+          "cancel": "Cancelar",
+          "releaseConfirmTitle": "¿Liberar este número?",
+          "releaseConfirmBody": "El número {number} se devolverá al proveedor y las llamadas dejarán de llegar a tu agente de voz. No se puede deshacer.",
+          "unlinkConfirmTitle": "¿Desvincular este número?",
+          "unlinkConfirmBody": "El número {number} se desvinculará de tu agente de voz. Conservas el número con tu proveedor."
         },
         "notConfigured": {
           "title": "Telefonía no configurada",

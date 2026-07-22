@@ -38,6 +38,7 @@ import {
 import type { AiPhoneSettings } from '@louez/types'
 
 import { updateAiPhoneSettings } from './phone-actions'
+import { VoiceNumberProvisioning } from './voice-number-provisioning'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { FormRadioCardGroup } from '@/components/form/form-radio-card-group'
 import { RootError } from '@/components/form/root-error'
@@ -76,12 +77,20 @@ interface VoiceAgentFormProps {
   store: { id: string; aiPhoneSettings: AiPhoneSettings | null }
   hasFeatureAccess: boolean
   phoneConfigured: boolean
+  boundNumber: string | null
+  isProvisioned: boolean
+  webhookUrl: string
+  defaultCountry: string
 }
 
 export const VoiceAgentForm = ({
   store,
   hasFeatureAccess,
   phoneConfigured,
+  boundNumber,
+  isProvisioned,
+  webhookUrl,
+  defaultCountry,
 }: VoiceAgentFormProps) => {
   const router = useRouter()
   const t = useTranslations('dashboard.settings.aiVoiceAgent')
@@ -197,6 +206,15 @@ export const VoiceAgentForm = ({
 
             {isEnabled && (
               <div className="space-y-6 border-t pt-6">
+                {/* Inbound number: provision, link or release — part of the agent */}
+                <VoiceNumberProvisioning
+                  boundNumber={boundNumber}
+                  isProvisioned={isProvisioned}
+                  webhookUrl={webhookUrl}
+                  defaultCountry={defaultCountry}
+                  disabled={!phoneConfigured}
+                />
+
                 {/* Language */}
                 <form.AppField name="language">
                   {(field) => (

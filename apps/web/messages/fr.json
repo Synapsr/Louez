@@ -4321,7 +4321,12 @@
           "manualNumber": "Votre numéro (format international)",
           "manualHint": "Pointez son webhook vocal vers {url}, puis reliez-le ici.",
           "link": "Relier",
-          "linked": "Numéro relié"
+          "linked": "Numéro relié",
+          "cancel": "Annuler",
+          "releaseConfirmTitle": "Libérer ce numéro ?",
+          "releaseConfirmBody": "Le numéro {number} sera restitué au fournisseur et les appels ne joindront plus votre agent vocal. Action irréversible.",
+          "unlinkConfirmTitle": "Détacher ce numéro ?",
+          "unlinkConfirmBody": "Le numéro {number} sera détaché de votre agent vocal. Vous conservez le numéro chez votre fournisseur."
         },
         "notConfigured": {
           "title": "Téléphonie non configurée",

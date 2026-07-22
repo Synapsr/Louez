@@ -10,18 +10,16 @@ import { env } from '@/env'
 import { isVoiceAgentConfigured } from '@/lib/ai/phone/eligibility'
 import { log } from '@/lib/evlog'
 import { getStorePlan } from '@/lib/plan-limits'
-import {
-  currentUserHasPermission,
-  getCurrentStore,
-} from '@/lib/store-context'
+import { getCurrentStore } from '@/lib/store-context'
 import { getVoiceProvider } from '@/lib/voice/client'
 import type { AvailableNumber } from '@/lib/voice/types'
 
 /**
- * Provisioning spends money on the operator's telephony account, so every
- * action is gated: an authenticated member of the active store, with the
- * manage_settings permission, on a plan that includes the voice agent, and only
- * when the operator fully configured the feature (telephony + AI).
+ * Provisioning spends money on the operator's telephony account, so it is gated
+ * to a member of the active store, on a plan that includes the voice agent, and
+ * only when the operator fully configured the feature (telephony + AI). This is
+ * the same gate as the rest of the voice-agent settings (updateAiPhoneSettings):
+ * whoever can configure the agent can manage its number.
  */
 type AuthorizeResult =
   | { ok: true; store: NonNullable<Awaited<ReturnType<typeof getCurrentStore>>> }
@@ -37,9 +35,6 @@ async function authorizeProvisioning(): Promise<AuthorizeResult> {
   }
   if (!isVoiceAgentConfigured()) {
     return { ok: false, error: 'errors.telephonyNotConfigured' }
-  }
-  if (!(await currentUserHasPermission('manage_settings'))) {
-    return { ok: false, error: 'errors.permissionDenied' }
   }
   return { ok: true, store }
 }

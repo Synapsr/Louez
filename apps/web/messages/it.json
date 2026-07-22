@@ -4214,7 +4214,12 @@
           "manualNumber": "Il tuo numero (formato internazionale)",
           "manualHint": "Punta il suo webhook vocale su {url}, poi collegalo qui.",
           "link": "Collega",
-          "linked": "Numero collegato"
+          "linked": "Numero collegato",
+          "cancel": "Annulla",
+          "releaseConfirmTitle": "Rilasciare questo numero?",
+          "releaseConfirmBody": "Il numero {number} verrà restituito al fornitore e le chiamate non raggiungeranno più il tuo agente vocale. Operazione irreversibile.",
+          "unlinkConfirmTitle": "Scollegare questo numero?",
+          "unlinkConfirmBody": "Il numero {number} verrà scollegato dal tuo agente vocale. Mantieni il numero presso il tuo fornitore."
         },
         "notConfigured": {
           "title": "Telefonia non configurata",
