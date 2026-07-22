@@ -2,10 +2,11 @@ import { generateText, stepCountIs, streamText } from 'ai'
 import { eq } from 'drizzle-orm'
 
 import { aiAdvisorConversations, aiAdvisorMessages, db } from '@louez/db'
-import type { AiPhoneSettings } from '@louez/types'
+import type { AiPhoneSettings, BusinessHours } from '@louez/types'
 
 import { normalizeUsage, type AdvisorUsage } from '@/lib/ai/pricing'
 import { getPhoneAIModel } from '@/lib/ai/provider'
+import { buildStoreCatalog } from '@/lib/ai/product-guidance'
 import { recordCallTurnDebit } from '@/lib/ai/phone/credits'
 import { buildPhoneSystemPrompt } from '@/lib/ai/phone/system-prompt'
 import { createPhoneTools } from '@/lib/ai/phone/tools'
@@ -14,7 +15,9 @@ import { areAiCreditsEnabled } from '@/lib/plans'
 import type { Plan } from '@/lib/plans'
 
 // Only the last turns stay in the model context; older turns live in the DB.
-const HISTORY_WINDOW = 20
+// Phone turns are short, so keep a wider window than the text advisor to avoid
+// the model forgetting a choice made earlier in the call.
+const HISTORY_WINDOW = 30
 // Bound tool-calling depth per caller turn (availability lookups etc.).
 const MAX_STEPS = 6
 
@@ -34,6 +37,12 @@ export interface PhoneTurnParams {
     slug: string
     description: string | null
     currency: string
+    email: string | null
+    phone: string | null
+    address: string | null
+    businessHours: BusinessHours | null
+    timezone: string | null
+    deliveryEnabled: boolean | null
   }
   conversationId: string
   callerPhone: string
@@ -100,12 +109,30 @@ async function preparePhoneTurn(params: PhoneTurnParams): Promise<{
     messages.shift()
   }
 
+  // Ground the model in what is static (catalog) and what it already gathered
+  // (collected facts), so it never has to re-fetch mid-call and stays consistent.
+  const [catalog, conversation] = await Promise.all([
+    buildStoreCatalog(store.id),
+    db.query.aiAdvisorConversations.findFirst({
+      where: eq(aiAdvisorConversations.id, conversationId),
+      columns: { collectedData: true },
+    }),
+  ])
+
   const system = buildPhoneSystemPrompt({
     storeName: store.name,
     storeDescription: store.description,
     language: settings.language,
     currency: store.currency,
     canTakeReservations: settings.canTakeReservations,
+    storeEmail: store.email,
+    storePhone: store.phone,
+    storeAddress: store.address,
+    businessHours: store.businessHours,
+    timezone: store.timezone,
+    deliveryEnabled: store.deliveryEnabled,
+    catalog,
+    collectedFacts: conversation?.collectedData ?? null,
     storeContext: params.storeContext,
     productGuidance: params.productGuidance,
     today: params.today,

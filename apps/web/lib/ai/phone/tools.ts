@@ -151,13 +151,11 @@ export function createPhoneTools(ctx: PhoneToolContext) {
     cart: null,
   })
 
-  const {
-    list_products,
-    get_product,
-    check_availability,
-    get_store_info,
-    record_qualification,
-  } = advisorTools
+  // get_store_info is intentionally omitted: the store's hours, contact and
+  // catalog are injected into the system prompt as a single source of truth, so
+  // the model can't re-fetch and contradict itself on opening hours mid-call.
+  const { list_products, get_product, check_availability, record_qualification } =
+    advisorTools
 
   const create_reservation_hold = tool({
     description:
@@ -372,7 +370,6 @@ export function createPhoneTools(ctx: PhoneToolContext) {
     list_products,
     get_product,
     check_availability,
-    get_store_info,
     record_qualification,
     take_message,
     end_call,
