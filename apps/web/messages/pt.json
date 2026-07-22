@@ -4179,6 +4179,36 @@
           "transcriptTitle": "Conversa",
           "transcriptError": "Não foi possível carregar esta conversa"
         }
+      },
+      "aiReceptionist": {
+        "description": "Uma linha telefónica com IA que atende chamadas, informa os seus clientes e regista reservas, no idioma que escolher.",
+        "enableSection": "Atendedor telefónico IA",
+        "enableSectionDescription": "Configure o assistente de voz que atende quando os seus clientes ligam",
+        "enabled": "Ativar o atendedor telefónico",
+        "enabledDescription": "A IA atende as chamadas recebidas no seu número",
+        "notConfigured": {
+          "title": "Telefonia não configurada",
+          "description": "O operador da plataforma deve configurar um fornecedor de telefonia (AI_PHONE_ENABLED, VOICE_PROVIDER e as credenciais) para ativar o atendedor."
+        },
+        "phoneNumber": "Número de telefone",
+        "phoneNumberDescription": "Aponte o webhook « Voz » do seu número para {url} e introduza aqui o número em formato internacional.",
+        "language": "Idioma de resposta",
+        "languageDescription": "O idioma em que o assistente fala com quem liga",
+        "canTakeReservations": "Registar reservas",
+        "canTakeReservationsDescription": "Permitir que o assistente registe uma reserva (caso contrário apenas informa)",
+        "answerMode": "Quando atender",
+        "answerModeDescription": "Escolha quando a IA atende a chamada",
+        "answerModeAlways": "Sempre",
+        "answerModeAlwaysDescription": "A IA atende todas as chamadas",
+        "answerModeAfterHours": "Fora de horário",
+        "answerModeAfterHoursDescription": "Durante o horário de funcionamento a chamada é transferida; fora dele, a IA atende",
+        "greeting": "Mensagem de boas-vindas",
+        "greetingDescription": "Adicionada após o aviso automático obrigatório",
+        "greetingPlaceholder": "Como posso ajudar?",
+        "transferNumber": "Número de transferência",
+        "transferNumberDescription": "Número de uma pessoa para transferências e o modo fora de horário (formato internacional)",
+        "phoneFormat": "Número inválido. Use o formato internacional, ex. +33123456789",
+        "saved": "Definições do atendedor guardadas"
       }
     },
     "aiChat": {

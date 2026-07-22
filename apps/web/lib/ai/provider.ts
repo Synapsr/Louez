@@ -75,6 +75,25 @@ export function getAdvisorAIModel(): LanguageModel {
 }
 
 /**
+ * Model for the AI phone receptionist. Same provider and API key as the rest of
+ * the AI layer, but the model can be overridden separately (AI_PHONE_MODEL):
+ * a phone call is latency-sensitive and mostly listening, so a cheaper/faster
+ * model usually fits. Falls back to the advisor model, then AI_MODEL, then the
+ * provider default.
+ */
+export function getPhoneAIModel(): LanguageModel {
+  const { provider, apiKey } = requireProviderConfig()
+  return createModel(
+    provider,
+    apiKey,
+    env.AI_PHONE_MODEL ||
+      env.AI_ADVISOR_MODEL ||
+      env.AI_MODEL ||
+      DEFAULT_MODELS[provider],
+  )
+}
+
+/**
  * Check if AI chat is configured (all required env vars are set).
  */
 export function isAIChatConfigured(): boolean {

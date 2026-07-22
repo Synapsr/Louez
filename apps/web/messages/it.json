@@ -4179,6 +4179,36 @@
           "transcriptTitle": "Conversazione",
           "transcriptError": "Impossibile caricare questa conversazione"
         }
+      },
+      "aiReceptionist": {
+        "description": "Un centralino telefonico IA che risponde alle chiamate, informa i clienti e prende prenotazioni, nella lingua che scegli.",
+        "enableSection": "Centralino telefonico IA",
+        "enableSectionDescription": "Configura l'assistente vocale che risponde quando i clienti chiamano",
+        "enabled": "Attiva il centralino telefonico",
+        "enabledDescription": "L'IA risponde alle chiamate in arrivo sul tuo numero",
+        "notConfigured": {
+          "title": "Telefonia non configurata",
+          "description": "L'operatore della piattaforma deve configurare un provider di telefonia (AI_PHONE_ENABLED, VOICE_PROVIDER e le credenziali) per attivare il centralino."
+        },
+        "phoneNumber": "Numero di telefono",
+        "phoneNumberDescription": "Punta il webhook « Voce » del tuo numero verso {url}, poi inserisci qui il numero in formato internazionale.",
+        "language": "Lingua di risposta",
+        "languageDescription": "La lingua in cui l'assistente parla con i chiamanti",
+        "canTakeReservations": "Prendere prenotazioni",
+        "canTakeReservationsDescription": "Consenti all'assistente di registrare una prenotazione (altrimenti informa soltanto)",
+        "answerMode": "Quando rispondere",
+        "answerModeDescription": "Scegli quando l'IA risponde alla chiamata",
+        "answerModeAlways": "Sempre",
+        "answerModeAlwaysDescription": "L'IA risponde a tutte le chiamate",
+        "answerModeAfterHours": "Fuori orario",
+        "answerModeAfterHoursDescription": "Durante gli orari di apertura la chiamata viene trasferita; fuori orario risponde l'IA",
+        "greeting": "Messaggio di benvenuto",
+        "greetingDescription": "Aggiunto dopo l'annuncio automatico obbligatorio",
+        "greetingPlaceholder": "Come posso aiutarla?",
+        "transferNumber": "Numero di trasferimento",
+        "transferNumberDescription": "Numero di una persona per i trasferimenti e la modalità fuori orario (formato internazionale)",
+        "phoneFormat": "Numero non valido. Usa il formato internazionale, es. +33123456789",
+        "saved": "Impostazioni del centralino salvate"
       }
     },
     "aiChat": {

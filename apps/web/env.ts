@@ -158,6 +158,38 @@ export const env = createEnv({
     // Sold credit packs, JSON e.g. [{"credits":100,"priceCents":1200}, ...].
     AI_CREDIT_PACKAGES: z.string().optional(),
 
+    // ===== AI Phone receptionist (Optional — inbound voice channel) =====
+    // The whole phone feature is INERT unless AI_PHONE_ENABLED === 'true' AND a
+    // voice provider is configured. When off (default), no phone UI is shown and
+    // the webhooks return 404. It reuses the AI agent + AI-credit layer, so it
+    // additionally requires AI_PROVIDER/AI_API_KEY (and, for billing,
+    // AI_CREDITS_ENABLED). No commercial value ships in code — the audio cost
+    // basis lives here, like the advisor token prices.
+    AI_PHONE_ENABLED: z.string().optional(),
+    // Telephony provider serving inbound calls. Only 'twilio' is implemented.
+    VOICE_PROVIDER: z.enum(['twilio']).optional(),
+    // Twilio credentials (used to validate inbound webhook signatures and, later,
+    // to provision numbers). Shared with a future Twilio SMS provider.
+    TWILIO_ACCOUNT_SID: z.string().optional(),
+    TWILIO_AUTH_TOKEN: z.string().optional(),
+    // Optional cheaper/faster model for the phone agent (falls back to
+    // AI_ADVISOR_MODEL, then AI_MODEL, then the provider default).
+    AI_PHONE_MODEL: z.string().optional(),
+    // Blended real audio cost of the chosen voice stack, USD per MINUTE
+    // (telephony inbound + STT + TTS). Metered per call alongside LLM tokens and
+    // converted to credits via AI_CREDIT_COST_BASIS_USD. 0/unset ⇒ audio metering
+    // off (tokens only). Never surfaced to anyone.
+    AI_VOICE_AUDIO_USD_PER_MIN: z.coerce.number().min(0).optional(),
+    // Safety cap: a single call never debits more than this many credits.
+    AI_PHONE_MAX_CREDITS_PER_CALL: z.coerce.number().int().min(1).default(20),
+    // Hard cap on call duration (seconds) to bound cost / toll-fraud blast radius.
+    AI_PHONE_MAX_CALL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(30)
+      .max(3600)
+      .default(600),
+
     // ===== fromHello (Optional — engagement & growth) =====
     FROMHELLO_API_URL: z.url().optional(),
     FROMHELLO_API_KEY: z.string().optional(),
@@ -341,6 +373,14 @@ export const env = createEnv({
     FREE_AI_CREDITS: process.env.FREE_AI_CREDITS,
     AI_CREDIT_MONTHLY_INCLUDED: process.env.AI_CREDIT_MONTHLY_INCLUDED,
     AI_CREDIT_PACKAGES: process.env.AI_CREDIT_PACKAGES,
+    AI_PHONE_ENABLED: process.env.AI_PHONE_ENABLED,
+    VOICE_PROVIDER: process.env.VOICE_PROVIDER,
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
+    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN,
+    AI_PHONE_MODEL: process.env.AI_PHONE_MODEL,
+    AI_VOICE_AUDIO_USD_PER_MIN: process.env.AI_VOICE_AUDIO_USD_PER_MIN,
+    AI_PHONE_MAX_CREDITS_PER_CALL: process.env.AI_PHONE_MAX_CREDITS_PER_CALL,
+    AI_PHONE_MAX_CALL_SECONDS: process.env.AI_PHONE_MAX_CALL_SECONDS,
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,

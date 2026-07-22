@@ -434,6 +434,8 @@ export interface PlanFeatures {
   customerPortal: boolean;
   reviewBooster: boolean;
   aiAdvisor: boolean;
+  /** AI phone receptionist (inbound voice channel over the same AI agent). */
+  aiPhone: boolean;
   phoneSupport: boolean;
   dedicatedManager: boolean;
 }
@@ -515,6 +517,58 @@ export interface AdvisorValidatedCart {
   items: { productId: string; quantity: number }[];
   startDate: string | null;
   endDate: string | null;
+}
+
+// ============================================================================
+// AI Phone Receptionist (inbound voice channel)
+// ============================================================================
+
+/**
+ * When the AI receptionist answers:
+ * - 'always': the AI answers every inbound call.
+ * - 'after_hours': during the store's business hours the call is transferred
+ *   to `transferNumber` (if set), otherwise the AI answers. Outside business
+ *   hours the AI always answers. Lets the AI act as an overflow / after-hours
+ *   line without changing how the merchant handles calls during opening hours.
+ */
+export type AiPhoneAnswerMode = 'always' | 'after_hours';
+
+/**
+ * Per-store configuration of the AI phone receptionist. Mirrors
+ * `AiAdvisorSettings`: the feature is a NEW voice channel in front of the same
+ * AI agent, so the settings that differ from the text advisor live here.
+ * The whole feature stays invisible unless the operator configured a voice
+ * provider AND the store opted in (see isPhoneReceptionistActiveForStore).
+ */
+export interface AiPhoneSettings {
+  /** Whether the store opted the receptionist in. */
+  enabled: boolean;
+  /**
+   * BCP 47-ish locale the receptionist speaks (e.g. 'fr', 'en'). Independent
+   * from the storefront locale — a phone caller has no browser session, so the
+   * language is configured, not detected.
+   */
+  language: string;
+  /**
+   * Whether the receptionist may create (pending) reservations, or only inform
+   * about products, prices and availability. Mirrors the advisor's role split.
+   */
+  canTakeReservations: boolean;
+  /** When the AI answers (see AiPhoneAnswerMode). */
+  answerMode: AiPhoneAnswerMode;
+  /**
+   * Extra spoken sentence appended after the MANDATORY AI-disclosure greeting
+   * (EU AI Act art. 50). Optional — a neutral greeting is used when empty.
+   */
+  greeting?: string;
+  /**
+   * Human fallback number in E.164 (e.g. '+33123456789') used for
+   * 'after_hours' transfer and for the caller's "talk to a human" request.
+   * When empty, transfer is unavailable and the AI takes a message instead.
+   */
+  transferNumber?: string;
+  /** Provider-specific TTS voice id/name. Falls back to a provider default. */
+  voice?: string;
 }
 
 // ============================================================================

@@ -1,6 +1,6 @@
 import { convertToModelMessages, stepCountIs, streamText } from 'ai'
 import type { UIMessage } from 'ai'
-import { and, eq, inArray, isNotNull } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 
@@ -28,6 +28,7 @@ import { buildAdvisorSystemPrompt } from '@/lib/ai/advisor/system-prompt'
 import { createAdvisorTools } from '@/lib/ai/advisor/tools'
 import type { AdvisorChatContext } from '@/lib/ai/advisor/tools'
 import { normalizeUsage } from '@/lib/ai/pricing'
+import { buildProductGuidance } from '@/lib/ai/product-guidance'
 import { getAdvisorAIModel, isAIChatConfigured } from '@/lib/ai/provider'
 import { log } from '@/lib/evlog'
 import { areAiCreditsEnabled } from '@/lib/plans'
@@ -45,10 +46,6 @@ const HISTORY_WINDOW = 20
 // Hard cap on the raw request size (a message history full of tool parts
 // stays well under this; anything bigger is abuse).
 const MAX_BODY_BYTES = 256 * 1024
-// Bounds for the owner guidance injected into the system prompt.
-const GUIDANCE_MAX_PER_PRODUCT = 600
-const GUIDANCE_MAX_TOTAL = 15_000
-
 // Structural validation only — convertToModelMessages() performs the strict
 // UIMessage validation (tool parts included) and throws on malformed input.
 const advisorChatRequestSchema = z.object({
@@ -95,42 +92,6 @@ async function resolveLocale(acceptLanguage: string | null): Promise<string> {
   }
 
   return defaultLocale
-}
-
-/**
- * Per-product owner guidance (products.aiContext) for the system prompt.
- * This is the only channel through which aiContext reaches the model — tool
- * outputs are streamed to the customer's browser and must never contain it.
- */
-async function buildProductGuidance(storeId: string): Promise<string | null> {
-  const rows = await db
-    .select({
-      id: products.id,
-      name: products.name,
-      aiContext: products.aiContext,
-    })
-    .from(products)
-    .where(
-      and(
-        eq(products.storeId, storeId),
-        eq(products.status, 'active'),
-        isNotNull(products.aiContext),
-      ),
-    )
-    .limit(100)
-
-  const lines: string[] = []
-  let total = 0
-  for (const row of rows) {
-    const guidance = row.aiContext?.trim()
-    if (!guidance) continue
-    const line = `- "${row.name}" (productId: ${row.id}): ${guidance.slice(0, GUIDANCE_MAX_PER_PRODUCT)}`
-    if (total + line.length > GUIDANCE_MAX_TOTAL) break
-    lines.push(line)
-    total += line.length
-  }
-
-  return lines.length > 0 ? lines.join('\n') : null
 }
 
 /** Cart lines with product names, for the system prompt. */

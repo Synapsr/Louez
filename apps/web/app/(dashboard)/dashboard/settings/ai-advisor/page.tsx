@@ -1,9 +1,14 @@
 import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
+import { and, eq } from 'drizzle-orm'
 
+import { db, storePhoneNumbers } from '@louez/db'
+
+import { env } from '@/env'
 import { getCurrentStore } from '@/lib/store-context'
 import { getStorePlan } from '@/lib/plan-limits'
 import { isAIChatConfigured } from '@/lib/ai/provider'
+import { isPhoneReceptionistConfigured } from '@/lib/ai/phone/eligibility'
 import {
   getAiCreditHistory,
   getAiCreditsInfo,
@@ -11,6 +16,7 @@ import {
 } from '@/lib/ai/advisor/credits'
 import { areAiCreditsEnabled, getAiCreditPackages } from '@/lib/plans'
 import { AiAdvisorForm } from './ai-advisor-form'
+import { AiPhoneForm } from './ai-phone-form'
 import {
   AiCreditsSection,
   type AiCreditsSectionProps,
@@ -78,6 +84,14 @@ export default async function AiAdvisorSettingsPage({
     }
   }
 
+  const phoneBinding = await db.query.storePhoneNumbers.findFirst({
+    where: and(
+      eq(storePhoneNumbers.storeId, store.id),
+      eq(storePhoneNumbers.status, 'active'),
+    ),
+    columns: { e164: true },
+  })
+
   return (
     <div className="mx-auto w-full min-w-0 max-w-4xl space-y-4 sm:space-y-6">
       <p className="text-sm sm:text-base text-muted-foreground">
@@ -91,6 +105,17 @@ export default async function AiAdvisorSettingsPage({
         }}
         hasFeatureAccess={plan.features.aiAdvisor}
         aiConfigured={isAIChatConfigured()}
+      />
+
+      <AiPhoneForm
+        store={{
+          id: store.id,
+          aiPhoneSettings: store.aiPhoneSettings,
+        }}
+        boundNumber={phoneBinding?.e164 ?? null}
+        hasFeatureAccess={plan.features.aiPhone}
+        phoneConfigured={isPhoneReceptionistConfigured()}
+        webhookUrl={`${env.NEXT_PUBLIC_APP_URL}/api/voice/incoming`}
       />
 
       {credits && <AiCreditsSection {...credits} />}

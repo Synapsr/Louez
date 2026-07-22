@@ -4185,6 +4185,36 @@
           "transcriptTitle": "Conversación",
           "transcriptError": "No se pudo cargar esta conversación"
         }
+      },
+      "aiReceptionist": {
+        "description": "Una centralita telefónica con IA que atiende llamadas, informa a tus clientes y registra reservas, en el idioma que elijas.",
+        "enableSection": "Recepcionista telefónico IA",
+        "enableSectionDescription": "Configura el asistente de voz que responde cuando tus clientes llaman",
+        "enabled": "Activar el recepcionista telefónico",
+        "enabledDescription": "La IA atiende las llamadas entrantes a tu número",
+        "notConfigured": {
+          "title": "Telefonía no configurada",
+          "description": "El operador de la plataforma debe configurar un proveedor de telefonía (AI_PHONE_ENABLED, VOICE_PROVIDER y las credenciales) para activar el recepcionista."
+        },
+        "phoneNumber": "Número de teléfono",
+        "phoneNumberDescription": "Apunta el webhook « Voz » de tu número a {url} e introduce aquí el número en formato internacional.",
+        "language": "Idioma de respuesta",
+        "languageDescription": "El idioma en el que el asistente habla con quien llama",
+        "canTakeReservations": "Registrar reservas",
+        "canTakeReservationsDescription": "Permitir que el asistente registre una reserva (si no, solo informa)",
+        "answerMode": "Cuándo responder",
+        "answerModeDescription": "Elige cuándo la IA atiende la llamada",
+        "answerModeAlways": "Siempre",
+        "answerModeAlwaysDescription": "La IA atiende todas las llamadas",
+        "answerModeAfterHours": "Fuera de horario",
+        "answerModeAfterHoursDescription": "Durante el horario de apertura la llamada se transfiere; fuera de él, responde la IA",
+        "greeting": "Mensaje de bienvenida",
+        "greetingDescription": "Se añade tras el aviso automático obligatorio",
+        "greetingPlaceholder": "¿En qué puedo ayudarle?",
+        "transferNumber": "Número de transferencia",
+        "transferNumberDescription": "Número de una persona para transferencias y el modo fuera de horario (formato internacional)",
+        "phoneFormat": "Número no válido. Usa el formato internacional, p. ej. +33123456789",
+        "saved": "Ajustes del recepcionista guardados"
       }
     },
     "aiChat": {

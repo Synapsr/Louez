@@ -4179,6 +4179,36 @@
           "transcriptTitle": "Rozmowa",
           "transcriptError": "Nie można załadować tej rozmowy"
         }
+      },
+      "aiReceptionist": {
+        "description": "Telefoniczny asystent IA, który odbiera połączenia, informuje klientów i przyjmuje rezerwacje w wybranym przez Ciebie języku.",
+        "enableSection": "Telefoniczny asystent IA",
+        "enableSectionDescription": "Skonfiguruj asystenta głosowego, który odbiera, gdy dzwonią Twoi klienci",
+        "enabled": "Włącz asystenta telefonicznego",
+        "enabledDescription": "IA odbiera połączenia przychodzące na Twój numer",
+        "notConfigured": {
+          "title": "Telefonia nie jest skonfigurowana",
+          "description": "Operator platformy musi skonfigurować dostawcę telefonii (AI_PHONE_ENABLED, VOICE_PROVIDER oraz dane logowania), aby włączyć asystenta."
+        },
+        "phoneNumber": "Numer telefonu",
+        "phoneNumberDescription": "Skieruj webhook « Voice » swojego numeru na {url}, a następnie wpisz tutaj numer w formacie międzynarodowym.",
+        "language": "Język odpowiedzi",
+        "languageDescription": "Język, w którym asystent rozmawia z dzwoniącymi",
+        "canTakeReservations": "Przyjmowanie rezerwacji",
+        "canTakeReservationsDescription": "Pozwól asystentowi zapisać rezerwację (w przeciwnym razie tylko informuje)",
+        "answerMode": "Kiedy odbierać",
+        "answerModeDescription": "Wybierz, kiedy IA odbiera połączenie",
+        "answerModeAlways": "Zawsze",
+        "answerModeAlwaysDescription": "IA odbiera każde połączenie",
+        "answerModeAfterHours": "Poza godzinami",
+        "answerModeAfterHoursDescription": "W godzinach otwarcia połączenie jest przekazywane; poza nimi odbiera IA",
+        "greeting": "Powitanie",
+        "greetingDescription": "Dodawane po obowiązkowej informacji o automacie",
+        "greetingPlaceholder": "W czym mogę pomóc?",
+        "transferNumber": "Numer przekazania",
+        "transferNumberDescription": "Numer osoby do przekazywania połączeń i trybu poza godzinami (format międzynarodowy)",
+        "phoneFormat": "Nieprawidłowy numer. Użyj formatu międzynarodowego, np. +33123456789",
+        "saved": "Zapisano ustawienia asystenta telefonicznego"
       }
     },
     "aiChat": {

@@ -4179,6 +4179,36 @@
           "transcriptTitle": "Gesprek",
           "transcriptError": "Kan dit gesprek niet laden"
         }
+      },
+      "aiReceptionist": {
+        "description": "Een AI-telefoonlijn die oproepen beantwoordt, uw klanten informeert en reserveringen aanneemt, in de taal die u kiest.",
+        "enableSection": "AI-telefoonassistent",
+        "enableSectionDescription": "Configureer de spraakassistent die antwoordt wanneer uw klanten bellen",
+        "enabled": "Telefoonassistent inschakelen",
+        "enabledDescription": "De AI beantwoordt inkomende oproepen op uw nummer",
+        "notConfigured": {
+          "title": "Telefonie niet geconfigureerd",
+          "description": "De platformbeheerder moet een telefonieprovider configureren (AI_PHONE_ENABLED, VOICE_PROVIDER en de inloggegevens) om de assistent in te schakelen."
+        },
+        "phoneNumber": "Telefoonnummer",
+        "phoneNumberDescription": "Wijs de Voice-webhook van uw nummer naar {url} en voer hier het nummer in internationaal formaat in.",
+        "language": "Antwoordtaal",
+        "languageDescription": "De taal waarin de assistent met bellers spreekt",
+        "canTakeReservations": "Reserveringen aannemen",
+        "canTakeReservationsDescription": "Sta de assistent toe een reservering vast te leggen (anders informeert hij alleen)",
+        "answerMode": "Wanneer beantwoorden",
+        "answerModeDescription": "Kies wanneer de AI de oproep aanneemt",
+        "answerModeAlways": "Altijd",
+        "answerModeAlwaysDescription": "De AI beantwoordt elke oproep",
+        "answerModeAfterHours": "Buiten openingstijden",
+        "answerModeAfterHoursDescription": "Tijdens openingstijden wordt de oproep doorverbonden; daarbuiten antwoordt de AI",
+        "greeting": "Begroeting",
+        "greetingDescription": "Toegevoegd na de verplichte geautomatiseerde melding",
+        "greetingPlaceholder": "Waarmee kan ik u helpen?",
+        "transferNumber": "Doorschakelnummer",
+        "transferNumberDescription": "Een nummer van een persoon voor doorschakelen en de modus buiten openingstijden (internationaal formaat)",
+        "phoneFormat": "Ongeldig nummer. Gebruik het internationale formaat, bijv. +33123456789",
+        "saved": "Instellingen telefoonassistent opgeslagen"
       }
     },
     "aiChat": {

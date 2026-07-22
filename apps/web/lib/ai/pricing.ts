@@ -91,3 +91,24 @@ export function costMicroUsdToCreditsMicro(costMicroUsd: number): number {
   if (basisUsd <= 0) return 0
   return Math.round(costMicroUsd / basisUsd)
 }
+
+// ============================================================================
+// AI phone receptionist — voice (audio) cost
+// A phone call's cost is dominated by audio minutes (telephony + STT + TTS),
+// not tokens. The blended per-minute audio price of the chosen voice stack is
+// read from env (never hardcoded), metered per call ALONGSIDE the LLM tokens,
+// and converted to credits with the same cost basis as the text advisor.
+// ============================================================================
+
+/** Blended audio cost of the voice stack, USD per minute (0 when unset). */
+export function getVoiceAudioUsdPerMinute(): number {
+  return num(env.AI_VOICE_AUDIO_USD_PER_MIN)
+}
+
+/** Real audio cost of `audioSeconds` of call time, in micro-USD. */
+export function audioCostMicroUsd(audioSeconds: number): number {
+  const perMinute = getVoiceAudioUsdPerMinute()
+  if (perMinute <= 0 || audioSeconds <= 0) return 0
+  const usd = (audioSeconds / 60) * perMinute
+  return Math.round(usd * USD_MICRO)
+}

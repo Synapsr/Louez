@@ -21,6 +21,7 @@ import { nanoid } from 'nanoid';
 import type {
   AdvisorValidatedCart,
   AiAdvisorSettings,
+  AiPhoneSettings,
   BookingAttributeAxis,
   CustomerNotificationSettings,
   EmailSettings,
@@ -523,6 +524,9 @@ export const stores = mysqlTable(
     aiAdvisorSettings: json(
       'ai_advisor_settings',
     ).$type<AiAdvisorSettings>(),
+
+    // AI Phone receptionist settings (inbound voice channel)
+    aiPhoneSettings: json('ai_phone_settings').$type<AiPhoneSettings>(),
 
     // Notification settings (admin notifications)
     notificationSettings: json(
@@ -3200,6 +3204,16 @@ export const aiAdvisorConversations = mysqlTable(
       .default(0),
 
     locale: varchar('locale', { length: 10 }),
+
+    // Channel the conversation happened on. 'web' = storefront chat widget,
+    // 'phone' = inbound AI receptionist call. Defaults to 'web' so every
+    // existing row keeps its meaning after the migration.
+    channel: mysqlEnum('channel', ['web', 'phone']).notNull().default('web'),
+    // Phone-only metadata (null for web conversations).
+    callerPhone: varchar('caller_phone', { length: 32 }),
+    providerCallId: varchar('provider_call_id', { length: 64 }),
+    durationSeconds: int('duration_seconds'),
+
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -3384,6 +3398,9 @@ export const aiCreditDebits = mysqlTable(
     inputTokens: int('input_tokens').notNull().default(0),
     outputTokens: int('output_tokens').notNull().default(0),
     cachedInputTokens: int('cached_input_tokens').notNull().default(0),
+    // Voice channel only: billed audio duration for this debit (telephony +
+    // STT + TTS). 0 for text-advisor debits. Priced via AI_VOICE_AUDIO_USD_PER_MIN.
+    audioSeconds: int('audio_seconds').notNull().default(0),
     // Frozen real cost in micro-USD (1 USD = 1_000_000), for audit/reporting.
     costMicroUsd: bigint('cost_micro_usd', { mode: 'number' })
       .notNull()
@@ -3441,6 +3458,46 @@ export const aiCreditDebitsRelations = relations(
     conversation: one(aiAdvisorConversations, {
       fields: [aiCreditDebits.conversationId],
       references: [aiAdvisorConversations.id],
+    }),
+  }),
+);
+
+// ============================================================================
+// AI Phone receptionist — inbound number binding
+// One phone number → one store. Inbound calls resolve the store by the called
+// (`To`) number. The number is provisioned with the telephony provider and its
+// voice webhook is pointed at the app; the merchant registers the E.164 here.
+// ============================================================================
+
+export const storePhoneNumbers = mysqlTable(
+  'store_phone_numbers',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    // E.164, e.g. '+33123456789'. Globally unique so an inbound `To` maps to
+    // exactly one store.
+    e164: varchar('e164', { length: 32 }).notNull().unique(),
+    // Telephony provider that owns the number (matches VOICE_PROVIDER).
+    provider: varchar('provider', { length: 20 }).notNull().default('twilio'),
+    // Provider-side identifier (e.g. Twilio phone-number SID), when known.
+    providerNumberId: varchar('provider_number_id', { length: 64 }),
+    status: mysqlEnum('status', ['active', 'pending', 'released'])
+      .notNull()
+      .default('active'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('store_phone_numbers_store_idx').on(table.storeId),
+  }),
+);
+
+export const storePhoneNumbersRelations = relations(
+  storePhoneNumbers,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [storePhoneNumbers.storeId],
+      references: [stores.id],
     }),
   }),
 );

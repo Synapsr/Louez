@@ -386,6 +386,13 @@
       "when": 1784634618125,
       "tag": "0051_majestic_talisman",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "5",
+      "when": 1784704000477,
+      "tag": "0052_ai_phone_receptionist",
+      "breakpoints": true
     }
   ]
 }

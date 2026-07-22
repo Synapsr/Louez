@@ -4286,6 +4286,36 @@
           "transcriptTitle": "Conversation",
           "transcriptError": "Unable to load this conversation"
         }
+      },
+      "aiReceptionist": {
+        "description": "An AI phone line that answers calls, informs your customers and takes reservations, in the language you choose.",
+        "enableSection": "AI phone receptionist",
+        "enableSectionDescription": "Configure the voice assistant that answers when your customers call",
+        "enabled": "Enable the phone receptionist",
+        "enabledDescription": "The AI answers inbound calls to your number",
+        "notConfigured": {
+          "title": "Telephony not configured",
+          "description": "The platform operator must configure a telephony provider (AI_PHONE_ENABLED, VOICE_PROVIDER and the credentials) to enable the receptionist."
+        },
+        "phoneNumber": "Phone number",
+        "phoneNumberDescription": "Point your number's Voice webhook to {url}, then enter the number here in international format.",
+        "language": "Answer language",
+        "languageDescription": "The language the assistant speaks to callers in",
+        "canTakeReservations": "Take reservations",
+        "canTakeReservationsDescription": "Allow the assistant to record a reservation (otherwise it only informs)",
+        "answerMode": "When to answer",
+        "answerModeDescription": "Choose when the AI picks up the call",
+        "answerModeAlways": "Always",
+        "answerModeAlwaysDescription": "The AI answers every call",
+        "answerModeAfterHours": "After hours",
+        "answerModeAfterHoursDescription": "During business hours the call is transferred; outside them, the AI answers",
+        "greeting": "Greeting",
+        "greetingDescription": "Added after the mandatory automated disclosure",
+        "greetingPlaceholder": "How can I help you?",
+        "transferNumber": "Transfer number",
+        "transferNumberDescription": "A human number for transfers and after-hours mode (international format)",
+        "phoneFormat": "Invalid number. Use international format, e.g. +33123456789",
+        "saved": "Phone receptionist settings saved"
       }
     },
     "aiChat": {

@@ -310,6 +310,56 @@ Le MVP est **court** précisément parce que l'agent, les outils, les crédits e
 
 ---
 
+## 13. Implémentation livrée (MVP)
+
+> Ce plan a été **implémenté** dans le repo (transport **Twilio TwiML `<Gather>`**, tour par tour — compatible avec le serveur Next.js standalone, sans WebSocket). La couche est **invisible tant que non configurée**.
+
+### 13.1 Variables d'environnement
+
+| Variable | Rôle |
+|----------|------|
+| `AI_PHONE_ENABLED` | Interrupteur maître (`true` pour activer). |
+| `VOICE_PROVIDER` | Fournisseur téléphonie (`twilio`). |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Identifiants Twilio — **validation de signature** des webhooks. |
+| `AI_PHONE_MODEL` | Modèle du répondeur (repli : `AI_ADVISOR_MODEL` → `AI_MODEL` → défaut). |
+| `AI_PHONE_MAX_CALL_SECONDS` | Plafond dur de durée d'appel (défaut 600 s). |
+| `AI_VOICE_AUDIO_USD_PER_MIN` | Coût audio de la stack, USD/min — **métrage crédits** (commercial, hors `.env.example`). |
+| `AI_PHONE_MAX_CREDITS_PER_CALL` | Plafond de crédits par appel (défaut 20). |
+
+Réutilise l'existant : `AI_PROVIDER` / `AI_API_KEY` (cerveau), `AI_CREDITS_ENABLED` + `AI_CREDIT_COST_BASIS_USD` + `AI_ADVISOR_*_USD_PER_MTOK` (facturation).
+
+### 13.2 Endpoints (webhooks Twilio)
+
+| Webhook Twilio | URL à configurer |
+|----------------|------------------|
+| **Voice — A call comes in** (POST) | `https://<app>/api/voice/incoming` |
+| **Call status changes** (POST) | `https://<app>/api/voice/status` |
+
+`/api/voice/respond` est appelé automatiquement par Twilio à chaque tour (URL générée côté serveur). Les trois routes sont **publiques mais authentifiées par la signature `X-Twilio-Signature`**, entrées **validées par Zod**, requêtes **scopées par `storeId`**.
+
+### 13.3 Base de données
+
+Migration **`0052_ai_phone_receptionist.sql`** : table `store_phone_numbers` ; colonnes `channel`/`caller_phone`/`provider_call_id`/`duration_seconds` sur `ai_advisor_conversations` ; `audio_seconds` sur `ai_credit_debits` ; `ai_phone_settings` sur `stores`.
+
+### 13.4 Configuration côté loueur
+
+**Réglages → Assistant IA → carte « Répondeur téléphonique »** : activer, saisir le numéro, choisir la langue, autoriser la prise de réservation, mode de réponse (toujours / hors horaires), message d'accueil et numéro de transfert. Les crédits IA et le journal des conversations (transcripts) sont partagés avec le conseiller.
+
+### 13.5 Principaux fichiers ajoutés
+
+- `apps/web/lib/voice/` — abstraction fournisseur (interface + Twilio, TwiML + signature).
+- `apps/web/lib/ai/phone/` — prompt voix, outils, agent, crédits (métrage audio+tokens), messages parlés (8 langues), webhook.
+- `apps/web/app/api/voice/{incoming,respond,status}/` — webhooks.
+- `apps/web/app/(dashboard)/dashboard/settings/ai-advisor/ai-phone-form.tsx` + `phone-actions.ts` — réglages.
+
+### 13.6 Limites connues / évolutions
+
+- Transport **tour par tour** (latence supérieure au streaming) — un provider **ConversationRelay/LiveKit** (streaming, barge-in) pourra être ajouté derrière la même interface `VoiceProvider`.
+- Attribution automatique de numéro (achat via API) non incluse : le numéro est **lié manuellement** (le loueur configure le webhook et saisit le numéro).
+- L'enregistrement d'appel n'est pas activé (choix RGPD) ; les transcripts texte sont conservés comme pour le conseiller.
+
+---
+
 ## Annexe — Sources (recherche 2026, prix à revérifier)
 
 - Twilio ConversationRelay — twilio.com/docs/voice/conversationrelay/best-practices ; tarifs voix FR — twilio.com/en-us/voice/pricing/fr

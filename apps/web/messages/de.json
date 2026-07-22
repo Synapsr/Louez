@@ -4179,6 +4179,36 @@
           "transcriptTitle": "Gespräch",
           "transcriptError": "Dieses Gespräch konnte nicht geladen werden"
         }
+      },
+      "aiReceptionist": {
+        "description": "Eine KI-Telefonzentrale, die Anrufe entgegennimmt, Ihre Kunden informiert und Reservierungen aufnimmt — in der Sprache Ihrer Wahl.",
+        "enableSection": "KI-Telefonassistent",
+        "enableSectionDescription": "Konfigurieren Sie den Sprachassistenten, der antwortet, wenn Ihre Kunden anrufen",
+        "enabled": "Telefonassistent aktivieren",
+        "enabledDescription": "Die KI nimmt eingehende Anrufe auf Ihrer Nummer entgegen",
+        "notConfigured": {
+          "title": "Telefonie nicht konfiguriert",
+          "description": "Der Plattformbetreiber muss einen Telefonie-Anbieter konfigurieren (AI_PHONE_ENABLED, VOICE_PROVIDER und die Zugangsdaten), um den Assistenten zu aktivieren."
+        },
+        "phoneNumber": "Telefonnummer",
+        "phoneNumberDescription": "Richten Sie den Voice-Webhook Ihrer Nummer auf {url} und geben Sie die Nummer hier im internationalen Format ein.",
+        "language": "Antwortsprache",
+        "languageDescription": "Die Sprache, in der der Assistent mit Anrufern spricht",
+        "canTakeReservations": "Reservierungen aufnehmen",
+        "canTakeReservationsDescription": "Dem Assistenten erlauben, eine Reservierung aufzunehmen (sonst informiert er nur)",
+        "answerMode": "Wann antworten",
+        "answerModeDescription": "Wählen Sie, wann die KI den Anruf annimmt",
+        "answerModeAlways": "Immer",
+        "answerModeAlwaysDescription": "Die KI nimmt jeden Anruf entgegen",
+        "answerModeAfterHours": "Außerhalb der Öffnungszeiten",
+        "answerModeAfterHoursDescription": "Während der Öffnungszeiten wird der Anruf weitergeleitet; außerhalb antwortet die KI",
+        "greeting": "Begrüßung",
+        "greetingDescription": "Wird nach dem obligatorischen automatischen Hinweis hinzugefügt",
+        "greetingPlaceholder": "Wie kann ich Ihnen helfen?",
+        "transferNumber": "Weiterleitungsnummer",
+        "transferNumberDescription": "Nummer einer Person für Weiterleitungen und den Modus außerhalb der Öffnungszeiten (internationales Format)",
+        "phoneFormat": "Ungültige Nummer. Verwenden Sie das internationale Format, z. B. +33123456789",
+        "saved": "Einstellungen des Telefonassistenten gespeichert"
       }
     },
     "aiChat": {
