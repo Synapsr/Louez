@@ -11,8 +11,11 @@ import type {
 
 /**
  * App locale → Twilio <Say>/<Gather> locale + a sensible default neural voice
- * (Amazon Polly). The merchant can override the voice per store; this is only
- * the fallback so every supported language sounds natural out of the box.
+ * (Amazon Polly). The merchant can override the voice per store (settings.voice);
+ * this is only the fallback so every supported language sounds natural out of
+ * the box. All values are real Amazon Polly neural voices — validate them
+ * against the operator's Twilio account during the pre-production test, since a
+ * voice string Twilio does not expose would make <Say> fail with no audio.
  */
 const LANGUAGE_MAP: Record<string, { locale: string; voice: string }> = {
   fr: { locale: 'fr-FR', voice: 'Polly.Lea-Neural' },

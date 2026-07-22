@@ -17,4 +17,5 @@ ALTER TABLE `ai_advisor_conversations` ADD `provider_call_id` varchar(64);--> st
 ALTER TABLE `ai_advisor_conversations` ADD `duration_seconds` int;--> statement-breakpoint
 ALTER TABLE `ai_credit_debits` ADD `audio_seconds` int DEFAULT 0 NOT NULL;--> statement-breakpoint
 ALTER TABLE `stores` ADD `ai_phone_settings` json;--> statement-breakpoint
-CREATE INDEX `store_phone_numbers_store_idx` ON `store_phone_numbers` (`store_id`);
+CREATE INDEX `store_phone_numbers_store_idx` ON `store_phone_numbers` (`store_id`);--> statement-breakpoint
+CREATE INDEX `ai_advisor_conversations_provider_call_idx` ON `ai_advisor_conversations` (`provider_call_id`);

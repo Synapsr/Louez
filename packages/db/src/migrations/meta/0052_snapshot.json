@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "48e37494-2bb6-4229-be77-beef39cbc974",
+  "id": "e31bd8f7-fd2e-4444-a461-0406796d0335",
   "prevId": "209bf629-6d00-48bc-857b-6b819caf9e29",
   "tables": {
     "accounts": {
@@ -326,6 +326,13 @@
           "name": "ai_advisor_conversations_customer_idx",
           "columns": [
             "customer_id"
+          ],
+          "isUnique": false
+        },
+        "ai_advisor_conversations_provider_call_idx": {
+          "name": "ai_advisor_conversations_provider_call_idx",
+          "columns": [
+            "provider_call_id"
           ],
           "isUnique": false
         }

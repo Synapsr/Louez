@@ -3225,6 +3225,10 @@ export const aiAdvisorConversations = mysqlTable(
     customerIdx: index('ai_advisor_conversations_customer_idx').on(
       table.customerId,
     ),
+    // Phone status-callback lookup: resolve a call by its provider id.
+    providerCallIdx: index('ai_advisor_conversations_provider_call_idx').on(
+      table.providerCallId,
+    ),
     // One conversation per reservation (MySQL allows multiple NULLs).
     reservationUnique: unique('ai_advisor_conversations_reservation_unique').on(
       table.reservationId,
