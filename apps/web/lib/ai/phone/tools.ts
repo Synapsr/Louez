@@ -255,7 +255,12 @@ export function createPhoneTools(ctx: PhoneToolContext) {
     }),
     execute: async ({ items, customer }) => {
       const built = await buildPhoneReservationItems(ctx.storeId, items)
-      if ('error' in built) return { error: built.error }
+      if ('error' in built) {
+        return {
+          ok: false,
+          reason: describePhoneQuoteError('productNotFound', undefined, ctx.language),
+        }
+      }
       const { reservationItems, subtotalAmount, depositAmount } = built
 
       const phone = customer.phone?.trim() || ctx.callerPhone

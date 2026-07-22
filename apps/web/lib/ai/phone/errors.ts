@@ -16,6 +16,15 @@ function toLang(language: string): Lang {
     : 'en'
 }
 
+/** Polish plural selector: (1 / paucal 2-4 / genitive-plural 5+). */
+function plForm(n: number, one: string, few: string, many: string): string {
+  const mod10 = n % 10
+  const mod100 = n % 100
+  if (n === 1) return one
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return few
+  return many
+}
+
 /** Spoken plural forms for a duration unit, by language. */
 const DURATION: Record<
   Lang,
@@ -52,9 +61,10 @@ const DURATION: Record<
     minute: (n) => `${n} minu${n > 1 ? 'ten' : 'ut'}`,
   },
   pl: {
-    day: (n) => `${n} ${n === 1 ? 'dzień' : 'dni'}`,
-    hour: (n) => `${n} ${n === 1 ? 'godzinę' : 'godziny'}`,
-    minute: (n) => `${n} ${n === 1 ? 'minutę' : 'minuty'}`,
+    // Polish has three plural forms (1 / paucal 2-4 / genitive-plural 5+).
+    day: (n) => `${n} ${plForm(n, 'dzień', 'dni', 'dni')}`,
+    hour: (n) => `${n} ${plForm(n, 'godzina', 'godziny', 'godzin')}`,
+    minute: (n) => `${n} ${plForm(n, 'minuta', 'minuty', 'minut')}`,
   },
   pt: {
     day: (n) => `${n} dia${n > 1 ? 's' : ''}`,
@@ -83,6 +93,11 @@ function str(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+/** Numbers arrive as numbers (e.g. the available stock count) — str() would drop them. */
+function num(value: unknown): string {
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : ''
+}
+
 type Params = Record<string, unknown> | undefined
 
 /** Per-reason sentence builders, one map per language. */
@@ -97,7 +112,7 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     maxRentalDurationViolation: (p) =>
       `La durée maximale de location est de ${spokenDuration(p?.duration, 'fr')}.`,
     insufficientStock: (p) =>
-      `Il ne reste que ${str(p?.count)} ${str(p?.name)} pour ces dates.`,
+      `Il ne reste que ${num(p?.count)} ${str(p?.name)} pour ces dates.`,
     productUnavailable: (p) =>
       `${str(p?.name)} n'est pas disponible pour ces dates.`,
     productNoLongerAvailable: (p) =>
@@ -116,7 +131,7 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     maxRentalDurationViolation: (p) =>
       `The maximum rental duration is ${spokenDuration(p?.duration, 'en')}.`,
     insufficientStock: (p) =>
-      `Only ${str(p?.count)} ${str(p?.name)} left for those dates.`,
+      `Only ${num(p?.count)} ${str(p?.name)} left for those dates.`,
     productUnavailable: (p) => `${str(p?.name)} isn't available for those dates.`,
     productNoLongerAvailable: (p) =>
       `${str(p?.name)} was just booked by someone else for those dates.`,
@@ -133,7 +148,7 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     maxRentalDurationViolation: (p) =>
       `Die maximale Mietdauer beträgt ${spokenDuration(p?.duration, 'de')}.`,
     insufficientStock: (p) =>
-      `Es sind nur noch ${str(p?.count)} ${str(p?.name)} für diese Daten verfügbar.`,
+      `Es sind nur noch ${num(p?.count)} ${str(p?.name)} für diese Daten verfügbar.`,
     productUnavailable: (p) =>
       `${str(p?.name)} ist für diese Daten nicht verfügbar.`,
     productNoLongerAvailable: (p) =>
@@ -152,7 +167,7 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     maxRentalDurationViolation: (p) =>
       `La duración máxima de alquiler es de ${spokenDuration(p?.duration, 'es')}.`,
     insufficientStock: (p) =>
-      `Solo quedan ${str(p?.count)} ${str(p?.name)} para esas fechas.`,
+      `Solo quedan ${num(p?.count)} ${str(p?.name)} para esas fechas.`,
     productUnavailable: (p) =>
       `${str(p?.name)} no está disponible para esas fechas.`,
     productNoLongerAvailable: (p) =>
@@ -171,7 +186,7 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     maxRentalDurationViolation: (p) =>
       `La durata massima del noleggio è di ${spokenDuration(p?.duration, 'it')}.`,
     insufficientStock: (p) =>
-      `Restano solo ${str(p?.count)} ${str(p?.name)} per quelle date.`,
+      `Restano solo ${num(p?.count)} ${str(p?.name)} per quelle date.`,
     productUnavailable: (p) =>
       `${str(p?.name)} non è disponibile per quelle date.`,
     productNoLongerAvailable: (p) =>
@@ -189,7 +204,7 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     maxRentalDurationViolation: (p) =>
       `De maximale huurperiode is ${spokenDuration(p?.duration, 'nl')}.`,
     insufficientStock: (p) =>
-      `Er zijn nog maar ${str(p?.count)} ${str(p?.name)} beschikbaar voor die data.`,
+      `Er zijn nog maar ${num(p?.count)} ${str(p?.name)} beschikbaar voor die data.`,
     productUnavailable: (p) =>
       `${str(p?.name)} is niet beschikbaar voor die data.`,
     productNoLongerAvailable: (p) =>
@@ -208,7 +223,7 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     maxRentalDurationViolation: (p) =>
       `Maksymalny czas wynajmu to ${spokenDuration(p?.duration, 'pl')}.`,
     insufficientStock: (p) =>
-      `Na te daty zostało tylko ${str(p?.count)} ${str(p?.name)}.`,
+      `Na te daty zostało tylko ${num(p?.count)} ${str(p?.name)}.`,
     productUnavailable: (p) =>
       `${str(p?.name)} nie jest dostępny w tych terminach.`,
     productNoLongerAvailable: (p) =>
@@ -226,7 +241,7 @@ const REASONS: Record<Lang, Record<string, (p: Params) => string>> = {
     maxRentalDurationViolation: (p) =>
       `A duração máxima do aluguer é de ${spokenDuration(p?.duration, 'pt')}.`,
     insufficientStock: (p) =>
-      `Só restam ${str(p?.count)} ${str(p?.name)} para essas datas.`,
+      `Só restam ${num(p?.count)} ${str(p?.name)} para essas datas.`,
     productUnavailable: (p) =>
       `${str(p?.name)} não está disponível para essas datas.`,
     productNoLongerAvailable: (p) =>
