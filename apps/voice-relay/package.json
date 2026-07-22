@@ -1,0 +1,26 @@
+{
+  "name": "@louez/voice-relay",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Thin WebSocket bridge between Twilio ConversationRelay and the app's SSE turn endpoint. Holds no business logic and no database access.",
+  "license": "Apache-2.0 WITH Commons-Clause",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.3"
+  }
+}

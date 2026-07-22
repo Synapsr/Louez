@@ -53,6 +53,27 @@ export type VoiceAction =
       callerId?: string
       speakBefore?: VoiceSpeech
     }
+  | {
+      /**
+       * Hand the call to a streaming ConversationRelay session — the provider
+       * runs STT + TTS + endpointing + barge-in and the per-turn loop lives on
+       * the WebSocket worker, not this HTTP interface. Used instead of `gather`
+       * when the streaming transport is enabled.
+       */
+      type: 'connect_relay'
+      /** wss URL of the relay worker, already signed for this call. */
+      wsUrl: string
+      /** Greeting spoken at connect by the provider's TTS. */
+      welcomeGreeting: string
+      /** App locale (e.g. 'fr'); the provider maps it to a BCP-47 STT/TTS locale. */
+      language: string
+      /** Provider TTS + STT selection and the voice id to synthesize with. */
+      ttsProvider: string
+      sttProvider: string
+      voice?: string
+      /** URL the provider POSTs to when the relay session ends (transfer/hangup). */
+      actionUrl: string
+    }
   | { type: 'hangup' }
 
 /** Inbound call fields, normalized across providers. */

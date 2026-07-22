@@ -1,10 +1,10 @@
-import { generateText, stepCountIs } from 'ai'
+import { generateText, stepCountIs, streamText } from 'ai'
 import { eq } from 'drizzle-orm'
 
 import { aiAdvisorConversations, aiAdvisorMessages, db } from '@louez/db'
 import type { AiPhoneSettings } from '@louez/types'
 
-import { normalizeUsage } from '@/lib/ai/pricing'
+import { normalizeUsage, type AdvisorUsage } from '@/lib/ai/pricing'
 import { getPhoneAIModel } from '@/lib/ai/provider'
 import { recordCallTurnDebit } from '@/lib/ai/phone/credits'
 import { buildPhoneSystemPrompt } from '@/lib/ai/phone/system-prompt'
@@ -48,15 +48,25 @@ export interface PhoneTurnParams {
   today: string
 }
 
+const ZERO_USAGE: AdvisorUsage = {
+  inputTokens: 0,
+  outputTokens: 0,
+  cachedInputTokens: 0,
+}
+
+type ToolCallPart = { type: 'tool-call'; toolName: string }
+
 /**
- * Run one turn of the phone receptionist: persist the caller's speech, call the
- * tool-using agent, persist the reply (metering tokens against AI credits when
- * enabled), and report whether the call should end or transfer.
+ * Persist the caller's speech and build the model inputs (history + system
+ * prompt + tools). Shared by the turn-based (generateText) and streaming
+ * (streamText) paths so both behave identically.
  */
-export async function runPhoneTurn(
-  params: PhoneTurnParams,
-): Promise<PhoneTurnResult> {
-  const { store, conversationId, settings, plan, userSpeech } = params
+async function preparePhoneTurn(params: PhoneTurnParams): Promise<{
+  system: string
+  messages: { role: 'user' | 'assistant'; content: string }[]
+  tools: ReturnType<typeof createPhoneTools>
+}> {
+  const { store, conversationId, settings, userSpeech } = params
 
   // Persist the caller turn first, so a failure never drops it from the record.
   await db.insert(aiAdvisorMessages).values({
@@ -90,7 +100,7 @@ export async function runPhoneTurn(
     messages.shift()
   }
 
-  const systemPrompt = buildPhoneSystemPrompt({
+  const system = buildPhoneSystemPrompt({
     storeName: store.name,
     storeDescription: store.description,
     language: settings.language,
@@ -101,45 +111,56 @@ export async function runPhoneTurn(
     today: params.today,
   })
 
-  const result = await generateText({
-    model: getPhoneAIModel(),
-    system: systemPrompt,
-    messages,
-    tools: createPhoneTools({
-      storeId: store.id,
-      storeSlug: store.slug,
-      storeName: store.name,
-      conversationId,
-      callerPhone: params.callerPhone,
-      language: settings.language,
-      canTakeReservations: settings.canTakeReservations,
-      transferNumber: settings.transferNumber?.trim() || null,
-    }),
-    stopWhen: stepCountIs(MAX_STEPS),
+  const tools = createPhoneTools({
+    storeId: store.id,
+    storeSlug: store.slug,
+    storeName: store.name,
+    conversationId,
+    callerPhone: params.callerPhone,
+    language: settings.language,
+    canTakeReservations: settings.canTakeReservations,
+    transferNumber: settings.transferNumber?.trim() || null,
   })
 
-  const allToolCalls = result.steps.flatMap((step) =>
+  return { system, messages, tools }
+}
+
+/** Tool calls the model made this turn, and the control intent they signal. */
+function controlFromSteps(steps: readonly { content: readonly unknown[] }[]): {
+  control: PhoneTurnControl
+  toolCalls: ToolCallPart[]
+} {
+  const toolCalls = steps.flatMap((step) =>
     step.content.filter(
-      (part): part is Extract<typeof part, { type: 'tool-call' }> =>
-        'type' in part && part.type === 'tool-call',
+      (part): part is ToolCallPart =>
+        typeof part === 'object' &&
+        part !== null &&
+        (part as { type?: unknown }).type === 'tool-call',
     ),
   )
-  const calledTool = (name: string) =>
-    allToolCalls.some((call) => call.toolName === name)
-
-  const control: PhoneTurnControl = calledTool('transfer_to_human')
+  const called = (name: string) => toolCalls.some((c) => c.toolName === name)
+  const control: PhoneTurnControl = called('transfer_to_human')
     ? 'transfer'
-    : calledTool('end_call')
+    : called('end_call')
       ? 'end'
       : null
+  return { control, toolCalls }
+}
 
-  const text = result.steps
-    .map((step) => step.text)
-    .filter(Boolean)
-    .join(' ')
-    .trim()
-
-  // Persist the assistant turn and meter its tokens atomically.
+/**
+ * Persist the assistant turn and meter its tokens atomically (transcript +
+ * accounting commit together). Never throws — a metering/DB failure must not
+ * break the live call.
+ */
+async function persistAssistantTurn(params: {
+  store: PhoneTurnParams['store']
+  conversationId: string
+  plan: Plan
+  text: string
+  toolCalls: ToolCallPart[]
+  usage: AdvisorUsage
+}): Promise<void> {
+  const { store, conversationId, plan, text, toolCalls, usage } = params
   try {
     await db.transaction(async (tx) => {
       const [inserted] = await tx
@@ -149,7 +170,7 @@ export async function runPhoneTurn(
           storeId: store.id,
           role: 'assistant',
           content: text || null,
-          toolInvocations: allToolCalls.length > 0 ? allToolCalls : null,
+          toolInvocations: toolCalls.length > 0 ? toolCalls : null,
         })
         .$returningId()
       await tx
@@ -157,17 +178,18 @@ export async function runPhoneTurn(
         .set({ updatedAt: new Date() })
         .where(eq(aiAdvisorConversations.id, conversationId))
 
-      if (areAiCreditsEnabled() && inserted) {
-        const usage = normalizeUsage(result.totalUsage ?? result.usage ?? {})
-        if (usage.inputTokens > 0 || usage.outputTokens > 0) {
-          await recordCallTurnDebit(tx, {
-            storeId: store.id,
-            conversationId,
-            assistantMessageId: inserted.id,
-            usage,
-            plan,
-          })
-        }
+      if (
+        areAiCreditsEnabled() &&
+        inserted &&
+        (usage.inputTokens > 0 || usage.outputTokens > 0)
+      ) {
+        await recordCallTurnDebit(tx, {
+          storeId: store.id,
+          conversationId,
+          assistantMessageId: inserted.id,
+          usage,
+          plan,
+        })
       }
     })
   } catch (error) {
@@ -178,6 +200,120 @@ export async function runPhoneTurn(
       }`,
     )
   }
+}
+
+/**
+ * Run one turn of the phone receptionist (turn-based <Gather> transport):
+ * persist the caller's speech, call the tool-using agent, persist the reply
+ * (metering tokens), and report whether the call should end or transfer.
+ */
+export async function runPhoneTurn(
+  params: PhoneTurnParams,
+): Promise<PhoneTurnResult> {
+  const { store, conversationId, plan } = params
+  const { system, messages, tools } = await preparePhoneTurn(params)
+
+  const result = await generateText({
+    model: getPhoneAIModel(),
+    system,
+    messages,
+    tools,
+    stopWhen: stepCountIs(MAX_STEPS),
+  })
+
+  const { control, toolCalls } = controlFromSteps(result.steps)
+  const text = result.steps
+    .map((step) => step.text)
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+
+  await persistAssistantTurn({
+    store,
+    conversationId,
+    plan,
+    text,
+    toolCalls,
+    usage: normalizeUsage(result.totalUsage ?? result.usage ?? {}),
+  })
 
   return { text, control }
+}
+
+export interface PhoneStreamResult {
+  /** Assistant reply text, streamed token-by-token for the ConversationRelay TTS. */
+  textStream: AsyncIterable<string>
+  /**
+   * Call after consuming (or aborting) the stream: persist the assistant turn +
+   * meter tokens, and resolve the control intent. Safe to call once; never
+   * throws. On barge-in `spokenText` is what was STREAMED, which may slightly
+   * exceed what the caller actually heard before interrupting.
+   */
+  finalize: (spokenText: string) => Promise<{ control: PhoneTurnControl }>
+}
+
+/**
+ * Streaming variant of runPhoneTurn for the ConversationRelay transport: the
+ * reply text streams out token-by-token so the provider's TTS speaks the first
+ * words while the model is still generating. `abortSignal` fires on barge-in
+ * (the caller talked over the reply) — finalize then persists only what was
+ * actually spoken.
+ */
+export async function streamPhoneTurn(
+  params: PhoneTurnParams,
+  abortSignal: AbortSignal,
+): Promise<PhoneStreamResult> {
+  const { store, conversationId, plan } = params
+  const { system, messages, tools } = await preparePhoneTurn(params)
+
+  const result = streamText({
+    model: getPhoneAIModel(),
+    system,
+    messages,
+    tools,
+    stopWhen: stepCountIs(MAX_STEPS),
+    abortSignal,
+  })
+
+  const finalize = async (
+    spokenText: string,
+  ): Promise<{ control: PhoneTurnControl }> => {
+    // On barge-in the promises below reject/resolve partially — best-effort.
+    let control: PhoneTurnControl = null
+    let toolCalls: ToolCallPart[] = []
+    let usage: AdvisorUsage = ZERO_USAGE
+    try {
+      const resolved = controlFromSteps(await result.steps)
+      control = resolved.control
+      toolCalls = resolved.toolCalls
+    } catch {
+      // interrupted before the step data settled → treat as a normal continue.
+    }
+    try {
+      const total = normalizeUsage((await result.totalUsage) ?? {})
+      // A mid-turn barge-in resolves the aggregate to a null-usage object; fall
+      // back to the last completed step's usage so multi-step turns still bill.
+      usage =
+        total.inputTokens > 0 || total.outputTokens > 0
+          ? total
+          : normalizeUsage((await result.usage) ?? {})
+    } catch {
+      // aborted before any step settled → audio metering still covers the call.
+    }
+
+    const text = spokenText.trim()
+    if (text.length > 0 || toolCalls.length > 0) {
+      await persistAssistantTurn({
+        store,
+        conversationId,
+        plan,
+        text,
+        toolCalls,
+        usage,
+      })
+    }
+    return { control }
+  }
+
+  return { textStream: result.textStream, finalize }
 }

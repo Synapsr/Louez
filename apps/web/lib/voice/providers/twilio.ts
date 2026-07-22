@@ -156,6 +156,25 @@ export class TwilioVoiceProvider implements VoiceProvider {
           `<Dial${callerId}>${escapeXml(action.number)}</Dial>`
         break
       }
+      case 'connect_relay': {
+        // Hand off to Twilio ConversationRelay: it runs STT + TTS + endpointing +
+        // barge-in and streams TEXT to our worker over the (already-signed) wss
+        // url. Query separators in that url are escaped by escapeXml (& → &amp;).
+        const { locale } = resolveLanguage(action.language)
+        const attrs = [
+          `url="${escapeXml(action.wsUrl)}"`,
+          `transcriptionProvider="${escapeXml(action.sttProvider)}"`,
+          `ttsProvider="${escapeXml(action.ttsProvider)}"`,
+          action.voice ? `voice="${escapeXml(action.voice)}"` : '',
+          `language="${escapeXml(locale)}"`,
+          `welcomeGreeting="${escapeXml(action.welcomeGreeting)}"`,
+          `action="${escapeXml(action.actionUrl)}"`,
+        ]
+          .filter(Boolean)
+          .join(' ')
+        inner = `<Connect><ConversationRelay ${attrs} /></Connect>`
+        break
+      }
       case 'hangup':
         inner = '<Hangup/>'
         break

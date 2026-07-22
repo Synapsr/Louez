@@ -354,9 +354,22 @@ Migration **`0052_ai_phone_receptionist.sql`** : table `store_phone_numbers` ; c
 
 ### 13.6 Limites connues / évolutions
 
-- Transport **tour par tour** (latence supérieure au streaming) — un provider **ConversationRelay/LiveKit** (streaming, barge-in) pourra être ajouté derrière la même interface `VoiceProvider`.
 - Attribution automatique de numéro (achat via API) non incluse : le numéro est **lié manuellement** (le loueur configure le webhook et saisit le numéro).
 - L'enregistrement d'appel n'est pas activé (choix RGPD) ; les transcripts texte sont conservés comme pour le conseiller.
+
+### 13.7 Transport streaming — ConversationRelay + ElevenLabs (livré)
+
+Un second transport, **streaming temps réel**, est disponible derrière la même interface `VoiceProvider`, activable par variables d'environnement (aucune valeur commerciale/voix en dur). Twilio **ConversationRelay** gère STT (Deepgram), TTS (**ElevenLabs**), l'endpointing et le **barge-in**, et n'échange que du **texte** sur un WebSocket. L'agent Vercel AI SDK, les outils et le métrage crédits sont **réutilisés tels quels** — seul le tour passe de `generateText` à `streamText`.
+
+```
+Appel → Twilio ConversationRelay (STT Deepgram + TTS ElevenLabs + barge-in)
+      ⇄ 1 WebSocket texte ⇄ worker apps/voice-relay (glue, zéro logique métier)
+                                 ⇄ SSE signé → /api/voice/turn (agent + tools + DB + crédits)
+```
+
+**Activer** : déployer le worker `apps/voice-relay` (voir son README — Fly.io, toujours‑actif, colocalisé avec l'app), puis côté app : `AI_PHONE_TRANSPORT=relay`, `VOICE_RELAY_WS_URL=wss://…`, `VOICE_RELAY_SIGNING_SECRET=<partagé>`, `AI_PHONE_TTS_PROVIDER=ElevenLabs`, `AI_PHONE_STT_PROVIDER=Deepgram`, `AI_PHONE_VOICES={"fr":"<voiceId>",…}` (ou `AI_PHONE_DEFAULT_VOICE`, ou la voix par boutique). Le webhook Twilio du numéro reste `…/api/voice/incoming` ; en mode relay, `incoming` renvoie `<Connect><ConversationRelay>` au lieu de `<Gather>`. Non configuré ⇒ repli automatique sur `<Gather>`.
+
+**Endpoints ajoutés** : `POST /api/voice/turn` (SSE, signé HMAC — la boucle par tour) et `POST /api/voice/relay-action` (handback de fin de session : transfert `<Dial>` / raccrochage). **Coût** : ConversationRelay ~0,07 $/min + PSTN + ElevenLabs ⇒ ajuster `AI_VOICE_AUDIO_USD_PER_MIN` (seul changement de facturation ; le métrage tokens est inchangé).
 
 ---
 

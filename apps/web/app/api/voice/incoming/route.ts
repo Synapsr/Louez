@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto'
+
 import { aiAdvisorConversations, aiAdvisorMessages, db } from '@louez/db'
 
 import { checkPhoneCredits } from '@/lib/ai/phone/credits'
@@ -16,6 +18,14 @@ import { getStorePlan } from '@/lib/plan-limits'
 import { areAiCreditsEnabled } from '@/lib/plans'
 import { isWithinBusinessHours } from '@/lib/utils/business-hours'
 import { getVoiceProvider } from '@/lib/voice/client'
+import {
+  getRelaySigningSecret,
+  getRelayWsUrl,
+  getSttProvider,
+  getTtsProvider,
+  isRelayTransport,
+  resolveVoiceId,
+} from '@/lib/voice/config'
 
 // INTENTIONALLY PUBLIC route [SE-01]: this is the inbound telephony webhook.
 // It is authenticated by the provider's request SIGNATURE (X-Twilio-Signature),
@@ -139,6 +149,28 @@ export async function POST(req: Request) {
     })
     return created.id
   })
+
+  // Streaming transport (ConversationRelay): hand off to the worker over a
+  // signed wss url — the provider runs STT/TTS/barge-in and the per-turn loop
+  // lives on the worker. Falls back to <Gather> when the relay isn't configured.
+  if (isRelayTransport()) {
+    // Short-lived, expiry-bound handshake token: the worker connects immediately,
+    // so a captured wss url can't be replayed later to open new relay sessions.
+    const expiresAt = Date.now() + 300_000
+    const token = createHmac('sha256', getRelaySigningSecret())
+      .update(`${conversationId}.${expiresAt}`)
+      .digest('base64url')
+    return voiceResponse({
+      type: 'connect_relay',
+      wsUrl: `${getRelayWsUrl()}/relay?c=${conversationId}&e=${expiresAt}&t=${token}`,
+      welcomeGreeting: greeting,
+      language,
+      ttsProvider: getTtsProvider(),
+      sttProvider: getSttProvider(),
+      voice: resolveVoiceId(language, settings.voice),
+      actionUrl: `${read.origin}/api/voice/relay-action?c=${conversationId}`,
+    })
+  }
 
   return voiceResponse({
     type: 'gather',

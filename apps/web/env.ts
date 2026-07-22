@@ -189,6 +189,26 @@ export const env = createEnv({
       .min(30)
       .max(3600)
       .default(600),
+    // ----- Streaming transport (Twilio ConversationRelay) -----
+    // Phone transport. 'gather' (default) = turn-based Twilio <Gather>, robust and
+    // serverless-friendly. 'relay' = Twilio ConversationRelay (streaming STT/TTS +
+    // barge-in) through a self-hosted WebSocket worker — needs VOICE_RELAY_WS_URL
+    // and VOICE_RELAY_SIGNING_SECRET, else it stays on <Gather>.
+    AI_PHONE_TRANSPORT: z.enum(['gather', 'relay']).optional(),
+    // Public wss:// URL of the ConversationRelay worker (e.g. wss://voice-relay.example.com).
+    VOICE_RELAY_WS_URL: z.string().optional(),
+    // HMAC secret shared with the worker: authenticates the relay handshake and
+    // the worker↔app per-turn requests, both directions. Required for 'relay'.
+    VOICE_RELAY_SIGNING_SECRET: z.string().optional(),
+    // ConversationRelay TTS/STT providers (never hardcoded). Defaults tuned for
+    // realism + latency. https://www.twilio.com/docs/voice/twiml/connect/conversationrelay
+    AI_PHONE_TTS_PROVIDER: z.string().optional(),
+    AI_PHONE_STT_PROVIDER: z.string().optional(),
+    // Provider voice id per app locale (JSON), e.g. {"fr":"<id>","en":"<id>"}. A
+    // per-store voice (settings.voice) overrides it. All 8 locales supported.
+    AI_PHONE_VOICES: z.string().optional(),
+    // Fallback voice id when a locale is absent from AI_PHONE_VOICES and the store set none.
+    AI_PHONE_DEFAULT_VOICE: z.string().optional(),
 
     // ===== fromHello (Optional — engagement & growth) =====
     FROMHELLO_API_URL: z.url().optional(),
@@ -381,6 +401,13 @@ export const env = createEnv({
     AI_VOICE_AUDIO_USD_PER_MIN: process.env.AI_VOICE_AUDIO_USD_PER_MIN,
     AI_PHONE_MAX_CREDITS_PER_CALL: process.env.AI_PHONE_MAX_CREDITS_PER_CALL,
     AI_PHONE_MAX_CALL_SECONDS: process.env.AI_PHONE_MAX_CALL_SECONDS,
+    AI_PHONE_TRANSPORT: process.env.AI_PHONE_TRANSPORT,
+    VOICE_RELAY_WS_URL: process.env.VOICE_RELAY_WS_URL,
+    VOICE_RELAY_SIGNING_SECRET: process.env.VOICE_RELAY_SIGNING_SECRET,
+    AI_PHONE_TTS_PROVIDER: process.env.AI_PHONE_TTS_PROVIDER,
+    AI_PHONE_STT_PROVIDER: process.env.AI_PHONE_STT_PROVIDER,
+    AI_PHONE_VOICES: process.env.AI_PHONE_VOICES,
+    AI_PHONE_DEFAULT_VOICE: process.env.AI_PHONE_DEFAULT_VOICE,
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
