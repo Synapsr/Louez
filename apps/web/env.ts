@@ -220,6 +220,10 @@ export const env = createEnv({
     // in-dashboard voice picker; the chosen id is saved as the store voice. Voice
     // ids stay in env, never in the repo.
     AI_PHONE_VOICE_CATALOG: z.string().optional(),
+    // ElevenLabs API key (optional). When set, the dashboard voice picker is
+    // populated automatically from the account's voices (name + gender) and the
+    // store can PREVIEW a voice speaking a sample in the chosen language.
+    ELEVENLABS_API_KEY: z.string().optional(),
 
     // ===== fromHello (Optional — engagement & growth) =====
     FROMHELLO_API_URL: z.url().optional(),
@@ -422,6 +426,7 @@ export const env = createEnv({
     AI_PHONE_VOICES: process.env.AI_PHONE_VOICES,
     AI_PHONE_DEFAULT_VOICE: process.env.AI_PHONE_DEFAULT_VOICE,
     AI_PHONE_VOICE_CATALOG: process.env.AI_PHONE_VOICE_CATALOG,
+    ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,

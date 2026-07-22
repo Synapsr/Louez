@@ -4256,7 +4256,8 @@
           "all": "Todas",
           "female": "Mulher",
           "male": "Homem"
-        }
+        },
+        "voicePreview": "Ouvir"
       }
     },
     "aiChat": {

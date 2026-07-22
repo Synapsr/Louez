@@ -9,7 +9,6 @@ import { getCurrentStore } from '@/lib/store-context'
 import { getStorePlan } from '@/lib/plan-limits'
 import { isAIChatConfigured } from '@/lib/ai/provider'
 import { isVoiceAgentConfigured } from '@/lib/ai/phone/eligibility'
-import { getVoiceCatalog } from '@/lib/voice/config'
 import {
   getAiCreditHistory,
   getAiCreditsInfo,
@@ -119,7 +118,6 @@ export default async function AiAdvisorSettingsPage({
         isProvisioned={Boolean(phoneBinding?.providerNumberId)}
         webhookUrl={`${env.NEXT_PUBLIC_APP_URL}/api/voice/incoming`}
         defaultCountry="FR"
-        voiceCatalog={getVoiceCatalog()}
       />
 
       {credits && <AiCreditsSection {...credits} />}

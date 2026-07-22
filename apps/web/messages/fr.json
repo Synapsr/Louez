@@ -4363,7 +4363,8 @@
           "all": "Toutes",
           "female": "Femme",
           "male": "Homme"
-        }
+        },
+        "voicePreview": "Écouter"
       }
     },
     "aiChat": {
