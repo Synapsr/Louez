@@ -342,7 +342,7 @@ export const VoiceAgentForm = ({
                     voiceCreditsPerMinute !== null) && (
                     <div className="flex flex-wrap gap-2">
                       {numberRentalCredits !== null && (
-                        <Badge variant="secondary" className="gap-1.5">
+                        <Badge variant="secondary" className="gap-1.5 tabular-nums">
                           <Wallet className="h-3 w-3" />
                           {t('setup.rentalChip', {
                             credits: numberRentalCredits,
@@ -350,7 +350,7 @@ export const VoiceAgentForm = ({
                         </Badge>
                       )}
                       {voiceCreditsPerMinute !== null && (
-                        <Badge variant="secondary" className="gap-1.5">
+                        <Badge variant="secondary" className="gap-1.5 tabular-nums">
                           <Clock3 className="h-3 w-3" />
                           {t('setup.perMinuteChip', {
                             credits: voiceCreditsPerMinute,
@@ -373,7 +373,7 @@ export const VoiceAgentForm = ({
                         <Button
                           type="button"
                           size="sm"
-                          className="gap-1.5"
+                          className="gap-1.5 transition-transform duration-150 ease-out active:scale-[0.96]"
                           onClick={() =>
                             window.dispatchEvent(new Event(OPEN_TOPUP_EVENT))
                           }
@@ -413,7 +413,7 @@ export const VoiceAgentForm = ({
 
                 {(numberRentalCredits !== null ||
                   voiceCreditsPerMinute !== null) && (
-                  <div className="text-muted-foreground -mt-3 flex flex-wrap items-center gap-1.5 text-xs">
+                  <div className="text-muted-foreground -mt-3 flex flex-wrap items-center gap-1.5 text-xs tabular-nums">
                     <Wallet className="h-3 w-3" />
                     {[
                       numberRentalCredits !== null

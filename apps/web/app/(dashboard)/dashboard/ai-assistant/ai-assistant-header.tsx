@@ -75,7 +75,9 @@ export const AiAssistantHeader = ({
           <div className="flex shrink-0 items-center gap-2">
             <Badge
               variant={credits.low ? 'warning' : 'secondary'}
-              className={cn('gap-1.5 py-1.5 pl-2 pr-2.5 text-sm font-medium')}
+              className={cn(
+                'gap-1.5 py-1.5 pl-2 pr-2.5 text-sm font-medium tabular-nums',
+              )}
             >
               <Wallet className="h-3.5 w-3.5" />
               {credits.totalCredits === null
@@ -85,7 +87,11 @@ export const AiAssistantHeader = ({
                   })}
             </Badge>
             {canTopup && (
-              <Button size="sm" className="gap-1.5" onClick={() => setTopupOpen(true)}>
+              <Button
+                size="sm"
+                className="gap-1.5 transition-transform duration-150 ease-out active:scale-[0.96]"
+                onClick={() => setTopupOpen(true)}
+              >
                 <CreditCard className="h-3.5 w-3.5" />
                 {t('recharge')}
               </Button>

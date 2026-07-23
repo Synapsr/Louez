@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 
+import { motion } from 'framer-motion'
 import {
   BadgePercent,
   Check,
@@ -167,7 +168,7 @@ export function AiCreditsTopupModal({
                     type="button"
                     onClick={() => setSelectedIndex(index)}
                     className={cn(
-                      'flex w-full items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-all',
+                      'flex w-full items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition-[transform,border-color,background-color,box-shadow] duration-150 ease-out active:scale-[0.98]',
                       isSelected
                         ? 'border-primary from-primary/5 to-primary/10 shadow-primary/10 bg-gradient-to-br shadow-sm'
                         : 'border-border bg-card hover:border-primary/30 hover:shadow-sm',
@@ -190,7 +191,7 @@ export function AiCreditsTopupModal({
                         <div className="flex items-center gap-2">
                           <span
                             className={cn(
-                              'text-lg font-bold leading-tight',
+                              'text-lg font-bold leading-tight tabular-nums',
                               isSelected && 'text-primary',
                             )}
                           >
@@ -205,7 +206,7 @@ export function AiCreditsTopupModal({
                             </Badge>
                           )}
                         </div>
-                        <p className="text-muted-foreground text-xs">
+                        <p className="text-muted-foreground text-xs tabular-nums">
                           {t('perCredit', {
                             amount: formatUnitPrice(
                               pkg.priceCents / pkg.credits,
@@ -217,14 +218,14 @@ export function AiCreditsTopupModal({
                     <div className="text-right">
                       <p
                         className={cn(
-                          'font-semibold',
+                          'font-semibold tabular-nums',
                           isSelected && 'text-primary',
                         )}
                       >
                         {formatPrice(pkg.priceCents)}
                       </p>
                       {savings !== null && (
-                        <p className="text-primary flex items-center justify-end gap-0.5 text-xs font-medium">
+                        <p className="text-primary flex items-center justify-end gap-0.5 text-xs font-medium tabular-nums">
                           <BadgePercent className="h-3 w-3" />
                           {t('savings', { percent: savings })}
                         </p>
@@ -235,20 +236,27 @@ export function AiCreditsTopupModal({
               })}
             </div>
 
-            {/* What the selected pack represents, in concrete usage */}
+            {/* What the selected pack represents, in concrete usage. Keyed on
+                the selection so a pack change softly fades the numbers in. */}
             <div className="bg-muted/40 flex flex-col rounded-xl border p-4">
               <p className="text-sm font-semibold">{t('valueTitle')}</p>
-              <ul className="mt-3 space-y-2.5">
+              <motion.ul
+                key={selectedIndex}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
+                className="mt-3 space-y-2.5"
+              >
                 {valueRows.map((row) => (
                   <li
                     key={row.label}
-                    className="flex items-start gap-2 text-sm"
+                    className="flex items-start gap-2 text-sm tabular-nums"
                   >
                     <row.icon className="text-primary mt-0.5 h-4 w-4 shrink-0" />
                     <span>{row.label}</span>
                   </li>
                 ))}
-              </ul>
+              </motion.ul>
               <div className="text-muted-foreground mt-auto flex items-start gap-2 border-t pt-3 text-xs">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {t('noExpiry')}
@@ -276,7 +284,7 @@ export function AiCreditsTopupModal({
               type="button"
               onClick={handlePurchase}
               disabled={loading || !selected}
-              className="shadow-primary/20 flex-1 shadow-sm"
+              className="shadow-primary/20 flex-1 shadow-sm transition-transform duration-150 ease-out active:scale-[0.96]"
             >
               {loading ? (
                 <>
