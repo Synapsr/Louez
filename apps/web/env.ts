@@ -33,42 +33,25 @@ export const env = createEnv({
         message: 'S3_PUBLIC_URL must be an absolute URL or an absolute path',
       }),
 
-    // ===== Stripe (Required for payments) =====
-    STRIPE_SECRET_KEY: z.string().min(1, 'STRIPE_SECRET_KEY is required'),
-    STRIPE_WEBHOOK_SECRET: z
-      .string()
-      .min(1, 'STRIPE_WEBHOOK_SECRET is required'),
-    STRIPE_CONNECT_WEBHOOK_SECRET: z
-      .string()
-      .min(1, 'STRIPE_CONNECT_WEBHOOK_SECRET is required'),
+    // ===== Stripe (Optional — payments & subscriptions) =====
+    // Without Stripe the storefront degrades to request-mode reservations
+    // (isStripeConfigured / effective reservation mode) and subscription
+    // pages hide their checkout paths.
+    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    STRIPE_CONNECT_WEBHOOK_SECRET: z.string().optional(),
 
     // Stripe Price IDs (EUR)
-    STRIPE_PRICE_PRO_MONTHLY: z
-      .string()
-      .min(1, 'STRIPE_PRICE_PRO_MONTHLY is required'),
-    STRIPE_PRICE_PRO_YEARLY: z
-      .string()
-      .min(1, 'STRIPE_PRICE_PRO_YEARLY is required'),
-    STRIPE_PRICE_ULTRA_MONTHLY: z
-      .string()
-      .min(1, 'STRIPE_PRICE_ULTRA_MONTHLY is required'),
-    STRIPE_PRICE_ULTRA_YEARLY: z
-      .string()
-      .min(1, 'STRIPE_PRICE_ULTRA_YEARLY is required'),
+    STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
+    STRIPE_PRICE_PRO_YEARLY: z.string().optional(),
+    STRIPE_PRICE_ULTRA_MONTHLY: z.string().optional(),
+    STRIPE_PRICE_ULTRA_YEARLY: z.string().optional(),
 
     // Stripe Price IDs (USD)
-    STRIPE_PRICE_PRO_MONTHLY_USD: z
-      .string()
-      .min(1, 'STRIPE_PRICE_PRO_MONTHLY_USD is required'),
-    STRIPE_PRICE_PRO_YEARLY_USD: z
-      .string()
-      .min(1, 'STRIPE_PRICE_PRO_YEARLY_USD is required'),
-    STRIPE_PRICE_ULTRA_MONTHLY_USD: z
-      .string()
-      .min(1, 'STRIPE_PRICE_ULTRA_MONTHLY_USD is required'),
-    STRIPE_PRICE_ULTRA_YEARLY_USD: z
-      .string()
-      .min(1, 'STRIPE_PRICE_ULTRA_YEARLY_USD is required'),
+    STRIPE_PRICE_PRO_MONTHLY_USD: z.string().optional(),
+    STRIPE_PRICE_PRO_YEARLY_USD: z.string().optional(),
+    STRIPE_PRICE_ULTRA_MONTHLY_USD: z.string().optional(),
+    STRIPE_PRICE_ULTRA_YEARLY_USD: z.string().optional(),
 
     // ===== SMS (Required for SMS notifications) =====
     SMS_PROVIDER: z
@@ -78,9 +61,8 @@ export const env = createEnv({
     SMS_PARTNER_API_KEY: z.string().optional(),
 
     // ===== Google Places (Required for address search) =====
-    GOOGLE_PLACES_API_KEY: z
-      .string()
-      .min(1, 'GOOGLE_PLACES_API_KEY is required'),
+    // Optional: without it the address autocomplete degrades to plain input.
+    GOOGLE_PLACES_API_KEY: z.string().optional(),
     GOOGLE_PLACES_CACHE_TTL_HOURS: z.coerce
       .number()
       .int()
@@ -130,7 +112,8 @@ export const env = createEnv({
     GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional(),
 
     // ===== Cron Jobs (Required) =====
-    CRON_SECRET: z.string().min(1, 'CRON_SECRET is required'),
+    // Optional: cron routes reject requests until it is set.
+    CRON_SECRET: z.string().optional(),
 
     // ===== AI Chat Assistant (Optional) =====
     AI_PROVIDER: z.enum(['anthropic', 'openai', 'google']).optional(),
@@ -356,10 +339,8 @@ export const env = createEnv({
     // ===== Web Push (Optional — VAPID public key for subscribe()) =====
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
 
-    // ===== PostHog Analytics (Required) =====
-    NEXT_PUBLIC_POSTHOG_KEY: z
-      .string()
-      .min(1, 'NEXT_PUBLIC_POSTHOG_KEY is required'),
+    // ===== PostHog Analytics (Optional — analytics disabled when unset) =====
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
     NEXT_PUBLIC_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com'),
     NEXT_PUBLIC_APP_VERSION: z.string().min(1).max(100).optional(),
 

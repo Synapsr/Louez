@@ -49,6 +49,11 @@ const createImageFiles = () => {
     plugins: [
       publicImageAssets({
         setPublicReadAcl: async (key) => {
+          // Standalone (bundled MinIO): per-object ACLs are not supported and
+          // not needed — the bucket stays private and /files streams assets
+          // with the server's credentials.
+          if (isStandaloneMode()) return;
+
           await getStorageClient().send(
             new PutObjectAclCommand({
               ACL: "public-read",

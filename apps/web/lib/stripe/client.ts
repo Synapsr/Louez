@@ -7,6 +7,12 @@ let stripeInstance: Stripe | null = null
 
 export const getStripe = (): Stripe => {
   if (!stripeInstance) {
+    if (!env.STRIPE_SECRET_KEY) {
+      // Callers are expected to gate on isStripeConfigured() first; reaching
+      // this without a key is a bug or an unconfigured instance using a
+      // payment path directly.
+      throw new Error('Stripe is not configured (STRIPE_SECRET_KEY is unset)')
+    }
     stripeInstance = new Stripe(env.STRIPE_SECRET_KEY, {
       apiVersion: '2025-12-15.clover',
       typescript: true,

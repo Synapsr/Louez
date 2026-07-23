@@ -39,10 +39,11 @@ import { env } from '@/env';
 async function handleCron(request: Request) {
   const logger = useLogger();
 
-  // Verify cron secret - required
+  // Verify cron secret. Fail closed when unset — otherwise the template
+  // literal would accept a literal "Bearer undefined" header.
   const authHeader = request.headers.get('authorization');
 
-  if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
+  if (!env.CRON_SECRET || authHeader !== `Bearer ${env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
