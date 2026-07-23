@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 
 import { useInstanceConfig } from '@/components/instance-provider'
 
+import { env } from '@/env'
+
 /**
  * Hook to generate correct storefront URLs based on the routing context.
  *
@@ -62,5 +64,31 @@ export function useStorefrontUrl(storeSlug: string) {
     [storeSlug, isSubdomain, standalone]
   )
 
-  return { getUrl, isSubdomain }
+  /**
+   * Absolute storefront URL for sharing/preview surfaces (copy buttons,
+   * target=_blank links). Standalone: the current origin, no slug. Platform:
+   * the store subdomain — or a path on the current origin during
+   * localhost development, where subdomains do not resolve.
+   */
+  const getAbsoluteUrl = useCallback(
+    (path: string = '/') => {
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`
+      const suffix = normalizedPath === '/' ? '' : normalizedPath
+      const origin = typeof window === 'undefined' ? '' : window.location.origin
+
+      if (standalone) {
+        return `${origin}${suffix}` || '/'
+      }
+
+      const domain = env.NEXT_PUBLIC_APP_DOMAIN
+      if (!domain || domain.includes('localhost') || domain.includes('127.0.0.1')) {
+        return `${origin}/${storeSlug}${suffix}`
+      }
+
+      return `https://${storeSlug}.${domain}${suffix}`
+    },
+    [storeSlug, standalone]
+  )
+
+  return { getUrl, getAbsoluteUrl, isSubdomain }
 }

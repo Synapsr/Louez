@@ -10,6 +10,8 @@ export function mapAuthErrorCodeToMessageKey(
       return 'errors.invalidCredentials';
     case 'USER_ALREADY_EXISTS':
       return 'errors.emailAlreadyExists';
+    case 'REGISTRATION_CLOSED':
+      return 'errors.registrationClosed';
     case 'OAuthAccountNotLinked':
       return 'errors.accountNotLinked';
     case 'OAuthSignin':

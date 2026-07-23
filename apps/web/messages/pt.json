@@ -167,7 +167,8 @@
       "accessDenied": "Acesso negado. Voce nao tem permissao para entrar.",
       "verification": "O link de verificacao e invalido ou expirou.",
       "default": "Ocorreu um erro. Por favor, tente novamente.",
-      "passwordTooShort": "A palavra-passe deve ter pelo menos 8 caracteres."
+      "passwordTooShort": "A palavra-passe deve ter pelo menos 8 caracteres.",
+      "registrationClosed": "As inscrições estão fechadas nesta instância. Peça um convite ao proprietário."
     },
     "referralBanner": "{storeName} convidou-o para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
     "referralBannerGeneric": "🎁 Foi convidado para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
@@ -190,7 +191,8 @@
     "noAccountYet": "Ainda não tem conta?",
     "alreadyHaveAccount": "Já tem uma conta?",
     "usePasswordInstead": "Entrar com uma palavra-passe",
-    "useEmailCodeInstead": "Entrar com um código por e-mail"
+    "useEmailCodeInstead": "Entrar com um código por e-mail",
+    "passwordLoginDescription": "Inicie sessão com o seu e-mail e a sua palavra-passe."
   },
   "invitation": {
     "inviteToJoin": "{name} convida voce para se juntar a equipe",
@@ -6170,7 +6172,8 @@
     "phoneNumberInUse": "Este número já está em uso.",
     "unexpected": "Algo correu mal. Tente novamente.",
     "standaloneSingleStore": "Esta instância aloja apenas uma loja",
-    "emailLoginUnavailable": "O início de sessão por e-mail está indisponível de momento"
+    "emailLoginUnavailable": "O início de sessão por e-mail está indisponível de momento",
+    "stripeNotConfigured": "Os pagamentos online não estão disponíveis: esta instância não tem chaves Stripe configuradas. As reservas funcionam em modo de pedido."
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

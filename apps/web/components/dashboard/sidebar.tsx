@@ -58,9 +58,8 @@ import { StoreSwitcher } from "@/components/dashboard/store-switcher";
 import { ThemeMenuSub } from "@/components/dashboard/theme-toggle";
 import { LanguageMenuSub } from "@/components/ui/language-switcher";
 
+import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 import { cn } from "@/lib/utils";
-
-import { env } from "@/env";
 
 interface StoreWithRole {
   id: string;
@@ -189,6 +188,7 @@ const StoreHeader = ({
   planSlug?: string;
 }) => {
   const t = useTranslations("dashboard.sidebar");
+  const { getAbsoluteUrl } = useStorefrontUrl(storeSlug ?? "");
   return (
     <SidebarHeader className="border-sidebar-border gap-3 border-b px-0">
       <div className="flex min-w-0 items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col group-data-[state=expanded]:pl-4 max-md:pl-4">
@@ -211,7 +211,7 @@ const StoreHeader = ({
             <TooltipTrigger
               render={
                 <Link
-                  href={`https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}`}
+                  href={getAbsoluteUrl()}
                   target="_blank"
                   className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-8 shrink-0 items-center justify-center rounded-md transition-colors group-data-[collapsible=icon]:hidden"
                 />

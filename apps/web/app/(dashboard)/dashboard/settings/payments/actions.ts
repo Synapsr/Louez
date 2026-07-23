@@ -3,6 +3,7 @@
 import { db } from '@louez/db'
 import { stores } from '@louez/db'
 import { users } from '@louez/db'
+import { isStripeConfigured } from '@/lib/plans'
 import { getCurrentStore } from '@/lib/store-context'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -29,6 +30,10 @@ export async function startStripeOnboarding(options?: {
   url?: string
   error?: string
 }> {
+  if (!isStripeConfigured()) {
+    return { error: 'errors.stripeNotConfigured' }
+  }
+
   const store = await getCurrentStore()
 
   if (!store) {

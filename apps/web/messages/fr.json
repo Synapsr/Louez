@@ -167,7 +167,8 @@
       "accessDenied": "Accès refusé. Vous n'avez pas la permission de vous connecter.",
       "verification": "Le lien de vérification est invalide ou a expiré.",
       "default": "Une erreur est survenue. Veuillez réessayer.",
-      "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères."
+      "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères.",
+      "registrationClosed": "Les inscriptions sont fermées sur cette instance. Demandez une invitation au propriétaire."
     },
     "referralBanner": "{storeName} vous a invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
     "referralBannerGeneric": "🎁 Vous avez été invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
@@ -190,7 +191,8 @@
     "noAccountYet": "Pas encore de compte ?",
     "alreadyHaveAccount": "Vous avez déjà un compte ?",
     "usePasswordInstead": "Se connecter avec un mot de passe",
-    "useEmailCodeInstead": "Se connecter avec un code par e-mail"
+    "useEmailCodeInstead": "Se connecter avec un code par e-mail",
+    "passwordLoginDescription": "Connectez-vous avec votre e-mail et votre mot de passe."
   },
   "invitation": {
     "inviteToJoin": "{name} vous invite à rejoindre l'équipe",
@@ -6305,7 +6307,8 @@
     "phoneNumberInUse": "Ce numéro est déjà utilisé.",
     "unexpected": "Une erreur est survenue. Réessayez.",
     "standaloneSingleStore": "Cette instance héberge une seule boutique",
-    "emailLoginUnavailable": "La connexion par e-mail n'est pas disponible pour le moment"
+    "emailLoginUnavailable": "La connexion par e-mail n'est pas disponible pour le moment",
+    "stripeNotConfigured": "Les paiements en ligne ne sont pas disponibles : aucune clé Stripe n'est configurée sur cette instance. Les réservations fonctionnent en mode demande."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

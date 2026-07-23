@@ -32,7 +32,7 @@ export const LoginPasswordStep = ({
           {mode === 'signUp' ? t('createAccount') : t('loginTitle')}
         </h2>
         <p className="text-muted-foreground mx-auto max-w-sm text-sm">
-          {t('loginDescription')}
+          {t('passwordLoginDescription')}
         </p>
       </div>
       <div className="space-y-6">

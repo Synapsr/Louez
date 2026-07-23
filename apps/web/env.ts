@@ -8,6 +8,23 @@ import { env as validationsEnv } from '@louez/validations/env';
 
 import { payAsYouGoConfigSchema } from '@/lib/pay-as-you-go/config';
 
+// NEXT_PUBLIC_* references are inlined at build time, and the published
+// Docker image is built without them — server chunks would otherwise see
+// empty values no matter what the container env says. AUTH_URL is a plain
+// server variable (never inlined) carrying the same origin, so server-side
+// reads fall back to it at runtime. Builds that do receive the public vars
+// (the cloud, local dev) short-circuit on the inlined value.
+const runtimeAppUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL;
+const runtimeAppDomain =
+  process.env.NEXT_PUBLIC_APP_DOMAIN ||
+  (() => {
+    try {
+      return runtimeAppUrl ? new URL(runtimeAppUrl).host : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+
 export const env = createEnv({
   extends: [dbEnv, validationsEnv, authEnv, emailEnv],
 
@@ -458,8 +475,8 @@ export const env = createEnv({
     REFERRAL_CLAWBACK_DAYS: process.env.REFERRAL_CLAWBACK_DAYS,
 
     // Client
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_APP_DOMAIN: process.env.NEXT_PUBLIC_APP_DOMAIN,
+    NEXT_PUBLIC_APP_URL: runtimeAppUrl,
+    NEXT_PUBLIC_APP_DOMAIN: runtimeAppDomain,
     NEXT_PUBLIC_DASHBOARD_SUBDOMAIN:
       process.env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:

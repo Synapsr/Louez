@@ -167,7 +167,8 @@
       "accessDenied": "Accesso negato. Non hai il permesso di accedere.",
       "verification": "Il link di verifica non e valido o e scaduto.",
       "default": "Si e verificato un errore. Riprova.",
-      "passwordTooShort": "La password deve contenere almeno 8 caratteri."
+      "passwordTooShort": "La password deve contenere almeno 8 caratteri.",
+      "registrationClosed": "Le registrazioni sono chiuse su questa istanza. Chiedi un invito al proprietario."
     },
     "referralBanner": "{storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
     "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
@@ -190,7 +191,8 @@
     "noAccountYet": "Non hai ancora un account?",
     "alreadyHaveAccount": "Hai già un account?",
     "usePasswordInstead": "Accedi con una password",
-    "useEmailCodeInstead": "Accedi con un codice via email"
+    "useEmailCodeInstead": "Accedi con un codice via email",
+    "passwordLoginDescription": "Accedi con la tua email e la tua password."
   },
   "invitation": {
     "inviteToJoin": "{name} ti invita a unirti al team",
@@ -6170,7 +6172,8 @@
     "phoneNumberInUse": "Questo numero è già in uso.",
     "unexpected": "Qualcosa è andato storto. Riprova.",
     "standaloneSingleStore": "Questa istanza ospita un solo negozio",
-    "emailLoginUnavailable": "L'accesso via email non è al momento disponibile"
+    "emailLoginUnavailable": "L'accesso via email non è al momento disponibile",
+    "stripeNotConfigured": "I pagamenti online non sono disponibili: questa istanza non ha chiavi Stripe configurate. Le prenotazioni funzionano in modalità richiesta."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

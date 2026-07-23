@@ -167,7 +167,8 @@
       "accessDenied": "Acceso denegado. No tiene permiso para iniciar sesion.",
       "verification": "El enlace de verificacion es invalido o ha expirado.",
       "default": "Ocurrio un error. Por favor, intente de nuevo.",
-      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres."
+      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+      "registrationClosed": "El registro está cerrado en esta instancia. Pide una invitación al propietario."
     },
     "referralBanner": "{storeName} te ha invitado a Louez — crea tu tienda y empieza con {count} reservas gratis.",
     "referralBannerGeneric": "🎁 Has sido invitado a Louez — crea tu tienda y empieza con {count} reservas gratis.",
@@ -190,7 +191,8 @@
     "noAccountYet": "¿Aún no tienes cuenta?",
     "alreadyHaveAccount": "¿Ya tienes una cuenta?",
     "usePasswordInstead": "Iniciar sesión con contraseña",
-    "useEmailCodeInstead": "Iniciar sesión con un código por correo"
+    "useEmailCodeInstead": "Iniciar sesión con un código por correo",
+    "passwordLoginDescription": "Inicia sesión con tu correo y tu contraseña."
   },
   "invitation": {
     "inviteToJoin": "{name} le invita a unirse al equipo",
@@ -6177,7 +6179,8 @@
     "phoneNumberInUse": "Este número ya está en uso.",
     "unexpected": "Algo salió mal. Inténtalo de nuevo.",
     "standaloneSingleStore": "Esta instancia aloja una sola tienda",
-    "emailLoginUnavailable": "El inicio de sesión por correo no está disponible por el momento"
+    "emailLoginUnavailable": "El inicio de sesión por correo no está disponible por el momento",
+    "stripeNotConfigured": "Los pagos en línea no están disponibles: esta instancia no tiene claves de Stripe configuradas. Las reservas funcionan en modo solicitud."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

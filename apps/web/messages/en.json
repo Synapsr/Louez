@@ -167,7 +167,8 @@
       "accessDenied": "Access denied. You don't have permission to sign in.",
       "verification": "The verification link is invalid or has expired.",
       "default": "An error occurred. Please try again.",
-      "passwordTooShort": "Password must be at least 8 characters."
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "registrationClosed": "Registration is closed on this instance. Ask the owner for an invitation."
     },
     "referralBanner": "{storeName} invited you to Louez — create your store and start with {count} free reservations.",
     "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations.",
@@ -190,7 +191,8 @@
     "noAccountYet": "No account yet?",
     "alreadyHaveAccount": "Already have an account?",
     "usePasswordInstead": "Sign in with a password instead",
-    "useEmailCodeInstead": "Sign in with an email code instead"
+    "useEmailCodeInstead": "Sign in with an email code instead",
+    "passwordLoginDescription": "Sign in with your email and password."
   },
   "invitation": {
     "inviteToJoin": "{name} invites you to join the team",
@@ -6305,7 +6307,8 @@
     "phoneNumberInUse": "This number is already in use.",
     "unexpected": "Something went wrong. Please try again.",
     "standaloneSingleStore": "This instance hosts a single store",
-    "emailLoginUnavailable": "Email sign-in is unavailable at the moment"
+    "emailLoginUnavailable": "Email sign-in is unavailable at the moment",
+    "stripeNotConfigured": "Online payments are not available: this instance has no Stripe keys configured. Reservations run in request mode."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

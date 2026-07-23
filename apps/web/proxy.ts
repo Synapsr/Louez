@@ -114,9 +114,10 @@ function createInternalRewriteUrl(request: NextRequest, pathname: string) {
 
 // The middleware cannot query the database, so standalone mode resolves the
 // instance's storefront slug through an internal API route over loopback.
-// A found slug is cached briefly; a missing store is never cached, so the
-// root flips to the storefront on the first request after onboarding.
-const STANDALONE_SLUG_TTL_MS = 60_000;
+// A found slug is cached briefly (the TTL also bounds how long a renamed
+// slug serves 404s); a missing store is never cached, so the root flips to
+// the storefront on the first request after onboarding.
+const STANDALONE_SLUG_TTL_MS = 15_000;
 let standaloneSlugCache: { slug: string; expiresAt: number } | null = null;
 
 async function getStandaloneStoreSlug(): Promise<string | null> {

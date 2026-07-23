@@ -2,8 +2,10 @@ import { headers } from 'next/headers'
 
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { APIError } from 'better-auth/api'
 import { toNextJsHandler } from 'better-auth/next-js'
 import { emailOTP, magicLink } from 'better-auth/plugins'
+import { and, eq, gt } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { render } from '@react-email/render'
 
@@ -166,6 +168,39 @@ export const authInstance = betterAuth({
   ],
 
   databaseHooks: {
+    user: {
+      create: {
+        // Standalone instances are single-team: once the first account
+        // exists (the operator, created right after boot), open registration
+        // closes — a stranger reaching a deployed instance must not be able
+        // to register and claim the store slot. Invited teammates keep
+        // working: a pending, unexpired store invitation for the email
+        // reopens the door. Applies to every provider, Google included.
+        before: async (user) => {
+          if (!isStandaloneMode) return
+
+          const existingUser = await db.query.users.findFirst({
+            columns: { id: true },
+          })
+          if (!existingUser) return
+
+          const invitation = await db.query.storeInvitations.findFirst({
+            columns: { id: true },
+            where: and(
+              eq(schema.storeInvitations.email, user.email.toLowerCase()),
+              eq(schema.storeInvitations.status, 'pending'),
+              gt(schema.storeInvitations.expiresAt, new Date()),
+            ),
+          })
+          if (!invitation) {
+            throw new APIError('FORBIDDEN', {
+              message: 'Registration is closed on this instance',
+              code: 'REGISTRATION_CLOSED',
+            })
+          }
+        },
+      },
+    },
     session: {
       create: {
         after: async (session) => {

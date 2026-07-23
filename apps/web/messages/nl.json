@@ -167,7 +167,8 @@
       "accessDenied": "Toegang geweigerd. U heeft geen toestemming om in te loggen.",
       "verification": "De verificatielink is ongeldig of verlopen.",
       "default": "Er is een fout opgetreden. Probeer het opnieuw.",
-      "passwordTooShort": "Het wachtwoord moet minimaal 8 tekens bevatten."
+      "passwordTooShort": "Het wachtwoord moet minimaal 8 tekens bevatten.",
+      "registrationClosed": "Registratie is gesloten op deze instantie. Vraag de eigenaar om een uitnodiging."
     },
     "referralBanner": "{storeName} heeft je uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
     "referralBannerGeneric": "🎁 Je bent uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
@@ -190,7 +191,8 @@
     "noAccountYet": "Nog geen account?",
     "alreadyHaveAccount": "Heb je al een account?",
     "usePasswordInstead": "Inloggen met een wachtwoord",
-    "useEmailCodeInstead": "Inloggen met een e-mailcode"
+    "useEmailCodeInstead": "Inloggen met een e-mailcode",
+    "passwordLoginDescription": "Log in met je e-mailadres en wachtwoord."
   },
   "invitation": {
     "inviteToJoin": "{name} nodigt u uit om lid te worden van het team",
@@ -6170,7 +6172,8 @@
     "phoneNumberInUse": "Dit nummer is al in gebruik.",
     "unexpected": "Er ging iets mis. Probeer opnieuw.",
     "standaloneSingleStore": "Deze instantie host één winkel",
-    "emailLoginUnavailable": "Inloggen via e-mail is momenteel niet beschikbaar"
+    "emailLoginUnavailable": "Inloggen via e-mail is momenteel niet beschikbaar",
+    "stripeNotConfigured": "Online betalingen zijn niet beschikbaar: deze instantie heeft geen Stripe-sleutels geconfigureerd. Reserveringen verlopen in aanvraagmodus."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

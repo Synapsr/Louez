@@ -167,7 +167,8 @@
       "accessDenied": "Odmowa dostępu. Nie masz uprawnień do logowania.",
       "verification": "Link weryfikacyjny jest nieprawidłowy lub wygasł.",
       "default": "Wystąpił błąd. Spróbuj ponownie.",
-      "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków."
+      "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
+      "registrationClosed": "Rejestracja na tej instancji jest zamknięta. Poproś właściciela o zaproszenie."
     },
     "referralBanner": "{storeName} zaprosił Cię do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
     "referralBannerGeneric": "🎁 Zostałeś zaproszony do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
@@ -190,7 +191,8 @@
     "noAccountYet": "Nie masz jeszcze konta?",
     "alreadyHaveAccount": "Masz już konto?",
     "usePasswordInstead": "Zaloguj się hasłem",
-    "useEmailCodeInstead": "Zaloguj się kodem e-mail"
+    "useEmailCodeInstead": "Zaloguj się kodem e-mail",
+    "passwordLoginDescription": "Zaloguj się za pomocą adresu e-mail i hasła."
   },
   "invitation": {
     "inviteToJoin": "{name} zaprasza Cię do zespołu",
@@ -6170,7 +6172,8 @@
     "phoneNumberInUse": "Ten numer jest już używany.",
     "unexpected": "Coś poszło nie tak. Spróbuj ponownie.",
     "standaloneSingleStore": "Ta instancja obsługuje tylko jeden sklep",
-    "emailLoginUnavailable": "Logowanie przez e-mail jest obecnie niedostępne"
+    "emailLoginUnavailable": "Logowanie przez e-mail jest obecnie niedostępne",
+    "stripeNotConfigured": "Płatności online są niedostępne: ta instancja nie ma skonfigurowanych kluczy Stripe. Rezerwacje działają w trybie zapytania."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

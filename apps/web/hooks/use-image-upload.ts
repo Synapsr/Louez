@@ -45,7 +45,10 @@ export const useImageUpload = (kind: ImageUploadKind) => {
     async (keyOrUrl: string | null | undefined) => {
       if (!keyOrUrl) return;
 
-      const key = keyOrUrl.includes("://") ? getImageKeyFromUrl(keyOrUrl) : keyOrUrl;
+      const key =
+        keyOrUrl.includes("://") || keyOrUrl.startsWith("/")
+          ? getImageKeyFromUrl(keyOrUrl)
+          : keyOrUrl;
       if (!key) return;
 
       await files.delete(key);
