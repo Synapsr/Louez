@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { useDashboardBreadcrumbs } from './dashboard-breadcrumbs-context';
 
 const breadcrumbRoutes = [
+  { href: '/dashboard/ai-assistant', key: 'aiAssistant' },
   { href: '/dashboard/products/new', key: 'productsNew' },
   { href: '/dashboard/products', key: 'products' },
   { href: '/dashboard/reservations/new', key: 'reservationsNew' },

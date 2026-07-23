@@ -20,6 +20,8 @@ export default async function NewProductPage() {
     orderBy: [categories.order],
   })
 
+  const showAiContext = store.aiAdvisorSettings?.enabled === true
+
   return (
     <div className="space-y-6">
       <div>
@@ -32,6 +34,7 @@ export default async function NewProductPage() {
       <ProductForm
         categories={categoriesList}
         storeTaxSettings={store.settings?.tax}
+        showAiContext={showAiContext}
       />
     </div>
   )

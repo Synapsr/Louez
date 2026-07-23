@@ -15,6 +15,7 @@
 import { db } from '@louez/db'
 import { subscriptions, storeMembers, stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
+import { getStorefrontUrl } from '@/lib/storefront-url'
 import { env } from '@/env'
 
 // ---------------------------------------------------------------------------
@@ -165,9 +166,7 @@ function planLabel(slug: string): string {
 
 /** Build a Discord markdown link to a store's storefront. */
 function storeLink(name: string, slug: string): string {
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN
-  const protocol = domain.includes('localhost') ? 'http' : 'https'
-  return `[${name}](${protocol}://${slug}.${domain})`
+  return `[${name}](${getStorefrontUrl(slug)})`
 }
 
 /**

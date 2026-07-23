@@ -419,6 +419,9 @@ export interface PlanFeatures {
   maxCustomers: number | null; // null = unlimited
   maxCollaborators: number | null; // null = unlimited, 0 = none
   maxSmsPerMonth: number | null; // null = unlimited, 0 = none
+  // Monthly INCLUDED AI advisor credits (null = unlimited, 0 = none). Value is
+  // injected from env at runtime (getPlans), never a hardcoded commercial number.
+  aiCreditsPerMonth: number | null;
 
   // Features
   customDomain: boolean;
@@ -430,6 +433,9 @@ export interface PlanFeatures {
   onlinePayment: boolean;
   customerPortal: boolean;
   reviewBooster: boolean;
+  aiAdvisor: boolean;
+  /** AI phone receptionist (inbound voice channel over the same AI agent). */
+  aiPhone: boolean;
   phoneSupport: boolean;
   dedicatedManager: boolean;
 }
@@ -472,6 +478,103 @@ export interface ReviewBoosterSettings {
   smsDelayHours: number;
   // Custom template
   template?: ReviewBoosterTemplate;
+}
+
+// ============================================================================
+// AI Advisor (storefront customer-facing assistant)
+// ============================================================================
+
+/**
+ * How the advisor participates in checkout:
+ * - 'optional': available in the widget, checkout unchanged
+ * - 'recommended': non-blocking suggestion shown at checkout
+ * - 'required': checkout is blocked until the advisor validates the conversation
+ */
+export type AiAdvisorMode = 'optional' | 'recommended' | 'required';
+
+export interface AiAdvisorSettings {
+  /** Whether the advisor widget is shown on the storefront */
+  enabled: boolean;
+  /** How the advisor participates in checkout */
+  mode: AiAdvisorMode;
+  /**
+   * Free-text store-level context read by the advisor — what the owner would
+   * tell a new employee (constraints, verifications to run, tone, policies).
+   */
+  storeContext: string;
+  /** First assistant bubble shown when the widget opens (falls back to i18n) */
+  welcomeMessage?: string;
+  /** Widget title (falls back to i18n) */
+  displayName?: string;
+}
+
+/**
+ * Cart snapshot frozen when the advisor validates a conversation
+ * (required mode). Checkout only passes when the reservation matches it —
+ * same products, quantities and rental period.
+ */
+export interface AdvisorValidatedCart {
+  items: { productId: string; quantity: number }[];
+  startDate: string | null;
+  endDate: string | null;
+}
+
+// ============================================================================
+// AI Phone Receptionist (inbound voice channel)
+// ============================================================================
+
+/**
+ * When the AI receptionist answers:
+ * - 'always': the AI answers every inbound call.
+ * - 'after_hours': during the store's business hours the call is transferred
+ *   to `transferNumber` (if set), otherwise the AI answers. Outside business
+ *   hours the AI always answers. Lets the AI act as an overflow / after-hours
+ *   line without changing how the merchant handles calls during opening hours.
+ */
+export type AiPhoneAnswerMode = 'always' | 'after_hours';
+
+/**
+ * Per-store configuration of the AI phone receptionist. Mirrors
+ * `AiAdvisorSettings`: the feature is a NEW voice channel in front of the same
+ * AI agent, so the settings that differ from the text advisor live here.
+ * The whole feature stays invisible unless the operator configured a voice
+ * provider AND the store opted in (see isPhoneReceptionistActiveForStore).
+ */
+export interface AiPhoneSettings {
+  /** Whether the store opted the receptionist in. */
+  enabled: boolean;
+  /**
+   * BCP 47-ish locale the receptionist speaks (e.g. 'fr', 'en'). Independent
+   * from the storefront locale — a phone caller has no browser session, so the
+   * language is configured, not detected.
+   */
+  language: string;
+  /**
+   * Whether the receptionist may create (pending) reservations, or only inform
+   * about products, prices and availability. Mirrors the advisor's role split.
+   */
+  canTakeReservations: boolean;
+  /** When the AI answers (see AiPhoneAnswerMode). */
+  answerMode: AiPhoneAnswerMode;
+  /**
+   * Extra spoken sentence appended after the MANDATORY AI-disclosure greeting
+   * (EU AI Act art. 50). Optional — a neutral greeting is used when empty.
+   */
+  greeting?: string;
+  /**
+   * Human fallback number in E.164 (e.g. '+33123456789') used for
+   * 'after_hours' transfer and for the caller's "talk to a human" request.
+   * When empty, transfer is unavailable and the AI takes a message instead.
+   */
+  transferNumber?: string;
+  /** Provider-specific TTS voice id/name. Falls back to a provider default. */
+  voice?: string;
+  /**
+   * Opt-in call recording. When true, the caller is told at pickup that the
+   * call is recorded (GDPR/CNIL) and the merchant can replay it from the
+   * dashboard. Defaults to false — recording is never on without consent.
+   */
+  recordCalls?: boolean;
 }
 
 // ============================================================================

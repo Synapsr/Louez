@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   date,
   decimal,
@@ -18,6 +19,9 @@ import {
 import { nanoid } from 'nanoid';
 
 import type {
+  AdvisorValidatedCart,
+  AiAdvisorSettings,
+  AiPhoneSettings,
   BookingAttributeAxis,
   CustomerNotificationSettings,
   EmailSettings,
@@ -527,6 +531,14 @@ export const stores = mysqlTable(
       'review_booster_settings',
     ).$type<ReviewBoosterSettings>(),
 
+    // AI Advisor settings (storefront customer-facing assistant)
+    aiAdvisorSettings: json(
+      'ai_advisor_settings',
+    ).$type<AiAdvisorSettings>(),
+
+    // AI Phone receptionist settings (inbound voice channel)
+    aiPhoneSettings: json('ai_phone_settings').$type<AiPhoneSettings>(),
+
     // Notification settings (admin notifications)
     notificationSettings: json(
       'notification_settings',
@@ -796,6 +808,10 @@ export const products = mysqlTable(
     // Information
     name: varchar('name', { length: 255 }).notNull(),
     description: text('description'),
+
+    // Free-text context read by the storefront AI advisor (constraints,
+    // ideal use cases, requirements). Never rendered on the storefront.
+    aiContext: text('ai_context'),
 
     // Images (array of URLs)
     images: json('images').$type<string[]>().default([]),
@@ -3165,3 +3181,362 @@ export const aiChatMessagesRelations = relations(aiChatMessages, ({ one }) => ({
     references: [aiChats.id],
   }),
 }));
+
+// ============================================================================
+// AI Advisor (storefront customer-facing assistant)
+// ============================================================================
+
+export const aiAdvisorConversations = mysqlTable(
+  'ai_advisor_conversations',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    // Linked when a logged-in customer chats; set null if the customer is
+    // deleted (conversation is kept, anonymized).
+    customerId: varchar('customer_id', { length: 21 }),
+    // Set inside the checkout transaction when the conversation converts.
+    reservationId: varchar('reservation_id', { length: 21 }),
+
+    // Set by the record_qualification tool once the advisor has verified the
+    // customer's constraints against the cart.
+    validatedAt: timestamp('validated_at', { mode: 'date' }),
+    // Cart snapshot (items, quantities, rental period) frozen at validation
+    // time, server-derived. Checkout in 'required' mode rejects reservations
+    // that do not match it exactly.
+    validatedCart: json('validated_cart').$type<AdvisorValidatedCart>(),
+    // Facts gathered by the advisor (e.g. vehicle model, licence type).
+    collectedData: json('collected_data').$type<Record<string, string>>(),
+
+    // Accrued AI-credit consumption for this conversation, in micro-credits
+    // (1 credit = 1_000_000). Capped at 1 credit so a long conversation never
+    // costs more than one credit. Only used when the credit layer is enabled.
+    accruedCreditsMicro: bigint('accrued_credits_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+
+    locale: varchar('locale', { length: 10 }),
+
+    // Channel the conversation happened on. 'web' = storefront chat widget,
+    // 'phone' = inbound AI receptionist call. Defaults to 'web' so every
+    // existing row keeps its meaning after the migration.
+    channel: mysqlEnum('channel', ['web', 'phone']).notNull().default('web'),
+    // Phone-only metadata (null for web conversations).
+    callerPhone: varchar('caller_phone', { length: 32 }),
+    providerCallId: varchar('provider_call_id', { length: 64 }),
+    durationSeconds: int('duration_seconds'),
+    // Call recording (opt-in per store). Only the provider recording id is
+    // stored, never a URL — playback is proxied through the app with the
+    // provider credentials, so no recording is ever publicly reachable.
+    recordingSid: varchar('recording_sid', { length: 64 }),
+    recordingDurationSeconds: int('recording_duration_seconds'),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeCreatedIdx: index('ai_advisor_conversations_store_created_idx').on(
+      table.storeId,
+      table.createdAt,
+    ),
+    customerIdx: index('ai_advisor_conversations_customer_idx').on(
+      table.customerId,
+    ),
+    // Phone status-callback lookup: resolve a call by its provider id.
+    providerCallIdx: index('ai_advisor_conversations_provider_call_idx').on(
+      table.providerCallId,
+    ),
+    // One conversation per reservation (MySQL allows multiple NULLs).
+    reservationUnique: unique('ai_advisor_conversations_reservation_unique').on(
+      table.reservationId,
+    ),
+  }),
+);
+
+export const aiAdvisorMessages = mysqlTable(
+  'ai_advisor_messages',
+  {
+    id: id(),
+    conversationId: varchar('conversation_id', { length: 21 }).notNull(),
+    // Denormalized from the conversation so per-store rate limiting is a
+    // single indexed count on the hot path (no join per chat request).
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    role: mysqlEnum('role', ['user', 'assistant', 'system', 'tool']).notNull(),
+    content: longtext('content'),
+    toolInvocations: json('tool_invocations').$type<unknown[]>(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    conversationCreatedIdx: index(
+      'ai_advisor_messages_conversation_created_idx',
+    ).on(table.conversationId, table.createdAt),
+    storeCreatedIdx: index('ai_advisor_messages_store_created_idx').on(
+      table.storeId,
+      table.createdAt,
+    ),
+  }),
+);
+
+export const aiAdvisorConversationsRelations = relations(
+  aiAdvisorConversations,
+  ({ one, many }) => ({
+    store: one(stores, {
+      fields: [aiAdvisorConversations.storeId],
+      references: [stores.id],
+    }),
+    customer: one(customers, {
+      fields: [aiAdvisorConversations.customerId],
+      references: [customers.id],
+    }),
+    reservation: one(reservations, {
+      fields: [aiAdvisorConversations.reservationId],
+      references: [reservations.id],
+    }),
+    messages: many(aiAdvisorMessages),
+  }),
+);
+
+export const aiAdvisorMessagesRelations = relations(
+  aiAdvisorMessages,
+  ({ one }) => ({
+    conversation: one(aiAdvisorConversations, {
+      fields: [aiAdvisorMessages.conversationId],
+      references: [aiAdvisorConversations.id],
+    }),
+  }),
+);
+
+// ============================================================================
+// AI advisor credits — prepaid balance + priced consumption ledger
+// Micro-credit unit: 1 credit = 1_000_000 micro-credits (integer, no float drift).
+// ============================================================================
+
+/**
+ * Prepaid AI-credit balance per store (never-resetting). Mirrors `sms_credits`.
+ * The monthly INCLUDED allowance (per plan) is separate and DERIVED from the
+ * debit ledger, not stored here. Off-session auto-top-up config lives here too.
+ */
+export const aiCredits = mysqlTable(
+  'ai_credits',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull().unique(),
+
+    balanceMicro: bigint('balance_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    totalGrantedMicro: bigint('total_granted_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    totalPurchasedMicro: bigint('total_purchased_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    totalUsedMicro: bigint('total_used_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+
+    // Off-session auto-top-up, configured by the merchant.
+    autoTopupEnabled: boolean('auto_topup_enabled').notNull().default(false),
+    autoTopupThresholdMicro: bigint('auto_topup_threshold_micro', {
+      mode: 'number',
+    }),
+    autoTopupCredits: int('auto_topup_credits'),
+    autoTopupPriceCents: int('auto_topup_price_cents'),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('ai_credits_store_idx').on(table.storeId),
+  }),
+);
+
+export const aiCreditTransactionType = mysqlEnum('ai_credit_txn_type', [
+  'grant', // free welcome allowance
+  'topup', // one-off Stripe purchase
+  'auto_topup', // off-session auto recharge
+  'adjustment', // manual admin correction
+]);
+
+export const aiCreditTransactionStatus = mysqlEnum('ai_credit_txn_status', [
+  'pending',
+  'completed',
+  'failed',
+]);
+
+/**
+ * Ledger of credit ACQUISITIONS (grants + purchases). Mirrors
+ * `sms_topup_transactions`, with a UNIQUE `dedupKey` for exactly-once webhook
+ * crediting (`checkout:<sessionId>` / `invoice:<id>` / `grant:<storeId>`).
+ */
+export const aiCreditTransactions = mysqlTable(
+  'ai_credit_transactions',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    type: aiCreditTransactionType.notNull(),
+
+    creditsMicro: bigint('credits_micro', { mode: 'number' }).notNull(),
+    amountCents: int('amount_cents').notNull().default(0),
+    currency: varchar('currency', { length: 3 }).notNull().default('eur'),
+
+    dedupKey: varchar('dedup_key', { length: 120 }).unique(),
+
+    stripeSessionId: varchar('stripe_session_id', { length: 255 }),
+    stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
+    stripeInvoiceId: varchar('stripe_invoice_id', { length: 255 }),
+
+    status: aiCreditTransactionStatus.default('pending').notNull(),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { mode: 'date' }),
+  },
+  (table) => ({
+    storeIdx: index('ai_credit_txn_store_idx').on(table.storeId),
+    statusIdx: index('ai_credit_txn_status_idx').on(table.status),
+    stripeSessionIdx: index('ai_credit_txn_stripe_session_idx').on(
+      table.stripeSessionId,
+    ),
+  }),
+);
+
+/**
+ * Append-only ledger of credit CONSUMPTION — one row per model run. Idempotent
+ * via `dedupKey` (`run:<assistantMessageId>`); amounts are frozen at write time.
+ * `costMicroUsd` records the real token cost for audit; the debit is split into
+ * `fromMonthlyMicro` (plan's included allowance) and `fromPrepaidMicro` (prepaid
+ * balance) so monthly usage this period = SUM(fromMonthlyMicro).
+ */
+export const aiCreditDebits = mysqlTable(
+  'ai_credit_debits',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    // Null for debits not tied to a conversation (e.g. phone-number rental).
+    conversationId: varchar('conversation_id', { length: 21 }),
+    // What the debit pays for: AI usage (tokens/audio) or the monthly rental of
+    // the store's provisioned phone number. Keeps cost-vs-billed reporting
+    // trivially segmentable per revenue line.
+    kind: mysqlEnum('kind', ['usage', 'number_rental'])
+      .notNull()
+      .default('usage'),
+
+    dedupKey: varchar('dedup_key', { length: 120 }).notNull().unique(),
+
+    inputTokens: int('input_tokens').notNull().default(0),
+    outputTokens: int('output_tokens').notNull().default(0),
+    cachedInputTokens: int('cached_input_tokens').notNull().default(0),
+    // Voice channel only: billed audio duration for this debit (telephony +
+    // STT + TTS). 0 for text-advisor debits. Priced via AI_VOICE_AUDIO_USD_PER_MIN.
+    audioSeconds: int('audio_seconds').notNull().default(0),
+    // Frozen real cost in micro-USD (1 USD = 1_000_000), for audit/reporting.
+    costMicroUsd: bigint('cost_micro_usd', { mode: 'number' })
+      .notNull()
+      .default(0),
+    // Total credits debited (micro-credits), after the per-conversation cap.
+    debitedMicro: bigint('debited_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    // Split of `debitedMicro` across the two pockets.
+    fromMonthlyMicro: bigint('from_monthly_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+    fromPrepaidMicro: bigint('from_prepaid_micro', { mode: 'number' })
+      .notNull()
+      .default(0),
+
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Hot path: sum a store's monthly-pocket usage within the period.
+    storeCreatedIdx: index('ai_credit_debits_store_created_idx').on(
+      table.storeId,
+      table.createdAt,
+    ),
+    conversationIdx: index('ai_credit_debits_conversation_idx').on(
+      table.conversationId,
+    ),
+  }),
+);
+
+export const aiCreditsRelations = relations(aiCredits, ({ one }) => ({
+  store: one(stores, {
+    fields: [aiCredits.storeId],
+    references: [stores.id],
+  }),
+}));
+
+export const aiCreditTransactionsRelations = relations(
+  aiCreditTransactions,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [aiCreditTransactions.storeId],
+      references: [stores.id],
+    }),
+  }),
+);
+
+export const aiCreditDebitsRelations = relations(
+  aiCreditDebits,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [aiCreditDebits.storeId],
+      references: [stores.id],
+    }),
+    conversation: one(aiAdvisorConversations, {
+      fields: [aiCreditDebits.conversationId],
+      references: [aiAdvisorConversations.id],
+    }),
+  }),
+);
+
+// ============================================================================
+// AI Phone receptionist — inbound number binding
+// One phone number → one store. Inbound calls resolve the store by the called
+// (`To`) number. The number is provisioned with the telephony provider and its
+// voice webhook is pointed at the app; the merchant registers the E.164 here.
+// ============================================================================
+
+export const storePhoneNumbers = mysqlTable(
+  'store_phone_numbers',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    // E.164, e.g. '+33123456789'. Globally unique so an inbound `To` maps to
+    // exactly one store.
+    e164: varchar('e164', { length: 32 }).notNull().unique(),
+    // Telephony provider that owns the number (matches VOICE_PROVIDER).
+    provider: varchar('provider', { length: 20 }).notNull().default('twilio'),
+    // Provider-side identifier (e.g. Twilio phone-number SID), when known.
+    providerNumberId: varchar('provider_number_id', { length: 64 }),
+    status: mysqlEnum('status', ['active', 'pending', 'released'])
+      .notNull()
+      .default('active'),
+    // Monthly rental billing cycle (provisioned numbers only; null for linked
+    // numbers, which the merchant pays for directly). The renewal job debits
+    // the rental in AI credits each cycle and advances this anchor.
+    nextRenewalAt: timestamp('next_renewal_at', { mode: 'date' }),
+    // Pre-renewal low-balance warning sent for the current cycle (reset on a
+    // successful renewal).
+    renewalWarnedAt: timestamp('renewal_warned_at', { mode: 'date' }),
+    // First failed renewal attempt of the current cycle — starts the grace
+    // window at the end of which the number is released.
+    renewalFailedAt: timestamp('renewal_failed_at', { mode: 'date' }),
+    // Mid-grace reminder sent (reset on a successful renewal).
+    renewalRemindedAt: timestamp('renewal_reminded_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('store_phone_numbers_store_idx').on(table.storeId),
+  }),
+);
+
+export const storePhoneNumbersRelations = relations(
+  storePhoneNumbers,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [storePhoneNumbers.storeId],
+      references: [stores.id],
+    }),
+  }),
+);

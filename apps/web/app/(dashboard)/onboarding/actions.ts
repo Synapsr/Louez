@@ -12,10 +12,13 @@ import { type StoreInfoInput, storeInfoSchema } from "@louez/validations";
 import { defaultBusinessHours } from "@louez/validations";
 
 import { auth } from "@/lib/auth";
+import { creditAiCredits, getDefaultAiCredits } from "@/lib/ai/advisor/credits";
+import { isStandaloneMode } from "@/lib/deployment";
 import {
   getDefaultFreeReservations,
   getDefaultPayAsYouGoConfigSnapshot,
 } from "@/lib/pay-as-you-go/defaults";
+import { areAiCreditsEnabled } from "@/lib/plans";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { captureReferralServerEvent } from "@/lib/referral/analytics";
@@ -405,6 +408,20 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       );
     }
   } else {
+    // Standalone instances host exactly one store. Creating the first store
+    // (or finishing an incomplete onboarding, handled above) stays allowed;
+    // only a SECOND store is denied — checked at the instance level, since
+    // platform admins legitimately see stores they do not own.
+    if (isStandaloneMode()) {
+      const completedStore = await db.query.stores.findFirst({
+        columns: { id: true },
+        where: eq(stores.onboardingCompleted, true),
+      });
+      if (completedStore) {
+        return { error: "errors.standaloneSingleStore" };
+      }
+    }
+
     // Resolve referral code from cookie (set during login with ?ref= param)
     const pendingReferral = await resolvePendingReferralAttribution({
       currentUserId: session.user.id,
@@ -478,6 +495,17 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
         ? getReferralProgramConfig().referredRewardFreeReservations
         : getDefaultFreeReservations(),
     });
+
+    // Welcome AI advisor credits (cloud commercial layer). Idempotent per store
+    // (dedup key) and inert unless the credit layer is enabled.
+    if (areAiCreditsEnabled()) {
+      await creditAiCredits({
+        storeId: newStore.id,
+        credits: getDefaultAiCredits(),
+        type: "grant",
+        dedupKey: `grant:${newStore.id}`,
+      });
+    }
 
     await trackReferralAttributionResolved({
       userId: session.user.id,

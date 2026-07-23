@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from 'react';
 
 import type {
+  AiAdvisorMode,
   DeliverySettings,
   LegMethod,
   TaxSettings,
@@ -28,6 +29,8 @@ export interface CheckoutFormProps {
     mode: 'required' | 'optional' | 'no_public';
   };
   hasActivePromoCodes?: boolean;
+  /** AI advisor checkout participation; null when the advisor is inactive. */
+  advisorMode?: AiAdvisorMode | null;
 }
 
 export interface CheckoutLocationOption {

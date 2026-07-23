@@ -3,7 +3,13 @@ import { z } from 'zod';
 
 export const env = createEnv({
   server: {
-    S3_PUBLIC_URL: z.url('S3_PUBLIC_URL must be a valid URL'),
+    // Absolute URL of the public bucket, or an absolute path ("/files") when
+    // assets are served same-origin by the app (standalone deployments).
+    S3_PUBLIC_URL: z
+      .string()
+      .refine((value) => value.startsWith('/') || URL.canParse(value), {
+        message: 'S3_PUBLIC_URL must be an absolute URL or an absolute path',
+      }),
     NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development'),

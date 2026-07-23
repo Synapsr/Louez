@@ -166,7 +166,9 @@
       "oauthError": "Ocorreu um erro ao entrar. Por favor, tente novamente.",
       "accessDenied": "Acesso negado. Voce nao tem permissao para entrar.",
       "verification": "O link de verificacao e invalido ou expirou.",
-      "default": "Ocorreu um erro. Por favor, tente novamente."
+      "default": "Ocorreu um erro. Por favor, tente novamente.",
+      "passwordTooShort": "A palavra-passe deve ter pelo menos 8 caracteres.",
+      "registrationClosed": "As inscrições estão fechadas nesta instância. Peça um convite ao proprietário."
     },
     "referralBanner": "{storeName} convidou-o para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
     "referralBannerGeneric": "🎁 Foi convidado para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
@@ -181,7 +183,16 @@
     "perk1": "As suas primeiras 15 reservas grátis",
     "perk2": "Máx. 1 € por reserva, decrescente com o volume, 0% de comissão, sem assinatura",
     "perk3": "A sua loja online pronta em 5 minutos",
-    "visitShop": "Ver a loja"
+    "visitShop": "Ver a loja",
+    "name": "Nome",
+    "namePlaceholder": "O seu nome",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Criar uma conta",
+    "noAccountYet": "Ainda não tem conta?",
+    "alreadyHaveAccount": "Já tem uma conta?",
+    "usePasswordInstead": "Entrar com uma palavra-passe",
+    "useEmailCodeInstead": "Entrar com um código por e-mail",
+    "passwordLoginDescription": "Inicie sessão com o seu e-mail e a sua palavra-passe."
   },
   "invitation": {
     "inviteToJoin": "{name} convida voce para se juntar a equipe",
@@ -212,6 +223,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "Assistente IA",
+        "subtitle": "A sua loja aconselha, responde e reserva — automaticamente",
+        "credits": "{count} créditos",
+        "creditsUnlimited": "Créditos ilimitados",
+        "recharge": "Recarregar"
+      },
+      "hero": {
+        "eyebrow": "Assistente IA",
+        "title": "A sua loja responde, aconselha e reserva, mesmo quando não está",
+        "subtitle": "Ative o consultor online e o agente de voz: os seus clientes obtêm respostas imediatas e você recebe reservas qualificadas.",
+        "activate": "Ativar",
+        "upgrade": "Mudar para um plano superior",
+        "upgradeHint": "O Assistente IA está incluído a partir do plano Pro.",
+        "advisor": {
+          "title": "Consultor online",
+          "b1": "Responde às perguntas dos seus clientes sobre a loja 24/7",
+          "b2": "Recomenda os produtos certos e verifica a disponibilidade",
+          "b3": "Transforma visitantes em reservas qualificadas"
+        },
+        "voice": {
+          "title": "Agente de voz",
+          "b1": "Atende todas as chamadas, a qualquer hora",
+          "b2": "Informa horários, preços e disponibilidade em viva voz",
+          "b3": "Aceita reservas e transmite-lhe mensagens"
+        }
+      }
+    },
     "installPrompt": {
       "title": "Instalar a aplicação",
       "subtitle": "Tenha o seu painel sempre à mão no ecrã principal.",
@@ -330,7 +370,8 @@
       "upgradeToPro": "Upgrade para Pro",
       "limitReachedTitle": "Limite atingido",
       "limitReachedDescription": "Voce esta usando {current} de {limit} membros. Faca upgrade para adicionar mais.",
-      "upgradeForMore": "Adicionar mais"
+      "upgradeForMore": "Adicionar mais",
+      "invitationLinkCopied": "Link de convite copiado — o e-mail não está configurado, partilhe-o diretamente"
     },
     "referrals": {
       "title": "Referências",
@@ -511,6 +552,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "Assistente IA",
       "home": "Inicio",
       "products": "Produtos",
       "inventory": "Inventário",
@@ -1032,7 +1074,10 @@
               "margin": "Margem / dia"
             }
           }
-        }
+        },
+        "aiContext": "Contexto para o consultor IA",
+        "aiContextPlaceholder": "Ex: requer carteira de motorista B, não adequado para crianças menores de 12 anos, pergunte sempre a data do evento e o tamanho do grupo…",
+        "aiContextHint": "Informações adicionais visíveis apenas para o consultor IA — ele as usa para aconselhar os clientes e verificar requisitos. Nunca são exibidas na loja."
       },
       "deleteConfirm": {
         "title": "Excluir este produto?",
@@ -2032,7 +2077,14 @@
       },
       "tulipInsuredBadge": "Segurado Tulip",
       "tulipContractCardTitle": "Contrato de seguro",
-      "tulipContractCardDescription": "Abrir o contrato no Colibri."
+      "tulipContractCardDescription": "Abrir o contrato no Colibri.",
+      "advisor": {
+        "cardTitle": "Consultor IA",
+        "validated": "Validada",
+        "viewConversation": "Ver conversa",
+        "sheetTitle": "Conversa com o consultor",
+        "sheetDescription": "Conversa entre o cliente e o consultor IA para esta reserva."
+      }
     },
     "customers": {
       "title": "Clientes",
@@ -4145,7 +4197,177 @@
           "reversed": "Reembolsado"
         }
       },
-      "referrals": "Indicações"
+      "referrals": "Indicações",
+      "aiAdvisor": {
+        "title": "Consultor IA",
+        "description": "Deixe um assistente de IA receber os seus clientes na sua loja, responder às perguntas deles e guiá-los até o aluguel certo",
+        "saved": "Configurações do consultor IA salvas",
+        "enableSection": "Consultor IA",
+        "enableSectionDescription": "Configure o assistente que conversa com os seus clientes na sua loja",
+        "enabled": "Ativar o consultor IA",
+        "enabledDescription": "Mostra o widget de chat na sua loja",
+        "mode": "Modo no momento da reserva",
+        "modeDescription": "Escolha como o consultor participa do processo de reserva",
+        "modeOptional": "Opcional",
+        "modeOptionalDescription": "Os clientes podem conversar com o consultor, a reserva permanece inalterada",
+        "modeRecommended": "Recomendado",
+        "modeRecommendedDescription": "Uma sugestão não bloqueante de conversar é exibida no momento da reserva",
+        "modeRequired": "Obrigatório",
+        "modeRequiredDescription": "A reserva fica bloqueada até o consultor validar a conversa",
+        "storeContext": "Instruções para a sua loja",
+        "storeContextDescription": "Escreva o que você diria a um novo funcionário: restrições, verificações a fazer, tom e políticas",
+        "storeContextPlaceholder": "Ex: Pergunte sempre a altura do cliente antes de recomendar um tamanho de bicicleta, mencione que os capacetes estão incluídos, a entrega só está disponível num raio de 10 km...",
+        "personalizationSection": "Personalização",
+        "displayName": "Nome de exibição",
+        "displayNameDescription": "Título do widget mostrado aos clientes (por padrão, um título traduzido)",
+        "displayNamePlaceholder": "Ex: Leo, o seu consultor de aluguel",
+        "welcomeMessage": "Mensagem de boas-vindas",
+        "welcomeMessageDescription": "Primeira mensagem exibida quando o chat abre (por padrão, uma mensagem traduzida)",
+        "welcomeMessagePlaceholder": "Ex: Olá! Conte-me sobre o seu projeto e eu ajudo você a escolher o equipamento certo.",
+        "notConfigured": {
+          "title": "Provedor de IA não configurado",
+          "description": "O operador da plataforma precisa definir as variáveis de ambiente AI_PROVIDER e AI_API_KEY para que o consultor possa responder aos clientes. Mesmo assim, você pode preparar as suas configurações abaixo."
+        },
+        "locked": {
+          "title": "Desbloquear o Consultor IA",
+          "description": "Transforme os visitantes da sua loja em reservas com um assistente de IA",
+          "upgrade": "Atualizar para Pro",
+          "featureLocked": "Recurso bloqueado",
+          "upgradeToUnlock": "Atualize para Pro para ativar este recurso"
+        },
+        "conversations": {
+          "columnCredits": "Créditos",
+          "creditsUsed": "{count} cr",
+          "title": "Conversas",
+          "description": "Veja o que os clientes perguntaram ao consultor e quais conversas resultaram em uma reserva",
+          "filterAll": "Todas",
+          "filterConverted": "Convertidas",
+          "filterNotConverted": "Não convertidas",
+          "empty": "Nenhuma conversa ainda",
+          "emptyDescription": "As conversas aparecerão aqui quando os clientes começarem a conversar com o consultor na sua loja",
+          "emptyFilteredDescription": "Nenhuma conversa corresponde a este filtro",
+          "columnDate": "Data",
+          "columnFirstMessage": "Primeira mensagem",
+          "columnMessages": "Mensagens",
+          "columnStatus": "Status",
+          "statusConverted": "Convertida",
+          "statusValidated": "Validada",
+          "statusNotConverted": "Não convertida",
+          "pagination": "Página {page} de {totalPages}",
+          "previousPage": "Página anterior",
+          "nextPage": "Próxima página",
+          "transcriptTitle": "Conversa",
+          "transcriptError": "Não foi possível carregar esta conversa",
+          "channelPhone": "Chamada telefónica",
+          "channelWeb": "Chat",
+          "recording": {
+            "play": "Reproduzir gravação",
+            "pause": "Pausa",
+            "retry": "Tentar de novo",
+            "seek": "Posição",
+            "error": "Gravação indisponível"
+          }
+        }
+      },
+      "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Alterar",
+          "done": "Concluído",
+          "resetToRecommended": "Voltar à voz recomendada",
+          "defaultBadge": "Recomendada",
+          "defaultVoice": "Voz recomendada",
+          "title": "Escolha a voz do seu agente",
+          "description": "Ouça as vozes e escolha a que representará a sua loja ao telefone."
+        },
+        "setup": {
+          "step1": "Escolher o seu número",
+          "step2": "Personalizar o agente",
+          "title": "O seu agente precisa de uma linha",
+          "why": "Escolha um número dedicado: dê-o diretamente aos seus clientes ou configure o reencaminhamento de chamadas do seu número habitual — o agente atende por si.",
+          "rentalChip": "{credits} créditos de IA / mês",
+          "perMinuteChip": "{credits} créditos / minuto de chamada",
+          "insufficientTitle": "Saldo insuficiente",
+          "insufficientBody": "A ativação do número requer {credits} créditos de IA, debitados automaticamente todos os meses. Recarregue para continuar.",
+          "insufficientCta": "Recarregar os meus créditos",
+          "step2Hint": "Próximo passo: depois de escolher o número, personalize a voz, o idioma e o comportamento do seu agente.",
+          "boundRental": "{credits} créditos de IA / mês, debitados automaticamente"
+        },
+        "disableConfirm": {
+          "title": "Desativar o agente de voz?",
+          "description": "Ao guardar, o número {number} será desvinculado e libertado — poderá não o recuperar. As chamadas recebidas deixarão de ser atendidas.",
+          "confirm": "Desativar e desvincular"
+        },
+        "numberReleaseFailed": "Não foi possível desvincular o número — continua vinculado, nova tentativa automática agendada",
+        "description": "Um agente de voz com IA que atende a sua linha telefónica — informa os seus clientes e regista reservas, no idioma que escolher.",
+        "enableSection": "Agente de voz IA",
+        "enableSectionDescription": "Configure o agente de voz que atende quando os seus clientes ligam",
+        "enabled": "Ativar o agente de voz IA",
+        "enabledDescription": "A IA atende as chamadas recebidas no seu número",
+        "number": {
+          "title": "Número de telefone",
+          "description": "Provisione um número para o seu agente de voz ou ligue um que já tenha.",
+          "active": "Ativo",
+          "activeHint": "Os clientes contactam o seu agente de voz neste número.",
+          "release": "Libertar número",
+          "unlink": "Desassociar número",
+          "country": "País",
+          "areaCode": "Indicativo (opcional)",
+          "search": "Procurar",
+          "noResults": "Nenhum número encontrado. Tente outro indicativo ou país.",
+          "provision": "Obter este número",
+          "costNote": "O provisionamento adiciona um número à sua linha e configura-o automaticamente.",
+          "provisioned": "Número provisionado",
+          "released": "Número libertado",
+          "advanced": "Já tenho um número",
+          "manualNumber": "O seu número (formato internacional)",
+          "manualHint": "Aponte o webhook de voz do seu número para o endereço abaixo e depois associe-o aqui.",
+          "link": "Associar",
+          "linked": "Número associado",
+          "cancel": "Cancelar",
+          "releaseConfirmTitle": "Libertar este número?",
+          "releaseConfirmBody": "O número {number} será devolvido ao fornecedor e as chamadas deixarão de chegar ao seu agente de voz. Não é possível anular.",
+          "unlinkConfirmTitle": "Desassociar este número?",
+          "unlinkConfirmBody": "O número {number} será desassociado do seu agente de voz. Mantém o número com o seu fornecedor.",
+          "searching": "A procurar números disponíveis…",
+          "searchHint": "Escolha um país e procure um número disponível para provisionar.",
+          "areaCodePlaceholder": "ex. 21",
+          "manualSetup": "Como associar um número existente",
+          "copy": "Copiar"
+        },
+        "notConfigured": {
+          "title": "Telefonia não configurada",
+          "description": "O operador da plataforma deve configurar um fornecedor de telefonia (AI_PHONE_ENABLED, VOICE_PROVIDER e as credenciais) para ativar o agente de voz."
+        },
+        "language": "Idioma de resposta",
+        "languageDescription": "O idioma em que o assistente fala com quem liga",
+        "canTakeReservations": "Registar reservas",
+        "canTakeReservationsDescription": "Permitir que o assistente registe uma reserva (caso contrário apenas informa)",
+        "recordCalls": "Gravar chamadas",
+        "recordCallsDescription": "Quem liga é informado no atendimento de que a chamada é gravada. Pode reouvir as gravações a partir da lista de conversas.",
+        "answerMode": "Função",
+        "answerModeDescription": "Como o agente de voz é usado nesta linha",
+        "answerModeAlways": "Linha direta",
+        "answerModeAlwaysDescription": "Este número é o agente IA — atende todas as chamadas como a sua linha principal",
+        "answerModeAfterHours": "Atendedor",
+        "answerModeAfterHoursDescription": "A IA apoia a sua equipa — durante o horário as chamadas vão para a sua linha humana, fora dele a IA atende",
+        "greeting": "Mensagem de boas-vindas",
+        "greetingDescription": "Adicionada após o aviso automático obrigatório",
+        "greetingPlaceholder": "Como posso ajudar?",
+        "transferNumber": "Número de transferência",
+        "transferNumberDescription": "Número de uma pessoa para transferências e o modo fora de horário (formato internacional)",
+        "phoneFormat": "Número inválido. Use o formato internacional, ex. +33123456789",
+        "saved": "Definições do agente de voz IA guardadas",
+        "voice": "Voz",
+        "voiceDescription": "A voz do seu agente. Escolha uma para o idioma selecionado.",
+        "voicePlaceholder": "Voz predefinida",
+        "voiceGender": {
+          "all": "Todas",
+          "female": "Mulher",
+          "male": "Homem"
+        },
+        "voicePreview": "Ouvir",
+        "voiceRecommended": "Recomendada"
+      }
     },
     "commandPalette": {
       "title": "Paleta de comandos",
@@ -4198,6 +4420,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "Assistente IA",
       "label": "Breadcrumb",
       "home": "Início",
       "products": "Produtos",
@@ -4237,6 +4460,65 @@
       "emptyTitle": "Nada para rever",
       "emptyDescription": "Novos pedidos aparecerão aqui.",
       "viewAllPending": "Ver todos os pedidos pendentes"
+    },
+    "aiCredits": {
+      "title": "Créditos IA",
+      "description": "Os créditos alimentam o consultor de IA da sua loja.",
+      "lowBalance": "Baixo",
+      "lowBalanceHint": "Está a ficar sem créditos IA. Recarregue para manter o consultor disponível para os seus clientes.",
+      "topupSuccess": "Pagamento efetuado — os seus créditos foram adicionados.",
+      "topupCancelled": "Pagamento cancelado.",
+      "unlimited": "Ilimitado",
+      "creditsUnit": "créditos",
+      "breakdown": "{monthly} incluídos este mês · {prepaid} pré-pagos",
+      "breakdownUnlimited": "Ilimitado este mês · {prepaid} pré-pagos",
+      "breakdownPrepaidOnly": "{prepaid} pré-pagos",
+      "conversationsHint": "≈ {count} conversas",
+      "recharge": "Recarregar",
+      "autoTopup": {
+        "title": "Recarga automática",
+        "description": "Recarregue automaticamente quando o saldo estiver baixo.",
+        "thresholdLabel": "Recarregar quando abaixo de (créditos)",
+        "packLabel": "Pacote a adicionar",
+        "pack": "{credits} cr · {amount}",
+        "cardNote": "Requer um cartão guardado (adicionado na primeira recarga).",
+        "save": "Guardar",
+        "saved": "Guardado"
+      },
+      "history": {
+        "title": "Atividade recente",
+        "type": {
+          "grant": "Créditos de boas-vindas",
+          "topup": "Recarga",
+          "auto_topup": "Recarga automática",
+          "adjustment": "Ajuste"
+        }
+      },
+      "topup": {
+        "valueIntro": "Para gastar livremente — por exemplo:",
+        "valueOr": "ou",
+        "rateConversations": "1 crédito por conversa",
+        "rateMinutes": "{credits} créditos por minuto",
+        "rateNumber": "{credits} créditos por mês",
+        "valueTitle": "O que representa",
+        "valueConversations": "Até {count} conversas de aconselhamento",
+        "valueMinutes": "≈ {count} minutos de chamadas de voz",
+        "valueNumberMonths": "{count} meses de número dedicado",
+        "perCredit": "{amount} / crédito",
+        "savings": "-{percent}%",
+        "popular": "Popular",
+        "noExpiry": "Os seus créditos nunca expiram.",
+        "title": "Recarregar créditos IA",
+        "description": "Escolha um pacote. Os créditos são adicionados de imediato após o pagamento.",
+        "credits": "créditos",
+        "info": "Um crédito cobre cerca de uma conversa completa com o consultor.",
+        "cancel": "Cancelar",
+        "processing": "A processar…",
+        "pay": "Pagar {amount}",
+        "errors": {
+          "generic": "Algo correu mal. Tente novamente."
+        }
+      }
     }
   },
   "storefront": {
@@ -4729,7 +5011,26 @@
       "resolvedAttributesLabel": "Final",
       "lineCheckingAvailability": "A verificar disponibilidade...",
       "lineNeedsUpdateInline": "Esta linha já não está disponível. Atualize a quantidade ou os atributos.",
-      "lineNeedsUpdate": "Algumas linhas já não estão disponíveis. Atualize o carrinho antes de submeter."
+      "lineNeedsUpdate": "Algumas linhas já não estão disponíveis. Atualize o carrinho antes de submeter.",
+      "advisor": {
+        "recommendedHint": "Em dúvida sobre a sua escolha? O consultor pode verificá-la com você.",
+        "askAdvisor": "Perguntar ao consultor",
+        "dismiss": "Ocultar",
+        "requiredTitle": "É necessária uma breve verificação",
+        "requiredDescription": "Esta loja pede ao consultor que verifique algumas informações antes de você poder reservar.",
+        "startVerification": "Iniciar verificação",
+        "validatedTitle": "Verificação concluída",
+        "validatedDescription": "O consultor validou a sua reserva — você já pode reservar.",
+        "badgeRequired": "Obrigatório",
+        "verifyNotice": "O consultor só precisa de alguns detalhes para confirmar a sua reserva.",
+        "placeholder": "Responda à pergunta…",
+        "continueToPayment": "Continuar",
+        "staleTitle": "A sua reserva foi alterada",
+        "staleDescription": "Envie mais uma mensagem para que o consultor possa reconfirmar a sua reserva.",
+        "statusChecking": "A verificar a sua validação…",
+        "transcriptLabel": "Conversa de verificação",
+        "completeVerificationHint": "Conclua a verificação acima para continuar."
+      }
     },
     "confirmation": {
       "title": "Reserva confirmada!",
@@ -5022,6 +5323,29 @@
         "selectEndDate": "Selecione uma data de devolução",
         "endTimeAfterStart": "A hora de devolução deve ser posterior à hora de levantamento"
       }
+    },
+    "advisor": {
+      "open": "Perguntar ao consultor",
+      "title": "Consultor IA",
+      "subtitle": "Responde na hora",
+      "welcome": "Olá! Sou o consultor desta loja. Conte-me sobre o seu projeto e eu ajudo você a escolher o equipamento certo.",
+      "placeholder": "Faça a sua pergunta…",
+      "send": "Enviar",
+      "close": "Fechar",
+      "restart": "Nova conversa",
+      "disclaimer": "Respostas geradas por IA — verifique as informações importantes",
+      "validateChip": "Quero validar a minha reserva",
+      "suggestions": {
+        "recommend": "O que você me recomenda?",
+        "question": "Tenho uma pergunta sobre um produto",
+        "practical": "Horários e informações práticas"
+      },
+      "errors": {
+        "generic": "Ocorreu um erro. Tente novamente.",
+        "rateLimited": "Muitas mensagens por agora — tente novamente mais tarde.",
+        "unavailable": "O consultor não está disponível de momento. Tente novamente mais tarde."
+      },
+      "typing": "O consultor está a escrever"
     }
   },
   "onboarding": {
@@ -5372,6 +5696,39 @@
       "amount": "Valor:",
       "viewRequest": "Ver solicitacao",
       "connectToManage": "Entre no seu painel para aceitar ou rejeitar esta solicitacao."
+    },
+    "phoneCallbackLandlord": {
+      "subject": "Um cliente para ligar de volta — {store}",
+      "title": "Um cliente para ligar de volta",
+      "body": "O seu assistente de voz não conseguiu concluir um pedido na {storeName} e transmite-lhe esta mensagem.",
+      "phone": "Número para ligar de volta:",
+      "message": "Mensagem:",
+      "listen": "Abrir a chamada",
+      "footer": "Abra a conversa para ler a troca e voltar a ouvir a gravação da chamada."
+    },
+    "voiceNumberBilling": {
+      "numberLabel": "Número:",
+      "rentalLabel": "Aluguer mensal:",
+      "rentalValue": "{credits} créditos de IA / mês",
+      "deadlineLabel": "Prazo:",
+      "ctaRecharge": "Recarregar os meus créditos",
+      "ctaOpen": "Abrir o meu Assistente IA",
+      "footer": "O aluguer do número é pago automaticamente em créditos de IA todos os meses.",
+      "warning": {
+        "subject": "Recarregue — renovação do número {number}",
+        "title": "O seu saldo não cobre a próxima renovação",
+        "body": "O número {number} de {storeName} será renovado a {date} por {credits} créditos de IA, mas o seu saldo atual não é suficiente. Recarregue antes dessa data para manter o seu número."
+      },
+      "failed": {
+        "subject": "Ação necessária — o número {number} corre o risco de ser desvinculado",
+        "title": "Renovação falhou",
+        "body": "A renovação do número {number} ({credits} créditos de IA) não pôde ser concluída: saldo insuficiente. Recarregue antes de {date}, caso contrário o número será desvinculado automaticamente. Voltamos a tentar a cobrança todos os dias assim que recarregar."
+      },
+      "released": {
+        "subject": "O número {number} foi desvinculado",
+        "title": "Número desvinculado",
+        "body": "O número {number} de {storeName} foi desvinculado e já não está ativo. Pode escolher um novo número em qualquer altura no seu Assistente IA."
+      }
     },
     "teamInvitation": {
       "subject": "{inviterName} convida voce para se juntar a {storeName}",
@@ -5800,7 +6157,24 @@
     "tulipContractProductMarkedMissing": "O Tulip exige o identificador real de cada item segurado. Atribua uma unidade ou um identificador físico a cada produto segurado antes de criar ou sincronizar o contrato.",
     "tulipContractTypeDisabled": "O tipo de contrato Tulip necessário para esta duração não está ativado para esta loja.",
     "unitAlreadyRetired": "Esta unidade já foi retirada",
-    "unitNotRetired": "Esta unidade não foi retirada"
+    "unitNotRetired": "Esta unidade não foi retirada",
+    "advisorValidationRequired": "Esta loja exige uma breve verificação com o consultor antes de reservar",
+    "conversationNotFound": "Conversa não encontrada",
+    "featureNotAvailable": "Este recurso não está disponível no seu plano",
+    "telephonyNotConfigured": "A telefonia não está configurada pelo operador.",
+    "insufficientAiCredits": "Créditos de IA insuficientes — recarregue para ativar o seu número",
+    "numberAlreadyBound": "Já existe um número ativo. Liberte-o primeiro.",
+    "provisioningFailed": "Não foi possível provisionar este número. Tente outro.",
+    "numberSearchFailed": "A procura de números falhou. Tente novamente.",
+    "noActiveNumber": "Nenhum número ativo para libertar.",
+    "releaseFailed": "Não foi possível libertar o número. Tente novamente.",
+    "invalidPhoneNumber": "Número de telefone inválido.",
+    "phoneNumberInUse": "Este número já está em uso.",
+    "unexpected": "Algo correu mal. Tente novamente.",
+    "standaloneSingleStore": "Esta instância aloja apenas uma loja",
+    "emailLoginUnavailable": "O início de sessão por e-mail está indisponível de momento",
+    "stripeNotConfigured": "Os pagamentos online não estão disponíveis: esta instância não tem chaves Stripe configuradas. As reservas funcionam em modo de pedido.",
+    "emailSendFailed": "Falha ao enviar o e-mail."
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

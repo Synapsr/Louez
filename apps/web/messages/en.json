@@ -166,7 +166,9 @@
       "oauthError": "An error occurred during sign in. Please try again.",
       "accessDenied": "Access denied. You don't have permission to sign in.",
       "verification": "The verification link is invalid or has expired.",
-      "default": "An error occurred. Please try again."
+      "default": "An error occurred. Please try again.",
+      "passwordTooShort": "Password must be at least 8 characters.",
+      "registrationClosed": "Registration is closed on this instance. Ask the owner for an invitation."
     },
     "referralBanner": "{storeName} invited you to Louez — create your store and start with {count} free reservations.",
     "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations.",
@@ -181,7 +183,16 @@
     "perk1": "Your first 15 reservations are free",
     "perk2": "Max €1 per reservation, less as you grow, 0% commission, no subscription",
     "perk3": "Your online store ready in 5 minutes",
-    "visitShop": "Visit the store"
+    "visitShop": "Visit the store",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Create an account",
+    "noAccountYet": "No account yet?",
+    "alreadyHaveAccount": "Already have an account?",
+    "usePasswordInstead": "Sign in with a password instead",
+    "useEmailCodeInstead": "Sign in with an email code instead",
+    "passwordLoginDescription": "Sign in with your email and password."
   },
   "invitation": {
     "inviteToJoin": "{name} invites you to join the team",
@@ -212,6 +223,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "AI Assistant",
+        "subtitle": "Your store advises, answers and books — automatically",
+        "credits": "{count} credits",
+        "creditsUnlimited": "Unlimited credits",
+        "recharge": "Recharge"
+      },
+      "hero": {
+        "eyebrow": "AI Assistant",
+        "title": "Your store answers, advises and books, even when you're away",
+        "subtitle": "Turn on the online advisor and the voice agent: your customers get instant answers, you get qualified bookings.",
+        "activate": "Activate",
+        "upgrade": "Upgrade plan",
+        "upgradeHint": "The AI Assistant is included from the Pro plan.",
+        "advisor": {
+          "title": "Online advisor",
+          "b1": "Answers your customers' questions about your store 24/7",
+          "b2": "Recommends the right products and checks availability",
+          "b3": "Turns visitors into qualified bookings"
+        },
+        "voice": {
+          "title": "Voice agent",
+          "b1": "Picks up every call, at any hour",
+          "b2": "Shares hours, prices and availability out loud",
+          "b3": "Takes bookings and passes on messages"
+        }
+      }
+    },
     "installPrompt": {
       "title": "Install the app",
       "subtitle": "Keep your dashboard one tap away on your home screen.",
@@ -330,7 +370,8 @@
       "upgradeToPro": "Upgrade to Pro",
       "limitReachedTitle": "Limit reached",
       "limitReachedDescription": "You are using {current} out of {limit} team members. Upgrade to add more.",
-      "upgradeForMore": "Add more"
+      "upgradeForMore": "Add more",
+      "invitationLinkCopied": "Invitation link copied — email is not configured, share it directly"
     },
     "referrals": {
       "title": "Referrals",
@@ -511,6 +552,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "AI Assistant",
       "home": "Home",
       "products": "Products",
       "inventory": "Inventory",
@@ -1077,7 +1119,10 @@
               "margin": "Margin / day"
             }
           }
-        }
+        },
+        "aiContext": "AI advisor context",
+        "aiContextPlaceholder": "E.g. requires a B licence, not suitable for children under 12, always ask for the event date and group size…",
+        "aiContextHint": "Extra details only the AI advisor can see — it uses them to advise customers and check requirements. Never shown on the storefront."
       },
       "deleteConfirm": {
         "title": "Delete this product?",
@@ -2095,6 +2140,13 @@
         "smsSendSuccess": "Access link sent via SMS",
         "smsSendError": "Failed to send SMS",
         "noPhone": "Customer has no phone number"
+      },
+      "advisor": {
+        "cardTitle": "AI advisor",
+        "validated": "Validated",
+        "viewConversation": "View conversation",
+        "sheetTitle": "Advisor conversation",
+        "sheetDescription": "Chat between the customer and the AI advisor for this reservation."
       }
     },
     "customers": {
@@ -4252,7 +4304,177 @@
           "reversed": "Reversed"
         }
       },
-      "referrals": "Referrals"
+      "referrals": "Referrals",
+      "aiAdvisor": {
+        "title": "AI Advisor",
+        "description": "Let an AI assistant welcome your customers on your storefront, answer their questions and guide them to the right rental",
+        "saved": "AI Advisor settings saved",
+        "enableSection": "AI Advisor",
+        "enableSectionDescription": "Configure the assistant that chats with your customers on your storefront",
+        "enabled": "Enable the AI advisor",
+        "enabledDescription": "Show the chat widget on your storefront",
+        "mode": "Checkout mode",
+        "modeDescription": "Choose how the advisor takes part in the booking process",
+        "modeOptional": "Optional",
+        "modeOptionalDescription": "Customers can chat with the advisor, checkout is unchanged",
+        "modeRecommended": "Recommended",
+        "modeRecommendedDescription": "A non-blocking suggestion to chat is shown at checkout",
+        "modeRequired": "Required",
+        "modeRequiredDescription": "Checkout is blocked until the advisor validates the conversation",
+        "storeContext": "Store instructions",
+        "storeContextDescription": "Write what you would tell a new employee: constraints, verifications to run, tone and policies",
+        "storeContextPlaceholder": "E.g. Always ask for the customer's height before recommending a bike size, mention that helmets are included, delivery is only available within 10 km...",
+        "personalizationSection": "Personalization",
+        "displayName": "Display name",
+        "displayNameDescription": "Widget title shown to customers (defaults to a translated title)",
+        "displayNamePlaceholder": "E.g. Leo, your rental advisor",
+        "welcomeMessage": "Welcome message",
+        "welcomeMessageDescription": "First message shown when the chat opens (defaults to a translated message)",
+        "welcomeMessagePlaceholder": "E.g. Hi! Tell me about your project and I'll help you pick the right gear.",
+        "notConfigured": {
+          "title": "AI provider not configured",
+          "description": "The platform operator must set the AI_PROVIDER and AI_API_KEY environment variables before the advisor can answer customers. You can still prepare your settings below."
+        },
+        "locked": {
+          "title": "Unlock the AI Advisor",
+          "description": "Turn storefront visitors into reservations with an AI assistant",
+          "upgrade": "Upgrade to Pro",
+          "featureLocked": "Feature locked",
+          "upgradeToUnlock": "Upgrade to Pro to enable this feature"
+        },
+        "conversations": {
+          "columnCredits": "Credits",
+          "creditsUsed": "{count} cr",
+          "title": "Conversations",
+          "description": "Review what customers asked the advisor and which chats led to a reservation",
+          "filterAll": "All",
+          "filterConverted": "Converted",
+          "filterNotConverted": "Not converted",
+          "empty": "No conversations yet",
+          "emptyDescription": "Conversations will appear here once customers start chatting with the advisor on your storefront",
+          "emptyFilteredDescription": "No conversations match this filter",
+          "columnDate": "Date",
+          "columnFirstMessage": "First message",
+          "columnMessages": "Messages",
+          "columnStatus": "Status",
+          "statusConverted": "Converted",
+          "statusValidated": "Validated",
+          "statusNotConverted": "Not converted",
+          "pagination": "Page {page} of {totalPages}",
+          "previousPage": "Previous page",
+          "nextPage": "Next page",
+          "transcriptTitle": "Conversation",
+          "transcriptError": "Unable to load this conversation",
+          "channelPhone": "Phone call",
+          "channelWeb": "Chat",
+          "recording": {
+            "play": "Play recording",
+            "pause": "Pause",
+            "retry": "Retry",
+            "seek": "Seek",
+            "error": "Recording unavailable"
+          }
+        }
+      },
+      "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Change",
+          "done": "Done",
+          "resetToRecommended": "Back to the recommended voice",
+          "defaultBadge": "Recommended",
+          "defaultVoice": "Recommended voice",
+          "title": "Choose your agent's voice",
+          "description": "Listen to the voices and pick the one that will represent your store on the phone."
+        },
+        "setup": {
+          "step1": "Pick your number",
+          "step2": "Customize the agent",
+          "title": "Your agent needs a line",
+          "why": "Choose a dedicated number: give it straight to your customers, or forward calls from your usual number — the agent answers for you.",
+          "rentalChip": "{credits} AI credits / month",
+          "perMinuteChip": "{credits} credits / call minute",
+          "insufficientTitle": "Insufficient balance",
+          "insufficientBody": "Activating the number requires {credits} AI credits, billed automatically every month. Recharge to continue.",
+          "insufficientCta": "Recharge my credits",
+          "step2Hint": "Next step: once the number is chosen, customize your agent's voice, language and behavior.",
+          "boundRental": "{credits} AI credits / month, billed automatically"
+        },
+        "disableConfirm": {
+          "title": "Disable the voice agent?",
+          "description": "When you save, the number {number} will be detached and released — you may not get it back. Incoming calls will no longer be answered.",
+          "confirm": "Disable and detach"
+        },
+        "numberReleaseFailed": "The number could not be detached — it is still attached, automatic retry scheduled",
+        "description": "An AI voice agent that answers your phone line — it informs your customers and takes reservations, in the language you choose.",
+        "enableSection": "AI voice agent",
+        "enableSectionDescription": "Configure the voice agent that answers when your customers call",
+        "enabled": "Enable the AI voice agent",
+        "enabledDescription": "The AI answers inbound calls to your number",
+        "number": {
+          "title": "Phone number",
+          "description": "Provision a number for your voice agent, or connect one you already own.",
+          "active": "Active",
+          "activeHint": "Customers reach your voice agent on this number.",
+          "release": "Release number",
+          "unlink": "Unlink number",
+          "country": "Country",
+          "areaCode": "Area code (optional)",
+          "search": "Search",
+          "noResults": "No numbers found. Try another area or country.",
+          "provision": "Get this number",
+          "costNote": "Provisioning adds a number to your line and configures it automatically.",
+          "provisioned": "Number provisioned",
+          "released": "Number released",
+          "advanced": "I already have a number",
+          "manualNumber": "Your number (international format)",
+          "manualHint": "Point your number's voice webhook to the address below, then link it here.",
+          "link": "Link",
+          "linked": "Number linked",
+          "cancel": "Cancel",
+          "releaseConfirmTitle": "Release this number?",
+          "releaseConfirmBody": "The number {number} will be returned to the provider and calls will stop reaching your voice agent. This cannot be undone.",
+          "unlinkConfirmTitle": "Unlink this number?",
+          "unlinkConfirmBody": "The number {number} will be unlinked from your voice agent. You keep the number with your provider.",
+          "searching": "Searching for available numbers…",
+          "searchHint": "Choose a country and search for an available number to provision.",
+          "areaCodePlaceholder": "e.g. 75",
+          "manualSetup": "How to link an existing number",
+          "copy": "Copy"
+        },
+        "notConfigured": {
+          "title": "Telephony not configured",
+          "description": "The platform operator must configure a telephony provider (AI_PHONE_ENABLED, VOICE_PROVIDER and the credentials) to enable the voice agent."
+        },
+        "language": "Answer language",
+        "languageDescription": "The language the assistant speaks to callers in",
+        "canTakeReservations": "Take reservations",
+        "canTakeReservationsDescription": "Allow the assistant to record a reservation (otherwise it only informs)",
+        "recordCalls": "Record calls",
+        "recordCallsDescription": "Callers are told at pickup that the call is recorded. You can replay recordings from the conversations list.",
+        "answerMode": "Role",
+        "answerModeDescription": "How the voice agent is used on this line",
+        "answerModeAlways": "Direct line",
+        "answerModeAlwaysDescription": "This number is the AI agent — it answers every call as your main line",
+        "answerModeAfterHours": "Receptionist",
+        "answerModeAfterHoursDescription": "The AI backs up your team — during opening hours calls go to your human line, outside them the AI answers",
+        "greeting": "Greeting",
+        "greetingDescription": "Added after the mandatory automated disclosure",
+        "greetingPlaceholder": "How can I help you?",
+        "transferNumber": "Transfer number",
+        "transferNumberDescription": "A human number for transfers and after-hours mode (international format)",
+        "phoneFormat": "Invalid number. Use international format, e.g. +33123456789",
+        "saved": "AI voice agent settings saved",
+        "voice": "Voice",
+        "voiceDescription": "The voice your agent speaks with. Pick one for the selected language.",
+        "voicePlaceholder": "Default voice",
+        "voiceGender": {
+          "all": "All",
+          "female": "Female",
+          "male": "Male"
+        },
+        "voicePreview": "Preview",
+        "voiceRecommended": "Recommended"
+      }
     },
     "commandPalette": {
       "title": "Command palette",
@@ -4305,6 +4527,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "AI Assistant",
       "label": "Breadcrumb",
       "home": "Home",
       "products": "Products",
@@ -4344,6 +4567,65 @@
       "emptyTitle": "Nothing to review",
       "emptyDescription": "New requests will appear here.",
       "viewAllPending": "View all pending requests"
+    },
+    "aiCredits": {
+      "title": "AI credits",
+      "description": "Credits power your storefront AI advisor.",
+      "lowBalance": "Low",
+      "lowBalanceHint": "You're running low on AI credits. Recharge to keep the advisor available to your customers.",
+      "topupSuccess": "Payment successful — your credits have been added.",
+      "topupCancelled": "Payment cancelled.",
+      "unlimited": "Unlimited",
+      "creditsUnit": "credits",
+      "breakdown": "{monthly} included this month · {prepaid} prepaid",
+      "breakdownUnlimited": "Unlimited this month · {prepaid} prepaid",
+      "breakdownPrepaidOnly": "{prepaid} prepaid",
+      "conversationsHint": "≈ {count} conversations",
+      "recharge": "Recharge",
+      "autoTopup": {
+        "title": "Automatic recharge",
+        "description": "Recharge automatically when your balance runs low.",
+        "thresholdLabel": "Recharge when below (credits)",
+        "packLabel": "Pack to add",
+        "pack": "{credits} cr · {amount}",
+        "cardNote": "Requires a saved card (added on your first recharge).",
+        "save": "Save",
+        "saved": "Saved"
+      },
+      "history": {
+        "title": "Recent activity",
+        "type": {
+          "grant": "Welcome credits",
+          "topup": "Recharge",
+          "auto_topup": "Automatic recharge",
+          "adjustment": "Adjustment"
+        }
+      },
+      "topup": {
+        "valueIntro": "Spend them however you like — for example:",
+        "valueOr": "or",
+        "rateConversations": "1 credit per conversation",
+        "rateMinutes": "{credits} credits per minute",
+        "rateNumber": "{credits} credits per month",
+        "valueTitle": "What you get",
+        "valueConversations": "Up to {count} advisor conversations",
+        "valueMinutes": "≈ {count} minutes of voice calls",
+        "valueNumberMonths": "{count} months of dedicated number",
+        "perCredit": "{amount} / credit",
+        "savings": "-{percent}%",
+        "popular": "Popular",
+        "noExpiry": "Your credits never expire.",
+        "title": "Recharge AI credits",
+        "description": "Choose a pack. Credits are added instantly after payment.",
+        "credits": "credits",
+        "info": "One credit covers about one complete advisor conversation.",
+        "cancel": "Cancel",
+        "processing": "Processing…",
+        "pay": "Pay {amount}",
+        "errors": {
+          "generic": "Something went wrong. Please try again."
+        }
+      }
     }
   },
   "storefront": {
@@ -4842,7 +5124,26 @@
         "promoCodeMinimumNotMet": "Minimum amount of {amount} required",
         "promoCodeNotStarted": "This promo code is not yet active"
       },
-      "lineNeedsUpdate": "Some lines are no longer available. Update your cart before submitting."
+      "lineNeedsUpdate": "Some lines are no longer available. Update your cart before submitting.",
+      "advisor": {
+        "recommendedHint": "Not sure about your choice? The advisor can check it with you.",
+        "askAdvisor": "Ask the advisor",
+        "dismiss": "Dismiss",
+        "requiredTitle": "A short verification is required",
+        "requiredDescription": "This store asks the advisor to check a few details before you can book.",
+        "startVerification": "Start verification",
+        "validatedTitle": "Verification complete",
+        "validatedDescription": "The advisor has validated your reservation — you can book.",
+        "badgeRequired": "Required",
+        "verifyNotice": "The advisor just needs a few details to confirm your booking.",
+        "placeholder": "Answer the question…",
+        "continueToPayment": "Continue",
+        "staleTitle": "Your booking changed",
+        "staleDescription": "Send one more message so the advisor can re-confirm your booking.",
+        "statusChecking": "Checking your verification…",
+        "transcriptLabel": "Verification conversation",
+        "completeVerificationHint": "Complete the verification above to continue."
+      }
     },
     "confirmation": {
       "title": "Reservation confirmed!",
@@ -5135,6 +5436,29 @@
         "selectEndDate": "Select a return date",
         "endTimeAfterStart": "Return time must be after pickup time"
       }
+    },
+    "advisor": {
+      "open": "Ask the advisor",
+      "title": "AI advisor",
+      "subtitle": "Answers instantly",
+      "welcome": "Hi! I'm this store's advisor. Tell me about your project and I'll help you pick the right equipment.",
+      "placeholder": "Ask your question…",
+      "send": "Send",
+      "close": "Close",
+      "restart": "New conversation",
+      "disclaimer": "AI-generated answers — double-check important details",
+      "validateChip": "I'd like to validate my reservation",
+      "suggestions": {
+        "recommend": "What would you recommend for me?",
+        "question": "I have a question about a product",
+        "practical": "Opening hours and practical info"
+      },
+      "errors": {
+        "generic": "Something went wrong. Please try again.",
+        "rateLimited": "Too many messages for now — please try again later.",
+        "unavailable": "The advisor isn't available right now. Please try again later or contact the store."
+      },
+      "typing": "The advisor is typing"
     }
   },
   "onboarding": {
@@ -5494,6 +5818,39 @@
       "amount": "Amount:",
       "viewRequest": "View request",
       "connectToManage": "Log in to your dashboard to accept or reject this request."
+    },
+    "phoneCallbackLandlord": {
+      "subject": "A caller to call back — {store}",
+      "title": "A caller to call back",
+      "body": "Your voice assistant couldn't complete a request on {storeName} and is passing this message on to you.",
+      "phone": "Callback number:",
+      "message": "Message:",
+      "listen": "Open the call",
+      "footer": "Open the conversation to read the exchange and replay the call recording."
+    },
+    "voiceNumberBilling": {
+      "numberLabel": "Number:",
+      "rentalLabel": "Monthly rental:",
+      "rentalValue": "{credits} AI credits / month",
+      "deadlineLabel": "Deadline:",
+      "ctaRecharge": "Recharge my credits",
+      "ctaOpen": "Open my AI Assistant",
+      "footer": "The number rental is paid automatically in AI credits every month.",
+      "warning": {
+        "subject": "Time to recharge — renewal of {number}",
+        "title": "Your balance won't cover the next renewal",
+        "body": "The number {number} for {storeName} renews on {date} for {credits} AI credits, but your current balance isn't enough. Recharge before that date to keep your number."
+      },
+      "failed": {
+        "subject": "Action required — {number} is at risk of being detached",
+        "title": "Renewal failed",
+        "body": "The renewal of {number} ({credits} AI credits) could not be completed: insufficient balance. Recharge before {date}, otherwise the number will be automatically detached. We retry the charge every day as soon as you recharge."
+      },
+      "released": {
+        "subject": "The number {number} has been detached",
+        "title": "Number detached",
+        "body": "The number {number} for {storeName} has been detached and is no longer active. You can pick a new number anytime from your AI Assistant."
+      }
     },
     "teamInvitation": {
       "subject": "{inviterName} invites you to join {storeName}",
@@ -5935,7 +6292,24 @@
     "tulipContractProductsIncompatible": "The insured Tulip products in this reservation are not all compatible with this contract type.",
     "tulipProductTypeDisabled": "This Tulip product category is not enabled for this store.",
     "unitAlreadyRetired": "This unit is already retired",
-    "unitNotRetired": "This unit is not retired"
+    "unitNotRetired": "This unit is not retired",
+    "advisorValidationRequired": "This store requires a short check with the advisor before booking",
+    "conversationNotFound": "Conversation not found",
+    "featureNotAvailable": "This feature is not available on your plan",
+    "telephonyNotConfigured": "Telephony is not configured by the operator.",
+    "insufficientAiCredits": "Insufficient AI credits — recharge to activate your number",
+    "numberAlreadyBound": "A number is already active. Release it first.",
+    "provisioningFailed": "Could not provision this number. Try another one.",
+    "numberSearchFailed": "Number search failed. Please try again.",
+    "noActiveNumber": "No active number to release.",
+    "releaseFailed": "Could not release the number. Please try again.",
+    "invalidPhoneNumber": "Invalid phone number.",
+    "phoneNumberInUse": "This number is already in use.",
+    "unexpected": "Something went wrong. Please try again.",
+    "standaloneSingleStore": "This instance hosts a single store",
+    "emailLoginUnavailable": "Email sign-in is unavailable at the moment",
+    "stripeNotConfigured": "Online payments are not available: this instance has no Stripe keys configured. Reservations run in request mode.",
+    "emailSendFailed": "Failed to send the email."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

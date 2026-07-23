@@ -166,7 +166,9 @@
       "oauthError": "Bei der Anmeldung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
       "accessDenied": "Zugriff verweigert. Sie haben keine Berechtigung zur Anmeldung.",
       "verification": "Der Bestätigungslink ist ungültig oder abgelaufen.",
-      "default": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+      "default": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+      "passwordTooShort": "Das Passwort muss mindestens 8 Zeichen lang sein.",
+      "registrationClosed": "Die Registrierung ist auf dieser Instanz geschlossen. Bitten Sie den Inhaber um eine Einladung."
     },
     "referralBanner": "{storeName} hat Sie zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen.",
     "referralBannerGeneric": "🎁 Sie wurden zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen.",
@@ -181,7 +183,16 @@
     "perk1": "Ihre ersten 15 Reservierungen geschenkt",
     "perk2": "Max. 1 € pro Reservierung, günstiger bei mehr Volumen, 0 % Provision, kein Abo",
     "perk3": "Ihr Online-Shop in 5 Minuten startklar",
-    "visitShop": "Shop ansehen"
+    "visitShop": "Shop ansehen",
+    "name": "Name",
+    "namePlaceholder": "Ihr Name",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Konto erstellen",
+    "noAccountYet": "Noch kein Konto?",
+    "alreadyHaveAccount": "Sie haben bereits ein Konto?",
+    "usePasswordInstead": "Stattdessen mit Passwort anmelden",
+    "useEmailCodeInstead": "Stattdessen mit E-Mail-Code anmelden",
+    "passwordLoginDescription": "Melden Sie sich mit Ihrer E-Mail und Ihrem Passwort an."
   },
   "invitation": {
     "inviteToJoin": "{name} lädt Sie ein, dem Team beizutreten",
@@ -212,6 +223,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "KI-Assistent",
+        "subtitle": "Ihr Shop berät, antwortet und reserviert — automatisch",
+        "credits": "{count} Credits",
+        "creditsUnlimited": "Unbegrenzte Credits",
+        "recharge": "Aufladen"
+      },
+      "hero": {
+        "eyebrow": "KI-Assistent",
+        "title": "Ihr Shop antwortet, berät und reserviert — auch wenn Sie nicht da sind",
+        "subtitle": "Aktivieren Sie den Online-Berater und den Sprachagenten: Ihre Kunden erhalten sofort Antworten, Sie erhalten qualifizierte Reservierungen.",
+        "activate": "Aktivieren",
+        "upgrade": "Plan upgraden",
+        "upgradeHint": "Der KI-Assistent ist ab dem Pro-Plan enthalten.",
+        "advisor": {
+          "title": "Online-Berater",
+          "b1": "Beantwortet Kundenfragen zu Ihrem Shop rund um die Uhr",
+          "b2": "Empfiehlt passende Produkte und prüft Verfügbarkeiten",
+          "b3": "Macht aus Besuchern qualifizierte Reservierungen"
+        },
+        "voice": {
+          "title": "Sprachagent",
+          "b1": "Nimmt jeden Anruf entgegen, zu jeder Uhrzeit",
+          "b2": "Nennt Öffnungszeiten, Preise und Verfügbarkeiten am Telefon",
+          "b3": "Nimmt Reservierungen auf und übermittelt Nachrichten"
+        }
+      }
+    },
     "installPrompt": {
       "title": "App installieren",
       "subtitle": "Ihr Dashboard immer griffbereit auf dem Startbildschirm.",
@@ -330,7 +370,8 @@
       "upgradeToPro": "Auf Pro upgraden",
       "limitReachedTitle": "Limit erreicht",
       "limitReachedDescription": "Sie nutzen {current} von {limit} Teammitgliedern. Upgraden Sie, um mehr hinzuzufügen.",
-      "upgradeForMore": "Mehr hinzufügen"
+      "upgradeForMore": "Mehr hinzufügen",
+      "invitationLinkCopied": "Einladungslink kopiert — E-Mail ist nicht konfiguriert, teilen Sie ihn direkt"
     },
     "referrals": {
       "title": "Empfehlungen",
@@ -511,6 +552,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "KI-Assistent",
       "home": "Startseite",
       "products": "Produkte",
       "inventory": "Inventar",
@@ -1071,7 +1113,10 @@
               "margin": "Marge / Tag"
             }
           }
-        }
+        },
+        "aiContext": "Kontext für den KI-Berater",
+        "aiContextPlaceholder": "z. B. Führerschein Klasse B erforderlich, nicht geeignet für Kinder unter 12 Jahren, fragen Sie immer nach Veranstaltungsdatum und Gruppengröße…",
+        "aiContextHint": "Zusätzliche Angaben, die nur der KI-Berater sieht — er nutzt sie, um Kunden zu beraten und Voraussetzungen zu prüfen. Werden nie im Shop angezeigt."
       },
       "deleteConfirm": {
         "title": "Dieses Produkt löschen?",
@@ -2071,7 +2116,14 @@
       },
       "tulipInsuredBadge": "Tulip-versichert",
       "tulipContractCardTitle": "Versicherungsvertrag",
-      "tulipContractCardDescription": "Vertrag in Colibri öffnen."
+      "tulipContractCardDescription": "Vertrag in Colibri öffnen.",
+      "advisor": {
+        "cardTitle": "KI-Berater",
+        "validated": "Validiert",
+        "viewConversation": "Gespräch ansehen",
+        "sheetTitle": "Gespräch mit dem Berater",
+        "sheetDescription": "Chat zwischen dem Kunden und dem KI-Berater für diese Reservierung."
+      }
     },
     "customers": {
       "title": "Kunden",
@@ -4145,7 +4197,177 @@
           "reversed": "Erstattet"
         }
       },
-      "referrals": "Empfehlungen"
+      "referrals": "Empfehlungen",
+      "aiAdvisor": {
+        "title": "KI-Berater",
+        "description": "Lassen Sie einen KI-Assistenten Ihre Kunden im Shop begrüßen, ihre Fragen beantworten und sie zur passenden Vermietung führen",
+        "saved": "KI-Berater-Einstellungen gespeichert",
+        "enableSection": "KI-Berater",
+        "enableSectionDescription": "Konfigurieren Sie den Assistenten, der in Ihrem Shop mit Ihren Kunden chattet",
+        "enabled": "KI-Berater aktivieren",
+        "enabledDescription": "Zeigt das Chat-Widget in Ihrem Shop an",
+        "mode": "Modus bei der Reservierung",
+        "modeDescription": "Legen Sie fest, wie der Berater in den Reservierungsprozess eingebunden wird",
+        "modeOptional": "Optional",
+        "modeOptionalDescription": "Kunden können mit dem Berater chatten, die Reservierung bleibt unverändert",
+        "modeRecommended": "Empfohlen",
+        "modeRecommendedDescription": "Beim Abschluss der Reservierung wird ein unverbindlicher Hinweis auf den Chat angezeigt",
+        "modeRequired": "Erforderlich",
+        "modeRequiredDescription": "Die Reservierung ist blockiert, bis der Berater das Gespräch validiert hat",
+        "storeContext": "Anweisungen für Ihren Shop",
+        "storeContextDescription": "Schreiben Sie, was Sie einem neuen Mitarbeiter sagen würden: Einschränkungen, durchzuführende Prüfungen, Tonfall und Richtlinien",
+        "storeContextPlaceholder": "z. B. Fragen Sie immer nach der Körpergröße des Kunden, bevor Sie eine Fahrradgröße empfehlen, erwähnen Sie, dass Helme inklusive sind, Lieferung nur im Umkreis von 10 km...",
+        "personalizationSection": "Personalisierung",
+        "displayName": "Anzeigename",
+        "displayNameDescription": "Widget-Titel, der Kunden angezeigt wird (standardmäßig ein übersetzter Titel)",
+        "displayNamePlaceholder": "z. B. Leo, Ihr Vermietungsberater",
+        "welcomeMessage": "Begrüßungsnachricht",
+        "welcomeMessageDescription": "Erste Nachricht beim Öffnen des Chats (standardmäßig eine übersetzte Nachricht)",
+        "welcomeMessagePlaceholder": "z. B. Hallo! Erzählen Sie mir von Ihrem Vorhaben und ich helfe Ihnen, die passende Ausrüstung zu finden.",
+        "notConfigured": {
+          "title": "KI-Anbieter nicht konfiguriert",
+          "description": "Der Plattformbetreiber muss die Umgebungsvariablen AI_PROVIDER und AI_API_KEY setzen, damit der Berater Kunden antworten kann. Sie können Ihre Einstellungen unten trotzdem vorbereiten."
+        },
+        "locked": {
+          "title": "KI-Berater freischalten",
+          "description": "Verwandeln Sie Shop-Besucher mit einem KI-Assistenten in Reservierungen",
+          "upgrade": "Auf Pro upgraden",
+          "featureLocked": "Funktion gesperrt",
+          "upgradeToUnlock": "Upgraden Sie auf Pro, um diese Funktion zu aktivieren"
+        },
+        "conversations": {
+          "columnCredits": "Credits",
+          "creditsUsed": "{count} Cr.",
+          "title": "Gespräche",
+          "description": "Sehen Sie, was Kunden den Berater gefragt haben und welche Gespräche zu einer Reservierung geführt haben",
+          "filterAll": "Alle",
+          "filterConverted": "Konvertiert",
+          "filterNotConverted": "Nicht konvertiert",
+          "empty": "Noch keine Gespräche",
+          "emptyDescription": "Gespräche erscheinen hier, sobald Kunden in Ihrem Shop mit dem Berater chatten",
+          "emptyFilteredDescription": "Keine Gespräche entsprechen diesem Filter",
+          "columnDate": "Datum",
+          "columnFirstMessage": "Erste Nachricht",
+          "columnMessages": "Nachrichten",
+          "columnStatus": "Status",
+          "statusConverted": "Konvertiert",
+          "statusValidated": "Validiert",
+          "statusNotConverted": "Nicht konvertiert",
+          "pagination": "Seite {page} von {totalPages}",
+          "previousPage": "Vorherige Seite",
+          "nextPage": "Nächste Seite",
+          "transcriptTitle": "Gespräch",
+          "transcriptError": "Dieses Gespräch konnte nicht geladen werden",
+          "channelPhone": "Telefonanruf",
+          "channelWeb": "Chat",
+          "recording": {
+            "play": "Aufnahme abspielen",
+            "pause": "Pause",
+            "retry": "Erneut versuchen",
+            "seek": "Position",
+            "error": "Aufnahme nicht verfügbar"
+          }
+        }
+      },
+      "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Ändern",
+          "done": "Fertig",
+          "resetToRecommended": "Zur empfohlenen Stimme zurückkehren",
+          "defaultBadge": "Empfohlen",
+          "defaultVoice": "Empfohlene Stimme",
+          "title": "Stimme Ihres Agenten wählen",
+          "description": "Hören Sie die Stimmen an und wählen Sie die, die Ihr Geschäft am Telefon vertritt."
+        },
+        "setup": {
+          "step1": "Nummer wählen",
+          "step2": "Agent anpassen",
+          "title": "Ihr Agent braucht eine Leitung",
+          "why": "Wählen Sie eine dedizierte Nummer: Geben Sie sie direkt an Ihre Kunden weiter oder richten Sie eine Rufumleitung von Ihrer gewohnten Nummer ein — der Agent geht für Sie ran.",
+          "rentalChip": "{credits} KI-Credits / Monat",
+          "perMinuteChip": "{credits} Credits / Gesprächsminute",
+          "insufficientTitle": "Guthaben unzureichend",
+          "insufficientBody": "Die Aktivierung der Nummer erfordert {credits} KI-Credits, die monatlich automatisch abgebucht werden. Laden Sie auf, um fortzufahren.",
+          "insufficientCta": "Guthaben aufladen",
+          "step2Hint": "Nächster Schritt: Passen Sie nach der Wahl der Nummer Stimme, Sprache und Verhalten Ihres Agenten an.",
+          "boundRental": "{credits} KI-Credits / Monat, automatisch abgebucht"
+        },
+        "disableConfirm": {
+          "title": "Sprachagent deaktivieren?",
+          "description": "Beim Speichern wird die Nummer {number} getrennt und wieder freigegeben — Sie erhalten sie möglicherweise nicht zurück. Eingehende Anrufe werden nicht mehr beantwortet.",
+          "confirm": "Deaktivieren und trennen"
+        },
+        "numberReleaseFailed": "Die Nummer konnte nicht getrennt werden — sie bleibt verbunden, automatischer Wiederholungsversuch geplant",
+        "description": "Ein KI-Sprachagent, der Ihre Telefonleitung beantwortet — er informiert Ihre Kunden und nimmt Reservierungen entgegen, in der Sprache Ihrer Wahl.",
+        "enableSection": "KI-Sprachagent",
+        "enableSectionDescription": "Konfigurieren Sie den Sprachagenten, der antwortet, wenn Ihre Kunden anrufen",
+        "enabled": "KI-Sprachagent aktivieren",
+        "enabledDescription": "Die KI nimmt eingehende Anrufe auf Ihrer Nummer entgegen",
+        "number": {
+          "title": "Telefonnummer",
+          "description": "Stellen Sie eine Nummer für Ihren Sprachagenten bereit oder verbinden Sie eine vorhandene.",
+          "active": "Aktiv",
+          "activeHint": "Kunden erreichen Ihren Sprachagenten unter dieser Nummer.",
+          "release": "Nummer freigeben",
+          "unlink": "Nummer trennen",
+          "country": "Land",
+          "areaCode": "Vorwahl (optional)",
+          "search": "Suchen",
+          "noResults": "Keine Nummern gefunden. Versuchen Sie eine andere Vorwahl oder ein anderes Land.",
+          "provision": "Diese Nummer holen",
+          "costNote": "Die Bereitstellung fügt Ihrer Leitung eine Nummer hinzu und konfiguriert sie automatisch.",
+          "provisioned": "Nummer bereitgestellt",
+          "released": "Nummer freigegeben",
+          "advanced": "Ich habe bereits eine Nummer",
+          "manualNumber": "Ihre Nummer (internationales Format)",
+          "manualHint": "Richten Sie den Voice-Webhook Ihrer Nummer auf die Adresse unten und verknüpfen Sie sie dann hier.",
+          "link": "Verknüpfen",
+          "linked": "Nummer verknüpft",
+          "cancel": "Abbrechen",
+          "releaseConfirmTitle": "Diese Nummer freigeben?",
+          "releaseConfirmBody": "Die Nummer {number} wird an den Anbieter zurückgegeben und Anrufe erreichen Ihren Sprachagenten nicht mehr. Dies kann nicht rückgängig gemacht werden.",
+          "unlinkConfirmTitle": "Diese Nummer trennen?",
+          "unlinkConfirmBody": "Die Nummer {number} wird von Ihrem Sprachagenten getrennt. Die Nummer bleibt bei Ihrem Anbieter.",
+          "searching": "Verfügbare Nummern werden gesucht…",
+          "searchHint": "Wählen Sie ein Land und suchen Sie eine verfügbare Nummer zur Bereitstellung.",
+          "areaCodePlaceholder": "z. B. 30",
+          "manualSetup": "Eine vorhandene Nummer verknüpfen",
+          "copy": "Kopieren"
+        },
+        "notConfigured": {
+          "title": "Telefonie nicht konfiguriert",
+          "description": "Der Plattformbetreiber muss einen Telefonieanbieter konfigurieren (AI_PHONE_ENABLED, VOICE_PROVIDER und die Zugangsdaten), um den Sprachagenten zu aktivieren."
+        },
+        "language": "Antwortsprache",
+        "languageDescription": "Die Sprache, in der der Assistent mit Anrufern spricht",
+        "canTakeReservations": "Reservierungen aufnehmen",
+        "canTakeReservationsDescription": "Dem Assistenten erlauben, eine Reservierung aufzunehmen (sonst informiert er nur)",
+        "recordCalls": "Anrufe aufzeichnen",
+        "recordCallsDescription": "Anrufer werden bei Gesprächsbeginn darüber informiert, dass der Anruf aufgezeichnet wird. Die Aufnahmen können Sie in der Konversationsliste anhören.",
+        "answerMode": "Rolle",
+        "answerModeDescription": "Wie der Sprachagent auf dieser Leitung eingesetzt wird",
+        "answerModeAlways": "Direkte Leitung",
+        "answerModeAlwaysDescription": "Diese Nummer ist der KI-Agent — er beantwortet jeden Anruf als Ihre Hauptleitung",
+        "answerModeAfterHours": "Anrufbeantworter",
+        "answerModeAfterHoursDescription": "Die KI unterstützt Ihr Team — während der Öffnungszeiten gehen Anrufe an Ihre menschliche Leitung, außerhalb antwortet die KI",
+        "greeting": "Begrüßung",
+        "greetingDescription": "Wird nach dem obligatorischen automatischen Hinweis hinzugefügt",
+        "greetingPlaceholder": "Wie kann ich Ihnen helfen?",
+        "transferNumber": "Weiterleitungsnummer",
+        "transferNumberDescription": "Nummer einer Person für Weiterleitungen und den Modus außerhalb der Öffnungszeiten (internationales Format)",
+        "phoneFormat": "Ungültige Nummer. Verwenden Sie das internationale Format, z. B. +33123456789",
+        "saved": "Einstellungen des KI-Sprachagenten gespeichert",
+        "voice": "Stimme",
+        "voiceDescription": "Die Stimme Ihres Agenten. Wählen Sie eine für die gewählte Sprache.",
+        "voicePlaceholder": "Standardstimme",
+        "voiceGender": {
+          "all": "Alle",
+          "female": "Weiblich",
+          "male": "Männlich"
+        },
+        "voicePreview": "Anhören",
+        "voiceRecommended": "Empfohlen"
+      }
     },
     "commandPalette": {
       "title": "Befehlspalette",
@@ -4198,6 +4420,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "KI-Assistent",
       "label": "Breadcrumb",
       "home": "Startseite",
       "products": "Produkte",
@@ -4237,6 +4460,65 @@
       "emptyTitle": "Nichts zu prüfen",
       "emptyDescription": "Neue Anfragen erscheinen hier.",
       "viewAllPending": "Alle offenen Anfragen ansehen"
+    },
+    "aiCredits": {
+      "title": "KI-Guthaben",
+      "description": "Guthaben betreibt den KI-Berater Ihres Shops.",
+      "lowBalance": "Niedrig",
+      "lowBalanceHint": "Ihr KI-Guthaben wird knapp. Laden Sie auf, damit der Berater für Ihre Kunden verfügbar bleibt.",
+      "topupSuccess": "Zahlung erfolgreich — Ihr Guthaben wurde hinzugefügt.",
+      "topupCancelled": "Zahlung abgebrochen.",
+      "unlimited": "Unbegrenzt",
+      "creditsUnit": "Credits",
+      "breakdown": "{monthly} diesen Monat inklusive · {prepaid} Prepaid",
+      "breakdownUnlimited": "Diesen Monat unbegrenzt · {prepaid} Prepaid",
+      "breakdownPrepaidOnly": "{prepaid} Prepaid",
+      "conversationsHint": "≈ {count} Gespräche",
+      "recharge": "Aufladen",
+      "autoTopup": {
+        "title": "Automatische Aufladung",
+        "description": "Automatisch aufladen, wenn das Guthaben zur Neige geht.",
+        "thresholdLabel": "Aufladen, wenn unter (Credits)",
+        "packLabel": "Aufzuladendes Paket",
+        "pack": "{credits} Cr · {amount}",
+        "cardNote": "Erfordert eine gespeicherte Karte (bei der ersten Aufladung hinterlegt).",
+        "save": "Speichern",
+        "saved": "Gespeichert"
+      },
+      "history": {
+        "title": "Letzte Aktivität",
+        "type": {
+          "grant": "Willkommensguthaben",
+          "topup": "Aufladung",
+          "auto_topup": "Automatische Aufladung",
+          "adjustment": "Anpassung"
+        }
+      },
+      "topup": {
+        "valueIntro": "Frei einsetzbar — zum Beispiel:",
+        "valueOr": "oder",
+        "rateConversations": "1 Credit pro Gespräch",
+        "rateMinutes": "{credits} Credits pro Minute",
+        "rateNumber": "{credits} Credits pro Monat",
+        "valueTitle": "Das steckt drin",
+        "valueConversations": "Bis zu {count} Beratungsgespräche",
+        "valueMinutes": "≈ {count} Minuten Sprachanrufe",
+        "valueNumberMonths": "{count} Monate dedizierte Nummer",
+        "perCredit": "{amount} / Credit",
+        "savings": "-{percent} %",
+        "popular": "Beliebt",
+        "noExpiry": "Ihre Credits verfallen nie.",
+        "title": "KI-Guthaben aufladen",
+        "description": "Wählen Sie ein Paket. Das Guthaben wird nach der Zahlung sofort hinzugefügt.",
+        "credits": "Credits",
+        "info": "Ein Credit entspricht etwa einem vollständigen Beratergespräch.",
+        "cancel": "Abbrechen",
+        "processing": "Wird verarbeitet…",
+        "pay": "{amount} zahlen",
+        "errors": {
+          "generic": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut."
+        }
+      }
     }
   },
   "storefront": {
@@ -4729,7 +5011,26 @@
       "resolvedAttributesLabel": "Endgültig",
       "lineCheckingAvailability": "Verfügbarkeit wird geprüft...",
       "lineNeedsUpdateInline": "Diese Zeile ist nicht mehr verfügbar. Aktualisieren Sie Menge oder Attribute.",
-      "lineNeedsUpdate": "Einige Zeilen sind nicht mehr verfügbar. Aktualisieren Sie Ihren Warenkorb vor dem Absenden."
+      "lineNeedsUpdate": "Einige Zeilen sind nicht mehr verfügbar. Aktualisieren Sie Ihren Warenkorb vor dem Absenden.",
+      "advisor": {
+        "recommendedHint": "Unsicher bei Ihrer Wahl? Der Berater kann sie mit Ihnen prüfen.",
+        "askAdvisor": "Berater fragen",
+        "dismiss": "Ausblenden",
+        "requiredTitle": "Eine kurze Überprüfung ist erforderlich",
+        "requiredDescription": "Dieser Shop lässt den Berater einige Angaben prüfen, bevor Sie reservieren können.",
+        "startVerification": "Überprüfung starten",
+        "validatedTitle": "Überprüfung abgeschlossen",
+        "validatedDescription": "Der Berater hat Ihre Reservierung validiert — Sie können jetzt reservieren.",
+        "badgeRequired": "Erforderlich",
+        "verifyNotice": "Der Berater benötigt nur ein paar Angaben, um Ihre Buchung zu bestätigen.",
+        "placeholder": "Beantworten Sie die Frage…",
+        "continueToPayment": "Weiter",
+        "staleTitle": "Ihre Buchung hat sich geändert",
+        "staleDescription": "Senden Sie eine weitere Nachricht, damit der Berater Ihre Buchung erneut bestätigen kann.",
+        "statusChecking": "Überprüfung läuft…",
+        "transcriptLabel": "Verifizierungsgespräch",
+        "completeVerificationHint": "Schließen Sie die Überprüfung oben ab, um fortzufahren."
+      }
     },
     "confirmation": {
       "title": "Reservierung bestätigt!",
@@ -5022,6 +5323,29 @@
         "selectEndDate": "Wählen Sie ein Rückgabedatum",
         "endTimeAfterStart": "Die Rückgabezeit muss nach der Abholzeit liegen"
       }
+    },
+    "advisor": {
+      "open": "Berater fragen",
+      "title": "KI-Berater",
+      "subtitle": "Antwortet sofort",
+      "welcome": "Hallo! Ich bin der Berater dieses Shops. Erzählen Sie mir von Ihrem Vorhaben und ich helfe Ihnen, die passende Ausrüstung zu finden.",
+      "placeholder": "Stellen Sie Ihre Frage…",
+      "send": "Senden",
+      "close": "Schließen",
+      "restart": "Neues Gespräch",
+      "disclaimer": "KI-generierte Antworten — prüfen Sie wichtige Angaben",
+      "validateChip": "Ich möchte meine Reservierung validieren lassen",
+      "suggestions": {
+        "recommend": "Was würden Sie mir empfehlen?",
+        "question": "Ich habe eine Frage zu einem Produkt",
+        "practical": "Öffnungszeiten und praktische Infos"
+      },
+      "errors": {
+        "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+        "rateLimited": "Zu viele Nachrichten im Moment — bitte versuchen Sie es später erneut.",
+        "unavailable": "Der Berater ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut."
+      },
+      "typing": "Der Berater schreibt"
     }
   },
   "onboarding": {
@@ -5372,6 +5696,39 @@
       "amount": "Betrag:",
       "viewRequest": "Anfrage ansehen",
       "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Anfrage anzunehmen oder abzulehnen."
+    },
+    "phoneCallbackLandlord": {
+      "subject": "Ein Anrufer zum Zurückrufen — {store}",
+      "title": "Ein Anrufer zum Zurückrufen",
+      "body": "Ihr Sprachassistent konnte eine Anfrage auf {storeName} nicht abschließen und leitet Ihnen diese Nachricht weiter.",
+      "phone": "Rückrufnummer:",
+      "message": "Nachricht:",
+      "listen": "Anruf öffnen",
+      "footer": "Öffnen Sie die Konversation, um den Verlauf zu lesen und die Aufnahme des Anrufs anzuhören."
+    },
+    "voiceNumberBilling": {
+      "numberLabel": "Nummer:",
+      "rentalLabel": "Monatliche Miete:",
+      "rentalValue": "{credits} KI-Guthaben / Monat",
+      "deadlineLabel": "Frist:",
+      "ctaRecharge": "Guthaben aufladen",
+      "ctaOpen": "Meinen KI-Assistenten öffnen",
+      "footer": "Die Nummernmiete wird jeden Monat automatisch mit KI-Guthaben bezahlt.",
+      "warning": {
+        "subject": "Bitte aufladen — Verlängerung der Nummer {number}",
+        "title": "Ihr Guthaben deckt die nächste Verlängerung nicht",
+        "body": "Die Nummer {number} von {storeName} wird am {date} für {credits} KI-Guthaben verlängert, aber Ihr aktuelles Guthaben reicht nicht aus. Laden Sie vor diesem Datum auf, um Ihre Nummer zu behalten."
+      },
+      "failed": {
+        "subject": "Handlung erforderlich — {number} droht getrennt zu werden",
+        "title": "Verlängerung fehlgeschlagen",
+        "body": "Die Verlängerung der Nummer {number} ({credits} KI-Guthaben) konnte nicht durchgeführt werden: Guthaben unzureichend. Laden Sie vor dem {date} auf, sonst wird die Nummer automatisch getrennt. Wir versuchen die Abbuchung täglich erneut, sobald Sie aufladen."
+      },
+      "released": {
+        "subject": "Die Nummer {number} wurde getrennt",
+        "title": "Nummer getrennt",
+        "body": "Die Nummer {number} von {storeName} wurde getrennt und ist nicht mehr aktiv. Sie können jederzeit über Ihren KI-Assistenten eine neue Nummer wählen."
+      }
     },
     "teamInvitation": {
       "subject": "{inviterName} lädt Sie ein, {storeName} beizutreten",
@@ -5800,7 +6157,24 @@
     "tulipContractProductMarkedMissing": "Tulip benötigt die echte Kennung jedes versicherten Artikels. Weisen Sie jedem versicherten Produkt vor der Erstellung oder Synchronisierung des Vertrags eine Einheit oder physische Kennung zu.",
     "tulipContractTypeDisabled": "Der für diese Dauer erforderliche Tulip-Vertragstyp ist für diesen Shop nicht aktiviert.",
     "unitAlreadyRetired": "Diese Einheit ist bereits ausgemustert",
-    "unitNotRetired": "Diese Einheit ist nicht ausgemustert"
+    "unitNotRetired": "Diese Einheit ist nicht ausgemustert",
+    "advisorValidationRequired": "Dieser Shop erfordert vor der Reservierung eine kurze Überprüfung mit dem Berater",
+    "conversationNotFound": "Gespräch nicht gefunden",
+    "featureNotAvailable": "Diese Funktion ist in Ihrem Plan nicht verfügbar",
+    "telephonyNotConfigured": "Die Telefonie ist vom Betreiber nicht konfiguriert.",
+    "insufficientAiCredits": "Unzureichendes KI-Guthaben — laden Sie auf, um Ihre Nummer zu aktivieren",
+    "numberAlreadyBound": "Es ist bereits eine Nummer aktiv. Geben Sie sie zuerst frei.",
+    "provisioningFailed": "Diese Nummer konnte nicht bereitgestellt werden. Versuchen Sie eine andere.",
+    "numberSearchFailed": "Die Nummernsuche ist fehlgeschlagen. Bitte erneut versuchen.",
+    "noActiveNumber": "Keine aktive Nummer zum Freigeben.",
+    "releaseFailed": "Die Nummer konnte nicht freigegeben werden. Bitte erneut versuchen.",
+    "invalidPhoneNumber": "Ungültige Telefonnummer.",
+    "phoneNumberInUse": "Diese Nummer wird bereits verwendet.",
+    "unexpected": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+    "standaloneSingleStore": "Diese Instanz hostet nur einen einzigen Shop",
+    "emailLoginUnavailable": "Die Anmeldung per E-Mail ist derzeit nicht verfügbar",
+    "stripeNotConfigured": "Online-Zahlungen sind nicht verfügbar: Auf dieser Instanz sind keine Stripe-Schlüssel konfiguriert. Reservierungen laufen im Anfragemodus.",
+    "emailSendFailed": "Die E-Mail konnte nicht gesendet werden."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

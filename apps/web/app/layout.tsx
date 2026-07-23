@@ -7,9 +7,11 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { AnchoredToastProvider, ToastProvider } from '@louez/ui';
 
 import { EvlogProvider } from '@/components/evlog-provider';
+import { InstanceProvider } from '@/components/instance-provider';
 import { UmamiAnalytics } from '@/components/umami-analytics';
 
 import { env } from '@/env';
+import { getInstanceConfig } from '@/lib/deployment';
 import { ORPCProvider } from '@/lib/orpc/provider';
 
 // Import translations directly since this is a root layout without NextIntlProvider
@@ -65,15 +67,17 @@ export default function RootLayout({
           />
         </head>
         <body className="font-sans antialiased">
-          <NuqsAdapter>
-            <EvlogProvider>
-              <ORPCProvider>
-                <ToastProvider position="top-center">
-                  <AnchoredToastProvider>{children}</AnchoredToastProvider>
-                </ToastProvider>
-              </ORPCProvider>
-            </EvlogProvider>
-          </NuqsAdapter>
+          <InstanceProvider config={getInstanceConfig()}>
+            <NuqsAdapter>
+              <EvlogProvider>
+                <ORPCProvider>
+                  <ToastProvider position="top-center">
+                    <AnchoredToastProvider>{children}</AnchoredToastProvider>
+                  </ToastProvider>
+                </ORPCProvider>
+              </EvlogProvider>
+            </NuqsAdapter>
+          </InstanceProvider>
         </body>
       </html>
     </>

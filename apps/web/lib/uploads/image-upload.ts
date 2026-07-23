@@ -46,7 +46,9 @@ export const getImageKeyFromUrl = (url: string | null | undefined) => {
   if (!url) return null;
 
   try {
-    const pathname = new URL(url).pathname;
+    // The base makes site-relative asset URLs ("/files/…", standalone
+    // deployments) parse like the absolute bucket URLs of platform mode.
+    const pathname = new URL(url, "https://placeholder.invalid").pathname;
     const filename = pathname.split("/").filter(Boolean).at(-1);
     return filename ? decodeURIComponent(filename) : null;
   } catch {

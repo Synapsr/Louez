@@ -2,6 +2,7 @@ export { Star as StarIcon, StarSolid as StarSolidIcon } from "@mynaui/icons-reac
 
 export {
   BarChart3 as AnalyticsIcon,
+  Bot as BotIcon,
   CalendarDays as CalendarDaysIcon,
   Calendar as CalendarIcon,
   CreditCard as CreditCardIcon,

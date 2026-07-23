@@ -16,7 +16,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/Synapsr/Louez?style=for-the-badge&logo=github)](https://github.com/Synapsr/Louez)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 
-[☁️ Cloud](https://louez.io) • [🚀 Auto-hébergé](#-déployer-en-30-secondes) • [✨ Fonctionnalités](#-fonctionnalités) • [📋 Changelog](CHANGELOG.md)
+[☁️ Cloud](https://louez.io) • [🚀 Auto-hébergé](#-auto-hébergez-en-une-commande) • [✨ Fonctionnalités](#-fonctionnalités) • [📋 Changelog](CHANGELOG.md)
 
 </div>
 
@@ -28,7 +28,7 @@
 
 <video src="demo-fr.mp4" width="100%" autoplay loop muted playsinline></video>
 
-_See Louez in action — from setup to first booking_
+_Louez en action — de l'installation à la première réservation_
 
 </div>
 
@@ -42,9 +42,9 @@ Que vous louiez des appareils photo, des outils, du matériel événementiel ou 
 | :------------------------------------------------------------------------------: | :-------------------------------------------------------------------------: | :------------------------------------------------: |
 | Auto-hébergez gratuitement. Pas d'abonnement, pas de commission par réservation. | Chaque boutique dispose d'un catalogue en ligne personnalisable et élégant. | Votre serveur, votre base de données, vos clients. |
 
-|       ⚡ **Déployez en minutes**       |                         🌍 **Multilingue**                         |            📱 **Mobile Ready**             |
-| :------------------------------------: | :----------------------------------------------------------------: | :----------------------------------------: |
-| Une commande Docker et c'est en ligne. | Français et anglais intégrés. Ajoutez d'autres langues facilement. | Design responsive pour tous les appareils. |
+|                 ⚡ **Déployez en minutes**                 |                     🌍 **Multilingue**                     |            📱 **Mobile Ready**             |
+| :--------------------------------------------------------: | :--------------------------------------------------------: | :----------------------------------------: |
+| Une commande et c'est en ligne — base de données incluse. | 8 langues intégrées : FR, EN, DE, ES, IT, NL, PL, PT. | Design responsive pour tous les appareils. |
 
 ---
 
@@ -58,20 +58,20 @@ Que vous louiez des appareils photo, des outils, du matériel événementiel ou 
 
 **Vous ne voulez pas gérer de serveurs ?**
 
-On s'occupe de l'hébergement, des mises à jour, des sauvegardes, des emails et des paiements pour vous.
+Nous gérons pour vous l'hébergement, les mises à jour, les sauvegardes, les emails, les paiements et l'assistant IA.
 
-**[Commencer gratuitement → louez.io](https://louez.io)**
+**[Commencez gratuitement → louez.io](https://louez.io)**
 
 </td>
 <td align="center" width="50%">
 
 ### 🖥️ Auto-hébergé
 
-**Vous voulez le contrôle total ?**
+**Vous voulez garder le contrôle ?**
 
-Déployez sur votre propre infrastructure. 100% gratuit, pour toujours.
+Déployez sur votre propre infrastructure. 100 % gratuit, pour toujours.
 
-**[Déployer maintenant ↓](#-déployer-en-30-secondes)**
+**[Déployer maintenant ↓](#-auto-hébergez-en-une-commande)**
 
 </td>
 </tr>
@@ -79,127 +79,98 @@ Déployez sur votre propre infrastructure. 100% gratuit, pour toujours.
 
 ---
 
-## 🚀 Déployer en 30 secondes
+## 🚀 Auto-hébergez en une commande
 
 ```bash
-docker run -d -p 3000:3000 synapsr/louez
+git clone https://github.com/Synapsr/Louez.git
+cd Louez
+docker compose up -d
 ```
 
-**C'est tout.** Ouvrez `http://localhost:3000` et créez votre première boutique.
+**C'est tout.** Ouvrez [http://localhost:3000](http://localhost:3000), créez votre compte et configurez votre boutique. Votre vitrine est servie à la racine du site ; votre tableau de bord vit sous `/dashboard`.
 
-> 💡 Pour la production avec persistance de la base de données, voir [Configuration Docker complète](#-configuration-docker-complète) ci-dessous.
+Le [docker-compose.yml](docker-compose.yml) fourni est un déploiement complet et autonome :
+
+- 🗄️ **Base de données incluse** — MySQL tourne à côté de l'application et le schéma s'installe tout seul au premier démarrage
+- 🖼️ **Stockage d'images inclus** — un bucket MinIO privé, servi par l'application (pas de port supplémentaire, pas de CDN à configurer)
+- 🔑 **Aucun secret à générer** — un secret d'authentification est créé et persisté automatiquement
+- ✉️ **Aucun serveur email requis** — connectez-vous par mot de passe ; branchez n'importe quel fournisseur SMTP plus tard pour activer les emails sortants
+- 🏪 **Mode boutique unique** — l'instance héberge votre boutique, pas un SaaS
+
+### Utiliser votre propre domaine
+
+Placez un reverse proxy (Caddy, Nginx, Traefik) avec TLS devant le port 3000 et définissez deux variables dans un fichier `.env` à côté du compose :
+
+```bash
+NEXT_PUBLIC_APP_URL="https://locations.exemple.fr"
+AUTH_URL="https://locations.exemple.fr"
+```
+
+### Plateformes en un clic
+
+L'image publiée `synapsr/louez` fonctionne par défaut en mode boutique unique — fournissez une base MySQL et les variables ci-dessus et elle démarre sur EasyPanel, Dokploy, Coolify, Portainer ou Railway. Voir [.env.example](.env.example) pour toute la surface de configuration (stockage S3, SMTP, Stripe, etc.).
+
+### Déploiements multi-boutiques
+
+Louez peut aussi tourner en plateforme multi-boutiques (comme [louez.io](https://louez.io)) : un sous-domaine pour le tableau de bord, un sous-domaine par boutique. Définissez `LOUEZ_MODE=platform` ainsi que les variables de domaine documentées dans [.env.example](.env.example).
+
+> ⬆️ **Vous mettez à jour un auto-hébergement multi-boutiques existant ?** Ajoutez `LOUEZ_MODE=platform` à votre environnement pour conserver le routage par sous-domaines — les nouvelles images démarrent par défaut en mode boutique unique.
 
 ---
 
 ## ✨ Fonctionnalités
 
-### 📊 Tableau de bord puissant
+### 📊 Tableau de bord complet
 
-Tout ce dont vous avez besoin pour gérer votre activité de location en un seul endroit.
+Tout ce qu'il faut pour gérer votre activité de location au même endroit.
 
-|     | Fonctionnalité   | Description                                                               |
-| :-: | ---------------- | ------------------------------------------------------------------------- |
-| 📦  | **Produits**     | Gérez votre inventaire avec images, tarifs flexibles et suivi des stocks  |
-| 📅  | **Réservations** | Gérez les demandes, suivez les statuts, organisez les retraits et retours |
-| 🗓️  | **Calendrier**   | Vue semaine/mois de toutes vos réservations                               |
-| 👥  | **Clients**      | Base de données clients complète avec historique                          |
-| 📈  | **Statistiques** | Graphiques de revenus, produits populaires, taux d'occupation             |
-| 📄  | **Contrats**     | Génération automatique de contrats PDF                                    |
-| ✉️  | **Emails**       | Confirmations, rappels et notifications automatiques                      |
-| 👨‍👩‍👧‍👦  | **Équipe**       | Invitez vos collaborateurs avec des rôles et permissions                  |
+|     | Fonctionnalité    | Ce qu'elle apporte                                                              |
+| :-: | ----------------- | ------------------------------------------------------------------------------- |
+| 📦  | **Produits**      | Gérez l'inventaire avec images, tarifs flexibles et suivi du stock               |
+| 📅  | **Réservations**  | Gérez les demandes, les statuts, les départs et les retours                      |
+| 🗓️  | **Calendrier**    | Vue semaine/mois de toutes vos réservations                                     |
+| 👥  | **Clients**       | Base clients complète avec historique                                            |
+| 📈  | **Statistiques**  | Chiffre d'affaires, meilleurs produits, taux d'occupation                        |
+| 📄  | **Contrats**      | Contrats PDF générés automatiquement                                             |
+| ✉️  | **Emails**        | Confirmations, rappels et notifications automatiques                             |
+| 👨‍👩‍👧‍👦  | **Équipe**        | Invitez vos collaborateurs avec des permissions par rôle                         |
 
-### 🛍️ Vitrines élégantes
+### 🛍️ Des vitrines élégantes
 
-Chaque entreprise de location dispose de sa propre boutique en ligne personnalisée.
+Chaque activité de location dispose de sa propre boutique en ligne à son image.
 
 - 🎨 **Personnalisation** — Logo, couleurs, thème clair/sombre
 - 📱 **Catalogue produits** — Grille filtrable avec disponibilité en temps réel
-- 🛒 **Panier** — Sélection des dates, quantités, tarification dynamique
-- ✅ **Paiement** — Formulaire client, récapitulatif, acceptation des CGV
+- 🛒 **Panier** — Choix des dates, quantités, tarification dynamique
+- ✅ **Commande** — Formulaire client, récapitulatif, acceptation des CGV
 - 👤 **Espace client** — Connexion sans mot de passe, suivi des réservations
-- 📜 **Pages légales** — CGV et mentions légales éditables
+- 📜 **Pages légales** — Conditions générales éditables
+
+### 🤖 Assistant IA
+
+Louez embarque une couche IA complète qui travaille pour votre boutique en continu.
+
+- 💬 **Conseiller IA sur la vitrine** — un assistant de chat sur votre boutique qui recommande le bon matériel depuis votre catalogue en direct, vérifie la vraie disponibilité aux dates du client, répond aux questions sur vos horaires et conditions, et accompagne les visiteurs jusqu'à la réservation. Vous le briefez en langage naturel, comme un nouvel employé.
+- 📞 **Réceptionniste vocal IA** — un assistant qui répond à la ligne téléphonique de votre boutique : il traite les questions sur les produits, les prix et la disponibilité, prend des *demandes* de réservation que vous validez depuis le tableau de bord, envoie un récapitulatif SMS à l'appelant et peut transférer vers un humain. Choisissez sa voix (avec pré-écoute), sa langue (8 disponibles), et s'il répond à tous les appels ou seulement hors horaires d'ouverture. Vous pouvez même obtenir un numéro de téléphone sans quitter le tableau de bord.
+- 🎛️ **Un seul panneau de contrôle** — configurez les deux assistants, réécoutez les conversations et les appels, et voyez quels échanges se sont transformés en réservations.
+
+L'assistant IA est disponible immédiatement sur **[Louez Cloud](https://louez.io)**. Les auto-hébergeurs peuvent connecter leurs propres fournisseurs d'IA et de téléphonie — la configuration se trouve dans [.env.example](.env.example).
 
 ---
 
-## 🐳 Configuration Docker complète
+## 🛠️ Environnement de développement
 
-### Démarrage rapide avec Docker Compose
-
-Créez un fichier `docker-compose.yml` :
-
-```yaml
-services:
-  louez:
-    image: synapsr/louez:latest
-    ports:
-      - "3000:3000"
-    environment:
-      - DATABASE_URL=mysql://louez:password@db:3306/louez
-      - AUTH_SECRET=changez-moi-avec-une-chaine-de-32-caracteres
-      - SMTP_HOST=smtp.exemple.com
-      - SMTP_PORT=587
-      - SMTP_USER=votre@email.com
-      - SMTP_PASSWORD=votre-mot-de-passe
-      - SMTP_FROM=noreply@votredomaine.com
-      - NEXT_PUBLIC_APP_URL=https://votredomaine.com
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-
-  db:
-    image: mysql:8
-    environment:
-      - MYSQL_ROOT_PASSWORD=rootpassword
-      - MYSQL_DATABASE=louez
-      - MYSQL_USER=louez
-      - MYSQL_PASSWORD=password
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  mysql_data:
-```
-
-Lancez :
+Envie de personnaliser ou de contribuer ? Voici comment lancer le projet en local :
 
 ```bash
-docker-compose up -d
-```
-
-### ☁️ Déploiement en un clic
-
-Fonctionne directement avec vos plateformes préférées :
-
-| Plateforme    | Comment déployer                         |
-| ------------- | ---------------------------------------- |
-| **EasyPanel** | Ajouter une app Docker → `Synapsr/Louez` |
-| **Dokploy**   | Importer depuis Docker Hub               |
-| **Coolify**   | Un clic depuis l'image Docker            |
-| **Portainer** | Créer un stack depuis compose            |
-| **Railway**   | Déployer depuis l'image Docker           |
-
----
-
-## 🛠️ Installation pour le développement
-
-Vous voulez personnaliser ou contribuer ? Voici comment lancer en local :
-
-```bash
-# Cloner le repo
+# Cloner le dépôt
 git clone https://github.com/Synapsr/Louez.git
-cd louez
+cd Louez
 
 # Installer les dépendances
 pnpm install
 
-# Configurer l'environnement
+# Configurer l'environnement (crée .env.local à la racine et dans apps/web)
 cp .env.example .env.local
 cp apps/web/.env.example apps/web/.env.local
 
@@ -218,44 +189,43 @@ Ouvrez [http://localhost:3000](http://localhost:3000) 🎉
 
 Construit avec des technologies modernes et éprouvées :
 
-|     | Technologie        | Utilisation                           |
-| :-: | ------------------ | ------------------------------------- |
-| ⚡  | **Next.js 16**     | Framework React avec App Router       |
-| 📘  | **TypeScript**     | Développement type-safe               |
-| 🎨  | **Tailwind CSS 4** | Styling utility-first                 |
-| 🧩  | **Base UI**        | Primitives UI accessibles             |
-| 🗄️  | **Drizzle ORM**    | Requêtes base de données type-safe    |
-| 🔐  | **Auth.js**        | Authentification (Google, Magic Link) |
-| ✉️  | **React Email**    | Templates d'emails élégants           |
-| 📄  | **React PDF**      | Génération de contrats                |
-| 🌍  | **next-intl**      | Internationalisation                  |
+|     | Technologie      | Rôle                                                |
+| :-: | ---------------- | --------------------------------------------------- |
+| ⚡  | **Next.js 16**   | Framework React avec App Router                     |
+| 📘  | **TypeScript**   | Développement typé                                  |
+| 🎨  | **Tailwind CSS 4** | Styles utilitaires                                |
+| 🧩  | **Base UI**      | Primitives UI accessibles                           |
+| 🗄️  | **Drizzle ORM**  | Requêtes typées vers la base (MySQL)                |
+| 🔐  | **better-auth**  | Authentification (mot de passe, codes email, Google) |
+| ✉️  | **React Email**  | Templates d'emails soignés                          |
+| 📄  | **React PDF**    | Génération des contrats                             |
+| 🌍  | **next-intl**    | Internationalisation                                |
 
 ---
 
 ## 📖 Documentation
 
-- [Guide pour ajouter une intégration](docs/integrations/adding-an-integration.md)
+- [Guide d'ajout d'intégrations](docs/integrations/adding-an-integration.md)
 
 <details>
 <summary><strong>📋 Variables d'environnement</strong></summary>
 
-| Variable              | Requis | Description                          |
-| --------------------- | :----: | ------------------------------------ |
-| `DATABASE_URL`        |   ✅   | Chaîne de connexion MySQL            |
-| `AUTH_SECRET`         |   ✅   | Secret aléatoire (min 32 caractères) |
-| `SMTP_HOST`           |   ✅   | Nom d'hôte du serveur SMTP           |
-| `SMTP_PORT`           |   ✅   | Port du serveur SMTP                 |
-| `SMTP_USER`           |   ✅   | Utilisateur SMTP                     |
-| `SMTP_PASSWORD`       |   ✅   | Mot de passe SMTP                    |
-| `SMTP_FROM`           |   ✅   | Adresse email d'envoi                |
-| `NEXT_PUBLIC_APP_URL` |   ✅   | URL publique de votre app            |
-| `AUTH_GOOGLE_ID`      |        | ID client Google OAuth               |
-| `AUTH_GOOGLE_SECRET`  |        | Secret Google OAuth                  |
-| `S3_ENDPOINT`         |        | Endpoint S3-compatible               |
-| `S3_REGION`           |        | Région S3                            |
-| `S3_BUCKET`           |        | Nom du bucket S3                     |
-| `S3_ACCESS_KEY`       |        | Clé d'accès S3                       |
-| `S3_SECRET_KEY`       |        | Clé secrète S3                       |
+Le déploiement docker-compose fourni configure toutes les variables requises pour vous. Pour un déploiement personnalisé :
+
+| Variable | Requise | Description |
+|----------|:-------:|-------------|
+| `DATABASE_URL` | ✅ | Chaîne de connexion MySQL |
+| `NEXT_PUBLIC_APP_URL` | ✅ | URL publique de votre application |
+| `NEXT_PUBLIC_APP_DOMAIN` | ✅ | Domaine public de votre application |
+| `AUTH_URL` | ✅ | URL de connexion (généralement l'URL de l'application) |
+| `AUTH_SECRET` | | Secret aléatoire (généré automatiquement par le compose) |
+| `S3_*` | | Stockage S3-compatible pour les images (MinIO inclus dans le compose) |
+| `LOUEZ_MODE` | | `standalone` (défaut) ou `platform` (routage multi-boutiques) |
+| `SMTP_*` | | Emails sortants — optionnel ; les fonctions email se désactivent proprement |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | | Connexion Google — optionnel |
+| `STRIPE_*` | | Paiements en ligne — optionnel ; la vitrine bascule en mode demande de réservation |
+
+Les intégrations avancées (fournisseurs d'IA, téléphonie, SMS, analytics, synchronisation calendrier…) sont documentées dans [.env.example](.env.example).
 
 </details>
 
@@ -264,22 +234,21 @@ Construit avec des technologies modernes et éprouvées :
 
 ```
 louez/
-├── src/
-│   ├── app/
-│   │   ├── (auth)/           # Connexion, authentification
-│   │   ├── (dashboard)/      # Back-office admin
-│   │   ├── (storefront)/     # Pages boutique publiques
-│   │   └── api/              # Routes API
-│   ├── components/
-│   │   ├── ui/               # Composants Base UI
-│   │   ├── dashboard/        # Composants dashboard
-│   │   └── storefront/       # Composants vitrine
-│   ├── lib/
-│   │   ├── db/               # Schéma base de données
-│   │   ├── email/            # Templates email
-│   │   └── pdf/              # Génération de contrats
-│   └── messages/             # Traductions i18n
-└── public/                   # Fichiers statiques
+├── apps/
+│   ├── web/               # Application Next.js (dashboard + vitrines + API)
+│   │   ├── app/           # Routes App Router
+│   │   ├── components/    # Composants dashboard & vitrine
+│   │   ├── lib/           # Logique métier, email, PDF, IA
+│   │   └── messages/      # Traductions i18n (8 langues)
+│   └── voice-relay/       # Pont vocal streaming optionnel (réceptionniste IA)
+├── packages/
+│   ├── api/               # Routeurs & services oRPC
+│   ├── auth/              # Configuration better-auth
+│   ├── db/                # Schéma & migrations Drizzle (MySQL)
+│   ├── email/             # Transport & templates email
+│   ├── ui/                # Composants UI partagés
+│   └── ...                # types, utils, validations, pdf, config
+└── docker/                # Dockerfiles de production & entrypoint
 ```
 
 </details>
@@ -288,12 +257,13 @@ louez/
 <summary><strong>🔧 Scripts disponibles</strong></summary>
 
 ```bash
-pnpm dev          # Lancer le serveur de développement
-pnpm build        # Build pour la production
-pnpm start        # Lancer le serveur de production
-pnpm lint         # Lancer ESLint
-pnpm format       # Formater avec Prettier
-pnpm db:push      # Synchroniser le schéma avec la base
+pnpm dev          # Serveur de développement
+pnpm build        # Build de production
+pnpm start        # Serveur de production
+pnpm lint         # Linter
+pnpm format       # Formatage du code
+pnpm type-check   # Vérification des types du monorepo
+pnpm db:push      # Synchroniser le schéma vers la base
 pnpm db:studio    # Ouvrir Drizzle Studio
 pnpm db:generate  # Générer les migrations
 pnpm db:migrate   # Exécuter les migrations
@@ -307,7 +277,7 @@ pnpm db:migrate   # Exécuter les migrations
 
 Les contributions sont les bienvenues ! Voici comment aider :
 
-- 🐛 **Signaler des bugs** — Vous avez trouvé un problème ? Dites-le nous
+- 🐛 **Signaler des bugs** — Un problème ? Dites-le nous
 - 💡 **Proposer des fonctionnalités** — Une idée ? Ouvrez une discussion
 - 🔧 **Soumettre des PRs** — Les contributions de code sont bienvenues
 - 📖 **Améliorer la doc** — Aidez les autres à démarrer
@@ -321,10 +291,10 @@ git clone https://github.com/VOTRE_USERNAME/louez.git
 # Créer une branche
 git checkout -b feature/super-fonctionnalite
 
-# Faire les modifications & commit
-git commit -m 'Ajouter une super fonctionnalité'
+# Modifier & committer
+git commit -m 'Ajoute une super fonctionnalité'
 
-# Push & ouvrir une PR
+# Pousser & ouvrir une PR
 git push origin feature/super-fonctionnalite
 ```
 
@@ -344,24 +314,24 @@ Voir [SECURITY.md](SECURITY.md) pour notre politique de sécurité complète.
 
 **Apache 2.0 avec Commons Clause** — voir [LICENSE](LICENSE)
 
-✅ Gratuit pour usage personnel et interne
-✅ Modifiez et personnalisez librement
+✅ Gratuit pour un usage personnel et interne
+✅ Modification et personnalisation libres
 ✅ Contributions bienvenues
-❌ Ne peut pas être vendu comme service commercial sans accord
+❌ Revente en tant que service commercial interdite sans accord
 
 ---
 
 <div align="center">
 
-### ⭐ Mettez-nous une étoile sur GitHub !
+### ⭐ Mettez une étoile sur GitHub !
 
-Si Louez aide votre entreprise, montrez votre soutien avec une étoile.
+Si Louez aide votre activité, montrez-le avec une étoile.
 
 [![Star on GitHub](https://img.shields.io/github/stars/Synapsr/Louez?style=social)](https://github.com/Synapsr/Louez)
 
 ---
 
-**Créé avec ❤️ par [Synapsr](https://github.com/synapsr)**
+**Construit avec ❤️ par [Synapsr](https://github.com/synapsr)**
 
 [Signaler un bug](https://github.com/Synapsr/Louez/issues) • [Proposer une fonctionnalité](https://github.com/Synapsr/Louez/discussions) • [Documentation](#-documentation)
 

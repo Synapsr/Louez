@@ -1,6 +1,6 @@
 'use server';
 
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import {
@@ -10,6 +10,7 @@ import {
 } from '@louez/api/services';
 import { db } from '@louez/db';
 import {
+  aiAdvisorConversations,
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   customers,
@@ -41,6 +42,7 @@ import type {
 } from '@louez/types';
 import type { Rate } from '@louez/types';
 import {
+  advisorValidationCovers,
   calculateTaxFromExclusive,
   extractExclusiveFromInclusive,
   getEffectiveTaxRate,
@@ -56,6 +58,7 @@ import {
 import type { SeasonalPricingConfig } from '@louez/utils';
 import type { PricingMode } from '@louez/utils';
 
+import { isAdvisorReachableForStore } from '@/lib/ai/advisor/eligibility';
 import { notifyNewReservation } from '@/lib/discord/platform-notifications';
 import { getLocaleFromCountry } from '@/lib/email/i18n';
 import { sendNewRequestLandlordEmail } from '@/lib/email/send';
@@ -95,6 +98,7 @@ import {
   validateMinRentalDurationMinutes,
 } from '@/lib/utils/rental-duration';
 
+import { getStorefrontUrl } from '@/lib/storefront-url';
 import { env } from '@/env';
 
 interface ReservationItem {
@@ -149,6 +153,18 @@ interface CreateReservationInput {
   locale?: 'fr' | 'en';
   delivery?: DeliveryInput;
   promoCode?: string;
+  advisorConversationId?: string;
+  /**
+   * Reservation origin. 'phone' = AI receptionist call: forces a pending
+   * REQUEST the owner reviews and NEVER an online payment, whatever the store's
+   * reservation mode — there is no card on a phone call.
+   */
+  source?: 'online' | 'phone';
+  /**
+   * Compute and return the authoritative server amounts WITHOUT creating
+   * anything. Used to tell a phone caller the real total before they agree.
+   */
+  quoteOnly?: boolean;
 }
 
 function getErrorKey(error: unknown, fallback: string): string {
@@ -557,6 +573,52 @@ export async function createReservation(input: CreateReservationInput) {
       Math.max(...itemEndDates.map((d) => d.getTime())),
     );
 
+    // AI advisor: resolve the referenced conversation (if any) and, when the
+    // store REQUIRES advisor validation, enforce it server-side. The check is
+    // inert when the advisor is inactive (platform AI unconfigured, plan
+    // without the feature) — a checkout must never be blocked by an absent
+    // advisor.
+    if (
+      input.advisorConversationId !== undefined &&
+      !/^[A-Za-z0-9_-]{21}$/.test(input.advisorConversationId)
+    ) {
+      return { error: 'errors.invalidData' };
+    }
+    const advisorConversation = input.advisorConversationId
+      ? ((await db.query.aiAdvisorConversations.findFirst({
+          where: and(
+            eq(aiAdvisorConversations.id, input.advisorConversationId),
+            eq(aiAdvisorConversations.storeId, store.id),
+          ),
+          columns: {
+            id: true,
+            validatedAt: true,
+            validatedCart: true,
+            reservationId: true,
+          },
+        })) ?? null)
+      : null;
+
+    if (
+      store.aiAdvisorSettings?.mode === 'required' &&
+      (await isAdvisorReachableForStore(store))
+    ) {
+      const isValidated =
+        advisorConversation?.validatedAt != null &&
+        advisorValidationCovers(advisorConversation.validatedCart, {
+          items: input.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
+          startDate: rentalStartDate.toISOString(),
+          endDate: rentalEndDate.toISOString(),
+        });
+
+      if (!isValidated) {
+        return { error: 'errors.advisorValidationRequired' };
+      }
+    }
+
     // Validate business hours for the rental period (using store's timezone for proper time comparison)
     const businessHoursValidation = validateRentalPeriod(
       rentalStartDate,
@@ -844,9 +906,15 @@ export async function createReservation(input: CreateReservationInput) {
       serverSubtotal += pricingResult.subtotal;
       serverTotalDeposit += pricingResult.deposit;
 
-      // Log price mismatch for monitoring (potential fraud attempt)
+      // Log price mismatch for monitoring (potential fraud attempt). Skipped for
+      // the phone source: the server-side receptionist tool passes the flat base
+      // price as a best-effort input and cannot pre-compute tiered/seasonal
+      // pricing, so a mismatch here is expected, not a fraud signal.
       const clientItemSubtotal = item.unitPrice * item.quantity * duration;
-      if (Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01) {
+      if (
+        input.source !== 'phone' &&
+        Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01
+      ) {
         console.warn('[SECURITY] Price mismatch detected', {
           productId: item.productId,
           clientSubtotal: clientItemSubtotal,
@@ -1022,33 +1090,38 @@ export async function createReservation(input: CreateReservationInput) {
     // Client `totalAmount` excludes deposit and includes delivery fee.
     const serverClientComparableTotal = serverSubtotal + deliveryFee;
 
-    if (Math.abs(input.subtotalAmount - serverSubtotal) > 0.01) {
-      console.warn('[SECURITY] Subtotal mismatch detected', {
-        clientSubtotal: input.subtotalAmount,
-        serverSubtotal,
-        difference: input.subtotalAmount - serverSubtotal,
-      });
-    }
+    // Client-submitted amounts only exist for the web checkout. A 'phone'
+    // reservation is created by the trusted server-side receptionist tool, which
+    // cannot pre-compute rental pricing, so these mismatch checks don't apply.
+    if (input.source !== 'phone') {
+      if (Math.abs(input.subtotalAmount - serverSubtotal) > 0.01) {
+        console.warn('[SECURITY] Subtotal mismatch detected', {
+          clientSubtotal: input.subtotalAmount,
+          serverSubtotal,
+          difference: input.subtotalAmount - serverSubtotal,
+        });
+      }
 
-    if (Math.abs(input.depositAmount - serverTotalDeposit) > 0.01) {
-      console.warn('[SECURITY] Deposit mismatch detected', {
-        clientDeposit: input.depositAmount,
-        serverDeposit: serverTotalDeposit,
-        difference: input.depositAmount - serverTotalDeposit,
-      });
-    }
+      if (Math.abs(input.depositAmount - serverTotalDeposit) > 0.01) {
+        console.warn('[SECURITY] Deposit mismatch detected', {
+          clientDeposit: input.depositAmount,
+          serverDeposit: serverTotalDeposit,
+          difference: input.depositAmount - serverTotalDeposit,
+        });
+      }
 
-    // Log total mismatch for monitoring (client total = subtotal + delivery, without deposit)
-    if (Math.abs(input.totalAmount - serverClientComparableTotal) > 0.01) {
-      console.warn('[SECURITY] Total amount mismatch detected', {
-        clientTotal: input.totalAmount,
-        serverTotal: serverClientComparableTotal,
-        clientSubtotal: input.subtotalAmount,
-        serverSubtotal,
-        clientDeposit: input.depositAmount,
-        serverDeposit: serverTotalDeposit,
-        serverDeliveryFee: deliveryFee,
-      });
+      // Log total mismatch for monitoring (client total = subtotal + delivery, without deposit)
+      if (Math.abs(input.totalAmount - serverClientComparableTotal) > 0.01) {
+        console.warn('[SECURITY] Total amount mismatch detected', {
+          clientTotal: input.totalAmount,
+          serverTotal: serverClientComparableTotal,
+          clientSubtotal: input.subtotalAmount,
+          serverSubtotal,
+          clientDeposit: input.depositAmount,
+          serverDeposit: serverTotalDeposit,
+          serverDeliveryFee: deliveryFee,
+        });
+      }
     }
 
     // ===== TULIP INSURANCE PREVIEW =====
@@ -1185,6 +1258,22 @@ export async function createReservation(input: CreateReservationInput) {
     const finalDeliveryFee = deliveryFee;
     // totalAmount excludes deposit — deposit is tracked separately in depositAmount
     const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee;
+
+    // Quote-only (phone receptionist): return the authoritative server-computed
+    // amounts WITHOUT creating anything, so the caller can be told the real price
+    // and agree BEFORE the booking is registered. Reuses the exact pricing above.
+    if (input.quoteOnly) {
+      return {
+        quote: {
+          subtotal: finalSubtotal,
+          discount: finalDiscount,
+          deposit: finalDeposit,
+          deliveryFee: finalDeliveryFee,
+          total: finalTotal,
+          currency: store.settings?.currency ?? 'EUR',
+        },
+      };
+    }
 
     const startDates = input.items.map((item) => new Date(item.startDate));
     const endDates = input.items.map((item) => new Date(item.endDate));
@@ -1524,7 +1613,7 @@ export async function createReservation(input: CreateReservationInput) {
         taxAmount: taxAmount?.toFixed(2) ?? null,
         taxRate: taxRate?.toFixed(2) ?? null,
         customerNotes: input.customerNotes || null,
-        source: 'online',
+        source: input.source ?? 'online',
         outboundMethod: outboundLeg?.method || 'store',
         returnMethod: returnLeg?.method || 'store',
         deliveryOption: hasAnyDelivery ? 'delivery' : 'pickup',
@@ -1683,9 +1772,26 @@ export async function createReservation(input: CreateReservationInput) {
           ...(tulipQuoteFallbackError && {
             tulipQuoteFallbackError,
           }),
+          ...(advisorConversation && {
+            advisorConversationId: advisorConversation.id,
+          }),
         },
         createdAt: new Date(),
       });
+
+      // Link the advisor conversation to its reservation (conversion). The
+      // reservation_id filter keeps the first link authoritative.
+      if (advisorConversation && !advisorConversation.reservationId) {
+        await tx
+          .update(aiAdvisorConversations)
+          .set({ reservationId, updatedAt: new Date() })
+          .where(
+            and(
+              eq(aiAdvisorConversations.id, advisorConversation.id),
+              isNull(aiAdvisorConversations.reservationId),
+            ),
+          );
+      }
 
       return {
         ok: true as const,
@@ -1911,8 +2017,11 @@ export async function createReservation(input: CreateReservationInput) {
       ).catch(() => {});
     }
 
-    // Check if we should process payment via Stripe
+    // Check if we should process payment via Stripe. A 'phone' reservation is
+    // always a pending REQUEST (no card on the call), so it never enters the
+    // online-payment flow even when the store is in immediate-payment mode.
     const shouldProcessPayment =
+      input.source !== 'phone' &&
       store.settings?.reservationMode === 'payment' &&
       store.stripeAccountId &&
       store.stripeChargesEnabled;
@@ -1922,9 +2031,7 @@ export async function createReservation(input: CreateReservationInput) {
     if (shouldProcessPayment) {
       try {
         const currency = store.settings?.currency || 'EUR';
-        const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-        const protocol = domain.includes('localhost') ? 'http' : 'https';
-        const baseUrl = `${protocol}://${store.slug}.${domain}`;
+        const baseUrl = getStorefrontUrl(store.slug);
 
         // Get deposit percentage (default 100% = full payment)
         const depositPercentage =

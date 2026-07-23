@@ -166,7 +166,9 @@
       "oauthError": "Si e verificato un errore durante l'accesso. Riprova.",
       "accessDenied": "Accesso negato. Non hai il permesso di accedere.",
       "verification": "Il link di verifica non e valido o e scaduto.",
-      "default": "Si e verificato un errore. Riprova."
+      "default": "Si e verificato un errore. Riprova.",
+      "passwordTooShort": "La password deve contenere almeno 8 caratteri.",
+      "registrationClosed": "Le registrazioni sono chiuse su questa istanza. Chiedi un invito al proprietario."
     },
     "referralBanner": "{storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
     "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
@@ -181,7 +183,16 @@
     "perk1": "Le tue prime 15 prenotazioni in omaggio",
     "perk2": "Max 1 € a prenotazione, decrescente col volume, 0% di commissioni, nessun abbonamento",
     "perk3": "Il tuo negozio online pronto in 5 minuti",
-    "visitShop": "Vedi il negozio"
+    "visitShop": "Vedi il negozio",
+    "name": "Nome",
+    "namePlaceholder": "Il tuo nome",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Crea un account",
+    "noAccountYet": "Non hai ancora un account?",
+    "alreadyHaveAccount": "Hai già un account?",
+    "usePasswordInstead": "Accedi con una password",
+    "useEmailCodeInstead": "Accedi con un codice via email",
+    "passwordLoginDescription": "Accedi con la tua email e la tua password."
   },
   "invitation": {
     "inviteToJoin": "{name} ti invita a unirti al team",
@@ -212,6 +223,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "Assistente IA",
+        "subtitle": "Il tuo negozio consiglia, risponde e prenota — automaticamente",
+        "credits": "{count} crediti",
+        "creditsUnlimited": "Crediti illimitati",
+        "recharge": "Ricarica"
+      },
+      "hero": {
+        "eyebrow": "Assistente IA",
+        "title": "Il tuo negozio risponde, consiglia e prenota, anche quando non ci sei",
+        "subtitle": "Attiva il consulente online e l'agente vocale: i tuoi clienti ottengono risposte immediate, tu ricevi prenotazioni qualificate.",
+        "activate": "Attiva",
+        "upgrade": "Passa a un piano superiore",
+        "upgradeHint": "L'Assistente IA è incluso a partire dal piano Pro.",
+        "advisor": {
+          "title": "Consulente online",
+          "b1": "Risponde alle domande dei clienti sul tuo negozio 24 ore su 24",
+          "b2": "Consiglia i prodotti giusti e verifica le disponibilità",
+          "b3": "Trasforma i visitatori in prenotazioni qualificate"
+        },
+        "voice": {
+          "title": "Agente vocale",
+          "b1": "Risponde a tutte le chiamate, a qualsiasi ora",
+          "b2": "Comunica orari, tariffe e disponibilità a voce",
+          "b3": "Prende prenotazioni e ti inoltra i messaggi"
+        }
+      }
+    },
     "installPrompt": {
       "title": "Installa l'app",
       "subtitle": "Tieni la tua dashboard sempre a portata di mano nella schermata Home.",
@@ -330,7 +370,8 @@
       "upgradeToPro": "Passa a Pro",
       "limitReachedTitle": "Limite raggiunto",
       "limitReachedDescription": "Stai usando {current} su {limit} membri. Aggiorna per aggiungerne altri.",
-      "upgradeForMore": "Aggiungi altri"
+      "upgradeForMore": "Aggiungi altri",
+      "invitationLinkCopied": "Link d'invito copiato — l'email non è configurata, condividilo direttamente"
     },
     "referrals": {
       "title": "Referenze",
@@ -511,6 +552,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "Assistente IA",
       "home": "Home",
       "products": "Prodotti",
       "inventory": "Inventario",
@@ -1032,7 +1074,10 @@
               "margin": "Margine / giorno"
             }
           }
-        }
+        },
+        "aiContext": "Contesto per il consulente IA",
+        "aiContextPlaceholder": "Es: richiede patente B, non adatto ai bambini sotto i 12 anni, chiedi sempre la data dell'evento e la dimensione del gruppo…",
+        "aiContextHint": "Informazioni aggiuntive visibili solo al consulente IA — le usa per consigliare i clienti e verificare i requisiti. Non vengono mai mostrate nel negozio."
       },
       "deleteConfirm": {
         "title": "Eliminare questo prodotto?",
@@ -2032,7 +2077,14 @@
       },
       "tulipInsuredBadge": "Assicurato Tulip",
       "tulipContractCardTitle": "Contratto assicurativo",
-      "tulipContractCardDescription": "Apri il contratto in Colibri."
+      "tulipContractCardDescription": "Apri il contratto in Colibri.",
+      "advisor": {
+        "cardTitle": "Consulente IA",
+        "validated": "Convalidata",
+        "viewConversation": "Vedi conversazione",
+        "sheetTitle": "Conversazione con il consulente",
+        "sheetDescription": "Conversazione tra il cliente e il consulente IA per questa prenotazione."
+      }
     },
     "customers": {
       "title": "Clienti",
@@ -4145,7 +4197,177 @@
           "reversed": "Rimborsato"
         }
       },
-      "referrals": "Referral"
+      "referrals": "Referral",
+      "aiAdvisor": {
+        "title": "Consulente IA",
+        "description": "Lascia che un assistente IA accolga i tuoi clienti nel tuo negozio, risponda alle loro domande e li guidi verso il noleggio giusto",
+        "saved": "Impostazioni del consulente IA salvate",
+        "enableSection": "Consulente IA",
+        "enableSectionDescription": "Configura l'assistente che chatta con i tuoi clienti nel tuo negozio",
+        "enabled": "Attiva il consulente IA",
+        "enabledDescription": "Mostra il widget di chat nel tuo negozio",
+        "mode": "Modalità al momento della prenotazione",
+        "modeDescription": "Scegli come il consulente interviene nel processo di prenotazione",
+        "modeOptional": "Opzionale",
+        "modeOptionalDescription": "I clienti possono chattare con il consulente, la prenotazione resta invariata",
+        "modeRecommended": "Consigliato",
+        "modeRecommendedDescription": "Al momento della prenotazione viene mostrato un suggerimento non bloccante per chattare",
+        "modeRequired": "Obbligatorio",
+        "modeRequiredDescription": "La prenotazione è bloccata finché il consulente non convalida la conversazione",
+        "storeContext": "Istruzioni per il tuo negozio",
+        "storeContextDescription": "Scrivi ciò che diresti a un nuovo dipendente: vincoli, verifiche da effettuare, tono e regole",
+        "storeContextPlaceholder": "Es: Chiedi sempre l'altezza del cliente prima di consigliare una taglia di bici, precisa che i caschi sono inclusi, la consegna è disponibile solo entro 10 km...",
+        "personalizationSection": "Personalizzazione",
+        "displayName": "Nome visualizzato",
+        "displayNameDescription": "Titolo del widget mostrato ai clienti (per impostazione predefinita, un titolo tradotto)",
+        "displayNamePlaceholder": "Es: Leo, il tuo consulente per il noleggio",
+        "welcomeMessage": "Messaggio di benvenuto",
+        "welcomeMessageDescription": "Primo messaggio mostrato all'apertura della chat (per impostazione predefinita, un messaggio tradotto)",
+        "welcomeMessagePlaceholder": "Es: Ciao! Raccontami il tuo progetto e ti aiuterò a scegliere l'attrezzatura giusta.",
+        "notConfigured": {
+          "title": "Provider IA non configurato",
+          "description": "L'operatore della piattaforma deve impostare le variabili d'ambiente AI_PROVIDER e AI_API_KEY perché il consulente possa rispondere ai clienti. Puoi comunque preparare le tue impostazioni qui sotto."
+        },
+        "locked": {
+          "title": "Sblocca il Consulente IA",
+          "description": "Trasforma i visitatori del tuo negozio in prenotazioni con un assistente IA",
+          "upgrade": "Passa a Pro",
+          "featureLocked": "Funzione bloccata",
+          "upgradeToUnlock": "Passa a Pro per abilitare questa funzione"
+        },
+        "conversations": {
+          "columnCredits": "Crediti",
+          "creditsUsed": "{count} cr",
+          "title": "Conversazioni",
+          "description": "Consulta le domande poste al consulente e le conversazioni che hanno portato a una prenotazione",
+          "filterAll": "Tutte",
+          "filterConverted": "Convertite",
+          "filterNotConverted": "Non convertite",
+          "empty": "Ancora nessuna conversazione",
+          "emptyDescription": "Le conversazioni appariranno qui quando i clienti inizieranno a chattare con il consulente nel tuo negozio",
+          "emptyFilteredDescription": "Nessuna conversazione corrisponde a questo filtro",
+          "columnDate": "Data",
+          "columnFirstMessage": "Primo messaggio",
+          "columnMessages": "Messaggi",
+          "columnStatus": "Stato",
+          "statusConverted": "Convertita",
+          "statusValidated": "Convalidata",
+          "statusNotConverted": "Non convertita",
+          "pagination": "Pagina {page} di {totalPages}",
+          "previousPage": "Pagina precedente",
+          "nextPage": "Pagina successiva",
+          "transcriptTitle": "Conversazione",
+          "transcriptError": "Impossibile caricare questa conversazione",
+          "channelPhone": "Telefonata",
+          "channelWeb": "Chat",
+          "recording": {
+            "play": "Riproduci registrazione",
+            "pause": "Pausa",
+            "retry": "Riprova",
+            "seek": "Posizione",
+            "error": "Registrazione non disponibile"
+          }
+        }
+      },
+      "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Cambia",
+          "done": "Fatto",
+          "resetToRecommended": "Torna alla voce consigliata",
+          "defaultBadge": "Consigliata",
+          "defaultVoice": "Voce consigliata",
+          "title": "Scegli la voce del tuo agente",
+          "description": "Ascolta le voci e scegli quella che rappresenterà il tuo negozio al telefono."
+        },
+        "setup": {
+          "step1": "Scegli il tuo numero",
+          "step2": "Personalizza l'agente",
+          "title": "Il tuo agente ha bisogno di una linea",
+          "why": "Scegli un numero dedicato: comunicalo direttamente ai tuoi clienti oppure configura l'inoltro di chiamata dal tuo numero abituale — l'agente risponde per te.",
+          "rentalChip": "{credits} crediti IA / mese",
+          "perMinuteChip": "{credits} crediti / minuto di chiamata",
+          "insufficientTitle": "Saldo insufficiente",
+          "insufficientBody": "L'attivazione del numero richiede {credits} crediti IA, addebitati automaticamente ogni mese. Ricarica per continuare.",
+          "insufficientCta": "Ricarica i miei crediti",
+          "step2Hint": "Prossimo passo: una volta scelto il numero, personalizza voce, lingua e comportamento del tuo agente.",
+          "boundRental": "{credits} crediti IA / mese, addebitati automaticamente"
+        },
+        "disableConfirm": {
+          "title": "Disattivare l'agente vocale?",
+          "description": "Al salvataggio, il numero {number} verrà scollegato e rimesso in circolazione — potresti non recuperarlo. Le chiamate in entrata non saranno più gestite.",
+          "confirm": "Disattiva e scollega"
+        },
+        "numberReleaseFailed": "Impossibile scollegare il numero — resta collegato, nuovo tentativo automatico programmato",
+        "description": "Un agente vocale IA che risponde alla tua linea telefonica — informa i tuoi clienti e registra prenotazioni, nella lingua che scegli.",
+        "enableSection": "Agente vocale IA",
+        "enableSectionDescription": "Configura l'agente vocale che risponde quando i tuoi clienti chiamano",
+        "enabled": "Attiva l'agente vocale IA",
+        "enabledDescription": "L'IA risponde alle chiamate in arrivo sul tuo numero",
+        "number": {
+          "title": "Numero di telefono",
+          "description": "Attiva un numero per il tuo agente vocale o collegane uno che possiedi già.",
+          "active": "Attivo",
+          "activeHint": "I clienti raggiungono il tuo agente vocale a questo numero.",
+          "release": "Rilascia numero",
+          "unlink": "Scollega numero",
+          "country": "Paese",
+          "areaCode": "Prefisso (facoltativo)",
+          "search": "Cerca",
+          "noResults": "Nessun numero trovato. Prova un altro prefisso o paese.",
+          "provision": "Ottieni questo numero",
+          "costNote": "L'attivazione aggiunge un numero alla tua linea e lo configura automaticamente.",
+          "provisioned": "Numero attivato",
+          "released": "Numero rilasciato",
+          "advanced": "Ho già un numero",
+          "manualNumber": "Il tuo numero (formato internazionale)",
+          "manualHint": "Punta il webhook vocale del tuo numero all'indirizzo qui sotto, poi collegalo qui.",
+          "link": "Collega",
+          "linked": "Numero collegato",
+          "cancel": "Annulla",
+          "releaseConfirmTitle": "Rilasciare questo numero?",
+          "releaseConfirmBody": "Il numero {number} verrà restituito al fornitore e le chiamate non raggiungeranno più il tuo agente vocale. Operazione irreversibile.",
+          "unlinkConfirmTitle": "Scollegare questo numero?",
+          "unlinkConfirmBody": "Il numero {number} verrà scollegato dal tuo agente vocale. Mantieni il numero presso il tuo fornitore.",
+          "searching": "Ricerca di numeri disponibili…",
+          "searchHint": "Scegli un paese e cerca un numero disponibile da attivare.",
+          "areaCodePlaceholder": "es. 06",
+          "manualSetup": "Come collegare un numero esistente",
+          "copy": "Copia"
+        },
+        "notConfigured": {
+          "title": "Telefonia non configurata",
+          "description": "L'operatore della piattaforma deve configurare un fornitore di telefonia (AI_PHONE_ENABLED, VOICE_PROVIDER e le credenziali) per attivare l'agente vocale."
+        },
+        "language": "Lingua di risposta",
+        "languageDescription": "La lingua in cui l'assistente parla con i chiamanti",
+        "canTakeReservations": "Prendere prenotazioni",
+        "canTakeReservationsDescription": "Consenti all'assistente di registrare una prenotazione (altrimenti informa soltanto)",
+        "recordCalls": "Registra le chiamate",
+        "recordCallsDescription": "Chi chiama viene informato all'inizio che la chiamata è registrata. Puoi riascoltare le registrazioni dall'elenco delle conversazioni.",
+        "answerMode": "Ruolo",
+        "answerModeDescription": "Come viene usato l'agente vocale su questa linea",
+        "answerModeAlways": "Linea diretta",
+        "answerModeAlwaysDescription": "Questo numero è l'agente IA — risponde a ogni chiamata come la tua linea principale",
+        "answerModeAfterHours": "Segreteria",
+        "answerModeAfterHoursDescription": "L'IA supporta il tuo team — durante gli orari le chiamate vanno alla tua linea umana, fuori risponde l'IA",
+        "greeting": "Messaggio di benvenuto",
+        "greetingDescription": "Aggiunto dopo l'annuncio automatico obbligatorio",
+        "greetingPlaceholder": "Come posso aiutarla?",
+        "transferNumber": "Numero di trasferimento",
+        "transferNumberDescription": "Numero di una persona per i trasferimenti e la modalità fuori orario (formato internazionale)",
+        "phoneFormat": "Numero non valido. Usa il formato internazionale, es. +33123456789",
+        "saved": "Impostazioni dell'agente vocale IA salvate",
+        "voice": "Voce",
+        "voiceDescription": "La voce del tuo agente. Scegline una per la lingua selezionata.",
+        "voicePlaceholder": "Voce predefinita",
+        "voiceGender": {
+          "all": "Tutte",
+          "female": "Donna",
+          "male": "Uomo"
+        },
+        "voicePreview": "Ascolta",
+        "voiceRecommended": "Consigliata"
+      }
     },
     "commandPalette": {
       "title": "Tavolozza dei comandi",
@@ -4198,6 +4420,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "Assistente IA",
       "label": "Breadcrumb",
       "home": "Home",
       "products": "Prodotti",
@@ -4237,6 +4460,65 @@
       "emptyTitle": "Nulla da rivedere",
       "emptyDescription": "Le nuove richieste appariranno qui.",
       "viewAllPending": "Vedi tutte le richieste in attesa"
+    },
+    "aiCredits": {
+      "title": "Crediti IA",
+      "description": "I crediti alimentano il consulente IA del tuo negozio.",
+      "lowBalance": "Basso",
+      "lowBalanceHint": "Stai esaurendo i crediti IA. Ricarica per mantenere il consulente disponibile per i tuoi clienti.",
+      "topupSuccess": "Pagamento riuscito — i tuoi crediti sono stati aggiunti.",
+      "topupCancelled": "Pagamento annullato.",
+      "unlimited": "Illimitato",
+      "creditsUnit": "crediti",
+      "breakdown": "{monthly} inclusi questo mese · {prepaid} prepagati",
+      "breakdownUnlimited": "Illimitato questo mese · {prepaid} prepagati",
+      "breakdownPrepaidOnly": "{prepaid} prepagati",
+      "conversationsHint": "≈ {count} conversazioni",
+      "recharge": "Ricarica",
+      "autoTopup": {
+        "title": "Ricarica automatica",
+        "description": "Ricarica automaticamente quando il saldo è basso.",
+        "thresholdLabel": "Ricarica quando sotto (crediti)",
+        "packLabel": "Pacchetto da aggiungere",
+        "pack": "{credits} cr · {amount}",
+        "cardNote": "Richiede una carta salvata (aggiunta alla prima ricarica).",
+        "save": "Salva",
+        "saved": "Salvato"
+      },
+      "history": {
+        "title": "Attività recente",
+        "type": {
+          "grant": "Crediti di benvenuto",
+          "topup": "Ricarica",
+          "auto_topup": "Ricarica automatica",
+          "adjustment": "Rettifica"
+        }
+      },
+      "topup": {
+        "valueIntro": "Da usare liberamente — ad esempio:",
+        "valueOr": "oppure",
+        "rateConversations": "1 credito per conversazione",
+        "rateMinutes": "{credits} crediti al minuto",
+        "rateNumber": "{credits} crediti al mese",
+        "valueTitle": "Cosa rappresenta",
+        "valueConversations": "Fino a {count} conversazioni di consulenza",
+        "valueMinutes": "≈ {count} minuti di chiamate vocali",
+        "valueNumberMonths": "{count} mesi di numero dedicato",
+        "perCredit": "{amount} / credito",
+        "savings": "-{percent} %",
+        "popular": "Popolare",
+        "noExpiry": "I tuoi crediti non scadono mai.",
+        "title": "Ricarica crediti IA",
+        "description": "Scegli un pacchetto. I crediti vengono aggiunti subito dopo il pagamento.",
+        "credits": "crediti",
+        "info": "Un credito copre circa una conversazione completa con il consulente.",
+        "cancel": "Annulla",
+        "processing": "Elaborazione…",
+        "pay": "Paga {amount}",
+        "errors": {
+          "generic": "Qualcosa è andato storto. Riprova."
+        }
+      }
     }
   },
   "storefront": {
@@ -4729,7 +5011,26 @@
       "resolvedAttributesLabel": "Finale",
       "lineCheckingAvailability": "Verifica disponibilita...",
       "lineNeedsUpdateInline": "Questa riga non e piu disponibile. Aggiorni la quantita o gli attributi.",
-      "lineNeedsUpdate": "Alcune righe non sono piu disponibili. Aggiorni il carrello prima di inviare."
+      "lineNeedsUpdate": "Alcune righe non sono piu disponibili. Aggiorni il carrello prima di inviare.",
+      "advisor": {
+        "recommendedHint": "Hai dubbi sulla tua scelta? Il consulente può verificarla con te.",
+        "askAdvisor": "Chiedi al consulente",
+        "dismiss": "Ignora",
+        "requiredTitle": "È richiesta una breve verifica",
+        "requiredDescription": "Questo negozio chiede al consulente di verificare alcune informazioni prima di poter prenotare.",
+        "startVerification": "Inizia la verifica",
+        "validatedTitle": "Verifica completata",
+        "validatedDescription": "Il consulente ha convalidato la tua prenotazione — puoi prenotare.",
+        "badgeRequired": "Obbligatorio",
+        "verifyNotice": "Il consulente ha bisogno solo di qualche informazione per confermare la tua prenotazione.",
+        "placeholder": "Rispondi alla domanda…",
+        "continueToPayment": "Continua",
+        "staleTitle": "La tua prenotazione è cambiata",
+        "staleDescription": "Invia un altro messaggio così il consulente può riconfermare la tua prenotazione.",
+        "statusChecking": "Verifica in corso…",
+        "transcriptLabel": "Conversazione di verifica",
+        "completeVerificationHint": "Completa la verifica qui sopra per continuare."
+      }
     },
     "confirmation": {
       "title": "Prenotazione confermata!",
@@ -5022,6 +5323,29 @@
         "selectEndDate": "Seleziona una data di restituzione",
         "endTimeAfterStart": "L'orario di restituzione deve essere successivo al ritiro"
       }
+    },
+    "advisor": {
+      "open": "Chiedi al consulente",
+      "title": "Consulente IA",
+      "subtitle": "Risponde all'istante",
+      "welcome": "Ciao! Sono il consulente di questo negozio. Raccontami il tuo progetto e ti aiuterò a scegliere l'attrezzatura giusta.",
+      "placeholder": "Fai la tua domanda…",
+      "send": "Invia",
+      "close": "Chiudi",
+      "restart": "Nuova conversazione",
+      "disclaimer": "Risposte generate dall'IA — verifica le informazioni importanti",
+      "validateChip": "Vorrei convalidare la mia prenotazione",
+      "suggestions": {
+        "recommend": "Cosa mi consigli?",
+        "question": "Ho una domanda su un prodotto",
+        "practical": "Orari e informazioni pratiche"
+      },
+      "errors": {
+        "generic": "Si è verificato un errore. Riprova.",
+        "rateLimited": "Troppi messaggi per ora — riprova più tardi.",
+        "unavailable": "Il consulente non è disponibile al momento. Riprova più tardi."
+      },
+      "typing": "Il consulente sta scrivendo"
     }
   },
   "onboarding": {
@@ -5372,6 +5696,39 @@
       "amount": "Importo:",
       "viewRequest": "Vedi richiesta",
       "connectToManage": "Accedi alla tua dashboard per accettare o rifiutare questa richiesta."
+    },
+    "phoneCallbackLandlord": {
+      "subject": "Un cliente da richiamare — {store}",
+      "title": "Un cliente da richiamare",
+      "body": "Il tuo assistente vocale non è riuscito a completare una richiesta su {storeName} e ti inoltra questo messaggio.",
+      "phone": "Numero da richiamare:",
+      "message": "Messaggio:",
+      "listen": "Apri la chiamata",
+      "footer": "Apri la conversazione per leggere lo scambio e riascoltare la registrazione della chiamata."
+    },
+    "voiceNumberBilling": {
+      "numberLabel": "Numero:",
+      "rentalLabel": "Canone mensile:",
+      "rentalValue": "{credits} crediti IA / mese",
+      "deadlineLabel": "Scadenza:",
+      "ctaRecharge": "Ricarica i miei crediti",
+      "ctaOpen": "Apri il mio Assistente IA",
+      "footer": "Il canone del numero viene pagato automaticamente in crediti IA ogni mese.",
+      "warning": {
+        "subject": "Ricarica necessaria — rinnovo del numero {number}",
+        "title": "Il tuo saldo non copre il prossimo rinnovo",
+        "body": "Il numero {number} di {storeName} verrà rinnovato il {date} per {credits} crediti IA, ma il tuo saldo attuale non è sufficiente. Ricarica prima di quella data per conservare il numero."
+      },
+      "failed": {
+        "subject": "Azione richiesta — il numero {number} rischia di essere scollegato",
+        "title": "Rinnovo non riuscito",
+        "body": "Il rinnovo del numero {number} ({credits} crediti IA) non è andato a buon fine: saldo insufficiente. Ricarica entro il {date}, altrimenti il numero verrà scollegato automaticamente. Ritentiamo l'addebito ogni giorno non appena ricarichi."
+      },
+      "released": {
+        "subject": "Il numero {number} è stato scollegato",
+        "title": "Numero scollegato",
+        "body": "Il numero {number} di {storeName} è stato scollegato e non è più attivo. Puoi scegliere un nuovo numero in qualsiasi momento dal tuo Assistente IA."
+      }
     },
     "teamInvitation": {
       "subject": "{inviterName} ti invita a unirti a {storeName}",
@@ -5800,7 +6157,24 @@
     "tulipContractProductMarkedMissing": "Tulip richiede l'identificativo reale di ogni articolo assicurato. Assegna un'unità o un identificativo fisico a ogni prodotto assicurato prima di creare o sincronizzare il contratto.",
     "tulipContractTypeDisabled": "Il tipo di contratto Tulip richiesto per questa durata non e abilitato per questo negozio.",
     "unitAlreadyRetired": "Questa unità è già ritirata dal parco",
-    "unitNotRetired": "Questa unità non è ritirata dal parco"
+    "unitNotRetired": "Questa unità non è ritirata dal parco",
+    "advisorValidationRequired": "Questo negozio richiede una breve verifica con il consulente prima di prenotare",
+    "conversationNotFound": "Conversazione non trovata",
+    "featureNotAvailable": "Questa funzione non è disponibile nel tuo piano",
+    "telephonyNotConfigured": "La telefonia non è configurata dall'operatore.",
+    "insufficientAiCredits": "Crediti IA insufficienti — ricarica per attivare il tuo numero",
+    "numberAlreadyBound": "Un numero è già attivo. Rilascialo prima.",
+    "provisioningFailed": "Impossibile attivare questo numero. Provane un altro.",
+    "numberSearchFailed": "La ricerca dei numeri non è riuscita. Riprova.",
+    "noActiveNumber": "Nessun numero attivo da rilasciare.",
+    "releaseFailed": "Impossibile rilasciare il numero. Riprova.",
+    "invalidPhoneNumber": "Numero di telefono non valido.",
+    "phoneNumberInUse": "Questo numero è già in uso.",
+    "unexpected": "Qualcosa è andato storto. Riprova.",
+    "standaloneSingleStore": "Questa istanza ospita un solo negozio",
+    "emailLoginUnavailable": "L'accesso via email non è al momento disponibile",
+    "stripeNotConfigured": "I pagamenti online non sono disponibili: questa istanza non ha chiavi Stripe configurate. Le prenotazioni funzionano in modalità richiesta.",
+    "emailSendFailed": "Invio dell'email non riuscito."
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

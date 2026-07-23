@@ -9,7 +9,7 @@ import { ArrowRight, Check, ChevronDown, ExternalLink } from "lucide-react";
 import { Button } from "@louez/ui";
 import { cn } from "@louez/utils";
 
-import { env } from "@/env";
+import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 
 import { useMeasuredSize } from "./use-measured-size";
 
@@ -132,6 +132,7 @@ export function SetupChecklist({
   const t = useTranslations("dashboard.home");
   const tCommon = useTranslations("common");
   const reducedMotion = useReducedMotion() ?? false;
+  const { getAbsoluteUrl } = useStorefrontUrl(storeSlug);
 
   const [open, setOpen] = useState(false);
   const [expandedLayout, setExpandedLayout] = useState(false);
@@ -238,7 +239,7 @@ export function SetupChecklist({
     return null;
   }
 
-  const storeUrl = `https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}`;
+  const storeUrl = getAbsoluteUrl();
 
   return (
     <div className="fixed right-6 bottom-0 z-50 max-sm:right-4 max-sm:bottom-4">

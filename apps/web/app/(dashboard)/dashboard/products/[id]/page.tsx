@@ -126,6 +126,8 @@ export default async function EditProductPage({
     ? effectiveQuantities.get(product.id) ?? 0
     : product.quantity;
 
+  const showAiContext = store.aiAdvisorSettings?.enabled === true;
+
   return (
     <div className="space-y-6">
       <DashboardBreadcrumbLabel label={product.name} />
@@ -151,6 +153,7 @@ export default async function EditProductPage({
         categories={categoriesList}
         storeTaxSettings={store.settings?.tax}
         availableAccessories={availableAccessories}
+        showAiContext={showAiContext}
       />
     </div>
   );

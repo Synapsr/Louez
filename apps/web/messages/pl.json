@@ -166,7 +166,9 @@
       "oauthError": "Wystąpił błąd podczas logowania. Spróbuj ponownie.",
       "accessDenied": "Odmowa dostępu. Nie masz uprawnień do logowania.",
       "verification": "Link weryfikacyjny jest nieprawidłowy lub wygasł.",
-      "default": "Wystąpił błąd. Spróbuj ponownie."
+      "default": "Wystąpił błąd. Spróbuj ponownie.",
+      "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków.",
+      "registrationClosed": "Rejestracja na tej instancji jest zamknięta. Poproś właściciela o zaproszenie."
     },
     "referralBanner": "{storeName} zaprosił Cię do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
     "referralBannerGeneric": "🎁 Zostałeś zaproszony do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
@@ -181,7 +183,16 @@
     "perk1": "Pierwsze 15 rezerwacji za darmo",
     "perk2": "Maks. 1 € za rezerwację, im więcej, tym taniej, 0% prowizji, bez abonamentu",
     "perk3": "Twój sklep online gotowy w 5 minut",
-    "visitShop": "Zobacz sklep"
+    "visitShop": "Zobacz sklep",
+    "name": "Imię",
+    "namePlaceholder": "Twoje imię",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Utwórz konto",
+    "noAccountYet": "Nie masz jeszcze konta?",
+    "alreadyHaveAccount": "Masz już konto?",
+    "usePasswordInstead": "Zaloguj się hasłem",
+    "useEmailCodeInstead": "Zaloguj się kodem e-mail",
+    "passwordLoginDescription": "Zaloguj się za pomocą adresu e-mail i hasła."
   },
   "invitation": {
     "inviteToJoin": "{name} zaprasza Cię do zespołu",
@@ -212,6 +223,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "Asystent AI",
+        "subtitle": "Twój sklep doradza, odpowiada i rezerwuje — automatycznie",
+        "credits": "{count} kredytów",
+        "creditsUnlimited": "Nielimitowane kredyty",
+        "recharge": "Doładuj"
+      },
+      "hero": {
+        "eyebrow": "Asystent AI",
+        "title": "Twój sklep odpowiada, doradza i rezerwuje, nawet gdy Cię nie ma",
+        "subtitle": "Włącz doradcę online i agenta głosowego: Twoi klienci otrzymują natychmiastowe odpowiedzi, a Ty zyskujesz wartościowe rezerwacje.",
+        "activate": "Aktywuj",
+        "upgrade": "Zmień plan na wyższy",
+        "upgradeHint": "Asystent AI jest dostępny od planu Pro.",
+        "advisor": {
+          "title": "Doradca online",
+          "b1": "Odpowiada na pytania klientów o Twój sklep 24/7",
+          "b2": "Poleca właściwe produkty i sprawdza dostępność",
+          "b3": "Zamienia odwiedzających w wartościowe rezerwacje"
+        },
+        "voice": {
+          "title": "Agent głosowy",
+          "b1": "Odbiera każde połączenie, o każdej porze",
+          "b2": "Podaje godziny otwarcia, ceny i dostępność na głos",
+          "b3": "Przyjmuje rezerwacje i przekazuje Ci wiadomości"
+        }
+      }
+    },
     "installPrompt": {
       "title": "Zainstaluj aplikację",
       "subtitle": "Miej panel zawsze pod ręką na ekranie głównym.",
@@ -330,7 +370,8 @@
       "upgradeToPro": "Przejdź na Pro",
       "limitReachedTitle": "Osiągnięto limit",
       "limitReachedDescription": "Używasz {current} z {limit} członków. Ulepsz, aby dodać więcej.",
-      "upgradeForMore": "Dodaj więcej"
+      "upgradeForMore": "Dodaj więcej",
+      "invitationLinkCopied": "Link z zaproszeniem skopiowany — e-mail nie jest skonfigurowany, udostępnij go bezpośrednio"
     },
     "referrals": {
       "title": "Polecenia",
@@ -511,6 +552,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "Asystent AI",
       "home": "Strona główna",
       "products": "Produkty",
       "inventory": "Inwentarz",
@@ -1032,7 +1074,10 @@
               "margin": "Marża / dzień"
             }
           }
-        }
+        },
+        "aiContext": "Kontekst dla doradcy AI",
+        "aiContextPlaceholder": "Np. wymagane prawo jazdy kat. B, nieodpowiednie dla dzieci poniżej 12 lat, zawsze pytaj o datę wydarzenia i liczebność grupy…",
+        "aiContextHint": "Dodatkowe informacje widoczne tylko dla doradcy AI — używa ich, aby doradzać klientom i sprawdzać wymagania. Nigdy nie są wyświetlane w sklepie."
       },
       "deleteConfirm": {
         "title": "Usunąć ten produkt?",
@@ -2032,7 +2077,14 @@
       },
       "tulipInsuredBadge": "Ubezpieczono Tulip",
       "tulipContractCardTitle": "Umowa ubezpieczeniowa",
-      "tulipContractCardDescription": "Otwórz umowę w Colibri."
+      "tulipContractCardDescription": "Otwórz umowę w Colibri.",
+      "advisor": {
+        "cardTitle": "Doradca AI",
+        "validated": "Zatwierdzona",
+        "viewConversation": "Zobacz rozmowę",
+        "sheetTitle": "Rozmowa z doradcą",
+        "sheetDescription": "Rozmowa między klientem a doradcą AI dotycząca tej rezerwacji."
+      }
     },
     "customers": {
       "title": "Klienci",
@@ -4145,7 +4197,177 @@
           "reversed": "Zwrócone"
         }
       },
-      "referrals": "Polecenia"
+      "referrals": "Polecenia",
+      "aiAdvisor": {
+        "title": "Doradca AI",
+        "description": "Pozwól asystentowi AI witać klientów w Twoim sklepie, odpowiadać na ich pytania i prowadzić ich do odpowiedniego wynajmu",
+        "saved": "Zapisano ustawienia doradcy AI",
+        "enableSection": "Doradca AI",
+        "enableSectionDescription": "Skonfiguruj asystenta, który rozmawia z Twoimi klientami w sklepie",
+        "enabled": "Włącz doradcę AI",
+        "enabledDescription": "Wyświetla widżet czatu w Twoim sklepie",
+        "mode": "Tryb podczas rezerwacji",
+        "modeDescription": "Wybierz, jak doradca uczestniczy w procesie rezerwacji",
+        "modeOptional": "Opcjonalny",
+        "modeOptionalDescription": "Klienci mogą rozmawiać z doradcą, rezerwacja pozostaje bez zmian",
+        "modeRecommended": "Zalecany",
+        "modeRecommendedDescription": "Podczas rezerwacji wyświetlana jest nieblokująca sugestia rozmowy",
+        "modeRequired": "Wymagany",
+        "modeRequiredDescription": "Rezerwacja jest zablokowana, dopóki doradca nie zatwierdzi rozmowy",
+        "storeContext": "Instrukcje dla Twojego sklepu",
+        "storeContextDescription": "Napisz to, co powiedziałbyś nowemu pracownikowi: ograniczenia, weryfikacje do przeprowadzenia, ton i zasady",
+        "storeContextPlaceholder": "Np. Zawsze pytaj o wzrost klienta przed poleceniem rozmiaru roweru, wspomnij, że kaski są w cenie, dostawa jest dostępna tylko w promieniu 10 km...",
+        "personalizationSection": "Personalizacja",
+        "displayName": "Wyświetlana nazwa",
+        "displayNameDescription": "Tytuł widżetu widoczny dla klientów (domyślnie przetłumaczony tytuł)",
+        "displayNamePlaceholder": "Np. Leo, Twój doradca wynajmu",
+        "welcomeMessage": "Wiadomość powitalna",
+        "welcomeMessageDescription": "Pierwsza wiadomość wyświetlana po otwarciu czatu (domyślnie przetłumaczona wiadomość)",
+        "welcomeMessagePlaceholder": "Np. Cześć! Opowiedz mi o swoim projekcie, a pomogę Ci wybrać odpowiedni sprzęt.",
+        "notConfigured": {
+          "title": "Dostawca AI nie został skonfigurowany",
+          "description": "Operator platformy musi ustawić zmienne środowiskowe AI_PROVIDER i AI_API_KEY, aby doradca mógł odpowiadać klientom. Mimo to możesz przygotować swoje ustawienia poniżej."
+        },
+        "locked": {
+          "title": "Odblokuj Doradcę AI",
+          "description": "Zamień odwiedzających Twój sklep w rezerwacje dzięki asystentowi AI",
+          "upgrade": "Przejdź na Pro",
+          "featureLocked": "Funkcja zablokowana",
+          "upgradeToUnlock": "Przejdź na Pro, aby włączyć tę funkcję"
+        },
+        "conversations": {
+          "columnCredits": "Kredyty",
+          "creditsUsed": "{count} kr",
+          "title": "Rozmowy",
+          "description": "Sprawdź, o co klienci pytali doradcę i które rozmowy zakończyły się rezerwacją",
+          "filterAll": "Wszystkie",
+          "filterConverted": "Z rezerwacją",
+          "filterNotConverted": "Bez rezerwacji",
+          "empty": "Brak rozmów",
+          "emptyDescription": "Rozmowy pojawią się tutaj, gdy klienci zaczną rozmawiać z doradcą w Twoim sklepie",
+          "emptyFilteredDescription": "Żadna rozmowa nie pasuje do tego filtra",
+          "columnDate": "Data",
+          "columnFirstMessage": "Pierwsza wiadomość",
+          "columnMessages": "Wiadomości",
+          "columnStatus": "Status",
+          "statusConverted": "Z rezerwacją",
+          "statusValidated": "Zatwierdzona",
+          "statusNotConverted": "Bez rezerwacji",
+          "pagination": "Strona {page} z {totalPages}",
+          "previousPage": "Poprzednia strona",
+          "nextPage": "Następna strona",
+          "transcriptTitle": "Rozmowa",
+          "transcriptError": "Nie można załadować tej rozmowy",
+          "channelPhone": "Rozmowa telefoniczna",
+          "channelWeb": "Czat",
+          "recording": {
+            "play": "Odtwórz nagranie",
+            "pause": "Pauza",
+            "retry": "Spróbuj ponownie",
+            "seek": "Pozycja",
+            "error": "Nagranie niedostępne"
+          }
+        }
+      },
+      "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Zmień",
+          "done": "Gotowe",
+          "resetToRecommended": "Wróć do polecanego głosu",
+          "defaultBadge": "Polecany",
+          "defaultVoice": "Polecany głos",
+          "title": "Wybierz głos swojego agenta",
+          "description": "Odsłuchaj głosy i wybierz ten, który będzie reprezentował Twój sklep przez telefon."
+        },
+        "setup": {
+          "step1": "Wybierz numer",
+          "step2": "Dostosuj agenta",
+          "title": "Twój agent potrzebuje linii",
+          "why": "Wybierz dedykowany numer: przekaż go bezpośrednio klientom lub skonfiguruj przekierowanie połączeń ze swojego zwykłego numeru — agent odbierze za Ciebie.",
+          "rentalChip": "{credits} kredytów AI / miesiąc",
+          "perMinuteChip": "{credits} kredyty / minuta połączenia",
+          "insufficientTitle": "Niewystarczające saldo",
+          "insufficientBody": "Aktywacja numeru wymaga {credits} kredytów AI, pobieranych automatycznie co miesiąc. Doładuj konto, aby kontynuować.",
+          "insufficientCta": "Doładuj kredyty",
+          "step2Hint": "Następny krok: po wybraniu numeru dostosuj głos, język i zachowanie swojego agenta.",
+          "boundRental": "{credits} kredytów AI / miesiąc, pobierane automatycznie"
+        },
+        "disableConfirm": {
+          "title": "Wyłączyć agenta głosowego?",
+          "description": "Po zapisaniu numer {number} zostanie odłączony i zwolniony — możesz go nie odzyskać. Połączenia przychodzące nie będą już obsługiwane.",
+          "confirm": "Wyłącz i odłącz"
+        },
+        "numberReleaseFailed": "Nie udało się odłączyć numeru — pozostaje podłączony, automatyczna ponowna próba zaplanowana",
+        "description": "Głosowy agent IA, który odbiera Twoją linię telefoniczną — informuje klientów i przyjmuje rezerwacje, w wybranym języku.",
+        "enableSection": "Głosowy agent IA",
+        "enableSectionDescription": "Skonfiguruj agenta głosowego, który odbiera, gdy dzwonią Twoi klienci",
+        "enabled": "Włącz głosowego agenta IA",
+        "enabledDescription": "IA odbiera połączenia przychodzące na Twój numer",
+        "number": {
+          "title": "Numer telefonu",
+          "description": "Udostępnij numer dla agenta głosowego lub podłącz taki, który już masz.",
+          "active": "Aktywny",
+          "activeHint": "Klienci dzwonią do agenta głosowego na ten numer.",
+          "release": "Zwolnij numer",
+          "unlink": "Odłącz numer",
+          "country": "Kraj",
+          "areaCode": "Numer kierunkowy (opcjonalnie)",
+          "search": "Szukaj",
+          "noResults": "Nie znaleziono numerów. Spróbuj innego kierunkowego lub kraju.",
+          "provision": "Weź ten numer",
+          "costNote": "Udostępnienie dodaje numer do Twojej linii i konfiguruje go automatycznie.",
+          "provisioned": "Numer udostępniony",
+          "released": "Numer zwolniony",
+          "advanced": "Mam już numer",
+          "manualNumber": "Twój numer (format międzynarodowy)",
+          "manualHint": "Skieruj webhook głosowy swojego numeru na poniższy adres, a następnie podłącz go tutaj.",
+          "link": "Podłącz",
+          "linked": "Numer podłączony",
+          "cancel": "Anuluj",
+          "releaseConfirmTitle": "Zwolnić ten numer?",
+          "releaseConfirmBody": "Numer {number} zostanie zwrócony do dostawcy, a połączenia przestaną docierać do agenta głosowego. Tej operacji nie można cofnąć.",
+          "unlinkConfirmTitle": "Odłączyć ten numer?",
+          "unlinkConfirmBody": "Numer {number} zostanie odłączony od agenta głosowego. Zachowasz numer u swojego dostawcy.",
+          "searching": "Wyszukiwanie dostępnych numerów…",
+          "searchHint": "Wybierz kraj i wyszukaj dostępny numer do udostępnienia.",
+          "areaCodePlaceholder": "np. 22",
+          "manualSetup": "Jak podłączyć istniejący numer",
+          "copy": "Kopiuj"
+        },
+        "notConfigured": {
+          "title": "Telefonia nie jest skonfigurowana",
+          "description": "Operator platformy musi skonfigurować dostawcę telefonii (AI_PHONE_ENABLED, VOICE_PROVIDER i dane uwierzytelniające), aby włączyć agenta głosowego."
+        },
+        "language": "Język odpowiedzi",
+        "languageDescription": "Język, w którym asystent rozmawia z dzwoniącymi",
+        "canTakeReservations": "Przyjmowanie rezerwacji",
+        "canTakeReservationsDescription": "Pozwól asystentowi zapisać rezerwację (w przeciwnym razie tylko informuje)",
+        "recordCalls": "Nagrywaj rozmowy",
+        "recordCallsDescription": "Dzwoniący jest informowany na początku rozmowy, że jest ona nagrywana. Nagrania możesz odsłuchać z listy rozmów.",
+        "answerMode": "Rola",
+        "answerModeDescription": "Jak agent głosowy jest używany na tej linii",
+        "answerModeAlways": "Linia bezpośrednia",
+        "answerModeAlwaysDescription": "Ten numer to agent IA — odbiera każde połączenie jako Twoja główna linia",
+        "answerModeAfterHours": "Automat zgłoszeniowy",
+        "answerModeAfterHoursDescription": "IA wspiera Twój zespół — w godzinach otwarcia połączenia trafiają do linii obsługiwanej przez człowieka, poza nimi odbiera IA",
+        "greeting": "Powitanie",
+        "greetingDescription": "Dodawane po obowiązkowej informacji o automacie",
+        "greetingPlaceholder": "W czym mogę pomóc?",
+        "transferNumber": "Numer przekazania",
+        "transferNumberDescription": "Numer osoby do przekazywania połączeń i trybu poza godzinami (format międzynarodowy)",
+        "phoneFormat": "Nieprawidłowy numer. Użyj formatu międzynarodowego, np. +33123456789",
+        "saved": "Zapisano ustawienia głosowego agenta IA",
+        "voice": "Głos",
+        "voiceDescription": "Głos Twojego agenta. Wybierz jeden dla wybranego języka.",
+        "voicePlaceholder": "Domyślny głos",
+        "voiceGender": {
+          "all": "Wszystkie",
+          "female": "Kobieta",
+          "male": "Mężczyzna"
+        },
+        "voicePreview": "Odsłuchaj",
+        "voiceRecommended": "Zalecany"
+      }
     },
     "commandPalette": {
       "title": "Paleta poleceń",
@@ -4198,6 +4420,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "Asystent AI",
       "label": "Okruszki",
       "home": "Strona główna",
       "products": "Produkty",
@@ -4237,6 +4460,65 @@
       "emptyTitle": "Nic do sprawdzenia",
       "emptyDescription": "Nowe prośby pojawią się tutaj.",
       "viewAllPending": "Zobacz wszystkie oczekujące prośby"
+    },
+    "aiCredits": {
+      "title": "Kredyty AI",
+      "description": "Kredyty zasilają doradcę AI Twojego sklepu.",
+      "lowBalance": "Niski",
+      "lowBalanceHint": "Kończą Ci się kredyty AI. Doładuj, aby doradca pozostał dostępny dla Twoich klientów.",
+      "topupSuccess": "Płatność powiodła się — kredyty zostały dodane.",
+      "topupCancelled": "Płatność anulowana.",
+      "unlimited": "Bez limitu",
+      "creditsUnit": "kredytów",
+      "breakdown": "{monthly} w tym miesiącu w pakiecie · {prepaid} przedpłacone",
+      "breakdownUnlimited": "Bez limitu w tym miesiącu · {prepaid} przedpłacone",
+      "breakdownPrepaidOnly": "{prepaid} przedpłacone",
+      "conversationsHint": "≈ {count} rozmów",
+      "recharge": "Doładuj",
+      "autoTopup": {
+        "title": "Automatyczne doładowanie",
+        "description": "Doładuj automatycznie, gdy saldo jest niskie.",
+        "thresholdLabel": "Doładuj, gdy poniżej (kredytów)",
+        "packLabel": "Pakiet do dodania",
+        "pack": "{credits} kr · {amount}",
+        "cardNote": "Wymaga zapisanej karty (dodanej przy pierwszym doładowaniu).",
+        "save": "Zapisz",
+        "saved": "Zapisano"
+      },
+      "history": {
+        "title": "Ostatnia aktywność",
+        "type": {
+          "grant": "Kredyty powitalne",
+          "topup": "Doładowanie",
+          "auto_topup": "Automatyczne doładowanie",
+          "adjustment": "Korekta"
+        }
+      },
+      "topup": {
+        "valueIntro": "Do dowolnego wykorzystania — na przykład:",
+        "valueOr": "lub",
+        "rateConversations": "1 kredyt za rozmowę",
+        "rateMinutes": "{credits} kredyty za minutę",
+        "rateNumber": "{credits} kredytów miesięcznie",
+        "valueTitle": "Co to oznacza",
+        "valueConversations": "Do {count} rozmów doradczych",
+        "valueMinutes": "≈ {count} minut połączeń głosowych",
+        "valueNumberMonths": "{count} mies. dedykowanego numeru",
+        "perCredit": "{amount} / kredyt",
+        "savings": "-{percent}%",
+        "popular": "Popularny",
+        "noExpiry": "Twoje kredyty nigdy nie wygasają.",
+        "title": "Doładuj kredyty AI",
+        "description": "Wybierz pakiet. Kredyty są dodawane natychmiast po płatności.",
+        "credits": "kredytów",
+        "info": "Jeden kredyt pokrywa około jednej pełnej rozmowy z doradcą.",
+        "cancel": "Anuluj",
+        "processing": "Przetwarzanie…",
+        "pay": "Zapłać {amount}",
+        "errors": {
+          "generic": "Coś poszło nie tak. Spróbuj ponownie."
+        }
+      }
     }
   },
   "storefront": {
@@ -4729,7 +5011,26 @@
       "resolvedAttributesLabel": "Końcowe",
       "lineCheckingAvailability": "Sprawdzanie dostępności...",
       "lineNeedsUpdateInline": "Ta linia nie jest już dostępna. Zaktualizuj ilość lub atrybuty.",
-      "lineNeedsUpdate": "Niektóre linie nie są już dostępne. Zaktualizuj koszyk przed wysłaniem."
+      "lineNeedsUpdate": "Niektóre linie nie są już dostępne. Zaktualizuj koszyk przed wysłaniem.",
+      "advisor": {
+        "recommendedHint": "Masz wątpliwości co do wyboru? Doradca może go z Tobą sprawdzić.",
+        "askAdvisor": "Zapytaj doradcę",
+        "dismiss": "Ukryj",
+        "requiredTitle": "Wymagana jest krótka weryfikacja",
+        "requiredDescription": "Ten sklep prosi doradcę o sprawdzenie kilku informacji przed dokonaniem rezerwacji.",
+        "startVerification": "Rozpocznij weryfikację",
+        "validatedTitle": "Weryfikacja zakończona",
+        "validatedDescription": "Doradca zatwierdził Twoją rezerwację — możesz zarezerwować.",
+        "badgeRequired": "Wymagane",
+        "verifyNotice": "Doradca potrzebuje tylko kilku informacji, aby potwierdzić Twoją rezerwację.",
+        "placeholder": "Odpowiedz na pytanie…",
+        "continueToPayment": "Kontynuuj",
+        "staleTitle": "Twoja rezerwacja się zmieniła",
+        "staleDescription": "Wyślij jeszcze jedną wiadomość, aby doradca mógł ponownie potwierdzić Twoją rezerwację.",
+        "statusChecking": "Sprawdzanie weryfikacji…",
+        "transcriptLabel": "Rozmowa weryfikacyjna",
+        "completeVerificationHint": "Ukończ weryfikację powyżej, aby kontynuować."
+      }
     },
     "confirmation": {
       "title": "Rezerwacja potwierdzona!",
@@ -5022,6 +5323,29 @@
         "selectEndDate": "Wybierz datę zwrotu",
         "endTimeAfterStart": "Godzina zwrotu musi być późniejsza niż godzina odbioru"
       }
+    },
+    "advisor": {
+      "open": "Zapytaj doradcę",
+      "title": "Doradca AI",
+      "subtitle": "Odpowiada natychmiast",
+      "welcome": "Cześć! Jestem doradcą tego sklepu. Opowiedz mi o swoim projekcie, a pomogę Ci wybrać odpowiedni sprzęt.",
+      "placeholder": "Zadaj pytanie…",
+      "send": "Wyślij",
+      "close": "Zamknij",
+      "restart": "Nowa rozmowa",
+      "disclaimer": "Odpowiedzi generowane przez AI — sprawdź ważne informacje",
+      "validateChip": "Chcę zatwierdzić moją rezerwację",
+      "suggestions": {
+        "recommend": "Co mi polecasz?",
+        "question": "Mam pytanie o produkt",
+        "practical": "Godziny otwarcia i informacje praktyczne"
+      },
+      "errors": {
+        "generic": "Coś poszło nie tak. Spróbuj ponownie.",
+        "rateLimited": "Zbyt wiele wiadomości — spróbuj ponownie później.",
+        "unavailable": "Doradca jest obecnie niedostępny. Spróbuj ponownie później."
+      },
+      "typing": "Doradca pisze"
     }
   },
   "onboarding": {
@@ -5372,6 +5696,39 @@
       "amount": "Kwota:",
       "viewRequest": "Zobacz żądanie",
       "connectToManage": "Zaloguj się do panelu, aby zaakceptować lub odrzucić to żądanie."
+    },
+    "phoneCallbackLandlord": {
+      "subject": "Klient do oddzwonienia — {store}",
+      "title": "Klient do oddzwonienia",
+      "body": "Twój asystent głosowy nie mógł dokończyć prośby w {storeName} i przekazuje Ci tę wiadomość.",
+      "phone": "Numer do oddzwonienia:",
+      "message": "Wiadomość:",
+      "listen": "Otwórz rozmowę",
+      "footer": "Otwórz rozmowę, aby przeczytać jej treść i ponownie odsłuchać nagranie."
+    },
+    "voiceNumberBilling": {
+      "numberLabel": "Numer:",
+      "rentalLabel": "Miesięczny abonament:",
+      "rentalValue": "{credits} kredytów AI / miesiąc",
+      "deadlineLabel": "Termin:",
+      "ctaRecharge": "Doładuj kredyty",
+      "ctaOpen": "Otwórz mojego Asystenta AI",
+      "footer": "Abonament numeru jest co miesiąc opłacany automatycznie kredytami AI.",
+      "warning": {
+        "subject": "Doładuj konto — odnowienie numeru {number}",
+        "title": "Twoje saldo nie pokryje najbliższego odnowienia",
+        "body": "Numer {number} sklepu {storeName} zostanie odnowiony {date} za {credits} kredytów AI, ale Twoje obecne saldo jest niewystarczające. Doładuj konto przed tą datą, aby zachować numer."
+      },
+      "failed": {
+        "subject": "Wymagane działanie — numer {number} może zostać odłączony",
+        "title": "Odnowienie nie powiodło się",
+        "body": "Odnowienie numeru {number} ({credits} kredytów AI) nie powiodło się: niewystarczające saldo. Doładuj konto przed {date}, w przeciwnym razie numer zostanie automatycznie odłączony. Ponawiamy obciążenie codziennie, gdy tylko doładujesz konto."
+      },
+      "released": {
+        "subject": "Numer {number} został odłączony",
+        "title": "Numer odłączony",
+        "body": "Numer {number} sklepu {storeName} został odłączony i nie jest już aktywny. W każdej chwili możesz wybrać nowy numer w swoim Asystencie AI."
+      }
     },
     "teamInvitation": {
       "subject": "{inviterName} zaprasza Cię do {storeName}",
@@ -5800,7 +6157,24 @@
     "tulipContractProductMarkedMissing": "Tulip wymaga rzeczywistego identyfikatora każdego ubezpieczonego przedmiotu. Przypisz jednostkę lub fizyczny identyfikator do każdego ubezpieczonego produktu przed utworzeniem lub synchronizacją umowy.",
     "tulipContractTypeDisabled": "Typ umowy Tulip wymagany dla tego czasu trwania nie jest włączony dla tego sklepu.",
     "unitAlreadyRetired": "Ta jednostka jest już wycofana",
-    "unitNotRetired": "Ta jednostka nie jest wycofana"
+    "unitNotRetired": "Ta jednostka nie jest wycofana",
+    "advisorValidationRequired": "Ten sklep wymaga krótkiej weryfikacji z doradcą przed dokonaniem rezerwacji",
+    "conversationNotFound": "Nie znaleziono rozmowy",
+    "featureNotAvailable": "Ta funkcja nie jest dostępna w Twoim planie",
+    "telephonyNotConfigured": "Telefonia nie jest skonfigurowana przez operatora.",
+    "insufficientAiCredits": "Za mało kredytów AI — doładuj konto, aby aktywować numer",
+    "numberAlreadyBound": "Numer jest już aktywny. Najpierw go zwolnij.",
+    "provisioningFailed": "Nie udało się udostępnić tego numeru. Spróbuj innego.",
+    "numberSearchFailed": "Wyszukiwanie numerów nie powiodło się. Spróbuj ponownie.",
+    "noActiveNumber": "Brak aktywnego numeru do zwolnienia.",
+    "releaseFailed": "Nie udało się zwolnić numeru. Spróbuj ponownie.",
+    "invalidPhoneNumber": "Nieprawidłowy numer telefonu.",
+    "phoneNumberInUse": "Ten numer jest już używany.",
+    "unexpected": "Coś poszło nie tak. Spróbuj ponownie.",
+    "standaloneSingleStore": "Ta instancja obsługuje tylko jeden sklep",
+    "emailLoginUnavailable": "Logowanie przez e-mail jest obecnie niedostępne",
+    "stripeNotConfigured": "Płatności online są niedostępne: ta instancja nie ma skonfigurowanych kluczy Stripe. Rezerwacje działają w trybie zapytania.",
+    "emailSendFailed": "Nie udało się wysłać wiadomości e-mail."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

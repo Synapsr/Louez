@@ -16,12 +16,17 @@ import type { ReferralInviteContext } from '@/lib/referral/invite';
 
 import { LoginForm } from './login-form';
 import { LoginSocialProof } from './login-social-proof';
+import type { SignInMethods } from './sign-in-methods';
 
 interface LoginPageClientProps {
   referral: ReferralInviteContext | null;
+  signInMethods: SignInMethods;
 }
 
-export const LoginPageClient = ({ referral }: LoginPageClientProps) => {
+export const LoginPageClient = ({
+  referral,
+  signInMethods,
+}: LoginPageClientProps) => {
   const t = useTranslations('auth');
   const posthog = usePostHog();
   const hasTrackedReferralInvite = useRef(false);
@@ -58,7 +63,7 @@ export const LoginPageClient = ({ referral }: LoginPageClientProps) => {
             </div>
           ) : null}
 
-          <LoginForm />
+          <LoginForm methods={signInMethods} />
         </div>
 
         <p className="text-muted-foreground absolute right-6 bottom-2 left-6 text-center text-[13.5px] lg:right-12 lg:bottom-2.5 lg:left-12">

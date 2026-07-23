@@ -1,0 +1,42 @@
+# Fly.io configuration for the voice-relay worker.
+#
+# IMPORTANT: this service must be region-colocated with the app that serves the
+# turn endpoint (TURN_ENDPOINT_URL) to keep per-token latency low. Set
+# `primary_region` to the same region as the app before deploying.
+#
+# Secrets are NOT stored here — set them with `fly secrets set`:
+#   fly secrets set TURN_ENDPOINT_URL="https://app.example.com/api/voice/turn"
+#   fly secrets set VOICE_RELAY_SIGNING_SECRET="<shared-hmac-secret>"
+
+app = "louez-voice-relay"
+primary_region = "cdg" # change to match the app's region
+
+[build]
+
+[env]
+  PORT = "8080"
+
+# Persistent WebSocket sessions: keep at least one machine always running and
+# never auto-stop, otherwise in-flight calls would be dropped.
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = false
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 150
+    hard_limit = 200
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

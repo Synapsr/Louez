@@ -24,6 +24,7 @@ import {
 import { cn } from "@louez/utils";
 
 import { switchStore } from "@/app/(dashboard)/dashboard/actions";
+import { useInstanceConfig } from "@/components/instance-provider";
 
 function StoreLogo({
   logoUrl,
@@ -156,7 +157,11 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
     router.push("/multi-store");
   };
 
-  const showMultiStore = stores.length >= 2;
+  // Standalone instances host a single store: creating another one and the
+  // multi-store view are platform features and disappear from the menu.
+  const { standalone } = useInstanceConfig();
+  const showMultiStore = !standalone && stores.length >= 2;
+  const showCreateStore = !standalone;
 
   return (
     <Popover
@@ -245,15 +250,19 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
                 </CommandGroup>
               </>
             )}
-            <CommandSeparator />
-            <CommandGroup>
-              <CommandItem onClick={handleCreateStore} className="cursor-pointer py-2">
-                <div className="mr-3 flex h-6 w-6 items-center justify-center rounded-md border border-dashed">
-                  <Plus className="h-3.5 w-3.5" />
-                </div>
-                <span className="text-sm">{t("createNewStore")}</span>
-              </CommandItem>
-            </CommandGroup>
+            {showCreateStore && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem onClick={handleCreateStore} className="cursor-pointer py-2">
+                    <div className="mr-3 flex h-6 w-6 items-center justify-center rounded-md border border-dashed">
+                      <Plus className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-sm">{t("createNewStore")}</span>
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
       </PopoverPopup>

@@ -26,6 +26,7 @@ COPY packages/email/package.json ./packages/email/
 COPY packages/pdf/package.json ./packages/pdf/
 COPY packages/mcp/package.json ./packages/mcp/
 COPY apps/web/package.json ./apps/web/
+COPY apps/voice-relay/package.json ./apps/voice-relay/
 
 RUN corepack enable pnpm && \
     pnpm install --frozen-lockfile

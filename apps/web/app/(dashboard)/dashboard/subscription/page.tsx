@@ -7,12 +7,18 @@ import { after } from 'next/server'
 import { getCurrentStore } from '@/lib/store-context'
 import { syncStorePaymentMethodStatus } from '@/lib/discord/platform-notifications'
 import { getSubscriptionWithPlan, getPlans, hasStripeCustomer, storeHasDefaultPaymentMethod } from '@/lib/stripe/subscriptions'
-import { getStoreUsage, canAddTeamMember, canSendSms } from '@/lib/plan-limits'
+import { getStoreUsage, canAddTeamMember, canSendSms, getStorePlan } from '@/lib/plan-limits'
 import { getStoreBilling, getCurrentMonthUsage, getRecentPayAsYouGoInvoices, summarizePayAsYouGoBands } from '@/lib/pay-as-you-go'
+import { getAiCreditsInfo, microToCredits } from '@/lib/ai/advisor/credits'
+import { areAiCreditsEnabled, getAiCreditPackages } from '@/lib/plans'
 import { Button } from '@louez/ui'
 import { SubscriptionManagement } from './subscription-management'
 import { PayAsYouGoSummary } from './pay-as-you-go-summary'
 import { PayAsYouGoPreview } from './pay-as-you-go-preview'
+import {
+  AiCreditsSection,
+  type AiCreditsSectionProps,
+} from '../ai-assistant/ai-credits-section'
 
 export default async function SubscriptionPage({
   searchParams,
@@ -22,6 +28,7 @@ export default async function SubscriptionPage({
     canceled?: string
     plans?: string
     payg?: string
+    topup?: string
   }>
 }) {
   const store = await getCurrentStore()
@@ -36,6 +43,49 @@ export default async function SubscriptionPage({
   // Pay-as-you-go stores get a usage summary instead of the plan grid — unless they
   // explicitly asked to see the plans (?plans=1) to switch to a subscription.
   const billing = await getStoreBilling(store.id)
+
+  // AI credit recharge (cloud commercial add-on), surfaced on the billing page
+  // in compact form (balance + recharge). Null unless the operator enabled it,
+  // and skipped on the transient PAYG-tariff preview (which never renders it).
+  const isPayAsYouGoPreview =
+    Boolean(params.payg) && billing.billingMode !== 'pay_as_you_go'
+  let credits: AiCreditsSectionProps | null = null
+  if (areAiCreditsEnabled() && !isPayAsYouGoPreview) {
+    const plan = await getStorePlan(store.id)
+    const info = await getAiCreditsInfo(store.id, plan)
+    const packages = getAiCreditPackages()
+    credits = {
+      monthlyIncludedCredits:
+        info.monthlyIncludedMicro === null
+          ? null
+          : microToCredits(info.monthlyIncludedMicro),
+      monthlyRemainingCredits:
+        info.monthlyRemainingMicro === null
+          ? null
+          : microToCredits(info.monthlyRemainingMicro),
+      prepaidCredits: microToCredits(info.prepaidBalanceMicro),
+      autoTopup: {
+        enabled: info.autoTopupEnabled,
+        thresholdCredits: info.autoTopupThresholdMicro
+          ? microToCredits(info.autoTopupThresholdMicro)
+          : 0,
+        packIndex: packages.findIndex(
+          (p) =>
+            p.credits === info.autoTopupCredits &&
+            p.priceCents === info.autoTopupPriceCents,
+        ),
+      },
+      packages,
+      history: [],
+      topupStatus:
+        params.topup === 'success' || params.topup === 'cancelled'
+          ? params.topup
+          : null,
+      compact: true,
+      returnPath: '/dashboard/subscription',
+    }
+  }
+
   if (billing.billingMode === 'pay_as_you_go' && !params.plans) {
     const [usage, invoices, hasPaymentMethod] = await Promise.all([
       getCurrentMonthUsage(store.id, new Date(), billing),
@@ -68,6 +118,8 @@ export default async function SubscriptionPage({
           freeReservationsRemaining={billing.freeReservationsRemaining}
           freeReservationsGranted={billing.freeReservationsGranted}
         />
+
+        {credits && <AiCreditsSection {...credits} />}
       </div>
     )
   }
@@ -144,6 +196,8 @@ export default async function SubscriptionPage({
         pendingBillingMode={subscription?.pendingBillingMode ?? null}
         showBackToPayAsYouGo={isPayAsYouGo}
       />
+
+      {credits && <AiCreditsSection {...credits} />}
     </div>
   )
 }

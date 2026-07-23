@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { useMutation } from '@tanstack/react-query'
 import { FileText, Sparkles, ExternalLink } from 'lucide-react'
-import { env } from '@/env'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { Button, Switch } from '@louez/ui'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@louez/ui'
@@ -32,6 +32,7 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations('dashboard.settings.legalSettings')
+  const { getAbsoluteUrl } = useStorefrontUrl(store.slug ?? '')
   const tErrors = useTranslations('errors')
   const [cgv, setCgv] = useState(store.cgv || '')
   const [legalNotice, setLegalNotice] = useState(store.legalNotice || '')
@@ -167,7 +168,7 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
               />
               <div className="flex items-center justify-end">
                 {store.slug && (
-                  <Button type="button" variant="ghost" render={<a href={`https://${store.slug}.${env.NEXT_PUBLIC_APP_DOMAIN}/terms`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1" />}>
+                  <Button type="button" variant="ghost" render={<a href={getAbsoluteUrl('/terms')} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1" />}>
                       <ExternalLink className="h-4 w-4" />
                       {t('viewOnStore')}
                   </Button>
@@ -184,7 +185,7 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
               />
               <div className="flex items-center justify-end">
                 {store.slug && (
-                  <Button type="button" variant="ghost" render={<a href={`https://${store.slug}.${env.NEXT_PUBLIC_APP_DOMAIN}/legal`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1" />}>
+                  <Button type="button" variant="ghost" render={<a href={getAbsoluteUrl('/legal')} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1" />}>
                       <ExternalLink className="h-4 w-4" />
                       {t('viewOnStore')}
                   </Button>

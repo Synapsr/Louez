@@ -173,7 +173,7 @@ export default async function AuthorizeDepositPage({
           currency={currency}
           locale={locale}
           token={token!}
-          stripePublishableKey={env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+          stripePublishableKey={env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}
         />
 
         {/* Back link */}

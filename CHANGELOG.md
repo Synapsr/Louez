@@ -6,6 +6,108 @@ All notable changes to Louez are documented here.
 
 ---
 
+## [2.0.0] - July 23, 2026
+
+### 🤖 AI Assistant
+
+Louez now works for your store around the clock — on your storefront and on the phone.
+
+- 💬 **Storefront AI advisor** — A 24/7 chat assistant that recommends the right gear from your live catalog, checks real availability for the customer's dates, answers questions about your hours and policies, and guides visitors all the way to booking. Brief it in plain language, like a new employee.
+- 📞 **AI voice receptionist** — An assistant that answers your store's phone line: it handles questions about products, prices and availability, takes booking requests you review from the dashboard, texts an SMS recap, and can transfer to a human. Pick its voice (with audio preview), its language (8 supported), and whether it answers every call or only outside opening hours.
+- ☎️ **In-dashboard phone numbers** — Search and provision a real number in a click, or bring your own.
+- 🎙️ **Call recording** — Opt-in recording with dashboard replay and a spoken consent notice.
+- 🎛️ **One control panel** — Configure both assistants, replay conversations and calls, and see which chats turned into reservations.
+- 💳 **Credit wallet** — Usage-based credits with packs, optional auto-recharge, and per-conversation metering (cloud).
+
+### 🚀 One-Command Self-Hosting
+
+Deploying your own instance is now genuinely one command.
+
+- 📦 **`docker compose up -d`** — A complete, self-contained deployment: bundled MySQL and object storage, automatic schema setup on first boot, an auto-generated secret. No SQL, no external services.
+- 🏪 **Single-store mode** — The instance hosts your store, served at the root of the site, with the dashboard under `/dashboard`.
+- 🔑 **Password sign-in** — Create your admin account without an email server; plug in SMTP later to enable outgoing email.
+- 🖼️ **Bundled image storage** — A private MinIO bucket served through the app, or bring your own S3.
+- ☁️ **Cloud & multi-tenant unchanged** — Set `LOUEZ_MODE=platform` to keep the subdomain-routed, multi-store behavior.
+
+### ✨ Redesigned Onboarding & Dashboard
+
+- 🧭 **New onboarding flow** — Live previews, a profile step, and a clearer payment-mode choice.
+- ⌘ **Command palette** — Redesigned dashboard shell with a `⌘K` command palette.
+- 📅 **Reservation editing** — Product-availability tracking and conflict surfacing while editing.
+- 🗺️ **Delivery map links** on the calendar.
+
+---
+
+## [1.8.1] - July 9, 2026
+
+### 🚲 Fleet & Unit Inventory
+
+Track and manage every individual unit of your equipment.
+
+- 🏷️ **Unit lifecycle** — Unit status split into lifecycle, downtimes and derived availability.
+- 🔧 **Downtime & retirement** — Record repairs, retire units, and edit current downtime from row actions.
+- 🩹 **Repair suggestions** — Suggest downtime straight from a return inspection.
+- 🚚 **Fleet management UI** — Streamlined unit declaration in the product form, thumbnails in inventory rows.
+- 🔒 **Availability hardening** — A single canonical availability core, period-aware capacity, in-transaction unit locking.
+- 🐳 **Docker fix** — Empty-database setup now works in the production image.
+
+---
+
+## [1.8.0] - July 2, 2026
+
+### 🎁 Referral Program
+
+Reward your merchants for bringing in others.
+
+- 🔗 **Server-side attribution** across the apex and app, with a qualifying-event reward grant, ledger and clawback.
+- 📊 **Referral hub** — "How it works" popover, a sidebar free-reservations gauge, and a referred-side invite banner.
+
+### 💳 Pay-as-you-go Billing
+
+- 💶 **New billing mode** — New stores default to pay-as-you-go; owners can switch between subscription and pay-as-you-go.
+- 🎟️ **Free-reservation allowance** and a migration to Stripe Standard.
+
+### 🔔 Notifications & PWA
+
+- 📲 **Web push** notifications for the dashboard.
+- 📱 **Installable PWA** — The merchant dashboard installs to the home screen.
+- ⏰ **Admin reminders** and a daily digest.
+
+### 🛡️ Tulip Insurance
+
+- 🤝 **Tulip integration** — Insurance options in reservation management, quote previews, and legacy backfill.
+
+### 📈 Analytics
+
+- 📊 **Product event tracking** across dashboard and storefront, with consent-exempt storefront tracking.
+
+---
+
+## [1.7.0] - March 17, 2026
+
+### 🤖 Dashboard AI Chat
+
+- 💬 **AI chat assistant** in the dashboard, with conversation history and admin notifications.
+
+### 🧩 Integrations & Embedding
+
+- 🔌 **MCP server** — API-key-authenticated MCP server with a dashboard UI.
+- 🗓️ **Embeddable widget** — A date picker / calendar you can embed on external websites, with business hours and delivery trust badges.
+
+### 💶 Pricing & Delivery
+
+- 📈 **Seasonal pricing** — Inline editing with multi-period calculations and a pricing-curve preview.
+- 🕐 **Multiple time ranges per day** in business hours.
+- 🚚 **Leg-based delivery model** with a different return-address option.
+- 🏷️ **Discount display** — Show the highest discount on product cards.
+
+### 📤 Data & Payments
+
+- 📁 **Data export** for payments, reservations, and products.
+- 💳 **Intermediary payment page** to avoid 24h Stripe session expiry.
+
+---
+
 ## [1.6.0] - January 29, 2026
 
 ### 🔍 Inventory Inspection (Equipment Condition Reports)
@@ -449,6 +551,108 @@ _For upgrade instructions, see the [documentation](https://louez.io/docs)._
 > [🇬🇧 English](#changelog) | 🇫🇷 **Français**
 
 Toutes les évolutions notables de Louez sont documentées ici.
+
+---
+
+## [2.0.0] - 23 juillet 2026
+
+### 🤖 Assistant IA
+
+Louez travaille désormais pour votre boutique en continu — sur votre vitrine comme au téléphone.
+
+- 💬 **Conseiller IA sur la vitrine** — Un assistant de chat 24/7 qui recommande le bon matériel depuis votre catalogue en direct, vérifie la disponibilité réelle aux dates du client, répond aux questions sur vos horaires et conditions, et accompagne les visiteurs jusqu'à la réservation. Briefez-le en langage naturel, comme un nouvel employé.
+- 📞 **Réceptionniste vocal IA** — Un assistant qui répond à la ligne téléphonique de votre boutique : produits, prix et disponibilité, prise de demandes de réservation que vous validez depuis le tableau de bord, récapitulatif par SMS, transfert vers un humain. Choisissez sa voix (avec pré-écoute), sa langue (8 disponibles), et s'il répond à tous les appels ou seulement hors horaires.
+- ☎️ **Numéros de téléphone dans le tableau de bord** — Recherchez et provisionnez un vrai numéro en un clic, ou branchez le vôtre.
+- 🎙️ **Enregistrement des appels** — Optionnel, avec réécoute dans le tableau de bord et annonce de consentement.
+- 🎛️ **Un seul panneau de contrôle** — Configurez les deux assistants, réécoutez conversations et appels, voyez lesquels ont mené à une réservation.
+- 💳 **Portefeuille de crédits** — Crédits à l'usage, packs, recharge automatique optionnelle, décompte par conversation (cloud).
+
+### 🚀 Auto-hébergement en une commande
+
+Déployer votre propre instance tient désormais vraiment en une commande.
+
+- 📦 **`docker compose up -d`** — Un déploiement complet et autonome : MySQL et stockage objet embarqués, schéma installé automatiquement au premier démarrage, secret généré. Pas de SQL, pas de service externe.
+- 🏪 **Mode boutique unique** — L'instance héberge votre boutique, servie à la racine du site, le tableau de bord sous `/dashboard`.
+- 🔑 **Connexion par mot de passe** — Créez votre compte admin sans serveur email ; branchez un SMTP plus tard pour les emails sortants.
+- 🖼️ **Stockage d'images inclus** — Un bucket MinIO privé servi par l'application, ou votre propre S3.
+- ☁️ **Cloud & multi-boutiques inchangés** — Posez `LOUEZ_MODE=platform` pour conserver le routage par sous-domaines et le multi-boutiques.
+
+### ✨ Onboarding & tableau de bord repensés
+
+- 🧭 **Nouveau parcours d'onboarding** — Aperçus en direct, étape de profil, choix du mode de paiement plus clair.
+- ⌘ **Palette de commandes** — Nouveau shell du tableau de bord avec palette `⌘K`.
+- 📅 **Édition des réservations** — Suivi de disponibilité produit et détection des conflits pendant l'édition.
+- 🗺️ **Liens carte de livraison** sur le calendrier.
+
+---
+
+## [1.8.1] - 9 juillet 2026
+
+### 🚲 Inventaire par unité & flotte
+
+Suivez et gérez chaque unité individuelle de votre matériel.
+
+- 🏷️ **Cycle de vie des unités** — Statut séparé en cycle de vie, indisponibilités et disponibilité dérivée.
+- 🔧 **Indisponibilité & retrait** — Enregistrez les réparations, retirez des unités, éditez l'indisponibilité en cours depuis les actions de ligne.
+- 🩹 **Suggestions de réparation** — Proposez une indisponibilité directement depuis une inspection de retour.
+- 🚚 **Interface de gestion de flotte** — Déclaration d'unités simplifiée dans la fiche produit, miniatures dans l'inventaire.
+- 🔒 **Fiabilisation de la disponibilité** — Un cœur de disponibilité canonique unique, capacité sensible aux périodes, verrouillage transactionnel des unités.
+- 🐳 **Correctif Docker** — L'installation sur base vierge fonctionne dans l'image de production.
+
+---
+
+## [1.8.0] - 2 juillet 2026
+
+### 🎁 Programme de parrainage
+
+Récompensez vos loueurs qui en amènent d'autres.
+
+- 🔗 **Attribution côté serveur** sur l'apex et l'app, avec récompense sur événement qualifiant, registre et clawback.
+- 📊 **Hub de parrainage** — Popover « comment ça marche », jauge de réservations offertes dans la sidebar, bannière d'invitation côté filleul.
+
+### 💳 Facturation à l'usage
+
+- 💶 **Nouveau mode de facturation** — Les nouvelles boutiques démarrent en pay-as-you-go ; bascule possible entre abonnement et à l'usage.
+- 🎟️ **Réservations offertes** et migration vers Stripe Standard.
+
+### 🔔 Notifications & PWA
+
+- 📲 **Notifications web push** pour le tableau de bord.
+- 📱 **PWA installable** — Le tableau de bord s'installe sur l'écran d'accueil.
+- ⏰ **Rappels admin** et digest quotidien.
+
+### 🛡️ Assurance Tulip
+
+- 🤝 **Intégration Tulip** — Options d'assurance dans la gestion des réservations, aperçus de devis, backfill des intégrations existantes.
+
+### 📈 Analytics
+
+- 📊 **Suivi d'événements produit** sur le tableau de bord et la vitrine, avec tracking vitrine exempté de consentement.
+
+---
+
+## [1.7.0] - 17 mars 2026
+
+### 🤖 Chat IA du tableau de bord
+
+- 💬 **Assistant de chat IA** dans le tableau de bord, avec historique des conversations et notifications admin.
+
+### 🧩 Intégrations & intégration web
+
+- 🔌 **Serveur MCP** — Serveur MCP authentifié par clé API avec interface dans le tableau de bord.
+- 🗓️ **Widget intégrable** — Un sélecteur de dates / calendrier à intégrer sur des sites externes, avec horaires d'ouverture et badges de confiance livraison.
+
+### 💶 Tarification & livraison
+
+- 📈 **Tarifs saisonniers** — Édition en ligne avec calculs multi-périodes et aperçu de courbe tarifaire.
+- 🕐 **Plusieurs plages horaires par jour** dans les horaires d'ouverture.
+- 🚚 **Modèle de livraison par tronçons** avec option d'adresse de retour différente.
+- 🏷️ **Affichage des remises** — Montrez la remise la plus élevée sur les cartes produit.
+
+### 📤 Données & paiements
+
+- 📁 **Export de données** pour paiements, réservations et produits.
+- 💳 **Page de paiement intermédiaire** pour éviter l'expiration des sessions Stripe à 24h.
 
 ---
 

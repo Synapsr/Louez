@@ -9,6 +9,7 @@ import { formatCurrency } from '@louez/utils';
 
 import { getFieldError } from '@/hooks/form/form-context';
 
+import { CHECKOUT_SUBMIT_ID } from './checkout-advisor-verification-panel';
 import type { CheckoutFormComponentApi } from '../types';
 
 interface CheckoutConfirmStepProps {
@@ -26,6 +27,8 @@ interface CheckoutConfirmStepProps {
     mode: 'required' | 'optional' | 'no_public';
   };
   canSubmitCheckout: boolean;
+  /** Advisor required mode, not yet validated — show a hint under the submit. */
+  showVerificationHint?: boolean;
   discountAmount?: number;
   onBack: () => void;
   onEditContact: () => void;
@@ -43,6 +46,7 @@ export function CheckoutConfirmStep({
   currency,
   tulipInsurance,
   canSubmitCheckout,
+  showVerificationHint = false,
   discountAmount = 0,
   onBack,
   onEditContact,
@@ -168,6 +172,7 @@ export function CheckoutConfirmStep({
             {(isSubmitting) => (
               <Button
                 type="submit"
+                id={CHECKOUT_SUBMIT_ID}
                 size="lg"
                 className="flex-1"
                 disabled={isSubmitting || !canSubmitCheckout}
@@ -199,6 +204,12 @@ export function CheckoutConfirmStep({
             )}
           </form.Subscribe>
         </div>
+
+        {showVerificationHint && (
+          <p className="text-center text-xs text-muted-foreground">
+            {t('advisor.completeVerificationHint')}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

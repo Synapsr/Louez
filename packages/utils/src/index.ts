@@ -35,3 +35,7 @@ export {
 
 // Business hours
 export { normalizeDaySchedule } from './business-hours'
+export { toAbsoluteUrl } from './url'
+
+// AI advisor
+export { advisorValidationCovers } from './ai-advisor'

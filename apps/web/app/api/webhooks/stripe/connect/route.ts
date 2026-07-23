@@ -46,6 +46,7 @@ import { fromStripeCents } from '@/lib/stripe';
 import { stripe } from '@/lib/stripe/client';
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
 
+import { getStorefrontUrl } from '@/lib/storefront-url';
 import { env } from '@/env';
 
 // ===== TYPE DEFINITIONS =====
@@ -176,6 +177,10 @@ export async function POST(request: Request) {
 
   if (!signature) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
+  }
+
+  if (!env.STRIPE_CONNECT_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: 'Stripe is not configured' }, { status: 503 });
   }
 
   let event: Stripe.Event;
@@ -714,8 +719,10 @@ async function handleCheckoutCompleted(
 
     // Dispatch customer notification for reservation confirmed (email/SMS based on store preferences)
     if (reservation.customer) {
-      const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-      const reservationUrl = `https://${reservation.store.slug}.${domain}/account/reservations/${reservationId}`;
+      const reservationUrl = getStorefrontUrl(
+        reservation.store.slug,
+        `/account/reservations/${reservationId}`,
+      );
 
       const emailItems =
         reservation.items?.map((item) => ({

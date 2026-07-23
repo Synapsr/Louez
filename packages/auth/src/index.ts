@@ -2,17 +2,28 @@ import { headers } from 'next/headers'
 
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { APIError } from 'better-auth/api'
 import { toNextJsHandler } from 'better-auth/next-js'
 import { emailOTP, magicLink } from 'better-auth/plugins'
+import { and, eq, gt } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { render } from '@react-email/render'
 
 import { db } from '@louez/db'
 import * as schema from '@louez/db'
-import { sendEmail, MagicLinkEmail, OTPEmail } from '@louez/email'
+import { sendEmail, isEmailConfigured, MagicLinkEmail, OTPEmail } from '@louez/email'
 import type { EmailLocale } from '@louez/email'
 
 import { env } from './env'
+
+// Standalone (self-host) deployments enable email + password sign-in so the
+// first owner can create an account with zero external services. The cloud
+// sets LOUEZ_MODE=platform and keeps its passwordless model unchanged.
+// Read from process.env directly — this package has no dependency on the
+// app's env schema, and the value must be a pure runtime concern.
+const isStandaloneMode = process.env.LOUEZ_MODE !== 'platform'
+
+const hasGoogleAuth = Boolean(env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET)
 
 // ============================================================================
 // Types
@@ -110,11 +121,19 @@ export const authInstance = betterAuth({
     },
   },
 
-  socialProviders: {
-    google: {
-      clientId: env.AUTH_GOOGLE_ID,
-      clientSecret: env.AUTH_GOOGLE_SECRET,
-    },
+  // Only register Google when credentials exist — better-auth would otherwise
+  // expose a sign-in path that errors at the provider handshake.
+  socialProviders: hasGoogleAuth
+    ? {
+        google: {
+          clientId: env.AUTH_GOOGLE_ID as string,
+          clientSecret: env.AUTH_GOOGLE_SECRET as string,
+        },
+      }
+    : {},
+
+  emailAndPassword: {
+    enabled: isStandaloneMode,
   },
 
   plugins: [
@@ -132,6 +151,12 @@ export const authInstance = betterAuth({
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
         if (type !== 'sign-in') return
+        // Without a transport the code would silently go nowhere; surface it
+        // in the server logs so a misconfigured instance is still usable.
+        if (!isEmailConfigured()) {
+          console.log(`[auth] Email not configured — sign-in code for ${email}: ${otp}`)
+          return
+        }
         const html = await render(OTPEmail({ otp, locale: 'fr' }))
         await sendEmail({
           to: email,
@@ -143,6 +168,39 @@ export const authInstance = betterAuth({
   ],
 
   databaseHooks: {
+    user: {
+      create: {
+        // Standalone instances are single-team: once the first account
+        // exists (the operator, created right after boot), open registration
+        // closes — a stranger reaching a deployed instance must not be able
+        // to register and claim the store slot. Invited teammates keep
+        // working: a pending, unexpired store invitation for the email
+        // reopens the door. Applies to every provider, Google included.
+        before: async (user) => {
+          if (!isStandaloneMode) return
+
+          const existingUser = await db.query.users.findFirst({
+            columns: { id: true },
+          })
+          if (!existingUser) return
+
+          const invitation = await db.query.storeInvitations.findFirst({
+            columns: { id: true },
+            where: and(
+              eq(schema.storeInvitations.email, user.email.toLowerCase()),
+              eq(schema.storeInvitations.status, 'pending'),
+              gt(schema.storeInvitations.expiresAt, new Date()),
+            ),
+          })
+          if (!invitation) {
+            throw new APIError('FORBIDDEN', {
+              message: 'Registration is closed on this instance',
+              code: 'REGISTRATION_CLOSED',
+            })
+          }
+        },
+      },
+    },
     session: {
       create: {
         after: async (session) => {

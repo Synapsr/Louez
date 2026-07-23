@@ -9,6 +9,7 @@ import {
   cleanExpiredCache,
   refreshAllStoresCache,
 } from '@/lib/google-places/cache';
+import { processVoiceNumberRenewals } from '@/lib/ai/phone/number-renewals';
 import { processCalendarSyncQueue } from '@/lib/integrations/calendar/sync';
 import { runMonthlyPayAsYouGoBilling } from '@/lib/pay-as-you-go';
 import { processReminders } from '@/lib/reminders/automation';
@@ -38,10 +39,11 @@ import { env } from '@/env';
 async function handleCron(request: Request) {
   const logger = useLogger();
 
-  // Verify cron secret - required
+  // Verify cron secret. Fail closed when unset — otherwise the template
+  // literal would accept a literal "Bearer undefined" header.
   const authHeader = request.headers.get('authorization');
 
-  if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
+  if (!env.CRON_SECRET || authHeader !== `Bearer ${env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -100,6 +102,14 @@ async function handleCron(request: Request) {
       tasks.push('cache-cleanup');
       const cleaned = await cleanExpiredCache();
       results.cacheCleanup = { cleaned };
+    }
+
+    // Voice-number rental renewals: daily at 8:00 AM (warn → debit → grace →
+    // release; the debit retries every day during grace, so a recharge heals
+    // the cycle automatically).
+    if (hour === 8 && minute === 0) {
+      tasks.push('voice-number-renewals');
+      results.voiceNumberRenewals = await processVoiceNumberRenewals(now);
     }
 
     // Pay-as-you-go billing: 1st of each month at 5:00 AM UTC (bills previous

@@ -1,4 +1,5 @@
 import { render } from '@react-email/render'
+import { env } from '@/env'
 import { sendEmail, type EmailAttachment } from './client'
 import { db } from '@louez/db'
 import { emailLogs } from '@louez/db'
@@ -9,7 +10,7 @@ import {
   type EmailLocale,
 } from './i18n'
 import { formatEmailDateInStoreTimezone } from './date-time'
-import { getLogoForLightBackground } from '@louez/utils'
+import { getLogoForLightBackground, toAbsoluteUrl } from '@louez/utils'
 import { isSvgUrl, convertSvgToPngBuffer } from '@/lib/image-utils'
 import type { ReservationLocationSnapshot } from '@louez/types'
 import {
@@ -29,6 +30,8 @@ import {
   ReminderDigestAdminEmail,
   type DigestEntry,
   NewRequestLandlordEmail,
+  PhoneCallbackLandlordEmail,
+  VoiceNumberBillingEmail,
   TeamInvitationEmail,
   RewardUnlockedEmail,
   InstantAccessEmail,
@@ -102,9 +105,13 @@ async function resolveEmailLogo(
   logoUrl: string | null | undefined
 ): Promise<{ url: string | null; attachments: EmailAttachment[] }> {
   if (!logoUrl) return { url: null, attachments: [] }
-  if (!isSvgUrl(logoUrl)) return { url: logoUrl, attachments: [] }
 
-  const pngBuffer = await convertSvgToPngBuffer(logoUrl, 200)
+  // Standalone deployments store site-relative asset paths; email clients
+  // need absolute URLs (no-op for already-absolute cloud URLs).
+  const absoluteLogoUrl = toAbsoluteUrl(logoUrl, env.NEXT_PUBLIC_APP_URL)
+  if (!isSvgUrl(absoluteLogoUrl)) return { url: absoluteLogoUrl, attachments: [] }
+
+  const pngBuffer = await convertSvgToPngBuffer(absoluteLogoUrl, 200)
   if (!pngBuffer) return { url: null, attachments: [] }
 
   return {
@@ -1024,6 +1031,127 @@ export async function sendNewRequestLandlordEmail({
       to,
       subject,
       templateType: 'new_request_landlord',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Phone callback request to the store owner (AI voice agent couldn't finish)
+export async function sendPhoneCallbackLandlordEmail({
+  to,
+  storeId,
+  storeName,
+  primaryColor,
+  callerPhone,
+  message,
+  conversationUrl,
+  locale = 'fr',
+}: {
+  to: string
+  storeId: string
+  storeName: string
+  primaryColor?: string
+  callerPhone: string
+  message: string
+  conversationUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.phoneCallbackLandlord.subject.replace('{store}', storeName)
+  const html = await render(
+    PhoneCallbackLandlordEmail({
+      storeName,
+      primaryColor: primaryColor || '#0066FF',
+      callerPhone,
+      message,
+      conversationUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: storeName })
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: 'phone_callback_landlord',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: 'phone_callback_landlord',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Voice-number rental notice (renewal warning / failure / number released)
+export async function sendVoiceNumberBillingEmail({
+  variant,
+  to,
+  storeId,
+  storeName,
+  primaryColor,
+  e164,
+  credits,
+  deadline,
+  locale = 'fr',
+}: {
+  variant: 'warning' | 'failed' | 'released'
+  to: string
+  storeId: string
+  storeName: string
+  primaryColor?: string
+  e164: string
+  credits: number
+  deadline?: Date | null
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.voiceNumberBilling[variant].subject.replace('{number}', e164)
+  const deadlineText = deadline
+    ? new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(deadline)
+    : null
+  const html = await render(
+    VoiceNumberBillingEmail({
+      variant,
+      storeName,
+      primaryColor: primaryColor || '#0066FF',
+      e164,
+      credits,
+      deadlineText,
+      ctaUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/ai-assistant`,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: 'Louez.io' })
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: `voice_number_${variant}`,
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: `voice_number_${variant}`,
       status: 'failed',
       error: String(error),
     })

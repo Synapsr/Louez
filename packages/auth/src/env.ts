@@ -5,8 +5,10 @@ export const env = createEnv({
   server: {
     AUTH_SECRET: z.string().min(1, 'AUTH_SECRET is required'),
     AUTH_URL: z.url('AUTH_URL must be a valid URL'),
-    AUTH_GOOGLE_ID: z.string().min(1, 'AUTH_GOOGLE_ID is required'),
-    AUTH_GOOGLE_SECRET: z.string().min(1, 'AUTH_GOOGLE_SECRET is required'),
+    // Google OAuth is optional: without credentials the provider is not
+    // registered and the login UI hides the Google button.
+    AUTH_GOOGLE_ID: z.string().optional(),
+    AUTH_GOOGLE_SECRET: z.string().optional(),
   },
   runtimeEnv: {
     AUTH_SECRET: process.env.AUTH_SECRET,

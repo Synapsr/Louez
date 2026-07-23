@@ -9,11 +9,13 @@ on:
   pull_request:
     paths:
       - 'docker/**'
-      - 'Dockerfile'
+      - 'docker-compose.yml'
       - 'packages/db/**'
       - 'apps/web/next.config.*'
       - 'apps/web/instrumentation.ts'
+      - 'apps/web/proxy.ts'
       - 'apps/web/app/api/health/**'
+      - 'apps/web/app/api/standalone/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/docker.yml'
   workflow_dispatch:
@@ -118,9 +120,60 @@ jobs:
           done
           echo "✅ All core tables present"
 
+      # The container above runs in standalone mode (LOUEZ_MODE unset — the
+      # default): a fresh install must 404 the instance-store resolver and
+      # walk visitors from the root to the login flow.
+      - name: Verify standalone-mode first-run routing
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/api/standalone/store)
+          if [ "$status" != "404" ]; then
+            echo "❌ Expected 404 from /api/standalone/store on an empty instance, got $status"
+            exit 1
+          fi
+          root=$(curl -s -o /dev/null -w '%{http_code}' -L http://localhost:3000/)
+          if [ "$root" != "200" ]; then
+            echo "❌ Expected 200 after redirects on /, got $root"
+            exit 1
+          fi
+          if ! curl -s -L http://localhost:3000/ | grep -qi "login"; then
+            echo "❌ Root did not land on the login flow"
+            exit 1
+          fi
+          echo "✅ Standalone first-run routing OK"
+
+      - name: Boot platform mode against the same database
+        run: |
+          docker run -d --name louez-app-platform --network louez-net -p 3001:3000 \
+            -e LOUEZ_MODE=platform \
+            -e DATABASE_URL=mysql://root:smoketest@louez-db:3306/louez \
+            -e AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e BETTER_AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e NEXT_PUBLIC_APP_URL=http://localhost:3001 \
+            -e NEXT_PUBLIC_APP_DOMAIN=localhost:3001 \
+            louez-web:smoke
+          status=""
+          for i in $(seq 1 60); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/api/health || true)
+            if [ "$status" = "200" ]; then break; fi
+            sleep 2
+          done
+          if [ "$status" != "200" ]; then
+            echo "❌ Platform-mode container never became healthy (last status: $status)"
+            docker logs louez-app-platform
+            exit 1
+          fi
+          resolver=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3001/api/standalone/store)
+          if [ "$resolver" != "404" ]; then
+            echo "❌ Platform mode must not expose the instance-store resolver (got $resolver)"
+            exit 1
+          fi
+          echo "✅ Platform mode boots with identical health and no standalone surface"
+
       - name: Dump app logs
         if: always()
-        run: docker logs louez-app 2>&1 || true
+        run: |
+          docker logs louez-app 2>&1 || true
+          docker logs louez-app-platform 2>&1 || true
 
   build:
     runs-on: ubuntu-latest

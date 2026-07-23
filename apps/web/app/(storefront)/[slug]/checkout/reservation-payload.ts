@@ -26,6 +26,7 @@ interface BuildReservationPayloadInput {
   returnLocationId?: string | null;
   tulipInsuranceMode: 'required' | 'optional' | 'no_public';
   promoCode?: string;
+  advisorConversationId?: string;
 }
 
 function buildDeliveryLeg(
@@ -64,6 +65,7 @@ export function buildReservationPayload({
   returnLocationId,
   tulipInsuranceMode,
   promoCode,
+  advisorConversationId,
 }: BuildReservationPayloadInput): CreateReservationInput {
   return {
     storeId,
@@ -117,6 +119,7 @@ export function buildReservationPayload({
     totalAmount,
     locale,
     promoCode,
+    advisorConversationId,
     delivery: {
       outbound: buildDeliveryLeg(outboundMethod, outboundAddress, pickupLocationId),
       return: buildDeliveryLeg(returnMethod, returnAddress, returnLocationId),

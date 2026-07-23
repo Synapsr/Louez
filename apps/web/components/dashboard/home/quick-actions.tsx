@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { env } from '@/env'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import {
   Package,
   CalendarDays,
@@ -155,8 +155,8 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
   const [copied, setCopied] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
 
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN
-  const storeUrl = `https://${storeSlug}.${domain}`
+  const { getAbsoluteUrl } = useStorefrontUrl(storeSlug)
+  const storeUrl = getAbsoluteUrl()
 
   const handleCopy = async () => {
     try {
@@ -200,7 +200,7 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">
-                  {storeSlug}.{domain}
+                  {storeUrl.replace(/^https?:\/\//, '')}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {t('storefront.publicUrl')}

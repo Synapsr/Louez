@@ -2,14 +2,24 @@ import { NextResponse } from "next/server";
 
 import { z } from "zod";
 
+import { toAbsoluteUrl } from "@louez/utils";
 import { MAX_IMAGE_SIZE, isOwnedImageUrl } from "@louez/validations";
 
+import { env } from "@/env";
 import { useLogger, withEvlog } from "@/lib/evlog";
 import { getCurrentStore } from "@/lib/store-context";
 import { IMAGE_UPLOAD_MIME_TYPES } from "@/lib/uploads/image-upload";
 
 const requestSchema = z.object({
-  url: z.string().url(),
+  // Absolute bucket URL, or a site-relative "/files/…" path on standalone
+  // deployments (same shapes isOwnedImageUrl accepts).
+  url: z
+    .string()
+    .refine(
+      (value) =>
+        (value.startsWith("/") && !value.startsWith("//")) ||
+        URL.canParse(value),
+    ),
 });
 
 const handlePost = async (request: Request) => {
@@ -31,10 +41,13 @@ const handlePost = async (request: Request) => {
       return NextResponse.json({ error: "errors.forbidden" }, { status: 403 });
     }
 
-    const sourceResponse = await fetch(parsed.data.url, {
-      headers: { Accept: IMAGE_UPLOAD_MIME_TYPES.join(",") },
-      cache: "no-store",
-    });
+    const sourceResponse = await fetch(
+      toAbsoluteUrl(parsed.data.url, env.NEXT_PUBLIC_APP_URL),
+      {
+        headers: { Accept: IMAGE_UPLOAD_MIME_TYPES.join(",") },
+        cache: "no-store",
+      },
+    );
 
     if (!sourceResponse.ok) {
       return NextResponse.json({ error: "errors.notFound" }, { status: 404 });

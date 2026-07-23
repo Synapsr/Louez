@@ -1,95 +1,118 @@
-# ===========================================
-# Louez - Docker Compose
-# ===========================================
-# Quick start: docker-compose up -d
-# See README.md for detailed documentation
+# =============================================================================
+# Louez — one-command self-host
+# =============================================================================
+# `docker compose up -d` starts a complete standalone instance on
+# http://localhost:3000 with zero configuration: bundled MySQL and MinIO,
+# automatic schema setup at boot, the storefront at the root of the site and
+# the dashboard under /dashboard. Every value below can be overridden from a
+# .env file next to this compose file.
+#
+# Custom domain: set NEXT_PUBLIC_APP_URL and AUTH_URL to your public URL and
+# put a TLS reverse proxy in front of port 3000.
+# Multi-tenant (subdomain-routed) deployments: set LOUEZ_MODE=platform and
+# see .env.example for the full configuration surface.
 
 services:
-  # Database migrations (run once at startup)
-  migrator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: migrator
-      args:
-        - DATABASE_URL=mysql://louez:${DB_PASSWORD:-louez}@db:3306/louez
-        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-        - NEXT_PUBLIC_APP_DOMAIN=${NEXT_PUBLIC_APP_DOMAIN:-localhost:3000}
-    environment:
-      - DATABASE_URL=mysql://louez:${DB_PASSWORD:-louez}@db:3306/louez
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: "no"
-    networks:
-      - louez-network
-
-  # Application
   louez:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: app
-      args:
-        - DATABASE_URL=mysql://louez:${DB_PASSWORD:-louez}@db:3306/louez
-        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-        - NEXT_PUBLIC_APP_DOMAIN=${NEXT_PUBLIC_APP_DOMAIN:-localhost:3000}
+    image: synapsr/louez:${LOUEZ_IMAGE_TAG:-latest}
+    # To run from source instead of the published image, replace `image:` with:
+    # build:
+    #   context: .
+    #   dockerfile: docker/Dockerfile.web
+    #   target: app
     ports:
-      - "3000:3000"
+      - '${LOUEZ_PORT:-3000}:3000'
     environment:
-      - DATABASE_URL=mysql://louez:${DB_PASSWORD:-louez}@db:3306/louez
-      - AUTH_SECRET=${AUTH_SECRET}
-      - AUTH_GOOGLE_ID=${AUTH_GOOGLE_ID:-}
-      - AUTH_GOOGLE_SECRET=${AUTH_GOOGLE_SECRET:-}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_SECURE=${SMTP_SECURE:-false}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASSWORD=${SMTP_PASSWORD}
-      - SMTP_FROM=${SMTP_FROM}
-      - S3_ENDPOINT=${S3_ENDPOINT:-}
-      - S3_REGION=${S3_REGION:-}
-      - S3_BUCKET=${S3_BUCKET:-}
-      - S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID:-}
-      - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-}
-      - S3_PUBLIC_URL=${S3_PUBLIC_URL:-}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
-      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      - NEXT_PUBLIC_APP_DOMAIN=${NEXT_PUBLIC_APP_DOMAIN:-localhost:3000}
+      LOUEZ_MODE: ${LOUEZ_MODE:-standalone}
+      DATABASE_URL: mysql://louez:${DB_PASSWORD:-louez}@db:3306/louez
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_DOMAIN: ${NEXT_PUBLIC_APP_DOMAIN:-localhost:3000}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_TRUST_HOST: 'true'
+      # Leave empty to let the container generate and persist a secret in the
+      # louez_data volume (sessions then survive container recreation).
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      # Bundled MinIO object storage — private to this compose network, with
+      # images served same-origin by the app under /files.
+      S3_ENDPOINT: http://minio:9000
+      S3_REGION: us-east-1
+      S3_BUCKET: louez
+      S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-louez}
+      S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-louez-minio-secret}
+      S3_PUBLIC_URL: /files
+      # Optional integrations — set them in .env when you need them.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
+      CRON_SECRET: ${CRON_SECRET:-}
+    volumes:
+      - louez_data:/app/data
     depends_on:
       db:
         condition: service_healthy
-      migrator:
+      minio:
+        condition: service_healthy
+      minio-init:
         condition: service_completed_successfully
     restart: unless-stopped
-    networks:
-      - louez-network
 
-  # MySQL Database
   db:
-    image: mysql:8.0
+    image: mysql:8.4
     environment:
-      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD:-rootpassword}
-      - MYSQL_DATABASE=louez
-      - MYSQL_USER=louez
-      - MYSQL_PASSWORD=${DB_PASSWORD:-louez}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-louez-root}
+      MYSQL_DATABASE: louez
+      MYSQL_USER: louez
+      MYSQL_PASSWORD: ${DB_PASSWORD:-louez}
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    networks:
-      - louez-network
+
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-louez}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-louez-minio-secret}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://localhost:9000/minio/health/live || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # One-shot bucket bootstrap. The bucket stays private: the app streams
+  # assets through /files with its own credentials.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-louez}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-louez-minio-secret}
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" &&
+        mc mb --ignore-existing local/louez
+    restart: 'no'
 
 volumes:
+  louez_data:
   mysql_data:
-    driver: local
-
-networks:
-  louez-network:
-    driver: bridge
+  minio_data:

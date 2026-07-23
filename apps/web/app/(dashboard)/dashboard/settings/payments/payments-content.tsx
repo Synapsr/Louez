@@ -13,6 +13,7 @@ interface PaymentsContentProps {
   stripeChargesEnabled: boolean
   stripeOnboardingComplete: boolean
   reservationMode: 'payment' | 'request'
+  stripeConfigured: boolean
 }
 
 export function PaymentsContent({
@@ -20,6 +21,7 @@ export function PaymentsContent({
   stripeChargesEnabled,
   stripeOnboardingComplete,
   reservationMode,
+  stripeConfigured,
 }: PaymentsContentProps) {
   const [isConnecting, setIsConnecting] = useState(false)
   const tErrors = useTranslations('errors')
@@ -38,6 +40,16 @@ export function PaymentsContent({
     } finally {
       setIsConnecting(false)
     }
+  }
+
+  // Instance has no Stripe keys: online payments cannot be enabled from the
+  // dashboard, so say it instead of offering a connect flow that would fail.
+  if (!stripeConfigured) {
+    return (
+      <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-sm">
+        {tErrors('stripeNotConfigured')}
+      </div>
+    )
   }
 
   return (

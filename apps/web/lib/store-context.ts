@@ -4,7 +4,7 @@ import { db } from '@louez/db'
 import { stores, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { isPlatformAdmin } from '@/lib/platform-admin'
-import type { StoreSettings, StoreTheme, EmailSettings, ReviewBoosterSettings, NotificationSettings, CustomerNotificationSettings } from '@louez/types'
+import type { AiAdvisorSettings, AiPhoneSettings, StoreSettings, StoreTheme, EmailSettings, ReviewBoosterSettings, NotificationSettings, CustomerNotificationSettings } from '@louez/types'
 import { hasPermission, type MemberRole, type Permission } from '@louez/utils'
 
 export { hasPermission, type MemberRole, type Permission }
@@ -42,6 +42,8 @@ export type StoreWithFullData = {
   stripeChargesEnabled: boolean | null
   emailSettings: EmailSettings | null
   reviewBoosterSettings: ReviewBoosterSettings | null
+  aiAdvisorSettings: AiAdvisorSettings | null
+  aiPhoneSettings: AiPhoneSettings | null
   notificationSettings: NotificationSettings | null
   discordWebhookUrl: string | null
   ownerPhone: string | null

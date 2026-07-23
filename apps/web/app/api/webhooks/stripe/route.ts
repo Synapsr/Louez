@@ -3,8 +3,15 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
 import { db } from '@louez/db'
-import { subscriptions, smsCredits, smsTopupTransactions, stores } from '@louez/db'
-import { eq, sql } from 'drizzle-orm'
+import {
+  aiCredits,
+  aiCreditTransactions,
+  smsCredits,
+  smsTopupTransactions,
+  stores,
+  subscriptions,
+} from '@louez/db'
+import { and, eq, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import {
   notifySubscriptionActivated,
@@ -21,6 +28,10 @@ export async function POST(request: Request) {
 
   if (!signature) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
+  }
+
+  if (!env.STRIPE_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: 'Stripe is not configured' }, { status: 503 })
   }
 
   let event: Stripe.Event
@@ -47,20 +58,26 @@ export async function POST(request: Request) {
         break
 
       case 'invoice.paid':
-      case 'invoice.payment_succeeded':
-        await handlePayAsYouGoInvoiceEvent(
-          event.data.object as Stripe.Invoice,
-          'paid',
-        )
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice
+        if (invoice.metadata?.type === 'ai_credit_topup') {
+          await handleAiCreditInvoicePaid(invoice)
+        } else {
+          await handlePayAsYouGoInvoiceEvent(invoice, 'paid')
+        }
         break
+      }
 
       case 'invoice.payment_failed':
-      case 'invoice.marked_uncollectible':
-        await handlePayAsYouGoInvoiceEvent(
-          event.data.object as Stripe.Invoice,
-          'failed',
-        )
+      case 'invoice.marked_uncollectible': {
+        const invoice = event.data.object as Stripe.Invoice
+        if (invoice.metadata?.type === 'ai_credit_topup') {
+          await handleAiCreditInvoiceFailed(invoice)
+        } else {
+          await handlePayAsYouGoInvoiceEvent(invoice, 'failed')
+        }
         break
+      }
 
       default:
         console.log(`Unhandled event type: ${event.type}`)
@@ -79,6 +96,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   // Handle SMS top-up payment
   if (type === 'sms_topup' && session.mode === 'payment') {
     await handleSmsTopupCompleted(session)
+    return
+  }
+
+  // Handle AI advisor credit top-up payment
+  if (type === 'ai_credit_topup' && session.mode === 'payment') {
+    await handleAiCreditTopupCompleted(session)
     return
   }
 
@@ -246,6 +269,157 @@ async function handleSmsTopupCompleted(session: Stripe.Checkout.Session) {
   }
 
   console.log(`SMS top-up completed for store ${storeId}: ${qty} credits added`)
+}
+
+/**
+ * Handle AI advisor credit top-up completion — credits the store's prepaid
+ * balance and marks the transaction paid. Idempotent under duplicate webhook
+ * deliveries via a row lock on the pending transaction.
+ */
+async function handleAiCreditTopupCompleted(session: Stripe.Checkout.Session) {
+  const { storeId, transactionId } = session.metadata || {}
+  if (!storeId || !transactionId) {
+    console.error('Missing metadata in AI credit top-up checkout session')
+    return
+  }
+
+  await db.transaction(async (tx) => {
+    // Lock the pending transaction to serialize duplicate deliveries.
+    const [txn] = await tx
+      .select()
+      .from(aiCreditTransactions)
+      .where(eq(aiCreditTransactions.id, transactionId))
+      .for('update')
+
+    if (!txn) {
+      console.error(`AI credit top-up transaction not found: ${transactionId}`)
+      return
+    }
+    if (txn.status !== 'pending') {
+      console.log(`AI credit top-up already processed: ${transactionId}`)
+      return
+    }
+
+    // Ensure the balance row exists, then credit the purchased amount.
+    await tx
+      .insert(aiCredits)
+      .values({ storeId })
+      .onDuplicateKeyUpdate({ set: { storeId } })
+    await tx
+      .update(aiCredits)
+      .set({
+        balanceMicro: sql`${aiCredits.balanceMicro} + ${txn.creditsMicro}`,
+        totalPurchasedMicro: sql`${aiCredits.totalPurchasedMicro} + ${txn.creditsMicro}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(aiCredits.storeId, storeId))
+
+    await tx
+      .update(aiCreditTransactions)
+      .set({
+        status: 'completed',
+        stripePaymentIntentId:
+          typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : null,
+        completedAt: new Date(),
+      })
+      .where(eq(aiCreditTransactions.id, transactionId))
+  })
+
+  // Promote the saved card to the customer default so off-session auto-top-up
+  // can charge it later (Checkout with setup_future_usage saves the card but
+  // does not set it as the default payment method).
+  try {
+    const customerId =
+      typeof session.customer === 'string' ? session.customer : null
+    const paymentIntentId =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : null
+    if (customerId && paymentIntentId) {
+      const pi = await stripe.paymentIntents.retrieve(paymentIntentId)
+      const pm = typeof pi.payment_method === 'string' ? pi.payment_method : null
+      if (pm) {
+        const customer = await stripe.customers.retrieve(customerId)
+        if (
+          !customer.deleted &&
+          !customer.invoice_settings?.default_payment_method
+        ) {
+          await stripe.customers.update(customerId, {
+            invoice_settings: { default_payment_method: pm },
+          })
+        }
+      }
+    }
+  } catch (err) {
+    console.error(
+      'Failed to set default payment method after AI credit top-up:',
+      err,
+    )
+  }
+
+  console.log(`AI credit top-up completed for store ${storeId}`)
+}
+
+/**
+ * Off-session auto-top-up invoice paid → credit the balance and complete the
+ * transaction. Idempotent via a row lock on the pending transaction. Amounts
+ * come from the DB row, never from the webhook payload.
+ */
+async function handleAiCreditInvoicePaid(invoice: Stripe.Invoice) {
+  const transactionId = invoice.metadata?.transactionId
+  const storeId = invoice.metadata?.storeId
+  if (!transactionId || !storeId) return
+
+  await db.transaction(async (tx) => {
+    const [txn] = await tx
+      .select()
+      .from(aiCreditTransactions)
+      .where(eq(aiCreditTransactions.id, transactionId))
+      .for('update')
+
+    // Credit as long as it hasn't been credited yet — covers a late 'failed'
+    // event arriving before this 'paid' one (out-of-order webhook delivery).
+    if (!txn || txn.status === 'completed') return
+
+    await tx
+      .insert(aiCredits)
+      .values({ storeId })
+      .onDuplicateKeyUpdate({ set: { storeId } })
+    await tx
+      .update(aiCredits)
+      .set({
+        balanceMicro: sql`${aiCredits.balanceMicro} + ${txn.creditsMicro}`,
+        totalPurchasedMicro: sql`${aiCredits.totalPurchasedMicro} + ${txn.creditsMicro}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(aiCredits.storeId, storeId))
+
+    await tx
+      .update(aiCreditTransactions)
+      .set({ status: 'completed', completedAt: new Date() })
+      .where(eq(aiCreditTransactions.id, transactionId))
+  })
+
+  console.log(`AI credit auto-top-up completed for store ${storeId}`)
+}
+
+/** Off-session auto-top-up charge failed → mark the transaction failed. */
+async function handleAiCreditInvoiceFailed(invoice: Stripe.Invoice) {
+  const transactionId = invoice.metadata?.transactionId
+  if (!transactionId) return
+  // Only a still-pending charge may transition to failed — never clobber a
+  // 'completed' row (e.g. paid processed before a late failure event).
+  await db
+    .update(aiCreditTransactions)
+    .set({ status: 'failed' })
+    .where(
+      and(
+        eq(aiCreditTransactions.id, transactionId),
+        eq(aiCreditTransactions.status, 'pending'),
+      ),
+    )
 }
 
 async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subscription) {

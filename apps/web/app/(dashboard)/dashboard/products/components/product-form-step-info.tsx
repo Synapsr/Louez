@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@louez/ui'
+import { AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH } from '@louez/validations'
 
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { getFieldError } from '@/hooks/form/form-context'
@@ -36,6 +37,7 @@ import type { Category, ProductFormComponentApi } from '../types'
 
 interface ProductFormStepInfoProps {
   form: ProductFormComponentApi
+  showAiContext: boolean
   categories: Category[]
   categoryDialogOpen: boolean
   newCategoryName: string
@@ -48,6 +50,7 @@ interface ProductFormStepInfoProps {
 
 export function ProductFormStepInfo({
   form,
+  showAiContext,
   categories,
   categoryDialogOpen,
   newCategoryName,
@@ -102,6 +105,20 @@ export function ProductFormStepInfo({
             </div>
           )}
         </form.Field>
+
+        {showAiContext && (
+          <form.AppField name="aiContext">
+            {(field) => (
+              <field.Textarea
+                label={t('aiContext')}
+                placeholder={t('aiContextPlaceholder')}
+                description={t('aiContextHint')}
+                rows={4}
+                maxLength={AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH}
+              />
+            )}
+          </form.AppField>
+        )}
 
         <form.Field name="categoryId">
           {(field) => (

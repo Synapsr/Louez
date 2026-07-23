@@ -12,6 +12,7 @@ import {
   loadExcludedUnitInfo,
 } from '@louez/api/services';
 import { db, getEffectiveProductQuantities } from '@louez/db';
+import { isEmailConfigured } from '@louez/email';
 import {
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
@@ -134,7 +135,6 @@ import { calculateTotalDeliveryFee, validateDelivery } from '@/lib/utils/geo';
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
 import { buildUnitEvent } from '@/lib/utils/unit-mutations';
 
-import { env } from '@/env';
 
 const INSTANT_ACCESS_TOKEN_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -500,8 +500,7 @@ export async function updateReservationStatus(
   }
 
   // Send emails based on status change
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`;
+  const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
 
   // Build customer notification context
   const customerNotificationCtx = {
@@ -1855,9 +1854,6 @@ export async function createManualReservation(data: CreateReservationData) {
         : []),
     ];
 
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-    const protocol = domain.includes('localhost') ? 'http' : 'https';
-
     if (data.sendAsQuote) {
       // Generate authenticated access token for the quote URL
       const token = nanoid(64);
@@ -1873,7 +1869,7 @@ export async function createManualReservation(data: CreateReservationData) {
         expiresAt,
         createdAt: new Date(),
       });
-      const quoteAccessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`;
+      const quoteAccessUrl = getStorefrontUrl(store.slug, `/r/${reservationId}?token=${token}`);
 
       // Send quote email via dispatcher
       dispatchCustomerNotification('customer_quote_sent', {
@@ -1895,7 +1891,7 @@ export async function createManualReservation(data: CreateReservationData) {
       });
     } else {
       // Send confirmation email
-      const reservationUrl = `${protocol}://${store.slug}.${domain}/account/reservations/${reservationId}`;
+      const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
       sendReservationConfirmationEmail({
         to: customer.email,
         store: storeData,
@@ -4504,6 +4500,12 @@ export async function sendReservationModificationEmail(
     };
   },
 ) {
+  // sendEmail degrades to a logged no-op without a transport; a manual send
+  // must not pretend it delivered anything.
+  if (!isEmailConfigured()) {
+    return { error: 'errors.emailSendFailed' };
+  }
+
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };
@@ -4542,8 +4544,7 @@ export async function sendReservationModificationEmail(
     email: reservation.customer.email,
   };
 
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`;
+  const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
 
   try {
     await sendReservationModifiedEmail({
@@ -4585,6 +4586,10 @@ export async function sendReservationEmail(
   reservationId: string,
   data: SendReservationEmailData,
 ) {
+  if (!isEmailConfigured()) {
+    return { error: 'errors.emailSendFailed' };
+  }
+
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };
@@ -4627,8 +4632,7 @@ export async function sendReservationEmail(
     email: reservation.customer.email,
   };
 
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`;
+  const reservationUrl = getStorefrontUrl(store.slug, `/account/reservations/${reservationId}`);
 
   try {
     // Get button colors based on primary color contrast
@@ -4794,14 +4798,16 @@ export async function generateAccessUrl(reservationId: string) {
     createdAt: new Date(),
   });
 
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-  const protocol = domain.includes('localhost') ? 'http' : 'https';
-  const url = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`;
+  const url = getStorefrontUrl(store.slug, `/r/${reservationId}?token=${token}`);
 
   return { url };
 }
 
 export async function sendAccessLink(reservationId: string) {
+  if (!isEmailConfigured()) {
+    return { error: 'errors.accessLinkSendFailed' };
+  }
+
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };
@@ -4842,9 +4848,7 @@ export async function sendAccessLink(reservationId: string) {
     });
 
     // Build access URL
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-    const protocol = domain.includes('localhost') ? 'http' : 'https';
-    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`;
+    const accessUrl = getStorefrontUrl(store.slug, `/r/${reservationId}?token=${token}`);
 
     // Calculate payment status
     const isPaid = reservation.payments.some(
@@ -4972,9 +4976,7 @@ export async function sendAccessLinkBySms(reservationId: string) {
     });
 
     // Build access URL
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-    const protocol = domain.includes('localhost') ? 'http' : 'https';
-    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`;
+    const accessUrl = getStorefrontUrl(store.slug, `/r/${reservationId}?token=${token}`);
 
     // Send SMS
     const result = await sendAccessLinkSms({
@@ -5112,9 +5114,7 @@ export async function requestPayment(
     }
 
     // Build URLs
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-    const protocol = domain.includes('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${store.slug}.${domain}`;
+    const baseUrl = getStorefrontUrl(store.slug);
 
     let paymentUrl: string;
 

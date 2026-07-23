@@ -296,6 +296,9 @@ export async function createProduct(data: ProductInput) {
         storeId: store.id,
         name: validated.data.name,
         description: validated.data.description || null,
+        aiContext: validated.data.aiContext?.trim()
+          ? validated.data.aiContext.trim()
+          : null,
         categoryId: validated.data.categoryId || null,
         price: price,
         deposit: deposit,
@@ -595,6 +598,9 @@ export async function updateProduct(productId: string, data: ProductInput) {
     .set({
       name: validated.data.name,
       description: validated.data.description || null,
+      aiContext: validated.data.aiContext?.trim()
+        ? validated.data.aiContext.trim()
+        : null,
       categoryId: validated.data.categoryId || null,
       price: price,
       deposit: deposit,
@@ -915,6 +921,7 @@ export async function duplicateProduct(productId: string) {
     storeId: store.id,
     name: `${product.name} (copy)`,
     description: product.description,
+    aiContext: product.aiContext,
     categoryId: product.categoryId,
     price: product.price,
     deposit: product.deposit,

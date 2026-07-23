@@ -12,7 +12,10 @@ function getStoreSlugFromHost(): string | null {
 
   const hostname = window.location.hostname
   const hostParts = hostname.split('.')
-  const appDomain = env.NEXT_PUBLIC_APP_DOMAIN.split(':')[0]
+  // The prebuilt Docker image inlines no NEXT_PUBLIC values into the client
+  // bundle; treating the current host as the base domain means "no
+  // subdomain", which is exactly right for standalone deployments.
+  const appDomain = (env.NEXT_PUBLIC_APP_DOMAIN ?? window.location.host).split(':')[0]
   const domainParts = appDomain.split('.')
 
   // If hostname has more parts than base domain, extract subdomain.

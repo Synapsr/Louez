@@ -10,6 +10,7 @@ import {
 } from '@louez/db'
 import { eq, and, gt } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { isEmailConfigured } from '@louez/email'
 import { sendVerificationCodeEmail } from '@/lib/email/send'
 
 const CUSTOMER_SESSION_COOKIE = 'customer_session'
@@ -121,6 +122,12 @@ function maskEmail(email: string): string {
 
 export async function sendVerificationCode(storeId: string, email: string, locale?: 'fr' | 'en') {
   try {
+    // Customer sign-in has no channel other than email: without a transport
+    // the code can never arrive, so fail honestly instead of pretending.
+    if (!isEmailConfigured()) {
+      return { error: 'errors.emailLoginUnavailable' }
+    }
+
     // SECURITY: Validate storeId format (21-char nanoid)
     if (!storeId || typeof storeId !== 'string' || storeId.length !== 21) {
       return { error: 'errors.storeNotFound' }

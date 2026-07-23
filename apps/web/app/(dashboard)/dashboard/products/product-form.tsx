@@ -87,6 +87,7 @@ export function ProductForm({
   currency = "EUR",
   storeTaxSettings,
   availableAccessories = [],
+  showAiContext = false,
 }: ProductFormProps) {
   const router = useRouter();
   const t = useTranslations("dashboard.products.form");
@@ -233,6 +234,7 @@ export function ProductForm({
     defaultValues: {
       name: product?.name || "",
       description: product?.description || "",
+      aiContext: product?.aiContext || "",
       categoryId: product?.categoryId ?? null,
       price: product?.price || "",
       basePriceDuration: initialBasePriceDuration,
@@ -563,6 +565,7 @@ export function ProductForm({
                 <div id="section-information" className="scroll-mt-8">
                   <ProductFormStepInfo
                     form={form as unknown as ProductFormComponentApi}
+                    showAiContext={showAiContext}
                     categories={categories}
                     categoryDialogOpen={categoryDialogOpen}
                     newCategoryName={newCategoryName}
@@ -692,6 +695,7 @@ export function ProductForm({
             <StepContent direction={stepDirection}>
               <ProductFormStepInfo
                 form={form as unknown as ProductFormComponentApi}
+                showAiContext={showAiContext}
                 categories={categories}
                 categoryDialogOpen={categoryDialogOpen}
                 newCategoryName={newCategoryName}

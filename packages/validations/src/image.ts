@@ -40,6 +40,10 @@ export function isValidImageUrlClient(url: string): boolean {
   // SECURITY: Reject data URIs — must be uploaded to S3
   if (url.startsWith("data:")) return false;
 
+  // Same-origin path (standalone deployments serve assets under /files).
+  // "//host/..." is protocol-relative, i.e. an external URL — not a path.
+  if (url.startsWith("/") && !url.startsWith("//")) return true;
+
   try {
     const parsed = new URL(url);
     return parsed.protocol === "https:" || parsed.protocol === "http:";
@@ -86,8 +90,20 @@ export function isValidImageUrl(url: string): boolean {
 }
 
 function getStorageRelativePath(url: string): string | null {
+  const publicBase = env.S3_PUBLIC_URL ?? "";
+
+  // Path-based public base ("/files"): stored URLs are same-origin paths.
+  if (publicBase.startsWith("/")) {
+    if (!url.startsWith("/") || url.startsWith("//")) return null;
+
+    const pathPrefix = `${publicBase.replace(/\/+$/, "")}/`;
+    if (!url.startsWith(pathPrefix)) return null;
+
+    return url.slice(pathPrefix.length);
+  }
+
   try {
-    const publicUrl = new URL(env.S3_PUBLIC_URL);
+    const publicUrl = new URL(publicBase);
     const parsed = new URL(url);
     if (parsed.origin !== publicUrl.origin) return null;
 
