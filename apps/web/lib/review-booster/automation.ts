@@ -12,12 +12,8 @@ import { sendThankYouReviewSms } from "@/lib/sms/send";
 import { buildReviewUrl } from "@/lib/google-places";
 import { sendThankYouReviewEmail } from "@/lib/email/send";
 import { getLocaleFromCountry, type EmailLocale } from "@/lib/email/i18n";
+import { getStorefrontUrl } from "@/lib/storefront-url";
 import type { ReviewBoosterSettings } from "@louez/types";
-import { env } from "@/env";
-
-// Base domain for short URLs (e.g., "louez.io" or "localhost:3000")
-const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
-const IS_PRODUCTION = env.NODE_ENV === "production";
 
 // Maximum window for eligible reservations (prevents mass sending on feature activation)
 // Only reservations returned within the last 24 hours are eligible
@@ -28,11 +24,7 @@ const MAX_ELIGIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000; // 1 day
  * Example: https://ddm.louez.io/review
  */
 function buildShortReviewUrl(storeSlug: string): string {
-  if (IS_PRODUCTION) {
-    return `https://${storeSlug}.${APP_DOMAIN}/review`;
-  }
-  // In development, use path-based routing
-  return `http://${APP_DOMAIN}/${storeSlug}/review`;
+  return getStorefrontUrl(storeSlug, "/review");
 }
 
 interface ProcessResult {

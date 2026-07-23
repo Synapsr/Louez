@@ -17,6 +17,7 @@ import { formatInTimeZone, fromZonedTime } from 'date-fns-tz'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
 import { dispatchAdminReminder, dispatchAdminDigest } from '@/lib/notifications/dispatcher'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
+import { getStorefrontUrl } from '@/lib/storefront-url'
 import { formatStoreDate } from '@/lib/utils/store-date'
 import type { DigestEntry } from '@/lib/email/templates'
 import {
@@ -363,7 +364,7 @@ async function sendCustomerReminder(
 ): Promise<ReminderChannel[]> {
   const eventType = type === 'pickup' ? 'customer_reminder_pickup' : 'customer_reminder_return'
   const reservationUrl = store.slug
-    ? `https://${store.slug}.${env.NEXT_PUBLIC_APP_DOMAIN}/account/reservations/${reservation.id}`
+    ? getStorefrontUrl(store.slug, `/account/reservations/${reservation.id}`)
     : ''
 
   // Forward settings with already-sent channels turned off so the dispatcher

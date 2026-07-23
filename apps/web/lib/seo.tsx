@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import type { ReactElement } from 'react'
+import { toAbsoluteUrl } from '@louez/utils'
+import { isStandaloneMode } from '@/lib/deployment'
 import { env } from '@/env'
 
 const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
@@ -15,6 +17,11 @@ const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
 export function getStoreBaseUrl(slug: string): string {
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
 
+  // Standalone: the storefront IS the origin — canonicals carry no slug.
+  if (isStandaloneMode()) {
+    return (env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
+  }
+
   // Handle localhost development
   if (APP_DOMAIN.includes('localhost')) {
     return `${protocol}://localhost:3000/${slug}`
@@ -22,6 +29,12 @@ export function getStoreBaseUrl(slug: string): string {
 
   // Production: subdomain-based routing
   return `${protocol}://${slug}.${APP_DOMAIN}`
+}
+
+// OG scrapers and crawlers need absolute image URLs; standalone deployments
+// store site-relative asset paths ("/files/…"). No-op for absolute URLs.
+function absoluteAssetUrl(url: string): string {
+  return toAbsoluteUrl(url, env.NEXT_PUBLIC_APP_URL)
 }
 
 /**
@@ -90,13 +103,15 @@ export function generateStoreMetadata(
   const canonicalUrl = getCanonicalUrl(store.slug, path)
 
   // Determine OG image
-  const ogImages = images.length > 0
-    ? images
-    : store.theme?.heroImages?.length
-      ? [store.theme.heroImages[0]]
-      : store.logoUrl
-        ? [store.logoUrl]
-        : []
+  const ogImages = (
+    images.length > 0
+      ? images
+      : store.theme?.heroImages?.length
+        ? [store.theme.heroImages[0]]
+        : store.logoUrl
+          ? [store.logoUrl]
+          : []
+  ).map(absoluteAssetUrl)
 
   const metadata: Metadata = {
     title: pageTitle,
@@ -166,7 +181,7 @@ export function generateProductMetadata(
     ? truncateText(stripHtml(product.description), 160)
     : `Louez ${product.name} chez ${store.name} à partir de ${priceFormatted}`
 
-  const images = product.images?.length ? product.images : []
+  const images = (product.images?.length ? product.images : []).map(absoluteAssetUrl)
   const canonicalUrl = getCanonicalUrl(store.slug, path || `/product/${product.id}`)
 
   return {

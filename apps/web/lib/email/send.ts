@@ -10,7 +10,7 @@ import {
   type EmailLocale,
 } from './i18n'
 import { formatEmailDateInStoreTimezone } from './date-time'
-import { getLogoForLightBackground } from '@louez/utils'
+import { getLogoForLightBackground, toAbsoluteUrl } from '@louez/utils'
 import { isSvgUrl, convertSvgToPngBuffer } from '@/lib/image-utils'
 import type { ReservationLocationSnapshot } from '@louez/types'
 import {
@@ -105,9 +105,13 @@ async function resolveEmailLogo(
   logoUrl: string | null | undefined
 ): Promise<{ url: string | null; attachments: EmailAttachment[] }> {
   if (!logoUrl) return { url: null, attachments: [] }
-  if (!isSvgUrl(logoUrl)) return { url: logoUrl, attachments: [] }
 
-  const pngBuffer = await convertSvgToPngBuffer(logoUrl, 200)
+  // Standalone deployments store site-relative asset paths; email clients
+  // need absolute URLs (no-op for already-absolute cloud URLs).
+  const absoluteLogoUrl = toAbsoluteUrl(logoUrl, env.NEXT_PUBLIC_APP_URL)
+  if (!isSvgUrl(absoluteLogoUrl)) return { url: absoluteLogoUrl, attachments: [] }
+
+  const pngBuffer = await convertSvgToPngBuffer(absoluteLogoUrl, 200)
   if (!pngBuffer) return { url: null, attachments: [] }
 
   return {

@@ -24,7 +24,14 @@ export const env = createEnv({
     S3_BUCKET: z.string().min(1, 'S3_BUCKET is required'),
     S3_ACCESS_KEY_ID: z.string().min(1, 'S3_ACCESS_KEY_ID is required'),
     S3_SECRET_ACCESS_KEY: z.string().min(1, 'S3_SECRET_ACCESS_KEY is required'),
-    S3_PUBLIC_URL: z.url('S3_PUBLIC_URL must be a valid URL'),
+    // Absolute URL of the public bucket, or an absolute path ("/files") when
+    // assets are served same-origin through the app's /files route
+    // (standalone deployments with a private object store).
+    S3_PUBLIC_URL: z
+      .string()
+      .refine((value) => value.startsWith('/') || URL.canParse(value), {
+        message: 'S3_PUBLIC_URL must be an absolute URL or an absolute path',
+      }),
 
     // ===== Stripe (Required for payments) =====
     STRIPE_SECRET_KEY: z.string().min(1, 'STRIPE_SECRET_KEY is required'),
