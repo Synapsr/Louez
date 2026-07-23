@@ -22,12 +22,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetPanel,
-  SheetTitle,
   Table,
   TableBody,
   TableCell,
@@ -40,21 +34,10 @@ import {
 } from '@louez/ui'
 import type { AdvisorConversationFilter } from '@louez/validations'
 
-import {
-  AdvisorCollectedData,
-  AdvisorTranscriptMessages,
-} from '@/components/dashboard/advisor-transcript'
-import { CallRecordingPlayer } from '@/components/dashboard/call-recording-player'
+import { AdvisorConversationSheet } from '@/components/dashboard/advisor-conversation-sheet'
 import { orpc } from '@/lib/orpc/react'
 
 const PAGE_SIZE = 20
-
-/** mm:ss for a call/recording length in whole seconds. */
-function formatCallDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${mins}:${secs.toString().padStart(2, '0')}`
-}
 
 export const AdvisorConversationsSection = () => {
   const t = useTranslations('dashboard.settings.aiAdvisor.conversations')
@@ -81,13 +64,6 @@ export const AdvisorConversationsSection = () => {
     placeholderData: (previousData) => previousData,
   })
 
-  const transcriptQuery = useQuery({
-    ...orpc.dashboard.aiAdvisor.getConversation.queryOptions({
-      input: { conversationId: selectedConversationId ?? '' },
-    }),
-    enabled: selectedConversationId !== null,
-  })
-
   const conversations = conversationsQuery.data?.conversations ?? []
   const totalCount = conversationsQuery.data?.totalCount ?? 0
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
@@ -98,8 +74,6 @@ export const AdvisorConversationsSection = () => {
       setPage(1)
     }
   }
-
-  const transcript = transcriptQuery.data
 
   return (
     <Card>
@@ -254,62 +228,12 @@ export const AdvisorConversationsSection = () => {
         )}
       </CardContent>
 
-      <Sheet
-        open={selectedConversationId !== null}
+      <AdvisorConversationSheet
+        conversationId={selectedConversationId}
         onOpenChange={(open) => {
           if (!open) setSelectedConversationId(null)
         }}
-      >
-        <SheetContent side="right" className="sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>{t('transcriptTitle')}</SheetTitle>
-            {transcript && (
-              <SheetDescription>
-                {transcript.customerName ? `${transcript.customerName} · ` : ''}
-                {format.dateTime(new Date(transcript.createdAt), {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              </SheetDescription>
-            )}
-          </SheetHeader>
-          <SheetPanel className="space-y-6">
-            {transcriptQuery.isPending ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : transcript ? (
-              <>
-                {transcript.channel === 'phone' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Phone className="h-4 w-4 shrink-0" />
-                      <span>
-                        {t('channelPhone')}
-                        {transcript.durationSeconds
-                          ? ` · ${formatCallDuration(transcript.durationSeconds)}`
-                          : ''}
-                      </span>
-                    </div>
-                    {transcript.hasRecording && (
-                      <CallRecordingPlayer
-                        conversationId={transcript.id}
-                        durationSeconds={transcript.recordingDurationSeconds}
-                      />
-                    )}
-                  </div>
-                )}
-                <AdvisorCollectedData collectedData={transcript.collectedData} />
-                <AdvisorTranscriptMessages messages={transcript.messages} />
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {t('transcriptError')}
-              </p>
-            )}
-          </SheetPanel>
-        </SheetContent>
-      </Sheet>
+      />
     </Card>
   )
 }

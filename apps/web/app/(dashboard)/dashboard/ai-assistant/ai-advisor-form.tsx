@@ -30,6 +30,7 @@ import {
 import type { AiAdvisorSettings } from '@louez/types'
 
 import { updateAiAdvisorSettings } from './actions'
+import { FeaturePresentation } from './feature-presentation'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { FormRadioCardGroup } from '@/components/form/form-radio-card-group'
 import { RootError } from '@/components/form/root-error'
@@ -212,6 +213,14 @@ export const AiAdvisorForm = ({
                 />
               )}
             </form.AppField>
+
+            {/* What the advisor does — sell it before it is turned on */}
+            {!isEnabled && (
+              <FeaturePresentation
+                variant="advisor"
+                onActivate={() => form.setFieldValue('enabled', true)}
+              />
+            )}
 
             {/* Configuration - Only when enabled */}
             {isEnabled && (

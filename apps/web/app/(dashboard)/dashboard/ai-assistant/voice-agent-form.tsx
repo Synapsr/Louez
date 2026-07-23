@@ -49,6 +49,7 @@ import {
 import type { AiPhoneSettings } from '@louez/types'
 
 import { updateAiPhoneSettings } from './phone-actions'
+import { FeaturePresentation } from './feature-presentation'
 import { OPEN_TOPUP_EVENT } from './ai-assistant-header'
 import { VoiceNumberProvisioning } from './voice-number-provisioning'
 import { VoicePicker } from './voice-picker'
@@ -284,6 +285,27 @@ export const VoiceAgentForm = ({
                 </>
               )}
             </form.Field>
+
+            {/* What the voice agent does — sell it before it is turned on,
+                with the tariffs stated as plain facts. */}
+            {!isEnabled && (
+              <FeaturePresentation
+                variant="voice"
+                chips={[
+                  ...(numberRentalCredits !== null
+                    ? [t('setup.rentalChip', { credits: numberRentalCredits })]
+                    : []),
+                  ...(voiceCreditsPerMinute !== null
+                    ? [
+                        t('setup.perMinuteChip', {
+                          credits: voiceCreditsPerMinute,
+                        }),
+                      ]
+                    : []),
+                ]}
+                onActivate={() => form.setFieldValue('enabled', true)}
+              />
+            )}
 
             {/* Step 1 of 2 — the agent needs a line before anything else: pick
                 (or link) the number, with the rental terms stated upfront. */}
