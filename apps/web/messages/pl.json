@@ -166,7 +166,8 @@
       "oauthError": "Wystąpił błąd podczas logowania. Spróbuj ponownie.",
       "accessDenied": "Odmowa dostępu. Nie masz uprawnień do logowania.",
       "verification": "Link weryfikacyjny jest nieprawidłowy lub wygasł.",
-      "default": "Wystąpił błąd. Spróbuj ponownie."
+      "default": "Wystąpił błąd. Spróbuj ponownie.",
+      "passwordTooShort": "Hasło musi mieć co najmniej 8 znaków."
     },
     "referralBanner": "{storeName} zaprosił Cię do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
     "referralBannerGeneric": "🎁 Zostałeś zaproszony do Louez — załóż swój sklep i zacznij z {count} darmowymi rezerwacjami.",
@@ -181,7 +182,15 @@
     "perk1": "Pierwsze 15 rezerwacji za darmo",
     "perk2": "Maks. 1 € za rezerwację, im więcej, tym taniej, 0% prowizji, bez abonamentu",
     "perk3": "Twój sklep online gotowy w 5 minut",
-    "visitShop": "Zobacz sklep"
+    "visitShop": "Zobacz sklep",
+    "name": "Imię",
+    "namePlaceholder": "Twoje imię",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Utwórz konto",
+    "noAccountYet": "Nie masz jeszcze konta?",
+    "alreadyHaveAccount": "Masz już konto?",
+    "usePasswordInstead": "Zaloguj się hasłem",
+    "useEmailCodeInstead": "Zaloguj się kodem e-mail"
   },
   "invitation": {
     "inviteToJoin": "{name} zaprasza Cię do zespołu",
@@ -359,7 +368,8 @@
       "upgradeToPro": "Przejdź na Pro",
       "limitReachedTitle": "Osiągnięto limit",
       "limitReachedDescription": "Używasz {current} z {limit} członków. Ulepsz, aby dodać więcej.",
-      "upgradeForMore": "Dodaj więcej"
+      "upgradeForMore": "Dodaj więcej",
+      "invitationLinkCopied": "Link z zaproszeniem skopiowany — e-mail nie jest skonfigurowany, udostępnij go bezpośrednio"
     },
     "referrals": {
       "title": "Polecenia",
@@ -6158,7 +6168,9 @@
     "releaseFailed": "Nie udało się zwolnić numeru. Spróbuj ponownie.",
     "invalidPhoneNumber": "Nieprawidłowy numer telefonu.",
     "phoneNumberInUse": "Ten numer jest już używany.",
-    "unexpected": "Coś poszło nie tak. Spróbuj ponownie."
+    "unexpected": "Coś poszło nie tak. Spróbuj ponownie.",
+    "standaloneSingleStore": "Ta instancja obsługuje tylko jeden sklep",
+    "emailLoginUnavailable": "Logowanie przez e-mail jest obecnie niedostępne"
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

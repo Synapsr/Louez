@@ -166,7 +166,8 @@
       "oauthError": "Er is een fout opgetreden bij het inloggen. Probeer het opnieuw.",
       "accessDenied": "Toegang geweigerd. U heeft geen toestemming om in te loggen.",
       "verification": "De verificatielink is ongeldig of verlopen.",
-      "default": "Er is een fout opgetreden. Probeer het opnieuw."
+      "default": "Er is een fout opgetreden. Probeer het opnieuw.",
+      "passwordTooShort": "Het wachtwoord moet minimaal 8 tekens bevatten."
     },
     "referralBanner": "{storeName} heeft je uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
     "referralBannerGeneric": "🎁 Je bent uitgenodigd voor Louez — maak je winkel aan en start met {count} gratis reserveringen.",
@@ -181,7 +182,15 @@
     "perk1": "Je eerste 15 reserveringen gratis",
     "perk2": "Max. € 1 per reservering, goedkoper naarmate je groeit, 0% commissie, geen abonnement",
     "perk3": "Je webshop klaar in 5 minuten",
-    "visitShop": "Bekijk de winkel"
+    "visitShop": "Bekijk de winkel",
+    "name": "Naam",
+    "namePlaceholder": "Uw naam",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Account aanmaken",
+    "noAccountYet": "Nog geen account?",
+    "alreadyHaveAccount": "Heb je al een account?",
+    "usePasswordInstead": "Inloggen met een wachtwoord",
+    "useEmailCodeInstead": "Inloggen met een e-mailcode"
   },
   "invitation": {
     "inviteToJoin": "{name} nodigt u uit om lid te worden van het team",
@@ -359,7 +368,8 @@
       "upgradeToPro": "Upgrade naar Pro",
       "limitReachedTitle": "Limiet bereikt",
       "limitReachedDescription": "Je gebruikt {current} van {limit} teamleden. Upgrade om meer toe te voegen.",
-      "upgradeForMore": "Meer toevoegen"
+      "upgradeForMore": "Meer toevoegen",
+      "invitationLinkCopied": "Uitnodigingslink gekopieerd — e-mail is niet geconfigureerd, deel hem direct"
     },
     "referrals": {
       "title": "Verwijzingen",
@@ -6158,7 +6168,9 @@
     "releaseFailed": "Kon het nummer niet vrijgeven. Probeer opnieuw.",
     "invalidPhoneNumber": "Ongeldig telefoonnummer.",
     "phoneNumberInUse": "Dit nummer is al in gebruik.",
-    "unexpected": "Er ging iets mis. Probeer opnieuw."
+    "unexpected": "Er ging iets mis. Probeer opnieuw.",
+    "standaloneSingleStore": "Deze instantie host één winkel",
+    "emailLoginUnavailable": "Inloggen via e-mail is momenteel niet beschikbaar"
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

@@ -189,9 +189,9 @@ export const CheckoutAdvisorVerificationPanel = ({
             </div>
             <Button
               type="button"
-              variant="success-outline"
+              variant="outline"
               size="sm"
-              className="ml-auto shrink-0"
+              className="border-success/40 text-success hover:bg-success/10 ml-auto shrink-0"
               onClick={scrollToSubmit}
             >
               {t('continueToPayment')}

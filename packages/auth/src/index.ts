@@ -9,10 +9,19 @@ import { render } from '@react-email/render'
 
 import { db } from '@louez/db'
 import * as schema from '@louez/db'
-import { sendEmail, MagicLinkEmail, OTPEmail } from '@louez/email'
+import { sendEmail, isEmailConfigured, MagicLinkEmail, OTPEmail } from '@louez/email'
 import type { EmailLocale } from '@louez/email'
 
 import { env } from './env'
+
+// Standalone (self-host) deployments enable email + password sign-in so the
+// first owner can create an account with zero external services. The cloud
+// sets LOUEZ_MODE=platform and keeps its passwordless model unchanged.
+// Read from process.env directly — this package has no dependency on the
+// app's env schema, and the value must be a pure runtime concern.
+const isStandaloneMode = process.env.LOUEZ_MODE !== 'platform'
+
+const hasGoogleAuth = Boolean(env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET)
 
 // ============================================================================
 // Types
@@ -110,11 +119,19 @@ export const authInstance = betterAuth({
     },
   },
 
-  socialProviders: {
-    google: {
-      clientId: env.AUTH_GOOGLE_ID,
-      clientSecret: env.AUTH_GOOGLE_SECRET,
-    },
+  // Only register Google when credentials exist — better-auth would otherwise
+  // expose a sign-in path that errors at the provider handshake.
+  socialProviders: hasGoogleAuth
+    ? {
+        google: {
+          clientId: env.AUTH_GOOGLE_ID as string,
+          clientSecret: env.AUTH_GOOGLE_SECRET as string,
+        },
+      }
+    : {},
+
+  emailAndPassword: {
+    enabled: isStandaloneMode,
   },
 
   plugins: [
@@ -132,6 +149,12 @@ export const authInstance = betterAuth({
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
         if (type !== 'sign-in') return
+        // Without a transport the code would silently go nowhere; surface it
+        // in the server logs so a misconfigured instance is still usable.
+        if (!isEmailConfigured()) {
+          console.log(`[auth] Email not configured — sign-in code for ${email}: ${otp}`)
+          return
+        }
         const html = await render(OTPEmail({ otp, locale: 'fr' }))
         await sendEmail({
           to: email,

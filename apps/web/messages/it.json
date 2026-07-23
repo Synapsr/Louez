@@ -166,7 +166,8 @@
       "oauthError": "Si e verificato un errore durante l'accesso. Riprova.",
       "accessDenied": "Accesso negato. Non hai il permesso di accedere.",
       "verification": "Il link di verifica non e valido o e scaduto.",
-      "default": "Si e verificato un errore. Riprova."
+      "default": "Si e verificato un errore. Riprova.",
+      "passwordTooShort": "La password deve contenere almeno 8 caratteri."
     },
     "referralBanner": "{storeName} ti ha invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
     "referralBannerGeneric": "🎁 Sei stato invitato su Louez — crea il tuo negozio e inizia con {count} prenotazioni gratuite.",
@@ -181,7 +182,15 @@
     "perk1": "Le tue prime 15 prenotazioni in omaggio",
     "perk2": "Max 1 € a prenotazione, decrescente col volume, 0% di commissioni, nessun abbonamento",
     "perk3": "Il tuo negozio online pronto in 5 minuti",
-    "visitShop": "Vedi il negozio"
+    "visitShop": "Vedi il negozio",
+    "name": "Nome",
+    "namePlaceholder": "Il tuo nome",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Crea un account",
+    "noAccountYet": "Non hai ancora un account?",
+    "alreadyHaveAccount": "Hai già un account?",
+    "usePasswordInstead": "Accedi con una password",
+    "useEmailCodeInstead": "Accedi con un codice via email"
   },
   "invitation": {
     "inviteToJoin": "{name} ti invita a unirti al team",
@@ -359,7 +368,8 @@
       "upgradeToPro": "Passa a Pro",
       "limitReachedTitle": "Limite raggiunto",
       "limitReachedDescription": "Stai usando {current} su {limit} membri. Aggiorna per aggiungerne altri.",
-      "upgradeForMore": "Aggiungi altri"
+      "upgradeForMore": "Aggiungi altri",
+      "invitationLinkCopied": "Link d'invito copiato — l'email non è configurata, condividilo direttamente"
     },
     "referrals": {
       "title": "Referenze",
@@ -6158,7 +6168,9 @@
     "releaseFailed": "Impossibile rilasciare il numero. Riprova.",
     "invalidPhoneNumber": "Numero di telefono non valido.",
     "phoneNumberInUse": "Questo numero è già in uso.",
-    "unexpected": "Qualcosa è andato storto. Riprova."
+    "unexpected": "Qualcosa è andato storto. Riprova.",
+    "standaloneSingleStore": "Questa istanza ospita un solo negozio",
+    "emailLoginUnavailable": "L'accesso via email non è al momento disponibile"
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

@@ -166,7 +166,8 @@
       "oauthError": "Ocorreu um erro ao entrar. Por favor, tente novamente.",
       "accessDenied": "Acesso negado. Voce nao tem permissao para entrar.",
       "verification": "O link de verificacao e invalido ou expirou.",
-      "default": "Ocorreu um erro. Por favor, tente novamente."
+      "default": "Ocorreu um erro. Por favor, tente novamente.",
+      "passwordTooShort": "A palavra-passe deve ter pelo menos 8 caracteres."
     },
     "referralBanner": "{storeName} convidou-o para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
     "referralBannerGeneric": "🎁 Foi convidado para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
@@ -181,7 +182,15 @@
     "perk1": "As suas primeiras 15 reservas grátis",
     "perk2": "Máx. 1 € por reserva, decrescente com o volume, 0% de comissão, sem assinatura",
     "perk3": "A sua loja online pronta em 5 minutos",
-    "visitShop": "Ver a loja"
+    "visitShop": "Ver a loja",
+    "name": "Nome",
+    "namePlaceholder": "O seu nome",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Criar uma conta",
+    "noAccountYet": "Ainda não tem conta?",
+    "alreadyHaveAccount": "Já tem uma conta?",
+    "usePasswordInstead": "Entrar com uma palavra-passe",
+    "useEmailCodeInstead": "Entrar com um código por e-mail"
   },
   "invitation": {
     "inviteToJoin": "{name} convida voce para se juntar a equipe",
@@ -359,7 +368,8 @@
       "upgradeToPro": "Upgrade para Pro",
       "limitReachedTitle": "Limite atingido",
       "limitReachedDescription": "Voce esta usando {current} de {limit} membros. Faca upgrade para adicionar mais.",
-      "upgradeForMore": "Adicionar mais"
+      "upgradeForMore": "Adicionar mais",
+      "invitationLinkCopied": "Link de convite copiado — o e-mail não está configurado, partilhe-o diretamente"
     },
     "referrals": {
       "title": "Referências",
@@ -6158,7 +6168,9 @@
     "releaseFailed": "Não foi possível libertar o número. Tente novamente.",
     "invalidPhoneNumber": "Número de telefone inválido.",
     "phoneNumberInUse": "Este número já está em uso.",
-    "unexpected": "Algo correu mal. Tente novamente."
+    "unexpected": "Algo correu mal. Tente novamente.",
+    "standaloneSingleStore": "Esta instância aloja apenas uma loja",
+    "emailLoginUnavailable": "O início de sessão por e-mail está indisponível de momento"
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

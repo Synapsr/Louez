@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+import { isStandaloneMode } from '@/lib/deployment';
 import { isValidReferralCode } from '@/lib/utils/referral';
 
 import { env } from '@/env';
@@ -108,6 +109,49 @@ function createInternalRewriteUrl(request: NextRequest, pathname: string) {
 }
 
 // =============================================================================
+// STANDALONE STORE RESOLUTION
+// =============================================================================
+
+// The middleware cannot query the database, so standalone mode resolves the
+// instance's storefront slug through an internal API route over loopback.
+// A found slug is cached briefly; a missing store is never cached, so the
+// root flips to the storefront on the first request after onboarding.
+const STANDALONE_SLUG_TTL_MS = 60_000;
+let standaloneSlugCache: { slug: string; expiresAt: number } | null = null;
+
+async function getStandaloneStoreSlug(): Promise<string | null> {
+  if (standaloneSlugCache && Date.now() < standaloneSlugCache.expiresAt) {
+    return standaloneSlugCache.slug;
+  }
+
+  try {
+    const port = process.env.PORT ?? '3000';
+    const response = await fetch(
+      `http://127.0.0.1:${port}/api/standalone/store`,
+      { cache: 'no-store' },
+    );
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = (await response.json()) as { slug?: string };
+    if (!data.slug) {
+      return null;
+    }
+
+    standaloneSlugCache = {
+      slug: data.slug,
+      expiresAt: Date.now() + STANDALONE_SLUG_TTL_MS,
+    };
+    return data.slug;
+  } catch {
+    // On any failure the dashboard stays reachable and the storefront
+    // recovers on a later request — never take the instance down from here.
+    return null;
+  }
+}
+
+// =============================================================================
 // REFERRAL ATTRIBUTION
 // =============================================================================
 
@@ -154,7 +198,7 @@ function captureReferral(
   return response;
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const host = request.headers.get('host') || '';
   const subdomain = getSubdomain(host);
   const { pathname } = request.nextUrl;
@@ -173,7 +217,37 @@ export function proxy(request: NextRequest) {
   }
 
   // -----------------------------------------------------------------------------
-  // 2. LOCAL DEVELOPMENT: Preview a storefront without subdomains
+  // 2. STANDALONE: single store on a single origin (the default mode)
+  // -----------------------------------------------------------------------------
+  // The instance's storefront is served at the root of whatever host it runs
+  // on; dashboard/auth routes stay reachable by path. Platform deployments
+  // (LOUEZ_MODE=platform) skip this branch entirely, and referral capture is
+  // deliberately absent here — the referral program is platform machinery.
+  if (isStandaloneMode()) {
+    if (isDashboardRoute(pathname)) {
+      return NextResponse.next();
+    }
+
+    const slug = await getStandaloneStoreSlug();
+    if (!slug) {
+      // Fresh install: no onboarded store yet. Fall through to the dashboard
+      // root, which walks the visitor to /login and /onboarding.
+      return NextResponse.next();
+    }
+
+    const url = createInternalRewriteUrl(request, `/${slug}${pathname}`);
+    const response = NextResponse.rewrite(url);
+
+    // Set embed mode header for embed routes (used by layout to skip chrome)
+    if (pathname === '/embed' || pathname.startsWith('/embed/')) {
+      response.headers.set('x-embed-mode', '1');
+    }
+
+    return response;
+  }
+
+  // -----------------------------------------------------------------------------
+  // 3. LOCAL DEVELOPMENT: Preview a storefront without subdomains
   // -----------------------------------------------------------------------------
   // When running locally with PREVIEW_STORE_SLUG set, rewrite to that store's
   // storefront (except for dashboard routes which should remain accessible).
@@ -200,7 +274,7 @@ export function proxy(request: NextRequest) {
   }
 
   // -----------------------------------------------------------------------------
-  // 3. DASHBOARD: Configured subdomain or localhost without preview mode
+  // 4. DASHBOARD: Configured subdomain or localhost without preview mode
   // -----------------------------------------------------------------------------
   // Dashboard is served from:
   //   - {DASHBOARD_SUBDOMAIN}.{APP_DOMAIN} (e.g., app.example.com)
@@ -210,7 +284,7 @@ export function proxy(request: NextRequest) {
   }
 
   // -----------------------------------------------------------------------------
-  // 4. STOREFRONT: Any other subdomain becomes a store slug
+  // 5. STOREFRONT: Any other subdomain becomes a store slug
   // -----------------------------------------------------------------------------
   // {slug}.{APP_DOMAIN} → rewrite to /{slug}/* routes
   // Excludes "www" which should show the landing page
@@ -227,7 +301,7 @@ export function proxy(request: NextRequest) {
   }
 
   // -----------------------------------------------------------------------------
-  // 5. DEFAULT: Pass through (landing page, www, etc.)
+  // 6. DEFAULT: Pass through (landing page, www, etc.)
   // -----------------------------------------------------------------------------
   return captureReferral(request, NextResponse.next(), host);
 }

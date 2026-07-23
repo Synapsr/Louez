@@ -166,7 +166,8 @@
       "oauthError": "Bei der Anmeldung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
       "accessDenied": "Zugriff verweigert. Sie haben keine Berechtigung zur Anmeldung.",
       "verification": "Der Bestätigungslink ist ungültig oder abgelaufen.",
-      "default": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+      "default": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+      "passwordTooShort": "Das Passwort muss mindestens 8 Zeichen lang sein."
     },
     "referralBanner": "{storeName} hat Sie zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen.",
     "referralBannerGeneric": "🎁 Sie wurden zu Louez eingeladen — erstellen Sie Ihren Shop und starten Sie mit {count} Gratis-Reservierungen.",
@@ -181,7 +182,15 @@
     "perk1": "Ihre ersten 15 Reservierungen geschenkt",
     "perk2": "Max. 1 € pro Reservierung, günstiger bei mehr Volumen, 0 % Provision, kein Abo",
     "perk3": "Ihr Online-Shop in 5 Minuten startklar",
-    "visitShop": "Shop ansehen"
+    "visitShop": "Shop ansehen",
+    "name": "Name",
+    "namePlaceholder": "Ihr Name",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Konto erstellen",
+    "noAccountYet": "Noch kein Konto?",
+    "alreadyHaveAccount": "Sie haben bereits ein Konto?",
+    "usePasswordInstead": "Stattdessen mit Passwort anmelden",
+    "useEmailCodeInstead": "Stattdessen mit E-Mail-Code anmelden"
   },
   "invitation": {
     "inviteToJoin": "{name} lädt Sie ein, dem Team beizutreten",
@@ -359,7 +368,8 @@
       "upgradeToPro": "Auf Pro upgraden",
       "limitReachedTitle": "Limit erreicht",
       "limitReachedDescription": "Sie nutzen {current} von {limit} Teammitgliedern. Upgraden Sie, um mehr hinzuzufügen.",
-      "upgradeForMore": "Mehr hinzufügen"
+      "upgradeForMore": "Mehr hinzufügen",
+      "invitationLinkCopied": "Einladungslink kopiert — E-Mail ist nicht konfiguriert, teilen Sie ihn direkt"
     },
     "referrals": {
       "title": "Empfehlungen",
@@ -6158,7 +6168,9 @@
     "releaseFailed": "Die Nummer konnte nicht freigegeben werden. Bitte erneut versuchen.",
     "invalidPhoneNumber": "Ungültige Telefonnummer.",
     "phoneNumberInUse": "Diese Nummer wird bereits verwendet.",
-    "unexpected": "Etwas ist schiefgelaufen. Bitte erneut versuchen."
+    "unexpected": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+    "standaloneSingleStore": "Diese Instanz hostet nur einen einzigen Shop",
+    "emailLoginUnavailable": "Die Anmeldung per E-Mail ist derzeit nicht verfügbar"
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

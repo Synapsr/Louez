@@ -86,12 +86,29 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
         toastManager.add({ title: t(errorKey.replace('dashboard.team.', '')) || tErrors('generic'), type: 'error' })
       } else {
         if (result.type === 'invited') {
-          toastManager.add({ title: t('invitationSent'), type: 'success' })
+          if (result.invitationUrl) {
+            await shareInvitationLink(result.invitationUrl)
+          } else {
+            toastManager.add({ title: t('invitationSent'), type: 'success' })
+          }
         } else {
           toastManager.add({ title: t('memberAdded'), type: 'success' })
         }
         setEmail('')
       }
+    })
+  }
+
+  // Email is not configured on this instance: the invitee will never receive
+  // a message, so hand the owner the link directly (clipboard when possible).
+  const shareInvitationLink = async (url: string) => {
+    const copied = await navigator.clipboard
+      ?.writeText(url)
+      .then(() => true)
+      .catch(() => false)
+    toastManager.add({
+      title: copied ? t('invitationLinkCopied') : url,
+      type: 'success',
     })
   }
 
@@ -125,6 +142,8 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
 
       if (result.error) {
         toastManager.add({ title: tErrors('generic'), type: 'error' })
+      } else if (result.invitationUrl) {
+        await shareInvitationLink(result.invitationUrl)
       } else {
         toastManager.add({ title: t('invitationResent'), type: 'success' })
       }

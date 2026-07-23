@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 
 import { env } from './env';
 import type { SendEmailOptions } from './types';
@@ -14,8 +15,28 @@ function toPort(value: unknown): number {
   return 587;
 }
 
-const smtpPort = toPort(env.SMTP_PORT);
-const smtpSecure = toBoolean(env.SMTP_SECURE);
+function readSmtpSetting(value: string | undefined): string {
+  // Compose files and some hosts inject empty strings for unset variables;
+  // treat those as "not configured" rather than as real values.
+  return (value ?? '').trim();
+}
+
+/**
+ * Whether an outgoing email transport is configured on this instance.
+ *
+ * Every email — auth OTP/magic links, reservation notifications, invites —
+ * funnels through sendEmail below, so this single check is the source of
+ * truth for "can this instance send email at all". Mirrors the
+ * isSmsConfigured / isPushConfigured convention in the web app.
+ */
+export function isEmailConfigured(): boolean {
+  return Boolean(
+    readSmtpSetting(env.SMTP_HOST) &&
+      readSmtpSetting(env.SMTP_USER) &&
+      readSmtpSetting(env.SMTP_PASSWORD) &&
+      readSmtpSetting(env.SMTP_FROM),
+  );
+}
 
 // Dev-only delivery guard: in development, email is only sent to recipients on
 // DEV_EMAIL_ALLOWLIST so real customers are never contacted from a dev machine.
@@ -33,15 +54,22 @@ function isAllowedDevRecipient(email: string) {
   );
 }
 
-const transporter = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: smtpPort,
-  secure: smtpSecure,
-  auth: {
-    user: env.SMTP_USER,
-    pass: env.SMTP_PASSWORD,
-  },
-});
+// Created lazily so importing this module never requires SMTP settings —
+// instances without an email provider must still boot and run.
+let transporter: Transporter | null = null;
+
+function getTransporter(): Transporter {
+  transporter ??= nodemailer.createTransport({
+    host: readSmtpSetting(env.SMTP_HOST),
+    port: toPort(env.SMTP_PORT),
+    secure: toBoolean(env.SMTP_SECURE),
+    auth: {
+      user: readSmtpSetting(env.SMTP_USER),
+      pass: readSmtpSetting(env.SMTP_PASSWORD),
+    },
+  });
+  return transporter;
+}
 
 export async function sendEmail({
   to,
@@ -50,12 +78,22 @@ export async function sendEmail({
   attachments,
   fromName,
 }: SendEmailOptions) {
+  // No transport configured: log-and-skip with a synthetic success so callers
+  // (auth flows, notification dispatchers) degrade instead of throwing.
+  // Blocking flows should pre-check isEmailConfigured() to show an honest UI.
+  if (!isEmailConfigured()) {
+    console.log(`[email] SMTP not configured — skipped "${subject}" to ${to}`);
+    return { messageId: `email-disabled-${Date.now()}`, success: true };
+  }
+
+  const smtpFrom = readSmtpSetting(env.SMTP_FROM);
+
   // Build from address: use store name if provided, otherwise use SMTP_FROM as-is
-  let from = env.SMTP_FROM;
+  let from = smtpFrom;
   if (fromName) {
     // Extract email address from SMTP_FROM (e.g. "Louez.io <noreply@lumy.agency>" → "noreply@lumy.agency")
-    const emailMatch = env.SMTP_FROM.match(/<(.+)>/);
-    const emailAddress = emailMatch ? emailMatch[1] : env.SMTP_FROM;
+    const emailMatch = smtpFrom.match(/<(.+)>/);
+    const emailAddress = emailMatch ? emailMatch[1] : smtpFrom;
     from = `"${fromName.replace(/"/g, '')}" <${emailAddress}>`;
   }
 
@@ -74,7 +112,7 @@ export async function sendEmail({
     }
   }
 
-  const result = await transporter.sendMail({
+  const result = await getTransporter().sendMail({
     from,
     to,
     subject,

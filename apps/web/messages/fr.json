@@ -166,7 +166,8 @@
       "oauthError": "Une erreur est survenue lors de la connexion. Veuillez réessayer.",
       "accessDenied": "Accès refusé. Vous n'avez pas la permission de vous connecter.",
       "verification": "Le lien de vérification est invalide ou a expiré.",
-      "default": "Une erreur est survenue. Veuillez réessayer."
+      "default": "Une erreur est survenue. Veuillez réessayer.",
+      "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères."
     },
     "referralBanner": "{storeName} vous a invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
     "referralBannerGeneric": "🎁 Vous avez été invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
@@ -181,7 +182,15 @@
     "perk1": "Vos 15 premières réservations offertes",
     "perk2": "1 € max par réservation, dégressif selon le volume, 0 % de commission, sans abonnement",
     "perk3": "Boutique en ligne prête en 5 minutes",
-    "visitShop": "Voir la boutique"
+    "visitShop": "Voir la boutique",
+    "name": "Nom",
+    "namePlaceholder": "Votre nom",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Créer un compte",
+    "noAccountYet": "Pas encore de compte ?",
+    "alreadyHaveAccount": "Vous avez déjà un compte ?",
+    "usePasswordInstead": "Se connecter avec un mot de passe",
+    "useEmailCodeInstead": "Se connecter avec un code par e-mail"
   },
   "invitation": {
     "inviteToJoin": "{name} vous invite à rejoindre l'équipe",
@@ -359,7 +368,8 @@
       "upgradeToPro": "Passer à Pro",
       "limitReachedTitle": "Limite atteinte",
       "limitReachedDescription": "Vous utilisez {current} collaborateurs sur {limit}. Passez à un plan supérieur pour en ajouter davantage.",
-      "upgradeForMore": "Ajouter plus"
+      "upgradeForMore": "Ajouter plus",
+      "invitationLinkCopied": "Lien d'invitation copié — l'e-mail n'est pas configuré, partagez-le directement"
     },
     "referrals": {
       "title": "Parrainage",
@@ -6293,7 +6303,9 @@
     "releaseFailed": "Impossible de libérer le numéro. Réessayez.",
     "invalidPhoneNumber": "Numéro de téléphone invalide.",
     "phoneNumberInUse": "Ce numéro est déjà utilisé.",
-    "unexpected": "Une erreur est survenue. Réessayez."
+    "unexpected": "Une erreur est survenue. Réessayez.",
+    "standaloneSingleStore": "Cette instance héberge une seule boutique",
+    "emailLoginUnavailable": "La connexion par e-mail n'est pas disponible pour le moment"
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

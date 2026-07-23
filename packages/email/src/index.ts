@@ -1,4 +1,4 @@
-export { sendEmail } from './send'
+export { sendEmail, isEmailConfigured } from './send'
 export type { EmailLocale, EmailAttachment, SendEmailOptions } from './types'
 export { MagicLinkEmail } from './templates/magic-link'
 export { OTPEmail } from './templates/otp'

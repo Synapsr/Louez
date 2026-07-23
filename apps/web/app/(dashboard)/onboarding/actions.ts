@@ -13,6 +13,7 @@ import { defaultBusinessHours } from "@louez/validations";
 
 import { auth } from "@/lib/auth";
 import { creditAiCredits, getDefaultAiCredits } from "@/lib/ai/advisor/credits";
+import { isStandaloneMode } from "@/lib/deployment";
 import {
   getDefaultFreeReservations,
   getDefaultPayAsYouGoConfigSnapshot,
@@ -407,6 +408,20 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
       );
     }
   } else {
+    // Standalone instances host exactly one store. Creating the first store
+    // (or finishing an incomplete onboarding, handled above) stays allowed;
+    // only a SECOND store is denied — checked at the instance level, since
+    // platform admins legitimately see stores they do not own.
+    if (isStandaloneMode()) {
+      const completedStore = await db.query.stores.findFirst({
+        columns: { id: true },
+        where: eq(stores.onboardingCompleted, true),
+      });
+      if (completedStore) {
+        return { error: "errors.standaloneSingleStore" };
+      }
+    }
+
     // Resolve referral code from cookie (set during login with ?ref= param)
     const pendingReferral = await resolvePendingReferralAttribution({
       currentUserId: session.user.id,

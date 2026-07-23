@@ -2,16 +2,20 @@
 
 import { useEffect, useState, useCallback } from 'react'
 
+import { useInstanceConfig } from '@/components/instance-provider'
+
 /**
  * Hook to generate correct storefront URLs based on the routing context.
  *
- * When on a subdomain (e.g., store.example.com), the proxy already adds
- * the slug to the path, so we should NOT include it in generated URLs.
+ * In standalone mode the storefront is served at the root of the origin and
+ * the proxy injects the slug internally, so generated URLs never carry it.
  *
- * When on localhost with PREVIEW_MODE or on dashboard, we need to include
- * the slug in the URL.
+ * In platform mode, when on a subdomain (e.g., store.example.com) the proxy
+ * already adds the slug to the path, so we should NOT include it; on
+ * localhost with PREVIEW_MODE or on the dashboard, we need to include it.
  */
 export function useStorefrontUrl(storeSlug: string) {
+  const { standalone } = useInstanceConfig()
   const [isSubdomain, setIsSubdomain] = useState(false)
 
   useEffect(() => {
@@ -46,15 +50,16 @@ export function useStorefrontUrl(storeSlug: string) {
       // Ensure path starts with /
       const normalizedPath = path.startsWith('/') ? path : `/${path}`
 
-      if (isSubdomain) {
-        // On subdomain, don't include slug (proxy adds it)
+      if (standalone || isSubdomain) {
+        // The proxy injects the slug (root rewrite in standalone, subdomain
+        // rewrite in platform), so generated URLs must not repeat it.
         return normalizedPath
       }
 
       // On localhost or dashboard, include slug
       return `/${storeSlug}${normalizedPath}`
     },
-    [storeSlug, isSubdomain]
+    [storeSlug, isSubdomain, standalone]
   )
 
   return { getUrl, isSubdomain }

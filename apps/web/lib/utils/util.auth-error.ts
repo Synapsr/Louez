@@ -6,6 +6,10 @@ export function mapAuthErrorCodeToMessageKey(
   }
 
   switch (code) {
+    case 'INVALID_EMAIL_OR_PASSWORD':
+      return 'errors.invalidCredentials';
+    case 'USER_ALREADY_EXISTS':
+      return 'errors.emailAlreadyExists';
     case 'OAuthAccountNotLinked':
       return 'errors.accountNotLinked';
     case 'OAuthSignin':

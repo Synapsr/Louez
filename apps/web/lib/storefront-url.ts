@@ -1,4 +1,7 @@
 import { redirect } from 'next/navigation'
+
+import { isStandaloneMode } from '@/lib/deployment'
+
 import { env } from '@/env'
 
 const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
@@ -26,6 +29,15 @@ const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
 export function getStorefrontUrl(slug: string, path: string = '/'): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+
+  // Standalone: one store on one origin — the storefront lives at the root of
+  // the app URL and the proxy injects the slug internally, so links never
+  // carry it. NEXT_PUBLIC_APP_URL is read server-side at runtime, which keeps
+  // this correct in the prebuilt Docker image on any domain.
+  if (isStandaloneMode()) {
+    const appUrl = (env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
+    return `${appUrl}${normalizedPath}`
+  }
 
   if (APP_DOMAIN.includes('localhost') || APP_DOMAIN.includes('127.0.0.1')) {
     return `${protocol}://${APP_DOMAIN}/${slug}${normalizedPath}`

@@ -12,6 +12,7 @@ import {
   loadExcludedUnitInfo,
 } from '@louez/api/services';
 import { db, getEffectiveProductQuantities } from '@louez/db';
+import { isEmailConfigured } from '@louez/email';
 import {
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
@@ -4504,6 +4505,12 @@ export async function sendReservationModificationEmail(
     };
   },
 ) {
+  // sendEmail degrades to a logged no-op without a transport; a manual send
+  // must not pretend it delivered anything.
+  if (!isEmailConfigured()) {
+    return { error: 'errors.emailSendFailed' };
+  }
+
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };
@@ -4585,6 +4592,10 @@ export async function sendReservationEmail(
   reservationId: string,
   data: SendReservationEmailData,
 ) {
+  if (!isEmailConfigured()) {
+    return { error: 'errors.emailSendFailed' };
+  }
+
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };
@@ -4802,6 +4813,10 @@ export async function generateAccessUrl(reservationId: string) {
 }
 
 export async function sendAccessLink(reservationId: string) {
+  if (!isEmailConfigured()) {
+    return { error: 'errors.accessLinkSendFailed' };
+  }
+
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };

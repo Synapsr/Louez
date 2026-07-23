@@ -318,6 +318,13 @@ export const env = createEnv({
     // Days after a grant during which a refunded/disputed qualifying payment claws it back.
     REFERRAL_CLAWBACK_DAYS: z.coerce.number().int().min(0).max(3650).default(30),
 
+    // ===== Deployment mode =====
+    // standalone (default): single store on a single origin — storefront at
+    // the root, dashboard under /dashboard. platform: multi-tenant subdomain
+    // routing (the cloud). Consumed through lib/deployment.ts, which reads
+    // process.env directly so the prebuilt Docker image honors it at runtime.
+    LOUEZ_MODE: z.enum(['standalone', 'platform']).optional(),
+
     // ===== Development =====
     AUTO_DB_SETUP: z
       .string()
@@ -451,6 +458,7 @@ export const env = createEnv({
     AI_PHONE_RECOMMENDED_VOICES: process.env.AI_PHONE_RECOMMENDED_VOICES,
     FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
     FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
+    LOUEZ_MODE: process.env.LOUEZ_MODE,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
     PAYG_DEFAULT_PRICING: process.env.PAYG_DEFAULT_PRICING,

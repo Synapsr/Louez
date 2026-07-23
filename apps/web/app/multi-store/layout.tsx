@@ -7,6 +7,7 @@ import { PostHogProvider } from '@/components/posthog-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 
 import { auth } from '@/lib/auth';
+import { isStandaloneMode } from '@/lib/deployment';
 import { isCurrentUserPlatformAdmin } from '@/lib/platform-admin';
 import { getUserStores } from '@/lib/store-context';
 
@@ -17,6 +18,12 @@ export default async function MultiStoreLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Standalone instances host a single store — the aggregated view has no
+  // reason to exist there, regardless of how many stores the data holds.
+  if (isStandaloneMode()) {
+    redirect('/dashboard');
+  }
+
   const session = await auth();
 
   if (!session?.user?.id) {

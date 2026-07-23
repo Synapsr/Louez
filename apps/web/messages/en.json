@@ -166,7 +166,8 @@
       "oauthError": "An error occurred during sign in. Please try again.",
       "accessDenied": "Access denied. You don't have permission to sign in.",
       "verification": "The verification link is invalid or has expired.",
-      "default": "An error occurred. Please try again."
+      "default": "An error occurred. Please try again.",
+      "passwordTooShort": "Password must be at least 8 characters."
     },
     "referralBanner": "{storeName} invited you to Louez — create your store and start with {count} free reservations.",
     "referralBannerGeneric": "🎁 You've been invited to Louez — create your store and start with {count} free reservations.",
@@ -181,7 +182,15 @@
     "perk1": "Your first 15 reservations are free",
     "perk2": "Max €1 per reservation, less as you grow, 0% commission, no subscription",
     "perk3": "Your online store ready in 5 minutes",
-    "visitShop": "Visit the store"
+    "visitShop": "Visit the store",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "passwordPlaceholder": "••••••••",
+    "createAccount": "Create an account",
+    "noAccountYet": "No account yet?",
+    "alreadyHaveAccount": "Already have an account?",
+    "usePasswordInstead": "Sign in with a password instead",
+    "useEmailCodeInstead": "Sign in with an email code instead"
   },
   "invitation": {
     "inviteToJoin": "{name} invites you to join the team",
@@ -359,7 +368,8 @@
       "upgradeToPro": "Upgrade to Pro",
       "limitReachedTitle": "Limit reached",
       "limitReachedDescription": "You are using {current} out of {limit} team members. Upgrade to add more.",
-      "upgradeForMore": "Add more"
+      "upgradeForMore": "Add more",
+      "invitationLinkCopied": "Invitation link copied — email is not configured, share it directly"
     },
     "referrals": {
       "title": "Referrals",
@@ -6293,7 +6303,9 @@
     "releaseFailed": "Could not release the number. Please try again.",
     "invalidPhoneNumber": "Invalid phone number.",
     "phoneNumberInUse": "This number is already in use.",
-    "unexpected": "Something went wrong. Please try again."
+    "unexpected": "Something went wrong. Please try again.",
+    "standaloneSingleStore": "This instance hosts a single store",
+    "emailLoginUnavailable": "Email sign-in is unavailable at the moment"
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",
