@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {hora} other {horas}}",
     "weekUnit": "{count, plural, one {semana} other {semanas}}",
     "minuteUnit": "{count, plural, one {minuto} other {minutos}}",
+    "phoneInput": {
+      "selectCountry": "Selecionar um país",
+      "searchCountry": "Pesquisar um país...",
+      "noResults": "Nenhum país encontrado"
+    },
     "addressInput": {
       "placeholder": "Pesquisar um endereco...",
       "coordinatesSaved": "Coordenadas salvas",
@@ -136,19 +141,14 @@
     "sendCode": "Enviar código",
     "enterCode": "Insira seu código",
     "codeSentTo": "Um código de verificação foi enviado para",
+    "verifyEmailTitle": "Verifique o seu e-mail",
+    "codeSentDescription": "Enviámos um código de segurança de utilização única para <strong>{email}</strong>. Deve chegar dentro de alguns minutos. Se não o vir, verifique a pasta de spam ou lixo eletrónico e introduza-o abaixo.",
     "verify": "Verificar",
     "verifying": "Verificando...",
     "or": "ou",
-    "loginTitle": "Bem-vindo",
+    "loginTitle": "Bem-vindo ao louez",
     "loginDescription": "Insira seu email para continuar. Se você não tem uma conta, ela será criada automaticamente.",
     "linkWillBeSent": "Um link seguro será enviado para seu email. Sem senha para lembrar.",
-    "heroTitle": "Gerencie seus alugueis com facilidade",
-    "heroSubtitle": "A plataforma completa para profissionais de aluguel. Crie sua loja online, gerencie suas reservas e faca seu negocio crescer.",
-    "featureProducts": "Catalogo de produtos ilimitado",
-    "featureReservations": "Gestao de reservas automatizada",
-    "featureCustomers": "Base de clientes centralizada",
-    "featureStats": "Estatisticas e analises detalhadas",
-    "trustedBy": "Junte-se a centenas de profissionais de aluguel que confiam em nos",
     "checkEmail": "Verifique seu email",
     "emailSentTo": "Um link de login foi enviado para",
     "clickLinkToSignIn": "Clique no link do email para entrar. O link expira em 24 horas.",
@@ -169,7 +169,19 @@
       "default": "Ocorreu um erro. Por favor, tente novamente."
     },
     "referralBanner": "{storeName} convidou-o para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
-    "referralBannerGeneric": "🎁 Foi convidado para o Louez — crie a sua loja e comece com {count} reservas gratuitas."
+    "referralBannerGeneric": "🎁 Foi convidado para o Louez — crie a sua loja e comece com {count} reservas gratuitas.",
+    "socialProofRating": "4,9/5",
+    "socialProofTrusted": "Mais de 450 empresas de aluguer confiam em nós para gerir os seus alugueres",
+    "review1Quote": "Deixámos o nosso antigo software quando os preços ficaram demasiado altos e mudámos para o Louez.io… e sinceramente, sem arrependimentos! Simples, flexível, económico e eficaz.",
+    "review1Role": "Sócio-gerente · Bicy, Dijon",
+    "review2Quote": "A configuração foi simples e rápida. A ferramenta é intuitiva, tanto para nós na gestão como para os nossos clientes na reserva. Uma verdadeira poupança de tempo no dia a dia.",
+    "review2Role": "Cofundador · Bloom",
+    "review3Quote": "O Louez.io é uma plataforma fiável, clara e precisa. A gestão da época será muito mais simples e rápida.",
+    "review3Role": "Cofundador · Les Frères Complices",
+    "perk1": "As suas primeiras 15 reservas grátis",
+    "perk2": "Máx. 1 € por reserva, decrescente com o volume, 0% de comissão, sem assinatura",
+    "perk3": "A sua loja online pronta em 5 minutos",
+    "visitShop": "Ver a loja"
   },
   "invitation": {
     "inviteToJoin": "{name} convida voce para se juntar a equipe",
@@ -581,20 +593,27 @@
         "title": "Primeiros passos",
         "description": "Alguns passos para comecar",
         "stepsCompleted": "passos concluídos",
-        "dismissForNow": "Ocultar por enquanto",
         "steps": {
           "createAccount": "Criar sua conta",
           "configureStore": "Configurar sua loja",
           "addFirstProduct": "Adicionar seu primeiro produto",
+          "connectStripe": "Ative os pagamentos online",
           "firstReservation": "Receber sua primeira reserva",
           "firstCompleted": "Completar seu primeiro aluguel"
+        },
+        "descriptions": {
+          "addFirstProduct": "Adicione seu primeiro produto para que os clientes possam reservar.",
+          "connectStripe": "Conecte o Stripe para aceitar pagamentos com cartão na reserva.",
+          "firstReservation": "Compartilhe sua loja com os clientes ou crie uma reserva manualmente.",
+          "firstCompleted": "Assim que o aluguel for devolvido, marque a reserva como concluída."
         },
         "start": "Iniciar",
         "addProductHint": "Adicione seu primeiro produto para que os clientes possam reservar.",
         "addFirstProduct": "Adicionar um produto",
         "shareHint": "Compartilhe sua loja para receber suas primeiras reservas.",
         "viewStore": "Ver minha loja",
-        "createReservation": "Criar uma reserva"
+        "createReservation": "Criar uma reserva",
+        "connectStripe": "Ligar a Stripe"
       },
       "stats": {
         "products": "Produtos",
@@ -1407,6 +1426,10 @@
         "addItem": "Adicionar item",
         "searchProductsPlaceholder": "Pesquisar em {count} itens...",
         "noProductsFound": "Nenhum item encontrado",
+        "unavailableForPeriod": "Indisponível",
+        "stockConflictInline": "Solicitado: {requested} · Disponível: {available}",
+        "availabilityConflicts": "{count, plural, one {# conflito de disponibilidade} other {# conflitos de disponibilidade}}",
+        "seeConflict": "Ver",
         "subtotal": "Subtotal",
         "summary": "Resumo",
         "before": "Antes",
@@ -1430,7 +1453,7 @@
         "retryEmailNotification": "Tentar reenviar",
         "ignoreEmailFailure": "Ignorar",
         "lockPrice": "Bloquear preco",
-        "unlockPrice": "Recalcular preco",
+        "unlockPrice": "Voltar ao preço automático (substitui o preço inserido)",
         "adjustmentPositive": "Um complemento de {amount} devera ser cobrado.",
         "adjustmentNegative": "Um reembolso de {amount} pode ser emitido.",
         "warningDialogTitle": "Confirmar alteração excecional",
@@ -2178,6 +2201,7 @@
       "legend": "Legenda",
       "moreItems": "+{count} mais",
       "noCustomer": "Sem cliente",
+      "viewReservation": "Ver reserva",
       "dayNames": {
         "mon": "Seg",
         "tue": "Ter",
@@ -2196,6 +2220,18 @@
         "rejected": "Rejeitada",
         "quote": "Orçamento",
         "declined": "Orçamento recusado"
+      },
+      "logistics": {
+        "legend": "Entrega / recolha no cliente",
+        "delivery": "Entrega",
+        "return": "Recolha no cliente",
+        "deliveryAndReturn": "Entrega + recolha no cliente",
+        "deliveryLocation": "Local de entrega",
+        "returnLocation": "Local de recolha"
+      },
+      "maps": {
+        "openAddress": "Abrir endereço no Google Maps",
+        "openWith": "Abrir com"
       },
       "viewMode": {
         "label": "Modo de visualização",
@@ -4321,6 +4357,22 @@
         "voiceRecommended": "Recomendada"
       }
     },
+    "commandPalette": {
+      "title": "Paleta de comandos",
+      "trigger": "Pesquisar uma ação…",
+      "placeholder": "Pesquisar uma ação ou página…",
+      "empty": "Nenhuma ação encontrada.",
+      "groups": {
+        "create": "Criar",
+        "navigate": "Ir para",
+        "tools": "Ferramentas"
+      },
+      "footer": {
+        "navigate": "Navegar",
+        "open": "Abrir",
+        "close": "Fechar"
+      }
+    },
     "aiChat": {
       "open": "Assistente IA",
       "badge": "IA",
@@ -5289,15 +5341,53 @@
       "title": "Bem-vindo ao Louez.io",
       "description": "Configure sua loja em poucos passos"
     },
+    "profile": {
+      "title": "Vamos nos conhecer",
+      "description": "Conte-nos um pouco sobre você para personalizar a sua experiência.",
+      "photo": "Foto de perfil",
+      "photoHelp": "PNG ou JPG, máx. 2 MB",
+      "photoError": "Selecione uma imagem",
+      "photoSizeError": "A imagem não deve exceder 2 MB",
+      "name": "O seu nome",
+      "namePlaceholder": "João Silva",
+      "businessType": "Você é",
+      "businessTypePlaceholder": "Selecione uma opção",
+      "businessTypes": {
+        "independent": "Independente",
+        "establishedStore": "Loja estabelecida",
+        "association": "Associação",
+        "individual": "Particular"
+      },
+      "productCategory": "O que você pretende alugar",
+      "productCategoryPlaceholder": "Selecione uma categoria",
+      "productCategories": {
+        "bikes": "Bicicletas",
+        "sportsOutdoor": "Esporte e ar livre",
+        "partyEvents": "Eventos e som",
+        "toolsDiy": "Ferramentas e bricolagem",
+        "vehicles": "Veículos",
+        "electronics": "Eletrônicos",
+        "other": "Outro"
+      },
+      "fleetSize": "Quantos itens você pretende alugar",
+      "fleetSizePlaceholder": "Selecione um intervalo",
+      "fleetSizes": {
+        "upTo5": "1 a 5",
+        "upTo20": "6 a 20",
+        "upTo50": "21 a 50",
+        "moreThan50": "Mais de 50"
+      }
+    },
     "store": {
       "title": "Informacoes da sua loja",
       "description": "Estas informacoes serao visiveis para seus clientes",
       "name": "Nome da loja",
       "namePlaceholder": "Minha loja de aluguel",
-      "slug": "Endereco da loja",
+      "slug": "Endereco web da loja",
       "slugPlaceholder": "minha-loja",
       "slugHelp": "Sua loja estara acessivel em {slug}.{domain}",
       "slugDefault": "sua-loja",
+      "resetSlug": "Usar o URL sugerido",
       "pricingMode": "Modo de precos",
       "pricingDay": "Diario",
       "pricingDayDesc": "Preco por dia",
@@ -5352,22 +5442,49 @@
       "quantityHelp": "Numero de unidades deste produto disponiveis para aluguel"
     },
     "stripe": {
-      "title": "Modo de reserva",
-      "description": "Escolha como voce quer gerenciar as reservas",
-      "requestMode": "Solicitacao de reserva",
-      "recommended": "Recomendado",
-      "requestModeDescription": "Os clientes enviam uma solicitacao. Voce valida manualmente e gerencia o pagamento voce mesmo (dinheiro, transferencia, cartao no local).",
+      "title": "Receba as suas reservas online",
+      "description": "Escolha como os seus clientes reservam. Pode alterar a qualquer momento.",
       "paymentMode": "Pagamento online",
-      "paymentModeDescription": "Os clientes pagam diretamente ao reservar. Receba pagamentos automaticamente via Stripe.",
-      "howItWorks": "Como funciona?",
-      "step1": "1. O cliente faz uma solicitacao de reserva",
-      "step2": "2. Voce recebe uma notificacao por email",
-      "step3": "3. Voce aceita ou rejeita a solicitacao",
-      "step4": "4. O cliente recebe a confirmacao por email",
-      "step5": "5. Voce gerencia o pagamento na retirada",
-      "paymentSetupTitle": "Configuracao rapida",
-      "paymentSetupDescription": "Apos criar sua loja, va em Configuracoes → Pagamento online para conectar sua conta Stripe e comecar a receber pagamentos.",
-      "configComplete": "Configuracao concluida!"
+      "recommended": "Recomendado",
+      "paymentModeDescription": "Os clientes pagam no momento da reserva. Cobrança segura através da Stripe.",
+      "paymentModeNote": "A ativação da Stripe requer uma verificação de identidade (5–10 min), agora ou mais tarde a partir do painel. Até lá, as suas reservas passam automaticamente para validação manual.",
+      "requestMode": "Pedido de reserva",
+      "requestModeDescription": "Os clientes enviam um pedido. Você valida e cobra por conta própria (dinheiro, transferência, cartão no local).",
+      "requestModeNote": "Você valida e cobra cada reserva. Pode mudar para o pagamento online a qualquer momento nas definições.",
+      "configComplete": "Configuração concluída!",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Porquê o pagamento online?",
+          "benefit1": "Recebimento imediato, na reserva",
+          "benefit2": "Menos ausências graças ao pré-pagamento",
+          "benefit3": "Caução por cativação no cartão, sem débito",
+          "benefit4": "Transferências automáticas para a sua conta",
+          "kycTitle": "Ativar a Stripe",
+          "kycStep1": "Crie a sua conta — 2 minutos",
+          "kycStep2": "Verifique a sua identidade — documento e IBAN, 5 a 10 min",
+          "kycStep3": "O pagamento online é ativado automaticamente",
+          "configureNow": "Configurar a Stripe agora",
+          "resumeNow": "Retomar a configuração da Stripe",
+          "configureLater": "Ou mais tarde a partir do painel — até lá, as reservas passam para validação manual."
+        },
+        "request": {
+          "howTitle": "Como funciona?",
+          "step1": "O cliente envia um pedido",
+          "step2": "Recebe um email",
+          "step3": "Aceita ou recusa",
+          "step4": "O cliente recebe a confirmação",
+          "step5": "Cobra no levantamento",
+          "prosTitle": "O que ganha",
+          "pros1": "Controlo total sobre cada reserva",
+          "pros2": "Nenhuma configuração",
+          "pros3": "Dinheiro, transferência ou cartão no local",
+          "consTitle": "O que perde",
+          "cons1": "Lembretes e faltas de pagamento a gerir",
+          "cons2": "Mais ausências sem pré-pagamento",
+          "cons3": "Sem caução automática",
+          "switchNote": "Mude para o pagamento online a qualquer momento nas definições."
+        }
+      }
     },
     "complete": {
       "title": "Sua loja esta pronta!",
@@ -5375,11 +5492,38 @@
       "viewStore": "Ver minha loja",
       "goToDashboard": "Ir para o painel"
     },
+    "preview": {
+      "reserve": "Reservar",
+      "pay": "Pagar"
+    },
+    "source": {
+      "title": "Uma última coisa…",
+      "description": "Como conheceu a Louez?",
+      "wordOfMouth": "Boca a boca",
+      "searchEngine": "Motor de busca (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "Assistente de IA (ChatGPT…)",
+      "ads": "Publicidade",
+      "other": "Outro",
+      "otherPlaceholder": "Especifique…",
+      "skip": "Ignorar",
+      "finish": "Concluir",
+      "panel": {
+        "title": "Uma palavra da equipa",
+        "p1": "Bem-vindo à Louez, e obrigado pela sua confiança. A sua loja está pronta, mal podemos esperar pelas suas primeiras reservas.",
+        "p2": "Uma pergunta ou uma ideia? Escreva-nos pelo botão de ajuda em baixo à esquerda, lemos tudo.",
+        "signature": "Os fundadores da Louez"
+      }
+    },
     "steps": {
       "store": "Loja",
       "branding": "Personalizacao",
       "product": "Primeiro produto",
-      "payment": "Pagamentos"
+      "payment": "Pagamentos",
+      "profile": "Perfil",
+      "source": "Origem"
     }
   },
   "categories": {
@@ -5481,9 +5625,9 @@
       "seeTomorrow": "Ate amanha!"
     },
     "reminderReturn": {
-      "subject": "Lembrete: devolucao do equipamento hoje",
+      "subject": "Lembrete: devolucao do equipamento em {date}",
       "title": "Lembre-se de devolver seu equipamento",
-      "body": "Este e um lembrete para sua reserva #{number}. A devolucao do equipamento esta agendada para hoje.",
+      "body": "Este e um lembrete para sua reserva #{number}. A devolucao do equipamento esta agendada para {date}.",
       "scheduledReturn": "Devolucao agendada",
       "returnInfo": "Por favor, devolva o equipamento em boas condicoes. A caucao sera devolvida apos verificacao.",
       "thanks": "Obrigado pela sua confianca!"

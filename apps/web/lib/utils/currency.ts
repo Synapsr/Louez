@@ -136,6 +136,13 @@ export function getCurrencyByCode(code: CurrencyCode): Currency | undefined {
 }
 
 /**
+ * Gets the country code represented by a currency's primary locale.
+ */
+export function getCurrencyFlagCountry(currency: Currency): string {
+  return currency.locale.split('-').at(-1) || 'FR'
+}
+
+/**
  * Get currency symbol by code
  */
 export function getCurrencySymbol(code: CurrencyCode): string {

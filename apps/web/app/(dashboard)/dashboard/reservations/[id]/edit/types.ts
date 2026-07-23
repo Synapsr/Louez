@@ -24,6 +24,7 @@ export interface Product {
   name: string
   price: string
   deposit: string
+  images?: string[]
   tulipInsurable?: boolean
   quantity: number
   pricingMode: string | null

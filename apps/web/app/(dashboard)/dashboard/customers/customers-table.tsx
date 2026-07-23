@@ -90,7 +90,10 @@ export function CustomersTable({ customers }: CustomersTableProps) {
         <p className="mt-2 text-sm text-muted-foreground">
           {t('noCustomersDescription')}
         </p>
-        <Button render={<Link href="/dashboard/customers/new" />} className="mt-4">
+        <Button
+          render={<Link href="/dashboard/customers/new?source=customers_page" />}
+          className="mt-4"
+        >
           {t('addCustomer')}
         </Button>
       </div>

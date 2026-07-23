@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@louez/ui";
 import { ScrollArea } from "@louez/ui";
 import { cn } from "@louez/utils";
 import { useCart } from "@/contexts/cart-context";
+import { useBrowserTimezoneCity } from "@/hooks/use-browser-timezone-city";
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 import { getMinStartDate, isTimeSlotAvailable, type PricingMode } from "@/lib/utils/duration";
 import { isCalendarDateBeforeSelectedDate } from "@/components/storefront/date-picker/core/use-rental-date-core";
@@ -332,13 +333,7 @@ export function DateSelectionHero({
     return `${days} ${days > 1 ? t("durationDays") : t("durationDay")} ${t("and")} ${hours}h`;
   };
 
-  const timezoneCity = useMemo(() => {
-    if (!timezone) return null;
-    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (browserTimezone === timezone) return null;
-    const city = timezone.split("/").pop()?.replace(/_/g, " ");
-    return city || timezone;
-  }, [timezone]);
+  const timezoneCity = useBrowserTimezoneCity(timezone);
 
   // Check if we can submit - always require times
   const canSubmit = startDate && endDate && startTime && endTime;

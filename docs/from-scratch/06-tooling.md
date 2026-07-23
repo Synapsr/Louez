@@ -66,6 +66,7 @@ chore(deps): update drizzle-orm to 0.44
 ### CI checks
 
 Every PR must pass:
+
 1. `pnpm lint`
 2. `pnpm check-types`
 3. `pnpm build`
@@ -88,7 +89,9 @@ pnpm add -D agentation
 import { Agentation } from "agentation";
 
 // In the root layout / App component:
-{process.env.NODE_ENV === "development" && <Agentation />}
+{
+  process.env.NODE_ENV === "development" && <Agentation />;
+}
 ```
 
 The `NODE_ENV` check ensures it is stripped from production builds.

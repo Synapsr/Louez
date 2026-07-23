@@ -10,6 +10,8 @@ export * from './components/badge'
 
 // Button
 export * from './components/button'
+export * from './components/animated-icon-swap'
+export * from './components/spinner'
 
 // Calendar
 export * from './components/calendar'
@@ -39,6 +41,8 @@ export * from './components/menu'
 export * from './components/input'
 export * from './components/input-group'
 export * from './components/input-otp'
+export * from './components/input-price'
+export * from './components/input-quantity'
 
 // Label
 export * from './components/label'

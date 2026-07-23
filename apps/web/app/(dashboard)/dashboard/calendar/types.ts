@@ -46,6 +46,17 @@ export interface Reservation {
   startDate: Date
   endDate: Date
   totalAmount: string
+  outboundMethod: string | null
+  returnMethod: string | null
+  deliveryOption: string | null
+  deliveryAddress: string | null
+  deliveryCity: string | null
+  deliveryPostalCode: string | null
+  deliveryCountry: string | null
+  returnAddress: string | null
+  returnCity: string | null
+  returnPostalCode: string | null
+  returnCountry: string | null
   customer: {
     id: string
     firstName: string

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -55,6 +55,8 @@ import { Checkbox } from '@louez/ui';
 import { cn, formatCurrency } from '@louez/utils';
 
 import { invalidateReservationList } from '@/lib/orpc/invalidation';
+import { trackOpenReplayEvent } from '@/lib/openreplay/client';
+import { openReplayEvents } from '@/lib/openreplay/events';
 import { orpc } from '@/lib/orpc/react';
 import { formatStoreDate } from '@/lib/utils/store-date';
 
@@ -127,6 +129,7 @@ function isInsufficientCapacityResult(result: unknown): result is {
 }
 
 export function NewReservationForm({
+  openReplaySource,
   customers,
   products,
   tulipInsuranceMode,
@@ -149,6 +152,17 @@ export function NewReservationForm({
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
   const tValidation = useTranslations('validation');
+
+  useEffect(() => {
+    trackOpenReplayEvent(
+      openReplayEvents.dashboardReservationCreationStarted,
+      {
+        journey: 'reservation_creation',
+        step: 'started',
+        source: openReplaySource,
+      },
+    );
+  }, [openReplaySource]);
 
   const dateLocale = locale === 'fr' ? fr : enUS;
   const getTimeSlotsForDate = (
@@ -469,6 +483,15 @@ export function NewReservationForm({
         });
         return;
       }
+
+      trackOpenReplayEvent(
+        openReplayEvents.dashboardReservationCreationCompleted,
+        {
+          journey: 'reservation_creation',
+          step: 'completed',
+          source: openReplaySource,
+        },
+      );
 
       toastManager.add({
         title: sendAsQuoteRef.current

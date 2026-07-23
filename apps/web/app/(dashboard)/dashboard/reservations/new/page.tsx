@@ -13,6 +13,7 @@ import { customers, products, reservations, storeLocations } from '@louez/db';
 
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
+import { resolveDashboardCreationSource } from '@/lib/openreplay/events';
 import { getCurrentStore } from '@/lib/store-context';
 import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
@@ -29,6 +30,12 @@ async function getProductsWithTiers(storeId: string) {
   // Fetch products with their pricing tiers and seasonal pricings
   const result = await db.query.products.findMany({
     where: and(eq(products.storeId, storeId), eq(products.status, 'active')),
+    // Storefront catalog order, with a predictable alphabetical fallback
+    // for stores that never configured displayOrder
+    orderBy: (products, { asc }) => [
+      asc(products.displayOrder),
+      asc(products.name),
+    ],
     with: {
       pricingTiers: true,
       seasonalPricings: {
@@ -134,9 +141,17 @@ async function getActiveReservations(
   });
 }
 
-export default async function NewReservationPage() {
+interface NewReservationPageProps {
+  searchParams: Promise<{ source?: string | string[] }>;
+}
+
+export default async function NewReservationPage({
+  searchParams,
+}: NewReservationPageProps) {
   const t = await getTranslations('dashboard.reservations');
   const store = await getCurrentStore();
+  const { source } = await searchParams;
+  const openReplaySource = resolveDashboardCreationSource(source);
 
   if (!store) {
     redirect('/onboarding');
@@ -180,6 +195,7 @@ export default async function NewReservationPage() {
       </div>
 
       <NewReservationForm
+        openReplaySource={openReplaySource}
         customers={customersList}
         products={productsList}
         tulipInsuranceMode={tulipInsuranceMode}

@@ -1,17 +1,14 @@
-'use client';
+"use client";
 
-import Image from 'next/image';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-import Gleap from 'gleap';
-import { useTranslations } from 'next-intl';
+import Gleap from "gleap";
+import { useTranslations } from "next-intl";
 
-import { authClient } from '@louez/auth/client';
+import { authClient } from "@louez/auth/client";
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +31,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   Sidebar as UISidebar,
-} from '@louez/ui';
+} from "@louez/ui";
 import {
   AnalyticsIcon,
   BotIcon,
@@ -53,29 +50,31 @@ import {
   SparklesIcon,
   UsersIcon,
   WarehouseIcon,
-} from '@louez/ui/icons';
+} from "@louez/ui/icons";
 
 // import { ReferralSidebarWidget } from '@/components/dashboard/referral-sidebar-widget';
-import { StoreSwitcher } from '@/components/dashboard/store-switcher';
-import { ThemeMenuSub } from '@/components/dashboard/theme-toggle';
-import { LanguageMenuSub } from '@/components/ui/language-switcher';
+import { UserAvatar } from "@/components/dashboard/shared/user-avatar";
+import { StoreSwitcher } from "@/components/dashboard/store-switcher";
+import { ThemeMenuSub } from "@/components/dashboard/theme-toggle";
+import { LanguageMenuSub } from "@/components/ui/language-switcher";
 
-import { cn } from '@/lib/utils';
+import { cn } from "@/lib/utils";
 
-import { env } from '@/env';
+import { env } from "@/env";
 
 interface StoreWithRole {
   id: string;
   name: string;
   slug: string;
   logoUrl: string | null;
-  role: 'owner' | 'member' | 'platform_admin';
+  role: "owner" | "member" | "platform_admin";
 }
 
 interface DashboardSidebarProps {
   stores: StoreWithRole[];
   currentStoreId: string;
   storeSlug?: string;
+  userId: string;
   userEmail: string;
   userImage?: string | null;
   planSlug?: string;
@@ -83,38 +82,38 @@ interface DashboardSidebarProps {
 }
 
 const mainNavigation = [
-  { key: 'home', href: '/dashboard', icon: HomeIcon },
-  { key: 'calendar', href: '/dashboard/calendar', icon: CalendarDaysIcon },
-  { key: 'reservations', href: '/dashboard/reservations', icon: CalendarIcon },
-  { key: 'customers', href: '/dashboard/customers', icon: UsersIcon },
-  { key: 'aiAssistant', href: '/dashboard/ai-assistant', icon: BotIcon },
+  { key: "home", href: "/dashboard", icon: HomeIcon },
+  { key: "calendar", href: "/dashboard/calendar", icon: CalendarDaysIcon },
+  { key: "reservations", href: "/dashboard/reservations", icon: CalendarIcon },
+  { key: "customers", href: "/dashboard/customers", icon: UsersIcon },
+  { key: "aiAssistant", href: "/dashboard/ai-assistant", icon: BotIcon },
 ];
 
 const catalogNavigation = [
-  { key: 'products', href: '/dashboard/products', icon: PackageIcon },
-  { key: 'inventory', href: '/dashboard/inventory', icon: WarehouseIcon },
+  { key: "products", href: "/dashboard/products", icon: PackageIcon },
+  { key: "inventory", href: "/dashboard/inventory", icon: WarehouseIcon },
 ];
 
 const analyticsNavigation = [
-  { key: 'analytics', href: '/dashboard/analytics', icon: AnalyticsIcon },
+  { key: "analytics", href: "/dashboard/analytics", icon: AnalyticsIcon },
 ];
 
 const managementNavigation = [
-  { key: 'team', href: '/dashboard/team', icon: UsersIcon },
-  { key: 'referrals', href: '/dashboard/referrals', icon: GiftIcon },
+  { key: "team", href: "/dashboard/team", icon: UsersIcon },
+  { key: "referrals", href: "/dashboard/referrals", icon: GiftIcon },
   {
-    key: 'subscription',
-    href: '/dashboard/subscription',
+    key: "subscription",
+    href: "/dashboard/subscription",
     icon: CreditCardIcon,
   },
-  { key: 'settings', href: '/dashboard/settings', icon: SettingsIcon },
+  { key: "settings", href: "/dashboard/settings", icon: SettingsIcon },
 ];
 
 const navigationSections = [
   { items: mainNavigation },
-  { labelKey: 'catalog', items: catalogNavigation },
-  { labelKey: 'analytics', items: analyticsNavigation },
-  { labelKey: 'manage', items: managementNavigation },
+  { labelKey: "catalog", items: catalogNavigation },
+  { labelKey: "analytics", items: analyticsNavigation },
+  { labelKey: "manage", items: managementNavigation },
 ] satisfies {
   labelKey?: string;
   items: typeof mainNavigation;
@@ -127,21 +126,15 @@ interface NavigationItem {
 }
 
 const isNavigationItemActive = (pathname: string, href: string) => {
-  if (href === '/dashboard') {
-    return pathname === '/dashboard';
+  if (href === "/dashboard") {
+    return pathname === "/dashboard";
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
 };
 
-const DashboardNavItem = ({
-  item,
-  pathname,
-}: {
-  item: NavigationItem;
-  pathname: string;
-}) => {
-  const t = useTranslations('dashboard.navigation');
+const DashboardNavItem = ({ item, pathname }: { item: NavigationItem; pathname: string }) => {
+  const t = useTranslations("dashboard.navigation");
   const active = isNavigationItemActive(pathname, item.href);
 
   return (
@@ -150,6 +143,7 @@ const DashboardNavItem = ({
         render={<Link href={item.href} />}
         isActive={active}
         tooltip={t(item.key)}
+        className="text-sm [&_svg]:size-4"
       >
         <item.icon className="" />
         <span>{t(item.key)}</span>
@@ -167,7 +161,7 @@ const DashboardNavSection = ({
   labelKey?: string;
   pathname: string;
 }) => {
-  const t = useTranslations('dashboard.sidebar');
+  const t = useTranslations("dashboard.sidebar");
 
   return (
     <SidebarGroup>
@@ -194,7 +188,7 @@ const StoreHeader = ({
   storeSlug?: string;
   planSlug?: string;
 }) => {
-  const t = useTranslations('dashboard.sidebar');
+  const t = useTranslations("dashboard.sidebar");
   return (
     <SidebarHeader className="border-sidebar-border gap-3 border-b px-0">
       <div className="flex min-w-0 items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col group-data-[state=expanded]:pl-4 max-md:pl-4">
@@ -202,7 +196,7 @@ const StoreHeader = ({
           <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
             <Logo className="h-5 w-auto shrink-0 group-data-[collapsible=icon]:hidden" />
             <Image
-              src={'/favicon.svg'}
+              src={"/favicon.svg"}
               width={32}
               height={32}
               alt="Logo"
@@ -224,9 +218,9 @@ const StoreHeader = ({
               }
             >
               <ExternalLinkIcon className="h-4 w-4" />
-              <span className="sr-only">{t('viewStore')}</span>
+              <span className="sr-only">{t("viewStore")}</span>
             </TooltipTrigger>
-            <TooltipContent side="right">{t('viewStore')}</TooltipContent>
+            <TooltipContent side="right">{t("viewStore")}</TooltipContent>
           </Tooltip>
         )}
       </div>
@@ -238,17 +232,18 @@ const StoreHeader = ({
 };
 
 const UserMenu = ({
+  userId,
   userEmail,
   userImage,
   isPlatformAdmin,
 }: {
+  userId: string;
   userEmail: string;
   userImage?: string | null;
   isPlatformAdmin?: boolean;
 }) => {
-  const t = useTranslations('dashboard.settings.accountSettings');
-  const tAuth = useTranslations('auth');
-  const initials = userEmail.slice(0, 2).toUpperCase();
+  const t = useTranslations("dashboard.settings.accountSettings");
+  const tAuth = useTranslations("auth");
 
   return (
     <DropdownMenu>
@@ -256,17 +251,12 @@ const UserMenu = ({
         render={
           <Button
             variant="ghost"
-            className="hover:bg-sidebar-accent h-12 w-full justify-start gap-3 px-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
+            className="hover:bg-sidebar-accent min-w-0 *:w-full h-12 w-full justify-start gap-3 px-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
           />
         }
       >
-        <Avatar className="size-8 shrink-0">
-          <AvatarImage src={userImage || undefined} />
-          <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        <span className="truncate text-left text-sm font-medium group-data-[collapsible=icon]:hidden">
+        <UserAvatar src={userImage} seed={userId} size={32} />
+        <span className="truncate min-w-0 text-left text-sm font-medium group-data-[collapsible=icon]:hidden">
           {userEmail}
         </span>
       </DropdownMenuTrigger>
@@ -274,14 +264,14 @@ const UserMenu = ({
         <ThemeMenuSub />
         <LanguageMenuSub />
         <DropdownMenuItem render={<Link href="/dashboard/account" />}>
-          {t('title')}
+          {t("title")}
         </DropdownMenuItem>
         {isPlatformAdmin && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem render={<Link href="/admin" />}>
               <ShieldIcon className="mr-2 h-4 w-4" />
-              {t('administration')}
+              {t("administration")}
             </DropdownMenuItem>
           </>
         )}
@@ -291,7 +281,7 @@ const UserMenu = ({
             authClient.signOut({
               fetchOptions: {
                 onSuccess: () => {
-                  window.location.href = '/login';
+                  window.location.href = "/login";
                 },
               },
             })
@@ -299,7 +289,7 @@ const UserMenu = ({
           className="text-destructive cursor-pointer"
         >
           <LogOutIcon className="mr-2 h-4 w-4" />
-          {tAuth('logout')}
+          {tAuth("logout")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -307,7 +297,7 @@ const UserMenu = ({
 };
 
 const HelpButton = () => {
-  const t = useTranslations('dashboard.sidebar');
+  const t = useTranslations("dashboard.sidebar");
 
   return (
     <Button
@@ -317,9 +307,7 @@ const HelpButton = () => {
     >
       <LifeBuoyIcon className="text-sidebar-foreground/70 h-4 w-4 shrink-0" />
       <span className="min-w-0 group-data-[collapsible=icon]:hidden">
-        <span className="block text-sm leading-none font-medium">
-          {t('help')}
-        </span>
+        <span className="block text-sm leading-none font-medium">{t("help")}</span>
         {/* <span className="text-muted-foreground mt-1 block truncate text-xs">
           {t('feedback')}
         </span> */}
@@ -332,6 +320,7 @@ export const DashboardSidebar = ({
   stores,
   currentStoreId,
   storeSlug,
+  userId,
   userEmail,
   userImage,
   planSlug,
@@ -350,7 +339,7 @@ export const DashboardSidebar = ({
         />
         <SidebarContent>
           {navigationSections.map((section, index) => (
-            <div key={section.labelKey || 'main'}>
+            <div key={section.labelKey || "main"}>
               {index > 0 && <SidebarSeparator />}
               <DashboardNavSection
                 items={section.items}
@@ -366,6 +355,7 @@ export const DashboardSidebar = ({
           </div>
           {/* <ReferralSidebarWidget /> */}
           <UserMenu
+            userId={userId}
             userEmail={userEmail}
             userImage={userImage}
             isPlatformAdmin={isPlatformAdmin}
@@ -378,21 +368,17 @@ export const DashboardSidebar = ({
 };
 
 function PlanBadge({ planSlug }: { planSlug?: string }) {
-  const plan = planSlug || 'pay_as_you_go';
+  const plan = planSlug || "pay_as_you_go";
 
-  const planConfig: Record<
-    string,
-    { label: string; className: string; icon: React.ReactNode }
-  > = {
+  const planConfig: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
     pro: {
-      label: 'Pro',
-      className: 'bg-primary/10 text-primary hover:bg-primary/20',
+      label: "Pro",
+      className: "bg-primary/10 text-primary hover:bg-primary/20",
       icon: <SparklesIcon className="h-3 w-3" />,
     },
     ultra: {
-      label: 'Ultra',
-      className:
-        'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20',
+      label: "Ultra",
+      className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20",
       icon: <CrownIcon className="h-3 w-3" />,
     },
   };
@@ -406,7 +392,7 @@ function PlanBadge({ planSlug }: { planSlug?: string }) {
     <Link
       href="/dashboard/subscription"
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors group-data-[collapsible=icon]:hidden',
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors group-data-[collapsible=icon]:hidden",
         config.className,
       )}
     >

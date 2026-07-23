@@ -16,7 +16,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/Synapsr/Louez?style=for-the-badge&logo=github)](https://github.com/Synapsr/Louez)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 
-[☁️ Cloud](https://louez.io) • [🚀 Auto-hébergé](#-déployer-en-30-secondes) • [✨ Fonctionnalités](#-fonctionnalités) • [🗺️ Roadmap](ROADMAP.md) • [📋 Changelog](CHANGELOG.md)
+[☁️ Cloud](https://louez.io) • [🚀 Auto-hébergé](#-déployer-en-30-secondes) • [✨ Fonctionnalités](#-fonctionnalités) • [📋 Changelog](CHANGELOG.md)
 
 </div>
 
@@ -132,7 +132,7 @@ services:
   louez:
     image: synapsr/louez:latest
     ports:
-      - '3000:3000'
+      - "3000:3000"
     environment:
       - DATABASE_URL=mysql://louez:password@db:3306/louez
       - AUTH_SECRET=changez-moi-avec-une-chaine-de-32-caracteres
@@ -157,7 +157,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -256,10 +256,6 @@ Construit avec des technologies modernes et éprouvées :
 | `S3_BUCKET`           |        | Nom du bucket S3                     |
 | `S3_ACCESS_KEY`       |        | Clé d'accès S3                       |
 | `S3_SECRET_KEY`       |        | Clé secrète S3                       |
-| `AI_PROVIDER`         |        | `anthropic`, `openai` ou `google` — active l'assistant IA et le conseiller boutique |
-| `AI_API_KEY`          |        | Clé API du fournisseur d'IA choisi   |
-| `AI_MODEL`            |        | Modèle IA (optionnel)                |
-| `AI_ADVISOR_MODEL`    |        | Modèle plus économique pour le conseiller boutique (optionnel) |
 
 </details>
 

@@ -1,69 +1,63 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 
-import { revalidateLogic, useStore } from '@tanstack/react-form';
-import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { revalidateLogic, useStore } from "@tanstack/react-form";
+import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import type { PricingMode } from '@louez/types';
-import { toastManager } from '@louez/ui';
-import { Button } from '@louez/ui';
-import { Card, CardContent } from '@louez/ui';
-import { StepActions, StepContent, Stepper } from '@louez/ui';
-import {
-  getCurrencySymbol,
-  minutesToPriceDuration,
-  priceDurationToMinutes,
-} from '@louez/utils';
+import type { PricingMode } from "@louez/types";
+import { toastManager } from "@louez/ui";
+import { Button } from "@louez/ui";
+import { Card, CardContent } from "@louez/ui";
+import { StepActions, StepContent, Stepper } from "@louez/ui";
+import { getCurrencySymbol, minutesToPriceDuration, priceDurationToMinutes } from "@louez/utils";
 import {
   type PricingTierInput as LegacyPricingTierInput,
   type ProductUnitInput,
   type RateTierInput,
   createProductSchema,
-} from '@louez/validations';
+} from "@louez/validations";
 
-import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar';
+import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 
-import { useAppForm } from '@/hooks/form/form';
+import { useAppForm } from "@/hooks/form/form";
 
-import { ProductAssuranceSection } from './components/product-assurance-section';
-import { ProductFormEditToc } from './components/product-form-edit-toc';
-import { ProductFormSectionAccessories } from './components/product-form-section-accessories';
-import { ProductFormSectionStock } from './components/product-form-section-stock';
-import { ProductFormStepInfo } from './components/product-form-step-info';
-import { ProductFormStepPhotos } from './components/product-form-step-photos';
-import { ProductFormStepPreview } from './components/product-form-step-preview';
-import { ProductFormStepPricing } from './components/product-form-step-pricing';
-import { ProductImageCropDialog } from './components/product-image-crop-dialog';
-import { useProductFormMedia } from './hooks/use-product-form-media';
-import { useProductFormMutations } from './hooks/use-product-form-mutations';
-import { useProductFormStepFlow } from './hooks/use-product-form-step-flow';
-import { getProductSeasonalPricings } from './seasonal-actions';
+import { ProductAssuranceSection } from "./components/product-assurance-section";
+import { ProductFormEditToc } from "./components/product-form-edit-toc";
+import { ProductFormSectionAccessories } from "./components/product-form-section-accessories";
+import { ProductFormSectionStock } from "./components/product-form-section-stock";
+import { ProductFormStepInfo } from "./components/product-form-step-info";
+import { ProductFormStepPhotos } from "./components/product-form-step-photos";
+import { ProductFormStepPreview } from "./components/product-form-step-preview";
+import { ProductFormStepPricing } from "./components/product-form-step-pricing";
+import { ProductImageCropDialog } from "./components/product-image-crop-dialog";
+import { useProductFormMedia } from "./hooks/use-product-form-media";
+import { useProductFormMutations } from "./hooks/use-product-form-mutations";
+import { useProductFormStepFlow } from "./hooks/use-product-form-step-flow";
+import { getProductSeasonalPricings } from "./seasonal-actions";
 import type {
   BookingAttributeAxisData,
   ProductFormComponentApi,
   ProductFormProps,
   SeasonalPricingData,
-} from './types';
+} from "./types";
 
-function pricingModeToUnit(mode: PricingMode): 'hour' | 'day' | 'week' {
-  if (mode === 'hour') return 'hour';
-  if (mode === 'week') return 'week';
-  return 'day';
+function pricingModeToUnit(mode: PricingMode): "hour" | "day" | "week" {
+  if (mode === "hour") return "hour";
+  if (mode === "week") return "week";
+  return "day";
 }
 
 function pricingModeToMinutes(mode: PricingMode): number {
-  if (mode === 'hour') return 60;
-  if (mode === 'week') return 10080;
+  if (mode === "hour") return 60;
+  if (mode === "week") return 10080;
   return 1440;
 }
 
-function getDuplicateRateTierIndexes(
-  rateTiers: RateTierInput[] | undefined,
-): number[] {
+function getDuplicateRateTierIndexes(rateTiers: RateTierInput[] | undefined): number[] {
   if (!rateTiers?.length) return [];
 
   const byPeriod = new Map<number, number[]>();
@@ -90,19 +84,19 @@ function getDuplicateRateTierIndexes(
 export function ProductForm({
   product,
   categories,
-  currency = 'EUR',
+  currency = "EUR",
   storeTaxSettings,
   availableAccessories = [],
   showAiContext = false,
 }: ProductFormProps) {
   const router = useRouter();
-  const t = useTranslations('dashboard.products.form');
-  const tCommon = useTranslations('common');
-  const tValidation = useTranslations('validation');
+  const t = useTranslations("dashboard.products.form");
+  const tCommon = useTranslations("common");
+  const tValidation = useTranslations("validation");
   const currencySymbol = getCurrencySymbol(currency);
 
   const isEditMode = !!product;
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const {
     isSaving,
@@ -113,29 +107,25 @@ export function ProductForm({
     getActionErrorDetails,
   } = useProductFormMutations({
     productId: product?.id,
+    initialImages: product?.images ?? [],
   });
-  const [duplicateRateTierIndexes, setDuplicateRateTierIndexes] = useState<
-    number[]
-  >([]);
-  const [pendingDuplicateRateTierIndexes, setPendingDuplicateRateTierIndexes] =
-    useState<number[] | null>(null);
+  const [duplicateRateTierIndexes, setDuplicateRateTierIndexes] = useState<number[]>([]);
+  const [pendingDuplicateRateTierIndexes, setPendingDuplicateRateTierIndexes] = useState<
+    number[] | null
+  >(null);
   const hasShownDuplicateRateToastRef = useRef(false);
+  const markMediaUploadsPersistedRef = useRef<() => void>(() => undefined);
 
   // Seasonal pricing state (edit mode only)
-  const [seasonalPricings, setSeasonalPricings] = useState<
-    SeasonalPricingData[]
-  >([]);
-  const [selectedSeasonalPeriodId, setSelectedSeasonalPeriodId] = useState<
-    string | null
-  >(null);
-  const [isLoadingSeasonalPricings, setIsLoadingSeasonalPricings] =
-    useState(false);
+  const [seasonalPricings, setSeasonalPricings] = useState<SeasonalPricingData[]>([]);
+  const [selectedSeasonalPeriodId, setSelectedSeasonalPeriodId] = useState<string | null>(null);
+  const [isLoadingSeasonalPricings, setIsLoadingSeasonalPricings] = useState(false);
 
   useEffect(() => {
     if (!product?.id) return;
     setIsLoadingSeasonalPricings(true);
     getProductSeasonalPricings(product.id).then((result) => {
-      if (result && 'data' in result) {
+      if (result && "data" in result) {
         setSeasonalPricings(result.data as SeasonalPricingData[]);
       }
       setIsLoadingSeasonalPricings(false);
@@ -150,30 +140,25 @@ export function ProductForm({
     if (!selectedSeasonalPeriodId) return;
     setIsLoadingSeasonalPricings(true);
     getProductSeasonalPricings(product.id).then((result) => {
-      if (result && 'data' in result) {
+      if (result && "data" in result) {
         setSeasonalPricings(result.data as SeasonalPricingData[]);
       }
       setIsLoadingSeasonalPricings(false);
     });
-  }, [
-    product?.id,
-    seasonalPricings.length,
-    isLoadingSeasonalPricings,
-    selectedSeasonalPeriodId,
-  ]);
+  }, [product?.id, seasonalPricings.length, isLoadingSeasonalPricings, selectedSeasonalPeriodId]);
 
   // Convert product pricing tiers to input format
   const initialPricingTiers: LegacyPricingTierInput[] =
     product?.pricingTiers?.map((tier) => ({
       id: tier.id,
       minDuration: tier.minDuration ?? 1,
-      discountPercent: parseFloat(tier.discountPercent || '0'),
+      discountPercent: parseFloat(tier.discountPercent || "0"),
     })) ?? [];
 
   const initialRateTiers: RateTierInput[] = (() => {
     if (!product?.pricingTiers?.length) return [];
-    const basePrice = parseFloat(product.price || '0') || 0;
-    const fallbackMode = (product.pricingMode ?? 'day') as PricingMode;
+    const basePrice = parseFloat(product.price || "0") || 0;
+    const fallbackMode = (product.pricingMode ?? "day") as PricingMode;
 
     return product.pricingTiers
       .map((tier) => {
@@ -190,7 +175,7 @@ export function ProductForm({
         }
 
         const minDuration = tier.minDuration ?? 1;
-        const discount = parseFloat(tier.discountPercent || '0');
+        const discount = parseFloat(tier.discountPercent || "0");
         const minutes = minDuration * pricingModeToMinutes(fallbackMode);
         const durationInfo = minutesToPriceDuration(minutes);
         const effectivePerLegacyUnit = basePrice * (1 - discount / 100);
@@ -206,8 +191,7 @@ export function ProductForm({
       })
       .sort(
         (a, b) =>
-          priceDurationToMinutes(a.duration, a.unit) -
-          priceDurationToMinutes(b.duration, b.unit),
+          priceDurationToMinutes(a.duration, a.unit) - priceDurationToMinutes(b.duration, b.unit),
       );
   })();
 
@@ -227,71 +211,69 @@ export function ProductForm({
       position: axis.position ?? index,
     })) ?? [];
 
-  const productFormSchema = useMemo(
-    () => createProductSchema(tValidation),
-    [tValidation],
-  );
+  const productFormSchema = useMemo(() => createProductSchema(tValidation), [tValidation]);
 
   const initialBasePriceDuration = (() => {
     if (product?.basePeriodMinutes) {
       const period = minutesToPriceDuration(product.basePeriodMinutes);
       return {
-        price: product.price || '',
+        price: product.price || "",
         duration: period.duration,
         unit: period.unit,
       };
     }
 
     return {
-      price: product?.price || '',
+      price: product?.price || "",
       duration: 1,
-      unit: pricingModeToUnit((product?.pricingMode ?? 'day') as PricingMode),
+      unit: pricingModeToUnit((product?.pricingMode ?? "day") as PricingMode),
     };
   })();
 
   const form = useAppForm({
     defaultValues: {
-      name: product?.name || '',
-      description: product?.description || '',
-      aiContext: product?.aiContext || '',
+      name: product?.name || "",
+      description: product?.description || "",
+      aiContext: product?.aiContext || "",
       categoryId: product?.categoryId ?? null,
-      price: product?.price || '',
+      price: product?.price || "",
       basePriceDuration: initialBasePriceDuration,
-      deposit: product?.deposit ?? '',
-      quantity: product?.quantity != null ? product.quantity.toString() : '1',
-      status: (product?.status ?? 'draft') as 'draft' | 'active' | 'archived',
+      deposit: product?.deposit ?? "",
+      quantity: product?.quantity != null ? product.quantity.toString() : "1",
+      status: (product?.status ?? "draft") as "draft" | "active" | "archived",
       images: product?.images ?? [],
-      pricingMode: (product?.pricingMode ?? 'day') as PricingMode,
+      pricingMode: (product?.pricingMode ?? "day") as PricingMode,
       pricingTiers: initialPricingTiers,
       rateTiers: initialRateTiers,
       enforceStrictTiers: product?.enforceStrictTiers ?? true,
       taxSettings: product?.taxSettings ?? { inheritFromStore: true },
-      videoUrl: product?.videoUrl || '',
+      videoUrl: product?.videoUrl || "",
       accessoryIds: product?.accessoryIds ?? [],
       trackUnits: product?.trackUnits || false,
       units: initialUnits,
       bookingAttributeAxes: initialBookingAttributeAxes,
     },
     validationLogic: revalidateLogic({
-      mode: 'submit',
-      modeAfterSubmission: 'change',
+      mode: "submit",
+      modeAfterSubmission: "change",
     }),
     validators: { onSubmit: productFormSchema },
     onSubmit: async ({ value }) => {
       try {
         await submitProduct(value);
+        markMediaUploadsPersistedRef.current();
         setDuplicateRateTierIndexes([]);
         setPendingDuplicateRateTierIndexes(null);
 
         toastManager.add({
-          title: product ? t('productUpdated') : t('productCreated'),
-          type: 'success',
+          title: product ? t("productUpdated") : t("productCreated"),
+          type: "success",
         });
-        router.push('/dashboard/products');
+        router.push("/dashboard/products");
       } catch (error) {
         const details = getActionErrorDetails(error);
         const isDuplicateRatePeriodsError =
-          details?.code === 'duplicate_rate_periods' &&
+          details?.code === "duplicate_rate_periods" &&
           Array.isArray(details.duplicateRateTierIndexes) &&
           details.duplicateRateTierIndexes.length > 0;
 
@@ -300,15 +282,15 @@ export function ProductForm({
           setPendingDuplicateRateTierIndexes(duplicateIndexes);
 
           toastManager.add({
-            title: t('pricingTiers.duplicateDurationError'),
-            type: 'error',
+            title: t("pricingTiers.duplicateDurationError"),
+            type: "error",
           });
           return;
         }
 
         toastManager.add({
           title: getActionErrorMessage(error),
-          type: 'error',
+          type: "error",
         });
       }
     },
@@ -330,6 +312,10 @@ export function ProductForm({
     imagesPreviews,
   });
 
+  useEffect(() => {
+    markMediaUploadsPersistedRef.current = media.markUploadsPersisted;
+  }, [media.markUploadsPersisted]);
+
   const handleReset = useCallback(() => {
     form.reset();
   }, [form]);
@@ -340,17 +326,17 @@ export function ProductForm({
 
     try {
       await createCategoryByName(name);
-      toastManager.add({ title: t('categoryCreated'), type: 'success' });
-      setNewCategoryName('');
+      toastManager.add({ title: t("categoryCreated"), type: "success" });
+      setNewCategoryName("");
       setCategoryDialogOpen(false);
       router.refresh();
     } catch (error) {
-      toastManager.add({ title: getActionErrorMessage(error), type: 'error' });
+      toastManager.add({ title: getActionErrorMessage(error), type: "error" });
     }
   };
 
   const setSubmitError = useCallback(
-    (name: 'name' | 'price' | 'quantity' | 'units', message: string) => {
+    (name: "name" | "price" | "quantity" | "units", message: string) => {
       form.setFieldMeta(name, (prev) => ({
         ...prev,
         isTouched: true,
@@ -364,7 +350,7 @@ export function ProductForm({
   );
 
   const clearSubmitError = useCallback(
-    (name: 'name' | 'price' | 'quantity' | 'units' | 'rateTiers') => {
+    (name: "name" | "price" | "quantity" | "units" | "rateTiers") => {
       form.setFieldMeta(name, (prev) => ({
         ...prev,
         errorMap: {
@@ -379,66 +365,62 @@ export function ProductForm({
   const clearDuplicateRateTierErrors = useCallback(() => {
     setDuplicateRateTierIndexes((prev) => (prev.length > 0 ? [] : prev));
     setPendingDuplicateRateTierIndexes(null);
-    clearSubmitError('rateTiers');
+    clearSubmitError("rateTiers");
   }, [clearSubmitError]);
 
   const localDuplicateRateTierIndexes = useMemo(
-    () =>
-      getDuplicateRateTierIndexes(watchedValues.rateTiers as RateTierInput[]),
+    () => getDuplicateRateTierIndexes(watchedValues.rateTiers as RateTierInput[]),
     [watchedValues.rateTiers],
   );
   const effectiveDuplicateRateTierIndexes = useMemo(
     () =>
-      Array.from(
-        new Set([
-          ...duplicateRateTierIndexes,
-          ...localDuplicateRateTierIndexes,
-        ]),
-      ).sort((a, b) => a - b),
+      Array.from(new Set([...duplicateRateTierIndexes, ...localDuplicateRateTierIndexes])).sort(
+        (a, b) => a - b,
+      ),
     [duplicateRateTierIndexes, localDuplicateRateTierIndexes],
   );
 
   const validateCurrentStep = useCallback(
     (step: number) => {
-      const nameValue = watchedValues.name ?? '';
-      const quantityValue = watchedValues.quantity ?? '';
+      const nameValue = watchedValues.name ?? "";
+      const quantityValue = watchedValues.quantity ?? "";
 
       let isValid = true;
 
       if (step === 1) {
         const trimmed = nameValue.trim();
         if (!trimmed) {
-          setSubmitError('name', tValidation('required'));
+          setSubmitError("name", tValidation("required"));
           isValid = false;
         } else if (trimmed.length < 2) {
-          setSubmitError('name', tValidation('minLength', { min: 2 }));
+          setSubmitError("name", tValidation("minLength", { min: 2 }));
           isValid = false;
         } else {
-          clearSubmitError('name');
+          clearSubmitError("name");
         }
       }
 
       if (step === 2) {
-        const ratePriceValue = watchedValues.basePriceDuration?.price ?? '';
+        const ratePriceValue = watchedValues.basePriceDuration?.price ?? "";
 
         if (!ratePriceValue.trim()) {
-          setSubmitError('price', tValidation('required'));
+          setSubmitError("price", tValidation("required"));
           isValid = false;
         } else if (!/^\d+([.,]\d{1,2})?$/.test(ratePriceValue.trim())) {
-          setSubmitError('price', tValidation('positive'));
+          setSubmitError("price", tValidation("positive"));
           isValid = false;
         } else {
-          clearSubmitError('price');
+          clearSubmitError("price");
         }
 
         if (!quantityValue.trim()) {
-          setSubmitError('quantity', tValidation('required'));
+          setSubmitError("quantity", tValidation("required"));
           isValid = false;
         } else if (!/^\d+$/.test(quantityValue.trim())) {
-          setSubmitError('quantity', tValidation('integer'));
+          setSubmitError("quantity", tValidation("integer"));
           isValid = false;
         } else {
-          clearSubmitError('quantity');
+          clearSubmitError("quantity");
         }
 
         if (watchedValues.trackUnits) {
@@ -446,13 +428,13 @@ export function ProductForm({
             (unit) => !unit.identifier.trim(),
           );
           if (hasMissingUnitIdentifier) {
-            setSubmitError('units', tValidation('required'));
+            setSubmitError("units", tValidation("required"));
             isValid = false;
           } else {
-            clearSubmitError('units');
+            clearSubmitError("units");
           }
         } else {
-          clearSubmitError('units');
+          clearSubmitError("units");
         }
       }
 
@@ -461,37 +443,31 @@ export function ProductForm({
     [clearSubmitError, setSubmitError, tValidation, watchedValues],
   );
 
-  const {
-    steps,
-    currentStep,
-    stepDirection,
-    goToNextStep,
-    goToPreviousStep,
-    goToStep,
-  } = useProductFormStepFlow({
-    validateCurrentStep,
-  });
+  const { steps, currentStep, stepDirection, goToNextStep, goToPreviousStep, goToStep } =
+    useProductFormStepFlow({
+      validateCurrentStep,
+    });
 
   useEffect(() => {
     if (!pendingDuplicateRateTierIndexes?.length) return;
 
     setDuplicateRateTierIndexes(pendingDuplicateRateTierIndexes);
-    form.setFieldMeta('rateTiers', (prev) => ({
+    form.setFieldMeta("rateTiers", (prev) => ({
       ...prev,
       isTouched: true,
       errorMap: {
         ...prev?.errorMap,
-        onSubmit: t('pricingTiers.duplicateDurationError'),
+        onSubmit: t("pricingTiers.duplicateDurationError"),
       },
     }));
 
     if (!isEditMode) {
       goToStep(2);
-    } else if (typeof window !== 'undefined') {
+    } else if (typeof window !== "undefined") {
       window.requestAnimationFrame(() => {
         document
-          .getElementById('section-pricing')
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          .getElementById("section-pricing")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     }
 
@@ -507,12 +483,12 @@ export function ProductForm({
       return;
     }
 
-    form.setFieldMeta('rateTiers', (prev) => ({
+    form.setFieldMeta("rateTiers", (prev) => ({
       ...prev,
       isTouched: true,
       errorMap: {
         ...prev?.errorMap,
-        onSubmit: t('pricingTiers.duplicateDurationError'),
+        onSubmit: t("pricingTiers.duplicateDurationError"),
       },
     }));
 
@@ -522,8 +498,8 @@ export function ProductForm({
 
     if (!hasShownDuplicateRateToastRef.current) {
       toastManager.add({
-        title: t('pricingTiers.duplicateDurationError'),
-        type: 'error',
+        title: t("pricingTiers.duplicateDurationError"),
+        type: "error",
       });
       hasShownDuplicateRateToastRef.current = true;
     }
@@ -538,27 +514,24 @@ export function ProductForm({
     rateTiersSubmitError,
   ]);
 
-  const selectedCategory = categories.find(
-    (c) => c.id === watchedValues.categoryId,
-  );
+  const selectedCategory = categories.find((c) => c.id === watchedValues.categoryId);
 
   const effectivePricingMode: PricingMode =
-    watchedValues.basePriceDuration?.unit === 'week'
-      ? 'week'
-      : watchedValues.basePriceDuration?.unit === 'day'
-        ? 'day'
-        : 'hour';
+    watchedValues.basePriceDuration?.unit === "week"
+      ? "week"
+      : watchedValues.basePriceDuration?.unit === "day"
+        ? "day"
+        : "hour";
 
   const priceLabel =
-    effectivePricingMode === 'day'
-      ? t('pricePerDay')
-      : effectivePricingMode === 'hour'
-        ? t('pricePerHour')
-        : t('pricePerWeek');
-  const cropPreviewProductName =
-    watchedValues.name.trim() || t('namePlaceholder');
+    effectivePricingMode === "day"
+      ? t("pricePerDay")
+      : effectivePricingMode === "hour"
+        ? t("pricePerHour")
+        : t("pricePerWeek");
+  const cropPreviewProductName = watchedValues.name.trim() || t("namePlaceholder");
   const cropPreviewPrice = watchedValues.basePriceDuration?.price?.trim()
-    ? `${currencySymbol}${watchedValues.basePriceDuration.price.trim().replace(',', '.')}`
+    ? `${currencySymbol}${watchedValues.basePriceDuration.price.trim().replace(",", ".")}`
     : `${currencySymbol}0.00`;
 
   // Edit mode: single column with sticky TOC on desktop
@@ -601,7 +574,7 @@ export function ProductForm({
                     onCreateCategory={handleCreateCategory}
                     isCreatingCategory={isCreatingCategory}
                     onNameInputChange={(event, handleChange) => {
-                      form.setFieldMeta('name', (prev) => ({
+                      form.setFieldMeta("name", (prev) => ({
                         ...prev,
                         errorMap: { ...prev?.errorMap, onSubmit: undefined },
                       }));
@@ -623,9 +596,7 @@ export function ProductForm({
                     availableAccessories={availableAccessories}
                     showAccessories={false}
                     showStock={false}
-                    showUnitValidationErrors={
-                      hasUnitsSubmitError || submissionAttempts > 0
-                    }
+                    showUnitValidationErrors={hasUnitsSubmitError || submissionAttempts > 0}
                     productId={product?.id}
                     seasonalPricings={seasonalPricings}
                     selectedSeasonalPeriodId={selectedSeasonalPeriodId}
@@ -641,9 +612,7 @@ export function ProductForm({
                     productId={product.id}
                     watchedValues={watchedValues}
                     disabled={isSaving}
-                    showValidationErrors={
-                      hasUnitsSubmitError || submissionAttempts > 0
-                    }
+                    showValidationErrors={hasUnitsSubmitError || submissionAttempts > 0}
                   />
                 </div>
 
@@ -656,17 +625,11 @@ export function ProductForm({
                   />
                 </div>
 
-                {product?.id ? (
-                  <ProductAssuranceSection productId={product.id} />
-                ) : null}
+                {product?.id ? <ProductAssuranceSection productId={product.id} /> : null}
               </div>
             </div>
 
-            <FloatingSaveBar
-              isDirty={isDirty}
-              isLoading={isSaving}
-              onReset={handleReset}
-            />
+            <FloatingSaveBar isDirty={isDirty} isLoading={isSaving} onReset={handleReset} />
           </form.Form>
         </form.AppForm>
 
@@ -703,11 +666,7 @@ export function ProductForm({
           {/* Stepper */}
           <Card>
             <CardContent className="pt-6">
-              <Stepper
-                steps={steps}
-                currentStep={currentStep}
-                onStepClick={goToStep}
-              />
+              <Stepper steps={steps} currentStep={currentStep} onStepClick={goToStep} />
             </CardContent>
           </Card>
 
@@ -745,7 +704,7 @@ export function ProductForm({
                 onCreateCategory={handleCreateCategory}
                 isCreatingCategory={isCreatingCategory}
                 onNameInputChange={(event, handleChange) => {
-                  form.setFieldMeta('name', (prev) => ({
+                  form.setFieldMeta("name", (prev) => ({
                     ...prev,
                     errorMap: { ...prev?.errorMap, onSubmit: undefined },
                   }));
@@ -768,9 +727,7 @@ export function ProductForm({
                 storeTaxSettings={storeTaxSettings}
                 availableAccessories={availableAccessories}
                 showAccessories={false}
-                showUnitValidationErrors={
-                  hasUnitsSubmitError || submissionAttempts > 0
-                }
+                showUnitValidationErrors={hasUnitsSubmitError || submissionAttempts > 0}
               />
             </StepContent>
           )}
@@ -791,21 +748,17 @@ export function ProductForm({
           <StepActions>
             <div>
               {currentStep > 0 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={goToPreviousStep}
-                >
+                <Button type="button" variant="outline" onClick={goToPreviousStep}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  {t('previous')}
+                  {t("previous")}
                 </Button>
               ) : (
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.push('/dashboard/products')}
+                  onClick={() => router.push("/dashboard/products")}
                 >
-                  {tCommon('cancel')}
+                  {tCommon("cancel")}
                 </Button>
               )}
             </div>
@@ -813,16 +766,14 @@ export function ProductForm({
             <div className="flex gap-3">
               {currentStep < steps.length - 1 ? (
                 <Button key="next" type="button" onClick={goToNextStep}>
-                  {t('next')}
+                  {t("next")}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
                 <Button key="submit" type="submit" disabled={isSaving}>
-                  {isSaving && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   <Check className="mr-2 h-4 w-4" />
-                  {product ? t('save') : t('createProduct')}
+                  {product ? t("save") : t("createProduct")}
                 </Button>
               )}
             </div>

@@ -1,59 +1,69 @@
-import { db, stores } from '@louez/db'
-import type {
-  UpdateStoreAppearanceInput,
-  UpdateStoreLegalInput,
-} from '@louez/validations'
-import { eq } from 'drizzle-orm'
+import { db, stores } from "@louez/db";
+import type { UpdateStoreAppearanceInput, UpdateStoreLegalInput } from "@louez/validations";
+import { isOwnedImageUrl } from "@louez/validations";
+import { ApiServiceError } from "./errors";
+import { eq } from "drizzle-orm";
 
 interface UpdateStoreLegalParams {
-  storeId: string
-  input: UpdateStoreLegalInput
+  storeId: string;
+  input: UpdateStoreLegalInput;
 }
 
 interface UpdateStoreAppearanceParams {
-  storeId: string
-  input: UpdateStoreAppearanceInput
+  storeId: string;
+  input: UpdateStoreAppearanceInput;
 }
 
 export async function updateStoreLegal(params: UpdateStoreLegalParams) {
-  const { storeId, input } = params
-  const { cgv, legalNotice, includeFullCgvInContract } = input
+  const { storeId, input } = params;
+  const { cgv, legalNotice, includeFullCgvInContract } = input;
 
   const updateData: Record<string, unknown> = {
     updatedAt: new Date(),
-  }
+  };
 
   if (cgv !== undefined) {
-    updateData.cgv = cgv
+    updateData.cgv = cgv;
   }
 
   if (legalNotice !== undefined) {
-    updateData.legalNotice = legalNotice
+    updateData.legalNotice = legalNotice;
   }
 
   if (includeFullCgvInContract !== undefined) {
-    updateData.includeCgvInContract = includeFullCgvInContract
+    updateData.includeCgvInContract = includeFullCgvInContract;
   }
 
-  await db.update(stores).set(updateData).where(eq(stores.id, storeId))
+  await db.update(stores).set(updateData).where(eq(stores.id, storeId));
 
-  return { success: true as const }
+  return { success: true as const };
 }
 
 export async function updateStoreAppearance(params: UpdateStoreAppearanceParams) {
-  const { storeId, input } = params
-  const { logoUrl, darkLogoUrl, theme } = input
+  const { storeId, input } = params;
+  const { logoUrl, darkLogoUrl, theme } = input;
+  const imagePrefix = `${storeId}/logo`;
+
+  if (logoUrl && !isOwnedImageUrl(logoUrl, imagePrefix)) {
+    throw new ApiServiceError("BAD_REQUEST", "errors.invalidData");
+  }
+  if (darkLogoUrl && !isOwnedImageUrl(darkLogoUrl, imagePrefix)) {
+    throw new ApiServiceError("BAD_REQUEST", "errors.invalidData");
+  }
+  if (theme?.heroImages?.some((image) => !isOwnedImageUrl(image, imagePrefix))) {
+    throw new ApiServiceError("BAD_REQUEST", "errors.invalidData");
+  }
 
   const updateData: Record<string, unknown> = {
     updatedAt: new Date(),
-  }
+  };
 
   if (logoUrl !== undefined) {
-    updateData.logoUrl = logoUrl
+    updateData.logoUrl = logoUrl;
   }
 
   if (darkLogoUrl !== undefined) {
-    updateData.darkLogoUrl = darkLogoUrl
+    updateData.darkLogoUrl = darkLogoUrl;
   }
 
   if (theme) {
@@ -62,40 +72,40 @@ export async function updateStoreAppearance(params: UpdateStoreAppearanceParams)
       columns: {
         theme: true,
       },
-    })
+    });
 
-    const existingTheme = currentStore?.theme ?? null
+    const existingTheme = currentStore?.theme ?? null;
 
     const mergedTheme: {
-      mode: 'light' | 'dark'
-      primaryColor: string
-      heroImages?: string[]
-      maxDiscountPercent?: number | null
+      mode: "light" | "dark";
+      primaryColor: string;
+      heroImages?: string[];
+      maxDiscountPercent?: number | null;
     } = {
       mode: theme.mode,
       primaryColor: theme.primaryColor,
-    }
+    };
 
     if (existingTheme?.heroImages !== undefined) {
-      mergedTheme.heroImages = existingTheme.heroImages
+      mergedTheme.heroImages = existingTheme.heroImages;
     }
 
     if (existingTheme?.maxDiscountPercent !== undefined) {
-      mergedTheme.maxDiscountPercent = existingTheme.maxDiscountPercent
+      mergedTheme.maxDiscountPercent = existingTheme.maxDiscountPercent;
     }
 
     if (theme.heroImages !== undefined) {
-      mergedTheme.heroImages = theme.heroImages
+      mergedTheme.heroImages = theme.heroImages;
     }
 
     if (theme.maxDiscountPercent !== undefined) {
-      mergedTheme.maxDiscountPercent = theme.maxDiscountPercent
+      mergedTheme.maxDiscountPercent = theme.maxDiscountPercent;
     }
 
-    updateData.theme = mergedTheme
+    updateData.theme = mergedTheme;
   }
 
-  await db.update(stores).set(updateData).where(eq(stores.id, storeId))
+  await db.update(stores).set(updateData).where(eq(stores.id, storeId));
 
-  return { success: true as const }
+  return { success: true as const };
 }

@@ -347,6 +347,7 @@ export const env = createEnv({
       .string()
       .min(1, 'NEXT_PUBLIC_POSTHOG_KEY is required'),
     NEXT_PUBLIC_POSTHOG_HOST: z.url().default('https://eu.i.posthog.com'),
+    NEXT_PUBLIC_APP_VERSION: z.string().min(1).max(100).optional(),
 
     // ===== Umami Analytics (Required) =====
     NEXT_PUBLIC_UMAMI_SCRIPT_URL: z
@@ -358,13 +359,11 @@ export const env = createEnv({
     NEXT_PUBLIC_GLEAP_API_KEY: z.string().optional(),
 
     // ===== OpenReplay (Optional — session replay) =====
-    NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY: z
-      .string()
-      .default('W9AU13WEWMDZ4m8KQzWZ'),
+    NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY: z.string().optional(),
     NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY: z.string().optional(),
     NEXT_PUBLIC_OPENREPLAY_INGEST_POINT: z
       .url('NEXT_PUBLIC_OPENREPLAY_INGEST_POINT must be a valid URL')
-      .default('https://replay.lumy.cloud/ingest'),
+      .optional(),
 
     // ===== fromHello (Optional — engagement & growth) =====
     NEXT_PUBLIC_FROMHELLO_API_URL: z.url().optional(),
@@ -472,6 +471,7 @@ export const env = createEnv({
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
     NEXT_PUBLIC_UMAMI_SCRIPT_URL: process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL,
     NEXT_PUBLIC_UMAMI_WEBSITE_ID: process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID,
     NEXT_PUBLIC_GLEAP_API_KEY: process.env.NEXT_PUBLIC_GLEAP_API_KEY,

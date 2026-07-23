@@ -26,6 +26,7 @@ COPY packages/email/package.json ./packages/email/
 COPY packages/pdf/package.json ./packages/pdf/
 COPY packages/mcp/package.json ./packages/mcp/
 COPY apps/web/package.json ./apps/web/
+COPY apps/voice-relay/package.json ./apps/voice-relay/
 
 RUN corepack enable pnpm && \
     pnpm install --frozen-lockfile
@@ -40,7 +41,7 @@ ARG DATABASE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
 COPY --from=deps /app/packages/auth/node_modules ./packages/auth/node_modules
-COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
+# @louez/config is source-only and has no node_modules directory.
 COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
 COPY --from=deps /app/packages/utils/node_modules ./packages/utils/node_modules
 COPY --from=deps /app/packages/validations/node_modules ./packages/validations/node_modules
@@ -48,6 +49,7 @@ COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 COPY --from=deps /app/packages/email/node_modules ./packages/email/node_modules
 COPY --from=deps /app/packages/pdf/node_modules ./packages/pdf/node_modules
+COPY --from=deps /app/packages/mcp/node_modules ./packages/mcp/node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 
 COPY . .

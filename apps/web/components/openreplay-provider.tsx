@@ -3,14 +3,13 @@
 import { useEffect } from 'react';
 
 import { env } from '@/env';
+import { markOpenReplayReady } from '@/lib/openreplay/client';
 
 const OPENREPLAY_DASHBOARD_PROJECT_KEY =
-  env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY || 'W9AU13WEWMDZ4m8KQzWZ';
+  env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY;
 const OPENREPLAY_STOREFRONT_PROJECT_KEY =
-  env.NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY || '';
-const OPENREPLAY_INGEST_POINT =
-  env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT ||
-  'https://replay.lumy.cloud/ingest';
+  env.NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY;
+const OPENREPLAY_INGEST_POINT = env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT;
 
 type OpenReplayTracker = InstanceType<
   Awaited<typeof import('@openreplay/tracker')>['default']
@@ -73,7 +72,7 @@ function getSurfaceTrackerOptions(surface: OpenReplaySurface) {
 async function getOpenReplayTracker(surface: OpenReplaySurface) {
   const projectKey = getSurfaceProjectKey(surface);
 
-  if (!projectKey) {
+  if (!projectKey || !OPENREPLAY_INGEST_POINT) {
     return null;
   }
 
@@ -108,12 +107,12 @@ async function getOpenReplayTracker(surface: OpenReplaySurface) {
   return window.__louezOpenReplayTrackerPromise;
 }
 
-export function OpenReplayProvider({
+export const OpenReplayProvider = ({
   children,
   surface,
   user,
   store,
-}: OpenReplayProviderProps) {
+}: OpenReplayProviderProps) => {
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production') {
       return;
@@ -137,6 +136,12 @@ export function OpenReplayProvider({
             ...(store.slug && { storeSlug: store.slug }),
           }),
         },
+      });
+
+      void window.__louezOpenReplayStartPromise.then(() => {
+        markOpenReplayReady(({ name, payload }) => {
+          tracker.event(name, payload);
+        });
       });
     });
   }, [store, surface, user]);
@@ -175,4 +180,4 @@ export function OpenReplayProvider({
   }, [store, surface, user]);
 
   return <>{children}</>;
-}
+};

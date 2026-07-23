@@ -62,6 +62,11 @@
     "hourUnit": "{count, plural, one {heure} other {heures}}",
     "weekUnit": "{count, plural, one {semaine} other {semaines}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "phoneInput": {
+      "selectCountry": "Sélectionner un pays",
+      "searchCountry": "Rechercher un pays...",
+      "noResults": "Aucun pays trouvé"
+    },
     "addressInput": {
       "placeholder": "Rechercher une adresse...",
       "coordinatesSaved": "Coordonnées enregistrées",
@@ -136,19 +141,14 @@
     "sendCode": "Envoyer le code",
     "enterCode": "Entrez votre code",
     "codeSentTo": "Un code de vérification a été envoyé à",
+    "verifyEmailTitle": "Vérifiez votre e-mail",
+    "codeSentDescription": "Nous avons envoyé un code de sécurité à usage unique à <strong>{email}</strong>. Il devrait arriver dans quelques minutes. Si vous ne le voyez pas, vérifiez votre dossier spam ou courrier indésirable, puis saisissez-le ci-dessous.",
     "verify": "Vérifier",
     "verifying": "Vérification...",
     "or": "ou",
-    "loginTitle": "Bienvenue",
+    "loginTitle": "Bienvenue sur louez",
     "loginDescription": "Entrez votre email pour continuer. Si vous n'avez pas de compte, il sera créé automatiquement.",
     "linkWillBeSent": "Un lien sécurisé vous sera envoyé par email. Pas de mot de passe à retenir.",
-    "heroTitle": "Gérez vos locations en toute simplicité",
-    "heroSubtitle": "La plateforme tout-en-un pour les professionnels de la location. Créez votre boutique en ligne, gérez vos réservations et développez votre activité.",
-    "featureProducts": "Catalogue de produits illimité",
-    "featureReservations": "Gestion des réservations automatisée",
-    "featureCustomers": "Base clients centralisée",
-    "featureStats": "Statistiques et analyses détaillées",
-    "trustedBy": "Rejoignez des centaines de loueurs qui nous font confiance",
     "checkEmail": "Vérifiez votre boîte mail",
     "emailSentTo": "Un lien de connexion a été envoyé à",
     "clickLinkToSignIn": "Cliquez sur le lien dans l'email pour vous connecter. Le lien expire dans 24 heures.",
@@ -169,7 +169,19 @@
       "default": "Une erreur est survenue. Veuillez réessayer."
     },
     "referralBanner": "{storeName} vous a invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
-    "referralBannerGeneric": "🎁 Vous avez été invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes."
+    "referralBannerGeneric": "🎁 Vous avez été invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
+    "socialProofRating": "4,9/5",
+    "socialProofTrusted": "450+ loueurs nous font confiance pour gérer leurs locations",
+    "review1Quote": "Nous avons quitté notre ancien logiciel devenu trop cher pour Louez.io… et franchement, aucun regret ! Simple, flexible, économique et efficace.",
+    "review1Role": "Gérant associé · Bicy, Dijon",
+    "review2Quote": "La mise en place a été simple et rapide. L'outil est intuitif, autant pour nous en gestion que pour nos clients au moment de réserver. Un vrai gain de temps au quotidien.",
+    "review2Role": "Co-fondateur · Bloom",
+    "review3Quote": "Louez.io est une plateforme fiable, claire et précise. La gestion de la saison sera beaucoup plus simple et rapide.",
+    "review3Role": "Co-fondateur · Les Frères Complices",
+    "perk1": "Vos 15 premières réservations offertes",
+    "perk2": "1 € max par réservation, dégressif selon le volume, 0 % de commission, sans abonnement",
+    "perk3": "Boutique en ligne prête en 5 minutes",
+    "visitShop": "Voir la boutique"
   },
   "invitation": {
     "inviteToJoin": "{name} vous invite à rejoindre l'équipe",
@@ -620,20 +632,27 @@
         "title": "Mise en route",
         "description": "Quelques étapes pour bien démarrer",
         "stepsCompleted": "étapes terminées",
-        "dismissForNow": "Masquer pour l'instant",
         "steps": {
           "createAccount": "Créer votre compte",
           "configureStore": "Configurer votre boutique",
           "addFirstProduct": "Ajouter votre premier produit",
+          "connectStripe": "Activez les paiements en ligne",
           "firstReservation": "Recevoir votre première réservation",
           "firstCompleted": "Terminer votre première location"
+        },
+        "descriptions": {
+          "addFirstProduct": "Ajoutez votre premier produit pour que vos clients puissent réserver.",
+          "connectStripe": "Connectez Stripe pour accepter les paiements par carte lors de la réservation.",
+          "firstReservation": "Partagez votre boutique avec vos clients ou créez une réservation manuellement.",
+          "firstCompleted": "Une fois la location rendue, marquez la réservation comme terminée."
         },
         "start": "Commencer",
         "addProductHint": "Ajoutez votre premier produit pour que vos clients puissent réserver.",
         "addFirstProduct": "Ajouter un produit",
         "shareHint": "Partagez votre boutique pour recevoir vos premières réservations.",
         "viewStore": "Voir ma boutique",
-        "createReservation": "Créer une réservation"
+        "createReservation": "Créer une réservation",
+        "connectStripe": "Connecter Stripe"
       },
       "stats": {
         "products": "Produits",
@@ -1456,6 +1475,10 @@
         "addItem": "Ajouter un article",
         "searchProductsPlaceholder": "Rechercher parmi {count} articles...",
         "noProductsFound": "Aucun article trouvé",
+        "unavailableForPeriod": "Indisponible",
+        "stockConflictInline": "Demandé : {requested} · Dispo : {available}",
+        "availabilityConflicts": "{count, plural, one {# conflit de disponibilité} other {# conflits de disponibilité}}",
+        "seeConflict": "Voir",
         "subtotal": "Sous-total",
         "summary": "Récapitulatif",
         "before": "Avant",
@@ -1481,7 +1504,7 @@
         "retryEmailNotification": "Réessayer l'envoi",
         "ignoreEmailFailure": "Ignorer",
         "lockPrice": "Figer le prix",
-        "unlockPrice": "Recalculer le prix",
+        "unlockPrice": "Revenir au prix automatique (remplace le prix saisi)",
         "adjustmentPositive": "Un complément de {amount} devra être encaissé.",
         "adjustmentNegative": "Un remboursement de {amount} pourra être effectué.",
         "warningDialogTitle": "Confirmer une modification exceptionnelle",
@@ -2241,6 +2264,7 @@
       "legend": "Légende",
       "moreItems": "+{count} autres",
       "noCustomer": "Sans client",
+      "viewReservation": "Voir la réservation",
       "dayNames": {
         "mon": "Lun",
         "tue": "Mar",
@@ -2259,6 +2283,18 @@
         "rejected": "Refusée",
         "quote": "Devis",
         "declined": "Devis refusé"
+      },
+      "logistics": {
+        "legend": "Livraison / retour client",
+        "delivery": "Livraison",
+        "return": "Retour client",
+        "deliveryAndReturn": "Livraison + retour client",
+        "deliveryLocation": "Lieu de livraison",
+        "returnLocation": "Lieu de reprise"
+      },
+      "maps": {
+        "openAddress": "Ouvrir l'adresse dans Google Maps",
+        "openWith": "Ouvrir avec"
       },
       "viewMode": {
         "label": "Mode d'affichage",
@@ -4428,6 +4464,22 @@
         "voiceRecommended": "Recommandée"
       }
     },
+    "commandPalette": {
+      "title": "Palette de commandes",
+      "trigger": "Rechercher une action…",
+      "placeholder": "Rechercher une action ou une page…",
+      "empty": "Aucune action trouvée.",
+      "groups": {
+        "create": "Créer",
+        "navigate": "Aller à",
+        "tools": "Outils"
+      },
+      "footer": {
+        "navigate": "Naviguer",
+        "open": "Ouvrir",
+        "close": "Fermer"
+      }
+    },
     "aiChat": {
       "open": "Assistant IA",
       "badge": "IA",
@@ -5402,15 +5454,53 @@
       "title": "Bienvenue sur Louez.io",
       "description": "Configurez votre boutique en quelques étapes"
     },
+    "profile": {
+      "title": "Faisons connaissance",
+      "description": "Dites-nous en un peu plus sur vous pour personnaliser votre expérience.",
+      "photo": "Photo de profil",
+      "photoHelp": "PNG ou JPG, 2 Mo max",
+      "photoError": "Veuillez sélectionner une image",
+      "photoSizeError": "L'image ne doit pas dépasser 2 Mo",
+      "name": "Votre nom",
+      "namePlaceholder": "Jean Dupont",
+      "businessType": "Vous êtes",
+      "businessTypePlaceholder": "Sélectionnez une option",
+      "businessTypes": {
+        "independent": "Indépendant",
+        "establishedStore": "Boutique établie",
+        "association": "Association",
+        "individual": "Particulier"
+      },
+      "productCategory": "Que souhaitez-vous louer",
+      "productCategoryPlaceholder": "Sélectionnez une catégorie",
+      "productCategories": {
+        "bikes": "Vélos",
+        "sportsOutdoor": "Sport & plein air",
+        "partyEvents": "Événementiel & son",
+        "toolsDiy": "Outillage & bricolage",
+        "vehicles": "Véhicules",
+        "electronics": "Électronique",
+        "other": "Autre"
+      },
+      "fleetSize": "Combien d'articles à louer",
+      "fleetSizePlaceholder": "Sélectionnez une tranche",
+      "fleetSizes": {
+        "upTo5": "1 à 5",
+        "upTo20": "6 à 20",
+        "upTo50": "21 à 50",
+        "moreThan50": "Plus de 50"
+      }
+    },
     "store": {
       "title": "Informations de votre boutique",
       "description": "Ces informations seront visibles par vos clients",
       "name": "Nom de la boutique",
       "namePlaceholder": "Ma boutique de location",
-      "slug": "Adresse de la boutique",
+      "slug": "Adresse web de la boutique",
       "slugPlaceholder": "ma-boutique",
       "slugHelp": "Votre boutique sera accessible sur {slug}.{domain}",
       "slugDefault": "votre-boutique",
+      "resetSlug": "Utiliser l'URL suggérée",
       "pricingMode": "Mode de tarification",
       "pricingDay": "Journée",
       "pricingDayDesc": "Prix par jour",
@@ -5465,22 +5555,49 @@
       "quantityHelp": "Nombre d'unités de ce produit disponibles à la location"
     },
     "stripe": {
-      "title": "Mode de réservation",
-      "description": "Choisissez comment vous souhaitez gérer les réservations",
-      "requestMode": "Demande de réservation",
-      "recommended": "Recommandé",
-      "requestModeDescription": "Les clients envoient une demande. Vous validez manuellement et gérez le paiement vous-même (espèces, virement, CB sur place).",
+      "title": "Encaissez vos réservations en ligne",
+      "description": "Choisissez comment vos clients réservent. Vous pourrez changer à tout moment.",
       "paymentMode": "Paiement en ligne",
-      "paymentModeDescription": "Les clients paient directement lors de la réservation. Encaissez automatiquement via Stripe.",
-      "howItWorks": "Comment ça fonctionne ?",
-      "step1": "1. Le client fait une demande de réservation",
-      "step2": "2. Vous recevez un email de notification",
-      "step3": "3. Vous acceptez ou refusez la demande",
-      "step4": "4. Le client reçoit la confirmation par email",
-      "step5": "5. Vous gérez le paiement lors du retrait",
-      "paymentSetupTitle": "Configuration rapide",
-      "paymentSetupDescription": "Après la création de votre boutique, rendez-vous dans Paramètres → Paiement en ligne pour connecter votre compte Stripe et commencer à recevoir des paiements.",
-      "configComplete": "Configuration terminée !"
+      "recommended": "Recommandé",
+      "paymentModeDescription": "Vos clients paient au moment de la réservation. Encaissement sécurisé via Stripe.",
+      "paymentModeNote": "L'activation de Stripe demande une vérification d'identité (5 à 10 min), maintenant ou plus tard depuis votre dashboard. En attendant, vos réservations passent automatiquement en validation manuelle.",
+      "requestMode": "Demande de réservation",
+      "requestModeDescription": "Les clients envoient une demande. Vous validez et encaissez vous-même (espèces, virement, CB sur place).",
+      "requestModeNote": "Vous gérez la validation et le paiement de chaque réservation. Vous pourrez passer au paiement en ligne à tout moment depuis les paramètres.",
+      "configComplete": "Configuration terminée !",
+      "panel": {
+        "payment": {
+          "benefitsTitle": "Pourquoi le paiement en ligne ?",
+          "benefit1": "Encaissement immédiat, dès la réservation",
+          "benefit2": "Moins de no-shows grâce au prépaiement",
+          "benefit3": "Caution par empreinte bancaire, sans débit",
+          "benefit4": "Virements automatiques sur votre compte",
+          "kycTitle": "Activer Stripe",
+          "kycStep1": "Créez votre compte — 2 minutes",
+          "kycStep2": "Vérifiez votre identité — pièce d'identité et IBAN, 5 à 10 min",
+          "kycStep3": "Le paiement en ligne s'active automatiquement",
+          "configureNow": "Configurer Stripe maintenant",
+          "resumeNow": "Reprendre la configuration Stripe",
+          "configureLater": "Ou plus tard depuis votre dashboard — en attendant, vos réservations passent en validation manuelle."
+        },
+        "request": {
+          "howTitle": "Comment ça marche ?",
+          "step1": "Le client envoie une demande",
+          "step2": "Vous recevez un email",
+          "step3": "Vous acceptez ou refusez",
+          "step4": "Le client reçoit la confirmation",
+          "step5": "Vous encaissez au retrait",
+          "prosTitle": "Ce que vous gagnez",
+          "pros1": "Un contrôle total sur chaque réservation",
+          "pros2": "Aucune configuration",
+          "pros3": "Espèces, virement ou CB sur place",
+          "consTitle": "Ce que vous perdez",
+          "cons1": "Relances et impayés à gérer vous-même",
+          "cons2": "Plus de no-shows sans prépaiement",
+          "cons3": "Pas de caution automatique",
+          "switchNote": "Passez au paiement en ligne à tout moment depuis les paramètres."
+        }
+      }
     },
     "complete": {
       "title": "Votre boutique est prête !",
@@ -5488,11 +5605,38 @@
       "viewStore": "Voir ma boutique",
       "goToDashboard": "Accéder au tableau de bord"
     },
+    "preview": {
+      "reserve": "Réserver",
+      "pay": "Payer"
+    },
+    "source": {
+      "title": "Une dernière chose…",
+      "description": "Comment avez-vous connu Louez ?",
+      "wordOfMouth": "Bouche à oreille",
+      "searchEngine": "Moteur de recherche (Google…)",
+      "instagramTiktok": "Instagram / TikTok",
+      "facebook": "Facebook",
+      "youtube": "YouTube",
+      "aiAssistant": "Assistant IA (ChatGPT…)",
+      "ads": "Publicité",
+      "other": "Autre",
+      "otherPlaceholder": "Précisez…",
+      "skip": "Passer",
+      "finish": "Terminer",
+      "panel": {
+        "title": "Un mot de l'équipe",
+        "p1": "Bienvenue sur Louez, et merci de votre confiance. Votre boutique est prête, on a hâte de voir vos premières réservations.",
+        "p2": "Une question ou une idée ? Écrivez-nous via le bouton d'aide en bas à gauche, on lit tout.",
+        "signature": "Les fondateurs de Louez"
+      }
+    },
     "steps": {
       "store": "Boutique",
       "branding": "Personnalisation",
       "product": "Premier produit",
-      "payment": "Paiements"
+      "payment": "Paiements",
+      "profile": "Profil",
+      "source": "Source"
     }
   },
   "categories": {
@@ -5603,9 +5747,9 @@
       "seeTomorrow": "À demain !"
     },
     "reminderReturn": {
-      "subject": "Rappel : retour de votre matériel aujourd'hui",
+      "subject": "Rappel : retour de votre matériel le {date}",
       "title": "Pensez à rendre votre matériel",
-      "body": "Ceci est un rappel pour votre réservation #{number}. Le retour du matériel est prévu pour aujourd'hui.",
+      "body": "Ceci est un rappel pour votre réservation #{number}. Le retour du matériel est prévu le {date}.",
       "scheduledReturn": "Retour prévu",
       "returnInfo": "Merci de rapporter le matériel en bon état. La caution vous sera restituée après vérification.",
       "thanks": "Merci de votre confiance !"

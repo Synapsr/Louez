@@ -10,16 +10,18 @@
  *   audience measurement (CNIL) — nothing is written to the visitor's
  *   device (memory persistence), no replay, no autocapture, no heatmaps,
  *   anonymous events. This keeps merchant storefronts banner-free; widening
- *   any of it requires a consent banner. See docs/analytics/setup-review-2026-07.md.
+ *   any of it requires a consent banner.
  *
  * @see https://posthog.com/docs/libraries/next-js
  */
 
 import posthog from 'posthog-js'
 
+import { env } from '@/env'
+
 function resolveSurface(): { isDashboard: boolean; storeSlug: string | null } {
   const hostname = window.location.hostname.toLowerCase()
-  const baseDomain = (process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000')
+  const baseDomain = (env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000')
     .split(':')[0]
     .toLowerCase()
 
@@ -45,10 +47,10 @@ function resolveSurface(): { isDashboard: boolean; storeSlug: string | null } {
   return { isDashboard: false, storeSlug: null }
 }
 
-if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+if (typeof window !== 'undefined' && env.NEXT_PUBLIC_POSTHOG_KEY) {
   const { isDashboard, storeSlug } = resolveSurface()
 
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+  posthog.init(env.NEXT_PUBLIC_POSTHOG_KEY, {
     // Route analytics through our reverse proxy to avoid CORS and ad blockers
     // The proxy is configured in next.config.ts rewrites
     api_host: '/ingest',
@@ -95,6 +97,9 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
   posthog.register({
     surface: isDashboard ? 'dashboard' : storeSlug ? 'storefront' : 'marketing',
     ...(storeSlug ? { store_slug: storeSlug } : {}),
+    ...(env.NEXT_PUBLIC_APP_VERSION
+      ? { $app_version: env.NEXT_PUBLIC_APP_VERSION }
+      : {}),
   })
 }
 

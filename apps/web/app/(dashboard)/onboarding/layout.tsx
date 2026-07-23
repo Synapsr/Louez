@@ -1,57 +1,39 @@
-'use client';
+import { eq } from "drizzle-orm";
 
-import { usePathname } from 'next/navigation';
+import { db, users } from "@louez/db";
 
-import { useTranslations } from 'next-intl';
+import { auth } from "@/lib/auth";
 
-import { Progress } from '@louez/ui';
+import { OnboardingShell } from "./_components/onboarding-shell";
+import { getOnboardingSteps } from "./_lib/steps";
 
-import { ONBOARDING_STEPS, getOnboardingStepIndex } from './_lib/steps';
+export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
+  // The (dashboard) layout above already redirects unauthenticated users.
+  const session = await auth();
+  const user = session?.user?.id
+    ? await db.query.users.findFirst({
+        where: eq(users.id, session.user.id),
+      })
+    : null;
 
-export default function OnboardingLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const pathname = usePathname();
-  const t = useTranslations('onboarding');
-  const stepIndex = getOnboardingStepIndex(pathname);
-  const currentStepIndex = stepIndex < 0 ? 0 : stepIndex;
-  const progress = ((currentStepIndex + 1) / ONBOARDING_STEPS.length) * 100;
+  // User-level steps only show up the first time. The step list is computed
+  // once per full page load: completing a step mid-flow does not re-render
+  // this layout, so the progress bar stays stable until the flow ends.
+  const steps = getOnboardingSteps({
+    needsProfile: !user?.profileCompletedAt,
+    needsSource: !user?.acquisitionChannel,
+  });
 
   return (
-    <div className="dashboard bg-muted/30 min-h-screen">
-      <div className="mx-auto max-w-2xl px-4 py-8">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold">Louez.io</h1>
-          <p className="text-muted-foreground mt-1">
-            {t('welcome.description')}
-          </p>
-        </div>
-
-        {/* Progress */}
-        <div className="mb-8">
-          <div className="mb-2 flex justify-between text-sm">
-            {ONBOARDING_STEPS.map((step, index) => (
-              <span
-                key={step.path}
-                className={
-                  index <= currentStepIndex
-                    ? 'text-primary font-medium'
-                    : 'text-muted-foreground'
-                }
-              >
-                {t(step.labelKey)}
-              </span>
-            ))}
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-
-        {/* Content */}
-        {children}
-      </div>
-    </div>
+    <OnboardingShell
+      steps={steps}
+      initialPreview={{
+        userName: user?.name ?? "",
+        userImage: user?.image ?? null,
+        userSeed: user?.id ?? "louez",
+      }}
+    >
+      {children}
+    </OnboardingShell>
   );
 }

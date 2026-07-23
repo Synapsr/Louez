@@ -12,18 +12,18 @@ This document is the entry point for all architecture and convention decisions a
 
 ## Imposed Stack
 
-| Layer | Technology | Non-negotiable |
-|-------|-----------|----------------|
-| Monorepo | Turborepo + pnpm | Yes |
-| Language | TypeScript (strict) | Yes |
-| Database | MySQL + Drizzle ORM | Yes |
-| Auth | Better Auth | Yes |
-| API | ORPC | Yes |
-| Server state | TanStack React Query | Yes |
-| Client state | Zustand | Yes |
-| Forms | TanStack Form + Zod | Yes |
-| Styling | Tailwind CSS | Yes |
-| UI primitives | @base-ui/react in `packages/ui` | Yes |
+| Layer         | Technology                      | Non-negotiable |
+| ------------- | ------------------------------- | -------------- |
+| Monorepo      | Turborepo + pnpm                | Yes            |
+| Language      | TypeScript (strict)             | Yes            |
+| Database      | MySQL + Drizzle ORM             | Yes            |
+| Auth          | Better Auth                     | Yes            |
+| API           | ORPC                            | Yes            |
+| Server state  | TanStack React Query            | Yes            |
+| Client state  | Zustand                         | Yes            |
+| Forms         | TanStack Form + Zod             | Yes            |
+| Styling       | Tailwind CSS                    | Yes            |
+| UI primitives | @base-ui/react in `packages/ui` | Yes            |
 
 ## Multi-Tenant Model
 
@@ -68,49 +68,55 @@ pending → confirmed → ongoing → completed
 
 Pick the framework based on the project's rendering needs:
 
-| If the project is... | Use |
-|----------------------|-----|
-| Server-rendered / content site / SEO-heavy | **Next.js** (App Router) |
-| Client-heavy SPA / dashboard / interactive-first | **TanStack Start** |
+| If the project is...                             | Use                      |
+| ------------------------------------------------ | ------------------------ |
+| Server-rendered / content site / SEO-heavy       | **Next.js** (App Router) |
+| Client-heavy SPA / dashboard / interactive-first | **TanStack Start**       |
 
 When in doubt, default to **Next.js**.
 
 ## Documents
 
+### Domain References
+
+| File                                     | Topic                                       |
+| ---------------------------------------- | ------------------------------------------- |
+| [domain/glossary.md](domain/glossary.md) | Canonical Louez product and domain language |
+
 ### From Scratch — Starting a new project
 
-| File | Topic |
-|------|-------|
-| [01-monorepo-setup.md](from-scratch/01-monorepo-setup.md) | Turborepo + pnpm workspace init |
+| File                                                              | Topic                                   |
+| ----------------------------------------------------------------- | --------------------------------------- |
+| [01-monorepo-setup.md](from-scratch/01-monorepo-setup.md)         | Turborepo + pnpm workspace init         |
 | [02-framework-decision.md](from-scratch/02-framework-decision.md) | Next.js vs TanStack Start decision tree |
-| [03-packages.md](from-scratch/03-packages.md) | Shared packages structure |
-| [04-backend.md](from-scratch/04-backend.md) | API, DB, auth setup |
-| [05-frontend.md](from-scratch/05-frontend.md) | Components, state, styling |
-| [06-tooling.md](from-scratch/06-tooling.md) | Linting, formatting, TypeScript config |
+| [03-packages.md](from-scratch/03-packages.md)                     | Shared packages structure               |
+| [04-backend.md](from-scratch/04-backend.md)                       | API, DB, auth setup                     |
+| [05-frontend.md](from-scratch/05-frontend.md)                     | Components, state, styling              |
+| [06-tooling.md](from-scratch/06-tooling.md)                       | Linting, formatting, TypeScript config  |
 
 ### Migration — Cleaning up existing projects
 
-| File | Topic |
-|------|-------|
-| [01-audit.md](migration/01-audit.md) | Diagnosing spaghetti code |
-| [02-strategy.md](migration/02-strategy.md) | Incremental vs big-bang approach |
+| File                                                             | Topic                                   |
+| ---------------------------------------------------------------- | --------------------------------------- |
+| [01-audit.md](migration/01-audit.md)                             | Diagnosing spaghetti code               |
+| [02-strategy.md](migration/02-strategy.md)                       | Incremental vs big-bang approach        |
 | [03-extraction-patterns.md](migration/03-extraction-patterns.md) | Extracting packages, splitting features |
-| [04-checklist.md](migration/04-checklist.md) | Post-migration conformance checklist |
+| [04-checklist.md](migration/04-checklist.md)                     | Post-migration conformance checklist    |
 
 ### Code Review — Pre-commit quality gate
 
 Applied contextually: the agent (or reviewer) checks only the rules relevant to the files changed in the diff.
 
-| File | Applies when... |
-|------|----------------|
-| [00-general.md](code-review/00-general.md) | Any change |
-| [01-structure.md](code-review/01-structure.md) | Any file created, moved, or renamed |
-| [02-typescript.md](code-review/02-typescript.md) | Any `.ts` / `.tsx` file changed |
-| [03-react-patterns.md](code-review/03-react-patterns.md) | React components or hooks changed |
-| [04-data-layer.md](code-review/04-data-layer.md) | Drizzle queries, ORPC routes, React Query hooks |
-| [05-styling.md](code-review/05-styling.md) | Tailwind classes or style files changed |
-| [06-security.md](code-review/06-security.md) | Auth, API routes, user input handling |
-| [07-checklist.md](code-review/07-checklist.md) | **Always** — condensed pass/fail checklist |
+| File                                                     | Applies when...                                 |
+| -------------------------------------------------------- | ----------------------------------------------- |
+| [00-general.md](code-review/00-general.md)               | Any change                                      |
+| [01-structure.md](code-review/01-structure.md)           | Any file created, moved, or renamed             |
+| [02-typescript.md](code-review/02-typescript.md)         | Any `.ts` / `.tsx` file changed                 |
+| [03-react-patterns.md](code-review/03-react-patterns.md) | React components or hooks changed               |
+| [04-data-layer.md](code-review/04-data-layer.md)         | Drizzle queries, ORPC routes, React Query hooks |
+| [05-styling.md](code-review/05-styling.md)               | Tailwind classes or style files changed         |
+| [06-security.md](code-review/06-security.md)             | Auth, API routes, user input handling           |
+| [07-checklist.md](code-review/07-checklist.md)           | **Always** — condensed pass/fail checklist      |
 
 ## How to Use (for AI agents)
 

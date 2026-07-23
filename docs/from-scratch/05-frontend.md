@@ -52,7 +52,7 @@ Don't wrap `useQuery` in custom hooks — it hides options, breaks type inferenc
 
 ```typescript
 // lib/queries/podcast.queries.ts
-import { queryOptions } from '@tanstack/react-query';
+import { queryOptions } from "@tanstack/react-query";
 
 export const podcastQueries = {
   list: (channelId: string) =>
@@ -160,7 +160,7 @@ components/form/
 
 ```typescript
 // hooks/form/form-context.tsx
-import { createFormHookContexts } from '@tanstack/react-form';
+import { createFormHookContexts } from "@tanstack/react-form";
 
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts();
@@ -168,11 +168,11 @@ export const { fieldContext, formContext, useFieldContext, useFormContext } =
 
 ```typescript
 // hooks/form/form.tsx
-import { createFormHook } from '@tanstack/react-form';
+import { createFormHook } from "@tanstack/react-form";
 
-import { FormForm } from '@/components/form/form-form';
+import { FormForm } from "@/components/form/form-form";
 
-import { fieldContext, formContext } from './form-context';
+import { fieldContext, formContext } from "./form-context";
 
 export const { useAppForm, withForm } = createFormHook({
   fieldComponents: {
@@ -192,14 +192,14 @@ export const { useAppForm, withForm } = createFormHook({
 Use Zod schemas with TanStack Form's `validators` option. Default to `revalidateLogic` for the best UX: quiet before first submit, real-time feedback after.
 
 ```typescript
-import { revalidateLogic } from '@tanstack/react-form';
+import { revalidateLogic } from "@tanstack/react-form";
 
 const form = useAppForm({
-  defaultValues: { email: '', password: '' },
+  defaultValues: { email: "", password: "" },
   validators: { onSubmit: schema },
   validationLogic: revalidateLogic({
-    mode: 'submit', // before first submit: validate on submit only
-    modeAfterSubmission: 'change', // after first submit: validate on every change
+    mode: "submit", // before first submit: validate on submit only
+    modeAfterSubmission: "change", // after first submit: validate on every change
   }),
   onSubmit: async ({ value }) => {
     await mutation.mutateAsync(value);
@@ -216,21 +216,21 @@ Where to put schemas:
 
 ```tsx
 const schema = z.object({
-  email: z.email('Please enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const LoginForm = () => {
   const mutation = useMutation(authMutations.login());
 
   const form = useAppForm({
-    defaultValues: { email: '', password: '' },
+    defaultValues: { email: "", password: "" },
     onSubmit: async ({ value }) => {
       await mutation.mutateAsync(value);
     },
     validationLogic: revalidateLogic({
-      mode: 'submit',
-      modeAfterSubmission: 'change',
+      mode: "submit",
+      modeAfterSubmission: "change",
     }),
     validators: { onSubmit: schema },
   });
@@ -239,9 +239,7 @@ export const LoginForm = () => {
     <form.AppForm>
       <form.Form>
         <form.AppField name="email">
-          {(field) => (
-            <field.Input label="Email" placeholder="johndoe@email.com" />
-          )}
+          {(field) => <field.Input label="Email" placeholder="johndoe@email.com" />}
         </form.AppField>
 
         <form.AppField name="password">
@@ -293,7 +291,6 @@ See [code-review/05-styling.md](../code-review/05-styling.md) for Tailwind conve
 
 - [04-backend.md](04-backend.md) — oRPC + TanStack Query integration (where component data comes from)
 - [03-packages.md](03-packages.md) — `@louez/ui` (primitives, icons, component library)
-- [../legacy/FORM_HANDLING.md](../legacy/FORM_HANDLING.md) — Louez legacy form-handling notes kept for migration context
 - [code-review/03-react-patterns.md](../code-review/03-react-patterns.md) — React component rules (rationale)
 - [code-review/04-data-layer.md](../code-review/04-data-layer.md) — React Query usage rules in components
 - [code-review/05-styling.md](../code-review/05-styling.md) — Tailwind conventions

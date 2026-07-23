@@ -1,11 +1,12 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath } from "next/cache";
 
-import { and, eq } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
+import { and, eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { FilesError } from "files-sdk";
 
-import { db } from '@louez/db';
+import { db } from "@louez/db";
 import {
   inspectionItems,
   inspectionPhotos,
@@ -16,7 +17,7 @@ import {
   reservationItemUnits,
   reservationItems,
   reservations,
-} from '@louez/db';
+} from "@louez/db";
 import {
   type CompleteInspectionInput,
   type CreateInspectionInput,
@@ -24,9 +25,11 @@ import {
   completeInspectionSchema,
   createInspectionSchema,
   signInspectionSchema,
-} from '@louez/validations';
+  isOwnedImageUrl,
+} from "@louez/validations";
 
-import { getCurrentStore } from '@/lib/store-context';
+import { getCurrentStore } from "@/lib/store-context";
+import { getImageFiles } from "@/lib/storage/files";
 
 export interface RepairDowntimeSuggestion {
   units: Array<{
@@ -40,17 +43,18 @@ export interface RepairDowntimeSuggestion {
 // Create Inspection
 // ============================================================================
 
-export async function createInspection(
-  data: CreateInspectionInput,
-): Promise<{ inspectionId?: string; error?: string }> {
+export async function createInspection(data: CreateInspectionInput): Promise<{
+  inspectionId?: string;
+  error?: string;
+}> {
   const store = await getCurrentStore();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const validated = createInspectionSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
   }
 
   const { reservationId, type, templateId, notes, items } = validated.data;
@@ -59,37 +63,28 @@ export async function createInspection(
   const [reservation] = await db
     .select({ id: reservations.id, customerId: reservations.customerId })
     .from(reservations)
-    .where(
-      and(
-        eq(reservations.id, reservationId),
-        eq(reservations.storeId, store.id),
-      ),
-    )
+    .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
     .limit(1);
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' };
+    return { error: "errors.reservationNotFound" };
   }
 
   // Check if inspection already exists
   const [existing] = await db
     .select({ id: inspections.id })
     .from(inspections)
-    .where(
-      and(
-        eq(inspections.reservationId, reservationId),
-        eq(inspections.type, type),
-      ),
-    )
+    .where(and(eq(inspections.reservationId, reservationId), eq(inspections.type, type)))
     .limit(1);
 
   if (existing) {
-    return { error: 'errors.inspectionAlreadyExists' };
+    return { error: "errors.inspectionAlreadyExists" };
   }
 
   const inspectionId = nanoid();
   const now = new Date();
   const inspectionItemRows: Array<typeof inspectionItems.$inferInsert> = [];
+  const inspectionPhotoRows: Array<typeof inspectionPhotos.$inferInsert> = [];
 
   // Validate and prepare inspection items before writing the inspection.
   for (const item of items) {
@@ -111,7 +106,7 @@ export async function createInspection(
       .limit(1);
 
     if (!reservationItemData) {
-      return { error: 'errors.invalidData' };
+      return { error: "errors.invalidData" };
     }
 
     let unitIdentifier: string | null = null;
@@ -122,10 +117,7 @@ export async function createInspection(
           identifier: productUnits.identifier,
         })
         .from(reservationItemUnits)
-        .innerJoin(
-          productUnits,
-          eq(productUnits.id, reservationItemUnits.productUnitId),
-        )
+        .innerJoin(productUnits, eq(productUnits.id, reservationItemUnits.productUnitId))
         .where(
           and(
             eq(reservationItemUnits.reservationItemId, item.reservationItemId),
@@ -135,7 +127,7 @@ export async function createInspection(
         .limit(1);
 
       if (!assignedUnit) {
-        return { error: 'errors.invalidData' };
+        return { error: "errors.invalidData" };
       }
 
       unitIdentifier = assignedUnit.identifier;
@@ -154,6 +146,21 @@ export async function createInspection(
       notes: item.notes || null,
       createdAt: now,
     });
+    for (const [displayOrder, photo] of item.photos.entries()) {
+      if (!isOwnedImageUrl(photo.url, `${store.id}/inspections`)) {
+        return { error: "errors.invalidData" };
+      }
+
+      inspectionPhotoRows.push({
+        id: nanoid(),
+        inspectionItemId: itemId,
+        photoKey: `${store.id}/inspections/${photo.key}`,
+        photoUrl: photo.url,
+        caption: photo.caption || null,
+        displayOrder,
+        createdAt: now,
+      });
+    }
   }
 
   await db.transaction(async (tx) => {
@@ -162,7 +169,7 @@ export async function createInspection(
       storeId: store.id,
       reservationId,
       type,
-      status: 'draft',
+      status: "draft",
       templateId: templateId || null,
       notes: notes || null,
       performedById: store.userId,
@@ -172,12 +179,14 @@ export async function createInspection(
 
     await tx.insert(inspectionItems).values(inspectionItemRows);
 
+    if (inspectionPhotoRows.length > 0) {
+      await tx.insert(inspectionPhotos).values(inspectionPhotoRows);
+    }
+
     await tx.insert(reservationActivity).values({
       reservationId,
       activityType:
-        type === 'departure'
-          ? 'inspection_departure_started'
-          : 'inspection_return_started',
+        type === "departure" ? "inspection_departure_started" : "inspection_return_started",
       userId: store.userId,
     });
   });
@@ -201,16 +210,15 @@ export async function completeInspection(
 }> {
   const store = await getCurrentStore();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const validated = completeInspectionSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
   }
 
-  const { notes, hasDamage, damageDescription, estimatedDamageCost } =
-    validated.data;
+  const { notes, hasDamage, damageDescription, estimatedDamageCost } = validated.data;
 
   // Get inspection and verify access
   const [inspection] = await db
@@ -221,17 +229,15 @@ export async function completeInspection(
       status: inspections.status,
     })
     .from(inspections)
-    .where(
-      and(eq(inspections.id, inspectionId), eq(inspections.storeId, store.id)),
-    )
+    .where(and(eq(inspections.id, inspectionId), eq(inspections.storeId, store.id)))
     .limit(1);
 
   if (!inspection) {
-    return { error: 'errors.inspectionNotFound' };
+    return { error: "errors.inspectionNotFound" };
   }
 
-  if (inspection.status !== 'draft') {
-    return { error: 'errors.inspectionAlreadyCompleted' };
+  if (inspection.status !== "draft") {
+    return { error: "errors.inspectionAlreadyCompleted" };
   }
 
   const now = new Date();
@@ -240,7 +246,7 @@ export async function completeInspection(
     await tx
       .update(inspections)
       .set({
-        status: 'completed',
+        status: "completed",
         notes: notes || null,
         hasDamage,
         damageDescription: damageDescription || null,
@@ -252,16 +258,16 @@ export async function completeInspection(
     await tx.insert(reservationActivity).values({
       reservationId: inspection.reservationId,
       activityType:
-        inspection.type === 'departure'
-          ? 'inspection_departure_completed'
-          : 'inspection_return_completed',
+        inspection.type === "departure"
+          ? "inspection_departure_completed"
+          : "inspection_return_completed",
       userId: store.userId,
     });
 
     if (hasDamage) {
       await tx.insert(reservationActivity).values({
         reservationId: inspection.reservationId,
-        activityType: 'inspection_damage_detected',
+        activityType: "inspection_damage_detected",
         userId: store.userId,
         metadata: {
           inspectionId,
@@ -274,7 +280,7 @@ export async function completeInspection(
 
   let repairDowntimeSuggestion: RepairDowntimeSuggestion | undefined;
 
-  if (inspection.type === 'return') {
+  if (inspection.type === "return") {
     const damagedUnits = await db
       .select({
         id: productUnits.id,
@@ -282,15 +288,12 @@ export async function completeInspection(
         productName: products.name,
       })
       .from(inspectionItems)
-      .innerJoin(
-        productUnits,
-        eq(productUnits.id, inspectionItems.productUnitId),
-      )
+      .innerJoin(productUnits, eq(productUnits.id, inspectionItems.productUnitId))
       .innerJoin(products, eq(products.id, productUnits.productId))
       .where(
         and(
           eq(inspectionItems.inspectionId, inspectionId),
-          eq(inspectionItems.overallCondition, 'damaged'),
+          eq(inspectionItems.overallCondition, "damaged"),
           eq(products.storeId, store.id),
         ),
       );
@@ -324,12 +327,12 @@ export async function signInspection(
 ): Promise<{ success?: boolean; error?: string }> {
   const store = await getCurrentStore();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const validated = signInspectionSchema.safeParse(data);
   if (!validated.success) {
-    return { error: 'errors.invalidData' };
+    return { error: "errors.invalidData" };
   }
 
   const { customerSignature } = validated.data;
@@ -342,17 +345,15 @@ export async function signInspection(
       status: inspections.status,
     })
     .from(inspections)
-    .where(
-      and(eq(inspections.id, inspectionId), eq(inspections.storeId, store.id)),
-    )
+    .where(and(eq(inspections.id, inspectionId), eq(inspections.storeId, store.id)))
     .limit(1);
 
   if (!inspection) {
-    return { error: 'errors.inspectionNotFound' };
+    return { error: "errors.inspectionNotFound" };
   }
 
-  if (inspection.status === 'signed') {
-    return { error: 'errors.inspectionAlreadySigned' };
+  if (inspection.status === "signed") {
+    return { error: "errors.inspectionAlreadySigned" };
   }
 
   const now = new Date();
@@ -361,7 +362,7 @@ export async function signInspection(
   await db
     .update(inspections)
     .set({
-      status: 'signed',
+      status: "signed",
       customerSignature,
       signedAt: now,
       updatedAt: now,
@@ -371,7 +372,7 @@ export async function signInspection(
   // Log activity
   await db.insert(reservationActivity).values({
     reservationId: inspection.reservationId,
-    activityType: 'inspection_signed',
+    activityType: "inspection_signed",
     userId: store.userId,
   });
 
@@ -393,9 +394,7 @@ export async function getInspection(inspectionId: string) {
   const [inspection] = await db
     .select()
     .from(inspections)
-    .where(
-      and(eq(inspections.id, inspectionId), eq(inspections.storeId, store.id)),
-    )
+    .where(and(eq(inspections.id, inspectionId), eq(inspections.storeId, store.id)))
     .limit(1);
 
   if (!inspection) {
@@ -412,12 +411,7 @@ export async function getInspection(inspectionId: string) {
   const photos = await db
     .select()
     .from(inspectionPhotos)
-    .where(
-      eq(
-        inspectionPhotos.inspectionItemId,
-        items.length > 0 ? items[0].id : '',
-      ),
-    );
+    .where(eq(inspectionPhotos.inspectionItemId, items.length > 0 ? items[0].id : ""));
 
   return {
     ...inspection,
@@ -439,75 +433,9 @@ export async function getReservationInspections(reservationId: string) {
   const result = await db
     .select()
     .from(inspections)
-    .where(
-      and(
-        eq(inspections.reservationId, reservationId),
-        eq(inspections.storeId, store.id),
-      ),
-    );
+    .where(and(eq(inspections.reservationId, reservationId), eq(inspections.storeId, store.id)));
 
   return result;
-}
-
-// ============================================================================
-// Upload Photo
-// ============================================================================
-
-export async function uploadInspectionPhoto(
-  inspectionItemId: string,
-  photoKey: string,
-  photoUrl: string,
-  thumbnailKey?: string,
-  thumbnailUrl?: string,
-  caption?: string,
-): Promise<{ photoId?: string; error?: string }> {
-  const store = await getCurrentStore();
-  if (!store) {
-    return { error: 'errors.unauthorized' };
-  }
-
-  // Verify item belongs to store's inspection
-  const [item] = await db
-    .select({
-      id: inspectionItems.id,
-      inspectionId: inspectionItems.inspectionId,
-    })
-    .from(inspectionItems)
-    .innerJoin(inspections, eq(inspections.id, inspectionItems.inspectionId))
-    .where(
-      and(
-        eq(inspectionItems.id, inspectionItemId),
-        eq(inspections.storeId, store.id),
-      ),
-    )
-    .limit(1);
-
-  if (!item) {
-    return { error: 'errors.inspectionItemNotFound' };
-  }
-
-  // Get current photo count
-  const existingPhotos = await db
-    .select({ id: inspectionPhotos.id })
-    .from(inspectionPhotos)
-    .where(eq(inspectionPhotos.inspectionItemId, inspectionItemId));
-
-  const photoId = nanoid();
-  const now = new Date();
-
-  await db.insert(inspectionPhotos).values({
-    id: photoId,
-    inspectionItemId,
-    photoKey,
-    photoUrl,
-    thumbnailKey: thumbnailKey || null,
-    thumbnailUrl: thumbnailUrl || null,
-    caption: caption || null,
-    displayOrder: existingPhotos.length,
-    createdAt: now,
-  });
-
-  return { photoId };
 }
 
 // ============================================================================
@@ -519,7 +447,7 @@ export async function deleteInspectionPhoto(
 ): Promise<{ success?: boolean; error?: string }> {
   const store = await getCurrentStore();
   if (!store) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   // Verify photo belongs to store's inspection
@@ -530,25 +458,27 @@ export async function deleteInspectionPhoto(
       thumbnailKey: inspectionPhotos.thumbnailKey,
     })
     .from(inspectionPhotos)
-    .innerJoin(
-      inspectionItems,
-      eq(inspectionItems.id, inspectionPhotos.inspectionItemId),
-    )
+    .innerJoin(inspectionItems, eq(inspectionItems.id, inspectionPhotos.inspectionItemId))
     .innerJoin(inspections, eq(inspections.id, inspectionItems.inspectionId))
-    .where(
-      and(eq(inspectionPhotos.id, photoId), eq(inspections.storeId, store.id)),
-    )
+    .where(and(eq(inspectionPhotos.id, photoId), eq(inspections.storeId, store.id)))
     .limit(1);
 
   if (!photo) {
-    return { error: 'errors.photoNotFound' };
+    return { error: "errors.photoNotFound" };
   }
 
-  // Delete from database
-  await db.delete(inspectionPhotos).where(eq(inspectionPhotos.id, photoId));
+  try {
+    await getImageFiles().delete(photo.photoKey);
+    if (photo.thumbnailKey) {
+      await getImageFiles().delete(photo.thumbnailKey);
+    }
+  } catch (error) {
+    if (!(error instanceof FilesError && error.code === "NotFound")) {
+      return { error: "errors.serverError" };
+    }
+  }
 
-  // Note: Actual file deletion from S3/R2 should be handled separately
-  // to avoid orphaned files if deletion fails
+  await db.delete(inspectionPhotos).where(eq(inspectionPhotos.id, photoId));
 
   return { success: true };
 }

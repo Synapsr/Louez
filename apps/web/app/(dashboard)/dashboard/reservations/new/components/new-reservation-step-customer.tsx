@@ -161,7 +161,9 @@ export function NewReservationStepCustomer({
               </form.AppField>
             </div>
             <form.AppField name="phone">
-              {(field) => <field.Input label={t('phone')} placeholder={t('phonePlaceholder')} />}
+              {(field) => (
+                <field.PhoneInput label={t('phone')} placeholder={t('phonePlaceholder')} />
+              )}
             </form.AppField>
           </div>
         )}

@@ -93,7 +93,7 @@ interface PaymentMethodInfo {
 }
 
 type PaymentType = "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
-type PaymentMethod = "cash" | "card" | "transfer" | "check" | "other";
+export type PaymentMethod = "cash" | "card" | "transfer" | "check" | "other";
 
 type DepositStatus =
   | "none"
@@ -124,6 +124,7 @@ interface UnifiedPaymentSectionProps {
     phone?: string | null;
   };
   stripeConfigured: boolean;
+  defaultPaymentMethod?: PaymentMethod;
 }
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
@@ -182,6 +183,7 @@ export function UnifiedPaymentSection({
   stripePaymentMethodId,
   customer,
   stripeConfigured,
+  defaultPaymentMethod = "cash",
 }: UnifiedPaymentSectionProps) {
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
@@ -205,7 +207,7 @@ export function UnifiedPaymentSection({
   // Form state
   const [paymentType, setPaymentType] = useState<PaymentType>("rental");
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethodType, setPaymentMethodType] = useState<PaymentMethod>("cash");
+  const [paymentMethodType, setPaymentMethodType] = useState<PaymentMethod>(defaultPaymentMethod);
   const [paymentNotes, setPaymentNotes] = useState("");
   const [captureAmount, setCaptureAmount] = useState("");
   const [captureReason, setCaptureReason] = useState("");
@@ -797,7 +799,7 @@ export function UnifiedPaymentSection({
                         render={
                           <Button
                             size="icon"
-                            variant="success-outline"
+                            variant="outline"
                             className="h-7 w-7"
                             onClick={openDepositReturnModal}
                           />
@@ -892,7 +894,7 @@ export function UnifiedPaymentSection({
                     {depositStatusVal === "authorized" && !authorizationExpired && (
                       <>
                         <Button
-                          variant="success-outline"
+                          variant="outline"
                           onClick={() => setReleaseDialogOpen(true)}
                           disabled={isLoading}
                           className="flex-1"
@@ -901,7 +903,7 @@ export function UnifiedPaymentSection({
                           {t("deposit.release")}
                         </Button>
                         <Button
-                          variant="destructive-outline"
+                          variant="destructive"
                           onClick={() => {
                             setCaptureAmount(deposit.toFixed(2));
                             setCaptureModalOpen(true);
@@ -958,7 +960,7 @@ export function UnifiedPaymentSection({
           {/* Damage button for finished reservations */}
           {isReservationFinished && depositToReturn > 0 && (
             <Button
-              variant="destructive-outline"
+              variant="destructive"
               className="w-full text-xs"
               onClick={() => setDamageModalOpen(true)}
             >
@@ -1252,7 +1254,7 @@ export function UnifiedPaymentSection({
             </div>
           </DialogPanel>
 
-          <DialogFooter>
+          <DialogFooter className="flex-row justify-between">
             <Button variant="outline" onClick={() => setPaymentModalOpen(false)}>
               {tCommon("cancel")}
             </Button>

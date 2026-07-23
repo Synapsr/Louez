@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 
 import { Button } from '@louez/ui';
 import { Label } from '@louez/ui';
+import { CountryFlag } from '@louez/ui/icons/flags';
 import {
   Card,
   CardContent,
@@ -25,7 +26,6 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { getFieldError } from '@/hooks/form/form-context';
 import {
   getCountriesSortedByName,
-  getCountryFlag,
   getCountryName,
 } from '@/lib/utils/countries';
 import {
@@ -153,7 +153,11 @@ export function StoreSettingsIdentitySection({
                     <SelectValue className="min-w-0">
                       {field.state.value && (
                         <span className="flex min-w-0 items-center gap-2">
-                          <span className="shrink-0">{getCountryFlag(field.state.value)}</span>
+                          <CountryFlag
+                            country={field.state.value}
+                            countryName={getCountryName(field.state.value)}
+                            className="h-4 w-6 shrink-0 [&_img]:size-full [&_svg]:size-full"
+                          />
                           <span className="truncate">
                             {getCountryName(field.state.value)}
                           </span>
@@ -165,7 +169,11 @@ export function StoreSettingsIdentitySection({
                     {getCountriesSortedByName().map((country) => (
                       <SelectItem key={country.code} value={country.code}>
                         <span className="flex items-center gap-2">
-                          <span>{country.flag}</span>
+                          <CountryFlag
+                            country={country.code}
+                            countryName={getCountryName(country.code)}
+                            className="h-4 w-6 shrink-0 [&_img]:size-full [&_svg]:size-full"
+                          />
                           <span>{getCountryName(country.code)}</span>
                         </span>
                       </SelectItem>

@@ -1,5 +1,6 @@
 import { fr, enUS, de, es, it, nl, pl, ptBR } from 'date-fns/locale'
 import type { Locale as DateFnsLocale } from 'date-fns'
+import { createTranslator } from 'next-intl'
 
 // Import message files
 import frMessages from '@/messages/fr.json'
@@ -148,6 +149,17 @@ export function getEmailMessages(locale: EmailLocale = 'fr'): EmailMessages {
 export function getEmailTranslations(locale: EmailLocale = 'fr') {
   const messages = getEmailMessages(locale)
   return messages.emails
+}
+
+/**
+ * Get a next-intl translator for email messages, including ICU interpolation.
+ */
+export function getEmailTranslator(locale: EmailLocale = 'fr') {
+  return createTranslator({
+    locale,
+    messages: getEmailMessages(locale),
+    namespace: 'emails',
+  })
 }
 
 /**

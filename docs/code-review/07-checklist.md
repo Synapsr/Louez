@@ -12,15 +12,15 @@
 
 ## Domain detection
 
-| If the diff contains... | Check section |
-|------------------------|---------------|
-| New/renamed/moved files | **Structure** |
-| Any `.ts` / `.tsx` changes | **TypeScript** |
-| React components or hooks | **React** |
+| If the diff contains...                               | Check section  |
+| ----------------------------------------------------- | -------------- |
+| New/renamed/moved files                               | **Structure**  |
+| Any `.ts` / `.tsx` changes                            | **TypeScript** |
+| React components or hooks                             | **React**      |
 | Drizzle queries, oRPC routes, query options factories | **Data Layer** |
-| TanStack Form, `useAppForm`, form components | **Forms** |
-| Tailwind classes, style changes | **Styling** |
-| Auth, API routes, user input | **Security** |
+| TanStack Form, `useAppForm`, form components          | **Forms**      |
+| Tailwind classes, style changes                       | **Styling**    |
+| Auth, API routes, user input                          | **Security**   |
 
 ---
 

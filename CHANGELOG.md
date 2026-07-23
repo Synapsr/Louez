@@ -94,28 +94,34 @@ Track individual items with unique identifiers.
 ### 🐛 Bug Fixes
 
 **Security & Validation**
+
 - 🛡️ NaN validation and GPS coordinate range checks in delivery
 - 🔒 httpOnly cookie for store selection (XSS protection)
 - ⚡ Parallelized multi-store metrics queries (N+1 fix)
 - 💰 Delivery fees rounded to 2 decimal places
 
 **Email Compatibility**
+
 - 🖼️ SVG logos converted to PNG (Gmail, Outlook, Yahoo)
 - 📎 CID attachments instead of data: URIs
 
 **Internationalization**
+
 - 🌍 50+ missing translation keys added across 8 languages
 - 📍 Fixed misplaced paths (accessories, checkout, confirmation)
 - 🔤 Hardcoded French strings replaced with i18n calls
 
 **Stripe**
+
 - 💳 Persist customer ID on creation (prevents duplicates)
 
 **Routing**
+
 - 🔗 Fixed double-slug issue on subdomain routing
 - 🔀 Absolute URLs for all server-side redirects
 
 **UI**
+
 - 📐 Reduced sidebar spacing for small screens
 - 🎨 Improved AlertDialog button styling
 
@@ -428,11 +434,12 @@ The first public release of Louez!
 
 <div align="center">
 
-*For upgrade instructions, see the [documentation](https://louez.io/docs).*
+_For upgrade instructions, see the [documentation](https://louez.io/docs)._
 
 </div>
 
 ---
+
 ---
 
 <a id="changelog-fr"></a>
@@ -533,28 +540,34 @@ Suivez les articles individuels avec des identifiants uniques.
 ### 🐛 Corrections de bugs
 
 **Sécurité & Validation**
+
 - 🛡️ Validation NaN et plages de coordonnées GPS pour la livraison
 - 🔒 Cookie httpOnly pour la sélection de boutique (protection XSS)
 - ⚡ Requêtes multi-boutiques parallélisées (fix N+1)
 - 💰 Frais de livraison arrondis à 2 décimales
 
 **Compatibilité Email**
+
 - 🖼️ Logos SVG convertis en PNG (Gmail, Outlook, Yahoo)
 - 📎 Pièces jointes CID au lieu des data: URIs
 
 **Internationalisation**
+
 - 🌍 50+ clés de traduction manquantes ajoutées sur 8 langues
 - 📍 Chemins mal placés corrigés (accessoires, checkout, confirmation)
 - 🔤 Chaînes françaises codées en dur remplacées par des appels i18n
 
 **Stripe**
+
 - 💳 Persistance de l'ID client à la création (évite les doublons)
 
 **Routage**
+
 - 🔗 Correction du problème de double-slug sur le routage par sous-domaine
 - 🔀 URLs absolues pour toutes les redirections côté serveur
 
 **Interface**
+
 - 📐 Espacement sidebar réduit pour petits écrans
 - 🎨 Style des boutons AlertDialog amélioré
 
@@ -867,6 +880,6 @@ Première version publique de Louez !
 
 <div align="center">
 
-*Pour les instructions de mise à jour, consultez la [documentation](https://louez.io/docs).*
+_Pour les instructions de mise à jour, consultez la [documentation](https://louez.io/docs)._
 
 </div>

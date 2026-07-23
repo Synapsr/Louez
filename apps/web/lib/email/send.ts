@@ -3,7 +3,13 @@ import { env } from '@/env'
 import { sendEmail, type EmailAttachment } from './client'
 import { db } from '@louez/db'
 import { emailLogs } from '@louez/db'
-import { getEmailTranslations, type EmailLocale } from './i18n'
+import {
+  getDateFormatPatterns,
+  getEmailTranslator,
+  getEmailTranslations,
+  type EmailLocale,
+} from './i18n'
+import { formatEmailDateInStoreTimezone } from './date-time'
 import { getLogoForLightBackground } from '@louez/utils'
 import { isSvgUrl, convertSvgToPngBuffer } from '@/lib/image-utils'
 import type { ReservationLocationSnapshot } from '@louez/types'
@@ -692,9 +698,18 @@ export async function sendReminderReturnEmail({
   }
   locale?: EmailLocale
 }) {
-  const t = getEmailTranslations(locale)
+  const translate = getEmailTranslator(locale)
   const customContent = store.emailSettings?.returnReminderContent
-  const subject = customContent?.subject || `${t.reminderReturn.subject} - ${store.name}`
+  const formattedEndDate = formatEmailDateInStoreTimezone(
+    reservation.endDate,
+    locale,
+    getDateFormatPatterns(locale).short,
+    store.settings?.timezone,
+    store.settings?.country
+  )
+  const subject =
+    customContent?.subject ||
+    `${translate('reminderReturn.subject', { date: formattedEndDate })} - ${store.name}`
 
   const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(

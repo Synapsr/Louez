@@ -16,7 +16,7 @@
 [![GitHub Stars](https://img.shields.io/github/stars/Synapsr/Louez?style=for-the-badge&logo=github)](https://github.com/Synapsr/Louez)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 
-[☁️ Cloud](https://louez.io) • [🚀 Self-Host](#-deploy-in-30-seconds) • [✨ Features](#-features) • [🗺️ Roadmap](ROADMAP.md) • [📋 Changelog](CHANGELOG.md)
+[☁️ Cloud](https://louez.io) • [🚀 Self-Host](#-deploy-in-30-seconds) • [✨ Features](#-features) • [📋 Changelog](CHANGELOG.md)
 
 </div>
 
@@ -28,7 +28,7 @@
 
 <video src="demo.mp4" width="100%" autoplay loop muted playsinline></video>
 
-*See Louez in action — from setup to first booking*
+_See Louez in action — from setup to first booking_
 
 </div>
 
@@ -38,14 +38,14 @@
 
 Whether you rent cameras, tools, party equipment, or vehicles — **Louez** gives you everything you need to run your rental business professionally.
 
-> 🇫🇷 *"Louez" means "rent" in French — because great software deserves a name that speaks to its purpose.*
+> 🇫🇷 _"Louez" means "rent" in French — because great software deserves a name that speaks to its purpose._
 
-| 💸 **No Monthly Fees** | 🎨 **Beautiful Storefronts** | 🔒 **Own Your Data** |
-|:----------------------:|:---------------------------:|:--------------------:|
+|                   💸 **No Monthly Fees**                   |               🎨 **Beautiful Storefronts**                |            🔒 **Own Your Data**             |
+| :--------------------------------------------------------: | :-------------------------------------------------------: | :-----------------------------------------: |
 | Self-host for free. No subscriptions, no per-booking fees. | Every store gets a stunning, customizable online catalog. | Your server, your database, your customers. |
 
-| ⚡ **Deploy in Minutes** | 🌍 **Multi-language** | 📱 **Mobile Ready** |
-|:-----------------------:|:---------------------:|:-------------------:|
+|      ⚡ **Deploy in Minutes**       |            🌍 **Multi-language**            |        📱 **Mobile Ready**         |
+| :---------------------------------: | :-----------------------------------------: | :--------------------------------: |
 | One Docker command and you're live. | French & English built-in. Add more easily. | Responsive design for all devices. |
 
 ---
@@ -99,16 +99,16 @@ docker run -d -p 3000:3000 synapsr/louez
 
 Everything you need to manage your rental business in one place.
 
-| | Feature | What it does |
-|:-:|---------|-------------|
-| 📦 | **Products** | Manage inventory with images, flexible pricing tiers, and stock tracking |
-| 📅 | **Reservations** | Handle bookings, track status, manage pickups & returns |
-| 🗓️ | **Calendar** | Visual week/month view of all your reservations |
-| 👥 | **Customers** | Complete customer database with history |
-| 📈 | **Statistics** | Revenue charts, top products, occupancy insights |
-| 📄 | **Contracts** | Auto-generated PDF contracts |
-| ✉️ | **Emails** | Automated confirmations, reminders & notifications |
-| 👨‍👩‍👧‍👦 | **Team** | Invite staff with role-based permissions |
+|     | Feature          | What it does                                                             |
+| :-: | ---------------- | ------------------------------------------------------------------------ |
+| 📦  | **Products**     | Manage inventory with images, flexible pricing tiers, and stock tracking |
+| 📅  | **Reservations** | Handle bookings, track status, manage pickups & returns                  |
+| 🗓️  | **Calendar**     | Visual week/month view of all your reservations                          |
+| 👥  | **Customers**    | Complete customer database with history                                  |
+| 📈  | **Statistics**   | Revenue charts, top products, occupancy insights                         |
+| 📄  | **Contracts**    | Auto-generated PDF contracts                                             |
+| ✉️  | **Emails**       | Automated confirmations, reminders & notifications                       |
+| 👨‍👩‍👧‍👦  | **Team**         | Invite staff with role-based permissions                                 |
 
 ### 🛍️ Stunning Storefronts
 
@@ -179,13 +179,13 @@ docker-compose up -d
 
 Works out of the box with your favorite platforms:
 
-| Platform | How to deploy |
-|----------|---------------|
+| Platform      | How to deploy                    |
+| ------------- | -------------------------------- |
 | **EasyPanel** | Add Docker app → `synapsr/louez` |
-| **Dokploy** | Import from Docker Hub |
-| **Coolify** | One-click from Docker image |
-| **Portainer** | Create stack from compose |
-| **Railway** | Deploy from Docker image |
+| **Dokploy**   | Import from Docker Hub           |
+| **Coolify**   | One-click from Docker image      |
+| **Portainer** | Create stack from compose        |
+| **Railway**   | Deploy from Docker image         |
 
 ---
 
@@ -220,17 +220,17 @@ Open [http://localhost:3000](http://localhost:3000) 🎉
 
 Built with modern, battle-tested technologies:
 
-| | Technology | Purpose |
-|:-:|------------|---------|
-| ⚡ | **Next.js 16** | React framework with App Router |
-| 📘 | **TypeScript** | Type-safe development |
-| 🎨 | **Tailwind CSS 4** | Utility-first styling |
-| 🧩 | **Base UI** | Accessible UI primitives |
-| 🗄️ | **Drizzle ORM** | Type-safe database queries |
-| 🔐 | **Auth.js** | Authentication (Google, Magic Link) |
-| ✉️ | **React Email** | Beautiful email templates |
-| 📄 | **React PDF** | Contract generation |
-| 🌍 | **next-intl** | Internationalization |
+|     | Technology         | Purpose                             |
+| :-: | ------------------ | ----------------------------------- |
+| ⚡  | **Next.js 16**     | React framework with App Router     |
+| 📘  | **TypeScript**     | Type-safe development               |
+| 🎨  | **Tailwind CSS 4** | Utility-first styling               |
+| 🧩  | **Base UI**        | Accessible UI primitives            |
+| 🗄️  | **Drizzle ORM**    | Type-safe database queries          |
+| 🔐  | **Auth.js**        | Authentication (Google, Magic Link) |
+| ✉️  | **React Email**    | Beautiful email templates           |
+| 📄  | **React PDF**      | Contract generation                 |
+| 🌍  | **next-intl**      | Internationalization                |
 
 ---
 
@@ -241,27 +241,23 @@ Built with modern, battle-tested technologies:
 <details>
 <summary><strong>📋 Environment Variables</strong></summary>
 
-| Variable | Required | Description |
-|----------|:--------:|-------------|
-| `DATABASE_URL` | ✅ | MySQL connection string |
-| `AUTH_SECRET` | ✅ | Random secret (min 32 chars) |
-| `SMTP_HOST` | ✅ | SMTP server hostname |
-| `SMTP_PORT` | ✅ | SMTP server port |
-| `SMTP_USER` | ✅ | SMTP username |
-| `SMTP_PASSWORD` | ✅ | SMTP password |
-| `SMTP_FROM` | ✅ | Sender email address |
-| `NEXT_PUBLIC_APP_URL` | ✅ | Public URL of your app |
-| `AUTH_GOOGLE_ID` | | Google OAuth client ID |
-| `AUTH_GOOGLE_SECRET` | | Google OAuth secret |
-| `S3_ENDPOINT` | | S3-compatible endpoint |
-| `S3_REGION` | | S3 region |
-| `S3_BUCKET` | | S3 bucket name |
-| `S3_ACCESS_KEY` | | S3 access key |
-| `S3_SECRET_KEY` | | S3 secret key |
-| `AI_PROVIDER` | | `anthropic`, `openai` or `google` — enables the AI assistant & storefront advisor |
-| `AI_API_KEY` | | API key for the chosen AI provider |
-| `AI_MODEL` | | Optional AI model override |
-| `AI_ADVISOR_MODEL` | | Optional cheaper model for the storefront advisor |
+| Variable              | Required | Description                  |
+| --------------------- | :------: | ---------------------------- |
+| `DATABASE_URL`        |    ✅    | MySQL connection string      |
+| `AUTH_SECRET`         |    ✅    | Random secret (min 32 chars) |
+| `SMTP_HOST`           |    ✅    | SMTP server hostname         |
+| `SMTP_PORT`           |    ✅    | SMTP server port             |
+| `SMTP_USER`           |    ✅    | SMTP username                |
+| `SMTP_PASSWORD`       |    ✅    | SMTP password                |
+| `SMTP_FROM`           |    ✅    | Sender email address         |
+| `NEXT_PUBLIC_APP_URL` |    ✅    | Public URL of your app       |
+| `AUTH_GOOGLE_ID`      |          | Google OAuth client ID       |
+| `AUTH_GOOGLE_SECRET`  |          | Google OAuth secret          |
+| `S3_ENDPOINT`         |          | S3-compatible endpoint       |
+| `S3_REGION`           |          | S3 region                    |
+| `S3_BUCKET`           |          | S3 bucket name               |
+| `S3_ACCESS_KEY`       |          | S3 access key                |
+| `S3_SECRET_KEY`       |          | S3 secret key                |
 
 </details>
 

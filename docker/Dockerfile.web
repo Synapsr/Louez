@@ -46,15 +46,11 @@ COPY packages/email/package.json ./packages/email/
 COPY packages/pdf/package.json ./packages/pdf/
 COPY packages/mcp/package.json ./packages/mcp/
 COPY apps/web/package.json ./apps/web/
+COPY apps/voice-relay/package.json ./apps/voice-relay/
 
 # Install dependencies using pnpm
 RUN corepack enable pnpm && \
     pnpm install --frozen-lockfile
-
-# @louez/config ships only TS config JSON and has no dependencies, so pnpm
-# creates no node_modules for it. Ensure the directory exists so the
-# builder-stage `COPY --from=deps .../packages/config/node_modules` succeeds.
-RUN mkdir -p packages/config/node_modules
 
 # -----------------------------------------------------------------------------
 # Stage 2: Builder
@@ -73,6 +69,7 @@ ARG DATABASE_URL
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_APP_DOMAIN
 ARG NEXT_PUBLIC_DASHBOARD_SUBDOMAIN
+ARG NEXT_PUBLIC_APP_VERSION
 ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_POSTHOG_KEY
 ARG NEXT_PUBLIC_POSTHOG_HOST
@@ -87,7 +84,7 @@ ARG NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
 COPY --from=deps /app/packages/auth/node_modules ./packages/auth/node_modules
-COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
+# @louez/config is source-only and has no node_modules directory.
 COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
 COPY --from=deps /app/packages/utils/node_modules ./packages/utils/node_modules
 COPY --from=deps /app/packages/validations/node_modules ./packages/validations/node_modules
@@ -119,8 +116,11 @@ ENV NEXT_PUBLIC_FROMHELLO_API_URL=${NEXT_PUBLIC_FROMHELLO_API_URL}
 ENV NEXT_PUBLIC_FROMHELLO_KEY=${NEXT_PUBLIC_FROMHELLO_KEY}
 ENV NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN=${NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN}
 
-# Build the application using Turborepo
-RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web --env-mode=loose
+# Build the application using Turborepo. CI supplies the commit SHA; direct
+# EasyPanel builds fall back to a unique build identifier without manual input.
+RUN corepack enable pnpm && \
+    APP_VERSION="${NEXT_PUBLIC_APP_VERSION:-build-$(date -u +%Y%m%d%H%M%S)}" && \
+    NEXT_PUBLIC_APP_VERSION="${APP_VERSION}" pnpm turbo run build --filter=@louez/web --env-mode=loose
 
 # -----------------------------------------------------------------------------
 # Stage 3: Migrator

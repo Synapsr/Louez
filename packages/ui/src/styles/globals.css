@@ -1,10 +1,51 @@
 @source "../../../../packages/ui/src/**/*.{js,ts,jsx,tsx}";
 @custom-variant dark (&:is(.dark *));
 
+/* Inter 4.1 variable font, self-hosted from the consuming app's public folder. */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  font-named-instance: "Regular";
+  src: url("/fonts/Inter-4.1/web/InterVariable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  font-named-instance: "Italic";
+  src: url("/fonts/Inter-4.1/web/InterVariable-Italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter Variable Fallback";
+  font-style: normal;
+  font-weight: 100 900;
+  src: local("Arial");
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+
+@font-face {
+  font-family: "Inter Variable Fallback";
+  font-style: italic;
+  font-weight: 100 900;
+  src: local("Arial Italic");
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
+  --font-sans: "Inter Variable", "Inter Variable Fallback", sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -106,7 +147,14 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --shadow-border: var(--shadow-border);
   --animate-skeleton: skeleton 2s -1s infinite linear;
+
+  /* badges */
+  --color-badge-gray-background: var(--badge-gray-background);
+  --color-badge-gray-foreground: var(--badge-gray-foreground);
+  --color-badge-warning-background: var(--badge-warning-background);
+  --color-badge-warning-foreground: var(--badge-warning-foreground);
 
   --thumb-size: var(--spacing)*5;
 
@@ -119,14 +167,14 @@
 
 :root {
   --radius: 0.625rem;
+  --shadow-border: 0px 0px 0px 1px rgba(0, 0, 0, 0.15);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.546 0.228 264);
-  /* --primary: oklch(64.9% 0.193 252deg); */
+  --primary: oklch(0.598 0.211 258);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -145,7 +193,7 @@
   --louez-blue: oklch(0.649 0.193 251.78);
   --louez-green: oklch(0.595 0.123 157.68);
   --louez-orange: oklch(0.689 0.192 44.745);
-  --louez-yellow: oklch(0.846 0.173 85.568);
+  --louez-yellow: oklch(84.6% 0.173 85.6deg);
   --louez-red: oklch(0.626 0.193 23.026);
   --louez-gray: oklch(0.643 0 89.876);
   --louez-cyan: oklch(0.66 0.122 221.771);
@@ -217,9 +265,16 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* badges */
+  --badge-gray-background: oklch(95.8% 0 0deg);
+  --badge-gray-foreground: oklch(56.9% 0 0deg);
+  --badge-warning-background: oklch(97.4% 0.0143 50.8deg);
+  --badge-warning-foreground: oklch(76.1% 0.127 64.2deg);
 }
 
 .dark {
+  --shadow-border: inset 0 0 0 1px rgb(255 255 255 / 15%), 0 0 0 1px rgb(255 255 255 / 10%);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -313,7 +368,20 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    @apply font-sans bg-background antialiased font-[440];
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.root {
+  isolation: isolate;
 }

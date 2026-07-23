@@ -42,7 +42,10 @@ import { PhoneContactPopover } from "@/components/dashboard/phone-contact-popove
 import { ReservationHeader } from "./reservation-header";
 import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes";
 import { SmartReservationActions } from "./smart-reservation-actions";
-import { UnifiedPaymentSection } from "./unified-payment-section";
+import {
+  UnifiedPaymentSection,
+  type PaymentMethod,
+} from "./unified-payment-section";
 import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-selector";
 import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
 
@@ -96,6 +99,7 @@ interface ReservationDetailClientProps {
   inspectionSettings: InspectionSettingsLike;
   departureInspection: InspectionData | null;
   returnInspection: InspectionData | null;
+  defaultPaymentMethod?: PaymentMethod;
 }
 
 function toDate(value: Date | string | null | undefined) {
@@ -131,6 +135,7 @@ export function ReservationDetailClient({
   inspectionSettings,
   departureInspection,
   returnInspection,
+  defaultPaymentMethod,
 }: ReservationDetailClientProps) {
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
@@ -730,6 +735,7 @@ export function ReservationDetailClient({
               phone: reservation.customer.phone,
             }}
             stripeConfigured={stripeConfigured}
+            defaultPaymentMethod={defaultPaymentMethod}
           />
 
           <AdvisorConversationCard reservationId={reservation.id} />

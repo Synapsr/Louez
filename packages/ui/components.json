@@ -13,12 +13,13 @@
   "iconLibrary": "lucide",
   "aliases": {
     "components": "@louez/ui/components",
-    "ui": "@louez/ui/components",
     "utils": "@louez/ui/lib/utils",
+    "ui": "@louez/ui/components",
     "lib": "@louez/ui/lib",
     "hooks": "@louez/ui/hooks"
   },
   "registries": {
-    "@coss": "https://coss.com/ui/r/{name}.json"
+    "@coss": "https://coss.com/ui/r/{name}.json",
+    "@reui": "https://reui.io/r/{style}/{name}.json"
   }
 }

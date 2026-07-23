@@ -1,11 +1,14 @@
-import { useCallback, useMemo, useState } from 'react';
-import type { ChangeEvent, DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, DragEvent } from "react";
 
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 
-import { toastManager } from '@louez/ui';
+import { toastManager } from "@louez/ui";
 
-import type { ProductFormComponentApi } from '../types';
+import { useImageUpload } from "@/hooks/use-image-upload";
+import { getImageUploadIssue } from "@/lib/uploads/image-upload";
+
+import type { ProductFormComponentApi } from "../types";
 import {
   createMaxCenteredAspectCropPercent,
   createCroppedDataUrl,
@@ -17,7 +20,7 @@ import {
   type ProductImagePixelCropRect,
   type ProductImageSize,
   readFileAsDataUrl,
-} from '../utils/product-image-crop';
+} from "../utils/product-image-crop";
 
 interface UseProductFormMediaParams {
   form: ProductFormComponentApi;
@@ -25,7 +28,6 @@ interface UseProductFormMediaParams {
 }
 
 const MAX_PRODUCT_IMAGES = 5;
-const MAX_IMAGE_SIZE_BYTES = 15 * 1024 * 1024;
 
 interface PreparedUploadImage {
   id: string;
@@ -33,7 +35,7 @@ interface PreparedUploadImage {
   dataUrl: string;
 }
 
-type CropSessionMode = 'append' | 'replace';
+type CropSessionMode = "append" | "replace";
 
 export interface ProductImageCropQueueItem {
   id: string;
@@ -44,18 +46,47 @@ export interface ProductImageCropQueueItem {
   crop: ProductImagePercentCropRect;
   cropSizePercent: number;
   croppedAreaPixels: ProductImagePixelCropRect | null;
-  resultMode: 'cropped' | 'original';
+  resultMode: "cropped" | "original";
 }
 
 function createCandidateId(index: number) {
   return `product-image-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function useProductFormMedia({
-  form,
-  imagesPreviews,
-}: UseProductFormMediaParams) {
-  const t = useTranslations('dashboard.products.form');
+const dataUrlToFile = async (dataUrl: string, filename: string) => {
+  const response = await fetch(dataUrl);
+  const blob = await response.blob();
+  const extension = blob.type === "image/jpeg" ? "jpg" : blob.type.replace("image/", "");
+  return new File([blob], `${filename}.${extension}`, { type: blob.type });
+};
+
+export function useProductFormMedia({ form, imagesPreviews }: UseProductFormMediaParams) {
+  const t = useTranslations("dashboard.products.form");
+  const { uploadImage, deleteImage } = useImageUpload("product");
+  const pendingUploadsRef = useRef(new Set<string>());
+  const deleteImageRef = useRef(deleteImage);
+
+  useEffect(() => {
+    deleteImageRef.current = deleteImage;
+  }, [deleteImage]);
+
+  useEffect(
+    () => () => {
+      void Promise.allSettled(
+        [...pendingUploadsRef.current].map((url) => deleteImageRef.current(url)),
+      );
+    },
+    [],
+  );
+
+  useEffect(() => {
+    for (const url of pendingUploadsRef.current) {
+      if (!imagesPreviews.includes(url)) {
+        pendingUploadsRef.current.delete(url);
+        void deleteImage(url).catch(() => undefined);
+      }
+    }
+  }, [deleteImage, imagesPreviews]);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isPreparingSession, setIsPreparingSession] = useState(false);
@@ -63,17 +94,10 @@ export function useProductFormMedia({
 
   const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
   const [selectedCropIndex, setSelectedCropIndex] = useState(0);
-  const [cropQueueItems, setCropQueueItems] = useState<
-    ProductImageCropQueueItem[]
-  >([]);
-  const [passthroughQueueItems, setPassthroughQueueItems] = useState<
-    PreparedUploadImage[]
-  >([]);
-  const [cropSessionMode, setCropSessionMode] =
-    useState<CropSessionMode>('append');
-  const [replaceImageIndex, setReplaceImageIndex] = useState<number | null>(
-    null,
-  );
+  const [cropQueueItems, setCropQueueItems] = useState<ProductImageCropQueueItem[]>([]);
+  const [passthroughQueueItems, setPassthroughQueueItems] = useState<PreparedUploadImage[]>([]);
+  const [cropSessionMode, setCropSessionMode] = useState<CropSessionMode>("append");
+  const [replaceImageIndex, setReplaceImageIndex] = useState<number | null>(null);
 
   const isUploadingImages = isPreparingSession || isUploadingToServer;
 
@@ -90,7 +114,7 @@ export function useProductFormMedia({
     setSelectedCropIndex(0);
     setCropQueueItems([]);
     setPassthroughQueueItems([]);
-    setCropSessionMode('append');
+    setCropSessionMode("append");
     setReplaceImageIndex(null);
   }, []);
 
@@ -108,23 +132,13 @@ export function useProductFormMedia({
         for (let index = 0; index < preparedImages.length; index += 1) {
           const prepared = preparedImages[index];
 
-          const response = await fetch('/api/upload/image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              image: prepared.dataUrl,
-              type: 'product',
-              filename: `product-${Date.now()}-${prepared.order}`,
-            }),
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Upload failed');
-          }
-
-          const { url } = await response.json();
-          uploadedUrls.push({ order: prepared.order, url });
+          const file = await dataUrlToFile(
+            prepared.dataUrl,
+            `product-${Date.now()}-${prepared.order}`,
+          );
+          const uploaded = await uploadImage(file);
+          pendingUploadsRef.current.add(uploaded.url);
+          uploadedUrls.push({ order: prepared.order, url: uploaded.url });
         }
 
         if (uploadedUrls.length > 0) {
@@ -133,7 +147,7 @@ export function useProductFormMedia({
             .map((item) => item.url);
 
           if (
-            options?.mode === 'replace' &&
+            options?.mode === "replace" &&
             options.replaceIndex != null &&
             options.replaceIndex >= 0 &&
             options.replaceIndex < imagesPreviews.length
@@ -144,34 +158,32 @@ export function useProductFormMedia({
               Math.max(1, orderedUploadedUrls.length),
               ...orderedUploadedUrls,
             );
-            form.setFieldValue('images', updatedImages);
+            form.setFieldValue("images", updatedImages);
           } else {
-            form.setFieldValue('images', [
-              ...imagesPreviews,
-              ...orderedUploadedUrls,
-            ]);
+            form.setFieldValue("images", [...imagesPreviews, ...orderedUploadedUrls]);
           }
         }
 
         return uploadedUrls.length > 0;
       } catch (error) {
-        console.error('Image upload error:', error);
-        toastManager.add({ title: t('imageUploadError'), type: 'error' });
+        for (const uploaded of uploadedUrls) {
+          pendingUploadsRef.current.delete(uploaded.url);
+        }
+        void Promise.allSettled(uploadedUrls.map((uploaded) => deleteImage(uploaded.url)));
+        console.error("Image upload error:", error);
+        toastManager.add({ title: t("imageUploadError"), type: "error" });
         return false;
       } finally {
         setIsUploadingToServer(false);
       }
     },
-    [form, imagesPreviews, t],
+    [deleteImage, form, imagesPreviews, t, uploadImage],
   );
 
   const processFiles = useCallback(
     async (files: FileList | File[]) => {
       const fileArray = Array.from(files);
-      const remainingSlots = Math.max(
-        0,
-        MAX_PRODUCT_IMAGES - imagesPreviews.length,
-      );
+      const remainingSlots = Math.max(0, MAX_PRODUCT_IMAGES - imagesPreviews.length);
       const filesToProcess = fileArray.slice(0, remainingSlots);
 
       if (filesToProcess.length === 0) return;
@@ -185,13 +197,12 @@ export function useProductFormMedia({
         for (let index = 0; index < filesToProcess.length; index += 1) {
           const file = filesToProcess[index];
 
-          if (!file.type.startsWith('image/')) {
-            toastManager.add({ title: t('imageError'), type: 'error' });
-            continue;
-          }
-
-          if (file.size > MAX_IMAGE_SIZE_BYTES) {
-            toastManager.add({ title: t('imageSizeError'), type: 'error' });
+          const issue = getImageUploadIssue(file, "product");
+          if (issue) {
+            toastManager.add({
+              title: issue === "tooLarge" ? t("imageSizeError") : t("imageError"),
+              type: "error",
+            });
             continue;
           }
 
@@ -210,11 +221,8 @@ export function useProductFormMedia({
               imageSize,
               crop: initialCrop,
               cropSizePercent: 100,
-              croppedAreaPixels: getPixelCropFromPercentRect(
-                initialCrop,
-                imageSize,
-              ),
-              resultMode: 'original',
+              croppedAreaPixels: getPixelCropFromPercentRect(initialCrop, imageSize),
+              resultMode: "original",
             });
           } else {
             nextPassthroughItems.push({
@@ -235,13 +243,13 @@ export function useProductFormMedia({
 
         setCropQueueItems(nextCropQueueItems.sort((a, b) => a.order - b.order));
         setPassthroughQueueItems(nextPassthroughItems);
-        setCropSessionMode('append');
+        setCropSessionMode("append");
         setReplaceImageIndex(null);
         setSelectedCropIndex(0);
         setIsCropDialogOpen(true);
       } catch (error) {
-        console.error('Image processing error:', error);
-        toastManager.add({ title: t('imageUploadError'), type: 'error' });
+        console.error("Image processing error:", error);
+        toastManager.add({ title: t("imageUploadError"), type: "error" });
       } finally {
         setIsPreparingSession(false);
       }
@@ -254,7 +262,7 @@ export function useProductFormMedia({
       if (!event.target.files) return;
 
       void processFiles(event.target.files);
-      event.target.value = '';
+      event.target.value = "";
     },
     [processFiles],
   );
@@ -292,12 +300,16 @@ export function useProductFormMedia({
   const removeImage = useCallback(
     (index: number) => {
       form.setFieldValue(
-        'images',
+        "images",
         imagesPreviews.filter((_, currentIndex) => currentIndex !== index),
       );
     },
     [form, imagesPreviews],
   );
+
+  const markUploadsPersisted = useCallback(() => {
+    pendingUploadsRef.current.clear();
+  }, []);
 
   const setMainImage = useCallback(
     (index: number) => {
@@ -306,38 +318,30 @@ export function useProductFormMedia({
       const updated = [...imagesPreviews];
       const [moved] = updated.splice(index, 1);
       updated.unshift(moved);
-      form.setFieldValue('images', updated);
+      form.setFieldValue("images", updated);
     },
     [form, imagesPreviews],
   );
 
-  const setCropRect = useCallback(
-    (itemId: string, crop: ProductImagePercentCropRect) => {
-      setCropQueueItems((prev) =>
-        prev.map((item) => {
-          if (item.id !== itemId) return item;
+  const setCropRect = useCallback((itemId: string, crop: ProductImagePercentCropRect) => {
+    setCropQueueItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item;
 
-          return {
-            ...item,
-            crop,
-            cropSizePercent: getCropSizePercentFromRect(crop, item.imageSize),
-          };
-        }),
-      );
-    },
-    [],
-  );
+        return {
+          ...item,
+          crop,
+          cropSizePercent: getCropSizePercentFromRect(crop, item.imageSize),
+        };
+      }),
+    );
+  }, []);
 
-  const setCropSizePercent = useCallback(
-    (itemId: string, cropSizePercent: number) => {
-      setCropQueueItems((prev) =>
-        prev.map((item) =>
-          item.id === itemId ? { ...item, cropSizePercent } : item,
-        ),
-      );
-    },
-    [],
-  );
+  const setCropSizePercent = useCallback((itemId: string, cropSizePercent: number) => {
+    setCropQueueItems((prev) =>
+      prev.map((item) => (item.id === itemId ? { ...item, cropSizePercent } : item)),
+    );
+  }, []);
 
   const setCropAreaPixels = useCallback(
     (itemId: string, croppedAreaPixels: ProductImagePixelCropRect) => {
@@ -378,13 +382,13 @@ export function useProductFormMedia({
       setIsPreparingSession(true);
 
       try {
-        const response = await fetch('/api/upload/image/source', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch("/api/files/source", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: imageUrl }),
         });
         if (!response.ok) {
-          throw new Error('Failed to load existing image');
+          throw new Error("Failed to load existing image");
         }
 
         const payload = (await response.json()) as {
@@ -392,16 +396,16 @@ export function useProductFormMedia({
           mimeType?: string;
         };
         const dataUrl = payload.dataUrl;
-        const mimeType = (payload.mimeType || 'image/jpeg').toLowerCase();
+        const mimeType = (payload.mimeType || "image/jpeg").toLowerCase();
 
         if (!dataUrl) {
-          throw new Error('Missing source image data');
+          throw new Error("Missing source image data");
         }
 
         if (!isCropSupportedMime(mimeType)) {
           toastManager.add({
-            title: t('cropUnsupportedFormat'),
-            type: 'error',
+            title: t("cropUnsupportedFormat"),
+            type: "error",
           });
           return;
         }
@@ -418,21 +422,18 @@ export function useProductFormMedia({
             imageSize,
             crop: initialCrop,
             cropSizePercent: 100,
-            croppedAreaPixels: getPixelCropFromPercentRect(
-              initialCrop,
-              imageSize,
-            ),
-            resultMode: 'cropped',
+            croppedAreaPixels: getPixelCropFromPercentRect(initialCrop, imageSize),
+            resultMode: "cropped",
           },
         ]);
         setPassthroughQueueItems([]);
-        setCropSessionMode('replace');
+        setCropSessionMode("replace");
         setReplaceImageIndex(index);
         setSelectedCropIndex(0);
         setIsCropDialogOpen(true);
       } catch (error) {
-        console.error('Image recrop prepare error:', error);
-        toastManager.add({ title: t('imageUploadError'), type: 'error' });
+        console.error("Image recrop prepare error:", error);
+        toastManager.add({ title: t("imageUploadError"), type: "error" });
       } finally {
         setIsPreparingSession(false);
       }
@@ -453,7 +454,7 @@ export function useProductFormMedia({
         for (const item of queueItems) {
           let preparedDataUrl = item.originalDataUrl;
 
-          if (item.resultMode === 'cropped' && item.croppedAreaPixels) {
+          if (item.resultMode === "cropped" && item.croppedAreaPixels) {
             preparedDataUrl = await createCroppedDataUrl({
               imageSrc: item.originalDataUrl,
               croppedAreaPixels: item.croppedAreaPixels,
@@ -468,10 +469,9 @@ export function useProductFormMedia({
           });
         }
 
-        const allPreparedImages = [
-          ...preparedCropImages,
-          ...passthroughQueueItems,
-        ].sort((a, b) => a.order - b.order);
+        const allPreparedImages = [...preparedCropImages, ...passthroughQueueItems].sort(
+          (a, b) => a.order - b.order,
+        );
 
         const didUpload = await uploadPreparedImages(allPreparedImages, {
           mode: cropSessionMode,
@@ -481,8 +481,8 @@ export function useProductFormMedia({
           resetCropSession();
         }
       } catch (error) {
-        console.error('Image crop error:', error);
-        toastManager.add({ title: t('imageUploadError'), type: 'error' });
+        console.error("Image crop error:", error);
+        toastManager.add({ title: t("imageUploadError"), type: "error" });
       }
     },
     [
@@ -496,7 +496,7 @@ export function useProductFormMedia({
   );
 
   const applyCurrentCropChoice = useCallback(
-    async (nextResultMode: 'cropped' | 'original') => {
+    async (nextResultMode: "cropped" | "original") => {
       const activeItem = cropQueueItems[selectedCropIndex];
       if (!activeItem) return;
 
@@ -522,11 +522,11 @@ export function useProductFormMedia({
   );
 
   const applyCurrentCropAndProceed = useCallback(() => {
-    void applyCurrentCropChoice('cropped');
+    void applyCurrentCropChoice("cropped");
   }, [applyCurrentCropChoice]);
 
   const keepCurrentCropOriginalAndProceed = useCallback(() => {
-    void applyCurrentCropChoice('original');
+    void applyCurrentCropChoice("original");
   }, [applyCurrentCropChoice]);
 
   const replaceCurrentCropImage = useCallback(
@@ -535,19 +535,18 @@ export function useProductFormMedia({
         return;
       }
 
-      if (!file.type.startsWith('image/')) {
-        toastManager.add({ title: t('imageError'), type: 'error' });
-        return;
-      }
-
-      if (file.size > MAX_IMAGE_SIZE_BYTES) {
-        toastManager.add({ title: t('imageSizeError'), type: 'error' });
+      const issue = getImageUploadIssue(file, "product");
+      if (issue) {
+        toastManager.add({
+          title: issue === "tooLarge" ? t("imageSizeError") : t("imageError"),
+          type: "error",
+        });
         return;
       }
 
       const mimeType = file.type.toLowerCase();
       if (!isCropSupportedMime(mimeType)) {
-        toastManager.add({ title: t('cropUnsupportedFormat'), type: 'error' });
+        toastManager.add({ title: t("cropUnsupportedFormat"), type: "error" });
         return;
       }
 
@@ -569,14 +568,14 @@ export function useProductFormMedia({
                   crop: initialCrop,
                   cropSizePercent: 100,
                   croppedAreaPixels: initialPixels,
-                  resultMode: 'cropped',
+                  resultMode: "cropped",
                 }
               : item,
           ),
         );
       } catch (error) {
-        console.error('Image replace error:', error);
-        toastManager.add({ title: t('imageUploadError'), type: 'error' });
+        console.error("Image replace error:", error);
+        toastManager.add({ title: t("imageUploadError"), type: "error" });
       } finally {
         setIsPreparingSession(false);
       }
@@ -617,5 +616,6 @@ export function useProductFormMedia({
     goToNextCropItem,
     closeCropDialog,
     uploadCropSession,
+    markUploadsPersisted,
   };
 }

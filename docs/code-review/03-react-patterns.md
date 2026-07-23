@@ -37,6 +37,7 @@ Every component gets its own file. Don't define helper components in the same fi
 ### [RC-04] No business logic in components
 
 Components handle rendering and user interaction. Business logic (data transformation, validation, complex conditions) lives in:
+
 - Hooks (if it involves React state/effects)
 - Utils (if it's pure logic)
 - Server functions (if it's data fetching/mutation)
