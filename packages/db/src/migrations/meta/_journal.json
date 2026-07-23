@@ -421,6 +421,13 @@
       "when": 1784799638250,
       "tag": "0054_colossal_ultimates",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "5",
+      "when": 1784815072372,
+      "tag": "0055_opposite_slayback",
+      "breakpoints": true
     }
   ]
 }
