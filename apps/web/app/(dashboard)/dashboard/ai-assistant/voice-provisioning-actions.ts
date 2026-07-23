@@ -178,6 +178,16 @@ export async function provisionVoiceNumber(input: {
   const activatedAt = new Date()
   try {
     await db.transaction(async (tx) => {
+      // Re-take the reservation under lock: a concurrent release (manual, or
+      // disable-the-agent) may have deleted it while the provider purchase was
+      // in flight — charging the rental for a vanished binding is never OK.
+      const [reservedRow] = await tx
+        .select({ id: storePhoneNumbers.id })
+        .from(storePhoneNumbers)
+        .where(eq(storePhoneNumbers.id, reserved.rowId))
+        .for('update')
+      if (!reservedRow) throw new Error('reservation_lost')
+
       await tx
         .update(storePhoneNumbers)
         .set({
@@ -198,22 +208,41 @@ export async function provisionVoiceNumber(input: {
           cycleDate: activatedAt,
           plan,
         })
-        if (debit === 'insufficient') {
+        if (debit !== 'debited' && debit !== 'already' && debit !== 'disabled') {
           // Balance drained between the precheck and here — abort everything.
           throw new Error('insufficient_rental_credits')
         }
       }
     })
   } catch (error) {
-    // We already paid the provider: hand the number back and drop the
-    // reservation so we never leave a live, billed number the store can't use.
-    await getVoiceProvider()
-      .releaseNumber(provisioned.providerNumberId)
-      .catch(() => {})
-    await db
-      .delete(storePhoneNumbers)
-      .where(eq(storePhoneNumbers.id, reserved.rowId))
-      .catch(() => {})
+    // We already paid the provider: hand the number back, then drop the
+    // reservation. If the hand-back FAILS, keep the row (still 'pending',
+    // invisible to call routing) with the provider id stamped on it — deleting
+    // it would erase the only record of a number we still own provider-side.
+    try {
+      await getVoiceProvider().releaseNumber(provisioned.providerNumberId)
+      await db
+        .delete(storePhoneNumbers)
+        .where(eq(storePhoneNumbers.id, reserved.rowId))
+    } catch (releaseError) {
+      await db
+        .update(storePhoneNumbers)
+        .set({
+          e164: provisioned.e164,
+          providerNumberId: provisioned.providerNumberId,
+          updatedAt: new Date(),
+        })
+        .where(eq(storePhoneNumbers.id, reserved.rowId))
+        .catch(() => {})
+      log.error(
+        'phone',
+        `provisioning compensation could not hand the number back (row kept for manual cleanup): ${
+          releaseError instanceof Error
+            ? releaseError.message
+            : String(releaseError)
+        }`,
+      )
+    }
     const insufficient =
       error instanceof Error && error.message === 'insufficient_rental_credits'
     if (!insufficient) {

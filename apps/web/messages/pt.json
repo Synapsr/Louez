@@ -4220,6 +4220,7 @@
         }
       },
       "aiVoiceAgent": {
+        "numberReleaseFailed": "Não foi possível desvincular o número — continua vinculado, nova tentativa automática agendada",
         "description": "Um agente de voz com IA que atende a sua linha telefónica — informa os seus clientes e regista reservas, no idioma que escolher.",
         "enableSection": "Agente de voz IA",
         "enableSectionDescription": "Configure o agente de voz que atende quando os seus clientes ligam",

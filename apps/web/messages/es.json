@@ -4226,6 +4226,7 @@
         }
       },
       "aiVoiceAgent": {
+        "numberReleaseFailed": "No se pudo desvincular el número — sigue vinculado, reintento automático programado",
         "description": "Un agente de voz con IA que responde tu línea telefónica — informa a tus clientes y registra reservas, en el idioma que elijas.",
         "enableSection": "Agente de voz IA",
         "enableSectionDescription": "Configura el agente de voz que responde cuando tus clientes llaman",

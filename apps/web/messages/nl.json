@@ -4220,6 +4220,7 @@
         }
       },
       "aiVoiceAgent": {
+        "numberReleaseFailed": "Het nummer kon niet worden losgekoppeld — het blijft gekoppeld, automatische nieuwe poging gepland",
         "description": "Een AI-spraakagent die je telefoonlijn beantwoordt — informeert je klanten en neemt reserveringen op, in de taal die je kiest.",
         "enableSection": "AI-spraakagent",
         "enableSectionDescription": "Configureer de spraakagent die antwoordt wanneer je klanten bellen",

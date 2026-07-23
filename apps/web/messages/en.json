@@ -4327,6 +4327,7 @@
         }
       },
       "aiVoiceAgent": {
+        "numberReleaseFailed": "The number could not be detached — it is still attached, automatic retry scheduled",
         "description": "An AI voice agent that answers your phone line — it informs your customers and takes reservations, in the language you choose.",
         "enableSection": "AI voice agent",
         "enableSectionDescription": "Configure the voice agent that answers when your customers call",

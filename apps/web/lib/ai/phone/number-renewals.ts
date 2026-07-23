@@ -88,6 +88,7 @@ export async function processVoiceNumberRenewals(
       renewalWarnedAt: storePhoneNumbers.renewalWarnedAt,
       renewalFailedAt: storePhoneNumbers.renewalFailedAt,
       renewalRemindedAt: storePhoneNumbers.renewalRemindedAt,
+      createdAt: storePhoneNumbers.createdAt,
     })
     .from(storePhoneNumbers)
     .where(
@@ -104,17 +105,6 @@ export async function processVoiceNumberRenewals(
   for (const binding of bindings) {
     stats.scanned += 1
     try {
-      // Pre-reform numbers have no billing anchor yet: give them a fresh cycle
-      // starting now (no retroactive charge) and pick them up next month.
-      if (!binding.nextRenewalAt) {
-        await db
-          .update(storePhoneNumbers)
-          .set({ nextRenewalAt: addOneMonthClamped(now), updatedAt: now })
-          .where(eq(storePhoneNumbers.id, binding.id))
-        stats.backfilled += 1
-        continue
-      }
-
       const store = await db.query.stores.findFirst({
         where: eq(stores.id, binding.storeId),
         columns: {
@@ -135,7 +125,8 @@ export async function processVoiceNumberRenewals(
 
       // A number bound to a DISABLED agent serves no calls but keeps costing
       // rental: release it (the disable path now does this; this covers
-      // pre-reform leftovers) and tell the owner.
+      // pre-reform leftovers) and tell the owner. Checked BEFORE the anchor
+      // backfill, so a leftover is cleaned on the first run, not next month.
       if (phoneSettings && phoneSettings.enabled === false) {
         const released = await releaseNumberBinding(binding)
         if (released.ok) {
@@ -155,17 +146,31 @@ export async function processVoiceNumberRenewals(
         continue
       }
 
+      // Pre-reform numbers have no billing anchor yet: give them a fresh cycle
+      // starting now (no retroactive charge) and pick them up next month.
+      if (!binding.nextRenewalAt) {
+        await db
+          .update(storePhoneNumbers)
+          .set({ nextRenewalAt: addOneMonthClamped(now), updatedAt: now })
+          .where(eq(storePhoneNumbers.id, binding.id))
+        stats.backfilled += 1
+        continue
+      }
+
       const plan = await getStorePlan(store.id)
 
       if (now < binding.nextRenewalAt) {
         // Inside the warn window, renewal not due yet: warn once per cycle if
-        // the balance can't cover it.
+        // the balance can't cover it. The stamp lands only when the notice was
+        // actually delivered (or there is no address to deliver to), so a
+        // failed send retries on the next daily run.
         if (
           !binding.renewalWarnedAt &&
           !(await hasNumberRentalFunds(store.id, plan))
         ) {
+          let delivered = !ownerEmail
           if (ownerEmail) {
-            await sendVoiceNumberBillingEmail({
+            delivered = await sendVoiceNumberBillingEmail({
               variant: 'warning',
               to: ownerEmail,
               storeId: store.id,
@@ -174,31 +179,43 @@ export async function processVoiceNumberRenewals(
               credits: rentalCredits,
               deadline: binding.nextRenewalAt,
               locale,
-            }).catch(() => {})
+            })
+              .then(() => true)
+              .catch(() => false)
           }
-          await db
-            .update(storePhoneNumbers)
-            .set({ renewalWarnedAt: now, updatedAt: now })
-            .where(eq(storePhoneNumbers.id, binding.id))
-          stats.warned += 1
+          if (delivered) {
+            await db
+              .update(storePhoneNumbers)
+              .set({ renewalWarnedAt: now, updatedAt: now })
+              .where(eq(storePhoneNumbers.id, binding.id))
+            stats.warned += 1
+          }
         }
         continue
       }
 
       // Renewal due: attempt the debit, anchored on the DUE date so the cycle
-      // never drifts and the dedup key is stable across daily retries.
+      // never drifts and the dedup key is stable across daily retries. The
+      // binding row is re-checked under the debit's lock, so a concurrent
+      // release is never charged for.
       const result = await debitNumberRental({
         storeId: store.id,
         numberId: binding.id,
         cycleDate: binding.nextRenewalAt,
         plan,
+        requireBindingRow: true,
       })
 
       if (result === 'debited' || result === 'already') {
         await db
           .update(storePhoneNumbers)
           .set({
-            nextRenewalAt: addOneMonthClamped(binding.nextRenewalAt),
+            // Advance from the DUE date, springing back to the activation's
+            // day-of-month after a clamped month (Feb 28 → Mar 31, not Mar 28).
+            nextRenewalAt: addOneMonthClamped(
+              binding.nextRenewalAt,
+              binding.createdAt.getDate(),
+            ),
             renewalWarnedAt: null,
             renewalFailedAt: null,
             renewalRemindedAt: null,
@@ -208,7 +225,14 @@ export async function processVoiceNumberRenewals(
         stats.renewed += 1
         continue
       }
-      if (result === 'disabled') continue
+      if (result === 'disabled' || result === 'gone') continue
+      if (result === 'error') {
+        // Infrastructure failure — NOT a funds problem. No emails, no grace
+        // stamps: the daily retry handles it, and a solvent store must never
+        // be walked toward losing its number over an outage.
+        stats.errors += 1
+        continue
+      }
 
       // Insufficient balance. Nudge the auto-top-up (idempotent, hourly-deduped);
       // if it lands, tomorrow's retry heals the cycle.
@@ -257,8 +281,10 @@ export async function processVoiceNumberRenewals(
       }
 
       if (graceElapsed >= REMIND_AFTER_MS && !binding.renewalRemindedAt) {
+        // As with the warning: only stamp once the reminder actually went out.
+        let delivered = !ownerEmail
         if (ownerEmail) {
-          await sendVoiceNumberBillingEmail({
+          delivered = await sendVoiceNumberBillingEmail({
             variant: 'failed',
             to: ownerEmail,
             storeId: store.id,
@@ -269,13 +295,17 @@ export async function processVoiceNumberRenewals(
               binding.renewalFailedAt.getTime() + RELEASE_AFTER_MS,
             ),
             locale,
-          }).catch(() => {})
+          })
+            .then(() => true)
+            .catch(() => false)
         }
-        await db
-          .update(storePhoneNumbers)
-          .set({ renewalRemindedAt: now, updatedAt: now })
-          .where(eq(storePhoneNumbers.id, binding.id))
-        stats.reminded += 1
+        if (delivered) {
+          await db
+            .update(storePhoneNumbers)
+            .set({ renewalRemindedAt: now, updatedAt: now })
+            .where(eq(storePhoneNumbers.id, binding.id))
+          stats.reminded += 1
+        }
       }
     } catch (error) {
       stats.errors += 1

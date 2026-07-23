@@ -154,6 +154,11 @@ export const VoiceAgentForm = ({
         setRootError(result.error)
         return
       }
+      if (result.warning === 'numberReleaseFailed') {
+        // Saved, but the number could not be handed back: tell the owner it is
+        // still attached (the daily job retries the cleanup).
+        toastManager.add({ title: t('numberReleaseFailed'), type: 'warning' })
+      }
       toastManager.add({ title: t('saved'), type: 'success' })
       form.options.defaultValues = value
       form.reset()

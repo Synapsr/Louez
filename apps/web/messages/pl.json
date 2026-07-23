@@ -4220,6 +4220,7 @@
         }
       },
       "aiVoiceAgent": {
+        "numberReleaseFailed": "Nie udało się odłączyć numeru — pozostaje podłączony, automatyczna ponowna próba zaplanowana",
         "description": "Głosowy agent IA, który odbiera Twoją linię telefoniczną — informuje klientów i przyjmuje rezerwacje, w wybranym języku.",
         "enableSection": "Głosowy agent IA",
         "enableSectionDescription": "Skonfiguruj agenta głosowego, który odbiera, gdy dzwonią Twoi klienci",

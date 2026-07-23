@@ -4220,6 +4220,7 @@
         }
       },
       "aiVoiceAgent": {
+        "numberReleaseFailed": "Die Nummer konnte nicht getrennt werden — sie bleibt verbunden, automatischer Wiederholungsversuch geplant",
         "description": "Ein KI-Sprachagent, der Ihre Telefonleitung beantwortet — er informiert Ihre Kunden und nimmt Reservierungen entgegen, in der Sprache Ihrer Wahl.",
         "enableSection": "KI-Sprachagent",
         "enableSectionDescription": "Konfigurieren Sie den Sprachagenten, der antwortet, wenn Ihre Kunden anrufen",

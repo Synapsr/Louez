@@ -4327,6 +4327,7 @@
         }
       },
       "aiVoiceAgent": {
+        "numberReleaseFailed": "Le numéro n'a pas pu être détaché — il reste attaché, nouvel essai automatique prévu",
         "description": "Un agent vocal IA qui répond sur votre ligne téléphonique — il informe vos clients et prend des réservations, dans la langue de votre choix.",
         "enableSection": "Agent vocal IA",
         "enableSectionDescription": "Configurez l'agent vocal qui répond quand vos clients appellent",

@@ -4220,6 +4220,7 @@
         }
       },
       "aiVoiceAgent": {
+        "numberReleaseFailed": "Impossibile scollegare il numero — resta collegato, nuovo tentativo automatico programmato",
         "description": "Un agente vocale IA che risponde alla tua linea telefonica — informa i tuoi clienti e registra prenotazioni, nella lingua che scegli.",
         "enableSection": "Agente vocale IA",
         "enableSectionDescription": "Configura l'agente vocale che risponde quando i tuoi clienti chiamano",

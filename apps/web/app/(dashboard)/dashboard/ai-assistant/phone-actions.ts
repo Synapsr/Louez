@@ -56,7 +56,9 @@ export async function updateAiPhoneSettings(data: AiPhoneSettingsInput) {
 
   // Turning the agent off detaches the number (provisioned ones are handed
   // back to the provider). Best-effort: a provider hiccup must not block the
-  // settings save — the number then stays visible and can be released manually.
+  // settings save — the failure is surfaced as a warning so the owner knows
+  // the number is still attached (the renewal job also retries the cleanup).
+  let warning: string | undefined
   if (!aiPhoneSettings.enabled) {
     const binding = await db.query.storePhoneNumbers.findFirst({
       where: and(
@@ -68,14 +70,15 @@ export async function updateAiPhoneSettings(data: AiPhoneSettingsInput) {
     if (binding) {
       const released = await releaseNumberBinding(binding)
       if (!released.ok) {
+        warning = 'numberReleaseFailed'
         log.error(
           'phone',
-          `release-on-disable failed for store ${store.id} (number kept, manual release needed)`,
+          `release-on-disable failed for store ${store.id} (number kept, cron will retry)`,
         )
       }
     }
   }
 
   revalidatePath('/dashboard/ai-assistant')
-  return { success: true }
+  return { success: true, warning }
 }

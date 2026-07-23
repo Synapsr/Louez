@@ -20,10 +20,41 @@ import {
 import { log } from '@/lib/evlog'
 import type { Plan } from '@/lib/plans'
 
-// The phone receptionist reuses the exact same prepaid AI-credit balance as the
-// text advisor. The pre-call gate is therefore identical — re-exported here so
-// the phone code has a single, well-named entry point.
-export { checkAdvisorCredits as checkPhoneCredits } from '@/lib/ai/advisor/credits'
+import {
+  checkAdvisorCredits,
+  getAiCreditsInfo,
+  type AdvisorCreditCheck,
+} from '@/lib/ai/advisor/credits'
+
+/**
+ * Pre-call credit gate. The phone agent shares the advisor's balance, but its
+ * billing can be active through the flat per-minute tariff ALONE (no USD cost
+ * basis configured) — in that mode the advisor gate is inert, so gate on the
+ * balance directly; otherwise defer to the shared gate.
+ */
+export async function checkPhoneCredits(
+  storeId: string,
+  plan: Plan,
+): Promise<AdvisorCreditCheck> {
+  if (getPhoneCreditsPerMinute() > 0) {
+    try {
+      const info = await getAiCreditsInfo(storeId, plan)
+      const monthlyOk =
+        info.monthlyRemainingMicro === null || info.monthlyRemainingMicro > 0
+      if (monthlyOk || info.prepaidBalanceMicro > 0) return { allowed: true }
+      return { allowed: false, code: 'credits_exhausted' }
+    } catch (error) {
+      log.error(
+        'phone',
+        `credit check failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+      return { allowed: false, code: 'credits_exhausted' }
+    }
+  }
+  return checkAdvisorCredits(storeId, plan)
+}
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
