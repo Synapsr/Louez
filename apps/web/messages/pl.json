@@ -4188,6 +4188,8 @@
           "upgradeToUnlock": "Przejdź na Pro, aby włączyć tę funkcję"
         },
         "conversations": {
+          "columnCredits": "Kredyty",
+          "creditsUsed": "{count} kr",
           "title": "Rozmowy",
           "description": "Sprawdź, o co klienci pytali doradcę i które rozmowy zakończyły się rezerwacją",
           "filterAll": "Wszystkie",
@@ -4220,6 +4222,15 @@
         }
       },
       "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Zmień",
+          "done": "Gotowe",
+          "resetToRecommended": "Wróć do polecanego głosu",
+          "defaultBadge": "Polecany",
+          "defaultVoice": "Polecany głos",
+          "title": "Wybierz głos swojego agenta",
+          "description": "Odsłuchaj głosy i wybierz ten, który będzie reprezentował Twój sklep przez telefon."
+        },
         "setup": {
           "step1": "Wybierz numer",
           "step2": "Dostosuj agenta",
@@ -4420,6 +4431,11 @@
         }
       },
       "topup": {
+        "valueIntro": "Do dowolnego wykorzystania — na przykład:",
+        "valueOr": "lub",
+        "rateConversations": "1 kredyt za rozmowę",
+        "rateMinutes": "{credits} kredyty za minutę",
+        "rateNumber": "{credits} kredytów miesięcznie",
         "valueTitle": "Co to oznacza",
         "valueConversations": "Do {count} rozmów doradczych",
         "valueMinutes": "≈ {count} minut połączeń głosowych",

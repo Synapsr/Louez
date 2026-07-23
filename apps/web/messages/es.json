@@ -4194,6 +4194,8 @@
           "upgradeToUnlock": "Actualice a Pro para habilitar esta función"
         },
         "conversations": {
+          "columnCredits": "Créditos",
+          "creditsUsed": "{count} cr",
           "title": "Conversaciones",
           "description": "Consulte qué preguntaron los clientes al asesor y qué conversaciones terminaron en una reserva",
           "filterAll": "Todas",
@@ -4226,6 +4228,15 @@
         }
       },
       "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Cambiar",
+          "done": "Hecho",
+          "resetToRecommended": "Volver a la voz recomendada",
+          "defaultBadge": "Recomendada",
+          "defaultVoice": "Voz recomendada",
+          "title": "Elige la voz de tu agente",
+          "description": "Escucha las voces y elige la que representará a tu tienda por teléfono."
+        },
         "setup": {
           "step1": "Elegir tu número",
           "step2": "Personalizar el agente",
@@ -4426,6 +4437,11 @@
         }
       },
       "topup": {
+        "valueIntro": "Para gastar libremente — por ejemplo:",
+        "valueOr": "o",
+        "rateConversations": "1 crédito por conversación",
+        "rateMinutes": "{credits} créditos por minuto",
+        "rateNumber": "{credits} créditos al mes",
         "valueTitle": "Lo que representa",
         "valueConversations": "Hasta {count} conversaciones de asesoría",
         "valueMinutes": "≈ {count} minutos de llamadas de voz",

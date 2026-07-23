@@ -151,6 +151,17 @@ export default async function AiAssistantPage({
           />
         )}
 
+        <div id="advisor-section" className="scroll-mt-20">
+          <AiAdvisorForm
+            store={{
+              id: store.id,
+              aiAdvisorSettings: store.aiAdvisorSettings,
+            }}
+            hasFeatureAccess={plan.features.aiAdvisor}
+            aiConfigured={isAIChatConfigured()}
+          />
+        </div>
+
         <div id="voice-section" className="scroll-mt-20">
           <VoiceAgentForm
             store={{
@@ -170,17 +181,6 @@ export default async function AiAssistantPage({
               voiceCreditsPerMinute > 0 ? voiceCreditsPerMinute : null
             }
             hasRentalFunds={rentalFundsOk}
-          />
-        </div>
-
-        <div id="advisor-section" className="scroll-mt-20">
-          <AiAdvisorForm
-            store={{
-              id: store.id,
-              aiAdvisorSettings: store.aiAdvisorSettings,
-            }}
-            hasFeatureAccess={plan.features.aiAdvisor}
-            aiConfigured={isAIChatConfigured()}
           />
         </div>
 

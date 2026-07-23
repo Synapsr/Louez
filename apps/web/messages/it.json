@@ -4188,6 +4188,8 @@
           "upgradeToUnlock": "Passa a Pro per abilitare questa funzione"
         },
         "conversations": {
+          "columnCredits": "Crediti",
+          "creditsUsed": "{count} cr",
           "title": "Conversazioni",
           "description": "Consulta le domande poste al consulente e le conversazioni che hanno portato a una prenotazione",
           "filterAll": "Tutte",
@@ -4220,6 +4222,15 @@
         }
       },
       "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Cambia",
+          "done": "Fatto",
+          "resetToRecommended": "Torna alla voce consigliata",
+          "defaultBadge": "Consigliata",
+          "defaultVoice": "Voce consigliata",
+          "title": "Scegli la voce del tuo agente",
+          "description": "Ascolta le voci e scegli quella che rappresenterà il tuo negozio al telefono."
+        },
         "setup": {
           "step1": "Scegli il tuo numero",
           "step2": "Personalizza l'agente",
@@ -4420,6 +4431,11 @@
         }
       },
       "topup": {
+        "valueIntro": "Da usare liberamente — ad esempio:",
+        "valueOr": "oppure",
+        "rateConversations": "1 credito per conversazione",
+        "rateMinutes": "{credits} crediti al minuto",
+        "rateNumber": "{credits} crediti al mese",
         "valueTitle": "Cosa rappresenta",
         "valueConversations": "Fino a {count} conversazioni di consulenza",
         "valueMinutes": "≈ {count} minuti di chiamate vocali",

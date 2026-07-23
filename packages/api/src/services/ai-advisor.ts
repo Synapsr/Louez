@@ -55,6 +55,7 @@ export async function listAdvisorConversations(params: {
         channel: aiAdvisorConversations.channel,
         durationSeconds: aiAdvisorConversations.durationSeconds,
         recordingSid: aiAdvisorConversations.recordingSid,
+        accruedCreditsMicro: aiAdvisorConversations.accruedCreditsMicro,
         messageCount: sql<number>`(
           SELECT COUNT(*) FROM ${aiAdvisorMessages}
           WHERE ${aiAdvisorMessages.conversationId} = ${aiAdvisorConversations.id}
@@ -105,6 +106,7 @@ export async function listAdvisorConversations(params: {
       channel: row.channel,
       durationSeconds: row.durationSeconds,
       hasRecording: Boolean(row.recordingSid),
+      creditsUsed: row.accruedCreditsMicro / 1_000_000,
     })),
     totalCount: totalResult[0]?.count ?? 0,
     page,
@@ -134,6 +136,7 @@ function toTranscript(
     durationSeconds: conversation.durationSeconds,
     hasRecording: Boolean(conversation.recordingSid),
     recordingDurationSeconds: conversation.recordingDurationSeconds,
+    creditsUsed: conversation.accruedCreditsMicro / 1_000_000,
     messages: conversation.messages
       .filter(
         (
@@ -175,6 +178,7 @@ function findConversationWithMessages(
       durationSeconds: true,
       recordingSid: true,
       recordingDurationSeconds: true,
+      accruedCreditsMicro: true,
     },
     with: {
       customer: { columns: { firstName: true, lastName: true } },

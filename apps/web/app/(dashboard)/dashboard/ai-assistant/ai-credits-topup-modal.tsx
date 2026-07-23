@@ -115,30 +115,36 @@ export function AiCreditsTopupModal({
     }
   }
 
+  // Alternatives, not a bundle: each tile shows how far the pack goes if spent
+  // entirely on that usage, with its exchange rate as the fine print.
   const valueRows = selected
     ? [
         {
           icon: MessagesSquare,
-          label: t('valueConversations', { count: selected.credits }),
+          headline: t('valueConversations', { count: selected.credits }),
+          rate: t('rateConversations'),
         },
         voiceCreditsPerMinute
           ? {
               icon: PhoneCall,
-              label: t('valueMinutes', {
+              headline: t('valueMinutes', {
                 count: Math.floor(selected.credits / voiceCreditsPerMinute),
               }),
+              rate: t('rateMinutes', { credits: voiceCreditsPerMinute }),
             }
           : null,
         numberRentalCredits
           ? {
               icon: Phone,
-              label: t('valueNumberMonths', {
+              headline: t('valueNumberMonths', {
                 count: Math.floor(selected.credits / numberRentalCredits),
               }),
+              rate: t('rateNumber', { credits: numberRentalCredits }),
             }
           : null,
-      ].filter((row): row is { icon: typeof Phone; label: string } =>
-        Boolean(row),
+      ].filter(
+        (row): row is { icon: typeof Phone; headline: string; rate: string } =>
+          Boolean(row),
       )
     : []
 
@@ -236,27 +242,49 @@ export function AiCreditsTopupModal({
               })}
             </div>
 
-            {/* What the selected pack represents, in concrete usage. Keyed on
-                the selection so a pack change softly fades the numbers in. */}
+            {/* What the selected pack represents. The "or" separators make it
+                unambiguous these are ALTERNATIVE ways to spend the same
+                credits, each with its exchange rate as fine print. Keyed on the
+                selection so a pack change softly fades the numbers in. */}
             <div className="bg-muted/40 flex flex-col rounded-xl border p-4">
               <p className="text-sm font-semibold">{t('valueTitle')}</p>
-              <motion.ul
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                {t('valueIntro')}
+              </p>
+              <motion.div
                 key={selectedIndex}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.15, ease: 'easeOut' }}
-                className="mt-3 space-y-2.5"
+                className="mt-3 space-y-1.5"
               >
-                {valueRows.map((row) => (
-                  <li
-                    key={row.label}
-                    className="flex items-start gap-2 text-sm tabular-nums"
-                  >
-                    <row.icon className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-                    <span>{row.label}</span>
-                  </li>
+                {valueRows.map((row, index) => (
+                  <div key={row.rate}>
+                    {index > 0 && (
+                      <div className="flex items-center gap-2 pb-1.5">
+                        <div className="bg-border h-px flex-1" />
+                        <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+                          {t('valueOr')}
+                        </span>
+                        <div className="bg-border h-px flex-1" />
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-md">
+                        <row.icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold leading-tight tabular-nums">
+                          {row.headline}
+                        </p>
+                        <p className="text-muted-foreground text-xs tabular-nums">
+                          {row.rate}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </motion.ul>
+              </motion.div>
               <div className="text-muted-foreground mt-auto flex items-start gap-2 border-t pt-3 text-xs">
                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {t('noExpiry')}

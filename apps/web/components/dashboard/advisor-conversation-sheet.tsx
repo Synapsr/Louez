@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useFormatter, useTranslations } from 'next-intl'
-import { Loader2, Phone } from 'lucide-react'
+import { Coins, Loader2, Phone } from 'lucide-react'
 
 import {
   Sheet,
@@ -82,6 +82,16 @@ export const AdvisorConversationSheet = ({
             </div>
           ) : transcript ? (
             <>
+              {transcript.creditsUsed > 0 && (
+                <div className="text-muted-foreground flex items-center gap-2 text-sm tabular-nums">
+                  <Coins className="h-4 w-4 shrink-0" />
+                  <span>
+                    {t('creditsUsed', {
+                      count: Math.round(transcript.creditsUsed * 10) / 10,
+                    })}
+                  </span>
+                </div>
+              )}
               {transcript.channel === 'phone' && (
                 <div className="space-y-3">
                   <div className="text-muted-foreground flex items-center gap-2 text-sm">

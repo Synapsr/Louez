@@ -4188,6 +4188,8 @@
           "upgradeToUnlock": "Upgrade naar Pro om deze functie in te schakelen"
         },
         "conversations": {
+          "columnCredits": "Credits",
+          "creditsUsed": "{count} cr",
           "title": "Gesprekken",
           "description": "Bekijk wat klanten de adviseur vroegen en welke gesprekken tot een reservering leidden",
           "filterAll": "Alle",
@@ -4220,6 +4222,15 @@
         }
       },
       "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Wijzigen",
+          "done": "Klaar",
+          "resetToRecommended": "Terug naar de aanbevolen stem",
+          "defaultBadge": "Aanbevolen",
+          "defaultVoice": "Aanbevolen stem",
+          "title": "Kies de stem van je agent",
+          "description": "Beluister de stemmen en kies degene die je winkel aan de telefoon vertegenwoordigt."
+        },
         "setup": {
           "step1": "Kies je nummer",
           "step2": "Agent personaliseren",
@@ -4420,6 +4431,11 @@
         }
       },
       "topup": {
+        "valueIntro": "Vrij te besteden — bijvoorbeeld:",
+        "valueOr": "of",
+        "rateConversations": "1 credit per gesprek",
+        "rateMinutes": "{credits} credits per minuut",
+        "rateNumber": "{credits} credits per maand",
         "valueTitle": "Wat je krijgt",
         "valueConversations": "Tot {count} adviesgesprekken",
         "valueMinutes": "≈ {count} minuten spraakoproepen",

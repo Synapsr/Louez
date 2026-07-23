@@ -117,6 +117,9 @@ export const AdvisorConversationsSection = () => {
                   <TableHead className="text-center">
                     {t('columnMessages')}
                   </TableHead>
+                  <TableHead className="text-center">
+                    {t('columnCredits')}
+                  </TableHead>
                   <TableHead>{t('columnStatus')}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -165,6 +168,14 @@ export const AdvisorConversationsSection = () => {
                       <Badge variant="secondary">
                         {conversation.messageCount}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-center text-sm tabular-nums">
+                      {conversation.creditsUsed > 0
+                        ? t('creditsUsed', {
+                            count:
+                              Math.round(conversation.creditsUsed * 10) / 10,
+                          })
+                        : '—'}
                     </TableCell>
                     <TableCell>
                       {conversation.reservationId ? (

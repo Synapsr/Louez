@@ -107,6 +107,8 @@ const advisorConversationListItemSchema = z.object({
   channel: z.enum(['web', 'phone']),
   durationSeconds: z.number().nullable(),
   hasRecording: z.boolean(),
+  // AI credits billed to the store for this conversation (calls + messages).
+  creditsUsed: z.number(),
 })
 
 export const advisorConversationsListOutputSchema = z.object({
@@ -133,6 +135,8 @@ export const advisorConversationTranscriptSchema = z.object({
   // Recording metadata (phone + opt-in only); hasRecording gates the player.
   hasRecording: z.boolean(),
   recordingDurationSeconds: z.number().nullable(),
+  // AI credits billed to the store for this conversation (calls + messages).
+  creditsUsed: z.number(),
   messages: z.array(
     z.object({
       id: z.string(),

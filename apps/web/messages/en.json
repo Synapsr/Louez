@@ -4295,6 +4295,8 @@
           "upgradeToUnlock": "Upgrade to Pro to enable this feature"
         },
         "conversations": {
+          "columnCredits": "Credits",
+          "creditsUsed": "{count} cr",
           "title": "Conversations",
           "description": "Review what customers asked the advisor and which chats led to a reservation",
           "filterAll": "All",
@@ -4327,6 +4329,15 @@
         }
       },
       "aiVoiceAgent": {
+        "voiceModal": {
+          "change": "Change",
+          "done": "Done",
+          "resetToRecommended": "Back to the recommended voice",
+          "defaultBadge": "Recommended",
+          "defaultVoice": "Recommended voice",
+          "title": "Choose your agent's voice",
+          "description": "Listen to the voices and pick the one that will represent your store on the phone."
+        },
         "setup": {
           "step1": "Pick your number",
           "step2": "Customize the agent",
@@ -4527,6 +4538,11 @@
         }
       },
       "topup": {
+        "valueIntro": "Spend them however you like — for example:",
+        "valueOr": "or",
+        "rateConversations": "1 credit per conversation",
+        "rateMinutes": "{credits} credits per minute",
+        "rateNumber": "{credits} credits per month",
         "valueTitle": "What you get",
         "valueConversations": "Up to {count} advisor conversations",
         "valueMinutes": "≈ {count} minutes of voice calls",
