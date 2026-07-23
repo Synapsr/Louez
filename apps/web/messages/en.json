@@ -6308,7 +6308,8 @@
     "unexpected": "Something went wrong. Please try again.",
     "standaloneSingleStore": "This instance hosts a single store",
     "emailLoginUnavailable": "Email sign-in is unavailable at the moment",
-    "stripeNotConfigured": "Online payments are not available: this instance has no Stripe keys configured. Reservations run in request mode."
+    "stripeNotConfigured": "Online payments are not available: this instance has no Stripe keys configured. Reservations run in request mode.",
+    "emailSendFailed": "Failed to send the email."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

@@ -24,6 +24,7 @@ import {
 import { AddressInput } from '@/components/ui/address-input';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { getFieldError } from '@/hooks/form/form-context';
+import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 import {
   getCountriesSortedByName,
   getCountryName,
@@ -38,7 +39,6 @@ import {
 interface StoreSettingsIdentitySectionProps {
   form: any;
   storeSlug: string;
-  domain: string;
   latitude: number | null;
   longitude: number | null;
   onOpenSlugModal: () => void;
@@ -47,12 +47,17 @@ interface StoreSettingsIdentitySectionProps {
 export function StoreSettingsIdentitySection({
   form,
   storeSlug,
-  domain,
   latitude,
   longitude,
   onOpenSlugModal,
 }: StoreSettingsIdentitySectionProps) {
   const t = useTranslations('dashboard.settings');
+  // The public storefront address: subdomain in platform mode, the origin in
+  // standalone (where the store is served at the root and the slug is not in
+  // the customer-facing URL).
+  const { getAbsoluteUrl } = useStorefrontUrl(storeSlug);
+  const storefrontUrl = getAbsoluteUrl();
+  const storefrontLabel = storefrontUrl.replace(/^https?:\/\//, '');
 
   const handleCountryChange = (
     newCountry: string,
@@ -246,10 +251,10 @@ export function StoreSettingsIdentitySection({
               {t('storeSettings.storeUrl')}
             </span>
             <code className="truncate font-mono text-sm">
-              {storeSlug}.{domain}
+              {storefrontLabel}
             </code>
             <a
-              href={`https://${storeSlug}.${domain}`}
+              href={storefrontUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground shrink-0 transition-colors"

@@ -6173,7 +6173,8 @@
     "unexpected": "Er ging iets mis. Probeer opnieuw.",
     "standaloneSingleStore": "Deze instantie host één winkel",
     "emailLoginUnavailable": "Inloggen via e-mail is momenteel niet beschikbaar",
-    "stripeNotConfigured": "Online betalingen zijn niet beschikbaar: deze instantie heeft geen Stripe-sleutels geconfigureerd. Reserveringen verlopen in aanvraagmodus."
+    "stripeNotConfigured": "Online betalingen zijn niet beschikbaar: deze instantie heeft geen Stripe-sleutels geconfigureerd. Reserveringen verlopen in aanvraagmodus.",
+    "emailSendFailed": "Verzenden van de e-mail is mislukt."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

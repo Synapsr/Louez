@@ -114,42 +114,67 @@ function createInternalRewriteUrl(request: NextRequest, pathname: string) {
 
 // The middleware cannot query the database, so standalone mode resolves the
 // instance's storefront slug through an internal API route over loopback.
-// A found slug is cached briefly (the TTL also bounds how long a renamed
-// slug serves 404s); a missing store is never cached, so the root flips to
-// the storefront on the first request after onboarding.
+// A found slug is cached (the TTL also bounds how long a renamed slug serves
+// 404s). A "no store yet" result is NOT cached, so the root flips to the
+// storefront on the first request after onboarding; a transient failure gets
+// a short negative TTL so a burst can't hammer the loopback route. Concurrent
+// resolutions share one in-flight promise to avoid a thundering herd.
 const STANDALONE_SLUG_TTL_MS = 15_000;
+const STANDALONE_SLUG_NEGATIVE_TTL_MS = 2_000;
 let standaloneSlugCache: { slug: string; expiresAt: number } | null = null;
+let standaloneSlugMiss = 0;
+let standaloneSlugInFlight: Promise<string | null> | null = null;
 
 async function getStandaloneStoreSlug(): Promise<string | null> {
-  if (standaloneSlugCache && Date.now() < standaloneSlugCache.expiresAt) {
+  const now = Date.now();
+  if (standaloneSlugCache && now < standaloneSlugCache.expiresAt) {
     return standaloneSlugCache.slug;
   }
-
-  try {
-    const port = process.env.PORT ?? '3000';
-    const response = await fetch(
-      `http://127.0.0.1:${port}/api/standalone/store`,
-      { cache: 'no-store' },
-    );
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = (await response.json()) as { slug?: string };
-    if (!data.slug) {
-      return null;
-    }
-
-    standaloneSlugCache = {
-      slug: data.slug,
-      expiresAt: Date.now() + STANDALONE_SLUG_TTL_MS,
-    };
-    return data.slug;
-  } catch {
-    // On any failure the dashboard stays reachable and the storefront
-    // recovers on a later request — never take the instance down from here.
+  if (now < standaloneSlugMiss) {
+    // A recent transient failure — hold off instead of re-hammering loopback.
     return null;
   }
+  if (standaloneSlugInFlight) {
+    return standaloneSlugInFlight;
+  }
+
+  standaloneSlugInFlight = (async () => {
+    try {
+      const port = process.env.PORT ?? '3000';
+      const response = await fetch(
+        `http://127.0.0.1:${port}/api/standalone/store`,
+        { cache: 'no-store' },
+      );
+      if (!response.ok) {
+        // 404 = no onboarded store yet: do not cache, so onboarding flips the
+        // root immediately. Other codes are transient: back off briefly.
+        if (response.status !== 404) {
+          standaloneSlugMiss = Date.now() + STANDALONE_SLUG_NEGATIVE_TTL_MS;
+        }
+        return null;
+      }
+
+      const data = (await response.json()) as { slug?: string };
+      if (!data.slug) {
+        return null;
+      }
+
+      standaloneSlugCache = {
+        slug: data.slug,
+        expiresAt: Date.now() + STANDALONE_SLUG_TTL_MS,
+      };
+      return data.slug;
+    } catch {
+      // On any failure the dashboard stays reachable and the storefront
+      // recovers on a later request — never take the instance down from here.
+      standaloneSlugMiss = Date.now() + STANDALONE_SLUG_NEGATIVE_TTL_MS;
+      return null;
+    } finally {
+      standaloneSlugInFlight = null;
+    }
+  })();
+
+  return standaloneSlugInFlight;
 }
 
 // =============================================================================

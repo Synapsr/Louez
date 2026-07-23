@@ -6173,7 +6173,8 @@
     "unexpected": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
     "standaloneSingleStore": "Diese Instanz hostet nur einen einzigen Shop",
     "emailLoginUnavailable": "Die Anmeldung per E-Mail ist derzeit nicht verfügbar",
-    "stripeNotConfigured": "Online-Zahlungen sind nicht verfügbar: Auf dieser Instanz sind keine Stripe-Schlüssel konfiguriert. Reservierungen laufen im Anfragemodus."
+    "stripeNotConfigured": "Online-Zahlungen sind nicht verfügbar: Auf dieser Instanz sind keine Stripe-Schlüssel konfiguriert. Reservierungen laufen im Anfragemodus.",
+    "emailSendFailed": "Die E-Mail konnte nicht gesendet werden."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

@@ -348,10 +348,10 @@ export const env = createEnv({
       .min(1, 'NEXT_PUBLIC_APP_DOMAIN is required'),
     NEXT_PUBLIC_DASHBOARD_SUBDOMAIN: z.string().default('app'),
 
-    // ===== Stripe (Required for payments) =====
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z
-      .string()
-      .min(1, 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is required'),
+    // ===== Stripe (Optional — payments) =====
+    // Optional to match its server-side Stripe siblings: without it Stripe.js
+    // is not initialized and storefronts run in request mode.
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
 
     // ===== Web Push (Optional — VAPID public key for subscribe()) =====
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),

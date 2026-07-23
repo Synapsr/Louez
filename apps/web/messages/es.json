@@ -6180,7 +6180,8 @@
     "unexpected": "Algo salió mal. Inténtalo de nuevo.",
     "standaloneSingleStore": "Esta instancia aloja una sola tienda",
     "emailLoginUnavailable": "El inicio de sesión por correo no está disponible por el momento",
-    "stripeNotConfigured": "Los pagos en línea no están disponibles: esta instancia no tiene claves de Stripe configuradas. Las reservas funcionan en modo solicitud."
+    "stripeNotConfigured": "Los pagos en línea no están disponibles: esta instancia no tiene claves de Stripe configuradas. Las reservas funcionan en modo solicitud.",
+    "emailSendFailed": "No se pudo enviar el correo electrónico."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

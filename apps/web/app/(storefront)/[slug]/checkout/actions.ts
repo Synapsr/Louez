@@ -98,6 +98,7 @@ import {
   validateMinRentalDurationMinutes,
 } from '@/lib/utils/rental-duration';
 
+import { getStorefrontUrl } from '@/lib/storefront-url';
 import { env } from '@/env';
 
 interface ReservationItem {
@@ -2030,9 +2031,7 @@ export async function createReservation(input: CreateReservationInput) {
     if (shouldProcessPayment) {
       try {
         const currency = store.settings?.currency || 'EUR';
-        const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-        const protocol = domain.includes('localhost') ? 'http' : 'https';
-        const baseUrl = `${protocol}://${store.slug}.${domain}`;
+        const baseUrl = getStorefrontUrl(store.slug);
 
         // Get deposit percentage (default 100% = full payment)
         const depositPercentage =

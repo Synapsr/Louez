@@ -6173,7 +6173,8 @@
     "unexpected": "Coś poszło nie tak. Spróbuj ponownie.",
     "standaloneSingleStore": "Ta instancja obsługuje tylko jeden sklep",
     "emailLoginUnavailable": "Logowanie przez e-mail jest obecnie niedostępne",
-    "stripeNotConfigured": "Płatności online są niedostępne: ta instancja nie ma skonfigurowanych kluczy Stripe. Rezerwacje działają w trybie zapytania."
+    "stripeNotConfigured": "Płatności online są niedostępne: ta instancja nie ma skonfigurowanych kluczy Stripe. Rezerwacje działają w trybie zapytania.",
+    "emailSendFailed": "Nie udało się wysłać wiadomości e-mail."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

@@ -6308,7 +6308,8 @@
     "unexpected": "Une erreur est survenue. Réessayez.",
     "standaloneSingleStore": "Cette instance héberge une seule boutique",
     "emailLoginUnavailable": "La connexion par e-mail n'est pas disponible pour le moment",
-    "stripeNotConfigured": "Les paiements en ligne ne sont pas disponibles : aucune clé Stripe n'est configurée sur cette instance. Les réservations fonctionnent en mode demande."
+    "stripeNotConfigured": "Les paiements en ligne ne sont pas disponibles : aucune clé Stripe n'est configurée sur cette instance. Les réservations fonctionnent en mode demande.",
+    "emailSendFailed": "Échec de l'envoi de l'e-mail."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

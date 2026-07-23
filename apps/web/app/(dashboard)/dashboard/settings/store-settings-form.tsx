@@ -222,7 +222,6 @@ export function StoreSettingsForm({
           <StoreSettingsIdentitySection
             form={form}
             storeSlug={store.slug}
-            domain={domain}
             latitude={latitude}
             longitude={longitude}
             onOpenSlugModal={() => setIsSlugModalOpen(true)}
