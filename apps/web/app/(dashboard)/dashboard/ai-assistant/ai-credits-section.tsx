@@ -52,6 +52,10 @@ export type AiCreditsSectionProps = {
   compact?: boolean
   /** Where Stripe returns after checkout (defaults to the AI advisor page). */
   returnPath?: string
+  /** Flat voice tariff (credits/min) for the recharge value breakdown. */
+  voiceCreditsPerMinute?: number | null
+  /** Monthly number rental in credits for the recharge value breakdown. */
+  numberRentalCredits?: number | null
 }
 
 const LOW_BALANCE_CREDITS = 5
@@ -74,6 +78,8 @@ export function AiCreditsSection({
   topupStatus,
   compact = false,
   returnPath,
+  voiceCreditsPerMinute = null,
+  numberRentalCredits = null,
 }: AiCreditsSectionProps) {
   const t = useTranslations('dashboard.aiCredits')
   const [modalOpen, setModalOpen] = useState(false)
@@ -321,6 +327,8 @@ export function AiCreditsSection({
           onOpenChange={setModalOpen}
           packages={packages}
           returnPath={returnPath}
+          voiceCreditsPerMinute={voiceCreditsPerMinute}
+          numberRentalCredits={numberRentalCredits}
         />
       )}
     </Card>

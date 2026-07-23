@@ -187,7 +187,22 @@ export const env = createEnv({
     // off (tokens only). Never surfaced to anyone.
     AI_VOICE_AUDIO_USD_PER_MIN: z.coerce.number().min(0).optional(),
     // Safety cap: a single call never debits more than this many credits.
+    // Applies to usage-metered (USD-based) billing; flat per-minute billing is
+    // bounded by AI_PHONE_MAX_CALL_SECONDS × AI_PHONE_CREDITS_PER_MINUTE instead.
     AI_PHONE_MAX_CREDITS_PER_CALL: z.coerce.number().int().min(1).default(20),
+    // Flat voice tariff: credits billed per STARTED minute of call. When set,
+    // it replaces the USD-based conversion for what the store is DEBITED, while
+    // the real USD cost (audio + tokens) keeps being recorded on every debit row
+    // for cost-vs-billed reporting. Unset ⇒ usage-metered billing as before.
+    AI_PHONE_CREDITS_PER_MINUTE: z.coerce.number().min(0).optional(),
+    // Monthly rental of a provisioned phone number, in credits. Debited at
+    // activation and on each monthly renewal; on failure the store is warned,
+    // reminded, then the number is auto-released after a grace window. 0/unset
+    // ⇒ numbers are free (self-host default). Linked (BYO) numbers never billed.
+    AI_PHONE_NUMBER_RENTAL_CREDITS: z.coerce.number().min(0).optional(),
+    // Real monthly cost of a provisioned number in USD (provider rental), frozen
+    // on each rental debit row for cost-vs-billed reporting. Never surfaced.
+    AI_PHONE_NUMBER_COST_USD_PER_MONTH: z.coerce.number().min(0).optional(),
     // Hard cap on call duration (seconds) to bound cost / toll-fraud blast radius.
     AI_PHONE_MAX_CALL_SECONDS: z.coerce
       .number()
@@ -420,6 +435,10 @@ export const env = createEnv({
     AI_PHONE_MODEL: process.env.AI_PHONE_MODEL,
     AI_VOICE_AUDIO_USD_PER_MIN: process.env.AI_VOICE_AUDIO_USD_PER_MIN,
     AI_PHONE_MAX_CREDITS_PER_CALL: process.env.AI_PHONE_MAX_CREDITS_PER_CALL,
+    AI_PHONE_CREDITS_PER_MINUTE: process.env.AI_PHONE_CREDITS_PER_MINUTE,
+    AI_PHONE_NUMBER_RENTAL_CREDITS: process.env.AI_PHONE_NUMBER_RENTAL_CREDITS,
+    AI_PHONE_NUMBER_COST_USD_PER_MONTH:
+      process.env.AI_PHONE_NUMBER_COST_USD_PER_MONTH,
     AI_PHONE_MAX_CALL_SECONDS: process.env.AI_PHONE_MAX_CALL_SECONDS,
     AI_PHONE_TRANSPORT: process.env.AI_PHONE_TRANSPORT,
     VOICE_RELAY_WS_URL: process.env.VOICE_RELAY_WS_URL,

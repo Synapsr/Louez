@@ -1,22 +1,26 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 
-import { db, stores } from '@louez/db'
+import { db, storePhoneNumbers, stores } from '@louez/db'
 import type { AiPhoneSettings } from '@louez/types'
 import {
   aiPhoneSettingsSchema,
   type AiPhoneSettingsInput,
 } from '@louez/validations'
 
+import { releaseNumberBinding } from '@/lib/ai/phone/number-release'
+import { log } from '@/lib/evlog'
 import { getStorePlan } from '@/lib/plan-limits'
 import { getCurrentStore } from '@/lib/store-context'
 
 /**
  * Persist the AI voice agent's behavior settings. The inbound-number binding
  * (provision / link / release) is managed separately — see
- * voice-provisioning-actions.ts.
+ * voice-provisioning-actions.ts — EXCEPT that turning the agent OFF also
+ * releases the bound number (the UI warns first): a provisioned number keeps
+ * costing rental money, so it is never left attached to a disabled agent.
  */
 export async function updateAiPhoneSettings(data: AiPhoneSettingsInput) {
   const store = await getCurrentStore()
@@ -50,6 +54,28 @@ export async function updateAiPhoneSettings(data: AiPhoneSettingsInput) {
     .set({ aiPhoneSettings, updatedAt: new Date() })
     .where(eq(stores.id, store.id))
 
-  revalidatePath('/dashboard/settings/ai-advisor')
+  // Turning the agent off detaches the number (provisioned ones are handed
+  // back to the provider). Best-effort: a provider hiccup must not block the
+  // settings save — the number then stays visible and can be released manually.
+  if (!aiPhoneSettings.enabled) {
+    const binding = await db.query.storePhoneNumbers.findFirst({
+      where: and(
+        eq(storePhoneNumbers.storeId, store.id),
+        inArray(storePhoneNumbers.status, ['active', 'pending']),
+      ),
+      columns: { id: true, providerNumberId: true },
+    })
+    if (binding) {
+      const released = await releaseNumberBinding(binding)
+      if (!released.ok) {
+        log.error(
+          'phone',
+          `release-on-disable failed for store ${store.id} (number kept, manual release needed)`,
+        )
+      }
+    }
+  }
+
+  revalidatePath('/dashboard/ai-assistant')
   return { success: true }
 }

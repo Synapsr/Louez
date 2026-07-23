@@ -200,6 +200,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "AI-assistent",
+        "subtitle": "Je winkel adviseert, antwoordt en reserveert — automatisch",
+        "credits": "{count} credits",
+        "creditsUnlimited": "Onbeperkte credits",
+        "recharge": "Opwaarderen"
+      },
+      "hero": {
+        "eyebrow": "AI-assistent",
+        "title": "Je winkel antwoordt, adviseert en reserveert, ook als je er niet bent",
+        "subtitle": "Activeer de online adviseur en de spraakagent: je klanten krijgen direct antwoord, jij krijgt gekwalificeerde reserveringen.",
+        "activate": "Activeren",
+        "upgrade": "Plan upgraden",
+        "upgradeHint": "De AI-assistent is inbegrepen vanaf het Pro-plan.",
+        "advisor": {
+          "title": "Online adviseur",
+          "b1": "Beantwoordt 24/7 vragen van je klanten over je winkel",
+          "b2": "Beveelt de juiste producten aan en controleert de beschikbaarheid",
+          "b3": "Zet bezoekers om in gekwalificeerde reserveringen"
+        },
+        "voice": {
+          "title": "Spraakagent",
+          "b1": "Neemt elke oproep aan, op elk uur",
+          "b2": "Deelt openingstijden, tarieven en beschikbaarheid mondeling",
+          "b3": "Neemt reserveringen aan en geeft berichten aan je door"
+        }
+      }
+    },
     "installPrompt": {
       "title": "App installeren",
       "subtitle": "Houd je dashboard binnen handbereik op je beginscherm.",
@@ -499,6 +528,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "AI-assistent",
       "home": "Home",
       "products": "Producten",
       "inventory": "Inventaris",
@@ -4296,6 +4326,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "AI-assistent",
       "label": "Kruimelpad",
       "home": "Home",
       "products": "Producten",
@@ -4370,6 +4401,14 @@
         }
       },
       "topup": {
+        "valueTitle": "Wat je krijgt",
+        "valueConversations": "Tot {count} adviesgesprekken",
+        "valueMinutes": "≈ {count} minuten spraakoproepen",
+        "valueNumberMonths": "{count} maanden toegewijd nummer",
+        "perCredit": "{amount} / credit",
+        "savings": "-{percent}%",
+        "popular": "Populair",
+        "noExpiry": "Je credits verlopen nooit.",
         "title": "AI-tegoed opwaarderen",
         "description": "Kies een pakket. Tegoed wordt direct na betaling toegevoegd.",
         "credits": "credits",
@@ -5485,6 +5524,30 @@
       "listen": "Gesprek openen",
       "footer": "Open het gesprek om de uitwisseling te lezen en de opname van het gesprek opnieuw te beluisteren."
     },
+    "voiceNumberBilling": {
+      "numberLabel": "Nummer:",
+      "rentalLabel": "Maandelijkse huur:",
+      "rentalValue": "{credits} AI-credits / maand",
+      "deadlineLabel": "Deadline:",
+      "ctaRecharge": "Mijn credits opwaarderen",
+      "ctaOpen": "Mijn AI-assistent openen",
+      "footer": "De huur van het nummer wordt elke maand automatisch met AI-credits betaald.",
+      "warning": {
+        "subject": "Opwaarderen nodig — verlenging van nummer {number}",
+        "title": "Je saldo dekt de volgende verlenging niet",
+        "body": "Het nummer {number} van {storeName} wordt op {date} verlengd voor {credits} AI-credits, maar je huidige saldo is onvoldoende. Waardeer vóór die datum op om je nummer te behouden."
+      },
+      "failed": {
+        "subject": "Actie vereist — nummer {number} dreigt te worden losgekoppeld",
+        "title": "Verlenging mislukt",
+        "body": "De verlenging van nummer {number} ({credits} AI-credits) kon niet worden uitgevoerd: onvoldoende saldo. Waardeer op vóór {date}, anders wordt het nummer automatisch losgekoppeld. We proberen de afschrijving elke dag opnieuw zodra je opwaardeert."
+      },
+      "released": {
+        "subject": "Nummer {number} is losgekoppeld",
+        "title": "Nummer losgekoppeld",
+        "body": "Het nummer {number} van {storeName} is losgekoppeld en niet meer actief. Je kunt op elk moment een nieuw nummer kiezen via je AI-assistent."
+      }
+    },
     "teamInvitation": {
       "subject": "{inviterName} nodigt u uit om lid te worden van {storeName}",
       "title": "Teamuitnodiging",
@@ -5908,6 +5971,7 @@
     "conversationNotFound": "Gesprek niet gevonden",
     "featureNotAvailable": "Deze functie is niet beschikbaar in uw plan",
     "telephonyNotConfigured": "Telefonie is niet geconfigureerd door de beheerder.",
+    "insufficientAiCredits": "Onvoldoende AI-credits — waardeer op om je nummer te activeren",
     "numberAlreadyBound": "Er is al een nummer actief. Geef het eerst vrij.",
     "provisioningFailed": "Kon dit nummer niet voorzien. Probeer een ander.",
     "numberSearchFailed": "Zoeken naar nummers mislukt. Probeer opnieuw.",

@@ -37,6 +37,7 @@ import {
 } from '@louez/ui';
 import {
   AnalyticsIcon,
+  BotIcon,
   CalendarDaysIcon,
   CalendarIcon,
   CreditCardIcon,
@@ -86,6 +87,7 @@ const mainNavigation = [
   { key: 'calendar', href: '/dashboard/calendar', icon: CalendarDaysIcon },
   { key: 'reservations', href: '/dashboard/reservations', icon: CalendarIcon },
   { key: 'customers', href: '/dashboard/customers', icon: UsersIcon },
+  { key: 'aiAssistant', href: '/dashboard/ai-assistant', icon: BotIcon },
 ];
 
 const catalogNavigation = [

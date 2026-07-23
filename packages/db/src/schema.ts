@@ -3400,7 +3400,14 @@ export const aiCreditDebits = mysqlTable(
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
-    conversationId: varchar('conversation_id', { length: 21 }).notNull(),
+    // Null for debits not tied to a conversation (e.g. phone-number rental).
+    conversationId: varchar('conversation_id', { length: 21 }),
+    // What the debit pays for: AI usage (tokens/audio) or the monthly rental of
+    // the store's provisioned phone number. Keeps cost-vs-billed reporting
+    // trivially segmentable per revenue line.
+    kind: mysqlEnum('kind', ['usage', 'number_rental'])
+      .notNull()
+      .default('usage'),
 
     dedupKey: varchar('dedup_key', { length: 120 }).notNull().unique(),
 
@@ -3493,6 +3500,18 @@ export const storePhoneNumbers = mysqlTable(
     status: mysqlEnum('status', ['active', 'pending', 'released'])
       .notNull()
       .default('active'),
+    // Monthly rental billing cycle (provisioned numbers only; null for linked
+    // numbers, which the merchant pays for directly). The renewal job debits
+    // the rental in AI credits each cycle and advances this anchor.
+    nextRenewalAt: timestamp('next_renewal_at', { mode: 'date' }),
+    // Pre-renewal low-balance warning sent for the current cycle (reset on a
+    // successful renewal).
+    renewalWarnedAt: timestamp('renewal_warned_at', { mode: 'date' }),
+    // First failed renewal attempt of the current cycle — starts the grace
+    // window at the end of which the number is released.
+    renewalFailedAt: timestamp('renewal_failed_at', { mode: 'date' }),
+    // Mid-grace reminder sent (reset on a successful renewal).
+    renewalRemindedAt: timestamp('renewal_reminded_at', { mode: 'date' }),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },

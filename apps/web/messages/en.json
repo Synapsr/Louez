@@ -200,6 +200,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "AI Assistant",
+        "subtitle": "Your store advises, answers and books — automatically",
+        "credits": "{count} credits",
+        "creditsUnlimited": "Unlimited credits",
+        "recharge": "Recharge"
+      },
+      "hero": {
+        "eyebrow": "AI Assistant",
+        "title": "Your store answers, advises and books, even when you're away",
+        "subtitle": "Turn on the online advisor and the voice agent: your customers get instant answers, you get qualified bookings.",
+        "activate": "Activate",
+        "upgrade": "Upgrade plan",
+        "upgradeHint": "The AI Assistant is included from the Pro plan.",
+        "advisor": {
+          "title": "Online advisor",
+          "b1": "Answers your customers' questions about your store 24/7",
+          "b2": "Recommends the right products and checks availability",
+          "b3": "Turns visitors into qualified bookings"
+        },
+        "voice": {
+          "title": "Voice agent",
+          "b1": "Picks up every call, at any hour",
+          "b2": "Shares hours, prices and availability out loud",
+          "b3": "Takes bookings and passes on messages"
+        }
+      }
+    },
     "installPrompt": {
       "title": "Install the app",
       "subtitle": "Keep your dashboard one tap away on your home screen.",
@@ -499,6 +528,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "AI Assistant",
       "home": "Home",
       "products": "Products",
       "inventory": "Inventory",
@@ -4403,6 +4433,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "AI Assistant",
       "label": "Breadcrumb",
       "home": "Home",
       "products": "Products",
@@ -4477,6 +4508,14 @@
         }
       },
       "topup": {
+        "valueTitle": "What you get",
+        "valueConversations": "Up to {count} advisor conversations",
+        "valueMinutes": "≈ {count} minutes of voice calls",
+        "valueNumberMonths": "{count} months of dedicated number",
+        "perCredit": "{amount} / credit",
+        "savings": "-{percent}%",
+        "popular": "Popular",
+        "noExpiry": "Your credits never expire.",
         "title": "Recharge AI credits",
         "description": "Choose a pack. Credits are added instantly after payment.",
         "credits": "credits",
@@ -5598,6 +5637,30 @@
       "listen": "Open the call",
       "footer": "Open the conversation to read the exchange and replay the call recording."
     },
+    "voiceNumberBilling": {
+      "numberLabel": "Number:",
+      "rentalLabel": "Monthly rental:",
+      "rentalValue": "{credits} AI credits / month",
+      "deadlineLabel": "Deadline:",
+      "ctaRecharge": "Recharge my credits",
+      "ctaOpen": "Open my AI Assistant",
+      "footer": "The number rental is paid automatically in AI credits every month.",
+      "warning": {
+        "subject": "Time to recharge — renewal of {number}",
+        "title": "Your balance won't cover the next renewal",
+        "body": "The number {number} for {storeName} renews on {date} for {credits} AI credits, but your current balance isn't enough. Recharge before that date to keep your number."
+      },
+      "failed": {
+        "subject": "Action required — {number} is at risk of being detached",
+        "title": "Renewal failed",
+        "body": "The renewal of {number} ({credits} AI credits) could not be completed: insufficient balance. Recharge before {date}, otherwise the number will be automatically detached. We retry the charge every day as soon as you recharge."
+      },
+      "released": {
+        "subject": "The number {number} has been detached",
+        "title": "Number detached",
+        "body": "The number {number} for {storeName} has been detached and is no longer active. You can pick a new number anytime from your AI Assistant."
+      }
+    },
     "teamInvitation": {
       "subject": "{inviterName} invites you to join {storeName}",
       "title": "Team invitation",
@@ -6043,6 +6106,7 @@
     "conversationNotFound": "Conversation not found",
     "featureNotAvailable": "This feature is not available on your plan",
     "telephonyNotConfigured": "Telephony is not configured by the operator.",
+    "insufficientAiCredits": "Insufficient AI credits — recharge to activate your number",
     "numberAlreadyBound": "A number is already active. Release it first.",
     "provisioningFailed": "Could not provision this number. Try another one.",
     "numberSearchFailed": "Number search failed. Please try again.",

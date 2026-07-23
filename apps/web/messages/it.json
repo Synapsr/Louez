@@ -200,6 +200,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "Assistente IA",
+        "subtitle": "Il tuo negozio consiglia, risponde e prenota — automaticamente",
+        "credits": "{count} crediti",
+        "creditsUnlimited": "Crediti illimitati",
+        "recharge": "Ricarica"
+      },
+      "hero": {
+        "eyebrow": "Assistente IA",
+        "title": "Il tuo negozio risponde, consiglia e prenota, anche quando non ci sei",
+        "subtitle": "Attiva il consulente online e l'agente vocale: i tuoi clienti ottengono risposte immediate, tu ricevi prenotazioni qualificate.",
+        "activate": "Attiva",
+        "upgrade": "Passa a un piano superiore",
+        "upgradeHint": "L'Assistente IA è incluso a partire dal piano Pro.",
+        "advisor": {
+          "title": "Consulente online",
+          "b1": "Risponde alle domande dei clienti sul tuo negozio 24 ore su 24",
+          "b2": "Consiglia i prodotti giusti e verifica le disponibilità",
+          "b3": "Trasforma i visitatori in prenotazioni qualificate"
+        },
+        "voice": {
+          "title": "Agente vocale",
+          "b1": "Risponde a tutte le chiamate, a qualsiasi ora",
+          "b2": "Comunica orari, tariffe e disponibilità a voce",
+          "b3": "Prende prenotazioni e ti inoltra i messaggi"
+        }
+      }
+    },
     "installPrompt": {
       "title": "Installa l'app",
       "subtitle": "Tieni la tua dashboard sempre a portata di mano nella schermata Home.",
@@ -499,6 +528,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "Assistente IA",
       "home": "Home",
       "products": "Prodotti",
       "inventory": "Inventario",
@@ -4296,6 +4326,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "Assistente IA",
       "label": "Breadcrumb",
       "home": "Home",
       "products": "Prodotti",
@@ -4370,6 +4401,14 @@
         }
       },
       "topup": {
+        "valueTitle": "Cosa rappresenta",
+        "valueConversations": "Fino a {count} conversazioni di consulenza",
+        "valueMinutes": "≈ {count} minuti di chiamate vocali",
+        "valueNumberMonths": "{count} mesi di numero dedicato",
+        "perCredit": "{amount} / credito",
+        "savings": "-{percent} %",
+        "popular": "Popolare",
+        "noExpiry": "I tuoi crediti non scadono mai.",
         "title": "Ricarica crediti IA",
         "description": "Scegli un pacchetto. I crediti vengono aggiunti subito dopo il pagamento.",
         "credits": "crediti",
@@ -5476,6 +5515,30 @@
       "listen": "Apri la chiamata",
       "footer": "Apri la conversazione per leggere lo scambio e riascoltare la registrazione della chiamata."
     },
+    "voiceNumberBilling": {
+      "numberLabel": "Numero:",
+      "rentalLabel": "Canone mensile:",
+      "rentalValue": "{credits} crediti IA / mese",
+      "deadlineLabel": "Scadenza:",
+      "ctaRecharge": "Ricarica i miei crediti",
+      "ctaOpen": "Apri il mio Assistente IA",
+      "footer": "Il canone del numero viene pagato automaticamente in crediti IA ogni mese.",
+      "warning": {
+        "subject": "Ricarica necessaria — rinnovo del numero {number}",
+        "title": "Il tuo saldo non copre il prossimo rinnovo",
+        "body": "Il numero {number} di {storeName} verrà rinnovato il {date} per {credits} crediti IA, ma il tuo saldo attuale non è sufficiente. Ricarica prima di quella data per conservare il numero."
+      },
+      "failed": {
+        "subject": "Azione richiesta — il numero {number} rischia di essere scollegato",
+        "title": "Rinnovo non riuscito",
+        "body": "Il rinnovo del numero {number} ({credits} crediti IA) non è andato a buon fine: saldo insufficiente. Ricarica entro il {date}, altrimenti il numero verrà scollegato automaticamente. Ritentiamo l'addebito ogni giorno non appena ricarichi."
+      },
+      "released": {
+        "subject": "Il numero {number} è stato scollegato",
+        "title": "Numero scollegato",
+        "body": "Il numero {number} di {storeName} è stato scollegato e non è più attivo. Puoi scegliere un nuovo numero in qualsiasi momento dal tuo Assistente IA."
+      }
+    },
     "teamInvitation": {
       "subject": "{inviterName} ti invita a unirti a {storeName}",
       "title": "Invito al team",
@@ -5908,6 +5971,7 @@
     "conversationNotFound": "Conversazione non trovata",
     "featureNotAvailable": "Questa funzione non è disponibile nel tuo piano",
     "telephonyNotConfigured": "La telefonia non è configurata dall'operatore.",
+    "insufficientAiCredits": "Crediti IA insufficienti — ricarica per attivare il tuo numero",
     "numberAlreadyBound": "Un numero è già attivo. Rilascialo prima.",
     "provisioningFailed": "Impossibile attivare questo numero. Provane un altro.",
     "numberSearchFailed": "La ricerca dei numeri non è riuscita. Riprova.",

@@ -200,6 +200,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "Asystent AI",
+        "subtitle": "Twój sklep doradza, odpowiada i rezerwuje — automatycznie",
+        "credits": "{count} kredytów",
+        "creditsUnlimited": "Nielimitowane kredyty",
+        "recharge": "Doładuj"
+      },
+      "hero": {
+        "eyebrow": "Asystent AI",
+        "title": "Twój sklep odpowiada, doradza i rezerwuje, nawet gdy Cię nie ma",
+        "subtitle": "Włącz doradcę online i agenta głosowego: Twoi klienci otrzymują natychmiastowe odpowiedzi, a Ty zyskujesz wartościowe rezerwacje.",
+        "activate": "Aktywuj",
+        "upgrade": "Zmień plan na wyższy",
+        "upgradeHint": "Asystent AI jest dostępny od planu Pro.",
+        "advisor": {
+          "title": "Doradca online",
+          "b1": "Odpowiada na pytania klientów o Twój sklep 24/7",
+          "b2": "Poleca właściwe produkty i sprawdza dostępność",
+          "b3": "Zamienia odwiedzających w wartościowe rezerwacje"
+        },
+        "voice": {
+          "title": "Agent głosowy",
+          "b1": "Odbiera każde połączenie, o każdej porze",
+          "b2": "Podaje godziny otwarcia, ceny i dostępność na głos",
+          "b3": "Przyjmuje rezerwacje i przekazuje Ci wiadomości"
+        }
+      }
+    },
     "installPrompt": {
       "title": "Zainstaluj aplikację",
       "subtitle": "Miej panel zawsze pod ręką na ekranie głównym.",
@@ -499,6 +528,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "Asystent AI",
       "home": "Strona główna",
       "products": "Produkty",
       "inventory": "Inwentarz",
@@ -4296,6 +4326,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "Asystent AI",
       "label": "Okruszki",
       "home": "Strona główna",
       "products": "Produkty",
@@ -4370,6 +4401,14 @@
         }
       },
       "topup": {
+        "valueTitle": "Co to oznacza",
+        "valueConversations": "Do {count} rozmów doradczych",
+        "valueMinutes": "≈ {count} minut połączeń głosowych",
+        "valueNumberMonths": "{count} mies. dedykowanego numeru",
+        "perCredit": "{amount} / kredyt",
+        "savings": "-{percent}%",
+        "popular": "Popularny",
+        "noExpiry": "Twoje kredyty nigdy nie wygasają.",
         "title": "Doładuj kredyty AI",
         "description": "Wybierz pakiet. Kredyty są dodawane natychmiast po płatności.",
         "credits": "kredytów",
@@ -5476,6 +5515,30 @@
       "listen": "Otwórz rozmowę",
       "footer": "Otwórz rozmowę, aby przeczytać jej treść i ponownie odsłuchać nagranie."
     },
+    "voiceNumberBilling": {
+      "numberLabel": "Numer:",
+      "rentalLabel": "Miesięczny abonament:",
+      "rentalValue": "{credits} kredytów AI / miesiąc",
+      "deadlineLabel": "Termin:",
+      "ctaRecharge": "Doładuj kredyty",
+      "ctaOpen": "Otwórz mojego Asystenta AI",
+      "footer": "Abonament numeru jest co miesiąc opłacany automatycznie kredytami AI.",
+      "warning": {
+        "subject": "Doładuj konto — odnowienie numeru {number}",
+        "title": "Twoje saldo nie pokryje najbliższego odnowienia",
+        "body": "Numer {number} sklepu {storeName} zostanie odnowiony {date} za {credits} kredytów AI, ale Twoje obecne saldo jest niewystarczające. Doładuj konto przed tą datą, aby zachować numer."
+      },
+      "failed": {
+        "subject": "Wymagane działanie — numer {number} może zostać odłączony",
+        "title": "Odnowienie nie powiodło się",
+        "body": "Odnowienie numeru {number} ({credits} kredytów AI) nie powiodło się: niewystarczające saldo. Doładuj konto przed {date}, w przeciwnym razie numer zostanie automatycznie odłączony. Ponawiamy obciążenie codziennie, gdy tylko doładujesz konto."
+      },
+      "released": {
+        "subject": "Numer {number} został odłączony",
+        "title": "Numer odłączony",
+        "body": "Numer {number} sklepu {storeName} został odłączony i nie jest już aktywny. W każdej chwili możesz wybrać nowy numer w swoim Asystencie AI."
+      }
+    },
     "teamInvitation": {
       "subject": "{inviterName} zaprasza Cię do {storeName}",
       "title": "Zaproszenie do zespołu",
@@ -5908,6 +5971,7 @@
     "conversationNotFound": "Nie znaleziono rozmowy",
     "featureNotAvailable": "Ta funkcja nie jest dostępna w Twoim planie",
     "telephonyNotConfigured": "Telefonia nie jest skonfigurowana przez operatora.",
+    "insufficientAiCredits": "Za mało kredytów AI — doładuj konto, aby aktywować numer",
     "numberAlreadyBound": "Numer jest już aktywny. Najpierw go zwolnij.",
     "provisioningFailed": "Nie udało się udostępnić tego numeru. Spróbuj innego.",
     "numberSearchFailed": "Wyszukiwanie numerów nie powiodło się. Spróbuj ponownie.",

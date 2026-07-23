@@ -200,6 +200,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "Assistant IA",
+        "subtitle": "Votre boutique conseille, répond et réserve — automatiquement",
+        "credits": "{count} crédits",
+        "creditsUnlimited": "Crédits illimités",
+        "recharge": "Recharger"
+      },
+      "hero": {
+        "eyebrow": "Assistant IA",
+        "title": "Votre boutique répond, conseille et réserve, même quand vous n'êtes pas là",
+        "subtitle": "Activez le conseiller en ligne et l'agent vocal : vos clients obtiennent des réponses immédiates, vous récupérez des réservations qualifiées.",
+        "activate": "Activer",
+        "upgrade": "Passer au plan supérieur",
+        "upgradeHint": "L'Assistant IA est inclus à partir du plan Pro.",
+        "advisor": {
+          "title": "Conseiller en ligne",
+          "b1": "Répond aux questions de vos clients 24h/24 sur votre boutique",
+          "b2": "Recommande les bons produits et vérifie les disponibilités",
+          "b3": "Transforme les visiteurs en réservations qualifiées"
+        },
+        "voice": {
+          "title": "Agent vocal",
+          "b1": "Décroche tous vos appels, à toute heure",
+          "b2": "Renseigne horaires, tarifs et disponibilités de vive voix",
+          "b3": "Prend des réservations et vous transmet des messages"
+        }
+      }
+    },
     "installPrompt": {
       "title": "Installer l'application",
       "subtitle": "Retrouvez votre tableau de bord sur votre écran d'accueil.",
@@ -499,6 +528,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "Assistant IA",
       "home": "Accueil",
       "products": "Produits",
       "inventory": "Inventaire",
@@ -4403,6 +4433,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "Assistant IA",
       "label": "Fil d'Ariane",
       "home": "Accueil",
       "products": "Produits",
@@ -4477,6 +4508,14 @@
         }
       },
       "topup": {
+        "valueTitle": "Ce que ça représente",
+        "valueConversations": "Jusqu'à {count} conversations de conseil",
+        "valueMinutes": "≈ {count} minutes d'appels vocaux",
+        "valueNumberMonths": "{count} mois de numéro dédié",
+        "perCredit": "{amount} / crédit",
+        "savings": "-{percent} %",
+        "popular": "Populaire",
+        "noExpiry": "Vos crédits n'expirent jamais.",
         "title": "Recharger des crédits IA",
         "description": "Choisissez un pack. Les crédits sont ajoutés immédiatement après le paiement.",
         "credits": "crédits",
@@ -5598,6 +5637,30 @@
       "listen": "Ouvrir l'appel",
       "footer": "Ouvrez la conversation pour lire l'échange et réécouter l'enregistrement de l'appel."
     },
+    "voiceNumberBilling": {
+      "numberLabel": "Numéro :",
+      "rentalLabel": "Location mensuelle :",
+      "rentalValue": "{credits} crédits IA / mois",
+      "deadlineLabel": "Date limite :",
+      "ctaRecharge": "Recharger mes crédits",
+      "ctaOpen": "Ouvrir mon Assistant IA",
+      "footer": "La location du numéro est réglée automatiquement en crédits IA chaque mois.",
+      "warning": {
+        "subject": "Pensez à recharger — renouvellement du numéro {number}",
+        "title": "Votre solde ne couvre pas le prochain renouvellement",
+        "body": "Le numéro {number} de {storeName} sera renouvelé le {date} pour {credits} crédits IA, mais votre solde actuel ne suffit pas. Rechargez avant cette date pour conserver votre numéro."
+      },
+      "failed": {
+        "subject": "Action requise — le numéro {number} risque d'être détaché",
+        "title": "Renouvellement impossible",
+        "body": "Le renouvellement du numéro {number} ({credits} crédits IA) n'a pas pu être effectué : solde insuffisant. Rechargez avant le {date}, sans quoi le numéro sera automatiquement détaché. Nous retentons le prélèvement chaque jour dès que vous rechargez."
+      },
+      "released": {
+        "subject": "Le numéro {number} a été détaché",
+        "title": "Numéro détaché",
+        "body": "Le numéro {number} de {storeName} a été détaché et n'est plus actif. Vous pouvez choisir un nouveau numéro à tout moment depuis votre Assistant IA."
+      }
+    },
     "teamInvitation": {
       "subject": "{inviterName} vous invite à rejoindre {storeName}",
       "title": "Invitation à rejoindre l'équipe",
@@ -6043,6 +6106,7 @@
     "conversationNotFound": "Conversation introuvable",
     "featureNotAvailable": "Cette fonctionnalité n'est pas disponible avec votre forfait",
     "telephonyNotConfigured": "La téléphonie n'est pas configurée par l'opérateur.",
+    "insufficientAiCredits": "Crédits IA insuffisants — rechargez pour activer votre numéro",
     "numberAlreadyBound": "Un numéro est déjà actif. Libérez-le d'abord.",
     "provisioningFailed": "Impossible de provisionner ce numéro. Essayez-en un autre.",
     "numberSearchFailed": "La recherche de numéros a échoué. Réessayez.",

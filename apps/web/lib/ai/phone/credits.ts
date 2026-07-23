@@ -12,6 +12,8 @@ import {
   CREDIT_MICRO,
   audioCostMicroUsd,
   costMicroUsdToCreditsMicro,
+  flatCallBillMicro,
+  getPhoneCreditsPerMinute,
   runCostMicroUsd,
   type AdvisorUsage,
 } from '@/lib/ai/pricing'
@@ -75,10 +77,50 @@ async function applyCallDebit(
   const { storeId, conversationId, dedupKey, usage, audioSeconds, plan } =
     params
 
+  // The REAL cost is always frozen on the row (cost-vs-billed reporting); what
+  // the store is DEBITED depends on the billing mode: flat per-started-minute
+  // when AI_PHONE_CREDITS_PER_MINUTE is set, else the USD-metered conversion.
   const costMicroUsd =
     runCostMicroUsd(usage) + audioCostMicroUsd(audioSeconds)
-  const rawCreditsMicro = costMicroUsdToCreditsMicro(costMicroUsd)
-  if (!Number.isFinite(rawCreditsMicro) || rawCreditsMicro <= 0) return 0
+  const flatMode = getPhoneCreditsPerMinute() > 0
+  let rawCreditsMicro: number
+  if (flatMode) {
+    // Flat tariff: only the whole-call audio settle bills credits (token turns
+    // become cost-only rows below). Duration is clamped to the configured max
+    // call length so a malformed provider duration can never overbill.
+    const maxSeconds = Math.trunc(Number(env.AI_PHONE_MAX_CALL_SECONDS))
+    const clampedSeconds =
+      Number.isFinite(maxSeconds) && maxSeconds > 0
+        ? Math.min(audioSeconds, maxSeconds)
+        : audioSeconds
+    rawCreditsMicro = flatCallBillMicro(clampedSeconds)
+  } else {
+    rawCreditsMicro = costMicroUsdToCreditsMicro(costMicroUsd)
+  }
+  if (!Number.isFinite(rawCreditsMicro) || rawCreditsMicro < 0) {
+    rawCreditsMicro = 0
+  }
+  if (rawCreditsMicro <= 0 && costMicroUsd <= 0) return 0
+
+  // Cost-only row (flat mode's token turns): freeze the real cost for the
+  // margin reporting without touching the balance, the cap, or the per-call
+  // accumulator. Still exactly-once via the UNIQUE dedup key.
+  if (rawCreditsMicro <= 0) {
+    await tx.insert(aiCreditDebits).values({
+      storeId,
+      conversationId,
+      dedupKey,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      cachedInputTokens: usage.cachedInputTokens,
+      audioSeconds,
+      costMicroUsd,
+      debitedMicro: 0,
+      fromMonthlyMicro: 0,
+      fromPrepaidMicro: 0,
+    })
+    return 0
+  }
 
   // Serialize a store's debits by locking the ai_credits row up front (creating
   // it on demand) so the per-call cap and the monthly split are race-free.
@@ -101,16 +143,17 @@ async function applyCallDebit(
   // skipped at runtime (SKIP_ENV_VALIDATION), which would make the Zod default
   // vanish and Math.max(1, undefined) === NaN poison the whole debit. Coerce
   // defensively so a missing cap falls back to 20 credits, never NaN.
+  // The cap protects USD-metered billing; the flat tariff is already bounded
+  // above by the max call duration, so it bypasses this cap.
   const maxCreditsPerCall = Math.trunc(Number(env.AI_PHONE_MAX_CREDITS_PER_CALL))
   const capCredits =
     Number.isFinite(maxCreditsPerCall) && maxCreditsPerCall >= 1
       ? maxCreditsPerCall
       : 20
   const capMicro = capCredits * CREDIT_MICRO
-  const capRemaining = Math.max(
-    0,
-    capMicro - (conv?.accruedCreditsMicro ?? 0),
-  )
+  const capRemaining = flatMode
+    ? rawCreditsMicro
+    : Math.max(0, capMicro - (conv?.accruedCreditsMicro ?? 0))
   const debitMicro = Math.min(rawCreditsMicro, capRemaining)
   if (!Number.isFinite(debitMicro) || debitMicro <= 0) return 0
 

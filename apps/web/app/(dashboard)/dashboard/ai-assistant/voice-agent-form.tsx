@@ -8,18 +8,29 @@ import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 import {
   ArrowRight,
+  Clock3,
+  CreditCard,
   Lock,
   Phone,
   PhoneCall,
   TriangleAlert,
   Voicemail,
+  Wallet,
   Zap,
 } from 'lucide-react'
 
 import {
   Alert,
   AlertDescription,
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
   AlertTitle,
+  Badge,
   Button,
   Card,
   CardContent,
@@ -38,6 +49,7 @@ import {
 import type { AiPhoneSettings } from '@louez/types'
 
 import { updateAiPhoneSettings } from './phone-actions'
+import { OPEN_TOPUP_EVENT } from './ai-assistant-header'
 import { VoiceNumberProvisioning } from './voice-number-provisioning'
 import { VoicePicker } from './voice-picker'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
@@ -83,6 +95,12 @@ interface VoiceAgentFormProps {
   isProvisioned: boolean
   webhookUrl: string
   defaultCountry: string
+  /** Monthly number rental in credits (null = free / not configured). */
+  numberRentalCredits: number | null
+  /** Flat voice tariff in credits per minute (null = not configured). */
+  voiceCreditsPerMinute: number | null
+  /** Whether the balance covers one rental cycle (drives the recharge nudge). */
+  hasRentalFunds: boolean
 }
 
 export const VoiceAgentForm = ({
@@ -93,6 +111,9 @@ export const VoiceAgentForm = ({
   isProvisioned,
   webhookUrl,
   defaultCountry,
+  numberRentalCredits,
+  voiceCreditsPerMinute,
+  hasRentalFunds,
 }: VoiceAgentFormProps) => {
   const router = useRouter()
   const t = useTranslations('dashboard.settings.aiVoiceAgent')
@@ -104,6 +125,8 @@ export const VoiceAgentForm = ({
   const current = store.aiPhoneSettings || defaultAiPhoneSettings
 
   const [rootError, setRootError] = useState<string | null>(null)
+  // Turning the agent off detaches the bound number — confirmed via a dialog.
+  const [confirmDisableOpen, setConfirmDisableOpen] = useState(false)
   const updateMutation = useMutation({ mutationFn: updateAiPhoneSettings })
 
   const form = useAppForm({
@@ -200,16 +223,157 @@ export const VoiceAgentForm = ({
             <CardDescription>{t('enableSectionDescription')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <form.AppField name="enabled">
+            {/* Enabled switch — turning OFF with a bound number asks for
+                confirmation, because saving then detaches the number. */}
+            <form.Field name="enabled">
               {(field) => (
-                <field.Switch
-                  label={t('enabled')}
-                  description={t('enabledDescription')}
-                />
-              )}
-            </form.AppField>
+                <>
+                  <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">{t('enabled')}</p>
+                      <p className="text-muted-foreground text-sm">
+                        {t('enabledDescription')}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={field.state.value}
+                      onCheckedChange={(next) => {
+                        if (!next && boundNumber) {
+                          setConfirmDisableOpen(true)
+                          return
+                        }
+                        field.handleChange(next)
+                      }}
+                    />
+                  </div>
 
-            {isEnabled && (
+                  <AlertDialog
+                    open={confirmDisableOpen}
+                    onOpenChange={setConfirmDisableOpen}
+                  >
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {t('disableConfirm.title')}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {t('disableConfirm.description', {
+                            number: boundNumber ?? '',
+                          })}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogClose>{tCommon('cancel')}</AlertDialogClose>
+                        <Button
+                          variant="destructive"
+                          onClick={() => {
+                            field.handleChange(false)
+                            setConfirmDisableOpen(false)
+                          }}
+                        >
+                          {t('disableConfirm.confirm')}
+                        </Button>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
+            </form.Field>
+
+            {/* Step 1 of 2 — the agent needs a line before anything else: pick
+                (or link) the number, with the rental terms stated upfront. */}
+            {isEnabled && !boundNumber && (
+              <div className="space-y-4 border-t pt-6">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="bg-primary text-primary-foreground flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold">
+                    1
+                  </span>
+                  <span className="font-medium">{t('setup.step1')}</span>
+                  <span className="text-muted-foreground/60 mx-1">—</span>
+                  <span className="bg-muted text-muted-foreground flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold">
+                    2
+                  </span>
+                  <span className="text-muted-foreground">
+                    {t('setup.step2')}
+                  </span>
+                </div>
+
+                <div className="bg-muted/40 space-y-3 rounded-lg border p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+                      <PhoneCall className="h-4 w-4" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{t('setup.title')}</p>
+                      <p className="text-muted-foreground text-sm">
+                        {t('setup.why')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {(numberRentalCredits !== null ||
+                    voiceCreditsPerMinute !== null) && (
+                    <div className="flex flex-wrap gap-2">
+                      {numberRentalCredits !== null && (
+                        <Badge variant="secondary" className="gap-1.5">
+                          <Wallet className="h-3 w-3" />
+                          {t('setup.rentalChip', {
+                            credits: numberRentalCredits,
+                          })}
+                        </Badge>
+                      )}
+                      {voiceCreditsPerMinute !== null && (
+                        <Badge variant="secondary" className="gap-1.5">
+                          <Clock3 className="h-3 w-3" />
+                          {t('setup.perMinuteChip', {
+                            credits: voiceCreditsPerMinute,
+                          })}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+
+                  {numberRentalCredits !== null && !hasRentalFunds && (
+                    <Alert variant="warning">
+                      <TriangleAlert />
+                      <AlertTitle>{t('setup.insufficientTitle')}</AlertTitle>
+                      <AlertDescription className="space-y-2">
+                        <p>
+                          {t('setup.insufficientBody', {
+                            credits: numberRentalCredits,
+                          })}
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() =>
+                            window.dispatchEvent(new Event(OPEN_TOPUP_EVENT))
+                          }
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          {t('setup.insufficientCta')}
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+
+                <VoiceNumberProvisioning
+                  boundNumber={boundNumber}
+                  isProvisioned={isProvisioned}
+                  webhookUrl={webhookUrl}
+                  defaultCountry={defaultCountry}
+                  disabled={!phoneConfigured}
+                />
+
+                <p className="text-muted-foreground text-sm">
+                  {t('setup.step2Hint')}
+                </p>
+              </div>
+            )}
+
+            {isEnabled && boundNumber && (
               <div className="space-y-6 border-t pt-6">
                 {/* Inbound number: provision, link or release — part of the agent */}
                 <VoiceNumberProvisioning
@@ -219,6 +383,27 @@ export const VoiceAgentForm = ({
                   defaultCountry={defaultCountry}
                   disabled={!phoneConfigured}
                 />
+
+                {(numberRentalCredits !== null ||
+                  voiceCreditsPerMinute !== null) && (
+                  <div className="text-muted-foreground -mt-3 flex flex-wrap items-center gap-1.5 text-xs">
+                    <Wallet className="h-3 w-3" />
+                    {[
+                      numberRentalCredits !== null
+                        ? t('setup.boundRental', {
+                            credits: numberRentalCredits,
+                          })
+                        : null,
+                      voiceCreditsPerMinute !== null
+                        ? t('setup.perMinuteChip', {
+                            credits: voiceCreditsPerMinute,
+                          })
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </div>
+                )}
 
                 {/* Language */}
                 <form.AppField name="language">

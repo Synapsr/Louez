@@ -74,7 +74,7 @@ export async function createAiCreditTopupCheckout(
   const safeReturn =
     returnPath && returnPath.startsWith('/dashboard/')
       ? returnPath
-      : '/dashboard/settings/ai-advisor'
+      : '/dashboard/ai-assistant'
 
   // Build the return URLs safely so an existing query string in the path can't
   // produce a malformed `?a=b?topup=…`.
@@ -127,6 +127,6 @@ export async function updateAiCreditsAutoTopup(config: {
     priceCents: pack?.priceCents ?? 0,
   })
 
-  revalidatePath('/dashboard/settings/ai-advisor')
+  revalidatePath('/dashboard/ai-assistant')
   return { success: true }
 }

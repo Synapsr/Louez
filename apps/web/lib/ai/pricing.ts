@@ -112,3 +112,37 @@ export function audioCostMicroUsd(audioSeconds: number): number {
   const usd = (audioSeconds / 60) * perMinute
   return Math.round(usd * USD_MICRO)
 }
+
+// ============================================================================
+// Flat voice tariff + number rental (what the store is BILLED). The real USD
+// cost above keeps being frozen on every debit row regardless, so billed vs
+// cost stays comparable per row.
+// ============================================================================
+
+/**
+ * Flat voice tariff: credits billed per STARTED minute of call. 0/unset ⇒
+ * usage-metered (USD-based) billing.
+ */
+export function getPhoneCreditsPerMinute(): number {
+  return num(env.AI_PHONE_CREDITS_PER_MINUTE)
+}
+
+/**
+ * Micro-credits billed for a call of `audioSeconds` under the flat tariff:
+ * every started minute counts. 0 when flat billing is off or nothing to bill.
+ */
+export function flatCallBillMicro(audioSeconds: number): number {
+  const perMinute = getPhoneCreditsPerMinute()
+  if (perMinute <= 0 || audioSeconds <= 0) return 0
+  return Math.round(Math.ceil(audioSeconds / 60) * perMinute * CREDIT_MICRO)
+}
+
+/** Monthly rental of a provisioned number, in credits (0/unset ⇒ free). */
+export function getNumberRentalCredits(): number {
+  return num(env.AI_PHONE_NUMBER_RENTAL_CREDITS)
+}
+
+/** Real monthly provider cost of a provisioned number, in micro-USD. */
+export function numberRentalCostMicroUsd(): number {
+  return Math.round(num(env.AI_PHONE_NUMBER_COST_USD_PER_MONTH) * USD_MICRO)
+}

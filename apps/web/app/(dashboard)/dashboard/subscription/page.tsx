@@ -18,7 +18,7 @@ import { PayAsYouGoPreview } from './pay-as-you-go-preview'
 import {
   AiCreditsSection,
   type AiCreditsSectionProps,
-} from '../settings/ai-advisor/ai-credits-section'
+} from '../ai-assistant/ai-credits-section'
 
 export default async function SubscriptionPage({
   searchParams,

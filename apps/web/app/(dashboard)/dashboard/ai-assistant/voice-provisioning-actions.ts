@@ -8,8 +8,16 @@ import { isPossibleE164PhoneNumber } from '@louez/validations'
 
 import { env } from '@/env'
 import { isVoiceAgentConfigured } from '@/lib/ai/phone/eligibility'
+import {
+  addOneMonthClamped,
+  applyNumberRentalDebit,
+  hasNumberRentalFunds,
+  isNumberRentalEnabled,
+} from '@/lib/ai/phone/number-billing'
+import { releaseNumberBinding } from '@/lib/ai/phone/number-release'
 import { log } from '@/lib/evlog'
 import { getStorePlan } from '@/lib/plan-limits'
+import type { Plan } from '@/lib/plans'
 import { getCurrentStore } from '@/lib/store-context'
 import { getVoiceProvider } from '@/lib/voice/client'
 import type { AvailableNumber } from '@/lib/voice/types'
@@ -22,7 +30,11 @@ import type { AvailableNumber } from '@/lib/voice/types'
  * whoever can configure the agent can manage its number.
  */
 type AuthorizeResult =
-  | { ok: true; store: NonNullable<Awaited<ReturnType<typeof getCurrentStore>>> }
+  | {
+      ok: true
+      store: NonNullable<Awaited<ReturnType<typeof getCurrentStore>>>
+      plan: Plan
+    }
   | { ok: false; error: string }
 
 async function authorizeProvisioning(): Promise<AuthorizeResult> {
@@ -36,7 +48,7 @@ async function authorizeProvisioning(): Promise<AuthorizeResult> {
   if (!isVoiceAgentConfigured()) {
     return { ok: false, error: 'errors.telephonyNotConfigured' }
   }
-  return { ok: true, store }
+  return { ok: true, store, plan }
 }
 
 /** Statuses that make a number binding count as "taken" for a store. */
@@ -121,11 +133,17 @@ export async function provisionVoiceNumber(input: {
 }): Promise<{ e164: string } | { error: string }> {
   const auth = await authorizeProvisioning()
   if (!auth.ok) return { error: auth.error }
-  const { store } = auth
+  const { store, plan } = auth
 
   const phoneNumber = input.phoneNumber?.trim()
   if (!phoneNumber || !isPossibleE164PhoneNumber(phoneNumber)) {
     return { error: 'errors.invalidPhoneNumber' }
+  }
+
+  // The rental (first cycle) is paid in credits at activation: refuse upfront
+  // when the balance can't cover it, before any money is spent provider-side.
+  if (isNumberRentalEnabled() && !(await hasNumberRentalFunds(store.id, plan))) {
+    return { error: 'errors.insufficientAiCredits' }
   }
 
   // Reserve the slot BEFORE spending money, so the purchase is guarded by the
@@ -155,19 +173,40 @@ export async function provisionVoiceNumber(input: {
     return { error: 'errors.provisioningFailed' }
   }
 
+  // Activation and first rental debit commit atomically: either the number is
+  // active with its cycle paid and anchored, or nothing happened.
+  const activatedAt = new Date()
   try {
-    await db
-      .update(storePhoneNumbers)
-      .set({
-        e164: provisioned.e164,
-        providerNumberId: provisioned.providerNumberId,
-        status: 'active',
-        updatedAt: new Date(),
-      })
-      .where(eq(storePhoneNumbers.id, reserved.rowId))
+    await db.transaction(async (tx) => {
+      await tx
+        .update(storePhoneNumbers)
+        .set({
+          e164: provisioned.e164,
+          providerNumberId: provisioned.providerNumberId,
+          status: 'active',
+          nextRenewalAt: isNumberRentalEnabled()
+            ? addOneMonthClamped(activatedAt)
+            : null,
+          updatedAt: activatedAt,
+        })
+        .where(eq(storePhoneNumbers.id, reserved.rowId))
+
+      if (isNumberRentalEnabled()) {
+        const debit = await applyNumberRentalDebit(tx, {
+          storeId: store.id,
+          numberId: reserved.rowId,
+          cycleDate: activatedAt,
+          plan,
+        })
+        if (debit === 'insufficient') {
+          // Balance drained between the precheck and here — abort everything.
+          throw new Error('insufficient_rental_credits')
+        }
+      }
+    })
   } catch (error) {
-    // We already paid: hand the number back and drop the reservation so we
-    // never leave a live, billed number that the store can't see or use.
+    // We already paid the provider: hand the number back and drop the
+    // reservation so we never leave a live, billed number the store can't use.
     await getVoiceProvider()
       .releaseNumber(provisioned.providerNumberId)
       .catch(() => {})
@@ -175,16 +214,24 @@ export async function provisionVoiceNumber(input: {
       .delete(storePhoneNumbers)
       .where(eq(storePhoneNumbers.id, reserved.rowId))
       .catch(() => {})
-    log.error(
-      'phone',
-      `provisioning finalize failed (number released): ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    )
-    return { error: 'errors.provisioningFailed' }
+    const insufficient =
+      error instanceof Error && error.message === 'insufficient_rental_credits'
+    if (!insufficient) {
+      log.error(
+        'phone',
+        `provisioning finalize failed (number released): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
+    return {
+      error: insufficient
+        ? 'errors.insufficientAiCredits'
+        : 'errors.provisioningFailed',
+    }
   }
 
-  revalidatePath('/dashboard/settings/ai-advisor')
+  revalidatePath('/dashboard/ai-assistant')
   return { e164: provisioned.e164 }
 }
 
@@ -235,7 +282,7 @@ export async function linkVoiceNumber(input: {
   })
 
   if (!result.ok) return { error: result.error }
-  revalidatePath('/dashboard/settings/ai-advisor')
+  revalidatePath('/dashboard/ai-assistant')
   return { e164: phoneNumber }
 }
 
@@ -256,27 +303,9 @@ export async function releaseVoiceNumber(): Promise<
   })
   if (!binding) return { error: 'errors.noActiveNumber' }
 
-  // Only hand back to the provider numbers we actually provisioned.
-  if (binding.providerNumberId) {
-    try {
-      await getVoiceProvider().releaseNumber(binding.providerNumberId)
-    } catch (error) {
-      log.error(
-        'phone',
-        `release failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      )
-      return { error: 'errors.releaseFailed' }
-    }
-  }
+  const released = await releaseNumberBinding(binding)
+  if (!released.ok) return { error: 'errors.releaseFailed' }
 
-  // Delete the row (not just flag it): the e164 is globally unique, so a kept
-  // row would block every other store from ever taking that freed number.
-  await db
-    .delete(storePhoneNumbers)
-    .where(eq(storePhoneNumbers.id, binding.id))
-
-  revalidatePath('/dashboard/settings/ai-advisor')
+  revalidatePath('/dashboard/ai-assistant')
   return { success: true }
 }

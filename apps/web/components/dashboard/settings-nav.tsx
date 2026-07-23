@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Store, Palette, Clock, FileText, CreditCard, Percent, Truck, ClipboardCheck, Wallet, Star, Bot, Bell, Shield, Link2, Tag, Download, Gift } from 'lucide-react'
+import { Store, Palette, Clock, FileText, CreditCard, Percent, Truck, ClipboardCheck, Wallet, Star, Bell, Shield, Link2, Tag, Download, Gift } from 'lucide-react'
 import { cn } from '@louez/utils'
 import { useMemo } from 'react'
 
@@ -58,11 +58,6 @@ const settingsNavItems: SettingsNavItem[] = [
     href: '/dashboard/settings/review-booster',
     icon: Star,
     labelKey: 'reviewBooster.title',
-  },
-  {
-    href: '/dashboard/settings/ai-advisor',
-    icon: Bot,
-    labelKey: 'aiAdvisor.title',
   },
   {
     href: '/dashboard/settings/integrations',

@@ -1,4 +1,5 @@
 import { render } from '@react-email/render'
+import { env } from '@/env'
 import { sendEmail, type EmailAttachment } from './client'
 import { db } from '@louez/db'
 import { emailLogs } from '@louez/db'
@@ -24,6 +25,7 @@ import {
   type DigestEntry,
   NewRequestLandlordEmail,
   PhoneCallbackLandlordEmail,
+  VoiceNumberBillingEmail,
   TeamInvitationEmail,
   RewardUnlockedEmail,
   InstantAccessEmail,
@@ -1067,6 +1069,70 @@ export async function sendPhoneCallbackLandlordEmail({
       to,
       subject,
       templateType: 'phone_callback_landlord',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Voice-number rental notice (renewal warning / failure / number released)
+export async function sendVoiceNumberBillingEmail({
+  variant,
+  to,
+  storeId,
+  storeName,
+  primaryColor,
+  e164,
+  credits,
+  deadline,
+  locale = 'fr',
+}: {
+  variant: 'warning' | 'failed' | 'released'
+  to: string
+  storeId: string
+  storeName: string
+  primaryColor?: string
+  e164: string
+  credits: number
+  deadline?: Date | null
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.voiceNumberBilling[variant].subject.replace('{number}', e164)
+  const deadlineText = deadline
+    ? new Intl.DateTimeFormat(locale, { dateStyle: 'long' }).format(deadline)
+    : null
+  const html = await render(
+    VoiceNumberBillingEmail({
+      variant,
+      storeName,
+      primaryColor: primaryColor || '#0066FF',
+      e164,
+      credits,
+      deadlineText,
+      ctaUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/ai-assistant`,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: 'Louez.io' })
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: `voice_number_${variant}`,
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: `voice_number_${variant}`,
       status: 'failed',
       error: String(error),
     })

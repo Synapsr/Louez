@@ -200,6 +200,35 @@
     }
   },
   "dashboard": {
+    "aiAssistant": {
+      "header": {
+        "title": "KI-Assistent",
+        "subtitle": "Ihr Shop berät, antwortet und reserviert — automatisch",
+        "credits": "{count} Credits",
+        "creditsUnlimited": "Unbegrenzte Credits",
+        "recharge": "Aufladen"
+      },
+      "hero": {
+        "eyebrow": "KI-Assistent",
+        "title": "Ihr Shop antwortet, berät und reserviert — auch wenn Sie nicht da sind",
+        "subtitle": "Aktivieren Sie den Online-Berater und den Sprachagenten: Ihre Kunden erhalten sofort Antworten, Sie erhalten qualifizierte Reservierungen.",
+        "activate": "Aktivieren",
+        "upgrade": "Plan upgraden",
+        "upgradeHint": "Der KI-Assistent ist ab dem Pro-Plan enthalten.",
+        "advisor": {
+          "title": "Online-Berater",
+          "b1": "Beantwortet Kundenfragen zu Ihrem Shop rund um die Uhr",
+          "b2": "Empfiehlt passende Produkte und prüft Verfügbarkeiten",
+          "b3": "Macht aus Besuchern qualifizierte Reservierungen"
+        },
+        "voice": {
+          "title": "Sprachagent",
+          "b1": "Nimmt jeden Anruf entgegen, zu jeder Uhrzeit",
+          "b2": "Nennt Öffnungszeiten, Preise und Verfügbarkeiten am Telefon",
+          "b3": "Nimmt Reservierungen auf und übermittelt Nachrichten"
+        }
+      }
+    },
     "installPrompt": {
       "title": "App installieren",
       "subtitle": "Ihr Dashboard immer griffbereit auf dem Startbildschirm.",
@@ -499,6 +528,7 @@
       }
     },
     "navigation": {
+      "aiAssistant": "KI-Assistent",
       "home": "Startseite",
       "products": "Produkte",
       "inventory": "Inventar",
@@ -4296,6 +4326,7 @@
       }
     },
     "breadcrumbs": {
+      "aiAssistant": "KI-Assistent",
       "label": "Breadcrumb",
       "home": "Startseite",
       "products": "Produkte",
@@ -4370,6 +4401,14 @@
         }
       },
       "topup": {
+        "valueTitle": "Das steckt drin",
+        "valueConversations": "Bis zu {count} Beratungsgespräche",
+        "valueMinutes": "≈ {count} Minuten Sprachanrufe",
+        "valueNumberMonths": "{count} Monate dedizierte Nummer",
+        "perCredit": "{amount} / Credit",
+        "savings": "-{percent} %",
+        "popular": "Beliebt",
+        "noExpiry": "Ihre Credits verfallen nie.",
         "title": "KI-Guthaben aufladen",
         "description": "Wählen Sie ein Paket. Das Guthaben wird nach der Zahlung sofort hinzugefügt.",
         "credits": "Credits",
@@ -5476,6 +5515,30 @@
       "listen": "Anruf öffnen",
       "footer": "Öffnen Sie die Konversation, um den Verlauf zu lesen und die Aufnahme des Anrufs anzuhören."
     },
+    "voiceNumberBilling": {
+      "numberLabel": "Nummer:",
+      "rentalLabel": "Monatliche Miete:",
+      "rentalValue": "{credits} KI-Guthaben / Monat",
+      "deadlineLabel": "Frist:",
+      "ctaRecharge": "Guthaben aufladen",
+      "ctaOpen": "Meinen KI-Assistenten öffnen",
+      "footer": "Die Nummernmiete wird jeden Monat automatisch mit KI-Guthaben bezahlt.",
+      "warning": {
+        "subject": "Bitte aufladen — Verlängerung der Nummer {number}",
+        "title": "Ihr Guthaben deckt die nächste Verlängerung nicht",
+        "body": "Die Nummer {number} von {storeName} wird am {date} für {credits} KI-Guthaben verlängert, aber Ihr aktuelles Guthaben reicht nicht aus. Laden Sie vor diesem Datum auf, um Ihre Nummer zu behalten."
+      },
+      "failed": {
+        "subject": "Handlung erforderlich — {number} droht getrennt zu werden",
+        "title": "Verlängerung fehlgeschlagen",
+        "body": "Die Verlängerung der Nummer {number} ({credits} KI-Guthaben) konnte nicht durchgeführt werden: Guthaben unzureichend. Laden Sie vor dem {date} auf, sonst wird die Nummer automatisch getrennt. Wir versuchen die Abbuchung täglich erneut, sobald Sie aufladen."
+      },
+      "released": {
+        "subject": "Die Nummer {number} wurde getrennt",
+        "title": "Nummer getrennt",
+        "body": "Die Nummer {number} von {storeName} wurde getrennt und ist nicht mehr aktiv. Sie können jederzeit über Ihren KI-Assistenten eine neue Nummer wählen."
+      }
+    },
     "teamInvitation": {
       "subject": "{inviterName} lädt Sie ein, {storeName} beizutreten",
       "title": "Team-Einladung",
@@ -5908,6 +5971,7 @@
     "conversationNotFound": "Gespräch nicht gefunden",
     "featureNotAvailable": "Diese Funktion ist in Ihrem Plan nicht verfügbar",
     "telephonyNotConfigured": "Die Telefonie ist vom Betreiber nicht konfiguriert.",
+    "insufficientAiCredits": "Unzureichendes KI-Guthaben — laden Sie auf, um Ihre Nummer zu aktivieren",
     "numberAlreadyBound": "Es ist bereits eine Nummer aktiv. Geben Sie sie zuerst frei.",
     "provisioningFailed": "Diese Nummer konnte nicht bereitgestellt werden. Versuchen Sie eine andere.",
     "numberSearchFailed": "Die Nummernsuche ist fehlgeschlagen. Bitte erneut versuchen.",

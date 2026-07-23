@@ -114,7 +114,7 @@ async function notifyOwnerOfCallback(
   }
   if (!to) return
 
-  const conversationUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/settings/ai-advisor?conversation=${ctx.conversationId}`
+  const conversationUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/ai-assistant?conversation=${ctx.conversationId}`
   await sendPhoneCallbackLandlordEmail({
     to,
     storeId: ctx.storeId,
