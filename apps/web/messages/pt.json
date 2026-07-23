@@ -4220,6 +4220,24 @@
         }
       },
       "aiVoiceAgent": {
+        "setup": {
+          "step1": "Escolher o seu número",
+          "step2": "Personalizar o agente",
+          "title": "O seu agente precisa de uma linha",
+          "why": "Escolha um número dedicado: dê-o diretamente aos seus clientes ou configure o reencaminhamento de chamadas do seu número habitual — o agente atende por si.",
+          "rentalChip": "{credits} créditos de IA / mês",
+          "perMinuteChip": "{credits} créditos / minuto de chamada",
+          "insufficientTitle": "Saldo insuficiente",
+          "insufficientBody": "A ativação do número requer {credits} créditos de IA, debitados automaticamente todos os meses. Recarregue para continuar.",
+          "insufficientCta": "Recarregar os meus créditos",
+          "step2Hint": "Próximo passo: depois de escolher o número, personalize a voz, o idioma e o comportamento do seu agente.",
+          "boundRental": "{credits} créditos de IA / mês, debitados automaticamente"
+        },
+        "disableConfirm": {
+          "title": "Desativar o agente de voz?",
+          "description": "Ao guardar, o número {number} será desvinculado e libertado — poderá não o recuperar. As chamadas recebidas deixarão de ser atendidas.",
+          "confirm": "Desativar e desvincular"
+        },
         "numberReleaseFailed": "Não foi possível desvincular o número — continua vinculado, nova tentativa automática agendada",
         "description": "Um agente de voz com IA que atende a sua linha telefónica — informa os seus clientes e regista reservas, no idioma que escolher.",
         "enableSection": "Agente de voz IA",

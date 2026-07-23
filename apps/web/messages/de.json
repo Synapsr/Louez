@@ -4220,6 +4220,24 @@
         }
       },
       "aiVoiceAgent": {
+        "setup": {
+          "step1": "Nummer wählen",
+          "step2": "Agent anpassen",
+          "title": "Ihr Agent braucht eine Leitung",
+          "why": "Wählen Sie eine dedizierte Nummer: Geben Sie sie direkt an Ihre Kunden weiter oder richten Sie eine Rufumleitung von Ihrer gewohnten Nummer ein — der Agent geht für Sie ran.",
+          "rentalChip": "{credits} KI-Credits / Monat",
+          "perMinuteChip": "{credits} Credits / Gesprächsminute",
+          "insufficientTitle": "Guthaben unzureichend",
+          "insufficientBody": "Die Aktivierung der Nummer erfordert {credits} KI-Credits, die monatlich automatisch abgebucht werden. Laden Sie auf, um fortzufahren.",
+          "insufficientCta": "Guthaben aufladen",
+          "step2Hint": "Nächster Schritt: Passen Sie nach der Wahl der Nummer Stimme, Sprache und Verhalten Ihres Agenten an.",
+          "boundRental": "{credits} KI-Credits / Monat, automatisch abgebucht"
+        },
+        "disableConfirm": {
+          "title": "Sprachagent deaktivieren?",
+          "description": "Beim Speichern wird die Nummer {number} getrennt und wieder freigegeben — Sie erhalten sie möglicherweise nicht zurück. Eingehende Anrufe werden nicht mehr beantwortet.",
+          "confirm": "Deaktivieren und trennen"
+        },
         "numberReleaseFailed": "Die Nummer konnte nicht getrennt werden — sie bleibt verbunden, automatischer Wiederholungsversuch geplant",
         "description": "Ein KI-Sprachagent, der Ihre Telefonleitung beantwortet — er informiert Ihre Kunden und nimmt Reservierungen entgegen, in der Sprache Ihrer Wahl.",
         "enableSection": "KI-Sprachagent",

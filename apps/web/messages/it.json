@@ -4220,6 +4220,24 @@
         }
       },
       "aiVoiceAgent": {
+        "setup": {
+          "step1": "Scegli il tuo numero",
+          "step2": "Personalizza l'agente",
+          "title": "Il tuo agente ha bisogno di una linea",
+          "why": "Scegli un numero dedicato: comunicalo direttamente ai tuoi clienti oppure configura l'inoltro di chiamata dal tuo numero abituale — l'agente risponde per te.",
+          "rentalChip": "{credits} crediti IA / mese",
+          "perMinuteChip": "{credits} crediti / minuto di chiamata",
+          "insufficientTitle": "Saldo insufficiente",
+          "insufficientBody": "L'attivazione del numero richiede {credits} crediti IA, addebitati automaticamente ogni mese. Ricarica per continuare.",
+          "insufficientCta": "Ricarica i miei crediti",
+          "step2Hint": "Prossimo passo: una volta scelto il numero, personalizza voce, lingua e comportamento del tuo agente.",
+          "boundRental": "{credits} crediti IA / mese, addebitati automaticamente"
+        },
+        "disableConfirm": {
+          "title": "Disattivare l'agente vocale?",
+          "description": "Al salvataggio, il numero {number} verrà scollegato e rimesso in circolazione — potresti non recuperarlo. Le chiamate in entrata non saranno più gestite.",
+          "confirm": "Disattiva e scollega"
+        },
         "numberReleaseFailed": "Impossibile scollegare il numero — resta collegato, nuovo tentativo automatico programmato",
         "description": "Un agente vocale IA che risponde alla tua linea telefonica — informa i tuoi clienti e registra prenotazioni, nella lingua che scegli.",
         "enableSection": "Agente vocale IA",

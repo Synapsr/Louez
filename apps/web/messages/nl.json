@@ -4220,6 +4220,24 @@
         }
       },
       "aiVoiceAgent": {
+        "setup": {
+          "step1": "Kies je nummer",
+          "step2": "Agent personaliseren",
+          "title": "Je agent heeft een lijn nodig",
+          "why": "Kies een toegewijd nummer: geef het rechtstreeks aan je klanten, of stel doorschakeling in vanaf je gebruikelijke nummer — de agent neemt voor je op.",
+          "rentalChip": "{credits} AI-credits / maand",
+          "perMinuteChip": "{credits} credits / belminuut",
+          "insufficientTitle": "Onvoldoende saldo",
+          "insufficientBody": "Het activeren van het nummer vereist {credits} AI-credits, elke maand automatisch afgeschreven. Waardeer op om door te gaan.",
+          "insufficientCta": "Mijn credits opwaarderen",
+          "step2Hint": "Volgende stap: personaliseer na het kiezen van het nummer de stem, taal en het gedrag van je agent.",
+          "boundRental": "{credits} AI-credits / maand, automatisch afgeschreven"
+        },
+        "disableConfirm": {
+          "title": "Spraakagent uitschakelen?",
+          "description": "Bij het opslaan wordt het nummer {number} losgekoppeld en vrijgegeven — je krijgt het mogelijk niet terug. Inkomende oproepen worden niet meer beantwoord.",
+          "confirm": "Uitschakelen en loskoppelen"
+        },
         "numberReleaseFailed": "Het nummer kon niet worden losgekoppeld — het blijft gekoppeld, automatische nieuwe poging gepland",
         "description": "Een AI-spraakagent die je telefoonlijn beantwoordt — informeert je klanten en neemt reserveringen op, in de taal die je kiest.",
         "enableSection": "AI-spraakagent",

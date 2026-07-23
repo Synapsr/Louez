@@ -4327,6 +4327,24 @@
         }
       },
       "aiVoiceAgent": {
+        "setup": {
+          "step1": "Choisir votre numéro",
+          "step2": "Personnaliser l'agent",
+          "title": "Votre agent a besoin d'une ligne",
+          "why": "Choisissez un numéro dédié : donnez-le directement à vos clients, ou configurez un renvoi d'appel depuis votre numéro habituel — l'agent décroche pour vous.",
+          "rentalChip": "{credits} crédits IA / mois",
+          "perMinuteChip": "{credits} crédits / minute d'appel",
+          "insufficientTitle": "Solde insuffisant",
+          "insufficientBody": "L'activation du numéro nécessite {credits} crédits IA, débités automatiquement chaque mois. Rechargez pour continuer.",
+          "insufficientCta": "Recharger mes crédits",
+          "step2Hint": "Étape suivante : une fois le numéro choisi, personnalisez la voix, la langue et le comportement de votre agent.",
+          "boundRental": "{credits} crédits IA / mois, débités automatiquement"
+        },
+        "disableConfirm": {
+          "title": "Désactiver l'agent vocal ?",
+          "description": "En enregistrant, le numéro {number} sera détaché et remis en circulation — vous pourriez ne pas le récupérer. Les appels entrants ne seront plus pris en charge.",
+          "confirm": "Désactiver et détacher"
+        },
         "numberReleaseFailed": "Le numéro n'a pas pu être détaché — il reste attaché, nouvel essai automatique prévu",
         "description": "Un agent vocal IA qui répond sur votre ligne téléphonique — il informe vos clients et prend des réservations, dans la langue de votre choix.",
         "enableSection": "Agent vocal IA",

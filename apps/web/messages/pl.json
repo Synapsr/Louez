@@ -4220,6 +4220,24 @@
         }
       },
       "aiVoiceAgent": {
+        "setup": {
+          "step1": "Wybierz numer",
+          "step2": "Dostosuj agenta",
+          "title": "Twój agent potrzebuje linii",
+          "why": "Wybierz dedykowany numer: przekaż go bezpośrednio klientom lub skonfiguruj przekierowanie połączeń ze swojego zwykłego numeru — agent odbierze za Ciebie.",
+          "rentalChip": "{credits} kredytów AI / miesiąc",
+          "perMinuteChip": "{credits} kredyty / minuta połączenia",
+          "insufficientTitle": "Niewystarczające saldo",
+          "insufficientBody": "Aktywacja numeru wymaga {credits} kredytów AI, pobieranych automatycznie co miesiąc. Doładuj konto, aby kontynuować.",
+          "insufficientCta": "Doładuj kredyty",
+          "step2Hint": "Następny krok: po wybraniu numeru dostosuj głos, język i zachowanie swojego agenta.",
+          "boundRental": "{credits} kredytów AI / miesiąc, pobierane automatycznie"
+        },
+        "disableConfirm": {
+          "title": "Wyłączyć agenta głosowego?",
+          "description": "Po zapisaniu numer {number} zostanie odłączony i zwolniony — możesz go nie odzyskać. Połączenia przychodzące nie będą już obsługiwane.",
+          "confirm": "Wyłącz i odłącz"
+        },
         "numberReleaseFailed": "Nie udało się odłączyć numeru — pozostaje podłączony, automatyczna ponowna próba zaplanowana",
         "description": "Głosowy agent IA, który odbiera Twoją linię telefoniczną — informuje klientów i przyjmuje rezerwacje, w wybranym języku.",
         "enableSection": "Głosowy agent IA",

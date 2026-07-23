@@ -4226,6 +4226,24 @@
         }
       },
       "aiVoiceAgent": {
+        "setup": {
+          "step1": "Elegir tu número",
+          "step2": "Personalizar el agente",
+          "title": "Tu agente necesita una línea",
+          "why": "Elige un número dedicado: dáselo directamente a tus clientes o configura un desvío de llamadas desde tu número habitual — el agente contesta por ti.",
+          "rentalChip": "{credits} créditos de IA / mes",
+          "perMinuteChip": "{credits} créditos / minuto de llamada",
+          "insufficientTitle": "Saldo insuficiente",
+          "insufficientBody": "Activar el número requiere {credits} créditos de IA, cobrados automáticamente cada mes. Recarga para continuar.",
+          "insufficientCta": "Recargar mis créditos",
+          "step2Hint": "Siguiente paso: una vez elegido el número, personaliza la voz, el idioma y el comportamiento de tu agente.",
+          "boundRental": "{credits} créditos de IA / mes, cobrados automáticamente"
+        },
+        "disableConfirm": {
+          "title": "¿Desactivar el agente de voz?",
+          "description": "Al guardar, el número {number} será desvinculado y liberado — puede que no lo recuperes. Las llamadas entrantes dejarán de atenderse.",
+          "confirm": "Desactivar y desvincular"
+        },
         "numberReleaseFailed": "No se pudo desvincular el número — sigue vinculado, reintento automático programado",
         "description": "Un agente de voz con IA que responde tu línea telefónica — informa a tus clientes y registra reservas, en el idioma que elijas.",
         "enableSection": "Agente de voz IA",

@@ -4327,6 +4327,24 @@
         }
       },
       "aiVoiceAgent": {
+        "setup": {
+          "step1": "Pick your number",
+          "step2": "Customize the agent",
+          "title": "Your agent needs a line",
+          "why": "Choose a dedicated number: give it straight to your customers, or forward calls from your usual number — the agent answers for you.",
+          "rentalChip": "{credits} AI credits / month",
+          "perMinuteChip": "{credits} credits / call minute",
+          "insufficientTitle": "Insufficient balance",
+          "insufficientBody": "Activating the number requires {credits} AI credits, billed automatically every month. Recharge to continue.",
+          "insufficientCta": "Recharge my credits",
+          "step2Hint": "Next step: once the number is chosen, customize your agent's voice, language and behavior.",
+          "boundRental": "{credits} AI credits / month, billed automatically"
+        },
+        "disableConfirm": {
+          "title": "Disable the voice agent?",
+          "description": "When you save, the number {number} will be detached and released — you may not get it back. Incoming calls will no longer be answered.",
+          "confirm": "Disable and detach"
+        },
         "numberReleaseFailed": "The number could not be detached — it is still attached, automatic retry scheduled",
         "description": "An AI voice agent that answers your phone line — it informs your customers and takes reservations, in the language you choose.",
         "enableSection": "AI voice agent",
