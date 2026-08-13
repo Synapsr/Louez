@@ -11,6 +11,7 @@ import { render } from '@react-email/render'
 
 import { db } from '@louez/db'
 import * as schema from '@louez/db'
+import { env as dbEnv } from '@louez/db/env'
 import { sendEmail, isEmailConfigured, MagicLinkEmail, OTPEmail } from '@louez/email'
 import type { EmailLocale } from '@louez/email'
 
@@ -86,6 +87,13 @@ export function setUserCreatedHook(
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 90
 const SESSION_REFRESH_INTERVAL_SECONDS = 60 * 60 * 24
 const SESSION_COOKIE_CACHE_SECONDS = 5 * 60
+const PROD_DATABASE_SUFFIX = 'ep5.lumy.cloud:6053/louez'
+const DEV_DATABASE_SUFFIX = 'ep5.lumy.cloud:6984/louez'
+const AUTH_COOKIE_PREFIX = dbEnv.DATABASE_URL.endsWith(PROD_DATABASE_SUFFIX)
+  ? 'louez-prod'
+  : dbEnv.DATABASE_URL.endsWith(DEV_DATABASE_SUFFIX)
+    ? 'louez-dev'
+    : 'better-auth'
 
 // ============================================================================
 // Auth instance (direct — no factory/singleton)
@@ -108,6 +116,7 @@ export const authInstance = betterAuth({
   }),
 
   advanced: {
+    cookiePrefix: AUTH_COOKIE_PREFIX,
     database: {
       generateId: () => nanoid(),
     },
