@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+
+# =============================================================================
+# Louez image store — MinIO with the product bucket pre-created
+# =============================================================================
+# A bucket is a top-level directory of MinIO's data drive, so creating it at
+# startup replaces the one-shot `mc` job the Compose stack uses. This exists
+# for platforms that run long-lived services only and cannot override a
+# container's entrypoint (Render), where the upstream image would otherwise
+# prepend `minio` to the shell command and refuse to start.
+#
+# Build: docker build -f docker/Dockerfile.minio -t louez-minio docker
+# =============================================================================
+
+FROM minio/minio:RELEASE.2025-09-07T16-13-09Z
+
+EXPOSE 9000
+
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["mkdir -p /data/${S3_BUCKET:-louez} && exec minio server /data"]

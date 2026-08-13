@@ -1,6 +1,19 @@
 #!/bin/sh
 set -eu
 
+# Managed platforms publish the database URL and the app's public URL under
+# their own variable names. Adopt them when the operator set nothing, so the
+# one-click deployments in deploy/ boot without a manual configuration pass.
+if [ -z "${DATABASE_URL:-}" ] && [ -n "${JAWSDB_URL:-}" ]; then
+  DATABASE_URL="$JAWSDB_URL"
+  export DATABASE_URL
+fi
+
+if [ -z "${AUTH_URL:-}" ] && [ -n "${RENDER_EXTERNAL_URL:-}" ]; then
+  AUTH_URL="$RENDER_EXTERNAL_URL"
+  export AUTH_URL
+fi
+
 # Zero-config secret for standalone installs: when the operator provides no
 # AUTH_SECRET, generate one once and persist it under /app/data (mounted as a
 # volume by docker-compose.yml) so sessions survive container recreation.

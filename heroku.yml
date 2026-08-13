@@ -1,0 +1,11 @@
+# Heroku container build — https://devcenter.heroku.com/articles/build-docker-images-heroku-yml
+#
+# Builds the production image from the repository (final stage of
+# docker/Dockerfile.web) and starts it through the same entrypoint the
+# published image uses, so the JawsDB connection string provisioned by app.json
+# is picked up as DATABASE_URL.
+build:
+  docker:
+    web: docker/Dockerfile.web
+run:
+  web: ./docker/entrypoint.sh node apps/web/server.js
