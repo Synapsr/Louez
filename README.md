@@ -6,13 +6,15 @@
 
 <div align="center">
 
-# 🏠 Louez
+<img src=".github/assets/logo.png" alt="" width="80" height="80">
+
+# Louez
 
 ### The Open-Source Equipment Rental Platform
 
 **Stop paying for expensive SaaS. Own your rental business software.**
 
-[![Docker](https://img.shields.io/badge/Docker-synapsr%2Flouez-2496ED?style=for-the-badge&logo=docker)](https://hub.docker.com/r/synapsr/louez)
+[![Docker Pulls](https://img.shields.io/docker/pulls/synapsr/louez?style=for-the-badge&logo=docker)](https://hub.docker.com/r/synapsr/louez)
 [![GitHub Stars](https://img.shields.io/github/stars/Synapsr/Louez?style=for-the-badge&logo=github)](https://github.com/Synapsr/Louez)
 [![License](https://img.shields.io/badge/License-AGPL_v3-blue?style=for-the-badge)](LICENSE)
 
@@ -22,13 +24,21 @@
 
 ---
 
-## 🎬 Demo
+## 🎬 See it in action
 
 <div align="center">
 
-<video src="demo.mp4" width="100%" autoplay loop muted playsinline></video>
+<img src=".github/assets/demo.gif" alt="A customer books on the storefront, the owner accepts in the dashboard" width="100%">
 
-_See Louez in action — from setup to first booking_
+_A customer picks their dates on your storefront — the request lands in your dashboard_
+
+| Storefront catalog | Reservation calendar | Inventory |
+|:-:|:-:|:-:|
+| [<img src=".github/assets/storefront.png" alt="Storefront catalog">](.github/assets/storefront.png) | [<img src=".github/assets/dashboard-reservations.png" alt="Reservation calendar">](.github/assets/dashboard-reservations.png) | [<img src=".github/assets/dashboard-products.png" alt="Product management">](.github/assets/dashboard-products.png) |
+
+[▶️ Watch the full demo](demo.mp4) • [☁️ Try the hosted version](https://louez.io)
+
+**⭐ If Louez can replace a subscription for you, star the repo** — it is how the next rental business finds it.
 
 </div>
 
@@ -91,6 +101,8 @@ docker compose up -d
 
 **That's it.** Open [http://localhost:3000](http://localhost:3000), create your account, and set up your store. Your storefront goes live at the root of the site; your dashboard lives at `/dashboard`.
 
+> Worked on the first try? [Leave a ⭐](https://github.com/Synapsr/Louez) — it costs you a click and it is how the next rental business finds Louez instead of a €99/month subscription.
+
 The bundled [docker-compose.yml](docker-compose.yml) is a complete, self-contained deployment:
 
 - 🗄️ **Database included** — MySQL runs alongside the app, and the schema installs itself on first boot
@@ -113,9 +125,14 @@ NEXT_PUBLIC_APP_URL="https://rentals.example.com"
 AUTH_URL="https://rentals.example.com"
 ```
 
-### One-click platforms
+### One-click deploy
 
-Import the bundled Compose stack in EasyPanel, Dokploy, Coolify or Portainer to deploy the web app, MySQL, MinIO and the private background-removal worker together. The published image `synapsr/louez` still runs independently in single-store mode, but image isolation requires its companion `synapsr/louez-background-removal` service. See [.env.example](.env.example) for the full configuration surface (S3 storage, SMTP, Stripe, AI, and more).
+Prefer a hosting panel to a terminal? Louez launches in one click — app, database and image storage together:
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Synapsr/Louez)
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Synapsr/Louez)
+
+Or import the bundled Compose stack in **EasyPanel, Dokploy, Coolify, CapRover or Portainer** — it deploys the web app, MySQL, MinIO and the private background-removal worker together. The published image `synapsr/louez` still runs independently in single-store mode, but image isolation requires its companion `synapsr/louez-background-removal` service. See [.env.example](.env.example) for the full configuration surface (S3 storage, SMTP, Stripe, AI, and more).
 
 ### Multi-tenant deployments
 

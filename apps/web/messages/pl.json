@@ -5235,6 +5235,14 @@
         "previousPage": "Poprzednia strona",
         "nextPage": "Następna strona"
       }
+    },
+    "starPrompt": {
+      "title": "Louez jest darmowy — na zawsze",
+      "description": "Bez abonamentu i bez prowizji od Twoich rezerwacji. Nigdy nie dostaniesz od nas faktury.",
+      "pitch": "Jedyna zapłata, o jaką prosimy, to gwiazdka na GitHubie. Dwie sekundy — i to właśnie utrzymuje projekt przy życiu.",
+      "sourceHint": "Przejrzyj kod źródłowy",
+      "star": "Zostaw gwiazdkę",
+      "later": "Później"
     }
   },
   "storefront": {

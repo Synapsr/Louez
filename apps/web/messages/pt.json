@@ -5235,6 +5235,14 @@
         "previousPage": "Página anterior",
         "nextPage": "Página seguinte"
       }
+    },
+    "starPrompt": {
+      "title": "O Louez é gratuito, para sempre",
+      "description": "Sem subscrição e sem comissão sobre as suas reservas. Nunca receberá uma fatura da nossa parte.",
+      "pitch": "O único pagamento que pedimos é uma estrela no GitHub. Dois segundos, e é o que mantém o projeto vivo.",
+      "sourceHint": "Ver o código-fonte",
+      "star": "Deixar uma estrela",
+      "later": "Mais tarde"
     }
   },
   "storefront": {

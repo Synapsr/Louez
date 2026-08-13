@@ -5235,6 +5235,14 @@
         "previousPage": "Page précédente",
         "nextPage": "Page suivante"
       }
+    },
+    "starPrompt": {
+      "title": "Louez est gratuit, pour de bon",
+      "description": "Pas d'abonnement, pas de commission sur vos réservations. Vous ne recevrez jamais de facture de notre part.",
+      "pitch": "La seule contrepartie qu'on vous demande : une étoile sur GitHub. Deux secondes, et c'est ce qui fait vivre le projet.",
+      "sourceHint": "Parcourir le code source",
+      "star": "Laisser une étoile",
+      "later": "Plus tard"
     }
   },
   "storefront": {
