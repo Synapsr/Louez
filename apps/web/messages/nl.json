@@ -5235,6 +5235,14 @@
         "previousPage": "Vorige pagina",
         "nextPage": "Volgende pagina"
       }
+    },
+    "starPrompt": {
+      "title": "Louez is gratis, voorgoed",
+      "description": "Geen abonnement, geen commissie op je boekingen. Je krijgt nooit een factuur van ons.",
+      "pitch": "De enige betaling waar we om vragen is een ster op GitHub. Twee seconden, en het is wat het project draaiende houdt.",
+      "sourceHint": "Bekijk de broncode",
+      "star": "Laat een ster achter",
+      "later": "Later"
     }
   },
   "storefront": {

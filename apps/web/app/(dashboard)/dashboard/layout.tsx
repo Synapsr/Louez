@@ -15,6 +15,7 @@ import { DashboardThemeShortcut } from "@/components/dashboard/dashboard-theme-s
 import { ReservationPollingProvider } from "@/components/dashboard/reservation-polling-provider";
 import { SettingsSearchFocus } from "@/components/dashboard/settings-search-focus";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
+import { StarPrompt } from "@/components/dashboard/star-prompt";
 import { WelcomeOverlay } from "@/components/dashboard/welcome-overlay";
 import { DashboardSaveShortcut } from "@/components/shared/dashboard-save-shortcut";
 import { KeyboardShortcutsProvider } from "@/components/shared/keyboard-shortcuts-provider";
@@ -23,6 +24,7 @@ import { WhatsNewProvider } from "@/components/shared/whats-new-provider";
 import { getAiCreditsInfo, hasEverUsedAiCredits, microToCredits } from "@/lib/ai/advisor/credits";
 import { isAIChatConfigured } from "@/lib/ai/provider";
 import { auth } from "@/lib/auth";
+import { isStandaloneMode } from "@/lib/deployment";
 import { parseKeyboardShortcutOverrides } from "@/lib/keyboard-shortcuts";
 import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
 import { areAiCreditsEnabled } from "@/lib/plans";
@@ -159,6 +161,8 @@ export default async function DashboardMainLayout({ children }: { children: Reac
               <Suspense fallback={null}>
                 <WelcomeOverlay />
                 <SettingsSearchFocus />
+                {/* Self-hosted instances only: the cloud never asks. */}
+                {isStandaloneMode() && <StarPrompt />}
               </Suspense>
             </div>
           </ReservationPollingProvider>
