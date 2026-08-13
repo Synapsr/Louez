@@ -26,14 +26,13 @@
 
 <div align="center">
 
-<a href="https://louez.io"><img src=".github/assets/storefront.png" alt="Louez storefront — rental catalog with live availability" width="100%"></a>
+<img src=".github/assets/demo.gif" alt="A customer books on the storefront, the owner accepts in the dashboard" width="100%">
 
-_Your storefront: branded catalog, live availability, booking in a few clicks_
+_A customer picks their dates on your storefront — the request lands in your dashboard_
 
-<a href=".github/assets/dashboard-reservations.png"><img src=".github/assets/dashboard-reservations.png" alt="Reservation calendar" width="49%"></a>
-<a href=".github/assets/dashboard-products.png"><img src=".github/assets/dashboard-products.png" alt="Product management" width="49%"></a>
-
-_Your back office: reservation calendar, inventory, customers, contracts_
+| Storefront catalog | Reservation calendar | Inventory |
+|:-:|:-:|:-:|
+| [<img src=".github/assets/storefront.png" alt="Storefront catalog">](.github/assets/storefront.png) | [<img src=".github/assets/dashboard-reservations.png" alt="Reservation calendar">](.github/assets/dashboard-reservations.png) | [<img src=".github/assets/dashboard-products.png" alt="Product management">](.github/assets/dashboard-products.png) |
 
 [▶️ Watch the full demo](demo.mp4) • [☁️ Try the hosted version](https://louez.io)
 

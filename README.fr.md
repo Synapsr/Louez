@@ -26,14 +26,13 @@
 
 <div align="center">
 
-<a href="https://louez.io"><img src=".github/assets/storefront.png" alt="Boutique Louez — catalogue de location avec disponibilités en temps réel" width="100%"></a>
+<img src=".github/assets/demo.gif" alt="Un client réserve sur la vitrine, le loueur accepte dans le tableau de bord" width="100%">
 
-_Votre boutique : catalogue à vos couleurs, disponibilités en temps réel, réservation en quelques clics_
+_Un client choisit ses dates sur votre vitrine — la demande arrive dans votre tableau de bord_
 
-<a href=".github/assets/dashboard-reservations.png"><img src=".github/assets/dashboard-reservations.png" alt="Calendrier des réservations" width="49%"></a>
-<a href=".github/assets/dashboard-products.png"><img src=".github/assets/dashboard-products.png" alt="Gestion des produits" width="49%"></a>
-
-_Votre back-office : calendrier des réservations, inventaire, clients, contrats_
+| Catalogue de la vitrine | Calendrier des réservations | Inventaire |
+|:-:|:-:|:-:|
+| [<img src=".github/assets/storefront.png" alt="Catalogue de la vitrine">](.github/assets/storefront.png) | [<img src=".github/assets/dashboard-reservations.png" alt="Calendrier des réservations">](.github/assets/dashboard-reservations.png) | [<img src=".github/assets/dashboard-products.png" alt="Gestion des produits">](.github/assets/dashboard-products.png) |
 
 [▶️ Voir la démo complète](demo-fr.mp4) • [☁️ Essayer la version hébergée](https://louez.io)
 
