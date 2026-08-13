@@ -5397,7 +5397,8 @@
       "relatedProducts": "Produtos relacionados",
       "breadcrumb": {
         "home": "Inicio",
-        "catalog": "Catalogo"
+        "catalog": "Catalogo",
+        "label": "Trilha de navegação"
       },
       "bookingAttributes": "Configuração",
       "bookingAttributesHelp": "Opcional: selecione atributos específicos. Se deixado parcial, o sistema escolherá automaticamente uma combinação disponível correspondente.",
@@ -5407,7 +5408,26 @@
       "quantityPerCombinationHint": "A quantidade aplica-se apenas à opção selecionada. Adicione outra opção como linha separada.",
       "quantityCanSplitHint": "A quantidade pode ser distribuída entre opções correspondentes e adicionada como linhas separadas.",
       "inCartCount": "Já no carrinho: {count}",
-      "selectionUnavailable": "Nenhuma combinação está disponível para esta seleção."
+      "selectionUnavailable": "Nenhuma combinação está disponível para esta seleção.",
+      "gallery": {
+        "label": "Fotos de {name}",
+        "imageAlt": "{name} — foto {index}",
+        "counter": "{current} / {total}",
+        "zoom": "Ampliar"
+      },
+      "meta": {
+        "title": "{product} para alugar — {store}",
+        "description": "Alugue {product} na {store} a partir de {price}. Reserva online com disponibilidade em tempo real.",
+        "storeNotFound": "Loja não encontrada",
+        "productNotFound": "Produto não encontrado"
+      },
+      "specs": {
+        "category": "Categoria",
+        "basePrice": "Tarifa base",
+        "availability": "Disponibilidade"
+      },
+      "unavailableHelp": "Este produto não está disponível para aluguer neste momento. Descubra o resto do catálogo.",
+      "backToCatalog": "Ver o catálogo"
     },
     "accessories": {
       "productAdded": "Adicionado ao carrinho",

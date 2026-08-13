@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import type { ReactElement } from 'react'
-import { toAbsoluteUrl } from '@louez/utils'
+import { minutesToPriceDuration, toAbsoluteUrl } from '@louez/utils'
+import { type Locale, defaultLocale, locales } from '@/i18n/config'
 import { isStandaloneMode } from '@/lib/deployment'
 import { env } from '@/env'
 
@@ -73,10 +74,70 @@ export interface ProductSeoData {
   deposit?: string | null
   images?: string[] | null
   quantity: number
+  /** Rental period the price applies to — surfaced in the Offer schema. */
+  pricingMode?: 'hour' | 'day' | 'week' | null
+  /**
+   * Rate-based products price a custom period (e.g. 120 = per 2 hours);
+   * takes precedence over pricingMode in the Offer schema.
+   */
+  basePeriodMinutes?: number | null
   category?: {
     id: string
     name: string
   } | null
+}
+
+// Google reads og:locale as a full language_TERRITORY tag; next-intl only
+// carries the language. Map the storefront locales to their primary market —
+// typed against i18n/config so adding a locale without a mapping fails to
+// compile.
+const OPEN_GRAPH_LOCALES: Record<Locale, string> = {
+  de: 'de_DE',
+  en: 'en_US',
+  es: 'es_ES',
+  fr: 'fr_FR',
+  it: 'it_IT',
+  nl: 'nl_NL',
+  pl: 'pl_PL',
+  pt: 'pt_PT',
+}
+
+const isLocale = (value: string): value is Locale =>
+  (locales as readonly string[]).includes(value)
+
+function toOpenGraphLocale(locale?: string): string {
+  return locale && isLocale(locale)
+    ? OPEN_GRAPH_LOCALES[locale]
+    : OPEN_GRAPH_LOCALES[defaultLocale]
+}
+
+// schema.org expects a duration the price applies to; the storefront speaks in
+// minutes, hours, days and weeks (UN/ECE Recommendation 20 unit codes).
+const PERIOD_UNIT_CODES: Record<string, string> = {
+  minute: 'MIN',
+  hour: 'HUR',
+  day: 'DAY',
+  week: 'WEE',
+}
+
+/**
+ * The rental period a product's price covers, as a schema.org quantity.
+ * Rate-based products (basePeriodMinutes) price a custom period; the others
+ * price one pricingMode unit.
+ */
+function getPriceReferenceQuantity(
+  product: ProductSeoData,
+): { value: number; unitCode: string } | null {
+  if (product.basePeriodMinutes && product.basePeriodMinutes > 0) {
+    const period = minutesToPriceDuration(product.basePeriodMinutes)
+    const unitCode = PERIOD_UNIT_CODES[period.unit]
+    return unitCode ? { value: period.duration, unitCode } : null
+  }
+
+  const unitCode = product.pricingMode
+    ? PERIOD_UNIT_CODES[product.pricingMode]
+    : undefined
+  return unitCode ? { value: 1, unitCode } : null
 }
 
 // ============================================================================
@@ -169,17 +230,23 @@ export function generateProductMetadata(
   product: ProductSeoData,
   options: {
     path?: string
+    /** Localized title — falls back to the French default when omitted. */
+    title?: string
+    /** Localized description — the product's own description wins over both. */
+    description?: string
+    locale?: string
   } = {}
 ): Metadata {
-  const { path = '' } = options
+  const { path = '', locale } = options
 
   const currency = store.settings?.currency || 'EUR'
   const priceFormatted = formatPrice(parseFloat(product.price), currency)
 
-  const title = `${product.name} - Location ${priceFormatted}`
+  const title = options.title || `${product.name} - Location ${priceFormatted}`
   const description = product.description
     ? truncateText(stripHtml(product.description), 160)
-    : `Louez ${product.name} chez ${store.name} à partir de ${priceFormatted}`
+    : options.description ||
+      `Louez ${product.name} chez ${store.name} à partir de ${priceFormatted}`
 
   const images = (product.images?.length ? product.images : []).map(absoluteAssetUrl)
   const canonicalUrl = getCanonicalUrl(store.slug, path || `/product/${product.id}`)
@@ -190,9 +257,17 @@ export function generateProductMetadata(
     alternates: {
       canonical: canonicalUrl,
     },
+    // Rich thumbnails in search results — without this Google caps previews
+    // for pages it has no explicit signal for.
+    robots: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
     openGraph: {
       type: 'website',
-      locale: 'fr_FR',
+      locale: toOpenGraphLocale(locale),
       url: canonicalUrl,
       siteName: store.name,
       title,
@@ -236,10 +311,10 @@ export function generateLocalBusinessSchema(store: StoreSeoData): object {
   }
 
   if (store.logoUrl) {
-    schema.logo = store.logoUrl
-    schema.image = store.logoUrl
+    schema.logo = absoluteAssetUrl(store.logoUrl)
+    schema.image = absoluteAssetUrl(store.logoUrl)
   } else if (store.theme?.heroImages?.length) {
-    schema.image = store.theme.heroImages[0]
+    schema.image = absoluteAssetUrl(store.theme.heroImages[0])
   }
 
   if (store.email) {
@@ -281,6 +356,48 @@ export function generateProductSchema(
 ): object {
   const currency = store.settings?.currency || 'EUR'
   const canonicalUrl = getCanonicalUrl(store.slug, `/product/${product.id}`)
+  const price = parseFloat(product.price)
+  const referenceQuantity = getPriceReferenceQuantity(product)
+
+  // Google drops offers whose price has silently expired. A rental rate is a
+  // standing price, so keep the window rolling a year ahead of each render.
+  const priceValidUntil = new Date()
+  priceValidUntil.setFullYear(priceValidUntil.getFullYear() + 1)
+
+  const offer: Record<string, unknown> = {
+    '@type': 'Offer',
+    url: canonicalUrl,
+    price,
+    priceCurrency: currency,
+    priceValidUntil: priceValidUntil.toISOString().split('T')[0],
+    // These items are rented out, not sold — the GoodRelations vocabulary is
+    // what schema.org uses to say so.
+    businessFunction: 'http://purl.org/goodrelations/v1#LeaseOut',
+    availability: product.quantity > 0
+      ? 'https://schema.org/InStock'
+      : 'https://schema.org/OutOfStock',
+    seller: {
+      '@type': 'LocalBusiness',
+      name: store.name,
+      url: getCanonicalUrl(store.slug),
+    },
+  }
+
+  if (referenceQuantity) {
+    // Without this the price reads as a sale price instead of a rate per
+    // rental period (1 day, 2 hours, …).
+    offer.priceSpecification = {
+      '@type': 'UnitPriceSpecification',
+      price,
+      priceCurrency: currency,
+      unitCode: referenceQuantity.unitCode,
+      referenceQuantity: {
+        '@type': 'QuantitativeValue',
+        value: referenceQuantity.value,
+        unitCode: referenceQuantity.unitCode,
+      },
+    }
+  }
 
   const schema: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -288,27 +405,22 @@ export function generateProductSchema(
     '@id': canonicalUrl,
     name: product.name,
     url: canonicalUrl,
-    offers: {
-      '@type': 'Offer',
-      price: parseFloat(product.price),
-      priceCurrency: currency,
-      availability: product.quantity > 0
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/OutOfStock',
-      seller: {
-        '@type': 'LocalBusiness',
-        name: store.name,
-        url: getCanonicalUrl(store.slug),
-      },
+    sku: product.id,
+    brand: {
+      '@type': 'Brand',
+      name: store.name,
     },
+    offers: offer,
   }
 
   if (product.description) {
     schema.description = stripHtml(product.description)
   }
 
+  // Crawlers resolve schema image URLs on their own — relative paths from a
+  // standalone deployment would never be fetched.
   if (product.images?.length) {
-    schema.image = product.images
+    schema.image = product.images.map(absoluteAssetUrl)
   }
 
   if (product.category) {
@@ -382,7 +494,9 @@ export function generateItemListSchema(
         '@type': 'Product',
         name: product.name,
         url: getCanonicalUrl(store.slug, `/product/${product.id}`),
-        ...(product.images?.length && { image: product.images[0] }),
+        ...(product.images?.length && {
+          image: absoluteAssetUrl(product.images[0]),
+        }),
         offers: {
           '@type': 'Offer',
           price: parseFloat(product.price),

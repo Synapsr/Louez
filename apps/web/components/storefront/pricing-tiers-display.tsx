@@ -1,14 +1,22 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { Layers, Check } from "lucide-react";
+import { useState } from "react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
-import { Badge } from "@louez/ui";
-import { formatCurrency } from "@louez/utils";
-import { useStoreCurrency, useStoreMaxDiscountPercent } from "@/contexts/store-context";
+import { ChevronDown, ChevronUp, Layers } from "lucide-react";
+import { useTranslations } from "next-intl";
+
 import type { PricingMode } from "@louez/types";
-import { calculateEffectivePrice, sortTiersByDuration, getUnitLabel } from "@louez/utils";
+import { Badge, Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
+import { formatCurrency, minutesToPriceDuration } from "@louez/utils";
+
+import { usePeriodLabel } from "@/hooks/use-period-label";
+import { getStorefrontRateRows } from "@/lib/utils/storefront-pricing";
+
+import { useStoreCurrency, useStoreMaxDiscountPercent } from "@/contexts/store-context";
+
+// Long rate grids are the norm on hourly products; keep the card short and let
+// the visitor open the rest.
+const MAX_VISIBLE_ROWS = 4;
 
 interface PricingTier {
   id: string;
@@ -22,156 +30,106 @@ interface PricingTier {
 interface PricingTiersDisplayProps {
   basePrice: number;
   pricingMode: PricingMode;
+  basePeriodMinutes?: number | null;
   tiers: PricingTier[];
-  currentDuration?: number;
   className?: string;
 }
 
 export function PricingTiersDisplay({
   basePrice,
   pricingMode,
+  basePeriodMinutes,
   tiers,
-  currentDuration,
-  className = "",
+  className,
 }: PricingTiersDisplayProps) {
   const t = useTranslations("storefront.product.tieredPricing");
+  const formatPeriodLabel = usePeriodLabel();
   const currency = useStoreCurrency();
   const maxDiscountPercentSetting = useStoreMaxDiscountPercent();
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  if (!tiers.length) return null;
-
-  const sortedTiers = sortTiersByDuration(
-    tiers.map((tier) => ({
+  // Same normalization as the catalog preview: period-based rates and
+  // duration discounts both become comparable rows, instead of every
+  // rate-based tier collapsing onto the base price. Legacy duration tiers can
+  // carry a NULL minDuration meaning "from 1" — pricing still applies them,
+  // so the display must too.
+  const rateRows = getStorefrontRateRows({
+    price: basePrice,
+    pricingMode,
+    basePeriodMinutes,
+    pricingTiers: tiers.map((tier) => ({
       ...tier,
       minDuration: tier.minDuration ?? 1,
-      discountPercent:
-        typeof tier.discountPercent === "string"
-          ? parseFloat(tier.discountPercent ?? "0")
-          : (tier.discountPercent ?? 0),
     })),
-  );
-  const unitLabel = getUnitLabel(pricingMode, "plural");
-  const unitLabelShort = getUnitLabel(pricingMode, "short");
+  });
 
-  // Whether a specific tier's discount badge should be displayed
-  const isDiscountVisible = (discountPercent: number) =>
-    discountPercent > 0 &&
-    (maxDiscountPercentSetting == null || discountPercent <= maxDiscountPercentSetting);
+  if (rateRows.length <= 1) return null;
 
-  // Find which tier is currently applied
-  const appliedTierIndex = currentDuration
-    ? sortedTiers.reduce((acc, tier, index) => {
-        return currentDuration >= tier.minDuration ? index : acc;
-      }, -1)
-    : -1;
+  const hiddenCount = rateRows.length - MAX_VISIBLE_ROWS;
+  const hasHiddenRows = hiddenCount > 0;
+  const visibleRows =
+    hasHiddenRows && !isExpanded ? rateRows.slice(0, MAX_VISIBLE_ROWS) : rateRows;
+
+  const isDiscountVisible = (reductionPercent: number) =>
+    reductionPercent > 0 &&
+    (maxDiscountPercentSetting == null || reductionPercent <= maxDiscountPercentSetting);
 
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Layers className="h-4 w-4 text-primary" />
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Layers className="text-primary size-4" />
           {t("ratesTitle")}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Base price */}
-        <div className="flex items-center justify-between py-2 border-b">
-          <span className="text-sm text-muted-foreground">{t("basePriceLabel")}</span>
-          <span className="font-medium">
-            {formatCurrency(basePrice, currency)}/{unitLabelShort}
-          </span>
-        </div>
+      <CardContent className="space-y-1.5">
+        {visibleRows.map((rate) => {
+          const period = minutesToPriceDuration(rate.periodMinutes);
+          const showsUnitPrice = period.duration > 1;
 
-        {/* Tiers */}
-        <div className="space-y-2">
-          {sortedTiers.map((tier, index) => {
-            const discountPercent =
-              typeof tier.discountPercent === "string"
-                ? parseFloat(tier.discountPercent ?? "0")
-                : (tier.discountPercent ?? 0);
-            const effectivePrice = calculateEffectivePrice(basePrice, {
-              id: tier.id,
-              minDuration: tier.minDuration ?? 1,
-              discountPercent,
-              displayOrder: tier.displayOrder ?? index,
-            });
-
-            const isApplied = index === appliedTierIndex;
-
-            return (
-              <div
-                key={tier.id}
-                className={`flex items-center justify-between py-2 px-3 rounded-lg transition-colors ${
-                  isApplied ? "bg-primary/10 border border-primary/20" : "hover:bg-muted/50"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {isApplied && <Check className="h-4 w-4 text-primary" />}
-                  <span className={`text-sm ${isApplied ? "font-medium" : ""}`}>
-                    {tier.minDuration}+ {unitLabel}
-                  </span>
-                  {isDiscountVisible(discountPercent) && (
-                    <Badge variant={isApplied ? "progress" : "expired"} className="text-xs">
-                      -{Math.floor(discountPercent)}%
-                    </Badge>
-                  )}
-                </div>
-                <span className={`font-medium ${isApplied ? "text-primary" : ""}`}>
-                  {formatCurrency(effectivePrice, currency)}/{unitLabelShort}
+          return (
+            <div
+              key={rate.id}
+              className="hover:bg-muted/50 flex items-center justify-between gap-4 rounded-lg px-3 py-2 text-sm transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="font-medium">
+                  {formatPeriodLabel(rate.periodMinutes, { alwaysShowCount: true })}
                 </span>
+                {isDiscountVisible(rate.reductionPercent) && (
+                  <Badge variant="progress" className="text-xs font-semibold">
+                    -{Math.floor(rate.reductionPercent)}%
+                  </Badge>
+                )}
               </div>
-            );
-          })}
-        </div>
+              <div className="text-right">
+                <span className="font-semibold">{formatCurrency(rate.price, currency)}</span>
+                {showsUnitPrice && (
+                  <div className="text-muted-foreground text-xs">
+                    {formatCurrency(rate.price / period.duration, currency)}/
+                    {formatPeriodLabel(rate.periodMinutes / period.duration)}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {hasHiddenRows && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded((expanded) => !expanded)}
+            className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 pt-1 text-xs font-medium transition-colors"
+          >
+            {isExpanded ? t("showLess") : t("showMore", { count: hiddenCount })}
+            {isExpanded ? (
+              <ChevronUp className="size-3.5" />
+            ) : (
+              <ChevronDown className="size-3.5" />
+            )}
+          </button>
+        )}
       </CardContent>
     </Card>
-  );
-}
-
-/**
- * Inline pricing tiers display for compact spaces
- */
-export function PricingTiersInline({
-  basePrice,
-  pricingMode,
-  tiers,
-}: Omit<PricingTiersDisplayProps, "currentDuration" | "className">) {
-  const currency = useStoreCurrency();
-
-  if (!tiers.length) return null;
-
-  const sortedTiers = sortTiersByDuration(
-    tiers.map((tier) => ({
-      ...tier,
-      minDuration: tier.minDuration ?? 1,
-      discountPercent:
-        typeof tier.discountPercent === "string"
-          ? parseFloat(tier.discountPercent ?? "0")
-          : (tier.discountPercent ?? 0),
-    })),
-  );
-  const unitLabelShort = getUnitLabel(pricingMode, "short");
-
-  return (
-    <div className="flex flex-wrap gap-2 mt-2">
-      {sortedTiers.slice(0, 3).map((tier, index) => {
-        const discountPercent =
-          typeof tier.discountPercent === "string"
-            ? parseFloat(tier.discountPercent ?? "0")
-            : (tier.discountPercent ?? 0);
-        const effectivePrice = calculateEffectivePrice(basePrice, {
-          id: tier.id,
-          minDuration: tier.minDuration ?? 1,
-          discountPercent,
-          displayOrder: tier.displayOrder ?? index,
-        });
-
-        return (
-          <Badge key={tier.id} variant="expired" className="text-xs font-normal">
-            {tier.minDuration ?? 1}+ → {formatCurrency(effectivePrice, currency)}/{unitLabelShort}
-          </Badge>
-        );
-      })}
-    </div>
   );
 }

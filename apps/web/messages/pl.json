@@ -5397,7 +5397,8 @@
       "relatedProducts": "Podobne produkty",
       "breadcrumb": {
         "home": "Strona główna",
-        "catalog": "Katalog"
+        "catalog": "Katalog",
+        "label": "Ścieżka nawigacji"
       },
       "bookingAttributes": "Konfiguracja",
       "bookingAttributesHelp": "Opcjonalnie: wybierz konkretne atrybuty. Jeśli nie zostaną w pełni określone, system automatycznie dobierze dostępną opcję.",
@@ -5407,7 +5408,26 @@
       "quantityPerCombinationHint": "Ilość dotyczy tylko wybranej opcji. Dodaj kolejną opcję jako osobną linię.",
       "quantityCanSplitHint": "Ilość może zostać rozdzielona pomiędzy pasujące opcje i dodana jako osobne linie.",
       "inCartCount": "Już w koszyku: {count}",
-      "selectionUnavailable": "Żadna kombinacja nie jest dostępna dla tego wyboru."
+      "selectionUnavailable": "Żadna kombinacja nie jest dostępna dla tego wyboru.",
+      "gallery": {
+        "label": "Zdjęcia produktu {name}",
+        "imageAlt": "{name} — zdjęcie {index}",
+        "counter": "{current} / {total}",
+        "zoom": "Powiększ"
+      },
+      "meta": {
+        "title": "{product} do wynajęcia — {store}",
+        "description": "Wynajmij {product} w {store} już od {price}. Rezerwacja online z dostępnością w czasie rzeczywistym.",
+        "storeNotFound": "Nie znaleziono sklepu",
+        "productNotFound": "Nie znaleziono produktu"
+      },
+      "specs": {
+        "category": "Kategoria",
+        "basePrice": "Stawka podstawowa",
+        "availability": "Dostępność"
+      },
+      "unavailableHelp": "Ten produkt nie jest obecnie dostępny do wynajęcia. Zobacz resztę katalogu.",
+      "backToCatalog": "Zobacz katalog"
     },
     "accessories": {
       "productAdded": "Dodano do koszyka",

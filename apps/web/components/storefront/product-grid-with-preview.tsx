@@ -2,6 +2,7 @@
 
 import { TrendingDownSolidIcon } from '@louez/ui/icons'
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { Calendar } from 'lucide-react'
 
@@ -43,6 +44,8 @@ interface Product {
 interface ProductGridWithPreviewProps {
   products: Product[]
   storeSlug: string
+  /** Prefix product links need on this host (empty on a store subdomain). */
+  basePath?: string
   businessHours?: BusinessHours
   advanceNotice?: number
   minRentalMinutes?: number
@@ -52,9 +55,11 @@ interface ProductGridWithPreviewProps {
 
 function ProductCardInteractive({
   product,
+  href,
   onClick,
 }: {
   product: Product
+  href: string
   onClick: () => void
 }) {
   const t = useTranslations('storefront.product')
@@ -79,12 +84,19 @@ function ProductCardInteractive({
         ? t(`pricingUnit.${displayPeriod.unit}.singular`)
         : `${displayPeriod.duration} ${t(`pricingUnit.${displayPeriod.unit}.plural`)}`
 
+  // The card opens the preview drawer, but it stays a real link: crawlers can
+  // reach the product page, and cmd/middle-click opens it in a new tab.
+  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    const opensInNewTab =
+      event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+    if (opensInNewTab || event.button !== 0 || !isAvailable) return
+
+    event.preventDefault()
+    onClick()
+  }
+
   return (
-    <button
-      onClick={onClick}
-      className="group block text-left w-full"
-      disabled={!isAvailable}
-    >
+    <Link href={href} onClick={handleClick} className="group block text-left w-full">
       <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border border-border/50 hover:border-primary/20 bg-card p-0 gap-0">
         {/* Image container */}
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
@@ -145,13 +157,14 @@ function ProductCardInteractive({
           </div>
         </CardContent>
       </Card>
-    </button>
+    </Link>
   )
 }
 
 export function ProductGridWithPreview({
   products,
   storeSlug,
+  basePath = '',
   businessHours,
   advanceNotice,
   minRentalMinutes = 0,
@@ -195,6 +208,7 @@ export function ProductGridWithPreview({
           <ProductCardInteractive
             key={product.id}
             product={product}
+            href={`${basePath}/product/${product.id}`}
             onClick={() => handleProductClick(product)}
           />
         ))}

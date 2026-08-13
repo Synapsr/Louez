@@ -5401,13 +5401,33 @@
       "relatedProducts": "Related products",
       "breadcrumb": {
         "home": "Home",
-        "catalog": "Catalog"
+        "catalog": "Catalog",
+        "label": "Breadcrumb"
       },
       "availableForSelection": "Available for this selection: {count}",
       "quantityPerCombinationHint": "Quantity applies to the selected option only. Add another option as a separate line.",
       "quantityCanSplitHint": "Quantity can be split across matching options and added as separate lines.",
       "inCartCount": "Already in cart: {count}",
-      "selectionUnavailable": "No combination is available for this selection."
+      "selectionUnavailable": "No combination is available for this selection.",
+      "gallery": {
+        "label": "{name} photos",
+        "imageAlt": "{name} — photo {index}",
+        "counter": "{current} / {total}",
+        "zoom": "Enlarge"
+      },
+      "meta": {
+        "title": "{product} for rent — {store}",
+        "description": "Rent {product} from {store} from {price}. Book online with real-time availability.",
+        "storeNotFound": "Store not found",
+        "productNotFound": "Product not found"
+      },
+      "specs": {
+        "category": "Category",
+        "basePrice": "Base rate",
+        "availability": "Availability"
+      },
+      "unavailableHelp": "This product is not available for rent right now. Browse the rest of the catalog.",
+      "backToCatalog": "View the catalog"
     },
     "accessories": {
       "productAdded": "Added to cart",

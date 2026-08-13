@@ -1,11 +1,13 @@
+import { cache } from 'react';
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { inArray } from 'drizzle-orm';
 import { and, asc, desc, eq, ne } from 'drizzle-orm';
-import { Check } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { ArrowRight, Check } from 'lucide-react';
+import { getLocale, getTranslations } from 'next-intl/server';
 
 import { db, getEffectiveProductQuantities } from '@louez/db';
 import {
@@ -16,11 +18,14 @@ import {
 } from '@louez/db';
 import type { BusinessHours, StoreSettings, StoreTheme } from '@louez/types';
 import { Badge } from '@louez/ui';
+import { Button } from '@louez/ui';
 import { Separator } from '@louez/ui';
 import {
   buildCombinationKey,
   formatCurrency,
   getDeterministicCombinationSortValue,
+  minutesToPriceDuration,
+  pricingModeToMinutes,
 } from '@louez/utils';
 
 import { PageTracker } from '@/components/storefront/page-tracker';
@@ -34,6 +39,8 @@ import {
   generateProductSchema,
   getCanonicalUrl,
 } from '@/lib/seo';
+import { sanitizeProductDescriptionHtml } from '@/lib/util.product-description';
+import { getStorefrontPathPrefix } from '@/lib/util.storefront-host';
 import { filterActiveVariantAxes } from '@/lib/util.variant-visibility';
 import { getStoreVariantActivity } from '@/lib/util.variant-visibility.server';
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
@@ -48,92 +55,17 @@ interface ProductPageProps {
 
 export const instant = false;
 
-export async function generateMetadata({
-  params,
-}: ProductPageProps): Promise<Metadata> {
-  const { slug, productId } = await params;
+// generateMetadata and the page body render in the same request — cache() the
+// shared lookups so each query runs once instead of twice.
+const getStoreBySlug = cache((slug: string) =>
+  db.query.stores.findFirst({ where: eq(stores.slug, slug) }),
+);
 
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, slug),
-  });
-
-  if (!store) {
-    return { title: 'Boutique introuvable' };
-  }
-
-  const product = await db.query.products.findFirst({
+const getActiveProduct = cache((storeId: string, productId: string) =>
+  db.query.products.findFirst({
     where: and(
       eq(products.id, productId),
-      eq(products.storeId, store.id),
-      eq(products.status, 'active'),
-    ),
-    with: {
-      category: true,
-    },
-  });
-
-  if (!product) {
-    return { title: 'Produit introuvable' };
-  }
-
-  const effectiveQuantities = await getEffectiveProductQuantities(db, [
-    product.id,
-  ]);
-  const quantity = product.trackUnits
-    ? (effectiveQuantities.get(product.id) ?? 0)
-    : product.quantity;
-
-  const theme = (store.theme as StoreTheme) || {};
-  const settings = (store.settings as StoreSettings) || {};
-
-  return generateProductMetadata(
-    {
-      id: store.id,
-      name: store.name,
-      slug: store.slug,
-      settings,
-      theme,
-    },
-    {
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      deposit: product.deposit,
-      images: product.images,
-      quantity,
-      category: product.category
-        ? { id: product.category.id, name: product.category.name }
-        : null,
-    },
-    {
-      path: `/product/${productId}`,
-    },
-  );
-}
-
-export default async function ProductPage({ params }: ProductPageProps) {
-  const { slug, productId } = await params;
-  const t = await getTranslations('storefront.product');
-  const tCatalog = await getTranslations('storefront.catalog');
-
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, slug),
-  });
-
-  if (!store) {
-    notFound();
-  }
-
-  const variantActivity = await getStoreVariantActivity(store.id);
-
-  const storeSettings = (store.settings as StoreSettings) || {};
-  const currency = storeSettings.currency || 'EUR';
-
-  const product = await db.query.products.findFirst({
-    where: and(
-      eq(products.id, productId),
-      eq(products.storeId, store.id),
+      eq(products.storeId, storeId),
       eq(products.status, 'active'),
     ),
     with: {
@@ -157,7 +89,89 @@ export default async function ProductPage({ params }: ProductPageProps) {
         },
       },
     },
-  });
+  }),
+);
+
+export async function generateMetadata({
+  params,
+}: ProductPageProps): Promise<Metadata> {
+  const { slug, productId } = await params;
+  const t = await getTranslations('storefront.product');
+  const locale = await getLocale();
+
+  const store = await getStoreBySlug(slug);
+
+  if (!store) {
+    return { title: t('meta.storeNotFound') };
+  }
+
+  const product = await getActiveProduct(store.id, productId);
+
+  if (!product) {
+    return { title: t('meta.productNotFound') };
+  }
+
+  const theme = (store.theme as StoreTheme) || {};
+  const settings = (store.settings as StoreSettings) || {};
+
+  return generateProductMetadata(
+    {
+      id: store.id,
+      name: store.name,
+      slug: store.slug,
+      settings,
+      theme,
+    },
+    {
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      deposit: product.deposit,
+      images: product.images,
+      // Effective quantity is irrelevant for metadata (only the JSON-LD
+      // schema reads availability) — skip that extra query here.
+      quantity: product.quantity,
+      pricingMode: product.pricingMode,
+      basePeriodMinutes: product.basePeriodMinutes,
+      category: product.category
+        ? { id: product.category.id, name: product.category.name }
+        : null,
+    },
+    {
+      path: `/product/${productId}`,
+      locale,
+      title: t('meta.title', { product: product.name, store: store.name }),
+      description: t('meta.description', {
+        product: product.name,
+        store: store.name,
+        price: formatCurrency(
+          parseFloat(product.price),
+          settings.currency || 'EUR',
+        ),
+      }),
+    },
+  );
+}
+
+export default async function ProductPage({ params }: ProductPageProps) {
+  const { slug, productId } = await params;
+  const t = await getTranslations('storefront.product');
+  const tCatalog = await getTranslations('storefront.catalog');
+  const tCommon = await getTranslations('common');
+
+  const store = await getStoreBySlug(slug);
+
+  if (!store) {
+    notFound();
+  }
+
+  const variantActivity = await getStoreVariantActivity(store.id);
+
+  const storeSettings = (store.settings as StoreSettings) || {};
+  const currency = storeSettings.currency || 'EUR';
+
+  const product = await getActiveProduct(store.id, productId);
 
   if (!product) {
     notFound();
@@ -291,7 +305,23 @@ export default async function ProductPage({ params }: ProductPageProps) {
       : relatedProduct.quantity,
   }));
 
+  const basePath = await getStorefrontPathPrefix(slug);
   const effectivePricingMode = product.pricingMode ?? 'day';
+  const depositAmount = product.deposit ? parseFloat(product.deposit) : 0;
+
+  // Rate-based products price a custom period ("50 € / 2 heures"), not one
+  // pricingMode unit — mirror what the catalog card and booking form charge.
+  const basePeriod = minutesToPriceDuration(
+    product.basePeriodMinutes && product.basePeriodMinutes > 0
+      ? product.basePeriodMinutes
+      : pricingModeToMinutes(effectivePricingMode),
+  );
+  const basePeriodLabel =
+    basePeriod.unit === 'minute'
+      ? `${basePeriod.duration} ${tCommon('minuteUnit', { count: basePeriod.duration })}`
+      : basePeriod.duration === 1
+        ? t(`pricingUnit.${basePeriod.unit}.singular`)
+        : `${basePeriod.duration} ${t(`pricingUnit.${basePeriod.unit}.plural`)}`;
   const displayQuantity = product.trackUnits
     ? (product.units || []).filter(
         (unit) =>
@@ -416,6 +446,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
     deposit: product.deposit,
     images: product.images,
     quantity: effectiveQuantity,
+    pricingMode: effectivePricingMode,
+    basePeriodMinutes: product.basePeriodMinutes,
     category: product.category
       ? { id: product.category.id, name: product.category.name }
       : null,
@@ -424,7 +456,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   // Build breadcrumb items
   const breadcrumbItems: { name: string; url?: string }[] = [
     { name: store.name, url: getCanonicalUrl(slug) },
-    { name: 'Catalogue', url: getCanonicalUrl(slug, '/catalog') },
+    { name: t('breadcrumb.catalog'), url: getCanonicalUrl(slug, '/catalog') },
   ];
   if (product.category) {
     breadcrumbItems.push({
@@ -445,27 +477,30 @@ export default async function ProductPage({ params }: ProductPageProps) {
         ]}
       />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto max-w-7xl px-4 py-6 md:py-8">
         {/* Breadcrumb */}
-        <nav className="mb-6">
-          <ol className="text-muted-foreground flex items-center gap-2 text-sm">
+        <nav aria-label={t('breadcrumb.label')} className="mb-6">
+          <ol className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             <li>
-              <Link href="/" className="hover:text-foreground">
+              <Link href={basePath || '/'} className="hover:text-foreground">
                 {t('breadcrumb.home')}
               </Link>
             </li>
-            <li>/</li>
+            <li aria-hidden="true">/</li>
             <li>
-              <Link href="/catalog" className="hover:text-foreground">
+              <Link
+                href={`${basePath}/catalog`}
+                className="hover:text-foreground"
+              >
                 {t('breadcrumb.catalog')}
               </Link>
             </li>
             {product.category && (
               <>
-                <li>/</li>
+                <li aria-hidden="true">/</li>
                 <li>
                   <Link
-                    href={`/catalog?category=${product.category.id}`}
+                    href={`${basePath}/catalog?category=${product.category.id}`}
                     className="hover:text-foreground"
                   >
                     {product.category.name}
@@ -473,67 +508,101 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 </li>
               </>
             )}
-            <li>/</li>
-            <li className="text-foreground">{product.name}</li>
+            <li aria-hidden="true">/</li>
+            <li className="text-foreground font-medium">{product.name}</li>
           </ol>
         </nav>
 
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-          {/* Gallery */}
-          <ProductGallery
-            images={product.images || []}
-            productName={product.name}
-          />
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:items-start lg:gap-12">
+          {/* Gallery + description — the description fills the left column on
+              desktop so it's visible without scrolling past the booking panel.
+              On mobile it renders after the panel instead (see below). */}
+          <div className="w-full space-y-10">
+            <ProductGallery
+              images={product.images || []}
+              productName={product.name}
+            />
+
+            {product.description && (
+              <section
+                className="hidden lg:block"
+                aria-labelledby="description"
+              >
+                <h2 id="description" className="mb-3 text-xl font-semibold">
+                  {t('description')}
+                </h2>
+                <div
+                  className="prose prose-sm dark:prose-invert prose-headings:text-foreground prose-a:text-primary prose-p:text-muted-foreground prose-li:text-muted-foreground wrap-break-word max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeProductDescriptionHtml(product.description),
+                  }}
+                />
+              </section>
+            )}
+          </div>
 
           {/* Product Info */}
           <div className="space-y-6">
-            {product.category && <Badge variant="expired">{product.category.name}</Badge>}
+            <div className="space-y-3">
+              {product.category && (
+                <Badge
+                  variant="tertiary"
+                  render={
+                    <Link
+                      href={`${basePath}/catalog?category=${product.category.id}`}
+                    />
+                  }
+                >
+                  {product.category.name}
+                </Badge>
+              )}
 
-            <h1 className="text-3xl font-bold">{product.name}</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-balance md:text-3xl">
+                {product.name}
+              </h1>
 
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-bold">
-                {formatCurrency(parseFloat(product.price), currency)}
-              </span>
-              <span className="text-muted-foreground text-lg">
-                / {t(`pricingUnit.${effectivePricingMode}.singular`)}
-              </span>
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="text-primary text-3xl font-bold">
+                  {formatCurrency(parseFloat(product.price), currency)}
+                </span>
+                <span className="text-muted-foreground text-base">
+                  / {basePeriodLabel}
+                </span>
+                {depositAmount > 0 && (
+                  <span className="text-muted-foreground text-sm">
+                    · {t('deposit')} {formatCurrency(depositAmount, currency)}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isAvailable ? (
+                  <>
+                    <Check className="text-success size-4" />
+                    <span className="text-success text-sm font-medium">
+                      {t('availableCount', { count: displayQuantity })}
+                    </span>
+                  </>
+                ) : (
+                  <Badge variant="failed">{tCatalog('unavailable')}</Badge>
+                )}
+              </div>
             </div>
-
-            {product.deposit && parseFloat(product.deposit) > 0 && (
-              <p className="text-muted-foreground text-sm">
-                {t('deposit')}:{' '}
-                {formatCurrency(parseFloat(product.deposit), currency)}
-              </p>
-            )}
 
             {/* Pricing Tiers Display */}
             {product.pricingTiers && product.pricingTiers.length > 0 && (
               <PricingTiersDisplay
                 basePrice={parseFloat(product.price)}
                 pricingMode={effectivePricingMode}
+                basePeriodMinutes={product.basePeriodMinutes}
                 tiers={product.pricingTiers}
-                className="mt-4"
               />
             )}
-
-            <div className="flex items-center gap-2">
-              {isAvailable ? (
-                <>
-                  <Check className="h-5 w-5 text-green-500" />
-                  <span className="font-medium text-green-600">
-                    {t('availableCount', { count: displayQuantity })}
-                  </span>
-                </>
-              ) : (
-                <Badge variant="failed">{tCatalog('unavailable')}</Badge>
-              )}
-            </div>
 
             <Separator />
 
             {/* Add to Cart Form */}
-            {isAvailable && (
+            {isAvailable ? (
               <AddToCartForm
                 productId={product.id}
                 productName={product.name}
@@ -575,32 +644,98 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 bookingCombinations={bookingCombinations}
                 seasonalPricings={seasonalPricings}
               />
-            )}
-
-            {/* Description */}
-            {product.description && (
-              <div className="mt-8">
-                <h2 className="mb-2 text-lg font-semibold">
-                  {t('description')}
-                </h2>
-                <p className="text-muted-foreground whitespace-pre-line">
-                  {product.description}
+            ) : (
+              <div className="bg-muted/40 space-y-3 rounded-xl border p-4">
+                <p className="text-muted-foreground text-sm">
+                  {t('unavailableHelp')}
                 </p>
+                <Button
+                  variant="outline"
+                  render={<Link href={`${basePath}/catalog`} />}
+                >
+                  {t('backToCatalog')}
+                  <ArrowRight className="ml-2 size-4" />
+                </Button>
               </div>
             )}
+
+            {/* Characteristics — the crawlable summary of the booking panel */}
+            <div>
+              <h2 className="mb-3 text-base font-semibold">
+                {t('characteristics')}
+              </h2>
+              <dl className="divide-border divide-y text-sm">
+                {product.category && (
+                  <div className="flex items-baseline justify-between gap-4 py-2">
+                    <dt className="text-muted-foreground">
+                      {t('specs.category')}
+                    </dt>
+                    <dd className="text-right font-medium">
+                      {product.category.name}
+                    </dd>
+                  </div>
+                )}
+                <div className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="text-muted-foreground">
+                    {t('specs.basePrice')}
+                  </dt>
+                  <dd className="text-right font-medium">
+                    {formatCurrency(parseFloat(product.price), currency)} /{' '}
+                    {basePeriodLabel}
+                  </dd>
+                </div>
+                {depositAmount > 0 && (
+                  <div className="flex items-baseline justify-between gap-4 py-2">
+                    <dt className="text-muted-foreground">{t('deposit')}</dt>
+                    <dd className="text-right font-medium">
+                      {formatCurrency(depositAmount, currency)}
+                    </dd>
+                  </div>
+                )}
+                <div className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="text-muted-foreground">
+                    {t('specs.availability')}
+                  </dt>
+                  <dd className="text-right font-medium">
+                    {isAvailable
+                      ? t('availableCount', { count: displayQuantity })
+                      : tCatalog('unavailable')}
+                  </dd>
+                </div>
+              </dl>
+            </div>
           </div>
         </div>
+
+        {/* Description, mobile placement — after the booking panel so renting
+            stays one scroll away. Same content as the desktop copy above. */}
+        {product.description && (
+          <section className="mt-12 lg:hidden" aria-labelledby="description-mobile">
+            <h2 id="description-mobile" className="mb-3 text-xl font-semibold">
+              {t('description')}
+            </h2>
+            <div
+              className="prose prose-sm dark:prose-invert prose-headings:text-foreground prose-a:text-primary prose-p:text-muted-foreground prose-li:text-muted-foreground wrap-break-word max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: sanitizeProductDescriptionHtml(product.description),
+              }}
+            />
+          </section>
+        )}
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (
           <section className="mt-16">
-            <h2 className="mb-6 text-2xl font-bold">{t('relatedProducts')}</h2>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <h2 className="mb-6 text-xl font-semibold md:text-2xl">
+              {t('relatedProducts')}
+            </h2>
+            <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
               {relatedProducts.map((relatedProduct) => (
                 <ProductCard
                   key={relatedProduct.id}
                   product={relatedProduct}
                   storeSlug={slug}
+                  basePath={basePath}
                 />
               ))}
             </div>

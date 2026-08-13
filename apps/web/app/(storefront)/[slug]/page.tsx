@@ -44,6 +44,7 @@ import {
   generateWebSiteSchema,
   stripHtml,
 } from '@/lib/seo';
+import { getStorefrontPathPrefix } from '@/lib/util.storefront-host';
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
 
 interface StorefrontPageProps {
@@ -118,6 +119,7 @@ export async function generateMetadata({
 export default async function StorefrontPage({ params }: StorefrontPageProps) {
   const { slug } = await params;
   const t = await getTranslations('storefront');
+  const storefrontBasePath = await getStorefrontPathPrefix(slug);
 
   // Fetch store without relations to avoid lateral join issues
   const store = await db.query.stores.findFirst({
@@ -523,6 +525,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
               <ProductGridWithPreview
                 products={storeWithRelations.products}
                 storeSlug={slug}
+                basePath={storefrontBasePath}
                 businessHours={businessHours}
                 advanceNotice={advanceNotice}
                 minRentalMinutes={minRentalMinutes}

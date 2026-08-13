@@ -21,6 +21,7 @@ import {
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration'
 import { PageTracker } from '@/components/storefront/page-tracker'
+import { getStorefrontPathPrefix } from '@/lib/util.storefront-host'
 import { filterActiveVariantAxes } from '@/lib/util.variant-visibility'
 import { getStoreVariantActivity } from '@/lib/util.variant-visibility.server'
 
@@ -103,6 +104,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
   }
 
   const variantActivity = await getStoreVariantActivity(store.id)
+  const storefrontBasePath = await getStorefrontPathPrefix(slug)
 
   // Fetch categories separately
   const storeCategories = await db.query.categories.findMany({
@@ -381,6 +383,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
             <ProductGridWithPreview
               products={filteredProducts}
               storeSlug={slug}
+              basePath={storefrontBasePath}
               businessHours={businessHours}
               advanceNotice={advanceNotice}
               minRentalMinutes={minRentalMinutes}

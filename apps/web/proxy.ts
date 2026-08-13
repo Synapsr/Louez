@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import { isStandaloneMode } from '@/lib/deployment';
+import { getSubdomain, isLoopbackHost } from '@/lib/util.host';
 import { isValidReferralCode } from '@/lib/utils/referral';
 import { LOGIN_CALLBACK_PATH_HEADER } from '@/lib/utils/util.url';
 
@@ -37,41 +38,6 @@ const DASHBOARD_ROUTES = [
 ];
 
 /**
- * Extract subdomain from the host header.
- * Works with any domain configured in APP_DOMAIN.
- *
- * Examples (with APP_DOMAIN="example.com"):
- *   "app.example.com" → "app"
- *   "myboutique.example.com" → "myboutique"
- *   "example.com" → null
- *   "www.example.com" → "www"
- *
- * Examples (with APP_DOMAIN="localhost:3000"):
- *   "localhost:3000" → null (localhost has no subdomains)
- */
-function getSubdomain(host: string): string | null {
-  // Remove port if present
-  const hostname = host.split(':')[0];
-
-  // Localhost and 127.0.0.1 don't support subdomains
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return null;
-  }
-
-  // Extract subdomain by comparing with base domain
-  const hostParts = hostname.split('.');
-  const baseDomain = APP_DOMAIN.split(':')[0];
-  const baseParts = baseDomain.split('.');
-
-  // If hostname has more parts than base domain, extract subdomain(s)
-  if (hostParts.length > baseParts.length) {
-    return hostParts.slice(0, hostParts.length - baseParts.length).join('.');
-  }
-
-  return null;
-}
-
-/**
  * Check if the pathname is a dashboard/auth route that should not be rewritten.
  */
 function isDashboardRoute(pathname: string): boolean {
@@ -86,15 +52,6 @@ function isStaticAsset(pathname: string): boolean {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.includes('.')
-  );
-}
-
-function isLoopbackHost(hostname: string): boolean {
-  return (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '::1' ||
-    hostname === '[::1]'
   );
 }
 
@@ -121,6 +78,20 @@ function createDashboardResponse(request: NextRequest) {
       headers: requestHeaders,
     },
   });
+}
+
+/** Rewrite a storefront path onto its internal `/{slug}/...` route. */
+function createStorefrontRewrite(request: NextRequest, slug: string) {
+  const { pathname } = request.nextUrl;
+  const url = createInternalRewriteUrl(request, `/${slug}${pathname}`);
+  const response = NextResponse.rewrite(url);
+
+  // Embed routes drop the app chrome (used by the layout).
+  if (pathname === '/embed' || pathname.startsWith('/embed/')) {
+    response.headers.set('x-embed-mode', '1');
+  }
+
+  return response;
 }
 
 // =============================================================================
@@ -276,15 +247,7 @@ export async function proxy(request: NextRequest) {
       return NextResponse.next();
     }
 
-    const url = createInternalRewriteUrl(request, `/${slug}${pathname}`);
-    const response = NextResponse.rewrite(url);
-
-    // Set embed mode header for embed routes (used by layout to skip chrome)
-    if (pathname === '/embed' || pathname.startsWith('/embed/')) {
-      response.headers.set('x-embed-mode', '1');
-    }
-
-    return response;
+    return createStorefrontRewrite(request, slug);
   }
 
   // -----------------------------------------------------------------------------
@@ -300,18 +263,11 @@ export async function proxy(request: NextRequest) {
     PREVIEW_STORE_SLUG &&
     !isDashboardRoute(pathname)
   ) {
-    const url = createInternalRewriteUrl(
+    return captureReferral(
       request,
-      `/${PREVIEW_STORE_SLUG}${pathname}`,
+      createStorefrontRewrite(request, PREVIEW_STORE_SLUG),
+      host,
     );
-    const response = NextResponse.rewrite(url);
-
-    // Set embed mode header for embed routes
-    if (pathname === '/embed' || pathname.startsWith('/embed/')) {
-      response.headers.set('x-embed-mode', '1');
-    }
-
-    return captureReferral(request, response, host);
   }
 
   // -----------------------------------------------------------------------------
@@ -330,15 +286,11 @@ export async function proxy(request: NextRequest) {
   // {slug}.{APP_DOMAIN} → rewrite to /{slug}/* routes
   // Excludes "www" which should show the landing page
   if (subdomain && subdomain !== 'www') {
-    const url = createInternalRewriteUrl(request, `/${subdomain}${pathname}`);
-    const response = NextResponse.rewrite(url);
-
-    // Set embed mode header for embed routes (used by layout to skip chrome)
-    if (pathname === '/embed' || pathname.startsWith('/embed/')) {
-      response.headers.set('x-embed-mode', '1');
-    }
-
-    return captureReferral(request, response, host);
+    return captureReferral(
+      request,
+      createStorefrontRewrite(request, subdomain),
+      host,
+    );
   }
 
   // -----------------------------------------------------------------------------

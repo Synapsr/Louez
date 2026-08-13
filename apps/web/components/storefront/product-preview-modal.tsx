@@ -4,6 +4,7 @@ import { TrendingDownSolidIcon } from "@louez/ui/icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { format, setHours, setMinutes } from "date-fns";
@@ -45,7 +46,9 @@ import {
   isSameDayEndTimeSlotAllowed,
 } from "@/components/storefront/date-picker/core/use-rental-date-core";
 
+import { usePeriodLabel } from "@/hooks/use-period-label";
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
+import { sanitizeProductDescriptionHtml } from "@/lib/util.product-description";
 import { getStorefrontPricingSummary, getStorefrontRateRows } from "@/lib/utils/storefront-pricing";
 
 import { useAnalytics } from "@/contexts/analytics-context";
@@ -110,7 +113,6 @@ export function ProductPreviewModal({
 }: ProductPreviewModalProps) {
   const tProduct = useTranslations("storefront.product");
   const tDateSelection = useTranslations("storefront.dateSelection");
-  const tCommon = useTranslations("common");
   const currency = useStoreCurrency();
   const maxDiscountPercent = useStoreMaxDiscountPercent();
   const router = useRouter();
@@ -178,32 +180,7 @@ export function ProductPreviewModal({
   const totalMediaItems = images.length + (hasVideo ? 1 : 0);
   const isVideoSelected = hasVideo && selectedImageIndex === images.length;
 
-  const formatPeriodLabel = useCallback(
-    (
-      periodMinutes: number,
-      options?: {
-        alwaysShowCount?: boolean;
-      },
-    ) => {
-      const period = minutesToPriceDuration(periodMinutes);
-      const alwaysShowCount = options?.alwaysShowCount ?? false;
-      if (period.unit === "minute") {
-        const minuteLabel = tCommon("minuteUnit", { count: period.duration });
-        if (period.duration === 1 && !alwaysShowCount) {
-          return minuteLabel;
-        }
-        return `${period.duration} ${minuteLabel}`;
-      }
-      const unitLabel = tProduct(
-        `pricingUnit.${period.unit}.${period.duration === 1 ? "singular" : "plural"}`,
-      );
-      if (period.duration === 1 && !alwaysShowCount) {
-        return unitLabel;
-      }
-      return `${period.duration} ${unitLabel}`;
-    },
-    [tCommon, tProduct],
-  );
+  const formatPeriodLabel = usePeriodLabel();
 
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -544,12 +521,10 @@ export function ProductPreviewModal({
             {product.description && (
               <div className="mb-5 border-b pb-5">
                 <div
-                  className="text-muted-foreground prose prose-sm dark:prose-invert max-w-none text-sm [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_li]:mb-1 [&_ol]:mb-2 [&_p]:mb-2 [&_ul]:mb-2 [&>*]:break-words"
-                  style={{
-                    wordBreak: "break-word",
-                    overflowWrap: "break-word",
+                  className="text-muted-foreground prose prose-sm dark:prose-invert wrap-break-word max-w-none text-sm [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_li]:mb-1 [&_ol]:mb-2 [&_p]:mb-2 [&_ul]:mb-2 [&>*]:break-words"
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeProductDescriptionHtml(product.description),
                   }}
-                  dangerouslySetInnerHTML={{ __html: product.description }}
                 />
               </div>
             )}
@@ -826,6 +801,15 @@ export function ProductPreviewModal({
             >
               {tDateSelection("viewAvailability")}
               <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+
+            {/* Full product page: the indexable, shareable version of this preview. */}
+            <Button
+              variant="ghost"
+              className="mt-2 w-full"
+              render={<Link href={getUrl(`/product/${product.id}`)} />}
+            >
+              {tProduct("viewDetails")}
             </Button>
           </div>
         </div>

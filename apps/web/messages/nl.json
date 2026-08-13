@@ -5397,7 +5397,8 @@
       "relatedProducts": "Gerelateerde producten",
       "breadcrumb": {
         "home": "Home",
-        "catalog": "Catalogus"
+        "catalog": "Catalogus",
+        "label": "Kruimelpad"
       },
       "bookingAttributes": "Configuratie",
       "bookingAttributesHelp": "Optioneel: selecteer specifieke kenmerken. Indien gedeeltelijk ingevuld, kiest het systeem automatisch een passende beschikbare combinatie.",
@@ -5407,7 +5408,26 @@
       "quantityPerCombinationHint": "Aantal geldt alleen voor de geselecteerde optie. Voeg een andere optie toe als afzonderlijke regel.",
       "quantityCanSplitHint": "Aantal kan worden verdeeld over overeenkomende opties en als afzonderlijke regels worden toegevoegd.",
       "inCartCount": "Al in winkelwagen: {count}",
-      "selectionUnavailable": "Geen combinatie beschikbaar voor deze selectie."
+      "selectionUnavailable": "Geen combinatie beschikbaar voor deze selectie.",
+      "gallery": {
+        "label": "Foto's van {name}",
+        "imageAlt": "{name} — foto {index}",
+        "counter": "{current} / {total}",
+        "zoom": "Vergroten"
+      },
+      "meta": {
+        "title": "{product} huren — {store}",
+        "description": "Huur {product} bij {store} vanaf {price}. Online reserveren met realtime beschikbaarheid.",
+        "storeNotFound": "Winkel niet gevonden",
+        "productNotFound": "Product niet gevonden"
+      },
+      "specs": {
+        "category": "Categorie",
+        "basePrice": "Basistarief",
+        "availability": "Beschikbaarheid"
+      },
+      "unavailableHelp": "Dit product is momenteel niet te huur. Bekijk de rest van de catalogus.",
+      "backToCatalog": "Bekijk de catalogus"
     },
     "accessories": {
       "productAdded": "Toegevoegd aan winkelwagen",

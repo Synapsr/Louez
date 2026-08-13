@@ -35,9 +35,11 @@ interface ProductCardProps {
     pricingTiers?: PricingTier[]
   }
   storeSlug: string
+  /** Prefix product links need on this host (empty on a store subdomain). */
+  basePath?: string
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, basePath = '' }: ProductCardProps) {
   const t = useTranslations('storefront.product')
   const tCatalog = useTranslations('storefront.catalog')
   const tCommon = useTranslations('common')
@@ -62,7 +64,7 @@ export function ProductCard({ product }: ProductCardProps) {
         : `${displayPeriod.duration} ${t(`pricingUnit.${displayPeriod.unit}.plural`)}`
 
   return (
-    <Link href="/#date-picker" className="group block">
+    <Link href={`${basePath}/product/${product.id}`} className="group block">
       <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border border-border/50 hover:border-primary/20 bg-card p-0 gap-0">
         {/* Image container - square aspect ratio */}
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
@@ -87,9 +89,11 @@ export function ProductCard({ product }: ProductCardProps) {
           {/* Quick action button - shows on hover */}
           {isAvailable && (
             <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-              <Button className="w-full shadow-lg">
+              {/* Rendered as a span: this card is already a link, and a button
+                  inside an anchor is invalid markup. */}
+              <Button className="w-full shadow-lg" render={<span />}>
                 <Calendar className="mr-2 h-4 w-4" />
-                {t('selectDates')}
+                {t('viewDetails')}
               </Button>
             </div>
           )}

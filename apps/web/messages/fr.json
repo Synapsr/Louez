@@ -5401,13 +5401,33 @@
       "relatedProducts": "Produits similaires",
       "breadcrumb": {
         "home": "Accueil",
-        "catalog": "Catalogue"
+        "catalog": "Catalogue",
+        "label": "Fil d'Ariane"
       },
       "availableForSelection": "Disponibles pour cette sélection : {count}",
       "quantityPerCombinationHint": "La quantité s'applique uniquement à l'option sélectionnée. Ajoutez une autre option comme ligne séparée.",
       "quantityCanSplitHint": "La quantité peut être répartie sur les options correspondantes et ajoutée en lignes séparées.",
       "inCartCount": "Déjà dans le panier : {count}",
-      "selectionUnavailable": "Aucune combinaison disponible pour cette sélection."
+      "selectionUnavailable": "Aucune combinaison disponible pour cette sélection.",
+      "gallery": {
+        "label": "Photos de {name}",
+        "imageAlt": "{name} — photo {index}",
+        "counter": "{current} / {total}",
+        "zoom": "Agrandir"
+      },
+      "meta": {
+        "title": "{product} en location — {store}",
+        "description": "Louez {product} chez {store} à partir de {price}. Réservation en ligne et disponibilités en temps réel.",
+        "storeNotFound": "Boutique introuvable",
+        "productNotFound": "Produit introuvable"
+      },
+      "specs": {
+        "category": "Catégorie",
+        "basePrice": "Tarif de base",
+        "availability": "Disponibilité"
+      },
+      "unavailableHelp": "Ce produit n'est pas disponible à la location pour le moment. Découvrez le reste du catalogue.",
+      "backToCatalog": "Voir le catalogue"
     },
     "accessories": {
       "productAdded": "Ajouté au panier",

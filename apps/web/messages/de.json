@@ -5397,7 +5397,8 @@
       "relatedProducts": "Ähnliche Produkte",
       "breadcrumb": {
         "home": "Startseite",
-        "catalog": "Katalog"
+        "catalog": "Katalog",
+        "label": "Navigationspfad"
       },
       "bookingAttributes": "Konfiguration",
       "bookingAttributesHelp": "Optional: Wählen Sie bestimmte Attribute. Bei unvollständiger Auswahl wird das System automatisch eine passende verfügbare Kombination wählen.",
@@ -5407,7 +5408,26 @@
       "quantityPerCombinationHint": "Die Menge gilt nur für die ausgewählte Option. Fügen Sie eine weitere Option als separate Zeile hinzu.",
       "quantityCanSplitHint": "Die Menge kann auf passende Optionen aufgeteilt und als separate Zeilen hinzugefügt werden.",
       "inCartCount": "Bereits im Warenkorb: {count}",
-      "selectionUnavailable": "Für diese Auswahl ist keine Kombination verfügbar."
+      "selectionUnavailable": "Für diese Auswahl ist keine Kombination verfügbar.",
+      "gallery": {
+        "label": "Fotos von {name}",
+        "imageAlt": "{name} — Foto {index}",
+        "counter": "{current} / {total}",
+        "zoom": "Vergrößern"
+      },
+      "meta": {
+        "title": "{product} mieten — {store}",
+        "description": "Mieten Sie {product} bei {store} ab {price}. Online buchen mit Verfügbarkeit in Echtzeit.",
+        "storeNotFound": "Shop nicht gefunden",
+        "productNotFound": "Produkt nicht gefunden"
+      },
+      "specs": {
+        "category": "Kategorie",
+        "basePrice": "Grundpreis",
+        "availability": "Verfügbarkeit"
+      },
+      "unavailableHelp": "Dieses Produkt ist derzeit nicht zur Miete verfügbar. Entdecken Sie den übrigen Katalog.",
+      "backToCatalog": "Zum Katalog"
     },
     "accessories": {
       "productAdded": "Zum Warenkorb hinzugefügt",

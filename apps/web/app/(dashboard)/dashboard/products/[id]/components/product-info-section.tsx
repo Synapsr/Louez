@@ -12,7 +12,7 @@ import { formatDate } from "@/lib/utils";
 
 import { ProductImageGallery } from "./product-image-gallery";
 import { ProductPricingTiersTable } from "./product-pricing-tiers-table";
-import { sanitizeProductDescriptionHtml } from "./util.product-description";
+import { sanitizeProductDescriptionHtml } from "@/lib/util.product-description";
 
 interface ProductInfoSectionPricingTier {
   id: string;
