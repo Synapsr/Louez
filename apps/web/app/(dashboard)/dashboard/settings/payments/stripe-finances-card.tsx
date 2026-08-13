@@ -21,7 +21,6 @@ import { StripePayoutsDrawer } from "./stripe-payouts-drawer";
 interface StripeFinancesCardProps {
   defaultCurrency: string;
   finances: ConnectedAccountFinances | null;
-  storeId: string;
 }
 
 const formatStripeAmount = (amount: number, currency: string, locale: string) => {
@@ -29,16 +28,12 @@ const formatStripeAmount = (amount: number, currency: string, locale: string) =>
     style: "currency",
     currency,
   });
-  const fractionDigits = formatter.resolvedOptions().maximumFractionDigits;
+  const fractionDigits = formatter.resolvedOptions().maximumFractionDigits ?? 2;
 
   return formatter.format(amount / 10 ** fractionDigits);
 };
 
-export const StripeFinancesCard = ({
-  defaultCurrency,
-  finances,
-  storeId,
-}: StripeFinancesCardProps) => {
+export const StripeFinancesCard = ({ defaultCurrency, finances }: StripeFinancesCardProps) => {
   const locale = useLocale();
   const t = useTranslations("dashboard.settings.payments.finances");
 
@@ -108,7 +103,6 @@ export const StripeFinancesCard = ({
                       items: finances.payouts,
                       nextCursor: finances.payoutsNextCursor,
                     }}
-                    storeId={storeId}
                   />
                 ) : null}
               </div>

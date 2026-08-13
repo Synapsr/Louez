@@ -19,7 +19,6 @@ interface PaymentsContentProps {
   stripeConfigured: boolean
   defaultCurrency: string
   finances: ConnectedAccountFinances | null
-  storeId: string
 }
 
 export function PaymentsContent({
@@ -30,7 +29,6 @@ export function PaymentsContent({
   stripeConfigured,
   defaultCurrency,
   finances,
-  storeId,
 }: PaymentsContentProps) {
   const [isConnecting, setIsConnecting] = useState(false)
   const tErrors = useTranslations('errors')
@@ -70,11 +68,7 @@ export function PaymentsContent({
       />
 
       {stripeChargesEnabled && stripeOnboardingComplete ? (
-        <StripeFinancesCard
-          defaultCurrency={defaultCurrency}
-          finances={finances}
-          storeId={storeId}
-        />
+        <StripeFinancesCard defaultCurrency={defaultCurrency} finances={finances} />
       ) : null}
 
       <PaymentFlowExplanation

@@ -7,7 +7,6 @@ import { isStripeConfigured } from '@/lib/plans'
 import { getCurrentStore } from '@/lib/store-context'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { z } from 'zod'
 import {
   RENTAL_MCC,
   createConnectAccount,
@@ -16,48 +15,8 @@ import {
   getAccountStatus,
   toStatementDescriptor,
 } from '@/lib/stripe'
-import { log } from '@/lib/evlog'
-import {
-  getConnectedAccountPayoutPage,
-  type ConnectedAccountPayoutPage,
-} from '@/lib/stripe/connected-account-finances'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 import { sanitizeStripeNextPath, stripeReturnUrls } from './stripe-return'
-
-const stripePayoutCursorSchema = z.string().max(255).regex(/^po_[A-Za-z0-9]+$/).optional()
-
-export async function loadStripePayoutPage(
-  cursor?: string
-): Promise<
-  | { status: 'success'; page: ConnectedAccountPayoutPage }
-  | { status: 'error'; error: string }
-> {
-  const parsedCursor = stripePayoutCursorSchema.safeParse(cursor)
-  if (!parsedCursor.success) {
-    return { status: 'error', error: 'invalid_cursor' }
-  }
-
-  const store = await getCurrentStore()
-  if (!store?.stripeAccountId || !store.stripeChargesEnabled) {
-    return { status: 'error', error: 'stripe_account_unavailable' }
-  }
-
-  try {
-    const page = await getConnectedAccountPayoutPage({
-      accountId: store.stripeAccountId,
-      cursor: parsedCursor.data,
-    })
-    return { status: 'success', page }
-  } catch (error) {
-    log.error(
-      'payments',
-      `failed to retrieve connected account payout page: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    )
-    return { status: 'error', error: 'stripe_payouts_unavailable' }
-  }
-}
 
 /**
  * Start Stripe Connect onboarding

@@ -25,15 +25,14 @@ import { StripePayoutList } from "./stripe-payout-list";
 
 interface StripePayoutsDrawerProps {
   initialPage: ConnectedAccountPayoutPage;
-  storeId: string;
 }
 
-export const StripePayoutsDrawer = ({ initialPage, storeId }: StripePayoutsDrawerProps) => {
+export const StripePayoutsDrawer = ({ initialPage }: StripePayoutsDrawerProps) => {
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("dashboard.settings.payments.finances");
-  const query = useInfiniteQuery(stripeFinancesQueries.payouts(storeId, initialPage));
+  const query = useInfiniteQuery(stripeFinancesQueries.payouts(initialPage));
   const payouts = query.data.pages.flatMap((page) => page.items);
 
   useEffect(() => {

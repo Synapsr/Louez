@@ -1333,6 +1333,7 @@
           "mappingLabel": "Producto Tulip",
           "mappingPlaceholder": "No mapeado",
           "mappingSaving": "Guardando...",
+          "dropdownValueExclTax": "{value} sin IVA",
           "noResults": "No se encontraron productos Tulip",
           "noRenterProducts": "No se encontraron productos Tulip para este arrendador",
           "dialog": {
@@ -1351,6 +1352,11 @@
             "noResults": "Sin resultados",
             "noBrandResults": "No hay sugerencias de marca",
             "noModelResults": "No hay sugerencias de modelo",
+            "categoryRequired": "Seleccione una categoría Tulip.",
+            "productSubtypeRequired": "Seleccione un subtipo Tulip.",
+            "brandRequired": "Indique una marca.",
+            "modelRequired": "Indique un modelo.",
+            "purchasePriceRequired": "Indique el precio de compra sin IVA.",
             "invalidPurchasePrice": "Introduzca un precio de compra valido.",
             "invalidMargin": "Introduzca un margen valido.",
             "marginTooltip": "Margen diario adicional agregado al precio de compra para la valoracion del seguro.",
@@ -1398,7 +1404,96 @@
       "categoriesSelected": "{count} categorías",
       "filterByCategory": "Filtrar por categoría",
       "searchCategories": "Buscar una categoría...",
-      "noCategoriesFound": "No se encontró ninguna categoría"
+      "noCategoriesFound": "No se encontró ninguna categoría",
+      "detail": {
+        "viewOnStorefront": "Ver en la tienda",
+        "stats": {
+          "revenue": "Ingresos",
+          "vsPrevious30Days": "vs 30 días anteriores",
+          "reservations": "Reservas",
+          "reservationsSubtitle": "{upcoming} próximas · {completed} completadas",
+          "utilization": "Tasa de utilización",
+          "utilizationSubtitle": "Últimos 30 días",
+          "stock": "Stock",
+          "unitsActiveValue": "{active}/{total} activas"
+        },
+        "inventory": {
+          "title": "Inventario",
+          "manageStock": "Gestionar stock",
+          "quantity": "Cantidad",
+          "available": "Disponible",
+          "noUnits": "Ninguna unidad registrada",
+          "identifier": "Identificador",
+          "attributes": "Atributos",
+          "unitStatus": "Estado",
+          "lifecycle": "Ciclo de vida",
+          "inDowntime": "En mantenimiento",
+          "busyToday": "Ocupada hoy",
+          "active": "Activa",
+          "retired": "Retirada"
+        },
+        "reservations": {
+          "title": "Reservas",
+          "empty": "Aún no hay reservas para este producto",
+          "dates": "Fechas",
+          "quantity": "Cant.",
+          "viewAllHint": "Se muestran las 10 reservas más recientes de {total}.",
+          "viewAllLink": "Ver todas las reservas",
+          "viewList": "Lista",
+          "viewCalendar": "Calendario",
+          "timeline": {
+            "stock": "Stock",
+            "statusFilter": "Filtrar por estado",
+            "showAll": "Mostrar todo",
+            "previous": "Periodo anterior",
+            "next": "Periodo siguiente",
+            "retry": "Reintentar",
+            "noUnits": "Ninguna unidad activa que mostrar",
+            "availableOn": "{date}: {count, plural, =0 {completo} one {# unidad disponible} other {# unidades disponibles}}",
+            "dragHint": "Consejo: haga clic y arrastre sobre un rango vacío para crear una reserva prellenada."
+          }
+        },
+        "info": {
+          "title": "Información del producto",
+          "noDescription": "Ninguna descripción indicada",
+          "seasonalPricing": "Precios estacionales",
+          "ratesShowMore": "Ver todas las tarifas ({count})",
+          "ratesShowLess": "Ver menos",
+          "accessories": "Accesorios",
+          "noAccessories": "Ningún accesorio asociado",
+          "gallery": "Fotos",
+          "galleryImageAlt": "Foto {index}",
+          "noImages": "Ninguna foto añadida"
+        },
+        "quickFacts": {
+          "title": "Información clave",
+          "createdAt": "Creado el",
+          "updatedAt": "Actualizado el",
+          "deposit": "Depósito",
+          "noDeposit": "Sin depósito",
+          "tax": "IVA",
+          "taxInherited": "Predeterminado de la tienda",
+          "taxCustomRate": "Tasa personalizada ({rate}%)",
+          "bookingAxes": "Atributos de reserva"
+        },
+        "activity": {
+          "title": "Actividad de las unidades",
+          "empty": "Ninguna actividad registrada",
+          "types": {
+            "created": "Unidad creada",
+            "deleted": "Unidad eliminada",
+            "downtime_declared": "Indisponibilidad declarada",
+            "downtime_updated": "Indisponibilidad modificada",
+            "downtime_closed": "Indisponibilidad finalizada",
+            "downtime_deleted": "Indisponibilidad eliminada",
+            "retired": "Unidad retirada",
+            "reinstated": "Unidad reactivada",
+            "assigned": "Asignada a una reserva",
+            "unassigned": "Desasignada de una reserva",
+            "updated": "Unidad modificada"
+          }
+        }
+      }
     },
     "inventory": {
       "title": "Inventario",
@@ -1703,6 +1798,10 @@
       "deliveryFeeLabel": "Gastos de envío",
       "promoDiscount": "Descuento promocional",
       "pickupAtStore": "Recogida en tienda",
+      "tulipInsuredBadge": "Tulip insured",
+      "tulipPastStartWarning": "La reserva ya ha comenzado: no se creó ningún contrato Tulip. Ajuste el periodo si necesita crear una cobertura de seguro.",
+      "tulipContractCardTitle": "Insurance contract",
+      "tulipContractCardDescription": "Open the contract in Colibri.",
       "manageStatus": "Gestionar estado de la reserva",
       "acceptRequest": "Aceptar solicitud",
       "rejectRequest": "Rechazar solicitud",
@@ -1763,6 +1862,8 @@
         "summary": "Resumen",
         "before": "Antes",
         "after": "Despues",
+        "insuranceLine": "Cobertura contra rotura/robo",
+        "insuranceEstimating": "Calculando...",
         "difference": "Diferencia",
         "deposit": "Deposito",
         "save": "Guardar",
@@ -1794,6 +1895,9 @@
           "returnTitle": "Devolver equipos",
           "storePickup": "Recogida en tienda",
           "storeReturn": "Devolución en tienda",
+          "pickupLocation": "Lugar de recogida",
+          "returnLocation": "Lugar de devolución",
+          "storeLocationFallback": "Lugar principal",
           "deliverToAddress": "Entregar en dirección",
           "collectFromAddress": "Recoger en dirección",
           "addressPlaceholder": "Introducir dirección...",
@@ -1847,10 +1951,21 @@
         "noProductsHint": "Agrega un producto a esta reserva para comenzar",
         "perHour": "h",
         "perDay": "d",
+        "perWeek": "semana",
         "pricingMode": "Unidad de precio",
         "available": "disponible",
         "outOfStock": "Agotado",
         "add": "Agregar",
+        "bookingAttributes": "Opciones",
+        "bookingAttributeNone": "Cualquiera",
+        "bookingAttributesNoOptions": "No hay valores disponibles para {attribute}",
+        "bookingAttributesHelp": "Seleccione opciones (talla, color, etc.) para elegir una combinacion especifica.",
+        "addOptionLine": "Agregar linea de opcion",
+        "lineLabel": "Linea {index}",
+        "availableForSelection": "Disponible para esta opcion: {count}",
+        "lineMaxReached": "Maximo alcanzado para esta opcion. Agregue otra linea de opcion.",
+        "quantityPerCombinationHint": "La cantidad se aplica solo a la opcion seleccionada. Agregue otra opcion como linea separada.",
+        "quantityCanSplitHint": "Sin seleccion completa de opciones, la cantidad puede distribuirse entre las opciones correspondientes.",
         "internalNotes": "Notas internas",
         "notesPlaceholder": "Notas sobre esta reserva (no visible para el cliente)",
         "notesHint": "Estas notas no seran visibles para el cliente",
@@ -1858,26 +1973,26 @@
         "subtotal": "Subtotal",
         "deposit": "Deposito",
         "total": "Total",
+        "tulipInsurance": {
+          "title": "Seguro Tulip",
+          "appliesMappedProducts": "Se aplica solo a los productos mapeados a Tulip.",
+          "required": "La cobertura es obligatoria para esta reserva.",
+          "optionalLabel": "Activar cobertura para esta reserva",
+          "optionalHelp": "Proteja el equipo contra rotura y robo con la cobertura Tulip.",
+          "insurableProduct": "Asegurable",
+          "assuredProduct": "Asegurado",
+          "pastStartWarning": "Este periodo empieza en el pasado. Tulip no puede crear ni modificar un seguro en estas fechas, por lo que la proteccion se retira de este cambio.",
+          "disabledPastStart": "Proteccion Tulip desactivada para este periodo pasado.",
+          "calculating": "Calculando la cobertura...",
+          "estimatedAmount": "Cobertura estimada: {amount}",
+          "previewUnavailable": "No se pudo recalcular el importe de Tulip."
+        },
         "duration": "Duracion",
         "exact": "exacto",
         "durationDays": "{count, plural, one {# dia} other {# dias}}",
         "durationHours": "{count, plural, one {# hora} other {# horas}}",
         "durationWeeks": "{count, plural, one {# semana} other {# semanas}}",
         "reservationCreated": "Reserva creada",
-        "sendAsQuote": "Enviar como presupuesto",
-        "quoteSent": "Presupuesto enviado al cliente",
-        "overbooking": {
-          "title": "Capacidad insuficiente",
-          "description": "Algunos productos ya no están disponibles para el periodo seleccionado. Puedes crear la reserva de todos modos y el override quedará visible en el historial.",
-          "combination": "Combinación: {combination}",
-          "shortfall": "Solicitado: {requested} · Disponible: {available}",
-          "createAnyway": "Crear de todos modos"
-        },
-        "addUnavailable": {
-          "title": "Producto no disponible",
-          "description": "«{name}» ya no tiene disponibilidad en el período seleccionado. Añadirlo puede provocar una sobrerreserva.",
-          "confirm": "Añadir de todos modos"
-        },
         "selectDatesError": "Por favor seleccione fechas",
         "addProductError": "Por favor agregue al menos un producto",
         "selectCustomerError": "Por favor seleccione un cliente",
@@ -1916,6 +2031,9 @@
         "deliveryYesDescription": "El equipo se entregará en la dirección del cliente",
         "deliveryNo": "Recogida/devolución en tienda",
         "deliveryNoDescription": "El cliente recogerá el equipo en la tienda",
+        "pickupLocation": "Lugar de recogida",
+        "returnLocation": "Lugar de devolución",
+        "storeLocationFallback": "Lugar principal",
         "totalDeliveryFee": "Tarifa de entrega total",
         "deliveryAddress": "Dirección de entrega",
         "deliveryAddressPlaceholder": "Introduzca la dirección de entrega...",
@@ -1942,6 +2060,7 @@
         "deliveryRequiredBanner": "La entrega es obligatoria",
         "deliveryIncludedNote": "Los gastos de envío están incluidos sin coste adicional",
         "deliveryRequiredNote": "Los gastos de envío se calcularán en función de la distancia",
+        "deliveryMinimumOverrideWarning": "La entrega al cliente está disponible normalmente a partir de {amount}, pero puede aplicarla manualmente desde el panel.",
         "tieredPricing": "Precios escalonados",
         "savings": "Ahorro",
         "originalPrice": "Precio original",
@@ -2007,29 +2126,19 @@
           "insufficientStock": "Stock insuficiente"
         },
         "addItemError": "Por favor agregue al menos un producto o articulo personalizado",
-        "perWeek": "semana",
-        "bookingAttributes": "Opciones",
-        "bookingAttributeNone": "Cualquiera",
-        "bookingAttributesNoOptions": "No hay valores disponibles para {attribute}",
-        "bookingAttributesHelp": "Seleccione opciones (talla, color, etc.) para elegir una combinacion especifica.",
-        "addOptionLine": "Agregar linea de opcion",
-        "lineLabel": "Linea {index}",
-        "availableForSelection": "Disponible para esta opcion: {count}",
-        "lineMaxReached": "Maximo alcanzado para esta opcion. Agregue otra linea de opcion.",
-        "quantityPerCombinationHint": "La cantidad se aplica solo a la opcion seleccionada. Agregue otra opcion como linea separada.",
-        "quantityCanSplitHint": "Sin seleccion completa de opciones, la cantidad puede distribuirse entre las opciones correspondientes.",
-        "tulipInsurance": {
-          "title": "Seguro Tulip",
-          "appliesMappedProducts": "Se aplica solo a los productos mapeados a Tulip.",
-          "required": "La cobertura es obligatoria para esta reserva.",
-          "optionalLabel": "Activar cobertura para esta reserva",
-          "insurableProduct": "Asegurable",
-          "assuredProduct": "Asegurado",
-          "pastStartWarning": "Este periodo empieza en el pasado. Tulip no puede crear ni modificar un seguro en estas fechas, por lo que la proteccion se retira de este cambio.",
-          "disabledPastStart": "Proteccion Tulip desactivada para este periodo pasado.",
-          "calculating": "Calculando la cobertura...",
-          "estimatedAmount": "Cobertura estimada: {amount}",
-          "previewUnavailable": "No se pudo recalcular el importe de Tulip."
+        "sendAsQuote": "Enviar como presupuesto",
+        "quoteSent": "Presupuesto enviado al cliente",
+        "overbooking": {
+          "title": "Capacidad insuficiente",
+          "description": "Algunos productos ya no están disponibles para el periodo seleccionado. Puedes crear la reserva de todos modos y el override quedará visible en el historial.",
+          "combination": "Combinación: {combination}",
+          "shortfall": "Solicitado: {requested} · Disponible: {available}",
+          "createAnyway": "Crear de todos modos"
+        },
+        "addUnavailable": {
+          "title": "Producto no disponible",
+          "description": "«{name}» ya no tiene disponibilidad en el período seleccionado. Añadirlo puede provocar una sobrerreserva.",
+          "confirm": "Añadir de todos modos"
         },
         "globalDiscount": {
           "label": "Descuento",
@@ -2142,6 +2251,7 @@
         "fullyPaid": "Totalmente pagado",
         "partiallyPaid": "{paid} de {total} pagado",
         "collected": "cobrado",
+        "authorized": "Retención activa",
         "notCollected": "No cobrado",
         "toReturnToCustomer": "A devolver al cliente",
         "returnQuestion": "¿Confirma que el equipo fue devuelto en buen estado?",
@@ -2413,9 +2523,6 @@
         "smsSendError": "Error al enviar SMS",
         "noPhone": "El cliente no tiene numero de telefono"
       },
-      "tulipInsuredBadge": "Tulip insured",
-      "tulipContractCardTitle": "Insurance contract",
-      "tulipContractCardDescription": "Open the contract in Colibri.",
       "advisor": {
         "cardTitle": "Asesor IA",
         "validated": "Validada",
@@ -2428,7 +2535,9 @@
         "list": "Lista",
         "calendar": "Calendario",
         "planning": "Planning"
-      }
+      },
+      "displayCards": "Vista de tarjetas",
+      "displayTable": "Vista de tabla"
     },
     "customers": {
       "title": "Clientes",
@@ -3500,6 +3609,7 @@
         "noIntegrations": "No hay integraciones disponibles aún.",
         "sections": {
           "byLouez": "Por Louez.io",
+          "calendar": "Calendario",
           "insurance": "Seguro"
         },
         "builtIn": {
@@ -3576,16 +3686,64 @@
           "resources": "Recursos"
         },
         "categories": {
+          "calendar": {
+            "name": "Calendario",
+            "description": "Sincronice sus reservas con calendarios externos."
+          },
           "insurance": {
             "name": "Seguro",
             "description": "Proteja las reservas y sincronice contratos de seguro."
           }
         },
         "providers": {
+          "googleCalendar": {
+            "name": "Google Calendar",
+            "description": "Conecte Google Calendar mediante OAuth para sincronizar las reservas en un calendario dedicado.",
+            "about": "Louez crea un calendario de Google dedicado a su tienda y luego envía de forma asíncrona las creaciones, modificaciones y cancelaciones de reservas.",
+            "features": {
+              "oauth": "Conexión OAuth de Google dedicada, separada del inicio de sesión del usuario.",
+              "sync": "Sincronización unidireccional de las reservas de Louez hacia un calendario de Google dedicado.",
+              "retry": "Cola de sincronización con reintentos automáticos en caso de error del proveedor."
+            },
+            "resources": {
+              "help": "Ayuda de Google Calendar"
+            }
+          },
+          "icsCalendar": {
+            "name": "Enlace ICS",
+            "description": "Publique un enlace de calendario compatible con Apple Calendar, Outlook y Google Calendar.",
+            "about": "El enlace ICS sigue disponible como opción simple y universal, pero su actualización depende de la aplicación de calendario suscrita.",
+            "features": {
+              "link": "Enlace de suscripción de calendario generado por tienda.",
+              "compatibility": "Compatible con los principales calendarios que aceptan suscripciones ICS."
+            },
+            "resources": {
+              "help": "Referencia iCalendar"
+            }
+          },
           "tulip": {
             "name": "Seguro Tulip",
             "description": "Conecte Tulip para cotizar y generar contratos de seguro de alquiler.",
             "about": "Tulip centraliza las operaciones de seguro del arrendatario: vista previa de cotizacion en el pago, creacion de contratos y mapeo entre su catalogo y los productos asegurados.",
+            "aboutSections": {
+              "howItWorks": {
+                "title": "Cómo funciona",
+                "reservation": "La cobertura se propone en el momento de la reserva o de la firma del contrato de alquiler.",
+                "subscription": "El arrendatario puede suscribirse en unos clics según las garantías elegidas.",
+                "claim": "En caso de siniestro, la empresa de alquiler lo declara en la plataforma Tulip."
+              },
+              "configure": {
+                "title": "Cómo configurar",
+                "contract": "Contrate con Tulip y defina si el seguro está incluido en el alquiler o se propone como opción en el momento de la reserva.",
+                "enable": "Active la integración Tulip en Louez.io con su clave de acceso, que debe solicitar a Tulip.",
+                "start": "Configure su cuenta y empiece a ofrecer este servicio."
+              },
+              "about": {
+                "title": "Acerca de",
+                "market": "Tulip está especializada en el alquiler de material y equipos profesionales y trabaja con más de 500 empresas de alquiler.",
+                "orias": "Tulip es una empresa francesa inscrita en el Orias desde 2019 (19001215)."
+              }
+            },
             "features": {
               "sync": "Conecte su cuenta Tulip validando su identificador de cuenta.",
               "checkout": "Aplique el seguro en el pago (obligatorio, opcional o modo publico oculto).",
@@ -3881,8 +4039,25 @@
         "maximumDistanceDescription": "Dejar vacío para sin límite",
         "freeDeliveryThreshold": "Entrega gratuita a partir de",
         "freeDeliveryThresholdDescription": "Importe del pedido a partir del cual la entrega es gratuita",
+        "minimumOrderAmountForDelivery": "Entrega disponible a partir de",
+        "minimumOrderAmountForDeliveryDescription": "Importe mínimo de alquiler requerido para ofrecer la entrega a los clientes. No se aplica a las reservas creadas por la tienda.",
         "allowDifferentReturnAddress": "Permitir dirección de devolución diferente",
         "allowDifferentReturnAddressDescription": "Permitir a los clientes especificar una dirección diferente para la recogida del material",
+        "multiLocationEnabled": "Activar lugares de recogida y devolución",
+        "multiLocationEnabledDescription": "Permita que los clientes elijan un lugar configurado para la recogida y la devolución del equipo. El stock sigue siendo común a toda la tienda.",
+        "locationsTitle": "Lugares de recogida y devolución",
+        "locationsDescription": "El lugar principal proviene de la dirección de la tienda. Añada solo los demás lugares disponibles.",
+        "locationsPrimary": "Lugar principal",
+        "locationsAdd": "Añadir lugar",
+        "locationsEdit": "Editar",
+        "locationsDeactivate": "Desactivar",
+        "locationsReactivate": "Reactivar",
+        "locationsInactive": "Inactivo",
+        "locationsDialogDescription": "Este lugar se propondrá durante el pago para la recogida y la devolución.",
+        "locationsName": "Nombre del lugar",
+        "locationsAddress": "Dirección",
+        "locationsSaved": "Lugar guardado",
+        "locationsSaveError": "No se pudo guardar el lugar",
         "saved": "Configuración de entrega guardada",
         "simulator": {
           "title": "Simulador de precios",
@@ -3896,6 +4071,8 @@
           "freeDeliveryApplied": "Entrega gratuita aplicada",
           "minimumApplied": "Tarifa mínima aplicada",
           "freeAbove": "Gratis desde {amount}",
+          "availableAbove": "Disponible a partir de {amount}",
+          "minimumOrderNotMet": "Entrega disponible a partir de {amount}",
           "distanceLabel": "Distancia",
           "rateLabel": "Cálculo",
           "minimumLabel": "Mínimo",
@@ -4032,7 +4209,6 @@
             "createdToast": "{count, plural, one {Indisponibilidad por reparación creada} other {Indisponibilidades por reparación creadas}}",
             "conflictsToast": "Conflictos detectados - gestiónelos en Inventario",
             "conflictsDescription": "Conflictos detectados. Gestiónelos en Inventario.",
-            "openInventory": "Abrir Inventario",
             "skip": "Omitir",
             "submit": "Crear indisponibilidad por reparación",
             "done": "Listo"
@@ -4166,6 +4342,38 @@
           "active": "Activo",
           "incomplete": "Incompleto"
         },
+        "finances": {
+          "title": "Saldo y transferencias",
+          "description": "Siga los importes cobrados por Stripe y su llegada a su cuenta bancaria.",
+          "unavailable": "La información financiera de Stripe no está disponible temporalmente. Actualice la página o consulte su panel de Stripe.",
+          "available": "Disponible",
+          "availableHelp": "Listo para incluirse en una próxima transferencia.",
+          "pending": "Pendiente",
+          "pendingHelp": "Pagos cobrados que Stripe aún está procesando.",
+          "payoutsTitle": "Últimas transferencias",
+          "payoutsDescription": "Transferencias enviadas por Stripe a su cuenta bancaria.",
+          "noPayouts": "Todavía no hay transferencias de Stripe.",
+          "viewMore": "Ver más",
+          "drawerTitle": "Historial de transferencias",
+          "drawerDescription": "Consulte todas las transferencias enviadas por Stripe a su cuenta bancaria.",
+          "loadingMore": "Cargando transferencias…",
+          "retry": "Reintentar",
+          "destination": "Cuenta •••• {last4}",
+          "paidHelp": "El estado «Pagado» indica que Stripe envió la transferencia a su banco. Puede aparecer en su extracto como «STRIPE PAYOUT».",
+          "statuses": {
+            "paid": "Pagado",
+            "pending": "Pendiente",
+            "in_transit": "En tránsito",
+            "failed": "Fallido",
+            "canceled": "Cancelado",
+            "unknown": "Comprobar estado"
+          },
+          "payoutDates": {
+            "paid": "Pagado el {date}",
+            "expected": "Llegada estimada el {date}",
+            "created": "Creado el {date}"
+          }
+        },
         "callback": {
           "successTitle": "Stripe conectado!",
           "successDescription": "Su cuenta de Stripe esta ahora conectada. Puede aceptar pagos en linea.",
@@ -4193,7 +4401,6 @@
             "youReview": "Usted recibe un correo y revisa la solicitud",
             "acceptOrReject": "Usted acepta o rechaza la solicitud",
             "paymentOnSite": "El cliente paga en el lugar (efectivo, tarjeta, transferencia...)",
-            "paymentOnlineOrSite": "El cliente paga en linea desde su cuenta o en el lugar",
             "customerPays": "El cliente paga inmediatamente con tarjeta",
             "reservationConfirmed": "La reserva se confirma automaticamente",
             "bothNotified": "Usted y el cliente reciben confirmacion"
@@ -4206,7 +4413,8 @@
             },
             "instantPayment": {
               "title": "Cambiar a pago inmediato?",
-              "description": "Para automatizar completamente sus reservas, active el modo de pago inmediato en los ajustes de su tienda."
+              "description": "Para automatizar completamente sus reservas, active el modo de pago inmediato en los ajustes de su tienda.",
+              "action": "Abrir la configuración"
             }
           },
           "warnings": {
@@ -4218,12 +4426,6 @@
           "info": {
             "requestWithStripe": "Una vez aceptada la solicitud, su cliente puede pagar en linea desde su cuenta. Tambien puede enviar un enlace de pago por correo o SMS, o cobrar en el lugar.",
             "instantPayment": "Configuracion optima! Sus reservas estan completamente automatizadas. El pago asegura la reserva inmediatamente."
-          },
-          "alternatives": {
-            "requestMode": {
-              "title": "Necesita validacion manual?",
-              "description": "El modo solicitud le permite revisar cada reserva antes de cobrar. Ajustable en la configuracion de la tienda."
-            }
           }
         }
       },
@@ -4461,6 +4663,11 @@
             "createOption": "Usar \"{value}\"",
             "noBrandResults": "No hay sugerencias de marca",
             "noModelResults": "No hay sugerencias de modelo",
+            "categoryRequired": "Seleccione una categoría Tulip.",
+            "productSubtypeRequired": "Seleccione un subtipo Tulip.",
+            "brandRequired": "Indique una marca.",
+            "modelRequired": "Indique un modelo.",
+            "purchasePriceRequired": "Indique el precio de compra sin IVA.",
             "invalidPurchasePrice": "Introduzca un precio de compra valido.",
             "invalidMargin": "Introduzca un margen valido.",
             "marginTooltip": "Margen diario adicional agregado al precio de compra para la valoracion del seguro.",
@@ -4486,6 +4693,7 @@
               "mapped": "Mapeado",
               "notMapped": "No mapeado"
             },
+            "dropdownValueExclTax": "{value} sin IVA",
             "noResults": "No se encontraron productos Tulip",
             "noFilterResults": "Ningun producto coincide con los filtros actuales.",
             "sheet": {
@@ -5374,15 +5582,6 @@
         "confirm": "Confirmación"
       },
       "deliveryDescription": "Elija cómo recibir y devolver su equipo",
-      "outboundTitle": "Recibir equipo",
-      "returnTitle": "Devolver equipo",
-      "storePickup": "Recogida en tienda",
-      "storeReturn": "Devolución en tienda",
-      "deliverToAddress": "Entregar en mi dirección",
-      "collectFromAddress": "Recoger en mi dirección",
-      "outboundAddressPlaceholder": "Ingrese la dirección de entrega...",
-      "legFee": "Tarifa",
-      "totalDeliveryFee": "Tarifa de entrega total",
       "deliveryRequiredDescription": "La entrega es obligatoria para este pedido",
       "deliveryIncludedDescription": "La entrega está incluida con su pedido",
       "deliveryRequiredBanner": "Entrega obligatoria",
@@ -5390,21 +5589,36 @@
       "deliveryRequiredNote": "Este producto requiere entrega",
       "deliveryIncludedNote": "Los gastos de envío están incluidos en el precio",
       "included": "Incluido",
+      "outboundTitle": "Recibir equipo",
+      "returnTitle": "Devolver equipo",
+      "storePickup": "Recogida en tienda",
+      "storeReturn": "Devolución en tienda",
+      "pickupAtLocation": "Recogida en un lugar",
+      "returnAtLocation": "Devolución en un lugar",
+      "storeLocationFallback": "Tienda",
+      "deliveryCompact": "Entrega",
+      "collectionCompact": "Recogida",
+      "deliverToAddress": "Entregar en mi dirección",
+      "collectFromAddress": "Recoger en mi dirección",
       "pickupOption": "Recogida en tienda",
       "deliveryOption": "Entrega a domicilio",
       "deliveryOptionDescription": "Desde {pricePerKm}/km",
+      "deliveryAvailableFrom": "Entrega disponible a partir de {amount} de alquiler",
       "freeDeliveryAbove": "Entrega gratis a partir de {amount}",
       "freeDeliveryApplied": "¡Entrega gratis aplicada!",
       "deliveryAddress": "Dirección de entrega",
       "deliveryAddressPlaceholder": "Ingrese su dirección de entrega...",
+      "outboundAddressPlaceholder": "Ingrese la dirección de entrega...",
+      "returnAddressPlaceholder": "Introduzca la dirección de devolución...",
       "deliveryDistance": "Distancia",
       "deliveryFee": "Costo de entrega",
+      "legFee": "Tarifa",
+      "totalDeliveryFee": "Tarifa de entrega total",
       "free": "Gratis",
       "deliveryTooFar": "Lo sentimos, no entregamos más allá de {maxKm} km",
       "differentReturnAddress": "Dirección de devolución diferente",
       "differentReturnAddressDescription": "El material será recogido en una dirección diferente",
       "returnAddress": "Dirección de devolución",
-      "returnAddressPlaceholder": "Introduzca la dirección de devolución...",
       "returnDistance": "Distancia de devolución",
       "returnTooFar": "Lo sentimos, la dirección de devolución supera los {maxKm} km",
       "contactDescription": "Necesitamos esta información para contactarle",
@@ -5416,6 +5630,22 @@
         "preserved": "Sus datos de contacto y selecciones se conservan durante el cambio.",
         "editDates": "Cambiar fechas"
       },
+      "insuranceRequiredNotice": "La cobertura contra rotura/robo es obligatoria para esta reserva y se aplicara automaticamente.",
+      "insuranceOptionalLabel": "Agregar cobertura contra rotura/robo",
+      "insuranceOptionalHelp": "Active esta opcion para incluir la cobertura contra rotura/robo en su reserva.",
+      "insuranceLineLabel": "Cobertura contra rotura/robo",
+      "insuranceRequiredBadge": "Obligatorio",
+      "insuranceOptionalEnabled": "Seleccionado",
+      "insuranceOptionalDisabled": "No seleccionado",
+      "insuranceOptionalUnavailable": "La cobertura no esta disponible temporalmente. Su reserva se enviara sin cobertura.",
+      "insuranceOptionalUnavailableShort": "No disponible",
+      "insuranceNoInsurableProducts": "No hay productos asegurables en este carrito.",
+      "insurancePartialCoverage": "{insured} producto(s) cubierto(s), {uninsured} no cubierto(s).",
+      "insuranceCoveredProductTooltip": "Este producto esta cubierto por la cobertura contra rotura/robo.",
+      "insuranceEligibleProductTooltip": "Elegible para la cobertura contra rotura/robo.",
+      "insuranceEstimating": "Calculando la cobertura estimada...",
+      "insuranceEstimatedAmount": "Monto estimado de la cobertura: {amount}",
+      "insuranceEstimatedDisclaimer": "Monto estimado, recalculado automaticamente en la confirmacion.",
       "continue": "Continuar",
       "back": "Volver",
       "modify": "Editar",
@@ -5492,6 +5722,10 @@
         "promoDiscount": "Descuento promocional",
         "backToStore": "Volver a la tienda"
       },
+      "requestedAttributesLabel": "Solicitado",
+      "resolvedAttributesLabel": "Final",
+      "lineCheckingAvailability": "Verificando disponibilidad...",
+      "lineNeedsUpdateInline": "Esta linea ya no esta disponible. Actualice la cantidad o los atributos.",
       "promoCode": {
         "haveCode": "¿Tiene un código promocional?",
         "placeholder": "Ingrese su código",
@@ -5505,26 +5739,6 @@
         "promoCodeMinimumNotMet": "Monto mínimo de {amount} requerido",
         "promoCodeNotStarted": "Este código promocional aún no está activo"
       },
-      "insuranceRequiredNotice": "La cobertura contra rotura/robo es obligatoria para esta reserva y se aplicara automaticamente.",
-      "insuranceOptionalLabel": "Agregar cobertura contra rotura/robo",
-      "insuranceOptionalHelp": "Active esta opcion para incluir la cobertura contra rotura/robo en su reserva.",
-      "insuranceLineLabel": "Cobertura contra rotura/robo",
-      "insuranceRequiredBadge": "Obligatorio",
-      "insuranceOptionalEnabled": "Seleccionado",
-      "insuranceOptionalDisabled": "No seleccionado",
-      "insuranceOptionalUnavailable": "La cobertura no esta disponible temporalmente. Su reserva se enviara sin cobertura.",
-      "insuranceOptionalUnavailableShort": "No disponible",
-      "insuranceNoInsurableProducts": "No hay productos asegurables en este carrito.",
-      "insurancePartialCoverage": "{insured} producto(s) cubierto(s), {uninsured} no cubierto(s).",
-      "insuranceCoveredProductTooltip": "Este producto esta cubierto por la cobertura contra rotura/robo.",
-      "insuranceEligibleProductTooltip": "Elegible para la cobertura contra rotura/robo.",
-      "insuranceEstimating": "Calculando la cobertura estimada...",
-      "insuranceEstimatedAmount": "Monto estimado de la cobertura: {amount}",
-      "insuranceEstimatedDisclaimer": "Monto estimado, recalculado automaticamente en la confirmacion.",
-      "requestedAttributesLabel": "Solicitado",
-      "resolvedAttributesLabel": "Final",
-      "lineCheckingAvailability": "Verificando disponibilidad...",
-      "lineNeedsUpdateInline": "Esta linea ya no esta disponible. Actualice la cantidad o los atributos.",
       "lineNeedsUpdate": "Algunas lineas ya no estan disponibles. Actualice su carrito antes de enviar.",
       "advisor": {
         "recommendedHint": "¿No está seguro de su elección? El asesor puede comprobarla con usted.",
@@ -6279,6 +6493,11 @@
     "storeNotFound": "Tienda no encontrada",
     "productNotFound": "Producto no encontrado",
     "categoryNotFound": "Categoria no encontrada",
+    "integrationNotFound": "Integracion no encontrada",
+    "integrationCategoryNotFound": "Categoria de integracion no encontrada",
+    "integrationNotConnected": "Integración no conectada",
+    "unsupportedOperation": "Operación no admitida",
+    "permissionDenied": "Permiso insuficiente",
     "customerNotFound": "Cliente no encontrado",
     "reservationNotFound": "Reserva no encontrada",
     "emailAlreadyExists": "Ya existe un cliente con este correo",
@@ -6299,6 +6518,10 @@
     "invalidUnits": "Una o mas unidades seleccionadas no son validas",
     "turnoverBufferConflict": "La unidad seleccionada solo está bloqueada por el margen de rotación",
     "unitProductMismatch": "Las unidades seleccionadas no pertenecen a este producto",
+    "unitCombinationMismatch": "Las unidades seleccionadas no coinciden con la combinacion reservada para este articulo",
+    "cannotDisableUnitTrackingWithCombinations": "No se puede desactivar el seguimiento de unidades mientras haya reservas activas que utilicen combinaciones rastreadas para este producto.",
+    "unitStatusConflictsWithReservations": "Este cambio haria imposibles las reservas futuras para al menos una combinacion rastreada.",
+    "unitAssigned": "Esta unidad está asignada a una reserva bloqueante y no se puede eliminar.",
     "assignUnitsFailed": "Error al asignar unidades",
     "getAvailableUnitsFailed": "Error al cargar las unidades disponibles",
     "createCustomerError": "Error al crear cliente",
@@ -6364,30 +6587,31 @@
     "minRentalDurationViolation": "La duración del alquiler debe ser de al menos {duration}",
     "maxRentalDurationViolation": "La duración del alquiler no puede superar las {duration}",
     "deliveryNotEnabled": "La entrega no está habilitada para esta tienda",
+    "deliveryMinimumOrderAmountNotMet": "La entrega está disponible a partir de {amount} de alquiler",
     "deliveryAddressRequired": "Por favor, introduzca una dirección de entrega válida",
     "storeCoordinatesNotConfigured": "Las coordenadas de la tienda no están configuradas",
     "deliveryTooFar": "La dirección de entrega está demasiado lejos (máximo {maxDistance} km)",
     "deliveryRequired": "La entrega es obligatoria para esta tienda",
     "storeCoordinatesInvalid": "Las coordenadas de la tienda no son válidas",
-    "deliveryAddressInvalid": "La dirección de entrega no es válida",
     "promoCodeInvalid": "Este código promocional es inválido o no existe",
     "promoCodeExpired": "Este código promocional ha expirado",
     "promoCodeExhausted": "Este código promocional ha alcanzado su límite de uso",
     "promoCodeMinimumNotMet": "Monto mínimo de {amount} requerido para usar este código",
     "promoCodeNotStarted": "Este código promocional aún no está activo",
-    "integrationNotFound": "Integracion no encontrada",
-    "integrationCategoryNotFound": "Categoria de integracion no encontrada",
-    "unitCombinationMismatch": "Las unidades seleccionadas no coinciden con la combinacion reservada para este articulo",
-    "cannotDisableUnitTrackingWithCombinations": "No se puede desactivar el seguimiento de unidades mientras haya reservas activas que utilicen combinaciones rastreadas para este producto.",
-    "unitStatusConflictsWithReservations": "Este cambio haria imposibles las reservas futuras para al menos una combinacion rastreada.",
-    "unitAssigned": "Esta unidad está asignada a una reserva bloqueante y no se puede eliminar.",
+    "deliveryAddressInvalid": "La dirección de entrega no es válida",
+    "locationInvalid": "Lugar no válido",
+    "locationNotFound": "Lugar no encontrado",
+    "locationInactive": "Este lugar ya no está disponible",
     "tulipApiKeyInvalid": "La clave API de Tulip es invalida.",
     "tulipActionForbidden": "Tulip rechazo esta accion para la configuracion de cuenta actual.",
     "tulipApiUnavailable": "Tulip no esta disponible actualmente. Por favor, intente de nuevo mas tarde.",
     "tulipRenterNotFound": "No se encontro ninguna cuenta Tulip para este identificador de cuenta.",
+    "tulipRenterAttachFailed": "No se pudo vincular esta cuenta Tulip a la clave API configurada. Verifique el identificador del arrendatario y los permisos de la clave.",
     "tulipProductSubtypeInvalid": "Este subtipo no es valido para la categoria Tulip seleccionada.",
+    "tulipProductRequiredFieldsMissing": "La categoría, el subtipo, la marca, el modelo y el precio de compra sin IVA son obligatorios para crear un producto Tulip.",
     "tulipProductPayloadInvalid": "Tulip rechazo los datos del producto. Verifique la categoria/subtipo y los campos obligatorios.",
     "tulipProductNotFound": "Producto Tulip no encontrado. Actualice los productos Tulip y vuelva a mapear este articulo.",
+    "tulipProductCatalogUnavailable": "El catálogo de productos Tulip no está accesible para esta cuenta. Puede crear un nuevo producto Tulip o pedir a Tulip que active el acceso al catálogo.",
     "tulipNotConfigured": "Tulip aun no esta configurado.",
     "tulipProductNotMapped": "Algunos productos no estan mapeados a productos Tulip.",
     "tulipProductAlreadyMapped": "Este producto ya esta mapeado a un producto Tulip.",
@@ -6396,12 +6620,23 @@
     "tulipInvalidContractResponse": "Tulip devolvio una respuesta de contrato invalida.",
     "tulipContractCreationFailed": "Reserva confirmada, pero fallo la creacion del contrato Tulip.",
     "tulipContractUpdateFailed": "Reserva actualizada, pero fallo la sincronizacion del contrato Tulip.",
+    "tulipContractCancellationFailed": "Reserva cancelada, pero la rescisión del contrato Tulip falló.",
     "tulipQuoteFailed": "No se pudo calcular la cobertura contra rotura/robo para esta reserva.",
     "tulipInsuranceDisabledPastDate": "Reserva actualizada, pero la proteccion Tulip se desactivo porque las fechas estan en el pasado.",
     "tulipContractPastDate": "Tulip rechazo la creacion del contrato: las fechas del contrato no pueden estar en el pasado.",
+    "tulipContractDatesInvalid": "Tulip rechazó el contrato: las fechas de inicio y fin son incoherentes para este tipo de contrato.",
     "tulipContractActionForbidden": "Tulip rechazo esta accion para la configuracion de cuenta actual.",
+    "tulipContractOptionsInvalid": "Tulip rechazó las opciones del contrato. Verifique las opciones de rotura/robo y el tipo de asegurado.",
+    "tulipContractUpdateWindowExpired": "Tulip rechazó la modificación: el contrato comenzó hace más de 4 horas y sus fechas ya no se pueden modificar.",
+    "tulipContractNotFound": "Tulip no encuentra este contrato. Verifique la sincronización antes de volver a intentarlo.",
+    "tulipContractNotOpen": "Tulip rechazó la modificación: solo los contratos abiertos pueden actualizarse.",
+    "tulipContractIdentityFrozen": "Tulip rechazó la modificación: los datos del cliente están ahora congelados para este contrato.",
     "tulipContractProductMarkedMissing": "Tulip requiere el identificador real de cada articulo asegurado. Asigna una unidad o un identificador fisico a cada producto asegurado antes de crear o sincronizar el contrato.",
+    "tulipContractPayloadInvalid": "Tulip rechazó los datos del contrato. Verifique los productos asegurados y los campos requeridos enviados.",
+    "tulipContractValidationFailed": "Tulip rechazó esta acción debido a un error de validación de negocio en el contrato.",
     "tulipContractTypeDisabled": "El tipo de contrato Tulip requerido para esta duracion no esta activado para esta tienda.",
+    "tulipContractProductsIncompatible": "Los productos Tulip asegurados de esta reserva no son todos compatibles con este tipo de contrato.",
+    "tulipProductTypeDisabled": "Esta categoría de producto Tulip no está activada para esta tienda.",
     "unitAlreadyRetired": "Esta unidad ya está retirada",
     "unitNotRetired": "Esta unidad no está retirada",
     "advisorValidationRequired": "Esta tienda requiere una breve verificación con el asesor antes de reservar",

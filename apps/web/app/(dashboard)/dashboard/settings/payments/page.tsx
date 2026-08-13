@@ -50,7 +50,6 @@ export default async function PaymentsSettingsPage() {
         stripeConfigured={stripeConfigured}
         defaultCurrency={store.settings?.currency ?? "EUR"}
         finances={finances}
-        storeId={store.id}
       />
     </SettingsPageShell>
   );

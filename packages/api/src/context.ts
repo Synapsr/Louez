@@ -106,6 +106,18 @@ export interface BaseContext {
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
   getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
+  getConnectedAccountPayoutPage?: (input: { accountId: string; cursor?: string }) => Promise<{
+    items: Array<{
+      id: string;
+      amount: number;
+      currency: string;
+      status: "paid" | "pending" | "in_transit" | "failed" | "canceled" | "unknown";
+      createdAt: number;
+      arrivalAt: number;
+      destinationLast4: string | null;
+    }>;
+    nextCursor: string | null;
+  }>;
   dashboardReservationActions?: {
     cancelReservation?: (reservationId: string) => Promise<{
       success?: boolean;

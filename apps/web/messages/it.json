@@ -1294,6 +1294,7 @@
           "mappingLabel": "Prodotto Tulip",
           "mappingPlaceholder": "Non associato",
           "mappingSaving": "Salvataggio...",
+          "dropdownValueExclTax": "{value} IVA escl.",
           "noResults": "Nessun prodotto Tulip trovato",
           "noRenterProducts": "Nessun prodotto Tulip trovato per questo locatore",
           "dialog": {
@@ -1312,6 +1313,11 @@
             "noResults": "Nessun risultato",
             "noBrandResults": "Nessun suggerimento di marca",
             "noModelResults": "Nessun suggerimento di modello",
+            "categoryRequired": "Seleziona una categoria Tulip.",
+            "productSubtypeRequired": "Seleziona un sottotipo Tulip.",
+            "brandRequired": "Inserisci una marca.",
+            "modelRequired": "Inserisci un modello.",
+            "purchasePriceRequired": "Inserisci il prezzo di acquisto IVA esclusa.",
             "invalidPurchasePrice": "Inserisca un prezzo di acquisto valido.",
             "invalidMargin": "Inserisca un margine valido.",
             "marginTooltip": "Margine giornaliero aggiuntivo applicato al prezzo di acquisto per la valutazione assicurativa.",
@@ -1359,7 +1365,96 @@
       "categoriesSelected": "{count} categorie",
       "filterByCategory": "Filtra per categoria",
       "searchCategories": "Cerca una categoria...",
-      "noCategoriesFound": "Nessuna categoria trovata"
+      "noCategoriesFound": "Nessuna categoria trovata",
+      "detail": {
+        "viewOnStorefront": "Vedi nel negozio",
+        "stats": {
+          "revenue": "Fatturato",
+          "vsPrevious30Days": "vs 30 giorni precedenti",
+          "reservations": "Prenotazioni",
+          "reservationsSubtitle": "{upcoming} in arrivo · {completed} completate",
+          "utilization": "Tasso di utilizzo",
+          "utilizationSubtitle": "Ultimi 30 giorni",
+          "stock": "Stock",
+          "unitsActiveValue": "{active}/{total} attive"
+        },
+        "inventory": {
+          "title": "Inventario",
+          "manageStock": "Gestisci lo stock",
+          "quantity": "Quantità",
+          "available": "Disponibile",
+          "noUnits": "Nessuna unità registrata",
+          "identifier": "Identificativo",
+          "attributes": "Attributi",
+          "unitStatus": "Stato",
+          "lifecycle": "Ciclo di vita",
+          "inDowntime": "In manutenzione",
+          "busyToday": "Occupata oggi",
+          "active": "Attiva",
+          "retired": "Ritirata"
+        },
+        "reservations": {
+          "title": "Prenotazioni",
+          "empty": "Ancora nessuna prenotazione per questo prodotto",
+          "dates": "Date",
+          "quantity": "Qtà",
+          "viewAllHint": "Vengono mostrate le 10 prenotazioni più recenti su {total}.",
+          "viewAllLink": "Vedi tutte le prenotazioni",
+          "viewList": "Elenco",
+          "viewCalendar": "Calendario",
+          "timeline": {
+            "stock": "Stock",
+            "statusFilter": "Filtra per stato",
+            "showAll": "Mostra tutto",
+            "previous": "Periodo precedente",
+            "next": "Periodo successivo",
+            "retry": "Riprova",
+            "noUnits": "Nessuna unità attiva da mostrare",
+            "availableOn": "{date}: {count, plural, =0 {al completo} one {# unità disponibile} other {# unità disponibili}}",
+            "dragHint": "Suggerimento: clicca e trascina su un intervallo vuoto per creare una prenotazione precompilata."
+          }
+        },
+        "info": {
+          "title": "Informazioni prodotto",
+          "noDescription": "Nessuna descrizione inserita",
+          "seasonalPricing": "Prezzi stagionali",
+          "ratesShowMore": "Vedi tutte le tariffe ({count})",
+          "ratesShowLess": "Vedi meno",
+          "accessories": "Accessori",
+          "noAccessories": "Nessun accessorio associato",
+          "gallery": "Foto",
+          "galleryImageAlt": "Foto {index}",
+          "noImages": "Nessuna foto aggiunta"
+        },
+        "quickFacts": {
+          "title": "Informazioni chiave",
+          "createdAt": "Creato il",
+          "updatedAt": "Aggiornato il",
+          "deposit": "Cauzione",
+          "noDeposit": "Nessuna cauzione",
+          "tax": "IVA",
+          "taxInherited": "Predefinita del negozio",
+          "taxCustomRate": "Aliquota personalizzata ({rate}%)",
+          "bookingAxes": "Attributi di prenotazione"
+        },
+        "activity": {
+          "title": "Attività delle unità",
+          "empty": "Nessuna attività registrata",
+          "types": {
+            "created": "Unità creata",
+            "deleted": "Unità eliminata",
+            "downtime_declared": "Indisponibilità dichiarata",
+            "downtime_updated": "Indisponibilità aggiornata",
+            "downtime_closed": "Indisponibilità chiusa",
+            "downtime_deleted": "Indisponibilità eliminata",
+            "retired": "Unità ritirata dal parco",
+            "reinstated": "Unità reintegrata nel parco",
+            "assigned": "Assegnata a una prenotazione",
+            "unassigned": "Disassegnata da una prenotazione",
+            "updated": "Unità aggiornata"
+          }
+        }
+      }
     },
     "inventory": {
       "title": "Inventario",
@@ -1664,6 +1759,10 @@
       "deliveryFeeLabel": "Spese di consegna",
       "promoDiscount": "Sconto promozionale",
       "pickupAtStore": "Ritiro in negozio",
+      "tulipInsuredBadge": "Assicurato Tulip",
+      "tulipPastStartWarning": "La prenotazione è già iniziata: non è stato creato alcun contratto Tulip. Modifica il periodo se devi creare una copertura assicurativa.",
+      "tulipContractCardTitle": "Contratto assicurativo",
+      "tulipContractCardDescription": "Apri il contratto in Colibri.",
       "manageStatus": "Gestisci stato prenotazione",
       "acceptRequest": "Accetta richiesta",
       "rejectRequest": "Rifiuta richiesta",
@@ -1724,6 +1823,8 @@
         "summary": "Riepilogo",
         "before": "Prima",
         "after": "Dopo",
+        "insuranceLine": "Garanzia rottura/furto",
+        "insuranceEstimating": "Calcolo...",
         "difference": "Differenza",
         "deposit": "Deposito",
         "save": "Salva",
@@ -1755,6 +1856,9 @@
           "returnTitle": "Restituisci attrezzature",
           "storePickup": "Ritiro in negozio",
           "storeReturn": "Reso in negozio",
+          "pickupLocation": "Luogo di ritiro",
+          "returnLocation": "Luogo di restituzione",
+          "storeLocationFallback": "Luogo principale",
           "deliverToAddress": "Consegna all'indirizzo",
           "collectFromAddress": "Ritiro dall'indirizzo",
           "addressPlaceholder": "Inserisci l'indirizzo...",
@@ -1808,9 +1912,21 @@
         "noProductsHint": "Aggiungi un prodotto a questa prenotazione per iniziare",
         "perHour": "h",
         "perDay": "g",
+        "perWeek": "sett.",
+        "pricingMode": "Unità di tariffazione",
         "available": "disponibile",
         "outOfStock": "Esaurito",
         "add": "Aggiungi",
+        "bookingAttributes": "Opzioni",
+        "bookingAttributeNone": "Qualsiasi",
+        "bookingAttributesNoOptions": "Nessun valore disponibile per {attribute}",
+        "bookingAttributesHelp": "Selezioni le opzioni (taglia, colore, ecc.) per specificare una combinazione.",
+        "addOptionLine": "Aggiungi riga opzione",
+        "lineLabel": "Riga {index}",
+        "availableForSelection": "Disponibili per questa opzione: {count}",
+        "lineMaxReached": "Massimo raggiunto per questa opzione. Aggiunga un'altra riga opzione.",
+        "quantityPerCombinationHint": "La quantita si applica solo all'opzione selezionata. Aggiunga un'altra opzione come riga separata.",
+        "quantityCanSplitHint": "Senza una selezione completa delle opzioni, la quantita puo essere ripartita tra le opzioni corrispondenti.",
         "internalNotes": "Note interne",
         "notesPlaceholder": "Note su questa prenotazione (non visibili al cliente)",
         "notesHint": "Queste note non saranno visibili al cliente",
@@ -1818,26 +1934,26 @@
         "subtotal": "Subtotale",
         "deposit": "Deposito",
         "total": "Totale",
+        "tulipInsurance": {
+          "title": "Assicurazione Tulip",
+          "appliesMappedProducts": "Si applica solo ai prodotti associati a Tulip.",
+          "required": "La copertura e obbligatoria per questa prenotazione.",
+          "optionalLabel": "Attiva la copertura per questa prenotazione",
+          "optionalHelp": "Proteggi l'attrezzatura contro rottura e furto con la garanzia Tulip.",
+          "insurableProduct": "Assicurabile",
+          "assuredProduct": "Assicurato",
+          "pastStartWarning": "Questo periodo inizia nel passato. Tulip non consente di creare o modificare un'assicurazione per queste date, quindi la protezione viene rimossa da questa modifica.",
+          "disabledPastStart": "Protezione Tulip disattivata per questo periodo passato.",
+          "calculating": "Calcolo della garanzia...",
+          "estimatedAmount": "Garanzia stimata: {amount}",
+          "previewUnavailable": "Impossibile ricalcolare l'importo Tulip."
+        },
         "duration": "Durata",
         "exact": "esatto",
         "durationDays": "{count, plural, one {# giorno} other {# giorni}}",
         "durationHours": "{count, plural, one {# ora} other {# ore}}",
         "durationWeeks": "{count, plural, one {# settimana} other {# settimane}}",
         "reservationCreated": "Prenotazione creata",
-        "sendAsQuote": "Invia come preventivo",
-        "quoteSent": "Preventivo inviato al cliente",
-        "overbooking": {
-          "title": "Capacità insufficiente",
-          "description": "Alcuni prodotti non sono più disponibili per il periodo selezionato. Puoi comunque creare la prenotazione e l'override sarà visibile nella cronologia.",
-          "combination": "Combinazione: {combination}",
-          "shortfall": "Richiesto: {requested} · Disponibile: {available}",
-          "createAnyway": "Crea comunque"
-        },
-        "addUnavailable": {
-          "title": "Prodotto non disponibile",
-          "description": "«{name}» non ha più disponibilità nel periodo selezionato. Aggiungerlo può causare un overbooking.",
-          "confirm": "Aggiungi comunque"
-        },
         "selectDatesError": "Seleziona le date",
         "addProductError": "Aggiungi almeno un prodotto",
         "selectCustomerError": "Seleziona un cliente",
@@ -1876,6 +1992,9 @@
         "deliveryYesDescription": "L'attrezzatura verrà consegnata all'indirizzo del cliente",
         "deliveryNo": "Ritiro/reso in negozio",
         "deliveryNoDescription": "Il cliente ritirerà l'attrezzatura in negozio",
+        "pickupLocation": "Luogo di ritiro",
+        "returnLocation": "Luogo di restituzione",
+        "storeLocationFallback": "Luogo principale",
         "totalDeliveryFee": "Tariffa di consegna totale",
         "deliveryAddress": "Indirizzo di consegna",
         "deliveryAddressPlaceholder": "Inserisci l'indirizzo di consegna...",
@@ -1902,6 +2021,7 @@
         "deliveryRequiredBanner": "La consegna è obbligatoria",
         "deliveryIncludedNote": "Le spese di consegna sono incluse senza costi aggiuntivi",
         "deliveryRequiredNote": "Le spese di consegna verranno calcolate in base alla distanza",
+        "deliveryMinimumOverrideWarning": "La consegna al cliente è normalmente disponibile a partire da {amount}, ma puoi applicarla manualmente dalla dashboard.",
         "tieredPricing": "Prezzi a livelli",
         "savings": "Risparmio",
         "originalPrice": "Prezzo originale",
@@ -1967,39 +2087,25 @@
           "insufficientStock": "Stock insufficiente"
         },
         "addItemError": "Aggiungi almeno un prodotto o articolo personalizzato",
-        "perWeek": "sett.",
-        "bookingAttributes": "Opzioni",
-        "bookingAttributeNone": "Qualsiasi",
-        "bookingAttributesNoOptions": "Nessun valore disponibile per {attribute}",
-        "bookingAttributesHelp": "Selezioni le opzioni (taglia, colore, ecc.) per specificare una combinazione.",
-        "addOptionLine": "Aggiungi riga opzione",
-        "lineLabel": "Riga {index}",
-        "availableForSelection": "Disponibili per questa opzione: {count}",
-        "lineMaxReached": "Massimo raggiunto per questa opzione. Aggiunga un'altra riga opzione.",
-        "quantityPerCombinationHint": "La quantita si applica solo all'opzione selezionata. Aggiunga un'altra opzione come riga separata.",
-        "quantityCanSplitHint": "Senza una selezione completa delle opzioni, la quantita puo essere ripartita tra le opzioni corrispondenti.",
-        "tulipInsurance": {
-          "title": "Assicurazione Tulip",
-          "appliesMappedProducts": "Si applica solo ai prodotti associati a Tulip.",
-          "required": "La copertura e obbligatoria per questa prenotazione.",
-          "optionalLabel": "Attiva la copertura per questa prenotazione",
-          "insurableProduct": "Assicurabile",
-          "assuredProduct": "Assicurato"
+        "sendAsQuote": "Invia come preventivo",
+        "quoteSent": "Preventivo inviato al cliente",
+        "overbooking": {
+          "title": "Capacità insufficiente",
+          "description": "Alcuni prodotti non sono più disponibili per il periodo selezionato. Puoi comunque creare la prenotazione e l'override sarà visibile nella cronologia.",
+          "combination": "Combinazione: {combination}",
+          "shortfall": "Richiesto: {requested} · Disponibile: {available}",
+          "createAnyway": "Crea comunque"
+        },
+        "addUnavailable": {
+          "title": "Prodotto non disponibile",
+          "description": "«{name}» non ha più disponibilità nel periodo selezionato. Aggiungerlo può causare un overbooking.",
+          "confirm": "Aggiungi comunque"
         },
         "globalDiscount": {
           "label": "Sconto",
           "add": "Aggiungi uno sconto",
           "remove": "Rimuovi lo sconto"
         }
-      },
-      "quoteCard": {
-        "title": "Preventivo inviato",
-        "description": "Il cliente ha ricevuto questo preventivo. In attesa di risposta.",
-        "confirm": "Conferma direttamente"
-      },
-      "declinedCard": {
-        "title": "Preventivo rifiutato",
-        "description": "Il cliente ha rifiutato questo preventivo"
       },
       "rejectDialog": {
         "title": "Rifiuta richiesta",
@@ -2106,6 +2212,7 @@
         "fullyPaid": "Completamente pagato",
         "partiallyPaid": "{paid} di {total} pagato",
         "collected": "riscosso",
+        "authorized": "Blocco attivo",
         "notCollected": "Non riscosso",
         "toReturnToCustomer": "Da restituire al cliente",
         "returnQuestion": "Confermi che l'attrezzatura è stata restituita in buono stato?",
@@ -2308,6 +2415,15 @@
         "title": "Richiesta rifiutata",
         "description": "Questa richiesta e stata rifiutata"
       },
+      "quoteCard": {
+        "title": "Preventivo inviato",
+        "description": "Il cliente ha ricevuto questo preventivo. In attesa di risposta.",
+        "confirm": "Conferma direttamente"
+      },
+      "declinedCard": {
+        "title": "Preventivo rifiutato",
+        "description": "Il cliente ha rifiutato questo preventivo"
+      },
       "emailModal": {
         "title": "Invia un'email",
         "description": "Invia un'email a {name} ({email})",
@@ -2368,9 +2484,6 @@
         "smsSendError": "Errore nell'invio dell'SMS",
         "noPhone": "Il cliente non ha un numero di telefono"
       },
-      "tulipInsuredBadge": "Assicurato Tulip",
-      "tulipContractCardTitle": "Contratto assicurativo",
-      "tulipContractCardDescription": "Apri il contratto in Colibri.",
       "advisor": {
         "cardTitle": "Consulente IA",
         "validated": "Convalidata",
@@ -2383,7 +2496,9 @@
         "list": "Elenco",
         "calendar": "Calendario",
         "planning": "Planning"
-      }
+      },
+      "displayCards": "Vista schede",
+      "displayTable": "Vista tabella"
     },
     "customers": {
       "title": "Clienti",
@@ -3494,6 +3609,7 @@
         "noIntegrations": "Nessuna integrazione disponibile al momento.",
         "sections": {
           "byLouez": "Da Louez.io",
+          "calendar": "Calendario",
           "insurance": "Assicurazione"
         },
         "builtIn": {
@@ -3570,16 +3686,64 @@
           "resources": "Risorse"
         },
         "categories": {
+          "calendar": {
+            "name": "Calendario",
+            "description": "Sincronizza le tue prenotazioni verso calendari esterni."
+          },
           "insurance": {
             "name": "Assicurazione",
             "description": "Proteggi le prenotazioni e sincronizza i contratti assicurativi."
           }
         },
         "providers": {
+          "googleCalendar": {
+            "name": "Google Calendar",
+            "description": "Collega Google Calendar tramite OAuth per sincronizzare le prenotazioni in un calendario dedicato.",
+            "about": "Louez crea un calendario Google dedicato al tuo negozio, poi invia in modo asincrono creazioni, modifiche e annullamenti delle prenotazioni.",
+            "features": {
+              "oauth": "Connessione OAuth Google dedicata, separata dall'accesso utente.",
+              "sync": "Sincronizzazione unidirezionale delle prenotazioni Louez verso un calendario Google dedicato.",
+              "retry": "Coda di sincronizzazione con nuovi tentativi automatici in caso di errore del fornitore."
+            },
+            "resources": {
+              "help": "Guida di Google Calendar"
+            }
+          },
+          "icsCalendar": {
+            "name": "Link ICS",
+            "description": "Pubblica un link calendario compatibile con Apple Calendar, Outlook e Google Calendar.",
+            "about": "Il link ICS resta disponibile come opzione semplice e universale, ma l'aggiornamento dei dati dipende dall'app di calendario abbonata.",
+            "features": {
+              "link": "Link di iscrizione al calendario generato per ogni negozio.",
+              "compatibility": "Compatibile con i principali calendari che accettano gli abbonamenti ICS."
+            },
+            "resources": {
+              "help": "Riferimento iCalendar"
+            }
+          },
           "tulip": {
             "name": "Assicurazione Tulip",
             "description": "Connetti Tulip per quotare e generare contratti assicurativi di noleggio.",
             "about": "Tulip centralizza le operazioni assicurative del noleggiatore: anteprima del preventivo al checkout, creazione del contratto e associazione tra il catalogo e i prodotti assicurati.",
+            "aboutSections": {
+              "howItWorks": {
+                "title": "Come funziona",
+                "reservation": "La garanzia viene proposta al momento della prenotazione o della firma del contratto di noleggio.",
+                "subscription": "Il locatario può sottoscriverla in pochi clic in base alle garanzie scelte.",
+                "claim": "In caso di sinistro, il noleggiatore lo dichiara sulla piattaforma Tulip."
+              },
+              "configure": {
+                "title": "Come configurarla",
+                "contract": "Stipula un contratto con Tulip e definisci se l'assicurazione è inclusa nel noleggio o proposta come opzione al momento della prenotazione.",
+                "enable": "Attiva l'integrazione Tulip in Louez.io con la tua chiave di accesso, da richiedere a Tulip.",
+                "start": "Configura il tuo account e inizia a proporre questo servizio."
+              },
+              "about": {
+                "title": "Informazioni",
+                "market": "Tulip è specializzata nel noleggio di materiale e attrezzature professionali e lavora con più di 500 noleggiatori.",
+                "orias": "Tulip è un'azienda francese iscritta all'Orias dal 2019 (19001215)."
+              }
+            },
             "features": {
               "sync": "Connetti il tuo account Tulip convalidando il tuo identificativo account.",
               "checkout": "Applica l'assicurazione al checkout (obbligatoria, opzionale o modalita nascosta).",
@@ -3875,8 +4039,25 @@
         "maximumDistanceDescription": "Lascia vuoto per nessun limite",
         "freeDeliveryThreshold": "Consegna gratuita da",
         "freeDeliveryThresholdDescription": "Importo dell'ordine da cui la consegna è gratuita",
+        "minimumOrderAmountForDelivery": "Consegna disponibile a partire da",
+        "minimumOrderAmountForDeliveryDescription": "Importo minimo di noleggio richiesto per proporre la consegna ai clienti. Non si applica alle prenotazioni create dal negozio.",
         "allowDifferentReturnAddress": "Consentire indirizzo di reso diverso",
         "allowDifferentReturnAddressDescription": "Permettere ai clienti di specificare un indirizzo diverso per il ritiro del materiale",
+        "multiLocationEnabled": "Attiva i luoghi di ritiro e restituzione",
+        "multiLocationEnabledDescription": "Consenti ai clienti di scegliere un luogo configurato per il ritiro e la restituzione dell'attrezzatura. Lo stock resta condiviso in tutto il negozio.",
+        "locationsTitle": "Luoghi di ritiro e restituzione",
+        "locationsDescription": "Il luogo principale deriva dall'indirizzo del negozio. Aggiungi solo gli altri luoghi disponibili.",
+        "locationsPrimary": "Luogo principale",
+        "locationsAdd": "Aggiungi luogo",
+        "locationsEdit": "Modifica",
+        "locationsDeactivate": "Disattiva",
+        "locationsReactivate": "Riattiva",
+        "locationsInactive": "Inattivo",
+        "locationsDialogDescription": "Questo luogo sarà proposto al checkout per il ritiro e la restituzione.",
+        "locationsName": "Nome del luogo",
+        "locationsAddress": "Indirizzo",
+        "locationsSaved": "Luogo salvato",
+        "locationsSaveError": "Impossibile salvare il luogo",
         "saved": "Impostazioni consegna salvate",
         "simulator": {
           "title": "Simulatore prezzi",
@@ -3890,6 +4071,8 @@
           "freeDeliveryApplied": "Consegna gratuita applicata",
           "minimumApplied": "Tariffa minima applicata",
           "freeAbove": "Gratuito da {amount}",
+          "availableAbove": "Disponibile da {amount}",
+          "minimumOrderNotMet": "Consegna disponibile da {amount}",
           "distanceLabel": "Distanza",
           "rateLabel": "Calcolo",
           "minimumLabel": "Minimo",
@@ -4026,7 +4209,6 @@
             "createdToast": "{count, plural, one {Indisponibilità per riparazione creata} other {Indisponibilità per riparazione create}}",
             "conflictsToast": "Conflitti rilevati - gestiscili in Inventario",
             "conflictsDescription": "Conflitti rilevati. Gestiscili in Inventario.",
-            "openInventory": "Apri Inventario",
             "skip": "Ignora",
             "submit": "Crea indisponibilità per riparazione",
             "done": "Fine"
@@ -4160,6 +4342,38 @@
           "active": "Attivo",
           "incomplete": "Incompleto"
         },
+        "finances": {
+          "title": "Saldo e versamenti",
+          "description": "Segui gli importi incassati da Stripe e il loro arrivo sul tuo conto bancario.",
+          "unavailable": "Le informazioni finanziarie di Stripe sono temporaneamente non disponibili. Aggiorna la pagina o consulta la tua dashboard Stripe.",
+          "available": "Disponibile",
+          "availableHelp": "Pronto per essere incluso in un prossimo versamento.",
+          "pending": "In attesa",
+          "pendingHelp": "Pagamenti incassati che Stripe sta ancora elaborando.",
+          "payoutsTitle": "Ultimi versamenti",
+          "payoutsDescription": "Versamenti inviati da Stripe al tuo conto bancario.",
+          "noPayouts": "Nessun versamento Stripe per il momento.",
+          "viewMore": "Vedi altro",
+          "drawerTitle": "Cronologia dei versamenti",
+          "drawerDescription": "Tutti i versamenti inviati da Stripe al tuo conto bancario.",
+          "loadingMore": "Caricamento dei versamenti…",
+          "retry": "Riprova",
+          "destination": "Conto •••• {last4}",
+          "paidHelp": "Lo stato «Versato» indica che Stripe ha inviato il versamento alla tua banca. Può apparire sull'estratto conto come «STRIPE PAYOUT».",
+          "statuses": {
+            "paid": "Versato",
+            "pending": "In attesa",
+            "in_transit": "In transito",
+            "failed": "Non riuscito",
+            "canceled": "Annullato",
+            "unknown": "Da verificare"
+          },
+          "payoutDates": {
+            "paid": "Versato il {date}",
+            "expected": "Arrivo stimato il {date}",
+            "created": "Creato il {date}"
+          }
+        },
         "callback": {
           "successTitle": "Stripe collegato!",
           "successDescription": "Il tuo account Stripe e ora collegato. Puoi accettare pagamenti online.",
@@ -4187,7 +4401,6 @@
             "youReview": "Ricevi un'email e valuti la richiesta",
             "acceptOrReject": "Accetti o rifiuti la richiesta",
             "paymentOnSite": "Il cliente paga sul posto (contanti, carta, bonifico...)",
-            "paymentOnlineOrSite": "Il cliente paga online dal suo account o sul posto",
             "customerPays": "Il cliente paga immediatamente con carta",
             "reservationConfirmed": "La prenotazione viene confermata automaticamente",
             "bothNotified": "Tu e il cliente ricevete conferma"
@@ -4200,7 +4413,8 @@
             },
             "instantPayment": {
               "title": "Passare al pagamento immediato?",
-              "description": "Per automatizzare completamente le tue prenotazioni, attiva la modalita pagamento immediato nelle impostazioni del negozio."
+              "description": "Per automatizzare completamente le tue prenotazioni, attiva la modalita pagamento immediato nelle impostazioni del negozio.",
+              "action": "Apri le impostazioni"
             }
           },
           "warnings": {
@@ -4212,12 +4426,6 @@
           "info": {
             "requestWithStripe": "Una volta accettata la richiesta, il cliente puo pagare online dal suo account. Puoi anche inviare un link di pagamento via email o SMS, o incassare sul posto.",
             "instantPayment": "Configurazione ottimale! Le tue prenotazioni sono completamente automatizzate. Il pagamento protegge immediatamente la prenotazione."
-          },
-          "alternatives": {
-            "requestMode": {
-              "title": "Hai bisogno di validazione manuale?",
-              "description": "La modalita richiesta ti permette di verificare ogni prenotazione prima di incassare. Modificabile nelle impostazioni del negozio."
-            }
           }
         }
       },
@@ -4455,6 +4663,11 @@
             "createOption": "Usa \"{value}\"",
             "noBrandResults": "Nessun suggerimento di marca",
             "noModelResults": "Nessun suggerimento di modello",
+            "categoryRequired": "Seleziona una categoria Tulip.",
+            "productSubtypeRequired": "Seleziona un sottotipo Tulip.",
+            "brandRequired": "Inserisci una marca.",
+            "modelRequired": "Inserisci un modello.",
+            "purchasePriceRequired": "Inserisci il prezzo di acquisto IVA esclusa.",
             "invalidPurchasePrice": "Inserisca un prezzo di acquisto valido.",
             "invalidMargin": "Inserisca un margine valido.",
             "marginTooltip": "Margine giornaliero aggiuntivo applicato al prezzo di acquisto per la valutazione assicurativa.",
@@ -4480,6 +4693,7 @@
               "mapped": "Associato",
               "notMapped": "Non associato"
             },
+            "dropdownValueExclTax": "{value} IVA escl.",
             "noResults": "Nessun prodotto Tulip trovato",
             "noFilterResults": "Nessun prodotto corrisponde ai filtri attuali.",
             "sheet": {
@@ -5368,15 +5582,6 @@
         "confirm": "Conferma"
       },
       "deliveryDescription": "Scegli come ricevere e restituire la tua attrezzatura",
-      "outboundTitle": "Ricevere attrezzatura",
-      "returnTitle": "Restituire attrezzatura",
-      "storePickup": "Ritiro in negozio",
-      "storeReturn": "Reso in negozio",
-      "deliverToAddress": "Consegna al mio indirizzo",
-      "collectFromAddress": "Ritiro dal mio indirizzo",
-      "outboundAddressPlaceholder": "Inserisci l'indirizzo di consegna...",
-      "legFee": "Tariffa",
-      "totalDeliveryFee": "Tariffa di consegna totale",
       "deliveryRequiredDescription": "La consegna è obbligatoria per questo ordine",
       "deliveryIncludedDescription": "La consegna è inclusa nel tuo ordine",
       "deliveryRequiredBanner": "Consegna obbligatoria",
@@ -5384,21 +5589,36 @@
       "deliveryRequiredNote": "Questo prodotto richiede la consegna",
       "deliveryIncludedNote": "Le spese di consegna sono incluse nel prezzo",
       "included": "Incluso",
+      "outboundTitle": "Ricevere attrezzatura",
+      "returnTitle": "Restituire attrezzatura",
+      "storePickup": "Ritiro in negozio",
+      "storeReturn": "Reso in negozio",
+      "pickupAtLocation": "Ritiro presso un luogo",
+      "returnAtLocation": "Restituzione presso un luogo",
+      "storeLocationFallback": "Negozio",
+      "deliveryCompact": "Consegna",
+      "collectionCompact": "Ritiro",
+      "deliverToAddress": "Consegna al mio indirizzo",
+      "collectFromAddress": "Ritiro dal mio indirizzo",
       "pickupOption": "Ritiro in negozio",
       "deliveryOption": "Consegna a domicilio",
       "deliveryOptionDescription": "A partire da {pricePerKm}/km",
+      "deliveryAvailableFrom": "Consegna disponibile da {amount} di noleggio",
       "freeDeliveryAbove": "Consegna gratuita sopra {amount}",
       "freeDeliveryApplied": "Consegna gratuita applicata!",
       "deliveryAddress": "Indirizzo di consegna",
       "deliveryAddressPlaceholder": "Inserisci il tuo indirizzo di consegna...",
+      "outboundAddressPlaceholder": "Inserisci l'indirizzo di consegna...",
+      "returnAddressPlaceholder": "Inserire l'indirizzo di reso...",
       "deliveryDistance": "Distanza",
       "deliveryFee": "Costo consegna",
+      "legFee": "Tariffa",
+      "totalDeliveryFee": "Tariffa di consegna totale",
       "free": "Gratuito",
       "deliveryTooFar": "Spiacenti, non consegniamo oltre {maxKm} km",
       "differentReturnAddress": "Indirizzo di reso diverso",
       "differentReturnAddressDescription": "Il materiale sarà ritirato a un indirizzo diverso",
       "returnAddress": "Indirizzo di reso",
-      "returnAddressPlaceholder": "Inserire l'indirizzo di reso...",
       "returnDistance": "Distanza di reso",
       "returnTooFar": "Spiacenti, l'indirizzo di reso supera i {maxKm} km",
       "contactDescription": "Abbiamo bisogno di queste informazioni per contattarti",
@@ -5410,6 +5630,22 @@
         "preserved": "I dati di contatto e le selezioni restano memorizzati durante la modifica.",
         "editDates": "Modifica le date"
       },
+      "insuranceRequiredNotice": "La copertura danni/furto e obbligatoria per questa prenotazione e verra applicata automaticamente.",
+      "insuranceOptionalLabel": "Aggiungi copertura danni/furto",
+      "insuranceOptionalHelp": "Attivi questa opzione per includere la copertura danni/furto nella Sua prenotazione.",
+      "insuranceLineLabel": "Copertura danni/furto",
+      "insuranceRequiredBadge": "Obbligatoria",
+      "insuranceOptionalEnabled": "Selezionata",
+      "insuranceOptionalDisabled": "Non selezionata",
+      "insuranceOptionalUnavailable": "La copertura e temporaneamente non disponibile. La Sua prenotazione verra inviata senza copertura.",
+      "insuranceOptionalUnavailableShort": "Non disponibile",
+      "insuranceNoInsurableProducts": "Nessun prodotto assicurabile in questo carrello.",
+      "insurancePartialCoverage": "{insured} prodotto/i coperto/i, {uninsured} non coperto/i.",
+      "insuranceCoveredProductTooltip": "Questo prodotto e coperto dalla copertura danni/furto.",
+      "insuranceEligibleProductTooltip": "Idoneo alla copertura danni/furto.",
+      "insuranceEstimating": "Calcolo della copertura stimata...",
+      "insuranceEstimatedAmount": "Importo copertura stimato: {amount}",
+      "insuranceEstimatedDisclaimer": "Importo stimato, ricalcolato automaticamente alla conferma.",
       "continue": "Continua",
       "back": "Indietro",
       "modify": "Modifica",
@@ -5486,6 +5722,10 @@
         "promoDiscount": "Sconto promozionale",
         "backToStore": "Torna al negozio"
       },
+      "requestedAttributesLabel": "Richiesto",
+      "resolvedAttributesLabel": "Finale",
+      "lineCheckingAvailability": "Verifica disponibilita...",
+      "lineNeedsUpdateInline": "Questa riga non e piu disponibile. Aggiorni la quantita o gli attributi.",
       "promoCode": {
         "haveCode": "Hai un codice promozionale?",
         "placeholder": "Inserisci il tuo codice",
@@ -5499,26 +5739,6 @@
         "promoCodeMinimumNotMet": "Importo minimo di {amount} richiesto",
         "promoCodeNotStarted": "Questo codice promozionale non è ancora attivo"
       },
-      "insuranceRequiredNotice": "La copertura danni/furto e obbligatoria per questa prenotazione e verra applicata automaticamente.",
-      "insuranceOptionalLabel": "Aggiungi copertura danni/furto",
-      "insuranceOptionalHelp": "Attivi questa opzione per includere la copertura danni/furto nella Sua prenotazione.",
-      "insuranceLineLabel": "Copertura danni/furto",
-      "insuranceRequiredBadge": "Obbligatoria",
-      "insuranceOptionalEnabled": "Selezionata",
-      "insuranceOptionalDisabled": "Non selezionata",
-      "insuranceOptionalUnavailable": "La copertura e temporaneamente non disponibile. La Sua prenotazione verra inviata senza copertura.",
-      "insuranceOptionalUnavailableShort": "Non disponibile",
-      "insuranceNoInsurableProducts": "Nessun prodotto assicurabile in questo carrello.",
-      "insurancePartialCoverage": "{insured} prodotto/i coperto/i, {uninsured} non coperto/i.",
-      "insuranceCoveredProductTooltip": "Questo prodotto e coperto dalla copertura danni/furto.",
-      "insuranceEligibleProductTooltip": "Idoneo alla copertura danni/furto.",
-      "insuranceEstimating": "Calcolo della copertura stimata...",
-      "insuranceEstimatedAmount": "Importo copertura stimato: {amount}",
-      "insuranceEstimatedDisclaimer": "Importo stimato, ricalcolato automaticamente alla conferma.",
-      "requestedAttributesLabel": "Richiesto",
-      "resolvedAttributesLabel": "Finale",
-      "lineCheckingAvailability": "Verifica disponibilita...",
-      "lineNeedsUpdateInline": "Questa riga non e piu disponibile. Aggiorni la quantita o gli attributi.",
       "lineNeedsUpdate": "Alcune righe non sono piu disponibili. Aggiorni il carrello prima di inviare.",
       "advisor": {
         "recommendedHint": "Hai dubbi sulla tua scelta? Il consulente può verificarla con te.",
@@ -6273,6 +6493,11 @@
     "storeNotFound": "Negozio non trovato",
     "productNotFound": "Prodotto non trovato",
     "categoryNotFound": "Categoria non trovata",
+    "integrationNotFound": "Integrazione non trovata",
+    "integrationCategoryNotFound": "Categoria di integrazione non trovata",
+    "integrationNotConnected": "Integrazione non connessa",
+    "unsupportedOperation": "Operazione non supportata",
+    "permissionDenied": "Permessi insufficienti",
     "customerNotFound": "Cliente non trovato",
     "reservationNotFound": "Prenotazione non trovata",
     "emailAlreadyExists": "Esiste gia un cliente con questa email",
@@ -6293,6 +6518,10 @@
     "invalidUnits": "Una o piu unita selezionate non sono valide",
     "turnoverBufferConflict": "L'unita selezionata e bloccata solo dal margine di rotazione",
     "unitProductMismatch": "Le unita selezionate non appartengono a questo prodotto",
+    "unitCombinationMismatch": "Le unita selezionate non corrispondono alla combinazione riservata per questa riga",
+    "cannotDisableUnitTrackingWithCombinations": "Impossibile disattivare il tracciamento delle unita mentre prenotazioni attive utilizzano combinazioni tracciate per questo prodotto.",
+    "unitStatusConflictsWithReservations": "Questa modifica renderebbe impossibili le prenotazioni future per almeno una combinazione tracciata.",
+    "unitAssigned": "Questa unità è assegnata a una prenotazione bloccante e non può essere eliminata.",
     "assignUnitsFailed": "Assegnazione unita fallita",
     "getAvailableUnitsFailed": "Caricamento unita disponibili fallito",
     "createCustomerError": "Errore nella creazione del cliente",
@@ -6358,30 +6587,31 @@
     "minRentalDurationViolation": "La durata del noleggio deve essere di almeno {duration}",
     "maxRentalDurationViolation": "La durata del noleggio non può superare le {duration}",
     "deliveryNotEnabled": "La consegna non è attivata per questo negozio",
+    "deliveryMinimumOrderAmountNotMet": "La consegna è disponibile a partire da {amount} di noleggio",
     "deliveryAddressRequired": "Inserisci un indirizzo di consegna valido",
     "storeCoordinatesNotConfigured": "Le coordinate del negozio non sono configurate",
     "deliveryTooFar": "L'indirizzo di consegna è troppo lontano (massimo {maxDistance} km)",
     "deliveryRequired": "La consegna è obbligatoria per questo negozio",
     "storeCoordinatesInvalid": "Le coordinate del negozio non sono valide",
-    "deliveryAddressInvalid": "L'indirizzo di consegna non è valido",
     "promoCodeInvalid": "Questo codice promozionale non è valido o non esiste",
     "promoCodeExpired": "Questo codice promozionale è scaduto",
     "promoCodeExhausted": "Questo codice promozionale ha raggiunto il limite di utilizzo",
     "promoCodeMinimumNotMet": "Importo minimo di {amount} richiesto per utilizzare questo codice",
     "promoCodeNotStarted": "Questo codice promozionale non è ancora attivo",
-    "integrationNotFound": "Integrazione non trovata",
-    "integrationCategoryNotFound": "Categoria di integrazione non trovata",
-    "unitCombinationMismatch": "Le unita selezionate non corrispondono alla combinazione riservata per questa riga",
-    "cannotDisableUnitTrackingWithCombinations": "Impossibile disattivare il tracciamento delle unita mentre prenotazioni attive utilizzano combinazioni tracciate per questo prodotto.",
-    "unitStatusConflictsWithReservations": "Questa modifica renderebbe impossibili le prenotazioni future per almeno una combinazione tracciata.",
-    "unitAssigned": "Questa unità è assegnata a una prenotazione bloccante e non può essere eliminata.",
+    "deliveryAddressInvalid": "L'indirizzo di consegna non è valido",
+    "locationInvalid": "Luogo non valido",
+    "locationNotFound": "Luogo non trovato",
+    "locationInactive": "Questo luogo non è più disponibile",
     "tulipApiKeyInvalid": "La chiave API Tulip non e valida.",
     "tulipActionForbidden": "Tulip ha rifiutato questa azione per la configurazione attuale dell'account.",
     "tulipApiUnavailable": "Tulip e attualmente non disponibile. Riprovare piu tardi.",
     "tulipRenterNotFound": "Nessun account Tulip trovato per questo identificativo.",
+    "tulipRenterAttachFailed": "Impossibile collegare questo account Tulip alla chiave API configurata. Verifica l'identificativo del locatore e i permessi della chiave.",
     "tulipProductSubtypeInvalid": "Questo sottotipo non e valido per la categoria Tulip selezionata.",
+    "tulipProductRequiredFieldsMissing": "Categoria, sottotipo, marca, modello e prezzo di acquisto IVA esclusa sono obbligatori per creare un prodotto Tulip.",
     "tulipProductPayloadInvalid": "Tulip ha rifiutato i dati del prodotto. Verifichi categoria/sottotipo e i campi obbligatori.",
     "tulipProductNotFound": "Prodotto Tulip non trovato. Aggiorni i prodotti Tulip e riassoci questo elemento.",
+    "tulipProductCatalogUnavailable": "Il catalogo prodotti Tulip non è accessibile per questo account. Puoi creare un nuovo prodotto Tulip o chiedere a Tulip di attivare l'accesso al catalogo.",
     "tulipNotConfigured": "Tulip non e ancora configurato.",
     "tulipProductNotMapped": "Alcuni prodotti non sono associati a prodotti Tulip.",
     "tulipProductAlreadyMapped": "Questo prodotto e gia associato a un prodotto Tulip.",
@@ -6390,11 +6620,23 @@
     "tulipInvalidContractResponse": "Tulip ha restituito una risposta contratto non valida.",
     "tulipContractCreationFailed": "Prenotazione confermata, ma la creazione del contratto Tulip e fallita.",
     "tulipContractUpdateFailed": "Prenotazione aggiornata, ma la sincronizzazione del contratto Tulip e fallita.",
+    "tulipContractCancellationFailed": "Prenotazione annullata, ma la risoluzione del contratto Tulip non è riuscita.",
     "tulipQuoteFailed": "Impossibile calcolare la copertura danni/furto per questa prenotazione.",
+    "tulipInsuranceDisabledPastDate": "Prenotazione modificata, ma la protezione Tulip è stata disattivata perché le date sono nel passato.",
     "tulipContractPastDate": "Tulip ha rifiutato la creazione del contratto: le date del contratto non possono essere nel passato.",
+    "tulipContractDatesInvalid": "Tulip ha rifiutato il contratto: le date di inizio e di fine sono incoerenti per questo tipo di contratto.",
     "tulipContractActionForbidden": "Tulip ha rifiutato questa azione per la configurazione attuale dell'account.",
+    "tulipContractOptionsInvalid": "Tulip ha rifiutato le opzioni del contratto. Verifica le opzioni rottura/furto e il tipo di assicurato.",
+    "tulipContractUpdateWindowExpired": "Tulip ha rifiutato la modifica: il contratto è iniziato da più di 4 ore e le sue date non possono più essere modificate.",
+    "tulipContractNotFound": "Tulip non trova questo contratto. Verifica la sincronizzazione prima di riprovare.",
+    "tulipContractNotOpen": "Tulip ha rifiutato la modifica: solo i contratti aperti possono essere aggiornati.",
+    "tulipContractIdentityFrozen": "Tulip ha rifiutato la modifica: i dati del cliente sono ormai bloccati per questo contratto.",
     "tulipContractProductMarkedMissing": "Tulip richiede l'identificativo reale di ogni articolo assicurato. Assegna un'unità o un identificativo fisico a ogni prodotto assicurato prima di creare o sincronizzare il contratto.",
+    "tulipContractPayloadInvalid": "Tulip ha rifiutato i dati del contratto. Verifica i prodotti assicurati e i campi obbligatori inviati.",
+    "tulipContractValidationFailed": "Tulip ha rifiutato questa azione a causa di un errore di validazione sul contratto.",
     "tulipContractTypeDisabled": "Il tipo di contratto Tulip richiesto per questa durata non e abilitato per questo negozio.",
+    "tulipContractProductsIncompatible": "I prodotti Tulip assicurati di questa prenotazione non sono tutti compatibili con questo tipo di contratto.",
+    "tulipProductTypeDisabled": "Questa categoria di prodotto Tulip non è attivata per questo negozio.",
     "unitAlreadyRetired": "Questa unità è già ritirata dal parco",
     "unitNotRetired": "Questa unità non è ritirata dal parco",
     "advisorValidationRequired": "Questo negozio richiede una breve verifica con il consulente prima di prenotare",

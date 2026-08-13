@@ -8,6 +8,7 @@ import { log, useLogger, withEvlog } from "@/lib/evlog";
 import { generateContract } from "@/lib/pdf/generate";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { getConnectedAccountPayoutPage } from "@/lib/stripe/connected-account-finances";
 import { getCurrentStore } from "@/lib/store-context";
 
 import {
@@ -86,6 +87,7 @@ async function handleRequest(request: Request) {
       headers: request.headers,
       getCurrentStore,
       getCustomerSession,
+      getConnectedAccountPayoutPage,
       dashboardReservationActions: {
         cancelReservation,
         updateReservationStatus,
