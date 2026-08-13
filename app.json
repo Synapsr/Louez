@@ -1,0 +1,93 @@
+{
+  "name": "Louez",
+  "description": "Open-source equipment rental platform: a branded booking storefront with live availability, plus a back office for reservations, customers, PDF contracts and revenue statistics.",
+  "repository": "https://github.com/Synapsr/Louez",
+  "website": "https://louez.io",
+  "logo": "https://raw.githubusercontent.com/Synapsr/Louez/main/apps/web/public/icons/icon-512.png",
+  "keywords": [
+    "rental",
+    "booking",
+    "reservations",
+    "inventory-management",
+    "storefront",
+    "nextjs",
+    "self-hosted"
+  ],
+  "stack": "container",
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "jawsdb",
+      "as": "DATABASE"
+    }
+  ],
+  "env": {
+    "LOUEZ_MODE": {
+      "description": "standalone hosts a single store at the root of the site, with the dashboard under /dashboard.",
+      "value": "standalone"
+    },
+    "AUTH_URL": {
+      "description": "Public URL of this app — https://<the app name you chose above>.herokuapp.com, or your own domain. Sign-in is bound to it.",
+      "required": true
+    },
+    "AUTH_SECRET": {
+      "description": "Signs sessions. Generated for you.",
+      "generator": "secret"
+    },
+    "AUTH_TRUST_HOST": {
+      "description": "Required behind the Heroku router.",
+      "value": "true"
+    },
+    "S3_ENDPOINT": {
+      "description": "S3-compatible endpoint for product images (AWS S3, Cloudflare R2, Scaleway, Backblaze B2...). Image uploads stay disabled until the five S3 values are set. Everything else works without them.",
+      "required": false
+    },
+    "S3_REGION": {
+      "description": "Region of your bucket, e.g. eu-west-3.",
+      "required": false
+    },
+    "S3_BUCKET": {
+      "description": "Name of your bucket.",
+      "required": false
+    },
+    "S3_ACCESS_KEY_ID": {
+      "description": "Access key with read/write access to the bucket.",
+      "required": false
+    },
+    "S3_SECRET_ACCESS_KEY": {
+      "description": "Secret key paired with the access key.",
+      "required": false
+    },
+    "S3_PUBLIC_URL": {
+      "description": "Public base URL of the bucket, or /files to serve images through the app when the bucket is private.",
+      "value": "/files",
+      "required": false
+    },
+    "SMTP_HOST": {
+      "description": "Optional. Without SMTP credentials you sign in with a password and Louez skips sending mail.",
+      "required": false
+    },
+    "SMTP_PORT": {
+      "description": "Optional. 587 for STARTTLS, 465 for TLS on connect.",
+      "value": "587",
+      "required": false
+    },
+    "SMTP_USER": {
+      "description": "Optional. SMTP username.",
+      "required": false
+    },
+    "SMTP_PASSWORD": {
+      "description": "Optional. SMTP password.",
+      "required": false
+    },
+    "SMTP_FROM": {
+      "description": "Optional. Sender address, e.g. Louez <noreply@example.com>.",
+      "required": false
+    }
+  }
+}

@@ -1,0 +1,104 @@
+# Render Blueprint — https://render.com/docs/infrastructure-as-code
+#
+# Deploys Louez in single-store mode with its own MySQL database and a private
+# MinIO store for product images. Louez installs its schema on first boot and
+# derives its public URL from RENDER_EXTERNAL_URL, so the only prompt is the
+# database password.
+#
+# All three services are paid instance types: private services and persistent
+# disks are not available on Render's free tier.
+
+services:
+  - type: web
+    name: louez
+    runtime: image
+    plan: starter
+    region: frankfurt
+    image:
+      url: docker.io/synapsr/louez:2
+    autoDeployTrigger: "off"
+    healthCheckPath: /api/health
+    envVars:
+      - key: LOUEZ_MODE
+        value: standalone
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      # Kept out of the container's /app/data so the service needs no disk:
+      # Render stores the generated value with the service.
+      - key: AUTH_SECRET
+        generateValue: true
+      # DATABASE_URL is composed in dockerCommand below from this password —
+      # a Blueprint cannot concatenate values itself.
+      - key: MYSQL_PASSWORD
+        fromService:
+          type: pserv
+          name: louez-mysql
+          envVarKey: MYSQL_ROOT_PASSWORD
+      # The bucket stays private: Louez streams images same-origin under /files
+      # with its own credentials, so the store needs no public URL.
+      - key: S3_ENDPOINT
+        value: http://louez-minio:9000
+      - key: S3_REGION
+        value: us-east-1
+      - key: S3_BUCKET
+        value: louez
+      - key: S3_PUBLIC_URL
+        value: /files
+      - key: S3_ACCESS_KEY_ID
+        fromService:
+          type: pserv
+          name: louez-minio
+          envVarKey: MINIO_ROOT_USER
+      - key: S3_SECRET_ACCESS_KEY
+        fromService:
+          type: pserv
+          name: louez-minio
+          envVarKey: MINIO_ROOT_PASSWORD
+    dockerCommand: sh -c 'export DATABASE_URL="mysql://root:$MYSQL_PASSWORD@louez-mysql:3306/louez"; exec node apps/web/server.js'
+
+  - type: pserv
+    name: louez-mysql
+    runtime: image
+    plan: starter
+    region: frankfurt
+    image:
+      url: docker.io/library/mysql:8.4
+    autoDeployTrigger: "off"
+    disk:
+      name: mysql-data
+      mountPath: /var/lib/mysql
+      sizeGB: 10
+    envVars:
+      - key: MYSQL_ROOT_PASSWORD
+        # Prompted once when you launch the Blueprint. Use letters and digits
+        # only: the value is embedded in a connection URL.
+        sync: false
+      - key: MYSQL_DATABASE
+        value: louez
+    # MySQL refuses to initialize into a non-empty directory, and a fresh disk
+    # is not empty (lost+found), so the data lives one level down.
+    dockerCommand: mysqld --datadir=/var/lib/mysql/data
+
+  # MinIO with the product bucket pre-created. Render's docker command is
+  # passed to the image's entrypoint rather than replacing it, and MinIO's
+  # entrypoint prepends `minio` to whatever it receives — so the bucket step
+  # lives in a four-line image built from this repository instead.
+  - type: pserv
+    name: louez-minio
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    dockerfilePath: ./docker/Dockerfile.minio
+    dockerContext: ./docker
+    autoDeployTrigger: "off"
+    disk:
+      name: minio-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: MINIO_ROOT_USER
+        value: louez
+      - key: MINIO_ROOT_PASSWORD
+        generateValue: true
+      - key: S3_BUCKET
+        value: louez

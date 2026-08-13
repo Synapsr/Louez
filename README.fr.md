@@ -12,7 +12,7 @@
 
 **Arrêtez de payer des abonnements SaaS coûteux. Possédez votre logiciel de location.**
 
-[![Docker](https://img.shields.io/badge/Docker-synapsr%2Flouez-2496ED?style=for-the-badge&logo=docker)](https://hub.docker.com/r/synapsr/louez)
+[![Docker Pulls](https://img.shields.io/docker/pulls/synapsr/louez?style=for-the-badge&logo=docker)](https://hub.docker.com/r/synapsr/louez)
 [![GitHub Stars](https://img.shields.io/github/stars/Synapsr/Louez?style=for-the-badge&logo=github)](https://github.com/Synapsr/Louez)
 [![License](https://img.shields.io/badge/License-AGPL_v3-blue?style=for-the-badge)](LICENSE)
 
@@ -22,13 +22,22 @@
 
 ---
 
-## 🎬 Démo
+## 🎬 Louez en action
 
 <div align="center">
 
-<video src="demo-fr.mp4" width="100%" autoplay loop muted playsinline></video>
+<a href="https://louez.io"><img src=".github/assets/storefront.png" alt="Boutique Louez — catalogue de location avec disponibilités en temps réel" width="100%"></a>
 
-_Louez en action — de l'installation à la première réservation_
+_Votre boutique : catalogue à vos couleurs, disponibilités en temps réel, réservation en quelques clics_
+
+<a href=".github/assets/dashboard-reservations.png"><img src=".github/assets/dashboard-reservations.png" alt="Calendrier des réservations" width="49%"></a>
+<a href=".github/assets/dashboard-products.png"><img src=".github/assets/dashboard-products.png" alt="Gestion des produits" width="49%"></a>
+
+_Votre back-office : calendrier des réservations, inventaire, clients, contrats_
+
+[▶️ Voir la démo complète](demo-fr.mp4) • [☁️ Essayer la version hébergée](https://louez.io)
+
+**⭐ Si Louez peut remplacer un abonnement chez vous, mettez une étoile** — c'est comme ça que le prochain loueur le découvre.
 
 </div>
 
@@ -89,6 +98,8 @@ docker compose up -d
 
 **C'est tout.** Ouvrez [http://localhost:3000](http://localhost:3000), créez votre compte et configurez votre boutique. Votre vitrine est servie à la racine du site ; votre tableau de bord vit sous `/dashboard`.
 
+> Ça a marché du premier coup ? [Mettez une ⭐](https://github.com/Synapsr/Louez) — ça vous coûte un clic, et c'est comme ça que le prochain loueur trouve Louez plutôt qu'un abonnement à 99 €/mois.
+
 Le [docker-compose.yml](docker-compose.yml) fourni est un déploiement complet et autonome :
 
 - 🗄️ **Base de données incluse** — MySQL tourne à côté de l'application et le schéma s'installe tout seul au premier démarrage
@@ -106,9 +117,14 @@ NEXT_PUBLIC_APP_URL="https://locations.exemple.fr"
 AUTH_URL="https://locations.exemple.fr"
 ```
 
-### Plateformes en un clic
+### Déploiement en un clic
 
-L'image publiée `synapsr/louez` fonctionne par défaut en mode boutique unique — fournissez une base MySQL et les variables ci-dessus et elle démarre sur EasyPanel, Dokploy, Coolify, Portainer ou Railway. Voir [.env.example](.env.example) pour toute la surface de configuration (stockage S3, SMTP, Stripe, etc.).
+Vous préférez un panneau d'hébergement à un terminal ? Louez démarre en un clic — l'application, la base de données et le stockage d'images ensemble :
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Synapsr/Louez)
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Synapsr/Louez)
+
+Ou importez le `docker-compose.yml` fourni dans **EasyPanel, Dokploy, Coolify, CapRover ou Portainer**. L'image publiée `synapsr/louez` fonctionne aussi seule en mode boutique unique — fournissez une base MySQL et les variables ci-dessus et elle démarre partout. Voir [.env.example](.env.example) pour toute la surface de configuration (stockage S3, SMTP, Stripe, etc.).
 
 ### Déploiements multi-boutiques
 
