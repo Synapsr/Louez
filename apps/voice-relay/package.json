@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Thin WebSocket bridge between Twilio ConversationRelay and the app's SSE turn endpoint. Holds no business logic and no database access.",
-  "license": "Apache-2.0 WITH Commons-Clause",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

@@ -22,7 +22,7 @@
   "bugs": {
     "url": "https://github.com/synapsr/louez/issues"
   },
-  "license": "Apache-2.0 WITH Commons-Clause",
+  "license": "AGPL-3.0-only",
   "author": "Synapsr <contact@synapsr.com>",
   "repository": {
     "type": "git",

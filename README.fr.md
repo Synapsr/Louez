@@ -8,13 +8,13 @@
 
 # 🏠 Louez
 
-### La plateforme source-available de gestion de location
+### La plateforme open-source de gestion de location
 
 **Arrêtez de payer des abonnements SaaS coûteux. Possédez votre logiciel de location.**
 
 [![Docker](https://img.shields.io/badge/Docker-synapsr%2Flouez-2496ED?style=for-the-badge&logo=docker)](https://hub.docker.com/r/synapsr/louez)
 [![GitHub Stars](https://img.shields.io/github/stars/Synapsr/Louez?style=for-the-badge&logo=github)](https://github.com/Synapsr/Louez)
-[![License](https://img.shields.io/badge/License-Apache_2.0_%2B_Commons_Clause-orange?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL_v3-blue?style=for-the-badge)](LICENSE)
 
 [☁️ Cloud](https://louez.io) • [🚀 Auto-hébergé](#-auto-hébergez-en-une-commande) • [✨ Fonctionnalités](#-fonctionnalités) • [📋 Changelog](CHANGELOG.md)
 
@@ -312,14 +312,14 @@ Voir [SECURITY.md](SECURITY.md) pour notre politique de sécurité complète.
 
 ## 📄 Licence
 
-**Code source disponible sous Apache 2.0 avec Commons Clause** — voir [LICENSE](LICENSE).
-La Commons Clause interdit la revente du logiciel lui-même : il ne s'agit donc
-pas d'une licence open source approuvée par l'OSI.
+**GNU AGPLv3** — voir [LICENSE](LICENSE). Louez est un logiciel libre et open source.
 
-✅ Gratuit pour un usage personnel et interne
-✅ Modification et personnalisation libres
+✅ Libre d'utilisation, d'auto-hébergement et de modification — pour toujours
+✅ **Usage commercial libre** — faites tourner votre activité de location dessus
 ✅ Contributions bienvenues
-❌ Revente en tant que service commercial interdite sans accord
+↩️ Si vous modifiez Louez et le proposez à des tiers via un réseau, partagez vos modifications sous AGPL
+
+> **Marque** : « Louez » et le logo Louez sont des marques de Synapsr. L'AGPL couvre le code, pas la marque.
 
 ### Ressources tierces
 

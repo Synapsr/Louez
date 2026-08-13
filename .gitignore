@@ -77,6 +77,10 @@ next-env.d.ts
 tasks/
 specs/
 SPECIFICATIONS*.md
+# Planning artefacts: carry commercial figures, vendor terms and margins
+/docs/plans/
+# Help Center working copy: drafts plus internal audits and risk registers
+/docs/help-center/
 
 # Internal scripts (root level only)
 /scripts/*

@@ -6,6 +6,18 @@ All notable changes to Louez are documented here.
 
 ---
 
+## [Unreleased]
+
+### 📄 License
+
+- 🔓 **Relicensed under the GNU AGPLv3** — Louez is now free and open source under an OSI-approved license. The previous Apache 2.0 + Commons Clause terms are replaced in full.
+- ✅ **Commercial use is allowed** — Run your rental business on Louez, self-host it, and modify it, at no cost and with no restriction on charging your own customers.
+- ↩️ **Network copyleft** — If you modify Louez and offer it to others over a network, you must make your modified source available to those users under the AGPL.
+- ™️ **Trademark reserved** — "Louez" and the Louez logo remain trademarks of Synapsr. The AGPL covers the code, not the brand.
+- 🎨 **Third-party assets unchanged** — Nucleo icons are still not covered by the repository license and require a valid Nucleo license; rembg (MIT) and DIS/IS-Net (Apache 2.0) attributions remain in `NOTICE`.
+
+---
+
 ## [2.1.0] - August 4, 2026
 
 ### 📦 Product Catalog & Inventory
@@ -582,6 +594,18 @@ _For upgrade instructions, see the [documentation](https://louez.io/docs)._
 > [🇬🇧 English](#changelog) | 🇫🇷 **Français**
 
 Toutes les évolutions notables de Louez sont documentées ici.
+
+---
+
+## [Non publié]
+
+### 📄 Licence
+
+- 🔓 **Passage à la GNU AGPLv3** — Louez devient un logiciel libre et open source sous une licence approuvée par l'OSI. Les conditions Apache 2.0 + Commons Clause sont intégralement remplacées.
+- ✅ **Usage commercial autorisé** — Faites tourner votre activité de location sur Louez, auto-hébergez-le et modifiez-le, gratuitement et sans restriction sur ce que vous facturez à vos propres clients.
+- ↩️ **Copyleft réseau** — Si vous modifiez Louez et le proposez à des tiers via un réseau, vous devez mettre le code source modifié à disposition de ces utilisateurs sous AGPL.
+- ™️ **Marque réservée** — « Louez » et le logo Louez restent des marques de Synapsr. L'AGPL couvre le code, pas la marque.
+- 🎨 **Ressources tierces inchangées** — Les icônes Nucleo restent hors du périmètre de la licence du dépôt et nécessitent une licence Nucleo valide ; les attributions rembg (MIT) et DIS/IS-Net (Apache 2.0) figurent toujours dans `NOTICE`.
 
 ---
 

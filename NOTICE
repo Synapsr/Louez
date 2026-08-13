@@ -1,11 +1,16 @@
 Louez
-Copyright Synapsr
+Copyright (C) 2026 Synapsr
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at
+your option) any later version. See the LICENSE file for the full text.
 
 This product includes icons from Nucleo (https://nucleoapp.com),
 Copyright © Nucleo. All rights reserved.
 
-The Nucleo icons are NOT covered by this repository's Apache 2.0 +
-Commons Clause license. Their use requires a valid Nucleo license
+The Nucleo icons are NOT covered by this repository's AGPLv3 license and
+are not licensed under it. Their use requires a valid Nucleo license
 (https://nucleoapp.com/license). The official terms cap templates,
 themes, plugins, and open-source projects at 100 icons and require this
 copyright notice. This project intentionally stays below that ceiling.
