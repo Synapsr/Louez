@@ -222,7 +222,11 @@ export function DeliveryLegCard({
               />
               <div className="min-w-0 flex-1">
                 <span className="font-medium text-sm">{addressLabel}</span>
-                {isDeliveryAmountEligible ? (
+                {isDeliveryIncluded ? (
+                  <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">
+                    {t('included')}
+                  </p>
+                ) : isDeliveryAmountEligible ? (
                   <p className="text-muted-foreground mt-0.5 text-xs">
                     {t('deliveryOptionDescription', {
                       pricePerKm: formatCurrency(deliverySettings.pricePerKm, currency),
@@ -235,7 +239,8 @@ export function DeliveryLegCard({
                     })}
                   </p>
                 )}
-                {deliverySettings.freeDeliveryThreshold &&
+                {!isDeliveryIncluded &&
+                  deliverySettings.freeDeliveryThreshold &&
                   isFreeDelivery(subtotal, deliverySettings) && (
                     <p className="mt-1 text-xs text-green-600">
                       {t('freeDeliveryApplied')}
