@@ -6,7 +6,9 @@
 
 <div align="center">
 
-# 🏠 Louez
+<img src=".github/assets/logo.png" alt="" width="80" height="80">
+
+# Louez
 
 ### La plateforme open-source de gestion de location
 
