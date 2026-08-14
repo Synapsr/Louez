@@ -248,6 +248,8 @@ export interface StoreTheme {
   mode: 'light' | 'dark';
   primaryColor: string;
   heroImages?: string[];
+  /** How the storefront catalog is browsed. 'products' (default) = flat product grid. 'categories' = category cards first, then products. */
+  catalogBrowseMode?: 'products' | 'categories';
   maxDiscountPercent?: number | null;
 }
 

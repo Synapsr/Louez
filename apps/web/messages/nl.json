@@ -363,6 +363,7 @@
       "yourStores": "Uw winkels",
       "createNewStore": "Nieuwe winkel aanmaken",
       "multiStoreView": "Multi-winkel weergave",
+      "onboardingIncomplete": "Onboarding onvoltooid",
       "roles": {
         "owner": "Eigenaar",
         "member": "Teamlid",
@@ -3161,6 +3162,14 @@
         "addHeroImages": "Afbeeldingen toevoegen",
         "heroImagesHint": "Tot 5 afbeeldingen in slider",
         "heroImagesOptional": "Deze afbeeldingen verschijnen in een slider op de homepage van uw winkel. Optioneel.",
+        "catalogBrowseMode": {
+          "title": "Catalogusweergave",
+          "description": "Kies wat uw klanten als eerste zien nadat ze hun datums hebben gekozen.",
+          "products": "Alle producten",
+          "productsDescription": "Uw klanten zien direct de volledige productlijst.",
+          "categories": "Per categorie",
+          "categoriesDescription": "Uw klanten kiezen eerst een categorie (met afbeelding) en zien daarna de bijbehorende producten."
+        },
         "maxDiscount": {
           "title": "Kortingsweergave beperken",
           "description": "Kortingsbadges verbergen wanneer het percentage te hoog is",
@@ -5511,6 +5520,14 @@
       "title": "Beschikbare producten",
       "subtitle": "Van {startDate} tot {endDate}",
       "productCountPlural": "{count, plural, =0 {Geen producten} one {# product} other {# producten}}",
+      "categoryBrowse": {
+        "title": "Bladeren per categorie",
+        "allProductsDescription": "Bekijk alles wat beschikbaar is voor je datums",
+        "others": "Overige",
+        "othersDescription": "Producten zonder categorie",
+        "backToCategories": "Categorieën",
+        "availableCount": "{count, plural, =0 {Niets beschikbaar} one {# beschikbaar} other {# beschikbaar}}"
+      },
       "changeDates": "Data wijzigen",
       "sections": {
         "available": "Beschikbaar",
@@ -6326,7 +6343,10 @@
       "productsWarning": "{count, plural, one {Deze categorie wordt verwijderd van # product.} other {Deze categorie wordt verwijderd van # producten.}}",
       "reassignLabel": "Producten opnieuw toewijzen aan",
       "keepExisting": "Andere categorieën behouden"
-    }
+    },
+    "addImage": "Afbeelding toevoegen",
+    "changeImage": "Afbeelding wijzigen",
+    "removeImage": "Afbeelding verwijderen"
   },
   "contract": {
     "documentType": "Huurovereenkomst",

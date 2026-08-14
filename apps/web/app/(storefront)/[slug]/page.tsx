@@ -20,7 +20,7 @@ import {
 import { getTranslations } from 'next-intl/server';
 
 import { db, getEffectiveProductQuantities } from '@louez/db';
-import { categories, products, stores } from '@louez/db';
+import { categories, productCategories, products, stores } from '@louez/db';
 import type {
   ReviewBoosterSettings,
   StoreSettings,
@@ -29,9 +29,11 @@ import type {
 import { Button } from '@louez/ui';
 import { Card, CardContent } from '@louez/ui';
 
+import type { CategoryBrowseEntry } from '@/components/storefront/category-browse-grid';
 import { GoogleReviewsSection } from '@/components/storefront/google-reviews-section';
 import { HeroDatePicker } from '@/components/storefront/hero-date-picker';
 import { HeroImageSlider } from '@/components/storefront/hero-image-slider';
+import { HomeCategoryBrowse } from '@/components/storefront/home-category-browse';
 import { PageTracker } from '@/components/storefront/page-tracker';
 import { ProductGridWithPreview } from '@/components/storefront/product-grid-with-preview';
 import { StoreMap } from '@/components/storefront/store-map';
@@ -50,6 +52,15 @@ import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
 interface StorefrontPageProps {
   params: Promise<{ slug: string }>;
 }
+
+/** Mirrors the reserved `?category=` values of `CategoryBrowseGrid`. Kept as a
+ * local literal so this server component never imports from a client module. */
+const ALL_CATEGORIES_VALUE = 'all';
+const UNCATEGORIZED_CATEGORY_VALUE = 'uncategorized';
+
+/** Category cards only replace the product grid once there is something to
+ * choose between — a single populated category is just a detour. */
+const MIN_BROWSABLE_CATEGORIES = 2;
 
 function getSafeNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -136,15 +147,113 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
     orderBy: [categories.order],
   });
 
+  // "Categories first" browse mode: the products section becomes a set of
+  // category cards leading into the filtered catalog. There are no dates on the
+  // homepage, so the cards advertise totals rather than availability.
+  const wantsCategoryBrowse =
+    store.theme?.catalogBrowseMode === 'categories' &&
+    storeCategories.length >= MIN_BROWSABLE_CATEGORIES;
+
+  // One row per (active product, category) pair, plus a null-category row for
+  // products that belong to none — enough to size every bucket and to borrow a
+  // product visual for categories that have no image of their own.
+  const categoryLinkRows = wantsCategoryBrowse
+    ? await db
+        .select({
+          productId: products.id,
+          images: products.images,
+          categoryId: productCategories.categoryId,
+        })
+        .from(products)
+        .leftJoin(productCategories, eq(productCategories.productId, products.id))
+        .where(and(eq(products.storeId, store.id), eq(products.status, 'active')))
+        .orderBy(asc(products.displayOrder), desc(products.createdAt))
+    : [];
+
+  interface BrowseBucket {
+    count: number;
+    imageUrl: string | null;
+  }
+  const bucketByCategoryId = new Map<string, BrowseBucket>();
+  const uncategorizedBucket: BrowseBucket = { count: 0, imageUrl: null };
+  const activeProductIds = new Set<string>();
+
+  for (const row of categoryLinkRows) {
+    activeProductIds.add(row.productId);
+    // Rows arrive in display order, so the first non-empty image wins.
+    const firstImage = row.images?.[0] ?? null;
+
+    if (!row.categoryId) {
+      uncategorizedBucket.count += 1;
+      uncategorizedBucket.imageUrl ??= firstImage;
+      continue;
+    }
+
+    const bucket = bucketByCategoryId.get(row.categoryId);
+    if (bucket) {
+      bucket.count += 1;
+      bucket.imageUrl ??= firstImage;
+    } else {
+      bucketByCategoryId.set(row.categoryId, { count: 1, imageUrl: firstImage });
+    }
+  }
+
+  const categoryBrowseEntries: CategoryBrowseEntry[] = [];
+  for (const category of storeCategories) {
+    const bucket = bucketByCategoryId.get(category.id);
+    // A card leading to an empty catalog is a dead end — skip it.
+    if (!bucket || bucket.count === 0) continue;
+    categoryBrowseEntries.push({
+      id: category.id,
+      name: category.name,
+      description: category.description,
+      imageUrl: category.imageUrl || bucket.imageUrl,
+      availableCount: bucket.count,
+      totalCount: bucket.count,
+      variant: 'category',
+    });
+  }
+
+  const showCategoryBrowse =
+    categoryBrowseEntries.length >= MIN_BROWSABLE_CATEGORIES;
+
+  if (showCategoryBrowse) {
+    if (uncategorizedBucket.count > 0) {
+      categoryBrowseEntries.push({
+        id: UNCATEGORIZED_CATEGORY_VALUE,
+        name: t('availability.categoryBrowse.others'),
+        description: t('availability.categoryBrowse.othersDescription'),
+        imageUrl: uncategorizedBucket.imageUrl,
+        availableCount: uncategorizedBucket.count,
+        totalCount: uncategorizedBucket.count,
+        variant: 'uncategorized',
+      });
+    }
+
+    categoryBrowseEntries.push({
+      id: ALL_CATEGORIES_VALUE,
+      name: t('catalog.allProducts'),
+      // The rental wording promises "available for your dates", which the
+      // homepage cannot honour — the card speaks through its count instead.
+      description: null,
+      imageUrl: null,
+      availableCount: activeProductIds.size,
+      totalCount: activeProductIds.size,
+      variant: 'all',
+    });
+  }
+
   // Fetch products in two steps to avoid sort buffer overflow
   // Step 1: Get product IDs (lightweight query with ORDER BY)
   // Order by displayOrder first (for manual sorting), then by createdAt for new products
-  const productIds = await db
-    .select({ id: products.id })
-    .from(products)
-    .where(and(eq(products.storeId, store.id), eq(products.status, 'active')))
-    .orderBy(asc(products.displayOrder), desc(products.createdAt))
-    .limit(8);
+  const productIds = showCategoryBrowse
+    ? []
+    : await db
+        .select({ id: products.id })
+        .from(products)
+        .where(and(eq(products.storeId, store.id), eq(products.status, 'active')))
+        .orderBy(asc(products.displayOrder), desc(products.createdAt))
+        .limit(8);
 
   // Step 2: Fetch full product data with pricing tiers and category (no ORDER BY needed)
   let storeProducts: (typeof products.$inferSelect & {
@@ -505,7 +614,9 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
             <div className="mb-10 flex flex-col justify-between gap-4 md:mb-12 md:flex-row md:items-end">
               <div>
                 <h2 className="text-3xl font-bold md:text-4xl">
-                  {t('home.ourProducts')}
+                  {showCategoryBrowse
+                    ? t('availability.categoryBrowse.title')
+                    : t('home.ourProducts')}
                 </h2>
                 <p className="text-muted-foreground mt-3 max-w-lg">
                   {t('home.productsDesc')}
@@ -521,7 +632,12 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
               </Button>
             </div>
 
-            {storeWithRelations.products.length > 0 ? (
+            {showCategoryBrowse ? (
+              <HomeCategoryBrowse
+                entries={categoryBrowseEntries}
+                storeSlug={slug}
+              />
+            ) : storeWithRelations.products.length > 0 ? (
               <ProductGridWithPreview
                 products={storeWithRelations.products}
                 storeSlug={slug}

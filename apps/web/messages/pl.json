@@ -363,6 +363,7 @@
       "yourStores": "Twoje sklepy",
       "createNewStore": "Utwórz nowy sklep",
       "multiStoreView": "Widok multi-sklep",
+      "onboardingIncomplete": "Nieukończony onboarding",
       "roles": {
         "owner": "Właściciel",
         "member": "Członek zespołu",
@@ -3161,6 +3162,14 @@
         "addHeroImages": "Dodaj zdjęcia",
         "heroImagesHint": "Do 5 zdjęć w sliderze",
         "heroImagesOptional": "Te zdjęcia pojawią się w sliderze na stronie głównej sklepu. Opcjonalne.",
+        "catalogBrowseMode": {
+          "title": "Widok katalogu",
+          "description": "Wybierz, co klienci zobaczą najpierw po wybraniu dat.",
+          "products": "Wszystkie produkty",
+          "productsDescription": "Klienci od razu zobaczą pełną listę produktów.",
+          "categories": "Według kategorii",
+          "categoriesDescription": "Klienci najpierw wybierają kategorię (z obrazem), a następnie widzą jej produkty."
+        },
         "maxDiscount": {
           "title": "Ogranicz wyświetlanie rabatów",
           "description": "Ukryj odznaki rabatowe, gdy procent jest zbyt wysoki",
@@ -5511,6 +5520,14 @@
       "title": "Dostępne produkty",
       "subtitle": "Od {startDate} do {endDate}",
       "productCountPlural": "{count, plural, =0 {Brak produktów} one {# produkt} few {# produkty} many {# produktów} other {# produktów}}",
+      "categoryBrowse": {
+        "title": "Przeglądaj według kategorii",
+        "allProductsDescription": "Zobacz wszystko, co jest dostępne w Twoim terminie",
+        "others": "Pozostałe",
+        "othersDescription": "Produkty bez kategorii",
+        "backToCategories": "Kategorie",
+        "availableCount": "{count, plural, =0 {Brak dostępnych} one {# dostępny} few {# dostępne} many {# dostępnych} other {# dostępnych}}"
+      },
       "changeDates": "Zmień daty",
       "sections": {
         "available": "Dostępne",
@@ -6326,7 +6343,10 @@
       "productsWarning": "{count, plural, one {Ta kategoria zostanie usunięta z # produktu.} few {Ta kategoria zostanie usunięta z # produktów.} many {Ta kategoria zostanie usunięta z # produktów.} other {Ta kategoria zostanie usunięta z # produktów.}}",
       "reassignLabel": "Przypisz produkty ponownie do",
       "keepExisting": "Zachowaj pozostałe kategorie"
-    }
+    },
+    "addImage": "Dodaj zdjęcie",
+    "changeImage": "Zmień zdjęcie",
+    "removeImage": "Usuń zdjęcie"
   },
   "contract": {
     "documentType": "Umowa najmu",

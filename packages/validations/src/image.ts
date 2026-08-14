@@ -73,11 +73,12 @@ export function isValidImageUrl(url: string): boolean {
     return /\.(jpg|jpeg|png|gif|webp)$/i.test(storagePath);
   }
 
-  // For development, also allow localhost URLs
+  // For development, also allow external http(s) URLs — seeded stores use
+  // placeholder images (picsum.photos) that live outside the S3 bucket.
   if (env.NODE_ENV === "development") {
     try {
       const parsed = new URL(url);
-      if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+      if (parsed.protocol === "https:" || parsed.protocol === "http:") {
         return true;
       }
     } catch {
@@ -119,7 +120,12 @@ function getStorageRelativePath(url: string): string | null {
 
 export function isOwnedImageUrl(url: string, ownerPrefix: string): boolean {
   const storagePath = getStorageRelativePath(url);
-  if (storagePath === null) return false;
+  if (storagePath === null) {
+    // Development: seeded stores use external placeholder images (picsum.photos)
+    // that are not bucket-owned. isValidImageUrl only accepts external http(s)
+    // URLs in development, so production stays bucket-only.
+    return env.NODE_ENV === "development" && isValidImageUrl(url);
+  }
 
   const normalizedPrefix = ownerPrefix.replace(/^\/+|\/+$/g, "");
   return storagePath.startsWith(`${normalizedPrefix}/`) && isValidImageUrl(url);

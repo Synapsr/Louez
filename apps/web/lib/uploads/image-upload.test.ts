@@ -18,6 +18,13 @@ test("applies the upload limit for each image kind", () => {
     getImageUploadIssue({ size: IMAGE_UPLOAD_CONFIG.hero.maxSize, type: "image/webp" }, "hero"),
     null,
   );
+  assert.equal(
+    getImageUploadIssue(
+      { size: IMAGE_UPLOAD_CONFIG.category.maxSize, type: "image/jpeg" },
+      "category",
+    ),
+    null,
+  );
 });
 
 test("rejects active and unsupported image formats", () => {

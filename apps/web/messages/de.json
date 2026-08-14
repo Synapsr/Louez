@@ -363,6 +363,7 @@
       "yourStores": "Ihre Shops",
       "createNewStore": "Neuen Shop erstellen",
       "multiStoreView": "Multi-Shop Ansicht",
+      "onboardingIncomplete": "Onboarding unvollständig",
       "roles": {
         "owner": "Inhaber",
         "member": "Teammitglied",
@@ -3161,6 +3162,14 @@
         "addHeroImages": "Bilder hinzufügen",
         "heroImagesHint": "Bis zu 5 Bilder im Slider",
         "heroImagesOptional": "Diese Bilder erscheinen in einem Slider auf der Startseite Ihres Shops. Optional.",
+        "catalogBrowseMode": {
+          "title": "Katalogansicht",
+          "description": "Wählen Sie, was Ihre Kunden nach der Auswahl ihrer Mietdaten zuerst sehen.",
+          "products": "Alle Produkte",
+          "productsDescription": "Ihre Kunden sehen direkt die vollständige Produktliste.",
+          "categories": "Nach Kategorien",
+          "categoriesDescription": "Ihre Kunden wählen zuerst eine Kategorie (mit Bild) und sehen anschließend deren Produkte."
+        },
         "maxDiscount": {
           "title": "Rabattanzeige begrenzen",
           "description": "Rabattabzeichen ausblenden, wenn der Prozentsatz zu hoch ist",
@@ -5511,6 +5520,14 @@
       "title": "Verfügbare Produkte",
       "subtitle": "Von {startDate} bis {endDate}",
       "productCountPlural": "{count, plural, =0 {Keine Produkte} one {# Produkt} other {# Produkte}}",
+      "categoryBrowse": {
+        "title": "Nach Kategorie stöbern",
+        "allProductsDescription": "Alles ansehen, was für Ihre Daten verfügbar ist",
+        "others": "Sonstige",
+        "othersDescription": "Produkte ohne Kategorie",
+        "backToCategories": "Kategorien",
+        "availableCount": "{count, plural, =0 {Nichts verfügbar} one {# verfügbar} other {# verfügbar}}"
+      },
       "changeDates": "Daten ändern",
       "sections": {
         "available": "Verfügbar",
@@ -6326,7 +6343,10 @@
       "productsWarning": "{count, plural, one {Diese Kategorie wird von # Produkt entfernt.} other {Diese Kategorie wird von # Produkten entfernt.}}",
       "reassignLabel": "Produkte neu zuordnen zu",
       "keepExisting": "Andere Kategorien beibehalten"
-    }
+    },
+    "addImage": "Bild hinzufügen",
+    "changeImage": "Bild ändern",
+    "removeImage": "Bild entfernen"
   },
   "contract": {
     "documentType": "Mietvertrag",

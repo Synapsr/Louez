@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { db, effectiveProductQuantitySql } from '@louez/db'
 import { stores, products, categories, productCategories, productPricingTiers } from '@louez/db'
-import { eq, and, desc, asc, inArray } from 'drizzle-orm'
+import { eq, and, desc, asc, inArray, notExists, sql } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { Calendar, ArrowRight } from 'lucide-react'
 
@@ -24,6 +24,15 @@ import { PageTracker } from '@/components/storefront/page-tracker'
 import { getStorefrontPathPrefix } from '@/lib/util.storefront-host'
 import { filterActiveVariantAxes } from '@/lib/util.variant-visibility'
 import { getStoreVariantActivity } from '@/lib/util.variant-visibility.server'
+
+/** `?category=` values that mean "browse everything" / "no category", rather than a real id.
+ * Kept as local literals so this server component never imports from a client module. */
+const ALL_CATEGORIES_VALUE = 'all'
+const UNCATEGORIZED_CATEGORY_VALUE = 'uncategorized'
+const RESERVED_CATEGORY_VALUES = new Set([
+  ALL_CATEGORIES_VALUE,
+  UNCATEGORIZED_CATEGORY_VALUE,
+])
 
 interface CatalogPageProps {
   params: Promise<{ slug: string }>
@@ -54,11 +63,15 @@ export async function generateMetadata({
   const theme = (store.theme as StoreTheme) || {}
   const settings = (store.settings as StoreSettings) || {}
 
+  // `all` and `uncategorized` are reserved browse values, not category ids.
+  const realCategoryId =
+    categoryId && !RESERVED_CATEGORY_VALUES.has(categoryId) ? categoryId : undefined
+
   // If a category is selected, get its name
   let categoryName: string | null = null
-  if (categoryId) {
+  if (realCategoryId) {
     const category = await db.query.categories.findFirst({
-      where: and(eq(categories.id, categoryId), eq(categories.storeId, store.id)),
+      where: and(eq(categories.id, realCategoryId), eq(categories.storeId, store.id)),
     })
     categoryName = category?.name || null
   }
@@ -84,7 +97,10 @@ export async function generateMetadata({
     {
       title,
       description,
-      path: categoryId ? `/catalog?category=${categoryId}` : '/catalog',
+      path:
+        categoryId && categoryId !== ALL_CATEGORIES_VALUE
+          ? `/catalog?category=${encodeURIComponent(categoryId)}`
+          : '/catalog',
     },
   )
 }
@@ -93,6 +109,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
   const { slug } = await params
   const { category: categoryId, search, product: initialProductId } = await searchParams
   const t = await getTranslations('storefront.catalog')
+  const tBrowse = await getTranslations('storefront.availability.categoryBrowse')
 
   // Fetch store without products relation to avoid lateral join issues
   const store = await db.query.stores.findFirst({
@@ -112,16 +129,32 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
     orderBy: [categories.order],
   })
 
+  // `all` and `uncategorized` are reserved browse values, not category ids —
+  // they must never reach the category filter or the query returns nothing.
+  const realCategoryId =
+    categoryId && !RESERVED_CATEGORY_VALUES.has(categoryId) ? categoryId : undefined
+  const isUncategorized = categoryId === UNCATEGORIZED_CATEGORY_VALUE
+
   // Build conditions for products query
   const conditions = [eq(products.storeId, store.id), eq(products.status, 'active')]
-  if (categoryId) {
+  if (realCategoryId) {
     conditions.push(
       inArray(
         products.id,
         db
           .select({ id: productCategories.productId })
           .from(productCategories)
-          .where(eq(productCategories.categoryId, categoryId)),
+          .where(eq(productCategories.categoryId, realCategoryId)),
+      ),
+    )
+  } else if (isUncategorized) {
+    // Products that are linked to no category at all.
+    conditions.push(
+      notExists(
+        db
+          .select({ one: sql`1` })
+          .from(productCategories)
+          .where(eq(productCategories.productId, products.id)),
       ),
     )
   }
@@ -266,7 +299,13 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
     : productsList
 
   const pricingMode = 'day' as const
-  const activeCategory = storeCategories.find((c) => c.id === categoryId)
+  const activeCategory = storeCategories.find((c) => c.id === realCategoryId)
+  // "Others" is a real filter with no category row behind it, so it names itself.
+  const pageTitle = activeCategory
+    ? activeCategory.name
+    : isUncategorized
+      ? tBrowse('others')
+      : t('title')
   const settings = (store.settings as StoreSettings) || {}
   const businessHours = settings.businessHours
   const timezone = settings.timezone
@@ -291,9 +330,10 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
     category: p.category ? { id: p.category.id, name: p.category.name } : null,
   }))
 
-  const listName = activeCategory
-    ? `${activeCategory.name} - ${store.name}`
-    : `Catalogue - ${store.name}`
+  const listName =
+    activeCategory || isUncategorized
+      ? `${pageTitle} - ${store.name}`
+      : `Catalogue - ${store.name}`
 
   // Generate breadcrumbs
   const breadcrumbItems = [
@@ -305,11 +345,16 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
       name: activeCategory.name,
       url: getCanonicalUrl(slug, `/catalog?category=${activeCategory.id}`),
     })
+  } else if (isUncategorized) {
+    breadcrumbItems.push({
+      name: pageTitle,
+      url: getCanonicalUrl(slug, `/catalog?category=${UNCATEGORIZED_CATEGORY_VALUE}`),
+    })
   }
 
   return (
     <>
-      <PageTracker page="catalog" categoryId={categoryId} />
+      <PageTracker page="catalog" categoryId={realCategoryId} />
       {/* JSON-LD Structured Data */}
       <JsonLd
         data={[
@@ -326,9 +371,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
           <div className="container mx-auto px-4 py-6 md:py-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="shrink-0">
-                <h1 className="text-2xl md:text-3xl font-bold">
-                  {activeCategory ? activeCategory.name : t('title')}
-                </h1>
+                <h1 className="text-2xl md:text-3xl font-bold">{pageTitle}</h1>
                 <p className="text-muted-foreground mt-1">
                   {t('productCount', { count: filteredProducts.length })}
                 </p>
@@ -351,7 +394,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
                 <Link
                   href="/catalog"
                   className={`shrink-0 px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                    !categoryId
+                    !realCategoryId && !isUncategorized
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-background border hover:bg-muted text-foreground'
                   }`}
@@ -363,7 +406,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
                     key={cat.id}
                     href={`/catalog?category=${cat.id}`}
                     className={`shrink-0 px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                      categoryId === cat.id
+                      realCategoryId === cat.id
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-background border hover:bg-muted text-foreground'
                     }`}

@@ -1,13 +1,13 @@
-import { Suspense } from 'react';
+import { Suspense } from "react";
 
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
-import { db, effectiveProductQuantitySql } from '@louez/db';
+import { db, effectiveProductQuantitySql } from "@louez/db";
 import {
   categories,
   productAccessories,
@@ -18,17 +18,20 @@ import {
   productUnits,
   products,
   stores,
-} from '@louez/db';
-import type { StoreSettings, StoreTheme } from '@louez/types';
-import { Skeleton } from '@louez/ui';
+} from "@louez/db";
+import type { StoreSettings, StoreTheme } from "@louez/types";
+import { Skeleton } from "@louez/ui";
 
-import { generateStoreMetadata } from '@/lib/seo';
-import { storefrontRedirect } from '@/lib/storefront-url';
-import { filterActiveVariantAxes } from '@/lib/util.variant-visibility';
-import { getStoreVariantActivity } from '@/lib/util.variant-visibility.server';
-import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
+import { generateStoreMetadata } from "@/lib/seo";
+import { storefrontRedirect } from "@/lib/storefront-url";
+import { filterActiveVariantAxes } from "@/lib/util.variant-visibility";
+import { getStoreVariantActivity } from "@/lib/util.variant-visibility.server";
+import { getCurrentDowntimeUnitIds } from "@/lib/utils/unit-current-downtime";
 
-import { RentalContent } from './rental-content';
+import { RentalContent } from "./rental-content";
+
+/** `?category=` values that mean "browse everything" / "no category", rather than a real id. */
+const RESERVED_CATEGORY_VALUES = new Set(["all", "uncategorized"]);
 
 interface RentalPageProps {
   params: Promise<{ slug: string }>;
@@ -54,20 +57,20 @@ export async function generateMetadata({
   });
 
   if (!store) {
-    return { title: 'Boutique introuvable' };
+    return { title: "Boutique introuvable" };
   }
 
   const theme = (store.theme as StoreTheme) || {};
   const settings = (store.settings as StoreSettings) || {};
 
   // Format dates for title if valid
-  let dateRange = '';
+  let dateRange = "";
   if (startDate && endDate) {
     try {
       const start = new Date(startDate);
       const end = new Date(endDate);
       if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-        dateRange = ` du ${format(start, 'd MMM', { locale: fr })} au ${format(end, 'd MMM yyyy', { locale: fr })}`;
+        dateRange = ` du ${format(start, "d MMM", { locale: fr })} au ${format(end, "d MMM yyyy", { locale: fr })}`;
       }
     } catch {
       // Ignore date formatting errors
@@ -85,33 +88,25 @@ export async function generateMetadata({
     {
       title: `Disponibilités${dateRange} - ${store.name}`,
       description: `Consultez les équipements disponibles à la location${dateRange} chez ${store.name}.`,
-      path: '/rental',
+      path: "/rental",
       noIndex: true, // Don't index search results pages
     },
   );
 }
 
-export default async function RentalPage({
-  params,
-  searchParams,
-}: RentalPageProps) {
+export default async function RentalPage({ params, searchParams }: RentalPageProps) {
   const { slug } = await params;
-  const {
-    startDate,
-    endDate,
-    category: categoryId,
-    search,
-  } = await searchParams;
+  const { startDate, endDate, category: categoryId, search } = await searchParams;
   // Redirect to homepage if no dates
   if (!startDate || !endDate) {
-    storefrontRedirect(slug, '/');
+    storefrontRedirect(slug, "/");
   }
 
   // Validate dates
   const start = new Date(startDate);
   const end = new Date(endDate);
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
-    storefrontRedirect(slug, '/');
+    storefrontRedirect(slug, "/");
   }
 
   // Fetch store
@@ -131,19 +126,21 @@ export default async function RentalPage({
     orderBy: [categories.order],
   });
 
+  // `all` and `uncategorized` are reserved browse values, not category ids —
+  // they must never reach the category filter or the query returns nothing.
+  const realCategoryId =
+    categoryId && !RESERVED_CATEGORY_VALUES.has(categoryId) ? categoryId : undefined;
+
   // Build conditions for products query
-  const conditions = [
-    eq(products.storeId, store.id),
-    eq(products.status, 'active'),
-  ];
-  if (categoryId) {
+  const conditions = [eq(products.storeId, store.id), eq(products.status, "active")];
+  if (realCategoryId) {
     conditions.push(
       inArray(
         products.id,
         db
           .select({ id: productCategories.productId })
           .from(productCategories)
-          .where(eq(productCategories.categoryId, categoryId)),
+          .where(eq(productCategories.categoryId, realCategoryId)),
       ),
     );
   }
@@ -172,11 +169,11 @@ export default async function RentalPage({
     deposit: string;
     images: string[] | null;
     quantity: number;
-    pricingMode: 'day' | 'hour' | 'week' | null;
+    pricingMode: "day" | "hour" | "week" | null;
     pricingTiers?: PricingTier[];
   }
   interface ProductUnitSummary {
-    lifecycleStatus: 'active' | 'retired' | null;
+    lifecycleStatus: "active" | "retired" | null;
     inDowntimeNow: boolean;
     attributes: Record<string, string> | null;
   }
@@ -278,19 +275,11 @@ export default async function RentalPage({
         ? await db
             .select()
             .from(productSeasonalPricingTiers)
-            .where(
-              inArray(
-                productSeasonalPricingTiers.seasonalPricingId,
-                seasonalPricingIds,
-              ),
-            )
+            .where(inArray(productSeasonalPricingTiers.seasonalPricingId, seasonalPricingIds))
         : [];
 
     // Group seasonal tiers by seasonal pricing ID
-    const seasonalTiersByPricingId = new Map<
-      string,
-      typeof seasonalTiersResults
-    >();
+    const seasonalTiersByPricingId = new Map<string, typeof seasonalTiersResults>();
     for (const tier of seasonalTiersResults) {
       const tiers = seasonalTiersByPricingId.get(tier.seasonalPricingId) || [];
       tiers.push(tier);
@@ -298,10 +287,7 @@ export default async function RentalPage({
     }
 
     // Group seasonal pricings by product ID, converting to SeasonalPricingConfig format
-    const seasonalPricingsByProductId = new Map<
-      string,
-      SeasonalPricingForProduct[]
-    >();
+    const seasonalPricingsByProductId = new Map<string, SeasonalPricingForProduct[]>();
     for (const sp of seasonalPricingsResults) {
       const spTiers = seasonalTiersByPricingId.get(sp.id) || [];
       const config: SeasonalPricingForProduct = {
@@ -370,9 +356,7 @@ export default async function RentalPage({
       .orderBy(asc(productAccessories.displayOrder));
 
     // Get unique accessory IDs
-    const accessoryIds = [
-      ...new Set(accessoriesResults.map((a) => a.accessoryId)),
-    ];
+    const accessoryIds = [...new Set(accessoriesResults.map((a) => a.accessoryId))];
 
     // Fetch accessory product details
     let accessoryProductsRaw: {
@@ -382,8 +366,8 @@ export default async function RentalPage({
       deposit: string | null;
       images: string[] | null;
       quantity: number;
-      status: 'active' | 'draft' | 'archived' | null;
-      pricingMode: 'day' | 'hour' | 'week' | null;
+      status: "active" | "draft" | "archived" | null;
+      pricingMode: "day" | "hour" | "week" | null;
     }[] = [];
     if (accessoryIds.length > 0) {
       accessoryProductsRaw = await db
@@ -426,9 +410,7 @@ export default async function RentalPage({
     }
 
     // Create map of accessory products
-    const accessoryProductMap = new Map(
-      accessoryProductsRaw.map((p) => [p.id, p]),
-    );
+    const accessoryProductMap = new Map(accessoryProductsRaw.map((p) => [p.id, p]));
 
     // Group accessories by product ID with full details
     interface ProductAccessory {
@@ -438,7 +420,7 @@ export default async function RentalPage({
       deposit: string;
       images: string[] | null;
       quantity: number;
-      pricingMode: 'day' | 'hour' | 'week' | null;
+      pricingMode: "day" | "hour" | "week" | null;
       pricingTiers?: PricingTier[];
     }
     const accessoriesByProductId = new Map<string, ProductAccessory[]>();
@@ -447,7 +429,7 @@ export default async function RentalPage({
       // Only include active accessories with stock
       if (
         accessoryProduct &&
-        accessoryProduct.status === 'active' &&
+        accessoryProduct.status === "active" &&
         accessoryProduct.quantity > 0
       ) {
         const accessories = accessoriesByProductId.get(acc.productId) || [];
@@ -455,7 +437,7 @@ export default async function RentalPage({
           id: accessoryProduct.id,
           name: accessoryProduct.name,
           price: accessoryProduct.price,
-          deposit: accessoryProduct.deposit || '0',
+          deposit: accessoryProduct.deposit || "0",
           images: accessoryProduct.images,
           quantity: accessoryProduct.quantity,
           pricingMode: accessoryProduct.pricingMode,
@@ -499,9 +481,7 @@ export default async function RentalPage({
         units: productUnitsByProductId.get(row.id) || [],
         displayQuantity: row.trackUnits
           ? (productUnitsByProductId.get(row.id) || []).filter(
-              (unit) =>
-                (unit.lifecycleStatus || 'active') === 'active' &&
-                !unit.inDowntimeNow,
+              (unit) => (unit.lifecycleStatus || "active") === "active" && !unit.inDowntimeNow,
             ).length
           : row.quantity,
         category:
@@ -532,7 +512,19 @@ export default async function RentalPage({
       )
     : productsList;
 
-  const pricingMode = 'day' as const;
+  const pricingMode = "day" as const;
+
+  const storeTheme = (store.theme as StoreTheme | null) || null;
+  const catalogBrowseMode = storeTheme?.catalogBrowseMode ?? "products";
+
+  // Only the fields the storefront browse UI needs — keeps the RSC payload lean.
+  const browseCategories = storeCategories.map((category) => ({
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    imageUrl: category.imageUrl,
+    order: category.order,
+  }));
 
   return (
     <div className="min-h-screen">
@@ -556,12 +548,13 @@ export default async function RentalPage({
         <RentalContent
           store={store}
           products={filteredProducts}
-          categories={storeCategories}
+          categories={browseCategories}
           pricingMode={pricingMode}
           startDate={startDate}
           endDate={endDate}
           categoryId={categoryId}
           searchTerm={search}
+          catalogBrowseMode={catalogBrowseMode}
         />
       </Suspense>
     </div>

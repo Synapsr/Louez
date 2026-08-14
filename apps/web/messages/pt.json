@@ -363,6 +363,7 @@
       "yourStores": "Suas lojas",
       "createNewStore": "Criar uma nova loja",
       "multiStoreView": "Vista multi-lojas",
+      "onboardingIncomplete": "Onboarding incompleto",
       "roles": {
         "owner": "Proprietario",
         "member": "Membro da equipe",
@@ -3161,6 +3162,14 @@
         "addHeroImages": "Adicionar imagens",
         "heroImagesHint": "Ate 5 imagens em slider",
         "heroImagesOptional": "Estas imagens aparecerao em um slider na pagina inicial da sua loja. Opcional.",
+        "catalogBrowseMode": {
+          "title": "Exibição do catálogo",
+          "description": "Escolha o que seus clientes veem primeiro depois de selecionar as datas.",
+          "products": "Todos os produtos",
+          "productsDescription": "Seus clientes veem diretamente a lista completa de produtos.",
+          "categories": "Por categorias",
+          "categoriesDescription": "Seus clientes primeiro escolhem uma categoria (com imagem) e depois veem os produtos dela."
+        },
         "maxDiscount": {
           "title": "Limitar exibição de descontos",
           "description": "Ocultar selos de desconto quando a porcentagem é muito alta",
@@ -5511,6 +5520,14 @@
       "title": "Produtos disponiveis",
       "subtitle": "De {startDate} a {endDate}",
       "productCountPlural": "{count, plural, =0 {Nenhum produto} one {# produto} other {# produtos}}",
+      "categoryBrowse": {
+        "title": "Explorar por categoria",
+        "allProductsDescription": "Ver tudo o que está disponível para as suas datas",
+        "others": "Outros",
+        "othersDescription": "Produtos sem categoria",
+        "backToCategories": "Categorias",
+        "availableCount": "{count, plural, =0 {Nenhum disponível} one {# disponível} other {# disponíveis}}"
+      },
       "changeDates": "Alterar datas",
       "sections": {
         "available": "Disponiveis",
@@ -6326,7 +6343,10 @@
       "productsWarning": "{count, plural, one {Esta categoria será removida de # produto.} other {Esta categoria será removida de # produtos.}}",
       "reassignLabel": "Reatribuir produtos a",
       "keepExisting": "Manter as outras categorias"
-    }
+    },
+    "addImage": "Adicionar imagem",
+    "changeImage": "Alterar imagem",
+    "removeImage": "Remover imagem"
   },
   "contract": {
     "documentType": "Contrato de Aluguel",

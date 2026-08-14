@@ -7,11 +7,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   CalendarDays,
-  ChevronDown,
   Clock,
-  Filter,
   Globe,
   Search,
   X,
@@ -27,12 +26,16 @@ import type {
 import { Button } from "@louez/ui";
 import { Input } from "@louez/ui";
 import { Badge } from "@louez/ui";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@louez/ui";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@louez/ui";
 import { Skeleton } from "@louez/ui";
 import { Alert, AlertDescription, AlertTitle } from "@louez/ui";
 
 import { CartSidebar } from "@/components/storefront/cart-sidebar";
+import {
+  ALL_CATEGORIES_VALUE,
+  UNCATEGORIZED_CATEGORY_VALUE,
+  type CategoryBrowseEntry,
+  CategoryBrowseGrid,
+} from "@/components/storefront/category-browse-grid";
 import { DatePickerModal } from "@/components/storefront/date-picker-modal";
 import { PageTracker } from "@/components/storefront/page-tracker";
 import { ProductCardAvailable } from "@/components/storefront/product-card-available";
@@ -120,6 +123,8 @@ interface Category {
   id: string;
   name: string;
   order?: number | null;
+  description?: string | null;
+  imageUrl?: string | null;
 }
 
 interface Store {
@@ -144,6 +149,8 @@ interface RentalContentProps {
   endDate: string;
   categoryId?: string;
   searchTerm?: string;
+  /** `categories` puts a category card grid in front of the product grid. */
+  catalogBrowseMode?: "products" | "categories";
 }
 
 export function RentalContent({
@@ -155,18 +162,27 @@ export function RentalContent({
   endDate,
   categoryId,
   searchTerm: initialSearchTerm,
+  catalogBrowseMode = "products",
 }: RentalContentProps) {
   const t = useTranslations("storefront.availability");
   const tFilters = useTranslations("storefront.availability.filters");
+  const tCatalog = useTranslations("storefront.catalog");
+  const tBrowse = useTranslations("storefront.availability.categoryBrowse");
   const tDate = useTranslations("storefront.dateSelection");
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setGlobalDates, setPricingMode } = useCart();
   const { getUrl } = useStorefrontUrl(store.slug);
 
+  // Category-first browsing only makes sense with something to choose between.
+  const isCategoriesMode = catalogBrowseMode === "categories" && categories.length >= 2;
+
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm || "");
-  const [selectedCategory, setSelectedCategory] = useState(categoryId || "all");
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  // `null` means "nothing picked yet" — only reachable in categories mode, where
+  // it is what makes the category cards show instead of the product grid.
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(
+    categoryId || (isCategoriesMode ? null : ALL_CATEGORIES_VALUE),
+  );
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
 
   const { data: availabilityData, isLoading } = useQuery(
@@ -222,7 +238,9 @@ export function RentalContent({
     let filtered = products;
 
     // Category filter
-    if (selectedCategory && selectedCategory !== "all") {
+    if (selectedCategory === UNCATEGORIZED_CATEGORY_VALUE) {
+      filtered = filtered.filter((p) => !p.category?.id);
+    } else if (selectedCategory && selectedCategory !== ALL_CATEGORIES_VALUE) {
       filtered = filtered.filter((p) => p.category?.id === selectedCategory);
     }
 
@@ -275,15 +293,97 @@ export function RentalContent({
     });
   }, [filteredProducts, availability, categories]);
 
+  // Category cards, derived entirely from data already on the page — the counts
+  // reuse the availability map, so browsing costs no extra request.
+  const browseEntries = useMemo<CategoryBrowseEntry[]>(() => {
+    if (!isCategoriesMode) return [];
+
+    const isBookable = (product: Product) => {
+      const status = availability.get(product.id)?.status;
+      return status === "available" || status === "limited";
+    };
+
+    const byCategoryId = new Map<string, Product[]>();
+    const uncategorized: Product[] = [];
+    for (const product of products) {
+      const id = product.category?.id;
+      if (!id) {
+        uncategorized.push(product);
+        continue;
+      }
+      const bucket = byCategoryId.get(id);
+      if (bucket) bucket.push(product);
+      else byCategoryId.set(id, [product]);
+    }
+
+    const entries: CategoryBrowseEntry[] = [];
+
+    for (const category of categories) {
+      const bucket = byCategoryId.get(category.id);
+      // A card leading to an empty grid is a dead end — skip it.
+      if (!bucket || bucket.length === 0) continue;
+      entries.push({
+        id: category.id,
+        name: category.name,
+        description: category.description,
+        // Fall back to the first product visual, then to the placeholder tile.
+        imageUrl: category.imageUrl || bucket.find((p) => p.images?.[0])?.images?.[0] || null,
+        availableCount: bucket.filter(isBookable).length,
+        totalCount: bucket.length,
+        variant: "category",
+      });
+    }
+
+    if (uncategorized.length > 0) {
+      entries.push({
+        id: UNCATEGORIZED_CATEGORY_VALUE,
+        name: tBrowse("others"),
+        description: tBrowse("othersDescription"),
+        imageUrl: uncategorized.find((p) => p.images?.[0])?.images?.[0] || null,
+        availableCount: uncategorized.filter(isBookable).length,
+        totalCount: uncategorized.length,
+        variant: "uncategorized",
+      });
+    }
+
+    entries.push({
+      id: ALL_CATEGORIES_VALUE,
+      name: tCatalog("allProducts"),
+      description: tBrowse("allProductsDescription"),
+      imageUrl: null,
+      availableCount: products.filter(isBookable).length,
+      totalCount: products.length,
+      variant: "all",
+    });
+
+    return entries;
+  }, [isCategoriesMode, products, categories, availability, tBrowse, tCatalog]);
+
+  const hasUncategorizedEntry = browseEntries.some((entry) => entry.variant === "uncategorized");
+  const realCategoryEntryCount = browseEntries.filter(
+    (entry) => entry.variant === "category",
+  ).length;
+
+  // Search implies the customer already knows what they want: skip the cards.
+  const showCategoryBrowse =
+    isCategoriesMode &&
+    selectedCategory === null &&
+    !searchTerm.trim() &&
+    realCategoryEntryCount >= 2;
+
+  // With no explicit selection the "All products" pill is the honest highlight.
+  const activePill = selectedCategory ?? ALL_CATEGORIES_VALUE;
+
   const handleChangeDates = () => {
     setIsDateModalOpen(true);
   };
 
   const handleCategoryChange = (value: string | null) => {
-    if (value === null) return;
     setSelectedCategory(value);
     const params = new URLSearchParams(searchParams.toString());
-    if (value === "all") {
+    // In categories mode "all" is an explicit choice, so it stays in the URL —
+    // dropping it would send the customer back to the cards on reload.
+    if (value === null || (value === ALL_CATEGORIES_VALUE && !isCategoriesMode)) {
       params.delete("category");
     } else {
       params.set("category", value);
@@ -297,14 +397,17 @@ export function RentalContent({
 
   const handleClearFilters = () => {
     setSearchTerm("");
-    setSelectedCategory("all");
+    setSelectedCategory(isCategoriesMode ? null : ALL_CATEGORIES_VALUE);
     const params = new URLSearchParams();
     params.set("startDate", startDate);
     params.set("endDate", endDate);
     router.push(`${getUrl("/rental")}?${params.toString()}`, { scroll: false });
   };
 
-  const hasFilters = searchTerm || (selectedCategory && selectedCategory !== "all");
+  // Going back to the cards also drops the search, otherwise they stay hidden.
+  const handleBackToCategories = handleClearFilters;
+
+  const hasFilters = searchTerm || (selectedCategory && selectedCategory !== ALL_CATEGORIES_VALUE);
 
   const primaryColor = store.theme?.primaryColor || "#0066FF";
 
@@ -333,7 +436,13 @@ export function RentalContent({
     <div className="container mx-auto px-4 py-4 md:py-6">
       <PageTracker
         page="rental"
-        categoryId={selectedCategory !== "all" ? selectedCategory : undefined}
+        categoryId={
+          selectedCategory &&
+          selectedCategory !== ALL_CATEGORIES_VALUE &&
+          selectedCategory !== UNCATEGORIZED_CATEGORY_VALUE
+            ? selectedCategory
+            : undefined
+        }
       />
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main Content */}
@@ -448,107 +557,94 @@ export function RentalContent({
             </Alert>
           )}
 
-          {/* Filters */}
-          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-muted-foreground text-sm">
-                {t("productCountPlural", { count: sortedProducts.length })}
-              </p>
-
-              {/* Desktop filters */}
-              <div className="hidden items-center gap-2 md:flex">
-                <div className="relative w-48">
-                  <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                  <Input
-                    placeholder={tFilters("search")}
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    className="h-9"
-                  />
-                </div>
-                {categories.length > 0 && (
-                  <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-                    <SelectTrigger className="h-9 w-40">
-                      <SelectValue placeholder={tFilters("categories")}>
-                        {selectedCategory === "all"
-                          ? tFilters("allCategories")
-                          : categories.find((cat) => cat.id === selectedCategory)?.name}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all" label={tFilters("allCategories")}>
-                        {tFilters("allCategories")}
-                      </SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id} label={cat.name}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {hasFilters && (
-                  <Button variant="ghost" onClick={handleClearFilters} className="h-9">
-                    <X className="mr-1 h-4 w-4" />
-                    {tFilters("clearFilters")}
-                  </Button>
-                )}
-              </div>
-
-              {/* Mobile filter toggle */}
-              <CollapsibleTrigger className="md:hidden" render={<Button variant="outline" />}>
-                <Filter className="mr-2 h-4 w-4" />
-                Filtres
-                <ChevronDown
-                  className={`ml-2 h-4 w-4 transition-transform ${filtersOpen ? "rotate-180" : ""}`}
-                />
-              </CollapsibleTrigger>
+          {/* Category pills — replaced by the category cards until one is picked */}
+          {categories.length > 0 && !showCategoryBrowse && (
+            <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+              {isCategoriesMode && realCategoryEntryCount >= 2 && (
+                <button
+                  type="button"
+                  onClick={handleBackToCategories}
+                  className="bg-background hover:bg-muted text-foreground flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-colors motion-reduce:transition-none"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  {tBrowse("backToCategories")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleCategoryChange(ALL_CATEGORIES_VALUE)}
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  activePill === ALL_CATEGORIES_VALUE
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-background hover:bg-muted text-foreground border"
+                }`}
+              >
+                {tCatalog("allProducts")}
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => handleCategoryChange(cat.id)}
+                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    activePill === cat.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted text-foreground border"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+              {hasUncategorizedEntry && (
+                <button
+                  type="button"
+                  onClick={() => handleCategoryChange(UNCATEGORIZED_CATEGORY_VALUE)}
+                  className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                    activePill === UNCATEGORIZED_CATEGORY_VALUE
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background hover:bg-muted text-foreground border"
+                  }`}
+                >
+                  {tBrowse("others")}
+                </button>
+              )}
             </div>
+          )}
 
-            {/* Mobile filters content */}
-            <CollapsibleContent className="mt-4 md:hidden">
-              <div className="bg-muted/30 flex flex-col gap-3 rounded-lg p-4">
-                <div className="relative">
-                  <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-                  <Input
-                    placeholder={tFilters("search")}
-                    value={searchTerm}
-                    onChange={handleSearch}
-                  />
-                </div>
-                {categories.length > 0 && (
-                  <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={tFilters("categories")}>
-                        {selectedCategory === "all"
-                          ? tFilters("allCategories")
-                          : categories.find((cat) => cat.id === selectedCategory)?.name}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all" label={tFilters("allCategories")}>
-                        {tFilters("allCategories")}
-                      </SelectItem>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id} label={cat.name}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                {hasFilters && (
-                  <Button variant="ghost" onClick={handleClearFilters} className="justify-start">
-                    <X className="mr-1 h-4 w-4" />
-                    {tFilters("clearFilters")}
-                  </Button>
-                )}
+          {/* Product count + search */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-muted-foreground text-sm">
+              {t("productCountPlural", { count: sortedProducts.length })}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <div className="relative w-full sm:w-48">
+                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                <Input
+                  placeholder={tFilters("search")}
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  className="h-9"
+                />
               </div>
-            </CollapsibleContent>
-          </Collapsible>
+              {hasFilters && (
+                <Button variant="ghost" onClick={handleClearFilters} className="h-9 shrink-0">
+                  <X className="mr-1 h-4 w-4" />
+                  {tFilters("clearFilters")}
+                </Button>
+              )}
+            </div>
+          </div>
 
-          {/* Products Grid */}
-          {isLoading ? (
+          {/* Category cards — the entry point in "categories" browse mode */}
+          {showCategoryBrowse ? (
+            <CategoryBrowseGrid
+              entries={browseEntries}
+              isAvailabilityLoading={isLoading}
+              onSelect={handleCategoryChange}
+            />
+          ) : /* Products Grid */
+          isLoading ? (
             <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="space-y-3">

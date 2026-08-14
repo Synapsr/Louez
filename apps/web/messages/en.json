@@ -363,6 +363,7 @@
       "yourStores": "Your stores",
       "createNewStore": "Create a new store",
       "multiStoreView": "Multi-store view",
+      "onboardingIncomplete": "Incomplete onboarding",
       "roles": {
         "owner": "Owner",
         "member": "Team member",
@@ -3448,6 +3449,14 @@
         "addHeroImages": "Add images",
         "heroImagesHint": "Up to 5 images in slider",
         "heroImagesOptional": "These images will appear in a slider on your store's homepage. Optional.",
+        "catalogBrowseMode": {
+          "title": "Catalog display",
+          "description": "Choose what customers see first after selecting their dates.",
+          "products": "All products",
+          "productsDescription": "Customers see the full product list right away.",
+          "categories": "By category",
+          "categoriesDescription": "Customers choose a category first (with an image), then see its products."
+        },
         "maxDiscount": {
           "title": "Limit discount display",
           "description": "Hide discount badges when the percentage is too high",
@@ -5511,6 +5520,14 @@
       "title": "Available products",
       "subtitle": "From {startDate} to {endDate}",
       "productCountPlural": "{count, plural, =0 {No products} one {# product} other {# products}}",
+      "categoryBrowse": {
+        "title": "Browse by category",
+        "allProductsDescription": "See everything available for your dates",
+        "others": "Others",
+        "othersDescription": "Products without a category",
+        "backToCategories": "Categories",
+        "availableCount": "{count, plural, =0 {None available} one {# available} other {# available}}"
+      },
       "changeDates": "Change dates",
       "sections": {
         "available": "Available",
@@ -6326,7 +6343,10 @@
       "productsWarning": "{count, plural, one {This category will be removed from # product.} other {This category will be removed from # products.}}",
       "reassignLabel": "Reassign products to",
       "keepExisting": "Keep their other categories"
-    }
+    },
+    "addImage": "Add image",
+    "changeImage": "Change image",
+    "removeImage": "Remove image"
   },
   "contract": {
     "documentType": "Rental Agreement",

@@ -40,11 +40,12 @@ const appearanceFormSchema = z.object({
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
   themeMode: z.enum(["light", "dark"]),
   heroImages: z.array(z.string()).max(5),
+  catalogBrowseMode: z.enum(["products", "categories"]).default("products"),
   maxDiscountEnabled: z.boolean(),
   maxDiscountPercent: z.number().int().min(0).max(100),
 });
 
-type AppearanceFormValues = z.infer<typeof appearanceFormSchema>;
+type AppearanceFormValues = z.input<typeof appearanceFormSchema>;
 
 /**
  * Calculate the contrast text color (black or white) based on background color luminance.
@@ -106,15 +107,16 @@ export const AppearanceForm = ({ store }: AppearanceFormProps) => {
     { name: t("colors.indigo"), value: "#4f46e5" },
   ];
 
-  const defaultValues = {
+  const defaultValues: AppearanceFormValues = {
     logoUrl: store.logoUrl,
     darkLogoUrl: store.darkLogoUrl,
     primaryColor: store.theme?.primaryColor || "#2563eb",
     themeMode: store.theme?.mode === "dark" ? "dark" : "light",
     heroImages: store.theme?.heroImages || [],
+    catalogBrowseMode: store.theme?.catalogBrowseMode ?? "products",
     maxDiscountEnabled: store.theme?.maxDiscountPercent != null,
     maxDiscountPercent: store.theme?.maxDiscountPercent ?? 50,
-  } satisfies AppearanceFormValues;
+  };
 
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingDarkLogo, setIsUploadingDarkLogo] = useState(false);
@@ -209,11 +211,13 @@ export const AppearanceForm = ({ store }: AppearanceFormProps) => {
       const themePayload: {
         mode: "light" | "dark";
         primaryColor: string;
+        catalogBrowseMode: "products" | "categories";
         maxDiscountPercent: number | null;
         heroImages?: string[];
       } = {
         mode: value.themeMode,
         primaryColor: value.primaryColor,
+        catalogBrowseMode: value.catalogBrowseMode ?? "products",
         maxDiscountPercent: value.maxDiscountEnabled ? value.maxDiscountPercent : null,
       };
 
@@ -767,6 +771,44 @@ export const AppearanceForm = ({ store }: AppearanceFormProps) => {
                 </section>
               )}
             </form.Field>
+
+            {/* Divider */}
+            <div className="border-t" />
+
+            {/* Catalog Browse Mode Section */}
+            <form.Field name="catalogBrowseMode">
+              {(field) => (
+                <section className="space-y-3">
+                  <div>
+                    <Label className="text-sm font-medium">{t("catalogBrowseMode.title")}</Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {t("catalogBrowseMode.description")}
+                    </p>
+                  </div>
+                  <FormRadioCardGroup<"products" | "categories">
+                    value={field.state.value ?? "products"}
+                    onChange={(nextCatalogBrowseMode) => field.handleChange(nextCatalogBrowseMode)}
+                    options={[
+                      {
+                        value: "products",
+                        label: t("catalogBrowseMode.products"),
+                        description: t("catalogBrowseMode.productsDescription"),
+                      },
+                      {
+                        value: "categories",
+                        label: t("catalogBrowseMode.categories"),
+                        description: t("catalogBrowseMode.categoriesDescription"),
+                      },
+                    ]}
+                    columns={1}
+                    errors={field.state.meta.errors}
+                  />
+                </section>
+              )}
+            </form.Field>
+
+            {/* Divider */}
+            <div className="border-t" />
 
             {/* Max Discount Percent Section */}
             <form.AppField name="maxDiscountEnabled">

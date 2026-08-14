@@ -1,4 +1,5 @@
 import { categories, db, productCategories, products } from '@louez/db';
+import { categorySchema, isOwnedImageUrl } from '@louez/validations';
 import { and, asc, count, eq, inArray, ne, sql } from 'drizzle-orm';
 import { ORPCError } from '@orpc/server';
 import { z } from 'zod';
@@ -8,10 +9,10 @@ import { dashboardProcedure } from '../../procedures';
 const categoryOutputSchema = z.object({
   id: z.string(),
   name: z.string(),
+  description: z.string().nullable().optional(),
+  imageUrl: z.string().nullable().optional(),
   productCount: z.number().optional(),
 });
-
-const categoryNameSchema = z.string().trim().min(2).max(255);
 
 const list = dashboardProcedure
   .output(z.array(categoryOutputSchema))
@@ -20,6 +21,8 @@ const list = dashboardProcedure
       .select({
         id: categories.id,
         name: categories.name,
+        description: categories.description,
+        imageUrl: categories.imageUrl,
         productCount: count(productCategories.productId),
       })
       .from(categories)
@@ -28,19 +31,39 @@ const list = dashboardProcedure
         eq(productCategories.categoryId, categories.id),
       )
       .where(eq(categories.storeId, context.store.id))
-      .groupBy(categories.id, categories.name, categories.order)
+      .groupBy(
+        categories.id,
+        categories.name,
+        categories.description,
+        categories.imageUrl,
+        categories.order,
+      )
       .orderBy(asc(categories.order), asc(categories.name));
   });
 
 const create = dashboardProcedure
-  .input(z.object({ name: categoryNameSchema }))
+  .input(categorySchema)
   .output(categoryOutputSchema)
   .handler(async ({ context, input }) => {
     const name = input.name;
+    const description = input.description?.trim() || null;
+    const imageUrl = input.imageUrl || null;
+
+    if (
+      imageUrl &&
+      !isOwnedImageUrl(imageUrl, `${context.store.id}/categories`)
+    ) {
+      throw new ORPCError('BAD_REQUEST', { message: 'errors.invalidData' });
+    }
 
     // Idempotent by name: return the existing category instead of duplicating
     const existing = await db
-      .select({ id: categories.id, name: categories.name })
+      .select({
+        id: categories.id,
+        name: categories.name,
+        description: categories.description,
+        imageUrl: categories.imageUrl,
+      })
       .from(categories)
       .where(
         and(
@@ -63,19 +86,21 @@ const create = dashboardProcedure
       .values({
         storeId: context.store.id,
         name,
+        description,
+        imageUrl,
         order: maxOrder + 1,
       })
       .$returningId();
 
-    return { id: created.id, name, productCount: 0 };
+    return { id: created.id, name, description, imageUrl, productCount: 0 };
   });
 
 const update = dashboardProcedure
-  .input(z.object({ id: z.string(), name: categoryNameSchema }))
+  .input(categorySchema.extend({ id: z.string() }))
   .output(categoryOutputSchema)
   .handler(async ({ context, input }) => {
     const category = await db.query.categories.findFirst({
-      columns: { id: true },
+      columns: { id: true, description: true, imageUrl: true },
       where: and(
         eq(categories.id, input.id),
         eq(categories.storeId, context.store.id),
@@ -84,6 +109,21 @@ const update = dashboardProcedure
 
     if (!category) {
       throw new ORPCError('NOT_FOUND', { message: 'errors.categoryNotFound' });
+    }
+
+    const description =
+      input.description === undefined
+        ? category.description
+        : input.description?.trim() || null;
+    const imageUrl =
+      input.imageUrl === undefined ? category.imageUrl : input.imageUrl || null;
+
+    if (
+      imageUrl &&
+      imageUrl !== category.imageUrl &&
+      !isOwnedImageUrl(imageUrl, `${context.store.id}/categories`)
+    ) {
+      throw new ORPCError('BAD_REQUEST', { message: 'errors.invalidData' });
     }
 
     const duplicate = await db
@@ -104,7 +144,12 @@ const update = dashboardProcedure
 
     await db
       .update(categories)
-      .set({ name: input.name, updatedAt: new Date() })
+      .set({
+        name: input.name,
+        description,
+        imageUrl,
+        updatedAt: new Date(),
+      })
       .where(
         and(
           eq(categories.id, input.id),
@@ -112,7 +157,7 @@ const update = dashboardProcedure
         ),
       );
 
-    return { id: input.id, name: input.name };
+    return { id: input.id, name: input.name, description, imageUrl };
   });
 
 const remove = dashboardProcedure

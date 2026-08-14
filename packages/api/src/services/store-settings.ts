@@ -80,6 +80,7 @@ export async function updateStoreAppearance(params: UpdateStoreAppearanceParams)
       mode: "light" | "dark";
       primaryColor: string;
       heroImages?: string[];
+      catalogBrowseMode?: "products" | "categories";
       maxDiscountPercent?: number | null;
     } = {
       mode: theme.mode,
@@ -90,12 +91,20 @@ export async function updateStoreAppearance(params: UpdateStoreAppearanceParams)
       mergedTheme.heroImages = existingTheme.heroImages;
     }
 
+    if (existingTheme?.catalogBrowseMode !== undefined) {
+      mergedTheme.catalogBrowseMode = existingTheme.catalogBrowseMode;
+    }
+
     if (existingTheme?.maxDiscountPercent !== undefined) {
       mergedTheme.maxDiscountPercent = existingTheme.maxDiscountPercent;
     }
 
     if (theme.heroImages !== undefined) {
       mergedTheme.heroImages = theme.heroImages;
+    }
+
+    if (theme.catalogBrowseMode !== undefined) {
+      mergedTheme.catalogBrowseMode = theme.catalogBrowseMode;
     }
 
     if (theme.maxDiscountPercent !== undefined) {

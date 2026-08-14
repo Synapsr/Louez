@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH } from './ai-advisor';
+import { imageUrlSchema as storedImageUrlSchema } from './image';
 
 // Image URL validation - allows public URLs, same-origin stored assets and
 // legacy base64 data URIs.
@@ -376,7 +377,8 @@ export const createCategorySchema = (
       .string()
       .min(2, t('minLength', { min: 2 }))
       .max(255, t('maxLength', { max: 255 })),
-    description: z.string().optional(),
+    description: z.string().optional().nullable(),
+    imageUrl: storedImageUrlSchema.optional().nullable(),
   });
 
 // Default schemas for server-side validation
@@ -493,9 +495,11 @@ export const productSchema = z
 export const categorySchema = z.object({
   name: z
     .string()
+    .trim()
     .min(2, 'validation.minLength')
     .max(255, 'validation.maxLength'),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
+  imageUrl: storedImageUrlSchema.optional().nullable(),
 });
 
 export type ProductInput = z.infer<typeof productSchema>;

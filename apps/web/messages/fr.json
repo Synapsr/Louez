@@ -363,6 +363,7 @@
       "yourStores": "Vos boutiques",
       "createNewStore": "Créer une nouvelle boutique",
       "multiStoreView": "Vue multi-boutiques",
+      "onboardingIncomplete": "Onboarding incomplet",
       "roles": {
         "owner": "Propriétaire",
         "member": "Collaborateur",
@@ -3448,6 +3449,14 @@
         "addHeroImages": "Ajouter des images",
         "heroImagesHint": "Jusqu'à 5 images en slider",
         "heroImagesOptional": "Ces images apparaîtront dans un slider sur la page d'accueil de votre boutique. Optionnel.",
+        "catalogBrowseMode": {
+          "title": "Affichage du catalogue",
+          "description": "Choisissez ce que vos clients voient en premier après avoir choisi leurs dates.",
+          "products": "Tous les produits",
+          "productsDescription": "Vos clients voient directement la liste complète des produits.",
+          "categories": "Par catégories",
+          "categoriesDescription": "Vos clients choisissent d'abord une catégorie (avec image), puis voient ses produits."
+        },
         "maxDiscount": {
           "title": "Limiter l'affichage des réductions",
           "description": "Masquer les badges de réduction lorsque le pourcentage est trop élevé",
@@ -5511,6 +5520,14 @@
       "title": "Produits disponibles",
       "subtitle": "Du {startDate} au {endDate}",
       "productCountPlural": "{count, plural, =0 {Aucun produit} one {# produit} other {# produits}}",
+      "categoryBrowse": {
+        "title": "Parcourir par catégorie",
+        "allProductsDescription": "Voir tout ce qui est disponible pour vos dates",
+        "others": "Autres",
+        "othersDescription": "Produits sans catégorie",
+        "backToCategories": "Catégories",
+        "availableCount": "{count, plural, =0 {Aucun disponible} one {# disponible} other {# disponibles}}"
+      },
       "changeDates": "Modifier les dates",
       "sections": {
         "available": "Disponibles",
@@ -6326,7 +6343,10 @@
       "productsWarning": "{count, plural, one {Cette catégorie sera retirée de # produit.} other {Cette catégorie sera retirée de # produits.}}",
       "reassignLabel": "Réaffecter les produits à",
       "keepExisting": "Conserver leurs autres catégories"
-    }
+    },
+    "addImage": "Ajouter une image",
+    "changeImage": "Modifier l'image",
+    "removeImage": "Supprimer l'image"
   },
   "contract": {
     "documentType": "Contrat de Location",

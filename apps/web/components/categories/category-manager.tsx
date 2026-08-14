@@ -39,18 +39,28 @@ import {
   SelectPopup,
   SelectTrigger,
   SelectValue,
+  Label,
+  Textarea,
   toastManager,
 } from '@louez/ui';
 
 import { DashboardIconTile } from '@/components/dashboard/shared/dashboard-icon-tile';
+import {
+  ImageUploadValidationError,
+  useImageUpload,
+} from '@/hooks/use-image-upload';
 import { orpc } from '@/lib/orpc/react';
 import { cn } from '@/lib/utils';
+
+import { CategoryImageControl } from './category-image-control';
 
 const KEEP_EXISTING_CATEGORIES_VALUE = '__keep_existing_categories__';
 
 export interface CategoryManagerItem {
   id: string;
   name: string;
+  description?: string | null;
+  imageUrl?: string | null;
   productCount?: number;
 }
 
@@ -67,6 +77,7 @@ export const CategoryManager = ({
 }: CategoryManagerProps) => {
   const t = useTranslations();
   const queryClient = useQueryClient();
+  const categoryFiles = useImageUpload('category');
   const categoriesQuery = useQuery(
     orpc.dashboard.categories.list.queryOptions({
       initialData: initialCategories,
@@ -77,9 +88,17 @@ export const CategoryManager = ({
   const [search, setSearch] = useState('');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryDescription, setNewCategoryDescription] = useState('');
+  const [newCategoryImageUrl, setNewCategoryImageUrl] = useState<string | null>(
+    null,
+  );
   const [editingCategory, setEditingCategory] =
     useState<CategoryManagerItem | null>(null);
   const [editCategoryName, setEditCategoryName] = useState('');
+  const [editCategoryDescription, setEditCategoryDescription] = useState('');
+  const [editCategoryImageUrl, setEditCategoryImageUrl] = useState<
+    string | null
+  >(null);
   const [categoryToDelete, setCategoryToDelete] =
     useState<CategoryManagerItem | null>(null);
   const [replacementCategoryId, setReplacementCategoryId] = useState(
@@ -103,7 +122,74 @@ export const CategoryManager = ({
   const isMutating =
     createMutation.isPending ||
     updateMutation.isPending ||
-    deleteMutation.isPending;
+    deleteMutation.isPending ||
+    categoryFiles.isUploading;
+
+  const deleteUploadedImage = (imageUrl: string) => {
+    void categoryFiles.deleteImage(imageUrl).catch(() => undefined);
+  };
+
+  const closeCreateDialog = () => {
+    if (newCategoryImageUrl) deleteUploadedImage(newCategoryImageUrl);
+    setNewCategoryName('');
+    setNewCategoryDescription('');
+    setNewCategoryImageUrl(null);
+    setCreateDialogOpen(false);
+  };
+
+  const closeEditDialog = () => {
+    if (
+      editCategoryImageUrl &&
+      editCategoryImageUrl !== editingCategory?.imageUrl
+    ) {
+      deleteUploadedImage(editCategoryImageUrl);
+    }
+    setEditingCategory(null);
+    setEditCategoryName('');
+    setEditCategoryDescription('');
+    setEditCategoryImageUrl(null);
+  };
+
+  const handleImageUpload = async (file: File, target: 'create' | 'edit') => {
+    const currentImageUrl =
+      target === 'create' ? newCategoryImageUrl : editCategoryImageUrl;
+    const savedImageUrl = target === 'edit' ? editingCategory?.imageUrl : null;
+
+    try {
+      const uploaded = await categoryFiles.uploadImage(file);
+      if (currentImageUrl && currentImageUrl !== savedImageUrl) {
+        deleteUploadedImage(currentImageUrl);
+      }
+      if (target === 'create') {
+        setNewCategoryImageUrl(uploaded.url);
+      } else {
+        setEditCategoryImageUrl(uploaded.url);
+      }
+    } catch (error) {
+      toastManager.add({
+        title:
+          error instanceof ImageUploadValidationError
+            ? t('errors.invalidData')
+            : t('errors.generic'),
+        type: 'error',
+      });
+    }
+  };
+
+  const removeCreateImage = () => {
+    if (newCategoryImageUrl) deleteUploadedImage(newCategoryImageUrl);
+    setNewCategoryImageUrl(null);
+  };
+
+  const removeEditImage = () => {
+    if (
+      editCategoryImageUrl &&
+      editCategoryImageUrl !== editingCategory?.imageUrl
+    ) {
+      deleteUploadedImage(editCategoryImageUrl);
+    }
+    setEditCategoryImageUrl(null);
+  };
 
   const filteredCategories = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase();
@@ -115,10 +201,15 @@ export const CategoryManager = ({
 
   const handleCreate = async () => {
     const name = newCategoryName.trim();
+    const description = newCategoryDescription.trim() || null;
     if (name.length < 2) return;
 
     try {
-      const created = await createMutation.mutateAsync({ name });
+      const created = await createMutation.mutateAsync({
+        name,
+        description,
+        imageUrl: newCategoryImageUrl,
+      });
       await invalidateCategories();
       queryClient.setQueryData(
         orpc.dashboard.categories.list.key({ type: 'query' }),
@@ -129,7 +220,12 @@ export const CategoryManager = ({
             : [...latest, created];
         },
       );
+      if (newCategoryImageUrl && created.imageUrl !== newCategoryImageUrl) {
+        deleteUploadedImage(newCategoryImageUrl);
+      }
       setNewCategoryName('');
+      setNewCategoryDescription('');
+      setNewCategoryImageUrl(null);
       setCreateDialogOpen(false);
       toastManager.add({
         title: t('categories.categoryCreated'),
@@ -142,24 +238,34 @@ export const CategoryManager = ({
 
   const handleEdit = async () => {
     const name = editCategoryName.trim();
+    const description = editCategoryDescription.trim() || null;
     if (!editingCategory || name.length < 2) return;
 
     try {
       const updated = await updateMutation.mutateAsync({
         id: editingCategory.id,
         name,
+        description,
+        imageUrl: editCategoryImageUrl,
       });
       await invalidateCategories();
       queryClient.setQueryData(
         orpc.dashboard.categories.list.key({ type: 'query' }),
         (current: CategoryManagerItem[] | undefined) =>
           current?.map((category) =>
-            category.id === updated.id
-              ? { ...category, name: updated.name }
-              : category,
+            category.id === updated.id ? { ...category, ...updated } : category,
           ),
       );
+      if (
+        editingCategory.imageUrl &&
+        editingCategory.imageUrl !== updated.imageUrl
+      ) {
+        deleteUploadedImage(editingCategory.imageUrl);
+      }
       setEditingCategory(null);
+      setEditCategoryName('');
+      setEditCategoryDescription('');
+      setEditCategoryImageUrl(null);
       toastManager.add({
         title: t('categories.categoryUpdated'),
         type: 'success',
@@ -186,6 +292,9 @@ export const CategoryManager = ({
         (current: CategoryManagerItem[] | undefined) =>
           current?.filter((category) => category.id !== deleted.id),
       );
+      if (categoryToDelete.imageUrl) {
+        deleteUploadedImage(categoryToDelete.imageUrl);
+      }
       onCategoryDeleted?.(deleted.id);
       setCategoryToDelete(null);
       setReplacementCategoryId(KEEP_EXISTING_CATEGORIES_VALUE);
@@ -201,6 +310,8 @@ export const CategoryManager = ({
   const openEditDialog = (category: CategoryManagerItem) => {
     setEditingCategory(category);
     setEditCategoryName(category.name);
+    setEditCategoryDescription(category.description ?? '');
+    setEditCategoryImageUrl(category.imageUrl ?? null);
   };
 
   const openDeleteDialog = (category: CategoryManagerItem) => {
@@ -266,7 +377,15 @@ export const CategoryManager = ({
                 className="flex items-center justify-between gap-4 px-4 py-3"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <DashboardIconTile icon={FolderOpen} />
+                  {category.imageUrl ? (
+                    <img
+                      src={category.imageUrl}
+                      alt=""
+                      className="size-10 shrink-0 rounded-lg border object-cover"
+                    />
+                  ) : (
+                    <DashboardIconTile icon={FolderOpen} />
+                  )}
                   <div className="min-w-0">
                     <p className="truncate font-medium">{category.name}</p>
                     <p className="text-muted-foreground text-sm">
@@ -311,7 +430,13 @@ export const CategoryManager = ({
         )}
       </div>
 
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      <Dialog
+        open={createDialogOpen}
+        onOpenChange={(open) => {
+          if (open) setCreateDialogOpen(true);
+          else if (!categoryFiles.isUploading) closeCreateDialog();
+        }}
+      >
         <DialogPopup>
           <DialogHeader>
             <DialogTitle>{t('categories.newCategory')}</DialogTitle>
@@ -319,7 +444,7 @@ export const CategoryManager = ({
               {t('categories.newCategoryDescription')}
             </DialogDescription>
           </DialogHeader>
-          <DialogPanel>
+          <DialogPanel className="space-y-4">
             <Input
               autoFocus
               placeholder={t('categories.namePlaceholder')}
@@ -332,12 +457,39 @@ export const CategoryManager = ({
                 }
               }}
             />
+            <div className="space-y-2">
+              <Label htmlFor="new-category-description">
+                {t('categories.categoryDescription')}
+              </Label>
+              <Textarea
+                id="new-category-description"
+                value={newCategoryDescription}
+                onChange={(event) =>
+                  setNewCategoryDescription(event.target.value)
+                }
+                rows={3}
+              />
+            </div>
+            <CategoryImageControl
+              imageUrl={newCategoryImageUrl}
+              label={t('categories.image')}
+              uploadLabel={t(
+                newCategoryImageUrl
+                  ? 'categories.changeImage'
+                  : 'categories.addImage',
+              )}
+              removeLabel={t('categories.removeImage')}
+              isUploading={categoryFiles.isUploading}
+              onFileSelected={(file) => handleImageUpload(file, 'create')}
+              onRemove={removeCreateImage}
+            />
           </DialogPanel>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setCreateDialogOpen(false)}
+              onClick={closeCreateDialog}
+              disabled={categoryFiles.isUploading}
             >
               {t('common.cancel')}
             </Button>
@@ -356,7 +508,7 @@ export const CategoryManager = ({
       <Dialog
         open={editingCategory !== null}
         onOpenChange={(open) => {
-          if (!open) setEditingCategory(null);
+          if (!open && !categoryFiles.isUploading) closeEditDialog();
         }}
       >
         <DialogPopup>
@@ -366,7 +518,7 @@ export const CategoryManager = ({
               {t('categories.editCategoryDescription')}
             </DialogDescription>
           </DialogHeader>
-          <DialogPanel>
+          <DialogPanel className="space-y-4">
             <Input
               autoFocus
               placeholder={t('categories.namePlaceholder')}
@@ -379,12 +531,39 @@ export const CategoryManager = ({
                 }
               }}
             />
+            <div className="space-y-2">
+              <Label htmlFor="edit-category-description">
+                {t('categories.categoryDescription')}
+              </Label>
+              <Textarea
+                id="edit-category-description"
+                value={editCategoryDescription}
+                onChange={(event) =>
+                  setEditCategoryDescription(event.target.value)
+                }
+                rows={3}
+              />
+            </div>
+            <CategoryImageControl
+              imageUrl={editCategoryImageUrl}
+              label={t('categories.image')}
+              uploadLabel={t(
+                editCategoryImageUrl
+                  ? 'categories.changeImage'
+                  : 'categories.addImage',
+              )}
+              removeLabel={t('categories.removeImage')}
+              isUploading={categoryFiles.isUploading}
+              onFileSelected={(file) => handleImageUpload(file, 'edit')}
+              onRemove={removeEditImage}
+            />
           </DialogPanel>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setEditingCategory(null)}
+              onClick={closeEditDialog}
+              disabled={categoryFiles.isUploading}
             >
               {t('common.cancel')}
             </Button>

@@ -1,6 +1,13 @@
 import { MAX_HERO_SIZE, MAX_IMAGE_SIZE, MAX_LOGO_SIZE } from "@louez/validations";
 
-export const IMAGE_UPLOAD_KINDS = ["avatar", "logo", "hero", "product", "inspection"] as const;
+export const IMAGE_UPLOAD_KINDS = [
+  "avatar",
+  "logo",
+  "hero",
+  "product",
+  "category",
+  "inspection",
+] as const;
 
 export type ImageUploadKind = (typeof IMAGE_UPLOAD_KINDS)[number];
 
@@ -21,6 +28,7 @@ export const IMAGE_UPLOAD_CONFIG = {
   // Keep hero images in the existing logo folder for backward compatibility.
   hero: { folder: "logo", maxSize: MAX_HERO_SIZE },
   product: { folder: "products", maxSize: MAX_IMAGE_SIZE },
+  category: { folder: "categories", maxSize: MAX_HERO_SIZE },
   inspection: { folder: "inspections", maxSize: MAX_IMAGE_SIZE },
 } as const satisfies Record<ImageUploadKind, { folder: string | null; maxSize: number }>;
 
