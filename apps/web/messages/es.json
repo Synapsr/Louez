@@ -1751,6 +1751,7 @@
       "source": "Origen",
       "sourceOnline": "En linea",
       "sourceManual": "Manual",
+      "sourceMarketplace": "Marketplace",
       "internalNotes": "Notas internas",
       "internalNotesPlaceholder": "Agregue notas sobre esta reserva...",
       "internalNotesHelp": "Estas notas no son visibles para el cliente",
@@ -4961,6 +4962,122 @@
           "communication": "Comunicación",
           "accountData": "Cuenta y datos"
         }
+      },
+      "salesChannels": {
+        "title": "Canales de venta",
+        "description": "Elige dónde se ofrecen tus productos en alquiler.",
+        "channels": {
+          "heading": "¿Dónde quieres recibir reservas?",
+          "subheading": "Activa tantos canales como quieras: comparten el mismo catálogo, el mismo stock y el mismo motor de reservas.",
+          "marketplace": {
+            "name": "Marketplace Louez",
+            "description": "Tus productos aparecen en la búsqueda pública del marketplace, con reserva directa.",
+            "recommended": "Recomendado",
+            "enableLabel": "Activar el canal marketplace",
+            "benefits": {
+              "visibility": "Nuevos clientes procedentes de la búsqueda del marketplace.",
+              "seo": "Una página dedicada a tu negocio, indexada por los buscadores.",
+              "free": "Gratis en el lanzamiento, sin comisión sobre tus reservas."
+            }
+          },
+          "storefront": {
+            "name": "Mi tienda en línea",
+            "description": "Tu sitio de reservas, disponible en cuanto tu tienda se puede publicar.",
+            "alwaysOn": "Siempre activa",
+            "note": "Este canal no se puede desactivar: es el que gestiona las reservas, incluidas las que vienen del marketplace.",
+            "viewAction": "Ver mi tienda",
+            "customizeAction": "Personalizar la apariencia"
+          }
+        },
+        "status": {
+          "label": "Estado",
+          "values": {
+            "setup_required": "Configuración necesaria",
+            "pending": "Pendiente de publicación",
+            "published": "Publicado",
+            "paused": "En pausa",
+            "disabled": "Desactivado"
+          },
+          "publishedAt": "Publicado el {date}",
+          "reason": {
+            "disabledByOwner": "Has desactivado este canal.",
+            "missing": "Aún quedan puntos de la lista por completar."
+          }
+        },
+        "checklist": {
+          "title": "Lista de publicación",
+          "description": "Tu tienda se publica en el marketplace en cuanto se validan todos estos puntos.",
+          "progress": "{done} de {total} completados",
+          "completeDescription": "Todo listo: tu tienda saldrá en la próxima sincronización.",
+          "fixAction": "Completar",
+          "doneLabel": "Validado",
+          "items": {
+            "addressAndGeolocation": {
+              "label": "Dirección y geolocalización",
+              "description": "Una dirección completa y sus coordenadas te sitúan en el mapa."
+            },
+            "activeProductWithImageAndPrice": {
+              "label": "Al menos un producto activo",
+              "description": "Un producto activo con al menos una foto y un precio."
+            },
+            "stripeChargesEnabled": {
+              "label": "Pagos de Stripe operativos",
+              "description": "Tu cuenta de Stripe acepta pagos en línea."
+            },
+            "cgvPresent": {
+              "label": "Condiciones de alquiler",
+              "description": "Tus condiciones generales de alquiler están rellenadas."
+            },
+            "marketplaceTermsAccepted": {
+              "label": "Condiciones del marketplace aceptadas",
+              "description": "El marketplace es gratuito en el lanzamiento. Las condiciones reservan la posibilidad de introducir más adelante una comisión sobre las reservas originadas en el marketplace.",
+              "acceptedAt": "Aceptado el {date}"
+            }
+          }
+        },
+        "claim": {
+          "title": "Es posible que tu establecimiento ya esté en el marketplace",
+          "description": "Confirma únicamente una ficha que reconozcas como tu establecimiento. Nunca se vinculan automáticamente.",
+          "confirmAction": "Este es mi establecimiento",
+          "noneAction": "Ninguno de estos establecimientos",
+          "linkedTitle": "Ficha del directorio vinculada",
+          "linkedDescription": "El marketplace conservará la ficha existente y su URL cuando publiques.",
+          "linkedFallback": "Establecimiento vinculado",
+          "mergeHint": "Esta ficha se fusionará con tu tienda cuando se publique.",
+          "unlinkAction": "Cancelar vínculo",
+          "distanceMeters": "{distance} m",
+          "distanceKilometers": "{distance} km",
+          "confirmedToast": "Establecimiento vinculado a tu tienda.",
+          "dismissedToast": "No se ha seleccionado ninguna ficha.",
+          "unlinkedToast": "Vínculo con el establecimiento cancelado."
+        },
+        "mapping": {
+          "title": "Correspondencia de categorías",
+          "description": "Asocia cada una de tus categorías a una categoría del marketplace para que tus productos aparezcan en las búsquedas adecuadas.",
+          "none": "Sin correspondencia",
+          "fallbackHint": "El catálogo del marketplace no está disponible. Introduce directamente el identificador de la categoría, en minúsculas y con guiones.",
+          "fallbackPlaceholder": "velo-vtt-electrique",
+          "invalidSlug": "Identificador no válido: solo minúsculas, cifras y guiones.",
+          "empty": "Todavía no has creado ninguna categoría.",
+          "emptyAction": "Crear una categoría",
+          "saved": "Correspondencias guardadas."
+        },
+        "disable": {
+          "title": "¿Desactivar el marketplace?",
+          "description": "Tus productos dejarán de ofrecerse en el marketplace. Puedes reactivar el canal cuando quieras.",
+          "consequences": {
+            "search": "Tus productos desaparecen rápidamente de la búsqueda del marketplace.",
+            "redirect": "Las páginas de producto ya indexadas redirigen a la ficha de tu negocio.",
+            "links": "Tu ficha sigue en línea en el directorio y tus enlaces existentes siguen funcionando."
+          },
+          "confirm": "Desactivar",
+          "cancel": "Cancelar"
+        },
+        "toasts": {
+          "enabled": "Canal marketplace activado.",
+          "disabled": "Canal marketplace desactivado.",
+          "termsAccepted": "Condiciones del marketplace aceptadas."
+        }
       }
     },
     "commandPalette": {
@@ -6039,6 +6156,9 @@
         "depositDescription": "El importe ha sido bloqueado temporalmente en su tarjeta."
       }
     },
+    "marketplaceShell": {
+      "marketplaceName": "Louez Marketplace"
+    },
     "footer": {
       "description": "Alquiler de equipos simple y eficiente.",
       "contact": "Contacto",
@@ -6703,7 +6823,8 @@
     "standaloneSingleStore": "Esta instancia aloja una sola tienda",
     "emailLoginUnavailable": "El inicio de sesión por correo no está disponible por el momento",
     "stripeNotConfigured": "Los pagos en línea no están disponibles: esta instancia no tiene claves de Stripe configuradas. Las reservas funcionan en modo solicitud.",
-    "emailSendFailed": "No se pudo enviar el correo electrónico."
+    "emailSendFailed": "No se pudo enviar el correo electrónico.",
+    "marketplaceChannelNotFound": "Canal de marketplace no encontrado"
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

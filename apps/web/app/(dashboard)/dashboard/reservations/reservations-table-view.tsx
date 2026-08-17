@@ -205,13 +205,20 @@ export function ReservationsTableView({
                   >
                     {/* Number */}
                     <TableCell className="font-mono text-sm font-medium">
-                      <Link
-                        href={reservationHref}
-                        className="hover:underline"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        #{reservation.number}
-                      </Link>
+                      <div className="flex flex-col items-start gap-1">
+                        <Link
+                          href={reservationHref}
+                          className="hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          #{reservation.number}
+                        </Link>
+                        {reservation.source === 'marketplace' && (
+                          <Badge variant="submitted" className="font-sans text-[10px]">
+                            {t('sourceMarketplace')}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
 
                     {/* Customer */}

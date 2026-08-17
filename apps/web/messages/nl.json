@@ -1712,6 +1712,7 @@
       "source": "Bron",
       "sourceOnline": "Online",
       "sourceManual": "Handmatig",
+      "sourceMarketplace": "Marktplaats",
       "internalNotes": "Interne notities",
       "internalNotesPlaceholder": "Voeg notities toe over deze reservering...",
       "internalNotesHelp": "Deze notities zijn niet zichtbaar voor de klant",
@@ -4961,6 +4962,122 @@
           "communication": "Communicatie",
           "accountData": "Account en gegevens"
         }
+      },
+      "salesChannels": {
+        "title": "Verkoopkanalen",
+        "description": "Kies waar je producten te huur worden aangeboden.",
+        "channels": {
+          "heading": "Waar wil je reserveringen ontvangen?",
+          "subheading": "Zet zoveel kanalen aan als je wilt: ze delen dezelfde catalogus, dezelfde voorraad en dezelfde reserveringsmotor.",
+          "marketplace": {
+            "name": "Louez Marketplace",
+            "description": "Je producten verschijnen in de openbare zoekfunctie van de marketplace, met directe reservering.",
+            "recommended": "Aanbevolen",
+            "enableLabel": "Marketplace-kanaal inschakelen",
+            "benefits": {
+              "visibility": "Nieuwe klanten via het zoeken op de marketplace.",
+              "seo": "Een eigen pagina voor je bedrijf, geïndexeerd door zoekmachines.",
+              "free": "Gratis bij de lancering, zonder commissie op je reserveringen."
+            }
+          },
+          "storefront": {
+            "name": "Mijn webshop",
+            "description": "Je reserveringssite, beschikbaar zodra je winkel gepubliceerd kan worden.",
+            "alwaysOn": "Altijd actief",
+            "note": "Dit kanaal kun je niet uitschakelen: het verwerkt alle reserveringen, ook die via de marketplace.",
+            "viewAction": "Mijn winkel bekijken",
+            "customizeAction": "Uiterlijk aanpassen"
+          }
+        },
+        "status": {
+          "label": "Status",
+          "values": {
+            "setup_required": "Instellen vereist",
+            "pending": "Wacht op publicatie",
+            "published": "Gepubliceerd",
+            "paused": "Gepauzeerd",
+            "disabled": "Uitgeschakeld"
+          },
+          "publishedAt": "Gepubliceerd op {date}",
+          "reason": {
+            "disabledByOwner": "Je hebt dit kanaal uitgeschakeld.",
+            "missing": "Er staan nog punten van de checklist open."
+          }
+        },
+        "checklist": {
+          "title": "Publicatiechecklist",
+          "description": "Je winkel gaat live op de marketplace zodra al deze punten in orde zijn.",
+          "progress": "{done} van {total} voltooid",
+          "completeDescription": "Alles staat klaar: je winkel gaat mee met de volgende synchronisatie.",
+          "fixAction": "Afronden",
+          "doneLabel": "In orde",
+          "items": {
+            "addressAndGeolocation": {
+              "label": "Adres en geolocatie",
+              "description": "Een volledig adres met coördinaten zet je op de kaart."
+            },
+            "activeProductWithImageAndPrice": {
+              "label": "Minstens één actief product",
+              "description": "Een actief product met ten minste één foto en een prijs."
+            },
+            "stripeChargesEnabled": {
+              "label": "Stripe-betalingen werken",
+              "description": "Je Stripe-account accepteert online betalingen."
+            },
+            "cgvPresent": {
+              "label": "Huurvoorwaarden",
+              "description": "Je algemene huurvoorwaarden zijn ingevuld."
+            },
+            "marketplaceTermsAccepted": {
+              "label": "Marketplace-voorwaarden geaccepteerd",
+              "description": "De marketplace is gratis bij de lancering. De voorwaarden behouden het recht voor om later een commissie in te voeren op reserveringen die van de marketplace komen.",
+              "acceptedAt": "Geaccepteerd op {date}"
+            }
+          }
+        },
+        "claim": {
+          "title": "Je bedrijf staat mogelijk al op de marketplace",
+          "description": "Bevestig alleen een vermelding die je als jouw bedrijf herkent. Vermeldingen worden nooit automatisch gekoppeld.",
+          "confirmAction": "Dit is mijn bedrijf",
+          "noneAction": "Geen van deze bedrijven",
+          "linkedTitle": "Bedrijfsvermelding gekoppeld",
+          "linkedDescription": "De marketplace behoudt bij publicatie de bestaande vermelding en URL.",
+          "linkedFallback": "Gekoppeld bedrijf",
+          "mergeHint": "Deze vermelding wordt bij publicatie samengevoegd met je winkel.",
+          "unlinkAction": "Koppeling verwijderen",
+          "distanceMeters": "{distance} m",
+          "distanceKilometers": "{distance} km",
+          "confirmedToast": "Bedrijf aan je winkel gekoppeld.",
+          "dismissedToast": "Geen bedrijfsvermelding geselecteerd.",
+          "unlinkedToast": "Koppeling met het bedrijf verwijderd."
+        },
+        "mapping": {
+          "title": "Categoriekoppeling",
+          "description": "Koppel elk van je categorieën aan een marketplace-categorie zodat je producten in de juiste zoekopdrachten verschijnen.",
+          "none": "Geen koppeling",
+          "fallbackHint": "De catalogus van de marketplace is niet beschikbaar. Voer de categorie-id rechtstreeks in, in kleine letters met streepjes.",
+          "fallbackPlaceholder": "velo-vtt-electrique",
+          "invalidSlug": "Ongeldige id: alleen kleine letters, cijfers en streepjes.",
+          "empty": "Je hebt nog geen categorie aangemaakt.",
+          "emptyAction": "Categorie aanmaken",
+          "saved": "Koppelingen opgeslagen."
+        },
+        "disable": {
+          "title": "Marketplace uitschakelen?",
+          "description": "Je producten worden niet meer op de marketplace aangeboden. Je kunt het kanaal op elk moment weer inschakelen.",
+          "consequences": {
+            "search": "Je producten verdwijnen snel uit het zoeken op de marketplace.",
+            "redirect": "Al geïndexeerde productpagina's verwijzen door naar je bedrijfsvermelding.",
+            "links": "Je vermelding blijft online in de gids en je bestaande links blijven werken."
+          },
+          "confirm": "Uitschakelen",
+          "cancel": "Annuleren"
+        },
+        "toasts": {
+          "enabled": "Marketplace-kanaal ingeschakeld.",
+          "disabled": "Marketplace-kanaal uitgeschakeld.",
+          "termsAccepted": "Marketplace-voorwaarden geaccepteerd."
+        }
       }
     },
     "commandPalette": {
@@ -6039,6 +6156,9 @@
         "depositDescription": "Het bedrag is tijdelijk geblokkeerd op uw kaart."
       }
     },
+    "marketplaceShell": {
+      "marketplaceName": "Louez Marketplace"
+    },
     "footer": {
       "description": "Eenvoudige en efficiënte materiaalverhuur.",
       "contact": "Contact",
@@ -6703,7 +6823,8 @@
     "standaloneSingleStore": "Deze instantie host één winkel",
     "emailLoginUnavailable": "Inloggen via e-mail is momenteel niet beschikbaar",
     "stripeNotConfigured": "Online betalingen zijn niet beschikbaar: deze instantie heeft geen Stripe-sleutels geconfigureerd. Reserveringen verlopen in aanvraagmodus.",
-    "emailSendFailed": "Verzenden van de e-mail is mislukt."
+    "emailSendFailed": "Verzenden van de e-mail is mislukt.",
+    "marketplaceChannelNotFound": "Marketplace-kanaal niet gevonden"
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

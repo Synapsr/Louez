@@ -1,243 +1,46 @@
-'use server';
+"use server";
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath } from "next/cache";
 
-import { and, eq } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
+import { and, eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
-import { db } from '@louez/db';
-import { payments, reservationActivity, reservations, stores } from '@louez/db';
+import { db } from "@louez/db";
+import { reservationActivity, reservations, stores } from "@louez/db";
 
-import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
-import { dispatchNotification } from '@/lib/notifications/dispatcher';
-import {
-  buildFeeMetadata,
-  getStoreBilling,
-  planStripeFees,
-  recordReservationFee,
-  voidReservationFee,
-} from '@/lib/pay-as-you-go';
+import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
+import { dispatchNotification } from "@/lib/notifications/dispatcher";
+import { recordReservationFee, voidReservationFee } from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
-} from '@/lib/product-analytics/analytics';
-import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
-import { createReservationInstantAccessUrl } from '@/lib/reservations/instant-access';
-import { getEffectiveReservationMode } from '@/lib/reservation-mode';
-import { getStorefrontUrl } from '@/lib/storefront-url';
-import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
-import { getStripe } from '@/lib/stripe/client';
+} from "@/lib/product-analytics/analytics";
+import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
+import { createReservationPaymentSessionForCustomer } from "@/lib/reservations/payment-session";
+import { getEffectiveReservationMode } from "@/lib/reservation-mode";
+import { getStorefrontUrl } from "@/lib/storefront-url";
 
-import { getCustomerSession } from '../../actions';
+import { getCustomerSession } from "../../actions";
 
-async function createReservationPaymentSessionForCustomer(
-  storeSlug: string,
-  reservationId: string,
-  customerId: string,
-  source: 'account_page' | 'quote_acceptance',
-) {
-  try {
-    // Get store
-    const store = await db.query.stores.findFirst({
-      where: eq(stores.slug, storeSlug),
-    });
-
-    if (!store) {
-      return { error: 'errors.storeNotFound' };
-    }
-
-    // Check Stripe is enabled
-    const stripeAccountId = store.stripeAccountId;
-    if (!stripeAccountId || !store.stripeChargesEnabled) {
-      return { error: 'errors.paymentNotAvailable' };
-    }
-
-    // Get reservation
-    const reservation = await db.query.reservations.findFirst({
-      where: and(
-        eq(reservations.id, reservationId),
-        eq(reservations.storeId, store.id),
-        eq(reservations.customerId, customerId),
-      ),
-      with: {
-        customer: true,
-        items: true,
-        payments: true,
-      },
-    });
-
-    if (!reservation) {
-      return { error: 'errors.reservationNotFound' };
-    }
-
-    if (
-      reservation.status !== 'confirmed' &&
-      reservation.status !== 'ongoing'
-    ) {
-      return { error: 'errors.invalidStatus' };
-    }
-
-    // Check if already paid (rental payment completed)
-    const isPaid = reservation.payments.some(
-      (p) => p.type === 'rental' && p.status === 'completed',
-    );
-    if (isPaid) {
-      return { error: 'errors.alreadyPaid' };
-    }
-
-    const currency = store.settings?.currency || 'EUR';
-    const chargeCents = toStripeCents(
-      parseFloat(reservation.totalAmount),
-      currency,
-    );
-    if (chargeCents <= 0) {
-      return { success: true, paymentUrl: null };
-    }
-
-    // Cancel any stale pending payments so the customer can retry
-    const pendingPayments = reservation.payments.filter(
-      (p) => p.type === 'rental' && p.status === 'pending',
-    );
-    for (const pending of pendingPayments) {
-      // Expire the Stripe checkout session if it exists
-      if (pending.stripeCheckoutSessionId) {
-        try {
-          await getStripe().checkout.sessions.expire(
-            pending.stripeCheckoutSessionId,
-            { stripeAccount: stripeAccountId },
-          );
-        } catch {
-          // Session may already be expired or completed — safe to ignore
-        }
-      }
-      await db
-        .update(payments)
-        .set({ status: 'cancelled', updatedAt: new Date() })
-        .where(eq(payments.id, pending.id));
-    }
-
-    // Charge exactly the agreed reservation total. totalAmount already folds in the
-    // subtotal, Tulip insurance, promo discount and delivery fee; rebuilding the charge
-    // from item line items alone would silently drop the discount and the insurance,
-    // charging a different amount than the one recorded on the payment. A single
-    // consolidated line keeps charge == recorded amount == agreed total.
-    const lineItems = [
-      {
-        name: `Reservation #${reservation.number}`,
-        quantity: 1,
-        unitAmount: chargeCents,
-      },
-    ];
-
-    // Plan the platform fee skimmed from this rental payment (the pay-as-you-go
-    // reservation commission). Recorded exactly on payment success.
-    const billing = await getStoreBilling(store.id);
-    const feePlan = await planStripeFees({
-      storeId: store.id,
-      reservationId,
-      chargeCents,
-      billing,
-    });
-
-    // Create checkout session
-    const { url, sessionId } = await createCheckoutSession({
-      stripeAccountId,
-      reservationId,
-      reservationNumber: reservation.number,
-      customerEmail: reservation.customer.email,
-      customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
-      lineItems,
-      depositAmount: toStripeCents(
-        parseFloat(reservation.depositAmount),
-        currency,
-      ),
-      currency,
-      applicationFeeAmount: feePlan.applicationFeeCents,
-      feeMetadata: buildFeeMetadata(feePlan),
-      successUrl: getStorefrontUrl(
-        storeSlug,
-        `/account/reservations/${reservationId}?payment=success`,
-      ),
-      cancelUrl: getStorefrontUrl(
-        storeSlug,
-        `/account/reservations/${reservationId}?payment=cancelled`,
-      ),
-    });
-
-    // Create pending payment record
-    await db.insert(payments).values({
-      id: nanoid(),
-      reservationId,
-      amount: reservation.totalAmount,
-      type: 'rental',
-      method: 'stripe',
-      status: 'pending',
-      stripeCheckoutSessionId: sessionId,
-      currency,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Log activity
-    await db.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: 'payment_initiated',
-      metadata: { checkoutSessionId: sessionId, source },
-      createdAt: new Date(),
-    });
-
-    await captureProductServerEvent({
-      distinctId: customerId,
-      event: productAnalyticsEvents.checkoutPaymentStarted,
-      properties: {
-        feature: 'customer_account',
-        surface: 'storefront',
-        store_id: store.id,
-        reservation_id: reservationId,
-        customer_id: customerId,
-        source,
-        payment_provider: 'stripe',
-        payment_mode: 'full',
-        amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
-        total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
-        deposit_amount_cents: toAnalyticsAmountCents(
-          reservation.depositAmount,
-        ),
-        application_fee_cents: feePlan.applicationFeeCents,
-        reservation_fee_cents: feePlan.reservationFeeCents,
-        currency,
-      },
-    });
-
-    return { success: true, paymentUrl: url };
-  } catch (error) {
-    console.error('Error creating payment session:', error);
-    return { error: 'errors.paymentSessionError' };
-  }
-}
-
-export async function createReservationPaymentSession(
-  storeSlug: string,
-  reservationId: string,
-) {
+export async function createReservationPaymentSession(storeSlug: string, reservationId: string) {
   const session = await getCustomerSession(storeSlug);
   if (!session) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   return createReservationPaymentSessionForCustomer(
     storeSlug,
     reservationId,
     session.customerId,
-    'account_page',
+    "account_page",
   );
 }
 
 export async function acceptQuote(storeSlug: string, reservationId: string) {
   const session = await getCustomerSession(storeSlug);
   if (!session) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const store = await db.query.stores.findFirst({
@@ -245,7 +48,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   });
 
   if (!store) {
-    return { error: 'errors.storeNotFound' };
+    return { error: "errors.storeNotFound" };
   }
 
   const reservation = await db.query.reservations.findFirst({
@@ -261,23 +64,23 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' };
+    return { error: "errors.reservationNotFound" };
   }
 
-  if (reservation.status !== 'quote') {
-    return { error: 'errors.invalidStatus' };
+  if (reservation.status !== "quote") {
+    return { error: "errors.invalidStatus" };
   }
 
   const accepted = await db.transaction(async (tx) => {
     const result = await tx
       .update(reservations)
-      .set({ status: 'confirmed', updatedAt: new Date() })
+      .set({ status: "confirmed", updatedAt: new Date() })
       .where(
         and(
           eq(reservations.id, reservationId),
           eq(reservations.storeId, store.id),
           eq(reservations.customerId, session.customerId),
-          eq(reservations.status, 'quote'),
+          eq(reservations.status, "quote"),
         ),
       );
 
@@ -288,8 +91,8 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
     await tx.insert(reservationActivity).values({
       id: nanoid(),
       reservationId,
-      activityType: 'quote_accepted',
-      metadata: { source: 'quote_acceptance', actor: 'customer' },
+      activityType: "quote_accepted",
+      metadata: { source: "quote_acceptance", actor: "customer" },
       createdAt: new Date(),
     });
 
@@ -297,39 +100,39 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   });
 
   if (!accepted) {
-    return { error: 'errors.invalidStatus' };
+    return { error: "errors.invalidStatus" };
   }
 
   await captureProductServerEvent({
     distinctId: session.customerId,
     event: productAnalyticsEvents.quoteAccepted,
     properties: {
-      feature: 'customer_account',
-      surface: 'storefront',
+      feature: "customer_account",
+      surface: "storefront",
       store_id: store.id,
       reservation_id: reservationId,
       customer_id: session.customerId,
-      source: 'customer_account',
+      source: "customer_account",
       reservation_mode: getEffectiveReservationMode(store),
       catalog_line_count: reservation.items.length,
       total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
       deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
-      currency: store.settings?.currency || 'EUR',
+      currency: store.settings?.currency || "EUR",
     },
   });
 
   let paymentUrl: string | null = null;
-  if (getEffectiveReservationMode(store) === 'payment') {
+  if (getEffectiveReservationMode(store) === "payment") {
     const paymentSession = await createReservationPaymentSessionForCustomer(
       storeSlug,
       reservationId,
       session.customerId,
-      'quote_acceptance',
+      "quote_acceptance",
     );
     if (paymentSession.success) {
       paymentUrl = paymentSession.paymentUrl;
-    } else if (paymentSession.error !== 'errors.alreadyPaid') {
-      console.error('Failed to create quote acceptance payment session:', {
+    } else if (paymentSession.error !== "errors.alreadyPaid") {
+      console.error("Failed to create quote acceptance payment session:", {
         reservationId,
         error: paymentSession.error,
       });
@@ -343,17 +146,17 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
     await recordReservationFee({
       storeId: store.id,
       reservationId,
-      source: 'manual',
+      source: "manual",
     });
   } catch (error) {
-    console.error('[payg] Failed to record accepted-quote location:', {
+    console.error("[payg] Failed to record accepted-quote location:", {
       reservationId,
       error,
     });
   }
 
   // Notify the store owner
-  dispatchNotification('reservation_confirmed', {
+  dispatchNotification("reservation_confirmed", {
     store: {
       id: store.id,
       name: store.name,
@@ -377,17 +180,14 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
       phone: reservation.customer.phone,
     },
   }).catch((error) => {
-    console.error('Failed to dispatch quote accepted notification:', error);
+    console.error("Failed to dispatch quote accepted notification:", error);
   });
 
   // Notify the customer with confirmation email
-  const reservationUrl = getStorefrontUrl(
-    storeSlug,
-    `/account/reservations/${reservationId}`,
-  );
+  const reservationUrl = getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}`);
 
   const emailItems = reservation.items.map((item) => ({
-    name: item.productSnapshot?.name || 'Product',
+    name: item.productSnapshot?.name || "Product",
     quantity: item.quantity,
     unitPrice: parseFloat(item.unitPrice),
     totalPrice: parseFloat(item.totalPrice),
@@ -401,11 +201,9 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
       reservationId,
       redirectPath: `/account/reservations/${reservationId}/contract`,
     });
-    const termsUrl = store.cgv?.trim()
-      ? getStorefrontUrl(storeSlug, '/terms')
-      : null;
+    const termsUrl = store.cgv?.trim() ? getStorefrontUrl(storeSlug, "/terms") : null;
 
-    dispatchCustomerNotification('customer_quote_accepted', {
+    dispatchCustomerNotification("customer_quote_accepted", {
       store: {
         id: store.id,
         name: store.name,
@@ -441,16 +239,10 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
       termsUrl,
       paymentUrl,
     }).catch((error) => {
-      console.error(
-        'Failed to dispatch quote accepted customer notification:',
-        error,
-      );
+      console.error("Failed to dispatch quote accepted customer notification:", error);
     });
   } catch (error) {
-    console.error(
-      'Failed to dispatch quote accepted customer notification:',
-      error,
-    );
+    console.error("Failed to dispatch quote accepted customer notification:", error);
   }
 
   revalidatePath(`/${storeSlug}/account/reservations/${reservationId}`);
@@ -460,7 +252,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
 export async function declineQuote(storeSlug: string, reservationId: string) {
   const session = await getCustomerSession(storeSlug);
   if (!session) {
-    return { error: 'errors.unauthorized' };
+    return { error: "errors.unauthorized" };
   }
 
   const store = await db.query.stores.findFirst({
@@ -468,7 +260,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   });
 
   if (!store) {
-    return { error: 'errors.storeNotFound' };
+    return { error: "errors.storeNotFound" };
   }
 
   const reservation = await db.query.reservations.findFirst({
@@ -483,17 +275,17 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' };
+    return { error: "errors.reservationNotFound" };
   }
 
-  if (reservation.status !== 'quote') {
-    return { error: 'errors.invalidStatus' };
+  if (reservation.status !== "quote") {
+    return { error: "errors.invalidStatus" };
   }
 
   // Move to declined
   await db
     .update(reservations)
-    .set({ status: 'declined', updatedAt: new Date() })
+    .set({ status: "declined", updatedAt: new Date() })
     .where(eq(reservations.id, reservationId));
 
   // Pay-as-you-go: void the pending reservation fee — the customer declined the quote,
@@ -501,7 +293,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   try {
     await voidReservationFee(reservationId);
   } catch (error) {
-    console.error('[payg] Failed to void declined-quote reservation fee:', {
+    console.error("[payg] Failed to void declined-quote reservation fee:", {
       reservationId,
       error,
     });
@@ -511,8 +303,8 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId,
-    activityType: 'quote_declined',
-    metadata: { source: 'quote_decline', actor: 'customer' },
+    activityType: "quote_declined",
+    metadata: { source: "quote_decline", actor: "customer" },
     createdAt: new Date(),
   });
 
@@ -520,19 +312,19 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
     distinctId: session.customerId,
     event: productAnalyticsEvents.quoteDeclined,
     properties: {
-      feature: 'customer_account',
-      surface: 'storefront',
+      feature: "customer_account",
+      surface: "storefront",
       store_id: store.id,
       reservation_id: reservationId,
       customer_id: session.customerId,
-      source: 'customer_account',
+      source: "customer_account",
       total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
-      currency: store.settings?.currency || 'EUR',
+      currency: store.settings?.currency || "EUR",
     },
   });
 
   // Notify the store owner
-  dispatchNotification('reservation_cancelled', {
+  dispatchNotification("reservation_cancelled", {
     store: {
       id: store.id,
       name: store.name,
@@ -556,7 +348,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
       phone: reservation.customer.phone,
     },
   }).catch((error) => {
-    console.error('Failed to dispatch quote declined notification:', error);
+    console.error("Failed to dispatch quote declined notification:", error);
   });
 
   revalidatePath(`/${storeSlug}/account/reservations/${reservationId}`);

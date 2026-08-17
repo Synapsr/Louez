@@ -2,6 +2,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 
 import {
   buildReservationOverlapPredicate,
+  buildReservationAvailabilityPredicate,
   buildUnitRentableDuringPredicate,
   db,
   type Database,
@@ -425,6 +426,7 @@ export async function getStorefrontAvailability(
     where: and(
       eq(reservations.storeId, store.id),
       inArray(reservations.status, blockingStatuses),
+      buildReservationAvailabilityPredicate(db),
       buildReservationOverlapPredicate({
         start: startDate,
         end: endDate,

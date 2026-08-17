@@ -40,6 +40,7 @@ export {
 } from './product-quantity'
 export {
   BLOCKING_RESERVATION_STATUSES,
+  buildReservationAvailabilityPredicate,
   buildReservationOverlapPredicate,
   buildUnitInDowntimeAtPredicate,
   buildUnitRentableDuringPredicate,

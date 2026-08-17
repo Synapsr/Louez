@@ -1,11 +1,13 @@
 import {
   and,
   eq,
+  exists,
   gt,
   inArray,
   isNull,
   lt,
   lte,
+  ne,
   not,
   notExists,
   or,
@@ -14,6 +16,7 @@ import {
 import type { Database } from './index';
 import type { SQL } from 'drizzle-orm';
 import {
+  marketplaceBookingAttempts,
   productUnitDowntimes,
   productUnits,
   reservationItemUnits,
@@ -72,6 +75,45 @@ export function buildReservationOverlapPredicate(params: {
   return predicate;
 }
 
+export function buildReservationAvailabilityPredicate(
+  database: Pick<Database, 'select'>,
+  now: Date = new Date(),
+) {
+  const predicate = or(
+    isNull(reservations.source),
+    ne(reservations.source, 'marketplace'),
+    not(eq(reservations.status, 'pending')),
+    exists(
+      database
+        .select({ id: marketplaceBookingAttempts.id })
+        .from(marketplaceBookingAttempts)
+        .where(
+          and(
+            eq(
+              marketplaceBookingAttempts.reservationId,
+              reservations.id,
+            ),
+            or(
+              eq(marketplaceBookingAttempts.status, 'confirmed'),
+              and(
+                inArray(marketplaceBookingAttempts.status, [
+                  'creating_hold',
+                  'holding',
+                  'checkout_pending',
+                ]),
+                gt(marketplaceBookingAttempts.expiresAt, now),
+              ),
+            ),
+          ),
+        ),
+    ),
+  );
+  if (!predicate) {
+    throw new Error('Failed to build reservation availability predicate');
+  }
+  return predicate;
+}
+
 export function buildUnitInDowntimeAtPredicate(now: Date) {
   return and(
     lte(productUnitDowntimes.startsAt, now),
@@ -125,6 +167,7 @@ export async function findBusyUnitIds(
   const conditions: SQL<unknown>[] = [
     inArray(reservationItemUnits.productUnitId, params.unitIds),
     inArray(reservations.status, [...params.blockingStatuses]),
+    buildReservationAvailabilityPredicate(database),
     buildReservationOverlapPredicate({
       start: params.start,
       end: params.end,

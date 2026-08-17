@@ -15,6 +15,8 @@ import { StoreProvider } from "@/contexts/store-context";
 import { AnalyticsProvider } from "@/contexts/analytics-context";
 import { OpenReplayProvider } from "@/components/openreplay-provider";
 import { PostHogProvider } from "@/components/posthog-provider";
+import { MarketplaceStorefrontShell } from "@/components/storefront/marketplace-storefront-shell";
+import { env } from "@/env";
 import { isAdvisorActiveForStore } from "@/lib/ai/advisor/eligibility";
 import type { StoreTheme, StoreSettings } from "@louez/types";
 
@@ -51,6 +53,7 @@ export const StorefrontLayoutContent = async ({ children, params }: StorefrontLa
     headersList.get("x-embed-mode") === "1" ||
     headersList.get("x-next-url")?.includes("/embed") ||
     headersList.get("x-invoke-path")?.includes("/embed");
+  const isMarketplaceChannel = headersList.get("x-sales-channel") === "marketplace";
 
   // Embed mode: minimal layout without header/footer/analytics.
   // Transparent background lets the host site's background show through the iframe.
@@ -69,6 +72,49 @@ export const StorefrontLayoutContent = async ({ children, params }: StorefrontLa
             {children}
           </ThemeWrapper>
         </StoreProvider>
+      </NextIntlClientProvider>
+    );
+  }
+
+  if (isMarketplaceChannel) {
+    return (
+      <NextIntlClientProvider messages={messages}>
+        <PostHogProvider channel="marketplace">
+          <OpenReplayProvider
+            surface="storefront"
+            store={{ id: store.id, name: store.name, slug: store.slug }}
+          >
+            <StoreProvider
+              currency={currency}
+              storeSlug={store.slug}
+              storeName={store.name}
+              timezone={settings.timezone}
+              maxDiscountPercent={theme.maxDiscountPercent}
+            >
+              <CartProvider>
+                <AnalyticsProvider storeSlug={store.slug} channel="marketplace">
+                  <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
+                    <AdvisorProvider
+                      storeSlug={store.slug}
+                      enabled={advisorEnabled}
+                      displayName={advisorSettings?.displayName}
+                      welcomeMessage={advisorSettings?.welcomeMessage}
+                    >
+                      <MarketplaceStorefrontShell
+                        storeName={store.name}
+                        logoUrl={store.logoUrl}
+                        marketplaceUrl={env.MARKETPLACE_URL}
+                      >
+                        {children}
+                      </MarketplaceStorefrontShell>
+                      {advisorEnabled && <AdvisorWidget />}
+                    </AdvisorProvider>
+                  </ThemeWrapper>
+                </AnalyticsProvider>
+              </CartProvider>
+            </StoreProvider>
+          </OpenReplayProvider>
+        </PostHogProvider>
       </NextIntlClientProvider>
     );
   }

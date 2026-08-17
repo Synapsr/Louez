@@ -134,6 +134,11 @@ export function ReservationsCardView({
                         <span className="font-mono text-sm font-semibold">
                           #{reservation.number}
                         </span>
+                        {reservation.source === "marketplace" && (
+                          <Badge variant="submitted" className="text-[10px]">
+                            {t("sourceMarketplace")}
+                          </Badge>
+                        )}
                         <Badge
                           variant={statusConfig.badgeVariant}
                           className={`gap-1.5 ${isPending ? "animate-pulse" : ""}`}

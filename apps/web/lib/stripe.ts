@@ -282,6 +282,7 @@ export async function createCheckoutSession({
   return {
     sessionId: session.id,
     url: session.url!,
+    expiresAt: new Date(session.expires_at * 1000),
   }
 }
 
@@ -305,6 +306,8 @@ export async function getCheckoutSession(
     amountTotal: session.amount_total,
     currency: session.currency?.toUpperCase() ?? 'EUR',
     metadata: session.metadata,
+    url: session.url,
+    expiresAt: new Date(session.expires_at * 1000),
   }
 }
 

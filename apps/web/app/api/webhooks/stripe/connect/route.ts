@@ -5,6 +5,10 @@ import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
+import {
+  confirmMarketplaceBookingAttempt,
+  failMarketplaceBookingAttempt,
+} from '@louez/api/services';
 import { db } from '@louez/db';
 import {
   paymentRequests,
@@ -79,6 +83,7 @@ type ReservationWithRelations = {
   storeId: string;
   customerId: string | null;
   status: string;
+  source: string | null;
   startDate: Date;
   endDate: Date;
   totalAmount: string;
@@ -499,6 +504,9 @@ async function handleCheckoutCompleted(
 
   // Payment + confirmation already handled (e.g. by the success page). PAYG usage is
   // now recorded, so we can safely stop here without duplicating notifications.
+  if (reservation.source === 'marketplace') {
+    await confirmMarketplaceBookingAttempt(reservationId);
+  }
   if (paymentAlreadyCompleted) {
     console.log(
       `Payment already completed for session ${session.id}, skipping`,
@@ -836,6 +844,8 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
     },
     createdAt: new Date(),
   });
+
+  await failMarketplaceBookingAttempt(reservationId);
 
   console.log(`Checkout session expired for reservation ${reservationId}`);
 }
@@ -1224,6 +1234,10 @@ async function handleDepositFailed(
       },
       createdAt: new Date(),
     });
+
+    if (reservation.source === 'marketplace') {
+      await failMarketplaceBookingAttempt(reservationId);
+    }
 
     console.log(
       `Payment failed for reservation ${reservationId}: ${errorMessage}`,

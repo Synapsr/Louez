@@ -25,6 +25,8 @@ import { env } from '@/env';
 const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
 const DASHBOARD_SUBDOMAIN = env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN;
 const PREVIEW_STORE_SLUG = env.PREVIEW_STORE_SLUG;
+const SALES_CHANNEL_COOKIE = 'louez_channel';
+const MARKETPLACE_CHANNEL = 'marketplace';
 
 // Routes that should never be rewritten to storefront (dashboard/auth routes)
 const DASHBOARD_ROUTES = [
@@ -84,11 +86,43 @@ function createDashboardResponse(request: NextRequest) {
 function createStorefrontRewrite(request: NextRequest, slug: string) {
   const { pathname } = request.nextUrl;
   const url = createInternalRewriteUrl(request, `/${slug}${pathname}`);
-  const response = NextResponse.rewrite(url);
+  const requestedChannel = request.nextUrl.searchParams.get('channel');
+  const hasMarketplaceCookie =
+    request.cookies.get(SALES_CHANNEL_COOKIE)?.value === MARKETPLACE_CHANNEL;
+  const isMarketplaceChannel =
+    requestedChannel === MARKETPLACE_CHANNEL ||
+    (requestedChannel !== 'direct' && hasMarketplaceCookie);
+  const requestHeaders = new Headers(request.headers);
+
+  // Never trust caller-provided mode headers. The proxy derives them from the
+  // route, query, and cookie before forwarding the rewritten request upstream.
+  requestHeaders.delete('x-embed-mode');
+  requestHeaders.delete('x-sales-channel');
+
+  if (isMarketplaceChannel) {
+    requestHeaders.set('x-sales-channel', MARKETPLACE_CHANNEL);
+  }
 
   // Embed routes drop the app chrome (used by the layout).
   if (pathname === '/embed' || pathname.startsWith('/embed/')) {
-    response.headers.set('x-embed-mode', '1');
+    requestHeaders.set('x-embed-mode', '1');
+  }
+
+  const response = NextResponse.rewrite(url, {
+    request: {
+      headers: requestHeaders,
+    },
+  });
+
+  if (requestedChannel === MARKETPLACE_CHANNEL) {
+    response.cookies.set(SALES_CHANNEL_COOKIE, MARKETPLACE_CHANNEL, {
+      path: '/',
+      sameSite: 'lax',
+      httpOnly: true,
+      secure: !isLoopbackHost(request.nextUrl.hostname),
+    });
+  } else if (requestedChannel === 'direct' && hasMarketplaceCookie) {
+    response.cookies.delete(SALES_CHANNEL_COOKIE);
   }
 
   return response;

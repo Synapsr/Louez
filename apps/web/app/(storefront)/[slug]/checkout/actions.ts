@@ -11,6 +11,7 @@ import {
 import { db } from '@louez/db';
 import {
   aiAdvisorConversations,
+  buildReservationAvailabilityPredicate,
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   customers,
@@ -47,6 +48,7 @@ import {
   extractExclusiveFromInclusive,
   getEffectiveTaxRate,
 } from '@louez/utils';
+
 import {
   DEFAULT_COMBINATION_KEY,
   calculateDuration as calcDuration,
@@ -58,7 +60,9 @@ import {
 import type { SeasonalPricingConfig } from '@louez/utils';
 import type { PricingMode } from '@louez/utils';
 
+import { env } from '@/env';
 import { isAdvisorReachableForStore } from '@/lib/ai/advisor/eligibility';
+import { timingSafeEqualStrings } from '@/lib/catalog-auth';
 import { notifyNewReservation } from '@/lib/discord/platform-notifications';
 import { getLocaleFromCountry } from '@/lib/email/i18n';
 import { sendNewRequestLandlordEmail } from '@/lib/email/send';
@@ -99,7 +103,6 @@ import {
 } from '@/lib/utils/rental-duration';
 
 import { getStorefrontUrl } from '@/lib/storefront-url';
-import { env } from '@/env';
 
 interface ReservationItem {
   lineId?: string;
@@ -150,7 +153,7 @@ interface CreateReservationInput {
   depositAmount: number;
   totalAmount: number;
   tulipInsuranceOptIn?: boolean;
-  locale?: 'fr' | 'en';
+  locale?: 'fr' | 'en' | 'de' | 'es' | 'it' | 'nl' | 'pl' | 'pt';
   delivery?: DeliveryInput;
   promoCode?: string;
   advisorConversationId?: string;
@@ -159,7 +162,11 @@ interface CreateReservationInput {
    * REQUEST the owner reviews and NEVER an online payment, whatever the store's
    * reservation mode — there is no card on a phone call.
    */
-  source?: 'online' | 'phone';
+  source?: 'online' | 'phone' | 'marketplace';
+  /** Stable id supplied by an authenticated idempotent booking facade. */
+  reservationId?: string;
+  /** Server-only capability required for marketplace reservations. */
+  marketplaceSecret?: string;
   /**
    * Compute and return the authoritative server amounts WITHOUT creating
    * anything. Used to tell a phone caller the real total before they agree.
@@ -547,6 +554,27 @@ export async function getTulipQuotePreview(input: {
 
 export async function createReservation(input: CreateReservationInput) {
   try {
+    const usesMarketplaceCapability =
+      input.source === 'marketplace' || input.reservationId !== undefined;
+    if (
+      usesMarketplaceCapability &&
+      (input.source !== 'marketplace' ||
+        !env.MARKETPLACE_CATALOG_SECRET ||
+        !input.marketplaceSecret ||
+        !(await timingSafeEqualStrings(
+          env.MARKETPLACE_CATALOG_SECRET,
+          input.marketplaceSecret,
+        )))
+    ) {
+      return { error: 'errors.invalidData' };
+    }
+    if (
+      input.reservationId !== undefined &&
+      !/^[A-Za-z0-9_-]{21}$/.test(input.reservationId)
+    ) {
+      return { error: 'errors.invalidData' };
+    }
+
     // Get store to validate business hours
     const store = await db.query.stores.findFirst({
       where: eq(stores.id, input.storeId),
@@ -916,7 +944,7 @@ export async function createReservation(input: CreateReservationInput) {
       // pricing, so a mismatch here is expected, not a fraud signal.
       const clientItemSubtotal = item.unitPrice * item.quantity * duration;
       if (
-        input.source !== 'phone' &&
+        (input.source === undefined || input.source === 'online') &&
         Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01
       ) {
         console.warn('[SECURITY] Price mismatch detected', {
@@ -1093,6 +1121,15 @@ export async function createReservation(input: CreateReservationInput) {
 
     // Client `totalAmount` excludes deposit and includes delivery fee.
     const serverClientComparableTotal = serverSubtotal + deliveryFee;
+
+    if (
+      input.source === 'marketplace' &&
+      (Math.abs(input.subtotalAmount - serverSubtotal) > 0.01 ||
+        Math.abs(input.depositAmount - serverTotalDeposit) > 0.01 ||
+        Math.abs(input.totalAmount - serverClientComparableTotal) > 0.01)
+    ) {
+      return { error: 'errors.priceChanged' };
+    }
 
     // Client-submitted amounts only exist for the web checkout. A 'phone'
     // reservation is created by the trusted server-side receptionist tool, which
@@ -1323,11 +1360,59 @@ export async function createReservation(input: CreateReservationInput) {
         lockedProducts.map((product) => [product.id, product]),
       );
 
+      if (input.reservationId) {
+        const existingReservation = await tx.query.reservations.findFirst({
+          where: eq(reservations.id, input.reservationId),
+          columns: {
+            id: true,
+            storeId: true,
+            customerId: true,
+            number: true,
+            source: true,
+            subtotalExclTax: true,
+            taxAmount: true,
+            taxRate: true,
+          },
+          with: {
+            customer: { columns: { email: true } },
+          },
+        });
+        if (existingReservation) {
+          if (
+            existingReservation.storeId !== input.storeId ||
+            existingReservation.source !== 'marketplace'
+          ) {
+            return {
+              ok: false as const,
+              error: 'errors.invalidData' as const,
+            };
+          }
+          return {
+            ok: true as const,
+            idempotentReplay: true as const,
+            reservationId: existingReservation.id,
+            reservationNumber: existingReservation.number,
+            customerId: existingReservation.customerId,
+            customerEmail: existingReservation.customer.email,
+            taxRate: existingReservation.taxRate
+              ? Number(existingReservation.taxRate)
+              : null,
+            subtotalExclTax: existingReservation.subtotalExclTax
+              ? Number(existingReservation.subtotalExclTax)
+              : null,
+            taxAmount: existingReservation.taxAmount
+              ? Number(existingReservation.taxAmount)
+              : null,
+          };
+        }
+      }
+
       // Recompute overlap and availability inside the transaction after row locks are acquired.
       const overlappingReservations = await tx.query.reservations.findMany({
         where: and(
           eq(reservations.storeId, input.storeId),
           inArray(reservations.status, blockingStatuses),
+          buildReservationAvailabilityPredicate(tx),
           buildReservationOverlapPredicate({
             start: rentalStartDate,
             end: rentalEndDate,
@@ -1597,7 +1682,7 @@ export async function createReservation(input: CreateReservationInput) {
         }
       }
 
-      const reservationId = nanoid();
+      const reservationId = input.reservationId ?? nanoid();
       const reservationNumber = await generateUniqueReservationNumber(
         input.storeId,
       );
@@ -1765,7 +1850,7 @@ export async function createReservation(input: CreateReservationInput) {
         activityType: 'created',
         description: null,
         metadata: {
-          source: 'online',
+          source: input.source ?? 'online',
           status: 'pending',
           customerEmail: input.customer.email,
           customerName: `${input.customer.firstName} ${input.customer.lastName}`,
@@ -1799,6 +1884,7 @@ export async function createReservation(input: CreateReservationInput) {
 
       return {
         ok: true as const,
+        idempotentReplay: false as const,
         reservationId,
         reservationNumber,
         customerId: customer.id,
@@ -1828,7 +1914,30 @@ export async function createReservation(input: CreateReservationInput) {
       taxRate,
       subtotalExclTax,
       taxAmount,
+      idempotentReplay,
     } = reservationWriteResult;
+
+    if (idempotentReplay) {
+      return {
+        success: true,
+        reservationId,
+        reservationNumber,
+        paymentUrl: null,
+        customerId,
+      };
+    }
+
+    // Marketplace holds are intentionally silent pending reservations. Payment
+    // confirmation reuses the normal webhook notification and calendar paths.
+    if (input.source === 'marketplace') {
+      return {
+        success: true,
+        reservationId,
+        reservationNumber,
+        paymentUrl: null,
+        customerId,
+      };
+    }
 
     const checkoutCurrency = store.settings?.currency || 'EUR';
     const checkoutTotalQuantity = input.items.reduce(
@@ -2025,7 +2134,7 @@ export async function createReservation(input: CreateReservationInput) {
     // always a pending REQUEST (no card on the call), so it never enters the
     // online-payment flow even when the store is in immediate-payment mode.
     const shouldProcessPayment =
-      input.source !== 'phone' &&
+      (input.source === undefined || input.source === 'online') &&
       store.settings?.reservationMode === 'payment' &&
       store.stripeAccountId &&
       store.stripeChargesEnabled;
@@ -2202,6 +2311,7 @@ export async function createReservation(input: CreateReservationInput) {
       reservationId,
       reservationNumber,
       paymentUrl,
+      customerId,
     };
   } catch (error) {
     console.error('Error creating reservation:', error);

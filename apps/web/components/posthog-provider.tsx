@@ -6,11 +6,13 @@ import { usePathname, useSearchParams } from 'next/navigation'
 import { useEffect, Suspense } from 'react'
 import { env } from '@/env'
 
+type SalesChannel = 'marketplace'
+
 /**
  * Tracks page views on route changes in Next.js App Router.
  * Must be used inside PostHogProvider and Suspense boundary.
  */
-function PostHogPageView() {
+function PostHogPageView({ channel }: { channel?: SalesChannel }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const posthogClient = usePostHog()
@@ -22,9 +24,12 @@ function PostHogPageView() {
       if (search) {
         url = url + '?' + search
       }
-      posthogClient.capture('$pageview', { $current_url: url })
+      posthogClient.capture('$pageview', {
+        $current_url: url,
+        ...(channel && { channel }),
+      })
     }
-  }, [pathname, searchParams, posthogClient])
+  }, [channel, pathname, searchParams, posthogClient])
 
   return null
 }
@@ -50,6 +55,7 @@ function PostHogIdentify({ user }: { user: PostHogProviderProps['user'] }) {
 
 interface PostHogProviderProps {
   children: React.ReactNode
+  channel?: SalesChannel
   user?: {
     id: string
     email: string
@@ -68,7 +74,23 @@ interface PostHogProviderProps {
  * PostHog is initialized in instrumentation-client.ts, this provider
  * adds React context integration for the initialized instance.
  */
-export function PostHogProvider({ children, user }: PostHogProviderProps) {
+export function PostHogProvider({
+  children,
+  channel,
+  user,
+}: PostHogProviderProps) {
+  useEffect(() => {
+    if (!env.NEXT_PUBLIC_POSTHOG_KEY) {
+      return
+    }
+
+    if (channel) {
+      posthog.register_for_session({ channel })
+    } else {
+      posthog.unregister_for_session('channel')
+    }
+  }, [channel])
+
   // Skip rendering if PostHog is not configured
   if (!env.NEXT_PUBLIC_POSTHOG_KEY) {
     return <>{children}</>
@@ -77,7 +99,7 @@ export function PostHogProvider({ children, user }: PostHogProviderProps) {
   return (
     <PHProvider client={posthog}>
       <Suspense fallback={null}>
-        <PostHogPageView />
+        <PostHogPageView channel={channel} />
       </Suspense>
       {user && <PostHogIdentify user={user} />}
       {children}

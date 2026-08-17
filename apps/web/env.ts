@@ -124,6 +124,14 @@ export const env = createEnv({
     // Optional: cron routes reject requests until it is set.
     CRON_SECRET: z.string().optional(),
 
+    // ===== Marketplace catalog (Optional until the channel is configured) =====
+    // Catalog routes reject requests until it is set.
+    MARKETPLACE_CATALOG_SECRET: z.string().optional(),
+    // Public origin of the Louez Marketplace, used server-side to read the
+    // shared product taxonomy. When unset (or unreachable) the sales-channel
+    // category mapping editor degrades to free slug input.
+    MARKETPLACE_URL: z.url("MARKETPLACE_URL must be a valid URL").optional(),
+
     // ===== AI Chat Assistant (Optional) =====
     AI_PROVIDER: z.enum(["anthropic", "openai", "google"]).optional(),
     AI_MODEL: z.string().optional(),
@@ -432,6 +440,8 @@ export const env = createEnv({
     GOOGLE_CALENDAR_CLIENT_ID: process.env.GOOGLE_CALENDAR_CLIENT_ID,
     GOOGLE_CALENDAR_CLIENT_SECRET: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
     CRON_SECRET: process.env.CRON_SECRET,
+    MARKETPLACE_CATALOG_SECRET: process.env.MARKETPLACE_CATALOG_SECRET,
+    MARKETPLACE_URL: process.env.MARKETPLACE_URL,
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,
     AI_API_KEY: process.env.AI_API_KEY,

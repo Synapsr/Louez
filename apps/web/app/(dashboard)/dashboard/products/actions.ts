@@ -9,6 +9,7 @@ import { db, getEffectiveProductQuantities } from "@louez/db";
 import {
   categories,
   getBlockingReservationStatuses,
+  marketplaceCatalogTombstones,
   productAccessories,
   productCategories,
   productPricingTiers,
@@ -670,30 +671,40 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
   const categoryIds = await resolveCategoryIds(store.id, validated.data);
 
-  await db
-    .update(products)
-    .set({
-      name: validated.data.name,
-      description: validated.data.description || null,
-      aiContext: validated.data.aiContext?.trim() || null,
-      categoryId: categoryIds[0] ?? null,
-      price: price,
-      deposit: deposit,
-      pricingMode: legacyPricingMode,
-      basePeriodMinutes,
-      ...(!trackUnits ? { quantity: manualQuantity } : {}),
-      status: validated.data.status,
-      images: validated.data.images || [],
-      imageHistory: validated.data.imageHistory || [],
-      videoUrl: validated.data.videoUrl || null,
-      taxSettings: validated.data.taxSettings || null,
-      enforceStrictTiers: validated.data.enforceStrictTiers || false,
-      trackUnits: trackUnits,
-      bookingAttributeAxes:
-        trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(products.id, productId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(products)
+      .set({
+        name: validated.data.name,
+        description: validated.data.description || null,
+        aiContext: validated.data.aiContext?.trim() || null,
+        categoryId: categoryIds[0] ?? null,
+        price: price,
+        deposit: deposit,
+        pricingMode: legacyPricingMode,
+        basePeriodMinutes,
+        ...(!trackUnits ? { quantity: manualQuantity } : {}),
+        status: validated.data.status,
+        images: validated.data.images || [],
+        imageHistory: validated.data.imageHistory || [],
+        videoUrl: validated.data.videoUrl || null,
+        taxSettings: validated.data.taxSettings || null,
+        enforceStrictTiers: validated.data.enforceStrictTiers || false,
+        trackUnits: trackUnits,
+        bookingAttributeAxes:
+          trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, productId));
+
+    if (product.status === "active" && validated.data.status !== "active") {
+      await tx.insert(marketplaceCatalogTombstones).values({
+        entityType: "product",
+        entityId: productId,
+        deletedAt: new Date(),
+      });
+    }
+  });
 
   await replaceProductCategories(db, productId, categoryIds);
 
@@ -886,13 +897,23 @@ export async function updateProductStatus(
     return { error: "errors.productNotFound" };
   }
 
-  await db
-    .update(products)
-    .set({
-      status,
-      updatedAt: new Date(),
-    })
-    .where(eq(products.id, productId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(products)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, productId));
+
+    if (product.status === "active" && status !== "active") {
+      await tx.insert(marketplaceCatalogTombstones).values({
+        entityType: "product",
+        entityId: productId,
+        deletedAt: new Date(),
+      });
+    }
+  });
 
   revalidatePath("/dashboard/products");
   return { success: true };
@@ -964,6 +985,11 @@ export async function deleteProduct(productId: string) {
       })),
     );
 
+    await tx.insert(marketplaceCatalogTombstones).values({
+      entityType: "product",
+      entityId: productId,
+      deletedAt: new Date(),
+    });
     await tx.delete(products).where(eq(products.id, productId));
   });
 

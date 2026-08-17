@@ -12,6 +12,7 @@ import {
 // Types for tracking
 type PageType = 'home' | 'catalog' | 'product' | 'cart' | 'checkout' | 'confirmation' | 'account' | 'rental'
 type DeviceType = 'mobile' | 'tablet' | 'desktop'
+type SalesChannel = 'marketplace'
 type EventType =
   | 'product_view'
   | 'add_to_cart'
@@ -86,12 +87,14 @@ function getSessionId(): string {
 interface AnalyticsProviderProps {
   children: ReactNode
   storeSlug: string
+  channel?: SalesChannel
   enabled?: boolean
 }
 
 export function AnalyticsProvider({
   children,
   storeSlug,
+  channel,
   enabled = true
 }: AnalyticsProviderProps) {
   const sessionIdRef = useRef<string | null>(null)
@@ -148,7 +151,7 @@ export function AnalyticsProvider({
       sessionId: sessionIdRef.current,
       customerId: data.customerId,
       eventType: data.eventType,
-      metadata: data.metadata,
+      metadata: channel ? { ...data.metadata, channel } : data.metadata,
     }
 
     // Use sendBeacon for non-blocking requests
@@ -166,7 +169,7 @@ export function AnalyticsProvider({
         // Silently ignore errors
       })
     }
-  }, [enabled, storeSlug])
+  }, [channel, enabled, storeSlug])
 
   const value: AnalyticsContextValue = {
     trackPageView,

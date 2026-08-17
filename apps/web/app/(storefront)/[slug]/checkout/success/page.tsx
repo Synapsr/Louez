@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { CheckCircle2, Clock, Calendar, ArrowRight, Shield, Tag } from 'lucide-react'
 
+import { confirmMarketplaceBookingAttempt } from '@louez/api/services'
 import { db } from '@louez/db'
 import { reservations, stores, payments, reservationActivity } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
@@ -47,6 +48,8 @@ async function verifyAndUpdatePayment(
     if (session.paymentStatus !== 'paid') {
       return null
     }
+
+    await confirmMarketplaceBookingAttempt(reservationId)
 
     // Check if payment already exists for this session (webhook already processed)
     const existingPayment = await db.query.payments.findFirst({

@@ -1,5 +1,5 @@
 // Types
-export * from './types'
+export * from "./types";
 
 // Calculation utilities
 export {
@@ -19,7 +19,8 @@ export {
   getAvailableDurationMinutes,
   snapToNearestRatePeriod,
   isRateBasedProduct,
-} from './calculate'
+  roundCurrency,
+} from "./calculate";
 
 export {
   type DurationUnit,
@@ -28,7 +29,7 @@ export {
   pricingModeToMinutes,
   perMinuteCost,
   computeReductionPercent,
-} from './conversions'
+} from "./conversions";
 
 // Tax utilities
 export {
@@ -42,14 +43,14 @@ export {
   applyTaxToCalculation,
   calculateRentalPriceWithTax,
   formatTaxLabel,
-} from './tax'
+} from "./tax";
 
 // Seasonal pricing
 export {
   findSeasonalPricingForDate,
   buildRawSegments,
   calculateSeasonalAwarePrice,
-} from './seasonal'
+} from "./seasonal";
 
 // Formatting utilities
 export {
@@ -63,4 +64,4 @@ export {
   getUnitLabel,
   formatSavingsBadge,
   formatTierBadge,
-} from './format'
+} from "./format";

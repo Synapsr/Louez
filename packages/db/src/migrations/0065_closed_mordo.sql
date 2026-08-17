@@ -1,0 +1,1 @@
+DROP INDEX `store_marketplace_channels_store_idx` ON `store_marketplace_channels`;
