@@ -5077,6 +5077,12 @@
           "enabled": "Canal marketplace activé.",
           "disabled": "Canal marketplace désactivé.",
           "termsAccepted": "Conditions de la marketplace acceptées."
+        },
+        "cohort": {
+          "memberTitle": "Offre reeent à vie — 0 € de commission reeent",
+          "memberRank": "Membre n°{rank} de la cohorte de lancement",
+          "incentiveBadge": "Offre de lancement",
+          "incentiveLine": "encore {remaining} places avec 0 € de commission reeent à vie"
         }
       }
     },
@@ -6281,7 +6287,8 @@
         "upTo20": "6 à 20",
         "upTo50": "21 à 50",
         "moreThan50": "Plus de 50"
-      }
+      },
+      "individualNote": "Pas besoin d'entreprise pour commencer : créez votre page, publiez vos objets et encaissez en ligne. Les revenus de location sont à déclarer selon votre situation."
     },
     "store": {
       "title": "Informations de votre boutique",
@@ -6428,7 +6435,26 @@
       "product": "Premier produit",
       "payment": "Paiements",
       "profile": "Profil",
-      "source": "Source"
+      "source": "Source",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Vous arrivez de reeent",
+      "description": "Deux minutes pour comprendre comment reeent et Louez fonctionnent ensemble.",
+      "products": {
+        "title": "Les deux produits",
+        "body": "reeent est la vitrine, Louez est votre outil. Les particuliers trouvent votre matériel sur reeent ; vous gérez ici vos réservations, paiements et calendrier."
+      },
+      "offer": {
+        "title": "L'offre",
+        "body": "Offre reeent à vie : les 1000 premiers loueurs publiés sur reeent gardent 0 € de commission reeent, pour toujours.",
+        "remaining": "Il reste {remaining} places sur {total}.",
+        "closedBody": "L'offre de lancement est complète. Publier sur reeent reste le moyen le plus simple de vous rendre visible auprès des particuliers."
+      },
+      "pricing": {
+        "title": "Le pricing Louez",
+        "body": "Le pricing Louez s'applique normalement : sans abonnement, vous payez à l'usage — 1 € par réservation, dégressif au volume. Aucuns frais fixes."
+      }
     }
   },
   "categories": {

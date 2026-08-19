@@ -105,7 +105,11 @@ import { getDashboardTulipInsuranceModeFromSettings } from "@/lib/integrations/t
 import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state";
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
-import { recordReservationFee, voidReservationFee } from "@/lib/pay-as-you-go";
+import {
+  recordMarketplaceFee,
+  recordReservationFee,
+  voidReservationFee,
+} from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   captureReservationActionSucceeded,
@@ -400,11 +404,22 @@ export async function updateReservationStatus(
   const BILLABLE_STATUSES = ["confirmed", "ongoing", "completed"];
   try {
     if (BILLABLE_STATUSES.includes(status) && !BILLABLE_STATUSES.includes(previousStatus)) {
-      await recordReservationFee({
-        storeId: store.id,
-        reservationId,
-        source: "manual",
-      });
+      await Promise.all([
+        recordReservationFee({
+          storeId: store.id,
+          reservationId,
+          source: "manual",
+        }),
+        ...(reservation.source === "marketplace"
+          ? [
+              recordMarketplaceFee({
+                storeId: store.id,
+                reservationId,
+                source: "manual",
+              }),
+            ]
+          : []),
+      ]);
     } else if (BILLABLE_STATUSES.includes(previousStatus) && !BILLABLE_STATUSES.includes(status)) {
       await voidReservationFee(reservationId);
     }

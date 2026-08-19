@@ -4,6 +4,11 @@ import type { NextRequest } from 'next/server';
 import { isStandaloneMode } from '@/lib/deployment';
 import { getSubdomain, isLoopbackHost } from '@/lib/util.host';
 import { isValidReferralCode } from '@/lib/utils/referral';
+import {
+  isKnownSignupOrigin,
+  SIGNUP_ORIGIN_COOKIE,
+  SIGNUP_ORIGIN_COOKIE_MAX_AGE,
+} from '@/lib/utils/signup-origin';
 import { LOGIN_CALLBACK_PATH_HEADER } from '@/lib/utils/util.url';
 
 import { env } from '@/env';
@@ -198,7 +203,7 @@ async function getStandaloneStoreSlug(): Promise<string | null> {
 }
 
 // =============================================================================
-// REFERRAL ATTRIBUTION
+// ACQUISITION ATTRIBUTION
 // =============================================================================
 
 const REFERRAL_COOKIE = 'louez_referral';
@@ -242,6 +247,40 @@ function captureReferral(
     });
   }
   return response;
+}
+
+/**
+ * Capture a `?from=` sign-up origin (e.g. `?from=reeent`) the same way `?ref=` is captured:
+ * last-click, cross-subdomain, so it survives the entry URL and the OAuth round-trip and can
+ * still be read once the user lands in onboarding. Only allow-listed values are stored — the
+ * cookie decides which education step and which offer copy a new loueur is shown.
+ */
+function captureSignupOrigin(
+  request: NextRequest,
+  response: NextResponse,
+  host: string,
+): NextResponse {
+  const from = request.nextUrl.searchParams.get('from');
+  if (isKnownSignupOrigin(from)) {
+    response.cookies.set(SIGNUP_ORIGIN_COOKIE, from, {
+      maxAge: SIGNUP_ORIGIN_COOKIE_MAX_AGE,
+      path: '/',
+      sameSite: 'lax',
+      httpOnly: true,
+      secure: !isLoopbackHost(host.split(':')[0]),
+      domain: referralCookieDomain(host),
+    });
+  }
+  return response;
+}
+
+/** Both last-click acquisition captures, applied to the same outgoing response. */
+function captureAcquisition(
+  request: NextRequest,
+  response: NextResponse,
+  host: string,
+): NextResponse {
+  return captureSignupOrigin(request, captureReferral(request, response, host), host);
 }
 
 export async function proxy(request: NextRequest) {
@@ -297,7 +336,7 @@ export async function proxy(request: NextRequest) {
     PREVIEW_STORE_SLUG &&
     !isDashboardRoute(pathname)
   ) {
-    return captureReferral(
+    return captureAcquisition(
       request,
       createStorefrontRewrite(request, PREVIEW_STORE_SLUG),
       host,
@@ -311,7 +350,7 @@ export async function proxy(request: NextRequest) {
   //   - {DASHBOARD_SUBDOMAIN}.{APP_DOMAIN} (e.g., app.example.com)
   //   - localhost (when PREVIEW_STORE_SLUG is not set)
   if (subdomain === DASHBOARD_SUBDOMAIN || (isLocalhost && !subdomain)) {
-    return captureReferral(request, createDashboardResponse(request), host);
+    return captureAcquisition(request, createDashboardResponse(request), host);
   }
 
   // -----------------------------------------------------------------------------
@@ -320,7 +359,7 @@ export async function proxy(request: NextRequest) {
   // {slug}.{APP_DOMAIN} → rewrite to /{slug}/* routes
   // Excludes "www" which should show the landing page
   if (subdomain && subdomain !== 'www') {
-    return captureReferral(
+    return captureAcquisition(
       request,
       createStorefrontRewrite(request, subdomain),
       host,
@@ -330,7 +369,7 @@ export async function proxy(request: NextRequest) {
   // -----------------------------------------------------------------------------
   // 6. DEFAULT: Pass through (landing page, www, etc.)
   // -----------------------------------------------------------------------------
-  return captureReferral(request, NextResponse.next(), host);
+  return captureAcquisition(request, NextResponse.next(), host);
 }
 
 export const config = {

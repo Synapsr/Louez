@@ -9,7 +9,15 @@ import { getOrCreateStripeCustomer } from '@/lib/stripe/subscriptions';
 import { stripe } from '@/lib/stripe/client';
 
 import { resolvePayAsYouGoConfig } from './config';
-import { ACTIVE_FEE_STATUSES, billingMonthOf, getStoreCurrency } from './metering';
+import {
+  selectMonthlyBillingStoreIds,
+  summarizeMonthlyPlatformFees,
+} from './billing-core';
+import {
+  ACTIVE_FEE_STATUSES,
+  billingMonthOf,
+  getStoreCurrency,
+} from './metering';
 
 /** First day (UTC) of the month preceding `reference`. */
 function previousMonthStart(reference: Date): Date {
@@ -69,16 +77,14 @@ export async function runMonthlyPayAsYouGoBilling(
     .where(
       and(
         eq(platformFees.billingMonth, billingMonth),
-        inArray(platformFees.status, ['pending', 'collected']),
+        eq(platformFees.status, 'pending'),
       ),
     );
 
-  const storeIds = [
-    ...new Set([
-      ...paygStores.map((s) => s.storeId),
-      ...storesWithUsage.map((s) => s.storeId),
-    ]),
-  ];
+  const storeIds = selectMonthlyBillingStoreIds(
+    paygStores.map((store) => store.storeId),
+    storesWithUsage.map((store) => store.storeId),
+  );
 
   for (const storeId of storeIds) {
     result.storesProcessed += 1;
@@ -118,7 +124,7 @@ export async function billStoreForMonth(
   const [subscription, storeCurrency] = await Promise.all([
     db.query.subscriptions.findFirst({
       where: eq(subscriptions.storeId, storeId),
-      columns: { payAsYouGoConfig: true },
+      columns: { billingMode: true, payAsYouGoConfig: true },
     }),
     getStoreCurrency(storeId),
   ]);
@@ -129,10 +135,9 @@ export async function billStoreForMonth(
 
   const rows = await db
     .select({
-      id: platformFees.id,
       status: platformFees.status,
       amountCents: platformFees.amountCents,
-      stripeApplicationFeeId: platformFees.stripeApplicationFeeId,
+      source: platformFees.source,
     })
     .from(platformFees)
     .where(
@@ -149,26 +154,17 @@ export async function billStoreForMonth(
   // manual (pending) fees; collected fees were already charged at source. Because
   // gross = collected + pending, collected can never exceed gross — there is no
   // month-end over-collection to refund.
-  const collectedRows = rows.filter((r) => r.status === 'collected');
-  const collectedAtSourceCents = collectedRows.reduce(
-    (sum, r) => sum + r.amountCents,
-    0,
+  const summary = summarizeMonthlyPlatformFees(
+    rows,
+    subscription?.billingMode !== 'subscription',
   );
-  const invoicedAmountCents = rows
-    .filter((r) => r.status === 'pending')
-    .reduce((sum, r) => sum + r.amountCents, 0);
-  const grossAmountCents = rows.reduce((sum, r) => sum + r.amountCents, 0);
-  const locationCount = rows.length;
   const currency = config.currency;
 
   // ---- Claim the (store, month) slot BEFORE any Stripe call (idempotency). ----
   const claim = await claimInvoiceRow({
     storeId,
     billingMonth,
-    locationCount,
-    grossAmountCents,
-    collectedAtSourceCents,
-    invoicedAmountCents,
+    ...summary,
     currency,
   });
   if (claim.terminal) {
@@ -187,6 +183,10 @@ export async function billStoreForMonth(
   const billGrossCents = claim.grossAmountCents;
   const billCollectedCents = claim.collectedAtSourceCents;
   const billInvoicedCents = claim.invoicedAmountCents;
+  const billUsageLocationCount = claim.usageLocationCount;
+  const billUsageFeeCents = claim.usageFeeAmountCents;
+  const billMarketplaceReservationCount = claim.marketplaceReservationCount;
+  const billMarketplaceFeeCents = claim.marketplaceFeeAmountCents;
 
   // Nothing to invoice (no manual/pending fees — everything was collected at source).
   if (billInvoicedCents <= 0) {
@@ -195,7 +195,12 @@ export async function billStoreForMonth(
       .set({ status: 'void', updatedAt: new Date() })
       .where(eq(payAsYouGoInvoices.id, invoiceRowId));
     // Close out any pending rows (nothing left to charge) so the month is settled.
-    await markUsageBilled(storeId, billingMonth, invoiceRowId);
+    await markUsageBilled(
+      storeId,
+      billingMonth,
+      invoiceRowId,
+      billUsageFeeCents > 0,
+    );
     return { status: 'void', invoicedCents: 0, invoiceCreated };
   }
 
@@ -220,10 +225,12 @@ export async function billStoreForMonth(
     invoice = await ensureInvoiceCollected(
       invoice,
       stripeCustomerId,
-      billInvoicedCents,
       currency,
       billingMonth,
-      billLocationCount,
+      billUsageLocationCount,
+      billUsageFeeCents,
+      billMarketplaceReservationCount,
+      billMarketplaceFeeCents,
       storeId,
     );
   } else {
@@ -256,10 +263,12 @@ export async function billStoreForMonth(
     invoice = await ensureInvoiceCollected(
       invoice,
       stripeCustomerId,
-      billInvoicedCents,
       currency,
       billingMonth,
-      billLocationCount,
+      billUsageLocationCount,
+      billUsageFeeCents,
+      billMarketplaceReservationCount,
+      billMarketplaceFeeCents,
       storeId,
     );
   }
@@ -273,6 +282,10 @@ export async function billStoreForMonth(
       grossAmountCents: billGrossCents,
       collectedAtSourceCents: billCollectedCents,
       invoicedAmountCents: billInvoicedCents,
+      usageLocationCount: billUsageLocationCount,
+      usageFeeAmountCents: billUsageFeeCents,
+      marketplaceReservationCount: billMarketplaceReservationCount,
+      marketplaceFeeAmountCents: billMarketplaceFeeCents,
       currency,
       status,
       stripeInvoiceId: invoice.id ?? existingStripeInvoiceId,
@@ -287,7 +300,12 @@ export async function billStoreForMonth(
   // rentals are settled by the invoice.paid platform webhook (reconcilePayAsYouGoInvoice),
   // so an unpaid hosted invoice never silently loses the commission.
   if (status === 'paid') {
-    await markUsageBilled(storeId, billingMonth, invoiceRowId);
+    await markUsageBilled(
+      storeId,
+      billingMonth,
+      invoiceRowId,
+      billUsageFeeCents > 0,
+    );
   }
 
   return {
@@ -304,6 +322,10 @@ interface ClaimInput {
   grossAmountCents: number;
   collectedAtSourceCents: number;
   invoicedAmountCents: number;
+  usageLocationCount: number;
+  usageFeeAmountCents: number;
+  marketplaceReservationCount: number;
+  marketplaceFeeAmountCents: number;
   currency: string;
 }
 
@@ -322,6 +344,10 @@ type ClaimResult =
       grossAmountCents: number;
       collectedAtSourceCents: number;
       invoicedAmountCents: number;
+      usageLocationCount: number;
+      usageFeeAmountCents: number;
+      marketplaceReservationCount: number;
+      marketplaceFeeAmountCents: number;
     };
 
 /**
@@ -361,6 +387,10 @@ async function claimInvoiceRow(input: ClaimInput): Promise<ClaimResult> {
       grossAmountCents: existing.grossAmountCents,
       collectedAtSourceCents: existing.collectedAtSourceCents,
       invoicedAmountCents: existing.invoicedAmountCents,
+      usageLocationCount: existing.usageLocationCount,
+      usageFeeAmountCents: existing.usageFeeAmountCents,
+      marketplaceReservationCount: existing.marketplaceReservationCount,
+      marketplaceFeeAmountCents: existing.marketplaceFeeAmountCents,
     };
   }
 
@@ -376,6 +406,10 @@ async function claimInvoiceRow(input: ClaimInput): Promise<ClaimResult> {
       grossAmountCents: input.grossAmountCents,
       collectedAtSourceCents: input.collectedAtSourceCents,
       invoicedAmountCents: input.invoicedAmountCents,
+      usageLocationCount: input.usageLocationCount,
+      usageFeeAmountCents: input.usageFeeAmountCents,
+      marketplaceReservationCount: input.marketplaceReservationCount,
+      marketplaceFeeAmountCents: input.marketplaceFeeAmountCents,
       currency: input.currency,
       status: 'draft',
     });
@@ -388,6 +422,10 @@ async function claimInvoiceRow(input: ClaimInput): Promise<ClaimResult> {
       grossAmountCents: input.grossAmountCents,
       collectedAtSourceCents: input.collectedAtSourceCents,
       invoicedAmountCents: input.invoicedAmountCents,
+      usageLocationCount: input.usageLocationCount,
+      usageFeeAmountCents: input.usageFeeAmountCents,
+      marketplaceReservationCount: input.marketplaceReservationCount,
+      marketplaceFeeAmountCents: input.marketplaceFeeAmountCents,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -421,6 +459,10 @@ async function claimInvoiceRow(input: ClaimInput): Promise<ClaimResult> {
       grossAmountCents: winner.grossAmountCents,
       collectedAtSourceCents: winner.collectedAtSourceCents,
       invoicedAmountCents: winner.invoicedAmountCents,
+      usageLocationCount: winner.usageLocationCount,
+      usageFeeAmountCents: winner.usageFeeAmountCents,
+      marketplaceReservationCount: winner.marketplaceReservationCount,
+      marketplaceFeeAmountCents: winner.marketplaceFeeAmountCents,
     };
   }
 }
@@ -433,28 +475,44 @@ async function claimInvoiceRow(input: ClaimInput): Promise<ClaimResult> {
 async function ensureInvoiceCollected(
   invoice: Stripe.Invoice,
   stripeCustomerId: string,
-  invoicedAmountCents: number,
   currency: string,
   billingMonth: string,
-  locationCount: number,
+  usageLocationCount: number,
+  usageFeeAmountCents: number,
+  marketplaceReservationCount: number,
+  marketplaceFeeAmountCents: number,
   storeId: string,
 ): Promise<Stripe.Invoice> {
   const invoiceId = invoice.id;
   if (!invoiceId) return invoice;
 
   if (invoice.status === 'draft') {
-    // Bind the single line item to THIS invoice (idempotent), then finalize.
-    await stripe.invoiceItems.create(
-      {
-        customer: stripeCustomerId,
-        invoice: invoiceId,
-        amount: invoicedAmountCents,
-        currency,
-        description: `Locations ${billingMonth} — ${locationCount} location(s)`,
-        metadata: { type: 'pay_as_you_go', storeId, billingMonth },
-      },
-      { idempotencyKey: idemKey('item', storeId, billingMonth) },
-    );
+    if (usageFeeAmountCents > 0) {
+      await stripe.invoiceItems.create(
+        {
+          customer: stripeCustomerId,
+          invoice: invoiceId,
+          amount: usageFeeAmountCents,
+          currency,
+          description: `Locations ${billingMonth} — ${usageLocationCount} location(s)`,
+          metadata: { type: 'pay_as_you_go', storeId, billingMonth },
+        },
+        { idempotencyKey: idemKey('item', storeId, billingMonth) },
+      );
+    }
+    if (marketplaceFeeAmountCents > 0) {
+      await stripe.invoiceItems.create(
+        {
+          customer: stripeCustomerId,
+          invoice: invoiceId,
+          amount: marketplaceFeeAmountCents,
+          currency,
+          description: `Réservations reeent ${billingMonth} — ${marketplaceReservationCount} réservation(s)`,
+          metadata: { type: 'marketplace', storeId, billingMonth },
+        },
+        { idempotencyKey: idemKey('marketplace_item', storeId, billingMonth) },
+      );
+    }
     invoice = await stripe.invoices.finalizeInvoice(invoiceId, undefined, {
       idempotencyKey: idemKey('finalize', storeId, billingMonth),
     });
@@ -481,6 +539,7 @@ async function markUsageBilled(
   storeId: string,
   billingMonth: string,
   invoiceRowId: string,
+  includePayAsYouGoUsage: boolean,
 ): Promise<void> {
   await db
     .update(platformFees)
@@ -490,6 +549,12 @@ async function markUsageBilled(
         eq(platformFees.storeId, storeId),
         eq(platformFees.billingMonth, billingMonth),
         eq(platformFees.status, 'pending'),
+        inArray(
+          platformFees.source,
+          includePayAsYouGoUsage
+            ? ['manual', 'marketplace_manual']
+            : ['marketplace_manual'],
+        ),
       ),
     );
 }
@@ -529,7 +594,12 @@ export async function reconcilePayAsYouGoInvoice(
       .set({ status: 'paid', paidAt: new Date(), updatedAt: new Date() })
       .where(eq(payAsYouGoInvoices.id, row.id));
     // Settle any still-pending rentals for this month.
-    await markUsageBilled(row.storeId, row.billingMonth, row.id);
+    await markUsageBilled(
+      row.storeId,
+      row.billingMonth,
+      row.id,
+      row.usageFeeAmountCents > 0,
+    );
     return true;
   }
 

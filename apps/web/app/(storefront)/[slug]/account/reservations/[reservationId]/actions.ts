@@ -10,7 +10,11 @@ import { reservationActivity, reservations, stores } from "@louez/db";
 
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
 import { dispatchNotification } from "@/lib/notifications/dispatcher";
-import { recordReservationFee, voidReservationFee } from "@/lib/pay-as-you-go";
+import {
+  recordMarketplaceFee,
+  recordReservationFee,
+  voidReservationFee,
+} from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
   toAnalyticsAmountCents,
@@ -143,11 +147,22 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   // online payment session was created, the webhook upgrades this manual pending fee
   // to an online collected fee using the Stripe application-fee metadata.
   try {
-    await recordReservationFee({
-      storeId: store.id,
-      reservationId,
-      source: "manual",
-    });
+    await Promise.all([
+      recordReservationFee({
+        storeId: store.id,
+        reservationId,
+        source: "manual",
+      }),
+      ...(reservation.source === "marketplace"
+        ? [
+            recordMarketplaceFee({
+              storeId: store.id,
+              reservationId,
+              source: "manual",
+            }),
+          ]
+        : []),
+    ]);
   } catch (error) {
     console.error("[payg] Failed to record accepted-quote location:", {
       reservationId,

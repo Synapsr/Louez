@@ -1,8 +1,10 @@
 "use client";
 
+import { useStore } from "@tanstack/react-form";
 import { useTranslations } from "next-intl";
 
 import { SelectItem } from "@louez/ui";
+import { InfoCircleIcon } from "@louez/ui/icons";
 import {
   BUSINESS_TYPES,
   type BusinessType,
@@ -48,6 +50,8 @@ interface ProfileClientPageProps {
   initialProductCategory: ProductCategory | null;
   initialFleetSize: FleetSize | null;
   avatarSeed: string;
+  /** Arrived from the reeent consumer marketplace (ADR 010). Copy only. */
+  fromReeent: boolean;
 }
 
 export function ProfileClientPage({
@@ -57,6 +61,7 @@ export function ProfileClientPage({
   initialProductCategory,
   initialFleetSize,
   avatarSeed,
+  fromReeent,
 }: ProfileClientPageProps) {
   const t = useTranslations("onboarding.profile");
   const tCommon = useTranslations("common");
@@ -68,6 +73,12 @@ export function ProfileClientPage({
     initialProductCategory,
     initialFleetSize,
   });
+
+  const businessType = useStore(form.store, (state) => state.values.businessType);
+  // Reassurance, not gating: picking "Particulier" changes nothing about what
+  // the account can do, so the note is one line and only shown where it lands
+  // — right after the choice, for people reeent sent over.
+  const showIndividualNote = fromReeent && businessType === "individual";
 
   const businessTypeItems = BUSINESS_TYPES.map((type) => ({
     value: type,
@@ -128,6 +139,13 @@ export function ProfileClientPage({
               </field.Select>
             )}
           </form.AppField>
+
+          {showIndividualNote && (
+            <p className="text-muted-foreground bg-muted/40 flex items-start gap-2 rounded-lg p-3 text-sm leading-relaxed">
+              <InfoCircleIcon className="mt-0.5 size-4 shrink-0" />
+              <span>{t("individualNote")}</span>
+            </p>
+          )}
 
           <form.AppField name="productCategory">
             {(field) => (

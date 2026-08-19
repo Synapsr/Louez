@@ -11,6 +11,7 @@
     "db:seed": "tsx scripts/seed/index.ts",
     "db:seed:demo": "tsx scripts/seed/demo/index.ts",
     "db:seed:demo:images": "tsx scripts/seed/demo/upload-images.ts",
+    "marketplace:default-publication": "node --import tsx scripts/run-marketplace-default-publication.ts",
     "pwa:icons": "tsx scripts/generate-pwa-icons.ts",
     "dev-localify": "echo Localify URL: https://louez.localify && AUTH_URL=https://louez.localify NEXT_PUBLIC_APP_URL=https://louez.localify NEXT_PUBLIC_APP_DOMAIN=louez.localify next dev --hostname 127.0.0.1 --port 60441 --turbopack"
   },

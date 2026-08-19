@@ -25,6 +25,7 @@ import {
   perMinuteCost,
   pricingModeToMinutes,
   roundCurrency,
+  toAbsoluteUrl,
 } from "@louez/utils";
 
 import { ApiServiceError } from "./errors";
@@ -40,6 +41,7 @@ interface CatalogListParams {
   cursor?: string;
   getCanonicalUrl: CatalogUrlBuilder;
   limit?: number;
+  mediaBaseUrl: string;
 }
 
 interface CatalogCursor {
@@ -79,6 +81,10 @@ export interface StoreSnapshot {
     storeCategoryName: string;
     marketplaceCategorySlug: string;
   }>;
+  delivery: {
+    enabled: boolean;
+    maximumDistance: number | null;
+  };
   storefrontUrl: string;
   updatedAt: string;
   version: number;
@@ -432,7 +438,7 @@ export async function listStoreSnapshots(params: CatalogListParams): Promise<{
       address: row.address,
       latitude: toNullableNumber(row.latitude),
       longitude: toNullableNumber(row.longitude),
-      logoUrl: row.logoUrl,
+      logoUrl: row.logoUrl === null ? null : toAbsoluteUrl(row.logoUrl, params.mediaBaseUrl),
       currency: row.settings?.currency ?? "EUR",
       timezone: row.settings?.timezone ?? "Europe/Paris",
       channel: {
@@ -442,6 +448,12 @@ export async function listStoreSnapshots(params: CatalogListParams): Promise<{
       },
       claimedBusinessId: row.claimedBusinessId,
       categoryMappings: mappingsByStore.get(row.id) ?? [],
+      delivery: {
+        enabled: row.settings?.delivery?.enabled ?? false,
+        maximumDistance: row.settings?.delivery?.enabled
+          ? (row.settings.delivery.maximumDistance ?? null)
+          : null,
+      },
       storefrontUrl: params.getCanonicalUrl(row.slug, "/"),
       updatedAt: updatedAt.toISOString(),
       version: row.version,
@@ -877,8 +889,8 @@ export async function listProductSnapshots(params: CatalogListParams): Promise<{
       storeId: row.storeId,
       name: row.name,
       description: row.description,
-      images: row.images ?? [],
-      videoUrl: row.videoUrl,
+      images: (row.images ?? []).map((imageUrl) => toAbsoluteUrl(imageUrl, params.mediaBaseUrl)),
+      videoUrl: row.videoUrl === null ? null : toAbsoluteUrl(row.videoUrl, params.mediaBaseUrl),
       marketplaceCategorySlug,
       storeCategoryIds,
       pricing: {

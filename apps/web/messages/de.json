@@ -5077,6 +5077,12 @@
           "enabled": "Marketplace-Kanal aktiviert.",
           "disabled": "Marketplace-Kanal deaktiviert.",
           "termsAccepted": "Marketplace-Bedingungen akzeptiert."
+        },
+        "cohort": {
+          "memberTitle": "reeent-Angebot auf Lebenszeit — 0 € reeent-Provision",
+          "memberRank": "Mitglied Nr. {rank} der Startkohorte",
+          "incentiveBadge": "Startangebot",
+          "incentiveLine": "noch {remaining} Plätze mit 0 € reeent-Provision auf Lebenszeit"
         }
       }
     },
@@ -6281,7 +6287,8 @@
         "upTo20": "6 bis 20",
         "upTo50": "21 bis 50",
         "moreThan50": "Mehr als 50"
-      }
+      },
+      "individualNote": "Sie brauchen kein Unternehmen, um zu starten: Erstellen Sie Ihre Seite, veröffentlichen Sie Ihre Artikel und kassieren Sie online. Mieteinnahmen sind je nach Ihrer Situation zu deklarieren."
     },
     "store": {
       "title": "Ihre Shop-Informationen",
@@ -6428,7 +6435,26 @@
       "product": "Erstes Produkt",
       "payment": "Zahlungen",
       "profile": "Profil",
-      "source": "Quelle"
+      "source": "Quelle",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Sie kommen von reeent",
+      "description": "Zwei Minuten, um zu verstehen, wie reeent und Louez zusammenspielen.",
+      "products": {
+        "title": "Die beiden Produkte",
+        "body": "reeent ist das Schaufenster, Louez ist Ihr Werkzeug. Privatpersonen finden Ihre Ausrüstung auf reeent; hier verwalten Sie Ihre Reservierungen, Zahlungen und Ihren Kalender."
+      },
+      "offer": {
+        "title": "Das Angebot",
+        "body": "reeent-Angebot auf Lebenszeit: Die ersten 1000 auf reeent veröffentlichten Vermieter behalten für immer 0 € reeent-Provision.",
+        "remaining": "Es sind noch {remaining} von {total} Plätzen frei.",
+        "closedBody": "Das Startangebot ist vollständig vergeben. Auf reeent zu veröffentlichen bleibt der einfachste Weg, für Privatpersonen sichtbar zu werden."
+      },
+      "pricing": {
+        "title": "Die Louez-Preise",
+        "body": "Die Louez-Preise gelten wie gewohnt: kein Abo, Sie zahlen nach Nutzung — 1 € pro Reservierung, günstiger bei mehr Volumen. Keine Fixkosten."
+      }
     }
   },
   "categories": {

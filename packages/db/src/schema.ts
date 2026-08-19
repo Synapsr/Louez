@@ -213,10 +213,13 @@ export const platformFeeSource = mysqlEnum("platform_fee_source", [
   "online", // collected at source via the Stripe application fee
   "manual", // reservation fee accrued for the month-end invoice (no Stripe)
   "free", // waived by the store's free-reservation welcome allowance (amount 0)
+  "marketplace_online", // reeent fee collected at source via the Stripe application fee
+  "marketplace_manual", // reeent fee accrued for the month-end invoice
+  "marketplace_waived", // lifetime launch-cohort waiver (amount 0)
 ]);
 
 export const platformFeeStatus = mysqlEnum("platform_fee_status", [
-  "pending", // manual reservation fee awaiting the month-end invoice
+  "pending", // manual usage/marketplace fee awaiting the month-end invoice
   "collected", // collected at source via the application fee (or settled free row)
   "billed", // included in a paid/sent month-end invoice
   "voided", // reservation cancelled before billing -> not charged
@@ -224,8 +227,9 @@ export const platformFeeStatus = mysqlEnum("platform_fee_status", [
 ]);
 
 /**
- * Ledger of pay-as-you-go reservation commissions the application collected (or will
- * collect). One row per reservation, idempotent via `dedupKey` (`res:<reservationId>`).
+ * Ledger of platform commissions the application collected (or will collect). A
+ * reservation may have one PAYG row (`res:<reservationId>`) and one reeent marketplace
+ * row (`mkt:<reservationId>`), each idempotent through the unique `dedupKey`.
  */
 export const platformFees = mysqlTable(
   "platform_fee",
@@ -236,7 +240,7 @@ export const platformFees = mysqlTable(
     // The payment this fee was collected on (online fees). Null for manual fees.
     paymentId: varchar("payment_id", { length: 21 }),
 
-    // Idempotency key: `res:<reservationId>` (one row per reservation).
+    // Idempotency key: `res:<reservationId>` (PAYG) or `mkt:<reservationId>` (reeent).
     dedupKey: varchar("dedup_key", { length: 80 }).notNull().unique(),
 
     amountCents: int("amount_cents").notNull(),
@@ -261,7 +265,7 @@ export const platformFees = mysqlTable(
       length: 255,
     }),
 
-    // Month-end invoice this fee was rolled into (manual reservation fees).
+    // Month-end invoice this fee was rolled into (manual usage/marketplace fees).
     invoiceId: varchar("invoice_id", { length: 21 }),
 
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -294,9 +298,9 @@ export const payAsYouGoInvoiceStatus = mysqlEnum("payg_invoice_status", [
 ]);
 
 /**
- * One aggregated month-end invoice per (store, month) for pay-as-you-go stores.
- * Covers the rentals NOT already collected at source. Unique by (store, month)
- * so the billing cron is idempotent.
+ * One aggregated month-end platform-fee invoice per (store, month). PAYG stores can
+ * receive a usage line; every billing mode can receive a reeent marketplace line.
+ * Unique by (store, month) so the billing cron is idempotent.
  */
 export const payAsYouGoInvoices = mysqlTable(
   "pay_as_you_go_invoices",
@@ -309,6 +313,10 @@ export const payAsYouGoInvoices = mysqlTable(
     grossAmountCents: int("gross_amount_cents").notNull().default(0), // T(N)
     collectedAtSourceCents: int("collected_at_source_cents").notNull().default(0), // C
     invoicedAmountCents: int("invoiced_amount_cents").notNull().default(0), // T - C
+    usageLocationCount: int("usage_location_count").notNull().default(0),
+    usageFeeAmountCents: int("usage_fee_amount_cents").notNull().default(0),
+    marketplaceReservationCount: int("marketplace_reservation_count").notNull().default(0),
+    marketplaceFeeAmountCents: int("marketplace_fee_amount_cents").notNull().default(0),
     currency: varchar("currency", { length: 3 }).notNull().default("eur"),
 
     status: payAsYouGoInvoiceStatus.default("draft").notNull(),
@@ -664,12 +672,18 @@ export const storeMarketplaceChannels = mysqlTable(
     id: id(),
     storeId: varchar("store_id", { length: 21 }).notNull().unique(),
     enabledByOwner: boolean("enabled_by_owner").default(false).notNull(),
+    ownerDecidedAt: timestamp("owner_decided_at", { mode: "date" }),
     status: mysqlEnum("status", ["setup_required", "pending", "published", "paused", "disabled"])
       .default("setup_required")
       .notNull(),
     publishedAt: timestamp("published_at", { mode: "date" }),
+    lifetimeFeeWaiverAt: timestamp("lifetime_fee_waiver_at", { mode: "date" }),
+    cohortRank: int("cohort_rank"),
     disabledAt: timestamp("disabled_at", { mode: "date" }),
     termsAcceptedAt: timestamp("terms_accepted_at", { mode: "date" }),
+    consentBasis: mysqlEnum("consent_basis", ["explicit", "terms_update"])
+      .default("explicit")
+      .notNull(),
     claimedBusinessId: varchar("claimed_business_id", { length: 255 }),
     claimConfirmedAt: timestamp("claim_confirmed_at", { mode: "date" }),
     statusReason: varchar("status_reason", { length: 255 }),
@@ -682,6 +696,7 @@ export const storeMarketplaceChannels = mysqlTable(
       table.status,
       table.updatedAt,
     ),
+    cohortRankUnique: unique("store_marketplace_channels_cohort_rank_unique").on(table.cohortRank),
   }),
 );
 

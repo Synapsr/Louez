@@ -2,6 +2,7 @@ import { cancelMarketplaceBooking, ApiServiceError } from "@louez/api/services";
 import { bookingCancelInputSchema, bookingReservationParamsSchema } from "@louez/validations";
 import type { NextRequest } from "next/server";
 
+import { env } from "@/env";
 import { bookingJson, bookingServiceError, readBookingPost } from "@/lib/booking-api-route";
 import { useLogger, withEvlog } from "@/lib/evlog";
 import { marketplaceCancellationAdapter } from "@/lib/marketplace-booking";
@@ -27,6 +28,7 @@ const handlePost = async (
       await cancelMarketplaceBooking({
         reservationId: parsedParams.data.reservationId,
         getCanonicalUrl,
+        mediaBaseUrl: env.NEXT_PUBLIC_APP_URL,
         adapter: marketplaceCancellationAdapter,
       }),
     );

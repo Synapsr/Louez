@@ -33,6 +33,7 @@ import {
   getReversibleFees,
   getStoreBilling,
   parseFeeMetadata,
+  recordMarketplaceFee,
   recordFeeReversals,
   recordReservationFee,
 } from '@/lib/pay-as-you-go';
@@ -376,6 +377,7 @@ async function handleCheckoutCompleted(
   let applicationFeeId: string | null = null;
   let feeBreakdown = {
     reservationFeeCents: 0,
+    marketplaceFeeCents: 0,
     hasBreakdown: false,
   };
   let paymentIntentRetrieveFailed = false;
@@ -467,6 +469,22 @@ async function handleCheckoutCompleted(
       stripeApplicationFeeId: applicationFeeId,
       at: paidAt,
       billing,
+    });
+  }
+
+  if (paymentIntentId && reservation.source === 'marketplace') {
+    const marketplaceCollectedAtSource =
+      feeBreakdown.marketplaceFeeCents >= 100;
+    await recordMarketplaceFee({
+      storeId: reservation.store.id,
+      reservationId,
+      source: marketplaceCollectedAtSource ? 'online' : 'manual',
+      collectedAmountCents: feeBreakdown.marketplaceFeeCents,
+      currency,
+      paymentId: existingPayment?.id ?? null,
+      stripePaymentIntentId: paymentIntentId,
+      stripeApplicationFeeId: applicationFeeId,
+      at: paidAt,
     });
   }
 

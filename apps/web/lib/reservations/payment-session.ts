@@ -130,6 +130,7 @@ export async function createReservationPaymentSessionForCustomer(
       reservationId,
       chargeCents,
       billing,
+      includeMarketplaceFee: reservation.source === "marketplace",
     });
 
     const { url, sessionId, expiresAt } = await createCheckoutSession({
@@ -189,6 +190,7 @@ export async function createReservationPaymentSessionForCustomer(
         deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
         application_fee_cents: feePlan.applicationFeeCents,
         reservation_fee_cents: feePlan.reservationFeeCents,
+        marketplace_fee_cents: feePlan.marketplaceFeeCents,
         currency,
       },
     });

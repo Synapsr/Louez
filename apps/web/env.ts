@@ -303,6 +303,14 @@ export const env = createEnv({
     // changing this only affects accounts created afterwards. Default 15.
     PAYG_FREE_RESERVATIONS: z.coerce.number().int().min(0).max(100_000).default(15),
 
+    // First stores published on reeent receive a lifetime marketplace-fee waiver.
+    REEENT_LAUNCH_COHORT_SIZE: z.coerce.number().int().min(0).max(1_000_000).default(1_000),
+    // Inert until the updated CGV notice period has elapsed and production opts in.
+    MARKETPLACE_DEFAULT_PUBLICATION_ENABLED: z
+      .string()
+      .default("false")
+      .transform((value) => value === "true"),
+
     PAYG_DEFAULT_PRICING: z
       .string()
       .optional()
@@ -498,6 +506,8 @@ export const env = createEnv({
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
     PAYG_DEFAULT_PRICING: process.env.PAYG_DEFAULT_PRICING,
     PAYG_FREE_RESERVATIONS: process.env.PAYG_FREE_RESERVATIONS,
+    REEENT_LAUNCH_COHORT_SIZE: process.env.REEENT_LAUNCH_COHORT_SIZE,
+    MARKETPLACE_DEFAULT_PUBLICATION_ENABLED: process.env.MARKETPLACE_DEFAULT_PUBLICATION_ENABLED,
     REFERRAL_REFERRER_REWARD: process.env.REFERRAL_REFERRER_REWARD,
     REFERRAL_REFERRED_REWARD: process.env.REFERRAL_REFERRED_REWARD,
     REFERRAL_MIN_QUALIFYING_CENTS: process.env.REFERRAL_MIN_QUALIFYING_CENTS,

@@ -2,7 +2,13 @@ import { and, desc, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import { db } from '@louez/db';
-import { payAsYouGoInvoices, platformFees, stores, subscriptions } from '@louez/db';
+import {
+  payAsYouGoInvoices,
+  platformFees,
+  storeMarketplaceChannels,
+  stores,
+  subscriptions,
+} from '@louez/db';
 import type { BillingMode } from '@louez/types';
 
 import {
@@ -15,12 +21,18 @@ import {
   getDefaultFreeReservations,
   getDefaultPayAsYouGoConfigSnapshot,
 } from './defaults';
+import {
+  MARKETPLACE_FEE_CENTS,
+  decideMarketplaceFeeRecord,
+  type MarketplaceFeeCollectionSource,
+} from './marketplace-fee-core';
 
 /** Fee statuses that count toward a store's owed/collected totals (not voided/reversed). */
 export const ACTIVE_FEE_STATUSES = ['pending', 'collected', 'billed'] as const;
 
 /** Idempotency key for the ledger (unique `dedup_key`): one row per reservation. */
 const reservationFeeKey = (reservationId: string) => `res:${reservationId}`;
+const marketplaceFeeKey = (reservationId: string) => `mkt:${reservationId}`;
 
 export interface StoreBilling {
   billingMode: BillingMode;
@@ -243,7 +255,7 @@ export async function recordReservationFee(
         .where(
           and(
             eq(platformFees.storeId, input.storeId),
-            ne(platformFees.source, 'free'),
+            inArray(platformFees.source, ['online', 'manual']),
             eq(platformFees.billingMonth, billingMonth),
             eq(platformFees.currency, currency),
             inArray(platformFees.status, [...ACTIVE_FEE_STATUSES]),
@@ -297,11 +309,15 @@ export async function voidReservationFee(
     .set({ status: 'voided', updatedAt: new Date() })
     .where(
       and(
-        eq(platformFees.dedupKey, reservationFeeKey(reservationId)),
+        or(
+          eq(platformFees.dedupKey, reservationFeeKey(reservationId)),
+          eq(platformFees.dedupKey, marketplaceFeeKey(reservationId)),
+        ),
         ne(platformFees.status, 'voided'),
         or(
           eq(platformFees.status, 'pending'),
           eq(platformFees.source, 'free'),
+          eq(platformFees.source, 'marketplace_waived'),
         ),
       ),
     );
@@ -349,6 +365,129 @@ export interface StripeFeePlan {
   applicationFeeCents: number;
   /** The pay-as-you-go reservation commission skimmed at source (= applicationFeeCents). */
   reservationFeeCents: number;
+  /** Flat reeent reservation fee skimmed at source. */
+  marketplaceFeeCents: number;
+}
+
+export async function hasMarketplaceLifetimeFeeWaiver(
+  storeId: string,
+): Promise<boolean> {
+  const channel = await db.query.storeMarketplaceChannels.findFirst({
+    where: eq(storeMarketplaceChannels.storeId, storeId),
+    columns: { lifetimeFeeWaiverAt: true },
+  });
+  return (
+    channel?.lifetimeFeeWaiverAt !== null &&
+    channel?.lifetimeFeeWaiverAt !== undefined
+  );
+}
+
+export async function hasMarketplaceFee(
+  reservationId: string,
+): Promise<boolean> {
+  const existing = await db.query.platformFees.findFirst({
+    where: and(
+      eq(platformFees.dedupKey, marketplaceFeeKey(reservationId)),
+      ne(platformFees.status, 'voided'),
+    ),
+    columns: { id: true },
+  });
+  return Boolean(existing);
+}
+
+export async function recordMarketplaceFee(input: {
+  storeId: string;
+  reservationId: string;
+  source: MarketplaceFeeCollectionSource;
+  collectedAmountCents?: number;
+  paymentId?: string | null;
+  stripePaymentIntentId?: string | null;
+  stripeApplicationFeeId?: string | null;
+  currency?: string | null;
+  at?: Date;
+}): Promise<{ recorded: boolean; reason?: string }> {
+  const dedupKey = marketplaceFeeKey(input.reservationId);
+  const existing = await db.query.platformFees.findFirst({
+    where: eq(platformFees.dedupKey, dedupKey),
+    columns: { id: true, source: true, status: true },
+  });
+  const collectedAmountCents = Math.max(
+    0,
+    Math.round(input.collectedAmountCents ?? 0),
+  );
+  const initialDecision = decideMarketplaceFeeRecord({
+    existing: existing ?? null,
+    hasLifetimeWaiver: false,
+    source: input.source,
+    collectedAmountCents,
+  });
+
+  if (initialDecision.action === 'skip') {
+    return { recorded: false, reason: initialDecision.reason };
+  }
+  if (initialDecision.action === 'upgrade' && existing) {
+    await db
+      .update(platformFees)
+      .set({
+        source: 'marketplace_online',
+        status: 'collected',
+        amountCents: MARKETPLACE_FEE_CENTS,
+        paymentId: input.paymentId ?? null,
+        stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+        stripeApplicationFeeId: input.stripeApplicationFeeId ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(platformFees.id, existing.id));
+    return { recorded: true, reason: 'upgraded_to_collected' };
+  }
+
+  const at = input.at ?? new Date();
+  const currency = (
+    input.currency ||
+    (await getStoreCurrency(input.storeId)) ||
+    'eur'
+  )
+    .toLowerCase()
+    .slice(0, 3);
+
+  try {
+    let reason: string | undefined;
+    await db.transaction(async (tx) => {
+      const channel = await tx.query.storeMarketplaceChannels.findFirst({
+        where: eq(storeMarketplaceChannels.storeId, input.storeId),
+        columns: { lifetimeFeeWaiverAt: true },
+      });
+      const decision = decideMarketplaceFeeRecord({
+        existing: null,
+        hasLifetimeWaiver: channel?.lifetimeFeeWaiverAt != null,
+        source: input.source,
+        collectedAmountCents,
+      });
+      if (decision.action !== 'insert') return;
+      reason = decision.reason;
+      await tx.insert(platformFees).values({
+        id: nanoid(),
+        storeId: input.storeId,
+        reservationId: input.reservationId,
+        paymentId: input.paymentId ?? null,
+        dedupKey,
+        amountCents: decision.amountCents,
+        currency,
+        source: decision.source,
+        status: decision.status,
+        billingMonth: billingMonthOf(at),
+        monthlyIndex: null,
+        stripePaymentIntentId: input.stripePaymentIntentId ?? null,
+        stripeApplicationFeeId: input.stripeApplicationFeeId ?? null,
+      });
+    });
+    return { recorded: true, reason };
+  } catch (error) {
+    if (isDuplicateError(error)) {
+      return { recorded: false, reason: 'already_recorded' };
+    }
+    throw error;
+  }
 }
 
 /**
@@ -365,8 +504,21 @@ export async function planStripeFees(opts: {
   chargeCents: number;
   billing?: StoreBilling;
   reference?: Date;
+  includeMarketplaceFee?: boolean;
 }): Promise<StripeFeePlan> {
   const billing = opts.billing ?? (await getStoreBilling(opts.storeId));
+  const maxFee = Math.max(0, opts.chargeCents - 1);
+
+  let marketplaceFeeCents = 0;
+  if (opts.includeMarketplaceFee && maxFee >= MARKETPLACE_FEE_CENTS) {
+    const [alreadyRecorded, hasLifetimeWaiver] = await Promise.all([
+      hasMarketplaceFee(opts.reservationId),
+      hasMarketplaceLifetimeFeeWaiver(opts.storeId),
+    ]);
+    if (!alreadyRecorded && !hasLifetimeWaiver) {
+      marketplaceFeeCents = MARKETPLACE_FEE_CENTS;
+    }
+  }
 
   let reservationFeeCents = 0;
   if (
@@ -383,13 +535,15 @@ export async function planStripeFees(opts: {
     }
   }
 
-  // Cap below the charge amount (Stripe requires application_fee < amount).
-  const maxFee = Math.max(0, opts.chargeCents - 1);
-  if (reservationFeeCents > maxFee) reservationFeeCents = maxFee;
+  // Reserve the flat marketplace fee first; a PAYG fee that does not fit is accrued
+  // through the normal monthly rail by the webhook instead of being partially skimmed.
+  const remainingForReservationFee = maxFee - marketplaceFeeCents;
+  if (reservationFeeCents > remainingForReservationFee) reservationFeeCents = 0;
 
   return {
-    applicationFeeCents: reservationFeeCents,
+    applicationFeeCents: reservationFeeCents + marketplaceFeeCents,
     reservationFeeCents,
+    marketplaceFeeCents,
   };
 }
 
@@ -401,10 +555,11 @@ export const FEE_METADATA_KEYS = {
   /** Present (='2') exactly when this PaymentIntent carries our fee breakdown. */
   version: 'platformFeeVersion',
   reservationFee: 'platformReservationFeeCents',
+  marketplaceFee: 'platformMarketplaceFeeCents',
 } as const;
 
 /** Current fee-breakdown metadata version (lets the webhook detect legacy/absent ones). */
-export const FEE_METADATA_VERSION = '2';
+export const FEE_METADATA_VERSION = '3';
 
 /**
  * Serialize a fee plan into PaymentIntent metadata. The version marker is set whenever an
@@ -417,7 +572,14 @@ export function buildFeeMetadata(plan: StripeFeePlan): Record<string, string> {
     metadata[FEE_METADATA_KEYS.version] = FEE_METADATA_VERSION;
   }
   if (plan.reservationFeeCents > 0) {
-    metadata[FEE_METADATA_KEYS.reservationFee] = String(plan.reservationFeeCents);
+    metadata[FEE_METADATA_KEYS.reservationFee] = String(
+      plan.reservationFeeCents,
+    );
+  }
+  if (plan.marketplaceFeeCents > 0) {
+    metadata[FEE_METADATA_KEYS.marketplaceFee] = String(
+      plan.marketplaceFeeCents,
+    );
   }
   return metadata;
 }
@@ -429,12 +591,22 @@ export function buildFeeMetadata(plan: StripeFeePlan): Record<string, string> {
  */
 export function parseFeeMetadata(
   metadata: Record<string, string> | null | undefined,
-): { reservationFeeCents: number; hasBreakdown: boolean } {
+): {
+  reservationFeeCents: number;
+  marketplaceFeeCents: number;
+  hasBreakdown: boolean;
+} {
   const value = Number(metadata?.[FEE_METADATA_KEYS.reservationFee]);
+  const marketplaceValue = Number(metadata?.[FEE_METADATA_KEYS.marketplaceFee]);
   return {
     reservationFeeCents:
       Number.isFinite(value) && value > 0 ? Math.round(value) : 0,
-    hasBreakdown: metadata?.[FEE_METADATA_KEYS.version] === FEE_METADATA_VERSION,
+    marketplaceFeeCents:
+      Number.isFinite(marketplaceValue) && marketplaceValue > 0
+        ? Math.round(marketplaceValue)
+        : 0,
+    hasBreakdown:
+      metadata?.[FEE_METADATA_KEYS.version] === FEE_METADATA_VERSION,
   };
 }
 

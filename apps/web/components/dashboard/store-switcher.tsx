@@ -76,6 +76,7 @@ interface StoreWithRole {
   name: string;
   slug: string;
   logoUrl: string | null;
+  onboardingCompleted: boolean;
   role: "owner" | "member" | "platform_admin";
 }
 
@@ -84,11 +85,15 @@ interface StoreSwitcherProps {
   currentStoreId: string;
 }
 
-function getStoreSwitchDestination(pathname: string): string {
+function getStoreSwitchDestination(pathname: string, onboardingCompleted: boolean): string {
+  if (!onboardingCompleted) {
+    return "/onboarding";
+  }
+
   const pathSegments = pathname.split("/").filter(Boolean);
 
   if (pathSegments[0] === "onboarding") {
-    return "/onboarding";
+    return "/dashboard";
   }
 
   if (pathSegments[0] !== "dashboard") {
@@ -140,10 +145,13 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
       return;
     }
 
+    const selectedStore = stores.find((store) => store.id === storeId);
+    if (!selectedStore) return;
+
     startTransition(async () => {
       const result = await switchStore(storeId);
       if (result.success) {
-        const nextPath = getStoreSwitchDestination(pathname);
+        const nextPath = getStoreSwitchDestination(pathname, selectedStore.onboardingCompleted);
         setOpen(false);
 
         // Force a full navigation so TanStack Query cache from previous store
@@ -203,7 +211,16 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
             <span className="w-full truncate text-sm font-medium">
               {currentStore?.name || t("selectStore")}
             </span>
-            {currentStore && <RoleBadge role={currentStore.role} t={t} />}
+            {currentStore && (
+              <div className="flex items-center gap-1.5">
+                <RoleBadge role={currentStore.role} t={t} />
+                {!currentStore.onboardingCompleted && (
+                  <span className="text-amber-600 dark:text-amber-500 text-xs">
+                    {t("onboardingIncomplete")}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
@@ -239,7 +256,14 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-sm">{store.name}</span>
-                    <RoleBadge role={store.role} t={t} />
+                    <div className="flex items-center gap-1.5">
+                      <RoleBadge role={store.role} t={t} />
+                      {!store.onboardingCompleted && (
+                        <span className="text-amber-600 dark:text-amber-500 text-xs">
+                          {t("onboardingIncomplete")}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {store.id === currentStoreId && (
                     <CheckIcon className="text-primary ml-2 h-4 w-4 shrink-0" />

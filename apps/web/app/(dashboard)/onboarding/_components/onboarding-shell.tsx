@@ -2,12 +2,14 @@
 
 import { useEffect } from "react";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { useTranslations } from "next-intl";
 import { usePostHog } from "posthog-js/react";
 
-import { Logo } from "@louez/ui";
+import { Button, Logo } from "@louez/ui";
+import { ArrowLeftIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
 import {
@@ -27,13 +29,16 @@ export function OnboardingShell({
   children,
   steps,
   initialPreview,
+  isPlatformAdmin,
 }: {
   children: React.ReactNode;
   steps: OnboardingStep[];
   initialPreview?: Partial<OnboardingPreviewState>;
+  isPlatformAdmin: boolean;
 }) {
   const pathname = usePathname();
   const t = useTranslations("onboarding");
+  const tAccount = useTranslations("dashboard.settings.accountSettings");
   const posthog = usePostHog();
   const stepIndex = getOnboardingStepIndex(steps, pathname);
   const currentStepIndex = stepIndex < 0 ? 0 : stepIndex;
@@ -51,8 +56,10 @@ export function OnboardingShell({
       // event so funnels can compare short and long variants.
       includes_profile_step: steps.some((s) => s.key === "profile"),
       includes_source_step: steps.some((s) => s.key === "source"),
+      includes_reeent_step: steps.some((s) => s.key === "reeent"),
     });
   }, [posthog, stepIndex, steps]);
+  const isReeentStep = pathname === "/onboarding/reeent";
   const isProfileStep = pathname === "/onboarding/profile";
   const isStripeStep = pathname === "/onboarding/stripe";
   const isSourceStep = pathname === "/onboarding/source";
@@ -68,8 +75,14 @@ export function OnboardingShell({
         <div className="dashboard bg-background flex min-h-svh">
           {/* Left: form column */}
           <div className="flex w-full flex-col lg:flex-1">
-            <header className="px-6 pt-8 lg:px-12">
+            <header className="flex items-center justify-between gap-4 px-6 pt-8 lg:px-12">
               <Logo className="h-5 w-auto" />
+              {isPlatformAdmin && (
+                <Button variant="ghost" size="sm" render={<Link href="/admin" />}>
+                  <ArrowLeftIcon className="size-4" />
+                  {tAccount("administration")}
+                </Button>
+              )}
             </header>
 
             <main className="flex flex-1 flex-col justify-center px-6 py-10 lg:px-12">
@@ -115,7 +128,9 @@ export function OnboardingShell({
               </div>
             ) : (
               <div className="w-216 shrink-0 pl-10 xl:pl-16">
-                {isProfileStep ? <DashboardPreview /> : <StorefrontPreview />}
+                {/* The reeent step is the "Louez is your tool" pitch, so it gets
+                    the dashboard preview rather than an empty storefront. */}
+                {isProfileStep || isReeentStep ? <DashboardPreview /> : <StorefrontPreview />}
               </div>
             )}
           </aside>

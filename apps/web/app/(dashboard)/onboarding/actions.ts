@@ -19,6 +19,7 @@ import {
   getDefaultPayAsYouGoConfigSnapshot,
 } from "@/lib/pay-as-you-go/defaults";
 import { areAiCreditsEnabled } from "@/lib/plans";
+import { isPlatformAdmin } from "@/lib/platform-admin";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { captureReferralServerEvent } from "@/lib/referral/analytics";
@@ -26,7 +27,7 @@ import { referralAnalyticsEvents } from "@/lib/referral/analytics-events";
 import { type ReferralAttribution, resolveReferralAttribution } from "@/lib/referral/attribution";
 import { getReferralProgramConfig } from "@/lib/referral/defaults";
 import { referralCookieDomain, referralCookieSecure } from "@/lib/referral/link";
-import { getActiveStoreId, setActiveStoreId } from "@/lib/store-context";
+import { getActiveStoreId, setActiveStoreId, verifyStoreAccess } from "@/lib/store-context";
 import { getTimezoneForCountry } from "@/lib/utils/countries";
 import { generateReferralCode, isValidReferralCode } from "@/lib/utils/referral";
 
@@ -248,16 +249,9 @@ export async function createStore(data: StoreInfoInput, editingStoreId: string |
   let analyticsReferralOutcome: ReferralAttributionOutcome | null = null;
 
   if (validatedEditingStoreId.data) {
-    const membership = await db.query.storeMembers.findFirst({
-      where: and(
-        eq(storeMembers.storeId, validatedEditingStoreId.data),
-        eq(storeMembers.userId, session.user.id),
-        eq(storeMembers.role, "owner"),
-      ),
-      columns: { id: true },
-    });
+    const role = await verifyStoreAccess(validatedEditingStoreId.data);
 
-    if (!membership) {
+    if (!role || (role !== "owner" && !isPlatformAdmin(session.user.email))) {
       return { error: "errors.unauthorized" };
     }
 

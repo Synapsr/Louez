@@ -5077,6 +5077,12 @@
           "enabled": "Marketplace-kanaal ingeschakeld.",
           "disabled": "Marketplace-kanaal uitgeschakeld.",
           "termsAccepted": "Marketplace-voorwaarden geaccepteerd."
+        },
+        "cohort": {
+          "memberTitle": "reeent-aanbieding voor het leven — 0 € reeent-commissie",
+          "memberRank": "Lid nr. {rank} van de lanceercohort",
+          "incentiveBadge": "Lanceeraanbieding",
+          "incentiveLine": "nog {remaining} plaatsen met 0 € reeent-commissie voor het leven"
         }
       }
     },
@@ -6281,7 +6287,8 @@
         "upTo20": "6 tot 20",
         "upTo50": "21 tot 50",
         "moreThan50": "Meer dan 50"
-      }
+      },
+      "individualNote": "Je hebt geen bedrijf nodig om te beginnen: maak je pagina, publiceer je spullen en ontvang online betalingen. Verhuurinkomsten moet je aangeven volgens je eigen situatie."
     },
     "store": {
       "title": "Uw winkelinformatie",
@@ -6428,7 +6435,26 @@
       "product": "Eerste product",
       "payment": "Betalingen",
       "profile": "Profiel",
-      "source": "Bron"
+      "source": "Bron",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Je komt van reeent",
+      "description": "Twee minuten om te zien hoe reeent en Louez samenwerken.",
+      "products": {
+        "title": "De twee producten",
+        "body": "reeent is de etalage, Louez is jouw gereedschap. Particulieren vinden je materiaal op reeent; hier beheer je je reserveringen, betalingen en agenda."
+      },
+      "offer": {
+        "title": "De aanbieding",
+        "body": "reeent-aanbieding voor het leven: de eerste 1000 verhuurders die op reeent gepubliceerd zijn, houden voor altijd 0 € reeent-commissie.",
+        "remaining": "Er zijn nog {remaining} van de {total} plaatsen vrij.",
+        "closedBody": "De lanceeraanbieding is volzet. Publiceren op reeent blijft de eenvoudigste manier om zichtbaar te worden bij particulieren."
+      },
+      "pricing": {
+        "title": "De Louez-prijzen",
+        "body": "De Louez-prijzen gelden gewoon: geen abonnement, je betaalt per gebruik — 1 € per reservering, degressief bij volume. Geen vaste kosten."
+      }
     }
   },
   "categories": {

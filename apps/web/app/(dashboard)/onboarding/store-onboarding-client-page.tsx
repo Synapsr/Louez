@@ -23,6 +23,7 @@ interface StoreWithRole {
   name: string;
   slug: string;
   logoUrl: string | null;
+  onboardingCompleted: boolean;
   role: "owner" | "member" | "platform_admin";
 }
 

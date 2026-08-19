@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./router": "./src/router.ts",
-    "./services": "./src/services/index.ts"
+    "./services": "./src/services/index.ts",
+    "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts"
   },
   "dependencies": {
     "@louez/auth": "workspace:*",

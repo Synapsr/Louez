@@ -5077,6 +5077,12 @@
           "enabled": "Canale marketplace attivato.",
           "disabled": "Canale marketplace disattivato.",
           "termsAccepted": "Condizioni del marketplace accettate."
+        },
+        "cohort": {
+          "memberTitle": "Offerta reeent a vita — 0 € di commissione reeent",
+          "memberRank": "Membro n° {rank} della coorte di lancio",
+          "incentiveBadge": "Offerta di lancio",
+          "incentiveLine": "ancora {remaining} posti con 0 € di commissione reeent a vita"
         }
       }
     },
@@ -6281,7 +6287,8 @@
         "upTo20": "Da 6 a 20",
         "upTo50": "Da 21 a 50",
         "moreThan50": "Più di 50"
-      }
+      },
+      "individualNote": "Non serve un'azienda per iniziare: crea la tua pagina, pubblica i tuoi oggetti e incassa online. I redditi da noleggio vanno dichiarati in base alla tua situazione."
     },
     "store": {
       "title": "Informazioni del tuo negozio",
@@ -6428,7 +6435,26 @@
       "product": "Primo prodotto",
       "payment": "Pagamenti",
       "profile": "Profilo",
-      "source": "Fonte"
+      "source": "Fonte",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Arrivi da reeent",
+      "description": "Due minuti per capire come reeent e Louez lavorano insieme.",
+      "products": {
+        "title": "I due prodotti",
+        "body": "reeent è la vetrina, Louez è il tuo strumento. I privati trovano la tua attrezzatura su reeent; qui gestisci prenotazioni, pagamenti e calendario."
+      },
+      "offer": {
+        "title": "L'offerta",
+        "body": "Offerta reeent a vita: i primi 1000 noleggiatori pubblicati su reeent mantengono 0 € di commissione reeent, per sempre.",
+        "remaining": "Restano {remaining} posti su {total}.",
+        "closedBody": "L'offerta di lancio è esaurita. Pubblicare su reeent resta il modo più semplice per farti trovare dai privati."
+      },
+      "pricing": {
+        "title": "Il pricing Louez",
+        "body": "Il pricing Louez si applica normalmente: nessun abbonamento, paghi a consumo — 1 € per prenotazione, decrescente in base al volume. Nessun costo fisso."
+      }
     }
   },
   "categories": {

@@ -33,6 +33,7 @@ const handleGet = async (request: NextRequest) => {
       await listProductSnapshots({
         ...parsed.data,
         getCanonicalUrl,
+        mediaBaseUrl: env.NEXT_PUBLIC_APP_URL,
       }),
     );
   } catch (error) {

@@ -5077,6 +5077,12 @@
           "enabled": "Marketplace channel enabled.",
           "disabled": "Marketplace channel disabled.",
           "termsAccepted": "Marketplace terms accepted."
+        },
+        "cohort": {
+          "memberTitle": "reeent lifetime offer — 0 € reeent commission",
+          "memberRank": "Member no. {rank} of the launch cohort",
+          "incentiveBadge": "Launch offer",
+          "incentiveLine": "{remaining} spots left with 0 € reeent commission for life"
         }
       }
     },
@@ -6281,7 +6287,8 @@
         "upTo20": "6 to 20",
         "upTo50": "21 to 50",
         "moreThan50": "More than 50"
-      }
+      },
+      "individualNote": "You don't need a company to start: create your page, publish your items and get paid online. Rental income must be declared according to your situation."
     },
     "store": {
       "title": "Your store information",
@@ -6428,7 +6435,26 @@
       "product": "First product",
       "payment": "Payments",
       "profile": "Profile",
-      "source": "Source"
+      "source": "Source",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "You're coming from reeent",
+      "description": "Two minutes to see how reeent and Louez work together.",
+      "products": {
+        "title": "The two products",
+        "body": "reeent is the storefront, Louez is your tool. Renters find your equipment on reeent; here you manage your bookings, payments and calendar."
+      },
+      "offer": {
+        "title": "The offer",
+        "body": "reeent lifetime offer: the first 1000 owners published on reeent keep 0 € reeent commission, forever.",
+        "remaining": "{remaining} spots left out of {total}.",
+        "closedBody": "The launch offer is now full. Publishing on reeent is still the simplest way to get seen by renters."
+      },
+      "pricing": {
+        "title": "Louez pricing",
+        "body": "Louez pricing applies as usual: no subscription, you pay as you go — 1 € per booking, decreasing with volume. No fixed fees."
+      }
     }
   },
   "categories": {

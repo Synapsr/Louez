@@ -29,23 +29,31 @@ export default async function OnboardingStorePage({
   }
 
   const { new: newStore } = await searchParams;
+  const isCreatingNewStore = newStore === "true";
 
-  // First things first: meet the user before their store.
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, session.user.id),
-  });
-  if (!user?.profileCompletedAt) {
-    redirect("/onboarding/profile");
-  }
-
-  const [currentStore, isPlatformAdmin, requestHeaders] = await Promise.all([
+  const [user, currentStore, isPlatformAdmin, requestHeaders] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+    }),
     getCurrentStore(),
     isCurrentUserPlatformAdmin(),
     headers(),
   ]);
+
+  // A completed active store is not an onboarding draft. This also closes the
+  // profile -> /onboarding loop for legacy users whose store was already ready.
+  if (!isCreatingNewStore && currentStore?.onboardingCompleted) {
+    redirect("/dashboard");
+  }
+
+  // Platform admins act on behalf of stores: their own user profile must never
+  // become a prerequisite for inspecting or completing somebody else's draft.
+  if (!user?.profileCompletedAt && !isPlatformAdmin) {
+    redirect("/onboarding/profile");
+  }
+
   const stores = isPlatformAdmin ? await getUserStores() : [];
   const currentStoreId = currentStore?.id ?? stores[0]?.id ?? null;
-  const isCreatingNewStore = newStore === "true";
   const savedCountry = isCreatingNewStore
     ? null
     : (getCountryByCode(currentStore?.settings?.country ?? "")?.code ?? null);

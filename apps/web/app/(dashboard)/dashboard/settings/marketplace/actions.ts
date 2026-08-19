@@ -17,6 +17,7 @@ import {
 } from "@louez/validations";
 import { revalidatePath } from "next/cache";
 
+import { env } from "@/env";
 import { auth } from "@/lib/auth";
 import { fetchMarketplaceMatches, inferMarketplaceMatchCity } from "@/lib/marketplace-match";
 import { getCurrentStore } from "@/lib/store-context";
@@ -51,9 +52,11 @@ export async function enableMarketplaceChannel(input: unknown) {
 
   try {
     const state = await enableMarketplaceChannelService({
+      source: "owner",
       storeId: context.storeId,
       connectedByUserId: context.userId,
       input: parsed.data,
+      launchCohortSize: env.REEENT_LAUNCH_COHORT_SIZE,
     });
     revalidateMarketplaceSettings();
     return { success: true, state };

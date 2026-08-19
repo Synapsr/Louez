@@ -5077,6 +5077,12 @@
           "enabled": "Canal marketplace activado.",
           "disabled": "Canal marketplace desactivado.",
           "termsAccepted": "Condiciones del marketplace aceptadas."
+        },
+        "cohort": {
+          "memberTitle": "Oferta reeent de por vida — 0 € de comisión reeent",
+          "memberRank": "Miembro n.º {rank} de la cohorte de lanzamiento",
+          "incentiveBadge": "Oferta de lanzamiento",
+          "incentiveLine": "quedan {remaining} plazas con 0 € de comisión reeent de por vida"
         }
       }
     },
@@ -6281,7 +6287,8 @@
         "upTo20": "6 a 20",
         "upTo50": "21 a 50",
         "moreThan50": "Más de 50"
-      }
+      },
+      "individualNote": "No necesitas una empresa para empezar: crea tu página, publica tus objetos y cobra en línea. Los ingresos por alquiler deben declararse según tu situación."
     },
     "store": {
       "title": "Informacion de su tienda",
@@ -6428,7 +6435,26 @@
       "product": "Primer producto",
       "payment": "Pagos",
       "profile": "Perfil",
-      "source": "Fuente"
+      "source": "Fuente",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Vienes de reeent",
+      "description": "Dos minutos para entender cómo funcionan reeent y Louez juntos.",
+      "products": {
+        "title": "Los dos productos",
+        "body": "reeent es el escaparate, Louez es tu herramienta. Los particulares encuentran tu material en reeent; aquí gestionas tus reservas, pagos y calendario."
+      },
+      "offer": {
+        "title": "La oferta",
+        "body": "Oferta reeent de por vida: los 1000 primeros arrendadores publicados en reeent mantienen 0 € de comisión reeent, para siempre.",
+        "remaining": "Quedan {remaining} plazas de {total}.",
+        "closedBody": "La oferta de lanzamiento está completa. Publicar en reeent sigue siendo la forma más sencilla de darte a conocer entre los particulares."
+      },
+      "pricing": {
+        "title": "El precio de Louez",
+        "body": "El precio de Louez se aplica con normalidad: sin suscripción, pagas por uso — 1 € por reserva, decreciente por volumen. Sin gastos fijos."
+      }
     }
   },
   "categories": {

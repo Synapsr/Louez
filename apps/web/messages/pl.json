@@ -5077,6 +5077,12 @@
           "enabled": "Kanał marketplace włączony.",
           "disabled": "Kanał marketplace wyłączony.",
           "termsAccepted": "Warunki marketplace zaakceptowane."
+        },
+        "cohort": {
+          "memberTitle": "Oferta reeent na zawsze — 0 € prowizji reeent",
+          "memberRank": "Członek nr {rank} kohorty startowej",
+          "incentiveBadge": "Oferta startowa",
+          "incentiveLine": "jeszcze {remaining} miejsc z 0 € prowizji reeent na zawsze"
         }
       }
     },
@@ -6281,7 +6287,8 @@
         "upTo20": "6 do 20",
         "upTo50": "21 do 50",
         "moreThan50": "Ponad 50"
-      }
+      },
+      "individualNote": "Nie potrzebujesz firmy, aby zacząć: utwórz swoją stronę, opublikuj przedmioty i przyjmuj płatności online. Przychody z wynajmu należy rozliczyć zgodnie z Twoją sytuacją."
     },
     "store": {
       "title": "Informacje o sklepie",
@@ -6428,7 +6435,26 @@
       "product": "Pierwszy produkt",
       "payment": "Płatności",
       "profile": "Profil",
-      "source": "Źródło"
+      "source": "Źródło",
+      "reeent": "reeent"
+    },
+    "reeent": {
+      "title": "Trafiłeś tu z reeent",
+      "description": "Dwie minuty, aby zrozumieć, jak reeent i Louez działają razem.",
+      "products": {
+        "title": "Dwa produkty",
+        "body": "reeent to witryna, Louez to Twoje narzędzie. Klienci znajdują Twój sprzęt na reeent; tutaj zarządzasz rezerwacjami, płatnościami i kalendarzem."
+      },
+      "offer": {
+        "title": "Oferta",
+        "body": "Oferta reeent na zawsze: pierwszych 1000 wypożyczalni opublikowanych na reeent zachowuje 0 € prowizji reeent, na zawsze.",
+        "remaining": "Zostało {remaining} miejsc z {total}.",
+        "closedBody": "Oferta startowa została wyczerpana. Publikacja na reeent pozostaje najprostszym sposobem, aby dotrzeć do klientów indywidualnych."
+      },
+      "pricing": {
+        "title": "Cennik Louez",
+        "body": "Cennik Louez obowiązuje normalnie: bez abonamentu, płacisz za użycie — 1 € za rezerwację, taniej przy większym wolumenie. Bez opłat stałych."
+      }
     }
   },
   "categories": {

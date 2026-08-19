@@ -2,6 +2,7 @@ import { getMarketplaceBooking, ApiServiceError } from "@louez/api/services";
 import { bookingReservationParamsSchema } from "@louez/validations";
 import type { NextRequest } from "next/server";
 
+import { env } from "@/env";
 import { bookingJson, bookingServiceError, verifyBookingGet } from "@/lib/booking-api-route";
 import { useLogger, withEvlog } from "@/lib/evlog";
 import { getCanonicalUrl } from "@/lib/seo";
@@ -24,6 +25,7 @@ const handleGet = async (
       await getMarketplaceBooking({
         reservationId: parsed.data.reservationId,
         getCanonicalUrl,
+        mediaBaseUrl: env.NEXT_PUBLIC_APP_URL,
       }),
     );
   } catch (error) {

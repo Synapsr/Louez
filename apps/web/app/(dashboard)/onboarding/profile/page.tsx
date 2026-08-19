@@ -12,6 +12,7 @@ import {
   type ProductCategory,
 } from "@louez/validations";
 
+import { hasSeenReeentIntro, isReeentSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { auth } from "@/lib/auth";
 
 import { ProfileClientPage } from "./profile-client-page";
@@ -26,9 +27,19 @@ export default async function OnboardingProfilePage() {
     redirect("/login");
   }
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, session.user.id),
-  });
+  const [user, fromReeent, introSeen] = await Promise.all([
+    db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+    }),
+    isReeentSignupOrigin(),
+    hasSeenReeentIntro(),
+  ]);
+
+  // Loueurs referred by reeent get the education step before the first
+  // question. The "seen" marker makes this a one-way gate instead of a loop.
+  if (fromReeent && !introSeen && !user?.profileCompletedAt) {
+    redirect("/onboarding/reeent");
+  }
 
   const businessType =
     user?.businessType && (BUSINESS_TYPES as readonly string[]).includes(user.businessType)
@@ -54,6 +65,7 @@ export default async function OnboardingProfilePage() {
       initialProductCategory={productCategory}
       initialFleetSize={fleetSize}
       avatarSeed={session.user.id}
+      fromReeent={fromReeent}
     />
   );
 }

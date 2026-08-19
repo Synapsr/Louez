@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
-import { getMarketplaceChannelState } from "@louez/api/services";
+import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
 import { categories, db } from "@louez/db";
 
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
@@ -28,7 +28,7 @@ export default async function MarketplaceChannelSettingsPage() {
   const t = await getTranslations("dashboard.settings.salesChannels");
 
   const channelState = await getMarketplaceChannelState({ storeId: store.id });
-  const [storeCategories, taxonomy, matchCandidates] = await Promise.all([
+  const [storeCategories, taxonomy, matchCandidates, cohort] = await Promise.all([
     db
       .select({ id: categories.id, name: categories.name })
       .from(categories)
@@ -43,12 +43,14 @@ export default async function MarketplaceChannelSettingsPage() {
           city: inferMarketplaceMatchCity(store.address),
         })
       : Promise.resolve(null),
+    getMarketplaceCohortStatus(),
   ]);
 
   return (
     <SettingsPageShell title={t("title")} description={t("description")} width="wide">
       <MarketplaceChannelForm
         channelState={channelState}
+        cohortRemaining={cohort.remaining}
         matchCandidates={matchCandidates?.slice(0, 3) ?? null}
         storeCategories={storeCategories}
         storefrontUrl={getStorefrontUrl(store.slug, "/")}

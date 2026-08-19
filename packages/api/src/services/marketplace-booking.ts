@@ -13,7 +13,7 @@ import {
   stores,
 } from "@louez/db";
 import type { Rate, StoreSettings } from "@louez/types";
-import { calculateSeasonalAwarePrice, type PricingMode } from "@louez/utils";
+import { calculateSeasonalAwarePrice, toAbsoluteUrl, type PricingMode } from "@louez/utils";
 import type { BookingCheckoutInput, BookingHoldInput, BookingQuoteInput } from "@louez/validations";
 
 import { getStorefrontAvailability } from "./availability";
@@ -319,6 +319,7 @@ function getDurationReasons(params: {
 
 export async function quoteMarketplaceBooking(params: {
   input: BookingQuoteInput;
+  mediaBaseUrl: string;
   secret: string;
 }): Promise<{
   quoteToken: string;
@@ -470,7 +471,8 @@ export async function quoteMarketplaceBooking(params: {
     return {
       productId: line.productId,
       name: line.productName,
-      imageUrl: line.productImage,
+      imageUrl:
+        line.productImage === null ? null : toAbsoluteUrl(line.productImage, params.mediaBaseUrl),
       quantity: sourceItem.quantity,
       attributes: sourceItem.attributes ?? {},
       unitPrice: priced.subtotal / sourceItem.quantity,
@@ -910,6 +912,7 @@ type BookingRow = {
 async function snapshotsFromRows(
   rows: BookingRow[],
   getCanonicalUrl: BookingUrlBuilder,
+  mediaBaseUrl: string,
 ): Promise<BookingSnapshot[]> {
   if (rows.length === 0) return [];
   const itemRows = await db
@@ -931,10 +934,11 @@ async function snapshotsFromRows(
   for (const item of itemRows) {
     if (!item.productId) continue;
     const current = itemsByReservation.get(item.reservationId) ?? [];
+    const imageUrl = item.productSnapshot.images[0] ?? null;
     current.push({
       productId: item.productId,
       name: item.productSnapshot.name,
-      imageUrl: item.productSnapshot.images[0] ?? null,
+      imageUrl: imageUrl === null ? null : toAbsoluteUrl(imageUrl, mediaBaseUrl),
       quantity: item.quantity,
       unitPrice: item.unitPrice,
     });
@@ -995,6 +999,7 @@ function bookingSelection() {
 
 export async function getMarketplaceBooking(params: {
   getCanonicalUrl: BookingUrlBuilder;
+  mediaBaseUrl: string;
   reservationId: string;
 }): Promise<BookingSnapshot> {
   await expireMarketplaceBookingAttempts({ reservationId: params.reservationId });
@@ -1014,7 +1019,7 @@ export async function getMarketplaceBooking(params: {
     throw new ApiServiceError("NOT_FOUND", "errors.reservationNotFound");
   }
 
-  const [snapshot] = await snapshotsFromRows([row], params.getCanonicalUrl);
+  const [snapshot] = await snapshotsFromRows([row], params.getCanonicalUrl, params.mediaBaseUrl);
   if (!snapshot) {
     throw new ApiServiceError("INTERNAL_SERVER_ERROR", "errors.internalServerError");
   }
@@ -1025,6 +1030,7 @@ export async function listMarketplaceBookings(params: {
   cursor?: string;
   getCanonicalUrl: BookingUrlBuilder;
   limit?: number;
+  mediaBaseUrl: string;
 }): Promise<{ data: BookingSnapshot[]; nextCursor: string | null }> {
   await expireMarketplaceBookingAttempts({});
   const limit = normalizeLimit(params.limit);
@@ -1052,7 +1058,7 @@ export async function listMarketplaceBookings(params: {
   const last = pageRows.at(-1);
 
   return {
-    data: await snapshotsFromRows(pageRows, params.getCanonicalUrl),
+    data: await snapshotsFromRows(pageRows, params.getCanonicalUrl, params.mediaBaseUrl),
     nextCursor: hasMore && last ? encodeCursor({ id: last.id, updatedAt: last.updatedAt }) : null,
   };
 }
@@ -1060,6 +1066,7 @@ export async function listMarketplaceBookings(params: {
 export async function cancelMarketplaceBooking(params: {
   adapter: MarketplaceCancellationAdapter;
   getCanonicalUrl: BookingUrlBuilder;
+  mediaBaseUrl: string;
   reservationId: string;
 }): Promise<BookingSnapshot> {
   const reservation = await db.query.reservations.findFirst({
@@ -1110,6 +1117,7 @@ export async function cancelMarketplaceBooking(params: {
   return getMarketplaceBooking({
     reservationId: reservation.id,
     getCanonicalUrl: params.getCanonicalUrl,
+    mediaBaseUrl: params.mediaBaseUrl,
   });
 }
 

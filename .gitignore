@@ -88,3 +88,4 @@ SPECIFICATIONS*.md
 !/scripts/audit-duplicates.mjs
 .playwright-cli
 .email-previews/
+.localify/project.json

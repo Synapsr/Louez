@@ -9,6 +9,8 @@ export * from "./distance";
 export * from "./errors";
 export * from "./marketplace-booking";
 export * from "./marketplace-channel";
+export * from "./marketplace-cohort";
+export * from "./marketplace-default-publication";
 export * from "./notification-settings";
 export * from "./onboarding";
 export * from "./product-activity";

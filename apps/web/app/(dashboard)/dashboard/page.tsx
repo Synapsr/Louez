@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
 import { db } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
 import { reservations } from "@louez/db";
@@ -6,6 +7,7 @@ import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { getStoreMetrics, determineStoreState, getTimeOfDay } from "@/lib/dashboard/metrics";
 import { getIntendedReservationMode, isStripeChargeable } from "@/lib/reservation-mode";
 import type { OnlinePaymentsStep } from "@/components/dashboard/home";
+import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
 import {
   DashboardAlert,
   SetupChecklist,
@@ -119,11 +121,13 @@ async function DashboardContent({
   onlinePaymentsStep,
 }: DashboardContentProps) {
   // Fetch all data in parallel
-  const [metrics, departures, returns, pending] = await Promise.all([
+  const [metrics, departures, returns, pending, channelState, cohort] = await Promise.all([
     getStoreMetrics(storeId),
     getTodaysDeparturesList(storeId),
     getTodaysReturnsList(storeId),
     getPendingReservationsList(storeId),
+    getMarketplaceChannelState({ storeId }),
+    getMarketplaceCohortStatus(),
   ]);
 
   const storeState = determineStoreState(metrics);
@@ -143,6 +147,13 @@ async function DashboardContent({
 
       {/* Priority Alert for pending requests */}
       <DashboardAlert pendingCount={metrics.pendingReservations} />
+
+      {/* Launch-cohort status: the earned waiver, or the seats still open. */}
+      <MarketplaceCohortNotice
+        lifetimeFeeWaiverAt={channelState.channel?.lifetimeFeeWaiverAt ?? null}
+        cohortRank={channelState.channel?.cohortRank ?? null}
+        remaining={cohort.remaining}
+      />
 
       {/* Setup Checklist for new stores (floating widget) */}
       {(storeState === "virgin" || storeState === "building") && (

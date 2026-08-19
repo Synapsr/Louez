@@ -51,6 +51,7 @@ import {
 import { cn } from "@louez/utils";
 
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
+import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
 import { DashboardIconTile } from "@/components/dashboard/shared/dashboard-icon-tile";
 import type { MarketplaceMatchCandidate } from "@/lib/marketplace-match";
 import type { MarketplaceTaxonomyCategory } from "@/lib/marketplace-taxonomy";
@@ -72,6 +73,8 @@ type StoreCategory = {
 
 type MarketplaceChannelFormProps = {
   channelState: MarketplaceChannelState;
+  /** Seats left in the "Offre reeent à vie" launch cohort (ADR 010). */
+  cohortRemaining: number;
   matchCandidates: MarketplaceMatchCandidate[] | null;
   storeCategories: StoreCategory[];
   storefrontUrl: string;
@@ -112,6 +115,7 @@ function serializeMappings(mappings: Record<string, string>): string {
 
 export function MarketplaceChannelForm({
   channelState,
+  cohortRemaining,
   matchCandidates,
   storeCategories,
   storefrontUrl,
@@ -203,6 +207,9 @@ export function MarketplaceChannelForm({
     }
     if (reason === "disabled_by_owner") {
       return t("status.reason.disabledByOwner");
+    }
+    if (reason === "default_publication") {
+      return null;
     }
     if (reason.startsWith("missing:")) {
       return t("status.reason.missing");
@@ -363,6 +370,14 @@ export function MarketplaceChannelForm({
                   </li>
                 ))}
               </ul>
+
+              {/* Sits right under the enable switch: the waiver is the reason to
+                  publish, and once earned it is the reason to stay published. */}
+              <MarketplaceCohortNotice
+                lifetimeFeeWaiverAt={channel?.lifetimeFeeWaiverAt ?? null}
+                cohortRank={channel?.cohortRank ?? null}
+                remaining={cohortRemaining}
+              />
 
               {channel && (
                 <div className="space-y-2 rounded-lg border p-3">

@@ -221,24 +221,30 @@ export function DeliveryLegCard({
                 disabled={!isDeliveryAmountEligible}
               />
               <div className="min-w-0 flex-1">
-                <span className="font-medium text-sm">{addressLabel}</span>
-                {isDeliveryIncluded ? (
-                  <p className="mt-0.5 text-xs text-green-600 dark:text-green-400">
-                    {t('included')}
-                  </p>
-                ) : isDeliveryAmountEligible ? (
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="min-w-0 font-medium text-sm">{addressLabel}</span>
+                  {isDeliveryIncluded && (
+                    <Badge variant="success" className="shrink-0 text-xs">
+                      {t('free')}
+                    </Badge>
+                  )}
+                </div>
+                {!isDeliveryIncluded && isDeliveryAmountEligible && (
                   <p className="text-muted-foreground mt-0.5 text-xs">
                     {t('deliveryOptionDescription', {
                       pricePerKm: formatCurrency(deliverySettings.pricePerKm, currency),
                     })}
                   </p>
-                ) : minimumOrderAmount !== null && (
-                  <p className="text-muted-foreground mt-0.5 text-xs">
-                    {t('deliveryAvailableFrom', {
-                      amount: formatCurrency(minimumOrderAmount, currency),
-                    })}
-                  </p>
                 )}
+                {!isDeliveryIncluded &&
+                  !isDeliveryAmountEligible &&
+                  minimumOrderAmount !== null && (
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      {t('deliveryAvailableFrom', {
+                        amount: formatCurrency(minimumOrderAmount, currency),
+                      })}
+                    </p>
+                  )}
                 {!isDeliveryIncluded &&
                   deliverySettings.freeDeliveryThreshold &&
                   isFreeDelivery(subtotal, deliverySettings) && (
