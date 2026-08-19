@@ -3917,6 +3917,16 @@
           "description": "Exportez votre catalogue produits complet avec les prix, catégories et informations de stock.",
           "button": "Exporter les produits"
         },
+        "contracts": {
+          "title": "Contrats",
+          "description": "Téléchargez dans une archive ZIP les contrats des locations commençant sur la période sélectionnée.",
+          "button": "Exporter les contrats",
+          "format": "Archive ZIP contenant un PDF par réservation",
+          "statusesLabel": "Statuts à inclure",
+          "selectAll": "Tout sélectionner",
+          "clearAll": "Tout désélectionner",
+          "exporting": "Préparation du ZIP..."
+        },
         "dateRange": {
           "label": "Période",
           "startDate": "Date de début",
@@ -3932,6 +3942,8 @@
           "invalidDateRange": "La date de fin doit être postérieure à la date de début.",
           "dateRequired": "Veuillez sélectionner une période.",
           "maxRange": "La période ne peut pas dépasser un an.",
+          "statusRequired": "Sélectionnez au moins un statut.",
+          "noContracts": "Aucune réservation ne correspond à cette période et à ces statuts.",
           "exportFailed": "L'export a échoué. Veuillez réessayer."
         }
       },

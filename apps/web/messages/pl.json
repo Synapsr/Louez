@@ -3783,6 +3783,16 @@
           "description": "Eksportuj pełny katalog produktów z cenami, kategoriami i informacjami o stanach magazynowych.",
           "button": "Eksportuj produkty"
         },
+        "contracts": {
+          "title": "Umowy",
+          "description": "Pobierz archiwum ZIP z umowami najmu rozpoczynającego się w wybranym okresie.",
+          "button": "Eksportuj umowy",
+          "format": "Archiwum ZIP z jednym plikiem PDF na rezerwację",
+          "statusesLabel": "Statusy do uwzględnienia",
+          "selectAll": "Zaznacz wszystko",
+          "clearAll": "Odznacz wszystko",
+          "exporting": "Przygotowywanie ZIP..."
+        },
         "dateRange": {
           "label": "Okres",
           "startDate": "Data początkowa",
@@ -3798,6 +3808,8 @@
           "invalidDateRange": "Data końcowa musi być późniejsza niż data początkowa.",
           "dateRequired": "Wybierz okres.",
           "maxRange": "Okres nie może przekraczać jednego roku.",
+          "statusRequired": "Wybierz co najmniej jeden status.",
+          "noContracts": "Brak rezerwacji pasujących do tego okresu i statusów.",
           "exportFailed": "Eksport nie powiódł się. Spróbuj ponownie."
         }
       },

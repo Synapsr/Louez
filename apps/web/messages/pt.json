@@ -3783,6 +3783,16 @@
           "description": "Exporte o catálogo completo de produtos com preços, categorias e informações de stock.",
           "button": "Exportar produtos"
         },
+        "contracts": {
+          "title": "Contratos",
+          "description": "Descarregue um arquivo ZIP com os contratos dos alugueres que começam no período selecionado.",
+          "button": "Exportar contratos",
+          "format": "Arquivo ZIP com um PDF por reserva",
+          "statusesLabel": "Estados a incluir",
+          "selectAll": "Selecionar tudo",
+          "clearAll": "Desmarcar tudo",
+          "exporting": "A preparar o ZIP..."
+        },
         "dateRange": {
           "label": "Período",
           "startDate": "Data de início",
@@ -3798,6 +3808,8 @@
           "invalidDateRange": "A data de fim deve ser posterior à data de início.",
           "dateRequired": "Por favor selecione um período.",
           "maxRange": "O período não pode exceder um ano.",
+          "statusRequired": "Selecione pelo menos um estado.",
+          "noContracts": "Nenhuma reserva corresponde a este período e estados.",
           "exportFailed": "Falha na exportação. Por favor, tente novamente."
         }
       },

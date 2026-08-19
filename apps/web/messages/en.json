@@ -3917,6 +3917,16 @@
           "description": "Export your full product catalog with prices, categories, and stock information.",
           "button": "Export products"
         },
+        "contracts": {
+          "title": "Contracts",
+          "description": "Download a ZIP archive of contracts for rentals starting within the selected period.",
+          "button": "Export contracts",
+          "format": "ZIP archive containing one PDF per reservation",
+          "statusesLabel": "Statuses to include",
+          "selectAll": "Select all",
+          "clearAll": "Clear all",
+          "exporting": "Preparing ZIP..."
+        },
         "dateRange": {
           "label": "Date range",
           "startDate": "Start date",
@@ -3932,6 +3942,8 @@
           "invalidDateRange": "End date must be after start date.",
           "dateRequired": "Please select a date range.",
           "maxRange": "Date range cannot exceed one year.",
+          "statusRequired": "Select at least one status.",
+          "noContracts": "No reservations match this date range and these statuses.",
           "exportFailed": "Export failed. Please try again."
         }
       },

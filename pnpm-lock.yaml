@@ -212,6 +212,9 @@ importers:
       evlog:
         specifier: ^2.16.0
         version: 2.16.0(ai@6.0.116(zod@4.3.5))(express@5.2.1)(hono@4.12.34)(next@16.3.0(@opentelemetry/api@1.9.0)(@types/node@20.19.27)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react@19.2.6)
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       files-sdk:
         specifier: ^2.1.0
         version: 2.1.0(@aws-sdk/client-s3@3.1101.0)(@aws-sdk/lib-storage@3.964.0(@aws-sdk/client-s3@3.1101.0))(@aws-sdk/s3-presigned-post@3.964.0)(@aws-sdk/s3-request-presigner@3.964.0)(@opentelemetry/api@1.9.0)(ai@6.0.116(zod@4.3.5))(hono@4.12.34)(next@16.3.0(@opentelemetry/api@1.9.0)(@types/node@20.19.27)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(zod@4.3.5)
@@ -5112,6 +5115,9 @@ packages:
 
   fflate@0.4.8:
     resolution: {integrity: sha512-FJqqoDBR00Mdj9ppamLa/Y7vxm+PRmNWA67N846RvsoYVMKB4q3y/de5PA7gUmRMYK/8CMz2GDZQmCRN1wBcWA==}
+
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
 
   files-sdk@2.1.0:
     resolution: {integrity: sha512-5V0o7b4yEbyheD6Qmhsn9GuO3HRBW1u5WdpLxqY4KF8MGY6RflT7mhsOwz/cU7aY8KYXdJcPjDAnffEQw4Sfww==}
@@ -11238,6 +11244,8 @@ snapshots:
       strnum: 2.4.1
 
   fflate@0.4.8: {}
+
+  fflate@0.8.3: {}
 
   files-sdk@2.1.0(@aws-sdk/client-s3@3.1101.0)(@aws-sdk/lib-storage@3.964.0(@aws-sdk/client-s3@3.1101.0))(@aws-sdk/s3-presigned-post@3.964.0)(@aws-sdk/s3-request-presigner@3.964.0)(@opentelemetry/api@1.9.0)(ai@6.0.116(zod@4.3.5))(hono@4.12.34)(next@16.3.0(@opentelemetry/api@1.9.0)(@types/node@20.19.27)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(zod@4.3.5):
     dependencies:

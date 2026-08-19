@@ -3783,6 +3783,16 @@
           "description": "Exporteer uw volledige productcatalogus met prijzen, categorieën en voorraadgegevens.",
           "button": "Producten exporteren"
         },
+        "contracts": {
+          "title": "Contracten",
+          "description": "Download een ZIP-bestand met contracten voor verhuringen die in de geselecteerde periode beginnen.",
+          "button": "Contracten exporteren",
+          "format": "ZIP-archief met één PDF per reservering",
+          "statusesLabel": "Op te nemen statussen",
+          "selectAll": "Alles selecteren",
+          "clearAll": "Alles deselecteren",
+          "exporting": "ZIP voorbereiden..."
+        },
         "dateRange": {
           "label": "Periode",
           "startDate": "Startdatum",
@@ -3798,6 +3808,8 @@
           "invalidDateRange": "De einddatum moet na de startdatum liggen.",
           "dateRequired": "Selecteer een periode.",
           "maxRange": "De periode mag niet langer dan een jaar zijn.",
+          "statusRequired": "Selecteer ten minste één status.",
+          "noContracts": "Geen reserveringen komen overeen met deze periode en statussen.",
           "exportFailed": "Export mislukt. Probeer het opnieuw."
         }
       },

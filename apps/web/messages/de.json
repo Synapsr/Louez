@@ -3783,6 +3783,16 @@
           "description": "Exportieren Sie Ihren vollständigen Produktkatalog mit Preisen, Kategorien und Bestandsinformationen.",
           "button": "Produkte exportieren"
         },
+        "contracts": {
+          "title": "Verträge",
+          "description": "Laden Sie eine ZIP-Datei mit Verträgen für Mietvorgänge herunter, die im ausgewählten Zeitraum beginnen.",
+          "button": "Verträge exportieren",
+          "format": "ZIP-Archiv mit einer PDF-Datei pro Reservierung",
+          "statusesLabel": "Einzuschließende Status",
+          "selectAll": "Alle auswählen",
+          "clearAll": "Auswahl aufheben",
+          "exporting": "ZIP wird vorbereitet..."
+        },
         "dateRange": {
           "label": "Zeitraum",
           "startDate": "Startdatum",
@@ -3798,6 +3808,8 @@
           "invalidDateRange": "Das Enddatum muss nach dem Startdatum liegen.",
           "dateRequired": "Bitte wählen Sie einen Zeitraum aus.",
           "maxRange": "Der Zeitraum darf ein Jahr nicht überschreiten.",
+          "statusRequired": "Wählen Sie mindestens einen Status aus.",
+          "noContracts": "Keine Reservierungen entsprechen diesem Zeitraum und diesen Status.",
           "exportFailed": "Export fehlgeschlagen. Bitte versuchen Sie es erneut."
         }
       },
