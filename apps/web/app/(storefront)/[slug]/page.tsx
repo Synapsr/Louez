@@ -46,6 +46,8 @@ import {
   generateWebSiteSchema,
   stripHtml,
 } from '@/lib/seo';
+import { getCachedPlaceDetails } from '@/lib/google-places/cache';
+import { mergeCurrentPlaceDetails } from '@/lib/google-places/util.place-summary';
 import { getStorefrontPathPrefix } from '@/lib/util.storefront-host';
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
 
@@ -314,8 +316,15 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
   );
   const heroImages = storeWithRelations.theme?.heroImages || [];
   const hasHeroImages = heroImages.length > 0;
-  const reviewBoosterSettings =
+  const configuredReviewBoosterSettings =
     store.reviewBoosterSettings as ReviewBoosterSettings | null;
+  const currentPlaceDetails = configuredReviewBoosterSettings?.googlePlaceId
+    ? await getCachedPlaceDetails(configuredReviewBoosterSettings.googlePlaceId)
+    : null;
+  const reviewBoosterSettings = mergeCurrentPlaceDetails(
+    configuredReviewBoosterSettings,
+    currentPlaceDetails,
+  );
   const reviewRating = getSafeNumber(reviewBoosterSettings?.googleRating);
   const reviewCount = getSafeNumber(reviewBoosterSettings?.googleReviewCount);
 

@@ -83,7 +83,7 @@ export const env = createEnv({
     // ===== Google Places (Required for address search) =====
     // Optional: without it the address autocomplete degrades to plain input.
     GOOGLE_PLACES_API_KEY: z.string().optional(),
-    GOOGLE_PLACES_CACHE_TTL_HOURS: z.coerce.number().int().positive().default(120),
+    GOOGLE_PLACES_CACHE_TTL_HOURS: z.coerce.number().int().positive().default(24),
 
     // ===== Platform Admin (Required) =====
     PLATFORM_ADMIN_EMAILS: z

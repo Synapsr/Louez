@@ -25,7 +25,7 @@ import { env } from '@/env';
  * - Automatic reminders: every minute (checks for upcoming pickups/returns)
  * - Calendar sync: every minute (pushes reservation updates to calendar providers)
  * - Analytics aggregation: daily at 2:00 AM UTC (aggregates yesterday's data)
- * - Google Places cache refresh: every 5 days (day 1, 6, 11, 16, 21, 26 at 3:00 AM UTC)
+ * - Google Places cache refresh: daily at 3:00 AM
  * - Analytics cleanup: daily at 3:30 AM UTC (removes raw data older than 90 days)
  * - Cache cleanup: daily at 4:00 AM UTC
  *
@@ -34,7 +34,7 @@ import { env } from '@/env';
  *
  * Environment variables:
  * - CRON_SECRET: Required secret to authenticate cron requests
- * - GOOGLE_PLACES_CACHE_TTL_HOURS: Cache TTL in hours (default: 120 = 5 days)
+ * - GOOGLE_PLACES_CACHE_TTL_HOURS: Cache TTL in hours (default: 24)
  */
 async function handleCron(request: Request) {
   const logger = useLogger();
@@ -84,9 +84,8 @@ async function handleCron(request: Request) {
       results.analyticsAggregation = await aggregateDailyAnalytics();
     }
 
-    // Google Places cache refresh: every 5 days at 3:00 AM
-    // Days 1, 6, 11, 16, 21, 26 of each month
-    if (hour === 3 && minute === 0 && [1, 6, 11, 16, 21, 26].includes(day)) {
+    // Google Places cache refresh: daily at 3:00 AM
+    if (hour === 3 && minute === 0) {
       tasks.push('google-places-refresh');
       results.googlePlacesRefresh = await refreshAllStoresCache();
     }
