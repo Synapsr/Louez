@@ -23,6 +23,8 @@ import {
 import { ICS_CALENDAR_PROVIDER_KEY } from '@/lib/integrations/calendar/state';
 import { enqueueCalendarBackfill } from '@/lib/integrations/calendar/sync';
 import { GOOGLE_CALENDAR_PROVIDER_KEY } from '@/lib/integrations/providers/google-calendar/google-calendar-client';
+import { mapSuperPdpConnectionState } from '@/lib/integrations/providers/superpdp/connection';
+import { SUPERPDP_PROVIDER_KEY } from '@/lib/integrations/providers/superpdp/superpdp-client';
 import {
   getIntegration,
   getIntegrationDetail,
@@ -882,6 +884,57 @@ async function applyTulipRuntimeToCatalog(
   });
 }
 
+async function applySuperPdpRuntimeToCatalog(
+  store: StoreWithFullData,
+  integrations: IntegrationCatalogItem[],
+): Promise<IntegrationCatalogItem[]> {
+  if (
+    !integrations.some(
+      (integration) => integration.id === SUPERPDP_PROVIDER_KEY,
+    )
+  ) {
+    return integrations;
+  }
+
+  const providerIntegration = await db.query.storeIntegrations.findFirst({
+    where: and(
+      eq(storeIntegrations.storeId, store.id),
+      eq(storeIntegrations.providerKey, SUPERPDP_PROVIDER_KEY),
+    ),
+    columns: {
+      enabled: true,
+      status: true,
+      lastErrorMessage: true,
+    },
+    with: {
+      credentials: { columns: { id: true } },
+      superPdpSettings: {
+        columns: { companyVerificationStatus: true },
+      },
+    },
+  });
+
+  return integrations.map((integration) => {
+    if (integration.id !== SUPERPDP_PROVIDER_KEY) return integration;
+
+    const connected = Boolean(
+      providerIntegration?.credentials &&
+        providerIntegration.superPdpSettings &&
+        ['active', 'error'].includes(providerIntegration.status),
+    );
+    return {
+      ...integration,
+      enabled: providerIntegration?.enabled ?? false,
+      connected,
+      configured:
+        connected &&
+        providerIntegration?.superPdpSettings?.companyVerificationStatus ===
+          'verified',
+      connectionIssue: providerIntegration?.lastErrorMessage ?? null,
+    };
+  });
+}
+
 async function applyRuntimeToCatalog(
   store: StoreWithFullData,
   integrations: IntegrationCatalogItem[],
@@ -890,7 +943,11 @@ async function applyRuntimeToCatalog(
     store,
     integrations,
   );
-  return applyTulipRuntimeToCatalog(store, withCalendarRuntime);
+  const withTulipRuntime = await applyTulipRuntimeToCatalog(
+    store,
+    withCalendarRuntime,
+  );
+  return applySuperPdpRuntimeToCatalog(store, withTulipRuntime);
 }
 
 async function applyRuntimeToDetail(
@@ -1156,6 +1213,49 @@ export async function setIntegrationEnabledAction(
         'page',
       );
 
+      return { success: true };
+    }
+
+    if (validated.integrationId === SUPERPDP_PROVIDER_KEY) {
+      const existing = await db.query.storeIntegrations.findFirst({
+        where: and(
+          eq(storeIntegrations.storeId, store.id),
+          eq(storeIntegrations.providerKey, SUPERPDP_PROVIDER_KEY),
+        ),
+        with: {
+          credentials: { columns: { id: true } },
+          superPdpSettings: {
+            columns: { companyVerificationStatus: true },
+          },
+        },
+      });
+      if (!existing?.credentials || !existing.superPdpSettings) {
+        return { error: 'errors.integrationNotConnected' };
+      }
+
+      const connectionState = !validated.enabled
+        ? 'disconnected'
+        : existing.superPdpSettings.companyVerificationStatus === 'verified'
+          ? 'connected'
+          : existing.superPdpSettings.companyVerificationStatus === 'failed'
+            ? 'error'
+            : 'pending';
+      await db
+        .update(storeIntegrations)
+        .set({
+          enabled: validated.enabled,
+          status: mapSuperPdpConnectionState(connectionState),
+          lastErrorCode: null,
+          lastErrorMessage: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(storeIntegrations.id, existing.id));
+
+      revalidatePath('/dashboard/settings/integrations');
+      revalidatePath(
+        '/dashboard/settings/integrations/[integrationId]',
+        'page',
+      );
       return { success: true };
     }
 
