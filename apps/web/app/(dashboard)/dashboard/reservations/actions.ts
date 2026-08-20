@@ -126,6 +126,11 @@ import {
 } from "@/lib/sms";
 import { getCurrentStore } from "@/lib/store-context";
 import { getStorefrontUrl } from "@/lib/storefront-url";
+import {
+  tryEnsureRefundPaymentRecord,
+  tryGenerateCreditNoteForRefund,
+  tryGenerateInvoiceForPayment,
+} from "@/lib/invoicing/service";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
@@ -3492,6 +3497,10 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     notes: data.notes || null,
   });
 
+  if (["rental", "damage", "adjustment"].includes(data.type) && data.amount > 0) {
+    await tryGenerateInvoiceForPayment(paymentId, "dashboard_record_payment");
+  }
+
   // Log activity
   await logReservationActivity(reservationId, "payment_added", {
     paymentId,
@@ -3682,6 +3691,8 @@ export async function recordDamage(
     paidAt: new Date(),
     notes: data.notes,
   });
+
+  await tryGenerateInvoiceForPayment(paymentId, "dashboard_record_damage");
 
   // Log activity
   await logReservationActivity(reservationId, "payment_added", {
@@ -3947,8 +3958,9 @@ export async function captureDepositHold(
     }
 
     // Create deposit_capture payment record
+    const capturePaymentId = nanoid();
     await db.insert(payments).values({
-      id: nanoid(),
+      id: capturePaymentId,
       reservationId,
       amount: data.amount.toFixed(2),
       type: "deposit_capture",
@@ -3961,6 +3973,8 @@ export async function captureDepositHold(
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    await tryGenerateInvoiceForPayment(capturePaymentId, "dashboard_capture_deposit_hold");
 
     // Log activity
     const currencySymbol = getCurrencySymbol(currency);
@@ -4163,23 +4177,27 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
       amount: refundAmountCents,
     });
 
-    // Create payment record for the refund (negative amount for display)
-    const paymentId = nanoid();
-    await db.insert(payments).values({
-      id: paymentId,
-      reservationId,
-      amount: data.amount.toFixed(2),
-      type: data.type === "deposit_return" ? "deposit_return" : "rental",
-      method: "stripe",
-      status: "completed",
-      stripeRefundId: refund.refundId,
-      stripeChargeId: stripePayment.stripeChargeId,
-      currency: refund.currency,
-      notes: data.notes,
-      paidAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    const refundPaidAt = new Date();
+    const paymentId = await tryEnsureRefundPaymentRecord(
+      {
+        originalPaymentId: stripePayment.id,
+        stripeRefundId: refund.refundId,
+        amount: data.amount,
+        type: data.type === "deposit_return" ? "deposit_return" : "rental",
+        currency: refund.currency,
+        notes: data.notes,
+        paidAt: refundPaidAt,
+      },
+      "dashboard_process_stripe_refund",
+    );
+
+    if (data.type === "rental_refund" && paymentId) {
+      await tryGenerateCreditNoteForRefund(
+        { originalPaymentId: stripePayment.id, refundPaymentId: paymentId },
+        data.amount,
+        "dashboard_process_stripe_refund",
+      );
+    }
 
     // Log activity
     await logReservationActivity(reservationId, "payment_updated", {
