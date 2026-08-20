@@ -11,6 +11,8 @@ import {
 } from '@/lib/google-places/cache';
 import { processVoiceNumberRenewals } from '@/lib/ai/phone/number-renewals';
 import { processCalendarSyncQueue } from '@/lib/integrations/calendar/sync';
+import { pollSuperPdpInvoiceEvents } from '@/lib/invoicing/superpdp-events';
+import { processInvoiceTransmissionQueue } from '@/lib/invoicing/superpdp-transmission';
 import { runMonthlyPayAsYouGoBilling } from '@/lib/pay-as-you-go';
 import { processReminders } from '@/lib/reminders/automation';
 import { processReviewRequests } from '@/lib/review-booster/automation';
@@ -24,6 +26,8 @@ import { env } from '@/env';
  * - Review requests: every minute (checks for eligible reservations)
  * - Automatic reminders: every minute (checks for upcoming pickups/returns)
  * - Calendar sync: every minute (pushes reservation updates to calendar providers)
+ * - Invoice transmission: every minute (converts, validates, and sends due invoices)
+ * - Super PDP lifecycle polling: every minute (outgoing statuses and received invoices)
  * - Analytics aggregation: daily at 2:00 AM UTC (aggregates yesterday's data)
  * - Google Places cache refresh: daily at 3:00 AM
  * - Analytics cleanup: daily at 3:30 AM UTC (removes raw data older than 90 days)
@@ -77,6 +81,15 @@ async function handleCron(request: Request) {
     // Calendar sync: every minute
     tasks.push('calendar-sync');
     results.calendarSync = await processCalendarSyncQueue();
+
+    // Electronic invoice transmission and Super PDP event polling: every minute.
+    // Both functions start with indexed/connection-scoped queries and no-op cheaply
+    // when no due invoice or connected store exists.
+    tasks.push('invoice-transmission');
+    results.invoiceTransmission = await processInvoiceTransmissionQueue();
+
+    tasks.push('superpdp-invoice-events');
+    results.superPdpInvoiceEvents = await pollSuperPdpInvoiceEvents();
 
     // Analytics aggregation: daily at 2:00 AM
     if (hour === 2 && minute === 0) {
