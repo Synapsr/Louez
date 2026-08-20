@@ -1278,10 +1278,12 @@ export async function createReservation(input: CreateReservationInput) {
     });
 
     if (tulipInsuranceAmount > 0) {
+      // Insurance premiums are VAT-exempt (art. 261 C, 2° CGI); Tulip
+      // premiums already include insurance tax (TCA), never VAT.
       taxableLines.push({
         id: 'insurance',
         amount: tulipInsuranceAmount,
-        taxRate: taxConfig?.rate ?? null,
+        taxRate: null,
       });
     }
 
