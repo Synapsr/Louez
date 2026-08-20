@@ -6,6 +6,11 @@ import { isPossiblePhoneNumberInput } from './phone';
 export const customerTypeValues = ['individual', 'business'] as const;
 export type CustomerType = (typeof customerTypeValues)[number];
 
+export const customerCompanyNumberSchemeValues = [
+  'fr_siren',
+  'be_bce',
+] as const;
+
 // Base schema without refinement for form validation
 const baseCustomerFields = {
   customerType: z.enum(customerTypeValues),
@@ -13,6 +18,9 @@ const baseCustomerFields = {
   firstName: z.string().min(1, 'validation.required').max(255),
   lastName: z.string().min(1, 'validation.required').max(255),
   companyName: z.string().max(255).optional(),
+  companyNumber: z.string().max(64).optional(),
+  companyNumberScheme: z.enum(customerCompanyNumberSchemeValues).optional(),
+  vatNumber: z.string().max(64).optional(),
   phone: z
     .string()
     .refine((val) => !val || isPossiblePhoneNumberInput(val), {
@@ -37,6 +45,9 @@ export const createCustomerSchema = (
       firstName: z.string().min(1, t('required')).max(255),
       lastName: z.string().min(1, t('required')).max(255),
       companyName: z.string().max(255).optional(),
+      companyNumber: z.string().max(64).optional(),
+      companyNumberScheme: z.enum(customerCompanyNumberSchemeValues).optional(),
+      vatNumber: z.string().max(64).optional(),
       phone: z
         .string()
         .refine((val) => !val || isPossiblePhoneNumberInput(val), {

@@ -119,6 +119,10 @@ export const env = createEnv({
       .optional(),
     GOOGLE_CALENDAR_CLIENT_ID: z.string().optional(),
     GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional(),
+    SUPERPDP_CLIENT_ID: z.string().optional(),
+    SUPERPDP_CLIENT_SECRET: z.string().optional(),
+    SUPERPDP_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
+    SUPERPDP_REDIRECT_URL: z.url("SUPERPDP_REDIRECT_URL must be a valid URL").optional(),
 
     // ===== Cron Jobs (Required) =====
     // Optional: cron routes reject requests until it is set.
@@ -431,6 +435,10 @@ export const env = createEnv({
     INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY,
     GOOGLE_CALENDAR_CLIENT_ID: process.env.GOOGLE_CALENDAR_CLIENT_ID,
     GOOGLE_CALENDAR_CLIENT_SECRET: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+    SUPERPDP_CLIENT_ID: process.env.SUPERPDP_CLIENT_ID,
+    SUPERPDP_CLIENT_SECRET: process.env.SUPERPDP_CLIENT_SECRET,
+    SUPERPDP_ENVIRONMENT: process.env.SUPERPDP_ENVIRONMENT,
+    SUPERPDP_REDIRECT_URL: process.env.SUPERPDP_REDIRECT_URL,
     CRON_SECRET: process.env.CRON_SECRET,
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,

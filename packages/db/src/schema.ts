@@ -25,7 +25,12 @@ import type {
   BookingAttributeAxis,
   CustomerNotificationSettings,
   EmailSettings,
+  En16931InvoiceSnapshot,
   GoogleReview,
+  InvoiceBuyerSnapshot,
+  InvoiceLineSnapshot,
+  InvoiceSellerSnapshot,
+  InvoiceVatBreakdownSnapshot,
   NotificationSettings,
   PricingBreakdown,
   ProductImageHistory,
@@ -591,6 +596,46 @@ export const stores = mysqlTable(
   }),
 );
 
+export const storeLegalProfiles = mysqlTable(
+  'store_legal_profiles',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    legalName: varchar('legal_name', { length: 255 }).notNull(),
+    legalForm: varchar('legal_form', { length: 100 }).notNull(),
+    companyNumber: varchar('company_number', { length: 64 }).notNull(),
+    companyNumberScheme: mysqlEnum('company_number_scheme', [
+      'fr_siren',
+      'be_bce',
+    ]),
+    siret: varchar('siret', { length: 14 }),
+    vatNumber: varchar('vat_number', { length: 64 }),
+    rcsCity: varchar('rcs_city', { length: 255 }),
+    shareCapital: decimal('share_capital', { precision: 10, scale: 2 }),
+    registeredAddress: text('registered_address').notNull(),
+    registeredAddressComplement: text('registered_address_complement'),
+    registeredPostalCode: varchar('registered_postal_code', {
+      length: 20,
+    }).notNull(),
+    registeredCity: varchar('registered_city', { length: 255 }).notNull(),
+    country: varchar('country', { length: 2 }).notNull(),
+    invoicingEnabled: boolean('invoicing_enabled').default(false).notNull(),
+    vatRegime: mysqlEnum('vat_regime', [
+      'monthly',
+      'quarterly',
+      'simplified',
+      'vat_exemption',
+    ]),
+    hasVatOnDebits: boolean('has_vat_on_debits').default(false).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeUnique: unique('store_legal_profiles_store_unique').on(table.storeId),
+    storeIdx: index('store_legal_profiles_store_idx').on(table.storeId),
+  }),
+);
+
 // ============================================================================
 // Integrations
 // ============================================================================
@@ -712,6 +757,43 @@ export const storeTulipIntegrations = mysqlTable(
     ),
     renterUidIdx: index('store_tulip_integrations_renter_uid_idx').on(
       table.renterUid,
+    ),
+  }),
+);
+
+export const storeSuperPdpIntegrations = mysqlTable(
+  'store_super_pdp_integrations',
+  {
+    id: id(),
+    integrationId: varchar('integration_id', { length: 21 }).notNull(),
+    environment: mysqlEnum('environment', ['sandbox', 'production'])
+      .default('sandbox')
+      .notNull(),
+    superPdpCompanyId: varchar('super_pdp_company_id', { length: 255 }),
+    companyVerificationStatus: varchar('company_verification_status', {
+      length: 64,
+    }),
+    directoryEntryId: varchar('directory_entry_id', { length: 255 }),
+    directoryEntryStatus: mysqlEnum('directory_entry_status', [
+      'pending',
+      'created',
+      'error',
+    ]),
+    sendAndReceive: boolean('send_and_receive').default(true).notNull(),
+    lastEventCursor: varchar('last_event_cursor', { length: 255 }),
+    connectedAt: timestamp('connected_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    integrationUnique: unique(
+      'store_super_pdp_integrations_integration_unique',
+    ).on(table.integrationId),
+    integrationIdx: index('store_super_pdp_integrations_integration_idx').on(
+      table.integrationId,
+    ),
+    companyIdx: index('store_super_pdp_integrations_company_idx').on(
+      table.superPdpCompanyId,
     ),
   }),
 );
@@ -1082,6 +1164,12 @@ export const customers = mysqlTable(
 
     // Business info (only for business customers)
     companyName: varchar('company_name', { length: 255 }),
+    companyNumber: varchar('company_number', { length: 64 }),
+    companyNumberScheme: mysqlEnum('company_number_scheme', [
+      'fr_siren',
+      'be_bce',
+    ]),
+    vatNumber: varchar('vat_number', { length: 64 }),
 
     // Contact
     phone: varchar('phone', { length: 50 }),
@@ -1489,7 +1577,8 @@ export const reservationActivity = mysqlTable(
 
 export const documents = mysqlTable('documents', {
   id: id(),
-  reservationId: varchar('reservation_id', { length: 21 }).notNull(),
+  // Received supplier invoices are not tied to a Louez reservation.
+  reservationId: varchar('reservation_id', { length: 21 }),
 
   type: documentType.notNull(),
   number: varchar('number', { length: 50 }).notNull(),
@@ -1505,6 +1594,174 @@ export const documents = mysqlTable('documents', {
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
+
+// ============================================================================
+// Electronic Invoicing
+// ============================================================================
+
+export const invoiceSequences = mysqlTable(
+  'invoice_sequences',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    series: mysqlEnum('series', ['invoice', 'credit_note']).notNull(),
+    year: int('year').notNull(),
+    nextNumber: int('next_number').default(1).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeSeriesYearUnique: unique(
+      'invoice_sequences_store_series_year_unique',
+    ).on(table.storeId, table.series, table.year),
+    storeIdx: index('invoice_sequences_store_idx').on(table.storeId),
+  }),
+);
+
+export const invoices = mysqlTable(
+  'invoices',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    reservationId: varchar('reservation_id', { length: 21 }).notNull(),
+    customerId: varchar('customer_id', { length: 21 }).notNull(),
+    type: mysqlEnum('type', ['invoice', 'credit_note']).notNull(),
+    kind: mysqlEnum('kind', [
+      'initial',
+      'complementary',
+      'credit_note',
+    ]).notNull(),
+    number: varchar('number', { length: 50 }).notNull(),
+    issueDate: date('issue_date', { mode: 'string' }).notNull(),
+    currency: varchar('currency', { length: 3 }).notNull(),
+    sellerSnapshot: json('seller_snapshot')
+      .$type<InvoiceSellerSnapshot>()
+      .notNull(),
+    buyerSnapshot: json('buyer_snapshot')
+      .$type<InvoiceBuyerSnapshot>()
+      .notNull(),
+    lines: json('lines').$type<InvoiceLineSnapshot[]>().notNull(),
+    vatBreakdown: json('vat_breakdown')
+      .$type<InvoiceVatBreakdownSnapshot[]>()
+      .notNull(),
+    totalExclTax: decimal('total_excl_tax', {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+    totalTax: decimal('total_tax', { precision: 10, scale: 2 }).notNull(),
+    totalInclTax: decimal('total_incl_tax', {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+    en16931Snapshot: json('en16931_snapshot')
+      .$type<En16931InvoiceSnapshot>()
+      .notNull(),
+    documentId: varchar('document_id', { length: 21 }).notNull(),
+    precedingInvoiceId: varchar('preceding_invoice_id', { length: 21 }),
+    processingRule: mysqlEnum('processing_rule', ['b2b', 'b2c']).notNull(),
+    transmissionStatus: mysqlEnum('transmission_status', [
+      'not_applicable',
+      'pending',
+      'sent',
+      'validated',
+      'rejected',
+      'failed',
+    ])
+      .default('not_applicable')
+      .notNull(),
+    superPdpInvoiceId: varchar('super_pdp_invoice_id', { length: 255 }),
+    attemptCount: int('attempt_count').default(0).notNull(),
+    nextAttemptAt: timestamp('next_attempt_at', { mode: 'date' }),
+    lastError: text('last_error'),
+    latestSuperPdpStatus: varchar('latest_super_pdp_status', { length: 32 }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeNumberUnique: unique('invoices_store_number_unique').on(
+      table.storeId,
+      table.number,
+    ),
+    documentUnique: unique('invoices_document_unique').on(table.documentId),
+    superPdpInvoiceUnique: unique('invoices_super_pdp_invoice_unique').on(
+      table.superPdpInvoiceId,
+    ),
+    storeIdx: index('invoices_store_idx').on(table.storeId),
+    reservationIdx: index('invoices_reservation_idx').on(table.reservationId),
+    customerIdx: index('invoices_customer_idx').on(table.customerId),
+    precedingInvoiceIdx: index('invoices_preceding_invoice_idx').on(
+      table.precedingInvoiceId,
+    ),
+    transmissionIdx: index('invoices_transmission_idx').on(
+      table.transmissionStatus,
+      table.nextAttemptAt,
+    ),
+  }),
+);
+
+export const invoicePayments = mysqlTable(
+  'invoice_payments',
+  {
+    id: id(),
+    invoiceId: varchar('invoice_id', { length: 21 }).notNull(),
+    paymentId: varchar('payment_id', { length: 21 }).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    invoicePaymentUnique: unique('invoice_payments_invoice_payment_unique').on(
+      table.invoiceId,
+      table.paymentId,
+    ),
+    invoiceIdx: index('invoice_payments_invoice_idx').on(table.invoiceId),
+    paymentIdx: index('invoice_payments_payment_idx').on(table.paymentId),
+  }),
+);
+
+export const receivedInvoices = mysqlTable(
+  'received_invoices',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    superPdpInvoiceId: varchar('super_pdp_invoice_id', {
+      length: 255,
+    }).notNull(),
+    sellerName: varchar('seller_name', { length: 255 }).notNull(),
+    sellerIdentifier: varchar('seller_identifier', { length: 80 }).notNull(),
+    number: varchar('number', { length: 50 }).notNull(),
+    issueDate: date('issue_date', { mode: 'string' }).notNull(),
+    totalExclTax: decimal('total_excl_tax', {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+    totalTax: decimal('total_tax', { precision: 10, scale: 2 }).notNull(),
+    totalInclTax: decimal('total_incl_tax', {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+    currency: varchar('currency', { length: 3 }).notNull(),
+    latestStatus: varchar('latest_status', { length: 32 }),
+    ourAction: mysqlEnum('our_action', [
+      'none',
+      'acknowledged',
+      'accepted',
+      'refused',
+    ])
+      .default('none')
+      .notNull(),
+    documentId: varchar('document_id', { length: 21 }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeInvoiceUnique: unique(
+      'received_invoices_store_super_pdp_invoice_unique',
+    ).on(table.storeId, table.superPdpInvoiceId),
+    storeIdx: index('received_invoices_store_idx').on(table.storeId),
+    issueDateIdx: index('received_invoices_issue_date_idx').on(table.issueDate),
+    documentIdx: index('received_invoices_document_idx').on(table.documentId),
+  }),
+);
 
 export const emailLogs = mysqlTable('email_logs', {
   id: id(),
@@ -1927,6 +2184,13 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   products: many(products),
   locations: many(storeLocations),
   integrations: many(storeIntegrations),
+  legalProfile: one(storeLegalProfiles, {
+    fields: [stores.id],
+    references: [storeLegalProfiles.storeId],
+  }),
+  invoiceSequences: many(invoiceSequences),
+  invoices: many(invoices),
+  receivedInvoices: many(receivedInvoices),
   customers: many(customers),
   reservations: many(reservations),
   promoCodes: many(promoCodes),
@@ -1957,7 +2221,21 @@ export const storeIntegrationsRelations = relations(
       fields: [storeIntegrations.id],
       references: [storeTulipIntegrations.integrationId],
     }),
+    superPdpSettings: one(storeSuperPdpIntegrations, {
+      fields: [storeIntegrations.id],
+      references: [storeSuperPdpIntegrations.integrationId],
+    }),
     calendarEvents: many(reservationCalendarEvents),
+  }),
+);
+
+export const storeLegalProfilesRelations = relations(
+  storeLegalProfiles,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [storeLegalProfiles.storeId],
+      references: [stores.id],
+    }),
   }),
 );
 
@@ -1986,6 +2264,16 @@ export const storeTulipIntegrationsRelations = relations(
   ({ one }) => ({
     integration: one(storeIntegrations, {
       fields: [storeTulipIntegrations.integrationId],
+      references: [storeIntegrations.id],
+    }),
+  }),
+);
+
+export const storeSuperPdpIntegrationsRelations = relations(
+  storeSuperPdpIntegrations,
+  ({ one }) => ({
+    integration: one(storeIntegrations, {
+      fields: [storeSuperPdpIntegrations.integrationId],
       references: [storeIntegrations.id],
     }),
   }),
@@ -2392,6 +2680,7 @@ export const customersRelations = relations(customers, ({ one, many }) => ({
     references: [stores.id],
   }),
   reservations: many(reservations),
+  invoices: many(invoices),
   sessions: many(customerSessions),
 }));
 
@@ -2425,6 +2714,7 @@ export const reservationsRelations = relations(
     documents: many(documents),
     activity: many(reservationActivity),
     calendarEvents: many(reservationCalendarEvents),
+    invoices: many(invoices),
   }),
 );
 
@@ -2457,11 +2747,12 @@ export const reservationItemsRelations = relations(
   }),
 );
 
-export const paymentsRelations = relations(payments, ({ one }) => ({
+export const paymentsRelations = relations(payments, ({ one, many }) => ({
   reservation: one(reservations, {
     fields: [payments.reservationId],
     references: [reservations.id],
   }),
+  invoiceLinks: many(invoicePayments),
 }));
 
 export const documentsRelations = relations(documents, ({ one }) => ({
@@ -2469,7 +2760,81 @@ export const documentsRelations = relations(documents, ({ one }) => ({
     fields: [documents.reservationId],
     references: [reservations.id],
   }),
+  invoice: one(invoices, {
+    fields: [documents.id],
+    references: [invoices.documentId],
+  }),
+  receivedInvoice: one(receivedInvoices, {
+    fields: [documents.id],
+    references: [receivedInvoices.documentId],
+  }),
 }));
+
+export const invoiceSequencesRelations = relations(
+  invoiceSequences,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [invoiceSequences.storeId],
+      references: [stores.id],
+    }),
+  }),
+);
+
+export const invoicesRelations = relations(invoices, ({ one, many }) => ({
+  store: one(stores, {
+    fields: [invoices.storeId],
+    references: [stores.id],
+  }),
+  reservation: one(reservations, {
+    fields: [invoices.reservationId],
+    references: [reservations.id],
+  }),
+  customer: one(customers, {
+    fields: [invoices.customerId],
+    references: [customers.id],
+  }),
+  document: one(documents, {
+    fields: [invoices.documentId],
+    references: [documents.id],
+  }),
+  precedingInvoice: one(invoices, {
+    fields: [invoices.precedingInvoiceId],
+    references: [invoices.id],
+    relationName: 'invoiceCorrections',
+  }),
+  corrections: many(invoices, {
+    relationName: 'invoiceCorrections',
+  }),
+  paymentLinks: many(invoicePayments),
+}));
+
+export const invoicePaymentsRelations = relations(
+  invoicePayments,
+  ({ one }) => ({
+    invoice: one(invoices, {
+      fields: [invoicePayments.invoiceId],
+      references: [invoices.id],
+    }),
+    payment: one(payments, {
+      fields: [invoicePayments.paymentId],
+      references: [payments.id],
+    }),
+  }),
+);
+
+export const receivedInvoicesRelations = relations(
+  receivedInvoices,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [receivedInvoices.storeId],
+      references: [stores.id],
+    }),
+    document: one(documents, {
+      fields: [receivedInvoices.documentId],
+      references: [documents.id],
+    }),
+  }),
+);
 
 export const reservationActivityRelations = relations(
   reservationActivity,
