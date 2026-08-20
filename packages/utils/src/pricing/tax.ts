@@ -32,6 +32,101 @@ export interface PriceCalculationResultWithTax extends PriceCalculationResult {
   taxEnabled: boolean
 }
 
+export interface TaxableLine {
+  id: string
+  amount: number
+  taxRate: number | null
+}
+
+export interface TaxLineCalculation {
+  id: string
+  taxRate: number | null
+  discountAmount: number
+  amountExclTax: number
+  taxAmount: number
+  amountInclTax: number
+}
+
+export interface VatBreakdownEntry {
+  rate: number
+  baseExclTax: number
+  taxAmount: number
+}
+
+export interface TaxBreakdownCalculation {
+  lines: TaxLineCalculation[]
+  vatBreakdown: VatBreakdownEntry[]
+  subtotalExclTax: number
+  taxAmount: number
+  totalInclTax: number
+  depositAmount: number
+}
+
+export interface CalculateTaxBreakdownInput {
+  lines: TaxableLine[]
+  deliveryFee?: number
+  discountAmount?: number
+  depositAmount?: number
+  taxConfig: TaxConfig | undefined
+}
+
+function roundMoney(amount: number): number {
+  return Math.round(amount * 100) / 100
+}
+
+function toCents(amount: number): number {
+  return Math.round(amount * 100)
+}
+
+function fromCents(amount: number): number {
+  return amount / 100
+}
+
+function allocateDiscountInCents(
+  lines: TaxableLine[],
+  discountAmount: number,
+  taxEnabled: boolean,
+): number[] {
+  const lineAmounts = lines.map((line) => Math.max(0, toCents(line.amount)))
+  const eligibleIndexes = lines.flatMap((line, index) =>
+    !taxEnabled || line.taxRate !== null ? [index] : [],
+  )
+  const eligibleTotal = eligibleIndexes.reduce(
+    (total, index) => total + lineAmounts[index],
+    0,
+  )
+  const discount = Math.min(
+    Math.max(0, toCents(discountAmount)),
+    eligibleTotal,
+  )
+  const allocations = lines.map(() => 0)
+
+  if (discount === 0 || eligibleTotal === 0) return allocations
+
+  const total = BigInt(eligibleTotal)
+  const remainders: { index: number; remainder: bigint }[] = []
+  let allocated = 0
+
+  for (const index of eligibleIndexes) {
+    const numerator = BigInt(discount) * BigInt(lineAmounts[index])
+    const share = Number(numerator / total)
+    allocations[index] = share
+    allocated += share
+    remainders.push({ index, remainder: numerator % total })
+  }
+
+  remainders.sort((left, right) => {
+    if (left.remainder === right.remainder) return left.index - right.index
+    return left.remainder > right.remainder ? -1 : 1
+  })
+
+  for (let index = 0; index < discount - allocated; index++) {
+    allocations[remainders[index].index] += 1
+  }
+
+  return allocations
+}
+
 // ============================================================================
 // Tax Calculation Functions
 // ============================================================================
@@ -94,6 +189,113 @@ export function getEffectiveTaxRate(
   return storeTaxConfig.rate
 }
 
+export function calculateTaxBreakdown({
+  lines,
+  deliveryFee = 0,
+  discountAmount = 0,
+  depositAmount = 0,
+  taxConfig,
+}: CalculateTaxBreakdownInput): TaxBreakdownCalculation {
+  const sourceLines = [
+    ...lines,
+    ...(deliveryFee > 0
+      ? [
+          {
+            id: 'delivery',
+            amount: deliveryFee,
+            taxRate: taxConfig?.enabled ? taxConfig.rate : null,
+          },
+        ]
+      : []),
+  ]
+
+  // Allocate document discounts in whole cents using largest remainders, then
+  // round the HT/TVA split on each discounted line. Rate totals are sums of
+  // those line values, so the breakdown always reconciles to the cent.
+  const discountAllocations = allocateDiscountInCents(
+    sourceLines,
+    discountAmount,
+    taxConfig?.enabled ?? false,
+  )
+  const calculatedLines = sourceLines.map((line, index): TaxLineCalculation => {
+    const allocatedDiscount = fromCents(discountAllocations[index])
+    const amount = fromCents(
+      Math.max(0, toCents(line.amount) - discountAllocations[index]),
+    )
+
+    if (!taxConfig?.enabled || line.taxRate === null) {
+      return {
+        id: line.id,
+        taxRate: null,
+        discountAmount: allocatedDiscount,
+        amountExclTax: amount,
+        taxAmount: 0,
+        amountInclTax: amount,
+      }
+    }
+
+    if (taxConfig.displayMode === 'inclusive') {
+      const amountExclTax = extractExclusiveFromInclusive(amount, line.taxRate)
+      return {
+        id: line.id,
+        taxRate: line.taxRate,
+        discountAmount: allocatedDiscount,
+        amountExclTax,
+        taxAmount: roundMoney(amount - amountExclTax),
+        amountInclTax: amount,
+      }
+    }
+
+    const taxAmount = calculateTaxFromExclusive(amount, line.taxRate)
+    return {
+      id: line.id,
+      taxRate: line.taxRate,
+      discountAmount: allocatedDiscount,
+      amountExclTax: amount,
+      taxAmount,
+      amountInclTax: roundMoney(amount + taxAmount),
+    }
+  })
+
+  const breakdownByRate = new Map<string, VatBreakdownEntry>()
+  for (const line of calculatedLines) {
+    if (line.taxRate === null) continue
+
+    const key = line.taxRate.toFixed(2)
+    const breakdown = breakdownByRate.get(key) ?? {
+      rate: line.taxRate,
+      baseExclTax: 0,
+      taxAmount: 0,
+    }
+    breakdown.baseExclTax = roundMoney(
+      breakdown.baseExclTax + line.amountExclTax,
+    )
+    breakdown.taxAmount = roundMoney(breakdown.taxAmount + line.taxAmount)
+    breakdownByRate.set(key, breakdown)
+  }
+
+  const subtotalExclTax = roundMoney(
+    calculatedLines.reduce((total, line) => total + line.amountExclTax, 0),
+  )
+  const taxAmount = roundMoney(
+    calculatedLines.reduce((total, line) => total + line.taxAmount, 0),
+  )
+  const totalInclTax = roundMoney(
+    calculatedLines.reduce((total, line) => total + line.amountInclTax, 0),
+  )
+
+  return {
+    lines: calculatedLines,
+    vatBreakdown: [...breakdownByRate.values()].sort(
+      (left, right) => left.rate - right.rate,
+    ),
+    subtotalExclTax,
+    taxAmount,
+    totalInclTax,
+    depositAmount: roundMoney(depositAmount),
+  }
+}
+
 /**
  * Apply taxes to a price calculation result
  * Note: Deposits (cautions) are NOT subject to tax
@@ -122,52 +324,26 @@ export function applyTaxToCalculation(
   }
 
   const rate = taxConfig.rate
+  const calculation = calculateTaxBreakdown({
+    lines: [{ id: 'subtotal', amount: result.subtotal, taxRate: rate }],
+    depositAmount: result.deposit,
+    taxConfig,
+  })
+  const depositAmount = calculation.depositAmount
 
-  // Deposits are never taxed (they are returned)
-  const depositExclTax = result.deposit
-  const depositTax = 0
-  const depositInclTax = result.deposit
-
-  if (taxConfig.displayMode === 'exclusive') {
-    // Prices are stored as HT (exclusive) -> calculate TTC (inclusive)
-    const subtotalExclTax = result.subtotal
-    const subtotalTax = calculateTaxFromExclusive(subtotalExclTax, rate)
-    const subtotalInclTax = Math.round((subtotalExclTax + subtotalTax) * 100) / 100
-
-    return {
-      ...result,
-      subtotalExclTax,
-      depositExclTax,
-      totalExclTax: Math.round((subtotalExclTax + depositExclTax) * 100) / 100,
-      subtotalTax,
-      depositTax,
-      totalTax: subtotalTax, // Only subtotal is taxed, not deposit
-      subtotalInclTax,
-      depositInclTax,
-      totalInclTax: Math.round((subtotalInclTax + depositInclTax) * 100) / 100,
-      taxRate: rate,
-      taxEnabled: true,
-    }
-  } else {
-    // Prices are stored as TTC (inclusive) -> extract HT (exclusive)
-    const subtotalInclTax = result.subtotal
-    const subtotalExclTax = extractExclusiveFromInclusive(subtotalInclTax, rate)
-    const subtotalTax = Math.round((subtotalInclTax - subtotalExclTax) * 100) / 100
-
-    return {
-      ...result,
-      subtotalExclTax,
-      depositExclTax,
-      totalExclTax: Math.round((subtotalExclTax + depositExclTax) * 100) / 100,
-      subtotalTax,
-      depositTax,
-      totalTax: subtotalTax, // Only subtotal is taxed, not deposit
-      subtotalInclTax,
-      depositInclTax,
-      totalInclTax: Math.round((subtotalInclTax + depositInclTax) * 100) / 100,
-      taxRate: rate,
-      taxEnabled: true,
-    }
+  return {
+    ...result,
+    subtotalExclTax: calculation.subtotalExclTax,
+    depositExclTax: depositAmount,
+    totalExclTax: roundMoney(calculation.subtotalExclTax + depositAmount),
+    subtotalTax: calculation.taxAmount,
+    depositTax: 0,
+    totalTax: calculation.taxAmount,
+    subtotalInclTax: calculation.totalInclTax,
+    depositInclTax: depositAmount,
+    totalInclTax: roundMoney(calculation.totalInclTax + depositAmount),
+    taxRate: rate,
+    taxEnabled: true,
   }
 }
 

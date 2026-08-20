@@ -664,6 +664,9 @@ importers:
       '@louez/config':
         specifier: workspace:*
         version: link:../config
+      '@types/node':
+        specifier: ^20.19.27
+        version: 20.19.27
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

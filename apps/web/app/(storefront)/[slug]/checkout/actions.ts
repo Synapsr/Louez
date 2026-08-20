@@ -37,15 +37,15 @@ import type {
 import type {
   ProductTaxSettings,
   StoreSettings,
-  TaxSettings,
   TulipPublicMode,
 } from '@louez/types';
 import type { Rate } from '@louez/types';
 import {
   advisorValidationCovers,
-  calculateTaxFromExclusive,
+  calculateTaxBreakdown,
   extractExclusiveFromInclusive,
   getEffectiveTaxRate,
+  taxSettingsToConfig,
 } from '@louez/utils';
 import {
   DEFAULT_COMBINATION_KEY,
@@ -716,7 +716,7 @@ export async function createReservation(input: CreateReservationInput) {
         quantity: number;
         trackUnits: boolean;
         bookingAttributeAxes: BookingAttributeAxis[] | null;
-        taxSettings: unknown;
+        taxSettings: ProductTaxSettings | null;
       }
     >();
     let serverSubtotal = 0;
@@ -1260,8 +1260,50 @@ export async function createReservation(input: CreateReservationInput) {
     const finalDiscount = serverDiscountAmount;
     const finalDeposit = serverTotalDeposit;
     const finalDeliveryFee = deliveryFee;
-    // totalAmount excludes deposit — deposit is tracked separately in depositAmount
-    const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee;
+
+    const storeTaxSettings = storeSettings?.tax;
+    const taxConfig = taxSettingsToConfig(storeTaxSettings);
+    const taxEnabled = taxConfig?.enabled ?? false;
+    const storeTaxRate = taxConfig?.rate ?? 0;
+    const displayMode = taxConfig?.displayMode ?? 'inclusive';
+    const taxableLines = serverCalculatedItems.map((serverItem, index) => {
+      const productInfo = productsForReservation.get(serverItem.productId);
+      const productTaxSettings = productInfo?.taxSettings;
+
+      return {
+        id: `item:${index}`,
+        amount: serverItem.subtotal,
+        taxRate: getEffectiveTaxRate(taxConfig, productTaxSettings),
+      };
+    });
+
+    if (tulipInsuranceAmount > 0) {
+      taxableLines.push({
+        id: 'insurance',
+        amount: tulipInsuranceAmount,
+        taxRate: taxConfig?.rate ?? null,
+      });
+    }
+
+    const taxCalculation = calculateTaxBreakdown({
+      lines: taxableLines,
+      deliveryFee: finalDeliveryFee,
+      discountAmount: finalDiscount,
+      depositAmount: finalDeposit,
+      taxConfig,
+    });
+    const taxCalculationByLineId = new Map(
+      taxCalculation.lines.map((line) => [line.id, line]),
+    );
+    // totalAmount excludes the untaxed deposit. In TTC mode the engine only
+    // splits the already-displayed cents, so this remains the legacy total.
+    // In HT mode, it adds the newly exact per-line VAT as approved in the spec.
+    const finalTotal = taxCalculation.totalInclTax;
+    const subtotalExclTax = taxEnabled
+      ? taxCalculation.subtotalExclTax
+      : null;
+    const taxAmount = taxEnabled ? taxCalculation.taxAmount : null;
+    const taxRate = taxEnabled ? storeTaxRate : null;
 
     // Quote-only (phone receptionist): return the authoritative server-computed
     // amounts WITHOUT creating anything, so the caller can be told the real price
@@ -1283,12 +1325,6 @@ export async function createReservation(input: CreateReservationInput) {
     const endDates = input.items.map((item) => new Date(item.endDate));
     const startDate = new Date(Math.min(...startDates.map((d) => d.getTime())));
     const endDate = new Date(Math.max(...endDates.map((d) => d.getTime())));
-
-    // Get tax settings from store
-    const storeTaxSettings = store.settings?.tax as TaxSettings | undefined;
-    const taxEnabled = storeTaxSettings?.enabled ?? false;
-    const storeTaxRate = storeTaxSettings?.defaultRate ?? 0;
-    const displayMode = storeTaxSettings?.displayMode ?? 'inclusive';
 
     const blockingStatuses = getBlockingReservationStatuses(
       (store.settings?.pendingBlocksAvailability) ?? true,
@@ -1579,24 +1615,6 @@ export async function createReservation(input: CreateReservationInput) {
         };
       }
 
-      let subtotalExclTax: number | null = null;
-      let taxAmount: number | null = null;
-      let taxRate: number | null = null;
-
-      if (taxEnabled && storeTaxRate > 0) {
-        taxRate = storeTaxRate;
-        if (displayMode === 'inclusive') {
-          subtotalExclTax = extractExclusiveFromInclusive(
-            finalSubtotal,
-            storeTaxRate,
-          );
-          taxAmount = finalSubtotal - subtotalExclTax;
-        } else {
-          subtotalExclTax = finalSubtotal;
-          taxAmount = calculateTaxFromExclusive(finalSubtotal, storeTaxRate);
-        }
-      }
-
       const reservationId = nanoid();
       const reservationNumber = await generateUniqueReservationNumber(
         input.storeId,
@@ -1665,10 +1683,6 @@ export async function createReservation(input: CreateReservationInput) {
         const serverItem = serverCalculatedItems[i];
         const totalPrice = serverItem.subtotal;
 
-        const productInfo = productsForReservation.get(item.productId);
-        const productTaxSettings = productInfo?.taxSettings as
-          | ProductTaxSettings
-          | undefined;
         const resolvedCombination = resolvedCombinationByItemKey.get(
           getReservationItemResolutionKey(item, i),
         );
@@ -1696,33 +1710,22 @@ export async function createReservation(input: CreateReservationInput) {
         let itemPriceExclTax: number | null = null;
         let itemTotalExclTax: number | null = null;
 
-        if (taxEnabled) {
-          const effectiveRate = getEffectiveTaxRate(
-            { enabled: true, rate: storeTaxRate, displayMode },
-            productTaxSettings,
-          );
-
-          if (effectiveRate !== null && effectiveRate > 0) {
-            itemTaxRate = effectiveRate;
-            if (displayMode === 'inclusive') {
-              itemPriceExclTax = extractExclusiveFromInclusive(
-                serverItem.unitPrice,
-                effectiveRate,
-              );
-              itemTotalExclTax = extractExclusiveFromInclusive(
-                totalPrice,
-                effectiveRate,
-              );
-              itemTaxAmount = totalPrice - itemTotalExclTax;
-            } else {
-              itemPriceExclTax = serverItem.unitPrice;
-              itemTotalExclTax = totalPrice;
-              itemTaxAmount = calculateTaxFromExclusive(
-                totalPrice,
-                effectiveRate,
-              );
-            }
-          }
+        const itemTaxCalculation = taxCalculationByLineId.get(`item:${i}`);
+        if (
+          taxEnabled &&
+          itemTaxCalculation &&
+          itemTaxCalculation.taxRate !== null
+        ) {
+          itemTaxRate = itemTaxCalculation.taxRate;
+          itemPriceExclTax =
+            displayMode === 'inclusive'
+              ? extractExclusiveFromInclusive(
+                  serverItem.unitPrice,
+                  itemTaxCalculation.taxRate,
+                )
+              : serverItem.unitPrice;
+          itemTotalExclTax = itemTaxCalculation.amountExclTax;
+          itemTaxAmount = itemTaxCalculation.taxAmount;
         }
 
         await tx.insert(reservationItems).values({
@@ -1743,6 +1746,9 @@ export async function createReservation(input: CreateReservationInput) {
       }
 
       if (tulipInsuranceAmount > 0) {
+        const insuranceTaxCalculation = taxEnabled
+          ? taxCalculationByLineId.get('insurance')
+          : undefined;
         await tx.insert(reservationItems).values({
           reservationId,
           productId: null,
@@ -1751,6 +1757,13 @@ export async function createReservation(input: CreateReservationInput) {
           unitPrice: tulipInsuranceAmount.toFixed(2),
           depositPerUnit: '0.00',
           totalPrice: tulipInsuranceAmount.toFixed(2),
+          taxRate: insuranceTaxCalculation?.taxRate?.toFixed(2) ?? null,
+          taxAmount:
+            insuranceTaxCalculation?.taxAmount.toFixed(2) ?? null,
+          priceExclTax:
+            insuranceTaxCalculation?.amountExclTax.toFixed(2) ?? null,
+          totalExclTax:
+            insuranceTaxCalculation?.amountExclTax.toFixed(2) ?? null,
           productSnapshot: {
             name: 'Garantie casse/vol',
             description: 'Garantie casse/vol',
@@ -1803,9 +1816,6 @@ export async function createReservation(input: CreateReservationInput) {
         reservationNumber,
         customerId: customer.id,
         customerEmail: customer.email,
-        taxRate,
-        subtotalExclTax,
-        taxAmount,
       };
     });
 
@@ -1825,9 +1835,6 @@ export async function createReservation(input: CreateReservationInput) {
       reservationNumber,
       customerId,
       customerEmail,
-      taxRate,
-      subtotalExclTax,
-      taxAmount,
     } = reservationWriteResult;
 
     const checkoutCurrency = store.settings?.currency || 'EUR';
@@ -2044,8 +2051,7 @@ export async function createReservation(input: CreateReservationInput) {
 
         // Calculate the amount to charge now (after promo discount, including delivery)
         // Round to 2 decimal places to avoid floating point issues
-        const chargeableTotal =
-          finalSubtotal - finalDiscount + finalDeliveryFee;
+        const chargeableTotal = finalTotal;
         const amountToCharge = isPartialPayment
           ? Math.round(chargeableTotal * depositPercentage) / 100
           : chargeableTotal;
@@ -2065,6 +2071,29 @@ export async function createReservation(input: CreateReservationInput) {
         // Build line items for Stripe
         // For partial payments, create a single line item for the deposit
         // For full payments, itemize each product
+        const exclusiveTaxLineItems = input.items
+          .map((item, idx) => {
+            const itemTaxCalculation = taxCalculationByLineId.get(
+              `item:${idx}`,
+            );
+            return itemTaxCalculation && itemTaxCalculation.amountInclTax > 0
+              ? {
+                  name: item.productSnapshot.name,
+                  description:
+                    item.quantity > 1
+                      ? `${item.quantity} × ${item.productSnapshot.name}`
+                      : undefined,
+                  quantity: 1,
+                  unitAmount: toStripeCents(
+                    itemTaxCalculation.amountInclTax,
+                    currency,
+                  ),
+                }
+              : null;
+          })
+          .filter((lineItem) => lineItem !== null);
+        const insuranceTaxLine = taxCalculationByLineId.get('insurance');
+        const deliveryTaxLine = taxCalculationByLineId.get('delivery');
         const lineItems = isPartialPayment
           ? [
               {
@@ -2074,6 +2103,35 @@ export async function createReservation(input: CreateReservationInput) {
                 unitAmount: toStripeCents(finalChargeAmount, currency),
               },
             ]
+          : displayMode === 'exclusive'
+            ? [
+                ...exclusiveTaxLineItems,
+                ...(insuranceTaxLine && insuranceTaxLine.amountInclTax > 0
+                  ? [
+                      {
+                        name: 'Garantie casse/vol',
+                        description: `Garantie casse/vol - réservation ${reservationNumber}`,
+                        quantity: 1,
+                        unitAmount: toStripeCents(
+                          insuranceTaxLine.amountInclTax,
+                          currency,
+                        ),
+                      },
+                    ]
+                  : []),
+                ...(deliveryTaxLine && deliveryTaxLine.amountInclTax > 0
+                  ? [
+                      {
+                        name: 'Livraison',
+                        quantity: 1,
+                        unitAmount: toStripeCents(
+                          deliveryTaxLine.amountInclTax,
+                          currency,
+                        ),
+                      },
+                    ]
+                  : []),
+              ]
           : [
               ...input.items.map((item, idx) => {
                 const serverItem = serverCalculatedItems[idx];
@@ -2162,7 +2220,7 @@ export async function createReservation(input: CreateReservationInput) {
           metadata: {
             checkoutSessionId: sessionId,
             amount: finalChargeAmount,
-            fullAmount: finalSubtotal,
+            fullAmount: finalTotal,
             depositPercentage,
             isPartialPayment,
             currency,
