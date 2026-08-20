@@ -73,6 +73,10 @@ const staticBreadcrumbRoutes = [
     translationKey: "settingsIntegrations",
   },
   {
+    href: "/dashboard/settings/invoicing",
+    translationKey: "settingsInvoicing",
+  },
+  {
     href: "/dashboard/settings/legal",
     translationKey: "settingsLegal",
   },
