@@ -19,6 +19,7 @@ import {
   toAnalyticsAmountCents,
 } from '@/lib/product-analytics/analytics'
 import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events'
+import { tryGenerateInvoiceForPayment } from '@/lib/invoicing/service'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -58,6 +59,10 @@ async function verifyAndUpdatePayment(
 
     if (existingPayment) {
       // Webhook already processed, just return success
+      await tryGenerateInvoiceForPayment(
+        existingPayment.id,
+        'checkout_success_existing_payment',
+      )
       return { alreadyProcessed: true }
     }
 
@@ -123,6 +128,7 @@ async function verifyAndUpdatePayment(
       ),
     })
 
+    const completedPaymentId = existingPendingPayment?.id ?? nanoid()
     if (existingPendingPayment) {
       // Update existing pending payment
       await db
@@ -139,7 +145,7 @@ async function verifyAndUpdatePayment(
     } else {
       // Create new payment record (shouldn't happen normally)
       await db.insert(payments).values({
-        id: nanoid(),
+        id: completedPaymentId,
         reservationId,
         amount: totalAmount.toFixed(2),
         type: 'rental',
@@ -155,6 +161,11 @@ async function verifyAndUpdatePayment(
         updatedAt: new Date(),
       })
     }
+
+    await tryGenerateInvoiceForPayment(
+      completedPaymentId,
+      'checkout_success_fallback',
+    )
 
     // Update reservation status
     await db

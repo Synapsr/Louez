@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
@@ -22,6 +22,11 @@ import {
   notifyStripeConnected,
 } from '@/lib/discord/platform-notifications';
 import { markReservationForCalendarSync } from '@/lib/integrations/calendar/sync';
+import {
+  tryEnsureRefundPaymentRecord,
+  tryGenerateCreditNoteForRefund,
+  tryGenerateInvoiceForPayment,
+} from '@/lib/invoicing/service';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import {
@@ -500,6 +505,10 @@ async function handleCheckoutCompleted(
   // Payment + confirmation already handled (e.g. by the success page). PAYG usage is
   // now recorded, so we can safely stop here without duplicating notifications.
   if (paymentAlreadyCompleted) {
+    await tryGenerateInvoiceForPayment(
+      existingPayment.id,
+      'stripe_checkout_webhook_existing_payment',
+    );
     console.log(
       `Payment already completed for session ${session.id}, skipping`,
     );
@@ -507,6 +516,7 @@ async function handleCheckoutCompleted(
   }
 
   // Update existing payment record (pending/failed/cancelled) or create a completed one.
+  const completedPaymentId = existingPayment?.id ?? nanoid();
   if (existingPayment) {
     await db
       .update(payments)
@@ -522,7 +532,7 @@ async function handleCheckoutCompleted(
   } else {
     // Create payment record (fallback if pending payment wasn't created)
     await db.insert(payments).values({
-      id: nanoid(),
+      id: completedPaymentId,
       reservationId,
       amount: totalAmount.toFixed(2),
       type: 'rental',
@@ -538,6 +548,11 @@ async function handleCheckoutCompleted(
       updatedAt: new Date(),
     });
   }
+
+  await tryGenerateInvoiceForPayment(
+    completedPaymentId,
+    'stripe_checkout_webhook',
+  );
 
   // Mark payment request as completed if this session was created from one
   const paymentRequestId = session.metadata?.paymentRequestId;
@@ -1074,9 +1089,10 @@ async function handleDepositCaptured(
         eq(payments.type, 'deposit_capture'),
       ),
     });
+    const capturePaymentId = existingCapture?.id ?? nanoid();
     if (!existingCapture) {
       await db.insert(payments).values({
-        id: nanoid(),
+        id: capturePaymentId,
         reservationId,
         amount: capturedAmount.toFixed(2),
         type: 'deposit_capture',
@@ -1090,6 +1106,10 @@ async function handleDepositCaptured(
         updatedAt: new Date(),
       });
     }
+    await tryGenerateInvoiceForPayment(
+      capturePaymentId,
+      'stripe_deposit_captured_webhook',
+    );
   }
 
   // Update reservation deposit status
@@ -1282,7 +1302,10 @@ async function handleChargeRefunded(
 ) {
   // Find payment by charge ID
   const payment = await db.query.payments.findFirst({
-    where: eq(payments.stripeChargeId, charge.id),
+    where: and(
+      eq(payments.stripeChargeId, charge.id),
+      isNull(payments.stripeRefundId),
+    ),
   });
 
   if (!payment) {
@@ -1311,10 +1334,32 @@ async function handleChargeRefunded(
     .set({
       amount: netAmount.toFixed(2),
       status: isFullRefund ? 'refunded' : 'completed',
-      stripeRefundId: charge.refunds?.data[0]?.id || null,
       updatedAt: new Date(),
     })
     .where(eq(payments.id, payment.id));
+
+  const rentalRefunds =
+    payment.type === 'rental' ? (charge.refunds?.data ?? []) : [];
+  for (const refund of rentalRefunds) {
+    const individualRefundAmount = fromStripeCents(refund.amount, currency);
+    const refundPaymentId = await tryEnsureRefundPaymentRecord(
+      {
+        originalPaymentId: payment.id,
+        stripeRefundId: refund.id,
+        amount: individualRefundAmount,
+        currency,
+        type: 'rental',
+        paidAt: new Date(refund.created * 1000),
+      },
+      'stripe_charge_refunded_webhook',
+    );
+    if (!refundPaymentId) continue;
+    await tryGenerateCreditNoteForRefund(
+      { originalPaymentId: payment.id, refundPaymentId },
+      individualRefundAmount,
+      'stripe_charge_refunded_webhook',
+    );
+  }
 
   // Reverse the platform fees collected on this payment, in proportion to how much of
   // the charge was refunded (full refund → reverse everything; partial → pro-rata).
