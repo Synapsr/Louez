@@ -22,10 +22,22 @@ const tokenResponseSchema = z.object({
 
 const oauthSessionSchema = z
   .object({
-    company_id: providerIdSchema,
     company_verification_status: z.string().min(1),
+    user_identity_verification_status: z.string().nullish(),
   })
   .passthrough();
+
+const companySchema = z
+  .object({
+    id: providerIdSchema,
+    number: z.string().min(1),
+    number_scheme: z.enum(["sandbox", "fr_siren", "be_numero_entreprise"]),
+    env: z.enum(["sandbox", "production"]).optional(),
+    formal_name: z.string().nullish(),
+  })
+  .passthrough();
+
+export type SuperPdpCompany = z.infer<typeof companySchema>;
 
 const directoryEntrySchema = z
   .object({
@@ -349,6 +361,15 @@ export function getSuperPdpOAuthSession(accessToken: string): Promise<SuperPdpOA
     path: "/oauth2_sessions/me",
     operation: "OAuth session lookup",
     schema: oauthSessionSchema,
+  });
+}
+
+export function getSuperPdpCompany(accessToken: string): Promise<SuperPdpCompany> {
+  return fetchProviderJson({
+    accessToken,
+    path: "/companies/me",
+    operation: "company lookup",
+    schema: companySchema,
   });
 }
 
