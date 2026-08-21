@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
 
 import { db, documents, invoices, storeIntegrations } from "@louez/db";
 
+import { env } from "@/env";
 import { log } from "@/lib/evlog";
 import {
   getSuperPdpIntegrationForStore,
@@ -16,6 +17,7 @@ import {
   SUPERPDP_PROVIDER_KEY,
   SuperPdpApiError,
   convertSuperPdpInvoiceToFacturX,
+  getSuperPdpCompany,
   sendSuperPdpInvoice,
   validateSuperPdpInvoice,
 } from "@/lib/integrations/providers/superpdp/superpdp-client";
@@ -38,6 +40,22 @@ function decodePdfDataUrl(fileUrl: string): Uint8Array {
   }
 
   return new Uint8Array(bytes);
+}
+
+function overrideSellerIdentifiers(
+  snapshot: Record<string, unknown>,
+  companyNumber: string,
+): Record<string, unknown> {
+  const seller =
+    typeof snapshot.seller === "object" && snapshot.seller !== null ? snapshot.seller : {};
+  return {
+    ...snapshot,
+    seller: {
+      ...seller,
+      electronic_address: { scheme: "0225", value: companyNumber },
+      legal_registration_identifier: { scheme: "0002", value: companyNumber },
+    },
+  };
 }
 
 async function loadInvoiceForTransmission(invoiceId: string) {
@@ -74,12 +92,22 @@ export async function sendInvoiceToSuperPdp(
   }
 
   const pdf = decodePdfDataUrl(invoice.fileUrl);
+  let en16931 = invoice.en16931Snapshot;
+  if (env.SUPERPDP_ENVIRONMENT === "sandbox") {
+    // The sandbox session belongs to a fictitious company; Super PDP rejects
+    // sends whose seller differs from it. Only the transmitted JSON is
+    // patched — the stored invoice and PDF keep the real legal identity.
+    const company = await withSuperPdpAccessToken(integration.integrationId, (accessToken) =>
+      getSuperPdpCompany(accessToken),
+    );
+    en16931 = overrideSellerIdentifiers(en16931, company.number);
+  }
   const facturX = await withSuperPdpAccessToken(integration.integrationId, (accessToken) =>
     convertSuperPdpInvoiceToFacturX({
       accessToken,
       pdf,
       fileName: invoice.fileName,
-      en16931: invoice.en16931Snapshot,
+      en16931,
     }),
   );
   const validation = await withSuperPdpAccessToken(integration.integrationId, (accessToken) =>
