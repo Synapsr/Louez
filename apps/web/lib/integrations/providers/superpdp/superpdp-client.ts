@@ -204,19 +204,22 @@ export function buildSuperPdpAuthorizationUrl(input: {
 }): string {
   const { clientId } = getSuperPdpOAuthConfig();
   const url = new URL(`${SUPERPDP_OAUTH_BASE_URL}/authorize`);
-  const providerScheme =
-    env.SUPERPDP_ENVIRONMENT === "sandbox"
-      ? "sandbox"
-      : input.companyNumberScheme === "fr_siren"
-        ? "fr_siren"
-        : "be_numero_entreprise";
 
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", getSuperPdpRedirectUri());
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", input.state);
-  url.searchParams.set("superpdp_company_number", input.companyNumber);
-  url.searchParams.set("superpdp_company_number_scheme", providerScheme);
+  // Sandbox companies are the fictitious ones auto-created on the Super PDP
+  // account (numbers like 315143296_XXX) — a real SIREN/BCE does not exist
+  // there, so the prefill is omitted and the merchant picks the company in
+  // the tunnel. In production the legal profile drives the prefill.
+  if (env.SUPERPDP_ENVIRONMENT !== "sandbox") {
+    url.searchParams.set("superpdp_company_number", input.companyNumber);
+    url.searchParams.set(
+      "superpdp_company_number_scheme",
+      input.companyNumberScheme === "fr_siren" ? "fr_siren" : "be_numero_entreprise",
+    );
+  }
   url.searchParams.set("superpdp_send_and_receive", "any");
   if (input.loginHint) url.searchParams.set("login_hint", input.loginHint);
 
