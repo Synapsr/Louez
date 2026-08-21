@@ -235,6 +235,79 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Lieferantenrechnungen",
+      "description": "Rechnungen, die Ihre Lieferanten über das Netzwerk für elektronische Rechnungsstellung an Ihr Unternehmen gesendet haben.",
+      "columns": {
+        "seller": "Lieferant",
+        "number": "Rechnung",
+        "issueDate": "Rechnungsdatum",
+        "totalInclTax": "Gesamt inkl. MwSt.",
+        "status": "Netzwerkstatus",
+        "ourAction": "Ihre Antwort",
+        "actions": "Aktionen"
+      },
+      "statuses": {
+        "received": "Erhalten",
+        "acknowledged": "Empfang bestätigt",
+        "accepted": "Angenommen",
+        "disputed": "Strittig",
+        "refused": "Abgelehnt",
+        "paid": "Bezahlt",
+        "paymentSent": "Zahlung übermittelt",
+        "rejected": "Zurückgewiesen",
+        "validated": "Validiert"
+      },
+      "ourActions": {
+        "none": "Keine Antwort",
+        "acknowledged": "Empfang bestätigt",
+        "accepted": "Angenommen",
+        "refused": "Abgelehnt"
+      },
+      "actions": {
+        "download": "Herunterladen",
+        "downloadNamed": "Rechnung {number} herunterladen",
+        "menuLabel": "Aktionen für Rechnung {number}",
+        "acknowledge": "Empfang bestätigen",
+        "accept": "Rechnung annehmen",
+        "refuse": "Rechnung ablehnen",
+        "acknowledgeSuccess": "Empfang bestätigt",
+        "acceptSuccess": "Rechnung angenommen",
+        "refuseSuccess": "Rechnung abgelehnt"
+      },
+      "accept": {
+        "title": "Diese Rechnung annehmen?",
+        "description": "Die Annahme der Rechnung {number} übermittelt eine verbindliche Erklärung an das Netzwerk für elektronische Rechnungsstellung und kann nicht rückgängig gemacht werden.",
+        "confirm": "Rechnung annehmen"
+      },
+      "refuse": {
+        "title": "Diese Rechnung ablehnen?",
+        "description": "Die Ablehnung der Rechnung {number} übermittelt eine verbindliche Erklärung an das Netzwerk für elektronische Rechnungsstellung und kann nicht rückgängig gemacht werden.",
+        "reasonLabel": "Grund der Ablehnung",
+        "reasonPlaceholder": "z. B. falscher Betrag, Leistung nicht erbracht…",
+        "reasonHelp": "Der Grund wird an Ihren Lieferanten weitergeleitet.",
+        "confirm": "Rechnung ablehnen"
+      },
+      "empty": {
+        "title": "Noch keine Lieferantenrechnungen",
+        "description": "Rechnungen erscheinen hier automatisch, sobald ein Lieferant eine über das Netzwerk für elektronische Rechnungsstellung an Ihr Unternehmen sendet.",
+        "settingsAction": "Rechnungseinstellungen ansehen"
+      },
+      "notConnected": {
+        "title": "Verbinden Sie Ihr Unternehmen, um Lieferantenrechnungen zu empfangen",
+        "description": "Lieferantenrechnungen erreichen diesen Posteingang, sobald Ihr Unternehmen bei unserer zugelassenen Plattform (PDP) registriert ist.",
+        "deadlineTitle": "Frist September 2026",
+        "deadlineDescription": "Ab September 2026 muss jedes französische Unternehmen seine Rechnungen elektronisch empfangen können.",
+        "howItWorks": "Nach der Verbindung erscheinen eingehende Rechnungen hier automatisch. Sie können sie herunterladen, den Empfang bestätigen, sie annehmen oder ablehnen.",
+        "connectAction": "Elektronische Rechnungsstellung einrichten"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Keine Rechnungen} one {1 Rechnung} other {# Rechnungen}}",
+        "page": "Seite {current} von {total}",
+        "previous": "Vorherige Seite",
+        "next": "Nächste Seite"
+      }
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "KI-Assistent",
@@ -332,6 +405,7 @@
       "copyError": "E-Mail konnte nicht kopiert werden"
     },
     "sidebar": {
+      "finance": "Finanzen",
       "catalog": "Katalog",
       "analytics": "Analysen",
       "manage": "Verwalten",
@@ -589,6 +663,7 @@
       }
     },
     "navigation": {
+      "purchaseInvoices": "Lieferantenrechnungen",
       "aiAssistant": "KI-Assistent",
       "aiConversations": "Kundengespräche",
       "aiAdvisor": "Online-Berater",
@@ -5196,6 +5271,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Lieferantenrechnungen",
       "aiAssistant": "KI-Assistent",
       "aiConversations": "Kundengespräche",
       "aiAdvisor": "Online-Berater",

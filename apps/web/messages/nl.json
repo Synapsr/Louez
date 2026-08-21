@@ -235,6 +235,79 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Leveranciersfacturen",
+      "description": "Facturen die je leveranciers via het netwerk voor elektronische facturatie naar je bedrijf hebben gestuurd.",
+      "columns": {
+        "seller": "Leverancier",
+        "number": "Factuur",
+        "issueDate": "Factuurdatum",
+        "totalInclTax": "Totaal incl. btw",
+        "status": "Netwerkstatus",
+        "ourAction": "Jouw antwoord",
+        "actions": "Acties"
+      },
+      "statuses": {
+        "received": "Ontvangen",
+        "acknowledged": "Ontvangst bevestigd",
+        "accepted": "Geaccepteerd",
+        "disputed": "Betwist",
+        "refused": "Geweigerd",
+        "paid": "Betaald",
+        "paymentSent": "Betaling verzonden",
+        "rejected": "Afgewezen",
+        "validated": "Gevalideerd"
+      },
+      "ourActions": {
+        "none": "Geen antwoord",
+        "acknowledged": "Ontvangst bevestigd",
+        "accepted": "Geaccepteerd",
+        "refused": "Geweigerd"
+      },
+      "actions": {
+        "download": "Downloaden",
+        "downloadNamed": "Factuur {number} downloaden",
+        "menuLabel": "Acties voor factuur {number}",
+        "acknowledge": "Ontvangst bevestigen",
+        "accept": "Factuur accepteren",
+        "refuse": "Factuur weigeren",
+        "acknowledgeSuccess": "Ontvangst bevestigd",
+        "acceptSuccess": "Factuur geaccepteerd",
+        "refuseSuccess": "Factuur geweigerd"
+      },
+      "accept": {
+        "title": "Deze factuur accepteren?",
+        "description": "Het accepteren van factuur {number} stuurt een bindende verklaring naar het netwerk voor elektronische facturatie. Dit kan niet ongedaan worden gemaakt.",
+        "confirm": "Factuur accepteren"
+      },
+      "refuse": {
+        "title": "Deze factuur weigeren?",
+        "description": "Het weigeren van factuur {number} stuurt een bindende verklaring naar het netwerk voor elektronische facturatie. Dit kan niet ongedaan worden gemaakt.",
+        "reasonLabel": "Reden van weigering",
+        "reasonPlaceholder": "Bijv. verkeerd bedrag, dienst niet geleverd…",
+        "reasonHelp": "De reden wordt doorgestuurd naar je leverancier.",
+        "confirm": "Factuur weigeren"
+      },
+      "empty": {
+        "title": "Nog geen leveranciersfacturen",
+        "description": "Facturen komen hier automatisch binnen zodra een leverancier er een naar je bedrijf stuurt via het netwerk voor elektronische facturatie.",
+        "settingsAction": "Factuurinstellingen bekijken"
+      },
+      "notConnected": {
+        "title": "Verbind je bedrijf om leveranciersfacturen te ontvangen",
+        "description": "Leveranciersfacturen komen in deze inbox zodra je bedrijf is aangemeld bij ons geaccrediteerde platform (PDP).",
+        "deadlineTitle": "Deadline september 2026",
+        "deadlineDescription": "Vanaf september 2026 moet elk Frans bedrijf zijn facturen elektronisch kunnen ontvangen.",
+        "howItWorks": "Zodra je verbonden bent, verschijnen inkomende facturen hier automatisch. Je kunt ze downloaden, de ontvangst bevestigen, ze accepteren of weigeren.",
+        "connectAction": "Elektronische facturatie instellen"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Geen facturen} one {1 factuur} other {# facturen}}",
+        "page": "Pagina {current} van {total}",
+        "previous": "Vorige pagina",
+        "next": "Volgende pagina"
+      }
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "AI-assistent",
@@ -332,6 +405,7 @@
       "copyError": "Email kon niet worden gekopieerd"
     },
     "sidebar": {
+      "finance": "Financiën",
       "catalog": "Catalogus",
       "analytics": "Analyses",
       "manage": "Beheren",
@@ -589,6 +663,7 @@
       }
     },
     "navigation": {
+      "purchaseInvoices": "Leveranciersfacturen",
       "aiAssistant": "AI-assistent",
       "aiConversations": "Klantgesprekken",
       "aiAdvisor": "Online adviseur",
@@ -5196,6 +5271,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Leveranciersfacturen",
       "aiAssistant": "AI-assistent",
       "aiConversations": "Klantgesprekken",
       "aiAdvisor": "Online adviseur",
