@@ -238,6 +238,17 @@ export function buildSuperPdpAuthorizationUrl(input: {
   return url.toString();
 }
 
+// Providers return actionable error payloads; a short excerpt (never tokens)
+// turns opaque 4xx into diagnosable messages in lastError/logs.
+async function readErrorExcerpt(response: Response): Promise<string> {
+  try {
+    const text = await response.text();
+    return text.slice(0, 300).replace(/\s+/g, " ").trim() || "<empty body>";
+  } catch {
+    return "<unreadable body>";
+  }
+}
+
 async function parseJsonResponse<T>(
   response: Response,
   operation: string,
@@ -245,7 +256,7 @@ async function parseJsonResponse<T>(
 ): Promise<T> {
   if (!response.ok) {
     throw new SuperPdpApiError(
-      `Super PDP ${operation} failed (${response.status})`,
+      `Super PDP ${operation} failed (${response.status}): ${await readErrorExcerpt(response)}`,
       response.status,
       operation,
     );
@@ -415,13 +426,13 @@ export async function convertSuperPdpInvoiceToFacturX(input: {
     input.fileName,
   );
   form.append(
-    "en_invoice",
+    "invoice",
     new Blob([JSON.stringify(input.en16931)], {
       type: "application/json",
     }),
     `${input.fileName}.json`,
   );
-  const query = new URLSearchParams({ from: "en16931", to: "facturx" });
+  const query = new URLSearchParams({ from: "en16931", to: "factur-x" });
   const response = await fetch(`${SUPERPDP_API_BASE_URL}/invoices/convert?${query.toString()}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${input.accessToken}` },
@@ -430,7 +441,7 @@ export async function convertSuperPdpInvoiceToFacturX(input: {
 
   if (!response.ok) {
     throw new SuperPdpApiError(
-      `Super PDP invoice conversion failed (${response.status})`,
+      `Super PDP invoice conversion failed (${response.status}): ${await readErrorExcerpt(response)}`,
       response.status,
       "invoice conversion",
     );
