@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db, integrationCredentials } from "@louez/db";
 
@@ -13,9 +13,6 @@ export async function getSuperPdpAccessToken(
   forceRefresh = false,
 ): Promise<string> {
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT integration_id FROM ${integrationCredentials} WHERE integration_id = ${integrationId} FOR UPDATE`,
-    );
     const [credential] = await tx
       .select({
         accessTokenEncrypted: integrationCredentials.accessTokenEncrypted,
@@ -24,7 +21,8 @@ export async function getSuperPdpAccessToken(
       })
       .from(integrationCredentials)
       .where(eq(integrationCredentials.integrationId, integrationId))
-      .limit(1);
+      .limit(1)
+      .for("update");
 
     if (!credential) {
       throw new Error("Super PDP credentials are missing");

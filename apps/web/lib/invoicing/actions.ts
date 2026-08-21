@@ -10,17 +10,22 @@ import { tryGenerateInvoiceForPayment } from "./service";
 
 const reservationIdSchema = z.string().length(21);
 
-export async function generateInvoiceForReservation(reservationId: string): Promise<{
-  success?: true;
-  generatedCount?: number;
-  error?: "unauthorized" | "invalid_reservation" | "invoicing_disabled";
-}> {
+export type InvoiceReservationGenerationResult =
+  | { status: "success"; generatedCount: number }
+  | {
+      status: "error";
+      error: "unauthorized" | "invalid_reservation" | "invoicing_disabled";
+    };
+
+export async function generateInvoiceForReservation(
+  reservationId: string,
+): Promise<InvoiceReservationGenerationResult> {
   const parsed = reservationIdSchema.safeParse(reservationId);
-  if (!parsed.success) return { error: "invalid_reservation" };
+  if (!parsed.success) return { status: "error", error: "invalid_reservation" };
 
   const store = await getCurrentStore();
   const canWrite = await currentUserHasPermission("write");
-  if (!store || !canWrite) return { error: "unauthorized" };
+  if (!store || !canWrite) return { status: "error", error: "unauthorized" };
 
   const [reservation] = await db
     .select({ id: reservations.id })
@@ -34,7 +39,7 @@ export async function generateInvoiceForReservation(reservationId: string): Prom
     )
     .where(and(eq(reservations.id, parsed.data), eq(reservations.storeId, store.id)))
     .limit(1);
-  if (!reservation) return { error: "invoicing_disabled" };
+  if (!reservation) return { status: "error", error: "invoicing_disabled" };
 
   const linkedPaymentIds = db
     .select({ paymentId: invoicePayments.paymentId })
@@ -62,5 +67,5 @@ export async function generateInvoiceForReservation(reservationId: string): Prom
     if (result.status === "generated") generatedCount += 1;
   }
 
-  return { success: true, generatedCount };
+  return { status: "success", generatedCount };
 }

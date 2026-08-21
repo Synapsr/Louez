@@ -18,33 +18,40 @@ import { getCurrentStore } from "@/lib/store-context";
 
 export type StoreLegalProfileRecord = typeof storeLegalProfiles.$inferSelect;
 
+export type StoreLegalProfileQueryResult =
+  | { status: "success"; profile: StoreLegalProfileRecord | null }
+  | { status: "error"; error: string };
+
+export type StoreLegalProfileActionResult =
+  | { status: "success" }
+  | { status: "error"; error: string };
+
 /** Read the legal profile of the active store. */
-export async function getStoreLegalProfile(): Promise<{
-  error?: string;
-  profile: StoreLegalProfileRecord | null;
-}> {
+export async function getStoreLegalProfile(): Promise<StoreLegalProfileQueryResult> {
   const store = await getCurrentStore();
   if (!store) {
-    return { error: "errors.unauthorized", profile: null };
+    return { status: "error", error: "errors.unauthorized" };
   }
 
   const profile = await db.query.storeLegalProfiles.findFirst({
     where: eq(storeLegalProfiles.storeId, store.id),
   });
 
-  return { profile: profile ?? null };
+  return { status: "success", profile: profile ?? null };
 }
 
 /** Create or update the legal profile of the active store. */
-export async function upsertStoreLegalProfile(data: StoreLegalProfileInput) {
+export async function upsertStoreLegalProfile(
+  data: StoreLegalProfileInput,
+): Promise<StoreLegalProfileActionResult> {
   const store = await getCurrentStore();
   if (!store) {
-    return { error: "errors.unauthorized" };
+    return { status: "error", error: "errors.unauthorized" };
   }
 
   const validated = storeLegalProfileSchema.safeParse(data);
   if (!validated.success) {
-    return { error: "errors.invalidData" };
+    return { status: "error", error: "errors.invalidData" };
   }
 
   const input = validated.data;
@@ -77,7 +84,7 @@ export async function upsertStoreLegalProfile(data: StoreLegalProfileInput) {
     .onDuplicateKeyUpdate({ set: values });
 
   revalidatePath("/dashboard/settings/invoicing");
-  return { success: true };
+  return { status: "success" };
 }
 
 /** Look up a French company in the public registry to prefill the form. */

@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
 
 import { db, documents, invoices, storeIntegrations } from "@louez/db";
 
@@ -130,7 +130,6 @@ async function claimInvoiceForTransmission(
   invoiceId: string,
 ): Promise<{ attemptCount: number; storeId: string } | null> {
   return db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT id FROM ${invoices} WHERE id = ${invoiceId} FOR UPDATE`);
     const [row] = await tx
       .select({
         storeId: invoices.storeId,
@@ -140,7 +139,8 @@ async function claimInvoiceForTransmission(
       })
       .from(invoices)
       .where(eq(invoices.id, invoiceId))
-      .limit(1);
+      .limit(1)
+      .for("update");
     const now = new Date();
 
     if (

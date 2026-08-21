@@ -28,11 +28,12 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
   }
 
   const t = await getTranslations("dashboard.settings.invoicing");
-  const [{ profile }, enrollment, params] = await Promise.all([
+  const [profileResult, enrollment, params] = await Promise.all([
     getStoreLegalProfile(),
     getSuperPdpEnrollment(store.id),
     searchParams,
   ]);
+  const profile = profileResult.status === "success" ? profileResult.profile : null;
   const defaultCountry = store.settings?.billingAddress?.country ?? "FR";
 
   return (
