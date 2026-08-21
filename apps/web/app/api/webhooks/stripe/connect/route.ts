@@ -22,6 +22,7 @@ import {
   notifyStripeConnected,
 } from '@/lib/discord/platform-notifications';
 import { markReservationForCalendarSync } from '@/lib/integrations/calendar/sync';
+import { tryPrepareInitialInvoiceEmailDelivery } from '@/lib/invoicing/delivery';
 import {
   tryEnsureRefundPaymentRecord,
   tryGenerateCreditNoteForRefund,
@@ -549,7 +550,7 @@ async function handleCheckoutCompleted(
     });
   }
 
-  await tryGenerateInvoiceForPayment(
+  const invoiceGeneration = await tryGenerateInvoiceForPayment(
     completedPaymentId,
     'stripe_checkout_webhook',
   );
@@ -734,6 +735,10 @@ async function handleCheckoutCompleted(
 
     // Dispatch customer notification for reservation confirmed (email/SMS based on store preferences)
     if (reservation.customer) {
+      const invoiceDelivery =
+        invoiceGeneration.status === 'generated' && invoiceGeneration.kind === 'initial'
+          ? await tryPrepareInitialInvoiceEmailDelivery(reservationId)
+          : undefined;
       const reservationUrl = getStorefrontUrl(
         reservation.store.slug,
         `/account/reservations/${reservationId}`,
@@ -787,6 +792,8 @@ async function handleCheckoutCompleted(
         },
         items: emailItems,
         reservationUrl,
+        documentAttachments: invoiceDelivery?.attachments,
+        contractSignatureUrl: invoiceDelivery?.contractSignatureUrl,
       }).catch((error) => {
         console.error(
           'Failed to dispatch customer reservation confirmed notification:',

@@ -15,10 +15,12 @@ import { nanoid } from "nanoid";
 import { log } from "@/lib/evlog";
 import { getLocaleFromCountry } from "@/lib/email/i18n";
 import { InvoiceDocument } from "@/lib/pdf/invoice";
+import { generateContract } from "@/lib/pdf/generate";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { buildCreditNoteSnapshots, buildInvoiceSnapshots } from "./core";
 import { claimInvoiceNumber } from "./sequence";
+import { postInvoicePaymentStatus } from "./superpdp-events";
 
 const REVENUE_PAYMENT_TYPES = new Set(["rental", "damage", "adjustment", "deposit_capture"]);
 
@@ -30,7 +32,14 @@ export type InvoiceGenerationSkipReason =
   | "generation_failed";
 
 export type InvoiceGenerationResult =
-  | { status: "generated"; invoiceId: string; documentId: string; number: string }
+  | {
+      status: "generated";
+      invoiceId: string;
+      documentId: string;
+      number: string;
+      reservationId: string;
+      kind: "initial" | "complementary" | "credit_note";
+    }
   | { status: "skipped"; reason: InvoiceGenerationSkipReason };
 
 function skipped(reason: InvoiceGenerationSkipReason): InvoiceGenerationResult {
@@ -253,13 +262,14 @@ export async function generateInvoiceForPayment(
       fileName: `${locale === "fr" ? "facture" : "invoice"}-${number}.pdf`,
       fileUrl: `data:application/pdf;base64,${pdfBuffer.toString("base64")}`,
     });
+    const kind = firstInvoice ? "complementary" : "initial";
     await tx.insert(invoices).values({
       id: invoiceId,
       storeId: payment.reservation.storeId,
       reservationId: payment.reservation.id,
       customerId: payment.reservation.customerId,
       type: "invoice",
-      kind: firstInvoice ? "complementary" : "initial",
+      kind,
       number,
       issueDate,
       currency,
@@ -282,8 +292,26 @@ export async function generateInvoiceForPayment(
       paymentId: payment.id,
     });
 
-    return { status: "generated", invoiceId, documentId, number };
+    return {
+      status: "generated",
+      invoiceId,
+      documentId,
+      number,
+      reservationId: payment.reservation.id,
+      kind,
+    };
   });
+}
+
+async function tryGenerateInitialContract(reservationId: string, source: string): Promise<void> {
+  try {
+    await generateContract({ reservationId });
+  } catch (error) {
+    log.error(
+      "invoicing",
+      `contract generation failed (${source}): ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 export async function tryGenerateInvoiceForPayment(
@@ -297,7 +325,21 @@ export async function tryGenerateInvoiceForPayment(
       });
       return skipped("invoicing_disabled");
     }
-    return await generateInvoiceForPayment(paymentId);
+    const result = await generateInvoiceForPayment(paymentId);
+    if (result.status !== "generated") return result;
+
+    void postInvoicePaymentStatus(result.invoiceId).catch((error) => {
+      log.error(
+        "invoicing",
+        `invoice payment status reporting failed (${source}): ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
+
+    if (result.kind === "initial") {
+      await tryGenerateInitialContract(result.reservationId, source);
+    }
+
+    return result;
   } catch (error) {
     log.error(
       "invoicing",
@@ -649,7 +691,14 @@ export async function generateCreditNoteForRefund(
       paymentId: refundPayment.id,
     });
 
-    return { status: "generated", invoiceId, documentId, number };
+    return {
+      status: "generated",
+      invoiceId,
+      documentId,
+      number,
+      reservationId: refundPayment.reservation.id,
+      kind: "credit_note",
+    };
   });
 }
 

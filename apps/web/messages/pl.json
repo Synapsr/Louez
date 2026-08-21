@@ -1737,6 +1737,27 @@
       "sendEmail": "Wyślij email",
       "customerInfo": "Informacje o kliencie",
       "viewCustomer": "Zobacz klienta",
+      "invoiceDocuments": {
+        "title": "Faktury i noty kredytowe",
+        "empty": "Nie wygenerowano jeszcze żadnej faktury.",
+        "generate": "Wygeneruj fakturę",
+        "generationSuccess": "Dostępne dokumenty rozliczeniowe zostały wygenerowane.",
+        "generationError": "Nie udało się wygenerować faktury.",
+        "download": "Pobierz",
+        "downloadNamed": "Pobierz {number}",
+        "types": {
+          "invoice": "Faktura",
+          "credit_note": "Nota kredytowa"
+        },
+        "transmission": {
+          "not_applicable": "Nie przesłano",
+          "pending": "Oczekuje na przesłanie",
+          "sent": "Wysłano",
+          "validated": "Zatwierdzono",
+          "rejected": "Odrzucono",
+          "failed": "Przesyłanie nie powiodło się"
+        }
+      },
       "periodStart": "Początek",
       "periodEnd": "Koniec",
       "duration": "Czas trwania",
@@ -3730,6 +3751,19 @@
               "help": "Dokumentacja iCalendar"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Połącz firmę z akredytowaną platformą, aby wysyłać i odbierać faktury elektroniczne.",
+            "about": "Super PDP łączy Louez z oficjalną siecią e-fakturowania i obsługuje rejestrację, wysyłkę, odbiór oraz zmiany statusów faktur.",
+            "features": {
+              "send": "Wysyłaj faktury klientów przez oficjalną sieć.",
+              "receive": "Odbieraj faktury dostawców w Louez.",
+              "lifecycle": "Śledź statusy dostarczenia i płatności faktur."
+            },
+            "resources": {
+              "website": "Witryna Super PDP"
+            }
+          },
           "tulip": {
             "name": "Ubezpieczenie Tulip",
             "description": "Połącz Tulip, aby wyceniać i generować umowy ubezpieczenia wynajmu.",
@@ -4098,14 +4132,60 @@
           "title": "Przesyłanie elektroniczne (PDP)",
           "description": "Połącz swoją firmę z akredytowaną platformą, aby wysyłać i odbierać faktury przez oficjalną sieć.",
           "statusComingSoon": "Wkrótce",
+          "statusPending": "Rejestracja w toku",
+          "statusActionRequired": "Wymagane działanie",
           "deadlineTitle": "Termin: wrzesień 2026",
-          "deadlineDescription": "Od września 2026 każda francuska firma musi być podłączona do akredytowanej platformy, aby odbierać faktury elektroniczne; wystawianie stanie się obowiązkowe we wrześniu 2027. Podłączenie przez Louez jest bezpłatne i będzie dostępne wkrótce.",
+          "deadlineDescription": "Od września 2026 każda francuska firma musi być podłączona do akredytowanej platformy, aby odbierać faktury elektroniczne; wystawianie stanie się obowiązkowe we wrześniu 2027. Podłączenie przez Louez jest bezpłatne.",
           "benefits": {
             "send": "Wysyłaj faktury do klientów biznesowych przez oficjalną sieć.",
             "receive": "Odbieraj wszystkie faktury od dostawców w jednym miejscu.",
             "reporting": "Automatyczny e-reporting sprzedaży na rzecz konsumentów."
           },
-          "connectAction": "Połącz moją firmę (wkrótce)"
+          "connectAction": "Połącz moją firmę",
+          "pendingTitle": "Rejestracja w toku",
+          "pendingDescription": "Rejestracja została rozpoczęta, ale nie jest jeszcze zakończona. Wznów ją, aby dokończyć weryfikację tożsamości przez akredytowaną platformę.",
+          "resumeAction": "Wznów rejestrację",
+          "errorTitle": "Połączenie przerwane",
+          "reconnectAction": "Połącz firmę ponownie",
+          "errorHints": {
+            "reconnectRequired": "Platforma cofnęła dostęp przyznany Louez. Połącz firmę ponownie, aby wznowić wysyłanie faktur.",
+            "oauthFailed": "Nie udało się zakończyć rejestracji. Rozpocznij ją ponownie; jeśli problem się utrzyma, skontaktuj się z pomocą.",
+            "operationFailed": "Ostatnia wymiana z platformą nie powiodła się. Louez spróbuje ponownie automatycznie; połącz ponownie, jeśli problem się utrzyma."
+          },
+          "lockedTitle": "Połączenie nie jest jeszcze dostępne",
+          "lockedReasons": {
+            "identityIncomplete": "Uzupełnij dane prawne w kroku 1: platforma zweryfikuje je przed rejestracją firmy.",
+            "invoicingDisabled": "Włącz fakturowanie przez Louez w kroku 2: nie ma nic do przesłania, dopóki Louez nie wystawia faktur.",
+            "countryUnsupported": "Transmisja elektroniczna jest obecnie dostępna tylko dla firm zarejestrowanych we Francji lub Belgii."
+          },
+          "details": {
+            "verification": "Weryfikacja tożsamości",
+            "directory": "Katalog sieci",
+            "environment": "Środowisko"
+          },
+          "verificationStatus": {
+            "verified": "Zweryfikowano",
+            "pending": "W trakcie weryfikacji",
+            "failed": "Weryfikacja nie powiodła się"
+          },
+          "verificationPendingNote": "Platforma nadal sprawdza dane firmy. Faktury zostaną przesłane po zakończeniu weryfikacji.",
+          "directoryStatus": {
+            "pending": "Rejestracja w toku",
+            "created": "Zarejestrowano",
+            "error": "Rejestracja nie powiodła się",
+            "missing": "Niezarejestrowano"
+          },
+          "environments": { "sandbox": "Środowisko testowe", "production": "Produkcja" },
+          "result": {
+            "successTitle": "Firma połączona",
+            "successDescription": "Firma jest teraz zarejestrowana na akredytowanej platformie. Faktury będą przesyłane automatycznie.",
+            "errorTitle": "Połączenie nie powiodło się",
+            "errors": {
+              "oauth": "Rejestracja została przerwana przed zakończeniem. Możesz rozpocząć ją ponownie.",
+              "legalProfileIncomplete": "Dane prawne są niepełne. Uzupełnij krok 1, a następnie ponownie rozpocznij łączenie.",
+              "notConfigured": "Transmisja elektroniczna nie jest skonfigurowana w tym środowisku. Skontaktuj się z pomocą Louez."
+            }
+          }
         }
       },
       "delivery": {
@@ -6080,6 +6160,17 @@
       "signContract": "Podpisz umowę",
       "contractSigned": "Umowa podpisana",
       "downloadContract": "Pobierz umowę",
+      "signContractConfirmation": "Kontynuując, potwierdzasz przeczytanie i akceptację tej umowy najmu.",
+      "signContractError": "Nie udało się podpisać umowy. Spróbuj ponownie.",
+      "invoiceDocuments": {
+        "title": "Faktury i noty kredytowe",
+        "description": "Pobierz dokumenty księgowe dotyczące tej rezerwacji.",
+        "download": "Pobierz",
+        "types": {
+          "invoice": "Faktura",
+          "credit_note": "Nota kredytowa"
+        }
+      },
       "paymentPaid": "Opłacone",
       "paymentPending": "Nieopłacone",
       "amountPaid": "Zapłacona kwota",

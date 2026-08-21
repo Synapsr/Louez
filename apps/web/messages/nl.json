@@ -1737,6 +1737,27 @@
       "sendEmail": "E-mail verzenden",
       "customerInfo": "Klantinformatie",
       "viewCustomer": "Klant bekijken",
+      "invoiceDocuments": {
+        "title": "Facturen en creditnota’s",
+        "empty": "Er is nog geen factuur aangemaakt.",
+        "generate": "Factuur aanmaken",
+        "generationSuccess": "De beschikbare factuurdocumenten zijn aangemaakt.",
+        "generationError": "De factuur kon niet worden aangemaakt.",
+        "download": "Downloaden",
+        "downloadNamed": "{number} downloaden",
+        "types": {
+          "invoice": "Factuur",
+          "credit_note": "Creditnota"
+        },
+        "transmission": {
+          "not_applicable": "Niet verzonden",
+          "pending": "Verzending in afwachting",
+          "sent": "Verzonden",
+          "validated": "Gevalideerd",
+          "rejected": "Afgewezen",
+          "failed": "Verzending mislukt"
+        }
+      },
       "periodStart": "Begin",
       "periodEnd": "Einde",
       "duration": "Duur",
@@ -3730,6 +3751,19 @@
               "help": "iCalendar-referentie"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Verbind je onderneming met een erkend platform om elektronische facturen te verzenden en ontvangen.",
+            "about": "Super PDP verbindt Louez met het officiële netwerk voor e-facturatie en beheert inschrijving, verzending, ontvangst en statusupdates.",
+            "features": {
+              "send": "Verzend klantfacturen via het officiële netwerk.",
+              "receive": "Ontvang leveranciersfacturen in Louez.",
+              "lifecycle": "Volg de aflever- en betaalstatus van facturen."
+            },
+            "resources": {
+              "website": "Website van Super PDP"
+            }
+          },
           "tulip": {
             "name": "Tulip Insurance",
             "description": "Verbind Tulip om offertes op te stellen en huurverzekeringscontracten te genereren.",
@@ -4098,14 +4132,60 @@
           "title": "Elektronische verzending (PDP)",
           "description": "Verbind je onderneming met een erkend platform om facturen via het officiële netwerk te versturen en te ontvangen.",
           "statusComingSoon": "Binnenkort beschikbaar",
+          "statusPending": "Inschrijving loopt",
+          "statusActionRequired": "Actie vereist",
           "deadlineTitle": "Deadline september 2026",
-          "deadlineDescription": "Vanaf september 2026 moet elke Franse onderneming aangesloten zijn op een erkend platform om elektronische facturen te ontvangen; verzenden wordt verplicht in september 2027. Aansluiten via Louez is gratis en komt binnenkort.",
+          "deadlineDescription": "Vanaf september 2026 moet elke Franse onderneming aangesloten zijn op een erkend platform om elektronische facturen te ontvangen; verzenden wordt verplicht in september 2027. Aansluiten via Louez is gratis.",
           "benefits": {
             "send": "Verstuur je facturen naar zakelijke klanten via het officiële netwerk.",
             "receive": "Ontvang al je leveranciersfacturen op één plek.",
             "reporting": "Automatische e-reporting van je verkopen aan particulieren."
           },
-          "connectAction": "Mijn onderneming verbinden (binnenkort)"
+          "connectAction": "Mijn onderneming verbinden",
+          "pendingTitle": "Inschrijving loopt",
+          "pendingDescription": "Je inschrijving is gestart maar nog niet afgerond. Hervat ze om de identiteitscontroles van het erkende platform af te ronden.",
+          "resumeAction": "Inschrijving hervatten",
+          "errorTitle": "Verbinding onderbroken",
+          "reconnectAction": "Mijn onderneming opnieuw verbinden",
+          "errorHints": {
+            "reconnectRequired": "Het platform heeft de toegang van Louez ingetrokken. Verbind je onderneming opnieuw om facturen weer te verzenden.",
+            "oauthFailed": "De inschrijving kon niet worden afgerond. Start opnieuw; neem contact op met support als het probleem aanhoudt.",
+            "operationFailed": "De laatste uitwisseling met het platform is mislukt. Louez probeert het automatisch opnieuw; verbind opnieuw als het probleem aanhoudt."
+          },
+          "lockedTitle": "Verbinding nog niet beschikbaar",
+          "lockedReasons": {
+            "identityIncomplete": "Vul je wettelijke identiteit in stap 1 aan: het platform controleert die voordat je onderneming wordt ingeschreven.",
+            "invoicingDisabled": "Schakel facturatie door Louez in stap 2 in: er is niets te verzenden zolang Louez geen facturen uitgeeft.",
+            "countryUnsupported": "Elektronische verzending is momenteel alleen beschikbaar voor ondernemingen die in Frankrijk of België zijn geregistreerd."
+          },
+          "details": {
+            "verification": "Identiteitscontrole",
+            "directory": "Netwerkregister",
+            "environment": "Omgeving"
+          },
+          "verificationStatus": {
+            "verified": "Geverifieerd",
+            "pending": "Wordt gecontroleerd",
+            "failed": "Controle mislukt"
+          },
+          "verificationPendingNote": "Het platform controleert je bedrijfsgegevens nog. Je facturen worden verzonden zodra de controle is afgerond.",
+          "directoryStatus": {
+            "pending": "Registratie loopt",
+            "created": "Geregistreerd",
+            "error": "Registratie mislukt",
+            "missing": "Niet geregistreerd"
+          },
+          "environments": { "sandbox": "Testomgeving", "production": "Productie" },
+          "result": {
+            "successTitle": "Onderneming verbonden",
+            "successDescription": "Je onderneming is nu ingeschreven bij het erkende platform. Je facturen worden automatisch verzonden.",
+            "errorTitle": "Verbinding mislukt",
+            "errors": {
+              "oauth": "De inschrijving werd onderbroken voordat ze voltooid was. Je kunt opnieuw beginnen.",
+              "legalProfileIncomplete": "Je wettelijke identiteit is onvolledig. Vul stap 1 aan en start de verbinding opnieuw.",
+              "notConfigured": "Elektronische verzending is niet geconfigureerd in deze omgeving. Neem contact op met Louez-support."
+            }
+          }
         }
       },
       "delivery": {
@@ -6088,6 +6168,17 @@
       "signContract": "Contract ondertekenen",
       "contractSigned": "Contract ondertekend",
       "downloadContract": "Contract downloaden",
+      "signContractConfirmation": "Door verder te gaan bevestigt u dat u deze huurovereenkomst hebt gelezen en aanvaard.",
+      "signContractError": "Het contract kon niet worden ondertekend. Probeer het opnieuw.",
+      "invoiceDocuments": {
+        "title": "Facturen en creditnota’s",
+        "description": "Download de boekhoudkundige documenten voor deze reservering.",
+        "download": "Downloaden",
+        "types": {
+          "invoice": "Factuur",
+          "credit_note": "Creditnota"
+        }
+      },
       "paymentPaid": "Betaald",
       "paymentPending": "Onbetaald",
       "amountPaid": "Betaald bedrag",

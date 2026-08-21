@@ -45,6 +45,7 @@ interface ReservationConfirmationEmailProps {
   deposit: number
   total: number
   reservationUrl: string
+  contractSignatureUrl?: string
   customContent?: EmailCustomContent
   locale?: EmailLocale
   currency?: string
@@ -75,6 +76,7 @@ export function ReservationConfirmationEmail({
   deposit,
   total,
   reservationUrl,
+  contractSignatureUrl,
   customContent,
   locale = 'fr',
   currency = 'EUR',
@@ -93,6 +95,14 @@ export function ReservationConfirmationEmail({
     typeof tc.timezone === 'string'
       ? tc.timezone.replace('{timezone}', timezoneLabel)
       : `Timezone: ${timezoneLabel}`
+  const contractSignatureText =
+    typeof messages.contractSignature === 'string'
+      ? messages.contractSignature
+      : t.requestAccepted.contractAvailable
+  const contractSignatureLabel =
+    typeof messages.signContract === 'string'
+      ? messages.signContract
+      : t.requestAccepted.viewContract
 
   const formatDate = (date: Date) =>
     formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry)
@@ -184,6 +194,17 @@ export function ReservationConfirmationEmail({
       <ItemsTable items={items} totals={totals} formatCurrency={formatCurrency} />
 
       <CtaButton href={reservationUrl} label={tc.viewReservation} primaryColor={primaryColor} />
+
+      {contractSignatureUrl && (
+        <>
+          <EmailText>{contractSignatureText}</EmailText>
+          <CtaButton
+            href={contractSignatureUrl}
+            label={contractSignatureLabel}
+            primaryColor={primaryColor}
+          />
+        </>
+      )}
     </BaseLayout>
   )
 }

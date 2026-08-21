@@ -1776,6 +1776,27 @@
       "sendEmail": "Send email",
       "customerInfo": "Customer information",
       "viewCustomer": "View customer",
+      "invoiceDocuments": {
+        "title": "Invoices and credit notes",
+        "empty": "No invoice has been generated yet.",
+        "generate": "Generate invoice",
+        "generationSuccess": "The available invoice documents were generated.",
+        "generationError": "The invoice could not be generated.",
+        "download": "Download",
+        "downloadNamed": "Download {number}",
+        "types": {
+          "invoice": "Invoice",
+          "credit_note": "Credit note"
+        },
+        "transmission": {
+          "not_applicable": "Not transmitted",
+          "pending": "Pending transmission",
+          "sent": "Sent",
+          "validated": "Validated",
+          "rejected": "Rejected",
+          "failed": "Transmission failed"
+        }
+      },
       "periodStart": "Start",
       "periodEnd": "End",
       "duration": "Duration",
@@ -3138,6 +3159,19 @@
               "help": "iCalendar reference"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Connect your company to an accredited platform to send and receive electronic invoices.",
+            "about": "Super PDP connects Louez to the official electronic invoicing network and handles company enrollment, invoice transmission, receipt, and lifecycle updates.",
+            "features": {
+              "send": "Send customer invoices over the official network.",
+              "receive": "Receive supplier invoices in Louez.",
+              "lifecycle": "Track invoice delivery and payment statuses."
+            },
+            "resources": {
+              "website": "Super PDP website"
+            }
+          },
           "tulip": {
             "name": "Tulip Insurance",
             "description": "Connect Tulip to offer breakage, theft, and vandalism insurance on your rentals.",
@@ -4232,14 +4266,63 @@
           "title": "Electronic transmission (PDP)",
           "description": "Connect your company to an accredited platform to send and receive invoices over the official network.",
           "statusComingSoon": "Coming soon",
+          "statusPending": "Enrollment in progress",
+          "statusActionRequired": "Action required",
           "deadlineTitle": "September 2026 deadline",
-          "deadlineDescription": "From September 2026, every French company must be connected to an accredited platform to receive its electronic invoices; issuing becomes mandatory in September 2027. Connecting from Louez is free of charge and coming soon.",
+          "deadlineDescription": "From September 2026, every French company must be connected to an accredited platform to receive its electronic invoices; issuing becomes mandatory in September 2027. Connecting from Louez is free of charge.",
           "benefits": {
             "send": "Send your invoices to business customers over the official network.",
             "receive": "Receive all your supplier invoices in one place.",
             "reporting": "Automatic e-reporting of your sales to consumers."
           },
-          "connectAction": "Connect my company (soon)"
+          "connectAction": "Connect my company",
+          "pendingTitle": "Enrollment in progress",
+          "pendingDescription": "Your enrollment has been started but is not complete yet. Resume it to finish the identity checks of the accredited platform.",
+          "resumeAction": "Resume enrollment",
+          "errorTitle": "Connection interrupted",
+          "reconnectAction": "Reconnect my company",
+          "errorHints": {
+            "reconnectRequired": "The platform revoked the access granted to Louez. Reconnect your company to resume sending invoices.",
+            "oauthFailed": "The enrollment could not be completed. Start it again; if the problem persists, contact support.",
+            "operationFailed": "The last exchange with the platform failed. Louez will retry automatically; reconnect if the problem persists."
+          },
+          "lockedTitle": "Connection not available yet",
+          "lockedReasons": {
+            "identityIncomplete": "Complete your legal identity in step 1: the platform verifies it before enrolling your company.",
+            "invoicingDisabled": "Turn on invoicing by Louez in step 2: there is nothing to transmit until Louez issues your invoices.",
+            "countryUnsupported": "Electronic transmission is currently available for companies registered in France or Belgium only."
+          },
+          "details": {
+            "verification": "Identity verification",
+            "directory": "Network directory",
+            "environment": "Environment"
+          },
+          "verificationStatus": {
+            "verified": "Verified",
+            "pending": "Being verified",
+            "failed": "Verification failed"
+          },
+          "verificationPendingNote": "The platform is still reviewing your company details. Your invoices will be transmitted as soon as the check is complete.",
+          "directoryStatus": {
+            "pending": "Registration in progress",
+            "created": "Registered",
+            "error": "Registration failed",
+            "missing": "Not registered"
+          },
+          "environments": {
+            "sandbox": "Test environment",
+            "production": "Production"
+          },
+          "result": {
+            "successTitle": "Company connected",
+            "successDescription": "Your company is now enrolled with the accredited platform. Your invoices will be transmitted automatically.",
+            "errorTitle": "Connection failed",
+            "errors": {
+              "oauth": "The enrollment was interrupted before it could be completed. You can start it again.",
+              "legalProfileIncomplete": "Your legal identity is incomplete. Fill in step 1, then start the connection again.",
+              "notConfigured": "Electronic transmission is not configured on this environment. Contact Louez support."
+            }
+          }
         }
       },
       "delivery": {
@@ -6080,6 +6163,17 @@
       "signContract": "Sign contract",
       "contractSigned": "Contract signed",
       "downloadContract": "Download contract",
+      "signContractConfirmation": "By continuing, you confirm that you have read and accept this rental contract.",
+      "signContractError": "The contract could not be signed. Please try again.",
+      "invoiceDocuments": {
+        "title": "Invoices and credit notes",
+        "description": "Download the accounting documents for this reservation.",
+        "download": "Download",
+        "types": {
+          "invoice": "Invoice",
+          "credit_note": "Credit note"
+        }
+      },
       "paymentPaid": "Paid",
       "paymentPending": "Unpaid",
       "amountPaid": "Amount paid",

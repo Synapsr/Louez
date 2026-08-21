@@ -34,7 +34,9 @@
     "subject": "Your reservation #{number} is confirmed",
     "title": "Reservation confirmed!",
     "body": "Your reservation #{number} is confirmed. Here is the summary:",
-    "summary": "Summary"
+    "summary": "Summary",
+    "contractSignature": "Your contract is attached and ready to sign online.",
+    "signContract": "Sign the contract"
   },
   "requestReceived": {
     "subject": "Reservation request #{number} received",
@@ -228,7 +230,9 @@
     "method": "Method",
     "reservation": "Reservation",
     "confirmation": "Your payment has been successfully processed.",
-    "keepEmail": "Keep this email as proof of payment."
+    "keepEmail": "Keep this email as proof of payment.",
+    "contractSignature": "Your contract is attached and ready to sign online.",
+    "signContract": "Sign the contract"
   },
   "paymentFailed": {
     "subject": "Payment failed - Reservation #{number}",
