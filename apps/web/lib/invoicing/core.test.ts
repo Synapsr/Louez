@@ -349,3 +349,30 @@ test("insurance lines use the distinct article 261 C VAT exemption", () => {
     insuranceReason,
   );
 });
+
+test("post-return charges are invoiced as one dedicated line, never scaled rental lines", () => {
+  const built = buildInvoiceSnapshots(baseSource, {
+    number: "F-2026-00007",
+    issueDate: "2026-08-21",
+    type: "invoice",
+    currency: "EUR",
+    amountInclTax: "90.00",
+    chargeKind: "deposit_capture",
+  });
+
+  assert.equal(built.lines.length, 1);
+  const [line] = built.lines;
+  assert.equal(line.id, "charge:deposit_capture");
+  assert.equal(line.description, "Retenue sur caution — dommages");
+  // Collected money is TTC: 90.00 at 20% → 75.00 HT + 15.00 VAT.
+  assert.equal(line.totalInclTax, "90.00");
+  assert.equal(line.totalExclTax, "75.00");
+  assert.equal(line.taxAmount, "15.00");
+  assert.equal(built.totals.totalInclTax, "90.00");
+  assert.equal(built.vatBreakdown.length, 1);
+  assert.equal(built.vatBreakdown[0]?.taxableAmount, "75.00");
+  assert.equal(
+    built.en16931.lines.some((line2) => line2.item.name.includes("Location")),
+    false,
+  );
+});

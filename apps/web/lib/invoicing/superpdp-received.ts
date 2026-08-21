@@ -127,9 +127,6 @@ export async function downloadReceivedInvoicePdf(
       invoiceId: invoice.superPdpInvoiceId,
     }),
   );
-  if (downloaded.contentType !== "application/pdf" && !isPdf(downloaded.content)) {
-    throw new Error("Super PDP did not return a PDF invoice");
-  }
   if (!isPdf(downloaded.content)) {
     throw new Error("Downloaded Super PDP invoice has an invalid PDF header");
   }

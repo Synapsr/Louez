@@ -10,6 +10,8 @@ import {
   markSuperPdpIntegrationHealthy,
 } from "@/lib/integrations/providers/superpdp/connection";
 import { withSuperPdpAccessToken } from "@/lib/integrations/providers/superpdp/credentials";
+
+import { postInvoicePaymentStatus } from "./superpdp-events";
 import {
   SUPERPDP_PROVIDER_KEY,
   SuperPdpApiError,
@@ -110,6 +112,16 @@ export async function sendInvoiceToSuperPdp(
     })
     .where(and(eq(invoices.id, invoice.id), eq(invoices.storeId, invoice.storeId)));
   await markSuperPdpIntegrationHealthy(integration.integrationId);
+
+  // Invoices are generated at cash-in, so a freshly transmitted invoice is
+  // already paid: this is the earliest moment fr:212 can reach Super PDP
+  // (the provider id did not exist before this call).
+  void postInvoicePaymentStatus(invoice.id).catch((error) => {
+    log.error(
+      "superpdp",
+      `payment e-reporting failed for ${invoice.id}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  });
 
   return { superPdpInvoiceId: sent.id };
 }

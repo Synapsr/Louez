@@ -19,6 +19,7 @@ import {
   toAnalyticsAmountCents,
 } from '@/lib/product-analytics/analytics'
 import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events'
+import { log } from '@/lib/evlog'
 import { tryGenerateInvoiceForPayment } from '@/lib/invoicing/service'
 import { tryPrepareInitialInvoiceEmailDelivery } from '@/lib/invoicing/delivery'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
@@ -237,7 +238,10 @@ async function verifyAndUpdatePayment(
         documentAttachments: invoiceDelivery.attachments,
         contractSignatureUrl: invoiceDelivery.contractSignatureUrl,
       }).catch((error) => {
-        console.error('Failed to dispatch fallback customer confirmation:', error)
+        log.error(
+          'invoicing',
+          `fallback customer confirmation dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+        )
       })
     }
 
