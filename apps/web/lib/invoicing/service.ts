@@ -9,7 +9,7 @@ import {
   storeIntegrations,
   storeLegalProfiles,
 } from "@louez/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { log } from "@/lib/evlog";
@@ -66,9 +66,11 @@ export async function generateInvoiceForPayment(
   paymentId: string,
 ): Promise<InvoiceGenerationResult> {
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT ${payments.id} FROM ${payments} WHERE ${payments.id} = ${paymentId} FOR UPDATE`,
-    );
+    await tx
+      .select({ id: payments.id })
+      .from(payments)
+      .where(eq(payments.id, paymentId))
+      .for("update");
 
     const payment = await tx.query.payments.findFirst({
       where: eq(payments.id, paymentId),
@@ -179,9 +181,11 @@ export async function generateInvoiceForPayment(
       return skipped("invoicing_disabled");
     }
 
-    await tx.execute(
-      sql`SELECT ${reservations.id} FROM ${reservations} WHERE ${reservations.id} = ${payment.reservation.id} FOR UPDATE`,
-    );
+    await tx
+      .select({ id: reservations.id })
+      .from(reservations)
+      .where(eq(reservations.id, payment.reservation.id))
+      .for("update");
     const [firstInvoice] = await tx
       .select({ id: invoices.id })
       .from(invoices)
@@ -366,9 +370,11 @@ export async function ensureRefundPaymentRecord(input: {
   notes?: string | null;
 }): Promise<string> {
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT ${payments.id} FROM ${payments} WHERE ${payments.id} = ${input.originalPaymentId} FOR UPDATE`,
-    );
+    await tx
+      .select({ id: payments.id })
+      .from(payments)
+      .where(eq(payments.id, input.originalPaymentId))
+      .for("update");
     const originalPayment = await tx.query.payments.findFirst({
       where: eq(payments.id, input.originalPaymentId),
       columns: { reservationId: true },
@@ -425,9 +431,11 @@ export async function generateCreditNoteForRefund(
   return db.transaction(async (tx) => {
     const lockedPaymentIds = [context.originalPaymentId, context.refundPaymentId].sort();
     for (const paymentId of lockedPaymentIds) {
-      await tx.execute(
-        sql`SELECT ${payments.id} FROM ${payments} WHERE ${payments.id} = ${paymentId} FOR UPDATE`,
-      );
+      await tx
+        .select({ id: payments.id })
+        .from(payments)
+        .where(eq(payments.id, paymentId))
+        .for("update");
     }
 
     const refundPayment = await tx.query.payments.findFirst({

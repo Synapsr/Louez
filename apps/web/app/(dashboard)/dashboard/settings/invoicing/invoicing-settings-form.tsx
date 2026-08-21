@@ -57,7 +57,7 @@ export const InvoicingSettingsForm = ({ defaultCountry, profile }: InvoicingSett
   const saveMutation = useMutation({
     mutationFn: upsertStoreLegalProfile,
     onSuccess: (result, value) => {
-      if (result.error) {
+      if (result.status === "error") {
         setRootError(tRoot(result.error));
         return;
       }

@@ -53,7 +53,7 @@ export const PurchaseInvoiceActions = ({
     startTransition(async () => {
       const result = await perform();
 
-      if (result.error) {
+      if (result.status === "error") {
         const key = result.error.replace("errors.", "");
         toastManager.add({
           title: tErrors.has(key) ? tErrors(key) : tErrors("generic"),

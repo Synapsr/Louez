@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { db, documents, receivedInvoices } from "@louez/db";
@@ -132,14 +132,12 @@ export async function downloadReceivedInvoicePdf(
   }
 
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT id FROM ${receivedInvoices} WHERE id = ${invoice.id} AND store_id = ${input.storeId} FOR UPDATE`,
-    );
     const [current] = await tx
       .select({ documentId: receivedInvoices.documentId })
       .from(receivedInvoices)
       .where(and(eq(receivedInvoices.id, invoice.id), eq(receivedInvoices.storeId, input.storeId)))
-      .limit(1);
+      .limit(1)
+      .for("update");
     if (!current) throw new Error("Received invoice was not found");
     if (current.documentId) return { documentId: current.documentId };
 

@@ -58,7 +58,7 @@ export const InvoiceDocumentsCard = ({
     setFeedback(null);
     startTransition(async () => {
       const result = await generateInvoiceForReservation(reservationId);
-      if (result.error) {
+      if (result.status === "error") {
         setFeedback("error");
         return;
       }

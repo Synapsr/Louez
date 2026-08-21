@@ -23,11 +23,13 @@ const refuseInputSchema = acknowledgeInputSchema.extend({
   reason: z.string().trim().max(500).optional(),
 });
 
-export type ReceivedInvoiceActionResult = {
-  /** Translation key under the `errors` namespace. */
-  error?: string;
-  success?: boolean;
-};
+export type ReceivedInvoiceActionResult =
+  | { status: "success" }
+  | {
+      status: "error";
+      /** Translation key under the `errors` namespace. */
+      error: string;
+    };
 
 /**
  * Every lifecycle statement goes through here: the store is resolved from the
@@ -40,12 +42,12 @@ async function runReceivedInvoiceAction(
 ): Promise<ReceivedInvoiceActionResult> {
   const store = await getCurrentStore();
   if (!store) {
-    return { error: "errors.unauthorized" };
+    return { status: "error", error: "errors.unauthorized" };
   }
 
   const canWrite = await currentUserHasPermission("write");
   if (!canWrite) {
-    return { error: "errors.forbidden" };
+    return { status: "error", error: "errors.forbidden" };
   }
 
   try {
@@ -62,11 +64,11 @@ async function runReceivedInvoiceAction(
     const message = error instanceof Error ? error.message : "Unknown error";
     log.error("superpdp", `Received invoice ${action} failed for store ${store.id}: ${message}`);
 
-    return { error: "errors.generic" };
+    return { status: "error", error: "errors.generic" };
   }
 
   revalidatePath(PURCHASE_INVOICES_PATH);
-  return { success: true };
+  return { status: "success" };
 }
 
 /** Post `fr:204` — the store confirms it received the supplier invoice. */
@@ -75,7 +77,7 @@ export async function acknowledgePurchaseInvoice(
 ): Promise<ReceivedInvoiceActionResult> {
   const validated = acknowledgeInputSchema.safeParse({ receivedInvoiceId });
   if (!validated.success) {
-    return { error: "errors.invalidData" };
+    return { status: "error", error: "errors.invalidData" };
   }
 
   return runReceivedInvoiceAction("acknowledge", validated.data);
@@ -87,7 +89,7 @@ export async function acceptPurchaseInvoice(
 ): Promise<ReceivedInvoiceActionResult> {
   const validated = acknowledgeInputSchema.safeParse({ receivedInvoiceId });
   if (!validated.success) {
-    return { error: "errors.invalidData" };
+    return { status: "error", error: "errors.invalidData" };
   }
 
   return runReceivedInvoiceAction("accept", validated.data);
@@ -100,7 +102,7 @@ export async function refusePurchaseInvoice(
 ): Promise<ReceivedInvoiceActionResult> {
   const validated = refuseInputSchema.safeParse({ reason, receivedInvoiceId });
   if (!validated.success) {
-    return { error: "errors.invalidData" };
+    return { status: "error", error: "errors.invalidData" };
   }
 
   return runReceivedInvoiceAction("refuse", {

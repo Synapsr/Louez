@@ -5,18 +5,12 @@ import { db, documents } from "@louez/db";
 
 import { log } from "@/lib/evlog";
 import { downloadReceivedInvoicePdf } from "@/lib/invoicing/superpdp-received";
+import { buildPdfResponse } from "@/lib/invoicing/util.pdf-response";
 import { getCurrentStore } from "@/lib/store-context";
 
 const routeParamsSchema = z.object({
   receivedInvoiceId: z.string().length(21),
 });
-
-const PDF_DATA_URL_PREFIX = "data:application/pdf;base64,";
-
-function safePdfFileName(fileName: string): string {
-  const sanitized = fileName.replace(/[^a-zA-Z0-9._-]/g, "-");
-  return sanitized.endsWith(".pdf") ? sanitized : `${sanitized || "invoice"}.pdf`;
-}
 
 /**
  * Serve the PDF of a received supplier invoice.
@@ -54,20 +48,5 @@ export async function GET(
     .where(eq(documents.id, documentId))
     .limit(1);
   if (!document) return new Response("Invoice not found", { status: 404 });
-  if (!document.fileUrl.startsWith(PDF_DATA_URL_PREFIX)) {
-    return new Response("Invoice PDF not available", { status: 404 });
-  }
-
-  const pdf = Buffer.from(document.fileUrl.slice(PDF_DATA_URL_PREFIX.length), "base64");
-  if (pdf.length < 5 || pdf.subarray(0, 5).toString("ascii") !== "%PDF-") {
-    return new Response("Invalid invoice PDF", { status: 500 });
-  }
-
-  return new Response(new Uint8Array(pdf), {
-    headers: {
-      "Cache-Control": "private, no-store",
-      "Content-Disposition": `attachment; filename="${safePdfFileName(document.fileName)}"`,
-      "Content-Type": "application/pdf",
-    },
-  });
+  return buildPdfResponse(document.fileUrl, document.fileName);
 }
