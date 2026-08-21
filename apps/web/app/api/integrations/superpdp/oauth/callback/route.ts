@@ -22,6 +22,7 @@ import {
   SUPERPDP_PROVIDER_KEY,
   createSuperPdpDirectoryEntry,
   exchangeSuperPdpAuthorizationCode,
+  getSuperPdpCompany,
   getSuperPdpOAuthSession,
   listSuperPdpDirectoryEntries,
 } from "@/lib/integrations/providers/superpdp/superpdp-client";
@@ -38,12 +39,14 @@ function appendResult(returnTo: string, key: string, value: string): string {
   return `${returnTo}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
 
-function getDirectoryIdentifier(input: {
-  scheme: "fr_siren" | "be_bce";
-  companyNumber: string;
+// Identifier of the company's reception address in the annuaire, built from
+// the number registered at the PDP (sandbox numbers carry suffixes like
+// 315143296_001, so the number is kept verbatim).
+function getDirectoryIdentifier(company: {
+  number: string;
+  number_scheme: "sandbox" | "fr_siren" | "be_numero_entreprise";
 }): string {
-  const normalizedNumber = input.companyNumber.replace(/\D/g, "");
-  return `${input.scheme === "fr_siren" ? "0225" : "0208"}:${normalizedNumber}`;
+  return `${company.number_scheme === "be_numero_entreprise" ? "0208" : "0225"}:${company.number}`;
 }
 
 export async function GET(request: Request) {
@@ -151,16 +154,18 @@ export async function GET(request: Request) {
       return integration.id;
     });
 
-    const directoryIdentifier = getDirectoryIdentifier({
-      scheme: profile.companyNumberScheme,
-      companyNumber: profile.companyNumber,
-    });
-    const [providerSession, directoryEntries] = await Promise.all([
+    const [providerSession, providerCompany, directoryEntries] = await Promise.all([
       getSuperPdpOAuthSession(token.accessToken),
+      getSuperPdpCompany(token.accessToken),
       listSuperPdpDirectoryEntries(token.accessToken),
     ]);
+    const directoryIdentifier = getDirectoryIdentifier(providerCompany);
+    // The signup tunnel may already have registered a reception address
+    // (possibly under another identifier the merchant chose there) — reuse it
+    // rather than piling up entries.
     const directoryEntry =
       directoryEntries.data.find((entry) => entry.identifier === directoryIdentifier) ??
+      directoryEntries.data[0] ??
       (await createSuperPdpDirectoryEntry({
         accessToken: token.accessToken,
         identifier: directoryIdentifier,
@@ -189,7 +194,7 @@ export async function GET(request: Request) {
           id: nanoid(),
           integrationId,
           environment: env.SUPERPDP_ENVIRONMENT,
-          superPdpCompanyId: providerSession.company_id,
+          superPdpCompanyId: providerCompany.id,
           companyVerificationStatus: providerSession.company_verification_status,
           directoryEntryId: directoryEntry.id,
           directoryEntryStatus: directoryEntry.status,
@@ -200,7 +205,7 @@ export async function GET(request: Request) {
         .onDuplicateKeyUpdate({
           set: {
             environment: env.SUPERPDP_ENVIRONMENT,
-            superPdpCompanyId: providerSession.company_id,
+            superPdpCompanyId: providerCompany.id,
             companyVerificationStatus: providerSession.company_verification_status,
             directoryEntryId: directoryEntry.id,
             directoryEntryStatus: directoryEntry.status,
