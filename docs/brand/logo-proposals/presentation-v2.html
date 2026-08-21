@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>La marque Louez, deuxième série</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F5F6F8; --surface:#FFFFFF; --surface-2:#FAFBFC;
+  --ink:#0D1117; --ink-2:#39414D; --muted:#69727F;
+  --rule:#E3E7EC; --rule-2:#EDF0F3;
+  --brand:#265FF2; --accent:#F76A13; --tile-dark:#0F131A;
+  --pro:#2B9461; --con:#C2410C;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0A0D12; --surface:#121821; --surface-2:#0E141C;
+    --ink:#E9EDF3; --ink-2:#B7C1CE; --muted:#828D9C;
+    --rule:#212A36; --rule-2:#1A222C;
+    --brand:#5B8CFF; --accent:#FF8A3D; --tile-dark:#05070A;
+    --pro:#4FBE85; --con:#F0834E;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0A0D12; --surface:#121821; --surface-2:#0E141C;
+  --ink:#E9EDF3; --ink-2:#B7C1CE; --muted:#828D9C;
+  --rule:#212A36; --rule-2:#1A222C;
+  --brand:#5B8CFF; --accent:#FF8A3D; --tile-dark:#05070A;
+  --pro:#4FBE85; --con:#F0834E;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Newsreader",Georgia,"Times New Roman",serif;
+  font-size:17px; line-height:1.62; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px 96px}
+h1,h2,h3,h4,h5{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-weight:700;
+  letter-spacing:-0.022em;text-wrap:balance;margin:0}
+.mono,.eyebrow,.favn,.phnum,.badge,.critlab,.rjcode,.seg button,.filelist,.swatch code{
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;
+  background:var(--rule-2);padding:.1em .38em;border-radius:4px;color:var(--ink-2)}
+p{margin:0 0 1em}
+a{color:var(--brand)}
+
+/* ---------- masthead ---------- */
+.mast{padding:74px 0 40px;border-bottom:1px solid var(--rule)}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin-bottom:20px}
+.mast h1{font-size:clamp(38px,6vw,64px);line-height:1.02;margin-bottom:20px}
+.mast .lede{font-size:20px;line-height:1.55;color:var(--ink-2);max-width:60ch;margin-bottom:0}
+.mast .lede strong{color:var(--ink);font-weight:500}
+
+/* ---------- generic section ---------- */
+.sec{padding:60px 0 0}
+.sechead{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.sechead h2{font-size:clamp(24px,3.2vw,34px)}
+.secsub{color:var(--muted);font-size:16px;max-width:64ch;margin-bottom:34px}
+
+/* ---------- diagnostic ---------- */
+.dglist{display:grid;gap:2px;background:var(--rule);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+.dg{display:grid;grid-template-columns:56px 1fr;gap:16px;padding:22px 24px;background:var(--surface)}
+.dgn{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--accent);padding-top:4px;font-weight:600}
+.dg h4{font-size:17px;margin-bottom:5px;letter-spacing:-.01em}
+.dg p{font-size:15.5px;color:var(--ink-2);margin:0;max-width:66ch}
+
+/* ---------- browser tab strip ---------- */
+.tabwrap{margin:26px 0 0;border:1px solid var(--rule);border-radius:12px;overflow:hidden;background:var(--surface)}
+.tabcap{font-family:"IBM Plex Mono",monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.11em;
+  color:var(--muted);padding:13px 18px 0}
+.tabs{display:flex;gap:2px;padding:14px 14px 0;overflow-x:auto}
+.tb{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:9px 9px 0 0;font-size:13px;
+  white-space:nowrap;color:var(--muted);background:var(--rule-2);
+  font-family:"Archivo",sans-serif;font-weight:500}
+.tb--on{background:var(--paper);color:var(--ink);font-weight:600}
+.fi{width:16px;height:16px;flex:0 0 16px;display:flex}
+
+/* ---------- the system row ---------- */
+.sysrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.sys{border:1px solid var(--rule);border-radius:12px;background:var(--surface);padding:16px;text-align:center}
+.sysimg{height:96px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;
+  background:#FAFBFC;border:1px solid rgba(0,0,0,.06);border-radius:9px}
+.sys h5{font-size:13px;margin-bottom:4px}
+.sys p{font-size:13px;color:var(--muted);margin:0;line-height:1.45}
+
+/* ---------- planche ---------- */
+.planche{border:1px solid var(--rule);border-radius:16px;background:var(--surface);
+  padding:28px;margin-bottom:20px}
+.planche--out{background:var(--surface-2);border-style:dashed}
+.ph{display:flex;gap:18px;align-items:flex-start;margin-bottom:22px}
+.phnum{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--rule);border-radius:999px;padding:5px 11px;white-space:nowrap;margin-top:5px}
+.phttl h3{font-size:27px;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.badge{font-size:10px;letter-spacing:.11em;text-transform:uppercase;background:var(--brand);color:#fff;
+  padding:4px 9px;border-radius:999px;font-weight:600}
+.phtag{color:var(--muted);font-size:16px;margin:3px 0 0}
+
+.spec{display:grid;grid-template-columns:1fr 1fr 1fr 1.25fr;gap:12px;margin-bottom:26px}
+.tile{border-radius:12px;height:150px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--rule)}
+.tile--paper{background:#FAFBFC;border-color:rgba(0,0,0,.08)}
+.tile--dark{background:#0F131A;border-color:transparent}
+.tile--home{background:linear-gradient(155deg,#4E5E7D,#222B42);border-color:transparent;
+  flex-direction:column;gap:10px}
+.appicon{width:76px;height:76px;border-radius:18px;overflow:hidden;display:flex;
+  box-shadow:0 5px 14px rgba(0,0,0,.34)}
+.appname{font-family:"Archivo",sans-serif;font-size:11px;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.favstrip{gap:20px;padding:0 16px}
+.fav{display:flex;flex-direction:column;align-items:center;gap:9px}
+.favbox{display:flex;align-items:center;justify-content:center;min-height:32px}
+.favn{font-size:10px;color:var(--muted)}
+.sv{display:flex}
+
+.pbody{display:grid;grid-template-columns:1.35fr 1fr;gap:34px}
+.prose p{font-size:16.5px;color:var(--ink-2);max-width:60ch}
+.prose p:last-child{margin-bottom:0}
+.prose strong{color:var(--ink);font-weight:600}
+.sidecol{display:flex;flex-direction:column;gap:14px}
+.crit{border-radius:11px;padding:15px 17px;border:1px solid var(--rule);background:var(--surface-2)}
+.critlab{font-size:10px;text-transform:uppercase;letter-spacing:.12em;margin-bottom:9px;font-weight:600}
+.crit--pro .critlab{color:var(--pro)}
+.crit--con .critlab{color:var(--con)}
+.crit ul{margin:0;padding-left:17px}
+.crit li{font-size:14.5px;color:var(--ink-2);margin-bottom:6px;line-height:1.5}
+.crit li:last-child{margin-bottom:0}
+.verdict{font-size:15.5px;color:var(--ink);margin:0;padding-left:15px;border-left:3px solid var(--accent);
+  line-height:1.55}
+
+/* ---------- rejects ---------- */
+.rjgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.rj{border:1px solid var(--rule);border-radius:11px;padding:17px;background:var(--surface)}
+.rjcode{font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:7px}
+.rj h5{font-size:15px;margin-bottom:5px}
+.rj p{font-size:14px;color:var(--muted);margin:0;line-height:1.5}
+
+/* ---------- colour audit ---------- */
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.swatch{border:1px solid var(--rule);border-radius:11px;overflow:hidden;background:var(--surface)}
+.chip{height:72px}
+.swatch .meta{padding:13px 15px}
+.swatch code{font-size:12px;display:block;margin-bottom:4px;background:none;padding:0;color:var(--ink)}
+.swatch span{font-size:12.5px;color:var(--muted);line-height:1.45;display:block}
+
+/* ---------- ship list ---------- */
+.filelist{border:1px solid var(--rule);border-radius:12px;background:var(--surface);overflow:hidden;
+  font-size:13.5px}
+.filelist div{display:flex;justify-content:space-between;gap:20px;padding:13px 18px;
+  border-bottom:1px solid var(--rule-2)}
+.filelist div:last-child{border-bottom:none}
+.filelist b{font-weight:400;color:var(--ink)}
+.filelist span{color:var(--muted);text-align:right;font-family:"Newsreader",serif;font-size:14.5px}
+
+/* ---------- controls ---------- */
+.ctl{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--paper) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--rule);padding:11px 0;margin-bottom:0}
+.ctlin{max-width:1080px;margin:0 auto;padding:0 28px;display:flex;align-items:center;gap:14px;
+  justify-content:space-between}
+.ctllab{font-family:"IBM Plex Mono",monospace;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--muted)}
+.seg{display:flex;gap:3px;background:var(--rule-2);padding:3px;border-radius:9px}
+.seg button{font-size:12px;padding:6px 14px;border:none;border-radius:7px;background:transparent;
+  color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.09)}
+.seg button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+[data-view="color"] .sv-m{display:none}
+[data-view="mono"] .sv-c{display:none}
+[data-view="mono"] .sv-m svg{color:#0D1117}
+[data-view="mono"] .tile--dark .sv-m svg{color:#F5F6F8}
+[data-view="mono"] .sysimg .sv-m svg{color:#0D1117}
+
+@media (max-width:860px){
+  .spec{grid-template-columns:1fr 1fr}
+  .pbody{grid-template-columns:1fr;gap:22px}
+  .sysrow,.rjgrid,.swatches{grid-template-columns:1fr 1fr}
+  .dg{grid-template-columns:1fr;gap:6px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.oldrow{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0 0}
+.oldm{width:78px;height:78px;display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);border:1px solid var(--rule);border-radius:11px;opacity:.55}
+.callout{border-left:3px solid var(--accent);padding:2px 0 2px 16px;margin:22px 0 0;
+  color:var(--ink-2);font-size:16.5px;max-width:64ch}
+.callout strong{color:var(--ink);font-weight:600}
+</style>
+
+</head>
+<body>
+<div id="deck" data-view="color">
+
+<div class="ctl"><div class="ctlin">
+  <span class="ctllab">Louez · marque, deuxième série</span>
+  <div class="seg" role="group" aria-label="Mode d'affichage">
+    <button type="button" data-v="color" aria-pressed="true">Couleur</button>
+    <button type="button" data-v="mono" aria-pressed="false">Monochrome</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow">Deuxième série · cinq objets · aucune lettre</div>
+  <h1>Ça ne devait pas être un L</h1>
+  <p class="lede">La première série était trop plate, et vous l'avez vu tout de suite : <strong>ça sentait le SVG
+  généré</strong>. Cette page repart de zéro, sans partir de la lettre, avec des marques qui ont du volume, de la
+  matière et un objet reconnaissable.</p>
+</header>
+
+<section class="sec">
+  <div class="sechead"><h2>Pourquoi la première série sonnait faux</h2></div>
+  <p class="secsub">Le diagnostic est précis, et il est de ma responsabilité : toutes mes propositions partageaient
+  exactement la même grammaire.</p>
+  <div class="oldrow"><div class="oldm"><svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M30 4h22a8 8 0 0 1 8 8v40a8 8 0 0 1-8 8H12a8 8 0 0 1-8-8V26Z" fill="#265FF2"/><circle cx="21" cy="19" r="4.6" fill="#F76A13"/><path d="M20 26h13v18h18v10H20Z" fill="#FFFFFF"/></svg></div><div class="oldm"><svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14 13v30a5 5 0 0 0 5 5h31" stroke="#265FF2" stroke-width="11.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="32" y="16" width="20" height="20" rx="5.75" fill="#F76A13"/></svg></div><div class="oldm"><svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="lz-sq"><path d="M2 18C2 9.2 9.2 2 18 2h28c8.8 0 16 7.2 16 16v28c0 8.8-7.2 16-16 16H18C9.2 62 2 54.8 2 46Z"/></clipPath></defs><path d="M2 18C2 9.2 9.2 2 18 2h28c8.8 0 16 7.2 16 16v28c0 8.8-7.2 16-16 16H18C9.2 62 2 54.8 2 46Z" fill="#265FF2"/><g clip-path="url(#lz-sq)"><path d="M20 -2h12v32h34v12H20Z" fill="#FFFFFF"/></g></svg></div><div class="oldm"><svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g fill="#265FF2"><path d="M11 15h11v27h16v11H11Z"/><path d="M53 49H42V22H26V11h27Z"/></g></svg></div><div class="oldm"><svg width="52" height="52" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#265FF2" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"><path d="M17 13v27h20"/><path d="M50 48V29a11 11 0 0 0-11-11"/></g></svg></div></div>
+  <div class="callout">Un remplissage plat, une seule couleur, une graisse de trait constante, des coins arrondis,
+  une composition centrée sur une grille de 64. <strong>C'est la grammaire d'une bibliothèque d'icônes</strong>,
+  pas celle d'une marque. Une icône est dessinée pour disparaître dans une barre d'outils ; un logo est dessiné
+  pour être regardé. Aucune des cinq n'avait d'épaisseur, de face avant et arrière, de variation de graisse ni de
+  recouvrement réel.</div>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>Ce qui change dans cette série</h2></div>
+  <p class="secsub">Quatre règles, appliquées à chaque marque ci-dessous.</p>
+  <div class="dglist">
+    <div class="dg"><div class="dgn">01</div><div><h4>Du volume, sans dégradé décoratif</h4>
+      <p>Projection dimétrique exacte (pente 1:2 sur chaque arête fuyante), ou recouvrement réel où une pièce
+      passe visiblement derrière une autre. Une bibliothèque d'icônes ne dessine jamais en perspective.</p></div></div>
+    <div class="dg"><div class="dgn">02</div><div><h4>Un objet qu'on peut nommer</h4>
+      <p>Une malle, un diable, une caisse, une sangle. Pas un agencement géométrique abstrait : quelque chose
+      qu'un loueur a déjà eu dans les mains.</p></div></div>
+    <div class="dg"><div class="dgn">03</div><div><h4>Une palette qui a un point de vue</h4>
+      <p>La proposition principale quitte le bleu : corps encre, coins orange sécurité, couture acier. C'est la
+      palette du matériel professionnel — et c'est ce qui la rend visible au milieu de vos voisins.</p></div></div>
+    <div class="dg"><div class="dgn">04</div><div><h4>De l'asymétrie assumée</h4>
+      <p>Le diable est franchement déséquilibré : montant à gauche, charge à droite, roue en bas. Toutes mes
+      propositions précédentes étaient sagement centrées, et c'est une des raisons pour lesquelles elles
+      paraissaient automatiques.</p></div></div>
+  </div>
+  <div class="tabwrap"><div class="tabcap">La proposition recommandée, à sa taille réelle, parmi ses vrais voisins</div><div class="tabs"><div class="tb"><span class="fi"><svg width="16" height="16" viewBox="0 0 16 16"><path fill="#8b949e" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.87 2.34.67.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg></span>GitHub</div><div class="tb"><span class="fi"><svg width="16" height="16" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#1D63ED"/><path fill="#fff" d="M3 7h2v2H3zm2.6 0h2v2h-2zm2.6 0h2v2h-2zM5.6 4.6h2v2h-2zm2.6 0h2v2h-2zm0-2.4h2v2h-2zM11 7h2v2h-2z"/></svg></span>Docker Hub</div><div class="tb tb--on"><span class="fi"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="10" width="48" height="44" rx="6" fill="#1B2430"/><path d="M8 30.5h48v3h-48Z" fill="#5C6B7E"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="#F2601F"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="#F2601F"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="#F2601F"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="#F2601F"/></svg></span>Louez — Réservations</div><div class="tb"><span class="fi"><svg width="16" height="16" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#635BFF"/><path fill="#fff" d="M7.6 6.2c0-.4.34-.56.86-.56.77 0 1.75.24 2.52.66V4.06a6.5 6.5 0 0 0-2.52-.47c-2.06 0-3.43 1.08-3.43 2.88 0 2.8 3.85 2.35 3.85 3.56 0 .47-.4.62-.96.62-.84 0-1.93-.35-2.78-.82v2.28c.94.4 1.89.58 2.78.58 2.11 0 3.56-1.05 3.56-2.87 0-3.02-3.88-2.48-3.88-3.6Z"/></svg></span>Stripe</div></div></div>
+  <div class="tabwrap"><div class="tabcap">La plus repérable de la série, même contexte</div><div class="tabs"><div class="tb"><span class="fi"><svg width="16" height="16" viewBox="0 0 16 16"><path fill="#8b949e" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.18-.89-1.18-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.87 2.34.67.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg></span>GitHub</div><div class="tb"><span class="fi"><svg width="16" height="16" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#1D63ED"/><path fill="#fff" d="M3 7h2v2H3zm2.6 0h2v2h-2zm2.6 0h2v2h-2zM5.6 4.6h2v2h-2zm2.6 0h2v2h-2zm0-2.4h2v2h-2zM11 7h2v2h-2z"/></svg></span>Docker Hub</div><div class="tb tb--on"><span class="fi"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="#2560C9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="23" y="15" width="25" height="23" rx="4" fill="#F2601F"/><circle cx="19" cy="52" r="7" fill="#16386F"/></svg></span>Louez — Réservations</div><div class="tb"><span class="fi"><svg width="16" height="16" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#635BFF"/><path fill="#fff" d="M7.6 6.2c0-.4.34-.56.86-.56.77 0 1.75.24 2.52.66V4.06a6.5 6.5 0 0 0-2.52-.47c-2.06 0-3.43 1.08-3.43 2.88 0 2.8 3.85 2.35 3.85 3.56 0 .47-.4.62-.96.62-.84 0-1.93-.35-2.78-.82v2.28c.94.4 1.89.58 2.78.58 2.11 0 3.56-1.05 3.56-2.87 0-3.02-3.88-2.48-3.88-3.6Z"/></svg></span>Stripe</div></div></div>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>Les cinq pistes</h2></div>
+  <p class="secsub">Chaque planche montre la marque sur fond clair, sur fond sombre, en icône d'application sur un
+  écran d'accueil, puis aux tailles réelles de favicon — 16, 20, 24 et 32 px, non agrandies. Le bouton en haut de
+  page bascule tout en monochrome.</p>
+  <section class="planche"><header class="ph"><div class="phnum">01</div><div class="phttl"><h3>La malle <span class="badge">Recommandée</span></h3><p class="phtag">Coins renforcés, couture de couvercle, matière sombre</p></div></header><div class="spec"><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="10" width="48" height="44" rx="6" fill="#1B2430"/><path d="M8 30.5h48v3h-48Z" fill="#5C6B7E"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="#F2601F"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="#F2601F"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="#F2601F"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="#F2601F"/></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10.5" y="12.5" width="43" height="39" rx="5" stroke="currentColor" stroke-width="5"/><path d="M8 30.5h48v3h-48Z" fill="currentColor"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="currentColor"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="currentColor"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="currentColor"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="currentColor"/></svg></span></div><div class="tile tile--dark"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="10" width="48" height="44" rx="6" fill="#1B2430"/><path d="M8 30.5h48v3h-48Z" fill="#5C6B7E"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="#F2601F"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="#F2601F"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="#F2601F"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="#F2601F"/></svg></span><span class="sv sv-m sv-mi"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10.5" y="12.5" width="43" height="39" rx="5" stroke="currentColor" stroke-width="5"/><path d="M8 30.5h48v3h-48Z" fill="currentColor"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="currentColor"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="currentColor"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="currentColor"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="currentColor"/></svg></span></div><div class="tile tile--home"><div class="appicon"><svg width="76" height="76" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="10" width="48" height="44" rx="6" fill="#1B2430"/><path d="M8 30.5h48v3h-48Z" fill="#5C6B7E"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="#F2601F"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="#F2601F"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="#F2601F"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="#F2601F"/></svg></div><span class="appname">Louez</span></div><div class="tile tile--paper favstrip"><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="10" width="48" height="44" rx="6" fill="#1B2430"/><path d="M8 30.5h48v3h-48Z" fill="#5C6B7E"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="#F2601F"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="#F2601F"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="#F2601F"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="#F2601F"/></svg></span><span class="sv sv-m"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10.5" y="12.5" width="43" height="39" rx="5" stroke="currentColor" stroke-width="5"/><path d="M8 30.5h48v3h-48Z" fill="currentColor"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="currentColor"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="currentColor"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="currentColor"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="currentColor"/></svg></span></div><span class="favn">16</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="10" width="48" height="44" rx="6" fill="#1B2430"/><path d="M8 30.5h48v3h-48Z" fill="#5C6B7E"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="#F2601F"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="#F2601F"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="#F2601F"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="#F2601F"/></svg></span><span class="sv sv-m"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10.5" y="12.5" width="43" height="39" rx="5" stroke="currentColor" stroke-width="5"/><path d="M8 30.5h48v3h-48Z" fill="currentColor"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="currentColor"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="currentColor"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="currentColor"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="currentColor"/></svg></span></div><span class="favn">20</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="10" width="48" height="44" rx="6" fill="#1B2430"/><path d="M8 30.5h48v3h-48Z" fill="#5C6B7E"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="#F2601F"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="#F2601F"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="#F2601F"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="#F2601F"/></svg></span><span class="sv sv-m"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10.5" y="12.5" width="43" height="39" rx="5" stroke="currentColor" stroke-width="5"/><path d="M8 30.5h48v3h-48Z" fill="currentColor"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="currentColor"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="currentColor"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="currentColor"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="currentColor"/></svg></span></div><span class="favn">24</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="10" width="48" height="44" rx="6" fill="#1B2430"/><path d="M8 30.5h48v3h-48Z" fill="#5C6B7E"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="#F2601F"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="#F2601F"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="#F2601F"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="#F2601F"/></svg></span><span class="sv sv-m"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10.5" y="12.5" width="43" height="39" rx="5" stroke="currentColor" stroke-width="5"/><path d="M8 30.5h48v3h-48Z" fill="currentColor"/><path d="M8 16a6 6 0 0 1 6 -6h9v8h-7v7h-8Z" fill="currentColor"/><path d="M56 16a6 6 0 0 0 -6 -6h-9v8h7v7h8Z" fill="currentColor"/><path d="M8 48a6 6 0 0 0 6 6h9v-8h-7v-7h-8Z" fill="currentColor"/><path d="M56 48a6 6 0 0 1 -6 6h-9v-8h7v-7h8Z" fill="currentColor"/></svg></span></div><span class="favn">32</span></div></div></div><div class="pbody"><div class="prose"><p>La malle à coins renforcés est <strong>l&#x27;objet totem</strong> de la location de matériel. Caméras, sono, outillage, éclairage : tout voyage dans une caisse à coins métalliques. Les coins ne sont pas un ornement, ce sont eux qui encaissent les chocs — donc eux qui portent la marque.</p><p>C&#x27;est la seule proposition qui <strong>quitte le bleu SaaS</strong>. Corps encre, coins orange sécurité, couture acier : c&#x27;est la palette réelle du matériel professionnel, pas celle d&#x27;un tableau de bord. Dans une barre d&#x27;onglets remplie de bleus, c&#x27;est ce qui la rend repérable.</p><p>Elle est simple — quatre coins, un corps, une couture — mais chaque élément décrit une pièce réelle. C&#x27;est exactement le registre que vous cherchiez : peu complexe, mais ça représente quelque chose.</p></div><div class="sidecol"><div class="crit crit--pro"><div class="critlab">Ce qu'elle a pour elle</div><ul><li>La plus caractérisée : elle a une matière, pas seulement une forme</li><li>Seule à sortir du bleu — se détache de tous vos voisins</li><li>Format carré : remplit l&#x27;icône d&#x27;app sans contenant supplémentaire</li><li>L&#x27;orange y a un rôle structurel (les coins), pas décoratif</li></ul></div><div class="crit crit--con"><div class="critlab">Ce qu'elle a contre elle</div><ul><li>À 16 px, les coins fusionnent et il reste un bloc sombre à liseré orange — l&#x27;objet ne se lit plus</li><li>Le monochrome demande un <strong>dessin différent</strong> (corps en contour, coins pleins) : ce n&#x27;est pas la même image réduite à une couleur</li><li>Palette sombre : à valider contre votre interface, qui est claire et bleue</li></ul></div><p class="verdict"><strong>Ma recommandation.</strong> C&#x27;est la seule de toute l&#x27;exploration qui a une matière et une identité propres.</p></div></div></section><section class="planche"><header class="ph"><div class="phnum">02</div><div class="phttl"><h3>Le diable </h3><p class="phtag">La silhouette la plus reconnaissable de la série</p></div></header><div class="spec"><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="#2560C9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="23" y="15" width="25" height="23" rx="4" fill="#F2601F"/><circle cx="19" cy="52" r="7" fill="#16386F"/></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="24" y="16" width="23" height="21" rx="4" stroke="currentColor" stroke-width="6"/><circle cx="19" cy="52" r="7" fill="currentColor"/></svg></span></div><div class="tile tile--dark"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="#2560C9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="23" y="15" width="25" height="23" rx="4" fill="#F2601F"/><circle cx="19" cy="52" r="7" fill="#16386F"/></svg></span><span class="sv sv-m sv-mi"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="24" y="16" width="23" height="21" rx="4" stroke="currentColor" stroke-width="6"/><circle cx="19" cy="52" r="7" fill="currentColor"/></svg></span></div><div class="tile tile--home"><div class="appicon"><svg width="76" height="76" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="#2560C9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="23" y="15" width="25" height="23" rx="4" fill="#F2601F"/><circle cx="19" cy="52" r="7" fill="#16386F"/></svg></div><span class="appname">Louez</span></div><div class="tile tile--paper favstrip"><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="#2560C9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="23" y="15" width="25" height="23" rx="4" fill="#F2601F"/><circle cx="19" cy="52" r="7" fill="#16386F"/></svg></span><span class="sv sv-m"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="24" y="16" width="23" height="21" rx="4" stroke="currentColor" stroke-width="6"/><circle cx="19" cy="52" r="7" fill="currentColor"/></svg></span></div><span class="favn">16</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="#2560C9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="23" y="15" width="25" height="23" rx="4" fill="#F2601F"/><circle cx="19" cy="52" r="7" fill="#16386F"/></svg></span><span class="sv sv-m"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="24" y="16" width="23" height="21" rx="4" stroke="currentColor" stroke-width="6"/><circle cx="19" cy="52" r="7" fill="currentColor"/></svg></span></div><span class="favn">20</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="#2560C9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="23" y="15" width="25" height="23" rx="4" fill="#F2601F"/><circle cx="19" cy="52" r="7" fill="#16386F"/></svg></span><span class="sv sv-m"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="24" y="16" width="23" height="21" rx="4" stroke="currentColor" stroke-width="6"/><circle cx="19" cy="52" r="7" fill="currentColor"/></svg></span></div><span class="favn">24</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="#2560C9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="23" y="15" width="25" height="23" rx="4" fill="#F2601F"/><circle cx="19" cy="52" r="7" fill="#16386F"/></svg></span><span class="sv sv-m"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 9v33h26" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="24" y="16" width="23" height="21" rx="4" stroke="currentColor" stroke-width="6"/><circle cx="19" cy="52" r="7" fill="currentColor"/></svg></span></div><span class="favn">32</span></div></div></div><div class="pbody"><div class="prose"><p>Un diable chargé : montant, tablier, roue, et une caisse dessus. C&#x27;est l&#x27;image du matériel <strong>en mouvement</strong> — l&#x27;instant précis où l&#x27;objet quitte le dépôt ou y revient.</p><p>Sa force est la silhouette. Dans une barre d&#x27;onglets, c&#x27;est la seule forme de la série qu&#x27;on identifie sans la regarder : rien d&#x27;autre sur un écran n&#x27;a ce profil.</p><p>Elle assume une asymétrie franche — le montant à gauche, la charge à droite, la roue en bas — là où toutes mes propositions précédentes étaient sagement centrées. C&#x27;est précisément ce qui la fait paraître dessinée.</p></div><div class="sidecol"><div class="crit crit--pro"><div class="critlab">Ce qu'elle a pour elle</div><ul><li>La silhouette la plus distinctive de toute l&#x27;exploration</li><li>Se lit encore à très petite taille grâce à son asymétrie</li><li>Monochrome sans perte : trois éléments séparés par du vide</li></ul></div><div class="crit crit--con"><div class="critlab">Ce qu'elle a contre elle</div><ul><li>Dit « manutention » et « livraison » autant que « location »</li><li>Trois éléments à gérer : le plus fragile en composition</li><li>Peut sembler daté si le dessin n&#x27;est pas tenu très net</li></ul></div><p class="verdict">La plus repérable. À retenir si vous voulez qu&#x27;on reconnaisse Louez de loin avant de le lire.</p></div></div></section><section class="planche"><header class="ph"><div class="phnum">03</div><div class="phttl"><h3>La caisse à fente </h3><p class="phtag">Un volume, et l&#x27;emplacement vide au milieu</p></div></header><div class="spec"><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 21 57 33 32 45 7 33Z" fill="#4C8DF6"/><path d="M7 33 32 45v13l-25 -12Z" fill="#2560C9"/><path d="M57 33 32 45v13l25 -12Z" fill="#16386F"/><path d="M32 21 45.5 33 32 45 18.5 33Z" fill="#0C1F3E"/></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M32 21 57 33 32 45 7 33Z M32 26.5 45.5 33 32 39.5 18.5 33Z"/><path fill="currentColor" d="M7 33v11l25 12v-11Z" opacity=".72"/><path fill="currentColor" d="M57 33v11L32 56V45Z" opacity=".45"/></svg></span></div><div class="tile tile--dark"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 21 57 33 32 45 7 33Z" fill="#4C8DF6"/><path d="M7 33 32 45v13l-25 -12Z" fill="#2560C9"/><path d="M57 33 32 45v13l25 -12Z" fill="#16386F"/><path d="M32 21 45.5 33 32 45 18.5 33Z" fill="#0C1F3E"/></svg></span><span class="sv sv-m sv-mi"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M32 21 57 33 32 45 7 33Z M32 26.5 45.5 33 32 39.5 18.5 33Z"/><path fill="currentColor" d="M7 33v11l25 12v-11Z" opacity=".72"/><path fill="currentColor" d="M57 33v11L32 56V45Z" opacity=".45"/></svg></span></div><div class="tile tile--home"><div class="appicon"><svg width="76" height="76" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 21 57 33 32 45 7 33Z" fill="#4C8DF6"/><path d="M7 33 32 45v13l-25 -12Z" fill="#2560C9"/><path d="M57 33 32 45v13l25 -12Z" fill="#16386F"/><path d="M32 21 45.5 33 32 45 18.5 33Z" fill="#0C1F3E"/></svg></div><span class="appname">Louez</span></div><div class="tile tile--paper favstrip"><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 21 57 33 32 45 7 33Z" fill="#4C8DF6"/><path d="M7 33 32 45v13l-25 -12Z" fill="#2560C9"/><path d="M57 33 32 45v13l25 -12Z" fill="#16386F"/><path d="M32 21 45.5 33 32 45 18.5 33Z" fill="#0C1F3E"/></svg></span><span class="sv sv-m"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M32 21 57 33 32 45 7 33Z M32 26.5 45.5 33 32 39.5 18.5 33Z"/><path fill="currentColor" d="M7 33v11l25 12v-11Z" opacity=".72"/><path fill="currentColor" d="M57 33v11L32 56V45Z" opacity=".45"/></svg></span></div><span class="favn">16</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 21 57 33 32 45 7 33Z" fill="#4C8DF6"/><path d="M7 33 32 45v13l-25 -12Z" fill="#2560C9"/><path d="M57 33 32 45v13l25 -12Z" fill="#16386F"/><path d="M32 21 45.5 33 32 45 18.5 33Z" fill="#0C1F3E"/></svg></span><span class="sv sv-m"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M32 21 57 33 32 45 7 33Z M32 26.5 45.5 33 32 39.5 18.5 33Z"/><path fill="currentColor" d="M7 33v11l25 12v-11Z" opacity=".72"/><path fill="currentColor" d="M57 33v11L32 56V45Z" opacity=".45"/></svg></span></div><span class="favn">20</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 21 57 33 32 45 7 33Z" fill="#4C8DF6"/><path d="M7 33 32 45v13l-25 -12Z" fill="#2560C9"/><path d="M57 33 32 45v13l25 -12Z" fill="#16386F"/><path d="M32 21 45.5 33 32 45 18.5 33Z" fill="#0C1F3E"/></svg></span><span class="sv sv-m"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M32 21 57 33 32 45 7 33Z M32 26.5 45.5 33 32 39.5 18.5 33Z"/><path fill="currentColor" d="M7 33v11l25 12v-11Z" opacity=".72"/><path fill="currentColor" d="M57 33v11L32 56V45Z" opacity=".45"/></svg></span></div><span class="favn">24</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 21 57 33 32 45 7 33Z" fill="#4C8DF6"/><path d="M7 33 32 45v13l-25 -12Z" fill="#2560C9"/><path d="M57 33 32 45v13l25 -12Z" fill="#16386F"/><path d="M32 21 45.5 33 32 45 18.5 33Z" fill="#0C1F3E"/></svg></span><span class="sv sv-m"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M32 21 57 33 32 45 7 33Z M32 26.5 45.5 33 32 39.5 18.5 33Z"/><path fill="currentColor" d="M7 33v11l25 12v-11Z" opacity=".72"/><path fill="currentColor" d="M57 33v11L32 56V45Z" opacity=".45"/></svg></span></div><span class="favn">32</span></div></div></div><div class="pbody"><div class="prose"><p>Une caisse vue en dimétrie 2:1, avec une <strong>fente sombre</strong> au centre du plateau : l&#x27;emplacement de l&#x27;objet, quand l&#x27;objet n&#x27;est pas là.</p><p>Le volume fait tout le travail. Trois faces, trois valeurs d&#x27;un même bleu — c&#x27;est le moyen le plus direct de quitter la grammaire de l&#x27;icône plate, parce qu&#x27;une bibliothèque d&#x27;icônes ne dessine jamais en perspective.</p><p>La projection est exacte, pas approximative : chaque arête fuyante suit une pente de 1:2. C&#x27;est ce qui sépare un volume dessiné d&#x27;un volume bricolé.</p></div><div class="sidecol"><div class="crit crit--pro"><div class="critlab">Ce qu'elle a pour elle</div><ul><li>Le volume la sort immédiatement du registre « icône »</li><li>Compacte et centrée : excellente en favicon et en avatar</li><li>Reste dans votre bleu, donc migration douce</li></ul></div><div class="crit crit--con"><div class="critlab">Ce qu'elle a contre elle</div><ul><li>Une caisse isométrique bleue peut se lire « paquet npm » ou « logistique »</li><li>La fente vide demande une seconde de lecture : le sens n&#x27;est pas immédiat</li><li>Le monochrome perd les trois valeurs, donc une partie du volume</li></ul></div><p class="verdict">Le meilleur compromis entre nouveauté et continuité. C&#x27;est la plus sûre des trois premières.</p></div></div></section><section class="planche"><header class="ph"><div class="phnum">04</div><div class="phttl"><h3>La caisse sanglée </h3><p class="phtag">La sangle suit la perspective, elle ne se pose pas dessus</p></div></header><div class="spec"><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="#4C8DF6"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="#2560C9"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="#16386F"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#F2601F"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#C4460F"/></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="currentColor" opacity="1"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="currentColor"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="currentColor"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#FFFFFF"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#FFFFFF"/></svg></span></div><div class="tile tile--dark"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="#4C8DF6"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="#2560C9"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="#16386F"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#F2601F"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#C4460F"/></svg></span><span class="sv sv-m sv-mi"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="currentColor" opacity="1"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="currentColor"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="currentColor"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#FFFFFF"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#FFFFFF"/></svg></span></div><div class="tile tile--home"><div class="appicon"><svg width="76" height="76" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="#4C8DF6"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="#2560C9"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="#16386F"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#F2601F"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#C4460F"/></svg></div><span class="appname">Louez</span></div><div class="tile tile--paper favstrip"><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="#4C8DF6"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="#2560C9"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="#16386F"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#F2601F"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#C4460F"/></svg></span><span class="sv sv-m"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="currentColor" opacity="1"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="currentColor"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="currentColor"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#FFFFFF"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#FFFFFF"/></svg></span></div><span class="favn">16</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="#4C8DF6"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="#2560C9"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="#16386F"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#F2601F"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#C4460F"/></svg></span><span class="sv sv-m"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="currentColor" opacity="1"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="currentColor"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="currentColor"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#FFFFFF"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#FFFFFF"/></svg></span></div><span class="favn">20</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="#4C8DF6"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="#2560C9"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="#16386F"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#F2601F"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#C4460F"/></svg></span><span class="sv sv-m"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="currentColor" opacity="1"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="currentColor"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="currentColor"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#FFFFFF"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#FFFFFF"/></svg></span></div><span class="favn">24</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="#4C8DF6"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="#2560C9"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="#16386F"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#F2601F"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#C4460F"/></svg></span><span class="sv sv-m"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32 18.5 55 30 32 41.5 9 30Z" fill="currentColor" opacity="1"/><path d="M9 30 32 41.5v14l-23 -11.5Z" fill="currentColor"/><path d="M55 30 32 41.5v14l23 -11.5Z" fill="currentColor"/><path d="M17.28 25.86 23.26 22.87 46.26 34.37 40.28 37.36Z" fill="#FFFFFF"/><path d="M40.28 37.36 46.26 34.37v14h-5.98Z" fill="#FFFFFF"/></svg></span></div><span class="favn">32</span></div></div></div><div class="pbody"><div class="prose"><p>Même caisse, ceinturée d&#x27;une sangle orange. Le détail qui compte : la sangle <strong>suit les plans de la projection</strong> — elle traverse le plateau parallèlement à une arête, puis descend droit sur la face droite. Une sangle posée en travers aurait immédiatement trahi le dessin.</p><p>Sangler, c&#x27;est préparer un départ. C&#x27;est l&#x27;objet prêt à partir, pas l&#x27;objet rangé.</p></div><div class="sidecol"><div class="crit crit--pro"><div class="critlab">Ce qu'elle a pour elle</div><ul><li>Le geste de la sangle donne une direction à la marque</li><li>L&#x27;orange est porté par un objet réel, pas par un point décoratif</li><li>Bonne tenue en monochrome : la sangle reste en réserve</li></ul></div><div class="crit crit--con"><div class="critlab">Ce qu'elle a contre elle</div><ul><li>Lecture « colis » avant lecture « location » — c&#x27;est son plafond</li><li>Deux idées dans une seule marque : moins nette que la caisse seule</li></ul></div><p class="verdict">Séduisante, mais elle dit « expédition ». À garder si le départ du matériel est votre message.</p></div></div></section><section class="planche"><header class="ph"><div class="phnum">05</div><div class="phttl"><h3>La boucle </h3><p class="phtag">Une sangle qui passe derrière, puis devant</p></div></header><div class="spec"><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="#4C8DF6"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="#F2601F" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="#4C8DF6"/></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="currentColor"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="currentColor" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="currentColor"/></svg></span></div><div class="tile tile--dark"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="#4C8DF6"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="#F2601F" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="#4C8DF6"/></svg></span><span class="sv sv-m sv-mi"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="currentColor"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="currentColor" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="currentColor"/></svg></span></div><div class="tile tile--home"><div class="appicon"><svg width="76" height="76" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="#4C8DF6"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="#F2601F" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="#4C8DF6"/></svg></div><span class="appname">Louez</span></div><div class="tile tile--paper favstrip"><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="#4C8DF6"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="#F2601F" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="#4C8DF6"/></svg></span><span class="sv sv-m"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="currentColor"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="currentColor" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="currentColor"/></svg></span></div><span class="favn">16</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="#4C8DF6"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="#F2601F" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="#4C8DF6"/></svg></span><span class="sv sv-m"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="currentColor"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="currentColor" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="currentColor"/></svg></span></div><span class="favn">20</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="#4C8DF6"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="#F2601F" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="#4C8DF6"/></svg></span><span class="sv sv-m"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="currentColor"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="currentColor" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="currentColor"/></svg></span></div><span class="favn">24</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="#4C8DF6"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="#F2601F" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="#4C8DF6"/></svg></span><span class="sv sv-m"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="25" width="56" height="15" rx="7.5" fill="currentColor"/><rect x="21" y="7" width="26" height="51" rx="13" stroke="currentColor" stroke-width="10"/><path d="M44 25h8a7.5 7.5 0 0 1 0 15h-8Z" fill="currentColor"/></svg></span></div><span class="favn">32</span></div></div></div><div class="pbody"><div class="prose"><p>Une sangle traverse une boucle : elle passe <strong>derrière</strong> au premier croisement et <strong>devant</strong> au second. C&#x27;est un entrelacement réel, pas une superposition — les deux pièces s&#x27;engagent l&#x27;une dans l&#x27;autre.</p><p>C&#x27;est la piste où le savoir-faire est le plus visible : un entrelacement correct est impossible à obtenir par accident, et c&#x27;est exactement ce qui manquait à la première série.</p><p>Le sens : ce qui est sanglé tient, et ce qui est sanglé se détache. Attacher et rendre.</p></div><div class="sidecol"><div class="crit crit--pro"><div class="critlab">Ce qu'elle a pour elle</div><ul><li>L&#x27;artisanat de l&#x27;entrelacement se voit immédiatement</li><li>Deux couleurs qui ont chacune un rôle structurel</li><li>Symétrique et compacte : très stable en petit format</li></ul></div><div class="crit crit--con"><div class="critlab">Ce qu'elle a contre elle</div><ul><li>Peut se lire « Ø » ou « cadenas » plus que « boucle de sangle »</li><li>La plus proche d&#x27;un pictogramme parmi les cinq</li></ul></div><p class="verdict">La plus démonstrative techniquement. À retenir si vous aimez l&#x27;objet mais pas la palette sombre.</p></div></div></section>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>Les impasses de cette série</h2></div>
+  <p class="secsub">Une trentaine de marques ont été dessinées et rendues pour arriver à ces cinq. Voici les
+  pièges que le rendu a révélés — ils sont plus instructifs que les gagnantes.</p>
+  <div class="rjgrid"><div class="rj"><div class="rjcode">a · C · d</div><h5>Les anneaux redeviennent des lettres</h5><p>Trois tentatives de mousqueton et d&#x27;anneau ouvert ont été lues comme un « a », un « C » et un « d ». Une forme circulaire interrompue tombe presque toujours dans l&#x27;alphabet.</p></div><div class="rj"><div class="rjcode">D3</div><h5>Les lattes deviennent un entonnoir</h5><p>Des barres de longueur décroissante, censées suggérer la perspective, se lisent comme un entonnoir ou une icône de tri. La répétition dégradée ne crée pas de la profondeur, elle crée un graphique.</p></div><div class="rj"><div class="rjcode">A6</div><h5>La pile devient une base de données</h5><p>Trois volumes empilés, c&#x27;est le pictogramme du stockage depuis trente ans. Impossible à récupérer.</p></div><div class="rj"><div class="rjcode">E8</div><h5>La caisse de face devient un appareil photo</h5><p>Un rectangle avec une arête d&#x27;épaisseur et une ouverture centrale : l&#x27;œil y voit un objectif.</p></div><div class="rj"><div class="rjcode">H5</div><h5>La malle à poignée devient une sacoche</h5><p>Ajouter une anse au-dessus fait basculer la lecture vers le bagage ou la trousse de médecin.</p></div><div class="rj"><div class="rjcode">C3</div><h5>Le repli devient une flèche</h5><p>Une bande qui se replie sur elle-même, vue de face, est une flèche. Le retour ne se dessine pas comme ça.</p></div></div>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>Ce que je n'ai pas pu faire</h2></div>
+  <p class="secsub" style="max-width:66ch">Le domaine <code>getopen.so</code> est bloqué par le proxy réseau de
+  cet environnement (403 sur le tunnel), et la recherche ne le remonte pas. <strong>Je n'ai donc pas vu votre
+  référence.</strong> Ce travail répond à votre critique telle que vous l'avez formulée — trop plat, trop
+  automatique, pas forcément un L — mais pas au registre précis de ce logo-là. Si vous déposez une capture, je
+  cale la série dessus.</p>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>Si vous ne devez en regarder qu'une</h2></div>
+  <p class="secsub" style="font-size:17.5px;color:var(--ink-2);max-width:68ch">
+  <strong style="color:var(--ink)">La malle.</strong> C'est la seule marque de toute l'exploration qui a une
+  matière et pas seulement une forme, et la seule qui ne ressemble à aucun de vos voisins. Son défaut est réel et
+  je ne le cache pas : à 16 px les coins fusionnent et il reste un bloc sombre à liseré orange. Si ce point vous
+  bloque, <strong style="color:var(--ink)">le diable</strong> est la silhouette la plus reconnaissable de la
+  série, et <strong style="color:var(--ink)">la caisse à fente</strong> le compromis le plus sûr — elle reste
+  dans votre bleu.</p>
+</section>
+
+</div>
+</div>
+
+<script>
+(function(){
+  var deck=document.getElementById('deck');
+  var btns=deck.querySelectorAll('.seg button');
+  btns.forEach(function(b){
+    b.addEventListener('click',function(){
+      deck.setAttribute('data-view',b.dataset.v);
+      btns.forEach(function(o){o.setAttribute('aria-pressed',String(o===b));});
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -59,3 +59,26 @@ partout depuis le token.
 
 Ce sont des **propositions**. Rien ici n'est branché sur l'application : aucun fichier hors de
 `docs/brand/` n'a été modifié.
+
+---
+
+## Deuxième série (`v2/`) — sans lettre
+
+La première série a été rejetée : trop plate, grammaire de bibliothèque d'icônes. La deuxième repart d'objets
+réels du métier, avec du volume, de la matière et du recouvrement — et sans partir de la lettre L.
+
+**[→ Ouvrir la présentation de la deuxième série](presentation-v2.html)**
+
+| Dossier | Objet | Statut |
+| --- | --- | --- |
+| [`v2/malle/`](v2/malle/) | La malle à coins renforcés | Recommandée |
+| [`v2/diable/`](v2/diable/) | Le diable chargé | La silhouette la plus repérable |
+| [`v2/caisse/`](v2/caisse/) | La caisse à fente, en dimétrie 2:1 | Le compromis le plus sûr |
+| [`v2/sanglee/`](v2/sanglee/) | La caisse sanglée | Lecture « colis » |
+| [`v2/boucle/`](v2/boucle/) | La sangle entrelacée dans sa boucle | Démonstration d'entrelacement |
+
+Géométrie dans [`_marks_v2.py`](_marks_v2.py). Chaque dossier contient `mark.svg`, `mono.svg`,
+`lockup-light.svg` et `lockup-dark.svg`.
+
+⚠️ La malle est la seule marque dont le monochrome est un **dessin différent** (corps en contour, coins pleins)
+et non la même image en une couleur : évider les coins d'un corps plein réduit la silhouette à une croix.
