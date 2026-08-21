@@ -2460,7 +2460,8 @@
         "statusAuthorized": "Autorisé",
         "statusRefunded": "Remboursé",
         "statusCancelled": "Annulé",
-        "requestPayment": "Demander un paiement"
+        "requestPayment": "Demander un paiement",
+        "invoiceGenerated": "Facture {number} générée"
       },
       "requestPaymentModal": {
         "title": "Demander un paiement",

@@ -345,7 +345,12 @@ export interface BaseContext {
         paidAt?: Date;
         notes?: string;
       },
-    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>;
+    ) => Promise<{
+      success?: boolean;
+      paymentId?: string;
+      invoiceNumber?: string;
+      error?: string;
+    }>;
     deletePayment?: (paymentId: string) => Promise<{ success?: boolean; error?: string }>;
     returnDeposit?: (
       reservationId: string,

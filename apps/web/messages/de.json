@@ -2451,7 +2451,8 @@
         "statusAuthorized": "Autorisiert",
         "statusRefunded": "Erstattet",
         "statusCancelled": "Storniert",
-        "requestPayment": "Zahlung anfordern"
+        "requestPayment": "Zahlung anfordern",
+        "invoiceGenerated": "Rechnung {number} erstellt"
       },
       "requestPaymentModal": {
         "title": "Zahlung anfordern",

@@ -2412,7 +2412,8 @@
         "statusAuthorized": "Autoryzowana",
         "statusRefunded": "Zwrócona",
         "statusCancelled": "Anulowana",
-        "requestPayment": "Poproś o płatność"
+        "requestPayment": "Poproś o płatność",
+        "invoiceGenerated": "Faktura {number} wygenerowana"
       },
       "requestPaymentModal": {
         "title": "Poproś o płatność",

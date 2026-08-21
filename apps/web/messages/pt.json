@@ -2412,7 +2412,8 @@
         "statusAuthorized": "Autorizado",
         "statusRefunded": "Reembolsado",
         "statusCancelled": "Cancelado",
-        "requestPayment": "Solicitar pagamento"
+        "requestPayment": "Solicitar pagamento",
+        "invoiceGenerated": "Fatura {number} gerada"
       },
       "requestPaymentModal": {
         "title": "Solicitar pagamento",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { ArrowDownLeftSolidIcon, CheckSolidIcon, ReviewSolidIcon } from "@louez/ui/icons";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
@@ -201,6 +202,7 @@ export function UnifiedPaymentSection({
   const timezone = useStoreTimezone();
   const currencySymbol = getCurrencySymbol(currency);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
   const [depositReturnModalOpen, setDepositReturnModalOpen] = useState(false);
@@ -408,7 +410,7 @@ export function UnifiedPaymentSection({
 
     setIsLoading(true);
     try {
-      await recordPaymentMutation.mutateAsync({
+      const result = await recordPaymentMutation.mutateAsync({
         reservationId,
         payload: {
           type: paymentType,
@@ -418,7 +420,15 @@ export function UnifiedPaymentSection({
         },
       });
 
-      toastManager.add({ title: t("payment.recorded"), type: "success" });
+      toastManager.add({
+        title: result.invoiceNumber
+          ? t("payment.invoiceGenerated", { number: result.invoiceNumber })
+          : t("payment.recorded"),
+        type: "success",
+      });
+      // The invoices card is server-rendered; RPC revalidation alone does not
+      // refresh it.
+      router.refresh();
       setPaymentModalOpen(false);
       resetForm();
     } catch {
