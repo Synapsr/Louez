@@ -145,8 +145,43 @@ test("B2C inclusive invoices carry email routing, BAR note, and service lines", 
     scheme: "0225",
     value: "123456789",
   });
-  assert.deepEqual(built.en16931.notes, [{ subject_code: "BAR", content: "B2C" }]);
-  assert.ok(built.en16931.lines.every((line) => line.item.type === "SERVICES"));
+  assert.equal(built.en16931.type_code, 380);
+  assert.equal(built.en16931.payment_due_date, "2026-08-20");
+  assert.deepEqual(
+    built.en16931.notes?.map((note) => note.subject_code),
+    // BAR marks B2C; PMD/PMT/AAB are the mandatory French payment mentions.
+    ["BAR", "PMD", "PMT", "AAB"],
+  );
+  assert.deepEqual(Object.keys(built.en16931).sort(), [
+    "buyer",
+    "currency_code",
+    "delivery_information",
+    "issue_date",
+    "lines",
+    "notes",
+    "number",
+    "payment_due_date",
+    "process_control",
+    "seller",
+    "totals",
+    "type_code",
+    "vat_break_down",
+  ]);
+  assert.deepEqual(built.en16931.totals, {
+    sum_invoice_lines_amount: "147.39",
+    total_without_vat: "147.39",
+    total_vat_amount: { currency_code: "EUR", value: "22.61" },
+    total_with_vat: "170.00",
+    amount_due_for_payment: "170.00",
+  });
+  assert.ok(
+    built.en16931.lines.every(
+      (line) =>
+        line.invoiced_quantity_code === "C62" &&
+        line.item_information.name.length > 0 &&
+        line.price_details.quantity_unit_code === "C62",
+    ),
+  );
   assert.deepEqual(built.totals, {
     totalExclTax: "147.39",
     totalTax: "22.61",
@@ -212,6 +247,11 @@ test("B2B exclusive invoices use the customer's SIREN electronic address", () =>
     scheme: "0208",
     value: "0123456789",
   });
+  assert.deepEqual(built.en16931.buyer.legal_registration_identifier, {
+    // ISO 6523 registry scheme (SIRENE), not the 0225 e-invoicing mailbox.
+    scheme: "0002",
+    value: "987654321",
+  });
   assert.equal(built.en16931.notes, undefined);
   assert.deepEqual(built.totals, {
     totalExclTax: "110.00",
@@ -237,9 +277,13 @@ test("credit notes scale the immutable original invoice and reference it", () =>
     precedingInvoice: { number: "F-2026-00042", issueDate: "2026-08-20" },
   });
 
-  assert.equal(built.en16931.type_code, "381");
+  assert.equal(built.en16931.type_code, 381);
   assert.deepEqual(built.en16931.preceding_invoice_references, [
-    { number: "F-2026-00042", issue_date: "2026-08-20" },
+    {
+      reference: "F-2026-00042",
+      issue_date: "2026-08-20",
+      preceding_invoice_type_code: 380,
+    },
   ]);
   assert.equal(built.totals.totalInclTax, "85.00");
   assert.deepEqual(
@@ -297,7 +341,16 @@ test("tax-disabled invoices carry the French 293 B exemption on breakdown and no
   assert.deepEqual(built.vatBreakdown, [
     { taxRate: "0.00", taxableAmount: "100.00", taxAmount: "0.00", exemptionReason: reason },
   ]);
-  assert.ok(built.en16931.notes?.some((note) => note.content === reason));
+  assert.ok(built.en16931.notes?.some((note) => note.note === reason));
+  assert.deepEqual(built.en16931.vat_break_down, [
+    {
+      vat_category_code: "E",
+      vat_category_rate: "0.00",
+      vat_category_taxable_amount: "100.00",
+      vat_category_tax_amount: "0.00",
+      vat_exemption_reason: reason,
+    },
+  ]);
 });
 
 test("insurance lines use the distinct article 261 C VAT exemption", () => {
@@ -345,8 +398,14 @@ test("insurance lines use the distinct article 261 C VAT exemption", () => {
 
   assert.ok(built.vatBreakdown.some((entry) => entry.exemptionReason === insuranceReason));
   assert.equal(
-    built.en16931.lines.find((line) => line.id === "insurance")?.vat.exemption_reason,
+    built.en16931.lines.find((line) => line.identifier === "insurance")?.vat_information
+      .exemption_reason,
     insuranceReason,
+  );
+  assert.ok(
+    built.en16931.vat_break_down.some(
+      (entry) => entry.vat_category_code === "E" && entry.vat_exemption_reason === insuranceReason,
+    ),
   );
 });
 
@@ -372,7 +431,12 @@ test("post-return charges are invoiced as one dedicated line, never scaled renta
   assert.equal(built.vatBreakdown.length, 1);
   assert.equal(built.vatBreakdown[0]?.taxableAmount, "75.00");
   assert.equal(
-    built.en16931.lines.some((line2) => line2.item.name.includes("Location")),
+    built.en16931.lines.some((line2) => line2.item_information.name.includes("Location")),
     false,
   );
+  assert.deepEqual(built.en16931.lines[0]?.price_details, {
+    item_net_price: "75.00",
+    item_price_base_quantity: "1",
+    quantity_unit_code: "C62",
+  });
 });

@@ -103,47 +103,54 @@ interface En16931ElectronicAddress {
   value: string;
 }
 
+interface En16931PostalAddress {
+  address_line1?: string;
+  address_line2?: string;
+  post_code?: string;
+  city?: string;
+  country_code: string;
+}
+
 interface En16931Party {
   name: string;
   electronic_address: En16931ElectronicAddress;
-  postal_address: {
-    line_one: string;
-    line_two: string | null;
-    post_code: string;
-    city: string;
-    country_code: string;
-  } | null;
+  postal_address: En16931PostalAddress;
   legal_registration_identifier?: { scheme: string; value: string };
   vat_identifier?: string;
 }
 
 interface En16931Line {
-  id: string;
-  item: { name: string; type: "SERVICES" };
-  quantity: string;
-  unit_code: "C62";
-  net_price: string;
+  identifier: string;
+  invoiced_quantity: string;
+  invoiced_quantity_code: "C62";
   net_amount: string;
-  vat: {
-    category_code: "S" | "E";
-    rate: string;
+  price_details: {
+    item_net_price: string;
+    item_price_base_quantity: "1";
+    quantity_unit_code: "C62";
+  };
+  item_information: { name: string };
+  vat_information: {
+    invoiced_item_vat_category_code: "S" | "E";
+    invoiced_item_vat_rate: string;
     exemption_reason?: string;
   };
 }
 
 interface En16931VatBreakdown {
-  category_code: "S" | "E";
-  rate: string;
-  taxable_amount: string;
-  tax_amount: string;
-  exemption_reason?: string;
+  vat_category_code: "S" | "E";
+  vat_category_rate: string;
+  vat_category_taxable_amount: string;
+  vat_category_tax_amount: string;
+  vat_exemption_reason?: string;
 }
 
-export interface En16931Invoice {
-  [key: string]: unknown;
+export type En16931Invoice = {
   number: string;
   issue_date: string;
-  type_code: "380" | "381";
+  payment_due_date: string;
+  delivery_information?: { delivery_date: string };
+  type_code: 380 | 381;
   currency_code: string;
   process_control: {
     specification_identifier: string;
@@ -151,18 +158,22 @@ export interface En16931Invoice {
   };
   seller: En16931Party;
   buyer: En16931Party;
-  invoice_totals: {
-    sum_invoice_line_net_amount: string;
-    invoice_total_amount_without_vat: string;
-    invoice_total_vat_amount: string;
-    invoice_total_amount_with_vat: string;
-    payable_amount: string;
+  totals: {
+    sum_invoice_lines_amount: string;
+    total_without_vat: string;
+    total_vat_amount: { currency_code: string; value: string };
+    total_with_vat: string;
+    amount_due_for_payment: string;
   };
   vat_break_down: En16931VatBreakdown[];
   lines: En16931Line[];
-  notes?: { subject_code: "BAR" | "REG"; content: string }[];
-  preceding_invoice_references?: { number: string; issue_date: string }[];
-}
+  notes?: { subject_code: "BAR" | "REG" | "PMD" | "PMT" | "AAB"; note: string }[];
+  preceding_invoice_references?: {
+    reference: string;
+    issue_date: string;
+    preceding_invoice_type_code: 380;
+  }[];
+};
 
 export interface BuiltInvoiceSnapshots {
   seller: InvoiceSellerSnapshot;
@@ -537,11 +548,14 @@ function toBuyerSnapshot(source: BuildInvoiceSnapshotsSource): InvoiceBuyerSnaps
   };
 }
 
-function toEn16931Address(address: InvoiceSellerSnapshot["address"] | null) {
-  if (!address) return null;
+function toEn16931Address(
+  address: InvoiceSellerSnapshot["address"] | null,
+  fallbackCountry: string,
+): En16931PostalAddress {
+  if (!address) return { country_code: fallbackCountry };
   return {
-    line_one: address.address,
-    line_two: address.addressComplement,
+    address_line1: address.address,
+    ...(address.addressComplement ? { address_line2: address.addressComplement } : {}),
     post_code: address.postalCode,
     city: address.city,
     country_code: address.country,
@@ -550,26 +564,34 @@ function toEn16931Address(address: InvoiceSellerSnapshot["address"] | null) {
 
 function toEn16931Seller(seller: InvoiceSellerSnapshot): En16931Party {
   const electronicAddress: En16931ElectronicAddress =
-    seller.address.country === "BE"
+    seller.companyNumberScheme === "be_bce"
       ? { scheme: "0208", value: seller.companyNumber }
-      : seller.address.country === "FR"
+      : seller.companyNumberScheme === "fr_siren"
         ? { scheme: "0225", value: seller.companyNumber }
         : { scheme: "EM", value: seller.email ?? seller.companyNumber };
-  const registrationScheme =
-    seller.address.country === "BE" ? "0208" : seller.address.country === "FR" ? "0225" : "LOCAL";
   return {
     name: seller.legalName,
     electronic_address: electronicAddress,
-    postal_address: toEn16931Address(seller.address),
-    legal_registration_identifier: {
-      scheme: registrationScheme,
-      value: seller.companyNumber,
-    },
+    postal_address: toEn16931Address(seller.address, seller.address.country),
+    ...(seller.companyNumberScheme
+      ? {
+          legal_registration_identifier: {
+            // ISO 6523: 0002 = SIRENE (SIREN), 0208 = BCE. 0225 only
+            // addresses the electronic invoicing mailbox, not the registry.
+            scheme: seller.companyNumberScheme === "be_bce" ? "0208" : "0002",
+            value: seller.companyNumber,
+          },
+        }
+      : {}),
     ...(seller.vatNumber ? { vat_identifier: seller.vatNumber } : {}),
   };
 }
 
-function toEn16931Buyer(buyer: InvoiceBuyerSnapshot, processingRule: "b2b" | "b2c"): En16931Party {
+function toEn16931Buyer(
+  buyer: InvoiceBuyerSnapshot,
+  processingRule: "b2b" | "b2c",
+  fallbackCountry: string,
+): En16931Party {
   const isB2b = processingRule === "b2b";
   return {
     name:
@@ -582,17 +604,66 @@ function toEn16931Buyer(buyer: InvoiceBuyerSnapshot, processingRule: "b2b" | "b2
           value: buyer.companyNumber ?? "",
         }
       : { scheme: "EM", value: buyer.email },
-    postal_address: toEn16931Address(buyer.address),
+    postal_address: toEn16931Address(buyer.address, fallbackCountry),
     ...(isB2b && buyer.companyNumber
       ? {
           legal_registration_identifier: {
-            scheme: buyer.companyNumberScheme === "be_bce" ? "0208" : "0225",
+            scheme: buyer.companyNumberScheme === "be_bce" ? "0208" : "0002",
             value: buyer.companyNumber,
           },
         }
       : {}),
     ...(buyer.vatNumber ? { vat_identifier: buyer.vatNumber } : {}),
   };
+}
+
+function toEn16931Totals(
+  totals: BuiltInvoiceSnapshots["totals"],
+  currency: string,
+): En16931Invoice["totals"] {
+  return {
+    sum_invoice_lines_amount: totals.totalExclTax,
+    total_without_vat: totals.totalExclTax,
+    total_vat_amount: { currency_code: currency, value: totals.totalTax },
+    total_with_vat: totals.totalInclTax,
+    amount_due_for_payment: totals.totalInclTax,
+  };
+}
+
+function toEn16931VatBreakdown(vatBreakdown: InvoiceVatBreakdownSnapshot[]): En16931VatBreakdown[] {
+  return vatBreakdown.map((entry) => ({
+    vat_category_code: entry.exemptionReason ? "E" : "S",
+    vat_category_rate: entry.taxRate,
+    vat_category_taxable_amount: entry.taxableAmount,
+    vat_category_tax_amount: entry.taxAmount,
+    ...(entry.exemptionReason ? { vat_exemption_reason: entry.exemptionReason } : {}),
+  }));
+}
+
+function toEn16931Lines(
+  lines: InvoiceLineSnapshot[],
+  getExemptionReason: (line: InvoiceLineSnapshot) => string | undefined,
+): En16931Line[] {
+  return lines.map((line) => {
+    const exemptionReason = getExemptionReason(line);
+    return {
+      identifier: line.id,
+      invoiced_quantity: line.quantity,
+      invoiced_quantity_code: "C62",
+      net_amount: line.totalExclTax,
+      price_details: {
+        item_net_price: line.unitPriceExclTax,
+        item_price_base_quantity: "1",
+        quantity_unit_code: "C62",
+      },
+      item_information: { name: line.description },
+      vat_information: {
+        invoiced_item_vat_category_code: exemptionReason ? "E" : "S",
+        invoiced_item_vat_rate: line.taxRate,
+        ...(exemptionReason ? { exemption_reason: exemptionReason } : {}),
+      },
+    };
+  });
 }
 
 export function buildInvoiceSnapshots(
@@ -605,9 +676,7 @@ export function buildInvoiceSnapshots(
   const lines = amounts.chargeKind
     ? [buildChargeLine(source, amounts.chargeKind, amounts.amountInclTax)]
     : scaleInvoiceLines(buildFullInvoiceLines(source), amounts.amountInclTax);
-  const insuranceLineIds = amounts.chargeKind
-    ? new Set<string>()
-    : getInsuranceLineIds(source);
+  const insuranceLineIds = amounts.chargeKind ? new Set<string>() : getInsuranceLineIds(source);
   const vatBreakdown = buildVatBreakdown(lines, taxEnabled, insuranceLineIds);
   const totals = {
     totalExclTax: fromCents(sumLineCents(lines, "totalExclTax")),
@@ -620,61 +689,60 @@ export function buildInvoiceSnapshots(
     Boolean(buyer.companyNumber);
   const processingRule = isB2b ? "b2b" : "b2c";
   const notes: En16931Invoice["notes"] = [];
-  if (!isB2b) notes.push({ subject_code: "BAR", content: "B2C" });
-  if (!taxEnabled) notes.push({ subject_code: "REG", content: VAT_EXEMPTION_293_B });
+  if (!isB2b) notes.push({ subject_code: "BAR", note: "B2C" });
+  if (!taxEnabled) notes.push({ subject_code: "REG", note: VAT_EXEMPTION_293_B });
+  // BR-FR-05/BT-22: the three French payment-terms mentions are mandatory
+  // notes (same texts as the PDF footer).
+  if (source.legalProfile.country === "FR") {
+    notes.push(
+      {
+        subject_code: "PMD",
+        note: "Pénalités de retard : taux égal à trois fois le taux d'intérêt légal, exigibles sans rappel.",
+      },
+      {
+        subject_code: "PMT",
+        note: "Indemnité forfaitaire de 40 € pour frais de recouvrement due en cas de retard de paiement (professionnels).",
+      },
+      { subject_code: "AAB", note: "Escompte pour paiement anticipé : néant." },
+    );
+  }
 
   const en16931: En16931Invoice = {
     number: amounts.number,
     issue_date: amounts.issueDate,
-    type_code: amounts.type === "invoice" ? "380" : "381",
+    // PEPPOL-EN16931-R008: the converter always emits the CII delivery block;
+    // a delivery/service date keeps it from being empty. The cash-in date
+    // doubles as the service date for point-of-payment invoicing.
+    delivery_information: { delivery_date: amounts.issueDate },
+    type_code: amounts.type === "invoice" ? 380 : 381,
     currency_code: amounts.currency,
     process_control: {
       specification_identifier: "urn:cen.eu:en16931:2017",
-      business_process_type: "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0",
+      // BR-FR-08/BT-23: French "cadre de facturation" code — B1 = standard
+      // invoice deposit (not the Peppol billing URN).
+      business_process_type: "B1",
     },
     seller: toEn16931Seller(seller),
-    buyer: toEn16931Buyer(buyer, processingRule),
-    invoice_totals: {
-      sum_invoice_line_net_amount: totals.totalExclTax,
-      invoice_total_amount_without_vat: totals.totalExclTax,
-      invoice_total_vat_amount: totals.totalTax,
-      invoice_total_amount_with_vat: totals.totalInclTax,
-      payable_amount: totals.totalInclTax,
-    },
-    vat_break_down: vatBreakdown.map((entry) => ({
-      category_code: entry.exemptionReason ? "E" : "S",
-      rate: entry.taxRate,
-      taxable_amount: entry.taxableAmount,
-      tax_amount: entry.taxAmount,
-      ...(entry.exemptionReason ? { exemption_reason: entry.exemptionReason } : {}),
-    })),
-    lines: lines.map((line) => {
-      const exemptionReason = !taxEnabled
+    buyer: toEn16931Buyer(buyer, processingRule, source.customer.country ?? seller.address.country),
+    payment_due_date: amounts.issueDate,
+    totals: toEn16931Totals(totals, amounts.currency),
+    vat_break_down: toEn16931VatBreakdown(vatBreakdown),
+    lines: toEn16931Lines(lines, (line) =>
+      !taxEnabled
         ? VAT_EXEMPTION_293_B
         : insuranceLineIds.has(line.id)
           ? INSURANCE_VAT_EXEMPTION
-          : vatBreakdown.find((entry) => entry.taxRate === line.taxRate)?.exemptionReason;
-      return {
-        id: line.id,
-        item: { name: line.description, type: "SERVICES" },
-        quantity: line.quantity,
-        unit_code: "C62",
-        net_price: line.unitPriceExclTax,
-        net_amount: line.totalExclTax,
-        vat: {
-          category_code: exemptionReason ? "E" : "S",
-          rate: line.taxRate,
-          ...(exemptionReason ? { exemption_reason: exemptionReason } : {}),
-        },
-      };
-    }),
+          : (vatBreakdown.find((entry) => entry.taxRate === line.taxRate)?.exemptionReason ??
+            undefined),
+    ),
     ...(notes.length > 0 ? { notes } : {}),
     ...(amounts.precedingInvoice
       ? {
           preceding_invoice_references: [
             {
-              number: amounts.precedingInvoice.number,
+              reference: amounts.precedingInvoice.number,
               issue_date: amounts.precedingInvoice.issueDate,
+              preceding_invoice_type_code: 380,
             },
           ],
         }
@@ -712,39 +780,18 @@ export function buildCreditNoteSnapshots(
   const en16931: En16931Invoice = {
     ...draft.en16931,
     seller: toEn16931Seller(original.seller),
-    buyer: toEn16931Buyer(original.buyer, original.processingRule),
-    invoice_totals: {
-      sum_invoice_line_net_amount: totals.totalExclTax,
-      invoice_total_amount_without_vat: totals.totalExclTax,
-      invoice_total_vat_amount: totals.totalTax,
-      invoice_total_amount_with_vat: totals.totalInclTax,
-      payable_amount: totals.totalInclTax,
-    },
-    vat_break_down: vatBreakdown.map((entry) => ({
-      category_code: entry.exemptionReason ? "E" : "S",
-      rate: entry.taxRate,
-      taxable_amount: entry.taxableAmount,
-      tax_amount: entry.taxAmount,
-      ...(entry.exemptionReason ? { exemption_reason: entry.exemptionReason } : {}),
-    })),
-    lines: lines.map((line) => {
-      const exemptionReason = vatBreakdown.find(
-        (entry) => entry.taxRate === line.taxRate,
-      )?.exemptionReason;
-      return {
-        id: line.id,
-        item: { name: line.description, type: "SERVICES" },
-        quantity: line.quantity,
-        unit_code: "C62",
-        net_price: line.unitPriceExclTax,
-        net_amount: line.totalExclTax,
-        vat: {
-          category_code: exemptionReason ? "E" : "S",
-          rate: line.taxRate,
-          ...(exemptionReason ? { exemption_reason: exemptionReason } : {}),
-        },
-      };
-    }),
+    buyer: toEn16931Buyer(
+      original.buyer,
+      original.processingRule,
+      source.customer.country ?? original.seller.address.country,
+    ),
+    totals: toEn16931Totals(totals, amounts.currency),
+    vat_break_down: toEn16931VatBreakdown(vatBreakdown),
+    lines: toEn16931Lines(
+      lines,
+      (line) =>
+        vatBreakdown.find((entry) => entry.taxRate === line.taxRate)?.exemptionReason ?? undefined,
+    ),
   };
 
   return {
