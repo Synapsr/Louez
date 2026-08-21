@@ -270,7 +270,7 @@ async function fetchProviderJson<T>(input: {
   path: string;
   operation: string;
   schema: z.ZodType<T>;
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PATCH";
   body?: BodyInit;
   headers?: HeadersInit;
 }): Promise<T> {
@@ -372,6 +372,36 @@ export function getSuperPdpOAuthSession(accessToken: string): Promise<SuperPdpOA
     path: "/oauth2_sessions/me",
     operation: "OAuth session lookup",
     schema: oauthSessionSchema,
+  });
+}
+
+const companyVatPatchSchema = z
+  .object({
+    vat_regime: z.enum(["monthly", "quarterly", "simplified", "vat_exemption"]),
+    has_vat_on_debits: z.boolean().optional(),
+  })
+  .passthrough();
+
+/**
+ * The e-reporting declaration calendar at the PDP follows the company's VAT
+ * regime; Super PDP refuses sends until it is set.
+ */
+export function updateSuperPdpCompanyVatRegime(input: {
+  accessToken: string;
+  vatRegime: "monthly" | "quarterly" | "simplified" | "vat_exemption";
+  hasVatOnDebits: boolean;
+}): Promise<z.infer<typeof companyVatPatchSchema>> {
+  return fetchProviderJson({
+    accessToken: input.accessToken,
+    path: "/companies",
+    operation: "company VAT regime update",
+    schema: companyVatPatchSchema,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      vat_regime: input.vatRegime,
+      has_vat_on_debits: input.hasVatOnDebits,
+    }),
   });
 }
 
