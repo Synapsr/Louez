@@ -88,3 +88,6 @@ SPECIFICATIONS*.md
 !/scripts/audit-duplicates.mjs
 .playwright-cli
 .email-previews/
+
+# pnpm store accidentally created in-repo by sandboxed runs
+.pnpm-store/
