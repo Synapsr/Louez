@@ -9,11 +9,15 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { getFieldError } from '@/hooks/form/form-context';
 
 import type { CheckoutFormComponentApi } from '../types';
+import { CheckoutBusinessFields } from './checkout-business-fields';
 
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 
 interface CheckoutContactStepProps {
   form: CheckoutFormComponentApi;
+  storeId: string;
+  /** ISO-2 country of the store — drives the company identifier fields. */
+  storeCountry: string;
   showAddressFields: boolean;
   isBusinessCustomer: boolean;
   onBusinessCustomerUnchecked: () => void;
@@ -22,6 +26,8 @@ interface CheckoutContactStepProps {
 
 export function CheckoutContactStep({
   form,
+  storeId,
+  storeCountry,
   showAddressFields,
   isBusinessCustomer,
   onBusinessCustomerUnchecked,
@@ -36,6 +42,8 @@ export function CheckoutContactStep({
     form.setFieldValue('phone', '+33612345678');
     form.setFieldValue('isBusinessCustomer', false);
     form.setFieldValue('companyName', '');
+    form.setFieldValue('companyNumber', '');
+    form.setFieldValue('vatNumber', '');
     form.setFieldValue('address', '1 rue de la Location');
     form.setFieldValue('postalCode', '75001');
     form.setFieldValue('city', 'Paris');
@@ -170,14 +178,11 @@ export function CheckoutContactStep({
         </form.Field>
 
         {isBusinessCustomer && (
-          <form.AppField name="companyName">
-            {(field) => (
-              <field.Input
-                label={`${t('companyName')} *`}
-                placeholder={t('companyNamePlaceholder')}
-              />
-            )}
-          </form.AppField>
+          <CheckoutBusinessFields
+            form={form}
+            storeId={storeId}
+            country={storeCountry}
+          />
         )}
 
         <form.AppField name="notes">

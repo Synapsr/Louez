@@ -2670,6 +2670,13 @@
         "businessCustomerDescription": "Seleziona se questo cliente rappresenta un'azienda",
         "companyName": "Nome azienda",
         "companyNamePlaceholder": "ACME S.r.l.",
+        "companyNumber": "Numero d'impresa",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Numero d'impresa (BCE/KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Necessario per emettere una fattura elettronica B2B.",
+        "vatNumber": "Partita IVA",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Nome *",
         "firstNamePlaceholder": "Mario",
         "lastName": "Cognome *",
@@ -4250,7 +4257,10 @@
             "error": "Registrazione non riuscita",
             "missing": "Non registrata"
           },
-          "environments": { "sandbox": "Ambiente di test", "production": "Produzione" },
+          "environments": {
+            "sandbox": "Ambiente di test",
+            "production": "Produzione"
+          },
           "result": {
             "successTitle": "Azienda collegata",
             "successDescription": "La tua azienda è ora iscritta alla piattaforma accreditata. Le fatture saranno trasmesse automaticamente.",
@@ -5960,6 +5970,20 @@
       "isBusinessCustomerDescription": "Seleziona questa casella se noleggi per conto di un'azienda",
       "companyName": "Nome azienda",
       "companyNamePlaceholder": "ACME S.r.l.",
+      "companyNumber": "Numero d'impresa (facoltativo)",
+      "companyNumberSiren": "SIREN (facoltativo)",
+      "companyNumberBce": "Numero d'impresa (BCE/KBO, facoltativo)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Facoltativo: ci serve per emettere una fattura aziendale.",
+      "vatNumber": "Partita IVA (facoltativo)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Cerca la tua azienda",
+        "placeholder": "Nome dell'azienda, SIREN o SIRET",
+        "description": "Facoltativo: cerca per compilare automaticamente i dati della tua azienda.",
+        "noResults": "Nessuna azienda trovata. Inserisci i dati manualmente.",
+        "closed": "Cessata"
+      },
       "contact": "Contatto",
       "address": "Indirizzo",
       "addressPlaceholder": "Via del Noleggio 123",
@@ -5988,6 +6012,8 @@
         "phoneRequired": "Telefono obbligatorio",
         "invalidPhone": "Formato telefono non valido",
         "companyNameRequired": "Inserisci il nome dell'azienda",
+        "invalidCompanyNumber": "Numero d'impresa non valido",
+        "invalidVatNumber": "Partita IVA non valida",
         "acceptCgv": "Devi accettare i termini e le condizioni"
       },
       "pricing": {

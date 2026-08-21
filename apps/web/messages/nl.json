@@ -2670,6 +2670,13 @@
         "businessCustomerDescription": "Vink aan als deze klant een bedrijf vertegenwoordigt",
         "companyName": "Bedrijfsnaam",
         "companyNamePlaceholder": "ACME B.V.",
+        "companyNumber": "Ondernemingsnummer",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Ondernemingsnummer (KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Nodig om een elektronische B2B-factuur op te maken.",
+        "vatNumber": "Btw-nummer",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Voornaam *",
         "firstNamePlaceholder": "Jan",
         "lastName": "Achternaam *",
@@ -4250,7 +4257,10 @@
             "error": "Registratie mislukt",
             "missing": "Niet geregistreerd"
           },
-          "environments": { "sandbox": "Testomgeving", "production": "Productie" },
+          "environments": {
+            "sandbox": "Testomgeving",
+            "production": "Productie"
+          },
           "result": {
             "successTitle": "Onderneming verbonden",
             "successDescription": "Je onderneming is nu ingeschreven bij het erkende platform. Je facturen worden automatisch verzonden.",
@@ -5960,6 +5970,20 @@
       "isBusinessCustomerDescription": "Vink dit vakje aan als u huurt namens een bedrijf",
       "companyName": "Bedrijfsnaam",
       "companyNamePlaceholder": "ACME B.V.",
+      "companyNumber": "Ondernemingsnummer (optioneel)",
+      "companyNumberSiren": "SIREN (optioneel)",
+      "companyNumberBce": "Ondernemingsnummer (KBO, optioneel)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Optioneel — nodig om een zakelijke factuur op te maken.",
+      "vatNumber": "Btw-nummer (optioneel)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Zoek je onderneming",
+        "placeholder": "Bedrijfsnaam, SIREN of SIRET",
+        "description": "Optioneel: zoek om je bedrijfsgegevens automatisch in te vullen.",
+        "noResults": "Geen onderneming gevonden. Voer de gegevens handmatig in.",
+        "closed": "Stopgezet"
+      },
       "contact": "Contact",
       "address": "Adres",
       "addressPlaceholder": "Keizersgracht 123",
@@ -5988,6 +6012,8 @@
         "phoneRequired": "Telefoon vereist",
         "invalidPhone": "Ongeldig telefoonformaat",
         "companyNameRequired": "Vul de bedrijfsnaam in",
+        "invalidCompanyNumber": "Ongeldig ondernemingsnummer",
+        "invalidVatNumber": "Ongeldig btw-nummer",
         "acceptCgv": "U moet de algemene voorwaarden accepteren"
       },
       "pricing": {

@@ -70,6 +70,8 @@ const DEFAULT_VALUES: CheckoutFormValues = {
   phone: '',
   isBusinessCustomer: false,
   companyName: '',
+  companyNumber: '',
+  vatNumber: '',
   address: '',
   city: '',
   postalCode: '',
@@ -147,6 +149,7 @@ export function CheckoutForm({
   storeLatitude,
   storeLongitude,
   storeName,
+  storeCountry,
   locations,
   tulipInsurance,
   hasActivePromoCodes,
@@ -303,8 +306,9 @@ export function CheckoutForm({
     () =>
       createCheckoutSchemaWithOptions((key, params) => t(key, params), {
         requireAddress: requireCustomerAddress,
+        country: storeCountry,
       }),
-    [requireCustomerAddress, t],
+    [requireCustomerAddress, storeCountry, t],
   );
 
   const form = useAppForm({
@@ -355,7 +359,7 @@ export function CheckoutForm({
           }
 
           if (form.getFieldValue('isBusinessCustomer')) {
-            fieldsToValidate.push('companyName');
+            fieldsToValidate.push('companyName', 'companyNumber', 'vatNumber');
           }
 
           await Promise.all(
@@ -840,6 +844,12 @@ export function CheckoutForm({
 
   const isBusinessCustomer = formValues.isBusinessCustomer;
 
+  const handleBusinessCustomerUnchecked = useCallback(() => {
+    form.setFieldValue('companyName', '');
+    form.setFieldValue('companyNumber', '');
+    form.setFieldValue('vatNumber', '');
+  }, [form]);
+
   if (items.length === 0) {
     return <CheckoutEmptyCartState storeSlug={storeSlug} />;
   }
@@ -860,11 +870,11 @@ export function CheckoutForm({
                 {currentStep === 'contact' && (
                   <CheckoutContactStep
                     form={form}
+                    storeId={storeId}
+                    storeCountry={storeCountry}
                     showAddressFields={requireCustomerAddress}
                     isBusinessCustomer={isBusinessCustomer}
-                    onBusinessCustomerUnchecked={() =>
-                      form.setFieldValue('companyName', '')
-                    }
+                    onBusinessCustomerUnchecked={handleBusinessCustomerUnchecked}
                     onContinue={goToNextStep}
                   />
                 )}

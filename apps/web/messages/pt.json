@@ -2670,6 +2670,13 @@
         "businessCustomerDescription": "Marque se este cliente representa uma empresa",
         "companyName": "Nome da empresa",
         "companyNamePlaceholder": "ACME Ltda",
+        "companyNumber": "Número da empresa",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Número de empresa (BCE/KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Necessário para emitir uma fatura eletrónica B2B.",
+        "vatNumber": "Número de IVA",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Nome *",
         "firstNamePlaceholder": "Joao",
         "lastName": "Sobrenome *",
@@ -4250,7 +4257,10 @@
             "error": "Falha no registo",
             "missing": "Não registada"
           },
-          "environments": { "sandbox": "Ambiente de teste", "production": "Produção" },
+          "environments": {
+            "sandbox": "Ambiente de teste",
+            "production": "Produção"
+          },
           "result": {
             "successTitle": "Empresa ligada",
             "successDescription": "A sua empresa está agora inscrita na plataforma acreditada. As faturas serão transmitidas automaticamente.",
@@ -5960,6 +5970,20 @@
       "isBusinessCustomerDescription": "Marque esta caixa se está a alugar em nome de uma empresa",
       "companyName": "Nome da empresa",
       "companyNamePlaceholder": "ACME Ltda",
+      "companyNumber": "Número da empresa (opcional)",
+      "companyNumberSiren": "SIREN (opcional)",
+      "companyNumberBce": "Número de empresa (BCE/KBO, opcional)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Opcional — necessário para emitir uma fatura empresarial.",
+      "vatNumber": "Número de IVA (opcional)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Encontre a sua empresa",
+        "placeholder": "Nome da empresa, SIREN ou SIRET",
+        "description": "Opcional: pesquise para preencher automaticamente os dados da sua empresa.",
+        "noResults": "Nenhuma empresa encontrada. Introduza os dados manualmente.",
+        "closed": "Encerrada"
+      },
       "contact": "Contacto",
       "address": "Endereco",
       "addressPlaceholder": "Rua do Aluguel, 123",
@@ -5988,6 +6012,8 @@
         "phoneRequired": "Telefone obrigatorio",
         "invalidPhone": "Formato de telefone invalido",
         "companyNameRequired": "Por favor introduza o nome da empresa",
+        "invalidCompanyNumber": "Número de empresa inválido",
+        "invalidVatNumber": "Número de IVA inválido",
         "acceptCgv": "Voce deve aceitar os termos e condicoes"
       },
       "pricing": {

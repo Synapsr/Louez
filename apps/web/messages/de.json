@@ -2709,6 +2709,13 @@
         "businessCustomerDescription": "Aktivieren, wenn dieser Kunde ein Unternehmen vertritt",
         "companyName": "Firmenname",
         "companyNamePlaceholder": "ACME GmbH",
+        "companyNumber": "Unternehmensnummer",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Unternehmensnummer (KBO/BCE)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Erforderlich für eine elektronische B2B-Rechnung.",
+        "vatNumber": "USt-IdNr.",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Vorname *",
         "firstNamePlaceholder": "Max",
         "lastName": "Nachname *",
@@ -4250,7 +4257,10 @@
             "error": "Registrierung fehlgeschlagen",
             "missing": "Nicht registriert"
           },
-          "environments": { "sandbox": "Testumgebung", "production": "Produktion" },
+          "environments": {
+            "sandbox": "Testumgebung",
+            "production": "Produktion"
+          },
           "result": {
             "successTitle": "Unternehmen verbunden",
             "successDescription": "Ihr Unternehmen ist jetzt bei der zugelassenen Plattform angemeldet. Ihre Rechnungen werden automatisch übertragen.",
@@ -5960,6 +5970,20 @@
       "isBusinessCustomerDescription": "Aktivieren Sie dieses Kästchen, wenn Sie im Namen eines Unternehmens mieten",
       "companyName": "Firmenname",
       "companyNamePlaceholder": "ACME GmbH",
+      "companyNumber": "Unternehmensnummer (optional)",
+      "companyNumberSiren": "SIREN (optional)",
+      "companyNumberBce": "Unternehmensnummer (KBO/BCE, optional)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Optional — wir benötigen sie für eine Geschäftsrechnung.",
+      "vatNumber": "USt-IdNr. (optional)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Unternehmen suchen",
+        "placeholder": "Firmenname, SIREN oder SIRET",
+        "description": "Optional: Suchen Sie, um Ihre Firmendaten automatisch auszufüllen.",
+        "noResults": "Kein Unternehmen gefunden. Geben Sie die Daten manuell ein.",
+        "closed": "Geschlossen"
+      },
       "contact": "Kontakt",
       "address": "Adresse",
       "addressPlaceholder": "Mietstraße 123",
@@ -5988,6 +6012,8 @@
         "phoneRequired": "Telefon erforderlich",
         "invalidPhone": "Ungültiges Telefonformat",
         "companyNameRequired": "Bitte geben Sie den Firmennamen ein",
+        "invalidCompanyNumber": "Ungültige Unternehmensnummer",
+        "invalidVatNumber": "Ungültige USt-IdNr.",
         "acceptCgv": "Sie müssen die AGB akzeptieren"
       },
       "pricing": {

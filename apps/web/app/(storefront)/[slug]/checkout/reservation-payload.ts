@@ -78,6 +78,12 @@ export function buildReservationPayload({
       companyName: values.isBusinessCustomer
         ? values.companyName.trim()
         : undefined,
+      companyNumber: values.isBusinessCustomer
+        ? values.companyNumber.trim() || undefined
+        : undefined,
+      vatNumber: values.isBusinessCustomer
+        ? values.vatNumber.trim() || undefined
+        : undefined,
       address: values.address || undefined,
       city: values.city || undefined,
       postalCode: values.postalCode || undefined,

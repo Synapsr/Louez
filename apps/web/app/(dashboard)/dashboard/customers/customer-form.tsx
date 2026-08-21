@@ -41,6 +41,8 @@ interface Customer {
   firstName: string
   lastName: string
   companyName: string | null
+  companyNumber: string | null
+  vatNumber: string | null
   phone: string | null
   address: string | null
   city: string | null
@@ -87,6 +89,8 @@ export function CustomerForm({
       firstName: customer?.firstName || '',
       lastName: customer?.lastName || '',
       companyName: customer?.companyName || undefined,
+      companyNumber: customer?.companyNumber || undefined,
+      vatNumber: customer?.vatNumber || undefined,
       phone: customer?.phone || undefined,
       address: customer?.address || undefined,
       city: customer?.city || undefined,
@@ -138,6 +142,14 @@ export function CustomerForm({
   })
 
   const customerType = useStore(form.store, (s) => s.values.customerType)
+  const country = useStore(form.store, (s) => s.values.country)
+
+  const companyNumberLabel =
+    country === 'FR'
+      ? t('companyNumberSiren')
+      : country === 'BE'
+        ? t('companyNumberBce')
+        : t('companyNumber')
 
   return (
     <form.AppForm>
@@ -168,6 +180,8 @@ export function CustomerForm({
                     field.handleChange(checked ? 'business' : 'individual')
                     if (!checked) {
                       form.setFieldValue('companyName', undefined)
+                      form.setFieldValue('companyNumber', undefined)
+                      form.setFieldValue('vatNumber', undefined)
                     }
                   }}
                 />
@@ -197,6 +211,59 @@ export function CustomerForm({
                 </div>
               )}
             </form.Field>
+          )}
+
+          {/* Company identifiers - optional, used to issue a B2B invoice */}
+          {customerType === 'business' && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.Field name="companyNumber">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>{companyNumberLabel}</Label>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      inputMode="numeric"
+                      autoComplete="off"
+                      value={field.state.value || ''}
+                      onChange={(e) => field.handleChange(e.target.value || undefined)}
+                      onBlur={field.handleBlur}
+                      placeholder={t('companyNumberPlaceholder')}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {t('companyNumberHelp')}
+                    </p>
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm font-medium text-destructive">
+                        {getFieldError(field.state.meta.errors[0])}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </form.Field>
+
+              <form.Field name="vatNumber">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor={field.name}>{t('vatNumber')}</Label>
+                    <Input
+                      id={field.name}
+                      name={field.name}
+                      autoComplete="off"
+                      value={field.state.value || ''}
+                      onChange={(e) => field.handleChange(e.target.value || undefined)}
+                      onBlur={field.handleBlur}
+                      placeholder={t('vatNumberPlaceholder')}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm font-medium text-destructive">
+                        {getFieldError(field.state.meta.errors[0])}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </form.Field>
+            </div>
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">

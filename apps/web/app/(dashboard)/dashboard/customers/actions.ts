@@ -5,7 +5,13 @@ import { getCurrentStore } from '@/lib/store-context'
 import { customers, reservations } from '@louez/db'
 import { eq, and, count } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { customerSchema, type CustomerInput } from '@louez/validations'
+import {
+  customerSchema,
+  digitsOnly,
+  isValidCompanyNumber,
+  resolveCompanyNumberScheme,
+  type CustomerInput,
+} from '@louez/validations'
 import { notifyCustomerCreated } from '@/lib/discord/platform-notifications'
 
 async function getStoreId() {
@@ -16,6 +22,36 @@ async function getStoreId() {
   }
 
   return store.id
+}
+
+/**
+ * Company identifiers as they must be persisted.
+ *
+ * The scheme is always derived from the customer's country — never read from
+ * the submitted payload — so it can't contradict the number it labels, and
+ * both identifiers are dropped when the customer is not a business. A number
+ * that doesn't match its country's format is kept as typed but gets no scheme:
+ * the invoice then degrades to B2C instead of being transmitted with a bogus
+ * identifier.
+ */
+function resolveCustomerCompanyFields(validated: CustomerInput) {
+  if (validated.customerType !== 'business') {
+    return { companyNumber: null, companyNumberScheme: null, vatNumber: null }
+  }
+
+  const country = validated.country ?? ''
+  const raw = validated.companyNumber?.trim() ?? ''
+  const isUsable = raw.length > 0 && isValidCompanyNumber(country, raw)
+  const scheme = isUsable ? resolveCompanyNumberScheme(country) : null
+  // FR/BE identifiers are pure digits; elsewhere keep what was typed.
+  const companyNumber = scheme ? digitsOnly(raw) : raw
+  const vatNumber = validated.vatNumber?.replace(/\s/g, '').toUpperCase() ?? ''
+
+  return {
+    companyNumber: companyNumber.length > 0 ? companyNumber : null,
+    companyNumberScheme: scheme,
+    vatNumber: vatNumber.length > 0 ? vatNumber : null,
+  }
 }
 
 export async function createCustomer(data: CustomerInput) {
@@ -42,6 +78,7 @@ export async function createCustomer(data: CustomerInput) {
       .values({
         storeId: store.id,
         ...validated,
+        ...resolveCustomerCompanyFields(validated),
       })
       .$returningId()
 
@@ -93,6 +130,7 @@ export async function updateCustomer(customerId: string, data: CustomerInput) {
       .update(customers)
       .set({
         ...validated,
+        ...resolveCustomerCompanyFields(validated),
         updatedAt: new Date(),
       })
       .where(eq(customers.id, customerId))

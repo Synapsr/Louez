@@ -2709,6 +2709,13 @@
         "businessCustomerDescription": "Marque si este cliente representa una empresa",
         "companyName": "Nombre de la empresa",
         "companyNamePlaceholder": "ACME S.L.",
+        "companyNumber": "Número de empresa",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Número de empresa (BCE/KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Necesario para emitir una factura electrónica B2B.",
+        "vatNumber": "Número de IVA",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Nombre *",
         "firstNamePlaceholder": "Juan",
         "lastName": "Apellido *",
@@ -4250,7 +4257,10 @@
             "error": "Registro fallido",
             "missing": "No registrada"
           },
-          "environments": { "sandbox": "Entorno de prueba", "production": "Producción" },
+          "environments": {
+            "sandbox": "Entorno de prueba",
+            "production": "Producción"
+          },
           "result": {
             "successTitle": "Empresa conectada",
             "successDescription": "Tu empresa ya está inscrita en la plataforma acreditada. Tus facturas se transmitirán automáticamente.",
@@ -5960,6 +5970,20 @@
       "isBusinessCustomerDescription": "Marque esta casilla si alquila en nombre de una empresa",
       "companyName": "Nombre de la empresa",
       "companyNamePlaceholder": "ACME S.L.",
+      "companyNumber": "Número de empresa (opcional)",
+      "companyNumberSiren": "SIREN (opcional)",
+      "companyNumberBce": "Número de empresa (BCE/KBO, opcional)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Opcional: lo necesitamos para emitir una factura para empresas.",
+      "vatNumber": "Número de IVA (opcional)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Busca tu empresa",
+        "placeholder": "Nombre de la empresa, SIREN o SIRET",
+        "description": "Opcional: busca para rellenar automáticamente los datos de tu empresa.",
+        "noResults": "No se ha encontrado ninguna empresa. Introduce los datos manualmente.",
+        "closed": "Cerrada"
+      },
       "contact": "Contacto",
       "address": "Direccion",
       "addressPlaceholder": "Calle del Alquiler 123",
@@ -5988,6 +6012,8 @@
         "phoneRequired": "Telefono requerido",
         "invalidPhone": "Formato de telefono invalido",
         "companyNameRequired": "Por favor ingrese el nombre de la empresa",
+        "invalidCompanyNumber": "Número de empresa no válido",
+        "invalidVatNumber": "Número de IVA no válido",
         "acceptCgv": "Debe aceptar los terminos y condiciones"
       },
       "pricing": {
