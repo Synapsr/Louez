@@ -351,6 +351,20 @@ export interface BaseContext {
       invoiceNumber?: string;
       error?: string;
     }>;
+    refundManualPayment?: (
+      reservationId: string,
+      data: {
+        paymentId: string;
+        amount: number;
+        method: "cash" | "card" | "transfer" | "check" | "other";
+        notes?: string;
+      },
+    ) => Promise<{
+      success?: boolean;
+      refundPaymentId?: string;
+      creditNoteNumber?: string;
+      error?: string;
+    }>;
     deletePayment?: (paymentId: string) => Promise<{ success?: boolean; error?: string }>;
     returnDeposit?: (
       reservationId: string,

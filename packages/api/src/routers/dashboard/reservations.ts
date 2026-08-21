@@ -18,6 +18,7 @@ import {
   dashboardReservationGetEmailRenderContextInputSchema,
   dashboardReservationPreviewTulipQuoteInputSchema,
   dashboardReservationRecordDamageInputSchema,
+  dashboardReservationRefundManualPaymentInputSchema,
   dashboardReservationRecordPaymentInputSchema,
   dashboardReservationReleaseDepositHoldInputSchema,
   dashboardReservationRequestPaymentInputSchema,
@@ -357,6 +358,26 @@ const recordPayment = requirePermission('write')
         ...input.payload,
         paidAt: toDate(input.payload.paidAt),
       });
+      if (result.error) {
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
+      }
+      return result;
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const refundManualPayment = requirePermission('write')
+  .input(dashboardReservationRefundManualPaymentInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn = context.dashboardReservationActions?.refundManualPayment;
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message: 'dashboardReservationActions.refundManualPayment not provided',
+        });
+      }
+      const result = await fn(input.reservationId, input.payload);
       if (result.error) {
         throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
@@ -744,6 +765,7 @@ export const dashboardReservationsRouter = {
   updateStatus,
   cancel,
   recordPayment,
+  refundManualPayment,
   deletePayment,
   returnDeposit,
   recordDamage,

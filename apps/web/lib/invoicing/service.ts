@@ -82,6 +82,7 @@ export async function generateInvoiceForPayment(
         method: true,
         status: true,
         stripeRefundId: true,
+        refundOfPaymentId: true,
         currency: true,
         paidAt: true,
         createdAt: true,
@@ -142,6 +143,7 @@ export async function generateInvoiceForPayment(
     if (
       payment.status !== "completed" ||
       payment.stripeRefundId !== null ||
+      payment.refundOfPaymentId !== null ||
       !REVENUE_PAYMENT_TYPES.has(payment.type) ||
       Number(payment.amount) <= 0
     ) {
@@ -450,6 +452,7 @@ export async function generateCreditNoteForRefund(
         method: true,
         status: true,
         stripeRefundId: true,
+        refundOfPaymentId: true,
         currency: true,
         paidAt: true,
         createdAt: true,
@@ -508,17 +511,25 @@ export async function generateCreditNoteForRefund(
     });
     const originalPayment = await tx.query.payments.findFirst({
       where: eq(payments.id, context.originalPaymentId),
-      columns: { id: true, type: true, stripeRefundId: true, reservationId: true },
+      columns: {
+        id: true,
+        type: true,
+        stripeRefundId: true,
+        refundOfPaymentId: true,
+        reservationId: true,
+      },
     });
 
     if (!refundPayment || !originalPayment) return skipped("payment_not_found");
     if (
       !REVENUE_PAYMENT_TYPES.has(originalPayment.type) ||
       originalPayment.stripeRefundId !== null ||
+      originalPayment.refundOfPaymentId !== null ||
       originalPayment.reservationId !== refundPayment.reservationId ||
       !["rental", "deposit_return"].includes(refundPayment.type) ||
       refundPayment.status !== "completed" ||
-      !refundPayment.stripeRefundId ||
+      (!refundPayment.stripeRefundId &&
+        refundPayment.refundOfPaymentId !== originalPayment.id) ||
       Number(refundAmount) <= 0
     ) {
       return skipped("payment_not_eligible");

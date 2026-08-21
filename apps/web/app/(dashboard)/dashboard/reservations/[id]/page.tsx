@@ -157,6 +157,7 @@ export default async function ReservationDetailPage({
           eq(payments.reservationId, id),
           eq(payments.status, 'completed'),
           isNull(payments.stripeRefundId),
+          isNull(payments.refundOfPaymentId),
           inArray(payments.type, ['rental', 'damage', 'adjustment', 'deposit_capture']),
           gt(payments.amount, '0'),
           notInArray(payments.id, linkedPaymentIds),

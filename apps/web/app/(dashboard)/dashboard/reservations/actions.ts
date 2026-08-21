@@ -19,6 +19,7 @@ import {
   customers,
   findBusyUnitIds,
   getBlockingReservationStatuses,
+  invoicePayments,
   paymentRequests,
   payments,
   productSeasonalPricing,
@@ -3415,6 +3416,13 @@ interface RecordPaymentData {
   notes?: string;
 }
 
+interface RefundManualPaymentData {
+  paymentId: string;
+  amount: number;
+  method: PaymentMethod;
+  notes?: string;
+}
+
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100;
 }
@@ -3463,9 +3471,15 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   }
 
   if (data.amount > 0 && data.type === "rental") {
-    const rentalPaid = reservation.payments
-      .filter((p) => p.type === "rental" && p.status === "completed")
-      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const paymentsById = new Map(reservation.payments.map((payment) => [payment.id, payment]));
+    const rentalPaid = reservation.payments.reduce((total, payment) => {
+      if (payment.status !== "completed") return total;
+      if (payment.refundOfPaymentId) {
+        const originalPayment = paymentsById.get(payment.refundOfPaymentId);
+        return originalPayment?.type === "rental" ? total - Number(payment.amount) : total;
+      }
+      return payment.type === "rental" ? total + Number(payment.amount) : total;
+    }, 0);
     const rentalRemaining = roundMoney(getReservationRentalAmount(reservation) - rentalPaid);
 
     if (data.amount > rentalRemaining) {
@@ -3544,6 +3558,121 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   return { success: true, paymentId, invoiceNumber };
 }
 
+export async function refundManualPayment(
+  reservationId: string,
+  data: RefundManualPaymentData,
+) {
+  const store = await getStoreForUser();
+  if (!store) {
+    return { error: "errors.unauthorized" };
+  }
+
+  if (!Number.isFinite(data.amount) || data.amount <= 0) {
+    return { error: "errors.invalidAmount" };
+  }
+
+  let refundPaymentId: string;
+  try {
+    refundPaymentId = await db.transaction(async (tx) => {
+      const [originalPayment] = await tx
+        .select({
+          id: payments.id,
+          amount: payments.amount,
+          type: payments.type,
+          status: payments.status,
+          currency: payments.currency,
+          refundOfPaymentId: payments.refundOfPaymentId,
+        })
+        .from(payments)
+        .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+        .where(
+          and(
+            eq(payments.id, data.paymentId),
+            eq(payments.reservationId, reservationId),
+            eq(reservations.storeId, store.id),
+          ),
+        )
+        .for("update");
+
+      if (!originalPayment) {
+        throw new Error("errors.paymentNotFound");
+      }
+
+      if (
+        originalPayment.status !== "completed" ||
+        !["rental", "damage", "adjustment", "deposit_capture"].includes(
+          originalPayment.type,
+        ) ||
+        originalPayment.refundOfPaymentId !== null ||
+        Number(originalPayment.amount) <= 0
+      ) {
+        throw new Error("errors.invalidAmount");
+      }
+
+      const [refundTotal] = await tx
+        .select({
+          amount: sql<string>`coalesce(sum(${payments.amount}), 0)`,
+        })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.refundOfPaymentId, originalPayment.id),
+            eq(payments.status, "completed"),
+          ),
+        );
+
+      const remainingAmount = roundMoney(
+        Number(originalPayment.amount) - Number(refundTotal?.amount ?? 0),
+      );
+      if (data.amount > remainingAmount) {
+        throw new Error("errors.invalidAmount");
+      }
+
+      const paymentId = nanoid();
+      const paidAt = new Date();
+      await tx.insert(payments).values({
+        id: paymentId,
+        reservationId,
+        amount: data.amount.toFixed(2),
+        type: originalPayment.type === "deposit_capture" ? "deposit_return" : "rental",
+        method: data.method,
+        status: "completed",
+        refundOfPaymentId: originalPayment.id,
+        currency: originalPayment.currency,
+        notes: data.notes?.trim() || null,
+        paidAt,
+        createdAt: paidAt,
+        updatedAt: paidAt,
+      });
+
+      return paymentId;
+    });
+  } catch (error) {
+    return { error: getActionErrorKey(error, "errors.invalidAmount") };
+  }
+
+  const creditNoteGeneration = await tryGenerateCreditNoteForRefund(
+    { originalPaymentId: data.paymentId, refundPaymentId },
+    data.amount,
+    "dashboard_refund_manual_payment",
+  );
+  const creditNoteNumber =
+    creditNoteGeneration.status === "generated" ? creditNoteGeneration.number : undefined;
+
+  await logReservationActivity(reservationId, "payment_updated", {
+    paymentId: data.paymentId,
+    refundPaymentId,
+    amount: data.amount,
+    method: data.method,
+    action: "refunded",
+  });
+
+  revalidatePath("/dashboard/reservations");
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+
+  return { success: true, refundPaymentId, creditNoteNumber };
+}
+
 export async function deletePayment(paymentId: string) {
   const store = await getStoreForUser();
   if (!store) {
@@ -3560,6 +3689,15 @@ export async function deletePayment(paymentId: string) {
 
   if (!payment || payment.reservation.storeId !== store.id) {
     return { error: "errors.paymentNotFound" };
+  }
+
+  const [invoiceLink] = await db
+    .select({ id: invoicePayments.id })
+    .from(invoicePayments)
+    .where(eq(invoicePayments.paymentId, paymentId))
+    .limit(1);
+  if (invoiceLink) {
+    return { error: "errors.paymentInvoiced" };
   }
 
   // Cannot delete Stripe payments
