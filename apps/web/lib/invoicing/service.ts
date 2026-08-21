@@ -20,6 +20,7 @@ import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { buildCreditNoteSnapshots, buildInvoiceSnapshots } from "./core";
 import { claimInvoiceNumber } from "./sequence";
+import { tryTransmitInvoiceNow } from "./superpdp-transmission";
 
 const REVENUE_PAYMENT_TYPES = new Set(["rental", "damage", "adjustment", "deposit_capture"]);
 
@@ -338,8 +339,10 @@ export async function tryGenerateInvoiceForPayment(
     const result = await generateInvoiceForPayment(paymentId);
     if (result.status !== "generated") return result;
 
-    // fr:212 e-reporting is posted by the transmission queue once Super PDP
-    // has assigned the invoice an id — posting here would always no-op.
+    // Immediate transmission for connected stores (fire-and-forget; the cron
+    // queue stays the retry path). fr:212 e-reporting is posted after a
+    // successful send, once Super PDP has assigned the invoice an id.
+    void tryTransmitInvoiceNow(result.invoiceId);
 
     if (result.kind === "initial") {
       await tryGenerateInitialContract(result.reservationId, source);
@@ -729,7 +732,11 @@ export async function tryGenerateCreditNoteForRefund(
       });
       return skipped("invoicing_disabled");
     }
-    return await generateCreditNoteForRefund(context, refundAmount);
+    const result = await generateCreditNoteForRefund(context, refundAmount);
+    if (result.status === "generated") {
+      void tryTransmitInvoiceNow(result.invoiceId);
+    }
+    return result;
   } catch (error) {
     log.error(
       "invoicing",

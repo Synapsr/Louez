@@ -200,36 +200,64 @@ export async function processInvoiceTransmissionQueue(
     if (!claim) continue;
     processed++;
 
-    try {
-      await sendInvoiceToSuperPdp(candidate.id);
-      sent++;
-    } catch (error) {
-      failed++;
-      const message = error instanceof Error ? error.message.slice(0, 2000) : "Unknown error";
-      await db
-        .update(invoices)
-        .set({
-          transmissionStatus: "failed",
-          nextAttemptAt:
-            claim.attemptCount >= MAX_TRANSMISSION_ATTEMPTS
-              ? null
-              : getRetryDate(claim.attemptCount),
-          lastError: message,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(invoices.id, candidate.id), eq(invoices.storeId, claim.storeId)));
-
-      const integration = await getSuperPdpIntegrationForStore(claim.storeId);
-      const providerFailure =
-        error instanceof SuperPdpApiError ||
-        error instanceof TypeError ||
-        isSuperPdpReconnectError(error);
-      if (integration && providerFailure) {
-        await markSuperPdpIntegrationFailure(integration.integrationId, error);
-      }
-      log.error("superpdp", `Invoice transmission failed for ${candidate.id}: ${message}`);
-    }
+    const outcome = await transmitClaimedInvoice(candidate.id, claim);
+    if (outcome === "sent") sent++;
+    else failed++;
   }
 
   return { processed, sent, failed };
+}
+
+async function transmitClaimedInvoice(
+  invoiceId: string,
+  claim: { attemptCount: number; storeId: string },
+): Promise<"sent" | "failed"> {
+  try {
+    await sendInvoiceToSuperPdp(invoiceId);
+    return "sent";
+  } catch (error) {
+    const message = error instanceof Error ? error.message.slice(0, 2000) : "Unknown error";
+    await db
+      .update(invoices)
+      .set({
+        transmissionStatus: "failed",
+        nextAttemptAt:
+          claim.attemptCount >= MAX_TRANSMISSION_ATTEMPTS
+            ? null
+            : getRetryDate(claim.attemptCount),
+        lastError: message,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(invoices.id, invoiceId), eq(invoices.storeId, claim.storeId)));
+
+    const integration = await getSuperPdpIntegrationForStore(claim.storeId);
+    const providerFailure =
+      error instanceof SuperPdpApiError ||
+      error instanceof TypeError ||
+      isSuperPdpReconnectError(error);
+    if (integration && providerFailure) {
+      await markSuperPdpIntegrationFailure(integration.integrationId, error);
+    }
+    log.error("superpdp", `Invoice transmission failed for ${invoiceId}: ${message}`);
+    return "failed";
+  }
+}
+
+/**
+ * Immediate transmission right after invoice generation, so a connected store
+ * does not wait for the next cron tick. Goes through the same claim/lease as
+ * the queue, so a concurrent drain can never double-send; the cron remains
+ * the retry path. Never throws.
+ */
+export async function tryTransmitInvoiceNow(invoiceId: string): Promise<void> {
+  try {
+    const claim = await claimInvoiceForTransmission(invoiceId);
+    if (!claim) return;
+    await transmitClaimedInvoice(invoiceId, claim);
+  } catch (error) {
+    log.error(
+      "superpdp",
+      `immediate transmission attempt failed for ${invoiceId}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
