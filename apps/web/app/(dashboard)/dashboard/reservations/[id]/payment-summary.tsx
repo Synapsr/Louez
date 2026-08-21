@@ -56,6 +56,14 @@ import { useStoreTimezone } from "@/contexts/store-context";
 import { orpc } from "@/lib/orpc/react";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
 
+import { ManualPaymentRefundDialog } from "./manual-payment-refund-dialog";
+import {
+  getNetCompletedPaymentAmount,
+  getRemainingRefundableAmount,
+  isManualPaymentMethod,
+  isManualPaymentRefundEligible,
+} from "./util.payment-refunds";
+
 interface Payment {
   id: string;
   amount: string;
@@ -71,6 +79,7 @@ interface Payment {
   status: "pending" | "completed" | "failed" | "refunded" | "authorized" | "cancelled";
   paidAt: Date | null;
   notes: string | null;
+  refundOfPaymentId: string | null;
 }
 
 type PaymentType = "rental" | "deposit" | "deposit_return" | "damage" | "adjustment";
@@ -118,6 +127,7 @@ export function PaymentSummary({
   const [damageModalOpen, setDamageModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
+  const [paymentToRefund, setPaymentToRefund] = useState<Payment | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
 
   // Form state
@@ -145,9 +155,7 @@ export function PaymentSummary({
   const rental = parseFloat(subtotalAmount);
   const deposit = parseFloat(depositAmount);
 
-  const rentalPaid = payments
-    .filter((p) => p.type === "rental" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const rentalPaid = getNetCompletedPaymentAmount(payments, "rental");
 
   const depositCollected = payments
     .filter((p) => p.type === "deposit" && p.status === "completed")
@@ -157,9 +165,7 @@ export function PaymentSummary({
     .filter((p) => p.type === "deposit_return" && p.status === "completed")
     .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
-  const damagesPaid = payments
-    .filter((p) => p.type === "damage" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const damagesPaid = getNetCompletedPaymentAmount(payments, "damage");
 
   const rentalRemaining = Math.max(0, rental - rentalPaid);
   const depositRemaining = Math.max(0, deposit - depositCollected);
@@ -326,8 +332,14 @@ export function PaymentSummary({
       toastManager.add({ title: t("payment.deleted"), type: "success" });
       setDeleteDialogOpen(false);
       setPaymentToDelete(null);
-    } catch {
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+    } catch (error) {
+      toastManager.add({
+        title:
+          error instanceof Error && error.message === "errors.paymentInvoiced"
+            ? tErrors("paymentInvoiced")
+            : tErrors("generic"),
+        type: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -602,6 +614,11 @@ export function PaymentSummary({
                               Stripe
                             </Badge>
                           )}
+                          {payment.refundOfPaymentId && (
+                            <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                              {t("payment.refundBadge")}
+                            </Badge>
+                          )}
                           {payment.status === "authorized" && (
                             <Badge variant="pending" className="h-4 px-1 text-[9px] border-0">
                               {t("payment.statusAuthorized")}
@@ -629,7 +646,7 @@ export function PaymentSummary({
                       <span
                         className={cn(
                           "font-mono font-medium",
-                          payment.type === "deposit_return" &&
+                          (payment.type === "deposit_return" || payment.refundOfPaymentId) &&
                             "text-emerald-600 dark:text-emerald-400",
                           payment.type === "damage" && "text-red-600 dark:text-red-400",
                           payment.type === "deposit_capture" && "text-red-600 dark:text-red-400",
@@ -642,7 +659,7 @@ export function PaymentSummary({
                           payment.status === "cancelled" && "text-muted-foreground line-through",
                         )}
                       >
-                        {payment.type === "deposit_return"
+                        {payment.type === "deposit_return" || payment.refundOfPaymentId
                           ? "-"
                           : payment.type === "adjustment"
                             ? parseFloat(payment.amount) < 0
@@ -654,6 +671,16 @@ export function PaymentSummary({
                           : parseFloat(payment.amount).toFixed(2)}
                         {currencySymbol}
                       </span>
+                      {isManualPaymentRefundEligible(payment, payments) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => setPaymentToRefund(payment)}
+                        >
+                          {t("payment.refundAction")}
+                        </Button>
+                      )}
                       {payment.method !== "stripe" && (
                         <Tooltip>
                           <TooltipTrigger
@@ -1033,6 +1060,17 @@ export function PaymentSummary({
           </DialogFooter>
         </DialogPopup>
       </Dialog>
+
+      {paymentToRefund && isManualPaymentMethod(paymentToRefund.method) && (
+        <ManualPaymentRefundDialog
+          reservationId={reservationId}
+          paymentId={paymentToRefund.id}
+          remainingAmount={getRemainingRefundableAmount(paymentToRefund, payments)}
+          currencySymbol={currencySymbol}
+          defaultMethod={paymentToRefund.method}
+          onClose={() => setPaymentToRefund(null)}
+        />
+      )}
 
       {/* Delete Payment Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

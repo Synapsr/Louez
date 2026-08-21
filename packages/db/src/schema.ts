@@ -1492,6 +1492,7 @@ export const payments = mysqlTable(
       length: 255,
     }),
     stripeRefundId: varchar('stripe_refund_id', { length: 255 }),
+    refundOfPaymentId: varchar('refund_of_payment_id', { length: 21 }),
     stripePaymentMethodId: varchar('stripe_payment_method_id', { length: 255 }),
 
     // Authorization hold (empreinte)
@@ -1513,6 +1514,9 @@ export const payments = mysqlTable(
   },
   (table) => ({
     reservationIdx: index('payments_reservation_idx').on(table.reservationId),
+    refundOfPaymentIdx: index('payments_refund_of_payment_idx').on(
+      table.refundOfPaymentId,
+    ),
   }),
 );
 
