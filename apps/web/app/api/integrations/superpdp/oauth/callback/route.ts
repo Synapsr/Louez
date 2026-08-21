@@ -15,6 +15,7 @@ import { env } from "@/env";
 import { auth } from "@/lib/auth";
 import { log } from "@/lib/evlog";
 import { encryptIntegrationSecret } from "@/lib/integrations/credentials";
+import { syncSuperPdpVatRegime } from "@/lib/integrations/providers/superpdp/company";
 import { mapSuperPdpConnectionState } from "@/lib/integrations/providers/superpdp/connection";
 import { parseSuperPdpOAuthState } from "@/lib/integrations/providers/superpdp/oauth-state";
 import {
@@ -215,6 +216,9 @@ export async function GET(request: Request) {
           },
         });
     });
+
+    // Best-effort: the PDP needs the VAT regime before accepting sends.
+    await syncSuperPdpVatRegime(state.storeId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     log.error("superpdp", `OAuth enrollment failed: ${message}`);

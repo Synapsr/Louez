@@ -13,6 +13,7 @@ import {
   type StoreLegalProfileInput,
 } from "@louez/validations";
 
+import { syncSuperPdpVatRegime } from "@/lib/integrations/providers/superpdp/company";
 import { searchFrenchCompanies, type CompanySearchResult } from "@/lib/recherche-entreprises";
 import { getCurrentStore } from "@/lib/store-context";
 
@@ -82,6 +83,10 @@ export async function upsertStoreLegalProfile(
     .insert(storeLegalProfiles)
     .values({ storeId: store.id, ...values })
     .onDuplicateKeyUpdate({ set: values });
+
+  // The PDP's e-reporting calendar follows the VAT regime; keep it in sync
+  // for connected stores (best-effort, never blocks the save).
+  void syncSuperPdpVatRegime(store.id);
 
   revalidatePath("/dashboard/settings/invoicing");
   return { status: "success" };
