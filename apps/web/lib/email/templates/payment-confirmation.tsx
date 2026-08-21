@@ -32,6 +32,7 @@ interface PaymentConfirmationEmailProps {
   paymentDate: Date
   paymentMethod?: string | null
   reservationUrl?: string
+  contractSignatureUrl?: string
   locale?: EmailLocale
   currency?: string
 }
@@ -51,6 +52,7 @@ export function PaymentConfirmationEmail({
   paymentDate,
   paymentMethod,
   reservationUrl,
+  contractSignatureUrl,
   locale = 'fr',
   currency = 'EUR',
 }: PaymentConfirmationEmailProps) {
@@ -64,6 +66,14 @@ export function PaymentConfirmationEmail({
     typeof tc.timezone === 'string'
       ? tc.timezone.replace('{timezone}', timezoneLabel)
       : `Timezone: ${timezoneLabel}`
+  const contractSignatureText =
+    typeof messages.contractSignature === 'string'
+      ? messages.contractSignature
+      : t.requestAccepted.contractAvailable
+  const contractSignatureLabel =
+    typeof messages.signContract === 'string'
+      ? messages.signContract
+      : t.requestAccepted.viewContract
 
   return (
     <BaseLayout
@@ -146,6 +156,17 @@ export function PaymentConfirmationEmail({
       {/* CTA */}
       {reservationUrl && (
         <CtaButton href={reservationUrl} label={tc.viewReservation} primaryColor={primaryColor} />
+      )}
+
+      {contractSignatureUrl && (
+        <>
+          <EmailText>{contractSignatureText}</EmailText>
+          <CtaButton
+            href={contractSignatureUrl}
+            label={contractSignatureLabel}
+            primaryColor={primaryColor}
+          />
+        </>
       )}
     </BaseLayout>
   )

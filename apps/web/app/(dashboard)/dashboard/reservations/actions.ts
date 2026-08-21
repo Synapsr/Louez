@@ -131,6 +131,7 @@ import {
   tryGenerateCreditNoteForRefund,
   tryGenerateInvoiceForPayment,
 } from "@/lib/invoicing/service";
+import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
@@ -3498,7 +3499,13 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   });
 
   if (["rental", "damage", "adjustment"].includes(data.type) && data.amount > 0) {
-    await tryGenerateInvoiceForPayment(paymentId, "dashboard_record_payment");
+    const invoiceGeneration = await tryGenerateInvoiceForPayment(
+      paymentId,
+      "dashboard_record_payment",
+    );
+    if (invoiceGeneration.status === "generated" && invoiceGeneration.kind === "initial") {
+      await trySendInitialInvoicePaymentConfirmation(paymentId);
+    }
   }
 
   // Log activity

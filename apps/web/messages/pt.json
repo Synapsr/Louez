@@ -1737,6 +1737,27 @@
       "sendEmail": "Enviar email",
       "customerInfo": "Informacoes do cliente",
       "viewCustomer": "Ver cliente",
+      "invoiceDocuments": {
+        "title": "Faturas e notas de crédito",
+        "empty": "Ainda não foi gerada nenhuma fatura.",
+        "generate": "Gerar fatura",
+        "generationSuccess": "Os documentos de faturação disponíveis foram gerados.",
+        "generationError": "Não foi possível gerar a fatura.",
+        "download": "Baixar",
+        "downloadNamed": "Baixar {number}",
+        "types": {
+          "invoice": "Fatura",
+          "credit_note": "Nota de crédito"
+        },
+        "transmission": {
+          "not_applicable": "Não transmitida",
+          "pending": "Transmissão pendente",
+          "sent": "Enviada",
+          "validated": "Validada",
+          "rejected": "Rejeitada",
+          "failed": "Falha na transmissão"
+        }
+      },
       "periodStart": "Inicio",
       "periodEnd": "Fim",
       "duration": "Duracao",
@@ -3730,6 +3751,19 @@
               "help": "Referência iCalendar"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Ligue a sua empresa a uma plataforma acreditada para enviar e receber faturas eletrónicas.",
+            "about": "A Super PDP liga o Louez à rede oficial de faturação eletrónica e gere a inscrição, o envio, a receção e o ciclo de vida das faturas.",
+            "features": {
+              "send": "Envie faturas de clientes pela rede oficial.",
+              "receive": "Receba faturas de fornecedores no Louez.",
+              "lifecycle": "Acompanhe os estados de entrega e pagamento das faturas."
+            },
+            "resources": {
+              "website": "Site da Super PDP"
+            }
+          },
           "tulip": {
             "name": "Seguro Tulip",
             "description": "Ligue o Tulip para cotações e geração de contratos de seguro de aluguer.",
@@ -4098,14 +4132,60 @@
           "title": "Transmissão eletrónica (PDP)",
           "description": "Ligue a sua empresa a uma plataforma acreditada para enviar e receber faturas através da rede oficial.",
           "statusComingSoon": "Brevemente",
+          "statusPending": "Inscrição em curso",
+          "statusActionRequired": "Ação necessária",
           "deadlineTitle": "Prazo de setembro de 2026",
-          "deadlineDescription": "A partir de setembro de 2026, todas as empresas francesas devem estar ligadas a uma plataforma acreditada para receber as suas faturas eletrónicas; a emissão torna-se obrigatória em setembro de 2027. A ligação a partir do Louez é gratuita e chega brevemente.",
+          "deadlineDescription": "A partir de setembro de 2026, todas as empresas francesas devem estar ligadas a uma plataforma acreditada para receber as suas faturas eletrónicas; a emissão torna-se obrigatória em setembro de 2027. A ligação a partir do Louez é gratuita.",
           "benefits": {
             "send": "Envie as suas faturas a clientes empresariais através da rede oficial.",
             "receive": "Receba todas as faturas de fornecedores num só lugar.",
             "reporting": "E-reporting automático das suas vendas a particulares."
           },
-          "connectAction": "Ligar a minha empresa (brevemente)"
+          "connectAction": "Ligar a minha empresa",
+          "pendingTitle": "Inscrição em curso",
+          "pendingDescription": "A sua inscrição foi iniciada, mas ainda não está concluída. Retome-a para finalizar as verificações de identidade da plataforma acreditada.",
+          "resumeAction": "Retomar a inscrição",
+          "errorTitle": "Ligação interrompida",
+          "reconnectAction": "Voltar a ligar a minha empresa",
+          "errorHints": {
+            "reconnectRequired": "A plataforma revogou o acesso concedido ao Louez. Volte a ligar a sua empresa para retomar o envio de faturas.",
+            "oauthFailed": "Não foi possível concluir a inscrição. Inicie-a novamente; se o problema persistir, contacte o suporte.",
+            "operationFailed": "A última troca com a plataforma falhou. O Louez tentará novamente de forma automática; volte a ligar se o problema persistir."
+          },
+          "lockedTitle": "Ligação ainda não disponível",
+          "lockedReasons": {
+            "identityIncomplete": "Complete a sua identidade legal no passo 1: a plataforma verifica-a antes de inscrever a sua empresa.",
+            "invoicingDisabled": "Ative a faturação pelo Louez no passo 2: não há nada para transmitir enquanto o Louez não emitir as suas faturas.",
+            "countryUnsupported": "A transmissão eletrónica está atualmente disponível apenas para empresas registadas em França ou na Bélgica."
+          },
+          "details": {
+            "verification": "Verificação de identidade",
+            "directory": "Diretório da rede",
+            "environment": "Ambiente"
+          },
+          "verificationStatus": {
+            "verified": "Verificada",
+            "pending": "Em verificação",
+            "failed": "Falha na verificação"
+          },
+          "verificationPendingNote": "A plataforma ainda está a analisar os dados da sua empresa. As faturas serão transmitidas assim que a verificação terminar.",
+          "directoryStatus": {
+            "pending": "Registo em curso",
+            "created": "Registada",
+            "error": "Falha no registo",
+            "missing": "Não registada"
+          },
+          "environments": { "sandbox": "Ambiente de teste", "production": "Produção" },
+          "result": {
+            "successTitle": "Empresa ligada",
+            "successDescription": "A sua empresa está agora inscrita na plataforma acreditada. As faturas serão transmitidas automaticamente.",
+            "errorTitle": "Falha na ligação",
+            "errors": {
+              "oauth": "A inscrição foi interrompida antes de ser concluída. Pode iniciá-la novamente.",
+              "legalProfileIncomplete": "A sua identidade legal está incompleta. Complete o passo 1 e inicie novamente a ligação.",
+              "notConfigured": "A transmissão eletrónica não está configurada neste ambiente. Contacte o suporte do Louez."
+            }
+          }
         }
       },
       "delivery": {
@@ -6080,6 +6160,17 @@
       "signContract": "Assinar contrato",
       "contractSigned": "Contrato assinado",
       "downloadContract": "Baixar contrato",
+      "signContractConfirmation": "Ao continuar, confirma que leu e aceita este contrato de aluguer.",
+      "signContractError": "Não foi possível assinar o contrato. Tente novamente.",
+      "invoiceDocuments": {
+        "title": "Faturas e notas de crédito",
+        "description": "Baixe os documentos contabilísticos desta reserva.",
+        "download": "Baixar",
+        "types": {
+          "invoice": "Fatura",
+          "credit_note": "Nota de crédito"
+        }
+      },
       "paymentPaid": "Pago",
       "paymentPending": "Nao pago",
       "amountPaid": "Valor pago",

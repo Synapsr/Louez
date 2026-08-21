@@ -1776,6 +1776,27 @@
       "sendEmail": "E-Mail senden",
       "customerInfo": "Kundeninformationen",
       "viewCustomer": "Kunde ansehen",
+      "invoiceDocuments": {
+        "title": "Rechnungen und Gutschriften",
+        "empty": "Es wurde noch keine Rechnung erstellt.",
+        "generate": "Rechnung erstellen",
+        "generationSuccess": "Die verfügbaren Rechnungsdokumente wurden erstellt.",
+        "generationError": "Die Rechnung konnte nicht erstellt werden.",
+        "download": "Herunterladen",
+        "downloadNamed": "{number} herunterladen",
+        "types": {
+          "invoice": "Rechnung",
+          "credit_note": "Gutschrift"
+        },
+        "transmission": {
+          "not_applicable": "Nicht übermittelt",
+          "pending": "Übermittlung ausstehend",
+          "sent": "Gesendet",
+          "validated": "Validiert",
+          "rejected": "Abgelehnt",
+          "failed": "Übermittlung fehlgeschlagen"
+        }
+      },
       "periodStart": "Beginn",
       "periodEnd": "Ende",
       "duration": "Dauer",
@@ -3730,6 +3751,19 @@
               "help": "iCalendar-Referenz"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Verbinden Sie Ihr Unternehmen mit einer zugelassenen Plattform, um elektronische Rechnungen zu senden und zu empfangen.",
+            "about": "Super PDP verbindet Louez mit dem offiziellen Netzwerk für elektronische Rechnungen und verwaltet Anmeldung, Versand, Empfang und Statusänderungen.",
+            "features": {
+              "send": "Kundenrechnungen über das offizielle Netzwerk senden.",
+              "receive": "Lieferantenrechnungen in Louez empfangen.",
+              "lifecycle": "Zustell- und Zahlungsstatus von Rechnungen verfolgen."
+            },
+            "resources": {
+              "website": "Super-PDP-Website"
+            }
+          },
           "tulip": {
             "name": "Tulip-Versicherung",
             "description": "Verbinden Sie Tulip, um Mietversicherungsverträge zu kalkulieren und zu erstellen.",
@@ -4098,14 +4132,60 @@
           "title": "Elektronische Übermittlung (PDP)",
           "description": "Verbinden Sie Ihr Unternehmen mit einer zugelassenen Plattform, um Rechnungen über das offizielle Netz zu senden und zu empfangen.",
           "statusComingSoon": "Demnächst verfügbar",
+          "statusPending": "Anmeldung läuft",
+          "statusActionRequired": "Aktion erforderlich",
           "deadlineTitle": "Frist September 2026",
-          "deadlineDescription": "Ab September 2026 muss jedes französische Unternehmen an eine zugelassene Plattform angebunden sein, um elektronische Rechnungen zu empfangen; der Versand wird im September 2027 verpflichtend. Die Anbindung über Louez ist kostenlos und kommt in Kürze.",
+          "deadlineDescription": "Ab September 2026 muss jedes französische Unternehmen an eine zugelassene Plattform angebunden sein, um elektronische Rechnungen zu empfangen; der Versand wird im September 2027 verpflichtend. Die Anbindung über Louez ist kostenlos.",
           "benefits": {
             "send": "Senden Sie Ihre Rechnungen über das offizielle Netz an Geschäftskunden.",
             "receive": "Empfangen Sie alle Lieferantenrechnungen an einem Ort.",
             "reporting": "Automatisches E-Reporting Ihrer Verkäufe an Privatkunden."
           },
-          "connectAction": "Unternehmen verbinden (demnächst)"
+          "connectAction": "Unternehmen verbinden",
+          "pendingTitle": "Anmeldung läuft",
+          "pendingDescription": "Ihre Anmeldung wurde begonnen, ist aber noch nicht abgeschlossen. Setzen Sie sie fort, um die Identitätsprüfung der zugelassenen Plattform abzuschließen.",
+          "resumeAction": "Anmeldung fortsetzen",
+          "errorTitle": "Verbindung unterbrochen",
+          "reconnectAction": "Unternehmen erneut verbinden",
+          "errorHints": {
+            "reconnectRequired": "Die Plattform hat den Louez gewährten Zugriff widerrufen. Verbinden Sie Ihr Unternehmen erneut, um Rechnungen wieder zu senden.",
+            "oauthFailed": "Die Anmeldung konnte nicht abgeschlossen werden. Starten Sie sie erneut; wenden Sie sich an den Support, wenn das Problem anhält.",
+            "operationFailed": "Der letzte Austausch mit der Plattform ist fehlgeschlagen. Louez versucht es automatisch erneut; verbinden Sie sich bei anhaltendem Problem neu."
+          },
+          "lockedTitle": "Verbindung noch nicht verfügbar",
+          "lockedReasons": {
+            "identityIncomplete": "Vervollständigen Sie in Schritt 1 Ihre rechtliche Identität: Die Plattform prüft sie vor der Anmeldung Ihres Unternehmens.",
+            "invoicingDisabled": "Aktivieren Sie in Schritt 2 die Rechnungsstellung durch Louez: Es gibt nichts zu übertragen, solange Louez keine Rechnungen ausstellt.",
+            "countryUnsupported": "Die elektronische Übertragung ist derzeit nur für Unternehmen verfügbar, die in Frankreich oder Belgien registriert sind."
+          },
+          "details": {
+            "verification": "Identitätsprüfung",
+            "directory": "Netzwerkverzeichnis",
+            "environment": "Umgebung"
+          },
+          "verificationStatus": {
+            "verified": "Verifiziert",
+            "pending": "Wird geprüft",
+            "failed": "Prüfung fehlgeschlagen"
+          },
+          "verificationPendingNote": "Die Plattform prüft Ihre Unternehmensdaten noch. Ihre Rechnungen werden nach Abschluss der Prüfung übertragen.",
+          "directoryStatus": {
+            "pending": "Registrierung läuft",
+            "created": "Registriert",
+            "error": "Registrierung fehlgeschlagen",
+            "missing": "Nicht registriert"
+          },
+          "environments": { "sandbox": "Testumgebung", "production": "Produktion" },
+          "result": {
+            "successTitle": "Unternehmen verbunden",
+            "successDescription": "Ihr Unternehmen ist jetzt bei der zugelassenen Plattform angemeldet. Ihre Rechnungen werden automatisch übertragen.",
+            "errorTitle": "Verbindung fehlgeschlagen",
+            "errors": {
+              "oauth": "Die Anmeldung wurde vor dem Abschluss unterbrochen. Sie können sie erneut starten.",
+              "legalProfileIncomplete": "Ihre rechtliche Identität ist unvollständig. Vervollständigen Sie Schritt 1 und starten Sie die Verbindung erneut.",
+              "notConfigured": "Die elektronische Übertragung ist in dieser Umgebung nicht konfiguriert. Wenden Sie sich an den Louez-Support."
+            }
+          }
         }
       },
       "delivery": {
@@ -6080,6 +6160,17 @@
       "signContract": "Vertrag unterschreiben",
       "contractSigned": "Vertrag unterschrieben",
       "downloadContract": "Vertrag herunterladen",
+      "signContractConfirmation": "Mit dem Fortfahren bestätigen Sie, dass Sie diesen Mietvertrag gelesen haben und akzeptieren.",
+      "signContractError": "Der Vertrag konnte nicht unterzeichnet werden. Bitte versuchen Sie es erneut.",
+      "invoiceDocuments": {
+        "title": "Rechnungen und Gutschriften",
+        "description": "Laden Sie die Buchhaltungsunterlagen für diese Reservierung herunter.",
+        "download": "Herunterladen",
+        "types": {
+          "invoice": "Rechnung",
+          "credit_note": "Gutschrift"
+        }
+      },
       "paymentPaid": "Bezahlt",
       "paymentPending": "Unbezahlt",
       "amountPaid": "Bezahlter Betrag",

@@ -186,6 +186,8 @@ export async function sendReservationConfirmationEmail({
   reservation,
   items,
   reservationUrl,
+  documentAttachments = [],
+  contractSignatureUrl,
   locale = 'fr',
 }: {
   to: string
@@ -209,6 +211,8 @@ export async function sendReservationConfirmationEmail({
   }
   items: ReservationItem[]
   reservationUrl: string
+  documentAttachments?: EmailAttachment[]
+  contractSignatureUrl?: string
   locale?: EmailLocale
 }) {
   const t = getEmailTranslations(locale)
@@ -239,6 +243,7 @@ export async function sendReservationConfirmationEmail({
       deposit: reservation.depositAmount,
       total: reservation.totalAmount,
       reservationUrl,
+      contractSignatureUrl,
       customContent,
       locale,
       currency: store.settings?.currency || 'EUR',
@@ -250,7 +255,13 @@ export async function sendReservationConfirmationEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
+    const result = await sendEmail({
+      to,
+      subject,
+      html,
+      attachments: [...logo.attachments, ...documentAttachments],
+      fromName: store.name,
+    })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1585,6 +1596,8 @@ export async function sendPaymentConfirmationEmail({
   paymentDate,
   paymentMethod,
   reservationUrl,
+  documentAttachments = [],
+  contractSignatureUrl,
   locale = 'fr',
 }: {
   to: string
@@ -1598,6 +1611,8 @@ export async function sendPaymentConfirmationEmail({
   paymentDate: Date
   paymentMethod?: string | null
   reservationUrl?: string
+  documentAttachments?: EmailAttachment[]
+  contractSignatureUrl?: string
   locale?: EmailLocale
 }) {
   const t = getEmailTranslations(locale)
@@ -1620,13 +1635,20 @@ export async function sendPaymentConfirmationEmail({
       paymentDate,
       paymentMethod,
       reservationUrl,
+      contractSignatureUrl,
       locale,
       currency: store.settings?.currency || 'EUR',
     })
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
+    const result = await sendEmail({
+      to,
+      subject,
+      html,
+      attachments: [...logo.attachments, ...documentAttachments],
+      fromName: store.name,
+    })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
