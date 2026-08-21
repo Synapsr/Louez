@@ -82,3 +82,34 @@ Géométrie dans [`_marks_v2.py`](_marks_v2.py). Chaque dossier contient `mark.s
 
 ⚠️ La malle est la seule marque dont le monochrome est un **dessin différent** (corps en contour, coins pleins)
 et non la même image en une couleur : évider les coins d'un corps plein réduit la silhouette à une croix.
+
+---
+
+## Troisième série (`v3/`) — mécanisme, matière, état
+
+Les deux premières séries ont exploré **la lettre** puis **l'objet posé**. Celle-ci ouvre les registres
+restants. La trouvaille : trois de ces marques sont des **systèmes à deux états** — le logo sait si l'objet
+est sorti, ce que le produit sait déjà de chaque article.
+
+**[→ Ouvrir la présentation de la troisième série](presentation-v3.html)**
+
+| Dossier | Idée | Deux états | Statut |
+| --- | --- | :-: | --- |
+| [`v3/piece/`](v3/piece/) | Un bloc, un morceau détaché, le vide qui l'attend | ✓ | Recommandée |
+| [`v3/alveole/`](v3/alveole/) | La même idée creusée dans un volume | ✓ | La plus riche en grand |
+| [`v3/casier/`](v3/casier/) | Trois emplacements, un vide | ✓ | La plus explicite |
+| [`v3/circuit/`](v3/circuit/) | Les deux faces d'une bande qui tourne | — | La plus sobre |
+| [`v3/perforation/`](v3/perforation/) | Le talon détachable | — | Piste ouverte |
+
+Géométrie dans [`_marks_v3.py`](_marks_v3.py). Chaque dossier contient `mark.svg`, `mono.svg`,
+`lockup-light.svg`, `lockup-dark.svg`, les déclinaisons `palette-*.svg`, et `state-in.svg` pour les marques
+à deux états.
+
+### Registres explorés et abandonnés
+
+| Registre | Résultat |
+| --- | --- |
+| Le personnage (mascotte) | **Échec** — demande un illustrateur, pas de la géométrie |
+| Le geste (trait modulé) | **Échec** — technique acquise, aucune forme signifiante trouvée |
+| Le circuit impossible | **Échec** — les jonctions ne survivent pas en dessous de 32 px |
+| Le mécanisme (charnière) | Écarté — se lit « classeur à anneaux » |
