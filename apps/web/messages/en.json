@@ -2451,7 +2451,8 @@
         "statusAuthorized": "Authorized",
         "statusRefunded": "Refunded",
         "statusCancelled": "Cancelled",
-        "requestPayment": "Request payment"
+        "requestPayment": "Request payment",
+        "invoiceGenerated": "Invoice {number} generated"
       },
       "requestPaymentModal": {
         "title": "Request payment",

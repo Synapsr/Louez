@@ -2412,7 +2412,8 @@
         "statusAuthorized": "Geautoriseerd",
         "statusRefunded": "Terugbetaald",
         "statusCancelled": "Geannuleerd",
-        "requestPayment": "Betaling aanvragen"
+        "requestPayment": "Betaling aanvragen",
+        "invoiceGenerated": "Factuur {number} aangemaakt"
       },
       "requestPaymentModal": {
         "title": "Betaling aanvragen",

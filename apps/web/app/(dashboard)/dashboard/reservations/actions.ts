@@ -3498,13 +3498,17 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     notes: data.notes || null,
   });
 
+  let invoiceNumber: string | undefined;
   if (["rental", "damage", "adjustment"].includes(data.type) && data.amount > 0) {
     const invoiceGeneration = await tryGenerateInvoiceForPayment(
       paymentId,
       "dashboard_record_payment",
     );
-    if (invoiceGeneration.status === "generated" && invoiceGeneration.kind === "initial") {
-      await trySendInitialInvoicePaymentConfirmation(paymentId);
+    if (invoiceGeneration.status === "generated") {
+      invoiceNumber = invoiceGeneration.number;
+      if (invoiceGeneration.kind === "initial") {
+        await trySendInitialInvoicePaymentConfirmation(paymentId);
+      }
     }
   }
 
@@ -3537,7 +3541,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
       amount_cents: toAnalyticsAmountCents(data.amount),
     },
   });
-  return { success: true, paymentId };
+  return { success: true, paymentId, invoiceNumber };
 }
 
 export async function deletePayment(paymentId: string) {
