@@ -113,3 +113,23 @@ Géométrie dans [`_marks_v3.py`](_marks_v3.py). Chaque dossier contient `mark.s
 | Le geste (trait modulé) | **Échec** — technique acquise, aucune forme signifiante trouvée |
 | Le circuit impossible | **Échec** — les jonctions ne survivent pas en dessous de 32 px |
 | Le mécanisme (charnière) | Écarté — se lit « classeur à anneaux » |
+
+---
+
+## Quatrième série (`v4/`) — l'idéation d'abord
+
+Réponse au reproche « on ne ressent rien » : cette série commence par l'idéation — six champs
+sémantiques écrits avant tout dessin, cinq lentilles en parallèle, **83 idées notées** sur un seul
+critère (est-ce qu'on ressent la location ?) — et n'en dessine que quatre, chacune partie d'un
+moment vécu.
+
+**[→ Ouvrir la présentation de la quatrième série](presentation-v4.html)**
+
+| Dossier | Moment vécu | Statut |
+| --- | --- | --- |
+| [`v4/enseigne/`](v4/enseigne/) | Le panonceau suspendu — à louer, et ouvert | **Recommandée** |
+| [`v4/ticket/`](v4/ticket/) | Le ticket de consigne : une moitié chacun | Idée la mieux notée de la moisson |
+| [`v4/cle-fob/`](v4/cle-fob/) | La clé qu'on vous tend au comptoir | La plus chaleureuse |
+| [`v4/cle-sortie/`](v4/cle-sortie/) | Le tableau à clés : sa place l'attend | Piste ouverte |
+
+Géométrie dans [`_marks_v4.py`](_marks_v4.py). Le ticket embarque `state-out.svg` (l'état déchiré).

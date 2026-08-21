@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Partir du vécu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F5F6F8; --surface:#FFFFFF; --surface-2:#FAFBFC;
+  --ink:#0D1117; --ink-2:#39414D; --muted:#69727F;
+  --rule:#E3E7EC; --rule-2:#EDF0F3;
+  --brand:#265FF2; --accent:#F76A13; --tile-dark:#0F131A;
+  --pro:#2B9461; --con:#C2410C;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0A0D12; --surface:#121821; --surface-2:#0E141C;
+    --ink:#E9EDF3; --ink-2:#B7C1CE; --muted:#828D9C;
+    --rule:#212A36; --rule-2:#1A222C;
+    --brand:#5B8CFF; --accent:#FF8A3D; --tile-dark:#05070A;
+    --pro:#4FBE85; --con:#F0834E;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0A0D12; --surface:#121821; --surface-2:#0E141C;
+  --ink:#E9EDF3; --ink-2:#B7C1CE; --muted:#828D9C;
+  --rule:#212A36; --rule-2:#1A222C;
+  --brand:#5B8CFF; --accent:#FF8A3D; --tile-dark:#05070A;
+  --pro:#4FBE85; --con:#F0834E;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Newsreader",Georgia,"Times New Roman",serif;
+  font-size:17px; line-height:1.62; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 28px 96px}
+h1,h2,h3,h4,h5{font-family:"Archivo","Helvetica Neue",Arial,sans-serif;font-weight:700;
+  letter-spacing:-0.022em;text-wrap:balance;margin:0}
+.mono,.eyebrow,.favn,.phnum,.badge,.critlab,.rjcode,.seg button,.filelist,.swatch code{
+  font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+code{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.86em;
+  background:var(--rule-2);padding:.1em .38em;border-radius:4px;color:var(--ink-2)}
+p{margin:0 0 1em}
+a{color:var(--brand)}
+
+/* ---------- masthead ---------- */
+.mast{padding:74px 0 40px;border-bottom:1px solid var(--rule)}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin-bottom:20px}
+.mast h1{font-size:clamp(38px,6vw,64px);line-height:1.02;margin-bottom:20px}
+.mast .lede{font-size:20px;line-height:1.55;color:var(--ink-2);max-width:60ch;margin-bottom:0}
+.mast .lede strong{color:var(--ink);font-weight:500}
+
+/* ---------- generic section ---------- */
+.sec{padding:60px 0 0}
+.sechead{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.sechead h2{font-size:clamp(24px,3.2vw,34px)}
+.secsub{color:var(--muted);font-size:16px;max-width:64ch;margin-bottom:34px}
+
+/* ---------- diagnostic ---------- */
+.dglist{display:grid;gap:2px;background:var(--rule);border:1px solid var(--rule);border-radius:12px;overflow:hidden}
+.dg{display:grid;grid-template-columns:56px 1fr;gap:16px;padding:22px 24px;background:var(--surface)}
+.dgn{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--accent);padding-top:4px;font-weight:600}
+.dg h4{font-size:17px;margin-bottom:5px;letter-spacing:-.01em}
+.dg p{font-size:15.5px;color:var(--ink-2);margin:0;max-width:66ch}
+
+/* ---------- browser tab strip ---------- */
+.tabwrap{margin:26px 0 0;border:1px solid var(--rule);border-radius:12px;overflow:hidden;background:var(--surface)}
+.tabcap{font-family:"IBM Plex Mono",monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.11em;
+  color:var(--muted);padding:13px 18px 0}
+.tabs{display:flex;gap:2px;padding:14px 14px 0;overflow-x:auto}
+.tb{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:9px 9px 0 0;font-size:13px;
+  white-space:nowrap;color:var(--muted);background:var(--rule-2);
+  font-family:"Archivo",sans-serif;font-weight:500}
+.tb--on{background:var(--paper);color:var(--ink);font-weight:600}
+.fi{width:16px;height:16px;flex:0 0 16px;display:flex}
+
+/* ---------- the system row ---------- */
+.sysrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.sys{border:1px solid var(--rule);border-radius:12px;background:var(--surface);padding:16px;text-align:center}
+.sysimg{height:96px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;
+  background:#FAFBFC;border:1px solid rgba(0,0,0,.06);border-radius:9px}
+.sys h5{font-size:13px;margin-bottom:4px}
+.sys p{font-size:13px;color:var(--muted);margin:0;line-height:1.45}
+
+/* ---------- planche ---------- */
+.planche{border:1px solid var(--rule);border-radius:16px;background:var(--surface);
+  padding:28px;margin-bottom:20px}
+.planche--out{background:var(--surface-2);border-style:dashed}
+.ph{display:flex;gap:18px;align-items:flex-start;margin-bottom:22px}
+.phnum{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);
+  border:1px solid var(--rule);border-radius:999px;padding:5px 11px;white-space:nowrap;margin-top:5px}
+.phttl h3{font-size:27px;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+.badge{font-size:10px;letter-spacing:.11em;text-transform:uppercase;background:var(--brand);color:#fff;
+  padding:4px 9px;border-radius:999px;font-weight:600}
+.phtag{color:var(--muted);font-size:16px;margin:3px 0 0}
+
+.spec{display:grid;grid-template-columns:1fr 1fr 1fr 1.25fr;gap:12px;margin-bottom:26px}
+.tile{border-radius:12px;height:150px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--rule)}
+.tile--paper{background:#FAFBFC;border-color:rgba(0,0,0,.08)}
+.tile--dark{background:#0F131A;border-color:transparent}
+.tile--home{background:linear-gradient(155deg,#4E5E7D,#222B42);border-color:transparent;
+  flex-direction:column;gap:10px}
+.appicon{width:76px;height:76px;border-radius:18px;overflow:hidden;display:flex;
+  box-shadow:0 5px 14px rgba(0,0,0,.34)}
+.appname{font-family:"Archivo",sans-serif;font-size:11px;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.favstrip{gap:20px;padding:0 16px}
+.fav{display:flex;flex-direction:column;align-items:center;gap:9px}
+.favbox{display:flex;align-items:center;justify-content:center;min-height:32px}
+.favn{font-size:10px;color:var(--muted)}
+.sv{display:flex}
+
+.pbody{display:grid;grid-template-columns:1.35fr 1fr;gap:34px}
+.prose p{font-size:16.5px;color:var(--ink-2);max-width:60ch}
+.prose p:last-child{margin-bottom:0}
+.prose strong{color:var(--ink);font-weight:600}
+.sidecol{display:flex;flex-direction:column;gap:14px}
+.crit{border-radius:11px;padding:15px 17px;border:1px solid var(--rule);background:var(--surface-2)}
+.critlab{font-size:10px;text-transform:uppercase;letter-spacing:.12em;margin-bottom:9px;font-weight:600}
+.crit--pro .critlab{color:var(--pro)}
+.crit--con .critlab{color:var(--con)}
+.crit ul{margin:0;padding-left:17px}
+.crit li{font-size:14.5px;color:var(--ink-2);margin-bottom:6px;line-height:1.5}
+.crit li:last-child{margin-bottom:0}
+.verdict{font-size:15.5px;color:var(--ink);margin:0;padding-left:15px;border-left:3px solid var(--accent);
+  line-height:1.55}
+
+/* ---------- rejects ---------- */
+.rjgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.rj{border:1px solid var(--rule);border-radius:11px;padding:17px;background:var(--surface)}
+.rjcode{font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:7px}
+.rj h5{font-size:15px;margin-bottom:5px}
+.rj p{font-size:14px;color:var(--muted);margin:0;line-height:1.5}
+
+/* ---------- colour audit ---------- */
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.swatch{border:1px solid var(--rule);border-radius:11px;overflow:hidden;background:var(--surface)}
+.chip{height:72px}
+.swatch .meta{padding:13px 15px}
+.swatch code{font-size:12px;display:block;margin-bottom:4px;background:none;padding:0;color:var(--ink)}
+.swatch span{font-size:12.5px;color:var(--muted);line-height:1.45;display:block}
+
+/* ---------- ship list ---------- */
+.filelist{border:1px solid var(--rule);border-radius:12px;background:var(--surface);overflow:hidden;
+  font-size:13.5px}
+.filelist div{display:flex;justify-content:space-between;gap:20px;padding:13px 18px;
+  border-bottom:1px solid var(--rule-2)}
+.filelist div:last-child{border-bottom:none}
+.filelist b{font-weight:400;color:var(--ink)}
+.filelist span{color:var(--muted);text-align:right;font-family:"Newsreader",serif;font-size:14.5px}
+
+/* ---------- controls ---------- */
+.ctl{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--paper) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--rule);padding:11px 0;margin-bottom:0}
+.ctlin{max-width:1080px;margin:0 auto;padding:0 28px;display:flex;align-items:center;gap:14px;
+  justify-content:space-between}
+.ctllab{font-family:"IBM Plex Mono",monospace;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.12em;color:var(--muted)}
+.seg{display:flex;gap:3px;background:var(--rule-2);padding:3px;border-radius:9px}
+.seg button{font-size:12px;padding:6px 14px;border:none;border-radius:7px;background:transparent;
+  color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.09)}
+.seg button:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+
+[data-view="color"] .sv-m{display:none}
+[data-view="mono"] .sv-c{display:none}
+[data-view="mono"] .sv-m svg{color:#0D1117}
+[data-view="mono"] .tile--dark .sv-m svg{color:#F5F6F8}
+[data-view="mono"] .sysimg .sv-m svg{color:#0D1117}
+
+@media (max-width:860px){
+  .spec{grid-template-columns:1fr 1fr}
+  .pbody{grid-template-columns:1fr;gap:22px}
+  .sysrow,.rjgrid,.swatches{grid-template-columns:1fr 1fr}
+  .dg{grid-template-columns:1fr;gap:6px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.oldrow{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0 0}
+.oldm{width:78px;height:78px;display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);border:1px solid var(--rule);border-radius:11px;opacity:.55}
+.callout{border-left:3px solid var(--accent);padding:2px 0 2px 16px;margin:22px 0 0;
+  color:var(--ink-2);font-size:16.5px;max-width:64ch}
+.callout strong{color:var(--ink);font-weight:600}
+
+.speclab{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;
+  letter-spacing:.11em;color:var(--muted);margin-bottom:9px}
+.chvoc{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--accent);margin:0 0 4px}
+.htable{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--rule);
+  border-radius:12px;overflow:hidden;font-size:14px}
+.htable td{padding:11px 14px;border-bottom:1px solid var(--rule-2);vertical-align:top}
+.htable tr:last-child td{border-bottom:none}
+.hn{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--accent);width:36px}
+.hi{font-weight:600;color:var(--ink);width:220px}
+.hd{color:var(--muted);font-size:13.5px}
+.tablewrap{overflow-x:auto;border-radius:12px}
+.conv{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+.cv{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:15px 17px}
+.cv h5{font-size:14.5px;margin-bottom:5px}
+.cv p{font-size:13.5px;color:var(--muted);margin:0;line-height:1.5}
+@media (max-width:860px){.conv{grid-template-columns:1fr}}
+</style>
+
+</head>
+<body>
+<div id="deck" data-view="color">
+<div class="ctl"><div class="ctlin">
+  <span class="ctllab">Louez · marque, quatrième série</span>
+  <div class="seg" role="group" aria-label="Mode d'affichage">
+    <button type="button" data-v="color" aria-pressed="true">Couleur</button>
+    <button type="button" data-v="mono" aria-pressed="false">Monochrome</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow">Quatrième série · l'idéation d'abord · 83 idées · 4 marques</div>
+  <h1>Partir du vécu</h1>
+  <p class="lede">« On ne ressent rien. » Le reproche était juste, et il visait la méthode : trois séries qui
+  cherchaient des <strong>formes</strong>, quand les marques qui font ressentir leur sujet partent toutes d'un
+  <strong>moment vécu</strong>. Cette série commence donc par l'idéation — six champs sémantiques, cinq lentilles,
+  83 idées notées — et n'en dessine que quatre.</p>
+</header>
+
+<section class="sec">
+  <div class="sechead"><h2>La carte — six champs sémantiques de la location</h2></div>
+  <p class="secsub">Écrite avant tout dessin. Chaque piste finale descend d'un champ.</p>
+  <div class="dglist"><div class="dg"><div class="dgn">01</div><div><h4>Les objets du comptoir</h4><p class="chvoc">clé · fob · tableau à clés · caution · registre · ticket · casier</p><p>La clé domine tout : voiture, ski, box, vélo — on vous TEND une clé. → pistes 03 et 04</p></div></div><div class="dg"><div class="dgn">02</div><div><h4>Les gestes</h4><p class="chvoc">tendre · recevoir · rendre · raccrocher · tourner la clé</p><p>La remise main à main est le cœur émotionnel — mais les mains sans illustrateur échouent. Le geste passe par l&#x27;objet tendu.</p></div></div><div class="dg"><div class="dgn">03</div><div><h4>Le temps</h4><p class="chvoc">la période · du…au… · posséder « en pointillés »</p><p>Déjà exploré (série 1) et muet. Mais « posséder en pointillés » devient un langage graphique. → piste 04</p></div></div><div class="dg"><div class="dgn">04</div><div><h4>La relation</h4><p class="chvoc">prêter contre confiance — l&#x27;open source EST un prêt</p><p>Je te tends mon code, tu me rends des contributions. Une marque qui dit LE PRÊT couvre logiciel et matériel d&#x27;un coup.</p></div></div><div class="dg"><div class="dgn">05</div><div><h4>La langue, l&#x27;enseigne</h4><p class="chvoc">« À LOUER » en vitrine depuis 150 ans · OUVERT/FERMÉ</p><p>Le panonceau suspendu dit à louer ET ouvert. Personne ne l&#x27;a. → piste 01, la recommandation</p></div></div><div class="dg"><div class="dgn">06</div><div><h4>Le contraire</h4><p class="chvoc">la légèreté de ne pas posséder · l&#x27;objet fantôme</p><p>Le shadow board des ateliers : l&#x27;outil sorti laisse sa silhouette. → piste 04</p></div></div></div>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>La moisson — cinq lentilles, 83 idées</h2></div>
+  <p class="secsub">Cinq angles d'attaque en parallèle : le vécu, les symboles universels, les précédents
+  (Airbnb, Docker, les vélos en libre-service), la langue, et le contraire — la légèreté de ne pas posséder.
+  Chaque idée notée sur un seul critère : <strong>est-ce qu'on ressent la location ?</strong> Les douze premières :</p>
+  <div class="tablewrap"><table class="htable"><tr><td class="hn">9</td><td class="hi">Le ticket de consigne déchiré</td><td class="hd">Un ticket numéroté déchiré en deux moitiés le long d&#x27;une ligne pointillée crantée : une moitié pleine, une moitié en contour. Les deux moitiés se font face, légèrement dé…</td></tr><tr><td class="hn">9</td><td class="hi">L&#x27;ombre au tableau (shadow board)</td><td class="hd">Un panneau perforé d&#x27;atelier avec la silhouette peinte d&#x27;un outil (perceuse ou clé) et le crochet vide au-dessus : l&#x27;objet n&#x27;est pas là, mais sa place l&#x27;attend. Réduit au…</td></tr><tr><td class="hn">9</td><td class="hi">L&#x27;affichette à franges arrachées</td><td class="hd">La petite annonce scotchée dans une boulangerie : un rectangle avec des franges détachables en bas — et surtout, certaines franges déjà arrachées. La silhouette se réduit…</td></tr><tr><td class="hn">9</td><td class="hi">Le shadow board (la silhouette d&#x27;atelier)</td><td class="hd">Comme sur un panneau mural d&#x27;atelier : la silhouette découpée d&#x27;un outil (perceuse, caméra) peinte à sa place, l&#x27;outil lui-même absent. Juste la forme-témoin qui dit « il…</td></tr><tr><td class="hn">8</td><td class="hi">Le panneau À LOUER assumé</td><td class="hd">Le petit panneau suspendu par deux chaînettes ou deux points d&#x27;attache, qui pendouille légèrement de travers — mais au lieu de &#x27;À LOUER&#x27;, il porte le logo ou une coche de…</td></tr><tr><td class="hn">8</td><td class="hi">Le tableau de clés avec un crochet vide</td><td class="hd">Une rangée de trois ou quatre crochets vus de face, façon réception d&#x27;hôtel ou atelier. Des clés (ou objets stylisés) pendent à tous les crochets sauf un — le crochet vid…</td></tr><tr><td class="hn">8</td><td class="hi">La fiche de prêt de bibliothèque</td><td class="hd">La petite carte glissée dans sa pochette au dos du livre, avec ses lignes de dates tamponnées les unes sous les autres. On voit la carte à moitié sortie de la pochette, d…</td></tr><tr><td class="hn">8</td><td class="hi">Le panneau de porte retourné DISPONIBLE / LOUÉ</td><td class="hd">Le petit panneau réversible de porte de boutique (OUVERT/FERMÉ), saisi en plein retournement : on voit le panneau en légère perspective de bascule, une face claire et une…</td></tr><tr><td class="hn">8</td><td class="hi">La passation</td><td class="hd">Deux mains stylisées de part et d&#x27;autre d&#x27;une même poignée (une barre horizontale) : l&#x27;une lâche, l&#x27;autre saisit. Cadrage très serré, juste les deux prises et la barre, c…</td></tr><tr><td class="hn">8</td><td class="hi">L&#x27;étiquette accrochée</td><td class="hd">Une étiquette de bagage/location (rectangle à coin coupé, œillet, petit lien) attachée à une poignée anonyme qui sort du cadre. On ne voit pas l&#x27;objet, seulement l&#x27;étique…</td></tr><tr><td class="hn">8</td><td class="hi">La flèche qui revient</td><td class="hd">Un trait unique qui part vers la droite, fait une boucle ouverte et revient vers son point de départ sans le toucher — une trajectoire d&#x27;aller-retour, pas un cercle fermé…</td></tr><tr><td class="hn">8</td><td class="hi">Le chien qui rapporte</td><td class="hd">Une mascotte minimale : un chien stylisé en 5-6 formes géométriques, un objet dans la gueule (une balle, ou mieux : un petit colis/caisse), en posture de retour au trot. …</td></tr></table></div>
+  <div class="conv">
+    <div class="cv"><h5>Convergence 1 — l'enseigne</h5><p>Ma carte (champ 5) et deux lentilles arrivent au
+    panonceau suspendu indépendamment. Trois chemins, une image.</p></div>
+    <div class="cv"><h5>Convergence 2 — le ticket</h5><p>Le ticket déchiré en deux moitiés : idée la mieux notée
+    de la moisson (9/10), retrouvée par deux lentilles.</p></div>
+    <div class="cv"><h5>Convergence 3 — la silhouette</h5><p>Le shadow board d'atelier apparaît dans ma carte
+    (champ 6) et deux fois dans la moisson. L'objet sorti laisse sa place.</p></div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>Les quatre marques</h2></div>
+  <p class="secsub">Chacune part d'un moment vécu. Deuxième vignette : la réserve blanche sur fond sombre — c'est
+  elle qui sert dans l'interface sombre. Favicons aux tailles réelles. Le bouton en haut bascule en monochrome.</p>
+  <section class="planche"><header class="ph"><div class="phnum">01</div><div class="phttl"><h3>L'enseigne <span class="badge">Recommandée</span></h3><p class="phtag">Le panonceau suspendu — à louer, et ouvert</p></div></header><div class="speclab">marque / réserve sur sombre / icône d'app / favicons</div><div class="spec"><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="#141A22" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="#F2601F"/><rect x="9" y="24" width="46" height="31" rx="7" fill="#141A22"/><rect x="17" y="36.5" width="30" height="6.5" rx="3.25" fill="#FFFFFF"/></g></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="currentColor" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M16 24h32a7 7 0 0 1 7 7v17a7 7 0 0 1-7 7H16a7 7 0 0 1-7-7V31a7 7 0 0 1 7-7Z M20.25 36.5a3.25 3.25 0 0 0 0 6.5h23.5a3.25 3.25 0 0 0 0-6.5Z"/></g></svg></span></div><div class="tile tile--dark"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="#F5F6F8" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="#F5F6F8"/><path fill-rule="evenodd" clip-rule="evenodd" fill="#F5F6F8" d="M16 24h32a7 7 0 0 1 7 7v17a7 7 0 0 1-7 7H16a7 7 0 0 1-7-7V31a7 7 0 0 1 7-7Z M20.25 36.5a3.25 3.25 0 0 0 0 6.5h23.5a3.25 3.25 0 0 0 0-6.5Z"/></g></svg></span><span class="sv sv-m sv-mi"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="currentColor" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M16 24h32a7 7 0 0 1 7 7v17a7 7 0 0 1-7 7H16a7 7 0 0 1-7-7V31a7 7 0 0 1 7-7Z M20.25 36.5a3.25 3.25 0 0 0 0 6.5h23.5a3.25 3.25 0 0 0 0-6.5Z"/></g></svg></span></div><div class="tile tile--home"><div class="appicon"><svg width="76" height="76" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 18C2 9.2 9.2 2 18 2h28c8.8 0 16 7.2 16 16v28c0 8.8-7.2 16-16 16H18C9.2 62 2 54.8 2 46Z" fill="#141A22"/><g transform="rotate(-3 32 40)"><path d="M18 26 32 13l14 13" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="12.5" r="3.6" fill="#F2601F"/><rect x="12" y="26" width="40" height="27" rx="6" fill="#FFFFFF"/><rect x="19" y="37" width="26" height="6" rx="3" fill="#F2601F"/></g></svg></div><span class="appname">Louez</span></div><div class="tile tile--paper favstrip"><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="#141A22" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="#F2601F"/><rect x="9" y="24" width="46" height="31" rx="7" fill="#141A22"/><rect x="17" y="36.5" width="30" height="6.5" rx="3.25" fill="#FFFFFF"/></g></svg></span><span class="sv sv-m"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="currentColor" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M16 24h32a7 7 0 0 1 7 7v17a7 7 0 0 1-7 7H16a7 7 0 0 1-7-7V31a7 7 0 0 1 7-7Z M20.25 36.5a3.25 3.25 0 0 0 0 6.5h23.5a3.25 3.25 0 0 0 0-6.5Z"/></g></svg></span></div><span class="favn">16</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="#141A22" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="#F2601F"/><rect x="9" y="24" width="46" height="31" rx="7" fill="#141A22"/><rect x="17" y="36.5" width="30" height="6.5" rx="3.25" fill="#FFFFFF"/></g></svg></span><span class="sv sv-m"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="currentColor" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M16 24h32a7 7 0 0 1 7 7v17a7 7 0 0 1-7 7H16a7 7 0 0 1-7-7V31a7 7 0 0 1 7-7Z M20.25 36.5a3.25 3.25 0 0 0 0 6.5h23.5a3.25 3.25 0 0 0 0-6.5Z"/></g></svg></span></div><span class="favn">20</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="#141A22" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="#F2601F"/><rect x="9" y="24" width="46" height="31" rx="7" fill="#141A22"/><rect x="17" y="36.5" width="30" height="6.5" rx="3.25" fill="#FFFFFF"/></g></svg></span><span class="sv sv-m"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="currentColor" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M16 24h32a7 7 0 0 1 7 7v17a7 7 0 0 1-7 7H16a7 7 0 0 1-7-7V31a7 7 0 0 1 7-7Z M20.25 36.5a3.25 3.25 0 0 0 0 6.5h23.5a3.25 3.25 0 0 0 0-6.5Z"/></g></svg></span></div><span class="favn">24</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="#141A22" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="#F2601F"/><rect x="9" y="24" width="46" height="31" rx="7" fill="#141A22"/><rect x="17" y="36.5" width="30" height="6.5" rx="3.25" fill="#FFFFFF"/></g></svg></span><span class="sv sv-m"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-3 32 39)"><path d="M16 24 32 9l16 15" stroke="currentColor" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="8.5" r="3.8" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M16 24h32a7 7 0 0 1 7 7v17a7 7 0 0 1-7 7H16a7 7 0 0 1-7-7V31a7 7 0 0 1 7-7Z M20.25 36.5a3.25 3.25 0 0 0 0 6.5h23.5a3.25 3.25 0 0 0 0-6.5Z"/></g></svg></span></div><span class="favn">32</span></div></div></div><div class="pbody"><div class="prose"><p>Le petit panneau suspendu à une corde est la typographie vernaculaire de la location depuis un siècle : « À LOUER » en vitrine, au balcon, sur la grille. Tout le monde l&#x27;a vu, tout le monde le lit sans réfléchir. <strong>On ressent la location avant d&#x27;avoir compris pourquoi.</strong></p><p>Et le même objet porte le second sens exactement là où il faut : un panonceau suspendu en vitrine, c&#x27;est aussi le panneau <strong>OUVERT</strong> d&#x27;une boutique. Ouvert = open source. Une image, les deux messages — location et ouverture — sans un mot écrit.</p><p>Les trois degrés d&#x27;inclinaison font le charme : un panneau pendu n&#x27;est jamais parfaitement droit. La corde en triangle et le clou orange font la lecture à 16 px ; la barre blanche est le mot, sans être un mot.</p><p>C&#x27;est aussi la marque la plus vivante de tout le travail : elle peut se balancer au survol, tomber puis se stabiliser au chargement, se retourner pour dire « loué » — le panneau réversible DISPONIBLE/LOUÉ des boutiques, déjà dans vos usages.</p></div><div class="sidecol"><div class="crit crit--pro"><div class="critlab">Pour</div><ul><li>On ressent la location immédiatement — le seul candidat de quatre séries dont c&#x27;est vrai sans légende</li><li>Dit aussi « ouvert » : l&#x27;open source est dans l&#x27;image, pas dans un argument</li><li>Lisible à 16 px : triangle + rectangle + barre survivent à tout</li><li>Un support d&#x27;animation évident et charmant (le balancement)</li></ul></div><div class="crit crit--con"><div class="critlab">Contre</div><ul><li>Le risque de lecture « immobilier » existe — c&#x27;est la corde de boutique et l&#x27;absence de maison qui l&#x27;écartent, à vérifier sur cinq lecteurs froids</li><li>Marque encre : sur fond sombre, c&#x27;est la version en réserve (blanche) qui prend le relais — comme toute marque encre, mais il faut le savoir</li></ul></div><p class="verdict"><strong>Ma recommandation, et la première dont je suis sûr.</strong> Elle fait ressentir la location, elle dit ouvert, elle est moderne dans l&#x27;exécution et elle a une vie d&#x27;animation devant elle.</p></div></div></section><section class="planche"><header class="ph"><div class="phnum">02</div><div class="phttl"><h3>Le ticket de consigne </h3><p class="phtag">Une moitié pour vous, une moitié pour moi</p></div></header><div class="speclab">marque / réserve sur sombre / état détaché / favicons</div><div class="spec"><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#141A22" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(0 0)"><path fill="#F2601F" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(3 0)"><path fill="currentColor" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span></div><div class="tile tile--dark"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#F5F6F8" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(3 0)"><path fill="#F5F6F8" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span><span class="sv sv-m sv-mi"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(3 0)"><path fill="currentColor" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span></div><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#141A22" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(6 -3)"><path fill="#F2601F" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(3 0)"><path fill="currentColor" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span></div><div class="tile tile--paper favstrip"><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#141A22" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(0 0)"><path fill="#F2601F" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span><span class="sv sv-m"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(3 0)"><path fill="currentColor" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span></div><span class="favn">16</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#141A22" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(0 0)"><path fill="#F2601F" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span><span class="sv sv-m"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(3 0)"><path fill="currentColor" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span></div><span class="favn">20</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#141A22" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(0 0)"><path fill="#F2601F" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span><span class="sv sv-m"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(3 0)"><path fill="currentColor" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span></div><span class="favn">24</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#141A22" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(0 0)"><path fill="#F2601F" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span><span class="sv sv-m"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M16 17h12A4 4 0 0 0 32 21V43A4 4 0 0 0 28 47H16A7 7 0 0 1 9 40V24A7 7 0 0 1 16 17Z"/><g transform="translate(3 0)"><path fill="currentColor" d="M32 21A4 4 0 0 0 36 17H48A7 7 0 0 1 55 24V40A7 7 0 0 1 48 47H36A4 4 0 0 0 32 43Z"/></g></svg></span></div><span class="favn">32</span></div></div></div><div class="pbody"><div class="prose"><p>Le ticket déchiré en deux le long de ses encoches : la souche reste au comptoir, le talon part avec le client, et les deux moitiés ne valent que réunies. Vestiaire, consigne, pressing — <strong>le contrat physique du prêt que tout le monde a déjà tenu en main.</strong></p><p>C&#x27;est l&#x27;idée la mieux notée de la moisson d&#x27;idéation (9/10), retrouvée indépendamment par deux lentilles sur cinq. Les encoches appariées sur la ligne de déchirure sont construites dans le contour — quand les moitiés se rejoignent, les demi-lunes forment des cercles pleins : la preuve visible qu&#x27;elles vont ensemble.</p><p>La marque a deux états naturels : réuni (l&#x27;objet est rendu, le logo au repos) et déchiré (une location est en cours). L&#x27;état réuni est le logo ; la séparation est l&#x27;histoire.</p></div><div class="sidecol"><div class="crit crit--pro"><div class="critlab">Pour</div><ul><li>Le geste du prêt le plus universellement vécu</li><li>Deux couleurs, deux parties, deux moitiés : la structure porte le sens</li><li>Bon en favicon : deux masses franches et une ligne d&#x27;encoches</li><li>Second état (déchiré) déjà dessiné, animation incluse</li></ul></div><div class="crit crit--con"><div class="critlab">Contre</div><ul><li>Peut se lire « billetterie / cinéma » — c&#x27;est la déchirure appariée, pas le ticket, qu&#x27;il faut montrer</li><li>Séparées, les deux moitiés perdent la lecture ticket : l&#x27;écart doit rester petit</li></ul></div><p class="verdict">La plus forte conceptuellement après l&#x27;enseigne. À choisir si vous préférez le contrat au commerce.</p></div></div></section><section class="planche"><header class="ph"><div class="phnum">03</div><div class="phttl"><h3>La clé au fob </h3><p class="phtag">Ce qu&#x27;on vous tend au comptoir</p></div></header><div class="speclab">marque / réserve sur sombre / icône d'app / favicons</div><div class="spec"><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="#F2601F" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="#141A22" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="#141A22" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="#141A22" stroke-width="4.8" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="currentColor" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="currentColor" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/></g></svg></span></div><div class="tile tile--dark"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="#F5F6F8" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="#F5F6F8" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="#F5F6F8" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="#F5F6F8" stroke-width="4.8" stroke-linecap="round"/></g></svg></span><span class="sv sv-m sv-mi"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="currentColor" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="currentColor" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/></g></svg></span></div><div class="tile tile--home"><div class="appicon"><svg width="76" height="76" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="#F2601F" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="#141A22" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="#141A22" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="#141A22" stroke-width="4.8" stroke-linecap="round"/></g></svg></div><span class="appname">Louez</span></div><div class="tile tile--paper favstrip"><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="#F2601F" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="#141A22" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="#141A22" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="#141A22" stroke-width="4.8" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="currentColor" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="currentColor" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/></g></svg></span></div><span class="favn">16</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="#F2601F" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="#141A22" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="#141A22" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="#141A22" stroke-width="4.8" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="currentColor" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="currentColor" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/></g></svg></span></div><span class="favn">20</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="#F2601F" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="#141A22" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="#141A22" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="#141A22" stroke-width="4.8" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="currentColor" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="currentColor" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/></g></svg></span></div><span class="favn">24</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="#F2601F" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="#141A22" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="#141A22" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="#141A22" stroke-width="4.8" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="5" width="22" height="28" rx="7" fill="currentColor" transform="rotate(8 26 19)"/><circle cx="27.5" cy="13.5" r="3" fill="#FFFFFF" transform="rotate(8 26 19)"/><circle cx="31" cy="34" r="6" stroke="currentColor" stroke-width="5"/><g transform="rotate(-12 31 40)"><path d="M31 40v14" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M35 46h6M35 52h4.5" stroke="currentColor" stroke-width="4.8" stroke-linecap="round"/></g></svg></span></div><span class="favn">32</span></div></div></div><div class="pbody"><div class="prose"><p>Une clé accrochée à son fob de comptoir — voiture de location, ski, box de stockage, appartement. <strong>Le moment où la location devient réelle, c&#x27;est quand on vous tend ça.</strong></p><p>La clé seule dirait « sécurité » ou « immobilier ». C&#x27;est le fob orange qui la ramène au comptoir de location : personne ne met un fob à sa propre clé.</p><p>C&#x27;est la plus figurative des quatre — et donc la plus chaleureuse pour des loueurs non techniques, la moins « tech » pour des développeurs. À assumer comme un choix de ton.</p></div><div class="sidecol"><div class="crit crit--pro"><div class="critlab">Pour</div><ul><li>Le vécu du comptoir, immédiatement</li><li>Le fob orange est un marqueur fort et possédable</li><li>Charmante en grand, sur la page d&#x27;accueil et les goodies</li></ul></div><div class="crit crit--con"><div class="critlab">Contre</div><ul><li>À 16 px la clé se brouille — c&#x27;est le fob qui identifie, pas la clé</li><li>Trois éléments (fob, anneau, clé) : la plus fragile en composition</li><li>Ton plus artisanal que SaaS : à trancher selon l&#x27;image voulue</li></ul></div><p class="verdict">La plus humaine. Le bon choix si Louez veut parler d&#x27;abord aux loueurs, ensuite aux développeurs.</p></div></div></section><section class="planche"><header class="ph"><div class="phnum">04</div><div class="phttl"><h3>La clé sortie </h3><p class="phtag">Le tableau à clés : sa place l&#x27;attend</p></div></header><div class="speclab">marque / réserve sur sombre / icône d'app / favicons</div><div class="spec"><div class="tile tile--paper"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#141A22" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="#F2601F" stroke-width="6.5"/><path d="M42 30v18" stroke="#F2601F" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="#F2601F" stroke-width="5" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="currentColor" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="currentColor" stroke-width="6.5"/><path d="M42 30v18" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></g></svg></span></div><div class="tile tile--dark"><span class="sv sv-c"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#F5F6F8" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="#F5F6F8" stroke-width="6.5"/><path d="M42 30v18" stroke="#F5F6F8" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="#F5F6F8" stroke-width="5" stroke-linecap="round"/></g></svg></span><span class="sv sv-m sv-mi"><svg width="96" height="96" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="currentColor" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="currentColor" stroke-width="6.5"/><path d="M42 30v18" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></g></svg></span></div><div class="tile tile--home"><div class="appicon"><svg width="76" height="76" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#141A22" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="#F2601F" stroke-width="6.5"/><path d="M42 30v18" stroke="#F2601F" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="#F2601F" stroke-width="5" stroke-linecap="round"/></g></svg></div><span class="appname">Louez</span></div><div class="tile tile--paper favstrip"><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#141A22" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="#F2601F" stroke-width="6.5"/><path d="M42 30v18" stroke="#F2601F" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="#F2601F" stroke-width="5" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="16" height="16" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="currentColor" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="currentColor" stroke-width="6.5"/><path d="M42 30v18" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></g></svg></span></div><span class="favn">16</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#141A22" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="#F2601F" stroke-width="6.5"/><path d="M42 30v18" stroke="#F2601F" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="#F2601F" stroke-width="5" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="currentColor" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="currentColor" stroke-width="6.5"/><path d="M42 30v18" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></g></svg></span></div><span class="favn">20</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#141A22" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="#F2601F" stroke-width="6.5"/><path d="M42 30v18" stroke="#F2601F" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="#F2601F" stroke-width="5" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="24" height="24" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="currentColor" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="currentColor" stroke-width="6.5"/><path d="M42 30v18" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></g></svg></span></div><span class="favn">24</span></div><div class="fav"><div class="favbox"><span class="sv sv-c"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="#141A22" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="#F2601F" stroke-width="6.5"/><path d="M42 30v18" stroke="#F2601F" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="#F2601F" stroke-width="5" stroke-linecap="round"/></g></svg></span><span class="sv sv-m"><svg width="32" height="32" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><g stroke="currentColor" stroke-width="4.2" stroke-dasharray="6.5 5.5" stroke-linecap="round" opacity=".8"><circle cx="20" cy="22" r="8.5"/><path d="M20 32v18"/></g><g transform="rotate(14 42 34)"><circle cx="42" cy="20" r="8.5" stroke="currentColor" stroke-width="6.5"/><path d="M42 30v18" stroke="currentColor" stroke-width="6.5" stroke-linecap="round"/><path d="M46.5 39h6.5M46.5 45.5h5" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></g></svg></span></div><span class="favn">32</span></div></div></div><div class="pbody"><div class="prose"><p>Deux fois la même clé : à gauche sa silhouette en pointillés — sa place au tableau —, à droite la clé elle-même, décrochée, en train de partir. <strong>Le shadow board des ateliers : l&#x27;objet est sorti, sa place raconte qu&#x27;il va revenir.</strong></p><p>Le pointillé est un double langage : la silhouette peinte des panneaux d&#x27;outillage ET le placeholder des interfaces contemporaines. Loueurs et développeurs y lisent chacun leur monde.</p><p>Idée notée 9/10 par la lentille « vécu » — mais mon exécution reste en dessous de l&#x27;idée : deux clés, c&#x27;est chargé, et le pointillé meurt en petit. Je la montre comme piste ouverte, pas comme livrable.</p></div><div class="sidecol"><div class="crit crit--pro"><div class="critlab">Pour</div><ul><li>Le sens le plus riche : sorti, attendu, de retour — tout y est</li><li>Le pointillé « emprunté, pas possédé » est une vraie trouvaille de langage</li></ul></div><div class="crit crit--con"><div class="critlab">Contre</div><ul><li>Exécution en dessous de l&#x27;idée : chargée, fragile en petit</li><li>Demanderait une clé plus simple et un seul point de vue</li></ul></div><p class="verdict">L&#x27;idée la plus profonde, l&#x27;exécution la moins aboutie. À creuser si le concept vous parle plus que les trois autres.</p></div></div></section>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>Bien notées, écartées quand même</h2></div>
+  <p class="secsub">L'idéation large produit surtout des idées qu'il faut savoir refuser. Les six meilleures
+  refusées, avec la raison.</p>
+  <div class="rjgrid"><div class="rj"><div class="rjcode">9/10 en idéation</div><h5>L&#x27;affichette à franges</h5><p>La petite annonce à languettes de téléphone à arracher — très « location entre particuliers ». Écartée : les franges sont illisibles en dessous de 32 px, et c&#x27;est un objet de particulier, pas de loueur pro.</p></div><div class="rj"><div class="rjcode">8/10 en idéation</div><h5>Le tableau à clés complet</h5><p>Trois crochets, un vide. Dessiné, rendu — illisible : trop d&#x27;éléments fins. Le crochet vide survit mieux porté par une seule clé (piste 04).</p></div><div class="rj"><div class="rjcode">échec au rendu</div><h5>L&#x27;écriteau à œillets</h5><p>Deux trous ronds + une barre = un visage souriant. Vu au premier rendu, éliminé au second.</p></div><div class="rj"><div class="rjcode">8/10 en idéation</div><h5>La fiche de bibliothèque</h5><p>L&#x27;institution du « accéder sans posséder ». Écartée : générationnelle — les moins de 30 ans n&#x27;ont jamais tamponné une fiche de prêt.</p></div><div class="rj"><div class="rjcode">8/10 en idéation</div><h5>La passation, les mains</h5><p>Le passage de témoin. Écartée : les mains sans illustrateur finissent en pinces — leçon déjà payée en série 3 avec la mascotte.</p></div><div class="rj"><div class="rjcode">8/10 en idéation</div><h5>Le chien qui rapporte</h5><p>L&#x27;objet part, l&#x27;objet revient, la joie en plus. Une vraie idée de mascotte open source — et exactement le travail d&#x27;un illustrateur, pas d&#x27;une géométrie. Notée pour mémoire.</p></div></div>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>Si vous ne devez en regarder qu'une</h2></div>
+  <p class="secsub" style="font-size:17.5px;color:var(--ink-2);max-width:68ch">
+  <strong style="color:var(--ink)">L'enseigne.</strong> C'est la première marque de tout ce travail qui fait
+  ressentir la location sans une seconde d'explication — et la même image dit « ouvert », donc open source,
+  sans un mot. Elle tient à 16 px, elle a une animation naturelle (le balancement, le panneau qui se retourne
+  pour dire « loué »), et elle est aussi à l'aise sur un README GitHub que sur la page d'accueil du cloud.
+  Si vous préférez le contrat au commerce, <strong style="color:var(--ink)">le ticket de consigne</strong> est
+  l'idée la mieux notée de la moisson, et sa déchirure est déjà un second état.</p>
+</section>
+
+</div>
+</div>
+
+<script>
+(function(){
+  var deck=document.getElementById('deck');
+  var btns=deck.querySelectorAll('.seg button');
+  btns.forEach(function(b){
+    b.addEventListener('click',function(){
+      deck.setAttribute('data-view',b.dataset.v);
+      btns.forEach(function(o){o.setAttribute('aria-pressed',String(o===b));});
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
