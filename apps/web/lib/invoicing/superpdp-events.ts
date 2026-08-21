@@ -278,6 +278,7 @@ export async function postInvoicePaymentStatus(invoiceId: string, amount?: strin
       id: invoices.id,
       storeId: invoices.storeId,
       currency: invoices.currency,
+      issueDate: invoices.issueDate,
       totalInclTax: invoices.totalInclTax,
       vatBreakdown: invoices.vatBreakdown,
       superPdpInvoiceId: invoices.superPdpInvoiceId,
@@ -308,12 +309,20 @@ export async function postInvoicePaymentStatus(invoiceId: string, amount?: strin
       accessToken,
       invoiceId: providerInvoiceId,
       statusCode: "fr:212",
+      // BR-FR-CDV-14: the Encaissé status carries MDG-43 blocks typed MEN
+      // with the collected amount and the payment date (our invoices are
+      // issued at cash-in, so the issue date IS the payment date).
       details: [
         {
-          net_amount: reportedAmount,
-          currency_code: invoice.currency,
-          type_code: "MEN",
-          ...(singleVatRate ? { vat_rate: singleVatRate } : {}),
+          reported_data: [
+            {
+              type_code: "MEN",
+              amount: reportedAmount,
+              currency_code: invoice.currency,
+              date: invoice.issueDate,
+              ...(singleVatRate ? { value_percent: singleVatRate } : {}),
+            },
+          ],
         },
       ],
     }),

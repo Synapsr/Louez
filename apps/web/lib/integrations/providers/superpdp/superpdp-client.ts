@@ -583,14 +583,24 @@ export function listSuperPdpInvoiceEvents(input: {
   });
 }
 
+export interface SuperPdpEventDetail {
+  reason?: string;
+  /** MDG-43 blocks: qualified amounts/dates (e.g. type_code MEN for fr:212). */
+  reported_data?: Array<Record<string, string>>;
+  notes?: Array<{ note: string }>;
+}
+
 export function createSuperPdpInvoiceEvent(input: {
   accessToken: string;
   invoiceId: string;
   statusCode: "fr:204" | "fr:205" | "fr:210" | "fr:212";
   reason?: string;
-  details?: Array<Record<string, string>>;
+  details?: SuperPdpEventDetail[];
 }): Promise<SuperPdpInvoiceEvent> {
   const invoiceId = z.coerce.number().int().positive().parse(input.invoiceId);
+  // The AFNOR reason code (MDT-113) lives inside a detail block.
+  const details =
+    input.details ?? (input.reason ? [{ reason: input.reason }] : undefined);
 
   return fetchProviderJson({
     accessToken: input.accessToken,
@@ -602,8 +612,7 @@ export function createSuperPdpInvoiceEvent(input: {
     body: JSON.stringify({
       invoice_id: invoiceId,
       status_code: input.statusCode,
-      ...(input.reason ? { data: { reason: input.reason } } : {}),
-      ...(input.details ? { details: input.details } : {}),
+      ...(details ? { details } : {}),
     }),
   });
 }
