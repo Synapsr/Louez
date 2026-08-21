@@ -1,0 +1,12 @@
+<svg viewBox="0 0 64 64" width="64" height="64" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="lz-tal-ink" gradientUnits="userSpaceOnUse" x1="5" y1="8" x2="36" y2="48">
+<stop offset="0" stop-color="#2C2822"/><stop offset="1" stop-color="#100E0C"/>
+</linearGradient>
+<linearGradient id="lz-tal-amb" gradientUnits="userSpaceOnUse" x1="29.9" y1="15.2" x2="57.9" y2="55.2">
+<stop offset="0" stop-color="#F9A63E"/><stop offset="1" stop-color="#CE6C15"/>
+</linearGradient>
+</defs>
+<path fill="url(#lz-tal-ink)" fill-rule="evenodd" d="M5 14 L11 8 H21 L22.22 11.49 A3 3 0 0 1 24.20 17.15 L25.43 20.65 A3 3 0 0 1 27.41 26.31 L28.63 29.80 A3 3 0 0 1 30.61 35.46 L31.83 38.96 A3 3 0 0 1 33.82 44.62 L35 48 H5 Z M18 36 A3.5 3.5 0 1 0 11 36 A3.5 3.5 0 1 0 18 36 Z"/>
+<path fill="url(#lz-tal-amb)" fill-rule="evenodd" d="M29.90 15.20 H57.90 V49.20 L51.90 55.20 H43.90 L42.72 51.82 A3 3 0 0 0 40.73 46.16 L39.51 42.66 A3 3 0 0 0 37.53 37.00 L36.31 33.51 A3 3 0 0 0 34.33 27.85 L33.10 24.35 A3 3 0 0 0 31.12 18.69 L29.90 15.20 Z M54 27 A3.5 3.5 0 1 0 47 27 A3.5 3.5 0 1 0 54 27 Z"/>
+</svg>

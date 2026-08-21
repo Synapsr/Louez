@@ -1,0 +1,16 @@
+<svg viewBox="0 0 64 64" width="64" height="64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="lz-caisse-c-inner"><polygon points="30,29 46,37 30,45 14,37"/></clipPath>
+  </defs>
+  <polygon points="30,8 52,19 56,17 34,6" fill="#33606C"/>
+  <polygon points="52,19 56,17 56,35 52,37" fill="#16323C"/>
+  <polygon points="30,26 52,37 52,19 30,8" fill="#CE8A22"/>
+  <polygon points="30,23 52,34 52,37 30,26" fill="#A96A12"/>
+  <polygon points="30,26 52,37 30,48 8,37" fill="#33606C"/>
+  <polygon points="30,29 46,37 30,45 14,37" fill="#A96A12"/>
+  <g clip-path="url(#lz-caisse-c-inner)"><polygon points="30,35 46,43 30,51 14,43" fill="#EDAA3E"/></g>
+  <polygon points="8,37 30,48 30,59 8,48" fill="#234B57"/>
+  <polygon points="52,37 30,48 30,59 52,48" fill="#16323C"/>
+  <polygon points="16,43 24,47 24,51 16,47" fill="#CE8A22"/>
+  <polygon points="46,44 36,49 36,52 46,47" fill="#0A1B21"/>
+</svg>

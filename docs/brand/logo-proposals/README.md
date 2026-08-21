@@ -133,3 +133,18 @@ moment vécu.
 | [`v4/cle-sortie/`](v4/cle-sortie/) | Le tableau à clés : sa place l'attend | Piste ouverte |
 
 Géométrie dans [`_marks_v4.py`](_marks_v4.py). Le ticket embarque `state-out.svg` (l'état déchiré).
+
+### Annexe de la série 4 (`v4/annexe/`)
+
+Deux explorations autonomes, lancées sur les registres des séries 2 et 3, ont rendu douze concepts
+dessinés après la clôture de ces séries. Quatre sont conservés :
+
+| Fichier | Pièce | Pourquoi conservée |
+| --- | --- | --- |
+| `v4/annexe/mousqueton.svg` | Le mousqueton entrebâillé | Le premier anneau qui ne retombe pas en lettre : paroi excentrée, face latérale, doigt derrière le corps |
+| `v4/annexe/caisse-ouverte.svg` | La caisse, couvercle levé | La version volumétrique du message « ouvert » |
+| `v4/annexe/patere.svg` | La patère | Le créneau devenu objet suspendu — même famille que l'enseigne |
+| `v4/annexe/talon.svg` | Le talon déchiré | Déchirure en dents de scie à fusionner avec la piste 02 |
+
+Les huit autres (sangle, ruban, maillons, mains, bernard-l'ermite…) sont écartés : lecture « sync/lien »,
+ou en dessous des pistes principales.

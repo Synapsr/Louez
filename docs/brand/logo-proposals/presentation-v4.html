@@ -200,6 +200,14 @@ a{color:var(--brand)}
 .hi{font-weight:600;color:var(--ink);width:220px}
 .hd{color:var(--muted);font-size:13.5px}
 .tablewrap{overflow-x:auto;border-radius:12px}
+.axgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.ax{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:18px;display:grid;
+  grid-template-columns:100px 1fr;gap:16px;align-items:start}
+.ax .aximg{grid-row:span 2;width:100px;height:100px;display:flex;align-items:center;justify-content:center;
+  background:#F6F1E7;border-radius:10px;border:1px solid rgba(0,0,0,.06)}
+.ax h5{font-size:15.5px;margin-bottom:5px}
+.ax p{font-size:14px;color:var(--muted);margin:0;line-height:1.55}
+@media (max-width:860px){.axgrid{grid-template-columns:1fr}}
 .conv{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
 .cv{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:15px 17px}
 .cv h5{font-size:14.5px;margin-bottom:5px}
@@ -263,6 +271,55 @@ a{color:var(--brand)}
   <p class="secsub">L'idéation large produit surtout des idées qu'il faut savoir refuser. Les six meilleures
   refusées, avec la raison.</p>
   <div class="rjgrid"><div class="rj"><div class="rjcode">9/10 en idéation</div><h5>L&#x27;affichette à franges</h5><p>La petite annonce à languettes de téléphone à arracher — très « location entre particuliers ». Écartée : les franges sont illisibles en dessous de 32 px, et c&#x27;est un objet de particulier, pas de loueur pro.</p></div><div class="rj"><div class="rjcode">8/10 en idéation</div><h5>Le tableau à clés complet</h5><p>Trois crochets, un vide. Dessiné, rendu — illisible : trop d&#x27;éléments fins. Le crochet vide survit mieux porté par une seule clé (piste 04).</p></div><div class="rj"><div class="rjcode">échec au rendu</div><h5>L&#x27;écriteau à œillets</h5><p>Deux trous ronds + une barre = un visage souriant. Vu au premier rendu, éliminé au second.</p></div><div class="rj"><div class="rjcode">8/10 en idéation</div><h5>La fiche de bibliothèque</h5><p>L&#x27;institution du « accéder sans posséder ». Écartée : générationnelle — les moins de 30 ans n&#x27;ont jamais tamponné une fiche de prêt.</p></div><div class="rj"><div class="rjcode">8/10 en idéation</div><h5>La passation, les mains</h5><p>Le passage de témoin. Écartée : les mains sans illustrateur finissent en pinces — leçon déjà payée en série 3 avec la mascotte.</p></div><div class="rj"><div class="rjcode">8/10 en idéation</div><h5>Le chien qui rapporte</h5><p>L&#x27;objet part, l&#x27;objet revient, la joie en plus. Une vraie idée de mascotte open source — et exactement le travail d&#x27;un illustrateur, pas d&#x27;une géométrie. Notée pour mémoire.</p></div></div>
+</section>
+
+<section class="sec">
+  <div class="sechead"><h2>Annexe — la moisson dessinée</h2></div>
+  <p class="secsub">En parallèle de cette série, deux explorations autonomes ont dessiné douze concepts sur les
+  registres des séries 2 et 3. Quatre méritent d'être vus — dont un anneau enfin réussi, là où toutes mes
+  tentatives retombaient en lettre. Fichiers dans <code>v4/annexe/</code>.</p>
+  <div class="axgrid"><div class="ax"><div class="aximg"><svg viewBox="0 0 64 64" width="84" height="84" xmlns="http://www.w3.org/2000/svg"><g transform="rotate(-8 32 32)"><path transform="translate(2.6 1.3)" d="M53.92 30.08A22 22 0 1 1 39.52 11.33L38.38 15.68A15 15 0 1 0 49.6 30.11Z" fill="#7A2515"/><path transform="translate(2.6 1.3)" d="M53.05 28.29L34.1 21.8L32.74 25.12L50.77 33.83Z" fill="#0B1218"/><path d="M53.05 28.29L34.1 21.8L32.74 25.12L50.77 33.83Z" fill="#16232C"/><path d="M53.92 30.08A22 22 0 1 1 39.52 11.33L38.38 15.68A15 15 0 1 0 49.6 30.11Z" fill="#B23A22"/><circle cx="51.6" cy="30.9" r="1.5" fill="#E7D9C0"/></g></svg></div><h5>Le mousqueton entrebâillé</h5><p>Le premier anneau de quatre séries qui ne retombe pas en lettre : paroi excentrée — épaisse sur le dos qui porte, fine au nez —, face latérale visible, doigt qui passe derrière le corps. L&#x27;anneau qui s&#x27;ouvre pour rendre : location et open source dans le même geste.</p></div><div class="ax"><div class="aximg"><svg viewBox="0 0 64 64" width="84" height="84" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="lz-caisse-c-inner"><polygon points="30,29 46,37 30,45 14,37"/></clipPath>
+  </defs>
+  <polygon points="30,8 52,19 56,17 34,6" fill="#33606C"/>
+  <polygon points="52,19 56,17 56,35 52,37" fill="#16323C"/>
+  <polygon points="30,26 52,37 52,19 30,8" fill="#CE8A22"/>
+  <polygon points="30,23 52,34 52,37 30,26" fill="#A96A12"/>
+  <polygon points="30,26 52,37 30,48 8,37" fill="#33606C"/>
+  <polygon points="30,29 46,37 30,45 14,37" fill="#A96A12"/>
+  <g clip-path="url(#lz-caisse-c-inner)"><polygon points="30,35 46,43 30,51 14,43" fill="#EDAA3E"/></g>
+  <polygon points="8,37 30,48 30,59 8,48" fill="#234B57"/>
+  <polygon points="52,37 30,48 30,59 52,48" fill="#16323C"/>
+  <polygon points="16,43 24,47 24,51 16,47" fill="#CE8A22"/>
+  <polygon points="46,44 36,49 36,52 46,47" fill="#0A1B21"/>
+</svg></div><h5>La caisse, couvercle levé</h5><p>La malle de matériel ouverte, en dimétrie stricte. Chaleureuse, métier, et le couvercle levé dit « ouvert » — la version volumétrique de ce que l&#x27;enseigne dit en vitrine.</p></div><div class="ax"><div class="aximg"><svg viewBox="0 0 64 64" width="84" height="84" xmlns="http://www.w3.org/2000/svg">
+  <path d="M24 15 L33 20" stroke="#6B4A22" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M27 14.4 L33 17.6" stroke="#A87C3C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <g transform="rotate(-6 33 20) translate(-2 -1)">
+    <path fill="#33474B" fill-rule="evenodd" d="M23 8 L43 8 L50 15 L50 42 L37 55 L16 55 L16 15 Z M25 20 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0 Z"/>
+  </g>
+  <g transform="rotate(-6 33 20)">
+    <path fill="#1D2B2E" fill-rule="evenodd" d="M23 8 L43 8 L50 15 L50 42 L37 55 L16 55 L16 15 Z M25 20 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0 Z"/>
+    <polygon points="37,42 50,42 37,55" fill="#C98A3E"/>
+    <rect x="22" y="32" width="24" height="4" fill="#3A5054"/>
+    <rect x="28" y="32" width="11" height="4" fill="#C98A3E"/>
+    <rect x="22" y="40" width="14" height="4" fill="#3A5054"/>
+  </g>
+  <path d="M32 19.4 L42 25" stroke="#6B4A22" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M35 18.8 L41.5 22.4" stroke="#A87C3C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg></div><h5>La patère</h5><p>L&#x27;étiquette pendue à son crochet — le créneau de réservation devenu objet physique. Converge avec l&#x27;enseigne : même famille du « suspendu », point de vue plus resserré.</p></div><div class="ax"><div class="aximg"><svg viewBox="0 0 64 64" width="84" height="84" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="lz-tal-ink" gradientUnits="userSpaceOnUse" x1="5" y1="8" x2="36" y2="48">
+<stop offset="0" stop-color="#2C2822"/><stop offset="1" stop-color="#100E0C"/>
+</linearGradient>
+<linearGradient id="lz-tal-amb" gradientUnits="userSpaceOnUse" x1="29.9" y1="15.2" x2="57.9" y2="55.2">
+<stop offset="0" stop-color="#F9A63E"/><stop offset="1" stop-color="#CE6C15"/>
+</linearGradient>
+</defs>
+<path fill="url(#lz-tal-ink)" fill-rule="evenodd" d="M5 14 L11 8 H21 L22.22 11.49 A3 3 0 0 1 24.20 17.15 L25.43 20.65 A3 3 0 0 1 27.41 26.31 L28.63 29.80 A3 3 0 0 1 30.61 35.46 L31.83 38.96 A3 3 0 0 1 33.82 44.62 L35 48 H5 Z M18 36 A3.5 3.5 0 1 0 11 36 A3.5 3.5 0 1 0 18 36 Z"/>
+<path fill="url(#lz-tal-amb)" fill-rule="evenodd" d="M29.90 15.20 H57.90 V49.20 L51.90 55.20 H43.90 L42.72 51.82 A3 3 0 0 0 40.73 46.16 L39.51 42.66 A3 3 0 0 0 37.53 37.00 L36.31 33.51 A3 3 0 0 0 34.33 27.85 L33.10 24.35 A3 3 0 0 0 31.12 18.69 L29.90 15.20 Z M54 27 A3.5 3.5 0 1 0 47 27 A3.5 3.5 0 1 0 54 27 Z"/>
+</svg></div><h5>Le talon déchiré</h5><p>Le même ticket de consigne que la piste 02, avec une déchirure en dents de scie plus expressive que ma coupe droite. À fusionner avec la piste 02 si elle est retenue.</p></div></div>
 </section>
 
 <section class="sec">

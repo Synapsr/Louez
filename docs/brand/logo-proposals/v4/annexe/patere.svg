@@ -1,0 +1,16 @@
+<svg viewBox="0 0 64 64" width="64" height="64" xmlns="http://www.w3.org/2000/svg">
+  <path d="M24 15 L33 20" stroke="#6B4A22" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M27 14.4 L33 17.6" stroke="#A87C3C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <g transform="rotate(-6 33 20) translate(-2 -1)">
+    <path fill="#33474B" fill-rule="evenodd" d="M23 8 L43 8 L50 15 L50 42 L37 55 L16 55 L16 15 Z M25 20 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0 Z"/>
+  </g>
+  <g transform="rotate(-6 33 20)">
+    <path fill="#1D2B2E" fill-rule="evenodd" d="M23 8 L43 8 L50 15 L50 42 L37 55 L16 55 L16 15 Z M25 20 a8 8 0 1 0 16 0 a8 8 0 1 0 -16 0 Z"/>
+    <polygon points="37,42 50,42 37,55" fill="#C98A3E"/>
+    <rect x="22" y="32" width="24" height="4" fill="#3A5054"/>
+    <rect x="28" y="32" width="11" height="4" fill="#C98A3E"/>
+    <rect x="22" y="40" width="14" height="4" fill="#3A5054"/>
+  </g>
+  <path d="M32 19.4 L42 25" stroke="#6B4A22" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M35 18.8 L41.5 22.4" stroke="#A87C3C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
