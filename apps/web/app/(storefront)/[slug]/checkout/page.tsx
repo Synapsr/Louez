@@ -174,6 +174,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           storeLatitude={storeLatitude}
           storeLongitude={storeLongitude}
           storeName={store.name}
+          storeCountry={store.settings?.country ?? 'FR'}
           locations={locations}
           tulipInsurance={{
             enabled: tulipConnected && tulipMode !== 'no_public',

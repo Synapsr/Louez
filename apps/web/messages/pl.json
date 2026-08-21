@@ -2670,6 +2670,13 @@
         "businessCustomerDescription": "Zaznacz, jeśli ten klient reprezentuje firmę",
         "companyName": "Nazwa firmy",
         "companyNamePlaceholder": "ACME Sp. z o.o.",
+        "companyNumber": "Numer firmy",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Numer przedsiębiorstwa (BCE/KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Wymagane do wystawienia elektronicznej faktury B2B.",
+        "vatNumber": "Numer VAT",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Imię *",
         "firstNamePlaceholder": "Jan",
         "lastName": "Nazwisko *",
@@ -4250,7 +4257,10 @@
             "error": "Rejestracja nie powiodła się",
             "missing": "Niezarejestrowano"
           },
-          "environments": { "sandbox": "Środowisko testowe", "production": "Produkcja" },
+          "environments": {
+            "sandbox": "Środowisko testowe",
+            "production": "Produkcja"
+          },
           "result": {
             "successTitle": "Firma połączona",
             "successDescription": "Firma jest teraz zarejestrowana na akredytowanej platformie. Faktury będą przesyłane automatycznie.",
@@ -5960,6 +5970,20 @@
       "isBusinessCustomerDescription": "Zaznacz to pole, jeśli wynajmujesz w imieniu firmy",
       "companyName": "Nazwa firmy",
       "companyNamePlaceholder": "ACME Sp. z o.o.",
+      "companyNumber": "Numer firmy (opcjonalnie)",
+      "companyNumberSiren": "SIREN (opcjonalnie)",
+      "companyNumberBce": "Numer przedsiębiorstwa (BCE/KBO, opcjonalnie)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Opcjonalne — potrzebujemy go do wystawienia faktury firmowej.",
+      "vatNumber": "Numer VAT (opcjonalnie)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Znajdź swoją firmę",
+        "placeholder": "Nazwa firmy, SIREN lub SIRET",
+        "description": "Opcjonalnie: wyszukaj, aby automatycznie uzupełnić dane firmy.",
+        "noResults": "Nie znaleziono firmy. Wprowadź dane ręcznie.",
+        "closed": "Zamknięta"
+      },
       "contact": "Kontakt",
       "address": "Adres",
       "addressPlaceholder": "ul. Wynajmu 123",
@@ -5988,6 +6012,8 @@
         "phoneRequired": "Telefon wymagany",
         "invalidPhone": "Nieprawidłowy format telefonu",
         "companyNameRequired": "Proszę podać nazwę firmy",
+        "invalidCompanyNumber": "Nieprawidłowy numer firmy",
+        "invalidVatNumber": "Nieprawidłowy numer VAT",
         "acceptCgv": "Musisz zaakceptować regulamin"
       },
       "pricing": {

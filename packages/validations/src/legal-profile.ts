@@ -25,6 +25,28 @@ export const resolveCompanyNumberScheme = (country: string): CompanyNumberScheme
   return null;
 };
 
+/** Expected digit count of the national company identifier, per country. */
+const COMPANY_NUMBER_DIGITS: Record<string, number> = {
+  FR: SIREN_LENGTH,
+  BE: BCE_LENGTH,
+};
+
+/**
+ * Does this company number match the identifier format of its country?
+ *
+ * Countries with no known format accept any non-empty value: the number is
+ * still worth storing, it simply cannot back an e-invoicing scheme.
+ */
+export const isValidCompanyNumber = (country: string, companyNumber: string): boolean => {
+  const value = companyNumber.trim();
+  if (value.length === 0 || value.length > 64) return false;
+
+  const expectedDigits = COMPANY_NUMBER_DIGITS[country];
+  if (expectedDigits === undefined) return true;
+
+  return digitsOnly(value).length === expectedDigits;
+};
+
 /**
  * Lenient VAT-number shape check.
  *

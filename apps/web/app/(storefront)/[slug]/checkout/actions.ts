@@ -2,6 +2,7 @@
 
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
 import {
   computeReservedNetOfExcludedUnits,
@@ -40,6 +41,12 @@ import type {
   TulipPublicMode,
 } from '@louez/types';
 import type { Rate } from '@louez/types';
+import {
+  companySearchSchema,
+  digitsOnly,
+  isValidCompanyNumber,
+  resolveCompanyNumberScheme,
+} from '@louez/validations';
 import {
   advisorValidationCovers,
   calculateTaxBreakdown,
@@ -80,6 +87,10 @@ import {
   toAnalyticsAmountCents,
 } from '@/lib/product-analytics/analytics';
 import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
+import {
+  searchFrenchCompanies,
+  type CompanySearchResult,
+} from '@/lib/recherche-entreprises';
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import { normalizePhoneNumber } from '@/lib/sms/phone';
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
@@ -140,6 +151,9 @@ interface CreateReservationInput {
     phone?: string;
     customerType?: 'individual' | 'business';
     companyName?: string;
+    /** SIREN (FR) / BCE (BE). Optional — absent keeps the invoice B2C. */
+    companyNumber?: string;
+    vatNumber?: string;
     address?: string;
     city?: string;
     postalCode?: string;
@@ -165,6 +179,98 @@ interface CreateReservationInput {
    * anything. Used to tell a phone caller the real total before they agree.
    */
   quoteOnly?: boolean;
+}
+
+interface CustomerCompanyIdentity {
+  companyNumber: string | null;
+  companyNumberScheme: 'fr_siren' | 'be_bce' | null;
+  vatNumber: string | null;
+}
+
+/**
+ * Normalise the company identifiers of a buyer for invoicing.
+ *
+ * The scheme is NEVER taken from the client: it is derived from the buyer's
+ * country, so a crafted payload cannot promote a B2C invoice to B2B. Returns
+ * `null` when the submitted identifiers are unusable, which the caller reports
+ * as invalid data (same treatment as a malformed phone number).
+ */
+function resolveCustomerCompanyIdentity(
+  customer: {
+    customerType?: 'individual' | 'business';
+    companyNumber?: string;
+    vatNumber?: string;
+  },
+  country: string,
+): CustomerCompanyIdentity | null {
+  const empty: CustomerCompanyIdentity = {
+    companyNumber: null,
+    companyNumberScheme: null,
+    vatNumber: null,
+  };
+
+  if (customer.customerType !== 'business') {
+    return empty;
+  }
+
+  const scheme = resolveCompanyNumberScheme(country);
+  const rawCompanyNumber = customer.companyNumber?.trim() ?? '';
+  let companyNumber: string | null = null;
+
+  if (rawCompanyNumber.length > 0) {
+    if (!isValidCompanyNumber(country, rawCompanyNumber)) {
+      return null;
+    }
+
+    // Known schemes are pure digits; elsewhere keep what the buyer typed.
+    companyNumber = scheme ? digitsOnly(rawCompanyNumber) : rawCompanyNumber;
+  }
+
+  const vatNumber =
+    customer.vatNumber?.replace(/\s/g, '').toUpperCase().trim() ?? '';
+  if (vatNumber.length > 64) {
+    return null;
+  }
+
+  return {
+    companyNumber,
+    // A scheme without a number would be meaningless on the invoice.
+    companyNumberScheme: companyNumber ? scheme : null,
+    vatNumber: vatNumber.length > 0 ? vatNumber : null,
+  };
+}
+
+const checkoutCompanySearchSchema = z.object({
+  storeId: z.string().min(1).max(64),
+  query: companySearchSchema.shape.query,
+});
+
+/**
+ * Company lookup that prefills the business buyer's legal name and SIREN at
+ * checkout. Public on purpose (the storefront has no session) but scoped to a
+ * store, and only answered when that store operates in France — the registry
+ * is French-only. Any failure returns an empty list: typing the SIREN by hand
+ * must always stay possible.
+ */
+export async function searchCheckoutCompanyRegistry(input: {
+  storeId: string;
+  query: string;
+}): Promise<{ results: CompanySearchResult[] }> {
+  const validated = checkoutCompanySearchSchema.safeParse(input);
+  if (!validated.success) {
+    return { results: [] };
+  }
+
+  const store = await db.query.stores.findFirst({
+    where: eq(stores.id, validated.data.storeId),
+    columns: { id: true, settings: true },
+  });
+
+  if (!store || (store.settings?.country ?? 'FR') !== 'FR') {
+    return { results: [] };
+  }
+
+  return { results: await searchFrenchCompanies(validated.data.query) };
 }
 
 function getErrorKey(error: unknown, fallback: string): string {
@@ -560,6 +666,15 @@ export async function createReservation(input: CreateReservationInput) {
       ? normalizePhoneNumber(input.customer.phone, store.settings?.country)
       : null;
     if (input.customer.phone && !customerPhone) {
+      return { error: 'errors.invalidData' };
+    }
+
+    const storeCountry = store.settings?.country || 'FR';
+    const customerCompanyIdentity = resolveCustomerCompanyIdentity(
+      input.customer,
+      storeCountry,
+    );
+    if (!customerCompanyIdentity) {
       return { error: 'errors.invalidData' };
     }
 
@@ -1582,11 +1697,14 @@ export async function createReservation(input: CreateReservationInput) {
             lastName: input.customer.lastName,
             customerType: input.customer.customerType || 'individual',
             companyName: input.customer.companyName || null,
+            companyNumber: customerCompanyIdentity.companyNumber,
+            companyNumberScheme: customerCompanyIdentity.companyNumberScheme,
+            vatNumber: customerCompanyIdentity.vatNumber,
             phone: customerPhone,
             address: input.customer.address || null,
             city: input.customer.city || null,
             postalCode: input.customer.postalCode || null,
-            country: store.settings?.country || 'FR',
+            country: storeCountry,
           })
           .$returningId();
 
@@ -1594,6 +1712,12 @@ export async function createReservation(input: CreateReservationInput) {
           where: eq(customers.id, newCustomer.id),
         });
       } else {
+        // Identifiers already on file survive a checkout that omits them; the
+        // scheme is re-derived from the buyer's own country, never trusted.
+        const effectiveCompanyNumber =
+          customerCompanyIdentity.companyNumber ?? customer.companyNumber;
+        const buyerCountry = customer.country || storeCountry;
+
         await tx
           .update(customers)
           .set({
@@ -1601,6 +1725,13 @@ export async function createReservation(input: CreateReservationInput) {
             lastName: input.customer.lastName,
             customerType: input.customer.customerType || customer.customerType,
             companyName: input.customer.companyName ?? customer.companyName,
+            companyNumber: effectiveCompanyNumber,
+            companyNumberScheme:
+              effectiveCompanyNumber &&
+              isValidCompanyNumber(buyerCountry, effectiveCompanyNumber)
+                ? resolveCompanyNumberScheme(buyerCountry)
+                : null,
+            vatNumber: customerCompanyIdentity.vatNumber ?? customer.vatNumber,
             phone: customerPhone || customer.phone,
             address: input.customer.address || customer.address,
             city: input.customer.city || customer.city,
