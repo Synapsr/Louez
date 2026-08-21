@@ -235,6 +235,79 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Fatture fornitori",
+      "description": "Fatture che i tuoi fornitori hanno inviato alla tua azienda tramite la rete di fatturazione elettronica.",
+      "columns": {
+        "seller": "Fornitore",
+        "number": "Fattura",
+        "issueDate": "Data di emissione",
+        "totalInclTax": "Totale IVA inclusa",
+        "status": "Stato nella rete",
+        "ourAction": "La tua risposta",
+        "actions": "Azioni"
+      },
+      "statuses": {
+        "received": "Ricevuta",
+        "acknowledged": "Ricezione confermata",
+        "accepted": "Accettata",
+        "disputed": "Contestata",
+        "refused": "Rifiutata",
+        "paid": "Incassata",
+        "paymentSent": "Pagamento trasmesso",
+        "rejected": "Respinta",
+        "validated": "Convalidata"
+      },
+      "ourActions": {
+        "none": "Nessuna risposta",
+        "acknowledged": "Ricezione confermata",
+        "accepted": "Accettata",
+        "refused": "Rifiutata"
+      },
+      "actions": {
+        "download": "Scarica",
+        "downloadNamed": "Scarica la fattura {number}",
+        "menuLabel": "Azioni per la fattura {number}",
+        "acknowledge": "Confermare la ricezione",
+        "accept": "Accetta la fattura",
+        "refuse": "Rifiuta la fattura",
+        "acknowledgeSuccess": "Ricezione confermata",
+        "acceptSuccess": "Fattura accettata",
+        "refuseSuccess": "Fattura rifiutata"
+      },
+      "accept": {
+        "title": "Accettare questa fattura?",
+        "description": "Accettare la fattura {number} invia una dichiarazione vincolante alla rete di fatturazione elettronica. L'operazione è irreversibile.",
+        "confirm": "Accetta la fattura"
+      },
+      "refuse": {
+        "title": "Rifiutare questa fattura?",
+        "description": "Rifiutare la fattura {number} invia una dichiarazione vincolante alla rete di fatturazione elettronica. L'operazione è irreversibile.",
+        "reasonLabel": "Motivo del rifiuto",
+        "reasonPlaceholder": "Es.: importo errato, servizio non eseguito…",
+        "reasonHelp": "Il motivo viene trasmesso al tuo fornitore.",
+        "confirm": "Rifiuta la fattura"
+      },
+      "empty": {
+        "title": "Nessuna fattura fornitore",
+        "description": "Le fatture arrivano qui automaticamente non appena un fornitore ne invia una alla tua azienda tramite la rete di fatturazione elettronica.",
+        "settingsAction": "Vedi le impostazioni di fatturazione"
+      },
+      "notConnected": {
+        "title": "Collega la tua azienda per ricevere le fatture dei fornitori",
+        "description": "Le fatture dei fornitori arrivano in questa casella una volta che la tua azienda è registrata presso la nostra piattaforma accreditata (PDP).",
+        "deadlineTitle": "Scadenza di settembre 2026",
+        "deadlineDescription": "Da settembre 2026 ogni azienda francese deve poter ricevere le proprie fatture in formato elettronico.",
+        "howItWorks": "Una volta collegata, le fatture in arrivo compaiono qui automaticamente. Puoi scaricarle, confermarne la ricezione, accettarle o rifiutarle.",
+        "connectAction": "Configura la fatturazione elettronica"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Nessuna fattura} one {1 fattura} other {# fatture}}",
+        "page": "Pagina {current} di {total}",
+        "previous": "Pagina precedente",
+        "next": "Pagina successiva"
+      }
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "Assistente IA",
@@ -332,6 +405,7 @@
       "copyError": "Impossibile copiare l'email"
     },
     "sidebar": {
+      "finance": "Finanze",
       "catalog": "Catalogo",
       "analytics": "Analisi",
       "manage": "Gestisci",
@@ -589,6 +663,7 @@
       }
     },
     "navigation": {
+      "purchaseInvoices": "Fatture fornitori",
       "aiAssistant": "Assistente IA",
       "aiConversations": "Conversazioni clienti",
       "aiAdvisor": "Consulente online",
@@ -5196,6 +5271,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Fatture fornitori",
       "aiAssistant": "Assistente IA",
       "aiConversations": "Conversazioni clienti",
       "aiAdvisor": "Consulente online",

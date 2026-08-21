@@ -235,6 +235,79 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Supplier invoices",
+      "description": "Invoices your suppliers sent to your company through the electronic invoicing network.",
+      "columns": {
+        "seller": "Supplier",
+        "number": "Invoice",
+        "issueDate": "Issue date",
+        "totalInclTax": "Total incl. VAT",
+        "status": "Network status",
+        "ourAction": "Your response",
+        "actions": "Actions"
+      },
+      "statuses": {
+        "received": "Received",
+        "acknowledged": "Acknowledged",
+        "accepted": "Accepted",
+        "disputed": "Disputed",
+        "refused": "Refused",
+        "paid": "Paid",
+        "paymentSent": "Payment sent",
+        "rejected": "Rejected",
+        "validated": "Validated"
+      },
+      "ourActions": {
+        "none": "No response",
+        "acknowledged": "Acknowledged",
+        "accepted": "Accepted",
+        "refused": "Refused"
+      },
+      "actions": {
+        "download": "Download",
+        "downloadNamed": "Download invoice {number}",
+        "menuLabel": "Actions for invoice {number}",
+        "acknowledge": "Acknowledge receipt",
+        "accept": "Accept invoice",
+        "refuse": "Refuse invoice",
+        "acknowledgeSuccess": "Receipt acknowledged",
+        "acceptSuccess": "Invoice accepted",
+        "refuseSuccess": "Invoice refused"
+      },
+      "accept": {
+        "title": "Accept this invoice?",
+        "description": "Accepting invoice {number} sends a binding statement to the electronic invoicing network. It cannot be undone.",
+        "confirm": "Accept invoice"
+      },
+      "refuse": {
+        "title": "Refuse this invoice?",
+        "description": "Refusing invoice {number} sends a binding statement to the electronic invoicing network. It cannot be undone.",
+        "reasonLabel": "Reason for refusal",
+        "reasonPlaceholder": "e.g. wrong amount, service not delivered…",
+        "reasonHelp": "The reason is forwarded to your supplier.",
+        "confirm": "Refuse invoice"
+      },
+      "empty": {
+        "title": "No supplier invoices yet",
+        "description": "Invoices arrive here automatically as soon as a supplier sends one to your company through the electronic invoicing network.",
+        "settingsAction": "View invoicing settings"
+      },
+      "notConnected": {
+        "title": "Connect your company to receive supplier invoices",
+        "description": "Supplier invoices reach this inbox once your company is enrolled with our accredited platform (PDP).",
+        "deadlineTitle": "September 2026 deadline",
+        "deadlineDescription": "From September 2026, every French company must be able to receive its invoices electronically.",
+        "howItWorks": "Once connected, incoming invoices appear here automatically. You can download them and acknowledge, accept or refuse them.",
+        "connectAction": "Set up electronic invoicing"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {No invoices} one {1 invoice} other {# invoices}}",
+        "page": "Page {current} of {total}",
+        "previous": "Previous page",
+        "next": "Next page"
+      }
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "AI Assistant",
@@ -332,6 +405,7 @@
       "copyError": "Could not copy the email"
     },
     "sidebar": {
+      "finance": "Finance",
       "catalog": "Catalog",
       "analytics": "Analytics",
       "manage": "Manage",
@@ -589,6 +663,7 @@
       }
     },
     "navigation": {
+      "purchaseInvoices": "Supplier invoices",
       "aiAssistant": "AI Assistant",
       "aiConversations": "Customer conversations",
       "aiAdvisor": "Online advisor",
@@ -5199,6 +5274,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Supplier invoices",
       "aiAssistant": "AI Assistant",
       "aiConversations": "Customer conversations",
       "aiAdvisor": "Online advisor",

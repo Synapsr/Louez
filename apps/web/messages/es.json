@@ -235,6 +235,79 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Facturas de proveedores",
+      "description": "Facturas que tus proveedores han enviado a tu empresa a través de la red de facturación electrónica.",
+      "columns": {
+        "seller": "Proveedor",
+        "number": "Factura",
+        "issueDate": "Fecha de emisión",
+        "totalInclTax": "Total con IVA",
+        "status": "Estado en la red",
+        "ourAction": "Tu respuesta",
+        "actions": "Acciones"
+      },
+      "statuses": {
+        "received": "Recibida",
+        "acknowledged": "Recepción confirmada",
+        "accepted": "Aceptada",
+        "disputed": "En disputa",
+        "refused": "Rechazada",
+        "paid": "Cobrada",
+        "paymentSent": "Pago enviado",
+        "rejected": "Denegada",
+        "validated": "Validada"
+      },
+      "ourActions": {
+        "none": "Sin respuesta",
+        "acknowledged": "Recepción confirmada",
+        "accepted": "Aceptada",
+        "refused": "Rechazada"
+      },
+      "actions": {
+        "download": "Descargar",
+        "downloadNamed": "Descargar la factura {number}",
+        "menuLabel": "Acciones para la factura {number}",
+        "acknowledge": "Confirmar recepción",
+        "accept": "Aceptar factura",
+        "refuse": "Rechazar factura",
+        "acknowledgeSuccess": "Recepción confirmada",
+        "acceptSuccess": "Factura aceptada",
+        "refuseSuccess": "Factura rechazada"
+      },
+      "accept": {
+        "title": "¿Aceptar esta factura?",
+        "description": "Aceptar la factura {number} envía una declaración vinculante a la red de facturación electrónica. No se puede deshacer.",
+        "confirm": "Aceptar factura"
+      },
+      "refuse": {
+        "title": "¿Rechazar esta factura?",
+        "description": "Rechazar la factura {number} envía una declaración vinculante a la red de facturación electrónica. No se puede deshacer.",
+        "reasonLabel": "Motivo del rechazo",
+        "reasonPlaceholder": "Ej.: importe incorrecto, servicio no prestado…",
+        "reasonHelp": "El motivo se transmite a tu proveedor.",
+        "confirm": "Rechazar factura"
+      },
+      "empty": {
+        "title": "Aún no hay facturas de proveedores",
+        "description": "Las facturas llegan aquí automáticamente en cuanto un proveedor envía una a tu empresa a través de la red de facturación electrónica.",
+        "settingsAction": "Ver ajustes de facturación"
+      },
+      "notConnected": {
+        "title": "Conecta tu empresa para recibir facturas de proveedores",
+        "description": "Las facturas de proveedores llegan a esta bandeja una vez que tu empresa está registrada en nuestra plataforma acreditada (PDP).",
+        "deadlineTitle": "Plazo de septiembre de 2026",
+        "deadlineDescription": "A partir de septiembre de 2026, toda empresa francesa debe poder recibir sus facturas en formato electrónico.",
+        "howItWorks": "Una vez conectada, las facturas entrantes aparecen aquí automáticamente. Puedes descargarlas, confirmar su recepción, aceptarlas o rechazarlas.",
+        "connectAction": "Configurar la facturación electrónica"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Sin facturas} one {1 factura} other {# facturas}}",
+        "page": "Página {current} de {total}",
+        "previous": "Página anterior",
+        "next": "Página siguiente"
+      }
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "Asistente IA",
@@ -332,6 +405,7 @@
       "copyError": "No se pudo copiar el email"
     },
     "sidebar": {
+      "finance": "Finanzas",
       "catalog": "Catalogo",
       "analytics": "Analiticas",
       "manage": "Gestionar",
@@ -589,6 +663,7 @@
       }
     },
     "navigation": {
+      "purchaseInvoices": "Facturas de proveedores",
       "aiAssistant": "Asistente IA",
       "aiConversations": "Conversaciones de clientes",
       "aiAdvisor": "Asesor en línea",
@@ -5196,6 +5271,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Facturas de proveedores",
       "aiAssistant": "Asistente IA",
       "aiConversations": "Conversaciones de clientes",
       "aiAdvisor": "Asesor en línea",

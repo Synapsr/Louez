@@ -235,6 +235,79 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Factures fournisseurs",
+      "description": "Les factures que vos fournisseurs ont adressées à votre entreprise via le réseau de facturation électronique.",
+      "columns": {
+        "seller": "Fournisseur",
+        "number": "Facture",
+        "issueDate": "Date d'émission",
+        "totalInclTax": "Total TTC",
+        "status": "Statut réseau",
+        "ourAction": "Votre réponse",
+        "actions": "Actions"
+      },
+      "statuses": {
+        "received": "Reçue",
+        "acknowledged": "Réception confirmée",
+        "accepted": "Acceptée",
+        "disputed": "En litige",
+        "refused": "Refusée",
+        "paid": "Encaissée",
+        "paymentSent": "Paiement transmis",
+        "rejected": "Rejetée",
+        "validated": "Validée"
+      },
+      "ourActions": {
+        "none": "Aucune réponse",
+        "acknowledged": "Réception confirmée",
+        "accepted": "Acceptée",
+        "refused": "Refusée"
+      },
+      "actions": {
+        "download": "Télécharger",
+        "downloadNamed": "Télécharger la facture {number}",
+        "menuLabel": "Actions pour la facture {number}",
+        "acknowledge": "Confirmer la réception",
+        "accept": "Accepter la facture",
+        "refuse": "Refuser la facture",
+        "acknowledgeSuccess": "Réception confirmée",
+        "acceptSuccess": "Facture acceptée",
+        "refuseSuccess": "Facture refusée"
+      },
+      "accept": {
+        "title": "Accepter cette facture ?",
+        "description": "Accepter la facture {number} transmet une déclaration engageante au réseau de facturation électronique. Cette action est irréversible.",
+        "confirm": "Accepter la facture"
+      },
+      "refuse": {
+        "title": "Refuser cette facture ?",
+        "description": "Refuser la facture {number} transmet une déclaration engageante au réseau de facturation électronique. Cette action est irréversible.",
+        "reasonLabel": "Motif du refus",
+        "reasonPlaceholder": "Ex. : montant erroné, prestation non réalisée…",
+        "reasonHelp": "Le motif est transmis à votre fournisseur.",
+        "confirm": "Refuser la facture"
+      },
+      "empty": {
+        "title": "Aucune facture fournisseur",
+        "description": "Les factures arrivent ici automatiquement dès qu'un fournisseur en adresse une à votre entreprise via le réseau de facturation électronique.",
+        "settingsAction": "Voir les paramètres de facturation"
+      },
+      "notConnected": {
+        "title": "Connectez votre entreprise pour recevoir vos factures fournisseurs",
+        "description": "Les factures fournisseurs arrivent dans cette boîte de réception une fois votre entreprise enrôlée auprès de notre plateforme agréée (PDP).",
+        "deadlineTitle": "Échéance de septembre 2026",
+        "deadlineDescription": "À partir de septembre 2026, toute entreprise française doit être en mesure de recevoir ses factures au format électronique.",
+        "howItWorks": "Une fois connectée, les factures entrantes apparaissent ici automatiquement. Vous pouvez les télécharger, confirmer leur réception, les accepter ou les refuser.",
+        "connectAction": "Configurer la facturation électronique"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Aucune facture} one {1 facture} other {# factures}}",
+        "page": "Page {current} sur {total}",
+        "previous": "Page précédente",
+        "next": "Page suivante"
+      }
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "Assistant IA",
@@ -332,6 +405,7 @@
       "copyError": "Impossible de copier l'email"
     },
     "sidebar": {
+      "finance": "Finances",
       "catalog": "Catalogue",
       "analytics": "Analyses",
       "manage": "Gestion",
@@ -589,6 +663,7 @@
       }
     },
     "navigation": {
+      "purchaseInvoices": "Factures fournisseurs",
       "aiAssistant": "Assistant IA",
       "aiConversations": "Conversations clients",
       "aiAdvisor": "Conseiller en ligne",
@@ -5199,6 +5274,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Factures fournisseurs",
       "aiAssistant": "Assistant IA",
       "aiConversations": "Conversations clients",
       "aiAdvisor": "Conseiller en ligne",

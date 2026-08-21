@@ -235,6 +235,79 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Faktury od dostawców",
+      "description": "Faktury, które Twoi dostawcy przesłali Twojej firmie przez sieć e-fakturowania.",
+      "columns": {
+        "seller": "Dostawca",
+        "number": "Faktura",
+        "issueDate": "Data wystawienia",
+        "totalInclTax": "Razem z VAT",
+        "status": "Status w sieci",
+        "ourAction": "Twoja odpowiedź",
+        "actions": "Akcje"
+      },
+      "statuses": {
+        "received": "Otrzymana",
+        "acknowledged": "Odbiór potwierdzony",
+        "accepted": "Zaakceptowana",
+        "disputed": "Sporna",
+        "refused": "Odrzucona",
+        "paid": "Opłacona",
+        "paymentSent": "Płatność przesłana",
+        "rejected": "Odrzucona przez sieć",
+        "validated": "Zwalidowana"
+      },
+      "ourActions": {
+        "none": "Brak odpowiedzi",
+        "acknowledged": "Odbiór potwierdzony",
+        "accepted": "Zaakceptowana",
+        "refused": "Odrzucona"
+      },
+      "actions": {
+        "download": "Pobierz",
+        "downloadNamed": "Pobierz fakturę {number}",
+        "menuLabel": "Akcje dla faktury {number}",
+        "acknowledge": "Potwierdź odbiór",
+        "accept": "Zaakceptuj fakturę",
+        "refuse": "Odrzuć fakturę",
+        "acknowledgeSuccess": "Odbiór potwierdzony",
+        "acceptSuccess": "Faktura zaakceptowana",
+        "refuseSuccess": "Faktura odrzucona"
+      },
+      "accept": {
+        "title": "Zaakceptować tę fakturę?",
+        "description": "Zaakceptowanie faktury {number} wysyła wiążące oświadczenie do sieci e-fakturowania. Nie można tego cofnąć.",
+        "confirm": "Zaakceptuj fakturę"
+      },
+      "refuse": {
+        "title": "Odrzucić tę fakturę?",
+        "description": "Odrzucenie faktury {number} wysyła wiążące oświadczenie do sieci e-fakturowania. Nie można tego cofnąć.",
+        "reasonLabel": "Powód odrzucenia",
+        "reasonPlaceholder": "Np. błędna kwota, usługa niewykonana…",
+        "reasonHelp": "Powód zostanie przekazany dostawcy.",
+        "confirm": "Odrzuć fakturę"
+      },
+      "empty": {
+        "title": "Brak faktur od dostawców",
+        "description": "Faktury pojawią się tutaj automatycznie, gdy tylko dostawca prześle je Twojej firmie przez sieć e-fakturowania.",
+        "settingsAction": "Zobacz ustawienia fakturowania"
+      },
+      "notConnected": {
+        "title": "Połącz swoją firmę, aby otrzymywać faktury od dostawców",
+        "description": "Faktury od dostawców trafiają do tej skrzynki, gdy Twoja firma zostanie zarejestrowana na naszej akredytowanej platformie (PDP).",
+        "deadlineTitle": "Termin: wrzesień 2026",
+        "deadlineDescription": "Od września 2026 każda francuska firma musi być w stanie odbierać faktury w formie elektronicznej.",
+        "howItWorks": "Po połączeniu przychodzące faktury pojawiają się tutaj automatycznie. Możesz je pobrać, potwierdzić odbiór, zaakceptować lub odrzucić.",
+        "connectAction": "Skonfiguruj e-fakturowanie"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Brak faktur} one {1 faktura} few {# faktury} other {# faktur}}",
+        "page": "Strona {current} z {total}",
+        "previous": "Poprzednia strona",
+        "next": "Następna strona"
+      }
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "Asystent AI",
@@ -332,6 +405,7 @@
       "copyError": "Nie można skopiować emaila"
     },
     "sidebar": {
+      "finance": "Finanse",
       "catalog": "Katalog",
       "analytics": "Analizy",
       "manage": "Zarządzaj",
@@ -589,6 +663,7 @@
       }
     },
     "navigation": {
+      "purchaseInvoices": "Faktury od dostawców",
       "aiAssistant": "Asystent AI",
       "aiConversations": "Rozmowy z klientami",
       "aiAdvisor": "Doradca online",
@@ -5196,6 +5271,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Faktury od dostawców",
       "aiAssistant": "Asystent AI",
       "aiConversations": "Rozmowy z klientami",
       "aiAdvisor": "Doradca online",

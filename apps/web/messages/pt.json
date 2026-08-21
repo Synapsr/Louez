@@ -235,6 +235,79 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Faturas de fornecedores",
+      "description": "Faturas que os seus fornecedores enviaram à sua empresa através da rede de faturação eletrónica.",
+      "columns": {
+        "seller": "Fornecedor",
+        "number": "Fatura",
+        "issueDate": "Data de emissão",
+        "totalInclTax": "Total com IVA",
+        "status": "Estado na rede",
+        "ourAction": "A sua resposta",
+        "actions": "Ações"
+      },
+      "statuses": {
+        "received": "Recebida",
+        "acknowledged": "Receção confirmada",
+        "accepted": "Aceite",
+        "disputed": "Em litígio",
+        "refused": "Recusada",
+        "paid": "Cobrada",
+        "paymentSent": "Pagamento enviado",
+        "rejected": "Rejeitada",
+        "validated": "Validada"
+      },
+      "ourActions": {
+        "none": "Sem resposta",
+        "acknowledged": "Receção confirmada",
+        "accepted": "Aceite",
+        "refused": "Recusada"
+      },
+      "actions": {
+        "download": "Transferir",
+        "downloadNamed": "Transferir a fatura {number}",
+        "menuLabel": "Ações para a fatura {number}",
+        "acknowledge": "Confirmar a receção",
+        "accept": "Aceitar fatura",
+        "refuse": "Recusar fatura",
+        "acknowledgeSuccess": "Receção confirmada",
+        "acceptSuccess": "Fatura aceite",
+        "refuseSuccess": "Fatura recusada"
+      },
+      "accept": {
+        "title": "Aceitar esta fatura?",
+        "description": "Aceitar a fatura {number} envia uma declaração vinculativa para a rede de faturação eletrónica. Não pode ser anulada.",
+        "confirm": "Aceitar fatura"
+      },
+      "refuse": {
+        "title": "Recusar esta fatura?",
+        "description": "Recusar a fatura {number} envia uma declaração vinculativa para a rede de faturação eletrónica. Não pode ser anulada.",
+        "reasonLabel": "Motivo da recusa",
+        "reasonPlaceholder": "Ex.: valor incorreto, serviço não prestado…",
+        "reasonHelp": "O motivo é transmitido ao seu fornecedor.",
+        "confirm": "Recusar fatura"
+      },
+      "empty": {
+        "title": "Ainda sem faturas de fornecedores",
+        "description": "As faturas chegam aqui automaticamente assim que um fornecedor envia uma à sua empresa através da rede de faturação eletrónica.",
+        "settingsAction": "Ver definições de faturação"
+      },
+      "notConnected": {
+        "title": "Ligue a sua empresa para receber faturas de fornecedores",
+        "description": "As faturas de fornecedores chegam a esta caixa de entrada assim que a sua empresa estiver registada na nossa plataforma acreditada (PDP).",
+        "deadlineTitle": "Prazo de setembro de 2026",
+        "deadlineDescription": "A partir de setembro de 2026, todas as empresas francesas devem poder receber as suas faturas em formato eletrónico.",
+        "howItWorks": "Depois de ligada, as faturas recebidas aparecem aqui automaticamente. Pode transferi-las, confirmar a receção, aceitá-las ou recusá-las.",
+        "connectAction": "Configurar a faturação eletrónica"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Sem faturas} one {1 fatura} other {# faturas}}",
+        "page": "Página {current} de {total}",
+        "previous": "Página anterior",
+        "next": "Página seguinte"
+      }
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "Assistente IA",
@@ -332,6 +405,7 @@
       "copyError": "Não foi possível copiar o email"
     },
     "sidebar": {
+      "finance": "Finanças",
       "catalog": "Catalogo",
       "analytics": "Analises",
       "manage": "Gerenciar",
@@ -589,6 +663,7 @@
       }
     },
     "navigation": {
+      "purchaseInvoices": "Faturas de fornecedores",
       "aiAssistant": "Assistente IA",
       "aiConversations": "Conversas de clientes",
       "aiAdvisor": "Consultor online",
@@ -5196,6 +5271,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Faturas de fornecedores",
       "aiAssistant": "Assistente IA",
       "aiConversations": "Conversas de clientes",
       "aiAdvisor": "Consultor online",
