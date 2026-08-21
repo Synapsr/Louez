@@ -2,7 +2,7 @@ import type { IntegrationManifest } from "@/lib/integrations/registry/types";
 
 export const superPdpIntegrationManifest: IntegrationManifest = {
   id: "superpdp",
-  category: "payments",
+  category: "invoicing",
   nameKey: "dashboard.settings.integrationsHub.providers.superpdp.name",
   descriptionKey: "dashboard.settings.integrationsHub.providers.superpdp.description",
   logoPath: "/integrations/superpdp/logo.svg",

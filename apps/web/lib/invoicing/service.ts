@@ -20,7 +20,6 @@ import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { buildCreditNoteSnapshots, buildInvoiceSnapshots } from "./core";
 import { claimInvoiceNumber } from "./sequence";
-import { postInvoicePaymentStatus } from "./superpdp-events";
 
 const REVENUE_PAYMENT_TYPES = new Set(["rental", "damage", "adjustment", "deposit_capture"]);
 
@@ -216,6 +215,13 @@ export async function generateInvoiceForPayment(
         type: "invoice",
         currency,
         amountInclTax: payment.amount,
+        // Post-return charges are their own supply — a dedicated line, not a
+        // pro-rata slice of the rental lines.
+        ...(payment.type === "damage" ||
+        payment.type === "adjustment" ||
+        payment.type === "deposit_capture"
+          ? { chargeKind: payment.type }
+          : {}),
       },
     );
 
@@ -328,12 +334,8 @@ export async function tryGenerateInvoiceForPayment(
     const result = await generateInvoiceForPayment(paymentId);
     if (result.status !== "generated") return result;
 
-    void postInvoicePaymentStatus(result.invoiceId).catch((error) => {
-      log.error(
-        "invoicing",
-        `invoice payment status reporting failed (${source}): ${error instanceof Error ? error.message : String(error)}`,
-      );
-    });
+    // fr:212 e-reporting is posted by the transmission queue once Super PDP
+    // has assigned the invoice an id — posting here would always no-op.
 
     if (result.kind === "initial") {
       await tryGenerateInitialContract(result.reservationId, source);
@@ -500,10 +502,10 @@ export async function generateCreditNoteForRefund(
 
     if (!refundPayment || !originalPayment) return skipped("payment_not_found");
     if (
-      originalPayment.type !== "rental" ||
+      !REVENUE_PAYMENT_TYPES.has(originalPayment.type) ||
       originalPayment.stripeRefundId !== null ||
       originalPayment.reservationId !== refundPayment.reservationId ||
-      refundPayment.type !== "rental" ||
+      !["rental", "deposit_return"].includes(refundPayment.type) ||
       refundPayment.status !== "completed" ||
       !refundPayment.stripeRefundId ||
       Number(refundAmount) <= 0

@@ -89,6 +89,12 @@ export interface BuildInvoiceSnapshotsAmounts {
   type: InvoiceSeries;
   currency: string;
   amountInclTax: string;
+  /**
+   * Post-return charge (damage, deposit capture, adjustment): the invoice
+   * carries one dedicated line for the charge instead of pro-rata slices of
+   * the rental lines, which would misdescribe the supply.
+   */
+  chargeKind?: "damage" | "adjustment" | "deposit_capture";
   precedingInvoice?: { number: string; issueDate: string };
 }
 
@@ -304,6 +310,38 @@ function createLine(input: {
     taxAmount: fromCents(input.taxCents),
     totalInclTax: fromCents(input.exclTaxCents + input.taxCents),
   };
+}
+
+const CHARGE_LINE_LABELS: Record<
+  NonNullable<BuildInvoiceSnapshotsAmounts["chargeKind"]>,
+  { fr: string; en: string }
+> = {
+  damage: { fr: "Dommages et réparations", en: "Damages and repairs" },
+  deposit_capture: { fr: "Retenue sur caution — dommages", en: "Deposit retained — damages" },
+  adjustment: { fr: "Frais complémentaires", en: "Additional charges" },
+};
+
+function buildChargeLine(
+  source: BuildInvoiceSnapshotsSource,
+  chargeKind: NonNullable<BuildInvoiceSnapshotsAmounts["chargeKind"]>,
+  amountInclTax: string,
+): InvoiceLineSnapshot {
+  const taxSettings = source.store.settings?.tax;
+  const taxEnabled = taxSettings?.enabled ?? false;
+  const defaultRate = taxEnabled ? String(taxSettings?.defaultRate ?? 0) : null;
+  const useFrenchLabels = ["FR", "BE"].includes(source.legalProfile.country);
+  // The charged amount is money actually collected, so it is a TTC amount
+  // whatever the store's display mode.
+  const gross = calculateGrossAmounts(amountInclTax, defaultRate, taxEnabled, "inclusive");
+
+  return createLine({
+    id: `charge:${chargeKind}`,
+    description: CHARGE_LINE_LABELS[chargeKind][useFrenchLabels ? "fr" : "en"],
+    quantity: 1,
+    exclTaxCents: gross.exclTaxCents,
+    taxCents: gross.taxCents,
+    taxRate: defaultRate,
+  });
 }
 
 function buildFullInvoiceLines(source: BuildInvoiceSnapshotsSource): InvoiceLineSnapshot[] {
@@ -539,13 +577,16 @@ function toEn16931Buyer(buyer: InvoiceBuyerSnapshot, processingRule: "b2b" | "b2
         ? buyer.companyName
         : `${buyer.firstName} ${buyer.lastName}`.trim(),
     electronic_address: isB2b
-      ? { scheme: "0225", value: buyer.companyNumber ?? "" }
+      ? {
+          scheme: buyer.companyNumberScheme === "be_bce" ? "0208" : "0225",
+          value: buyer.companyNumber ?? "",
+        }
       : { scheme: "EM", value: buyer.email },
     postal_address: toEn16931Address(buyer.address),
     ...(isB2b && buyer.companyNumber
       ? {
           legal_registration_identifier: {
-            scheme: "0225",
+            scheme: buyer.companyNumberScheme === "be_bce" ? "0208" : "0225",
             value: buyer.companyNumber,
           },
         }
@@ -561,8 +602,12 @@ export function buildInvoiceSnapshots(
   const seller = toSellerSnapshot(source);
   const buyer = toBuyerSnapshot(source);
   const taxEnabled = source.store.settings?.tax?.enabled ?? false;
-  const lines = scaleInvoiceLines(buildFullInvoiceLines(source), amounts.amountInclTax);
-  const insuranceLineIds = getInsuranceLineIds(source);
+  const lines = amounts.chargeKind
+    ? [buildChargeLine(source, amounts.chargeKind, amounts.amountInclTax)]
+    : scaleInvoiceLines(buildFullInvoiceLines(source), amounts.amountInclTax);
+  const insuranceLineIds = amounts.chargeKind
+    ? new Set<string>()
+    : getInsuranceLineIds(source);
   const vatBreakdown = buildVatBreakdown(lines, taxEnabled, insuranceLineIds);
   const totals = {
     totalExclTax: fromCents(sumLineCents(lines, "totalExclTax")),
@@ -571,7 +616,7 @@ export function buildInvoiceSnapshots(
   };
   const isB2b =
     buyer.customerType === "business" &&
-    buyer.companyNumberScheme === "fr_siren" &&
+    (buyer.companyNumberScheme === "fr_siren" || buyer.companyNumberScheme === "be_bce") &&
     Boolean(buyer.companyNumber);
   const processingRule = isB2b ? "b2b" : "b2c";
   const notes: En16931Invoice["notes"] = [];
