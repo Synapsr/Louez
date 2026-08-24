@@ -235,6 +235,85 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Lieferantenrechnungen",
+      "description": "Rechnungen, die Ihre Lieferanten über das Netzwerk für elektronische Rechnungsstellung an Ihr Unternehmen gesendet haben.",
+      "columns": {
+        "seller": "Lieferant",
+        "number": "Rechnung",
+        "issueDate": "Rechnungsdatum",
+        "totalInclTax": "Gesamt inkl. MwSt.",
+        "status": "Netzwerkstatus",
+        "ourAction": "Ihre Antwort",
+        "actions": "Aktionen"
+      },
+      "statuses": {
+        "received": "Erhalten",
+        "acknowledged": "Empfang bestätigt",
+        "accepted": "Angenommen",
+        "disputed": "Strittig",
+        "refused": "Abgelehnt",
+        "paid": "Bezahlt",
+        "paymentSent": "Zahlung übermittelt",
+        "rejected": "Zurückgewiesen",
+        "validated": "Validiert"
+      },
+      "ourActions": {
+        "none": "Keine Antwort",
+        "acknowledged": "Empfang bestätigt",
+        "accepted": "Angenommen",
+        "refused": "Abgelehnt"
+      },
+      "actions": {
+        "download": "Herunterladen",
+        "downloadNamed": "Rechnung {number} herunterladen",
+        "menuLabel": "Aktionen für Rechnung {number}",
+        "acknowledge": "Empfang bestätigen",
+        "accept": "Rechnung annehmen",
+        "refuse": "Rechnung ablehnen",
+        "acknowledgeSuccess": "Empfang bestätigt",
+        "acceptSuccess": "Rechnung angenommen",
+        "refuseSuccess": "Rechnung abgelehnt"
+      },
+      "accept": {
+        "title": "Diese Rechnung annehmen?",
+        "description": "Die Annahme der Rechnung {number} übermittelt eine verbindliche Erklärung an das Netzwerk für elektronische Rechnungsstellung und kann nicht rückgängig gemacht werden.",
+        "confirm": "Rechnung annehmen"
+      },
+      "refuse": {
+        "title": "Diese Rechnung ablehnen?",
+        "description": "Die Ablehnung der Rechnung {number} übermittelt eine verbindliche Erklärung an das Netzwerk für elektronische Rechnungsstellung und kann nicht rückgängig gemacht werden.",
+        "reasonLabel": "Grund der Ablehnung",
+        "reasonPlaceholder": "z. B. falscher Betrag, Leistung nicht erbracht…",
+        "reasonHelp": "Der Grund wird an Ihren Lieferanten weitergeleitet.",
+        "confirm": "Rechnung ablehnen"
+      },
+      "empty": {
+        "title": "Noch keine Lieferantenrechnungen",
+        "description": "Rechnungen erscheinen hier automatisch, sobald ein Lieferant eine über das Netzwerk für elektronische Rechnungsstellung an Ihr Unternehmen sendet.",
+        "settingsAction": "Rechnungseinstellungen ansehen"
+      },
+      "notConnected": {
+        "title": "Verbinden Sie Ihr Unternehmen, um Lieferantenrechnungen zu empfangen",
+        "description": "Lieferantenrechnungen erreichen diesen Posteingang, sobald Ihr Unternehmen bei unserer zugelassenen Plattform (PDP) registriert ist.",
+        "deadlineTitle": "Frist September 2026",
+        "deadlineDescription": "Ab September 2026 muss jedes französische Unternehmen seine Rechnungen elektronisch empfangen können.",
+        "howItWorks": "Nach der Verbindung erscheinen eingehende Rechnungen hier automatisch. Sie können sie herunterladen, den Empfang bestätigen, sie annehmen oder ablehnen.",
+        "connectAction": "Elektronische Rechnungsstellung einrichten"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Keine Rechnungen} one {1 Rechnung} other {# Rechnungen}}",
+        "page": "Seite {current} von {total}",
+        "previous": "Vorherige Seite",
+        "next": "Nächste Seite"
+      },
+      "sync": "Synchronisieren",
+      "viewAll": "Vollständige Seite öffnen"
+    },
+    "electronicInvoicingUnavailable": {
+      "title": "Elektronische Rechnungsstellung ist nicht verfügbar",
+      "description": "Diese Funktion ist für Ihr Geschäft noch nicht aktiviert."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "KI-Assistent",
@@ -1776,6 +1855,28 @@
       "sendEmail": "E-Mail senden",
       "customerInfo": "Kundeninformationen",
       "viewCustomer": "Kunde ansehen",
+      "invoiceDocuments": {
+        "title": "Rechnungen und Gutschriften",
+        "empty": "Es wurde noch keine Rechnung erstellt.",
+        "generate": "Rechnung erstellen",
+        "generationSuccess": "Die verfügbaren Rechnungsdokumente wurden erstellt.",
+        "generationError": "Die Rechnung konnte nicht erstellt werden.",
+        "download": "Herunterladen",
+        "downloadNamed": "{number} herunterladen",
+        "types": {
+          "invoice": "Rechnung",
+          "credit_note": "Gutschrift"
+        },
+        "transmission": {
+          "not_applicable": "Nicht übermittelt",
+          "pending": "Übermittlung ausstehend",
+          "sent": "Gesendet",
+          "validated": "Validiert",
+          "rejected": "Abgelehnt",
+          "failed": "Übermittlung fehlgeschlagen"
+        },
+        "recheck": "Übermittlungsstatus aktualisieren"
+      },
       "periodStart": "Beginn",
       "periodEnd": "Ende",
       "duration": "Dauer",
@@ -2308,6 +2409,16 @@
         "maxReturnable": "Maximal zurückgebbar",
         "history": "Zahlungsverlauf",
         "recorded": "Zahlung erfasst",
+        "refundBadge": "Rückerstattung",
+        "refundAction": "Erstatten",
+        "refundTitle": "Diese Zahlung erstatten",
+        "refundDescription": "Von dieser Zahlung können bis zu {amount} erstattet werden.",
+        "refundNote": "Erstattungsnotiz",
+        "refundNotePlaceholder": "Grund, Überweisungsreferenz...",
+        "refundConfirm": "Rückerstattung bestätigen",
+        "invalidRefundAmount": "Geben Sie einen Betrag innerhalb des verbleibenden Erstattungssaldos ein.",
+        "creditNoteGenerated": "Gutschrift {number} erstellt",
+        "refundRecorded": "Rückerstattung erfasst",
         "deleted": "Zahlung gelöscht",
         "depositReturned": "Kaution zurückgegeben",
         "damageRecorded": "Schäden erfasst",
@@ -2355,7 +2466,8 @@
         "statusAuthorized": "Autorisiert",
         "statusRefunded": "Erstattet",
         "statusCancelled": "Storniert",
-        "requestPayment": "Zahlung anfordern"
+        "requestPayment": "Zahlung anfordern",
+        "invoiceGenerated": "Rechnung {number} erstellt"
       },
       "requestPaymentModal": {
         "title": "Zahlung anfordern",
@@ -2613,6 +2725,13 @@
         "businessCustomerDescription": "Aktivieren, wenn dieser Kunde ein Unternehmen vertritt",
         "companyName": "Firmenname",
         "companyNamePlaceholder": "ACME GmbH",
+        "companyNumber": "Unternehmensnummer",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Unternehmensnummer (KBO/BCE)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Erforderlich für eine elektronische B2B-Rechnung.",
+        "vatNumber": "USt-IdNr.",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Vorname *",
         "firstNamePlaceholder": "Max",
         "lastName": "Nachname *",
@@ -3730,6 +3849,19 @@
               "help": "iCalendar-Referenz"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Verbinden Sie Ihr Unternehmen mit einer zugelassenen Plattform, um elektronische Rechnungen zu senden und zu empfangen.",
+            "about": "Super PDP verbindet Louez mit dem offiziellen Netzwerk für elektronische Rechnungen und verwaltet Anmeldung, Versand, Empfang und Statusänderungen.",
+            "features": {
+              "send": "Kundenrechnungen über das offizielle Netzwerk senden.",
+              "receive": "Lieferantenrechnungen in Louez empfangen.",
+              "lifecycle": "Zustell- und Zahlungsstatus von Rechnungen verfolgen."
+            },
+            "resources": {
+              "website": "Super-PDP-Website"
+            }
+          },
           "tulip": {
             "name": "Tulip-Versicherung",
             "description": "Verbinden Sie Tulip, um Mietversicherungsverträge zu kalkulieren und zu erstellen.",
@@ -4022,6 +4154,162 @@
         "taxNumberDescription": "Ihre Umsatzsteuer-Identifikationsnummer (auf Verträgen angezeigt)",
         "depositNoTaxInfo": "Kautionen unterliegen nicht der MwSt, da sie an den Kunden zurückgegeben werden.",
         "saved": "Steuereinstellungen gespeichert"
+      },
+      "invoicing": {
+        "title": "Elektronische Rechnungsstellung",
+        "description": "Hinterlegen Sie die rechtlichen Daten Ihres Unternehmens und lassen Sie Louez Ihre Rechnungen erstellen.",
+        "saved": "Rechnungseinstellungen gespeichert",
+        "statusComplete": "Vollständig",
+        "statusIncomplete": "Zu vervollständigen",
+        "setup": {
+          "steps": {
+            "identity": "Rechtliche Identität",
+            "activation": "Aktivierung",
+            "transmission": "Übertragung"
+          },
+          "continue": "Weiter",
+          "finishWithoutInvoicing": "Ohne Aktivierung abschließen",
+          "later": "Später einrichten",
+          "intro": {
+            "title": "Umstieg auf die elektronische Rechnungsstellung",
+            "description": "Louez erstellt konforme Rechnungen im Namen Ihres Unternehmens und übermittelt sie über das offizielle Netz der zugelassenen Plattformen. Richten Sie alles in drei Schritten ein.",
+            "bullets": {
+              "generate": "Konforme Rechnungen werden bei jeder Zahlung automatisch erstellt und nummeriert.",
+              "transmit": "Versand Ihrer Rechnungen an Geschäftskunden über das offizielle Netz, mit automatischem E-Reporting Ihrer Verkäufe.",
+              "receive": "Zentraler Empfang der Rechnungen Ihrer Lieferanten."
+            },
+            "start": "Einrichtung starten",
+            "resume": "Einrichtung fortsetzen",
+            "stepProgress": "Schritt {current} von {total}"
+          }
+        },
+        "identity": {
+          "title": "Rechtliche Identität",
+          "description": "Die rechtlichen Angaben Ihres Unternehmens, die auf jeder Rechnung erscheinen.",
+          "search": {
+            "label": "Unternehmen suchen",
+            "description": "Suchen Sie nach Name, SIREN oder SIRET, um das Formular vorauszufüllen. Alle Felder bleiben bearbeitbar.",
+            "placeholder": "Firmenname, SIREN oder SIRET",
+            "noResults": "Kein Unternehmen gefunden. Geben Sie die Daten manuell ein.",
+            "closed": "Geschlossen",
+            "prefilledTitle": "Felder vorausgefüllt",
+            "prefilledDescription": "Die Daten stammen aus dem öffentlichen Unternehmensregister. Prüfen Sie sie vor dem Speichern."
+          },
+          "country": "Land der Eintragung",
+          "countryDescription": "Das Land, in dem Ihr Unternehmen eingetragen ist.",
+          "legalName": "Firmenname",
+          "legalNamePlaceholder": "LOUEZ SAS",
+          "legalNameDescription": "Der genaue Name Ihres Unternehmens laut Register.",
+          "legalForm": "Rechtsform",
+          "legalFormPlaceholder": "SAS",
+          "legalFormDescription": "Zum Beispiel SAS, SARL, Einzelunternehmer.",
+          "siren": "SIREN",
+          "sirenDescription": "Die 9 Ziffern, die Ihr Unternehmen identifizieren.",
+          "bce": "Unternehmensnummer (BCE)",
+          "bceDescription": "10 Ziffern, zum Beispiel 0123456789.",
+          "companyNumber": "Unternehmensnummer",
+          "companyNumberDescription": "Die Kennung Ihres Unternehmens im nationalen Register.",
+          "siret": "SIRET des Hauptsitzes",
+          "siretDescription": "Die 14 Ziffern der Niederlassung, die die Rechnungen ausstellt.",
+          "vatNumber": "Umsatzsteuer-IdNr.",
+          "vatNumberDescription": "Die auf Ihren Rechnungen gedruckte Umsatzsteuer-Identifikationsnummer. Leer lassen, wenn Sie von der Umsatzsteuer befreit sind.",
+          "vatNumberWarningTitle": "Ungewöhnliches USt-Format",
+          "vatNumberWarningFr": "Eine französische USt-IdNr. besteht aus FR und 11 Zeichen. Bitte prüfen Sie diesen Wert.",
+          "vatNumberWarningBe": "Eine belgische USt-IdNr. besteht aus BE und 10 Ziffern. Bitte prüfen Sie diesen Wert.",
+          "rcsCity": "RCS-Stadt",
+          "rcsCityDescription": "Die Stadt des Registergerichts, zum Beispiel Paris.",
+          "shareCapital": "Stammkapital",
+          "shareCapitalDescription": "Pflichtangabe auf Rechnungen für Unternehmen, die sie ausweisen müssen.",
+          "addressSection": "Anschrift des Firmensitzes",
+          "address": "Adresse",
+          "addressPlaceholder": "25 rue du Terrage",
+          "addressComplement": "Adresszusatz",
+          "postalCode": "Postleitzahl",
+          "city": "Stadt"
+        },
+        "louezInvoicing": {
+          "title": "Rechnungsstellung durch Louez",
+          "description": "Louez erstellt und nummeriert Ihre Rechnungen bei jedem Zahlungseingang.",
+          "statusActive": "Aktiviert",
+          "statusInactive": "Deaktiviert",
+          "lockedTitle": "Vervollständigen Sie zuerst Ihre rechtliche Identität",
+          "lockedDescription": "Eine rechtsgültige Rechnung muss Firmenname, Rechtsform, Unternehmensnummer und Sitzadresse enthalten. Füllen Sie Schritt 1 aus, um die Rechnungsstellung zu aktivieren.",
+          "enabled": "Louez stellt meine Rechnungen aus",
+          "enabledDescription": "Louez erstellt und nummeriert Ihre Rechnungen: Bei jedem Zahlungseingang entsteht eine konforme Rechnung im Namen Ihres Unternehmens, mit lückenloser fortlaufender Nummerierung.",
+          "vatRegime": "Umsatzsteuer-Regime",
+          "vatRegimePlaceholder": "Regime auswählen",
+          "vatRegimeDescription": "Bestimmt den Meldekalender, der an die Rechnungsplattform übermittelt wird.",
+          "vatRegimeOptions": {
+            "monthly": "Monatliche Meldung",
+            "quarterly": "Vierteljährliche Meldung",
+            "simplified": "Vereinfachtes (jährliches) Regime",
+            "vat_exemption": "Umsatzsteuerbefreiung"
+          },
+          "hasVatOnDebits": "USt. nach vereinbarten Entgelten",
+          "hasVatOnDebitsDescription": "Aktivieren Sie dies, wenn Sie die Besteuerung nach vereinbarten statt nach vereinnahmten Entgelten gewählt haben."
+        },
+        "transmission": {
+          "title": "Elektronische Übermittlung (PDP)",
+          "description": "Verbinden Sie Ihr Unternehmen mit einer zugelassenen Plattform, um Rechnungen über das offizielle Netz zu senden und zu empfangen.",
+          "statusPending": "Anmeldung läuft",
+          "statusActionRequired": "Aktion erforderlich",
+          "deadlineTitle": "Frist September 2026",
+          "deadlineDescription": "Ab September 2026 muss jedes französische Unternehmen an eine zugelassene Plattform angebunden sein, um elektronische Rechnungen zu empfangen; der Versand wird im September 2027 verpflichtend. Die Anbindung über Louez ist kostenlos.",
+          "benefits": {
+            "send": "Senden Sie Ihre Rechnungen über das offizielle Netz an Geschäftskunden.",
+            "receive": "Empfangen Sie alle Lieferantenrechnungen an einem Ort.",
+            "reporting": "Automatisches E-Reporting Ihrer Verkäufe an Privatkunden."
+          },
+          "connectAction": "Unternehmen verbinden",
+          "pendingTitle": "Anmeldung läuft",
+          "pendingDescription": "Ihre Anmeldung wurde begonnen, ist aber noch nicht abgeschlossen. Setzen Sie sie fort, um die Identitätsprüfung der zugelassenen Plattform abzuschließen.",
+          "resumeAction": "Anmeldung fortsetzen",
+          "errorTitle": "Verbindung unterbrochen",
+          "reconnectAction": "Unternehmen erneut verbinden",
+          "errorHints": {
+            "reconnectRequired": "Die Plattform hat den Louez gewährten Zugriff widerrufen. Verbinden Sie Ihr Unternehmen erneut, um Rechnungen wieder zu senden.",
+            "oauthFailed": "Die Anmeldung konnte nicht abgeschlossen werden. Starten Sie sie erneut; wenden Sie sich an den Support, wenn das Problem anhält.",
+            "operationFailed": "Der letzte Austausch mit der Plattform ist fehlgeschlagen. Louez versucht es automatisch erneut; verbinden Sie sich bei anhaltendem Problem neu."
+          },
+          "lockedTitle": "Verbindung noch nicht verfügbar",
+          "lockedReasons": {
+            "identityIncomplete": "Vervollständigen Sie in Schritt 1 Ihre rechtliche Identität: Die Plattform prüft sie vor der Anmeldung Ihres Unternehmens.",
+            "invoicingDisabled": "Aktivieren Sie in Schritt 2 die Rechnungsstellung durch Louez: Es gibt nichts zu übertragen, solange Louez keine Rechnungen ausstellt.",
+            "countryUnsupported": "Die elektronische Übertragung ist derzeit nur für Unternehmen verfügbar, die in Frankreich oder Belgien registriert sind."
+          },
+          "details": {
+            "verification": "Identitätsprüfung",
+            "directory": "Netzwerkverzeichnis",
+            "environment": "Umgebung"
+          },
+          "verificationStatus": {
+            "verified": "Verifiziert",
+            "pending": "Wird geprüft",
+            "failed": "Prüfung fehlgeschlagen"
+          },
+          "verificationPendingNote": "Die Plattform prüft Ihre Unternehmensdaten noch. Ihre Rechnungen werden nach Abschluss der Prüfung übertragen.",
+          "directoryStatus": {
+            "pending": "Registrierung läuft",
+            "created": "Registriert",
+            "error": "Registrierung fehlgeschlagen",
+            "missing": "Nicht registriert"
+          },
+          "environments": {
+            "sandbox": "Testumgebung",
+            "production": "Produktion"
+          },
+          "result": {
+            "successTitle": "Unternehmen verbunden",
+            "successDescription": "Ihr Unternehmen ist jetzt bei der zugelassenen Plattform angemeldet. Ihre Rechnungen werden automatisch übertragen.",
+            "errorTitle": "Verbindung fehlgeschlagen",
+            "errors": {
+              "oauth": "Die Anmeldung wurde vor dem Abschluss unterbrochen. Sie können sie erneut starten.",
+              "legalProfileIncomplete": "Ihre rechtliche Identität ist unvollständig. Vervollständigen Sie Schritt 1 und starten Sie die Verbindung erneut.",
+              "notConfigured": "Die elektronische Übertragung ist in dieser Umgebung nicht konfiguriert. Wenden Sie sich an den Louez-Support."
+            }
+          },
+          "purchaseInvoicesAction": "Lieferantenrechnungen öffnen"
+        }
       },
       "delivery": {
         "title": "Lieferung",
@@ -5031,6 +5319,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Lieferantenrechnungen",
       "aiAssistant": "KI-Assistent",
       "aiConversations": "Kundengespräche",
       "aiAdvisor": "Online-Berater",
@@ -5064,6 +5353,7 @@
       "settingsHours": "Öffnungszeiten",
       "settingsInspections": "Inspektionen",
       "settingsIntegrations": "Integrationen",
+      "settingsInvoicing": "Elektronische Rechnungsstellung",
       "settingsLegal": "Rechtliche Seiten",
       "settingsNotifications": "Benachrichtigungen",
       "settingsPayments": "Zahlungen",
@@ -5077,6 +5367,8 @@
       "title": "Benachrichtigungen",
       "description": "Was Ihre Aufmerksamkeit braucht",
       "pendingReservations": "Offene Anfragen",
+      "supplierInvoices": "Lieferantenrechnungen",
+      "pendingSupplierInvoices": "{count, plural, one {# Lieferantenrechnung zu bearbeiten} other {# Lieferantenrechnungen zu bearbeiten}}",
       "emptyTitle": "Nichts zu prüfen",
       "emptyDescription": "Neue Anfragen erscheinen hier.",
       "viewAllPending": "Alle offenen Anfragen ansehen"
@@ -5718,6 +6010,20 @@
       "isBusinessCustomerDescription": "Aktivieren Sie dieses Kästchen, wenn Sie im Namen eines Unternehmens mieten",
       "companyName": "Firmenname",
       "companyNamePlaceholder": "ACME GmbH",
+      "companyNumber": "Unternehmensnummer (optional)",
+      "companyNumberSiren": "SIREN (optional)",
+      "companyNumberBce": "Unternehmensnummer (KBO/BCE, optional)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Optional — wir benötigen sie für eine Geschäftsrechnung.",
+      "vatNumber": "USt-IdNr. (optional)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Unternehmen suchen",
+        "placeholder": "Firmenname, SIREN oder SIRET",
+        "description": "Optional: Suchen Sie, um Ihre Firmendaten automatisch auszufüllen.",
+        "noResults": "Kein Unternehmen gefunden. Geben Sie die Daten manuell ein.",
+        "closed": "Geschlossen"
+      },
       "contact": "Kontakt",
       "address": "Adresse",
       "addressPlaceholder": "Mietstraße 123",
@@ -5746,6 +6052,8 @@
         "phoneRequired": "Telefon erforderlich",
         "invalidPhone": "Ungültiges Telefonformat",
         "companyNameRequired": "Bitte geben Sie den Firmennamen ein",
+        "invalidCompanyNumber": "Ungültige Unternehmensnummer",
+        "invalidVatNumber": "Ungültige USt-IdNr.",
         "acceptCgv": "Sie müssen die AGB akzeptieren"
       },
       "pricing": {
@@ -5994,6 +6302,17 @@
       "signContract": "Vertrag unterschreiben",
       "contractSigned": "Vertrag unterschrieben",
       "downloadContract": "Vertrag herunterladen",
+      "signContractConfirmation": "Mit dem Fortfahren bestätigen Sie, dass Sie diesen Mietvertrag gelesen haben und akzeptieren.",
+      "signContractError": "Der Vertrag konnte nicht unterzeichnet werden. Bitte versuchen Sie es erneut.",
+      "invoiceDocuments": {
+        "title": "Rechnungen und Gutschriften",
+        "description": "Laden Sie die Buchhaltungsunterlagen für diese Reservierung herunter.",
+        "download": "Herunterladen",
+        "types": {
+          "invoice": "Rechnung",
+          "credit_note": "Gutschrift"
+        }
+      },
       "paymentPaid": "Bezahlt",
       "paymentPending": "Unbezahlt",
       "amountPaid": "Bezahlter Betrag",
@@ -6547,6 +6866,7 @@
     "notFound": "Seite nicht gefunden",
     "notFoundDescription": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
     "unauthorized": "Nicht autorisiert",
+    "paymentInvoiced": "Diese Zahlung wurde in Rechnung gestellt und kann nicht gelöscht werden.",
     "unauthenticated": "Nicht authentifiziert",
     "invalidData": "Ungültige Daten",
     "slugTaken": "Diese Adresse ist bereits vergeben",

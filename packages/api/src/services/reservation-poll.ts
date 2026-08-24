@@ -1,4 +1,4 @@
-import { customers, db, reservations } from '@louez/db'
+import { customers, db, receivedInvoices, reservations, storeIntegrations } from '@louez/db'
 import type { ReservationPollResponse } from '@louez/types'
 import { and, count, desc, eq, sql } from 'drizzle-orm'
 
@@ -46,6 +46,20 @@ export async function getReservationPollData(
     .orderBy(desc(reservations.createdAt))
     .limit(5)
 
+  const pendingSupplierInvoiceResult = await db
+    .select({ count: count() })
+    .from(receivedInvoices)
+    .innerJoin(
+      storeIntegrations,
+      and(
+        eq(storeIntegrations.storeId, receivedInvoices.storeId),
+        eq(storeIntegrations.providerKey, 'superpdp'),
+      ),
+    )
+    .where(
+      and(eq(receivedInvoices.storeId, storeId), eq(receivedInvoices.ourAction, 'none')),
+    )
+
   const totalResult = await db
     .select({ count: count() })
     .from(reservations)
@@ -53,6 +67,7 @@ export async function getReservationPollData(
 
   return {
     pendingCount: pendingResult[0]?.count || 0,
+    pendingSupplierInvoices: pendingSupplierInvoiceResult[0]?.count || 0,
     totalCount: totalResult[0]?.count || 0,
     pendingReservations: pendingReservations.map((reservation) => ({
       id: reservation.id,

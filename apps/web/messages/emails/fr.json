@@ -34,7 +34,9 @@
     "subject": "Votre réservation #{number} est confirmée",
     "title": "Réservation confirmée !",
     "body": "Votre réservation #{number} est confirmée. Voici le récapitulatif :",
-    "summary": "Récapitulatif"
+    "summary": "Récapitulatif",
+    "contractSignature": "Votre contrat est joint et prêt à être signé en ligne.",
+    "signContract": "Signer le contrat"
   },
   "requestReceived": {
     "subject": "Demande de réservation #{number} reçue",
@@ -142,6 +144,16 @@
     "viewRequest": "Voir la demande",
     "connectToManage": "Connectez-vous à votre tableau de bord pour accepter ou refuser cette demande."
   },
+  "supplierInvoiceReceived": {
+    "subject": "Nouvelle facture fournisseur",
+    "title": "Nouvelle facture fournisseur",
+    "body": "Une nouvelle facture fournisseur a été reçue pour {storeName}.",
+    "seller": "Fournisseur :",
+    "number": "Numéro :",
+    "total": "Total TTC :",
+    "cta": "Voir les factures fournisseurs",
+    "footer": "Vous pouvez consulter et traiter cette facture depuis votre tableau de bord."
+  },
   "phoneCallbackLandlord": {
     "subject": "Un client à rappeler — {store}",
     "title": "Un client à rappeler",
@@ -223,7 +235,9 @@
     "method": "Méthode",
     "reservation": "Réservation",
     "confirmation": "Votre paiement a été traité avec succès.",
-    "keepEmail": "Conservez cet email comme justificatif de paiement."
+    "keepEmail": "Conservez cet email comme justificatif de paiement.",
+    "contractSignature": "Votre contrat est joint et prêt à être signé en ligne.",
+    "signContract": "Signer le contrat"
   },
   "paymentFailed": {
     "subject": "Échec de paiement - Réservation #{number}",

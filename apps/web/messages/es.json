@@ -235,6 +235,85 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Facturas de proveedores",
+      "description": "Facturas que tus proveedores han enviado a tu empresa a través de la red de facturación electrónica.",
+      "columns": {
+        "seller": "Proveedor",
+        "number": "Factura",
+        "issueDate": "Fecha de emisión",
+        "totalInclTax": "Total con IVA",
+        "status": "Estado en la red",
+        "ourAction": "Tu respuesta",
+        "actions": "Acciones"
+      },
+      "statuses": {
+        "received": "Recibida",
+        "acknowledged": "Recepción confirmada",
+        "accepted": "Aceptada",
+        "disputed": "En disputa",
+        "refused": "Rechazada",
+        "paid": "Cobrada",
+        "paymentSent": "Pago enviado",
+        "rejected": "Denegada",
+        "validated": "Validada"
+      },
+      "ourActions": {
+        "none": "Sin respuesta",
+        "acknowledged": "Recepción confirmada",
+        "accepted": "Aceptada",
+        "refused": "Rechazada"
+      },
+      "actions": {
+        "download": "Descargar",
+        "downloadNamed": "Descargar la factura {number}",
+        "menuLabel": "Acciones para la factura {number}",
+        "acknowledge": "Confirmar recepción",
+        "accept": "Aceptar factura",
+        "refuse": "Rechazar factura",
+        "acknowledgeSuccess": "Recepción confirmada",
+        "acceptSuccess": "Factura aceptada",
+        "refuseSuccess": "Factura rechazada"
+      },
+      "accept": {
+        "title": "¿Aceptar esta factura?",
+        "description": "Aceptar la factura {number} envía una declaración vinculante a la red de facturación electrónica. No se puede deshacer.",
+        "confirm": "Aceptar factura"
+      },
+      "refuse": {
+        "title": "¿Rechazar esta factura?",
+        "description": "Rechazar la factura {number} envía una declaración vinculante a la red de facturación electrónica. No se puede deshacer.",
+        "reasonLabel": "Motivo del rechazo",
+        "reasonPlaceholder": "Ej.: importe incorrecto, servicio no prestado…",
+        "reasonHelp": "El motivo se transmite a tu proveedor.",
+        "confirm": "Rechazar factura"
+      },
+      "empty": {
+        "title": "Aún no hay facturas de proveedores",
+        "description": "Las facturas llegan aquí automáticamente en cuanto un proveedor envía una a tu empresa a través de la red de facturación electrónica.",
+        "settingsAction": "Ver ajustes de facturación"
+      },
+      "notConnected": {
+        "title": "Conecta tu empresa para recibir facturas de proveedores",
+        "description": "Las facturas de proveedores llegan a esta bandeja una vez que tu empresa está registrada en nuestra plataforma acreditada (PDP).",
+        "deadlineTitle": "Plazo de septiembre de 2026",
+        "deadlineDescription": "A partir de septiembre de 2026, toda empresa francesa debe poder recibir sus facturas en formato electrónico.",
+        "howItWorks": "Una vez conectada, las facturas entrantes aparecen aquí automáticamente. Puedes descargarlas, confirmar su recepción, aceptarlas o rechazarlas.",
+        "connectAction": "Configurar la facturación electrónica"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Sin facturas} one {1 factura} other {# facturas}}",
+        "page": "Página {current} de {total}",
+        "previous": "Página anterior",
+        "next": "Página siguiente"
+      },
+      "sync": "Sincronizar",
+      "viewAll": "Abrir la página completa"
+    },
+    "electronicInvoicingUnavailable": {
+      "title": "La facturación electrónica no está disponible",
+      "description": "Esta función aún no está activada para tu tienda."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "Asistente IA",
@@ -1776,6 +1855,28 @@
       "sendEmail": "Enviar correo",
       "customerInfo": "Informacion del cliente",
       "viewCustomer": "Ver cliente",
+      "invoiceDocuments": {
+        "title": "Facturas y notas de crédito",
+        "empty": "Todavía no se ha generado ninguna factura.",
+        "generate": "Generar factura",
+        "generationSuccess": "Se han generado los documentos de facturación disponibles.",
+        "generationError": "No se pudo generar la factura.",
+        "download": "Descargar",
+        "downloadNamed": "Descargar {number}",
+        "types": {
+          "invoice": "Factura",
+          "credit_note": "Nota de crédito"
+        },
+        "transmission": {
+          "not_applicable": "No transmitida",
+          "pending": "Transmisión pendiente",
+          "sent": "Enviada",
+          "validated": "Validada",
+          "rejected": "Rechazada",
+          "failed": "Error de transmisión"
+        },
+        "recheck": "Actualizar el estado de transmisión"
+      },
       "periodStart": "Inicio",
       "periodEnd": "Fin",
       "duration": "Duracion",
@@ -2308,6 +2409,16 @@
         "maxReturnable": "Maximo a devolver",
         "history": "Historial de pagos",
         "recorded": "Pago registrado",
+        "refundBadge": "Reembolso",
+        "refundAction": "Reembolsar",
+        "refundTitle": "Reembolsar este pago",
+        "refundDescription": "Puedes reembolsar hasta {amount} de este pago.",
+        "refundNote": "Nota del reembolso",
+        "refundNotePlaceholder": "Motivo, referencia de transferencia...",
+        "refundConfirm": "Confirmar reembolso",
+        "invalidRefundAmount": "Introduce un importe dentro del saldo reembolsable restante.",
+        "creditNoteGenerated": "Nota de crédito {number} generada",
+        "refundRecorded": "Reembolso registrado",
         "deleted": "Pago eliminado",
         "depositReturned": "Deposito devuelto",
         "damageRecorded": "Danos registrados",
@@ -2355,7 +2466,8 @@
         "statusAuthorized": "Autorizado",
         "statusRefunded": "Reembolsado",
         "statusCancelled": "Cancelado",
-        "requestPayment": "Solicitar pago"
+        "requestPayment": "Solicitar pago",
+        "invoiceGenerated": "Factura {number} generada"
       },
       "requestPaymentModal": {
         "title": "Solicitar pago",
@@ -2613,6 +2725,13 @@
         "businessCustomerDescription": "Marque si este cliente representa una empresa",
         "companyName": "Nombre de la empresa",
         "companyNamePlaceholder": "ACME S.L.",
+        "companyNumber": "Número de empresa",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Número de empresa (BCE/KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Necesario para emitir una factura electrónica B2B.",
+        "vatNumber": "Número de IVA",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Nombre *",
         "firstNamePlaceholder": "Juan",
         "lastName": "Apellido *",
@@ -3730,6 +3849,19 @@
               "help": "Referencia iCalendar"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Conecta tu empresa a una plataforma acreditada para enviar y recibir facturas electrónicas.",
+            "about": "Super PDP conecta Louez con la red oficial de facturación electrónica y gestiona la inscripción, el envío, la recepción y el ciclo de vida de las facturas.",
+            "features": {
+              "send": "Envía facturas de clientes por la red oficial.",
+              "receive": "Recibe facturas de proveedores en Louez.",
+              "lifecycle": "Sigue los estados de entrega y pago de las facturas."
+            },
+            "resources": {
+              "website": "Sitio web de Super PDP"
+            }
+          },
           "tulip": {
             "name": "Seguro Tulip",
             "description": "Conecte Tulip para cotizar y generar contratos de seguro de alquiler.",
@@ -4022,6 +4154,162 @@
         "taxNumberDescription": "Su numero de identificacion fiscal (mostrado en los contratos)",
         "depositNoTaxInfo": "Los depositos no estan sujetos al IVA ya que se devuelven al cliente.",
         "saved": "Configuración de impuestos guardada"
+      },
+      "invoicing": {
+        "title": "Facturación electrónica",
+        "description": "Configura la identidad legal de tu empresa y deja que Louez emita tus facturas.",
+        "saved": "Ajustes de facturación guardados",
+        "statusComplete": "Completo",
+        "statusIncomplete": "Por completar",
+        "setup": {
+          "steps": {
+            "identity": "Identidad legal",
+            "activation": "Activación",
+            "transmission": "Transmisión"
+          },
+          "continue": "Continuar",
+          "finishWithoutInvoicing": "Terminar sin activar",
+          "later": "Configurar más tarde",
+          "intro": {
+            "title": "Pásese a la facturación electrónica",
+            "description": "Louez genera facturas conformes a nombre de su empresa y las transmite a través de la red oficial de plataformas acreditadas. Configúrelo todo en tres pasos.",
+            "bullets": {
+              "generate": "Facturas conformes generadas y numeradas automáticamente con cada cobro.",
+              "transmit": "Envío de sus facturas a clientes profesionales a través de la red oficial, con e-reporting automático de sus ventas.",
+              "receive": "Recepción centralizada de las facturas de sus proveedores."
+            },
+            "start": "Comenzar la configuración",
+            "resume": "Reanudar la configuración",
+            "stepProgress": "Paso {current} de {total}"
+          }
+        },
+        "identity": {
+          "title": "Identidad legal",
+          "description": "Los datos legales de tu empresa, impresos en cada factura que emitas.",
+          "search": {
+            "label": "Busca tu empresa",
+            "description": "Busca por nombre, SIREN o SIRET para rellenar el formulario. Todos los campos siguen siendo editables.",
+            "placeholder": "Nombre de la empresa, SIREN o SIRET",
+            "noResults": "No se ha encontrado ninguna empresa. Introduce los datos manualmente.",
+            "closed": "Cerrada",
+            "prefilledTitle": "Campos rellenados",
+            "prefilledDescription": "Los datos provienen del registro público de empresas. Revísalos antes de guardar."
+          },
+          "country": "País de registro",
+          "countryDescription": "El país en el que está registrada tu empresa.",
+          "legalName": "Razón social",
+          "legalNamePlaceholder": "LOUEZ SAS",
+          "legalNameDescription": "El nombre exacto de tu empresa tal como figura en el registro.",
+          "legalForm": "Forma jurídica",
+          "legalFormPlaceholder": "SAS",
+          "legalFormDescription": "Por ejemplo SAS, SARL, empresario individual.",
+          "siren": "SIREN",
+          "sirenDescription": "Los 9 dígitos que identifican a tu empresa.",
+          "bce": "Número de empresa (BCE)",
+          "bceDescription": "10 dígitos, por ejemplo 0123456789.",
+          "companyNumber": "Número de empresa",
+          "companyNumberDescription": "El identificador de tu empresa en el registro nacional.",
+          "siret": "SIRET de la sede",
+          "siretDescription": "Los 14 dígitos que identifican al establecimiento que emite las facturas.",
+          "vatNumber": "Número de IVA",
+          "vatNumberDescription": "El número de IVA intracomunitario impreso en tus facturas. Déjalo vacío si estás exento de IVA.",
+          "vatNumberWarningTitle": "Formato de IVA inusual",
+          "vatNumberWarningFr": "Un número de IVA francés es FR seguido de 11 caracteres. Comprueba este valor.",
+          "vatNumberWarningBe": "Un número de IVA belga es BE seguido de 10 dígitos. Comprueba este valor.",
+          "rcsCity": "Ciudad del RCS",
+          "rcsCityDescription": "La ciudad del registro mercantil donde está inscrita tu empresa, por ejemplo París.",
+          "shareCapital": "Capital social",
+          "shareCapitalDescription": "Obligatorio en las facturas de las empresas que deben indicarlo.",
+          "addressSection": "Dirección del domicilio social",
+          "address": "Dirección",
+          "addressPlaceholder": "25 rue du Terrage",
+          "addressComplement": "Complemento de dirección",
+          "postalCode": "Código postal",
+          "city": "Ciudad"
+        },
+        "louezInvoicing": {
+          "title": "Facturación por Louez",
+          "description": "Louez genera y numera tus facturas en cada cobro.",
+          "statusActive": "Activada",
+          "statusInactive": "Desactivada",
+          "lockedTitle": "Completa primero tu identidad legal",
+          "lockedDescription": "Una factura legal debe incluir la razón social, la forma jurídica, el número de empresa y el domicilio social. Completa el paso 1 para activar la facturación.",
+          "enabled": "Louez emite mis facturas",
+          "enabledDescription": "Louez genera y numera tus facturas: en cada cobro se produce una factura conforme a nombre de tu empresa, con numeración secuencial y sin saltos.",
+          "vatRegime": "Régimen de IVA",
+          "vatRegimePlaceholder": "Elige tu régimen",
+          "vatRegimeDescription": "Determina el calendario de declaración enviado a la plataforma de facturación.",
+          "vatRegimeOptions": {
+            "monthly": "Declaración mensual",
+            "quarterly": "Declaración trimestral",
+            "simplified": "Régimen simplificado (anual)",
+            "vat_exemption": "Exención de IVA"
+          },
+          "hasVatOnDebits": "IVA por débitos",
+          "hasVatOnDebitsDescription": "Actívalo si has optado por el IVA por débitos en lugar de por cobros."
+        },
+        "transmission": {
+          "title": "Transmisión electrónica (PDP)",
+          "description": "Conecta tu empresa a una plataforma acreditada para enviar y recibir facturas a través de la red oficial.",
+          "statusPending": "Inscripción en curso",
+          "statusActionRequired": "Acción necesaria",
+          "deadlineTitle": "Plazo de septiembre de 2026",
+          "deadlineDescription": "A partir de septiembre de 2026, toda empresa francesa debe estar conectada a una plataforma acreditada para recibir sus facturas electrónicas; la emisión será obligatoria en septiembre de 2027. La conexión desde Louez es gratuita.",
+          "benefits": {
+            "send": "Envía tus facturas a clientes profesionales a través de la red oficial.",
+            "receive": "Recibe todas las facturas de tus proveedores en un solo lugar.",
+            "reporting": "E-reporting automático de tus ventas a particulares."
+          },
+          "connectAction": "Conectar mi empresa",
+          "pendingTitle": "Inscripción en curso",
+          "pendingDescription": "Tu inscripción se ha iniciado, pero aún no está completa. Retómala para finalizar las verificaciones de identidad de la plataforma acreditada.",
+          "resumeAction": "Retomar la inscripción",
+          "errorTitle": "Conexión interrumpida",
+          "reconnectAction": "Volver a conectar mi empresa",
+          "errorHints": {
+            "reconnectRequired": "La plataforma revocó el acceso concedido a Louez. Vuelve a conectar tu empresa para reanudar el envío de facturas.",
+            "oauthFailed": "No se pudo completar la inscripción. Iníciala de nuevo; si el problema persiste, contacta con soporte.",
+            "operationFailed": "El último intercambio con la plataforma falló. Louez volverá a intentarlo automáticamente; reconecta si el problema persiste."
+          },
+          "lockedTitle": "Conexión aún no disponible",
+          "lockedReasons": {
+            "identityIncomplete": "Completa tu identidad legal en el paso 1: la plataforma la verifica antes de inscribir tu empresa.",
+            "invoicingDisabled": "Activa la facturación de Louez en el paso 2: no hay nada que transmitir hasta que Louez emita tus facturas.",
+            "countryUnsupported": "La transmisión electrónica solo está disponible actualmente para empresas registradas en Francia o Bélgica."
+          },
+          "details": {
+            "verification": "Verificación de identidad",
+            "directory": "Directorio de la red",
+            "environment": "Entorno"
+          },
+          "verificationStatus": {
+            "verified": "Verificada",
+            "pending": "En verificación",
+            "failed": "Verificación fallida"
+          },
+          "verificationPendingNote": "La plataforma sigue revisando los datos de tu empresa. Tus facturas se transmitirán cuando termine la comprobación.",
+          "directoryStatus": {
+            "pending": "Registro en curso",
+            "created": "Registrada",
+            "error": "Registro fallido",
+            "missing": "No registrada"
+          },
+          "environments": {
+            "sandbox": "Entorno de prueba",
+            "production": "Producción"
+          },
+          "result": {
+            "successTitle": "Empresa conectada",
+            "successDescription": "Tu empresa ya está inscrita en la plataforma acreditada. Tus facturas se transmitirán automáticamente.",
+            "errorTitle": "Conexión fallida",
+            "errors": {
+              "oauth": "La inscripción se interrumpió antes de completarse. Puedes iniciarla de nuevo.",
+              "legalProfileIncomplete": "Tu identidad legal está incompleta. Completa el paso 1 y vuelve a iniciar la conexión.",
+              "notConfigured": "La transmisión electrónica no está configurada en este entorno. Contacta con el soporte de Louez."
+            }
+          },
+          "purchaseInvoicesAction": "Abrir facturas de proveedores"
+        }
       },
       "delivery": {
         "title": "Entrega",
@@ -5031,6 +5319,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Facturas de proveedores",
       "aiAssistant": "Asistente IA",
       "aiConversations": "Conversaciones de clientes",
       "aiAdvisor": "Asesor en línea",
@@ -5064,6 +5353,7 @@
       "settingsHours": "Horarios",
       "settingsInspections": "Inspecciones",
       "settingsIntegrations": "Integraciones",
+      "settingsInvoicing": "Facturación electrónica",
       "settingsLegal": "Páginas legales",
       "settingsNotifications": "Notificaciones",
       "settingsPayments": "Pagos",
@@ -5077,6 +5367,8 @@
       "title": "Notificaciones",
       "description": "Lo que requiere tu atención",
       "pendingReservations": "Solicitudes pendientes",
+      "supplierInvoices": "Facturas de proveedores",
+      "pendingSupplierInvoices": "{count, plural, one {# factura de proveedor por tramitar} other {# facturas de proveedores por tramitar}}",
       "emptyTitle": "Nada que revisar",
       "emptyDescription": "Las nuevas solicitudes aparecerán aquí.",
       "viewAllPending": "Ver todas las solicitudes pendientes"
@@ -5718,6 +6010,20 @@
       "isBusinessCustomerDescription": "Marque esta casilla si alquila en nombre de una empresa",
       "companyName": "Nombre de la empresa",
       "companyNamePlaceholder": "ACME S.L.",
+      "companyNumber": "Número de empresa (opcional)",
+      "companyNumberSiren": "SIREN (opcional)",
+      "companyNumberBce": "Número de empresa (BCE/KBO, opcional)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Opcional: lo necesitamos para emitir una factura para empresas.",
+      "vatNumber": "Número de IVA (opcional)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Busca tu empresa",
+        "placeholder": "Nombre de la empresa, SIREN o SIRET",
+        "description": "Opcional: busca para rellenar automáticamente los datos de tu empresa.",
+        "noResults": "No se ha encontrado ninguna empresa. Introduce los datos manualmente.",
+        "closed": "Cerrada"
+      },
       "contact": "Contacto",
       "address": "Direccion",
       "addressPlaceholder": "Calle del Alquiler 123",
@@ -5746,6 +6052,8 @@
         "phoneRequired": "Telefono requerido",
         "invalidPhone": "Formato de telefono invalido",
         "companyNameRequired": "Por favor ingrese el nombre de la empresa",
+        "invalidCompanyNumber": "Número de empresa no válido",
+        "invalidVatNumber": "Número de IVA no válido",
         "acceptCgv": "Debe aceptar los terminos y condiciones"
       },
       "pricing": {
@@ -6002,6 +6310,17 @@
       "signContract": "Firmar contrato",
       "contractSigned": "Contrato firmado",
       "downloadContract": "Descargar contrato",
+      "signContractConfirmation": "Al continuar, confirma que ha leído y acepta este contrato de alquiler.",
+      "signContractError": "No se pudo firmar el contrato. Inténtelo de nuevo.",
+      "invoiceDocuments": {
+        "title": "Facturas y notas de crédito",
+        "description": "Descargue los documentos contables de esta reserva.",
+        "download": "Descargar",
+        "types": {
+          "invoice": "Factura",
+          "credit_note": "Nota de crédito"
+        }
+      },
       "paymentPaid": "Pagado",
       "paymentPending": "No pagado",
       "amountPaid": "Monto pagado",
@@ -6547,6 +6866,7 @@
     "notFound": "Pagina no encontrada",
     "notFoundDescription": "La pagina que busca no existe o ha sido movida.",
     "unauthorized": "No autorizado",
+    "paymentInvoiced": "Este pago ha sido facturado y no se puede eliminar.",
     "unauthenticated": "No autenticado",
     "invalidData": "Datos invalidos",
     "slugTaken": "Esta direccion ya esta en uso",

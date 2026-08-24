@@ -16,6 +16,7 @@ test("covers every static dashboard breadcrumb route", () => {
     ["/dashboard/reservations/new", ["reservations", "reservationsNew"]],
     ["/dashboard/customers", ["customers"]],
     ["/dashboard/customers/new", ["customers", "customersNew"]],
+    ["/dashboard/purchase-invoices", ["purchaseInvoices"]],
     ["/dashboard/analytics", ["analytics"]],
     ["/dashboard/analytics/sales", ["analytics", "analyticsSales"]],
     ["/dashboard/analytics/traffic", ["analytics", "analyticsTraffic"]],

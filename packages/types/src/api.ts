@@ -48,6 +48,7 @@ export interface CombinationResolutionResult {
 
 export interface ReservationPollResponse {
   pendingCount: number;
+  pendingSupplierInvoices: number;
   totalCount: number;
   pendingReservations: {
     id: string;

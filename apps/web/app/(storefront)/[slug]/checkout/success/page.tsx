@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { storefrontRedirect } from '@/lib/storefront-url'
+import { getStorefrontUrl, storefrontRedirect } from '@/lib/storefront-url'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { CheckCircle2, Clock, Calendar, ArrowRight, Shield, Tag } from 'lucide-react'
@@ -19,6 +19,10 @@ import {
   toAnalyticsAmountCents,
 } from '@/lib/product-analytics/analytics'
 import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events'
+import { log } from '@/lib/evlog'
+import { tryGenerateInvoiceForPayment } from '@/lib/invoicing/service'
+import { tryPrepareInitialInvoiceEmailDelivery } from '@/lib/invoicing/delivery'
+import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -58,6 +62,10 @@ async function verifyAndUpdatePayment(
 
     if (existingPayment) {
       // Webhook already processed, just return success
+      await tryGenerateInvoiceForPayment(
+        existingPayment.id,
+        'checkout_success_existing_payment',
+      )
       return { alreadyProcessed: true }
     }
 
@@ -85,6 +93,10 @@ async function verifyAndUpdatePayment(
     // Get existing reservation
     const reservation = await db.query.reservations.findFirst({
       where: eq(reservations.id, reservationId),
+      with: {
+        customer: true,
+        items: true,
+      },
     })
 
     if (!reservation || reservation.status !== 'pending') {
@@ -123,6 +135,7 @@ async function verifyAndUpdatePayment(
       ),
     })
 
+    const completedPaymentId = existingPendingPayment?.id ?? nanoid()
     if (existingPendingPayment) {
       // Update existing pending payment
       await db
@@ -139,7 +152,7 @@ async function verifyAndUpdatePayment(
     } else {
       // Create new payment record (shouldn't happen normally)
       await db.insert(payments).values({
-        id: nanoid(),
+        id: completedPaymentId,
         reservationId,
         amount: totalAmount.toFixed(2),
         type: 'rental',
@@ -156,6 +169,11 @@ async function verifyAndUpdatePayment(
       })
     }
 
+    const invoiceGeneration = await tryGenerateInvoiceForPayment(
+      completedPaymentId,
+      'checkout_success_fallback',
+    )
+
     // Update reservation status
     await db
       .update(reservations)
@@ -167,6 +185,65 @@ async function verifyAndUpdatePayment(
         updatedAt: new Date(),
       })
       .where(eq(reservations.id, reservationId))
+
+    if (invoiceGeneration.status === 'generated' && invoiceGeneration.kind === 'initial') {
+      const invoiceDelivery = await tryPrepareInitialInvoiceEmailDelivery(reservationId)
+      const reservationUrl = getStorefrontUrl(
+        store.slug,
+        `/account/reservations/${reservationId}`,
+      )
+      dispatchCustomerNotification('customer_reservation_confirmed', {
+        store: {
+          id: store.id,
+          name: store.name,
+          email: store.email,
+          logoUrl: store.logoUrl,
+          darkLogoUrl: store.darkLogoUrl,
+          address: store.address,
+          phone: store.phone,
+          theme: store.theme,
+          settings: store.settings,
+          emailSettings: store.emailSettings,
+          customerNotificationSettings: store.customerNotificationSettings,
+        },
+        customer: {
+          id: reservation.customer.id,
+          firstName: reservation.customer.firstName,
+          lastName: reservation.customer.lastName,
+          email: reservation.customer.email,
+          phone: reservation.customer.phone,
+        },
+        reservation: {
+          id: reservationId,
+          number: reservation.number,
+          startDate: reservation.startDate,
+          endDate: reservation.endDate,
+          totalAmount: Number(reservation.totalAmount),
+          subtotalAmount: Number(reservation.subtotalAmount),
+          depositAmount: Number(reservation.depositAmount),
+          taxEnabled: Boolean(reservation.taxRate),
+          taxRate: reservation.taxRate ? Number(reservation.taxRate) : null,
+          subtotalExclTax: reservation.subtotalExclTax
+            ? Number(reservation.subtotalExclTax)
+            : null,
+          taxAmount: reservation.taxAmount ? Number(reservation.taxAmount) : null,
+        },
+        items: reservation.items.map((item) => ({
+          name: item.productSnapshot?.name || 'Product',
+          quantity: item.quantity,
+          unitPrice: Number(item.unitPrice),
+          totalPrice: Number(item.totalPrice),
+        })),
+        reservationUrl,
+        documentAttachments: invoiceDelivery.attachments,
+        contractSignatureUrl: invoiceDelivery.contractSignatureUrl,
+      }).catch((error) => {
+        log.error(
+          'invoicing',
+          `fallback customer confirmation dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      })
+    }
 
     // Log activity
     await db.insert(reservationActivity).values({

@@ -127,6 +127,16 @@ export const dashboardReservationRecordPaymentInputSchema = z.object({
   }),
 });
 
+export const dashboardReservationRefundManualPaymentInputSchema = z.object({
+  reservationId: z.string().length(21),
+  payload: z.object({
+    paymentId: z.string().length(21),
+    amount: z.number().min(0.01),
+    method: z.enum(["cash", "card", "transfer", "check", "other"]),
+    notes: z.string().max(10000).optional(),
+  }),
+});
+
 export const dashboardReservationDeletePaymentInputSchema = z.object({
   paymentId: z.string().length(21),
 });
@@ -535,6 +545,9 @@ export type DashboardReservationGetPaymentMethodInput = z.infer<
 >;
 export type DashboardReservationRecordPaymentInput = z.infer<
   typeof dashboardReservationRecordPaymentInputSchema
+>;
+export type DashboardReservationRefundManualPaymentInput = z.infer<
+  typeof dashboardReservationRefundManualPaymentInputSchema
 >;
 export type DashboardReservationDeletePaymentInput = z.infer<
   typeof dashboardReservationDeletePaymentInputSchema

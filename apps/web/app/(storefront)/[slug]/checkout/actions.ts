@@ -2,6 +2,7 @@
 
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 
 import {
   computeReservedNetOfExcludedUnits,
@@ -37,15 +38,21 @@ import type {
 import type {
   ProductTaxSettings,
   StoreSettings,
-  TaxSettings,
   TulipPublicMode,
 } from '@louez/types';
 import type { Rate } from '@louez/types';
 import {
+  companySearchSchema,
+  digitsOnly,
+  isValidCompanyNumber,
+  resolveCompanyNumberScheme,
+} from '@louez/validations';
+import {
   advisorValidationCovers,
-  calculateTaxFromExclusive,
+  calculateTaxBreakdown,
   extractExclusiveFromInclusive,
   getEffectiveTaxRate,
+  taxSettingsToConfig,
 } from '@louez/utils';
 import {
   DEFAULT_COMBINATION_KEY,
@@ -80,6 +87,10 @@ import {
   toAnalyticsAmountCents,
 } from '@/lib/product-analytics/analytics';
 import { productAnalyticsEvents } from '@/lib/product-analytics/analytics-events';
+import {
+  searchFrenchCompanies,
+  type CompanySearchResult,
+} from '@/lib/recherche-entreprises';
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import { normalizePhoneNumber } from '@/lib/sms/phone';
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
@@ -140,6 +151,9 @@ interface CreateReservationInput {
     phone?: string;
     customerType?: 'individual' | 'business';
     companyName?: string;
+    /** SIREN (FR) / BCE (BE). Optional — absent keeps the invoice B2C. */
+    companyNumber?: string;
+    vatNumber?: string;
     address?: string;
     city?: string;
     postalCode?: string;
@@ -165,6 +179,98 @@ interface CreateReservationInput {
    * anything. Used to tell a phone caller the real total before they agree.
    */
   quoteOnly?: boolean;
+}
+
+interface CustomerCompanyIdentity {
+  companyNumber: string | null;
+  companyNumberScheme: 'fr_siren' | 'be_bce' | null;
+  vatNumber: string | null;
+}
+
+/**
+ * Normalise the company identifiers of a buyer for invoicing.
+ *
+ * The scheme is NEVER taken from the client: it is derived from the buyer's
+ * country, so a crafted payload cannot promote a B2C invoice to B2B. Returns
+ * `null` when the submitted identifiers are unusable, which the caller reports
+ * as invalid data (same treatment as a malformed phone number).
+ */
+function resolveCustomerCompanyIdentity(
+  customer: {
+    customerType?: 'individual' | 'business';
+    companyNumber?: string;
+    vatNumber?: string;
+  },
+  country: string,
+): CustomerCompanyIdentity | null {
+  const empty: CustomerCompanyIdentity = {
+    companyNumber: null,
+    companyNumberScheme: null,
+    vatNumber: null,
+  };
+
+  if (customer.customerType !== 'business') {
+    return empty;
+  }
+
+  const scheme = resolveCompanyNumberScheme(country);
+  const rawCompanyNumber = customer.companyNumber?.trim() ?? '';
+  let companyNumber: string | null = null;
+
+  if (rawCompanyNumber.length > 0) {
+    if (!isValidCompanyNumber(country, rawCompanyNumber)) {
+      return null;
+    }
+
+    // Known schemes are pure digits; elsewhere keep what the buyer typed.
+    companyNumber = scheme ? digitsOnly(rawCompanyNumber) : rawCompanyNumber;
+  }
+
+  const vatNumber =
+    customer.vatNumber?.replace(/\s/g, '').toUpperCase().trim() ?? '';
+  if (vatNumber.length > 64) {
+    return null;
+  }
+
+  return {
+    companyNumber,
+    // A scheme without a number would be meaningless on the invoice.
+    companyNumberScheme: companyNumber ? scheme : null,
+    vatNumber: vatNumber.length > 0 ? vatNumber : null,
+  };
+}
+
+const checkoutCompanySearchSchema = z.object({
+  storeId: z.string().min(1).max(64),
+  query: companySearchSchema.shape.query,
+});
+
+/**
+ * Company lookup that prefills the business buyer's legal name and SIREN at
+ * checkout. Public on purpose (the storefront has no session) but scoped to a
+ * store, and only answered when that store operates in France — the registry
+ * is French-only. Any failure returns an empty list: typing the SIREN by hand
+ * must always stay possible.
+ */
+export async function searchCheckoutCompanyRegistry(input: {
+  storeId: string;
+  query: string;
+}): Promise<{ results: CompanySearchResult[] }> {
+  const validated = checkoutCompanySearchSchema.safeParse(input);
+  if (!validated.success) {
+    return { results: [] };
+  }
+
+  const store = await db.query.stores.findFirst({
+    where: eq(stores.id, validated.data.storeId),
+    columns: { id: true, settings: true },
+  });
+
+  if (!store || (store.settings?.country ?? 'FR') !== 'FR') {
+    return { results: [] };
+  }
+
+  return { results: await searchFrenchCompanies(validated.data.query) };
 }
 
 function getErrorKey(error: unknown, fallback: string): string {
@@ -563,6 +669,15 @@ export async function createReservation(input: CreateReservationInput) {
       return { error: 'errors.invalidData' };
     }
 
+    const storeCountry = store.settings?.country || 'FR';
+    const customerCompanyIdentity = resolveCustomerCompanyIdentity(
+      input.customer,
+      storeCountry,
+    );
+    if (!customerCompanyIdentity) {
+      return { error: 'errors.invalidData' };
+    }
+
     // Calculate the overall rental period from items
     const itemStartDates = input.items.map((item) => new Date(item.startDate));
     const itemEndDates = input.items.map((item) => new Date(item.endDate));
@@ -716,7 +831,7 @@ export async function createReservation(input: CreateReservationInput) {
         quantity: number;
         trackUnits: boolean;
         bookingAttributeAxes: BookingAttributeAxis[] | null;
-        taxSettings: unknown;
+        taxSettings: ProductTaxSettings | null;
       }
     >();
     let serverSubtotal = 0;
@@ -1260,8 +1375,52 @@ export async function createReservation(input: CreateReservationInput) {
     const finalDiscount = serverDiscountAmount;
     const finalDeposit = serverTotalDeposit;
     const finalDeliveryFee = deliveryFee;
-    // totalAmount excludes deposit — deposit is tracked separately in depositAmount
-    const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee;
+
+    const storeTaxSettings = storeSettings?.tax;
+    const taxConfig = taxSettingsToConfig(storeTaxSettings);
+    const taxEnabled = taxConfig?.enabled ?? false;
+    const storeTaxRate = taxConfig?.rate ?? 0;
+    const displayMode = taxConfig?.displayMode ?? 'inclusive';
+    const taxableLines = serverCalculatedItems.map((serverItem, index) => {
+      const productInfo = productsForReservation.get(serverItem.productId);
+      const productTaxSettings = productInfo?.taxSettings;
+
+      return {
+        id: `item:${index}`,
+        amount: serverItem.subtotal,
+        taxRate: getEffectiveTaxRate(taxConfig, productTaxSettings),
+      };
+    });
+
+    if (tulipInsuranceAmount > 0) {
+      // Insurance premiums are VAT-exempt (art. 261 C, 2° CGI); Tulip
+      // premiums already include insurance tax (TCA), never VAT.
+      taxableLines.push({
+        id: 'insurance',
+        amount: tulipInsuranceAmount,
+        taxRate: null,
+      });
+    }
+
+    const taxCalculation = calculateTaxBreakdown({
+      lines: taxableLines,
+      deliveryFee: finalDeliveryFee,
+      discountAmount: finalDiscount,
+      depositAmount: finalDeposit,
+      taxConfig,
+    });
+    const taxCalculationByLineId = new Map(
+      taxCalculation.lines.map((line) => [line.id, line]),
+    );
+    // totalAmount excludes the untaxed deposit. In TTC mode the engine only
+    // splits the already-displayed cents, so this remains the legacy total.
+    // In HT mode, it adds the newly exact per-line VAT as approved in the spec.
+    const finalTotal = taxCalculation.totalInclTax;
+    const subtotalExclTax = taxEnabled
+      ? taxCalculation.subtotalExclTax
+      : null;
+    const taxAmount = taxEnabled ? taxCalculation.taxAmount : null;
+    const taxRate = taxEnabled ? storeTaxRate : null;
 
     // Quote-only (phone receptionist): return the authoritative server-computed
     // amounts WITHOUT creating anything, so the caller can be told the real price
@@ -1283,12 +1442,6 @@ export async function createReservation(input: CreateReservationInput) {
     const endDates = input.items.map((item) => new Date(item.endDate));
     const startDate = new Date(Math.min(...startDates.map((d) => d.getTime())));
     const endDate = new Date(Math.max(...endDates.map((d) => d.getTime())));
-
-    // Get tax settings from store
-    const storeTaxSettings = store.settings?.tax as TaxSettings | undefined;
-    const taxEnabled = storeTaxSettings?.enabled ?? false;
-    const storeTaxRate = storeTaxSettings?.defaultRate ?? 0;
-    const displayMode = storeTaxSettings?.displayMode ?? 'inclusive';
 
     const blockingStatuses = getBlockingReservationStatuses(
       (store.settings?.pendingBlocksAvailability) ?? true,
@@ -1544,11 +1697,14 @@ export async function createReservation(input: CreateReservationInput) {
             lastName: input.customer.lastName,
             customerType: input.customer.customerType || 'individual',
             companyName: input.customer.companyName || null,
+            companyNumber: customerCompanyIdentity.companyNumber,
+            companyNumberScheme: customerCompanyIdentity.companyNumberScheme,
+            vatNumber: customerCompanyIdentity.vatNumber,
             phone: customerPhone,
             address: input.customer.address || null,
             city: input.customer.city || null,
             postalCode: input.customer.postalCode || null,
-            country: store.settings?.country || 'FR',
+            country: storeCountry,
           })
           .$returningId();
 
@@ -1556,6 +1712,12 @@ export async function createReservation(input: CreateReservationInput) {
           where: eq(customers.id, newCustomer.id),
         });
       } else {
+        // Identifiers already on file survive a checkout that omits them; the
+        // scheme is re-derived from the buyer's own country, never trusted.
+        const effectiveCompanyNumber =
+          customerCompanyIdentity.companyNumber ?? customer.companyNumber;
+        const buyerCountry = customer.country || storeCountry;
+
         await tx
           .update(customers)
           .set({
@@ -1563,6 +1725,13 @@ export async function createReservation(input: CreateReservationInput) {
             lastName: input.customer.lastName,
             customerType: input.customer.customerType || customer.customerType,
             companyName: input.customer.companyName ?? customer.companyName,
+            companyNumber: effectiveCompanyNumber,
+            companyNumberScheme:
+              effectiveCompanyNumber &&
+              isValidCompanyNumber(buyerCountry, effectiveCompanyNumber)
+                ? resolveCompanyNumberScheme(buyerCountry)
+                : null,
+            vatNumber: customerCompanyIdentity.vatNumber ?? customer.vatNumber,
             phone: customerPhone || customer.phone,
             address: input.customer.address || customer.address,
             city: input.customer.city || customer.city,
@@ -1577,24 +1746,6 @@ export async function createReservation(input: CreateReservationInput) {
           ok: false as const,
           error: 'errors.createCustomerError' as const,
         };
-      }
-
-      let subtotalExclTax: number | null = null;
-      let taxAmount: number | null = null;
-      let taxRate: number | null = null;
-
-      if (taxEnabled && storeTaxRate > 0) {
-        taxRate = storeTaxRate;
-        if (displayMode === 'inclusive') {
-          subtotalExclTax = extractExclusiveFromInclusive(
-            finalSubtotal,
-            storeTaxRate,
-          );
-          taxAmount = finalSubtotal - subtotalExclTax;
-        } else {
-          subtotalExclTax = finalSubtotal;
-          taxAmount = calculateTaxFromExclusive(finalSubtotal, storeTaxRate);
-        }
       }
 
       const reservationId = nanoid();
@@ -1665,10 +1816,6 @@ export async function createReservation(input: CreateReservationInput) {
         const serverItem = serverCalculatedItems[i];
         const totalPrice = serverItem.subtotal;
 
-        const productInfo = productsForReservation.get(item.productId);
-        const productTaxSettings = productInfo?.taxSettings as
-          | ProductTaxSettings
-          | undefined;
         const resolvedCombination = resolvedCombinationByItemKey.get(
           getReservationItemResolutionKey(item, i),
         );
@@ -1696,33 +1843,22 @@ export async function createReservation(input: CreateReservationInput) {
         let itemPriceExclTax: number | null = null;
         let itemTotalExclTax: number | null = null;
 
-        if (taxEnabled) {
-          const effectiveRate = getEffectiveTaxRate(
-            { enabled: true, rate: storeTaxRate, displayMode },
-            productTaxSettings,
-          );
-
-          if (effectiveRate !== null && effectiveRate > 0) {
-            itemTaxRate = effectiveRate;
-            if (displayMode === 'inclusive') {
-              itemPriceExclTax = extractExclusiveFromInclusive(
-                serverItem.unitPrice,
-                effectiveRate,
-              );
-              itemTotalExclTax = extractExclusiveFromInclusive(
-                totalPrice,
-                effectiveRate,
-              );
-              itemTaxAmount = totalPrice - itemTotalExclTax;
-            } else {
-              itemPriceExclTax = serverItem.unitPrice;
-              itemTotalExclTax = totalPrice;
-              itemTaxAmount = calculateTaxFromExclusive(
-                totalPrice,
-                effectiveRate,
-              );
-            }
-          }
+        const itemTaxCalculation = taxCalculationByLineId.get(`item:${i}`);
+        if (
+          taxEnabled &&
+          itemTaxCalculation &&
+          itemTaxCalculation.taxRate !== null
+        ) {
+          itemTaxRate = itemTaxCalculation.taxRate;
+          itemPriceExclTax =
+            displayMode === 'inclusive'
+              ? extractExclusiveFromInclusive(
+                  serverItem.unitPrice,
+                  itemTaxCalculation.taxRate,
+                )
+              : serverItem.unitPrice;
+          itemTotalExclTax = itemTaxCalculation.amountExclTax;
+          itemTaxAmount = itemTaxCalculation.taxAmount;
         }
 
         await tx.insert(reservationItems).values({
@@ -1743,6 +1879,9 @@ export async function createReservation(input: CreateReservationInput) {
       }
 
       if (tulipInsuranceAmount > 0) {
+        const insuranceTaxCalculation = taxEnabled
+          ? taxCalculationByLineId.get('insurance')
+          : undefined;
         await tx.insert(reservationItems).values({
           reservationId,
           productId: null,
@@ -1751,6 +1890,13 @@ export async function createReservation(input: CreateReservationInput) {
           unitPrice: tulipInsuranceAmount.toFixed(2),
           depositPerUnit: '0.00',
           totalPrice: tulipInsuranceAmount.toFixed(2),
+          taxRate: insuranceTaxCalculation?.taxRate?.toFixed(2) ?? null,
+          taxAmount:
+            insuranceTaxCalculation?.taxAmount.toFixed(2) ?? null,
+          priceExclTax:
+            insuranceTaxCalculation?.amountExclTax.toFixed(2) ?? null,
+          totalExclTax:
+            insuranceTaxCalculation?.amountExclTax.toFixed(2) ?? null,
           productSnapshot: {
             name: 'Garantie casse/vol',
             description: 'Garantie casse/vol',
@@ -1803,9 +1949,6 @@ export async function createReservation(input: CreateReservationInput) {
         reservationNumber,
         customerId: customer.id,
         customerEmail: customer.email,
-        taxRate,
-        subtotalExclTax,
-        taxAmount,
       };
     });
 
@@ -1825,9 +1968,6 @@ export async function createReservation(input: CreateReservationInput) {
       reservationNumber,
       customerId,
       customerEmail,
-      taxRate,
-      subtotalExclTax,
-      taxAmount,
     } = reservationWriteResult;
 
     const checkoutCurrency = store.settings?.currency || 'EUR';
@@ -2044,8 +2184,7 @@ export async function createReservation(input: CreateReservationInput) {
 
         // Calculate the amount to charge now (after promo discount, including delivery)
         // Round to 2 decimal places to avoid floating point issues
-        const chargeableTotal =
-          finalSubtotal - finalDiscount + finalDeliveryFee;
+        const chargeableTotal = finalTotal;
         const amountToCharge = isPartialPayment
           ? Math.round(chargeableTotal * depositPercentage) / 100
           : chargeableTotal;
@@ -2065,6 +2204,29 @@ export async function createReservation(input: CreateReservationInput) {
         // Build line items for Stripe
         // For partial payments, create a single line item for the deposit
         // For full payments, itemize each product
+        const exclusiveTaxLineItems = input.items
+          .map((item, idx) => {
+            const itemTaxCalculation = taxCalculationByLineId.get(
+              `item:${idx}`,
+            );
+            return itemTaxCalculation && itemTaxCalculation.amountInclTax > 0
+              ? {
+                  name: item.productSnapshot.name,
+                  description:
+                    item.quantity > 1
+                      ? `${item.quantity} × ${item.productSnapshot.name}`
+                      : undefined,
+                  quantity: 1,
+                  unitAmount: toStripeCents(
+                    itemTaxCalculation.amountInclTax,
+                    currency,
+                  ),
+                }
+              : null;
+          })
+          .filter((lineItem) => lineItem !== null);
+        const insuranceTaxLine = taxCalculationByLineId.get('insurance');
+        const deliveryTaxLine = taxCalculationByLineId.get('delivery');
         const lineItems = isPartialPayment
           ? [
               {
@@ -2074,6 +2236,35 @@ export async function createReservation(input: CreateReservationInput) {
                 unitAmount: toStripeCents(finalChargeAmount, currency),
               },
             ]
+          : displayMode === 'exclusive'
+            ? [
+                ...exclusiveTaxLineItems,
+                ...(insuranceTaxLine && insuranceTaxLine.amountInclTax > 0
+                  ? [
+                      {
+                        name: 'Garantie casse/vol',
+                        description: `Garantie casse/vol - réservation ${reservationNumber}`,
+                        quantity: 1,
+                        unitAmount: toStripeCents(
+                          insuranceTaxLine.amountInclTax,
+                          currency,
+                        ),
+                      },
+                    ]
+                  : []),
+                ...(deliveryTaxLine && deliveryTaxLine.amountInclTax > 0
+                  ? [
+                      {
+                        name: 'Livraison',
+                        quantity: 1,
+                        unitAmount: toStripeCents(
+                          deliveryTaxLine.amountInclTax,
+                          currency,
+                        ),
+                      },
+                    ]
+                  : []),
+              ]
           : [
               ...input.items.map((item, idx) => {
                 const serverItem = serverCalculatedItems[idx];
@@ -2162,7 +2353,7 @@ export async function createReservation(input: CreateReservationInput) {
           metadata: {
             checkoutSessionId: sessionId,
             amount: finalChargeAmount,
-            fullAmount: finalSubtotal,
+            fullAmount: finalTotal,
             depositPercentage,
             isPartialPayment,
             currency,

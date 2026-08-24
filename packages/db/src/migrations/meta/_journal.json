@@ -470,6 +470,20 @@
       "when": 1785516770584,
       "tag": "0061_new_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "5",
+      "when": 1787240250204,
+      "tag": "0062_fresh_bloodstorm",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "5",
+      "when": 1787324381503,
+      "tag": "0063_mature_colleen_wing",
+      "breakpoints": true
     }
   ]
 }

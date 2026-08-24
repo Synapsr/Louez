@@ -235,6 +235,85 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Leveranciersfacturen",
+      "description": "Facturen die je leveranciers via het netwerk voor elektronische facturatie naar je bedrijf hebben gestuurd.",
+      "columns": {
+        "seller": "Leverancier",
+        "number": "Factuur",
+        "issueDate": "Factuurdatum",
+        "totalInclTax": "Totaal incl. btw",
+        "status": "Netwerkstatus",
+        "ourAction": "Jouw antwoord",
+        "actions": "Acties"
+      },
+      "statuses": {
+        "received": "Ontvangen",
+        "acknowledged": "Ontvangst bevestigd",
+        "accepted": "Geaccepteerd",
+        "disputed": "Betwist",
+        "refused": "Geweigerd",
+        "paid": "Betaald",
+        "paymentSent": "Betaling verzonden",
+        "rejected": "Afgewezen",
+        "validated": "Gevalideerd"
+      },
+      "ourActions": {
+        "none": "Geen antwoord",
+        "acknowledged": "Ontvangst bevestigd",
+        "accepted": "Geaccepteerd",
+        "refused": "Geweigerd"
+      },
+      "actions": {
+        "download": "Downloaden",
+        "downloadNamed": "Factuur {number} downloaden",
+        "menuLabel": "Acties voor factuur {number}",
+        "acknowledge": "Ontvangst bevestigen",
+        "accept": "Factuur accepteren",
+        "refuse": "Factuur weigeren",
+        "acknowledgeSuccess": "Ontvangst bevestigd",
+        "acceptSuccess": "Factuur geaccepteerd",
+        "refuseSuccess": "Factuur geweigerd"
+      },
+      "accept": {
+        "title": "Deze factuur accepteren?",
+        "description": "Het accepteren van factuur {number} stuurt een bindende verklaring naar het netwerk voor elektronische facturatie. Dit kan niet ongedaan worden gemaakt.",
+        "confirm": "Factuur accepteren"
+      },
+      "refuse": {
+        "title": "Deze factuur weigeren?",
+        "description": "Het weigeren van factuur {number} stuurt een bindende verklaring naar het netwerk voor elektronische facturatie. Dit kan niet ongedaan worden gemaakt.",
+        "reasonLabel": "Reden van weigering",
+        "reasonPlaceholder": "Bijv. verkeerd bedrag, dienst niet geleverd…",
+        "reasonHelp": "De reden wordt doorgestuurd naar je leverancier.",
+        "confirm": "Factuur weigeren"
+      },
+      "empty": {
+        "title": "Nog geen leveranciersfacturen",
+        "description": "Facturen komen hier automatisch binnen zodra een leverancier er een naar je bedrijf stuurt via het netwerk voor elektronische facturatie.",
+        "settingsAction": "Factuurinstellingen bekijken"
+      },
+      "notConnected": {
+        "title": "Verbind je bedrijf om leveranciersfacturen te ontvangen",
+        "description": "Leveranciersfacturen komen in deze inbox zodra je bedrijf is aangemeld bij ons geaccrediteerde platform (PDP).",
+        "deadlineTitle": "Deadline september 2026",
+        "deadlineDescription": "Vanaf september 2026 moet elk Frans bedrijf zijn facturen elektronisch kunnen ontvangen.",
+        "howItWorks": "Zodra je verbonden bent, verschijnen inkomende facturen hier automatisch. Je kunt ze downloaden, de ontvangst bevestigen, ze accepteren of weigeren.",
+        "connectAction": "Elektronische facturatie instellen"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Geen facturen} one {1 factuur} other {# facturen}}",
+        "page": "Pagina {current} van {total}",
+        "previous": "Vorige pagina",
+        "next": "Volgende pagina"
+      },
+      "sync": "Synchroniseren",
+      "viewAll": "Volledige pagina openen"
+    },
+    "electronicInvoicingUnavailable": {
+      "title": "Elektronische facturatie is niet beschikbaar",
+      "description": "Deze functie is nog niet ingeschakeld voor je winkel."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "AI-assistent",
@@ -1737,6 +1816,28 @@
       "sendEmail": "E-mail verzenden",
       "customerInfo": "Klantinformatie",
       "viewCustomer": "Klant bekijken",
+      "invoiceDocuments": {
+        "title": "Facturen en creditnota’s",
+        "empty": "Er is nog geen factuur aangemaakt.",
+        "generate": "Factuur aanmaken",
+        "generationSuccess": "De beschikbare factuurdocumenten zijn aangemaakt.",
+        "generationError": "De factuur kon niet worden aangemaakt.",
+        "download": "Downloaden",
+        "downloadNamed": "{number} downloaden",
+        "types": {
+          "invoice": "Factuur",
+          "credit_note": "Creditnota"
+        },
+        "transmission": {
+          "not_applicable": "Niet verzonden",
+          "pending": "Verzending in afwachting",
+          "sent": "Verzonden",
+          "validated": "Gevalideerd",
+          "rejected": "Afgewezen",
+          "failed": "Verzending mislukt"
+        },
+        "recheck": "Verzendstatus vernieuwen"
+      },
       "periodStart": "Begin",
       "periodEnd": "Einde",
       "duration": "Duur",
@@ -2269,6 +2370,16 @@
         "maxReturnable": "Maximaal retourneerbaar",
         "history": "Betalingsgeschiedenis",
         "recorded": "Betaling geregistreerd",
+        "refundBadge": "Terugbetaling",
+        "refundAction": "Terugbetalen",
+        "refundTitle": "Deze betaling terugbetalen",
+        "refundDescription": "Je kunt maximaal {amount} van deze betaling terugbetalen.",
+        "refundNote": "Notitie bij terugbetaling",
+        "refundNotePlaceholder": "Reden, overschrijvingskenmerk...",
+        "refundConfirm": "Terugbetaling bevestigen",
+        "invalidRefundAmount": "Voer een bedrag in binnen het resterende terugbetaalbare saldo.",
+        "creditNoteGenerated": "Creditnota {number} aangemaakt",
+        "refundRecorded": "Terugbetaling geregistreerd",
         "deleted": "Betaling verwijderd",
         "depositReturned": "Borg geretourneerd",
         "damageRecorded": "Schade geregistreerd",
@@ -2316,7 +2427,8 @@
         "statusAuthorized": "Geautoriseerd",
         "statusRefunded": "Terugbetaald",
         "statusCancelled": "Geannuleerd",
-        "requestPayment": "Betaling aanvragen"
+        "requestPayment": "Betaling aanvragen",
+        "invoiceGenerated": "Factuur {number} aangemaakt"
       },
       "requestPaymentModal": {
         "title": "Betaling aanvragen",
@@ -2574,6 +2686,13 @@
         "businessCustomerDescription": "Vink aan als deze klant een bedrijf vertegenwoordigt",
         "companyName": "Bedrijfsnaam",
         "companyNamePlaceholder": "ACME B.V.",
+        "companyNumber": "Ondernemingsnummer",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Ondernemingsnummer (KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Nodig om een elektronische B2B-factuur op te maken.",
+        "vatNumber": "Btw-nummer",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Voornaam *",
         "firstNamePlaceholder": "Jan",
         "lastName": "Achternaam *",
@@ -3730,6 +3849,19 @@
               "help": "iCalendar-referentie"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Verbind je onderneming met een erkend platform om elektronische facturen te verzenden en ontvangen.",
+            "about": "Super PDP verbindt Louez met het officiële netwerk voor e-facturatie en beheert inschrijving, verzending, ontvangst en statusupdates.",
+            "features": {
+              "send": "Verzend klantfacturen via het officiële netwerk.",
+              "receive": "Ontvang leveranciersfacturen in Louez.",
+              "lifecycle": "Volg de aflever- en betaalstatus van facturen."
+            },
+            "resources": {
+              "website": "Website van Super PDP"
+            }
+          },
           "tulip": {
             "name": "Tulip Insurance",
             "description": "Verbind Tulip om offertes op te stellen en huurverzekeringscontracten te genereren.",
@@ -4022,6 +4154,162 @@
         "taxNumberDescription": "Uw BTW-nummer (weergegeven op contracten)",
         "depositNoTaxInfo": "Borgen zijn niet onderworpen aan BTW omdat ze aan de klant worden terugbetaald.",
         "saved": "Belastinginstellingen opgeslagen"
+      },
+      "invoicing": {
+        "title": "Elektronische facturatie",
+        "description": "Stel de juridische identiteit van je bedrijf in en laat Louez je facturen opmaken.",
+        "saved": "Factuurinstellingen opgeslagen",
+        "statusComplete": "Volledig",
+        "statusIncomplete": "Aan te vullen",
+        "setup": {
+          "steps": {
+            "identity": "Juridische identiteit",
+            "activation": "Activering",
+            "transmission": "Verzending"
+          },
+          "continue": "Doorgaan",
+          "finishWithoutInvoicing": "Afronden zonder activeren",
+          "later": "Later instellen",
+          "intro": {
+            "title": "Stap over op elektronische facturatie",
+            "description": "Louez genereert conforme facturen op naam van uw bedrijf en verzendt ze via het officiële netwerk van erkende platformen. Stel alles in drie stappen in.",
+            "bullets": {
+              "generate": "Conforme facturen worden bij elke betaling automatisch gegenereerd en genummerd.",
+              "transmit": "Verzending van uw facturen naar zakelijke klanten via het officiële netwerk, met automatische e-reporting van uw verkopen.",
+              "receive": "Gecentraliseerde ontvangst van de facturen van uw leveranciers."
+            },
+            "start": "Instellen starten",
+            "resume": "Instellen hervatten",
+            "stepProgress": "Stap {current} van {total}"
+          }
+        },
+        "identity": {
+          "title": "Juridische identiteit",
+          "description": "De juridische gegevens van je bedrijf, afgedrukt op elke factuur die je uitreikt.",
+          "search": {
+            "label": "Zoek je onderneming",
+            "description": "Zoek op naam, SIREN of SIRET om het formulier vooraf in te vullen. Alle velden blijven aanpasbaar.",
+            "placeholder": "Bedrijfsnaam, SIREN of SIRET",
+            "noResults": "Geen onderneming gevonden. Voer de gegevens handmatig in.",
+            "closed": "Stopgezet",
+            "prefilledTitle": "Velden vooraf ingevuld",
+            "prefilledDescription": "De gegevens komen uit het openbare ondernemingsregister. Controleer ze voordat je opslaat."
+          },
+          "country": "Land van inschrijving",
+          "countryDescription": "Het land waar je onderneming is ingeschreven.",
+          "legalName": "Statutaire naam",
+          "legalNamePlaceholder": "LOUEZ SAS",
+          "legalNameDescription": "De exacte naam van je onderneming zoals in het register.",
+          "legalForm": "Rechtsvorm",
+          "legalFormPlaceholder": "SAS",
+          "legalFormDescription": "Bijvoorbeeld SAS, SARL, eenmanszaak.",
+          "siren": "SIREN",
+          "sirenDescription": "De 9 cijfers die je onderneming identificeren.",
+          "bce": "Ondernemingsnummer (KBO)",
+          "bceDescription": "10 cijfers, bijvoorbeeld 0123456789.",
+          "companyNumber": "Ondernemingsnummer",
+          "companyNumberDescription": "De identificatie van je onderneming in het nationale register.",
+          "siret": "SIRET van de zetel",
+          "siretDescription": "De 14 cijfers van de vestiging die de facturen uitreikt.",
+          "vatNumber": "Btw-nummer",
+          "vatNumberDescription": "Het intracommunautaire btw-nummer dat op je facturen wordt afgedrukt. Laat leeg als je vrijgesteld bent van btw.",
+          "vatNumberWarningTitle": "Ongebruikelijk btw-formaat",
+          "vatNumberWarningFr": "Een Frans btw-nummer is FR gevolgd door 11 tekens. Controleer deze waarde.",
+          "vatNumberWarningBe": "Een Belgisch btw-nummer is BE gevolgd door 10 cijfers. Controleer deze waarde.",
+          "rcsCity": "RCS-stad",
+          "rcsCityDescription": "De stad van de griffie waar je onderneming is ingeschreven, bijvoorbeeld Parijs.",
+          "shareCapital": "Maatschappelijk kapitaal",
+          "shareCapitalDescription": "Verplicht op facturen van vennootschappen die dit moeten vermelden.",
+          "addressSection": "Adres van de maatschappelijke zetel",
+          "address": "Adres",
+          "addressPlaceholder": "25 rue du Terrage",
+          "addressComplement": "Adrestoevoeging",
+          "postalCode": "Postcode",
+          "city": "Stad"
+        },
+        "louezInvoicing": {
+          "title": "Facturatie door Louez",
+          "description": "Louez maakt en nummert je facturen bij elke ontvangen betaling.",
+          "statusActive": "Ingeschakeld",
+          "statusInactive": "Uitgeschakeld",
+          "lockedTitle": "Vul eerst je juridische identiteit in",
+          "lockedDescription": "Een wettelijke factuur moet de statutaire naam, rechtsvorm, het ondernemingsnummer en het zeteladres bevatten. Vul stap 1 in om facturatie in te schakelen.",
+          "enabled": "Louez reikt mijn facturen uit",
+          "enabledDescription": "Louez maakt en nummert je facturen: bij elke ontvangen betaling wordt een conforme factuur op naam van je onderneming aangemaakt, met sluitende opeenvolgende nummering.",
+          "vatRegime": "Btw-regime",
+          "vatRegimePlaceholder": "Kies je regime",
+          "vatRegimeDescription": "Bepaalt de aangiftekalender die naar het factuurplatform wordt gestuurd.",
+          "vatRegimeOptions": {
+            "monthly": "Maandelijkse aangifte",
+            "quarterly": "Kwartaalaangifte",
+            "simplified": "Vereenvoudigd (jaarlijks) regime",
+            "vat_exemption": "Btw-vrijstelling"
+          },
+          "hasVatOnDebits": "Btw op facturatie",
+          "hasVatOnDebitsDescription": "Zet aan als je hebt gekozen voor btw op facturatie in plaats van op ontvangst."
+        },
+        "transmission": {
+          "title": "Elektronische verzending (PDP)",
+          "description": "Verbind je onderneming met een erkend platform om facturen via het officiële netwerk te versturen en te ontvangen.",
+          "statusPending": "Inschrijving loopt",
+          "statusActionRequired": "Actie vereist",
+          "deadlineTitle": "Deadline september 2026",
+          "deadlineDescription": "Vanaf september 2026 moet elke Franse onderneming aangesloten zijn op een erkend platform om elektronische facturen te ontvangen; verzenden wordt verplicht in september 2027. Aansluiten via Louez is gratis.",
+          "benefits": {
+            "send": "Verstuur je facturen naar zakelijke klanten via het officiële netwerk.",
+            "receive": "Ontvang al je leveranciersfacturen op één plek.",
+            "reporting": "Automatische e-reporting van je verkopen aan particulieren."
+          },
+          "connectAction": "Mijn onderneming verbinden",
+          "pendingTitle": "Inschrijving loopt",
+          "pendingDescription": "Je inschrijving is gestart maar nog niet afgerond. Hervat ze om de identiteitscontroles van het erkende platform af te ronden.",
+          "resumeAction": "Inschrijving hervatten",
+          "errorTitle": "Verbinding onderbroken",
+          "reconnectAction": "Mijn onderneming opnieuw verbinden",
+          "errorHints": {
+            "reconnectRequired": "Het platform heeft de toegang van Louez ingetrokken. Verbind je onderneming opnieuw om facturen weer te verzenden.",
+            "oauthFailed": "De inschrijving kon niet worden afgerond. Start opnieuw; neem contact op met support als het probleem aanhoudt.",
+            "operationFailed": "De laatste uitwisseling met het platform is mislukt. Louez probeert het automatisch opnieuw; verbind opnieuw als het probleem aanhoudt."
+          },
+          "lockedTitle": "Verbinding nog niet beschikbaar",
+          "lockedReasons": {
+            "identityIncomplete": "Vul je wettelijke identiteit in stap 1 aan: het platform controleert die voordat je onderneming wordt ingeschreven.",
+            "invoicingDisabled": "Schakel facturatie door Louez in stap 2 in: er is niets te verzenden zolang Louez geen facturen uitgeeft.",
+            "countryUnsupported": "Elektronische verzending is momenteel alleen beschikbaar voor ondernemingen die in Frankrijk of België zijn geregistreerd."
+          },
+          "details": {
+            "verification": "Identiteitscontrole",
+            "directory": "Netwerkregister",
+            "environment": "Omgeving"
+          },
+          "verificationStatus": {
+            "verified": "Geverifieerd",
+            "pending": "Wordt gecontroleerd",
+            "failed": "Controle mislukt"
+          },
+          "verificationPendingNote": "Het platform controleert je bedrijfsgegevens nog. Je facturen worden verzonden zodra de controle is afgerond.",
+          "directoryStatus": {
+            "pending": "Registratie loopt",
+            "created": "Geregistreerd",
+            "error": "Registratie mislukt",
+            "missing": "Niet geregistreerd"
+          },
+          "environments": {
+            "sandbox": "Testomgeving",
+            "production": "Productie"
+          },
+          "result": {
+            "successTitle": "Onderneming verbonden",
+            "successDescription": "Je onderneming is nu ingeschreven bij het erkende platform. Je facturen worden automatisch verzonden.",
+            "errorTitle": "Verbinding mislukt",
+            "errors": {
+              "oauth": "De inschrijving werd onderbroken voordat ze voltooid was. Je kunt opnieuw beginnen.",
+              "legalProfileIncomplete": "Je wettelijke identiteit is onvolledig. Vul stap 1 aan en start de verbinding opnieuw.",
+              "notConfigured": "Elektronische verzending is niet geconfigureerd in deze omgeving. Neem contact op met Louez-support."
+            }
+          },
+          "purchaseInvoicesAction": "Leveranciersfacturen openen"
+        }
       },
       "delivery": {
         "title": "Bezorging",
@@ -5031,6 +5319,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Leveranciersfacturen",
       "aiAssistant": "AI-assistent",
       "aiConversations": "Klantgesprekken",
       "aiAdvisor": "Online adviseur",
@@ -5064,6 +5353,7 @@
       "settingsHours": "Openingstijden",
       "settingsInspections": "Inspecties",
       "settingsIntegrations": "Integraties",
+      "settingsInvoicing": "Elektronische facturatie",
       "settingsLegal": "Juridische pagina's",
       "settingsNotifications": "Meldingen",
       "settingsPayments": "Betalingen",
@@ -5077,6 +5367,8 @@
       "title": "Meldingen",
       "description": "Wat je aandacht vraagt",
       "pendingReservations": "Openstaande aanvragen",
+      "supplierInvoices": "Leveranciersfacturen",
+      "pendingSupplierInvoices": "{count, plural, one {# leveranciersfactuur te verwerken} other {# leveranciersfacturen te verwerken}}",
       "emptyTitle": "Niets te controleren",
       "emptyDescription": "Nieuwe aanvragen verschijnen hier.",
       "viewAllPending": "Alle openstaande aanvragen bekijken"
@@ -5718,6 +6010,20 @@
       "isBusinessCustomerDescription": "Vink dit vakje aan als u huurt namens een bedrijf",
       "companyName": "Bedrijfsnaam",
       "companyNamePlaceholder": "ACME B.V.",
+      "companyNumber": "Ondernemingsnummer (optioneel)",
+      "companyNumberSiren": "SIREN (optioneel)",
+      "companyNumberBce": "Ondernemingsnummer (KBO, optioneel)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Optioneel — nodig om een zakelijke factuur op te maken.",
+      "vatNumber": "Btw-nummer (optioneel)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Zoek je onderneming",
+        "placeholder": "Bedrijfsnaam, SIREN of SIRET",
+        "description": "Optioneel: zoek om je bedrijfsgegevens automatisch in te vullen.",
+        "noResults": "Geen onderneming gevonden. Voer de gegevens handmatig in.",
+        "closed": "Stopgezet"
+      },
       "contact": "Contact",
       "address": "Adres",
       "addressPlaceholder": "Keizersgracht 123",
@@ -5746,6 +6052,8 @@
         "phoneRequired": "Telefoon vereist",
         "invalidPhone": "Ongeldig telefoonformaat",
         "companyNameRequired": "Vul de bedrijfsnaam in",
+        "invalidCompanyNumber": "Ongeldig ondernemingsnummer",
+        "invalidVatNumber": "Ongeldig btw-nummer",
         "acceptCgv": "U moet de algemene voorwaarden accepteren"
       },
       "pricing": {
@@ -6002,6 +6310,17 @@
       "signContract": "Contract ondertekenen",
       "contractSigned": "Contract ondertekend",
       "downloadContract": "Contract downloaden",
+      "signContractConfirmation": "Door verder te gaan bevestigt u dat u deze huurovereenkomst hebt gelezen en aanvaard.",
+      "signContractError": "Het contract kon niet worden ondertekend. Probeer het opnieuw.",
+      "invoiceDocuments": {
+        "title": "Facturen en creditnota’s",
+        "description": "Download de boekhoudkundige documenten voor deze reservering.",
+        "download": "Downloaden",
+        "types": {
+          "invoice": "Factuur",
+          "credit_note": "Creditnota"
+        }
+      },
       "paymentPaid": "Betaald",
       "paymentPending": "Onbetaald",
       "amountPaid": "Betaald bedrag",
@@ -6547,6 +6866,7 @@
     "notFound": "Pagina niet gevonden",
     "notFoundDescription": "De pagina die u zoekt bestaat niet of is verplaatst.",
     "unauthorized": "Niet geautoriseerd",
+    "paymentInvoiced": "Deze betaling is gefactureerd en kan niet worden verwijderd.",
     "unauthenticated": "Niet geauthenticeerd",
     "invalidData": "Ongeldige gegevens",
     "slugTaken": "Dit adres is al in gebruik",

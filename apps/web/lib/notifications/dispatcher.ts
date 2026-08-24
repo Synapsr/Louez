@@ -12,6 +12,7 @@
 import { db } from '@louez/db'
 import { stores, smsLogs, pushSubscriptions, storeMembers } from '@louez/db'
 import { eq } from 'drizzle-orm'
+import { env } from '@/env'
 import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from '@/lib/plan-limits'
 import { sendSms, isSmsConfigured } from '@/lib/sms/client'
 import { validateAndNormalizePhone } from '@/lib/sms/phone'
@@ -34,6 +35,7 @@ import {
   sendReminderPickupAdminEmail,
   sendReminderReturnAdminEmail,
   sendReminderDigestAdminEmail,
+  sendSupplierInvoiceReceivedEmail,
 } from '@/lib/email/send'
 import type { DigestEntry } from '@/lib/email/templates'
 import { isPushConfigured, sendPush } from '@/lib/push/client'
@@ -560,6 +562,49 @@ export async function dispatchNotification(
   }
 
   return result
+}
+
+export interface SupplierInvoiceNotificationContext {
+  storeId: string
+  invoice: {
+    sellerName: string
+    number: string
+    totalInclTax: string
+    currency: string
+  }
+}
+
+/**
+ * Supplier invoice receipt has no configurable NotificationEventType. This
+ * dedicated dispatcher therefore owns the required email to the store address
+ * without borrowing an unrelated reservation or payment preference.
+ */
+export async function dispatchSupplierInvoiceReceived(
+  ctx: SupplierInvoiceNotificationContext
+): Promise<void> {
+  const [store] = await db
+    .select({
+      id: stores.id,
+      name: stores.name,
+      email: stores.email,
+      theme: stores.theme,
+      settings: stores.settings,
+    })
+    .from(stores)
+    .where(eq(stores.id, ctx.storeId))
+    .limit(1)
+
+  if (!store?.email) return
+
+  const storeLocale = getLocaleFromCountry(store.settings?.country)
+  const locale: EmailLocale = storeLocale === 'fr' ? 'fr' : 'en'
+  await sendSupplierInvoiceReceivedEmail({
+    to: store.email,
+    store,
+    invoice: ctx.invoice,
+    dashboardUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/purchase-invoices`,
+    locale,
+  })
 }
 
 // ============================================================================

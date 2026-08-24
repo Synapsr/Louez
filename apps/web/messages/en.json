@@ -235,6 +235,85 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Supplier invoices",
+      "description": "Invoices your suppliers sent to your company through the electronic invoicing network.",
+      "columns": {
+        "seller": "Supplier",
+        "number": "Invoice",
+        "issueDate": "Issue date",
+        "totalInclTax": "Total incl. VAT",
+        "status": "Network status",
+        "ourAction": "Your response",
+        "actions": "Actions"
+      },
+      "statuses": {
+        "received": "Received",
+        "acknowledged": "Acknowledged",
+        "accepted": "Accepted",
+        "disputed": "Disputed",
+        "refused": "Refused",
+        "paid": "Paid",
+        "paymentSent": "Payment sent",
+        "rejected": "Rejected",
+        "validated": "Validated"
+      },
+      "ourActions": {
+        "none": "No response",
+        "acknowledged": "Acknowledged",
+        "accepted": "Accepted",
+        "refused": "Refused"
+      },
+      "actions": {
+        "download": "Download",
+        "downloadNamed": "Download invoice {number}",
+        "menuLabel": "Actions for invoice {number}",
+        "acknowledge": "Acknowledge receipt",
+        "accept": "Accept invoice",
+        "refuse": "Refuse invoice",
+        "acknowledgeSuccess": "Receipt acknowledged",
+        "acceptSuccess": "Invoice accepted",
+        "refuseSuccess": "Invoice refused"
+      },
+      "accept": {
+        "title": "Accept this invoice?",
+        "description": "Accepting invoice {number} sends a binding statement to the electronic invoicing network. It cannot be undone.",
+        "confirm": "Accept invoice"
+      },
+      "refuse": {
+        "title": "Refuse this invoice?",
+        "description": "Refusing invoice {number} sends a binding statement to the electronic invoicing network. It cannot be undone.",
+        "reasonLabel": "Reason for refusal",
+        "reasonPlaceholder": "e.g. wrong amount, service not delivered…",
+        "reasonHelp": "The reason is forwarded to your supplier.",
+        "confirm": "Refuse invoice"
+      },
+      "empty": {
+        "title": "No supplier invoices yet",
+        "description": "Invoices arrive here automatically as soon as a supplier sends one to your company through the electronic invoicing network.",
+        "settingsAction": "View invoicing settings"
+      },
+      "notConnected": {
+        "title": "Connect your company to receive supplier invoices",
+        "description": "Supplier invoices reach this inbox once your company is enrolled with our accredited platform (PDP).",
+        "deadlineTitle": "September 2026 deadline",
+        "deadlineDescription": "From September 2026, every French company must be able to receive its invoices electronically.",
+        "howItWorks": "Once connected, incoming invoices appear here automatically. You can download them and acknowledge, accept or refuse them.",
+        "connectAction": "Set up electronic invoicing"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {No invoices} one {1 invoice} other {# invoices}}",
+        "page": "Page {current} of {total}",
+        "previous": "Previous page",
+        "next": "Next page"
+      },
+      "sync": "Sync",
+      "viewAll": "Open the full page"
+    },
+    "electronicInvoicingUnavailable": {
+      "title": "Electronic invoicing is not available",
+      "description": "This feature is not enabled for your store yet."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "AI Assistant",
@@ -1776,6 +1855,28 @@
       "sendEmail": "Send email",
       "customerInfo": "Customer information",
       "viewCustomer": "View customer",
+      "invoiceDocuments": {
+        "title": "Invoices and credit notes",
+        "empty": "No invoice has been generated yet.",
+        "generate": "Generate invoice",
+        "generationSuccess": "The available invoice documents were generated.",
+        "generationError": "The invoice could not be generated.",
+        "download": "Download",
+        "downloadNamed": "Download {number}",
+        "types": {
+          "invoice": "Invoice",
+          "credit_note": "Credit note"
+        },
+        "transmission": {
+          "not_applicable": "Not transmitted",
+          "pending": "Pending transmission",
+          "sent": "Sent",
+          "validated": "Validated",
+          "rejected": "Rejected",
+          "failed": "Transmission failed"
+        },
+        "recheck": "Refresh transmission status"
+      },
       "periodStart": "Start",
       "periodEnd": "End",
       "duration": "Duration",
@@ -2308,6 +2409,16 @@
         "maxReturnable": "Maximum returnable",
         "history": "Payment history",
         "recorded": "Payment recorded",
+        "refundBadge": "Refund",
+        "refundAction": "Refund",
+        "refundTitle": "Refund this payment",
+        "refundDescription": "You can refund up to {amount} from this payment.",
+        "refundNote": "Refund note",
+        "refundNotePlaceholder": "Reason, transfer reference...",
+        "refundConfirm": "Confirm refund",
+        "invalidRefundAmount": "Enter a refund amount within the remaining refundable balance.",
+        "creditNoteGenerated": "Credit note {number} generated",
+        "refundRecorded": "Refund recorded",
         "deleted": "Payment deleted",
         "depositReturned": "Deposit returned",
         "damageRecorded": "Damages recorded",
@@ -2355,7 +2466,8 @@
         "statusAuthorized": "Authorized",
         "statusRefunded": "Refunded",
         "statusCancelled": "Cancelled",
-        "requestPayment": "Request payment"
+        "requestPayment": "Request payment",
+        "invoiceGenerated": "Invoice {number} generated"
       },
       "requestPaymentModal": {
         "title": "Request payment",
@@ -2613,6 +2725,13 @@
         "businessCustomerDescription": "Check if this customer represents a company",
         "companyName": "Company name",
         "companyNamePlaceholder": "ACME Ltd",
+        "companyNumber": "Company number",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Company number (BCE/KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Required to issue a B2B electronic invoice.",
+        "vatNumber": "VAT number",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "First name *",
         "firstNamePlaceholder": "John",
         "lastName": "Last name *",
@@ -3136,6 +3255,19 @@
             },
             "resources": {
               "help": "iCalendar reference"
+            }
+          },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Connect your company to an accredited platform to send and receive electronic invoices.",
+            "about": "Super PDP connects Louez to the official electronic invoicing network and handles company enrollment, invoice transmission, receipt, and lifecycle updates.",
+            "features": {
+              "send": "Send customer invoices over the official network.",
+              "receive": "Receive supplier invoices in Louez.",
+              "lifecycle": "Track invoice delivery and payment statuses."
+            },
+            "resources": {
+              "website": "Super PDP website"
             }
           },
           "tulip": {
@@ -4157,6 +4289,162 @@
         "depositNoTaxInfo": "Deposits are not subject to VAT as they are returned to the customer.",
         "saved": "Tax settings saved"
       },
+      "invoicing": {
+        "title": "Electronic invoicing",
+        "description": "Set up your company's legal identity and let Louez issue your invoices.",
+        "saved": "Invoicing settings saved",
+        "statusComplete": "Complete",
+        "statusIncomplete": "To complete",
+        "setup": {
+          "steps": {
+            "identity": "Legal identity",
+            "activation": "Activation",
+            "transmission": "Transmission"
+          },
+          "continue": "Continue",
+          "finishWithoutInvoicing": "Finish without enabling",
+          "later": "Set up later",
+          "intro": {
+            "title": "Switch to electronic invoicing",
+            "description": "Louez generates compliant invoices in your company's name and transmits them through the official network of accredited platforms. Set everything up in three steps.",
+            "bullets": {
+              "generate": "Compliant invoices generated and numbered automatically with every payment.",
+              "transmit": "Invoices sent to business customers through the official network, with automatic e-reporting of your sales.",
+              "receive": "Centralized reception of your suppliers' invoices."
+            },
+            "start": "Start setup",
+            "resume": "Resume setup",
+            "stepProgress": "Step {current} of {total}"
+          }
+        },
+        "identity": {
+          "title": "Legal identity",
+          "description": "Your company's legal details, printed on every invoice you issue.",
+          "search": {
+            "label": "Find your company",
+            "description": "Search by company name, SIREN or SIRET to prefill the form. Every field stays editable.",
+            "placeholder": "Company name, SIREN or SIRET",
+            "noResults": "No company found. Enter the details manually.",
+            "closed": "Closed",
+            "prefilledTitle": "Fields prefilled",
+            "prefilledDescription": "The data comes from the public company registry. Check it before saving."
+          },
+          "country": "Country of registration",
+          "countryDescription": "The country where your company is registered.",
+          "legalName": "Legal name",
+          "legalNamePlaceholder": "LOUEZ SAS",
+          "legalNameDescription": "Your company's exact name as it appears in the registry.",
+          "legalForm": "Legal form",
+          "legalFormPlaceholder": "SAS",
+          "legalFormDescription": "For example SAS, SARL, sole trader.",
+          "siren": "SIREN",
+          "sirenDescription": "The 9 digits identifying your company.",
+          "bce": "Company number (BCE)",
+          "bceDescription": "10 digits, for example 0123456789.",
+          "companyNumber": "Company number",
+          "companyNumberDescription": "Your company's identifier in the national registry.",
+          "siret": "Head office SIRET",
+          "siretDescription": "The 14 digits identifying the establishment issuing the invoices.",
+          "vatNumber": "VAT number",
+          "vatNumberDescription": "The intra-community VAT number printed on your invoices. Leave empty if you are VAT exempt.",
+          "vatNumberWarningTitle": "Unusual VAT format",
+          "vatNumberWarningFr": "A French VAT number is FR followed by 11 characters. Please double-check this value.",
+          "vatNumberWarningBe": "A Belgian VAT number is BE followed by 10 digits. Please double-check this value.",
+          "rcsCity": "RCS city",
+          "rcsCityDescription": "The city of the registry your company is filed with, for example Paris.",
+          "shareCapital": "Share capital",
+          "shareCapitalDescription": "Required on invoices for companies that must disclose it.",
+          "addressSection": "Registered office address",
+          "address": "Address",
+          "addressPlaceholder": "25 rue du Terrage",
+          "addressComplement": "Address line 2",
+          "postalCode": "Postal code",
+          "city": "City"
+        },
+        "louezInvoicing": {
+          "title": "Invoicing by Louez",
+          "description": "Louez generates and numbers your invoices on every payment received.",
+          "statusActive": "Enabled",
+          "statusInactive": "Disabled",
+          "lockedTitle": "Complete your legal identity first",
+          "lockedDescription": "A legal invoice must carry your legal name, legal form, company number and registered address. Fill in step 1 to switch invoicing on.",
+          "enabled": "Louez issues my invoices",
+          "enabledDescription": "Louez generates and numbers your invoices: every payment received produces a compliant invoice in your company's name, with gap-free sequential numbering.",
+          "vatRegime": "VAT regime",
+          "vatRegimePlaceholder": "Choose your regime",
+          "vatRegimeDescription": "Determines the reporting calendar sent to the invoicing platform.",
+          "vatRegimeOptions": {
+            "monthly": "Monthly return",
+            "quarterly": "Quarterly return",
+            "simplified": "Simplified (annual) regime",
+            "vat_exemption": "VAT exemption"
+          },
+          "hasVatOnDebits": "VAT on debits",
+          "hasVatOnDebitsDescription": "Turn on if you opted for VAT on debits rather than on payments received."
+        },
+        "transmission": {
+          "title": "Electronic transmission (PDP)",
+          "description": "Connect your company to an accredited platform to send and receive invoices over the official network.",
+          "statusPending": "Enrollment in progress",
+          "statusActionRequired": "Action required",
+          "deadlineTitle": "September 2026 deadline",
+          "deadlineDescription": "From September 2026, every French company must be connected to an accredited platform to receive its electronic invoices; issuing becomes mandatory in September 2027. Connecting from Louez is free of charge.",
+          "benefits": {
+            "send": "Send your invoices to business customers over the official network.",
+            "receive": "Receive all your supplier invoices in one place.",
+            "reporting": "Automatic e-reporting of your sales to consumers."
+          },
+          "connectAction": "Connect my company",
+          "pendingTitle": "Enrollment in progress",
+          "pendingDescription": "Your enrollment has been started but is not complete yet. Resume it to finish the identity checks of the accredited platform.",
+          "resumeAction": "Resume enrollment",
+          "errorTitle": "Connection interrupted",
+          "reconnectAction": "Reconnect my company",
+          "errorHints": {
+            "reconnectRequired": "The platform revoked the access granted to Louez. Reconnect your company to resume sending invoices.",
+            "oauthFailed": "The enrollment could not be completed. Start it again; if the problem persists, contact support.",
+            "operationFailed": "The last exchange with the platform failed. Louez will retry automatically; reconnect if the problem persists."
+          },
+          "lockedTitle": "Connection not available yet",
+          "lockedReasons": {
+            "identityIncomplete": "Complete your legal identity in step 1: the platform verifies it before enrolling your company.",
+            "invoicingDisabled": "Turn on invoicing by Louez in step 2: there is nothing to transmit until Louez issues your invoices.",
+            "countryUnsupported": "Electronic transmission is currently available for companies registered in France or Belgium only."
+          },
+          "details": {
+            "verification": "Identity verification",
+            "directory": "Network directory",
+            "environment": "Environment"
+          },
+          "verificationStatus": {
+            "verified": "Verified",
+            "pending": "Being verified",
+            "failed": "Verification failed"
+          },
+          "verificationPendingNote": "The platform is still reviewing your company details. Your invoices will be transmitted as soon as the check is complete.",
+          "directoryStatus": {
+            "pending": "Registration in progress",
+            "created": "Registered",
+            "error": "Registration failed",
+            "missing": "Not registered"
+          },
+          "environments": {
+            "sandbox": "Test environment",
+            "production": "Production"
+          },
+          "result": {
+            "successTitle": "Company connected",
+            "successDescription": "Your company is now enrolled with the accredited platform. Your invoices will be transmitted automatically.",
+            "errorTitle": "Connection failed",
+            "errors": {
+              "oauth": "The enrollment was interrupted before it could be completed. You can start it again.",
+              "legalProfileIncomplete": "Your legal identity is incomplete. Fill in step 1, then start the connection again.",
+              "notConfigured": "Electronic transmission is not configured on this environment. Contact Louez support."
+            }
+          },
+          "purchaseInvoicesAction": "Open supplier invoices"
+        }
+      },
       "delivery": {
         "title": "Delivery",
         "description": "Configure delivery options for your customers",
@@ -5031,6 +5319,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Supplier invoices",
       "aiAssistant": "AI Assistant",
       "aiConversations": "Customer conversations",
       "aiAdvisor": "Online advisor",
@@ -5064,6 +5353,7 @@
       "settingsHours": "Hours",
       "settingsInspections": "Inspections",
       "settingsIntegrations": "Integrations",
+      "settingsInvoicing": "Electronic invoicing",
       "settingsLegal": "Legal pages",
       "settingsNotifications": "Notifications",
       "settingsPayments": "Payments",
@@ -5077,6 +5367,8 @@
       "title": "Notifications",
       "description": "Items that need your attention",
       "pendingReservations": "Pending requests",
+      "supplierInvoices": "Supplier invoices",
+      "pendingSupplierInvoices": "{count, plural, one {# supplier invoice to process} other {# supplier invoices to process}}",
       "emptyTitle": "Nothing to review",
       "emptyDescription": "New requests will appear here.",
       "viewAllPending": "View all pending requests"
@@ -5718,6 +6010,20 @@
       "isBusinessCustomerDescription": "Check this box if you are renting on behalf of a company",
       "companyName": "Company name",
       "companyNamePlaceholder": "ACME Ltd",
+      "companyNumber": "Company number (optional)",
+      "companyNumberSiren": "SIREN (optional)",
+      "companyNumberBce": "Company number (BCE/KBO, optional)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Optional — we need it to issue a business invoice.",
+      "vatNumber": "VAT number (optional)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Find your company",
+        "placeholder": "Company name, SIREN or SIRET",
+        "description": "Optional: search to fill in your company details automatically.",
+        "noResults": "No company found. Enter the details manually.",
+        "closed": "Closed"
+      },
       "contact": "Contact",
       "address": "Address",
       "addressPlaceholder": "123 Rental Street",
@@ -5746,6 +6052,8 @@
         "phoneRequired": "Phone required",
         "invalidPhone": "Invalid phone format",
         "companyNameRequired": "Please enter the company name",
+        "invalidCompanyNumber": "Invalid company number",
+        "invalidVatNumber": "Invalid VAT number",
         "acceptCgv": "You must accept the terms and conditions"
       },
       "pricing": {
@@ -5994,6 +6302,17 @@
       "signContract": "Sign contract",
       "contractSigned": "Contract signed",
       "downloadContract": "Download contract",
+      "signContractConfirmation": "By continuing, you confirm that you have read and accept this rental contract.",
+      "signContractError": "The contract could not be signed. Please try again.",
+      "invoiceDocuments": {
+        "title": "Invoices and credit notes",
+        "description": "Download the accounting documents for this reservation.",
+        "download": "Download",
+        "types": {
+          "invoice": "Invoice",
+          "credit_note": "Credit note"
+        }
+      },
       "paymentPaid": "Paid",
       "paymentPending": "Unpaid",
       "amountPaid": "Amount paid",
@@ -6547,6 +6866,7 @@
     "notFound": "Page not found",
     "notFoundDescription": "The page you're looking for doesn't exist or has been moved.",
     "unauthorized": "Unauthorized",
+    "paymentInvoiced": "This payment has been invoiced and cannot be deleted.",
     "unauthenticated": "Not authenticated",
     "invalidData": "Invalid data",
     "slugTaken": "This address is already in use",

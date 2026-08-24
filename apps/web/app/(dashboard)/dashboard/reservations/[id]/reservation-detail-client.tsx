@@ -47,8 +47,10 @@ import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes"
 import { SmartReservationActions } from "./smart-reservation-actions";
 import { UnifiedPaymentSection, type PaymentMethod } from "./unified-payment-section";
 import { hasMobileReservationQuickActions } from "./util.mobile-reservation-quick-actions";
+import { getNetCompletedPaymentAmount } from "./util.payment-refunds";
 import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-selector";
 import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
+import { InvoiceDocumentsCard, type ReservationInvoiceDocument } from "./invoice-documents-card";
 
 type ReservationStatus =
   | "pending"
@@ -101,6 +103,8 @@ interface ReservationDetailClientProps {
   departureInspection: InspectionData | null;
   returnInspection: InspectionData | null;
   defaultPaymentMethod?: PaymentMethod;
+  invoices: ReservationInvoiceDocument[];
+  canGenerateInvoice: boolean;
 }
 
 function toDate(value: Date | string | null | undefined) {
@@ -137,6 +141,8 @@ export function ReservationDetailClient({
   departureInspection,
   returnInspection,
   defaultPaymentMethod,
+  invoices,
+  canGenerateInvoice,
 }: ReservationDetailClientProps) {
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
@@ -186,9 +192,7 @@ export function ReservationDetailClient({
   const rental = getRentalAmount(reservation);
   const deposit = parseFloat(reservation.depositAmount || "0");
 
-  const rentalPaid = (reservation.payments || [])
-    .filter((p: any) => p.type === "rental" && p.status === "completed")
-    .reduce((sum: number, p: any) => sum + parseFloat(p.amount), 0);
+  const rentalPaid = getNetCompletedPaymentAmount(reservation.payments || [], "rental");
 
   const depositCollected = (reservation.payments || [])
     .filter((p: any) => p.type === "deposit" && p.status === "completed")
@@ -580,6 +584,12 @@ export function ReservationDetailClient({
         </div>
 
         <div className="space-y-4 min-w-0">
+          <InvoiceDocumentsCard
+            reservationId={reservation.id}
+            invoices={invoices}
+            canGenerate={canGenerateInvoice}
+          />
+
           {tulipContractUrl && (
             <Card>
               <CardHeader className="pb-3">
