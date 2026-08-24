@@ -58,6 +58,7 @@ export const StorefrontLayoutContent = async ({ children, params }: StorefrontLa
     return (
       <NextIntlClientProvider messages={messages}>
         <StoreProvider
+          storeId={store.id}
           currency={currency}
           storeSlug={store.slug}
           storeName={store.name}
@@ -81,6 +82,7 @@ export const StorefrontLayoutContent = async ({ children, params }: StorefrontLa
           store={{ id: store.id, name: store.name, slug: store.slug }}
         >
           <StoreProvider
+            storeId={store.id}
             currency={currency}
             storeSlug={store.slug}
             storeName={store.name}

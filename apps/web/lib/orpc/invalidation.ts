@@ -31,6 +31,17 @@ export async function invalidateReservationPoll(queryClient: QueryClient) {
   })
 }
 
+export async function invalidateReservationTimelines(queryClient: QueryClient) {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: orpc.dashboard.reservations.calendarPeriod.key(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: orpc.dashboard.reservations.planningTimeline.key(),
+    }),
+  ])
+}
+
 export async function invalidateReservationAll(
   queryClient: QueryClient,
   reservationId: string,
@@ -39,5 +50,6 @@ export async function invalidateReservationAll(
     invalidateReservationDetail(queryClient, reservationId),
     invalidateReservationList(queryClient),
     invalidateReservationPoll(queryClient),
+    invalidateReservationTimelines(queryClient),
   ])
 }

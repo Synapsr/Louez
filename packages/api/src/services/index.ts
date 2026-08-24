@@ -9,6 +9,7 @@ export * from "./onboarding";
 export * from "./notification-settings";
 export * from "./reservation-poll";
 export * from "./reservation-sign";
+export * from "./reservation-timeline";
 export * from "./reservations-dashboard";
 export * from "./store-settings";
 export * from "./api-keys";

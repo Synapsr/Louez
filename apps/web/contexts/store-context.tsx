@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from 'react'
 import { setStorefrontSlug } from '@/lib/orpc/client'
 
 interface StoreContextValue {
+  storeId: string
   currency: string
   storeSlug: string
   storeName: string
@@ -15,6 +16,7 @@ const StoreContext = createContext<StoreContextValue | undefined>(undefined)
 
 interface StoreProviderProps {
   children: ReactNode
+  storeId: string
   currency: string
   storeSlug: string
   storeName: string
@@ -24,6 +26,7 @@ interface StoreProviderProps {
 
 export function StoreProvider({
   children,
+  storeId,
   currency,
   storeSlug,
   storeName,
@@ -35,7 +38,9 @@ export function StoreProvider({
   setStorefrontSlug(storeSlug)
 
   return (
-    <StoreContext.Provider value={{ currency, storeSlug, storeName, timezone, maxDiscountPercent }}>
+    <StoreContext.Provider
+      value={{ storeId, currency, storeSlug, storeName, timezone, maxDiscountPercent }}
+    >
       {children}
     </StoreContext.Provider>
   )

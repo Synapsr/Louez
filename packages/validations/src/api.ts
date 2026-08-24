@@ -46,6 +46,12 @@ export const storefrontAvailabilityRouteQuerySchema = z.object({
 
 export const dashboardReservationPollInputSchema = z.object({});
 
+export const dashboardReservationTimelinePeriodInputSchema = z.object({
+  storeId: z.string().min(1).max(128),
+  startDate: dateTimeOrDateSchema,
+  endDate: dateTimeOrDateSchema,
+});
+
 export const dashboardReservationsListInputSchema = z.object({
   status: z
     .enum(["all", "pending", "confirmed", "ongoing", "completed", "cancelled", "rejected", "quote"])
@@ -520,6 +526,9 @@ export type StorefrontResolveCombinationInput = z.infer<
 >;
 export type StorefrontCartResolveInput = z.infer<typeof storefrontCartResolveInputSchema>;
 export type DashboardReservationPollInput = z.infer<typeof dashboardReservationPollInputSchema>;
+export type DashboardReservationTimelinePeriodInput = z.infer<
+  typeof dashboardReservationTimelinePeriodInputSchema
+>;
 export type DashboardReservationsListInput = z.infer<typeof dashboardReservationsListInputSchema>;
 export type DashboardReservationGetByIdInput = z.infer<
   typeof dashboardReservationGetByIdInputSchema

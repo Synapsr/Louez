@@ -27,6 +27,7 @@ import {
   dashboardReservationSendAccessLinkSmsInputSchema,
   dashboardReservationSendModificationEmailInputSchema,
   dashboardReservationSendReservationEmailInputSchema,
+  dashboardReservationTimelinePeriodInputSchema,
   dashboardReservationUpdateNotesInputSchema,
   dashboardReservationUpdateReservationInputSchema,
   dashboardReservationUpdateStatusInputSchema,
@@ -38,7 +39,9 @@ import { dashboardProcedure, requirePermission } from '../../procedures';
 import {
   getDashboardReservationById,
   getDashboardReservationsList,
+  getReservationsForCalendarPeriod,
   getReservationPollData,
+  getStorePlanningTimeline,
   signReservationAsAdmin,
 } from '../../services';
 import { toORPCError } from '../../utils/orpc-error';
@@ -57,6 +60,98 @@ function toOptionalPeriod(payload?: {
   if (!startDate || !endDate) return undefined;
   return { startDate, endDate };
 }
+
+const reservationStatusSchema = z.enum([
+  'pending',
+  'confirmed',
+  'ongoing',
+  'completed',
+  'cancelled',
+  'rejected',
+  'quote',
+  'declined',
+]);
+
+const calendarPeriodReservationSchema = z.object({
+  id: z.string(),
+  number: z.string(),
+  status: reservationStatusSchema.nullable(),
+  startDate: z.date(),
+  endDate: z.date(),
+  subtotalAmount: z.string(),
+  depositAmount: z.string(),
+  totalAmount: z.string(),
+  outboundMethod: z.string(),
+  returnMethod: z.string(),
+  deliveryAddress: z.string().nullable(),
+  deliveryCity: z.string().nullable(),
+  deliveryPostalCode: z.string().nullable(),
+  deliveryCountry: z.string().nullable(),
+  returnAddress: z.string().nullable(),
+  returnCity: z.string().nullable(),
+  returnPostalCode: z.string().nullable(),
+  returnCountry: z.string().nullable(),
+  customer: z
+    .object({
+      id: z.string(),
+      firstName: z.string(),
+      lastName: z.string(),
+    })
+    .nullable(),
+  items: z.array(
+    z.object({
+      id: z.string(),
+      quantity: z.number(),
+      productSnapshot: z
+        .object({
+          name: z.string(),
+          images: z.array(z.string()).nullish(),
+        })
+        .nullable(),
+      product: z
+        .object({
+          id: z.string(),
+          name: z.string(),
+          images: z.array(z.string()).nullable(),
+          displayOrder: z.number().nullable(),
+        })
+        .nullable(),
+    }),
+  ),
+});
+
+const planningTimelineDeliverySchema = z.object({
+  address: z.string().nullable(),
+  city: z.string().nullable(),
+  postalCode: z.string().nullable(),
+  country: z.string().nullable(),
+});
+
+const planningTimelineEntrySchema = z.object({
+  id: z.string(),
+  productId: z.string(),
+  number: z.string(),
+  status: reservationStatusSchema.nullable(),
+  startDate: z.date(),
+  endDate: z.date(),
+  customerId: z.string().nullable(),
+  customerName: z.string(),
+  subtotalAmount: z.string(),
+  depositAmount: z.string(),
+  totalAmount: z.string(),
+  quantity: z.number(),
+  assignedUnitIds: z.array(z.string()),
+  items: z.array(
+    z.object({
+      productId: z.string(),
+      name: z.string(),
+      quantity: z.number(),
+      imageUrl: z.string().nullable(),
+    }),
+  ),
+  outboundDelivery: planningTimelineDeliverySchema.nullable(),
+  returnDelivery: planningTimelineDeliverySchema.nullable(),
+});
 
 const poll = dashboardProcedure
   .input(dashboardReservationPollInputSchema)
@@ -86,6 +181,44 @@ const list = dashboardProcedure
         sortDirection: input.sortDirection,
         page: input.page,
         pageSize: input.pageSize,
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const calendarPeriod = dashboardProcedure
+  .input(dashboardReservationTimelinePeriodInputSchema)
+  .output(z.array(calendarPeriodReservationSchema))
+  .handler(async ({ context, input }) => {
+    if (input.storeId !== context.store.id) {
+      throw new ORPCError('FORBIDDEN', { message: 'errors.unauthorized' });
+    }
+
+    try {
+      return await getReservationsForCalendarPeriod({
+        storeId: context.store.id,
+        startDate: new Date(input.startDate),
+        endDate: new Date(input.endDate),
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const planningTimeline = dashboardProcedure
+  .input(dashboardReservationTimelinePeriodInputSchema)
+  .output(z.array(planningTimelineEntrySchema))
+  .handler(async ({ context, input }) => {
+    if (input.storeId !== context.store.id) {
+      throw new ORPCError('FORBIDDEN', { message: 'errors.unauthorized' });
+    }
+
+    try {
+      return await getStorePlanningTimeline({
+        storeId: context.store.id,
+        startDate: new Date(input.startDate),
+        endDate: new Date(input.endDate),
       });
     } catch (error) {
       throw toORPCError(error);
@@ -754,6 +887,8 @@ const sign = dashboardProcedure
 export const dashboardReservationsRouter = {
   poll,
   list,
+  calendarPeriod,
+  planningTimeline,
   getById,
   getPaymentMethod,
   getAvailableUnitsForItem,

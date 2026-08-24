@@ -15,6 +15,10 @@ import { toastManager } from '@louez/ui'
 import type { ReservationPollResponse } from '@louez/types'
 import { useTranslations } from 'next-intl'
 import { orpc } from '@/lib/orpc/react'
+import {
+  invalidateReservationList,
+  invalidateReservationTimelines,
+} from '@/lib/orpc/invalidation'
 
 interface ReservationPollingContextValue {
   pendingCount: number
@@ -133,6 +137,10 @@ export function ReservationPollingProvider({
 
         // Refresh the page data
         router.refresh()
+        await Promise.all([
+          invalidateReservationList(queryClient),
+          invalidateReservationTimelines(queryClient),
+        ])
       } else if (
         data.latestReservation &&
         latestReservationCreatedAt !== null &&
