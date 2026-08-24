@@ -173,8 +173,8 @@ export function ReservationsCalendarView({
   // ---------------------------------------------------------------------------
 
   const chunkQueries = useMemo(
-    () => reservationCalendarQueries.forWindow(windowStart, daysCount),
-    [windowStart, daysCount],
+    () => reservationCalendarQueries.forWindow(storeId, windowStart, daysCount),
+    [storeId, windowStart, daysCount],
   );
 
   const { reservations, isFetching, hasError, retry } = useQueries({
@@ -183,7 +183,7 @@ export function ReservationsCalendarView({
       const byId = new Map<string, Reservation>();
       for (const result of results) {
         for (const reservation of result.data ?? []) {
-          byId.set(reservation.id, reservation as unknown as Reservation);
+          byId.set(reservation.id, reservation);
         }
       }
       return {

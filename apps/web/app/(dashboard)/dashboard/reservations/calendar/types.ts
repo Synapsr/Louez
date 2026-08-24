@@ -5,6 +5,8 @@
  * including the timeline (Gantt-like) view optimized for rental businesses.
  */
 
+import type { TimelineReservation } from "@/components/dashboard/reservations-timeline/timeline-utils";
+
 // =============================================================================
 // Core Types
 // =============================================================================
@@ -54,7 +56,7 @@ export interface Reservation {
     id: string;
     firstName: string;
     lastName: string;
-  };
+  } | null;
   items: ReservationItem[];
   // Delivery legs — 'address' means the merchant travels to the customer
   outboundMethod: string;
@@ -67,6 +69,14 @@ export interface Reservation {
   returnCity: string | null;
   returnPostalCode: string | null;
   returnCountry: string | null;
+}
+
+/**
+ * A planning-timeline entry: one bar for a single (reservation, product) pair,
+ * so a reservation covering several products lands on each product's own rows.
+ */
+export interface StoreTimelineReservation extends TimelineReservation {
+  productId: string;
 }
 
 export interface ProductUnit {

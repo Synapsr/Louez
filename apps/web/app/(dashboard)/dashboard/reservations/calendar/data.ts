@@ -1,32 +1,9 @@
 import "server-only";
 
-import { and, asc, eq, gte, lte, or } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { db, effectiveProductQuantitySql } from "@louez/db";
 import { productUnits, products, reservations } from "@louez/db";
-
-/** Reservations overlapping the [startDate, endDate] window, with customer + items. */
-export function getReservationsForPeriod(storeId: string, startDate: Date, endDate: Date) {
-  return db.query.reservations.findMany({
-    where: and(
-      eq(reservations.storeId, storeId),
-      or(
-        and(gte(reservations.startDate, startDate), lte(reservations.startDate, endDate)),
-        and(gte(reservations.endDate, startDate), lte(reservations.endDate, endDate)),
-        and(lte(reservations.startDate, startDate), gte(reservations.endDate, endDate)),
-      ),
-    ),
-    with: {
-      customer: true,
-      items: {
-        with: {
-          product: true,
-        },
-      },
-    },
-    orderBy: (reservations, { asc }) => [asc(reservations.startDate)],
-  });
-}
 
 /** Whether the store has ever created a reservation, regardless of date or status. */
 export async function getStoreHasReservations(storeId: string) {
