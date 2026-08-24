@@ -123,6 +123,7 @@ function isInsufficientCapacityResult(result: unknown): result is {
 }
 
 export function NewReservationForm({
+  onReservationCreated,
   openReplaySource,
   customers,
   products,
@@ -137,7 +138,7 @@ export function NewReservationForm({
   storeLongitude,
   storeAddress,
   storeLocations,
-}: NewReservationFormProps) {
+}: NewReservationFormProps & { onReservationCreated: () => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -481,7 +482,8 @@ export function NewReservationForm({
         title: sendAsQuoteRef.current ? t("quoteSent") : t("reservationCreated"),
         type: "success",
       });
-      router.push(`/dashboard/reservations/${result.reservationId}`);
+      onReservationCreated();
+      router.replace(`/dashboard/reservations/${result.reservationId}`);
     } catch (error) {
       posthog.capture(productAnalyticsEvents.dashboardReservationCreationFailed, {
         ...dashboardReservationAnalyticsBaseProperties,

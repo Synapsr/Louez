@@ -17,7 +17,7 @@ import { resolveDashboardCreationSource } from '@/lib/openreplay/events';
 import { getCurrentStore } from '@/lib/store-context';
 import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
-import { NewReservationForm } from './new-reservation-form';
+import { NewReservationFormBoundary } from './new-reservation-form-boundary';
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -198,7 +198,7 @@ export default async function NewReservationPage({
         <p className="text-muted-foreground">{t('createManually')}</p>
       </div>
 
-      <NewReservationForm
+      <NewReservationFormBoundary
         openReplaySource={openReplaySource}
         customers={customersList}
         products={productsList}
