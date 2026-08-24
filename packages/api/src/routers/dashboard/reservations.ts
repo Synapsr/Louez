@@ -27,6 +27,8 @@ import {
   dashboardReservationSendAccessLinkSmsInputSchema,
   dashboardReservationSendModificationEmailInputSchema,
   dashboardReservationSendReservationEmailInputSchema,
+  dashboardReservationCalendarPeriodEntrySchema,
+  dashboardReservationPlanningTimelineEntrySchema,
   dashboardReservationTimelinePeriodInputSchema,
   dashboardReservationUpdateNotesInputSchema,
   dashboardReservationUpdateReservationInputSchema,
@@ -60,98 +62,6 @@ function toOptionalPeriod(payload?: {
   if (!startDate || !endDate) return undefined;
   return { startDate, endDate };
 }
-
-const reservationStatusSchema = z.enum([
-  'pending',
-  'confirmed',
-  'ongoing',
-  'completed',
-  'cancelled',
-  'rejected',
-  'quote',
-  'declined',
-]);
-
-const calendarPeriodReservationSchema = z.object({
-  id: z.string(),
-  number: z.string(),
-  status: reservationStatusSchema.nullable(),
-  startDate: z.date(),
-  endDate: z.date(),
-  subtotalAmount: z.string(),
-  depositAmount: z.string(),
-  totalAmount: z.string(),
-  outboundMethod: z.string(),
-  returnMethod: z.string(),
-  deliveryAddress: z.string().nullable(),
-  deliveryCity: z.string().nullable(),
-  deliveryPostalCode: z.string().nullable(),
-  deliveryCountry: z.string().nullable(),
-  returnAddress: z.string().nullable(),
-  returnCity: z.string().nullable(),
-  returnPostalCode: z.string().nullable(),
-  returnCountry: z.string().nullable(),
-  customer: z
-    .object({
-      id: z.string(),
-      firstName: z.string(),
-      lastName: z.string(),
-    })
-    .nullable(),
-  items: z.array(
-    z.object({
-      id: z.string(),
-      quantity: z.number(),
-      productSnapshot: z
-        .object({
-          name: z.string(),
-          images: z.array(z.string()).nullish(),
-        })
-        .nullable(),
-      product: z
-        .object({
-          id: z.string(),
-          name: z.string(),
-          images: z.array(z.string()).nullable(),
-          displayOrder: z.number().nullable(),
-        })
-        .nullable(),
-    }),
-  ),
-});
-
-const planningTimelineDeliverySchema = z.object({
-  address: z.string().nullable(),
-  city: z.string().nullable(),
-  postalCode: z.string().nullable(),
-  country: z.string().nullable(),
-});
-
-const planningTimelineEntrySchema = z.object({
-  id: z.string(),
-  productId: z.string(),
-  number: z.string(),
-  status: reservationStatusSchema.nullable(),
-  startDate: z.date(),
-  endDate: z.date(),
-  customerId: z.string().nullable(),
-  customerName: z.string(),
-  subtotalAmount: z.string(),
-  depositAmount: z.string(),
-  totalAmount: z.string(),
-  quantity: z.number(),
-  assignedUnitIds: z.array(z.string()),
-  items: z.array(
-    z.object({
-      productId: z.string(),
-      name: z.string(),
-      quantity: z.number(),
-      imageUrl: z.string().nullable(),
-    }),
-  ),
-  outboundDelivery: planningTimelineDeliverySchema.nullable(),
-  returnDelivery: planningTimelineDeliverySchema.nullable(),
-});
 
 const poll = dashboardProcedure
   .input(dashboardReservationPollInputSchema)
@@ -189,7 +99,7 @@ const list = dashboardProcedure
 
 const calendarPeriod = dashboardProcedure
   .input(dashboardReservationTimelinePeriodInputSchema)
-  .output(z.array(calendarPeriodReservationSchema))
+  .output(z.array(dashboardReservationCalendarPeriodEntrySchema))
   .handler(async ({ context, input }) => {
     if (input.storeId !== context.store.id) {
       throw new ORPCError('FORBIDDEN', { message: 'errors.unauthorized' });
@@ -208,7 +118,7 @@ const calendarPeriod = dashboardProcedure
 
 const planningTimeline = dashboardProcedure
   .input(dashboardReservationTimelinePeriodInputSchema)
-  .output(z.array(planningTimelineEntrySchema))
+  .output(z.array(dashboardReservationPlanningTimelineEntrySchema))
   .handler(async ({ context, input }) => {
     if (input.storeId !== context.store.id) {
       throw new ORPCError('FORBIDDEN', { message: 'errors.unauthorized' });

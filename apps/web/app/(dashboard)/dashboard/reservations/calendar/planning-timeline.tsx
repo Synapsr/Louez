@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, UIEvent } from "react";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useQueries } from "@tanstack/react-query";
 import { CalendarIcon, ChevronDown, ChevronRight } from "lucide-react";
@@ -30,15 +30,15 @@ import {
   placeReservations,
   stackReservations,
 } from "@/components/dashboard/reservations-timeline/timeline-utils";
-import { createDashboardReturnTo } from "@/lib/dashboard/util.reservation-navigation";
 import {
   type PlanningTimelineEntry,
   reservationPlanningQueries,
 } from "@/lib/queries/reservation-planning.queries";
 
-import { type CalendarRange, matchesTodayOperation, toCalendarDateParam } from "./calendar-query";
+import { type CalendarRange, matchesTodayOperation } from "./calendar-query";
 import { TimelineToolbar, useTimelineFilters } from "./timeline-toolbar";
 import type { Product, StoreTimelineReservation } from "./types";
+import { useTimelineDateAnchor } from "./use-timeline-date-anchor";
 import { useTimelineDateParam } from "./use-timeline-date-param";
 
 // =============================================================================
@@ -158,7 +158,6 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   const tCalendar = useTranslations("dashboard.calendar");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [dateParam, setDateParam] = useTimelineDateParam();
 
   // ---------------------------------------------------------------------------
@@ -512,54 +511,13 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
     filters.setRange(range);
   };
 
-  /** Timestamp of the last date this view itself wrote to the URL. */
-  const persistedDateRef = useRef<number | null>(null);
-  const dateParamTime = dateParam?.getTime() ?? null;
-
-  // Browser/Next scroll restoration can run after layout effects on a cached
-  // navigation. Re-apply any URL anchor after paint so it wins over an older
-  // horizontal scroll position restored by the browser.
-  useEffect(() => {
-    if (dateParamTime === null) return;
-    // Our own viewport writes echo back through the URL. Re-anchoring on them
-    // would shift the scroll position the user is already looking at.
-    if (persistedDateRef.current === dateParamTime) return;
-
-    let finalFrame = 0;
-    const initialFrame = requestAnimationFrame(() => {
-      finalFrame = requestAnimationFrame(() => {
-        goToDate(new Date(dateParamTime), "auto");
-      });
-    });
-
-    return () => {
-      cancelAnimationFrame(initialFrame);
-      cancelAnimationFrame(finalFrame);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateParamTime]);
-
-  /**
-   * Records the day at the centre of the viewport before navigating away, so
-   * coming back lands on it. Normalized to midnight to match how the param
-   * parses back in.
-   */
-  const persistVisibleDate = () => {
-    const date = new Date(visibleDate);
-    date.setHours(0, 0, 0, 0);
-    persistedDateRef.current = date.getTime();
-    void setDateParam(date);
-  };
-
-  // Rebuilt every render rather than read back from the URL: nuqs flushes URL
-  // updates on a throttled macrotask, so a middle-click or a new-tab open can
-  // beat the flush. This always carries the date currently on screen.
-  const returnTo = useMemo(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", "planning");
-    params.set("date", toCalendarDateParam(visibleDate));
-    return createDashboardReturnTo("/dashboard/reservations", params);
-  }, [searchParams, visibleDate]);
+  const { persistVisibleDate, returnTo } = useTimelineDateAnchor({
+    view: "planning",
+    dateParam,
+    setDateParam,
+    visibleDate,
+    goToDate,
+  });
 
   // ---------------------------------------------------------------------------
   // Drag-to-create (mouse only — touch keeps native scrolling)

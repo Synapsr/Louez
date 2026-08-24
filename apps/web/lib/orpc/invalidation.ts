@@ -2,6 +2,8 @@ import type { QueryClient } from '@tanstack/react-query'
 
 import { orpc } from '@/lib/orpc/react'
 import { productsQueries } from '@/lib/queries/products.queries'
+import { reservationCalendarQueries } from '@/lib/queries/reservation-calendar.queries'
+import { reservationPlanningQueries } from '@/lib/queries/reservation-planning.queries'
 
 /** Invalidates every filter combination of the dashboard products list. */
 export async function invalidateProductsList(queryClient: QueryClient) {
@@ -33,12 +35,8 @@ export async function invalidateReservationPoll(queryClient: QueryClient) {
 
 export async function invalidateReservationTimelines(queryClient: QueryClient) {
   await Promise.all([
-    queryClient.invalidateQueries({
-      queryKey: orpc.dashboard.reservations.calendarPeriod.key(),
-    }),
-    queryClient.invalidateQueries({
-      queryKey: orpc.dashboard.reservations.planningTimeline.key(),
-    }),
+    queryClient.invalidateQueries({ queryKey: reservationCalendarQueries.key() }),
+    queryClient.invalidateQueries({ queryKey: reservationPlanningQueries.key() }),
   ])
 }
 

@@ -1,4 +1,4 @@
-import { and, eq, gte, inArray, lte, or } from "drizzle-orm";
+import { and, eq, gte, inArray, lte } from "drizzle-orm";
 
 import {
   customers,
@@ -8,99 +8,23 @@ import {
   reservationItems,
   reservations,
 } from "@louez/db";
-
-type ReservationStatus = (typeof reservations.$inferSelect)["status"];
-
-interface CalendarPeriodReservationItem {
-  id: string;
-  quantity: number;
-  productSnapshot: {
-    name: string;
-    images: string[];
-  } | null;
-  product: {
-    id: string;
-    name: string;
-    images: string[] | null;
-    displayOrder: number | null;
-  } | null;
-}
-
-export interface CalendarPeriodReservation {
-  id: string;
-  number: string;
-  status: ReservationStatus | null;
-  startDate: Date;
-  endDate: Date;
-  subtotalAmount: string;
-  depositAmount: string;
-  totalAmount: string;
-  outboundMethod: string;
-  returnMethod: string;
-  deliveryAddress: string | null;
-  deliveryCity: string | null;
-  deliveryPostalCode: string | null;
-  deliveryCountry: string | null;
-  returnAddress: string | null;
-  returnCity: string | null;
-  returnPostalCode: string | null;
-  returnCountry: string | null;
-  customer: {
-    id: string;
-    firstName: string;
-    lastName: string;
-  } | null;
-  items: CalendarPeriodReservationItem[];
-}
-
-export interface PlanningTimelineDelivery {
-  address: string | null;
-  city: string | null;
-  postalCode: string | null;
-  country: string | null;
-}
-
-interface PlanningTimelineItem {
-  productId: string;
-  name: string;
-  quantity: number;
-  imageUrl: string | null;
-}
-
-export interface StorePlanningTimelineEntry {
-  id: string;
-  productId: string;
-  number: string;
-  status: ReservationStatus | null;
-  startDate: Date;
-  endDate: Date;
-  customerId: string | null;
-  customerName: string;
-  subtotalAmount: string;
-  depositAmount: string;
-  totalAmount: string;
-  quantity: number;
-  assignedUnitIds: string[];
-  items: PlanningTimelineItem[];
-  outboundDelivery: PlanningTimelineDelivery | null;
-  returnDelivery: PlanningTimelineDelivery | null;
-}
+import type {
+  ReservationCalendarPeriodEntry,
+  ReservationPlanningTimelineEntry,
+} from "@louez/validations";
 
 export async function getReservationsForCalendarPeriod(params: {
   storeId: string;
   startDate: Date;
   endDate: Date;
-}): Promise<CalendarPeriodReservation[]> {
+}): Promise<ReservationCalendarPeriodEntry[]> {
   const { storeId, startDate, endDate } = params;
 
   return db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
-      or(
-        and(gte(reservations.startDate, startDate), lte(reservations.startDate, endDate)),
-        and(gte(reservations.endDate, startDate), lte(reservations.endDate, endDate)),
-        and(lte(reservations.startDate, startDate), gte(reservations.endDate, endDate)),
-      ),
+      lte(reservations.startDate, endDate),
+      gte(reservations.endDate, startDate),
     ),
     columns: {
       id: true,
@@ -156,7 +80,7 @@ export async function getStorePlanningTimeline(params: {
   storeId: string;
   startDate: Date;
   endDate: Date;
-}): Promise<StorePlanningTimelineEntry[]> {
+}): Promise<ReservationPlanningTimelineEntry[]> {
   const { storeId, startDate, endDate } = params;
 
   const rows = await db
@@ -219,7 +143,7 @@ export async function getStorePlanningTimeline(params: {
     assignmentsByItem.set(assignment.reservationItemId, assignedUnitIds);
   }
 
-  const byPair = new Map<string, StorePlanningTimelineEntry>();
+  const byPair = new Map<string, ReservationPlanningTimelineEntry>();
   for (const row of rows) {
     if (!row.productId) continue;
 

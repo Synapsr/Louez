@@ -8,7 +8,7 @@ import type {
 } from "react";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useQueries } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
@@ -36,12 +36,12 @@ import {
   stackReservations,
   timelineRangesOverlap,
 } from "@/components/dashboard/reservations-timeline/timeline-utils";
-import { createDashboardReturnTo } from "@/lib/dashboard/util.reservation-navigation";
 import { reservationCalendarQueries } from "@/lib/queries/reservation-calendar.queries";
 
-import { type CalendarRange, matchesTodayOperation, toCalendarDateParam } from "./calendar-query";
+import { type CalendarRange, matchesTodayOperation } from "./calendar-query";
 import { TimelineToolbar, useTimelineFilters } from "./timeline-toolbar";
 import type { Product, Reservation } from "./types";
+import { useTimelineDateAnchor } from "./use-timeline-date-anchor";
 import { useTimelineDateParam } from "./use-timeline-date-param";
 
 // =============================================================================
@@ -122,7 +122,6 @@ export function ReservationsCalendarView({
   const tTimeline = useTranslations("dashboard.calendar.timeline");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [dateParam, setDateParam] = useTimelineDateParam();
 
   // ---------------------------------------------------------------------------
@@ -591,54 +590,13 @@ export function ReservationsCalendarView({
 
   const goToToday = () => goToDate(new Date(), "auto");
 
-  /** Timestamp of the last date this view itself wrote to the URL. */
-  const persistedDateRef = useRef<number | null>(null);
-  const dateParamTime = dateParam?.getTime() ?? null;
-
-  // Browser/Next scroll restoration can run after layout effects on a cached
-  // navigation. Re-apply any URL anchor after paint so it wins over an older
-  // horizontal scroll position restored by the browser.
-  useEffect(() => {
-    if (dateParamTime === null) return;
-    // Our own viewport writes echo back through the URL. Recentering on them
-    // would nudge the scroll position the user is already looking at.
-    if (persistedDateRef.current === dateParamTime) return;
-
-    let finalFrame = 0;
-    const initialFrame = requestAnimationFrame(() => {
-      finalFrame = requestAnimationFrame(() => {
-        goToDate(new Date(dateParamTime), "auto");
-      });
-    });
-
-    return () => {
-      cancelAnimationFrame(initialFrame);
-      cancelAnimationFrame(finalFrame);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateParamTime]);
-
-  /**
-   * Records the day at the centre of the viewport before navigating away, so
-   * coming back lands on it. Normalized to midnight to match how the param
-   * parses back in.
-   */
-  const persistVisibleDate = () => {
-    const date = new Date(visibleDate);
-    date.setHours(0, 0, 0, 0);
-    persistedDateRef.current = date.getTime();
-    void setDateParam(date);
-  };
-
-  // Rebuilt every render rather than read back from the URL: nuqs flushes URL
-  // updates on a throttled macrotask, so a middle-click or a new-tab open can
-  // beat the flush. This always carries the date currently on screen.
-  const returnTo = useMemo(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("view", "calendar");
-    params.set("date", toCalendarDateParam(visibleDate));
-    return createDashboardReturnTo("/dashboard/reservations", params);
-  }, [searchParams, visibleDate]);
+  const { persistVisibleDate, returnTo } = useTimelineDateAnchor({
+    view: "calendar",
+    dateParam,
+    setDateParam,
+    visibleDate,
+    goToDate,
+  });
 
   // ---------------------------------------------------------------------------
   // Drag-to-create (mouse only — touch keeps native scrolling)
