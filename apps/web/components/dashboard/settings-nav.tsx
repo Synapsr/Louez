@@ -49,9 +49,13 @@ type SettingsSearchGroup = {
 
 type SettingsNavProps = {
   isPlatformAdmin?: boolean;
+  electronicInvoicingEnabled?: boolean;
 };
 
-export const SettingsNav = ({ isPlatformAdmin = false }: SettingsNavProps) => {
+export const SettingsNav = ({
+  isPlatformAdmin = false,
+  electronicInvoicingEnabled = true,
+}: SettingsNavProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const pathname = usePathname();
   const router = useRouter();
@@ -59,8 +63,13 @@ export const SettingsNav = ({ isPlatformAdmin = false }: SettingsNavProps) => {
   const t = useTranslations("dashboard.settings.settingsNavigation");
 
   const availableItems = useMemo(
-    () => SETTINGS_NAVIGATION_ITEMS.filter((item) => !item.platformAdminOnly || isPlatformAdmin),
-    [isPlatformAdmin],
+    () =>
+      SETTINGS_NAVIGATION_ITEMS.filter(
+        (item) =>
+          (!item.platformAdminOnly || isPlatformAdmin) &&
+          (!item.requiresElectronicInvoicing || electronicInvoicingEnabled),
+      ),
+    [isPlatformAdmin, electronicInvoicingEnabled],
   );
 
   const navigationGroups = useMemo(

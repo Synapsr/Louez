@@ -34,6 +34,8 @@ export type SettingsNavigationItem = {
   labelPath: string;
   navigation: boolean;
   platformAdminOnly?: boolean;
+  /** Hidden unless the store's electronic-invoicing rollout flag is on. */
+  requiresElectronicInvoicing?: boolean;
   searchPaths: string[];
 };
 
@@ -117,6 +119,7 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     labelPath: "dashboard.settings.invoicing.title",
     descriptionPath: "dashboard.settings.invoicing.description",
     searchPaths: ["dashboard.settings.invoicing"],
+    requiresElectronicInvoicing: true,
     group: "rental",
     navigation: true,
   },
