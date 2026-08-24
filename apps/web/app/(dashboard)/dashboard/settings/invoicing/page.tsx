@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
+import { Button } from "@louez/ui";
+
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { getCurrentStore } from "@/lib/store-context";
 
@@ -48,11 +50,22 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
   };
   const result = resolvePdpEnrollmentResult(params);
 
+  const pageActions = (
+    <div className="flex items-center gap-2">
+      {view.state === "connected" && (
+        <Button variant="outline" size="sm" render={<a href="/dashboard/purchase-invoices" />}>
+          {t("transmission.purchaseInvoicesAction")}
+        </Button>
+      )}
+      {process.env.NODE_ENV === "development" && <DevResetButton />}
+    </div>
+  );
+
   return (
     <SettingsPageShell
       title={t("title")}
       description={t("description")}
-      actions={process.env.NODE_ENV === "development" ? <DevResetButton /> : undefined}
+      actions={pageActions}
     >
       {result && <PdpEnrollmentResultAlert result={result} />}
       {/* Keyed on the row so only its creation (first save) or deletion (dev
