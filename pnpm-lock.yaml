@@ -614,6 +614,9 @@ importers:
       nucleo-glass:
         specifier: ^1.4.0
         version: 1.4.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      nucleo-ui-outline-18:
+        specifier: ^1.5.0
+        version: 1.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       radix-ui:
         specifier: ^1.4.3
         version: 1.4.3(@types/react-dom@19.2.3(@types/react@19.2.7))(@types/react@19.2.7)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -5856,6 +5859,12 @@ packages:
 
   nucleo-glass@1.4.0:
     resolution: {integrity: sha512-PuDBBjf6uaM5RSnWLdarso6pyJrEF8E0BInGMnGjbVa9jRo0vRdi9DFkVfL9gL7gkVME1sQXd7p8AO+1gtHamA==}
+    peerDependencies:
+      react: '>=16.8.0'
+      react-dom: '>=16.8.0'
+
+  nucleo-ui-outline-18@1.5.0:
+    resolution: {integrity: sha512-kZq8sqCYTlPeD4VhaR/gC25KcdK298GG1lXg5O4110uDcBtsvDWPuu2rp6+2xREx+8zd4hOTQd9vmNFdZFd2iw==}
     peerDependencies:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
@@ -11788,6 +11797,12 @@ snapshots:
       svg-arc-to-cubic-bezier: 3.2.0
 
   nucleo-glass@1.4.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
+    dependencies:
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      tslib: 2.8.1
+
+  nucleo-ui-outline-18@1.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6):
     dependencies:
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)

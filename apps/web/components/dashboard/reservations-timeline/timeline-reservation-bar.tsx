@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronLeft, ExternalLink, Truck, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -19,6 +18,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@louez/ui";
+import {
+  ChevronLeftIcon,
+  DeliveryTruckIcon,
+  ExternalLinkIcon,
+  ReturnTruckIcon,
+  TriangleAlertIcon,
+} from "@louez/ui/icons";
 import { cn, formatCurrency } from "@louez/utils";
 
 import { TimelineReservationDetails } from "./timeline-reservation-details";
@@ -122,9 +128,8 @@ export function TimelineReservationBar({
   const reservationHref = `/dashboard/reservations/${encodeURIComponent(reservation.id)}?source=reservations_timeline`;
   const rentalPrice = formatCurrency(getTimelineRentalAmount(reservation), currency);
 
-  const hasDelivery = Boolean(
-    reservation.outboundDeliveryAddress || reservation.returnDeliveryAddress,
-  );
+  const hasOutboundDelivery = Boolean(reservation.outboundDeliveryAddress);
+  const hasReturnDelivery = Boolean(reservation.returnDeliveryAddress);
 
   const barLabel = (
     <span
@@ -135,10 +140,21 @@ export function TimelineReservationBar({
       style={isLabelSticky ? { left: stickyLabelOffset } : undefined}
     >
       {continuesBeforeViewport && (
-        <ChevronLeft aria-hidden="true" className="h-3 w-3 shrink-0 opacity-60" />
+        <ChevronLeftIcon aria-hidden="true" className="h-3 w-3 shrink-0 opacity-60" />
       )}
-      {isConflict && <TriangleAlert className="text-destructive h-3 w-3 shrink-0" />}
-      {hasDelivery && <Truck className="h-3 w-3 shrink-0" />}
+      {isConflict && (
+        <TriangleAlertIcon aria-hidden="true" className="text-destructive h-3 w-3 shrink-0" />
+      )}
+      {hasOutboundDelivery && (
+        <span role="img" aria-label={t("logistics.delivery")} className="inline-flex shrink-0">
+          <DeliveryTruckIcon aria-hidden="true" className="size-3.5" strokeWidth={1.75} />
+        </span>
+      )}
+      {hasReturnDelivery && (
+        <span role="img" aria-label={t("logistics.return")} className="inline-flex shrink-0">
+          <ReturnTruckIcon aria-hidden="true" className="size-3.5" strokeWidth={1.75} />
+        </span>
+      )}
       <span className="truncate">{reservation.customerName}</span>
       {reservation.quantity > 1 && (
         <span className="shrink-0 opacity-70">×{reservation.quantity}</span>
@@ -186,7 +202,7 @@ export function TimelineReservationBar({
                     className="text-foreground hover:text-primary focus-visible:ring-ring group inline-flex max-w-full items-center gap-1 rounded-sm text-sm font-semibold focus-visible:ring-2 focus-visible:outline-none"
                   >
                     <span className="truncate">{reservation.customerName}</span>
-                    <ExternalLink className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+                    <ExternalLinkIcon className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
                   </a>
                 ) : (
                   <p className="truncate text-sm font-semibold">{reservation.customerName}</p>

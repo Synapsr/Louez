@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { ExternalLinkIcon, TruckIcon } from "@louez/ui/icons";
+import { DeliveryTruckIcon, ExternalLinkIcon, ReturnTruckIcon } from "@louez/ui/icons";
 import { cn, formatCurrency, formatDateShort, formatTime } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
@@ -82,7 +82,11 @@ export const TimelineReservationDetails = ({
           {reservation.outboundDeliveryAddress && (
             <div className="space-y-0.5">
               <span className="text-muted-foreground/70 flex items-center gap-1">
-                <TruckIcon className="h-3 w-3 shrink-0" />
+                <DeliveryTruckIcon
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0"
+                  strokeWidth={1.75}
+                />
                 {t("deliveryAddressLabel")}
               </span>
               <a
@@ -99,7 +103,11 @@ export const TimelineReservationDetails = ({
           {reservation.returnDeliveryAddress && (
             <div className="space-y-0.5">
               <span className="text-muted-foreground/70 flex items-center gap-1">
-                <TruckIcon className="h-3 w-3 shrink-0" />
+                <ReturnTruckIcon
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0"
+                  strokeWidth={1.75}
+                />
                 {t("returnAddressLabel")}
               </span>
               <a
