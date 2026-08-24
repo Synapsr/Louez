@@ -706,6 +706,16 @@ export const InvoicingFlow = ({
                   <p className="truncate text-sm font-medium">{t(`setup.steps.${id}`)}</p>
                   <div className="flex flex-wrap items-center gap-1.5">{badge}</div>
                 </div>
+                {id === "transmission" && isTransmissionConnected && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto shrink-0"
+                    render={<a href="/dashboard/purchase-invoices" />}
+                  >
+                    {t("transmission.purchaseInvoicesAction")}
+                  </Button>
+                )}
               </div>
             );
           })}
