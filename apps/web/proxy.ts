@@ -2,11 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import { isStandaloneMode } from '@/lib/deployment';
-import { getSubdomain, isLoopbackHost } from '@/lib/util.host';
 import { isValidReferralCode } from '@/lib/utils/referral';
 import { LOGIN_CALLBACK_PATH_HEADER } from '@/lib/utils/util.url';
-
-import { env } from '@/env';
 
 // =============================================================================
 // CONFIGURATION
@@ -22,9 +19,23 @@ import { env } from '@/env';
 //   PREVIEW_STORE_SLUG - For local dev, show this store's storefront instead of dashboard
 // =============================================================================
 
-const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
-const DASHBOARD_SUBDOMAIN = env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN;
-const PREVIEW_STORE_SLUG = env.PREVIEW_STORE_SLUG;
+// A published Docker image must pick these up from the container, not the
+// builder. Keep the lookup dynamic: Next inlines static NEXT_PUBLIC_* reads at
+// build time, and importing the full app env here would validate those frozen
+// values as soon as the proxy bundle loads.
+const runtimeEnv = process.env;
+const runtimeAppUrl = runtimeEnv.NEXT_PUBLIC_APP_URL || runtimeEnv.AUTH_URL;
+const APP_DOMAIN =
+  runtimeEnv.NEXT_PUBLIC_APP_DOMAIN ||
+  (() => {
+    try {
+      return runtimeAppUrl ? new URL(runtimeAppUrl).host : '';
+    } catch {
+      return '';
+    }
+  })();
+const DASHBOARD_SUBDOMAIN = runtimeEnv.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN || 'app';
+const PREVIEW_STORE_SLUG = runtimeEnv.PREVIEW_STORE_SLUG || '';
 
 // Routes that should never be rewritten to storefront (dashboard/auth routes)
 const DASHBOARD_ROUTES = [
@@ -36,6 +47,27 @@ const DASHBOARD_ROUTES = [
   '/multi-store',
   '/admin', // platform-admin area (gated in its layout)
 ];
+
+/**
+ * Extract the subdomain from the host header relative to APP_DOMAIN.
+ */
+function getSubdomain(host: string): string | null {
+  const hostname = host.split(':')[0];
+
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return null;
+  }
+
+  const hostParts = hostname.split('.');
+  const baseDomain = APP_DOMAIN.split(':')[0];
+  const baseParts = baseDomain.split('.');
+
+  if (hostParts.length > baseParts.length) {
+    return hostParts.slice(0, hostParts.length - baseParts.length).join('.');
+  }
+
+  return null;
+}
 
 /**
  * Check if the pathname is a dashboard/auth route that should not be rewritten.
@@ -52,6 +84,15 @@ function isStaticAsset(pathname: string): boolean {
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.includes('.')
+  );
+}
+
+function isLoopbackHost(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === '[::1]'
   );
 }
 
