@@ -24,6 +24,8 @@ export type PdpErrorHint = "reconnectRequired" | "oauthFailed" | "operationFaile
 export type PdpVerificationStatus = "verified" | "failed" | "pending";
 
 export type PdpTransmissionView = {
+  /** OAuth can only be resumed before its callback has stored a connection time. */
+  canResumeEnrollment: boolean;
   /** Hint shown next to the reconnect call to action. */
   errorHint: PdpErrorHint | null;
   /** `null` when every prerequisite is met and the enrollment can be started. */
@@ -93,6 +95,7 @@ export const resolvePdpTransmissionView = ({
   const state = resolveState(enrollment);
 
   return {
+    canResumeEnrollment: state === "pending" && !enrollment?.connectedAt,
     errorHint: enrollment && state === "actionRequired" ? resolveErrorHint(enrollment) : null,
     lockReason: resolveLockReason(profile),
     state,

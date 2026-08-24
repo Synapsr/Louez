@@ -9,6 +9,7 @@ import {
   isSuperPdpReconnectError,
   markSuperPdpIntegrationFailure,
   markSuperPdpIntegrationHealthy,
+  markSuperPdpIntegrationPendingValidation,
 } from "@/lib/integrations/providers/superpdp/connection";
 import { withSuperPdpAccessToken } from "@/lib/integrations/providers/superpdp/credentials";
 
@@ -18,6 +19,7 @@ import {
   SuperPdpApiError,
   convertSuperPdpInvoiceToFacturX,
   getSuperPdpCompany,
+  isSuperPdpPendingValidationError,
   sendSuperPdpInvoice,
   validateSuperPdpInvoice,
 } from "@/lib/integrations/providers/superpdp/superpdp-client";
@@ -230,7 +232,7 @@ export async function processInvoiceTransmissionQueue(
 
     const outcome = await transmitClaimedInvoice(candidate.id, claim);
     if (outcome === "sent") sent++;
-    else failed++;
+    if (outcome === "failed") failed++;
   }
 
   return { processed, sent, failed };
@@ -239,20 +241,47 @@ export async function processInvoiceTransmissionQueue(
 async function transmitClaimedInvoice(
   invoiceId: string,
   claim: { attemptCount: number; storeId: string },
-): Promise<"sent" | "failed"> {
+): Promise<"sent" | "deferred" | "failed"> {
   try {
     await sendInvoiceToSuperPdp(invoiceId);
     return "sent";
   } catch (error) {
+    if (isSuperPdpPendingValidationError(error)) {
+      const nextAttemptAt = getRetryDate(claim.attemptCount);
+      await db
+        .update(invoices)
+        .set({
+          transmissionStatus: "pending",
+          attemptCount: claim.attemptCount - 1,
+          nextAttemptAt,
+          lastError: null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(invoices.id, invoiceId), eq(invoices.storeId, claim.storeId)));
+
+      const integration = await getSuperPdpIntegrationForStore(claim.storeId);
+      if (integration) {
+        await markSuperPdpIntegrationPendingValidation(integration.integrationId);
+      }
+      log.info({
+        superpdp: {
+          event: "account_validation_pending",
+          invoiceId,
+          nextAttemptAt: nextAttemptAt.toISOString(),
+          operation: "invoice_transmission",
+          storeId: claim.storeId,
+        },
+      });
+      return "deferred";
+    }
+
     const message = error instanceof Error ? error.message.slice(0, 2000) : "Unknown error";
     await db
       .update(invoices)
       .set({
         transmissionStatus: "failed",
         nextAttemptAt:
-          claim.attemptCount >= MAX_TRANSMISSION_ATTEMPTS
-            ? null
-            : getRetryDate(claim.attemptCount),
+          claim.attemptCount >= MAX_TRANSMISSION_ATTEMPTS ? null : getRetryDate(claim.attemptCount),
         lastError: message,
         updatedAt: new Date(),
       })

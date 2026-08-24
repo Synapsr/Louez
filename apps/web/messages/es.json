@@ -4267,6 +4267,7 @@
           "connectAction": "Conectar mi empresa",
           "pendingTitle": "Inscripción en curso",
           "pendingDescription": "Tu inscripción se ha iniciado, pero aún no está completa. Retómala para finalizar las verificaciones de identidad de la plataforma acreditada.",
+          "pendingValidationDescription": "La plataforma está validando tu cuenta. No tienes que hacer nada: la conexión se activará automáticamente cuando termine las comprobaciones.",
           "resumeAction": "Retomar la inscripción",
           "errorTitle": "Conexión interrumpida",
           "reconnectAction": "Volver a conectar mi empresa",

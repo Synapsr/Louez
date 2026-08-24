@@ -60,10 +60,14 @@ export const PdpTransmissionPanel = async ({ enrollment, view }: PdpTransmission
           <Alert variant="info">
             <InfoCircleIcon />
             <AlertTitle>{t("pendingTitle")}</AlertTitle>
-            <AlertDescription>{t("pendingDescription")}</AlertDescription>
+            <AlertDescription>
+              {t(view.canResumeEnrollment ? "pendingDescription" : "pendingValidationDescription")}
+            </AlertDescription>
           </Alert>
 
-          <PdpEnrollmentButton labelKey="resumeAction" disabled={isLocked} variant="outline" />
+          {view.canResumeEnrollment && (
+            <PdpEnrollmentButton labelKey="resumeAction" disabled={isLocked} variant="outline" />
+          )}
         </>
       )}
 
@@ -79,11 +83,7 @@ export const PdpTransmissionPanel = async ({ enrollment, view }: PdpTransmission
             <p className="text-muted-foreground text-sm">{t("verificationPendingNote")}</p>
           )}
 
-          <Button
-            variant="outline"
-            size="sm"
-            render={<a href="/dashboard/purchase-invoices" />}
-          >
+          <Button variant="outline" size="sm" render={<a href="/dashboard/purchase-invoices" />}>
             {t("purchaseInvoicesAction")}
           </Button>
         </>

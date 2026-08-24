@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
@@ -15,12 +15,17 @@ import { log } from "@/lib/evlog";
 import {
   markSuperPdpIntegrationFailure,
   markSuperPdpIntegrationHealthy,
+  markSuperPdpIntegrationPendingValidation,
 } from "@/lib/integrations/providers/superpdp/connection";
 import { withSuperPdpAccessToken } from "@/lib/integrations/providers/superpdp/credentials";
 import {
   SUPERPDP_PROVIDER_KEY,
   createSuperPdpInvoiceEvent,
+  findOrCreateSuperPdpDirectoryEntry,
+  getSuperPdpCompany,
   getSuperPdpInvoice,
+  getSuperPdpOAuthSession,
+  isSuperPdpPendingValidationError,
   listSuperPdpInvoiceEvents,
   type SuperPdpInvoice,
   type SuperPdpInvoiceEvent,
@@ -88,11 +93,9 @@ function toIncomingInvoiceRecord(invoice: SuperPdpInvoice): IncomingInvoiceRecor
     sellerIdentifier,
     number: enInvoice?.number ?? `SPDP-${invoice.id}`,
     issueDate,
-    totalExclTax:
-      readTotal(totals, ["total_without_vat", "sum_invoice_lines_amount"]) ?? "0.00",
+    totalExclTax: readTotal(totals, ["total_without_vat", "sum_invoice_lines_amount"]) ?? "0.00",
     totalTax: readTotal(totals, ["total_vat_amount"]) ?? "0.00",
-    totalInclTax:
-      readTotal(totals, ["total_with_vat", "amount_due_for_payment"]) ?? "0.00",
+    totalInclTax: readTotal(totals, ["total_with_vat", "amount_due_for_payment"]) ?? "0.00",
     currency: enInvoice?.currency_code ?? "EUR",
   };
 
@@ -220,6 +223,53 @@ async function processEventPage(input: {
   return lastEventId;
 }
 
+async function reconcileSuperPdpIntegration(input: {
+  integrationId: string;
+  companyVerificationStatus: string | null;
+  connectedAt: Date | null;
+  directoryEntryId: string | null;
+}): Promise<void> {
+  const update: {
+    companyVerificationStatus?: string;
+    connectedAt?: Date;
+    directoryEntryId?: string;
+    directoryEntryStatus?: "pending" | "created" | "error";
+    superPdpCompanyId?: string;
+  } = {};
+
+  if (input.companyVerificationStatus !== "verified") {
+    const providerSession = await withSuperPdpAccessToken(input.integrationId, (accessToken) =>
+      getSuperPdpOAuthSession(accessToken),
+    );
+    update.companyVerificationStatus = providerSession.company_verification_status;
+  }
+
+  if (!input.directoryEntryId) {
+    const { company, directoryEntry } = await withSuperPdpAccessToken(
+      input.integrationId,
+      async (accessToken) => {
+        const company = await getSuperPdpCompany(accessToken);
+        const directoryEntry = await findOrCreateSuperPdpDirectoryEntry({
+          accessToken,
+          company,
+        });
+        return { company, directoryEntry };
+      },
+    );
+    update.superPdpCompanyId = company.id;
+    update.directoryEntryId = directoryEntry.id;
+    update.directoryEntryStatus = directoryEntry.status;
+  }
+
+  if (!input.connectedAt) update.connectedAt = new Date();
+  if (Object.keys(update).length === 0) return;
+
+  await db
+    .update(storeSuperPdpIntegrations)
+    .set({ ...update, updatedAt: new Date() })
+    .where(eq(storeSuperPdpIntegrations.integrationId, input.integrationId));
+}
+
 export async function pollSuperPdpInvoiceEvents(): Promise<{
   integrations: number;
   events: number;
@@ -229,6 +279,9 @@ export async function pollSuperPdpInvoiceEvents(): Promise<{
     .select({
       integrationId: storeIntegrations.id,
       storeId: storeIntegrations.storeId,
+      companyVerificationStatus: storeSuperPdpIntegrations.companyVerificationStatus,
+      connectedAt: storeSuperPdpIntegrations.connectedAt,
+      directoryEntryId: storeSuperPdpIntegrations.directoryEntryId,
       lastEventCursor: storeSuperPdpIntegrations.lastEventCursor,
     })
     .from(storeIntegrations)
@@ -240,7 +293,13 @@ export async function pollSuperPdpInvoiceEvents(): Promise<{
       and(
         eq(storeIntegrations.providerKey, SUPERPDP_PROVIDER_KEY),
         eq(storeIntegrations.enabled, true),
-        inArray(storeIntegrations.status, ["active", "error"]),
+        or(
+          inArray(storeIntegrations.status, ["active", "error"]),
+          and(
+            eq(storeIntegrations.status, "syncing"),
+            isNotNull(storeSuperPdpIntegrations.connectedAt),
+          ),
+        ),
       ),
     );
 
@@ -278,8 +337,22 @@ export async function pollSuperPdpInvoiceEvents(): Promise<{
         hasAfter = page.has_after;
       }
 
+      await reconcileSuperPdpIntegration(integration);
       await markSuperPdpIntegrationHealthy(integration.integrationId);
     } catch (error) {
+      if (isSuperPdpPendingValidationError(error)) {
+        await markSuperPdpIntegrationPendingValidation(integration.integrationId);
+        log.info({
+          superpdp: {
+            event: "account_validation_pending",
+            integrationId: integration.integrationId,
+            operation: "invoice_event_poll",
+            storeId: integration.storeId,
+          },
+        });
+        continue;
+      }
+
       failed++;
       await markSuperPdpIntegrationFailure(integration.integrationId, error);
       const message = error instanceof Error ? error.message : "Unknown error";

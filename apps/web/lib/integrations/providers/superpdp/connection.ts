@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { db, storeIntegrations, storeSuperPdpIntegrations } from "@louez/db";
 
@@ -94,4 +94,39 @@ export async function markSuperPdpIntegrationHealthy(integrationId: string): Pro
       updatedAt: new Date(),
     })
     .where(eq(storeIntegrations.id, integrationId));
+}
+
+export async function markSuperPdpIntegrationPendingValidation(
+  integrationId: string,
+): Promise<void> {
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(storeIntegrations)
+      .set({
+        status: mapSuperPdpConnectionState("pending"),
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        lastHealthCheckAt: now,
+        updatedAt: now,
+      })
+      .where(eq(storeIntegrations.id, integrationId));
+    await tx
+      .update(storeSuperPdpIntegrations)
+      .set({
+        companyVerificationStatus: "pending",
+        updatedAt: now,
+      })
+      .where(eq(storeSuperPdpIntegrations.integrationId, integrationId));
+    await tx
+      .update(storeSuperPdpIntegrations)
+      .set({ connectedAt: now })
+      .where(
+        and(
+          eq(storeSuperPdpIntegrations.integrationId, integrationId),
+          isNull(storeSuperPdpIntegrations.connectedAt),
+        ),
+      );
+  });
 }
