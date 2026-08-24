@@ -40,56 +40,68 @@ type IncomingInvoiceRecord = {
   currency: string;
 };
 
-function getRequiredTotal(
-  totals: NonNullable<NonNullable<SuperPdpInvoice["en_invoice"]>["invoice_totals"]>,
-  keys: Array<keyof typeof totals>,
-  label: string,
-): string {
+// Amounts in the en_invoice model are decimal strings, except
+// total_vat_amount which is an { value, currency_code } object.
+function readTotal(totals: Record<string, unknown>, keys: string[]): string | null {
   for (const key of keys) {
     const value = totals[key];
     if (typeof value === "string" && value.length > 0) return value;
+    if (
+      value !== null &&
+      typeof value === "object" &&
+      "value" in value &&
+      typeof (value as { value: unknown }).value === "string"
+    ) {
+      return (value as { value: string }).value;
+    }
   }
-  throw new Error(`Incoming Super PDP invoice is missing ${label}`);
+  return null;
 }
 
+/**
+ * Lenient by design: an incoming document we cannot fully parse must still
+ * land in the inbox (the downloadable PDF is the legal source of truth), and
+ * must never mark the whole PDP connection as failed.
+ */
 function toIncomingInvoiceRecord(invoice: SuperPdpInvoice): IncomingInvoiceRecord {
   const enInvoice = invoice.en_invoice;
-  if (!enInvoice) {
-    throw new Error("Incoming Super PDP invoice has no EN16931 metadata");
-  }
-  const totals = enInvoice.invoice_totals ?? enInvoice.totals;
-  if (!totals) {
-    throw new Error("Incoming Super PDP invoice has no totals");
-  }
+  const totals: Record<string, unknown> =
+    (enInvoice?.invoice_totals as Record<string, unknown> | undefined) ??
+    (enInvoice?.totals as Record<string, unknown> | undefined) ??
+    {};
   const sellerIdentifier =
-    enInvoice.seller.legal_registration_identifier?.value ??
-    enInvoice.seller.identifiers?.[0]?.value;
-  if (!sellerIdentifier) {
-    throw new Error("Incoming Super PDP invoice has no seller identifier");
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(enInvoice.issue_date)) {
-    throw new Error("Incoming Super PDP invoice has an invalid issue date");
+    enInvoice?.seller?.legal_registration_identifier?.value ??
+    enInvoice?.seller?.identifiers?.[0]?.value ??
+    "";
+  const providerCreatedAt =
+    "created_at" in invoice && typeof invoice.created_at === "string"
+      ? invoice.created_at
+      : new Date().toISOString();
+  const issueDate = /^\d{4}-\d{2}-\d{2}$/.test(enInvoice?.issue_date ?? "")
+    ? (enInvoice?.issue_date as string)
+    : providerCreatedAt.slice(0, 10);
+
+  const record: IncomingInvoiceRecord = {
+    superPdpInvoiceId: invoice.id,
+    sellerName: enInvoice?.seller?.name ?? "—",
+    sellerIdentifier,
+    number: enInvoice?.number ?? `SPDP-${invoice.id}`,
+    issueDate,
+    totalExclTax:
+      readTotal(totals, ["total_without_vat", "sum_invoice_lines_amount"]) ?? "0.00",
+    totalTax: readTotal(totals, ["total_vat_amount"]) ?? "0.00",
+    totalInclTax:
+      readTotal(totals, ["total_with_vat", "amount_due_for_payment"]) ?? "0.00",
+    currency: enInvoice?.currency_code ?? "EUR",
+  };
+
+  if (!enInvoice || record.totalInclTax === "0.00") {
+    log.info({
+      superpdp: { event: "incoming_invoice_partial_metadata", invoiceId: invoice.id },
+    });
   }
 
-  return {
-    superPdpInvoiceId: invoice.id,
-    sellerName: enInvoice.seller.name,
-    sellerIdentifier,
-    number: enInvoice.number,
-    issueDate: enInvoice.issue_date,
-    totalExclTax: getRequiredTotal(
-      totals,
-      ["sum_invoice_line_net_amount", "invoice_total_amount_without_vat"],
-      "total excluding tax",
-    ),
-    totalTax: getRequiredTotal(totals, ["invoice_total_vat_amount"], "VAT total"),
-    totalInclTax: getRequiredTotal(
-      totals,
-      ["invoice_total_amount_with_vat", "payable_amount"],
-      "total including tax",
-    ),
-    currency: enInvoice.currency_code,
-  };
+  return record;
 }
 
 function transmissionStatusForEvent(statusCode: string): "validated" | "rejected" | null {
