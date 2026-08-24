@@ -26,6 +26,8 @@ import {
   DialogPopup,
   DialogTitle,
   Label,
+  Radio,
+  RadioGroup,
   Select,
   SelectContent,
   SelectItem,
@@ -64,6 +66,8 @@ import {
   INVOICING_SETUP_STEPS,
   isInvoicingSetupComplete,
   resolveInitialSetupStep,
+  resolveSavedInvoicingChoice,
+  type InvoicingChoice,
   type InvoicingSetupProgress,
   type InvoicingSetupStep,
 } from "./util.setup-progress";
@@ -130,6 +134,7 @@ export const InvoicingFlow = ({
   const tRoot = useTranslations();
 
   const setupComplete = isInvoicingSetupComplete(progress);
+  const savedInvoicingChoice = resolveSavedInvoicingChoice(progress);
   const [mode, setMode] = useState<"setup" | "manage">(setupComplete ? "manage" : "setup");
   const [isWizardOpen, setIsWizardOpen] = useState(() => !setupComplete && wizardStaysOpen);
   const [step, setStep] = useState(() => resolveInitialSetupStep(progress));
@@ -137,6 +142,9 @@ export const InvoicingFlow = ({
   const [rootError, setRootError] = useState<string | null>(null);
   const [isPrefilled, setIsPrefilled] = useState(false);
   const [isEditingIdentity, setIsEditingIdentity] = useState(false);
+  const [invoicingChoice, setInvoicingChoice] = useState<InvoicingChoice | null>(
+    savedInvoicingChoice,
+  );
   const [isRefreshing, startRefresh] = useTransition();
 
   const modeRef = useRef(mode);
@@ -256,8 +264,10 @@ export const InvoicingFlow = ({
   );
 
   const activationBadge =
-    invoicingEnabled && isIdentityComplete ? (
+    invoicingChoice === "emissionAndReception" ? (
       <Badge variant="success">{t("louezInvoicing.statusActive")}</Badge>
+    ) : invoicingChoice === "receptionOnly" ? (
+      <Badge variant="info">{t("louezInvoicing.statusReceptionOnly")}</Badge>
     ) : (
       <Badge variant="tertiary">{t("louezInvoicing.statusInactive")}</Badge>
     );
@@ -429,15 +439,46 @@ export const InvoicingFlow = ({
         </Alert>
       )}
 
-      <form.AppField name="invoicingEnabled">
+      <form.Field name="invoicingEnabled">
         {(field) => (
-          <field.Switch
-            label={t("louezInvoicing.enabled")}
-            description={t("louezInvoicing.enabledDescription")}
-            disabled={!isIdentityComplete}
-          />
+          <div className="grid gap-3">
+            <Label>{t("louezInvoicing.choiceLabel")}</Label>
+            <RadioGroup
+              value={invoicingChoice ?? ""}
+              disabled={!isIdentityComplete}
+              onValueChange={(value) => {
+                if (value !== "emissionAndReception" && value !== "receptionOnly") return;
+                setInvoicingChoice(value);
+                field.handleChange(value === "emissionAndReception");
+              }}
+            >
+              <Label className="hover:bg-accent/50 has-data-checked:border-primary/48 has-data-checked:bg-accent/50 flex items-start gap-3 rounded-lg border p-4">
+                <Radio value="emissionAndReception" />
+                <span className="space-y-1">
+                  <span className="block text-sm font-semibold">
+                    {t("louezInvoicing.emissionAndReception")}
+                  </span>
+                  <span className="text-muted-foreground block text-sm font-normal">
+                    {t("louezInvoicing.emissionAndReceptionDescription")}
+                  </span>
+                </span>
+              </Label>
+              <Label className="hover:bg-accent/50 has-data-checked:border-primary/48 has-data-checked:bg-accent/50 flex items-start gap-3 rounded-lg border p-4">
+                <Radio value="receptionOnly" />
+                <span className="space-y-1">
+                  <span className="block text-sm font-semibold">
+                    {t("louezInvoicing.receptionOnly")}
+                  </span>
+                  <span className="text-muted-foreground block text-sm font-normal">
+                    {t("louezInvoicing.receptionOnlyDescription")}
+                  </span>
+                </span>
+              </Label>
+            </RadioGroup>
+            <p className="text-muted-foreground text-sm">{t("louezInvoicing.reformTimeline")}</p>
+          </div>
         )}
-      </form.AppField>
+      </form.Field>
 
       {invoicingEnabled && (
         <div className="space-y-6 border-t pt-6">
@@ -648,16 +689,9 @@ export const InvoicingFlow = ({
                     </Button>
                   )}
                   {stepId === "activation" && (
-                    <>
-                      {!invoicingEnabled && (
-                        <Button type="button" variant="ghost" onClick={finishSetupLater}>
-                          {t("setup.finishWithoutInvoicing")}
-                        </Button>
-                      )}
-                      <Button type="submit" disabled={!invoicingEnabled} isPending={isSaving}>
-                        {t("setup.continue")}
-                      </Button>
-                    </>
+                    <Button type="submit" disabled={invoicingChoice === null} isPending={isSaving}>
+                      {t("setup.continue")}
+                    </Button>
                   )}
                   {stepId === "transmission" && (
                     <Button type="button" variant="outline" onClick={finishSetupLater}>
@@ -786,7 +820,14 @@ export const InvoicingFlow = ({
             </CardContent>
           </Card>
 
-          <FloatingSaveBar isDirty={isDirty} isLoading={isSaving} onReset={() => form.reset()} />
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={isSaving}
+            onReset={() => {
+              setInvoicingChoice(savedInvoicingChoice);
+              form.reset();
+            }}
+          />
         </form.Form>
       </form.AppForm>
     </div>

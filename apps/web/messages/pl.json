@@ -4157,7 +4157,7 @@
       },
       "invoicing": {
         "title": "Faktury elektroniczne",
-        "description": "Uzupełnij dane prawne swojej firmy i pozwól Louez wystawiać Twoje faktury.",
+        "description": "Skonfiguruj obowiązkowy odbiór e-faktur i zdecyduj, czy Louez ma również wystawiać Twoje faktury.",
         "saved": "Zapisano ustawienia fakturowania",
         "statusComplete": "Kompletne",
         "statusIncomplete": "Do uzupełnienia",
@@ -4168,14 +4168,13 @@
             "transmission": "Transmisja"
           },
           "continue": "Kontynuuj",
-          "finishWithoutInvoicing": "Zakończ bez aktywacji",
           "later": "Skonfiguruj później",
           "intro": {
-            "title": "Przejdź na fakturowanie elektroniczne",
-            "description": "Louez generuje zgodne z przepisami faktury w imieniu Twojej firmy i przesyła je przez oficjalną sieć akredytowanych platform. Skonfiguruj wszystko w trzech krokach.",
+            "title": "Przygotuj firmę do fakturowania elektronicznego",
+            "description": "Połącz firmę z oficjalną siecią, aby odbierać faktury od dostawców. Możesz też już teraz zlecić Louez wystawianie swoich faktur.",
             "bullets": {
-              "generate": "Zgodne faktury generowane i numerowane automatycznie przy każdej płatności.",
-              "transmit": "Wysyłka faktur do klientów biznesowych przez oficjalną sieć, z automatycznym e-raportowaniem sprzedaży.",
+              "generate": "Jeśli włączysz wystawianie, Louez wygeneruje i ponumeruje zgodną fakturę przy każdej płatności.",
+              "transmit": "Jeśli włączysz wystawianie, Louez wyśle faktury do klientów biznesowych i obsłuży e-raportowanie sprzedaży.",
               "receive": "Scentralizowany odbiór faktur od dostawców."
             },
             "start": "Rozpocznij konfigurację",
@@ -4228,14 +4227,19 @@
           "city": "Miasto"
         },
         "louezInvoicing": {
-          "title": "Fakturowanie przez Louez",
-          "description": "Louez generuje i numeruje Twoje faktury przy każdej otrzymanej płatności.",
-          "statusActive": "Włączone",
+          "title": "Wystawianie faktur",
+          "description": "Zdecyduj, czy Louez ma już teraz wystawiać Twoje faktury. Możesz zmienić tę decyzję w dowolnym momencie.",
+          "statusActive": "Wystawianie włączone",
+          "statusReceptionOnly": "Tylko odbiór",
           "statusInactive": "Wyłączone",
           "lockedTitle": "Najpierw uzupełnij dane prawne",
-          "lockedDescription": "Faktura musi zawierać nazwę prawną, formę prawną, numer przedsiębiorstwa i adres siedziby. Uzupełnij krok 1, aby włączyć fakturowanie.",
-          "enabled": "Louez wystawia moje faktury",
-          "enabledDescription": "Louez generuje i numeruje Twoje faktury: przy każdej otrzymanej płatności powstaje zgodna z przepisami faktura w imieniu Twojej firmy, z ciągłą numeracją bez luk.",
+          "lockedDescription": "Faktura musi zawierać nazwę prawną, formę prawną, numer przedsiębiorstwa i adres siedziby. Uzupełnij krok 1 przed wyborem trybu fakturowania.",
+          "choiceLabel": "Jak chcesz korzystać z fakturowania elektronicznego?",
+          "emissionAndReception": "Wystawianie + odbiór (zalecane)",
+          "emissionAndReceptionDescription": "Louez generuje, numeruje i przesyła Twoje faktury przy każdej płatności. Firma odbiera również faktury od dostawców.",
+          "receptionOnly": "Tylko odbiór — nie wystawiam jeszcze faktur przez Louez",
+          "receptionOnlyDescription": "Louez nie wystawia faktur. Firma pozostaje połączona, aby odbierać faktury od dostawców.",
+          "reformTimeline": "Odbiór e-faktur stanie się obowiązkowy we wrześniu 2026. Wystawianie stanie się obowiązkowe we wrześniu 2027 i można je włączyć tutaj w dowolnym momencie.",
           "vatRegime": "Rodzaj rozliczenia VAT",
           "vatRegimePlaceholder": "Wybierz rodzaj rozliczenia",
           "vatRegimeDescription": "Określa kalendarz deklaracji przekazywany platformie fakturowej.",
@@ -4250,13 +4254,13 @@
         },
         "transmission": {
           "title": "Przesyłanie elektroniczne (PDP)",
-          "description": "Połącz swoją firmę z akredytowaną platformą, aby wysyłać i odbierać faktury przez oficjalną sieć.",
+          "description": "Połącz firmę z akredytowaną platformą, aby odbierać faktury oraz, po włączeniu wystawiania, wysyłać faktury klientów przez oficjalną sieć.",
           "statusPending": "Rejestracja w toku",
           "statusActionRequired": "Wymagane działanie",
           "deadlineTitle": "Termin: wrzesień 2026",
           "deadlineDescription": "Od września 2026 każda francuska firma musi być podłączona do akredytowanej platformy, aby odbierać faktury elektroniczne; wystawianie stanie się obowiązkowe we wrześniu 2027. Podłączenie przez Louez jest bezpłatne.",
           "benefits": {
-            "send": "Wysyłaj faktury do klientów biznesowych przez oficjalną sieć.",
+            "send": "Wysyłaj faktury do klientów biznesowych po włączeniu wystawiania.",
             "receive": "Odbieraj wszystkie faktury od dostawców w jednym miejscu.",
             "reporting": "Automatyczny e-reporting sprzedaży na rzecz konsumentów."
           },
@@ -4267,14 +4271,13 @@
           "errorTitle": "Połączenie przerwane",
           "reconnectAction": "Połącz firmę ponownie",
           "errorHints": {
-            "reconnectRequired": "Platforma cofnęła dostęp przyznany Louez. Połącz firmę ponownie, aby wznowić wysyłanie faktur.",
+            "reconnectRequired": "Platforma cofnęła dostęp przyznany Louez. Połącz firmę ponownie, aby odbierać faktury i wznowić włączoną wysyłkę.",
             "oauthFailed": "Nie udało się zakończyć rejestracji. Rozpocznij ją ponownie; jeśli problem się utrzyma, skontaktuj się z pomocą.",
             "operationFailed": "Ostatnia wymiana z platformą nie powiodła się. Louez spróbuje ponownie automatycznie; połącz ponownie, jeśli problem się utrzyma."
           },
           "lockedTitle": "Połączenie nie jest jeszcze dostępne",
           "lockedReasons": {
             "identityIncomplete": "Uzupełnij dane prawne w kroku 1: platforma zweryfikuje je przed rejestracją firmy.",
-            "invoicingDisabled": "Włącz fakturowanie przez Louez w kroku 2: nie ma nic do przesłania, dopóki Louez nie wystawia faktur.",
             "countryUnsupported": "Transmisja elektroniczna jest obecnie dostępna tylko dla firm zarejestrowanych we Francji lub Belgii."
           },
           "details": {
@@ -4287,7 +4290,7 @@
             "pending": "W trakcie weryfikacji",
             "failed": "Weryfikacja nie powiodła się"
           },
-          "verificationPendingNote": "Platforma nadal sprawdza dane firmy. Faktury zostaną przesłane po zakończeniu weryfikacji.",
+          "verificationPendingNote": "Platforma nadal sprawdza dane firmy. Połączenie będzie aktywne po zakończeniu weryfikacji.",
           "directoryStatus": {
             "pending": "Rejestracja w toku",
             "created": "Zarejestrowano",
@@ -4300,7 +4303,7 @@
           },
           "result": {
             "successTitle": "Firma połączona",
-            "successDescription": "Firma jest teraz zarejestrowana na akredytowanej platformie. Faktury będą przesyłane automatycznie.",
+            "successDescription": "Firma jest teraz zarejestrowana na akredytowanej platformie i może odbierać faktury od dostawców. Faktury wystawiane przez Louez będą również przesyłane po włączeniu wystawiania.",
             "errorTitle": "Połączenie nie powiodło się",
             "errors": {
               "oauth": "Rejestracja została przerwana przed zakończeniem. Możesz rozpocząć ją ponownie.",
