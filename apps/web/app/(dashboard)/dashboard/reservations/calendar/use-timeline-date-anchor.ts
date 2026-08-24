@@ -12,7 +12,6 @@ interface UseTimelineDateAnchorOptions {
   /** Which timeline the `returnTo` round-trip should reopen. */
   view: "calendar" | "planning";
   dateParam: Date | null;
-  setDateParam: (date: Date) => unknown;
   /** Day currently at the viewport's reference point. */
   visibleDate: Date;
   /** Jumps the viewport to a day; `"auto"` must not smooth-scroll. */
@@ -27,7 +26,6 @@ interface UseTimelineDateAnchorOptions {
 export function useTimelineDateAnchor({
   view,
   dateParam,
-  setDateParam,
   visibleDate,
   goToDate,
 }: UseTimelineDateAnchorOptions) {
@@ -64,12 +62,24 @@ export function useTimelineDateAnchor({
    * Records the day at the centre of the viewport before navigating away, so
    * coming back lands on it. Normalized to midnight to match how the param
    * parses back in.
+   *
+   * Written synchronously through `history.replaceState`, NOT through nuqs:
+   * the nuqs flush is a throttled macrotask, and when it lands between the
+   * Link's push and the navigation commit, its replaceState reconciles the
+   * router back onto the current URL and the navigation is swallowed. The
+   * patched history sees this external write and just drops any queued nuqs
+   * update, so the two writers cannot fight.
    */
   const persistVisibleDate = () => {
     const date = new Date(visibleDate);
     date.setHours(0, 0, 0, 0);
     persistedDateRef.current = date.getTime();
-    void setDateParam(date);
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("date", toCalendarDateParam(date));
+    const search = params.toString();
+    const nextUrl = `${window.location.pathname}${search ? `?${search}` : ""}${window.location.hash}`;
+    window.history.replaceState(window.history.state, "", nextUrl);
   };
 
   // Rebuilt every render rather than read back from the URL: nuqs flushes URL

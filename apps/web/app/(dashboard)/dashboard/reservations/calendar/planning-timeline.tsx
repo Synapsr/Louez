@@ -158,7 +158,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   const tCalendar = useTranslations("dashboard.calendar");
   const locale = useLocale();
   const router = useRouter();
-  const [dateParam, setDateParam] = useTimelineDateParam();
+  const [dateParam] = useTimelineDateParam();
 
   // ---------------------------------------------------------------------------
   // URL-persisted view state (zoom + status/product filters) — shareable links
@@ -514,7 +514,6 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   const { persistVisibleDate, returnTo } = useTimelineDateAnchor({
     view: "planning",
     dateParam,
-    setDateParam,
     visibleDate,
     goToDate,
   });

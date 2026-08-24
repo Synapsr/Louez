@@ -122,7 +122,7 @@ export function ReservationsCalendarView({
   const tTimeline = useTranslations("dashboard.calendar.timeline");
   const locale = useLocale();
   const router = useRouter();
-  const [dateParam, setDateParam] = useTimelineDateParam();
+  const [dateParam] = useTimelineDateParam();
 
   // ---------------------------------------------------------------------------
   // URL-persisted view state (zoom + status/product filters) — shareable links
@@ -593,7 +593,6 @@ export function ReservationsCalendarView({
   const { persistVisibleDate, returnTo } = useTimelineDateAnchor({
     view: "calendar",
     dateParam,
-    setDateParam,
     visibleDate,
     goToDate,
   });
