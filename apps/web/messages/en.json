@@ -310,6 +310,10 @@
       "sync": "Sync",
       "viewAll": "Open the full page"
     },
+    "electronicInvoicingUnavailable": {
+      "title": "Electronic invoicing is not available",
+      "description": "This feature is not enabled for your store yet."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "AI Assistant",
@@ -5363,6 +5367,8 @@
       "title": "Notifications",
       "description": "Items that need your attention",
       "pendingReservations": "Pending requests",
+      "supplierInvoices": "Supplier invoices",
+      "pendingSupplierInvoices": "{count, plural, one {# supplier invoice to process} other {# supplier invoices to process}}",
       "emptyTitle": "Nothing to review",
       "emptyDescription": "New requests will appear here.",
       "viewAllPending": "View all pending requests"

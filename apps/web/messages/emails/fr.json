@@ -144,6 +144,16 @@
     "viewRequest": "Voir la demande",
     "connectToManage": "Connectez-vous à votre tableau de bord pour accepter ou refuser cette demande."
   },
+  "supplierInvoiceReceived": {
+    "subject": "Nouvelle facture fournisseur",
+    "title": "Nouvelle facture fournisseur",
+    "body": "Une nouvelle facture fournisseur a été reçue pour {storeName}.",
+    "seller": "Fournisseur :",
+    "number": "Numéro :",
+    "total": "Total TTC :",
+    "cta": "Voir les factures fournisseurs",
+    "footer": "Vous pouvez consulter et traiter cette facture depuis votre tableau de bord."
+  },
   "phoneCallbackLandlord": {
     "subject": "Un client à rappeler — {store}",
     "title": "Un client à rappeler",

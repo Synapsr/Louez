@@ -5,6 +5,8 @@ import { getReceivedInvoicesPage } from "@/app/(dashboard)/dashboard/purchase-in
 import { PurchaseInvoicesTable } from "@/app/(dashboard)/dashboard/purchase-invoices/purchase-invoices-table";
 
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
+import { ElectronicInvoicingNotAvailable } from "@/components/dashboard/electronic-invoicing-not-available";
+import { isElectronicInvoicingEnabled } from "@/lib/invoicing/feature";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { getStoreLegalProfile } from "./actions";
@@ -34,7 +36,19 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
     redirect("/onboarding");
   }
 
-  const t = await getTranslations("dashboard.settings.invoicing");
+  const [t, featureEnabled] = await Promise.all([
+    getTranslations("dashboard.settings.invoicing"),
+    isElectronicInvoicingEnabled(store.id),
+  ]);
+
+  if (!featureEnabled) {
+    return (
+      <SettingsPageShell title={t("title")} description={t("description")}>
+        <ElectronicInvoicingNotAvailable />
+      </SettingsPageShell>
+    );
+  }
+
   const tPurchase = await getTranslations("dashboard.purchaseInvoices");
   const [profileResult, enrollment, params] = await Promise.all([
     getStoreLegalProfile(),

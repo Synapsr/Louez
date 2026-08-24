@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { getSuperPdpEnrollment } from "@/app/(dashboard)/dashboard/settings/invoicing/queries";
+import { ElectronicInvoicingNotAvailable } from "@/components/dashboard/electronic-invoicing-not-available";
+import { isElectronicInvoicingEnabled } from "@/lib/invoicing/feature";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { getReceivedInvoicesPage } from "./queries";
@@ -29,7 +31,23 @@ const PurchaseInvoicesPage = async ({ searchParams }: PurchaseInvoicesPageProps)
     redirect("/onboarding");
   }
 
-  const t = await getTranslations("dashboard.purchaseInvoices");
+  const [t, featureEnabled] = await Promise.all([
+    getTranslations("dashboard.purchaseInvoices"),
+    isElectronicInvoicingEnabled(store.id),
+  ]);
+
+  if (!featureEnabled) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("description")}</p>
+        </div>
+        <ElectronicInvoicingNotAvailable />
+      </div>
+    );
+  }
+
   const [enrollment, params] = await Promise.all([getSuperPdpEnrollment(store.id), searchParams]);
 
   const isConnected = isPdpReceptionActive(enrollment);

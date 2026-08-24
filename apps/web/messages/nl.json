@@ -310,6 +310,10 @@
       "sync": "Synchroniseren",
       "viewAll": "Volledige pagina openen"
     },
+    "electronicInvoicingUnavailable": {
+      "title": "Elektronische facturatie is niet beschikbaar",
+      "description": "Deze functie is nog niet ingeschakeld voor je winkel."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "AI-assistent",
@@ -5363,6 +5367,8 @@
       "title": "Meldingen",
       "description": "Wat je aandacht vraagt",
       "pendingReservations": "Openstaande aanvragen",
+      "supplierInvoices": "Leveranciersfacturen",
+      "pendingSupplierInvoices": "{count, plural, one {# leveranciersfactuur te verwerken} other {# leveranciersfacturen te verwerken}}",
       "emptyTitle": "Niets te controleren",
       "emptyDescription": "Nieuwe aanvragen verschijnen hier.",
       "viewAllPending": "Alle openstaande aanvragen bekijken"

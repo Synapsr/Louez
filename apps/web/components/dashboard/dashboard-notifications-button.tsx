@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { Bell, Clock, ExternalLink } from "lucide-react";
+import { Bell, Clock, ExternalLink, FileText } from "lucide-react";
 import { useFormatter, useTranslations } from "next-intl";
 
 import {
@@ -17,9 +17,10 @@ import {
 import { useReservationPolling } from "@/contexts/reservation-polling-context";
 
 export const DashboardNotificationsButton = () => {
-  const { pendingCount, pendingReservations } = useReservationPolling();
+  const { pendingCount, pendingReservations, pendingSupplierInvoices } = useReservationPolling();
   const t = useTranslations("dashboard.notificationsCenter");
   const format = useFormatter();
+  const notificationCount = pendingCount + pendingSupplierInvoices;
 
   return (
     <DropdownMenu>
@@ -29,9 +30,9 @@ export const DashboardNotificationsButton = () => {
         }
       >
         <Bell className="h-4 w-4" />
-        {pendingCount > 0 && (
+        {notificationCount > 0 && (
           <span className="bg-primary text-primary-foreground absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold">
-            {pendingCount > 9 ? "9+" : pendingCount}
+            {notificationCount > 9 ? "9+" : notificationCount}
           </span>
         )}
       </DropdownMenuTrigger>
@@ -81,6 +82,27 @@ export const DashboardNotificationsButton = () => {
             ))
           )}
         </div>
+        {pendingSupplierInvoices > 0 && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1">
+              <div className="text-muted-foreground px-1 py-1 text-xs font-medium">
+                {t("supplierInvoices")}
+              </div>
+              <DropdownMenuItem
+                render={<Link href="/dashboard/purchase-invoices" className="cursor-pointer" />}
+                className="items-start gap-3 py-2"
+              >
+                <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-300">
+                  <FileText className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1 text-sm font-medium">
+                  {t("pendingSupplierInvoices", { count: pendingSupplierInvoices })}
+                </span>
+              </DropdownMenuItem>
+            </div>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           render={<Link href="/dashboard/reservations?status=pending" className="cursor-pointer" />}

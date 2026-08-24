@@ -19,6 +19,7 @@ import { generateContract } from "@/lib/pdf/generate";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { buildCreditNoteSnapshots, buildInvoiceSnapshots } from "./core";
+import { isElectronicInvoicingEnabled } from "./feature";
 import { claimInvoiceNumber } from "./sequence";
 import { tryTransmitInvoiceNow } from "./superpdp-transmission";
 
@@ -29,6 +30,7 @@ export type InvoiceGenerationSkipReason =
   | "payment_not_eligible"
   | "already_invoiced"
   | "invoicing_disabled"
+  | "feature_disabled"
   | "generation_failed";
 
 export type InvoiceGenerationResult =
@@ -46,9 +48,15 @@ function skipped(reason: InvoiceGenerationSkipReason): InvoiceGenerationResult {
   return { status: "skipped", reason };
 }
 
-async function paymentHasEnabledLegalProfile(paymentId: string): Promise<boolean> {
+type PaymentInvoiceGenerationEligibility =
+  | { enabled: true }
+  | { enabled: false; reason: "invoicing_disabled" | "feature_disabled" };
+
+async function getPaymentInvoiceGenerationEligibility(
+  paymentId: string,
+): Promise<PaymentInvoiceGenerationEligibility> {
   const [profile] = await db
-    .select({ id: storeLegalProfiles.id })
+    .select({ storeId: reservations.storeId })
     .from(payments)
     .innerJoin(reservations, eq(payments.reservationId, reservations.id))
     .innerJoin(
@@ -60,7 +68,11 @@ async function paymentHasEnabledLegalProfile(paymentId: string): Promise<boolean
     )
     .where(eq(payments.id, paymentId))
     .limit(1);
-  return Boolean(profile);
+  if (!profile) return { enabled: false, reason: "invoicing_disabled" };
+  if (!(await isElectronicInvoicingEnabled(profile.storeId))) {
+    return { enabled: false, reason: "feature_disabled" };
+  }
+  return { enabled: true };
 }
 
 export async function generateInvoiceForPayment(
@@ -332,11 +344,12 @@ export async function tryGenerateInvoiceForPayment(
   source: string,
 ): Promise<InvoiceGenerationResult> {
   try {
-    if (!(await paymentHasEnabledLegalProfile(paymentId))) {
+    const eligibility = await getPaymentInvoiceGenerationEligibility(paymentId);
+    if (!eligibility.enabled) {
       log.info({
-        invoicing: { event: "trigger_skipped", paymentId, source, reason: "invoicing_disabled" },
+        invoicing: { event: "trigger_skipped", paymentId, source, reason: eligibility.reason },
       });
-      return skipped("invoicing_disabled");
+      return skipped(eligibility.reason);
     }
     const result = await generateInvoiceForPayment(paymentId);
     if (result.status !== "generated") return result;
@@ -732,16 +745,17 @@ export async function tryGenerateCreditNoteForRefund(
   source: string,
 ): Promise<InvoiceGenerationResult> {
   try {
-    if (!(await paymentHasEnabledLegalProfile(context.refundPaymentId))) {
+    const eligibility = await getPaymentInvoiceGenerationEligibility(context.refundPaymentId);
+    if (!eligibility.enabled) {
       log.info({
         invoicing: {
           event: "credit_note_trigger_skipped",
           refundPaymentId: context.refundPaymentId,
           source,
-          reason: "invoicing_disabled",
+          reason: eligibility.reason,
         },
       });
-      return skipped("invoicing_disabled");
+      return skipped(eligibility.reason);
     }
     const result = await generateCreditNoteForRefund(context, refundAmount);
     if (result.status === "generated") {

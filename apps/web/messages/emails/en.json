@@ -144,6 +144,16 @@
     "viewRequest": "View request",
     "connectToManage": "Log in to your dashboard to accept or reject this request."
   },
+  "supplierInvoiceReceived": {
+    "subject": "New supplier invoice",
+    "title": "New supplier invoice",
+    "body": "A new supplier invoice has been received for {storeName}.",
+    "seller": "Supplier:",
+    "number": "Number:",
+    "total": "Total incl. tax:",
+    "cta": "View supplier invoices",
+    "footer": "You can review and process this invoice from your dashboard."
+  },
   "phoneCallbackLandlord": {
     "subject": "A caller to call back — {store}",
     "title": "A caller to call back",

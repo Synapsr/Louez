@@ -37,6 +37,7 @@ import {
   PaymentRequestEmail,
   DepositAuthorizationRequestEmail,
   QuoteSentEmail,
+  SupplierInvoiceReceivedEmail,
 } from './templates'
 
 interface Store {
@@ -1958,6 +1959,64 @@ export async function sendQuoteSentEmail({
       to,
       subject,
       templateType: 'quote_sent',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Supplier invoice received (admin / store owner)
+export async function sendSupplierInvoiceReceivedEmail({
+  to,
+  store,
+  invoice,
+  dashboardUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  invoice: {
+    sellerName: string
+    number: string
+    totalInclTax: string
+    currency: string
+  }
+  dashboardUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.supplierInvoiceReceived.subject
+  const html = await render(
+    SupplierInvoiceReceivedEmail({
+      storeName: store.name,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      sellerName: invoice.sellerName,
+      invoiceNumber: invoice.number,
+      totalInclTax: invoice.totalInclTax,
+      currency: invoice.currency,
+      dashboardUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: 'Louez.io' })
+    await logEmail({
+      storeId: store.id,
+      to,
+      subject,
+      templateType: 'supplier_invoice_received',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      to,
+      subject,
+      templateType: 'supplier_invoice_received',
       status: 'failed',
       error: String(error),
     })

@@ -310,6 +310,10 @@
       "sync": "Synchronisieren",
       "viewAll": "Vollständige Seite öffnen"
     },
+    "electronicInvoicingUnavailable": {
+      "title": "Elektronische Rechnungsstellung ist nicht verfügbar",
+      "description": "Diese Funktion ist für Ihr Geschäft noch nicht aktiviert."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "KI-Assistent",
@@ -5363,6 +5367,8 @@
       "title": "Benachrichtigungen",
       "description": "Was Ihre Aufmerksamkeit braucht",
       "pendingReservations": "Offene Anfragen",
+      "supplierInvoices": "Lieferantenrechnungen",
+      "pendingSupplierInvoices": "{count, plural, one {# Lieferantenrechnung zu bearbeiten} other {# Lieferantenrechnungen zu bearbeiten}}",
       "emptyTitle": "Nichts zu prüfen",
       "emptyDescription": "Neue Anfragen erscheinen hier.",
       "viewAllPending": "Alle offenen Anfragen ansehen"

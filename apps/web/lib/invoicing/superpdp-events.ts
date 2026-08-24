@@ -25,6 +25,7 @@ import {
   type SuperPdpInvoice,
   type SuperPdpInvoiceEvent,
 } from "@/lib/integrations/providers/superpdp/superpdp-client";
+import { dispatchSupplierInvoiceReceived } from "@/lib/notifications/dispatcher";
 
 const paymentAmountSchema = z.string().regex(/^\d{1,8}(?:\.\d{1,2})?$/);
 
@@ -151,6 +152,7 @@ async function processEventPage(input: {
   }
 
   const lastEventId = input.events.at(-1)?.id ?? null;
+  const newIncomingInvoices: IncomingInvoiceRecord[] = [];
   await db.transaction(async (tx) => {
     for (const event of input.events) {
       const localInvoiceId = localByProviderId.get(event.invoice_id);
@@ -169,7 +171,7 @@ async function processEventPage(input: {
 
       const incoming = incomingByProviderId.get(event.invoice_id);
       if (!incoming) continue;
-      await tx
+      const insertResult = await tx
         .insert(receivedInvoices)
         .values({
           id: nanoid(),
@@ -193,6 +195,9 @@ async function processEventPage(input: {
             updatedAt: new Date(),
           },
         });
+      if ((insertResult[0]?.affectedRows ?? 0) === 1) {
+        newIncomingInvoices.push(incoming);
+      }
     }
 
     if (lastEventId) {
@@ -202,6 +207,15 @@ async function processEventPage(input: {
         .where(eq(storeSuperPdpIntegrations.integrationId, input.integrationId));
     }
   });
+
+  for (const invoice of newIncomingInvoices) {
+    void dispatchSupplierInvoiceReceived({ storeId: input.storeId, invoice }).catch((error) => {
+      log.error(
+        "invoicing",
+        `supplier invoice notification failed for store ${input.storeId} and invoice ${invoice.superPdpInvoiceId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
+  }
 
   return lastEventId;
 }

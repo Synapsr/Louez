@@ -310,6 +310,10 @@
       "sync": "Sincronizar",
       "viewAll": "Abrir a página completa"
     },
+    "electronicInvoicingUnavailable": {
+      "title": "A faturação eletrónica não está disponível",
+      "description": "Esta funcionalidade ainda não está ativa para a sua loja."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "Assistente IA",
@@ -5363,6 +5367,8 @@
       "title": "Notificações",
       "description": "O que precisa da sua atenção",
       "pendingReservations": "Pedidos pendentes",
+      "supplierInvoices": "Faturas de fornecedores",
+      "pendingSupplierInvoices": "{count, plural, one {# fatura de fornecedor por tratar} other {# faturas de fornecedores por tratar}}",
       "emptyTitle": "Nada para rever",
       "emptyDescription": "Novos pedidos aparecerão aqui.",
       "viewAllPending": "Ver todos os pedidos pendentes"
