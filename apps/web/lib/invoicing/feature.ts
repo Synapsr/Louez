@@ -14,7 +14,11 @@ export async function isElectronicInvoicingEnabled(storeId: string): Promise<boo
   if (!env.NEXT_PUBLIC_POSTHOG_KEY) return true;
 
   try {
-    const enabled = await getPostHogServer().isFeatureEnabled(ELECTRONIC_INVOICING_FLAG, storeId);
+    // The PostHog flag targets the store_id person property; server-side
+    // evaluation has no person profile, so the property travels with the call.
+    const enabled = await getPostHogServer().isFeatureEnabled(ELECTRONIC_INVOICING_FLAG, storeId, {
+      personProperties: { store_id: storeId },
+    });
     return enabled ?? true;
   } catch (error) {
     log.error(
