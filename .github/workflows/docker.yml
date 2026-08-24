@@ -127,6 +127,7 @@ jobs:
             -e DATABASE_URL=mysql://root:smoketest@louez-db:3306/louez \
             -e AUTH_SECRET=smoke-test-secret-not-a-real-secret \
             -e BETTER_AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e SKIP_ENV_VALIDATION=true \
             -e S3_ENDPOINT=http://smoke-test.invalid:9000 \
             -e S3_REGION=smoke \
             -e S3_BUCKET=smoke-test \
@@ -200,6 +201,7 @@ jobs:
             -e DATABASE_URL=mysql://root:smoketest@louez-db:3306/louez \
             -e AUTH_SECRET=smoke-test-secret-not-a-real-secret \
             -e BETTER_AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e SKIP_ENV_VALIDATION=true \
             -e S3_ENDPOINT=http://smoke-test.invalid:9000 \
             -e S3_REGION=smoke \
             -e S3_BUCKET=smoke-test \
