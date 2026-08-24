@@ -405,7 +405,6 @@
       "copyError": "Could not copy the email"
     },
     "sidebar": {
-      "finance": "Finance",
       "catalog": "Catalog",
       "analytics": "Analytics",
       "manage": "Manage",
@@ -663,7 +662,6 @@
       }
     },
     "navigation": {
-      "purchaseInvoices": "Supplier invoices",
       "aiAssistant": "AI Assistant",
       "aiConversations": "Customer conversations",
       "aiAdvisor": "Online advisor",
@@ -4291,6 +4289,28 @@
         "saved": "Invoicing settings saved",
         "statusComplete": "Complete",
         "statusIncomplete": "To complete",
+        "setup": {
+          "steps": {
+            "identity": "Legal identity",
+            "activation": "Activation",
+            "transmission": "Transmission"
+          },
+          "continue": "Continue",
+          "finishWithoutInvoicing": "Finish without enabling",
+          "later": "Set up later",
+          "intro": {
+            "title": "Switch to electronic invoicing",
+            "description": "Louez generates compliant invoices in your company's name and transmits them through the official network of accredited platforms. Set everything up in three steps.",
+            "bullets": {
+              "generate": "Compliant invoices generated and numbered automatically with every payment.",
+              "transmit": "Invoices sent to business customers through the official network, with automatic e-reporting of your sales.",
+              "receive": "Centralized reception of your suppliers' invoices."
+            },
+            "start": "Start setup",
+            "resume": "Resume setup",
+            "stepProgress": "Step {current} of {total}"
+          }
+        },
         "identity": {
           "title": "Legal identity",
           "description": "Your company's legal details, printed on every invoice you issue.",
@@ -4359,7 +4379,6 @@
         "transmission": {
           "title": "Electronic transmission (PDP)",
           "description": "Connect your company to an accredited platform to send and receive invoices over the official network.",
-          "statusComingSoon": "Coming soon",
           "statusPending": "Enrollment in progress",
           "statusActionRequired": "Action required",
           "deadlineTitle": "September 2026 deadline",
@@ -4416,7 +4435,8 @@
               "legalProfileIncomplete": "Your legal identity is incomplete. Fill in step 1, then start the connection again.",
               "notConfigured": "Electronic transmission is not configured on this environment. Contact Louez support."
             }
-          }
+          },
+          "purchaseInvoicesAction": "Open supplier invoices"
         }
       },
       "delivery": {

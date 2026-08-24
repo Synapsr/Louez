@@ -405,7 +405,6 @@
       "copyError": "E-Mail konnte nicht kopiert werden"
     },
     "sidebar": {
-      "finance": "Finanzen",
       "catalog": "Katalog",
       "analytics": "Analysen",
       "manage": "Verwalten",
@@ -663,7 +662,6 @@
       }
     },
     "navigation": {
-      "purchaseInvoices": "Lieferantenrechnungen",
       "aiAssistant": "KI-Assistent",
       "aiConversations": "Kundengespräche",
       "aiAdvisor": "Online-Berater",
@@ -4157,6 +4155,28 @@
         "saved": "Rechnungseinstellungen gespeichert",
         "statusComplete": "Vollständig",
         "statusIncomplete": "Zu vervollständigen",
+        "setup": {
+          "steps": {
+            "identity": "Rechtliche Identität",
+            "activation": "Aktivierung",
+            "transmission": "Übertragung"
+          },
+          "continue": "Weiter",
+          "finishWithoutInvoicing": "Ohne Aktivierung abschließen",
+          "later": "Später einrichten",
+          "intro": {
+            "title": "Umstieg auf die elektronische Rechnungsstellung",
+            "description": "Louez erstellt konforme Rechnungen im Namen Ihres Unternehmens und übermittelt sie über das offizielle Netz der zugelassenen Plattformen. Richten Sie alles in drei Schritten ein.",
+            "bullets": {
+              "generate": "Konforme Rechnungen werden bei jeder Zahlung automatisch erstellt und nummeriert.",
+              "transmit": "Versand Ihrer Rechnungen an Geschäftskunden über das offizielle Netz, mit automatischem E-Reporting Ihrer Verkäufe.",
+              "receive": "Zentraler Empfang der Rechnungen Ihrer Lieferanten."
+            },
+            "start": "Einrichtung starten",
+            "resume": "Einrichtung fortsetzen",
+            "stepProgress": "Schritt {current} von {total}"
+          }
+        },
         "identity": {
           "title": "Rechtliche Identität",
           "description": "Die rechtlichen Angaben Ihres Unternehmens, die auf jeder Rechnung erscheinen.",
@@ -4225,7 +4245,6 @@
         "transmission": {
           "title": "Elektronische Übermittlung (PDP)",
           "description": "Verbinden Sie Ihr Unternehmen mit einer zugelassenen Plattform, um Rechnungen über das offizielle Netz zu senden und zu empfangen.",
-          "statusComingSoon": "Demnächst verfügbar",
           "statusPending": "Anmeldung läuft",
           "statusActionRequired": "Aktion erforderlich",
           "deadlineTitle": "Frist September 2026",
@@ -4282,7 +4301,8 @@
               "legalProfileIncomplete": "Ihre rechtliche Identität ist unvollständig. Vervollständigen Sie Schritt 1 und starten Sie die Verbindung erneut.",
               "notConfigured": "Die elektronische Übertragung ist in dieser Umgebung nicht konfiguriert. Wenden Sie sich an den Louez-Support."
             }
-          }
+          },
+          "purchaseInvoicesAction": "Lieferantenrechnungen öffnen"
         }
       },
       "delivery": {

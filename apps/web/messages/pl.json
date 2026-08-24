@@ -405,7 +405,6 @@
       "copyError": "Nie można skopiować emaila"
     },
     "sidebar": {
-      "finance": "Finanse",
       "catalog": "Katalog",
       "analytics": "Analizy",
       "manage": "Zarządzaj",
@@ -663,7 +662,6 @@
       }
     },
     "navigation": {
-      "purchaseInvoices": "Faktury od dostawców",
       "aiAssistant": "Asystent AI",
       "aiConversations": "Rozmowy z klientami",
       "aiAdvisor": "Doradca online",
@@ -4157,6 +4155,28 @@
         "saved": "Zapisano ustawienia fakturowania",
         "statusComplete": "Kompletne",
         "statusIncomplete": "Do uzupełnienia",
+        "setup": {
+          "steps": {
+            "identity": "Tożsamość prawna",
+            "activation": "Aktywacja",
+            "transmission": "Transmisja"
+          },
+          "continue": "Kontynuuj",
+          "finishWithoutInvoicing": "Zakończ bez aktywacji",
+          "later": "Skonfiguruj później",
+          "intro": {
+            "title": "Przejdź na fakturowanie elektroniczne",
+            "description": "Louez generuje zgodne z przepisami faktury w imieniu Twojej firmy i przesyła je przez oficjalną sieć akredytowanych platform. Skonfiguruj wszystko w trzech krokach.",
+            "bullets": {
+              "generate": "Zgodne faktury generowane i numerowane automatycznie przy każdej płatności.",
+              "transmit": "Wysyłka faktur do klientów biznesowych przez oficjalną sieć, z automatycznym e-raportowaniem sprzedaży.",
+              "receive": "Scentralizowany odbiór faktur od dostawców."
+            },
+            "start": "Rozpocznij konfigurację",
+            "resume": "Wznów konfigurację",
+            "stepProgress": "Krok {current} z {total}"
+          }
+        },
         "identity": {
           "title": "Dane prawne firmy",
           "description": "Dane prawne Twojej firmy, drukowane na każdej wystawionej fakturze.",
@@ -4225,7 +4245,6 @@
         "transmission": {
           "title": "Przesyłanie elektroniczne (PDP)",
           "description": "Połącz swoją firmę z akredytowaną platformą, aby wysyłać i odbierać faktury przez oficjalną sieć.",
-          "statusComingSoon": "Wkrótce",
           "statusPending": "Rejestracja w toku",
           "statusActionRequired": "Wymagane działanie",
           "deadlineTitle": "Termin: wrzesień 2026",
@@ -4282,7 +4301,8 @@
               "legalProfileIncomplete": "Dane prawne są niepełne. Uzupełnij krok 1, a następnie ponownie rozpocznij łączenie.",
               "notConfigured": "Transmisja elektroniczna nie jest skonfigurowana w tym środowisku. Skontaktuj się z pomocą Louez."
             }
-          }
+          },
+          "purchaseInvoicesAction": "Otwórz faktury od dostawców"
         }
       },
       "delivery": {

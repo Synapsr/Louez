@@ -405,7 +405,6 @@
       "copyError": "No se pudo copiar el email"
     },
     "sidebar": {
-      "finance": "Finanzas",
       "catalog": "Catalogo",
       "analytics": "Analiticas",
       "manage": "Gestionar",
@@ -663,7 +662,6 @@
       }
     },
     "navigation": {
-      "purchaseInvoices": "Facturas de proveedores",
       "aiAssistant": "Asistente IA",
       "aiConversations": "Conversaciones de clientes",
       "aiAdvisor": "Asesor en línea",
@@ -4157,6 +4155,28 @@
         "saved": "Ajustes de facturación guardados",
         "statusComplete": "Completo",
         "statusIncomplete": "Por completar",
+        "setup": {
+          "steps": {
+            "identity": "Identidad legal",
+            "activation": "Activación",
+            "transmission": "Transmisión"
+          },
+          "continue": "Continuar",
+          "finishWithoutInvoicing": "Terminar sin activar",
+          "later": "Configurar más tarde",
+          "intro": {
+            "title": "Pásese a la facturación electrónica",
+            "description": "Louez genera facturas conformes a nombre de su empresa y las transmite a través de la red oficial de plataformas acreditadas. Configúrelo todo en tres pasos.",
+            "bullets": {
+              "generate": "Facturas conformes generadas y numeradas automáticamente con cada cobro.",
+              "transmit": "Envío de sus facturas a clientes profesionales a través de la red oficial, con e-reporting automático de sus ventas.",
+              "receive": "Recepción centralizada de las facturas de sus proveedores."
+            },
+            "start": "Comenzar la configuración",
+            "resume": "Reanudar la configuración",
+            "stepProgress": "Paso {current} de {total}"
+          }
+        },
         "identity": {
           "title": "Identidad legal",
           "description": "Los datos legales de tu empresa, impresos en cada factura que emitas.",
@@ -4225,7 +4245,6 @@
         "transmission": {
           "title": "Transmisión electrónica (PDP)",
           "description": "Conecta tu empresa a una plataforma acreditada para enviar y recibir facturas a través de la red oficial.",
-          "statusComingSoon": "Próximamente",
           "statusPending": "Inscripción en curso",
           "statusActionRequired": "Acción necesaria",
           "deadlineTitle": "Plazo de septiembre de 2026",
@@ -4282,7 +4301,8 @@
               "legalProfileIncomplete": "Tu identidad legal está incompleta. Completa el paso 1 y vuelve a iniciar la conexión.",
               "notConfigured": "La transmisión electrónica no está configurada en este entorno. Contacta con el soporte de Louez."
             }
-          }
+          },
+          "purchaseInvoicesAction": "Abrir facturas de proveedores"
         }
       },
       "delivery": {

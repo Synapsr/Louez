@@ -1,63 +1,31 @@
 import { getTranslations } from "next-intl/server";
 
-import { Alert, AlertDescription, AlertTitle, Badge } from "@louez/ui";
+import { Alert, AlertDescription, AlertTitle, Button } from "@louez/ui";
 import { CalendarCheckIcon, InfoCircleIcon, SendIcon, WarningIcon } from "@louez/ui/icons";
-import type { StoreLegalProfileInput } from "@louez/validations";
 
-import { InvoicingStepCard } from "./invoicing-step-card";
 import { PdpConnectionDetails } from "./pdp-connection-details";
 import { PdpEnrollmentButton } from "./pdp-enrollment-button";
-import { PdpEnrollmentResultAlert } from "./pdp-enrollment-result-alert";
 import type { SuperPdpEnrollment } from "./queries";
-import { resolvePdpTransmissionView, type PdpEnrollmentResult } from "./util.pdp-transmission";
+import type { PdpTransmissionView } from "./util.pdp-transmission";
 
-type PdpTransmissionCardProps = {
+type PdpTransmissionPanelProps = {
   enrollment: SuperPdpEnrollment | null;
-  profile: StoreLegalProfileInput;
-  /** Outcome of the OAuth round trip, when the merchant just came back. */
-  result: PdpEnrollmentResult | null;
+  view: PdpTransmissionView;
 };
-
-const stateBadgeVariants = {
-  actionRequired: "error",
-  connected: "success",
-  notConnected: "tertiary",
-  pending: "pending",
-} as const;
 
 const benefits = ["send", "receive", "reporting"] as const;
 
-/** Step 3: enroll the store with Super PDP and show the state of that enrollment. */
-export const PdpTransmissionCard = async ({
-  enrollment,
-  profile,
-  result,
-}: PdpTransmissionCardProps) => {
+/**
+ * Body of the transmission step: the Super PDP enrollment and its state.
+ * Rendered bare inside the setup wizard and wrapped in a card by the manage view.
+ */
+export const PdpTransmissionPanel = async ({ enrollment, view }: PdpTransmissionPanelProps) => {
   const t = await getTranslations("dashboard.settings.invoicing.transmission");
-  const tIntegrations = await getTranslations("dashboard.settings.integrationsHub");
 
-  const view = resolvePdpTransmissionView({ enrollment, profile });
   const isLocked = view.lockReason !== null;
 
-  const stateLabel =
-    view.state === "connected"
-      ? tIntegrations("statusLabels.connected")
-      : view.state === "pending"
-        ? t("statusPending")
-        : view.state === "actionRequired"
-          ? t("statusActionRequired")
-          : tIntegrations("statusLabels.notConnected");
-
   return (
-    <InvoicingStepCard
-      step={3}
-      title={t("title")}
-      description={t("description")}
-      muted={isLocked && view.state === "notConnected"}
-      badge={<Badge variant={stateBadgeVariants[view.state]}>{stateLabel}</Badge>}
-    >
-      {result && <PdpEnrollmentResultAlert result={result} />}
-
+    <div className="space-y-6">
       {view.lockReason && (
         <Alert variant="info">
           <InfoCircleIcon />
@@ -110,6 +78,14 @@ export const PdpTransmissionCard = async ({
           {view.verificationStatus === "pending" && (
             <p className="text-muted-foreground text-sm">{t("verificationPendingNote")}</p>
           )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            render={<a href="/dashboard/purchase-invoices" />}
+          >
+            {t("purchaseInvoicesAction")}
+          </Button>
         </>
       )}
 
@@ -124,6 +100,6 @@ export const PdpTransmissionCard = async ({
           <PdpEnrollmentButton labelKey="reconnectAction" disabled={isLocked} />
         </>
       )}
-    </InvoicingStepCard>
+    </div>
   );
 };

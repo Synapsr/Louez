@@ -405,7 +405,6 @@
       "copyError": "Email kon niet worden gekopieerd"
     },
     "sidebar": {
-      "finance": "Financiën",
       "catalog": "Catalogus",
       "analytics": "Analyses",
       "manage": "Beheren",
@@ -663,7 +662,6 @@
       }
     },
     "navigation": {
-      "purchaseInvoices": "Leveranciersfacturen",
       "aiAssistant": "AI-assistent",
       "aiConversations": "Klantgesprekken",
       "aiAdvisor": "Online adviseur",
@@ -4157,6 +4155,28 @@
         "saved": "Factuurinstellingen opgeslagen",
         "statusComplete": "Volledig",
         "statusIncomplete": "Aan te vullen",
+        "setup": {
+          "steps": {
+            "identity": "Juridische identiteit",
+            "activation": "Activering",
+            "transmission": "Verzending"
+          },
+          "continue": "Doorgaan",
+          "finishWithoutInvoicing": "Afronden zonder activeren",
+          "later": "Later instellen",
+          "intro": {
+            "title": "Stap over op elektronische facturatie",
+            "description": "Louez genereert conforme facturen op naam van uw bedrijf en verzendt ze via het officiële netwerk van erkende platformen. Stel alles in drie stappen in.",
+            "bullets": {
+              "generate": "Conforme facturen worden bij elke betaling automatisch gegenereerd en genummerd.",
+              "transmit": "Verzending van uw facturen naar zakelijke klanten via het officiële netwerk, met automatische e-reporting van uw verkopen.",
+              "receive": "Gecentraliseerde ontvangst van de facturen van uw leveranciers."
+            },
+            "start": "Instellen starten",
+            "resume": "Instellen hervatten",
+            "stepProgress": "Stap {current} van {total}"
+          }
+        },
         "identity": {
           "title": "Juridische identiteit",
           "description": "De juridische gegevens van je bedrijf, afgedrukt op elke factuur die je uitreikt.",
@@ -4225,7 +4245,6 @@
         "transmission": {
           "title": "Elektronische verzending (PDP)",
           "description": "Verbind je onderneming met een erkend platform om facturen via het officiële netwerk te versturen en te ontvangen.",
-          "statusComingSoon": "Binnenkort beschikbaar",
           "statusPending": "Inschrijving loopt",
           "statusActionRequired": "Actie vereist",
           "deadlineTitle": "Deadline september 2026",
@@ -4282,7 +4301,8 @@
               "legalProfileIncomplete": "Je wettelijke identiteit is onvolledig. Vul stap 1 aan en start de verbinding opnieuw.",
               "notConfigured": "Elektronische verzending is niet geconfigureerd in deze omgeving. Neem contact op met Louez-support."
             }
-          }
+          },
+          "purchaseInvoicesAction": "Leveranciersfacturen openen"
         }
       },
       "delivery": {

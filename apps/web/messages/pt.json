@@ -405,7 +405,6 @@
       "copyError": "Não foi possível copiar o email"
     },
     "sidebar": {
-      "finance": "Finanças",
       "catalog": "Catalogo",
       "analytics": "Analises",
       "manage": "Gerenciar",
@@ -663,7 +662,6 @@
       }
     },
     "navigation": {
-      "purchaseInvoices": "Faturas de fornecedores",
       "aiAssistant": "Assistente IA",
       "aiConversations": "Conversas de clientes",
       "aiAdvisor": "Consultor online",
@@ -4157,6 +4155,28 @@
         "saved": "Definições de faturação guardadas",
         "statusComplete": "Completo",
         "statusIncomplete": "A completar",
+        "setup": {
+          "steps": {
+            "identity": "Identidade legal",
+            "activation": "Ativação",
+            "transmission": "Transmissão"
+          },
+          "continue": "Continuar",
+          "finishWithoutInvoicing": "Concluir sem ativar",
+          "later": "Configurar mais tarde",
+          "intro": {
+            "title": "Mude para a faturação eletrónica",
+            "description": "A Louez gera faturas conformes em nome da sua empresa e transmite-as através da rede oficial de plataformas acreditadas. Configure tudo em três passos.",
+            "bullets": {
+              "generate": "Faturas conformes geradas e numeradas automaticamente a cada pagamento.",
+              "transmit": "Envio das suas faturas a clientes profissionais através da rede oficial, com e-reporting automático das vendas.",
+              "receive": "Receção centralizada das faturas dos seus fornecedores."
+            },
+            "start": "Começar a configuração",
+            "resume": "Retomar a configuração",
+            "stepProgress": "Passo {current} de {total}"
+          }
+        },
         "identity": {
           "title": "Identidade legal",
           "description": "Os dados legais da sua empresa, impressos em cada fatura que emite.",
@@ -4225,7 +4245,6 @@
         "transmission": {
           "title": "Transmissão eletrónica (PDP)",
           "description": "Ligue a sua empresa a uma plataforma acreditada para enviar e receber faturas através da rede oficial.",
-          "statusComingSoon": "Brevemente",
           "statusPending": "Inscrição em curso",
           "statusActionRequired": "Ação necessária",
           "deadlineTitle": "Prazo de setembro de 2026",
@@ -4282,7 +4301,8 @@
               "legalProfileIncomplete": "A sua identidade legal está incompleta. Complete o passo 1 e inicie novamente a ligação.",
               "notConfigured": "A transmissão eletrónica não está configurada neste ambiente. Contacte o suporte do Louez."
             }
-          }
+          },
+          "purchaseInvoicesAction": "Abrir faturas de fornecedores"
         }
       },
       "delivery": {

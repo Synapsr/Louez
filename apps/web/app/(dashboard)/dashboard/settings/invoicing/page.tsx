@@ -5,11 +5,14 @@ import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { getStoreLegalProfile } from "./actions";
-import { InvoicingSettingsForm } from "./invoicing-settings-form";
-import { PdpTransmissionCard } from "./pdp-transmission-card";
+import { DevResetButton } from "./dev-reset-button";
+import { InvoicingFlow } from "./invoicing-flow";
+import { PdpEnrollmentResultAlert } from "./pdp-enrollment-result-alert";
+import { PdpTransmissionPanel } from "./pdp-transmission-panel";
 import { getSuperPdpEnrollment } from "./queries";
-import { toLegalProfileFormValues } from "./util.legal-profile-form";
-import { resolvePdpEnrollmentResult } from "./util.pdp-transmission";
+import { isLegalIdentityComplete, toLegalProfileFormValues } from "./util.legal-profile-form";
+import { resolvePdpEnrollmentResult, resolvePdpTransmissionView } from "./util.pdp-transmission";
+import type { InvoicingSetupProgress } from "./util.setup-progress";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -36,13 +39,32 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
   const profile = profileResult.status === "success" ? profileResult.profile : null;
   const defaultCountry = store.settings?.billingAddress?.country ?? "FR";
 
+  const formValues = toLegalProfileFormValues(profile, defaultCountry);
+  const view = resolvePdpTransmissionView({ enrollment, profile: formValues });
+  const progress: InvoicingSetupProgress = {
+    identityComplete: isLegalIdentityComplete(formValues),
+    invoicingActive: formValues.invoicingEnabled,
+    transmissionState: view.state,
+  };
+  const result = resolvePdpEnrollmentResult(params);
+
   return (
-    <SettingsPageShell title={t("title")} description={t("description")}>
-      <InvoicingSettingsForm profile={profile} defaultCountry={defaultCountry} />
-      <PdpTransmissionCard
-        enrollment={enrollment}
-        profile={toLegalProfileFormValues(profile, defaultCountry)}
-        result={resolvePdpEnrollmentResult(params)}
+    <SettingsPageShell
+      title={t("title")}
+      description={t("description")}
+      actions={process.env.NODE_ENV === "development" ? <DevResetButton /> : undefined}
+    >
+      {result && <PdpEnrollmentResultAlert result={result} />}
+      {/* Keyed on the row so only its creation (first save) or deletion (dev
+          reset) remounts the flow — never a mid-wizard save. */}
+      <InvoicingFlow
+        key={profile?.id ?? "empty"}
+        defaultCountry={defaultCountry}
+        profile={profile}
+        progress={progress}
+        transmissionEnvironment={enrollment?.environment ?? null}
+        transmissionPanel={<PdpTransmissionPanel enrollment={enrollment} view={view} />}
+        verificationStatus={view.verificationStatus}
       />
     </SettingsPageShell>
   );

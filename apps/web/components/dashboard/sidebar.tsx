@@ -50,7 +50,6 @@ import {
 } from "@louez/ui/icons";
 import {
   AiAssistantGlassIcon,
-  AiCreditsGlassIcon,
   AnalyticsGlassIcon,
   CustomersGlassIcon,
   HelpGlassIcon,
@@ -118,19 +117,6 @@ const catalogNavigation = [
 ];
 
 // Money the store pays out, as opposed to the reservations it cashes in. The
-// group is deliberately named wider than its single entry: the e-invoicing work
-// lands its issued-invoice views here next.
-const financeNavigation = [
-  {
-    key: "purchaseInvoices",
-    href: "/dashboard/purchase-invoices",
-    // The glass barrel in `packages/ui` is capped by the Nucleo licence, so nav
-    // icons are picked from what it already exports. This wallet glyph was
-    // unused, and "money going out" is exactly what this section is.
-    icon: AiCreditsGlassIcon,
-  },
-];
-
 const analyticsNavigation = [
   {
     key: "analytics",
@@ -222,7 +208,9 @@ const buildNavigationSections = (
 ): NavigationSection[] => [
   { items: [...mainNavigation, buildAiAssistantItem(aiCredits)] },
   { labelKey: "catalog", items: catalogNavigation },
-  { labelKey: "finance", items: financeNavigation },
+  // Purchase invoices (reception) are reachable from Settings → Facturation
+  // électronique while e-invoicing adoption is low; promote back to a sidebar
+  // group once merchants actually live in that inbox.
   // No label: the group would only ever read "Analyses / Analyses", the entry
   // repeating the heading above it. The separator already opens the section.
   { items: analyticsNavigation },

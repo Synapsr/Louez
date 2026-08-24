@@ -405,7 +405,6 @@
       "copyError": "Impossible de copier l'email"
     },
     "sidebar": {
-      "finance": "Finances",
       "catalog": "Catalogue",
       "analytics": "Analyses",
       "manage": "Gestion",
@@ -663,7 +662,6 @@
       }
     },
     "navigation": {
-      "purchaseInvoices": "Factures fournisseurs",
       "aiAssistant": "Assistant IA",
       "aiConversations": "Conversations clients",
       "aiAdvisor": "Conseiller en ligne",
@@ -4291,6 +4289,28 @@
         "saved": "Paramètres de facturation enregistrés",
         "statusComplete": "Complet",
         "statusIncomplete": "À compléter",
+        "setup": {
+          "steps": {
+            "identity": "Identité légale",
+            "activation": "Activation",
+            "transmission": "Transmission"
+          },
+          "continue": "Continuer",
+          "finishWithoutInvoicing": "Terminer sans activer",
+          "later": "Configurer plus tard",
+          "intro": {
+            "title": "Passez à la facturation électronique",
+            "description": "Louez génère des factures conformes au nom de votre société et les transmet via le réseau officiel des plateformes agréées. Configurez tout en trois étapes.",
+            "bullets": {
+              "generate": "Factures conformes générées et numérotées automatiquement à chaque encaissement.",
+              "transmit": "Envoi de vos factures aux professionnels via le réseau officiel et e-reporting automatique de vos ventes.",
+              "receive": "Réception centralisée des factures de vos fournisseurs."
+            },
+            "start": "Commencer la configuration",
+            "resume": "Reprendre la configuration",
+            "stepProgress": "Étape {current} sur {total}"
+          }
+        },
         "identity": {
           "title": "Identité légale",
           "description": "Les informations légales de votre société, imprimées sur chacune de vos factures.",
@@ -4359,7 +4379,6 @@
         "transmission": {
           "title": "Transmission électronique (PDP)",
           "description": "Connectez votre société à une Plateforme Agréée pour envoyer et recevoir vos factures via le réseau officiel.",
-          "statusComingSoon": "Bientôt disponible",
           "statusPending": "Inscription en cours",
           "statusActionRequired": "Action requise",
           "deadlineTitle": "Échéance de septembre 2026",
@@ -4416,7 +4435,8 @@
               "legalProfileIncomplete": "Votre identité légale est incomplète. Complétez l'étape 1, puis relancez la connexion.",
               "notConfigured": "La transmission électronique n'est pas configurée sur cet environnement. Contactez le support Louez."
             }
-          }
+          },
+          "purchaseInvoicesAction": "Ouvrir les factures fournisseurs"
         }
       },
       "delivery": {
