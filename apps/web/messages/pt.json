@@ -4267,6 +4267,7 @@
           "connectAction": "Ligar a minha empresa",
           "pendingTitle": "Inscrição em curso",
           "pendingDescription": "A sua inscrição foi iniciada, mas ainda não está concluída. Retome-a para finalizar as verificações de identidade da plataforma acreditada.",
+          "pendingValidationDescription": "A plataforma está a validar a sua conta. Não precisa de fazer nada: a ligação será ativada automaticamente quando as verificações terminarem.",
           "resumeAction": "Retomar a inscrição",
           "errorTitle": "Ligação interrompida",
           "reconnectAction": "Voltar a ligar a minha empresa",

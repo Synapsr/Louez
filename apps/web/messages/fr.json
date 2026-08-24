@@ -4401,6 +4401,7 @@
           "connectAction": "Connecter ma société",
           "pendingTitle": "Inscription en cours",
           "pendingDescription": "Votre inscription a été lancée mais n'est pas terminée. Reprenez-la pour finaliser les vérifications d'identité de la plateforme agréée.",
+          "pendingValidationDescription": "La plateforme valide votre compte. Vous n'avez rien à faire : la connexion s'activera automatiquement une fois ses vérifications terminées.",
           "resumeAction": "Reprendre l'inscription",
           "errorTitle": "Connexion interrompue",
           "reconnectAction": "Reconnecter ma société",

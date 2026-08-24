@@ -4401,6 +4401,7 @@
           "connectAction": "Connect my company",
           "pendingTitle": "Enrollment in progress",
           "pendingDescription": "Your enrollment has been started but is not complete yet. Resume it to finish the identity checks of the accredited platform.",
+          "pendingValidationDescription": "The platform is validating your account. No action is required: the connection will activate automatically once its checks are complete.",
           "resumeAction": "Resume enrollment",
           "errorTitle": "Connection interrupted",
           "reconnectAction": "Reconnect my company",

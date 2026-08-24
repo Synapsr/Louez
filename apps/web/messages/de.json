@@ -4267,6 +4267,7 @@
           "connectAction": "Unternehmen verbinden",
           "pendingTitle": "Anmeldung läuft",
           "pendingDescription": "Ihre Anmeldung wurde begonnen, ist aber noch nicht abgeschlossen. Setzen Sie sie fort, um die Identitätsprüfung der zugelassenen Plattform abzuschließen.",
+          "pendingValidationDescription": "Die Plattform prüft Ihr Konto. Sie müssen nichts tun: Die Verbindung wird nach Abschluss der Prüfung automatisch aktiviert.",
           "resumeAction": "Anmeldung fortsetzen",
           "errorTitle": "Verbindung unterbrochen",
           "reconnectAction": "Unternehmen erneut verbinden",

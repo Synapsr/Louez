@@ -178,6 +178,14 @@ export class SuperPdpApiError extends Error {
   }
 }
 
+export function isSuperPdpPendingValidationError(error: unknown): boolean {
+  return (
+    error instanceof SuperPdpApiError &&
+    error.status === 403 &&
+    /being validated/i.test(error.message)
+  );
+}
+
 function getSuperPdpOAuthConfig(): { clientId: string; clientSecret: string } {
   if (!env.SUPERPDP_CLIENT_ID || !env.SUPERPDP_CLIENT_SECRET) {
     throw new Error("Super PDP OAuth is not configured");
@@ -443,6 +451,27 @@ export function createSuperPdpDirectoryEntry(input: {
   });
 }
 
+function getSuperPdpDirectoryIdentifier(company: SuperPdpCompany): string {
+  return `${company.number_scheme === "be_numero_entreprise" ? "0208" : "0225"}:${company.number}`;
+}
+
+export async function findOrCreateSuperPdpDirectoryEntry(input: {
+  accessToken: string;
+  company: SuperPdpCompany;
+}): Promise<SuperPdpDirectoryEntry> {
+  const directoryEntries = await listSuperPdpDirectoryEntries(input.accessToken);
+  const identifier = getSuperPdpDirectoryIdentifier(input.company);
+
+  // The signup tunnel may already have registered a reception address
+  // (possibly under another identifier the merchant chose there) — reuse it
+  // rather than piling up entries.
+  return (
+    directoryEntries.data.find((entry) => entry.identifier === identifier) ??
+    directoryEntries.data[0] ??
+    createSuperPdpDirectoryEntry({ accessToken: input.accessToken, identifier })
+  );
+}
+
 export async function convertSuperPdpInvoiceToFacturX(input: {
   accessToken: string;
   pdf: Uint8Array;
@@ -599,8 +628,7 @@ export function createSuperPdpInvoiceEvent(input: {
 }): Promise<SuperPdpInvoiceEvent> {
   const invoiceId = z.coerce.number().int().positive().parse(input.invoiceId);
   // The AFNOR reason code (MDT-113) lives inside a detail block.
-  const details =
-    input.details ?? (input.reason ? [{ reason: input.reason }] : undefined);
+  const details = input.details ?? (input.reason ? [{ reason: input.reason }] : undefined);
 
   return fetchProviderJson({
     accessToken: input.accessToken,

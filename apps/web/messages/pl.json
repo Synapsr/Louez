@@ -4267,6 +4267,7 @@
           "connectAction": "Połącz moją firmę",
           "pendingTitle": "Rejestracja w toku",
           "pendingDescription": "Rejestracja została rozpoczęta, ale nie jest jeszcze zakończona. Wznów ją, aby dokończyć weryfikację tożsamości przez akredytowaną platformę.",
+          "pendingValidationDescription": "Platforma weryfikuje Twoje konto. Nie musisz nic robić: po zakończeniu kontroli połączenie zostanie aktywowane automatycznie.",
           "resumeAction": "Wznów rejestrację",
           "errorTitle": "Połączenie przerwane",
           "reconnectAction": "Połącz firmę ponownie",

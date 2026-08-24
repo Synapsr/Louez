@@ -4267,6 +4267,7 @@
           "connectAction": "Mijn onderneming verbinden",
           "pendingTitle": "Inschrijving loopt",
           "pendingDescription": "Je inschrijving is gestart maar nog niet afgerond. Hervat ze om de identiteitscontroles van het erkende platform af te ronden.",
+          "pendingValidationDescription": "Het platform valideert je account. Je hoeft niets te doen: de verbinding wordt automatisch geactiveerd zodra de controles zijn afgerond.",
           "resumeAction": "Inschrijving hervatten",
           "errorTitle": "Verbinding onderbroken",
           "reconnectAction": "Mijn onderneming opnieuw verbinden",
