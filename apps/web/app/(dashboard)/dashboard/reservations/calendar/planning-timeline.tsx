@@ -25,21 +25,18 @@ import {
   addDays,
   computeMonthSegments,
   diffInDays,
-  formatDeliveryAddress,
   isWeekend,
   placeReservations,
   stackReservations,
 } from "@/components/dashboard/reservations-timeline/timeline-utils";
-import {
-  type PlanningTimelineEntry,
-  reservationPlanningQueries,
-} from "@/lib/queries/reservation-planning.queries";
+import { reservationPlanningQueries } from "@/lib/queries/reservation-planning.queries";
 
 import { type CalendarRange, matchesTodayOperation } from "./calendar-query";
 import { TimelineToolbar, useTimelineFilters } from "./timeline-toolbar";
 import type { Product, StoreTimelineReservation } from "./types";
 import { useTimelineDateAnchor } from "./use-timeline-date-anchor";
 import { useTimelineDateParam } from "./use-timeline-date-param";
+import { toStoreTimelineReservation } from "./util.planning-timeline";
 
 // =============================================================================
 // Constants — mirror the product page timeline so both feel identical
@@ -127,30 +124,6 @@ interface PlanningTimelineProps {
   products: Product[];
   currency: string;
   storeId: string;
-}
-
-/** Raw procedure row → the shape the timeline bars and tooltips consume. */
-function toStoreTimelineReservation(row: PlanningTimelineEntry): StoreTimelineReservation {
-  return {
-    id: row.id,
-    productId: row.productId,
-    number: row.number,
-    status: row.status,
-    startDate: new Date(row.startDate),
-    endDate: new Date(row.endDate),
-    customerId: row.customerId,
-    customerName: row.customerName,
-    subtotalAmount: row.subtotalAmount,
-    depositAmount: row.depositAmount,
-    totalAmount: row.totalAmount,
-    quantity: row.quantity,
-    assignedUnitIds: row.assignedUnitIds,
-    items: row.items,
-    outboundDeliveryAddress: row.outboundDelivery
-      ? formatDeliveryAddress(row.outboundDelivery)
-      : null,
-    returnDeliveryAddress: row.returnDelivery ? formatDeliveryAddress(row.returnDelivery) : null,
-  };
 }
 
 export function PlanningTimeline({ products, currency, storeId }: PlanningTimelineProps) {
@@ -396,7 +369,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
 
     const anchorIndex = diffInDays(windowStart, anchorDateRef.current);
     const target =
-      anchorIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 3);
+      anchorIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 2);
     element.scrollLeft = Math.max(0, target);
     updateVisibleViewport(element);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -477,7 +450,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
 
     if (element && targetIndex >= 0 && targetIndex < daysCount) {
       const target =
-        targetIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 3);
+        targetIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 2);
       const left = Math.max(0, target);
       if (behavior === "auto") {
         // Restoration jumps straight there: a smooth scroll across months
