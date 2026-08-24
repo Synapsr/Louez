@@ -1,6 +1,7 @@
 import type { Rate } from '@louez/types'
 
 import type {
+  FixedPriceCalculationResult,
   PricingTier,
   ProductPricing,
   PriceCalculationResult,
@@ -94,6 +95,10 @@ export function calculateRentalPrice(
   duration: number,
   quantity: number
 ): PriceCalculationResult {
+  if (isFixedPriceProduct(pricing)) {
+    return calculateFixedPrice(pricing, quantity)
+  }
+
   const { basePrice, deposit, tiers } = pricing
 
   // Find applicable tier
@@ -276,6 +281,57 @@ export function isRateBasedProduct(product: {
   return Boolean(product.basePeriodMinutes && product.basePeriodMinutes > 0)
 }
 
+export function isFixedPriceProduct(product: {
+  pricingKind?: 'duration' | 'fixed' | null
+}): boolean {
+  return product.pricingKind === 'fixed'
+}
+
+/**
+ * Calculate a fixed price per product unit, independently of rental duration.
+ */
+export function calculateFixedPrice(
+  pricing: {
+    basePrice: number
+    deposit: number
+    pricingMode: PricingMode
+  },
+  quantity: number,
+): FixedPriceCalculationResult {
+  const subtotal = roundCurrency(pricing.basePrice * quantity)
+  const deposit = roundCurrency(pricing.deposit * quantity)
+
+  return {
+    subtotal,
+    deposit,
+    total: roundCurrency(subtotal + deposit),
+    effectivePricePerUnit: pricing.basePrice,
+    basePrice: pricing.basePrice,
+    duration: 1,
+    quantity,
+    discount: 0,
+    discountPercent: 0,
+    tierApplied: null,
+    originalSubtotal: subtotal,
+    savings: 0,
+    savingsPercent: 0,
+    breakdown: {
+      basePrice: pricing.basePrice,
+      effectivePrice: pricing.basePrice,
+      duration: 1,
+      pricingMode: pricing.pricingMode,
+      pricingKind: 'fixed',
+      discountPercent: 0,
+      discountAmount: 0,
+      tierApplied: null,
+      taxRate: null,
+      taxAmount: null,
+      subtotalExclTax: null,
+      subtotalInclTax: null,
+    },
+  }
+}
+
 /**
  * Calculate rental price for rate-based products.
  *
@@ -296,6 +352,31 @@ export function calculateRateBasedPrice(
   durationMinutes: number,
   quantity: number
 ): RateCalculationResult {
+  if (isFixedPriceProduct(pricing)) {
+    const fixedResult = calculateFixedPrice(
+      {
+        basePrice: pricing.basePrice,
+        deposit: pricing.deposit,
+        pricingMode: 'day',
+      },
+      quantity,
+    )
+
+    return {
+      subtotal: fixedResult.subtotal,
+      deposit: fixedResult.deposit,
+      total: fixedResult.total,
+      appliedRate: null,
+      periodsUsed: 1,
+      savings: 0,
+      reductionPercent: 0,
+      durationMinutes: 1,
+      quantity,
+      originalSubtotal: fixedResult.originalSubtotal,
+      plan: [],
+    }
+  }
+
   const baseRate: Rate = {
     id: '__base__',
     price: pricing.basePrice,

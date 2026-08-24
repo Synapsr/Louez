@@ -1090,6 +1090,14 @@
         "categoryOptional": "Opzionale - aiuta i clienti a trovare il tuo prodotto",
         "noCategories": "Nessuna categoria creata",
         "pricingDescription": "Imposta il prezzo di noleggio e le tariffe",
+        "pricingKindLabel": "Modello di prezzo",
+        "pricingKindDuration": "Prezzo a durata",
+        "pricingKindDurationDescription": "Il prezzo dipende dalla durata del noleggio.",
+        "pricingKindFixed": "Prezzo forfettario",
+        "pricingKindFixedDescription": "Un prezzo unico, qualunque sia la durata.",
+        "fixedPrice": "Prezzo forfettario",
+        "fixedPriceDescription": "Addebitato una volta per articolo, qualunque sia la durata del noleggio.",
+        "fixedPriceLabel": "Forfait",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -5677,6 +5685,7 @@
       "perHour": "ora",
       "perWeek": "settimana",
       "startingFrom": "A partire da",
+      "fixedPricingLabel": "Forfait",
       "pricingUnit": {
         "day": {
           "singular": "giorno",

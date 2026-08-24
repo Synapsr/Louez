@@ -21,6 +21,7 @@ import type {
   BusinessHours,
   BusinessHoursValidation,
   CombinationAvailability,
+  PricingKind,
   ProductAvailability,
 } from "@louez/types";
 import { Button } from "@louez/ui";
@@ -70,6 +71,7 @@ interface Accessory {
   deposit: string;
   images: string[] | null;
   quantity: number;
+  pricingKind?: PricingKind | null;
   pricingMode: "day" | "hour" | "week" | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: PricingTier[];
@@ -100,6 +102,7 @@ interface Product {
   quantity: number;
   displayQuantity?: number;
   category: { id: string; name: string; order?: number | null } | null;
+  pricingKind?: PricingKind | null;
   pricingMode?: PricingMode | null;
   basePeriodMinutes?: number | null;
   enforceStrictTiers?: boolean;

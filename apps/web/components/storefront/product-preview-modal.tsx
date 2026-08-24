@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { BusinessHours } from "@louez/types";
+import type { BusinessHours, PricingKind } from "@louez/types";
 import { Button } from "@louez/ui";
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from "@louez/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@louez/ui";
@@ -85,6 +85,7 @@ interface ProductPreviewModalProps {
     deposit: string | null;
     quantity: number;
     category?: { name: string } | null;
+    pricingKind?: PricingKind | null;
     pricingMode?: PricingMode | null;
     basePeriodMinutes?: number | null;
     pricingTiers?: PricingTier[];
@@ -507,7 +508,9 @@ export function ProductPreviewModal({
                   {formatMoney(pricingSummary.displayPrice, currency)}
                 </span>
                 <span className="text-muted-foreground text-base">
-                  / {formatPeriodLabel(displayPeriodMinutes)}
+                  {displayPeriodMinutes == null
+                    ? tProduct("fixedPricingLabel")
+                    : `/ ${formatPeriodLabel(displayPeriodMinutes)}`}
                 </span>
                 {modalDiscount > 0 && (
                   <Badge variant="progress" className="ml-2">

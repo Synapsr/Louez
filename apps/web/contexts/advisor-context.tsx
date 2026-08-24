@@ -300,6 +300,7 @@ export function AdvisorProvider({
             deposit: line.deposit,
             quantity,
             maxQuantity: line.maxQuantity,
+            pricingKind: line.pricingKind,
             pricingTiers: line.pricingTiers,
             basePeriodMinutes: line.basePeriodMinutes,
             enforceStrictTiers: line.enforceStrictTiers,

@@ -176,6 +176,27 @@ function hasDuplicateRateTierPeriods(
   return false;
 }
 
+function ignoreDurationPricingForFixed(input: unknown): unknown {
+  const parsed = z.record(z.string(), z.unknown()).safeParse(input);
+  if (!parsed.success || parsed.data.pricingKind !== 'fixed') {
+    return input;
+  }
+
+  return {
+    ...parsed.data,
+    basePriceDuration: undefined,
+    pricingTiers: [],
+    rateTiers: [],
+    enforceStrictTiers: false,
+  };
+}
+
+const moneyInputRegex = /^\d+([.,]\d{1,2})?$/;
+
+function isPositiveMoneyInput(value: string): boolean {
+  return Number.parseFloat(value.replace(',', '.')) > 0;
+}
+
 // Schema factory that accepts translation function
 // YouTube URL validation regex
 const youtubeUrlRegex =
@@ -212,19 +233,14 @@ export const createProductSchema = (
         z.string().refine(isProductImageUrl, t('invalidImageUrl')),
       ),
       imageHistory: z.array(productImageHistorySchema).max(5),
+      pricingKind: z.enum(['duration', 'fixed']),
       pricingMode: z.enum(['hour', 'day', 'week']),
+      // Kept structurally required so the form can hold on to a base period
+      // while the user edits a fixed price; its content is only validated for
+      // duration pricing (see the superRefine below).
       basePriceDuration: z.object({
-        price: z
-          .string()
-          .regex(/^\d+([.,]\d{1,2})?$/, t('positive'))
-          .refine(
-            (price) => Number.parseFloat(price.replace(',', '.')) > 0,
-            t('positive'),
-          ),
-        duration: z
-          .number()
-          .int()
-          .min(1, t('minValue', { min: 1 })),
+        price: z.string(),
+        duration: z.number(),
         unit: z.enum(['minute', 'hour', 'day', 'week']),
       }),
       pricingTiers: z.array(
@@ -307,6 +323,37 @@ export const createProductSchema = (
         .max(3, t('maxItems', { max: 3 })),
     })
     .superRefine((data, ctx) => {
+      if (data.pricingKind === 'fixed') {
+        if (!data.price || !isPositiveMoneyInput(data.price)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('positive'),
+            path: ['price'],
+          });
+        }
+      } else {
+        const baseRate = data.basePriceDuration;
+
+        if (
+          !moneyInputRegex.test(baseRate.price) ||
+          !isPositiveMoneyInput(baseRate.price)
+        ) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('positive'),
+            path: ['basePriceDuration', 'price'],
+          });
+        }
+
+        if (!Number.isInteger(baseRate.duration) || baseRate.duration < 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('minValue', { min: 1 }),
+            path: ['basePriceDuration', 'duration'],
+          });
+        }
+      }
+
       const axes = data.bookingAttributeAxes || [];
       const normalizedAxisKeys = axes.map((axis) =>
         axis.key.trim().toLowerCase(),
@@ -383,7 +430,7 @@ export const createCategorySchema = (
 
 // Default schemas for server-side validation
 export const productSchema = z
-  .object({
+  .preprocess(ignoreDurationPricingForFixed, z.object({
     name: z
       .string()
       .min(2, 'validation.minLength')
@@ -409,8 +456,9 @@ export const productSchema = z
     status: z.enum(['draft', 'active', 'archived']),
     images: z.array(imageUrlSchema).optional(),
     imageHistory: z.array(productImageHistorySchema).max(5).optional(),
+    pricingKind: z.enum(['duration', 'fixed']).default('duration'),
     pricingMode: z.enum(['hour', 'day', 'week']),
-    basePriceDuration: priceDurationSchema,
+    basePriceDuration: priceDurationSchema.optional(),
     pricingTiers: z.array(pricingTierSchema).optional(),
     rateTiers: z.array(rateTierSchema).optional(),
     enforceStrictTiers: z.boolean().optional(),
@@ -428,8 +476,24 @@ export const productSchema = z
       .array(bookingAttributeAxisSchema)
       .max(3, 'validation.maxItems')
       .optional(),
-  })
+  }))
   .superRefine((data, ctx) => {
+    if (data.pricingKind === 'fixed') {
+      if (!data.price || !isPositiveMoneyInput(data.price)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'validation.positive',
+          path: ['price'],
+        });
+      }
+    } else if (!data.basePriceDuration) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.required',
+        path: ['basePriceDuration'],
+      });
+    }
+
     const axes = data.bookingAttributeAxes || [];
     const normalizedAxisKeys = axes.map((axis) =>
       axis.key.trim().toLowerCase(),
@@ -502,5 +566,12 @@ export const categorySchema = z.object({
   imageUrl: storedImageUrlSchema.optional().nullable(),
 });
 
-export type ProductInput = z.infer<typeof productSchema>;
+type ParsedProductInput = z.infer<typeof productSchema>;
+export type ProductInput = Omit<
+  ParsedProductInput,
+  'basePriceDuration' | 'pricingKind'
+> & {
+  basePriceDuration: PriceDurationInput;
+  pricingKind?: 'duration' | 'fixed';
+};
 export type CategoryInput = z.infer<typeof categorySchema>;

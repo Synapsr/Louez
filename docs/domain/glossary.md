@@ -168,6 +168,14 @@ _Avoid_: status, checked out
 An append-only record of something that happened to a Unit (created, downtime declared or closed, retired, reinstated, assigned, unassigned), with the acting user and time. The source of the Unit's history timeline.
 _Avoid_: log, audit row, activity
 
+**Pricing kind**:
+The discriminant that decides how a Product's price is computed: duration (price is a function of rental duration) or fixed. French UI: "mode de tarification".
+_Avoid_: pricing type, price type, product type
+
+**Fixed price (Forfait)**:
+A Pricing kind where the price is a flat amount per product unit per reservation, independent of rental duration — for example a bike-cleaning service. A fixed-price Product is a full catalog Product: it can carry a deposit, be an accessory of another Product, and consumes stock over the reservation window. French UI: "forfait".
+_Avoid_: flat fee, service fee, fixed pricing mode (pricing mode is the legacy hour/day/week unit)
+
 ## Relationships
 
 - A **Store** receives **Reservation payments** from **Customers**.
@@ -205,6 +213,7 @@ _Avoid_: log, audit row, activity
 - Assigning a **Unit** to a reservation is optional and merchant-driven; reservations consume product quantity even when no Unit is assigned, so a Unit's **Unit Operational State** only reflects reservations it is assigned to.
 - A return inspection rated damaged on an assigned **Unit** can suggest declaring a repair **Downtime**; the suggestion is never applied automatically.
 - Inventory management (Downtimes, Retirement, assignment) is open to all team members, owners and members alike.
+- A Product has exactly one **Pricing kind**; a **Fixed price** Product ignores pricing tiers, seasonal pricing, and duration limits, but keeps deposit, stock, and availability behavior.
 
 ## Example Dialogue
 

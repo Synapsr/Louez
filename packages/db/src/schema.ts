@@ -943,6 +943,10 @@ export const pricingModeEnum = mysqlEnum('pricing_mode', [
   'day',
   'week',
 ]);
+export const pricingKindEnum = mysqlEnum('pricing_kind', [
+  'duration',
+  'fixed',
+]);
 
 export const products = mysqlTable(
   'products',
@@ -973,6 +977,7 @@ export const products = mysqlTable(
 
     // Product pricing mode
     pricingMode: pricingModeEnum.notNull(),
+    pricingKind: pricingKindEnum.notNull().default('duration'),
 
     // Video URL (YouTube)
     videoUrl: text('video_url'),

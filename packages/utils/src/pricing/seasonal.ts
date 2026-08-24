@@ -1,4 +1,4 @@
-import type { PricingMode, Rate } from '@louez/types'
+import type { PricingKind, PricingMode, Rate } from '@louez/types'
 
 import type {
   SeasonalPricingConfig,
@@ -9,10 +9,12 @@ import type {
 } from './types'
 import {
   calculateRentalPrice,
+  calculateFixedPrice,
   calculateRateBasedPrice,
   calculateDuration,
   calculateDurationMinutes,
   isRateBasedProduct,
+  isFixedPriceProduct,
 } from './calculate'
 
 function roundCurrency(value: number): number {
@@ -127,6 +129,7 @@ export function calculateSeasonalAwarePrice(
     basePrice: number
     basePeriodMinutes: number | null
     deposit: number
+    pricingKind?: PricingKind
     pricingMode: PricingMode
     enforceStrictTiers: boolean
     tiers: Array<{ id?: string; minDuration: number | null; discountPercent: number | null; displayOrder?: number }>
@@ -139,6 +142,11 @@ export function calculateSeasonalAwarePrice(
 ): SeasonalPriceResult {
   const start = typeof startDate === 'string' ? new Date(startDate) : startDate
   const end = typeof endDate === 'string' ? new Date(endDate) : endDate
+
+  if (isFixedPriceProduct(product)) {
+    return buildFixedResult(product, start, end, quantity)
+  }
+
   const rateBased = isRateBasedProduct({ basePeriodMinutes: product.basePeriodMinutes })
 
   // Short-circuit: no seasonal pricing → use existing calculation
@@ -197,6 +205,7 @@ export function calculateSeasonalAwarePrice(
         basePrice: segBasePrice,
         basePeriodMinutes: product.basePeriodMinutes!,
         deposit: 0, // Deposit handled at the end, not per-segment
+        pricingKind: product.pricingKind,
         rates: segRates,
         // Always use progressive interpolation within segments.
         // Strict mode (snap to nearest tier) would cause surfacturation
@@ -216,6 +225,7 @@ export function calculateSeasonalAwarePrice(
       const segPricing: ProductPricing = {
         basePrice: segBasePrice,
         deposit: 0,
+        pricingKind: product.pricingKind,
         pricingMode: product.pricingMode,
         tiers: segTiers,
       }
@@ -265,6 +275,7 @@ function buildNonSeasonalResult(
     basePrice: number
     basePeriodMinutes: number | null
     deposit: number
+    pricingKind?: PricingKind
     pricingMode: PricingMode
     enforceStrictTiers: boolean
     tiers: Array<{ id?: string; minDuration: number | null; discountPercent: number | null; displayOrder?: number }>
@@ -287,6 +298,7 @@ function buildNonSeasonalResult(
       basePrice: product.basePrice,
       basePeriodMinutes: product.basePeriodMinutes!,
       deposit: product.deposit,
+      pricingKind: product.pricingKind,
       rates: product.rates,
       enforceStrictTiers: product.enforceStrictTiers,
     }
@@ -301,6 +313,7 @@ function buildNonSeasonalResult(
     const pricing: ProductPricing = {
       basePrice: product.basePrice,
       deposit: product.deposit,
+      pricingKind: product.pricingKind,
       pricingMode: product.pricingMode,
       tiers: product.tiers.map((t, idx) => ({ ...t, id: t.id ?? '', displayOrder: t.displayOrder ?? idx })),
     }
@@ -330,6 +343,40 @@ function buildNonSeasonalResult(
     savings,
     deposit,
     total: roundCurrency(subtotal + deposit),
+    isSeasonal: false,
+  }
+}
+
+function buildFixedResult(
+  product: {
+    basePrice: number
+    deposit: number
+    pricingMode: PricingMode
+  },
+  start: Date,
+  end: Date,
+  quantity: number,
+): SeasonalPriceResult {
+  const result = calculateFixedPrice(product, quantity)
+
+  return {
+    segments: [
+      {
+        startDate: start,
+        endDate: end,
+        seasonalPricingId: null,
+        seasonalPricingName: null,
+        durationMinutes: 1,
+        subtotal: result.subtotal,
+        originalSubtotal: result.originalSubtotal,
+        savings: 0,
+      },
+    ],
+    subtotal: result.subtotal,
+    originalSubtotal: result.originalSubtotal,
+    savings: 0,
+    deposit: result.deposit,
+    total: result.total,
     isSeasonal: false,
   }
 }

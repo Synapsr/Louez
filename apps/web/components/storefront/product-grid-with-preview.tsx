@@ -13,7 +13,7 @@ import { formatCurrency, minutesToPriceDuration } from '@louez/utils'
 import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
 import { ProductImage } from '@/components/product/product-image'
 import { ProductPreviewModal } from './product-preview-modal'
-import type { PricingMode } from '@louez/types'
+import type { PricingKind, PricingMode } from '@louez/types'
 import type { BusinessHours } from '@louez/types'
 import { getStorefrontPricingSummary } from '@/lib/utils/storefront-pricing'
 
@@ -34,6 +34,7 @@ interface Product {
   images: string[] | null
   quantity: number
   deposit: string | null
+  pricingKind?: PricingKind | null
   pricingMode?: PricingMode | null
   basePeriodMinutes?: number | null
   pricingTiers?: PricingTier[]
@@ -74,9 +75,14 @@ function ProductCardInteractive({
   const cardDiscount = maxDiscountPercent == null
     ? pricingSummary.maxReductionPercent
     : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0)
-  const displayPeriod = minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
-  const periodLabel =
-    displayPeriod.unit === 'minute'
+  // A forfait prices the whole booking — there is no period to suffix.
+  const displayPeriod =
+    pricingSummary.displayPeriodMinutes == null
+      ? null
+      : minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
+  const periodLabel = !displayPeriod
+    ? null
+    : displayPeriod.unit === 'minute'
       ? displayPeriod.duration === 1
         ? tCommon('minuteUnit', { count: 1 })
         : `${displayPeriod.duration} ${tCommon('minuteUnit', { count: displayPeriod.duration })}`
@@ -152,7 +158,7 @@ function ProductCardInteractive({
               {formatCurrency(pricingSummary.displayPrice, currency)}
             </span>
             <span className="text-xs md:text-sm text-muted-foreground">
-              / {periodLabel}
+              {periodLabel ? `/ ${periodLabel}` : t('fixedPricingLabel')}
             </span>
           </div>
         </CardContent>

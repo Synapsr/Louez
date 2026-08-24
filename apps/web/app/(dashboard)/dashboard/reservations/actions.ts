@@ -953,6 +953,7 @@ export async function createManualReservation(data: CreateReservationData) {
           basePrice: parseFloat(product.price),
           basePeriodMinutes: product.basePeriodMinutes ?? null,
           deposit: parseFloat(product.deposit || "0"),
+          pricingKind: product.pricingKind,
           pricingMode: effectivePricingMode,
           enforceStrictTiers: product.enforceStrictTiers ?? false,
           tiers,
@@ -978,6 +979,7 @@ export async function createManualReservation(data: CreateReservationData) {
         effectivePrice: seasonalResult.subtotal / Math.max(1, item.quantity),
         duration: durationMinutes,
         pricingMode: effectivePricingMode,
+        pricingKind: product.pricingKind,
         discountPercent:
           seasonalResult.savings > 0 && seasonalResult.originalSubtotal > 0
             ? Math.round((seasonalResult.savings / seasonalResult.originalSubtotal) * 100)
@@ -1011,7 +1013,10 @@ export async function createManualReservation(data: CreateReservationData) {
 
       if (hasPriceOverride) {
         effectiveUnitPrice = item.priceOverride!.unitPrice;
-        effectiveSubtotal = effectiveUnitPrice * duration * item.quantity;
+        effectiveSubtotal =
+          effectiveUnitPrice *
+          (product.pricingKind === "fixed" ? 1 : duration) *
+          item.quantity;
 
         // Update pricing breakdown to reflect the override
         pricingBreakdown = {
@@ -2456,6 +2461,7 @@ export async function updateReservation(
               basePrice: parseFloat(product.price),
               basePeriodMinutes: product.basePeriodMinutes ?? null,
               deposit: parseFloat(product.deposit || "0"),
+              pricingKind: product.pricingKind,
               pricingMode: itemPricingMode,
               enforceStrictTiers: product.enforceStrictTiers ?? false,
               tiers,
@@ -2479,6 +2485,7 @@ export async function updateReservation(
             effectivePrice: seasonalResultForItem.subtotal / Math.max(1, item.quantity),
             duration: durationMinutes,
             pricingMode: itemPricingMode,
+            pricingKind: product.pricingKind,
             discountPercent:
               seasonalResultForItem.savings > 0 && seasonalResultForItem.originalSubtotal > 0
                 ? Math.round(
@@ -2621,6 +2628,7 @@ export async function updateReservation(
               basePrice: parseFloat(product.price),
               basePeriodMinutes: product.basePeriodMinutes ?? null,
               deposit: parseFloat(product.deposit || "0"),
+              pricingKind: product.pricingKind,
               pricingMode: effectivePricingMode,
               enforceStrictTiers: product.enforceStrictTiers ?? false,
               tiers,
@@ -2636,6 +2644,7 @@ export async function updateReservation(
             basePrice: parseFloat(product.price),
             effectivePrice: seasonalResultForDate.subtotal / Math.max(1, item.quantity),
             duration: itemDurationMinutes,
+            pricingKind: product.pricingKind,
             pricingMode: effectivePricingMode,
             discountPercent:
               seasonalResultForDate.savings > 0 && seasonalResultForDate.originalSubtotal > 0

@@ -16,7 +16,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
-import type { PricingMode, Rate, TaxSettings } from "@louez/types";
+import type { PricingKind, PricingMode, Rate, TaxSettings } from "@louez/types";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -38,6 +38,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
+  Radio,
   Select,
   SelectContent,
   SelectItem,
@@ -110,6 +111,11 @@ function toLegacyPricingMode(unit: PriceDurationValue["unit"]): PricingMode {
   if (unit === "week") return "week";
   if (unit === "day") return "day";
   return "hour";
+}
+
+/** Base UI radio groups hand back an `unknown` value; narrow it here. */
+function toPricingKind(value: unknown): PricingKind {
+  return value === "fixed" ? "fixed" : "duration";
 }
 
 function hasValidBaseRate(value: PriceDurationValue | undefined): boolean {
@@ -194,8 +200,12 @@ export function ProductFormStepPricing({
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
+  // A fixed price never varies with the season, so seasonal editing stays out
+  // of reach while that mode is on — without discarding the stored periods.
+  const isFixedPricing = watchedValues.pricingKind === "fixed";
+
   // Track the previous period id to detect changes and auto-save
-  const isSeasonalMode = selectedSeasonalPeriodId !== null;
+  const isSeasonalMode = !isFixedPricing && selectedSeasonalPeriodId !== null;
   const selectedPeriod = isSeasonalMode
     ? (seasonalPricings.find((sp) => sp.id === selectedSeasonalPeriodId) ?? null)
     : null;
@@ -544,6 +554,23 @@ export function ProductFormStepPricing({
     </div>
   ) : null;
 
+  const pricingKindOptions: Array<{
+    value: PricingKind;
+    label: string;
+    description: string;
+  }> = [
+    {
+      value: "duration",
+      label: t("pricingKindDuration"),
+      description: t("pricingKindDurationDescription"),
+    },
+    {
+      value: "fixed",
+      label: t("pricingKindFixed"),
+      description: t("pricingKindFixedDescription"),
+    },
+  ];
+
   const pricingCard = (
     <Card>
       <CardHeader>
@@ -555,7 +582,7 @@ export function ProductFormStepPricing({
             </CardTitle>
             <CardDescription className="mt-1.5">{t("pricingDescription")}</CardDescription>
           </div>
-          {productId && (
+          {productId && !isFixedPricing && (
             <PricingPeriodSelector
               selectedPeriodId={selectedSeasonalPeriodId}
               seasonalPricings={seasonalPricings}
@@ -568,6 +595,34 @@ export function ProductFormStepPricing({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Pricing kind: everything below depends on this choice, so it leads */}
+        {!isSeasonalMode && (
+          <form.Field name="pricingKind">
+            {(field) => (
+              <form.RadioGroup
+                label={t("pricingKindLabel")}
+                value={field.state.value ?? "duration"}
+                onValueChange={(value) => field.handleChange(toPricingKind(value))}
+                disabled={isSaving}
+                className="grid gap-3 sm:grid-cols-2"
+              >
+                {pricingKindOptions.map((option) => (
+                  <Label
+                    key={option.value}
+                    className="flex items-start gap-2 bg-background rounded-lg border p-3 hover:bg-accent/50 has-data-checked:border-primary/48 has-data-checked:bg-background"
+                  >
+                    <Radio value={option.value} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">{option.label}</p>
+                      <p className="text-muted-foreground mt-1 text-xs">{option.description}</p>
+                    </div>
+                  </Label>
+                ))}
+              </form.RadioGroup>
+            )}
+          </form.Field>
+        )}
+
         {/* Seasonal mode: banner + inline price/tiers editing */}
         {isSeasonalMode && selectedPeriod ? (
           <>
@@ -658,83 +713,101 @@ export function ProductFormStepPricing({
           </>
         ) : (
           <>
-            {/* Base pricing mode: original content */}
-            <form.Field name="basePriceDuration">
-              {(field) => {
-                const fallbackBaseRate: PriceDurationValue = {
-                  price: watchedValues.price || "",
-                  duration: 1,
-                  unit:
-                    watchedValues.pricingMode === "week"
-                      ? "week"
-                      : watchedValues.pricingMode === "hour"
-                        ? "hour"
-                        : "day",
-                };
-                const baseRateValue = field.state.value ?? fallbackBaseRate;
-                const showBaseRateHighlight =
-                  (highlightBaseRate ||
-                    showValidationErrors ||
-                    field.state.meta.errors.length > 0) &&
-                  !hasValidBaseRate(baseRateValue);
-                const baseRateError =
-                  field.state.meta.errors.length > 0
-                    ? getFieldError(field.state.meta.errors[0])
-                    : showBaseRateHighlight
-                      ? tValidation("positive")
-                      : null;
-
-                return (
-                  <div className="space-y-2">
-                    <Label helper={t("baseRateDescription")}>{t("baseRate")}</Label>
-                    <PriceDurationInput
-                      value={baseRateValue}
-                      onChange={(next) => {
-                        field.handleChange(next);
-                        form.setFieldValue("price", next.price);
-                        form.setFieldValue("pricingMode", toLegacyPricingMode(next.unit));
-                        if (highlightBaseRate && hasValidBaseRate(next)) {
-                          setHighlightBaseRate(false);
-                        }
-                      }}
-                      currency={currency}
-                      disabled={isSaving}
-                      invalid={showBaseRateHighlight}
-                    />
-                    {baseRateError ? (
-                      <p className="text-destructive text-sm font-medium">{baseRateError}</p>
-                    ) : null}
-                  </div>
-                );
-              }}
-            </form.Field>
-            <form.Field name="rateTiers">
-              {(field) => (
-                <div>
-                  <RatesEditor
-                    basePriceDuration={watchedValues.basePriceDuration}
-                    rates={field.state.value || []}
-                    onChange={(next) => {
-                      field.handleChange(next);
-                      onRateTiersEdit?.();
-                    }}
-                    enforceStrictTiers={watchedValues.enforceStrictTiers ?? true}
-                    onEnforceStrictTiersChange={(value) =>
-                      form.setFieldValue("enforceStrictTiers", value)
-                    }
-                    onRequireBaseRate={() => setHighlightBaseRate(true)}
-                    invalidRateIndexes={duplicateRateTierIndexes}
-                    currency={currency}
-                    disabled={isSaving}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-destructive text-sm font-medium">
-                      {getFieldError(field.state.meta.errors[0])}
-                    </p>
-                  )}
+            {/* Fixed pricing: one flat amount, no period, tiers or curve */}
+            {isFixedPricing ? (
+              <div className="space-y-2">
+                <Label htmlFor="price" helper={t("fixedPriceDescription")}>
+                  {t("fixedPrice")}
+                </Label>
+                <div className="w-44">
+                  <form.AppField name="price">
+                    {(field) => (
+                      <field.Input suffix={currencySymbol} placeholder={t("pricePlaceholder")} />
+                    )}
+                  </form.AppField>
                 </div>
-              )}
-            </form.Field>
+              </div>
+            ) : (
+              <>
+                {/* Base pricing mode: original content */}
+                <form.Field name="basePriceDuration">
+                  {(field) => {
+                    const fallbackBaseRate: PriceDurationValue = {
+                      price: watchedValues.price || "",
+                      duration: 1,
+                      unit:
+                        watchedValues.pricingMode === "week"
+                          ? "week"
+                          : watchedValues.pricingMode === "hour"
+                            ? "hour"
+                            : "day",
+                    };
+                    const baseRateValue = field.state.value ?? fallbackBaseRate;
+                    const showBaseRateHighlight =
+                      (highlightBaseRate ||
+                        showValidationErrors ||
+                        field.state.meta.errors.length > 0) &&
+                      !hasValidBaseRate(baseRateValue);
+                    const baseRateError =
+                      field.state.meta.errors.length > 0
+                        ? getFieldError(field.state.meta.errors[0])
+                        : showBaseRateHighlight
+                          ? tValidation("positive")
+                          : null;
+
+                    return (
+                      <div className="space-y-2">
+                        <Label helper={t("baseRateDescription")}>{t("baseRate")}</Label>
+                        <PriceDurationInput
+                          value={baseRateValue}
+                          onChange={(next) => {
+                            field.handleChange(next);
+                            form.setFieldValue("price", next.price);
+                            form.setFieldValue("pricingMode", toLegacyPricingMode(next.unit));
+                            if (highlightBaseRate && hasValidBaseRate(next)) {
+                              setHighlightBaseRate(false);
+                            }
+                          }}
+                          currency={currency}
+                          disabled={isSaving}
+                          invalid={showBaseRateHighlight}
+                        />
+                        {baseRateError ? (
+                          <p className="text-destructive text-sm font-medium">{baseRateError}</p>
+                        ) : null}
+                      </div>
+                    );
+                  }}
+                </form.Field>
+                <form.Field name="rateTiers">
+                  {(field) => (
+                    <div>
+                      <RatesEditor
+                        basePriceDuration={watchedValues.basePriceDuration}
+                        rates={field.state.value || []}
+                        onChange={(next) => {
+                          field.handleChange(next);
+                          onRateTiersEdit?.();
+                        }}
+                        enforceStrictTiers={watchedValues.enforceStrictTiers ?? true}
+                        onEnforceStrictTiersChange={(value) =>
+                          form.setFieldValue("enforceStrictTiers", value)
+                        }
+                        onRequireBaseRate={() => setHighlightBaseRate(true)}
+                        invalidRateIndexes={duplicateRateTierIndexes}
+                        currency={currency}
+                        disabled={isSaving}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-destructive text-sm font-medium">
+                          {getFieldError(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </form.Field>
+              </>
+            )}
             {storeTaxSettings?.enabled && (
               <>
                 <Separator />

@@ -37,6 +37,7 @@ const validProduct = {
       ],
     },
   ],
+  pricingKind: "duration" as const,
   pricingMode: "day" as const,
   basePriceDuration: { price: "10", duration: 1, unit: "day" as const },
   pricingTiers: [],

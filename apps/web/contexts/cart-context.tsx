@@ -12,6 +12,7 @@ import {
 
 import { useQuery } from '@tanstack/react-query';
 
+import type { PricingKind } from '@louez/types';
 import type { SeasonalPricingConfig } from '@louez/utils';
 
 import { orpc } from '@/lib/orpc/react';
@@ -36,6 +37,7 @@ export interface CartItem {
   deposit: number;
   quantity: number;
   maxQuantity: number;
+  pricingKind: PricingKind;
   // Pricing tiers for this product
   pricingTiers?: CartItemPricingTier[];
   // Rate-based pricing period in minutes
@@ -73,10 +75,7 @@ interface CartContextValue {
   globalEndDate: string | null;
   pricingMode: PricingMode;
   addItem: (
-    item: Omit<
-      CartItem,
-      'lineId' | 'selectionSignature' | 'startDate' | 'endDate'
-    >,
+    item: AddCartItemInput,
     storeSlug: string,
   ) => void;
   removeItemByLineId: (lineId: string) => void;
@@ -107,6 +106,17 @@ interface CartContextValue {
   getPricingSummary: () => CartPricingSummary;
 }
 
+type AddCartItemInput = Omit<
+  CartItem,
+  | 'lineId'
+  | 'selectionSignature'
+  | 'startDate'
+  | 'endDate'
+  | 'pricingKind'
+> & {
+  pricingKind?: PricingKind;
+};
+
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 const CART_STORAGE_KEY = 'louez_cart';
@@ -118,6 +128,7 @@ interface StoredCartItem {
   productName?: string;
   productImage?: string | null;
   quantity: number;
+  pricingKind?: PricingKind;
   selectedAttributes?: Record<string, string>;
   startDate: string;
   endDate: string;
@@ -181,6 +192,7 @@ function normalizeStoredItem(
     deposit: item.deposit || 0,
     quantity: item.quantity,
     maxQuantity: item.maxQuantity || Math.max(1, item.quantity),
+    pricingKind: item.pricingKind || 'duration',
     pricingTiers: item.pricingTiers,
     basePeriodMinutes: item.basePeriodMinutes,
     enforceStrictTiers: item.enforceStrictTiers,
@@ -205,6 +217,7 @@ function toStoredCartItem(item: CartItem): StoredCartItem {
     productName: item.productName,
     productImage: item.productImage,
     quantity: item.quantity,
+    pricingKind: item.pricingKind,
     selectedAttributes: item.selectedAttributes,
     startDate: item.startDate,
     endDate: item.endDate,
@@ -267,6 +280,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           price: resolved.price,
           deposit: resolved.deposit,
           maxQuantity: resolved.maxQuantity,
+          pricingKind: resolved.pricingKind,
           pricingMode: resolved.pricingMode,
           productPricingMode: resolved.productPricingMode,
           basePeriodMinutes: resolved.basePeriodMinutes,
@@ -347,10 +361,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback(
     (
-      item: Omit<
-        CartItem,
-        'lineId' | 'selectionSignature' | 'startDate' | 'endDate'
-      >,
+      item: AddCartItemInput,
       newStoreSlug: string,
     ) => {
       // If no global dates set, use default dates (tomorrow to day after)
@@ -377,6 +388,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       const buildFullItem = (): CartItem => ({
         ...item,
+        pricingKind: item.pricingKind || 'duration',
         lineId: createCartLineId(),
         selectionSignature,
         startDate,
@@ -406,6 +418,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           updated[existingIndex] = {
             ...existing,
             ...item,
+            pricingKind: item.pricingKind || existing.pricingKind,
             selectionSignature,
             quantity: Math.min(
               existing.quantity + item.quantity,

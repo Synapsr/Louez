@@ -14,6 +14,7 @@ import { useTranslations } from 'next-intl';
 import type {
   BusinessHours,
   CombinationAvailability,
+  PricingKind,
   PricingMode,
 } from '@louez/types';
 import type { Rate } from '@louez/types';
@@ -36,6 +37,7 @@ import {
   allocateAcrossCombinations,
   buildCombinationKey,
   calculateDurationMinutes,
+  calculateFixedPrice,
   calculateRateBasedPrice,
   calculateRentalPrice,
   calculateSeasonalAwarePrice,
@@ -43,6 +45,7 @@ import {
   getAvailableDurations,
   getDeterministicCombinationSortValue,
   getSelectionCapacity,
+  isFixedPriceProduct,
   isRateBasedProduct,
   snapToNearestRatePeriod,
   snapToNearestTier,
@@ -72,6 +75,7 @@ interface Accessory {
   deposit: string;
   images: string[] | null;
   quantity: number;
+  pricingKind?: PricingKind | null;
   pricingMode: PricingMode | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: {
@@ -90,6 +94,7 @@ interface AddToCartFormProps {
   price: number;
   deposit: number;
   maxQuantity: number;
+  pricingKind?: PricingKind;
   pricingMode: 'day' | 'hour' | 'week';
   basePeriodMinutes?: number | null;
   storeSlug: string;
@@ -133,6 +138,7 @@ export function AddToCartForm({
   price,
   deposit,
   maxQuantity,
+  pricingKind = 'duration',
   pricingMode,
   basePeriodMinutes,
   storeSlug,
@@ -399,9 +405,23 @@ export function AddToCartForm({
 
   // Use seasonal-aware calculation when seasonal pricings exist and dates are set
   const hasSeasonalPricings = seasonalPricings.length > 0;
+  // A forfait is billed per unit, per booking: dates never enter the total.
+  const isFixedPricing = isFixedPriceProduct({ pricingKind });
 
-  const priceResult =
-    hasSeasonalPricings && startDate && endDate
+  const priceResult = isFixedPricing
+    ? (() => {
+        const result = calculateFixedPrice(
+          { basePrice: price, deposit, pricingMode },
+          quantity,
+        );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: null,
+        };
+      })()
+    : hasSeasonalPricings && startDate && endDate
       ? (() => {
           const result = calculateSeasonalAwarePrice(
             {
@@ -527,6 +547,7 @@ export function AddToCartForm({
               1,
               allocation.combination.availableQuantity || 0,
             ),
+            pricingKind,
             pricingMode,
             basePeriodMinutes: basePeriodMinutes ?? null,
             enforceStrictTiers,
@@ -558,6 +579,7 @@ export function AddToCartForm({
           deposit,
           quantity,
           maxQuantity: Math.max(1, effectiveMaxQuantity),
+          pricingKind,
           pricingMode,
           basePeriodMinutes: basePeriodMinutes ?? null,
           enforceStrictTiers,
@@ -749,15 +771,26 @@ export function AddToCartForm({
         </div>
       </div>
 
-      {/* Price Summary */}
-      {startDate && endDate && duration > 0 && (
+      {/* Price Summary — a forfait needs no dates to be priced. */}
+      {(isFixedPricing || Boolean(startDate && endDate && duration > 0)) && (
         <div className="bg-muted/30 space-y-2 rounded-lg border p-4">
           <div className="flex justify-between text-sm">
             <span>
-              {formatCurrency(price, currency)} x {quantity} x {duration}{' '}
-              {duration > 1
-                ? t(`pricingUnit.${pricingMode}.plural`)
-                : t(`pricingUnit.${pricingMode}.singular`)}
+              {isFixedPricing ? (
+                <>
+                  {formatCurrency(price, currency)} x {quantity}{' '}
+                  <span className="text-muted-foreground">
+                    ({t('fixedPricingLabel')})
+                  </span>
+                </>
+              ) : (
+                <>
+                  {formatCurrency(price, currency)} x {quantity} x {duration}{' '}
+                  {duration > 1
+                    ? t(`pricingUnit.${pricingMode}.plural`)
+                    : t(`pricingUnit.${pricingMode}.singular`)}
+                </>
+              )}
             </span>
             {savings > 0 ? (
               <span className="text-muted-foreground line-through">

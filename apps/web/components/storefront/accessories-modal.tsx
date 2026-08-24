@@ -14,10 +14,10 @@ import {
 } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
-import { formatCurrency } from '@louez/utils'
+import { formatCurrency, isFixedPriceProduct } from '@louez/utils'
 import { cn } from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
-import type { PricingMode } from '@louez/types'
+import type { PricingKind, PricingMode } from '@louez/types'
 
 interface Accessory {
   id: string
@@ -26,6 +26,7 @@ interface Accessory {
   deposit: string
   images: string[] | null
   quantity: number
+  pricingKind?: PricingKind | null
   pricingMode: PricingMode | null
   basePeriodMinutes?: number | null
   pricingTiers?: {
@@ -55,6 +56,7 @@ export function AccessoriesModal({
   currency = 'EUR',
 }: AccessoriesModalProps) {
   const t = useTranslations('storefront.accessories')
+  const tProduct = useTranslations('storefront.product')
   const { addItem, items: cartItems } = useCart()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isAdding, setIsAdding] = useState(false)
@@ -107,6 +109,7 @@ export function AccessoriesModal({
             deposit: parseFloat(accessory.deposit),
             quantity: 1,
             maxQuantity: accessory.quantity,
+            pricingKind: accessory.pricingKind ?? 'duration',
             pricingMode: effectivePricingMode,
             basePeriodMinutes: accessory.basePeriodMinutes ?? null,
             pricingTiers: accessory.pricingTiers?.map((tier) => ({
@@ -200,6 +203,7 @@ export function AccessoriesModal({
               {availableAccessories.map((accessory) => {
                 const isSelected = selectedIds.has(accessory.id)
                 const effectivePricingMode: PricingMode = accessory.pricingMode ?? 'day'
+                const isFixedPricing = isFixedPriceProduct(accessory)
 
                 return (
                   <button
@@ -257,7 +261,9 @@ export function AccessoriesModal({
                           {formatCurrency(parseFloat(accessory.price), currency)}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
-                          /{t(`pricingUnit.${effectivePricingMode}`)}
+                          {isFixedPricing
+                            ? tProduct('fixedPricingLabel')
+                            : `/${t(`pricingUnit.${effectivePricingMode}`)}`}
                         </span>
                       </div>
                     </div>

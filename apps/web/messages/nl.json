@@ -1090,6 +1090,14 @@
         "categoryOptional": "Optioneel - helpt klanten uw product te vinden",
         "noCategories": "Nog geen categorieën",
         "pricingDescription": "Stel de huurprijs en tarieven in",
+        "pricingKindLabel": "Prijsmodel",
+        "pricingKindDuration": "Prijs per duur",
+        "pricingKindDurationDescription": "De prijs hangt af van de huurduur.",
+        "pricingKindFixed": "Vaste prijs",
+        "pricingKindFixedDescription": "Eén prijs, ongeacht de huurduur.",
+        "fixedPrice": "Vaste prijs",
+        "fixedPriceDescription": "Eenmaal per artikel in rekening gebracht, ongeacht de huurduur.",
+        "fixedPriceLabel": "Vaste prijs",
         "baseRate": "Basistarief",
         "baseRateDescription": "Duurste tarief per minuut, gebruikt als prijsbasis.",
         "additionalRates": "Extra tarieven",
@@ -5677,6 +5685,7 @@
       "perHour": "uur",
       "perWeek": "week",
       "startingFrom": "Vanaf",
+      "fixedPricingLabel": "Vast tarief",
       "pricingUnit": {
         "day": {
           "singular": "dag",

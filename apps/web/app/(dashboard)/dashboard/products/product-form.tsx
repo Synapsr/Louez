@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Copy } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { PricingMode } from "@louez/types";
+import type { PricingKind, PricingMode } from "@louez/types";
 import {
   Button,
   DropdownMenu,
@@ -296,6 +296,8 @@ export function ProductForm({
         ["description", t("description")],
         ["images", t("photos")],
         ["name", t("name")],
+        // Only fixed pricing validates the flat `price` field on its own.
+        ["price", t("fixedPrice")],
         ["quantity", t("stock")],
         ["rateTiers", t("additionalRates")],
         ["status", t("publication")],
@@ -336,6 +338,8 @@ export function ProductForm({
     };
   })();
 
+  const initialPricingKind: PricingKind = product?.pricingKind ?? "duration";
+
   const defaultSubmitMeta: ProductFormSubmitMeta = { intent: "save" };
   const form = useAppForm({
     onSubmitMeta: defaultSubmitMeta,
@@ -354,6 +358,7 @@ export function ProductForm({
         product?.images ?? [],
         product?.imageHistory ?? [],
       ),
+      pricingKind: initialPricingKind,
       pricingMode: (product?.pricingMode ?? "day") as PricingMode,
       pricingTiers: initialPricingTiers,
       rateTiers: initialRateTiers,
@@ -552,9 +557,14 @@ export function ProductForm({
     clearSubmitError("rateTiers");
   }, [clearSubmitError]);
 
+  // Fixed pricing keeps any rate tiers around in form state but never submits
+  // them, so their duplicates must not block the save.
   const localDuplicateRateTierIndexes = useMemo(
-    () => getDuplicateRateTierIndexes(watchedValues.rateTiers as RateTierInput[]),
-    [watchedValues.rateTiers],
+    () =>
+      watchedValues.pricingKind === "fixed"
+        ? []
+        : getDuplicateRateTierIndexes(watchedValues.rateTiers as RateTierInput[]),
+    [watchedValues.pricingKind, watchedValues.rateTiers],
   );
   const effectiveDuplicateRateTierIndexes = useMemo(
     () =>
@@ -626,12 +636,14 @@ export function ProductForm({
         ? "day"
         : "hour";
 
-  const priceLabel =
+  const durationPriceLabel =
     effectivePricingMode === "day"
       ? t("pricePerDay")
       : effectivePricingMode === "hour"
         ? t("pricePerHour")
         : t("pricePerWeek");
+  const priceLabel =
+    watchedValues.pricingKind === "fixed" ? t("fixedPriceLabel") : durationPriceLabel;
 
   // Edit mode: single column with sticky TOC on desktop
   if (isEditMode) {

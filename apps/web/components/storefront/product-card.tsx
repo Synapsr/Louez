@@ -11,7 +11,7 @@ import { Button } from '@louez/ui'
 import { formatCurrency, minutesToPriceDuration } from '@louez/utils'
 import { ProductImage } from '@/components/product/product-image'
 import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
-import type { PricingMode } from '@louez/types'
+import type { PricingKind, PricingMode } from '@louez/types'
 import { getStorefrontPricingSummary } from '@/lib/utils/storefront-pricing'
 
 interface PricingTier {
@@ -30,6 +30,7 @@ interface ProductCardProps {
     price: string
     images: string[] | null
     quantity: number
+    pricingKind?: PricingKind | null
     pricingMode?: PricingMode | null
     basePeriodMinutes?: number | null
     pricingTiers?: PricingTier[]
@@ -53,9 +54,14 @@ export function ProductCard({ product, basePath = '' }: ProductCardProps) {
   const cardDiscount = maxDiscountPercent == null
     ? pricingSummary.maxReductionPercent
     : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0)
-  const displayPeriod = minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
-  const periodLabel =
-    displayPeriod.unit === 'minute'
+  // A forfait prices the whole booking — there is no period to suffix.
+  const displayPeriod =
+    pricingSummary.displayPeriodMinutes == null
+      ? null
+      : minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
+  const periodLabel = !displayPeriod
+    ? null
+    : displayPeriod.unit === 'minute'
       ? displayPeriod.duration === 1
         ? tCommon('minuteUnit', { count: 1 })
         : `${displayPeriod.duration} ${tCommon('minuteUnit', { count: displayPeriod.duration })}`
@@ -122,7 +128,7 @@ export function ProductCard({ product, basePath = '' }: ProductCardProps) {
               {formatCurrency(pricingSummary.displayPrice, currency)}
             </span>
             <span className="text-xs md:text-sm text-muted-foreground">
-              / {periodLabel}
+              {periodLabel ? `/ ${periodLabel}` : t('fixedPricingLabel')}
             </span>
           </div>
         </CardContent>

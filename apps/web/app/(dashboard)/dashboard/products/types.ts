@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 
 import type { FormRadioGroupProps } from "@/components/form/form-radio-group";
 import type {
+  PricingKind,
   PricingMode,
   ProductImageHistory,
   ProductTaxSettings,
@@ -108,6 +109,7 @@ export interface Product {
   categoryIds?: string[];
   price: string;
   deposit: string | null;
+  pricingKind?: PricingKind | null;
   pricingMode?: PricingMode | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: PricingTierData[];

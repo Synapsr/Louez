@@ -345,6 +345,7 @@ export interface PromoCodeSnapshot {
 // ============================================================================
 
 export type PricingMode = 'hour' | 'day' | 'week';
+export type PricingKind = 'duration' | 'fixed';
 
 export interface PricingTier {
   id: string;
@@ -365,6 +366,7 @@ export interface PricingBreakdown {
   effectivePrice: number;
   duration: number;
   pricingMode: PricingMode;
+  pricingKind?: PricingKind;
   discountPercent: number | null;
   discountAmount: number;
   tierApplied: string | null; // Human-readable tier label

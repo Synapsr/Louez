@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { Check, Minus, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
-import type { Rate } from '@louez/types';
+import type { PricingKind, Rate } from '@louez/types';
 import type { CombinationAvailability } from '@louez/types';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
@@ -20,9 +20,11 @@ import {
   type ProductPricing,
   type SeasonalPricingConfig,
   calculateDurationMinutes,
+  calculateFixedPrice,
   calculateRateBasedPrice,
   calculateRentalPrice,
   calculateSeasonalAwarePrice,
+  isFixedPriceProduct,
   isRateBasedProduct,
 } from '@louez/utils';
 import type { PricingMode } from '@louez/utils';
@@ -57,6 +59,7 @@ interface Accessory {
   deposit: string;
   images: string[] | null;
   quantity: number;
+  pricingKind?: PricingKind | null;
   pricingMode: PricingMode | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: PricingTier[];
@@ -73,6 +76,7 @@ interface ProductCardAvailableProps {
     quantity: number;
     displayQuantity?: number;
     category?: { name: string } | null;
+    pricingKind?: PricingKind | null;
     pricingMode?: PricingMode | null;
     basePeriodMinutes?: number | null;
     enforceStrictTiers?: boolean;
@@ -179,8 +183,24 @@ export function ProductCardAvailable({
 
   // Use seasonal-aware calculation when seasonal pricings exist
   const hasSeasonalPricings = (product.seasonalPricings?.length ?? 0) > 0;
+  // A forfait is billed per unit, per booking: the selected dates never
+  // change its price.
+  const isFixedPricing = isFixedPriceProduct(product);
 
-  const priceResult = hasSeasonalPricings
+  const priceResult = isFixedPricing
+    ? (() => {
+        const result = calculateFixedPrice(
+          { basePrice: price, deposit, pricingMode: effectivePricingMode },
+          1,
+        );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: null,
+        };
+      })()
+    : hasSeasonalPricings
     ? (() => {
         const result = calculateSeasonalAwarePrice(
           {
@@ -319,6 +339,7 @@ export function ProductCardAvailable({
           deposit,
           quantity: 1,
           maxQuantity,
+          pricingKind: product.pricingKind ?? 'duration',
           pricingMode: effectivePricingMode,
           basePeriodMinutes: product.basePeriodMinutes ?? null,
           enforceStrictTiers: product.enforceStrictTiers ?? false,
@@ -542,8 +563,10 @@ export function ProductCardAvailable({
             )}
           </div>
 
-          {/* Duration info */}
-          <p className="text-muted-foreground mt-1 text-xs">{durationLabel}</p>
+          {/* Duration info — a forfait covers the booking, whatever its length */}
+          <p className="text-muted-foreground mt-1 text-xs">
+            {isFixedPricing ? t('fixedPricingLabel') : durationLabel}
+          </p>
         </CardContent>
       </Card>
 

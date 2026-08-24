@@ -1129,6 +1129,14 @@
         "categoryOptional": "Optionnel - aide les clients à trouver votre produit",
         "noCategories": "Aucune catégorie créée",
         "pricingDescription": "Définissez le prix de location et les tarifs",
+        "pricingKindLabel": "Mode de tarification",
+        "pricingKindDuration": "Tarification à la durée",
+        "pricingKindDurationDescription": "Le prix dépend de la durée de location.",
+        "pricingKindFixed": "Forfait",
+        "pricingKindFixedDescription": "Un prix unique, quelle que soit la durée.",
+        "fixedPrice": "Prix forfaitaire",
+        "fixedPriceDescription": "Facturé une fois par article, quelle que soit la durée de location.",
+        "fixedPriceLabel": "Forfait",
         "baseRate": "Tarif de base",
         "baseRateDescription": "Tarif le plus cher à la minute, utilisé comme référence.",
         "additionalRates": "Tarifs additionnels",
@@ -5681,6 +5689,7 @@
       "perHour": "heure",
       "perWeek": "semaine",
       "startingFrom": "À partir de",
+      "fixedPricingLabel": "Forfait",
       "pricingUnit": {
         "day": {
           "singular": "jour",

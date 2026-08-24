@@ -1129,6 +1129,14 @@
         "categoryOptional": "Optional - hilft Kunden, Ihr Produkt zu finden",
         "noCategories": "Noch keine Kategorien",
         "pricingDescription": "Legen Sie den Mietpreis und die Tarife fest",
+        "pricingKindLabel": "Preismodell",
+        "pricingKindDuration": "Preis nach Mietdauer",
+        "pricingKindDurationDescription": "Der Preis richtet sich nach der Mietdauer.",
+        "pricingKindFixed": "Pauschalpreis",
+        "pricingKindFixedDescription": "Ein fester Preis, unabhängig von der Mietdauer.",
+        "fixedPrice": "Pauschalpreis",
+        "fixedPriceDescription": "Wird einmal pro Artikel berechnet, unabhängig von der Mietdauer.",
+        "fixedPriceLabel": "Pauschale",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -5677,6 +5685,7 @@
       "perHour": "Stunde",
       "perWeek": "Woche",
       "startingFrom": "Ab",
+      "fixedPricingLabel": "Pauschale",
       "pricingUnit": {
         "day": {
           "singular": "Tag",

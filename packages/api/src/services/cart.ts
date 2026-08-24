@@ -7,7 +7,7 @@ import {
   products,
   stores,
 } from '@louez/db';
-import type { PricingMode, UnitAttributes } from '@louez/types';
+import type { PricingKind, PricingMode, UnitAttributes } from '@louez/types';
 import {
   type SeasonalPricingConfig,
   matchesSelectedAttributes,
@@ -38,6 +38,7 @@ type CartLineResolution =
       price: number;
       deposit: number;
       maxQuantity: number;
+      pricingKind: PricingKind;
       pricingMode: PricingMode;
       productPricingMode: PricingMode;
       basePeriodMinutes: number | null;
@@ -255,8 +256,9 @@ export async function resolveStorefrontCart(
       price: Number(product.price),
       deposit: Number(product.deposit || 0),
       maxQuantity: Math.max(1, maxQuantity),
-      pricingMode: product.pricingMode as PricingMode,
-      productPricingMode: product.pricingMode as PricingMode,
+      pricingKind: product.pricingKind,
+      pricingMode: product.pricingMode,
+      productPricingMode: product.pricingMode,
       basePeriodMinutes: product.basePeriodMinutes ?? null,
       enforceStrictTiers: product.enforceStrictTiers ?? false,
       pricingTiers: (product.pricingTiers || []).map((tier) => ({

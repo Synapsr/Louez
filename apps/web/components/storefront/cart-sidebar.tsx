@@ -40,7 +40,7 @@ import {
   AlertDialogTrigger,
 } from '@louez/ui';
 import { Badge } from '@louez/ui';
-import { cn, formatCurrency } from '@louez/utils';
+import { cn, formatCurrency, isFixedPriceProduct } from '@louez/utils';
 
 import { ProductImage } from '@/components/product/product-image';
 
@@ -189,6 +189,9 @@ export function CartSidebar({
                         currency,
                       )}{' '}
                       × {item.quantity}
+                      {isFixedPriceProduct(item)
+                        ? ` · ${tProduct('fixedPricingLabel')}`
+                        : null}
                     </p>
 
                     {/* Quantity Controls */}

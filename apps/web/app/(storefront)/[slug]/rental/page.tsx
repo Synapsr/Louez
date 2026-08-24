@@ -19,7 +19,7 @@ import {
   products,
   stores,
 } from "@louez/db";
-import type { StoreSettings, StoreTheme } from "@louez/types";
+import type { PricingKind, StoreSettings, StoreTheme } from "@louez/types";
 import { Skeleton } from "@louez/ui";
 
 import { generateStoreMetadata } from "@/lib/seo";
@@ -221,6 +221,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
         price: products.price,
         deposit: products.deposit,
         basePeriodMinutes: products.basePeriodMinutes,
+        pricingKind: products.pricingKind,
         pricingMode: products.pricingMode,
         videoUrl: products.videoUrl,
         quantity: effectiveProductQuantitySql(),
@@ -369,6 +370,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       images: string[] | null;
       quantity: number;
       status: "active" | "draft" | "archived" | null;
+      pricingKind: PricingKind;
       pricingMode: "day" | "hour" | "week" | null;
     }[] = [];
     if (accessoryIds.length > 0) {
@@ -381,6 +383,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
           images: products.images,
           quantity: effectiveProductQuantitySql(),
           status: products.status,
+          pricingKind: products.pricingKind,
           pricingMode: products.pricingMode,
         })
         .from(products)
@@ -422,6 +425,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       deposit: string;
       images: string[] | null;
       quantity: number;
+      pricingKind: PricingKind;
       pricingMode: "day" | "hour" | "week" | null;
       pricingTiers?: PricingTier[];
     }
@@ -442,6 +446,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
           deposit: accessoryProduct.deposit || "0",
           images: accessoryProduct.images,
           quantity: accessoryProduct.quantity,
+          pricingKind: accessoryProduct.pricingKind,
           pricingMode: accessoryProduct.pricingMode,
           pricingTiers: accessoryTiersByProductId.get(accessoryProduct.id),
         });
@@ -466,6 +471,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
         price: row.price,
         deposit: row.deposit,
         basePeriodMinutes: row.basePeriodMinutes,
+        pricingKind: row.pricingKind,
         pricingMode: row.pricingMode,
         videoUrl: row.videoUrl,
         quantity: row.quantity,

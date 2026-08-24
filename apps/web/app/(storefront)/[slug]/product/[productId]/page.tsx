@@ -24,6 +24,7 @@ import {
   buildCombinationKey,
   formatCurrency,
   getDeterministicCombinationSortValue,
+  isFixedPriceProduct,
   minutesToPriceDuration,
   pricingModeToMinutes,
 } from '@louez/utils';
@@ -135,6 +136,7 @@ export async function generateMetadata({
       // Effective quantity is irrelevant for metadata (only the JSON-LD
       // schema reads availability) — skip that extra query here.
       quantity: product.quantity,
+      pricingKind: product.pricingKind,
       pricingMode: product.pricingMode,
       basePeriodMinutes: product.basePeriodMinutes,
       category: product.category
@@ -272,6 +274,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       price: acc.accessory.price,
       deposit: acc.accessory.deposit || '0',
       images: acc.accessory.images,
+      pricingKind: acc.accessory.pricingKind,
       pricingMode: acc.accessory.pricingMode,
       basePeriodMinutes: acc.accessory.basePeriodMinutes,
       pricingTiers: acc.accessory.pricingTiers?.map((tier) => ({
@@ -313,6 +316,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const basePath = await getStorefrontPathPrefix(slug);
   const effectivePricingMode = product.pricingMode ?? 'day';
   const depositAmount = product.deposit ? parseFloat(product.deposit) : 0;
+  // A forfait is billed per booking: the price carries no period, no tiers.
+  const isFixedPricing = isFixedPriceProduct(product);
 
   // Rate-based products price a custom period ("50 € / 2 heures"), not one
   // pricingMode unit — mirror what the catalog card and booking form charge.
@@ -451,6 +456,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     deposit: product.deposit,
     images: product.images,
     quantity: effectiveQuantity,
+    pricingKind: product.pricingKind,
     pricingMode: effectivePricingMode,
     basePeriodMinutes: product.basePeriodMinutes,
     category: product.category
@@ -571,7 +577,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   {formatCurrency(parseFloat(product.price), currency, formatLocale)}
                 </span>
                 <span className="text-muted-foreground text-base">
-                  / {basePeriodLabel}
+                  {isFixedPricing
+                    ? t('fixedPricingLabel')
+                    : `/ ${basePeriodLabel}`}
                 </span>
                 {depositAmount > 0 && (
                   <span className="text-muted-foreground text-sm">
@@ -598,6 +606,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             {product.pricingTiers && product.pricingTiers.length > 0 && (
               <PricingTiersDisplay
                 basePrice={parseFloat(product.price)}
+                pricingKind={product.pricingKind}
                 pricingMode={effectivePricingMode}
                 basePeriodMinutes={product.basePeriodMinutes}
                 tiers={product.pricingTiers}
@@ -615,6 +624,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 price={parseFloat(product.price)}
                 deposit={product.deposit ? parseFloat(product.deposit) : 0}
                 maxQuantity={displayQuantity}
+                pricingKind={product.pricingKind}
                 pricingMode={effectivePricingMode}
                 basePeriodMinutes={product.basePeriodMinutes}
                 storeSlug={slug}
@@ -685,8 +695,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     {t('specs.basePrice')}
                   </dt>
                   <dd className="text-right font-medium">
-                    {formatCurrency(parseFloat(product.price), currency, formatLocale)} /{' '}
-                    {basePeriodLabel}
+                    {formatCurrency(parseFloat(product.price), currency, formatLocale)}
+                    {isFixedPricing
+                      ? ` · ${t('fixedPricingLabel')}`
+                      : ` / ${basePeriodLabel}`}
                   </dd>
                 </div>
                 {depositAmount > 0 && (

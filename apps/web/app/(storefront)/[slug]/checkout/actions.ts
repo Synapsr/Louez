@@ -56,6 +56,7 @@ import {
 } from '@louez/utils';
 import {
   DEFAULT_COMBINATION_KEY,
+  calculateFixedPrice,
   calculateDuration as calcDuration,
   calculateSeasonalAwarePrice,
   getDeterministicCombinationSortValue,
@@ -768,11 +769,27 @@ export async function createReservation(input: CreateReservationInput) {
       };
     }
 
-    // Validate minimum rental duration
+    const cartProductIds = [...new Set(input.items.map((item) => item.productId))];
+    const cartProductPricingKinds = await db
+      .select({ pricingKind: products.pricingKind })
+      .from(products)
+      .where(
+        and(
+          eq(products.storeId, input.storeId),
+          eq(products.status, 'active'),
+          inArray(products.id, cartProductIds),
+        ),
+      );
+    const hasDurationProduct = cartProductPricingKinds.some(
+      ({ pricingKind }) => pricingKind === 'duration',
+    );
+
+    // Fixed-price products do not impose their own duration constraints.
+    // A mixed cart still follows the store limits required by duration products.
     const minRentalMinutes = getMinRentalMinutes(
       store.settings as StoreSettings | null,
     );
-    if (minRentalMinutes > 0) {
+    if (hasDurationProduct && minRentalMinutes > 0) {
       const durationCheck = validateMinRentalDurationMinutes(
         rentalStartDate,
         rentalEndDate,
@@ -792,7 +809,7 @@ export async function createReservation(input: CreateReservationInput) {
     const maxRentalMinutes = getMaxRentalMinutes(
       store.settings as StoreSettings | null,
     );
-    if (maxRentalMinutes !== null) {
+    if (hasDurationProduct && maxRentalMinutes !== null) {
       const maxCheck = validateMaxRentalDurationMinutes(
         rentalStartDate,
         rentalEndDate,
@@ -913,106 +930,125 @@ export async function createReservation(input: CreateReservationInput) {
         productPricingMode,
       );
 
-      // Fetch seasonal pricings for this product
-      const seasonalPricingsRaw = await db
-        .select()
-        .from(productSeasonalPricing)
-        .where(eq(productSeasonalPricing.productId, product.id));
+      let pricingResult: {
+        subtotal: number;
+        originalSubtotal: number;
+        savings: number;
+        deposit: number;
+        effectivePricePerUnit: number;
+      };
 
-      let seasonalPricingConfigs: SeasonalPricingConfig[] = [];
-      if (seasonalPricingsRaw.length > 0) {
-        const spIds = seasonalPricingsRaw.map((sp) => sp.id);
-        const spTiersRaw = await db
+      if (product.pricingKind === 'fixed') {
+        const fixedResult = calculateFixedPrice(
+          {
+            basePrice: Number(product.price),
+            deposit: Number(product.deposit || 0),
+            pricingMode: productPricingMode,
+          },
+          item.quantity,
+        );
+        pricingResult = fixedResult;
+      } else {
+        const seasonalPricingsRaw = await db
           .select()
-          .from(productSeasonalPricingTiers)
-          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds));
+          .from(productSeasonalPricing)
+          .where(eq(productSeasonalPricing.productId, product.id));
 
-        const spTiersByPricingId = new Map<string, typeof spTiersRaw>();
-        for (const tier of spTiersRaw) {
-          const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || [];
-          tiers.push(tier);
-          spTiersByPricingId.set(tier.seasonalPricingId, tiers);
+        let seasonalPricingConfigs: SeasonalPricingConfig[] = [];
+        if (seasonalPricingsRaw.length > 0) {
+          const spIds = seasonalPricingsRaw.map((sp) => sp.id);
+          const spTiersRaw = await db
+            .select()
+            .from(productSeasonalPricingTiers)
+            .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds));
+
+          const spTiersByPricingId = new Map<string, typeof spTiersRaw>();
+          for (const tier of spTiersRaw) {
+            const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || [];
+            tiers.push(tier);
+            spTiersByPricingId.set(tier.seasonalPricingId, tiers);
+          }
+
+          seasonalPricingConfigs = seasonalPricingsRaw.map((sp) => {
+            const spTiers = spTiersByPricingId.get(sp.id) || [];
+            return {
+              id: sp.id,
+              name: sp.name,
+              startDate: sp.startDate,
+              endDate: sp.endDate,
+              basePrice: Number(sp.price),
+              tiers: spTiers
+                .filter(
+                  (t) => t.minDuration !== null && t.discountPercent !== null,
+                )
+                .map((t) => ({
+                  id: t.id,
+                  minDuration: t.minDuration!,
+                  discountPercent: Number(t.discountPercent!),
+                  displayOrder: t.displayOrder ?? 0,
+                })),
+              rates: spTiers
+                .filter((t) => t.period !== null && t.price !== null)
+                .map((t) => ({
+                  id: t.id,
+                  period: t.period!,
+                  price: Number(t.price!),
+                  displayOrder: t.displayOrder ?? 0,
+                })),
+            };
+          });
         }
 
-        seasonalPricingConfigs = seasonalPricingsRaw.map((sp) => {
-          const spTiers = spTiersByPricingId.get(sp.id) || [];
-          return {
-            id: sp.id,
-            name: sp.name,
-            startDate: sp.startDate,
-            endDate: sp.endDate,
-            basePrice: Number(sp.price),
-            tiers: spTiers
-              .filter(
-                (t) => t.minDuration !== null && t.discountPercent !== null,
-              )
-              .map((t) => ({
-                id: t.id,
-                minDuration: t.minDuration!,
-                discountPercent: Number(t.discountPercent!),
-                displayOrder: t.displayOrder ?? 0,
-              })),
-            rates: spTiers
-              .filter((t) => t.period !== null && t.price !== null)
-              .map((t) => ({
-                id: t.id,
-                period: t.period!,
-                price: Number(t.price!),
-                displayOrder: t.displayOrder ?? 0,
-              })),
-          };
-        });
+        const baseTiers =
+          product.pricingTiers?.map((tier) => ({
+            id: tier.id,
+            minDuration: tier.minDuration ?? 1,
+            discountPercent: Number(tier.discountPercent ?? 0),
+            displayOrder: tier.displayOrder || 0,
+          })) || [];
+        const baseRates: Rate[] =
+          product.pricingTiers
+            ?.filter(
+              (tier): tier is typeof tier & { period: number; price: string } =>
+                typeof tier.period === 'number' &&
+                tier.period > 0 &&
+                typeof tier.price === 'string',
+            )
+            .map(
+              (tier, index): Rate => ({
+                id: tier.id,
+                period: tier.period,
+                price: Number(tier.price),
+                displayOrder: tier.displayOrder ?? index,
+              }),
+            ) || [];
+
+        const seasonalResult = calculateSeasonalAwarePrice(
+          {
+            basePrice: Number(product.price),
+            basePeriodMinutes: product.basePeriodMinutes ?? null,
+            deposit: Number(product.deposit || 0),
+            pricingKind: product.pricingKind,
+            pricingMode: productPricingMode,
+            enforceStrictTiers: product.enforceStrictTiers ?? false,
+            tiers: baseTiers,
+            rates: baseRates,
+          },
+          seasonalPricingConfigs,
+          item.startDate,
+          item.endDate,
+          item.quantity,
+        );
+
+        pricingResult = {
+          subtotal: seasonalResult.subtotal,
+          originalSubtotal: seasonalResult.originalSubtotal,
+          savings: seasonalResult.savings,
+          deposit: seasonalResult.deposit,
+          effectivePricePerUnit:
+            seasonalResult.subtotal / Math.max(1, item.quantity),
+        };
       }
-
-      // Use seasonal-aware pricing (short-circuits to normal pricing when no seasonal configs)
-      const baseTiers =
-        product.pricingTiers?.map((tier) => ({
-          id: tier.id,
-          minDuration: tier.minDuration ?? 1,
-          discountPercent: Number(tier.discountPercent ?? 0),
-          displayOrder: tier.displayOrder || 0,
-        })) || [];
-      const baseRates: Rate[] =
-        product.pricingTiers
-          ?.filter(
-            (tier): tier is typeof tier & { period: number; price: string } =>
-              typeof tier.period === 'number' &&
-              tier.period > 0 &&
-              typeof tier.price === 'string',
-          )
-          .map(
-            (tier, index): Rate => ({
-              id: tier.id,
-              period: tier.period,
-              price: Number(tier.price),
-              displayOrder: tier.displayOrder ?? index,
-            }),
-          ) || [];
-
-      const seasonalResult = calculateSeasonalAwarePrice(
-        {
-          basePrice: Number(product.price),
-          basePeriodMinutes: product.basePeriodMinutes ?? null,
-          deposit: Number(product.deposit || 0),
-          pricingMode: productPricingMode,
-          enforceStrictTiers: product.enforceStrictTiers ?? false,
-          tiers: baseTiers,
-          rates: baseRates,
-        },
-        seasonalPricingConfigs,
-        item.startDate,
-        item.endDate,
-        item.quantity,
-      );
-
-      const pricingResult = {
-        subtotal: seasonalResult.subtotal,
-        originalSubtotal: seasonalResult.originalSubtotal,
-        savings: seasonalResult.savings,
-        deposit: seasonalResult.deposit,
-        effectivePricePerUnit:
-          seasonalResult.subtotal / Math.max(1, item.quantity),
-      };
 
       serverCalculatedItems.push({
         productId: item.productId,
@@ -1030,7 +1066,9 @@ export async function createReservation(input: CreateReservationInput) {
       // the phone source: the server-side receptionist tool passes the flat base
       // price as a best-effort input and cannot pre-compute tiered/seasonal
       // pricing, so a mismatch here is expected, not a fraud signal.
-      const clientItemSubtotal = item.unitPrice * item.quantity * duration;
+      const clientItemSubtotal =
+        item.unitPrice * item.quantity *
+        (product.pricingKind === 'fixed' ? 1 : duration);
       if (
         input.source !== 'phone' &&
         Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01

@@ -12,6 +12,8 @@ import {
   productAccessories,
   productCategories,
   productPricingTiers,
+  productSeasonalPricing,
+  productSeasonalPricingTiers,
   productUnits,
   products,
   reservationItemUnits,
@@ -164,7 +166,7 @@ function getNewUnitImagesInput(unit: ProductUnitInput): string[] {
   return "images" in unit && Array.isArray(unit.images) ? unit.images : [];
 }
 
-function getProductImageHistoryUrls(data: ProductInput): string[] {
+function getProductImageHistoryUrls(data: Pick<ProductInput, "imageHistory">): string[] {
   return data.imageHistory?.flatMap((history) => history.versions.map(({ url }) => url)) ?? [];
 }
 
@@ -207,7 +209,7 @@ function getLegacyPricingModeFromUnit(
 }
 
 function buildRateTierRows(
-  input: ProductInput,
+  input: Pick<ProductInput, "pricingTiers" | "rateTiers">,
   basePrice: number,
   basePeriodMinutes: number,
 ): Array<{
@@ -313,16 +315,25 @@ export async function createProduct(data: ProductInput) {
     }
   }
 
-  const basePriceDuration = validated.data.basePriceDuration;
-  const price = normalizePriceInput(basePriceDuration?.price || validated.data.price);
-  const basePeriodMinutes = basePriceDuration
+  const pricingKind = validated.data.pricingKind;
+  const basePriceDuration = pricingKind === "fixed" ? undefined : validated.data.basePriceDuration;
+  const price = normalizePriceInput(
+    pricingKind === "fixed"
+      ? validated.data.price
+      : basePriceDuration?.price || validated.data.price,
+  );
+  const durationBasePeriodMinutes = basePriceDuration
     ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
-    : pricingModeToMinutes((validated.data.pricingMode || "day") as "hour" | "day" | "week");
+    : pricingModeToMinutes(validated.data.pricingMode || "day");
+  const basePeriodMinutes = pricingKind === "fixed" ? null : durationBasePeriodMinutes;
   const legacyPricingMode = basePriceDuration
     ? getLegacyPricingModeFromUnit(basePriceDuration.unit)
-    : ((validated.data.pricingMode || "day") as "hour" | "day" | "week");
+    : validated.data.pricingMode || "day";
   const deposit = validated.data.deposit ? normalizePriceInput(validated.data.deposit) : "0";
-  const rateTierRows = buildRateTierRows(validated.data, parseFloat(price) || 0, basePeriodMinutes);
+  const rateTierRows =
+    pricingKind === "fixed"
+      ? []
+      : buildRateTierRows(validated.data, parseFloat(price) || 0, durationBasePeriodMinutes);
   if (hasDuplicateRatePeriods(rateTierRows)) {
     return {
       error: "errors.invalidData",
@@ -357,6 +368,7 @@ export async function createProduct(data: ProductInput) {
         price: price,
         deposit: deposit,
         pricingMode: legacyPricingMode,
+        pricingKind,
         basePeriodMinutes,
         ...(!trackUnits ? { quantity: manualQuantity } : {}),
         status: validated.data.status,
@@ -364,7 +376,8 @@ export async function createProduct(data: ProductInput) {
         imageHistory: validated.data.imageHistory || [],
         videoUrl: validated.data.videoUrl || null,
         taxSettings: validated.data.taxSettings || null,
-        enforceStrictTiers: validated.data.enforceStrictTiers || false,
+        enforceStrictTiers:
+          pricingKind === "fixed" ? false : validated.data.enforceStrictTiers || false,
         trackUnits: trackUnits,
         bookingAttributeAxes:
           trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
@@ -509,18 +522,25 @@ export async function updateProduct(productId: string, data: ProductInput) {
     return { error: "errors.invalidData" };
   }
 
-  const basePriceDuration = validated.data.basePriceDuration;
-  const price = normalizePriceInput(basePriceDuration?.price || validated.data.price);
-  const basePeriodMinutes = basePriceDuration
+  const pricingKind = validated.data.pricingKind;
+  const basePriceDuration = pricingKind === "fixed" ? undefined : validated.data.basePriceDuration;
+  const price = normalizePriceInput(
+    pricingKind === "fixed"
+      ? validated.data.price
+      : basePriceDuration?.price || validated.data.price,
+  );
+  const durationBasePeriodMinutes = basePriceDuration
     ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
-    : pricingModeToMinutes(
-        (validated.data.pricingMode || product.pricingMode || "day") as "hour" | "day" | "week",
-      );
+    : pricingModeToMinutes(validated.data.pricingMode || product.pricingMode || "day");
+  const basePeriodMinutes = pricingKind === "fixed" ? null : durationBasePeriodMinutes;
   const legacyPricingMode = basePriceDuration
     ? getLegacyPricingModeFromUnit(basePriceDuration.unit)
-    : ((validated.data.pricingMode || product.pricingMode || "day") as "hour" | "day" | "week");
+    : validated.data.pricingMode || product.pricingMode || "day";
   const deposit = validated.data.deposit ? normalizePriceInput(validated.data.deposit) : "0";
-  const rateTierRows = buildRateTierRows(validated.data, parseFloat(price) || 0, basePeriodMinutes);
+  const rateTierRows =
+    pricingKind === "fixed"
+      ? []
+      : buildRateTierRows(validated.data, parseFloat(price) || 0, durationBasePeriodMinutes);
   if (hasDuplicateRatePeriods(rateTierRows)) {
     return {
       error: "errors.invalidData",
@@ -670,49 +690,70 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
   const categoryIds = await resolveCategoryIds(store.id, validated.data);
 
-  await db
-    .update(products)
-    .set({
-      name: validated.data.name,
-      description: validated.data.description || null,
-      aiContext: validated.data.aiContext?.trim() || null,
-      categoryId: categoryIds[0] ?? null,
-      price: price,
-      deposit: deposit,
-      pricingMode: legacyPricingMode,
-      basePeriodMinutes,
-      ...(!trackUnits ? { quantity: manualQuantity } : {}),
-      status: validated.data.status,
-      images: validated.data.images || [],
-      imageHistory: validated.data.imageHistory || [],
-      videoUrl: validated.data.videoUrl || null,
-      taxSettings: validated.data.taxSettings || null,
-      enforceStrictTiers: validated.data.enforceStrictTiers || false,
-      trackUnits: trackUnits,
-      bookingAttributeAxes:
-        trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(products.id, productId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(products)
+      .set({
+        name: validated.data.name,
+        description: validated.data.description || null,
+        aiContext: validated.data.aiContext?.trim() || null,
+        categoryId: categoryIds[0] ?? null,
+        price: price,
+        deposit: deposit,
+        pricingMode: legacyPricingMode,
+        pricingKind,
+        basePeriodMinutes,
+        ...(!trackUnits ? { quantity: manualQuantity } : {}),
+        status: validated.data.status,
+        images: validated.data.images || [],
+        imageHistory: validated.data.imageHistory || [],
+        videoUrl: validated.data.videoUrl || null,
+        taxSettings: validated.data.taxSettings || null,
+        enforceStrictTiers:
+          pricingKind === "fixed" ? false : validated.data.enforceStrictTiers || false,
+        trackUnits: trackUnits,
+        bookingAttributeAxes:
+          trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(products.id, productId));
 
-  await replaceProductCategories(db, productId, categoryIds);
+    await replaceProductCategories(tx, productId, categoryIds);
 
-  // Update pricing tiers: delete all existing and insert new ones
-  await db.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId));
+    await tx.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId));
 
-  if (rateTierRows.length > 0) {
-    await db.insert(productPricingTiers).values(
-      rateTierRows.map((tier, index) => ({
-        id: tier.id || nanoid(),
-        productId: productId,
-        minDuration: tier.minDuration,
-        discountPercent: tier.discountPercent,
-        period: tier.period,
-        price: tier.price,
-        displayOrder: index,
-      })),
-    );
-  }
+    if (rateTierRows.length > 0) {
+      await tx.insert(productPricingTiers).values(
+        rateTierRows.map((tier, index) => ({
+          id: tier.id || nanoid(),
+          productId: productId,
+          minDuration: tier.minDuration,
+          discountPercent: tier.discountPercent,
+          period: tier.period,
+          price: tier.price,
+          displayOrder: index,
+        })),
+      );
+    }
+
+    if (pricingKind === "fixed") {
+      const seasonalPricings = await tx
+        .select({ id: productSeasonalPricing.id })
+        .from(productSeasonalPricing)
+        .where(eq(productSeasonalPricing.productId, productId));
+      const seasonalPricingIds = seasonalPricings.map(({ id }) => id);
+
+      if (seasonalPricingIds.length > 0) {
+        await tx
+          .delete(productSeasonalPricingTiers)
+          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, seasonalPricingIds));
+      }
+
+      await tx
+        .delete(productSeasonalPricing)
+        .where(eq(productSeasonalPricing.productId, productId));
+    }
+  });
 
   // Update product units: sync with provided units
   if (trackUnits || product.trackUnits) {
@@ -1006,13 +1047,14 @@ export async function duplicateProduct(productId: string) {
     price: product.price,
     deposit: product.deposit,
     pricingMode: product.pricingMode,
-    basePeriodMinutes: product.basePeriodMinutes,
+    pricingKind: product.pricingKind,
+    basePeriodMinutes: product.pricingKind === "fixed" ? null : product.basePeriodMinutes,
     quantity: duplicateQuantity,
     status: "draft",
     images: product.images,
     videoUrl: product.videoUrl,
     taxSettings: product.taxSettings,
-    enforceStrictTiers: product.enforceStrictTiers,
+    enforceStrictTiers: product.pricingKind === "fixed" ? false : product.enforceStrictTiers,
     trackUnits: false, // Units cannot be duplicated - they have unique identifiers
     bookingAttributeAxes: null,
   });
@@ -1034,7 +1076,11 @@ export async function duplicateProduct(productId: string) {
   }
 
   // Duplicate pricing tiers if any
-  if (product.pricingTiers && product.pricingTiers.length > 0) {
+  if (
+    product.pricingKind === "duration" &&
+    product.pricingTiers &&
+    product.pricingTiers.length > 0
+  ) {
     await db.insert(productPricingTiers).values(
       product.pricingTiers.map((tier) => ({
         id: nanoid(),

@@ -18,7 +18,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@louez/ui';
-import { formatCurrency } from '@louez/utils';
+import { formatCurrency, isFixedPriceProduct } from '@louez/utils';
 
 import { ProductImage } from '@/components/product/product-image';
 import { useFormatLocale } from '@/hooks/use-format-locale';
@@ -109,6 +109,7 @@ export function CheckoutOrderSummary({
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
+  const tProduct = useTranslations('storefront.product');
   const tErrors = useTranslations('errors');
   const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
   const formatMoney = (amount: number, currencyOverride = currency) =>
@@ -264,6 +265,9 @@ export function CheckoutOrderSummary({
                           itemTotal / Math.max(1, item.quantity),
                           currency,
                         )}
+                        {isFixedPriceProduct(item)
+                          ? ` \u00b7 ${tProduct('fixedPricingLabel')}`
+                          : null}
                       </p>
                       {discountPercent != null && discountPercent > 0 &&
                         (maxDiscountPercent == null || discountPercent <= maxDiscountPercent) && (

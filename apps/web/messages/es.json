@@ -1129,6 +1129,14 @@
         "categoryOptional": "Opcional - ayuda a los clientes a encontrar su producto",
         "noCategories": "Sin categorías aún",
         "pricingDescription": "Establezca el precio de alquiler y las tarifas",
+        "pricingKindLabel": "Modelo de precios",
+        "pricingKindDuration": "Precio por duración",
+        "pricingKindDurationDescription": "El precio depende de la duración del alquiler.",
+        "pricingKindFixed": "Precio fijo",
+        "pricingKindFixedDescription": "Un precio único, sea cual sea la duración.",
+        "fixedPrice": "Precio fijo",
+        "fixedPriceDescription": "Se cobra una vez por artículo, sea cual sea la duración del alquiler.",
+        "fixedPriceLabel": "Precio fijo",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -5677,6 +5685,7 @@
       "perHour": "hora",
       "perWeek": "semana",
       "startingFrom": "Desde",
+      "fixedPricingLabel": "Tarifa fija",
       "pricingUnit": {
         "day": {
           "singular": "dia",

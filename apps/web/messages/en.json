@@ -1129,6 +1129,14 @@
         "categoryOptional": "Optional - helps customers find your product",
         "noCategories": "No categories yet",
         "pricingDescription": "Set the rental price and rates",
+        "pricingKindLabel": "Pricing mode",
+        "pricingKindDuration": "Duration-based pricing",
+        "pricingKindDurationDescription": "The price depends on how long the item is rented.",
+        "pricingKindFixed": "Flat rate",
+        "pricingKindFixedDescription": "A single price, whatever the rental duration.",
+        "fixedPrice": "Flat price",
+        "fixedPriceDescription": "Charged once per item, whatever the rental duration.",
+        "fixedPriceLabel": "Flat rate",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -5681,6 +5689,7 @@
       "perHour": "hour",
       "perWeek": "week",
       "startingFrom": "From",
+      "fixedPricingLabel": "Flat rate",
       "pricingUnit": {
         "day": {
           "singular": "day",

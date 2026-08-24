@@ -1090,6 +1090,14 @@
         "categoryOptional": "Opcjonalne - pomaga klientom znaleźć produkt",
         "noCategories": "Brak kategorii",
         "pricingDescription": "Ustaw cenę wynajmu i stawki",
+        "pricingKindLabel": "Model cenowy",
+        "pricingKindDuration": "Cena zależna od czasu",
+        "pricingKindDurationDescription": "Cena zależy od długości wynajmu.",
+        "pricingKindFixed": "Cena ryczałtowa",
+        "pricingKindFixedDescription": "Jedna cena, niezależnie od długości wynajmu.",
+        "fixedPrice": "Cena ryczałtowa",
+        "fixedPriceDescription": "Naliczana raz za sztukę, niezależnie od długości wynajmu.",
+        "fixedPriceLabel": "Ryczałt",
         "baseRate": "Stawka bazowa",
         "baseRateDescription": "Najdroższa stawka za minutę, używana jako bazowa cena.",
         "additionalRates": "Dodatkowe stawki",
@@ -5677,6 +5685,7 @@
       "perHour": "godzina",
       "perWeek": "tydzień",
       "startingFrom": "Od",
+      "fixedPricingLabel": "Ryczałt",
       "pricingUnit": {
         "day": {
           "singular": "dzień",

@@ -37,6 +37,7 @@ const advisorProductColumns = {
   description: products.description,
   price: products.price,
   deposit: products.deposit,
+  pricingKind: products.pricingKind,
   pricingMode: products.pricingMode,
 } as const
 
@@ -224,6 +225,7 @@ export function createAdvisorTools(ctx: AdvisorChatContext) {
             name: row.name,
             price: row.price,
             deposit: row.deposit,
+            pricingKind: row.pricingKind,
             pricingMode: row.pricingMode,
             image: row.images?.[0] ?? null,
           })),

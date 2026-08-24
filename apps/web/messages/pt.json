@@ -1090,6 +1090,14 @@
         "categoryOptional": "Opcional - ajuda os clientes a encontrar seu produto",
         "noCategories": "Nenhuma categoria criada",
         "pricingDescription": "Defina o preco de aluguel e as tarifas",
+        "pricingKindLabel": "Modelo de preço",
+        "pricingKindDuration": "Preço por duração",
+        "pricingKindDurationDescription": "O preço depende da duração do aluguer.",
+        "pricingKindFixed": "Preço fixo",
+        "pricingKindFixedDescription": "Um preço único, qualquer que seja a duração.",
+        "fixedPrice": "Preço fixo",
+        "fixedPriceDescription": "Cobrado uma vez por artigo, qualquer que seja a duração do aluguer.",
+        "fixedPriceLabel": "Preço fixo",
         "baseRate": "Taxa base",
         "baseRateDescription": "Taxa por minuto mais cara utilizada como base de preços.",
         "additionalRates": "Taxas adicionais",
@@ -5677,6 +5685,7 @@
       "perHour": "hora",
       "perWeek": "semana",
       "startingFrom": "A partir de",
+      "fixedPricingLabel": "Valor fixo",
       "pricingUnit": {
         "day": {
           "singular": "dia",

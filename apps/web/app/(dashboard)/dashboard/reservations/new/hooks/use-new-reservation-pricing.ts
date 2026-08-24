@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 
 import {
+  calculateFixedPrice,
   calculateDurationMinutes,
   calculateRateBasedPrice,
   calculateSeasonalAwarePrice,
@@ -67,16 +68,52 @@ export function useNewReservationPricing({
 
   const getProductPricingDetails = useCallback(
     (product: Product, selectedItem?: SelectedProduct): ProductPricingDetails => {
-      const productPricingMode = (product.pricingMode ?? 'day') as PricingMode
+      const productPricingMode = product.pricingMode ?? 'day'
       const basePrice = parseFloat(product.price)
       const hasPriceOverride = Boolean(selectedItem?.priceOverride)
       const quantity = selectedItem?.quantity ?? 1
       const rateBased = isRateBasedProduct({ basePeriodMinutes: product.basePeriodMinutes })
 
       const productDuration =
-        startDate && endDate
-          ? calculateDurationForMode(startDate, endDate, productPricingMode)
-          : 0
+        product.pricingKind === 'fixed'
+          ? 1
+          : startDate && endDate
+            ? calculateDurationForMode(startDate, endDate, productPricingMode)
+            : 0
+
+      if (product.pricingKind === 'fixed') {
+        const fixedResult = calculateFixedPrice(
+          {
+            basePrice,
+            deposit: parseFloat(product.deposit || '0'),
+            pricingMode: productPricingMode,
+          },
+          quantity,
+        )
+        const overrideUnitPrice = selectedItem?.priceOverride?.unitPrice
+        const effectivePrice =
+          hasPriceOverride && overrideUnitPrice != null ? overrideUnitPrice : basePrice
+        const lineSubtotal = effectivePrice * quantity
+
+        return {
+          productPricingMode,
+          productDuration: 1,
+          basePrice,
+          calculatedPrice: basePrice,
+          effectivePrice,
+          hasPriceOverride,
+          hasDiscount: false,
+          applicableTierDiscountPercent: null,
+          hasTieredPricing: false,
+          isRateBased: false,
+          lineSubtotal,
+          lineOriginalSubtotal: fixedResult.originalSubtotal,
+          lineSavings: fixedResult.originalSubtotal - lineSubtotal,
+          reductionPercent: 0,
+          ratePlan: null,
+          basePeriodMinutes: null,
+        }
+      }
 
       const rates: Rate[] = (product.pricingTiers || [])
         .filter(
@@ -108,6 +145,7 @@ export function useNewReservationPricing({
             basePrice,
             basePeriodMinutes: product.basePeriodMinutes ?? null,
             deposit: parseFloat(product.deposit || '0'),
+            pricingKind: product.pricingKind,
             pricingMode: productPricingMode,
             enforceStrictTiers: product.enforceStrictTiers ?? false,
             tiers: productTiers,
