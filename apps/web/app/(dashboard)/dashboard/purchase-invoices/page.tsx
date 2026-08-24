@@ -10,6 +10,7 @@ import { PurchaseInvoicesEmptyState } from "./purchase-invoices-empty-state";
 import { PurchaseInvoicesNotConnected } from "./purchase-invoices-not-connected";
 import { PurchaseInvoicesPagination } from "./purchase-invoices-pagination";
 import { PurchaseInvoicesTable } from "./purchase-invoices-table";
+import { SyncPurchaseInvoicesButton } from "./sync-purchase-invoices-button";
 import { isPdpReceptionActive, parsePurchaseInvoicesPage } from "./util.purchase-invoices";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -41,9 +42,12 @@ const PurchaseInvoicesPage = async ({ searchParams }: PurchaseInvoicesPageProps)
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-        <p className="text-muted-foreground mt-1">{t("description")}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("description")}</p>
+        </div>
+        {isConnected && <SyncPurchaseInvoicesButton />}
       </div>
 
       {invoicesPage === null && <PurchaseInvoicesNotConnected />}

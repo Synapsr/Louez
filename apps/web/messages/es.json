@@ -306,7 +306,9 @@
         "page": "Página {current} de {total}",
         "previous": "Página anterior",
         "next": "Página siguiente"
-      }
+      },
+      "sync": "Sincronizar",
+      "viewAll": "Abrir la página completa"
     },
     "aiAssistant": {
       "hero": {

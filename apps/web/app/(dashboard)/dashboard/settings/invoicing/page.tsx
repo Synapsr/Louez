@@ -1,7 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
-import { Button } from "@louez/ui";
+import { getReceivedInvoicesPage } from "@/app/(dashboard)/dashboard/purchase-invoices/queries";
+import { PurchaseInvoicesTable } from "@/app/(dashboard)/dashboard/purchase-invoices/purchase-invoices-table";
 
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { getCurrentStore } from "@/lib/store-context";
@@ -10,6 +11,7 @@ import { getStoreLegalProfile } from "./actions";
 import { DevResetButton } from "./dev-reset-button";
 import { InvoicingFlow } from "./invoicing-flow";
 import { PdpEnrollmentResultAlert } from "./pdp-enrollment-result-alert";
+import { PurchaseInvoicesDialog } from "./purchase-invoices-dialog";
 import { PdpTransmissionPanel } from "./pdp-transmission-panel";
 import { getSuperPdpEnrollment } from "./queries";
 import { isLegalIdentityComplete, toLegalProfileFormValues } from "./util.legal-profile-form";
@@ -33,6 +35,7 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
   }
 
   const t = await getTranslations("dashboard.settings.invoicing");
+  const tPurchase = await getTranslations("dashboard.purchaseInvoices");
   const [profileResult, enrollment, params] = await Promise.all([
     getStoreLegalProfile(),
     getSuperPdpEnrollment(store.id),
@@ -50,12 +53,21 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
   };
   const result = resolvePdpEnrollmentResult(params);
 
+  const inboxPage =
+    view.state === "connected"
+      ? await getReceivedInvoicesPage({ page: 1, storeId: store.id })
+      : null;
+
   const pageActions = (
     <div className="flex items-center gap-2">
-      {view.state === "connected" && (
-        <Button variant="outline" size="sm" render={<a href="/dashboard/purchase-invoices" />}>
-          {t("transmission.purchaseInvoicesAction")}
-        </Button>
+      {inboxPage !== null && (
+        <PurchaseInvoicesDialog>
+          {inboxPage.totalCount === 0 ? (
+            <p className="text-muted-foreground text-sm">{tPurchase("empty.title")}</p>
+          ) : (
+            <PurchaseInvoicesTable invoices={inboxPage.invoices} />
+          )}
+        </PurchaseInvoicesDialog>
       )}
       {process.env.NODE_ENV === "development" && <DevResetButton />}
     </div>

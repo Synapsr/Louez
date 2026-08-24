@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { log } from "@/lib/evlog";
+import { pollSuperPdpInvoiceEvents } from "@/lib/invoicing/superpdp-events";
 import {
   acceptReceivedInvoice,
   acknowledgeReceivedInvoice,
@@ -109,4 +110,24 @@ export async function refusePurchaseInvoice(
     reason: validated.data.reason || undefined,
     receivedInvoiceId: validated.data.receivedInvoiceId,
   });
+}
+
+export async function syncPurchaseInvoices(): Promise<ReceivedInvoiceActionResult> {
+  const store = await getCurrentStore();
+  const canWrite = await currentUserHasPermission("write");
+  if (!store || !canWrite) return { status: "error", error: "unauthorized" };
+
+  try {
+    await pollSuperPdpInvoiceEvents();
+  } catch (error) {
+    log.error(
+      "superpdp",
+      `manual inbox sync failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return { status: "error", error: "generic" };
+  }
+
+  revalidatePath(PURCHASE_INVOICES_PATH);
+  revalidatePath("/dashboard/settings/invoicing");
+  return { status: "success" };
 }
