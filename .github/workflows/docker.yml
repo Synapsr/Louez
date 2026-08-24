@@ -127,6 +127,12 @@ jobs:
             -e DATABASE_URL=mysql://root:smoketest@louez-db:3306/louez \
             -e AUTH_SECRET=smoke-test-secret-not-a-real-secret \
             -e BETTER_AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e S3_ENDPOINT=http://smoke-test.invalid:9000 \
+            -e S3_REGION=smoke \
+            -e S3_BUCKET=smoke-test \
+            -e S3_ACCESS_KEY_ID=smoke-test \
+            -e S3_SECRET_ACCESS_KEY=smoke-test \
+            -e S3_PUBLIC_URL=/media \
             -e NEXT_PUBLIC_APP_URL=http://localhost:3000 \
             -e NEXT_PUBLIC_APP_DOMAIN=localhost:3000 \
             -e AI_IMAGE_BACKGROUND_REMOVAL_URL=http://louez-background-removal:7000 \
@@ -194,6 +200,12 @@ jobs:
             -e DATABASE_URL=mysql://root:smoketest@louez-db:3306/louez \
             -e AUTH_SECRET=smoke-test-secret-not-a-real-secret \
             -e BETTER_AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e S3_ENDPOINT=http://smoke-test.invalid:9000 \
+            -e S3_REGION=smoke \
+            -e S3_BUCKET=smoke-test \
+            -e S3_ACCESS_KEY_ID=smoke-test \
+            -e S3_SECRET_ACCESS_KEY=smoke-test \
+            -e S3_PUBLIC_URL=/media \
             -e NEXT_PUBLIC_APP_URL=http://localhost:3001 \
             -e NEXT_PUBLIC_APP_DOMAIN=localhost:3001 \
             louez-web:smoke
