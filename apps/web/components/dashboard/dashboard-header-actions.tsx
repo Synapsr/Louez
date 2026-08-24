@@ -24,11 +24,13 @@ export const DashboardHeaderActions = ({
   reservationLimits,
   planSlug,
   isPlatformAdmin = false,
+  electronicInvoicingEnabled = true,
 }: {
   showAIChat: boolean;
   reservationLimits: LimitStatus;
   planSlug: string;
   isPlatformAdmin?: boolean;
+  electronicInvoicingEnabled?: boolean;
 }) => {
   const t = useTranslations("dashboard");
   const router = useRouter();
@@ -73,6 +75,7 @@ export const DashboardHeaderActions = ({
       <div className="ml-auto flex shrink-0 items-center gap-2">
         <DashboardCommandPalette
           isPlatformAdmin={isPlatformAdmin}
+          electronicInvoicingEnabled={electronicInvoicingEnabled}
           showAIChat={showAIChat}
           onCreateReservation={handleCreateReservation}
         />

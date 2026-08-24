@@ -28,6 +28,7 @@ import { isStandaloneMode } from "@/lib/deployment";
 import { parseKeyboardShortcutOverrides } from "@/lib/keyboard-shortcuts";
 import { getStoreLimits, getStorePlan } from "@/lib/plan-limits";
 import { areAiCreditsEnabled } from "@/lib/plans";
+import { isElectronicInvoicingEnabled } from "@/lib/invoicing/feature";
 import { isCurrentUserPlatformAdmin } from "@/lib/platform-admin";
 import { getCurrentStore, getUserStores } from "@/lib/store-context";
 import { getCurrentPlanSlug } from "@/lib/stripe/subscriptions";
@@ -93,7 +94,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
   const showAIChat = isAIChatConfigured();
 
   // Get current plan for the store
-  const [planSlug, limits, isPlatformAdmin, userPreferences, aiCredits] = await Promise.all([
+  const [planSlug, limits, isPlatformAdmin, userPreferences, aiCredits, electronicInvoicingEnabled] = await Promise.all([
     getCurrentPlanSlug(store.id),
     getStoreLimits(store.id),
     isCurrentUserPlatformAdmin(),
@@ -105,6 +106,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
       where: eq(users.id, session.user.id),
     }),
     getSidebarAiCredits(store.id),
+    isElectronicInvoicingEnabled(store.id),
   ]);
 
   return (
@@ -147,6 +149,7 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                         reservationLimits={limits.reservationsThisMonth}
                         planSlug={planSlug}
                         isPlatformAdmin={isPlatformAdmin}
+                        electronicInvoicingEnabled={electronicInvoicingEnabled}
                       />
                     </header>
                     <div

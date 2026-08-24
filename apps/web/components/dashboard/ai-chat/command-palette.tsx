@@ -99,12 +99,14 @@ const SEARCH_FEATURE_ID = "navigation-refresh";
 
 type DashboardCommandPaletteProps = {
   isPlatformAdmin?: boolean;
+  electronicInvoicingEnabled?: boolean;
   onCreateReservation: () => void;
   showAIChat: boolean;
 };
 
 export const DashboardCommandPalette = ({
   isPlatformAdmin = false,
+  electronicInvoicingEnabled = true,
   onCreateReservation,
   showAIChat,
 }: DashboardCommandPaletteProps) => {
@@ -202,7 +204,11 @@ export const DashboardCommandPalette = ({
 
   const settingsSearchDocuments = useMemo(
     () =>
-      SETTINGS_NAVIGATION_ITEMS.filter((item) => !item.platformAdminOnly || isPlatformAdmin).map(
+      SETTINGS_NAVIGATION_ITEMS.filter(
+        (item) =>
+          (!item.platformAdminOnly || isPlatformAdmin) &&
+          (!item.requiresElectronicInvoicing || electronicInvoicingEnabled),
+      ).map(
         (item) => ({
           ...item,
           content: getSearchableMessageText(messages, item.searchPaths),
@@ -210,7 +216,7 @@ export const DashboardCommandPalette = ({
           label: getMessageText(messages, item.labelPath),
         }),
       ),
-    [isPlatformAdmin, messages],
+    [isPlatformAdmin, electronicInvoicingEnabled, messages],
   );
 
   const trimmedQuery = query.trim();
