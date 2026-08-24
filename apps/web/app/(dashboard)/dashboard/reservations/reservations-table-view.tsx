@@ -70,6 +70,8 @@ interface ReservationsTableViewProps {
   reservations: Reservation[]
   currency?: string
   timezone?: string
+  /** Dashboard path the reservation detail page should send the user back to. */
+  returnTo?: string | null
   currentSort?: SortField
   currentSortDirection?: SortDirection
   onSortChange: (field: SortField) => void
@@ -121,6 +123,7 @@ export function ReservationsTableView({
   reservations,
   currency = 'EUR',
   timezone,
+  returnTo,
   currentSort,
   currentSortDirection,
   onSortChange,
@@ -196,7 +199,11 @@ export function ReservationsTableView({
                 const isPending = status === 'pending'
                 const isConfirmed = status === 'confirmed'
                 const isOngoing = status === 'ongoing'
-                const reservationHref = getReservationDetailHref(reservation.id, reservationSource)
+                const reservationHref = getReservationDetailHref(
+                  reservation.id,
+                  reservationSource,
+                  returnTo
+                )
                 return (
                   <TableRow
                     key={reservation.id}

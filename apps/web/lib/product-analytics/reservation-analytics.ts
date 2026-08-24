@@ -47,10 +47,18 @@ export const resolveReservationAnalyticsSource = ({
   return "unknown";
 };
 
+/**
+ * `returnTo` is the raw dashboard path the detail page should go back to, query
+ * string included. It is sanitized on read by `getDashboardReservationBackHref`.
+ */
 export const getReservationDetailHref = (
   reservationId: string,
   source: ReservationAnalyticsSource,
-) => `/dashboard/reservations/${encodeURIComponent(reservationId)}?source=${source}`;
+  returnTo?: string | null,
+) => {
+  const href = `/dashboard/reservations/${encodeURIComponent(reservationId)}?source=${source}`;
+  return returnTo ? `${href}&returnTo=${encodeURIComponent(returnTo)}` : href;
+};
 
 export const getReservationStatusAnalyticsAction = (
   status: string,

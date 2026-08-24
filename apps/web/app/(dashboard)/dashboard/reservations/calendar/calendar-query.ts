@@ -1,4 +1,6 @@
-import { createMonthConfig, createTwoWeekConfig, getWeekEnd, getWeekStart } from "./calendar-utils";
+// Imported from `nuqs/server`: this module is also pulled into the reservations
+// page (a server component), and the client entry point is marked "use client".
+import { createParser } from "nuqs/server";
 
 export const RESERVATION_VIEWS = ["list", "calendar", "planning"] as const;
 export type ReservationView = (typeof RESERVATION_VIEWS)[number];
@@ -26,13 +28,6 @@ const DEFAULT_HIDDEN_STATUSES = new Set(["cancelled", "rejected", "declined"]);
 export const DEFAULT_VISIBLE_STATUSES = RESERVATION_STATUSES.filter(
   (status) => !DEFAULT_HIDDEN_STATUSES.has(status),
 );
-
-export interface CalendarQueryState {
-  date: Date;
-  view: Exclude<ReservationView, "list">;
-  range: CalendarRange;
-  productId: string;
-}
 
 export function parseReservationView(value: string | undefined): ReservationView {
   if (value === "list" || value === "calendar" || value === "planning") return value;
@@ -75,19 +70,6 @@ export function toCalendarDateParam(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function persistCalendarDateInHistory(
-  date: Date,
-  browserLocation: Pick<Location, "pathname" | "search" | "hash"> = window.location,
-  browserHistory: Pick<History, "state" | "replaceState"> = window.history,
-): void {
-  const params = new URLSearchParams(browserLocation.search);
-  params.set("date", toCalendarDateParam(date));
-
-  const search = params.toString();
-  const nextUrl = `${browserLocation.pathname}${search ? `?${search}` : ""}${browserLocation.hash}`;
-  browserHistory.replaceState(browserHistory.state, "", nextUrl);
-}
-
 export function parseCalendarDateParam(value: string | undefined): Date | null {
   if (value === "today") {
     const today = new Date();
@@ -109,45 +91,15 @@ export function parseCalendarDateParam(value: string | undefined): Date | null {
   return date;
 }
 
-export function getCalendarVisibleRange({
-  date,
-  view,
-  range,
-}: Pick<CalendarQueryState, "date" | "view" | "range">) {
-  const resolved = resolveCalendarRange(view, range);
-
-  if (resolved === "month") {
-    const config = createMonthConfig(date);
-    return { start: config.startDate, end: config.endDate };
-  }
-
-  if (resolved === "twoWeeks") {
-    const config = createTwoWeekConfig(date);
-    return { start: config.startDate, end: config.endDate };
-  }
-
-  return { start: getWeekStart(date), end: getWeekEnd(date) };
-}
-
-export function parseCalendarQueryState(
-  searchParams: Record<string, string | string[] | undefined>,
-  fallbackDate = new Date(),
-): CalendarQueryState {
-  const getParam = (key: string) => {
-    const value = searchParams[key];
-    return Array.isArray(value) ? value[0] : value;
-  };
-
-  const parsedView = parseReservationView(getParam("view"));
-  const view = parsedView === "list" ? "calendar" : parsedView;
-  const range = CALENDAR_RANGES.includes(getParam("range") as CalendarRange)
-    ? (getParam("range") as CalendarRange)
-    : "week";
-
-  return {
-    date: parseCalendarDateParam(getParam("date")) ?? fallbackDate,
-    view,
-    range: resolveCalendarRange(view, range),
-    productId: getParam("productId") || "all",
-  };
-}
+/**
+ * The `date` search param, as nuqs sees it: the day both timeline views centre
+ * their viewport on. Keeping it in a parser lets the timelines read and write it
+ * with the same `useQueryState` machinery as the other timeline filters.
+ */
+export const calendarDateParser = createParser({
+  parse: (value: string) => parseCalendarDateParam(value),
+  serialize: toCalendarDateParam,
+  // Dates are compared by value. Without this, two `Date` objects for the same
+  // day would look different to nuqs and could drive an update loop.
+  eq: (a: Date, b: Date) => a.getTime() === b.getTime(),
+});

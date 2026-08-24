@@ -27,6 +27,8 @@ import {
 } from "@louez/ui/icons";
 import { cn, formatCurrency } from "@louez/utils";
 
+import { getReservationDetailHref } from "@/lib/product-analytics/reservation-analytics";
+
 import { TimelineReservationDetails } from "./timeline-reservation-details";
 import { getTimelineRentalAmount, type TimelineReservation } from "./timeline-utils";
 
@@ -97,6 +99,8 @@ interface TimelineReservationBarProps {
   currency: string;
   /** Persists the timeline viewport before navigating to reservation details. */
   onBeforeNavigate?: () => void;
+  /** Dashboard path the reservation detail page should send the user back to. */
+  returnTo?: string | null;
   /** Flags an overbooked placement (no free unit lane was available) */
   isConflict?: boolean;
   /** Keeps the label visible while its reservation intersects the horizontal viewport */
@@ -116,6 +120,7 @@ export function TimelineReservationBar({
   reservation,
   currency,
   onBeforeNavigate,
+  returnTo,
   isConflict = false,
   isLabelSticky = false,
   stickyLabelOffset = 0,
@@ -125,7 +130,11 @@ export function TimelineReservationBar({
   const t = useTranslations("dashboard.calendar");
   const status = getTimelineStatus(reservation.status);
   const colorClass = BAR_COLORS[status] ?? BAR_COLORS.pending;
-  const reservationHref = `/dashboard/reservations/${encodeURIComponent(reservation.id)}?source=reservations_timeline`;
+  const reservationHref = getReservationDetailHref(
+    reservation.id,
+    "reservations_timeline",
+    returnTo,
+  );
   const rentalPrice = formatCurrency(getTimelineRentalAmount(reservation), currency);
 
   const hasOutboundDelivery = Boolean(reservation.outboundDeliveryAddress);

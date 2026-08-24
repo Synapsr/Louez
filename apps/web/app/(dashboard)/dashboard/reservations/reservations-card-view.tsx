@@ -60,6 +60,8 @@ interface ReservationsCardViewProps {
   reservations: Reservation[];
   currency?: string;
   timezone?: string;
+  /** Dashboard path the reservation detail page should send the user back to. */
+  returnTo?: string | null;
   loadingAction: string | null;
   handleStatusChange: (
     e: React.MouseEvent,
@@ -73,6 +75,7 @@ export function ReservationsCardView({
   reservations,
   currency = "EUR",
   timezone,
+  returnTo,
   loadingAction,
   handleStatusChange,
   openRejectDialog,
@@ -114,7 +117,7 @@ export function ReservationsCardView({
           return (
             <Link
               key={reservation.id}
-              href={getReservationDetailHref(reservation.id, reservationSource)}
+              href={getReservationDetailHref(reservation.id, reservationSource, returnTo)}
               className="block group"
             >
               <Card

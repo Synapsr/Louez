@@ -36,16 +36,13 @@ import {
   stackReservations,
   timelineRangesOverlap,
 } from "@/components/dashboard/reservations-timeline/timeline-utils";
+import { createDashboardReturnTo } from "@/lib/dashboard/util.reservation-navigation";
 import { reservationCalendarQueries } from "@/lib/queries/reservation-calendar.queries";
 
-import {
-  type CalendarRange,
-  matchesTodayOperation,
-  parseCalendarDateParam,
-  persistCalendarDateInHistory,
-} from "./calendar-query";
+import { type CalendarRange, matchesTodayOperation, toCalendarDateParam } from "./calendar-query";
 import { TimelineToolbar, useTimelineFilters } from "./timeline-toolbar";
 import type { Product, Reservation } from "./types";
+import { useTimelineDateParam } from "./use-timeline-date-param";
 
 // =============================================================================
 // Constants — mirror the planning timeline so both views feel identical
@@ -126,7 +123,7 @@ export function ReservationsCalendarView({
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const dateParam = searchParams.get("date");
+  const [dateParam, setDateParam] = useTimelineDateParam();
 
   // ---------------------------------------------------------------------------
   // URL-persisted view state (zoom + status/product filters) — shareable links
@@ -142,10 +139,8 @@ export function ReservationsCalendarView({
   // Window state (infinite horizontal scroll)
   // ---------------------------------------------------------------------------
 
-  // Anchor on the `date` param when present (legacy links)
-  const anchorDateRef = useRef(
-    parseCalendarDateParam(searchParams.get("date") ?? undefined) ?? new Date(),
-  );
+  // Anchor on the `date` param when present (deep links, `returnTo` round-trips)
+  const anchorDateRef = useRef(dateParam ?? new Date());
   const initialWindowRef = useRef(reservationCalendarQueries.initialWindow(anchorDateRef.current));
 
   const [windowStart, setWindowStart] = useState(initialWindowRef.current.start);
@@ -596,17 +591,23 @@ export function ReservationsCalendarView({
 
   const goToToday = () => goToDate(new Date(), "auto");
 
+  /** Timestamp of the last date this view itself wrote to the URL. */
+  const persistedDateRef = useRef<number | null>(null);
+  const dateParamTime = dateParam?.getTime() ?? null;
+
   // Browser/Next scroll restoration can run after layout effects on a cached
   // navigation. Re-apply any URL anchor after paint so it wins over an older
   // horizontal scroll position restored by the browser.
   useEffect(() => {
-    const targetDate = parseCalendarDateParam(dateParam ?? undefined);
-    if (!targetDate) return;
+    if (dateParamTime === null) return;
+    // Our own viewport writes echo back through the URL. Recentering on them
+    // would nudge the scroll position the user is already looking at.
+    if (persistedDateRef.current === dateParamTime) return;
 
     let finalFrame = 0;
     const initialFrame = requestAnimationFrame(() => {
       finalFrame = requestAnimationFrame(() => {
-        goToDate(targetDate, "auto");
+        goToDate(new Date(dateParamTime), "auto");
       });
     });
 
@@ -615,11 +616,29 @@ export function ReservationsCalendarView({
       cancelAnimationFrame(finalFrame);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateParam]);
+  }, [dateParamTime]);
 
+  /**
+   * Records the day at the centre of the viewport before navigating away, so
+   * coming back lands on it. Normalized to midnight to match how the param
+   * parses back in.
+   */
   const persistVisibleDate = () => {
-    persistCalendarDateInHistory(visibleDate);
+    const date = new Date(visibleDate);
+    date.setHours(0, 0, 0, 0);
+    persistedDateRef.current = date.getTime();
+    void setDateParam(date);
   };
+
+  // Rebuilt every render rather than read back from the URL: nuqs flushes URL
+  // updates on a throttled macrotask, so a middle-click or a new-tab open can
+  // beat the flush. This always carries the date currently on screen.
+  const returnTo = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", "calendar");
+    params.set("date", toCalendarDateParam(visibleDate));
+    return createDashboardReturnTo("/dashboard/reservations", params);
+  }, [searchParams, visibleDate]);
 
   // ---------------------------------------------------------------------------
   // Drag-to-create (mouse only — touch keeps native scrolling)
@@ -866,6 +885,7 @@ export function ReservationsCalendarView({
                       reservation={item.reservation}
                       currency={currency}
                       onBeforeNavigate={persistVisibleDate}
+                      returnTo={returnTo}
                       isLabelSticky
                       continuesBeforeViewport={item.startIndex < visibleDayRange.startIndex}
                       style={{

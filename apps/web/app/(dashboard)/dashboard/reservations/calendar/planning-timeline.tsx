@@ -30,18 +30,16 @@ import {
   placeReservations,
   stackReservations,
 } from "@/components/dashboard/reservations-timeline/timeline-utils";
+import { createDashboardReturnTo } from "@/lib/dashboard/util.reservation-navigation";
 import {
   type PlanningTimelineEntry,
   reservationPlanningQueries,
 } from "@/lib/queries/reservation-planning.queries";
 
-import {
-  type CalendarRange,
-  matchesTodayOperation,
-  parseCalendarDateParam,
-} from "./calendar-query";
+import { type CalendarRange, matchesTodayOperation, toCalendarDateParam } from "./calendar-query";
 import { TimelineToolbar, useTimelineFilters } from "./timeline-toolbar";
 import type { Product, StoreTimelineReservation } from "./types";
+import { useTimelineDateParam } from "./use-timeline-date-param";
 
 // =============================================================================
 // Constants — mirror the product page timeline so both feel identical
@@ -161,6 +159,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [dateParam, setDateParam] = useTimelineDateParam();
 
   // ---------------------------------------------------------------------------
   // URL-persisted view state (zoom + status/product filters) — shareable links
@@ -176,10 +175,8 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   // Window state (infinite horizontal scroll)
   // ---------------------------------------------------------------------------
 
-  // Anchor on the `date` param when present (legacy links, month-view "+N")
-  const anchorDateRef = useRef(
-    parseCalendarDateParam(searchParams.get("date") ?? undefined) ?? new Date(),
-  );
+  // Anchor on the `date` param when present (deep links, `returnTo` round-trips)
+  const anchorDateRef = useRef(dateParam ?? new Date());
 
   const initialWindowRef = useRef(reservationPlanningQueries.initialWindow(anchorDateRef.current));
 
@@ -472,7 +469,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
     });
   };
 
-  const goToDate = (date: Date) => {
+  const goToDate = (date: Date, behavior: ScrollBehavior = "smooth") => {
     const element = scrollerRef.current;
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
@@ -482,7 +479,15 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
     if (element && targetIndex >= 0 && targetIndex < daysCount) {
       const target =
         targetIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 3);
-      element.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+      const left = Math.max(0, target);
+      if (behavior === "auto") {
+        // Restoration jumps straight there: a smooth scroll across months
+        // would animate the whole way and read as jank.
+        element.scrollLeft = left;
+        updateVisibleViewport(element);
+      } else {
+        element.scrollTo({ left, behavior });
+      }
       return;
     }
 
@@ -506,6 +511,55 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
     }
     filters.setRange(range);
   };
+
+  /** Timestamp of the last date this view itself wrote to the URL. */
+  const persistedDateRef = useRef<number | null>(null);
+  const dateParamTime = dateParam?.getTime() ?? null;
+
+  // Browser/Next scroll restoration can run after layout effects on a cached
+  // navigation. Re-apply any URL anchor after paint so it wins over an older
+  // horizontal scroll position restored by the browser.
+  useEffect(() => {
+    if (dateParamTime === null) return;
+    // Our own viewport writes echo back through the URL. Re-anchoring on them
+    // would shift the scroll position the user is already looking at.
+    if (persistedDateRef.current === dateParamTime) return;
+
+    let finalFrame = 0;
+    const initialFrame = requestAnimationFrame(() => {
+      finalFrame = requestAnimationFrame(() => {
+        goToDate(new Date(dateParamTime), "auto");
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(initialFrame);
+      cancelAnimationFrame(finalFrame);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateParamTime]);
+
+  /**
+   * Records the day at the centre of the viewport before navigating away, so
+   * coming back lands on it. Normalized to midnight to match how the param
+   * parses back in.
+   */
+  const persistVisibleDate = () => {
+    const date = new Date(visibleDate);
+    date.setHours(0, 0, 0, 0);
+    persistedDateRef.current = date.getTime();
+    void setDateParam(date);
+  };
+
+  // Rebuilt every render rather than read back from the URL: nuqs flushes URL
+  // updates on a throttled macrotask, so a middle-click or a new-tab open can
+  // beat the flush. This always carries the date currently on screen.
+  const returnTo = useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", "planning");
+    params.set("date", toCalendarDateParam(visibleDate));
+    return createDashboardReturnTo("/dashboard/reservations", params);
+  }, [searchParams, visibleDate]);
 
   // ---------------------------------------------------------------------------
   // Drag-to-create (mouse only — touch keeps native scrolling)
@@ -871,6 +925,8 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
                             key={`${placed.reservation.id}-${placed.laneIndex}`}
                             reservation={placed.reservation}
                             currency={currency}
+                            onBeforeNavigate={persistVisibleDate}
+                            returnTo={returnTo}
                             isLabelSticky
                             stickyLabelOffset={PRODUCT_COLUMN_WIDTH}
                             continuesBeforeViewport={placed.startIndex < leftmostVisibleDayIndex}
