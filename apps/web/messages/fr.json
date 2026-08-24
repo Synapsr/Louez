@@ -1870,7 +1870,8 @@
           "validated": "Validée",
           "rejected": "Rejetée",
           "failed": "Échec de transmission"
-        }
+        },
+        "recheck": "Actualiser le statut de transmission"
       },
       "periodStart": "Début",
       "periodEnd": "Fin",

@@ -1870,7 +1870,8 @@
           "validated": "Validated",
           "rejected": "Rejected",
           "failed": "Transmission failed"
-        }
+        },
+        "recheck": "Refresh transmission status"
       },
       "periodStart": "Start",
       "periodEnd": "End",

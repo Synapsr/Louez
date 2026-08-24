@@ -1831,7 +1831,8 @@
           "validated": "Validada",
           "rejected": "Rejeitada",
           "failed": "Falha na transmissão"
-        }
+        },
+        "recheck": "Atualizar o estado de transmissão"
       },
       "periodStart": "Inicio",
       "periodEnd": "Fim",

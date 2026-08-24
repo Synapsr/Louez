@@ -1,14 +1,25 @@
 "use server";
 
-import { db, invoicePayments, payments, reservations, storeLegalProfiles } from "@louez/db";
+import {
+  db,
+  invoicePayments,
+  invoices,
+  payments,
+  reservations,
+  storeLegalProfiles,
+} from "@louez/db";
 import { and, asc, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import { z } from "zod";
 
+import { log } from "@/lib/evlog";
 import { currentUserHasPermission, getCurrentStore } from "@/lib/store-context";
 
 import { tryGenerateInvoiceForPayment } from "./service";
+import { pollSuperPdpInvoiceEvents } from "./superpdp-events";
+import { tryTransmitInvoiceNow } from "./superpdp-transmission";
 
 const reservationIdSchema = z.string().length(21);
+const invoiceIdSchema = z.string().length(21);
 
 export type InvoiceReservationGenerationResult =
   | { status: "success"; generatedCount: number }
@@ -68,4 +79,60 @@ export async function generateInvoiceForReservation(
   }
 
   return { status: "success", generatedCount };
+}
+
+export type InvoiceTransmissionRecheckResult =
+  | {
+      status: "success";
+      transmissionStatus:
+        | "not_applicable"
+        | "pending"
+        | "sent"
+        | "validated"
+        | "rejected"
+        | "failed";
+    }
+  | { status: "error"; error: "unauthorized" | "invalid_invoice" };
+
+export async function recheckInvoiceTransmission(
+  invoiceId: string,
+): Promise<InvoiceTransmissionRecheckResult> {
+  const parsed = invoiceIdSchema.safeParse(invoiceId);
+  if (!parsed.success) return { status: "error", error: "invalid_invoice" };
+
+  const store = await getCurrentStore();
+  const canWrite = await currentUserHasPermission("write");
+  if (!store || !canWrite) return { status: "error", error: "unauthorized" };
+
+  const [invoice] = await db
+    .select({ id: invoices.id, transmissionStatus: invoices.transmissionStatus })
+    .from(invoices)
+    .where(and(eq(invoices.id, parsed.data), eq(invoices.storeId, store.id)))
+    .limit(1);
+  if (!invoice) return { status: "error", error: "invalid_invoice" };
+
+  if (invoice.transmissionStatus === "pending" || invoice.transmissionStatus === "failed") {
+    await tryTransmitInvoiceNow(invoice.id);
+  }
+  // Pull the latest lifecycle statuses from Super PDP while we're at it; a
+  // failure here must not mask a successful transmission attempt.
+  try {
+    await pollSuperPdpInvoiceEvents();
+  } catch (error) {
+    log.error(
+      "superpdp",
+      `event poll during recheck failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  const [refreshed] = await db
+    .select({ transmissionStatus: invoices.transmissionStatus })
+    .from(invoices)
+    .where(and(eq(invoices.id, invoice.id), eq(invoices.storeId, store.id)))
+    .limit(1);
+
+  return {
+    status: "success",
+    transmissionStatus: refreshed?.transmissionStatus ?? invoice.transmissionStatus,
+  };
 }

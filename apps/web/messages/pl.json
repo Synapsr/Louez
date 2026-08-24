@@ -1831,7 +1831,8 @@
           "validated": "Zatwierdzono",
           "rejected": "Odrzucono",
           "failed": "Przesyłanie nie powiodło się"
-        }
+        },
+        "recheck": "Odśwież status przesyłki"
       },
       "periodStart": "Początek",
       "periodEnd": "Koniec",

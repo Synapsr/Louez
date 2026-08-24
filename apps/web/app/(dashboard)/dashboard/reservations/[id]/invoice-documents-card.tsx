@@ -3,12 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, RefreshCw } from "lucide-react";
 
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
-import { formatCurrency } from "@louez/utils";
+import { cn, formatCurrency } from "@louez/utils";
 
-import { generateInvoiceForReservation } from "@/lib/invoicing/actions";
+import {
+  generateInvoiceForReservation,
+  recheckInvoiceTransmission,
+} from "@/lib/invoicing/actions";
 
 type TransmissionStatus =
   | "not_applicable"
@@ -53,6 +56,7 @@ export const InvoiceDocumentsCard = ({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<"success" | "error" | null>(null);
+  const [recheckingId, setRecheckingId] = useState<string | null>(null);
 
   const handleGenerate = () => {
     setFeedback(null);
@@ -64,6 +68,20 @@ export const InvoiceDocumentsCard = ({
       }
       setFeedback("success");
       router.refresh();
+    });
+  };
+
+  const handleRecheck = (invoiceId: string) => {
+    setFeedback(null);
+    setRecheckingId(invoiceId);
+    startTransition(async () => {
+      try {
+        const result = await recheckInvoiceTransmission(invoiceId);
+        if (result.status === "error") setFeedback("error");
+        else router.refresh();
+      } finally {
+        setRecheckingId(null);
+      }
     });
   };
 
@@ -100,7 +118,7 @@ export const InvoiceDocumentsCard = ({
         ) : (
           <div className="space-y-3">
             {invoices.map((invoice) => (
-              <div key={invoice.id} className="space-y-2 rounded-lg border p-3">
+              <div key={invoice.id} className="group space-y-2 rounded-lg border p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{invoice.number}</p>
@@ -118,9 +136,30 @@ export const InvoiceDocumentsCard = ({
                   </p>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <Badge variant={TRANSMISSION_BADGE_VARIANTS[invoice.transmissionStatus]}>
-                    {t(`transmission.${invoice.transmissionStatus}`)}
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={TRANSMISSION_BADGE_VARIANTS[invoice.transmissionStatus]}>
+                      {t(`transmission.${invoice.transmissionStatus}`)}
+                    </Badge>
+                    {invoice.transmissionStatus !== "not_applicable" && (
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label={t("recheck")}
+                        title={t("recheck")}
+                        disabled={recheckingId !== null}
+                        onClick={() => handleRecheck(invoice.id)}
+                        className={cn(
+                          "opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100",
+                          recheckingId === invoice.id && "opacity-100",
+                        )}
+                      >
+                        <RefreshCw
+                          data-slot="icon"
+                          className={cn(recheckingId === invoice.id && "animate-spin")}
+                        />
+                      </Button>
+                    )}
+                  </div>
                   <Button
                     size="sm"
                     variant="outline"

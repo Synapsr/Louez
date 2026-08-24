@@ -1831,7 +1831,8 @@
           "validated": "Gevalideerd",
           "rejected": "Afgewezen",
           "failed": "Verzending mislukt"
-        }
+        },
+        "recheck": "Verzendstatus vernieuwen"
       },
       "periodStart": "Begin",
       "periodEnd": "Einde",

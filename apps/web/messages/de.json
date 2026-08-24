@@ -1870,7 +1870,8 @@
           "validated": "Validiert",
           "rejected": "Abgelehnt",
           "failed": "Übermittlung fehlgeschlagen"
-        }
+        },
+        "recheck": "Übermittlungsstatus aktualisieren"
       },
       "periodStart": "Beginn",
       "periodEnd": "Ende",
