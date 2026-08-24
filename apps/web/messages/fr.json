@@ -4291,7 +4291,7 @@
       },
       "invoicing": {
         "title": "Facturation électronique",
-        "description": "Renseignez l'identité légale de votre société et laissez Louez émettre vos factures.",
+        "description": "Configurez la réception obligatoire de vos factures électroniques et choisissez si Louez émet aussi vos factures.",
         "saved": "Paramètres de facturation enregistrés",
         "statusComplete": "Complet",
         "statusIncomplete": "À compléter",
@@ -4302,14 +4302,13 @@
             "transmission": "Transmission"
           },
           "continue": "Continuer",
-          "finishWithoutInvoicing": "Terminer sans activer",
           "later": "Configurer plus tard",
           "intro": {
-            "title": "Passez à la facturation électronique",
-            "description": "Louez génère des factures conformes au nom de votre société et les transmet via le réseau officiel des plateformes agréées. Configurez tout en trois étapes.",
+            "title": "Préparez votre société à la facturation électronique",
+            "description": "Connectez votre société au réseau officiel pour recevoir vos factures fournisseurs. Vous pouvez aussi confier dès maintenant l'émission de vos factures à Louez.",
             "bullets": {
-              "generate": "Factures conformes générées et numérotées automatiquement à chaque encaissement.",
-              "transmit": "Envoi de vos factures aux professionnels via le réseau officiel et e-reporting automatique de vos ventes.",
+              "generate": "Si vous activez l'émission, Louez génère et numérote une facture conforme à chaque encaissement.",
+              "transmit": "Si vous activez l'émission, Louez envoie vos factures aux professionnels et transmet l'e-reporting de vos ventes.",
               "receive": "Réception centralisée des factures de vos fournisseurs."
             },
             "start": "Commencer la configuration",
@@ -4362,14 +4361,19 @@
           "city": "Ville"
         },
         "louezInvoicing": {
-          "title": "Facturation par Louez",
-          "description": "Louez génère et numérote vos factures à chaque encaissement.",
-          "statusActive": "Activée",
+          "title": "Émission des factures",
+          "description": "Choisissez si Louez émet vos factures dès maintenant. Vous pourrez modifier ce choix à tout moment.",
+          "statusActive": "Émission activée",
+          "statusReceptionOnly": "Réception seule",
           "statusInactive": "Désactivée",
           "lockedTitle": "Complétez d'abord votre identité légale",
-          "lockedDescription": "Une facture légale doit porter la dénomination, la forme juridique, le numéro d'entreprise et l'adresse du siège. Renseignez l'étape 1 pour activer la facturation.",
-          "enabled": "Louez émet mes factures",
-          "enabledDescription": "Louez génère et numérote vos factures : à chaque encaissement, une facture conforme est produite au nom de votre société, avec une numérotation séquentielle et sans trou.",
+          "lockedDescription": "Une facture légale doit porter la dénomination, la forme juridique, le numéro d'entreprise et l'adresse du siège. Renseignez l'étape 1 avant de choisir votre mode de facturation.",
+          "choiceLabel": "Comment souhaitez-vous utiliser la facturation électronique ?",
+          "emissionAndReception": "Émission + réception (recommandé)",
+          "emissionAndReceptionDescription": "Louez génère, numérote et transmet vos factures à chaque encaissement. Votre société reçoit aussi ses factures fournisseurs.",
+          "receptionOnly": "Réception seule — je n'émets pas encore mes factures via Louez",
+          "receptionOnlyDescription": "Louez n'émet aucune facture. Votre société reste connectée pour recevoir ses factures fournisseurs.",
+          "reformTimeline": "La réception des factures électroniques devient obligatoire en septembre 2026. L'émission devient obligatoire en septembre 2027 et peut être activée ici à tout moment.",
           "vatRegime": "Régime de TVA",
           "vatRegimePlaceholder": "Choisissez votre régime",
           "vatRegimeDescription": "Détermine le calendrier de déclaration transmis à la plateforme de facturation.",
@@ -4384,13 +4388,13 @@
         },
         "transmission": {
           "title": "Transmission électronique (PDP)",
-          "description": "Connectez votre société à une Plateforme Agréée pour envoyer et recevoir vos factures via le réseau officiel.",
+          "description": "Connectez votre société à une Plateforme Agréée pour recevoir vos factures et, si vous activez l'émission, envoyer celles de vos clients via le réseau officiel.",
           "statusPending": "Inscription en cours",
           "statusActionRequired": "Action requise",
           "deadlineTitle": "Échéance de septembre 2026",
           "deadlineDescription": "À partir de septembre 2026, toute entreprise française doit être raccordée à une plateforme agréée pour recevoir ses factures électroniques ; l'émission devient obligatoire en septembre 2027. Le raccordement depuis Louez est offert.",
           "benefits": {
-            "send": "Envoi de vos factures à vos clients professionnels via le réseau officiel.",
+            "send": "Envoi de vos factures à vos clients professionnels si vous activez l'émission.",
             "receive": "Réception centralisée des factures de vos fournisseurs.",
             "reporting": "E-reporting automatique de vos ventes aux particuliers."
           },
@@ -4401,14 +4405,13 @@
           "errorTitle": "Connexion interrompue",
           "reconnectAction": "Reconnecter ma société",
           "errorHints": {
-            "reconnectRequired": "La plateforme a révoqué l'accès accordé à Louez. Reconnectez votre société pour reprendre l'envoi de vos factures.",
+            "reconnectRequired": "La plateforme a révoqué l'accès accordé à Louez. Reconnectez votre société pour recevoir vos factures et reprendre les envois éventuellement activés.",
             "oauthFailed": "L'inscription n'a pas pu aboutir. Relancez-la ; si le problème persiste, contactez le support.",
             "operationFailed": "Le dernier échange avec la plateforme a échoué. Louez réessaiera automatiquement ; reconnectez-vous si le problème persiste."
           },
           "lockedTitle": "Connexion pas encore disponible",
           "lockedReasons": {
             "identityIncomplete": "Complétez votre identité légale à l'étape 1 : la plateforme la vérifie avant d'inscrire votre société.",
-            "invoicingDisabled": "Activez la facturation par Louez à l'étape 2 : il n'y a rien à transmettre tant que Louez n'émet pas vos factures.",
             "countryUnsupported": "La transmission électronique est disponible uniquement pour les sociétés immatriculées en France ou en Belgique."
           },
           "details": {
@@ -4421,7 +4424,7 @@
             "pending": "En cours de vérification",
             "failed": "Vérification échouée"
           },
-          "verificationPendingNote": "La plateforme vérifie encore les informations de votre société. Vos factures seront transmises dès la fin du contrôle.",
+          "verificationPendingNote": "La plateforme vérifie encore les informations de votre société. La connexion sera opérationnelle dès la fin du contrôle.",
           "directoryStatus": {
             "pending": "Enregistrement en cours",
             "created": "Enregistrée",
@@ -4434,7 +4437,7 @@
           },
           "result": {
             "successTitle": "Société connectée",
-            "successDescription": "Votre société est désormais inscrite auprès de la plateforme agréée. Vos factures seront transmises automatiquement.",
+            "successDescription": "Votre société est désormais inscrite auprès de la plateforme agréée et peut recevoir ses factures fournisseurs. Les factures émises par Louez seront aussi transmises si vous activez l'émission.",
             "errorTitle": "Échec de la connexion",
             "errors": {
               "oauth": "L'inscription a été interrompue avant d'aboutir. Vous pouvez la relancer.",

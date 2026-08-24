@@ -4157,7 +4157,7 @@
       },
       "invoicing": {
         "title": "Fatturazione elettronica",
-        "description": "Configura l'identità legale della tua azienda e lascia che Louez emetta le tue fatture.",
+        "description": "Configura la ricezione obbligatoria delle fatture elettroniche e scegli se Louez deve anche emettere le tue fatture.",
         "saved": "Impostazioni di fatturazione salvate",
         "statusComplete": "Completo",
         "statusIncomplete": "Da completare",
@@ -4168,14 +4168,13 @@
             "transmission": "Trasmissione"
           },
           "continue": "Continua",
-          "finishWithoutInvoicing": "Termina senza attivare",
           "later": "Configura più tardi",
           "intro": {
-            "title": "Passa alla fatturazione elettronica",
-            "description": "Louez genera fatture conformi a nome della tua società e le trasmette tramite la rete ufficiale delle piattaforme accreditate. Configura tutto in tre passaggi.",
+            "title": "Prepara la tua azienda alla fatturazione elettronica",
+            "description": "Collega la tua azienda alla rete ufficiale per ricevere le fatture dei fornitori. Puoi anche affidare da subito a Louez l'emissione delle tue fatture.",
             "bullets": {
-              "generate": "Fatture conformi generate e numerate automaticamente a ogni incasso.",
-              "transmit": "Invio delle tue fatture ai clienti professionali tramite la rete ufficiale, con e-reporting automatico delle vendite.",
+              "generate": "Se attivi l'emissione, Louez genera e numera una fattura conforme a ogni incasso.",
+              "transmit": "Se attivi l'emissione, Louez invia le fatture ai clienti professionali e gestisce l'e-reporting delle vendite.",
               "receive": "Ricezione centralizzata delle fatture dei tuoi fornitori."
             },
             "start": "Inizia la configurazione",
@@ -4228,14 +4227,19 @@
           "city": "Città"
         },
         "louezInvoicing": {
-          "title": "Fatturazione tramite Louez",
-          "description": "Louez genera e numera le tue fatture a ogni incasso.",
-          "statusActive": "Attiva",
+          "title": "Emissione delle fatture",
+          "description": "Scegli se Louez deve emettere subito le tue fatture. Puoi modificare questa scelta in qualsiasi momento.",
+          "statusActive": "Emissione attiva",
+          "statusReceptionOnly": "Solo ricezione",
           "statusInactive": "Disattivata",
           "lockedTitle": "Completa prima la tua identità legale",
-          "lockedDescription": "Una fattura legale deve riportare ragione sociale, forma giuridica, numero d'impresa e indirizzo della sede. Completa il passaggio 1 per attivare la fatturazione.",
-          "enabled": "Louez emette le mie fatture",
-          "enabledDescription": "Louez genera e numera le tue fatture: a ogni incasso viene prodotta una fattura conforme a nome della tua azienda, con numerazione sequenziale e senza salti.",
+          "lockedDescription": "Una fattura legale deve riportare ragione sociale, forma giuridica, numero d'impresa e indirizzo della sede. Completa il passaggio 1 prima di scegliere la modalità di fatturazione.",
+          "choiceLabel": "Come vuoi usare la fatturazione elettronica?",
+          "emissionAndReception": "Emissione + ricezione (consigliato)",
+          "emissionAndReceptionDescription": "Louez genera, numera e trasmette le tue fatture a ogni incasso. La tua azienda riceve anche le fatture dei fornitori.",
+          "receptionOnly": "Solo ricezione — non emetto ancora le mie fatture tramite Louez",
+          "receptionOnlyDescription": "Louez non emette fatture. La tua azienda resta collegata per ricevere le fatture dei fornitori.",
+          "reformTimeline": "La ricezione delle fatture elettroniche diventa obbligatoria a settembre 2026. L'emissione diventa obbligatoria a settembre 2027 e può essere attivata qui in qualsiasi momento.",
           "vatRegime": "Regime IVA",
           "vatRegimePlaceholder": "Scegli il tuo regime",
           "vatRegimeDescription": "Determina il calendario di dichiarazione trasmesso alla piattaforma di fatturazione.",
@@ -4250,13 +4254,13 @@
         },
         "transmission": {
           "title": "Trasmissione elettronica (PDP)",
-          "description": "Collega la tua azienda a una piattaforma accreditata per inviare e ricevere fatture tramite la rete ufficiale.",
+          "description": "Collega la tua azienda a una piattaforma accreditata per ricevere fatture e, se attivi l'emissione, inviare quelle dei clienti tramite la rete ufficiale.",
           "statusPending": "Iscrizione in corso",
           "statusActionRequired": "Azione richiesta",
           "deadlineTitle": "Scadenza di settembre 2026",
           "deadlineDescription": "Da settembre 2026 ogni azienda francese deve essere collegata a una piattaforma accreditata per ricevere le proprie fatture elettroniche; l'emissione diventa obbligatoria a settembre 2027. Il collegamento da Louez è gratuito.",
           "benefits": {
-            "send": "Invia le tue fatture ai clienti professionali tramite la rete ufficiale.",
+            "send": "Invia fatture ai clienti professionali se attivi l'emissione.",
             "receive": "Ricevi tutte le fatture dei fornitori in un unico posto.",
             "reporting": "E-reporting automatico delle tue vendite ai privati."
           },
@@ -4267,14 +4271,13 @@
           "errorTitle": "Connessione interrotta",
           "reconnectAction": "Ricollega la mia azienda",
           "errorHints": {
-            "reconnectRequired": "La piattaforma ha revocato l'accesso concesso a Louez. Ricollega la tua azienda per riprendere l'invio delle fatture.",
+            "reconnectRequired": "La piattaforma ha revocato l'accesso concesso a Louez. Ricollega la tua azienda per ricevere fatture e riprendere gli invii attivati.",
             "oauthFailed": "Non è stato possibile completare l'iscrizione. Riavviala; se il problema persiste, contatta l'assistenza.",
             "operationFailed": "L'ultimo scambio con la piattaforma non è riuscito. Louez riproverà automaticamente; ricollegati se il problema persiste."
           },
           "lockedTitle": "Connessione non ancora disponibile",
           "lockedReasons": {
             "identityIncomplete": "Completa la tua identità legale al passaggio 1: la piattaforma la verifica prima di iscrivere la tua azienda.",
-            "invoicingDisabled": "Attiva la fatturazione Louez al passaggio 2: non c'è nulla da trasmettere finché Louez non emette le fatture.",
             "countryUnsupported": "La trasmissione elettronica è attualmente disponibile solo per le aziende registrate in Francia o Belgio."
           },
           "details": {
@@ -4287,7 +4290,7 @@
             "pending": "In verifica",
             "failed": "Verifica non riuscita"
           },
-          "verificationPendingNote": "La piattaforma sta ancora esaminando i dati della tua azienda. Le fatture saranno trasmesse al termine della verifica.",
+          "verificationPendingNote": "La piattaforma sta ancora esaminando i dati della tua azienda. La connessione sarà operativa al termine della verifica.",
           "directoryStatus": {
             "pending": "Registrazione in corso",
             "created": "Registrata",
@@ -4300,7 +4303,7 @@
           },
           "result": {
             "successTitle": "Azienda collegata",
-            "successDescription": "La tua azienda è ora iscritta alla piattaforma accreditata. Le fatture saranno trasmesse automaticamente.",
+            "successDescription": "La tua azienda è ora iscritta alla piattaforma accreditata e può ricevere le fatture dei fornitori. Le fatture emesse da Louez saranno trasmesse se attivi l'emissione.",
             "errorTitle": "Connessione non riuscita",
             "errors": {
               "oauth": "L'iscrizione è stata interrotta prima del completamento. Puoi riavviarla.",

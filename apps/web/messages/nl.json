@@ -4157,7 +4157,7 @@
       },
       "invoicing": {
         "title": "Elektronische facturatie",
-        "description": "Stel de juridische identiteit van je bedrijf in en laat Louez je facturen opmaken.",
+        "description": "Stel de verplichte ontvangst van e-facturen in en kies of Louez ook je facturen uitgeeft.",
         "saved": "Factuurinstellingen opgeslagen",
         "statusComplete": "Volledig",
         "statusIncomplete": "Aan te vullen",
@@ -4168,15 +4168,14 @@
             "transmission": "Verzending"
           },
           "continue": "Doorgaan",
-          "finishWithoutInvoicing": "Afronden zonder activeren",
           "later": "Later instellen",
           "intro": {
-            "title": "Stap over op elektronische facturatie",
-            "description": "Louez genereert conforme facturen op naam van uw bedrijf en verzendt ze via het officiële netwerk van erkende platformen. Stel alles in drie stappen in.",
+            "title": "Bereid je onderneming voor op elektronische facturatie",
+            "description": "Verbind je onderneming met het officiële netwerk om leveranciersfacturen te ontvangen. Je kunt Louez ook nu al je facturen laten uitgeven.",
             "bullets": {
-              "generate": "Conforme facturen worden bij elke betaling automatisch gegenereerd en genummerd.",
-              "transmit": "Verzending van uw facturen naar zakelijke klanten via het officiële netwerk, met automatische e-reporting van uw verkopen.",
-              "receive": "Gecentraliseerde ontvangst van de facturen van uw leveranciers."
+              "generate": "Als je uitgifte activeert, maakt en nummert Louez bij elke betaling een conforme factuur.",
+              "transmit": "Als je uitgifte activeert, verstuurt Louez facturen naar zakelijke klanten en verzorgt het de e-reporting van je verkopen.",
+              "receive": "Gecentraliseerde ontvangst van de facturen van je leveranciers."
             },
             "start": "Instellen starten",
             "resume": "Instellen hervatten",
@@ -4228,14 +4227,19 @@
           "city": "Stad"
         },
         "louezInvoicing": {
-          "title": "Facturatie door Louez",
-          "description": "Louez maakt en nummert je facturen bij elke ontvangen betaling.",
-          "statusActive": "Ingeschakeld",
+          "title": "Uitgifte van facturen",
+          "description": "Kies of Louez je facturen nu al moet uitgeven. Je kunt deze keuze op elk moment wijzigen.",
+          "statusActive": "Uitgifte ingeschakeld",
+          "statusReceptionOnly": "Alleen ontvangst",
           "statusInactive": "Uitgeschakeld",
           "lockedTitle": "Vul eerst je juridische identiteit in",
-          "lockedDescription": "Een wettelijke factuur moet de statutaire naam, rechtsvorm, het ondernemingsnummer en het zeteladres bevatten. Vul stap 1 in om facturatie in te schakelen.",
-          "enabled": "Louez reikt mijn facturen uit",
-          "enabledDescription": "Louez maakt en nummert je facturen: bij elke ontvangen betaling wordt een conforme factuur op naam van je onderneming aangemaakt, met sluitende opeenvolgende nummering.",
+          "lockedDescription": "Een wettelijke factuur moet de statutaire naam, rechtsvorm, het ondernemingsnummer en het zeteladres bevatten. Vul stap 1 in voordat je de facturatiemodus kiest.",
+          "choiceLabel": "Hoe wil je elektronische facturatie gebruiken?",
+          "emissionAndReception": "Uitgifte + ontvangst (aanbevolen)",
+          "emissionAndReceptionDescription": "Louez maakt, nummert en verstuurt je facturen bij elke betaling. Je onderneming ontvangt ook leveranciersfacturen.",
+          "receptionOnly": "Alleen ontvangst — ik geef mijn facturen nog niet via Louez uit",
+          "receptionOnlyDescription": "Louez geeft geen facturen uit. Je onderneming blijft verbonden om leveranciersfacturen te ontvangen.",
+          "reformTimeline": "De ontvangst van e-facturen wordt verplicht in september 2026. Uitgifte wordt verplicht in september 2027 en kan hier op elk moment worden ingeschakeld.",
           "vatRegime": "Btw-regime",
           "vatRegimePlaceholder": "Kies je regime",
           "vatRegimeDescription": "Bepaalt de aangiftekalender die naar het factuurplatform wordt gestuurd.",
@@ -4250,13 +4254,13 @@
         },
         "transmission": {
           "title": "Elektronische verzending (PDP)",
-          "description": "Verbind je onderneming met een erkend platform om facturen via het officiële netwerk te versturen en te ontvangen.",
+          "description": "Verbind je onderneming met een erkend platform om facturen te ontvangen en, als uitgifte is ingeschakeld, klantfacturen via het officiële netwerk te versturen.",
           "statusPending": "Inschrijving loopt",
           "statusActionRequired": "Actie vereist",
           "deadlineTitle": "Deadline september 2026",
           "deadlineDescription": "Vanaf september 2026 moet elke Franse onderneming aangesloten zijn op een erkend platform om elektronische facturen te ontvangen; verzenden wordt verplicht in september 2027. Aansluiten via Louez is gratis.",
           "benefits": {
-            "send": "Verstuur je facturen naar zakelijke klanten via het officiële netwerk.",
+            "send": "Verstuur facturen naar zakelijke klanten als je uitgifte inschakelt.",
             "receive": "Ontvang al je leveranciersfacturen op één plek.",
             "reporting": "Automatische e-reporting van je verkopen aan particulieren."
           },
@@ -4267,14 +4271,13 @@
           "errorTitle": "Verbinding onderbroken",
           "reconnectAction": "Mijn onderneming opnieuw verbinden",
           "errorHints": {
-            "reconnectRequired": "Het platform heeft de toegang van Louez ingetrokken. Verbind je onderneming opnieuw om facturen weer te verzenden.",
+            "reconnectRequired": "Het platform heeft de toegang van Louez ingetrokken. Verbind je onderneming opnieuw om facturen te ontvangen en ingeschakelde verzending te hervatten.",
             "oauthFailed": "De inschrijving kon niet worden afgerond. Start opnieuw; neem contact op met support als het probleem aanhoudt.",
             "operationFailed": "De laatste uitwisseling met het platform is mislukt. Louez probeert het automatisch opnieuw; verbind opnieuw als het probleem aanhoudt."
           },
           "lockedTitle": "Verbinding nog niet beschikbaar",
           "lockedReasons": {
             "identityIncomplete": "Vul je wettelijke identiteit in stap 1 aan: het platform controleert die voordat je onderneming wordt ingeschreven.",
-            "invoicingDisabled": "Schakel facturatie door Louez in stap 2 in: er is niets te verzenden zolang Louez geen facturen uitgeeft.",
             "countryUnsupported": "Elektronische verzending is momenteel alleen beschikbaar voor ondernemingen die in Frankrijk of België zijn geregistreerd."
           },
           "details": {
@@ -4287,7 +4290,7 @@
             "pending": "Wordt gecontroleerd",
             "failed": "Controle mislukt"
           },
-          "verificationPendingNote": "Het platform controleert je bedrijfsgegevens nog. Je facturen worden verzonden zodra de controle is afgerond.",
+          "verificationPendingNote": "Het platform controleert je bedrijfsgegevens nog. De verbinding wordt actief zodra de controle is afgerond.",
           "directoryStatus": {
             "pending": "Registratie loopt",
             "created": "Geregistreerd",
@@ -4300,7 +4303,7 @@
           },
           "result": {
             "successTitle": "Onderneming verbonden",
-            "successDescription": "Je onderneming is nu ingeschreven bij het erkende platform. Je facturen worden automatisch verzonden.",
+            "successDescription": "Je onderneming is nu ingeschreven bij het erkende platform en kan leveranciersfacturen ontvangen. Facturen die Louez uitgeeft, worden ook verzonden als je uitgifte inschakelt.",
             "errorTitle": "Verbinding mislukt",
             "errors": {
               "oauth": "De inschrijving werd onderbroken voordat ze voltooid was. Je kunt opnieuw beginnen.",

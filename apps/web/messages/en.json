@@ -4291,7 +4291,7 @@
       },
       "invoicing": {
         "title": "Electronic invoicing",
-        "description": "Set up your company's legal identity and let Louez issue your invoices.",
+        "description": "Set up mandatory e-invoice reception and choose whether Louez also issues your invoices.",
         "saved": "Invoicing settings saved",
         "statusComplete": "Complete",
         "statusIncomplete": "To complete",
@@ -4302,14 +4302,13 @@
             "transmission": "Transmission"
           },
           "continue": "Continue",
-          "finishWithoutInvoicing": "Finish without enabling",
           "later": "Set up later",
           "intro": {
-            "title": "Switch to electronic invoicing",
-            "description": "Louez generates compliant invoices in your company's name and transmits them through the official network of accredited platforms. Set everything up in three steps.",
+            "title": "Get your company ready for electronic invoicing",
+            "description": "Connect your company to the official network to receive supplier invoices. You can also have Louez issue your invoices now.",
             "bullets": {
-              "generate": "Compliant invoices generated and numbered automatically with every payment.",
-              "transmit": "Invoices sent to business customers through the official network, with automatic e-reporting of your sales.",
+              "generate": "If you enable issuing, Louez generates and numbers a compliant invoice with every payment.",
+              "transmit": "If you enable issuing, Louez sends invoices to business customers and handles sales e-reporting.",
               "receive": "Centralized reception of your suppliers' invoices."
             },
             "start": "Start setup",
@@ -4362,14 +4361,19 @@
           "city": "City"
         },
         "louezInvoicing": {
-          "title": "Invoicing by Louez",
-          "description": "Louez generates and numbers your invoices on every payment received.",
-          "statusActive": "Enabled",
+          "title": "Invoice issuing",
+          "description": "Choose whether Louez should issue your invoices now. You can change this choice at any time.",
+          "statusActive": "Issuing enabled",
+          "statusReceptionOnly": "Reception only",
           "statusInactive": "Disabled",
           "lockedTitle": "Complete your legal identity first",
-          "lockedDescription": "A legal invoice must carry your legal name, legal form, company number and registered address. Fill in step 1 to switch invoicing on.",
-          "enabled": "Louez issues my invoices",
-          "enabledDescription": "Louez generates and numbers your invoices: every payment received produces a compliant invoice in your company's name, with gap-free sequential numbering.",
+          "lockedDescription": "A legal invoice must carry your legal name, legal form, company number and registered address. Fill in step 1 before choosing your invoicing mode.",
+          "choiceLabel": "How would you like to use electronic invoicing?",
+          "emissionAndReception": "Issuing + reception (recommended)",
+          "emissionAndReceptionDescription": "Louez generates, numbers and transmits your invoices with every payment. Your company also receives supplier invoices.",
+          "receptionOnly": "Reception only — I am not issuing invoices through Louez yet",
+          "receptionOnlyDescription": "Louez does not issue invoices. Your company stays connected to receive supplier invoices.",
+          "reformTimeline": "Receiving e-invoices becomes mandatory in September 2026. Issuing becomes mandatory in September 2027 and can be enabled here at any time.",
           "vatRegime": "VAT regime",
           "vatRegimePlaceholder": "Choose your regime",
           "vatRegimeDescription": "Determines the reporting calendar sent to the invoicing platform.",
@@ -4384,13 +4388,13 @@
         },
         "transmission": {
           "title": "Electronic transmission (PDP)",
-          "description": "Connect your company to an accredited platform to send and receive invoices over the official network.",
+          "description": "Connect your company to an accredited platform to receive invoices and, if issuing is enabled, send customer invoices through the official network.",
           "statusPending": "Enrollment in progress",
           "statusActionRequired": "Action required",
           "deadlineTitle": "September 2026 deadline",
           "deadlineDescription": "From September 2026, every French company must be connected to an accredited platform to receive its electronic invoices; issuing becomes mandatory in September 2027. Connecting from Louez is free of charge.",
           "benefits": {
-            "send": "Send your invoices to business customers over the official network.",
+            "send": "Send invoices to business customers if you enable issuing.",
             "receive": "Receive all your supplier invoices in one place.",
             "reporting": "Automatic e-reporting of your sales to consumers."
           },
@@ -4401,14 +4405,13 @@
           "errorTitle": "Connection interrupted",
           "reconnectAction": "Reconnect my company",
           "errorHints": {
-            "reconnectRequired": "The platform revoked the access granted to Louez. Reconnect your company to resume sending invoices.",
+            "reconnectRequired": "The platform revoked Louez's access. Reconnect your company to receive invoices and resume any enabled sending.",
             "oauthFailed": "The enrollment could not be completed. Start it again; if the problem persists, contact support.",
             "operationFailed": "The last exchange with the platform failed. Louez will retry automatically; reconnect if the problem persists."
           },
           "lockedTitle": "Connection not available yet",
           "lockedReasons": {
             "identityIncomplete": "Complete your legal identity in step 1: the platform verifies it before enrolling your company.",
-            "invoicingDisabled": "Turn on invoicing by Louez in step 2: there is nothing to transmit until Louez issues your invoices.",
             "countryUnsupported": "Electronic transmission is currently available for companies registered in France or Belgium only."
           },
           "details": {
@@ -4421,7 +4424,7 @@
             "pending": "Being verified",
             "failed": "Verification failed"
           },
-          "verificationPendingNote": "The platform is still reviewing your company details. Your invoices will be transmitted as soon as the check is complete.",
+          "verificationPendingNote": "The platform is still reviewing your company details. The connection will become operational once the check is complete.",
           "directoryStatus": {
             "pending": "Registration in progress",
             "created": "Registered",
@@ -4434,7 +4437,7 @@
           },
           "result": {
             "successTitle": "Company connected",
-            "successDescription": "Your company is now enrolled with the accredited platform. Your invoices will be transmitted automatically.",
+            "successDescription": "Your company is now enrolled with the accredited platform and can receive supplier invoices. Invoices issued by Louez will also be transmitted if you enable issuing.",
             "errorTitle": "Connection failed",
             "errors": {
               "oauth": "The enrollment was interrupted before it could be completed. You can start it again.",

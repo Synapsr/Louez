@@ -62,7 +62,8 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
   const view = resolvePdpTransmissionView({ enrollment, profile: formValues });
   const progress: InvoicingSetupProgress = {
     identityComplete: isLegalIdentityComplete(formValues),
-    invoicingActive: formValues.invoicingEnabled,
+    legalProfileSaved: profile !== null,
+    emissionEnabled: formValues.invoicingEnabled,
     transmissionState: view.state,
   };
   const result = resolvePdpEnrollmentResult(params);
@@ -88,11 +89,7 @@ const InvoicingSettingsPage = async ({ searchParams }: InvoicingSettingsPageProp
   );
 
   return (
-    <SettingsPageShell
-      title={t("title")}
-      description={t("description")}
-      actions={pageActions}
-    >
+    <SettingsPageShell title={t("title")} description={t("description")} actions={pageActions}>
       {result && <PdpEnrollmentResultAlert result={result} />}
       {/* Keyed on the row so only its creation (first save) or deletion (dev
           reset) remounts the flow — never a mid-wizard save. */}

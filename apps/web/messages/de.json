@@ -4157,7 +4157,7 @@
       },
       "invoicing": {
         "title": "Elektronische Rechnungsstellung",
-        "description": "Hinterlegen Sie die rechtlichen Daten Ihres Unternehmens und lassen Sie Louez Ihre Rechnungen erstellen.",
+        "description": "Richten Sie den verpflichtenden Empfang elektronischer Rechnungen ein und entscheiden Sie, ob Louez auch Ihre Rechnungen ausstellt.",
         "saved": "Rechnungseinstellungen gespeichert",
         "statusComplete": "Vollständig",
         "statusIncomplete": "Zu vervollständigen",
@@ -4168,14 +4168,13 @@
             "transmission": "Übertragung"
           },
           "continue": "Weiter",
-          "finishWithoutInvoicing": "Ohne Aktivierung abschließen",
           "later": "Später einrichten",
           "intro": {
-            "title": "Umstieg auf die elektronische Rechnungsstellung",
-            "description": "Louez erstellt konforme Rechnungen im Namen Ihres Unternehmens und übermittelt sie über das offizielle Netz der zugelassenen Plattformen. Richten Sie alles in drei Schritten ein.",
+            "title": "Bereiten Sie Ihr Unternehmen auf die elektronische Rechnungsstellung vor",
+            "description": "Verbinden Sie Ihr Unternehmen mit dem offiziellen Netz, um Lieferantenrechnungen zu empfangen. Sie können Louez auch schon jetzt Ihre Rechnungen ausstellen lassen.",
             "bullets": {
-              "generate": "Konforme Rechnungen werden bei jeder Zahlung automatisch erstellt und nummeriert.",
-              "transmit": "Versand Ihrer Rechnungen an Geschäftskunden über das offizielle Netz, mit automatischem E-Reporting Ihrer Verkäufe.",
+              "generate": "Wenn Sie die Ausstellung aktivieren, erstellt und nummeriert Louez bei jeder Zahlung eine konforme Rechnung.",
+              "transmit": "Wenn Sie die Ausstellung aktivieren, sendet Louez Rechnungen an Geschäftskunden und übernimmt das E-Reporting Ihrer Verkäufe.",
               "receive": "Zentraler Empfang der Rechnungen Ihrer Lieferanten."
             },
             "start": "Einrichtung starten",
@@ -4228,14 +4227,19 @@
           "city": "Stadt"
         },
         "louezInvoicing": {
-          "title": "Rechnungsstellung durch Louez",
-          "description": "Louez erstellt und nummeriert Ihre Rechnungen bei jedem Zahlungseingang.",
-          "statusActive": "Aktiviert",
+          "title": "Rechnungsausstellung",
+          "description": "Entscheiden Sie, ob Louez Ihre Rechnungen schon jetzt ausstellen soll. Sie können diese Wahl jederzeit ändern.",
+          "statusActive": "Ausstellung aktiviert",
+          "statusReceptionOnly": "Nur Empfang",
           "statusInactive": "Deaktiviert",
           "lockedTitle": "Vervollständigen Sie zuerst Ihre rechtliche Identität",
-          "lockedDescription": "Eine rechtsgültige Rechnung muss Firmenname, Rechtsform, Unternehmensnummer und Sitzadresse enthalten. Füllen Sie Schritt 1 aus, um die Rechnungsstellung zu aktivieren.",
-          "enabled": "Louez stellt meine Rechnungen aus",
-          "enabledDescription": "Louez erstellt und nummeriert Ihre Rechnungen: Bei jedem Zahlungseingang entsteht eine konforme Rechnung im Namen Ihres Unternehmens, mit lückenloser fortlaufender Nummerierung.",
+          "lockedDescription": "Eine rechtsgültige Rechnung muss Firmenname, Rechtsform, Unternehmensnummer und Sitzadresse enthalten. Füllen Sie Schritt 1 aus, bevor Sie den Rechnungsmodus wählen.",
+          "choiceLabel": "Wie möchten Sie die elektronische Rechnungsstellung nutzen?",
+          "emissionAndReception": "Ausstellung + Empfang (empfohlen)",
+          "emissionAndReceptionDescription": "Louez erstellt, nummeriert und übermittelt Ihre Rechnungen bei jeder Zahlung. Ihr Unternehmen empfängt auch Lieferantenrechnungen.",
+          "receptionOnly": "Nur Empfang — ich stelle meine Rechnungen noch nicht über Louez aus",
+          "receptionOnlyDescription": "Louez stellt keine Rechnungen aus. Ihr Unternehmen bleibt für den Empfang von Lieferantenrechnungen verbunden.",
+          "reformTimeline": "Der Empfang elektronischer Rechnungen wird im September 2026 verpflichtend. Die Ausstellung wird im September 2027 verpflichtend und kann hier jederzeit aktiviert werden.",
           "vatRegime": "Umsatzsteuer-Regime",
           "vatRegimePlaceholder": "Regime auswählen",
           "vatRegimeDescription": "Bestimmt den Meldekalender, der an die Rechnungsplattform übermittelt wird.",
@@ -4250,13 +4254,13 @@
         },
         "transmission": {
           "title": "Elektronische Übermittlung (PDP)",
-          "description": "Verbinden Sie Ihr Unternehmen mit einer zugelassenen Plattform, um Rechnungen über das offizielle Netz zu senden und zu empfangen.",
+          "description": "Verbinden Sie Ihr Unternehmen mit einer zugelassenen Plattform, um Rechnungen zu empfangen und bei aktivierter Ausstellung Kundenrechnungen über das offizielle Netz zu senden.",
           "statusPending": "Anmeldung läuft",
           "statusActionRequired": "Aktion erforderlich",
           "deadlineTitle": "Frist September 2026",
           "deadlineDescription": "Ab September 2026 muss jedes französische Unternehmen an eine zugelassene Plattform angebunden sein, um elektronische Rechnungen zu empfangen; der Versand wird im September 2027 verpflichtend. Die Anbindung über Louez ist kostenlos.",
           "benefits": {
-            "send": "Senden Sie Ihre Rechnungen über das offizielle Netz an Geschäftskunden.",
+            "send": "Senden Sie Rechnungen an Geschäftskunden, wenn Sie die Ausstellung aktivieren.",
             "receive": "Empfangen Sie alle Lieferantenrechnungen an einem Ort.",
             "reporting": "Automatisches E-Reporting Ihrer Verkäufe an Privatkunden."
           },
@@ -4267,14 +4271,13 @@
           "errorTitle": "Verbindung unterbrochen",
           "reconnectAction": "Unternehmen erneut verbinden",
           "errorHints": {
-            "reconnectRequired": "Die Plattform hat den Louez gewährten Zugriff widerrufen. Verbinden Sie Ihr Unternehmen erneut, um Rechnungen wieder zu senden.",
+            "reconnectRequired": "Die Plattform hat den Louez gewährten Zugriff widerrufen. Verbinden Sie Ihr Unternehmen erneut, um Rechnungen zu empfangen und aktivierte Sendungen fortzusetzen.",
             "oauthFailed": "Die Anmeldung konnte nicht abgeschlossen werden. Starten Sie sie erneut; wenden Sie sich an den Support, wenn das Problem anhält.",
             "operationFailed": "Der letzte Austausch mit der Plattform ist fehlgeschlagen. Louez versucht es automatisch erneut; verbinden Sie sich bei anhaltendem Problem neu."
           },
           "lockedTitle": "Verbindung noch nicht verfügbar",
           "lockedReasons": {
             "identityIncomplete": "Vervollständigen Sie in Schritt 1 Ihre rechtliche Identität: Die Plattform prüft sie vor der Anmeldung Ihres Unternehmens.",
-            "invoicingDisabled": "Aktivieren Sie in Schritt 2 die Rechnungsstellung durch Louez: Es gibt nichts zu übertragen, solange Louez keine Rechnungen ausstellt.",
             "countryUnsupported": "Die elektronische Übertragung ist derzeit nur für Unternehmen verfügbar, die in Frankreich oder Belgien registriert sind."
           },
           "details": {
@@ -4287,7 +4290,7 @@
             "pending": "Wird geprüft",
             "failed": "Prüfung fehlgeschlagen"
           },
-          "verificationPendingNote": "Die Plattform prüft Ihre Unternehmensdaten noch. Ihre Rechnungen werden nach Abschluss der Prüfung übertragen.",
+          "verificationPendingNote": "Die Plattform prüft Ihre Unternehmensdaten noch. Nach Abschluss der Prüfung ist die Verbindung einsatzbereit.",
           "directoryStatus": {
             "pending": "Registrierung läuft",
             "created": "Registriert",
@@ -4300,7 +4303,7 @@
           },
           "result": {
             "successTitle": "Unternehmen verbunden",
-            "successDescription": "Ihr Unternehmen ist jetzt bei der zugelassenen Plattform angemeldet. Ihre Rechnungen werden automatisch übertragen.",
+            "successDescription": "Ihr Unternehmen ist jetzt bei der zugelassenen Plattform angemeldet und kann Lieferantenrechnungen empfangen. Von Louez ausgestellte Rechnungen werden ebenfalls übertragen, wenn Sie die Ausstellung aktivieren.",
             "errorTitle": "Verbindung fehlgeschlagen",
             "errors": {
               "oauth": "Die Anmeldung wurde vor dem Abschluss unterbrochen. Sie können sie erneut starten.",

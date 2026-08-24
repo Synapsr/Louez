@@ -15,7 +15,7 @@ export const PDP_ENROLLMENT_START_HREF = `/api/integrations/superpdp/oauth/start
 )}`;
 
 /** Why the enrollment cannot be started yet. */
-export type PdpLockReason = "identityIncomplete" | "invoicingDisabled" | "countryUnsupported";
+export type PdpLockReason = "identityIncomplete" | "countryUnsupported";
 
 export type PdpTransmissionState = "notConnected" | "pending" | "connected" | "actionRequired";
 
@@ -37,12 +37,12 @@ const isPdpSupportedCountry = (country: string): boolean =>
   pdpSupportedCountries.some((supported) => supported === country);
 
 /**
- * Transmission needs a complete legal identity (the PDP performs KYB on it),
- * invoices to transmit, and a country covered by the network.
+ * Enrollment needs a complete legal identity (the PDP performs KYB on it)
+ * and a country covered by the network. Receiving invoices does not require
+ * Louez to issue the store's invoices.
  */
 const resolveLockReason = (profile: StoreLegalProfileInput): PdpLockReason | null => {
   if (!isLegalIdentityComplete(profile)) return "identityIncomplete";
-  if (!profile.invoicingEnabled) return "invoicingDisabled";
   if (!isPdpSupportedCountry(profile.country)) return "countryUnsupported";
   return null;
 };

@@ -4157,7 +4157,7 @@
       },
       "invoicing": {
         "title": "Faturação eletrónica",
-        "description": "Configure a identidade legal da sua empresa e deixe o Louez emitir as suas faturas.",
+        "description": "Configure a receção obrigatória de faturas eletrónicas e escolha se o Louez também deve emitir as suas faturas.",
         "saved": "Definições de faturação guardadas",
         "statusComplete": "Completo",
         "statusIncomplete": "A completar",
@@ -4168,14 +4168,13 @@
             "transmission": "Transmissão"
           },
           "continue": "Continuar",
-          "finishWithoutInvoicing": "Concluir sem ativar",
           "later": "Configurar mais tarde",
           "intro": {
-            "title": "Mude para a faturação eletrónica",
-            "description": "A Louez gera faturas conformes em nome da sua empresa e transmite-as através da rede oficial de plataformas acreditadas. Configure tudo em três passos.",
+            "title": "Prepare a sua empresa para a faturação eletrónica",
+            "description": "Ligue a sua empresa à rede oficial para receber faturas de fornecedores. Também pode deixar o Louez emitir as suas faturas desde já.",
             "bullets": {
-              "generate": "Faturas conformes geradas e numeradas automaticamente a cada pagamento.",
-              "transmit": "Envio das suas faturas a clientes profissionais através da rede oficial, com e-reporting automático das vendas.",
+              "generate": "Se ativar a emissão, o Louez gera e numera uma fatura conforme a cada pagamento.",
+              "transmit": "Se ativar a emissão, o Louez envia faturas a clientes empresariais e trata do e-reporting das vendas.",
               "receive": "Receção centralizada das faturas dos seus fornecedores."
             },
             "start": "Começar a configuração",
@@ -4228,14 +4227,19 @@
           "city": "Cidade"
         },
         "louezInvoicing": {
-          "title": "Faturação pelo Louez",
-          "description": "O Louez gera e numera as suas faturas em cada recebimento.",
-          "statusActive": "Ativada",
+          "title": "Emissão de faturas",
+          "description": "Escolha se o Louez deve emitir as suas faturas desde já. Pode alterar esta escolha a qualquer momento.",
+          "statusActive": "Emissão ativada",
+          "statusReceptionOnly": "Apenas receção",
           "statusInactive": "Desativada",
           "lockedTitle": "Complete primeiro a sua identidade legal",
-          "lockedDescription": "Uma fatura legal deve conter a denominação social, a forma jurídica, o número de empresa e a morada da sede. Preencha o passo 1 para ativar a faturação.",
-          "enabled": "O Louez emite as minhas faturas",
-          "enabledDescription": "O Louez gera e numera as suas faturas: em cada recebimento é produzida uma fatura conforme em nome da sua empresa, com numeração sequencial e sem falhas.",
+          "lockedDescription": "Uma fatura legal deve conter a denominação social, a forma jurídica, o número de empresa e a morada da sede. Preencha o passo 1 antes de escolher o modo de faturação.",
+          "choiceLabel": "Como pretende utilizar a faturação eletrónica?",
+          "emissionAndReception": "Emissão + receção (recomendado)",
+          "emissionAndReceptionDescription": "O Louez gera, numera e transmite as suas faturas a cada pagamento. A sua empresa também recebe faturas de fornecedores.",
+          "receptionOnly": "Apenas receção — ainda não emito as minhas faturas através do Louez",
+          "receptionOnlyDescription": "O Louez não emite faturas. A sua empresa permanece ligada para receber faturas de fornecedores.",
+          "reformTimeline": "A receção de faturas eletrónicas torna-se obrigatória em setembro de 2026. A emissão torna-se obrigatória em setembro de 2027 e pode ser ativada aqui a qualquer momento.",
           "vatRegime": "Regime de IVA",
           "vatRegimePlaceholder": "Escolha o seu regime",
           "vatRegimeDescription": "Determina o calendário de declaração enviado à plataforma de faturação.",
@@ -4250,13 +4254,13 @@
         },
         "transmission": {
           "title": "Transmissão eletrónica (PDP)",
-          "description": "Ligue a sua empresa a uma plataforma acreditada para enviar e receber faturas através da rede oficial.",
+          "description": "Ligue a sua empresa a uma plataforma acreditada para receber faturas e, se ativar a emissão, enviar faturas de clientes através da rede oficial.",
           "statusPending": "Inscrição em curso",
           "statusActionRequired": "Ação necessária",
           "deadlineTitle": "Prazo de setembro de 2026",
           "deadlineDescription": "A partir de setembro de 2026, todas as empresas francesas devem estar ligadas a uma plataforma acreditada para receber as suas faturas eletrónicas; a emissão torna-se obrigatória em setembro de 2027. A ligação a partir do Louez é gratuita.",
           "benefits": {
-            "send": "Envie as suas faturas a clientes empresariais através da rede oficial.",
+            "send": "Envie faturas a clientes empresariais se ativar a emissão.",
             "receive": "Receba todas as faturas de fornecedores num só lugar.",
             "reporting": "E-reporting automático das suas vendas a particulares."
           },
@@ -4267,14 +4271,13 @@
           "errorTitle": "Ligação interrompida",
           "reconnectAction": "Voltar a ligar a minha empresa",
           "errorHints": {
-            "reconnectRequired": "A plataforma revogou o acesso concedido ao Louez. Volte a ligar a sua empresa para retomar o envio de faturas.",
+            "reconnectRequired": "A plataforma revogou o acesso concedido ao Louez. Volte a ligar a sua empresa para receber faturas e retomar os envios ativados.",
             "oauthFailed": "Não foi possível concluir a inscrição. Inicie-a novamente; se o problema persistir, contacte o suporte.",
             "operationFailed": "A última troca com a plataforma falhou. O Louez tentará novamente de forma automática; volte a ligar se o problema persistir."
           },
           "lockedTitle": "Ligação ainda não disponível",
           "lockedReasons": {
             "identityIncomplete": "Complete a sua identidade legal no passo 1: a plataforma verifica-a antes de inscrever a sua empresa.",
-            "invoicingDisabled": "Ative a faturação pelo Louez no passo 2: não há nada para transmitir enquanto o Louez não emitir as suas faturas.",
             "countryUnsupported": "A transmissão eletrónica está atualmente disponível apenas para empresas registadas em França ou na Bélgica."
           },
           "details": {
@@ -4287,7 +4290,7 @@
             "pending": "Em verificação",
             "failed": "Falha na verificação"
           },
-          "verificationPendingNote": "A plataforma ainda está a analisar os dados da sua empresa. As faturas serão transmitidas assim que a verificação terminar.",
+          "verificationPendingNote": "A plataforma ainda está a analisar os dados da sua empresa. A ligação ficará operacional assim que a verificação terminar.",
           "directoryStatus": {
             "pending": "Registo em curso",
             "created": "Registada",
@@ -4300,7 +4303,7 @@
           },
           "result": {
             "successTitle": "Empresa ligada",
-            "successDescription": "A sua empresa está agora inscrita na plataforma acreditada. As faturas serão transmitidas automaticamente.",
+            "successDescription": "A sua empresa está agora inscrita na plataforma acreditada e pode receber faturas de fornecedores. As faturas emitidas pelo Louez também serão transmitidas se ativar a emissão.",
             "errorTitle": "Falha na ligação",
             "errors": {
               "oauth": "A inscrição foi interrompida antes de ser concluída. Pode iniciá-la novamente.",
