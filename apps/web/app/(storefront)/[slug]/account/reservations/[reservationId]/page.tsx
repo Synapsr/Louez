@@ -14,7 +14,7 @@ import { eq, and, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { getStorefrontUrl, storefrontRedirect } from '@/lib/storefront-url'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+
 import {
   ArrowLeft,
   Calendar,
@@ -48,6 +48,7 @@ import { ProductImage } from '@/components/product/product-image'
 import { ReviewPromptCard } from '@/components/storefront/review-prompt-card'
 import { buildReviewUrl } from '@/lib/google-places'
 import { formatStoreDate } from '@/lib/utils/store-date'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -263,7 +264,7 @@ export default async function ReservationDetailPage({
               </h1>
             </div>
             <p className="text-sm text-muted-foreground">
-              {t('createdAt', { date: format(reservation.createdAt, 'dd MMMM yyyy', { locale: fr }) })}
+              {t('createdAt', { date: format(reservation.createdAt, 'dd MMMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE }) })}
             </p>
           </div>
           <div className="flex flex-wrap items-start gap-2">
@@ -557,7 +558,7 @@ export default async function ReservationDetailPage({
                           <p className="text-xs text-muted-foreground">
                             {t(`paymentHistory.methods.${paymentMethod}`)}
                             {' • '}
-                            {format(payment.paidAt || payment.createdAt, 'dd MMM yyyy', { locale: fr })}
+                            {format(payment.paidAt || payment.createdAt, 'dd MMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })}
                           </p>
                         </div>
                       </div>

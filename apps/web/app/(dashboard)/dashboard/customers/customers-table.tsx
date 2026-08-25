@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+
 import { useTranslations } from 'next-intl'
 import { MoreHorizontal, Mail, Phone, MapPin, Eye, Pencil, Trash2, Users, Building2 } from 'lucide-react'
 import { useState, useTransition } from 'react'
@@ -39,6 +39,7 @@ import { orpc } from '@/lib/orpc/react'
 import { EmailContactPopover } from '@/components/dashboard/email-contact-popover'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { deleteCustomer } from './actions'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 interface Customer {
   id: string
@@ -171,7 +172,7 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                 <TableCell>
                   {customer.lastReservation ? (
                     <span className="text-sm text-muted-foreground">
-                      {format(new Date(customer.lastReservation), 'dd MMM yyyy', { locale: fr })}
+                      {format(new Date(customer.lastReservation), 'dd MMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })}
                     </span>
                   ) : (
                     <span className="text-sm text-muted-foreground">-</span>

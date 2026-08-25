@@ -1,3 +1,6 @@
+import type { Locale as DateFnsLocale } from "date-fns";
+import { de, enUS, es, fr, it, nl, pl, ptBR } from "date-fns/locale";
+
 import { defaultLocale, locales, localeCountries, type Locale } from "@/i18n/config";
 
 /**
@@ -37,3 +40,37 @@ function resolve(): string {
 
 /** BCP 47 tag for `Intl.*` formatters. */
 export const FORMAT_LOCALE = resolve();
+
+/* -------------------------------------------------------------------------
+ * date-fns
+ * ---------------------------------------------------------------------- */
+
+/**
+ * date-fns locale matching {@link FORMAT_LOCALE}.
+ *
+ * Components across the storefront and dashboard call
+ * `format(date, "EEE d MMM", { locale: fr })` with the French locale imported
+ * directly, which renders "mer. 27 août" on a German instance. Use this
+ * constant instead so weekday and month names follow the configured locale.
+ */
+const DATE_FNS_BY_LOCALE: Record<Locale, DateFnsLocale> = {
+  fr,
+  en: enUS,
+  de,
+  es,
+  it,
+  nl,
+  pl,
+  pt: ptBR,
+};
+
+function resolveDateFns(): DateFnsLocale {
+  const configured = process.env.NEXT_PUBLIC_DEFAULT_LOCALE?.trim();
+  if (configured && locales.includes(configured as Locale)) {
+    return DATE_FNS_BY_LOCALE[configured as Locale];
+  }
+  return DATE_FNS_BY_LOCALE[defaultLocale];
+}
+
+/** date-fns locale for `format()` and friends. */
+export const FORMAT_DATE_FNS_LOCALE: DateFnsLocale = resolveDateFns();

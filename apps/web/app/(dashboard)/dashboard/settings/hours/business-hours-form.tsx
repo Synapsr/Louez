@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { useStore } from "@tanstack/react-form";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -50,6 +50,7 @@ import { formatStoreDate } from "@/lib/utils/store-date";
 import { useAppForm } from "@/hooks/form/form";
 
 import { updateBusinessHours } from "./actions";
+import { FORMAT_DATE_FNS_LOCALE } from "@/lib/i18n/format-locale";
 
 const MAX_RANGES_PER_DAY = 4;
 
@@ -231,11 +232,11 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
                           </div>
                           <p className="text-muted-foreground text-xs">
                             {format(new Date(field.startDate), "dd MMM yyyy", {
-                              locale: fr,
+                              locale: FORMAT_DATE_FNS_LOCALE,
                             })}
                             {" - "}
                             {format(new Date(field.endDate), "dd MMM yyyy", {
-                              locale: fr,
+                              locale: FORMAT_DATE_FNS_LOCALE,
                             })}
                             {field.startTime && field.endTime && (
                               <>

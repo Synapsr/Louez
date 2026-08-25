@@ -3,7 +3,7 @@
 import Link from 'next/link';
 
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+
 import {
   ArrowRight,
   CalendarDays,
@@ -50,6 +50,7 @@ import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
 import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale';
 
 interface CartSidebarProps {
   storeSlug: string;
@@ -126,9 +127,9 @@ export function CartSidebar({
             <span className="font-medium">{t('period')}</span>
           </div>
           <p className="text-muted-foreground mt-1 text-sm">
-            {format(new Date(globalStartDate), 'dd MMM yyyy', { locale: fr })}
+            {format(new Date(globalStartDate), 'dd MMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })}
             {' → '}
-            {format(new Date(globalEndDate), 'dd MMM yyyy', { locale: fr })}
+            {format(new Date(globalEndDate), 'dd MMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })}
           </p>
           <Badge variant="expired" className="mt-2">
             {durationLabel}

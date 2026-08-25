@@ -2,9 +2,10 @@ import { db } from '@louez/db'
 import { discordLogs } from '@louez/db'
 import { formatCurrency } from '@louez/utils'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+
 import { sendDiscordNotification, type DiscordEmbed } from './client'
 import type { NotificationEventType } from '@louez/types'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 // Discord embed colors
 const COLORS = {
@@ -41,7 +42,7 @@ interface DiscordNotificationContext {
 }
 
 function formatDate(date: Date): string {
-  return format(date, 'dd MMM yyyy', { locale: fr })
+  return format(date, 'dd MMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })
 }
 
 async function logDiscordNotification(

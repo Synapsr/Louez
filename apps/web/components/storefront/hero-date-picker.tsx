@@ -28,6 +28,7 @@ import {
   isCalendarDateBeforeSelectedDate,
   useRentalDateCore,
 } from "@/components/storefront/date-picker/core/use-rental-date-core";
+import { FORMAT_DATE_FNS_LOCALE } from "@/lib/i18n/format-locale";
 
 interface HeroDatePickerProps {
   storeSlug: string;
@@ -373,7 +374,7 @@ export function HeroDatePicker({
                   >
                     <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                     <span className="font-medium text-sm truncate">
-                      {startDate ? format(startDate, "d MMM", { locale: fr }) : t("startDate")}
+                      {startDate ? format(startDate, "d MMM", { locale: FORMAT_DATE_FNS_LOCALE }) : t("startDate")}
                     </span>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -429,7 +430,7 @@ export function HeroDatePicker({
                   >
                     <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                     <span className="font-medium text-sm truncate">
-                      {endDate ? format(endDate, "d MMM", { locale: fr }) : t("endDate")}
+                      {endDate ? format(endDate, "d MMM", { locale: FORMAT_DATE_FNS_LOCALE }) : t("endDate")}
                     </span>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">

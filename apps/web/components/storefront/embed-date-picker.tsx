@@ -32,6 +32,7 @@ import {
   useRentalDateCore,
 } from '@/components/storefront/date-picker/core/use-rental-date-core'
 import { useBrowserTimezoneCity } from '@/hooks/use-browser-timezone-city'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -378,9 +379,9 @@ export function EmbedDatePicker({
   // Show the selected date as context when choosing a time slot
   const stepContext = useMemo(() => {
     if (step === 'startTime' && startDate)
-      return format(startDate, 'd MMM', { locale: fr })
+      return format(startDate, 'd MMM', { locale: FORMAT_DATE_FNS_LOCALE })
     if (step === 'endTime' && endDate)
-      return format(endDate, 'd MMM', { locale: fr })
+      return format(endDate, 'd MMM', { locale: FORMAT_DATE_FNS_LOCALE })
     return null
   }, [step, startDate, endDate])
 
@@ -613,7 +614,7 @@ function DateTimeField({
           <span
             className={cn('text-xs truncate', isFilled && 'font-medium')}
           >
-            {date ? format(date, 'd MMM', { locale: fr }) : datePlaceholder}
+            {date ? format(date, 'd MMM', { locale: FORMAT_DATE_FNS_LOCALE }) : datePlaceholder}
           </span>
         </button>
 

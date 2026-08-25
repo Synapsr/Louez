@@ -5,7 +5,7 @@ import { eq, and, desc } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+
 import { getTranslations } from 'next-intl/server'
 import {
   ArrowLeft,
@@ -34,6 +34,7 @@ import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-bread
 import { EmailContactPopover } from '@/components/dashboard/email-contact-popover'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { CustomerNotes } from './customer-notes'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -126,7 +127,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {t('contact')}: {customer.firstName} {customer.lastName} · {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: fr })}
+                  {t('contact')}: {customer.firstName} {customer.lastName} · {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })}
                 </p>
               </>
             ) : (
@@ -140,7 +141,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: fr })}
+                  {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })}
                 </p>
               </>
             )}
@@ -282,9 +283,9 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        {format(reservation.startDate, 'dd/MM/yyyy', { locale: fr })}
+                        {format(reservation.startDate, 'dd/MM/yyyy', { locale: FORMAT_DATE_FNS_LOCALE })}
                         {' - '}
-                        {format(reservation.endDate, 'dd/MM/yyyy', { locale: fr })}
+                        {format(reservation.endDate, 'dd/MM/yyyy', { locale: FORMAT_DATE_FNS_LOCALE })}
                       </div>
                     </TableCell>
                     <TableCell>

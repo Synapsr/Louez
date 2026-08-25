@@ -34,6 +34,7 @@ import {
   isCalendarDateBeforeSelectedDate,
   useRentalDateCore,
 } from '@/components/storefront/date-picker/core/use-rental-date-core'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 interface DatePickerModalProps {
   storeSlug: string
@@ -253,7 +254,7 @@ export function DatePickerModal({
                     <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                     <span className="font-medium text-sm truncate">
                       {startDate
-                        ? format(startDate, 'EEEE d MMMM yyyy', { locale: fr })
+                        ? format(startDate, 'EEEE d MMMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })
                         : t('startDate')}
                     </span>
                 </PopoverTrigger>
@@ -303,7 +304,7 @@ export function DatePickerModal({
                     <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                     <span className="font-medium text-sm truncate">
                       {endDate
-                        ? format(endDate, 'EEEE d MMMM yyyy', { locale: fr })
+                        ? format(endDate, 'EEEE d MMMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })
                         : t('endDate')}
                     </span>
                 </PopoverTrigger>

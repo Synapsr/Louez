@@ -54,6 +54,7 @@ import { getStorefrontPricingSummary, getStorefrontRateRows } from "@/lib/utils/
 import { useAnalytics } from "@/contexts/analytics-context";
 import { useCart } from "@/contexts/cart-context";
 import { useStoreCurrency, useStoreMaxDiscountPercent } from "@/contexts/store-context";
+import { FORMAT_DATE_FNS_LOCALE } from "@/lib/i18n/format-locale";
 
 interface PricingTier {
   id: string;
@@ -686,7 +687,7 @@ export function ProductPreviewModal({
                       <CalendarIcon className="text-primary h-4 w-4 shrink-0" />
                       <span className="truncate text-sm font-medium">
                         {startDate
-                          ? format(startDate, "d MMM", { locale: fr })
+                          ? format(startDate, "d MMM", { locale: FORMAT_DATE_FNS_LOCALE })
                           : tDateSelection("startDate")}
                       </span>
                     </PopoverTrigger>
@@ -744,7 +745,7 @@ export function ProductPreviewModal({
                       <CalendarIcon className="text-primary h-4 w-4 shrink-0" />
                       <span className="truncate text-sm font-medium">
                         {endDate
-                          ? format(endDate, "d MMM", { locale: fr })
+                          ? format(endDate, "d MMM", { locale: FORMAT_DATE_FNS_LOCALE })
                           : tDateSelection("endDate")}
                       </span>
                     </PopoverTrigger>

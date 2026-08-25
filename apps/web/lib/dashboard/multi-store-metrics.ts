@@ -8,9 +8,10 @@ import {
 } from '@louez/db'
 import { eq, and, gte, lte, sql, count, inArray } from 'drizzle-orm'
 import { subDays, startOfDay, format, eachDayOfInterval } from 'date-fns'
-import { fr } from 'date-fns/locale'
+
 import { getPlan, getDefaultPlan } from '@/lib/plans'
 import { getStoreUsage } from '@/lib/plan-limits'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 // ============================================================================
 // Types
@@ -520,7 +521,7 @@ export async function getMultiStoreRevenueTrend(
       const dateKey = format(day, 'yyyy-MM-dd')
       const point: StoreRevenueTrend = {
         date: dateKey,
-        label: format(day, days > 30 ? 'dd/MM' : 'EEE dd', { locale: fr }),
+        label: format(day, days > 30 ? 'dd/MM' : 'EEE dd', { locale: FORMAT_DATE_FNS_LOCALE }),
       }
 
       for (const storeId of topStoreIds) {

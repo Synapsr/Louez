@@ -8,7 +8,7 @@ import {
   subDays,
   subMonths,
 } from "date-fns";
-import { fr } from "date-fns/locale";
+
 import { and, count, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@louez/db";
@@ -16,6 +16,7 @@ import { customers, payments, products, reservationItems, reservations } from "@
 
 import { getPeriodConfig, type Period } from "../period";
 import type { PaymentMethodKey, PaymentMethodTotal } from "./payment-methods-breakdown";
+import { FORMAT_DATE_FNS_LOCALE } from "@/lib/i18n/format-locale";
 
 export interface RevenueTimeSeriesPoint {
   label: string;
@@ -92,7 +93,7 @@ export async function getRevenueTimeSeries(
     const bucket = bucketsByKey.get(format(date, bucketKey));
 
     return {
-      label: format(date, granularity === "month" ? "MMM yyyy" : "d MMM", { locale: fr }),
+      label: format(date, granularity === "month" ? "MMM yyyy" : "d MMM", { locale: FORMAT_DATE_FNS_LOCALE }),
       revenue: parseFloat(bucket?.total || "0"),
       payments: bucket?.count || 0,
     };

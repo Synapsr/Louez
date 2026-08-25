@@ -6,7 +6,6 @@ import { eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { Mail, Calendar, Shield } from 'lucide-react'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 
 import {
   Card,
@@ -23,6 +22,7 @@ import { parseKeyboardShortcutOverrides } from '@/lib/keyboard-shortcuts'
 
 import { AccountInfoForm } from './account-info-form'
 import { KeyboardShortcutsSettings } from './keyboard-shortcuts-settings'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -91,7 +91,7 @@ export default async function AccountSettingsPage() {
                 {t('accountSettings.memberSince')}
               </div>
               <p className="font-medium">
-                {format(user.createdAt, 'dd MMMM yyyy', { locale: fr })}
+                {format(user.createdAt, 'dd MMMM yyyy', { locale: FORMAT_DATE_FNS_LOCALE })}
               </p>
             </div>
           </div>

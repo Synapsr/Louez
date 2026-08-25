@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+
 import {
   AlertCircle,
   AlertTriangle,
@@ -69,6 +69,7 @@ import {
   openCustomerPortal,
   reactivateSubscription,
 } from './actions';
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale';
 
 interface Subscription {
   id: string;
@@ -392,12 +393,12 @@ export function SubscriptionManagement({
             {pendingBillingMode === 'pay_as_you_go'
               ? t('payAsYouGo.switchingAt', {
                   date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
-                    locale: fr,
+                    locale: FORMAT_DATE_FNS_LOCALE,
                   }),
                 })
               : t('alerts.cancellingAt', {
                   date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
-                    locale: fr,
+                    locale: FORMAT_DATE_FNS_LOCALE,
                   }),
                 })}
             <Button
@@ -509,7 +510,7 @@ export function SubscriptionManagement({
               <span>
                 {t('currentPlan.nextBilling', {
                   date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
-                    locale: fr,
+                    locale: FORMAT_DATE_FNS_LOCALE,
                   }),
                 })}
               </span>
@@ -952,7 +953,7 @@ export function SubscriptionManagement({
               <div className="bg-muted text-muted-foreground rounded-lg p-3 text-center text-sm">
                 {t('cancelModal.keepAccess', {
                   date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
-                    locale: fr,
+                    locale: FORMAT_DATE_FNS_LOCALE,
                   }),
                 })}
               </div>

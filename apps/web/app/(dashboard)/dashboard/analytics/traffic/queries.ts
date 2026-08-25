@@ -1,5 +1,5 @@
 import { eachDayOfInterval, endOfDay, format, startOfDay, subDays } from "date-fns";
-import { fr } from "date-fns/locale";
+
 import { and, count, eq, gte, lt, lte, ne, sql } from "drizzle-orm";
 
 import { db } from "@louez/db";
@@ -18,6 +18,7 @@ import type { FunnelStep } from "../funnel-chart";
 import { getPeriodConfig, type Period } from "../period";
 import type { TopProductData } from "../top-products-analytics";
 import type { TrendDataPoint } from "../trend-chart";
+import { FORMAT_DATE_FNS_LOCALE } from "@/lib/i18n/format-locale";
 
 const RAW_ANALYTICS_RETENTION_DAYS = 90;
 
@@ -321,7 +322,7 @@ export async function getTrendData(storeId: string, period: Period): Promise<Tre
       const stat = statsMap.get(key);
       return {
         date: key,
-        label: format(day, days > 30 ? "dd/MM" : "EEE dd", { locale: fr }),
+        label: format(day, days > 30 ? "dd/MM" : "EEE dd", { locale: FORMAT_DATE_FNS_LOCALE }),
         visitors: toNumber(stat?.visitors),
         pageViews: toNumber(stat?.pageViews),
         conversions: toNumber(stat?.conversions),
@@ -332,7 +333,7 @@ export async function getTrendData(storeId: string, period: Period): Promise<Tre
     // Return empty array with all days showing 0
     return allDays.map((day) => ({
       date: format(day, "yyyy-MM-dd"),
-      label: format(day, days > 30 ? "dd/MM" : "EEE dd", { locale: fr }),
+      label: format(day, days > 30 ? "dd/MM" : "EEE dd", { locale: FORMAT_DATE_FNS_LOCALE }),
       visitors: 0,
       pageViews: 0,
       conversions: 0,

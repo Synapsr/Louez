@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import { toastManager } from '@louez/ui'
 import { formatDistanceToNow } from 'date-fns'
-import { fr } from 'date-fns/locale'
 
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -55,6 +54,7 @@ import { cn, getCurrencySymbol } from '@louez/utils'
 
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 type DepositStatus = 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed'
 
@@ -118,7 +118,7 @@ export function DepositSection({
 
   const authorizationTimeRemaining = depositAuthorizationExpiresAt
     ? formatDistanceToNow(new Date(depositAuthorizationExpiresAt), {
-        locale: fr,
+        locale: FORMAT_DATE_FNS_LOCALE,
         addSuffix: true,
       })
     : null

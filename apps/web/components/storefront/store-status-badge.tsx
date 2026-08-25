@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, addDays, isToday, isTomorrow } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
-import { fr } from 'date-fns/locale'
+
 import { cn } from '@louez/utils'
 import type { BusinessHours, TimeRange } from '@louez/types'
 import { isInClosurePeriod, getDaySchedule } from '@/lib/utils/business-hours'
+import { FORMAT_DATE_FNS_LOCALE } from '@/lib/i18n/format-locale'
 
 interface StoreStatusBadgeProps {
   businessHours?: BusinessHours
@@ -155,7 +156,7 @@ function formatNextOpening(nextOpening: { day: Date; time: string }, t: (key: st
     return `${t('opensTomorrow')} ${formattedTime}`
   }
 
-  const dayName = format(day, 'EEEE', { locale: fr })
+  const dayName = format(day, 'EEEE', { locale: FORMAT_DATE_FNS_LOCALE })
   return `${t('opensOn')} ${dayName} ${formattedTime}`
 }
 
