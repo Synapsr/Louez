@@ -10,6 +10,7 @@ import type {
   VoiceProvider,
   VoiceSpeech,
 } from '../types'
+import { FORMAT_LOCALE } from '@/lib/i18n/format-locale'
 
 const TWILIO_REST_BASE = 'https://api.twilio.com/2010-04-01'
 
@@ -25,7 +26,7 @@ const delay = (ms: number) =>
  * voice string Twilio does not expose would make <Say> fail with no audio.
  */
 const LANGUAGE_MAP: Record<string, { locale: string; voice: string }> = {
-  fr: { locale: 'fr-FR', voice: 'Polly.Lea-Neural' },
+  fr: { locale: FORMAT_LOCALE, voice: 'Polly.Lea-Neural' },
   en: { locale: 'en-US', voice: 'Polly.Joanna-Neural' },
   it: { locale: 'it-IT', voice: 'Polly.Bianca-Neural' },
   nl: { locale: 'nl-NL', voice: 'Polly.Laura-Neural' },

@@ -1,3 +1,5 @@
+import { FORMAT_LOCALE } from "@/lib/i18n/format-locale";
+
 // Currency utilities for multi-currency support
 
 export type CurrencyCode = 'EUR' | 'USD' | 'GBP' | 'CHF' | 'CAD' | 'AUD' | 'JPY' | 'CNY' | 'INR' | 'BRL' | 'MXN' | 'SEK' | 'NOK' | 'DKK' | 'PLN' | 'CZK' | 'HUF' | 'RON' | 'HRK' | 'SGD' | 'HKD' | 'KRW' | 'TWD' | 'THB' | 'MYR' | 'PHP' | 'VND' | 'AED' | 'SAR' | 'ILS' | 'ZAR' | 'MAD' | 'NZD' | 'ARS' | 'CLP' | 'COP'
@@ -12,7 +14,7 @@ export interface Currency {
 // Supported currencies with their display properties
 export const SUPPORTED_CURRENCIES: Currency[] = [
   // Europe
-  { code: 'EUR', symbol: '€', name: 'Euro', locale: 'fr-FR' },
+  { code: 'EUR', symbol: '€', name: 'Euro', locale: FORMAT_LOCALE },
   { code: 'GBP', symbol: '£', name: 'British Pound', locale: 'en-GB' },
   { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc', locale: 'de-CH' },
   { code: 'SEK', symbol: 'kr', name: 'Swedish Krona', locale: 'sv-SE' },
@@ -169,7 +171,7 @@ export function formatCurrencyValue(
   locale?: string
 ): string {
   const currencyInfo = getCurrencyByCode(currency)
-  const formatLocale = locale || currencyInfo?.locale || 'fr-FR'
+  const formatLocale = locale || currencyInfo?.locale || FORMAT_LOCALE
 
   return new Intl.NumberFormat(formatLocale, {
     style: 'currency',

@@ -32,6 +32,7 @@ import { useStoreMaxDiscountPercent } from '@/contexts/store-context';
 import type { ValidatedPromo } from '../promo-actions';
 import type { LineResolutionState } from '../types';
 import { CheckoutPromoCode } from './checkout-promo-code';
+import type { Locale } from '@/i18n/config';
 
 interface CheckoutOrderSummaryProps {
   items: CartItem[];
@@ -40,7 +41,7 @@ interface CheckoutOrderSummaryProps {
   depositPercentage: number;
   taxSettings?: TaxSettings;
   currency: string;
-  locale: 'fr' | 'en';
+  locale: Locale;
   globalStartDate: string | null;
   globalEndDate: string | null;
   subtotal: number;

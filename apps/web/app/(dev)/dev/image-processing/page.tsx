@@ -22,6 +22,7 @@ import { createLoginUrl } from "@/lib/utils/util.url";
 
 import { ImageProcessingBenchmarkButton } from "./image-processing-benchmark-button";
 import { ImageProcessingStoreFilter } from "./image-processing-store-filter";
+import { FORMAT_LOCALE } from "@/lib/i18n/format-locale";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -35,27 +36,27 @@ export const metadata: Metadata = {
   },
 };
 
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
+const dateFormatter = new Intl.DateTimeFormat(FORMAT_LOCALE, {
   dateStyle: "medium",
   timeStyle: "medium",
   timeZone: "Europe/Paris",
 });
 
-const usdFormatter = new Intl.NumberFormat("fr-FR", {
+const usdFormatter = new Intl.NumberFormat(FORMAT_LOCALE, {
   style: "currency",
   currency: "USD",
   minimumFractionDigits: 3,
   maximumFractionDigits: 4,
 });
 
-const eurFormatter = new Intl.NumberFormat("fr-FR", {
+const eurFormatter = new Intl.NumberFormat(FORMAT_LOCALE, {
   style: "currency",
   currency: "EUR",
   minimumFractionDigits: 2,
   maximumFractionDigits: 3,
 });
 
-const numberFormatter = new Intl.NumberFormat("fr-FR", {
+const numberFormatter = new Intl.NumberFormat(FORMAT_LOCALE, {
   maximumFractionDigits: 2,
 });
 

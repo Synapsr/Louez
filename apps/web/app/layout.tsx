@@ -18,6 +18,7 @@ import { ORPCProvider } from "@/lib/orpc/provider";
 import messages from "@/messages/fr.json";
 
 import "./globals.css";
+import { getLocale } from "next-intl/server";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -51,12 +52,14 @@ export default async function RootLayout({
   // client with the wrong deployment mode.
   await connection();
   const instanceConfig = getInstanceConfig();
+  // Drives the document language for screen readers and translation tools.
+  const locale = await getLocale();
 
   return (
     <>
       {/* {process.env.NODE_ENV === 'development' && <Agentation />} */}
 
-      <html lang="fr" suppressHydrationWarning className="overscroll-none">
+      <html lang={locale} suppressHydrationWarning className="overscroll-none">
         <UmamiAnalytics />
 
         {env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (

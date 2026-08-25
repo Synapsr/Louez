@@ -5,6 +5,7 @@ import { minutesToPriceDuration, toAbsoluteUrl } from '@louez/utils'
 import { type Locale, defaultLocale, locales } from '@/i18n/config'
 import { isStandaloneMode } from '@/lib/deployment'
 import { env } from '@/env'
+import { FORMAT_LOCALE } from '@/lib/i18n/format-locale'
 
 const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
 
@@ -533,7 +534,7 @@ export function truncateText(text: string, maxLength: number): string {
  * Format price with currency
  */
 function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat('fr-FR', {
+  return new Intl.NumberFormat(FORMAT_LOCALE, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,

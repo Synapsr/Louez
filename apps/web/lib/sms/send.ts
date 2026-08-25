@@ -15,6 +15,7 @@ import {
   deductPrepaidSmsCredit,
 } from '@/lib/plan-limits'
 import { getEmailMessages, getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
+import { FORMAT_LOCALE } from '@/lib/i18n/format-locale'
 
 /**
  * Localized SMS templates for customer notifications
@@ -205,7 +206,7 @@ function getSmsTemplate(locale: EmailLocale = 'en') {
  */
 function formatSmsDate(date: Date, locale: EmailLocale): string {
   const localeMap: Record<EmailLocale, string> = {
-    fr: 'fr-FR',
+    fr: FORMAT_LOCALE,
     en: 'en-US',
     de: 'de-DE',
     es: 'es-ES',
@@ -586,7 +587,7 @@ export async function sendReminderPickupSms({
 
   // Format date for locale (with weekday for reminders)
   const startDateStr = reservation.startDate.toLocaleDateString(
-    locale === 'fr' ? 'fr-FR' : locale === 'de' ? 'de-DE' : locale === 'es' ? 'es-ES' :
+    locale === 'fr' ? FORMAT_LOCALE : locale === 'de' ? 'de-DE' : locale === 'es' ? 'es-ES' :
     locale === 'it' ? 'it-IT' : locale === 'nl' ? 'nl-NL' : locale === 'pl' ? 'pl-PL' :
     locale === 'pt' ? 'pt-BR' : 'en-US',
     { weekday: 'short', day: '2-digit', month: '2-digit' }
@@ -689,7 +690,7 @@ export async function sendReminderReturnSms({
 
   // Format date for locale (with weekday for reminders)
   const endDateStr = reservation.endDate.toLocaleDateString(
-    locale === 'fr' ? 'fr-FR' : locale === 'de' ? 'de-DE' : locale === 'es' ? 'es-ES' :
+    locale === 'fr' ? FORMAT_LOCALE : locale === 'de' ? 'de-DE' : locale === 'es' ? 'es-ES' :
     locale === 'it' ? 'it-IT' : locale === 'nl' ? 'nl-NL' : locale === 'pl' ? 'pl-PL' :
     locale === 'pt' ? 'pt-BR' : 'en-US',
     { weekday: 'short', day: '2-digit', month: '2-digit' }
@@ -1260,7 +1261,7 @@ export async function sendPaymentRequestSms({
   const templates = getSmsTemplate(locale)
 
   // Format amount
-  const formattedAmount = new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+  const formattedAmount = new Intl.NumberFormat(locale === 'fr' ? FORMAT_LOCALE : 'en-US', {
     style: 'currency',
     currency,
   }).format(amount)
@@ -1366,7 +1367,7 @@ export async function sendDepositAuthorizationRequestSms({
   const templates = getSmsTemplate(locale)
 
   // Format amount
-  const formattedAmount = new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+  const formattedAmount = new Intl.NumberFormat(locale === 'fr' ? FORMAT_LOCALE : 'en-US', {
     style: 'currency',
     currency,
   }).format(depositAmount)

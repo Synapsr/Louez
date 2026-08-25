@@ -15,6 +15,8 @@ import plEmails from '@/messages/emails/pl.json'
 import ptEmails from '@/messages/emails/pt.json'
 
 import type { EmailLocale } from '@louez/email'
+import { localeCountries } from '@/i18n/config'
+import { FORMAT_LOCALE } from '@/lib/i18n/format-locale'
 export type { EmailLocale }
 
 // Type for email messages structure (use the French subtree as reference)
@@ -181,10 +183,20 @@ export function getDateFormatPatterns(locale: EmailLocale = 'fr') {
 /**
  * Get currency formatter for a locale and currency
  */
+/**
+ * Full BCP 47 tag for an email locale. A German mail should show German
+ * dates and amounts — anything that was not French previously fell back to
+ * an English tag.
+ */
+function localeToTag(locale: EmailLocale): string {
+  const region = (localeCountries as Record<string, string>)[locale]
+  return region ? `${locale}-${region}` : FORMAT_LOCALE
+}
+
 export function getCurrencyFormatter(locale: EmailLocale = 'fr', currency: string = 'EUR') {
   // Map of currency to best locale for formatting
   const currencyLocaleMap: Record<string, string> = {
-    EUR: locale === 'fr' ? 'fr-FR' : 'en-IE',
+    EUR: localeToTag(locale),
     USD: 'en-US',
     GBP: 'en-GB',
     CHF: 'de-CH',
@@ -208,7 +220,7 @@ export function getCurrencyFormatter(locale: EmailLocale = 'fr', currency: strin
     NZD: 'en-NZ',
   }
 
-  const formatLocale = currencyLocaleMap[currency] || (locale === 'fr' ? 'fr-FR' : 'en-US')
+  const formatLocale = currencyLocaleMap[currency] || localeToTag(locale)
 
   return (amount: number) =>
     new Intl.NumberFormat(formatLocale, {

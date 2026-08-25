@@ -1,8 +1,20 @@
+/**
+ * Formatting locale for this package.
+ *
+ * `@louez/utils` has no access to the web app's i18n config, so the BCP 47
+ * tag comes from the environment. Falls back to `fr-FR`, which every call
+ * site used before this was configurable.
+ */
+const FORMAT_LOCALE =
+  (typeof process !== 'undefined' &&
+    (process.env?.NEXT_PUBLIC_FORMAT_LOCALE || process.env?.FORMAT_LOCALE)?.trim()) ||
+  'fr-FR'
+
 // Currency formatting
 export function formatCurrency(amount: number, currency: string = 'EUR'): string {
   // Determine the best locale for the currency
   const localeMap: Record<string, string> = {
-    EUR: 'fr-FR',
+    EUR: FORMAT_LOCALE,
     USD: 'en-US',
     GBP: 'en-GB',
     CHF: 'de-CH',
@@ -39,7 +51,7 @@ export function formatCurrency(amount: number, currency: string = 'EUR'): string
     COP: 'es-CO',
   }
 
-  const locale = localeMap[currency] || 'fr-FR'
+  const locale = localeMap[currency] || FORMAT_LOCALE
 
   return new Intl.NumberFormat(locale, {
     style: 'currency',
@@ -52,7 +64,7 @@ export function formatCurrency(amount: number, currency: string = 'EUR'): string
  * Example: "54,00 euros" instead of "54,00 €"
  */
 export function formatCurrencyForSms(amount: number, currency: string = 'EUR'): string {
-  const formatted = new Intl.NumberFormat('fr-FR', {
+  const formatted = new Intl.NumberFormat(FORMAT_LOCALE, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)
@@ -71,7 +83,7 @@ export function formatCurrencyForSms(amount: number, currency: string = 'EUR'): 
 
 // Number formatting
 export function formatNumber(value: number, decimals = 0): string {
-  return new Intl.NumberFormat('fr-FR', {
+  return new Intl.NumberFormat(FORMAT_LOCALE, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value)
@@ -79,7 +91,7 @@ export function formatNumber(value: number, decimals = 0): string {
 
 // Percentage formatting
 export function formatPercent(value: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+  return new Intl.NumberFormat(FORMAT_LOCALE, {
     style: 'percent',
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
@@ -89,7 +101,7 @@ export function formatPercent(value: number): string {
 // Date formatting
 export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(FORMAT_LOCALE, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -115,7 +127,7 @@ export function toDatePickerValue(
 // Short date formatting (e.g., "15 jan.")
 export function formatDateShort(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(FORMAT_LOCALE, {
     day: 'numeric',
     month: 'short',
   }).format(d)
@@ -124,7 +136,7 @@ export function formatDateShort(date: Date | string): string {
 // Date with time formatting
 export function formatDateTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(FORMAT_LOCALE, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -136,7 +148,7 @@ export function formatDateTime(date: Date | string): string {
 // Time only formatting
 export function formatTime(date: Date | string): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(FORMAT_LOCALE, {
     hour: '2-digit',
     minute: '2-digit',
   }).format(d)

@@ -55,6 +55,8 @@ import type {
 } from './types';
 import { sanitizeTranslationParams } from './utils';
 import { createCheckoutSchemaWithOptions } from './validation';
+import { FORMAT_LOCALE } from '@/lib/i18n/format-locale';
+import { defaultLocale, locales, type Locale } from '@/i18n/config';
 
 const STEP_ICONS: Record<StepId, CheckoutStep['icon']> = {
   contact: User,
@@ -160,7 +162,12 @@ export function CheckoutForm({
   timezone,
 }: CheckoutFormProps) {
   const router = useRouter();
-  const locale = useLocale() as 'fr' | 'en';
+  // useLocale() is typed as string; narrow it to the configured locales so
+  // downstream props stay type-safe without a blind cast.
+  const activeLocale = useLocale();
+  const locale: Locale = locales.includes(activeLocale as Locale)
+    ? (activeLocale as Locale)
+    : defaultLocale;
   const t = useTranslations('storefront.checkout');
   const tErrors = useTranslations('errors');
   const currency = useStoreCurrency();
@@ -832,7 +839,7 @@ export function CheckoutForm({
     ? {
         duration: advanceNoticeIssue.duration,
         minimumStart: new Intl.DateTimeFormat(
-          locale === 'fr' ? 'fr-FR' : 'en-US',
+          locale === 'fr' ? FORMAT_LOCALE : 'en-US',
           {
             dateStyle: 'long',
             timeStyle: 'short',

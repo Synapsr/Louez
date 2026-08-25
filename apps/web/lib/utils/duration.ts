@@ -3,6 +3,8 @@
  * Used consistently across the entire storefront
  */
 
+import { FORMAT_LOCALE } from "@/lib/i18n/format-locale";
+
 export type PricingMode = 'day' | 'hour' | 'week'
 
 /**
@@ -76,7 +78,7 @@ export function getDefaultRentalDates(): { startDate: Date; endDate: Date } {
 /**
  * Format a date for display
  */
-export function formatDate(date: Date | string, locale: string = 'fr-FR'): string {
+export function formatDate(date: Date | string, locale: string = FORMAT_LOCALE): string {
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleDateString(locale, {
     day: 'numeric',
@@ -91,7 +93,7 @@ export function formatDate(date: Date | string, locale: string = 'fr-FR'): strin
 export function formatDateRange(
   startDate: Date | string,
   endDate: Date | string,
-  locale: string = 'fr-FR'
+  locale: string = FORMAT_LOCALE
 ): string {
   return `${formatDate(startDate, locale)} - ${formatDate(endDate, locale)}`
 }
@@ -225,7 +227,7 @@ export function formatDateTime(
 ): { date: string; time: string } {
   const d = typeof date === 'string' ? new Date(date) : date
 
-  const dateStr = d.toLocaleDateString('fr-FR', {
+  const dateStr = d.toLocaleDateString(FORMAT_LOCALE, {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -233,7 +235,7 @@ export function formatDateTime(
     ...(options?.timezone && { timeZone: options.timezone }),
   })
 
-  const timeStr = d.toLocaleTimeString('fr-FR', {
+  const timeStr = d.toLocaleTimeString(FORMAT_LOCALE, {
     hour: '2-digit',
     minute: '2-digit',
     ...(options?.timezone && { timeZone: options.timezone }),
