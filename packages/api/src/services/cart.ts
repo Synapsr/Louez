@@ -77,6 +77,7 @@ type CartLineResolution =
         | 'product_unavailable'
         | 'insufficient_stock'
         | 'required_accessory_unavailable';
+      stockKind?: StockKind;
       maxQuantity?: number;
       parentLineId?: string;
     };
@@ -332,6 +333,7 @@ export async function resolveStorefrontCart(
           requiredAccessoryMaxQuantity < line.quantity
             ? 'required_accessory_unavailable'
             : 'insufficient_stock',
+        stockKind: product.stockKind,
         maxQuantity,
       });
       continue;

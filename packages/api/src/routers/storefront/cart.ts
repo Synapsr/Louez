@@ -77,6 +77,7 @@ const cartLineResolutionSchema = z.discriminatedUnion('status', [
       'insufficient_stock',
       'required_accessory_unavailable',
     ]),
+    stockKind: z.enum(['returnable', 'consumable']).optional(),
     maxQuantity: z.number().optional(),
   }),
 ]);

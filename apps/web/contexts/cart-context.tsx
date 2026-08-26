@@ -22,6 +22,7 @@ import {
   clampRequiredAccessoryLineQuantity,
   getCartLineAvailableMaximumQuantity,
   getRequiredAccessoryLineMinimumQuantity,
+  reconcileConsumableCartLineQuantities,
   reconcileRequiredAccessoryLineQuantity,
   type RequiredAccessoryCartInput,
 } from '@/lib/utils/cart-required-accessories';
@@ -159,6 +160,7 @@ interface StoredCartItem {
   productImage?: string | null;
   quantity: number;
   pricingKind?: PricingKind;
+  stockKind?: StockKind;
   selectedAttributes?: Record<string, string>;
   parentLineId?: string;
   requiredQuantity?: number;
@@ -225,6 +227,7 @@ function normalizeStoredItem(
     quantity: item.quantity,
     maxQuantity: item.maxQuantity || Math.max(1, item.quantity),
     pricingKind: item.pricingKind || 'duration',
+    stockKind: item.stockKind,
     pricingTiers: item.pricingTiers,
     basePeriodMinutes: item.basePeriodMinutes,
     enforceStrictTiers: item.enforceStrictTiers,
@@ -267,6 +270,7 @@ function toStoredCartItem(item: CartItem): StoredCartItem {
     productImage: item.productImage,
     quantity: item.quantity,
     pricingKind: item.pricingKind,
+    stockKind: item.stockKind,
     selectedAttributes: item.selectedAttributes,
     parentLineId: item.parentLineId,
     requiredQuantity: item.requiredQuantity,
@@ -415,8 +419,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       resolvedCart.lines.map((line) => [line.lineId, line]),
     );
 
-    setItems((currentItems) =>
-      currentItems.map((item) => {
+    setItems((currentItems) => {
+      const resolvedItems = currentItems.map((item) => {
         const resolved = resolvedByLineId.get(item.lineId);
 
         if (!resolved) {
@@ -427,6 +431,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           return {
             ...item,
             unavailableReason: resolved.reason,
+            ...(resolved.stockKind
+              ? { stockKind: resolved.stockKind }
+              : {}),
             ...(typeof resolved.maxQuantity === 'number'
               ? { maxQuantity: resolved.maxQuantity }
               : {}),
@@ -480,8 +487,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
             ),
           }),
         };
-      }),
-    );
+      });
+
+      return reconcileConsumableCartLineQuantities(resolvedItems);
+    });
   }, [resolvedCart]);
 
   useEffect(() => {
@@ -649,10 +658,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
               updated[existingIndex],
             ),
           };
-          return withRequiredAccessories(
-            updated,
-            existing.lineId,
-            updated[existingIndex].quantity,
+          return reconcileConsumableCartLineQuantities(
+            withRequiredAccessories(
+              updated,
+              existing.lineId,
+              updated[existingIndex].quantity,
+            ),
           );
         }
 
@@ -669,10 +680,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           ...newItem,
           quantity: clampedQuantity,
         };
-        return withRequiredAccessories(
-          updated,
-          newItem.lineId,
-          clampedQuantity,
+        return reconcileConsumableCartLineQuantities(
+          withRequiredAccessories(updated, newItem.lineId, clampedQuantity),
         );
       });
 
@@ -725,10 +734,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
             },
           );
 
-          return currentItems.map((item) =>
-            item.lineId === lineId
-              ? { ...item, quantity: clampedQuantity }
-              : item,
+          return reconcileConsumableCartLineQuantities(
+            currentItems.map((item) =>
+              item.lineId === lineId
+                ? { ...item, quantity: clampedQuantity }
+                : item,
+            ),
           );
         }
 
@@ -750,7 +761,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           item.lineId === lineId ? { ...item, quantity: nextQuantity } : item,
         );
 
-        return syncRequiredLineQuantities(updated, lineId, nextQuantity);
+        return reconcileConsumableCartLineQuantities(
+          syncRequiredLineQuantities(updated, lineId, nextQuantity),
+        );
       });
     },
     [],

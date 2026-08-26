@@ -194,6 +194,52 @@ export function clampCartLineQuantityToAvailableMaximum(
   );
 }
 
+/** Gives required lines priority, then fits free lines into remaining stock. */
+export function reconcileConsumableCartLineQuantities<
+  T extends CartLineQuantity,
+>(lines: T[]): T[] {
+  const consumableProductIds = new Set(
+    lines
+      .filter((line) => line.stockKind === 'consumable')
+      .map((line) => line.productId),
+  );
+  let reconciled = [...lines];
+  const removedParentLineIds = new Set<string>();
+
+  for (const productId of consumableProductIds) {
+    const productLines = reconciled.filter(
+      (line) => line.productId === productId,
+    );
+    const stockQuantity = Math.min(
+      ...productLines.map((line) => Math.max(0, line.maxQuantity)),
+    );
+    const requiredQuantity = productLines
+      .filter((line) => Boolean(line.parentLineId))
+      .reduce((total, line) => total + line.quantity, 0);
+    let remainingQuantity = Math.max(0, stockQuantity - requiredQuantity);
+
+    reconciled = reconciled.flatMap((line) => {
+      if (line.productId !== productId || line.parentLineId) {
+        return [line];
+      }
+
+      const quantity = Math.min(line.quantity, remainingQuantity);
+      remainingQuantity -= quantity;
+      if (quantity === 0) {
+        removedParentLineIds.add(line.lineId);
+        return [];
+      }
+
+      return quantity === line.quantity ? [line] : [{ ...line, quantity }];
+    });
+  }
+
+  return reconciled.filter(
+    (line) =>
+      !line.parentLineId || !removedParentLineIds.has(line.parentLineId),
+  );
+}
+
 export function isRequiredAccessory(
   accessory: Pick<AccessoryLink, 'required'>,
 ): boolean {

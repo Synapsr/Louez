@@ -8,6 +8,7 @@ import {
   findBlockingRequiredAccessories,
   getCartLineAvailableMaximumQuantity,
   groupCartLinesByParent,
+  reconcileConsumableCartLineQuantities,
   reconcileRequiredAccessoryLineQuantity,
   selectOptionalAccessories,
 } from './cart-required-accessories';
@@ -180,6 +181,35 @@ test('clamps a newly added consumable to the stock left by required lines', () =
   assert.equal(
     clampCartLineQuantityToAvailableMaximum(lines, lines[1]),
     3,
+  );
+});
+
+test('removes free consumable units when required lines use all stock', () => {
+  const lines = [
+    {
+      lineId: 'required-fluid',
+      parentLineId: 'parent',
+      productId: 'fog-fluid',
+      stockKind: 'consumable' as const,
+      quantity: 15,
+      maxQuantity: 15,
+      requiredQuantity: 1,
+    },
+    {
+      lineId: 'free-fluid',
+      productId: 'fog-fluid',
+      stockKind: 'consumable' as const,
+      quantity: 15,
+      maxQuantity: 15,
+    },
+  ];
+
+  assert.deepEqual(
+    reconcileConsumableCartLineQuantities(lines).map((line) => ({
+      lineId: line.lineId,
+      quantity: line.quantity,
+    })),
+    [{ lineId: 'required-fluid', quantity: 15 }],
   );
 });
 
