@@ -38,7 +38,6 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  Radio,
   Select,
   SelectContent,
   SelectItem,
@@ -539,21 +538,9 @@ export function ProductFormStepPricing({
     </div>
   ) : null;
 
-  const pricingKindOptions: Array<{
-    value: PricingKind;
-    label: string;
-    description: string;
-  }> = [
-    {
-      value: "duration",
-      label: t("pricingKindDuration"),
-      description: t("pricingKindDurationDescription"),
-    },
-    {
-      value: "fixed",
-      label: t("pricingKindFixed"),
-      description: t("pricingKindFixedDescription"),
-    },
+  const pricingKindOptions: Array<{ value: PricingKind; label: string }> = [
+    { value: "duration", label: t("pricingKindDuration") },
+    { value: "fixed", label: t("pricingKindFixed") },
   ];
 
   const pricingCard = (
@@ -567,56 +554,55 @@ export function ProductFormStepPricing({
             </CardTitle>
             <CardDescription className="mt-1.5">{t("pricingDescription")}</CardDescription>
           </div>
-          {productId && !isFixedPricing && (
-            <PricingPeriodSelector
-              selectedPeriodId={selectedSeasonalPeriodId}
-              seasonalPricings={seasonalPricings}
-              basePriceValue={watchedValues.basePriceDuration?.price}
-              onSelectPeriod={handleSelectPeriod}
-              onAddPeriod={handleAddPeriod}
-              isLoading={isLoadingSeasonalPricings}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            {/* Pricing kind: a once-made choice, kept compact in the header */}
+            <form.Field name="pricingKind">
+              {(field) => (
+                <Select
+                  value={field.state.value ?? "duration"}
+                  onValueChange={(value) => {
+                    const nextKind = toPricingKind(value);
+                    field.handleChange(nextKind);
+                    // Only a flat rate can carry consumable stock; dropping
+                    // back to duration pricing has to release that choice too,
+                    // otherwise the form would submit a state the server
+                    // rejects.
+                    if (nextKind !== "fixed" && watchedValues.stockKind === "consumable") {
+                      form.setFieldValue("stockKind", "returnable");
+                    }
+                  }}
+                  disabled={isSaving || isSeasonalMode}
+                >
+                  <SelectTrigger
+                    className="h-8 w-auto min-w-36"
+                    aria-label={t("pricingKindLabel")}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {pricingKindOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </form.Field>
+            {productId && !isFixedPricing && (
+              <PricingPeriodSelector
+                selectedPeriodId={selectedSeasonalPeriodId}
+                seasonalPricings={seasonalPricings}
+                basePriceValue={watchedValues.basePriceDuration?.price}
+                onSelectPeriod={handleSelectPeriod}
+                onAddPeriod={handleAddPeriod}
+                isLoading={isLoadingSeasonalPricings}
+              />
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Pricing kind: everything below depends on this choice, so it leads */}
-        {!isSeasonalMode && (
-          <form.Field name="pricingKind">
-            {(field) => (
-              <form.RadioGroup
-                label={t("pricingKindLabel")}
-                value={field.state.value ?? "duration"}
-                onValueChange={(value) => {
-                  const nextKind = toPricingKind(value);
-                  field.handleChange(nextKind);
-                  // Only a flat rate can carry consumable stock; dropping back
-                  // to duration pricing has to release that choice too,
-                  // otherwise the form would submit a state the server rejects.
-                  if (nextKind !== "fixed" && watchedValues.stockKind === "consumable") {
-                    form.setFieldValue("stockKind", "returnable");
-                  }
-                }}
-                disabled={isSaving}
-                className="grid gap-3 sm:grid-cols-2"
-              >
-                {pricingKindOptions.map((option) => (
-                  <Label
-                    key={option.value}
-                    className="flex items-start gap-2 bg-background rounded-lg border p-3 hover:bg-accent/50 has-data-checked:border-primary/48 has-data-checked:bg-background"
-                  >
-                    <Radio value={option.value} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold">{option.label}</p>
-                      <p className="text-muted-foreground mt-1 text-xs">{option.description}</p>
-                    </div>
-                  </Label>
-                ))}
-              </form.RadioGroup>
-            )}
-          </form.Field>
-        )}
-
         {/* Seasonal mode: banner + inline price/tiers editing */}
         {isSeasonalMode && selectedPeriod ? (
           <>

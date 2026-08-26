@@ -111,26 +111,27 @@ export function ProductFormSectionStock({
             {isConsumable ? t('consumableQuantityHelp') : t('quantityHelp')}
           </CardDescription>
         </div>
-        {productId ? (
-          <Button
-            variant="outline"
-            size="sm"
-            render={
-              <Link href={`/dashboard/products/${productId}`} />
-            }
-          >
-            <DatabaseIcon className="h-4 w-4" />
-            {tInventory('openInventory')}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <ProductFormStockKindField
+            form={form}
+            watchedValues={watchedValues}
+            disabled={disabled}
+          />
+          {productId ? (
+            <Button
+              variant="outline"
+              size="sm"
+              render={
+                <Link href={`/dashboard/products/${productId}`} />
+              }
+            >
+              <DatabaseIcon className="h-4 w-4" />
+              {tInventory('openInventory')}
+            </Button>
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <ProductFormStockKindField
-          form={form}
-          watchedValues={watchedValues}
-          disabled={disabled}
-        />
-
         <UnitTrackingEditor
           currency={currency}
           trackUnits={!isConsumable && (watchedValues.trackUnits || false)}
