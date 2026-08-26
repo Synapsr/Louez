@@ -1361,6 +1361,8 @@
         "addAccessory": "Add an accessory",
         "selectAccessories": "Select accessories",
         "selectAccessoriesDescription": "Choose products to suggest with this product",
+        "accessoriesSelectedCount": "{count, plural, =0 {No accessory selected} one {# accessory selected} other {# accessories selected}}",
+        "clearSearch": "Clear search",
         "searchProducts": "Search for a product...",
         "noProductsFound": "No products found",
         "noProductsAvailable": "No products available",

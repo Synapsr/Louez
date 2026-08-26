@@ -1322,6 +1322,8 @@
         "addAccessory": "Accessoire toevoegen",
         "selectAccessories": "Accessoires selecteren",
         "selectAccessoriesDescription": "Kies producten om bij dit product voor te stellen",
+        "accessoriesSelectedCount": "{count, plural, =0 {Geen accessoire geselecteerd} one {# accessoire geselecteerd} other {# accessoires geselecteerd}}",
+        "clearSearch": "Zoekopdracht wissen",
         "searchProducts": "Zoek een product...",
         "noProductsFound": "Geen producten gevonden",
         "noProductsAvailable": "Geen producten beschikbaar",

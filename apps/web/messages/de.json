@@ -1361,6 +1361,8 @@
         "addAccessory": "Zubehör hinzufügen",
         "selectAccessories": "Zubehör auswählen",
         "selectAccessoriesDescription": "Wählen Sie Produkte aus, die mit diesem Produkt vorgeschlagen werden sollen",
+        "accessoriesSelectedCount": "{count, plural, =0 {Kein Zubehör ausgewählt} one {# Zubehör ausgewählt} other {# Zubehörteile ausgewählt}}",
+        "clearSearch": "Suche löschen",
         "searchProducts": "Produkt suchen...",
         "noProductsFound": "Keine Produkte gefunden",
         "noProductsAvailable": "Keine Produkte verfügbar",

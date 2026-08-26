@@ -1,24 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
-import { GripVertical, Plus, Search, X } from 'lucide-react';
+import { GripVertical, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@louez/ui';
-import { Input, InputQuantity, Label, Switch } from '@louez/ui';
-import {
-  Dialog,
-  DialogPopup,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@louez/ui';
-import { ScrollArea } from '@louez/ui';
+import { InputQuantity, Label, Switch } from '@louez/ui';
 import { formatCurrency } from '@louez/utils';
 import { cn } from '@louez/utils';
 
+import { AccessoriesPickerDialog } from '@/components/dashboard/accessories-picker-dialog';
 import { ProductImage } from '@/components/product/product-image';
 
 import type { ProductAccessoryLinkInput } from '@louez/validations';
@@ -46,9 +38,6 @@ export function AccessoriesSelector({
   disabled = false,
 }: AccessoriesSelectorProps) {
   const t = useTranslations('dashboard.products.form');
-  const tCommon = useTranslations('common');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [search, setSearch] = useState('');
 
   // Pair each link with its catalog entry; links pointing at a product that is
   // no longer selectable (archived, deleted) are dropped from the display.
@@ -59,21 +48,24 @@ export function AccessoriesSelector({
     });
   }, [value, availableProducts]);
 
-  // Filter available products for the dialog
-  const filteredProducts = useMemo(() => {
-    const lowerSearch = search.toLowerCase();
-    const selectedIds = new Set(value.map((link) => link.accessoryId));
-    return availableProducts.filter(
-      (p) => !selectedIds.has(p.id) && p.name.toLowerCase().includes(lowerSearch),
-    );
-  }, [availableProducts, value, search]);
-
-  const handleAdd = (productId: string) => {
-    onChange([...value, { accessoryId: productId, required: false, quantity: 1 }]);
-  };
+  const selectedIds = useMemo(
+    () => value.map((link) => link.accessoryId),
+    [value],
+  );
 
   const handleRemove = (productId: string) => {
     onChange(value.filter((link) => link.accessoryId !== productId));
+  };
+
+  // The picker toggles a link on and off; a product added back starts from the
+  // default "suggested, one per unit" link again.
+  const handleToggle = (productId: string) => {
+    if (value.some((link) => link.accessoryId === productId)) {
+      handleRemove(productId);
+      return;
+    }
+
+    onChange([...value, { accessoryId: productId, required: false, quantity: 1 }]);
   };
 
   const handleLinkChange = (
@@ -213,98 +205,13 @@ export function AccessoriesSelector({
         </div>
       )}
 
-      {/* Add accessory button */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogTrigger
-          render={
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full border-dashed"
-              disabled={disabled || filteredProducts.length === 0}
-            />
-          }
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          {t('addAccessory')}
-        </DialogTrigger>
-        <DialogPopup className="flex max-h-[80vh] max-w-md flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle>{t('selectAccessories')}</DialogTitle>
-            <DialogDescription>
-              {t('selectAccessoriesDescription')}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex min-h-0 flex-1 flex-col gap-4 py-4">
-            {/* Search */}
-            <div className="relative flex-shrink-0">
-              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-              <Input
-                placeholder={t('searchProducts')}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
-
-            {/* Products list - scrollable */}
-            <ScrollArea className="-mx-6 flex-1 px-6">
-              <div className="space-y-2">
-                {filteredProducts.length === 0 ? (
-                  <p className="text-muted-foreground py-8 text-center text-sm">
-                    {search ? t('noProductsFound') : t('noProductsAvailable')}
-                  </p>
-                ) : (
-                  filteredProducts.map((product) => (
-                    <button
-                      key={product.id}
-                      type="button"
-                      className={cn(
-                        'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors',
-                        'hover:bg-muted/50 focus:ring-primary focus:ring-2 focus:ring-offset-2 focus:outline-none',
-                      )}
-                      onClick={() => {
-                        handleAdd(product.id);
-                        setSearch('');
-                      }}
-                    >
-                      <ProductImage
-                        src={product.images?.[0]}
-                        alt={product.name}
-                        sizes="40px"
-                        containerClassName="aspect-square h-10 w-10 shrink-0 rounded-md"
-                      />
-
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{product.name}</p>
-                        <p className="text-muted-foreground text-sm">
-                          {formatCurrency(parseFloat(product.price), currency)}
-                        </p>
-                      </div>
-
-                      <Plus className="text-muted-foreground h-4 w-4 flex-shrink-0" />
-                    </button>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-
-          {/* Footer with close button */}
-          <div className="flex flex-shrink-0 justify-end border-t pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setDialogOpen(false);
-                setSearch('');
-              }}
-            >
-              {tCommon('close')}
-            </Button>
-          </div>
-        </DialogPopup>
-      </Dialog>
+      <AccessoriesPickerDialog
+        options={availableProducts}
+        selectedIds={selectedIds}
+        onToggle={handleToggle}
+        currency={currency}
+        disabled={disabled}
+      />
 
       {/* Helper text */}
       {selectedLinks.length === 0 && (
