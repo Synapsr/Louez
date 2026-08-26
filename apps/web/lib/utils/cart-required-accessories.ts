@@ -134,15 +134,19 @@ function getOtherConsumableLinesQuantity(
   lines: CartLineQuantity[],
   line: Pick<CartLineQuantity, 'lineId' | 'productId' | 'stockKind'>,
 ): number {
-  if (line.stockKind !== 'consumable') {
+  const isConsumableProduct = lines.some(
+    (candidate) =>
+      candidate.productId === line.productId &&
+      candidate.stockKind === 'consumable',
+  );
+  if (line.stockKind !== 'consumable' && !isConsumableProduct) {
     return 0;
   }
 
   return lines.reduce(
     (total, candidate) =>
       candidate.lineId !== line.lineId &&
-      candidate.productId === line.productId &&
-      candidate.stockKind === 'consumable'
+      candidate.productId === line.productId
         ? total + candidate.quantity
         : total,
     0,
@@ -177,6 +181,17 @@ export function getCartLineAvailableMaximumQuantity(
     });
 
   return Math.min(ownMaximum, ...requiredAccessoryMaximums);
+}
+
+/** Clamps one line after accounting for stock already used by sibling lines. */
+export function clampCartLineQuantityToAvailableMaximum(
+  lines: CartLineQuantity[],
+  line: CartLineQuantity,
+): number {
+  return Math.min(
+    Math.max(0, line.quantity),
+    getCartLineAvailableMaximumQuantity(lines, line),
+  );
 }
 
 export function isRequiredAccessory(

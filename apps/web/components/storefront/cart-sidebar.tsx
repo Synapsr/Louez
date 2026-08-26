@@ -116,7 +116,7 @@ export function CartSidebar({
   // Format duration label
   const durationLabel = items.length > 0 ? getItemDurationLabel(items[0]) : '';
 
-  const CartContent = () => (
+  const renderCartContent = () => (
     <>
       {/* Period Display - only shown when showDates is true */}
       {showDates && globalStartDate && globalEndDate && (
@@ -300,9 +300,7 @@ export function CartSidebar({
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <CartContent />
-        </CardContent>
+        <CardContent>{renderCartContent()}</CardContent>
       </Card>
 
       {/* Mobile Floating Button + Sheet */}
@@ -332,7 +330,7 @@ export function CartSidebar({
               </SheetTitle>
             </SheetHeader>
             <div className="flex h-[calc(100%-60px)] flex-col">
-              <CartContent />
+              {renderCartContent()}
             </div>
           </SheetContent>
         </Sheet>

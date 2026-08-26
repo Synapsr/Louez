@@ -3,6 +3,7 @@ import { test } from 'node:test';
 
 import {
   buildRequiredAccessoryCartInputs,
+  clampCartLineQuantityToAvailableMaximum,
   clampRequiredAccessoryLineQuantity,
   findBlockingRequiredAccessories,
   getCartLineAvailableMaximumQuantity,
@@ -155,6 +156,31 @@ test('shares an accessory stock cap across every cart line', () => {
 
   assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[1]), 3);
   assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[2]), 4);
+});
+
+test('clamps a newly added consumable to the stock left by required lines', () => {
+  const lines = [
+    {
+      lineId: 'required-fluid',
+      parentLineId: 'parent',
+      productId: 'fog-fluid',
+      stockKind: 'consumable' as const,
+      quantity: 12,
+      maxQuantity: 15,
+      requiredQuantity: 1,
+    },
+    {
+      lineId: 'free-fluid',
+      productId: 'fog-fluid',
+      quantity: 8,
+      maxQuantity: 15,
+    },
+  ];
+
+  assert.equal(
+    clampCartLineQuantityToAvailableMaximum(lines, lines[1]),
+    3,
+  );
 });
 
 test('leaves returnable stock allocation to the canonical server resolver', () => {

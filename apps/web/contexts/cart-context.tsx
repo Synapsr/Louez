@@ -18,6 +18,7 @@ import type { SeasonalPricingConfig } from '@louez/utils';
 import { orpc } from '@/lib/orpc/react';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 import {
+  clampCartLineQuantityToAvailableMaximum,
   clampRequiredAccessoryLineQuantity,
   getCartLineAvailableMaximumQuantity,
   getRequiredAccessoryLineMinimumQuantity,
@@ -641,18 +642,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
             startDate,
             endDate,
           };
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            quantity: clampCartLineQuantityToAvailableMaximum(
+              updated,
+              updated[existingIndex],
+            ),
+          };
           return withRequiredAccessories(
             updated,
             existing.lineId,
-            mergedQuantity,
+            updated[existingIndex].quantity,
           );
         }
 
         const newItem = buildFullItem();
+        const updated = [...currentItems, newItem];
+        const clampedQuantity = clampCartLineQuantityToAvailableMaximum(
+          updated,
+          newItem,
+        );
+        if (clampedQuantity === 0) {
+          return currentItems;
+        }
+        updated[updated.length - 1] = {
+          ...newItem,
+          quantity: clampedQuantity,
+        };
         return withRequiredAccessories(
-          [...currentItems, newItem],
+          updated,
           newItem.lineId,
-          newItem.quantity,
+          clampedQuantity,
         );
       });
 
