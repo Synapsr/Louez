@@ -5445,8 +5445,8 @@
           "description": "Die Seite Reservierungen öffnet jetzt im Kalender. Er scrollt durchgehend von Woche zu Woche, ohne Seitenwechsel, und ein Mouseover zeigt die komplette Reservierung. Liste und Belegungsplan bleiben einen Klick entfernt."
         },
         "product-creation-flow-redesign": {
-          "title": "Zwei Abschnitte, und Ihr Produkt ist online",
-          "description": "Der vierstufige Assistent weicht einer einzigen Seite. Zubehör und Versicherung werden beim Anlegen nicht mehr abgefragt — die ergänzen Sie später, wenn Sie sie brauchen. Rechts: eine Vorschau der Seite und die Liste der offenen Angaben."
+          "title": "Eine Seite, und Ihr Produkt ist online",
+          "description": "Der vierstufige Assistent weicht einer einzigen Seite. Zubehör können Sie direkt beim Anlegen oder später hinzufügen; die Versicherung richten Sie weiterhin danach ein. Rechts sehen Sie eine Vorschau und die noch fehlenden Angaben."
         },
         "keyboard-shortcuts": {
           "title": "Für alle, die die Tastatur nicht loslassen",

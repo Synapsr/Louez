@@ -647,6 +647,16 @@ export function ProductForm({
         : t("pricePerWeek");
   const priceLabel =
     watchedValues.pricingKind === "fixed" ? t("fixedPriceLabel") : durationPriceLabel;
+  const accessoriesSection = (
+    <div id="section-accessories" className="scroll-mt-8">
+      <ProductFormSectionAccessories
+        form={form as unknown as ProductFormComponentApi}
+        availableAccessories={availableAccessories}
+        currency={currency}
+        disabled={isSaving}
+      />
+    </div>
+  );
 
   // Edit mode: single column with sticky TOC on desktop
   if (isEditMode) {
@@ -726,14 +736,7 @@ export function ProductForm({
                   />
                 </div>
 
-                <div id="section-accessories" className="scroll-mt-8">
-                  <ProductFormSectionAccessories
-                    form={form as unknown as ProductFormComponentApi}
-                    availableAccessories={availableAccessories}
-                    currency={currency}
-                    disabled={isSaving}
-                  />
-                </div>
+                {accessoriesSection}
 
                 {product?.id ? <ProductAssuranceSection productId={product.id} /> : null}
               </div>
@@ -845,6 +848,8 @@ export function ProductForm({
                   showUnitValidationErrors={hasUnitsSubmitError || submissionAttempts > 0}
                 />
               </div>
+
+              {accessoriesSection}
             </div>
 
             <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:w-80 xl:w-88">

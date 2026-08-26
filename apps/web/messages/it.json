@@ -5445,8 +5445,8 @@
           "description": "La pagina Prenotazioni si apre ora sul calendario. Scorre in continuo, da una settimana all'altra senza cambiare pagina, e basta il passaggio del mouse per vedere l'intera prenotazione. Elenco e planning per prodotto restano a un clic."
         },
         "product-creation-flow-redesign": {
-          "title": "Due sezioni, e il prodotto è online",
-          "description": "La procedura in quattro tappe lascia il posto a una sola pagina. Accessori e assicurazione non vengono più chiesti in fase di creazione: li aggiungerete dopo, se vi servono. A destra, un'anteprima della scheda e l'elenco di ciò che manca."
+          "title": "Una sola pagina e il prodotto è online",
+          "description": "La procedura in quattro tappe diventa una sola pagina. Potete aggiungere gli accessori durante la creazione o in seguito; l'assicurazione resta configurabile dopo. A destra trovate l'anteprima della scheda e ciò che manca da completare."
         },
         "keyboard-shortcuts": {
           "title": "Per chi non stacca le mani dalla tastiera",

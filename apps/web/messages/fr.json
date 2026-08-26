@@ -5445,8 +5445,8 @@
           "description": "La page Réservations s'ouvre désormais sur le calendrier. Il défile en continu, d'une semaine à l'autre sans changer de page, et un simple survol vous donne toute la réservation. La liste et le planning par produit restent à un clic."
         },
         "product-creation-flow-redesign": {
-          "title": "Deux sections, et votre produit est en ligne",
-          "description": "L'assistant en quatre étapes laisse place à une seule page. Les accessoires et l'assurance ne sont plus demandés à la création — vous les ajouterez plus tard si vous en avez besoin. À droite, un aperçu de la fiche et la liste de ce qu'il reste à remplir."
+          "title": "Une seule page, et votre produit est en ligne",
+          "description": "L'assistant en quatre étapes laisse place à une seule page. Ajoutez les accessoires dès la création ou revenez-y plus tard ; l'assurance reste configurable ensuite. À droite, vous retrouvez l'aperçu de la fiche et ce qu'il reste à remplir."
         },
         "keyboard-shortcuts": {
           "title": "Pour ceux qui ne lâchent pas le clavier",

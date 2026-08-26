@@ -1,6 +1,5 @@
-import { db } from "@louez/db";
+import { categories, db } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
-import { categories } from "@louez/db";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -8,6 +7,7 @@ import { getTranslations } from "next-intl/server";
 import { isImageBackgroundRemovalEnabled } from "@/lib/ai/image/background-removal";
 import { isAiImageEnhanceEnabled } from "@/lib/ai/image/credits";
 
+import { getAvailableAccessories } from "../actions";
 import { ProductForm } from "../product-form";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -22,10 +22,13 @@ export default async function NewProductPage() {
     redirect("/onboarding");
   }
 
-  const categoriesList = await db.query.categories.findMany({
-    where: eq(categories.storeId, store.id),
-    orderBy: [categories.order],
-  });
+  const [categoriesList, availableAccessories] = await Promise.all([
+    db.query.categories.findMany({
+      where: eq(categories.storeId, store.id),
+      orderBy: [categories.order],
+    }),
+    getAvailableAccessories(),
+  ]);
 
   const showAiContext = store.aiAdvisorSettings?.enabled === true;
 
@@ -38,6 +41,7 @@ export default async function NewProductPage() {
 
       <ProductForm
         categories={categoriesList}
+        availableAccessories={availableAccessories}
         storeTaxSettings={store.settings?.tax}
         showAiContext={showAiContext}
         imageEnhanceEnabled={isAiImageEnhanceEnabled()}

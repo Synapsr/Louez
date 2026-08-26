@@ -5445,8 +5445,8 @@
           "description": "La página Reservas se abre ahora en el calendario. Se desplaza de forma continua, de una semana a otra sin cambiar de página, y basta pasar el ratón para ver la reserva completa. La lista y el planning por producto siguen a un clic."
         },
         "product-creation-flow-redesign": {
-          "title": "Dos secciones y su producto está en línea",
-          "description": "El asistente de cuatro pasos da paso a una sola página. Los accesorios y el seguro ya no se piden al crear: los añadirá más tarde si los necesita. A la derecha, una vista previa de la ficha y la lista de lo que falta por rellenar."
+          "title": "Una sola página y su producto está en línea",
+          "description": "El asistente de cuatro pasos se convierte en una sola página. Puede añadir los accesorios al crear el producto o más tarde; el seguro se sigue configurando después. A la derecha verá una vista previa de la ficha y lo que falta por completar."
         },
         "keyboard-shortcuts": {
           "title": "Para quienes no sueltan el teclado",

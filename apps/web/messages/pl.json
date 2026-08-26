@@ -5445,8 +5445,8 @@
           "description": "Strona Rezerwacje otwiera się teraz na kalendarzu. Przewija się płynnie z tygodnia na tydzień bez zmiany strony, a najechanie kursorem pokazuje całą rezerwację. Lista i planowanie według produktu są o jedno kliknięcie stąd."
         },
         "product-creation-flow-redesign": {
-          "title": "Dwie sekcje i produkt jest online",
-          "description": "Kreator w czterech krokach ustępuje miejsca jednej stronie. Akcesoria i ubezpieczenie nie są już wymagane przy tworzeniu — dodasz je później, jeśli będą potrzebne. Po prawej podgląd karty i lista tego, co zostało do wypełnienia."
+          "title": "Jedna strona i produkt jest online",
+          "description": "Czteroetapowy kreator mieści się teraz na jednej stronie. Akcesoria możesz dodać podczas tworzenia produktu lub później; ubezpieczenie nadal skonfigurujesz po zapisaniu. Po prawej zobaczysz podgląd karty i brakujące informacje."
         },
         "keyboard-shortcuts": {
           "title": "Dla tych, którzy nie odrywają rąk od klawiatury",

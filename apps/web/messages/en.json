@@ -5445,8 +5445,8 @@
           "description": "The Reservations page now opens on the calendar. It scrolls continuously, from one week to the next without changing page, and a hover gives you the whole reservation. The list and the per-product planning stay one click away."
         },
         "product-creation-flow-redesign": {
-          "title": "Two sections, and your product is live",
-          "description": "The four-step wizard gives way to a single page. Accessories and insurance are no longer asked for at creation time — you add them later if you need them. On the right, a preview of the listing and a list of what is left to fill in."
+          "title": "One page, and your product is live",
+          "description": "The four-step wizard is now a single page. Add accessories while creating the product or come back to them later; insurance is still configured afterwards. On the right, you can preview the listing and see what is left to fill in."
         },
         "keyboard-shortcuts": {
           "title": "For those who never leave the keyboard",

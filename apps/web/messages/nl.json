@@ -5445,8 +5445,8 @@
           "description": "De pagina Reserveringen opent nu op de agenda. Die scrolt doorlopend, van week tot week zonder van pagina te wisselen, en één beweging met de muis toont de volledige reservering. Lijst en planning per product blijven één klik verwijderd."
         },
         "product-creation-flow-redesign": {
-          "title": "Twee secties, en uw product staat online",
-          "description": "De wizard in vier stappen maakt plaats voor één pagina. Accessoires en verzekering worden bij het aanmaken niet meer gevraagd — die voegt u later toe als u ze nodig hebt. Rechts: een voorbeeld van de pagina en de lijst van wat nog ontbreekt."
+          "title": "Eén pagina en uw product staat online",
+          "description": "De wizard in vier stappen staat nu op één pagina. Voeg accessoires meteen toe of doe dat later; de verzekering stelt u nog steeds achteraf in. Rechts ziet u een voorbeeld van de productpagina en wat nog moet worden ingevuld."
         },
         "keyboard-shortcuts": {
           "title": "Voor wie het toetsenbord niet loslaat",
