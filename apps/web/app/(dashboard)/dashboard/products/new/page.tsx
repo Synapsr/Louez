@@ -37,6 +37,7 @@ export default async function NewProductPage() {
       </div>
 
       <ProductForm
+        key="new-product"
         categories={categoriesList}
         storeTaxSettings={store.settings?.tax}
         showAiContext={showAiContext}
