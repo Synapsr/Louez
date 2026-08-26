@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { cn } from "@louez/utils";
 
-import { env } from "@/env";
+import { usePublicEnv } from "@/components/shared/public-env-provider";
 
 import { useOnboardingPreview } from "../_lib/preview-context";
 
@@ -80,6 +80,7 @@ export function StorefrontPreview() {
   const t = useTranslations("onboarding.preview");
   const tStore = useTranslations("onboarding.store");
   const { preview } = useOnboardingPreview();
+  const { NEXT_PUBLIC_APP_DOMAIN: appDomain } = usePublicEnv();
 
   const isDark = preview.theme === "dark";
   const name = preview.storeName.trim();
@@ -112,7 +113,7 @@ export function StorefrontPreview() {
         >
           <Lock className="size-2.5 shrink-0 opacity-60" />
           <span className="truncate">
-            {slug}.{env.NEXT_PUBLIC_APP_DOMAIN}
+            {slug}.{appDomain}
           </span>
         </div>
         {/* <div className="ml-auto flex items-center gap-2">

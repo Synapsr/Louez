@@ -1,60 +1,60 @@
-'use client'
+"use client";
 
-import posthog from 'posthog-js'
-import { PostHogProvider as PHProvider, usePostHog } from 'posthog-js/react'
-import { usePathname, useSearchParams } from 'next/navigation'
-import { useEffect, Suspense } from 'react'
-import { env } from '@/env'
+import posthog from "posthog-js";
+import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, Suspense } from "react";
+import { usePublicEnv } from "@/components/shared/public-env-provider";
 
 /**
  * Tracks page views on route changes in Next.js App Router.
  * Must be used inside PostHogProvider and Suspense boundary.
  */
 function PostHogPageView() {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const posthogClient = usePostHog()
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const posthogClient = usePostHog();
 
   useEffect(() => {
     if (pathname && posthogClient) {
-      let url = window.origin + pathname
-      const search = searchParams?.toString()
+      let url = window.origin + pathname;
+      const search = searchParams?.toString();
       if (search) {
-        url = url + '?' + search
+        url = url + "?" + search;
       }
-      posthogClient.capture('$pageview', { $current_url: url })
+      posthogClient.capture("$pageview", { $current_url: url });
     }
-  }, [pathname, searchParams, posthogClient])
+  }, [pathname, searchParams, posthogClient]);
 
-  return null
+  return null;
 }
 
 /**
  * Identifies user in PostHog for session replay attribution.
  * Must be used inside PostHogProvider.
  */
-function PostHogIdentify({ user }: { user: PostHogProviderProps['user'] }) {
-  const posthogClient = usePostHog()
+function PostHogIdentify({ user }: { user: PostHogProviderProps["user"] }) {
+  const posthogClient = usePostHog();
 
   useEffect(() => {
     if (posthogClient && user) {
       posthogClient.identify(user.id, {
         email: user.email,
         name: user.name || undefined,
-      })
+      });
     }
-  }, [posthogClient, user])
+  }, [posthogClient, user]);
 
-  return null
+  return null;
 }
 
 interface PostHogProviderProps {
-  children: React.ReactNode
+  children: React.ReactNode;
   user?: {
-    id: string
-    email: string
-    name?: string | null
-  }
+    id: string;
+    email: string;
+    name?: string | null;
+  };
 }
 
 /**
@@ -65,13 +65,16 @@ interface PostHogProviderProps {
  * - Access to PostHog hooks (usePostHog, useFeatureFlag, etc.)
  * - Session recording and analytics
  *
- * PostHog is initialized in instrumentation-client.ts, this provider
- * adds React context integration for the initialized instance.
+ * The root PostHogBootstrap initializes the SDK from validated runtime
+ * configuration before route-level analytics effects run. This provider adds
+ * the React context and user-aware tracking for configured deployments.
  */
 export function PostHogProvider({ children, user }: PostHogProviderProps) {
+  const { NEXT_PUBLIC_POSTHOG_KEY: posthogKey } = usePublicEnv();
+
   // Skip rendering if PostHog is not configured
-  if (!env.NEXT_PUBLIC_POSTHOG_KEY) {
-    return <>{children}</>
+  if (!posthogKey) {
+    return <>{children}</>;
   }
 
   return (
@@ -82,5 +85,5 @@ export function PostHogProvider({ children, user }: PostHogProviderProps) {
       {user && <PostHogIdentify user={user} />}
       {children}
     </PHProvider>
-  )
+  );
 }
