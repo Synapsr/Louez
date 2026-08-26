@@ -1,3 +1,4 @@
+import { getAccessoryCandidates } from "@louez/api/services";
 import { categories, db } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
 import { eq } from "drizzle-orm";
@@ -7,7 +8,6 @@ import { getTranslations } from "next-intl/server";
 import { isImageBackgroundRemovalEnabled } from "@/lib/ai/image/background-removal";
 import { isAiImageEnhanceEnabled } from "@/lib/ai/image/credits";
 
-import { getAvailableAccessories } from "../actions";
 import { ProductForm } from "../product-form";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -27,7 +27,7 @@ export default async function NewProductPage() {
       where: eq(categories.storeId, store.id),
       orderBy: [categories.order],
     }),
-    getAvailableAccessories(),
+    getAccessoryCandidates({ storeId: store.id }),
   ]);
 
   const showAiContext = store.aiAdvisorSettings?.enabled === true;

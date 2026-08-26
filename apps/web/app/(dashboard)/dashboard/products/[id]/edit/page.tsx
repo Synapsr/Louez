@@ -1,8 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
+import { getAccessoryCandidates } from "@louez/api/services";
 import { db, getEffectiveProductQuantities } from "@louez/db";
 import {
   categories,
@@ -73,24 +74,13 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     notFound();
   }
 
-  const categoriesList = await db.query.categories.findMany({
-    where: eq(categories.storeId, store.id),
-    orderBy: [categories.order],
-  });
-
-  // Get all active products for the accessories selector (excluding current product)
-  const availableAccessories = await db.query.products.findMany({
-    where: and(eq(products.storeId, store.id), eq(products.status, "active"), ne(products.id, id)),
-    columns: {
-      id: true,
-      name: true,
-      price: true,
-      images: true,
-    },
-    // Same order as the products list and the storefront catalog: the manual
-    // order first, newest first for products that were never reordered.
-    orderBy: (p, { asc, desc }) => [asc(p.displayOrder), desc(p.createdAt)],
-  });
+  const [categoriesList, availableAccessories] = await Promise.all([
+    db.query.categories.findMany({
+      where: eq(categories.storeId, store.id),
+      orderBy: [categories.order],
+    }),
+    getAccessoryCandidates({ storeId: store.id, excludeProductId: id }),
+  ]);
 
   // Accessory links carry their booking rules (required + quantity per parent
   // unit), not just the association.

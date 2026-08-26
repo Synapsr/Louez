@@ -1201,34 +1201,6 @@ export async function getProduct(productId: string) {
   return product;
 }
 
-// Get all products available as accessories (excluding the current product)
-export async function getAvailableAccessories(excludeProductId?: string) {
-  const store = await getStoreForUser();
-  if (!store) {
-    return [];
-  }
-
-  const allProducts = await db.query.products.findMany({
-    where: and(eq(products.storeId, store.id), eq(products.status, "active")),
-    columns: {
-      id: true,
-      name: true,
-      price: true,
-      images: true,
-    },
-    // Same order as the products list and the storefront catalog: the manual
-    // order first, newest first for products that were never reordered.
-    orderBy: (p, { asc, desc }) => [asc(p.displayOrder), desc(p.createdAt)],
-  });
-
-  // Filter out the current product if provided
-  if (excludeProductId) {
-    return allProducts.filter((p) => p.id !== excludeProductId);
-  }
-
-  return allProducts;
-}
-
 export async function updateProductsOrder(productIds: string[]) {
   const store = await getStoreForUser();
   if (!store) {
