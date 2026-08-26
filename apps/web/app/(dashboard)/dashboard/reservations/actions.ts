@@ -2588,10 +2588,14 @@ export async function updateReservation(
           ),
           columns: { pricingKind: true },
         });
-        if (!manualPriceProduct) {
-          return { error: "errors.invalidData" };
-        }
-        manualPricingKind = manualPriceProduct.pricingKind;
+        // The product may have been deleted since the reservation was created;
+        // the stored breakdown keeps the kind so the manual price stays editable.
+        const existingBreakdown = item.id
+          ? existingItemsById.get(item.id)?.pricingBreakdown
+          : undefined;
+        manualPricingKind =
+          manualPriceProduct?.pricingKind ??
+          toPricingKind(existingBreakdown?.pricingKind);
         duration = manualPricingKind === "fixed" ? 1 : duration;
         totalPrice = item.unitPrice * duration * item.quantity;
       }

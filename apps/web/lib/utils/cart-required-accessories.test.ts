@@ -242,6 +242,47 @@ test('shares returnable stock across identical cart selections', () => {
   );
 });
 
+test('leaves a lone returnable line alone when its stock runs out', () => {
+  // The server already reports the shortfall through maxQuantity; removing or
+  // shrinking the line would hide that message from the customer.
+  const lines = [
+    {
+      lineId: 'bike',
+      productId: 'bike',
+      stockKind: 'returnable' as const,
+      selectionSignature: '__default',
+      quantity: 3,
+      maxQuantity: 0,
+    },
+  ];
+
+  assert.deepEqual(
+    reconcileSharedCartLineQuantities(lines).map((line) => ({
+      lineId: line.lineId,
+      quantity: line.quantity,
+    })),
+    [{ lineId: 'bike', quantity: 3 }],
+  );
+});
+
+test('leaves a lone returnable line alone on a partial shortfall', () => {
+  const lines = [
+    {
+      lineId: 'bike',
+      productId: 'bike',
+      stockKind: 'returnable' as const,
+      selectionSignature: '__default',
+      quantity: 3,
+      maxQuantity: 2,
+    },
+  ];
+
+  assert.deepEqual(
+    reconcileSharedCartLineQuantities(lines).map((line) => line.quantity),
+    [3],
+  );
+});
+
 test('keeps different returnable selections independent', () => {
   const lines = [
     {

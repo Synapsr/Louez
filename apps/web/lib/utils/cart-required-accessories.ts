@@ -238,6 +238,12 @@ export function reconcileSharedCartLineQuantities<
       (line) =>
         getCartStockGroupKey(reconciled, line) === stockGroupKey,
     );
+    // A single line has no sibling to share stock with. Its own shortfall is
+    // already reported through maxQuantity, so the line stays visible with
+    // its unavailable reason instead of vanishing from the cart.
+    if (productLines.length < 2) {
+      continue;
+    }
     const stockQuantity = Math.min(
       ...productLines.map((line) => Math.max(0, line.maxQuantity)),
     );
