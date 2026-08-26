@@ -22,8 +22,8 @@ import {
   clampRequiredAccessoryLineQuantity,
   getCartLineAvailableMaximumQuantity,
   getRequiredAccessoryLineMinimumQuantity,
-  reconcileConsumableCartLineQuantities,
   reconcileRequiredAccessoryLineQuantity,
+  reconcileSharedCartLineQuantities,
   type RequiredAccessoryCartInput,
 } from '@/lib/utils/cart-required-accessories';
 import { type PricingMode, calculateDuration } from '@/lib/utils/duration';
@@ -489,7 +489,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         };
       });
 
-      return reconcileConsumableCartLineQuantities(resolvedItems);
+      return reconcileSharedCartLineQuantities(resolvedItems);
     });
   }, [resolvedCart]);
 
@@ -658,7 +658,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               updated[existingIndex],
             ),
           };
-          return reconcileConsumableCartLineQuantities(
+          return reconcileSharedCartLineQuantities(
             withRequiredAccessories(
               updated,
               existing.lineId,
@@ -680,7 +680,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           ...newItem,
           quantity: clampedQuantity,
         };
-        return reconcileConsumableCartLineQuantities(
+        return reconcileSharedCartLineQuantities(
           withRequiredAccessories(updated, newItem.lineId, clampedQuantity),
         );
       });
@@ -734,7 +734,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             },
           );
 
-          return reconcileConsumableCartLineQuantities(
+          return reconcileSharedCartLineQuantities(
             currentItems.map((item) =>
               item.lineId === lineId
                 ? { ...item, quantity: clampedQuantity }
@@ -761,7 +761,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           item.lineId === lineId ? { ...item, quantity: nextQuantity } : item,
         );
 
-        return reconcileConsumableCartLineQuantities(
+        return reconcileSharedCartLineQuantities(
           syncRequiredLineQuantities(updated, lineId, nextQuantity),
         );
       });

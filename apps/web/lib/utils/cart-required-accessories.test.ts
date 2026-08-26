@@ -8,7 +8,7 @@ import {
   findBlockingRequiredAccessories,
   getCartLineAvailableMaximumQuantity,
   groupCartLinesByParent,
-  reconcileConsumableCartLineQuantities,
+  reconcileSharedCartLineQuantities,
   reconcileRequiredAccessoryLineQuantity,
   selectOptionalAccessories,
 } from './cart-required-accessories';
@@ -205,7 +205,7 @@ test('removes free consumable units when required lines use all stock', () => {
   ];
 
   assert.deepEqual(
-    reconcileConsumableCartLineQuantities(lines).map((line) => ({
+    reconcileSharedCartLineQuantities(lines).map((line) => ({
       lineId: line.lineId,
       quantity: line.quantity,
     })),
@@ -213,12 +213,42 @@ test('removes free consumable units when required lines use all stock', () => {
   );
 });
 
-test('leaves returnable stock allocation to the canonical server resolver', () => {
+test('shares returnable stock across identical cart selections', () => {
+  const lines = [
+    {
+      lineId: 'required-fluid',
+      parentLineId: 'parent',
+      productId: 'fog-fluid',
+      stockKind: 'returnable' as const,
+      selectionSignature: '__default',
+      quantity: 15,
+      maxQuantity: 15,
+      requiredQuantity: 1,
+    },
+    {
+      lineId: 'free-fluid',
+      productId: 'fog-fluid',
+      // A newly added free line has not necessarily been resolved yet. It must
+      // inherit the product's stock pool from its resolved required sibling.
+      selectionSignature: '__default',
+      quantity: 15,
+      maxQuantity: 15,
+    },
+  ];
+
+  assert.deepEqual(
+    reconcileSharedCartLineQuantities(lines).map((line) => line.lineId),
+    ['required-fluid'],
+  );
+});
+
+test('keeps different returnable selections independent', () => {
   const lines = [
     {
       lineId: 'small',
       productId: 'helmet',
       stockKind: 'returnable' as const,
+      selectionSignature: 'size:S',
       quantity: 1,
       maxQuantity: 2,
     },
@@ -226,6 +256,7 @@ test('leaves returnable stock allocation to the canonical server resolver', () =
       lineId: 'large',
       productId: 'helmet',
       stockKind: 'returnable' as const,
+      selectionSignature: 'size:L',
       quantity: 1,
       maxQuantity: 3,
     },

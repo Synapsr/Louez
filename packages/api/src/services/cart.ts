@@ -20,6 +20,7 @@ import {
 } from '@louez/utils';
 
 import { getStorefrontAvailability } from './availability';
+import { getCartRequestedQuantity } from './cart-demand';
 import { ApiServiceError } from './errors';
 
 interface ResolveStorefrontCartParams {
@@ -290,16 +291,11 @@ export async function resolveStorefrontCart(
               0,
             )
         : (productAvailability?.availableQuantity ?? 0);
-    const requestedOwnQuantity =
-      product.stockKind === 'consumable'
-        ? lines.reduce(
-            (quantity, candidate) =>
-              candidate.productId === product.id
-                ? quantity + candidate.quantity
-                : quantity,
-            0,
-          )
-        : line.quantity;
+    const requestedOwnQuantity = getCartRequestedQuantity(
+      lines,
+      line,
+      product.stockKind,
+    );
     const requiredAccessories =
       requiredAccessoriesByParentId.get(product.id) ?? [];
     const requiredAccessoryMaxQuantity = requiredAccessories.reduce(

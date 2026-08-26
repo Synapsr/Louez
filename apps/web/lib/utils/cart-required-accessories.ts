@@ -84,6 +84,7 @@ interface CartLineQuantity extends RequiredAccessoryCartLineQuantity {
   lineId: string;
   productId: string;
   stockKind?: StockKind | null;
+  selectionSignature?: string;
   quantity: number;
   parentLineId?: string;
 }
@@ -130,23 +131,49 @@ export function reconcileRequiredAccessoryLineQuantity(
   );
 }
 
-function getOtherConsumableLinesQuantity(
+function getCartStockGroupKey(
   lines: CartLineQuantity[],
-  line: Pick<CartLineQuantity, 'lineId' | 'productId' | 'stockKind'>,
-): number {
-  const isConsumableProduct = lines.some(
+  line: Pick<
+    CartLineQuantity,
+    'productId' | 'selectionSignature' | 'stockKind'
+  >,
+): string | null {
+  const productStockKind = lines.some(
     (candidate) =>
       candidate.productId === line.productId &&
       candidate.stockKind === 'consumable',
-  );
-  if (line.stockKind !== 'consumable' && !isConsumableProduct) {
+  )
+    ? 'consumable'
+    : (line.stockKind ??
+      lines.find(
+        (candidate) =>
+          candidate.productId === line.productId && Boolean(candidate.stockKind),
+      )?.stockKind);
+  if (!productStockKind) {
+    return null;
+  }
+
+  return JSON.stringify([
+    line.productId,
+    productStockKind === 'consumable'
+      ? '*'
+      : (line.selectionSignature ?? '__default'),
+  ]);
+}
+
+function getOtherSharedStockLinesQuantity(
+  lines: CartLineQuantity[],
+  line: CartLineQuantity,
+): number {
+  const stockGroupKey = getCartStockGroupKey(lines, line);
+  if (!stockGroupKey) {
     return 0;
   }
 
   return lines.reduce(
     (total, candidate) =>
       candidate.lineId !== line.lineId &&
-      candidate.productId === line.productId
+      getCartStockGroupKey(lines, candidate) === stockGroupKey
         ? total + candidate.quantity
         : total,
     0,
@@ -160,7 +187,7 @@ export function getCartLineAvailableMaximumQuantity(
 ): number {
   const ownMaximum = Math.max(
     0,
-    line.maxQuantity - getOtherConsumableLinesQuantity(lines, line),
+    line.maxQuantity - getOtherSharedStockLinesQuantity(lines, line),
   );
 
   if (line.parentLineId) {
@@ -172,7 +199,7 @@ export function getCartLineAvailableMaximumQuantity(
     .map((child) => {
       const availableAccessoryQuantity = Math.max(
         0,
-        child.maxQuantity - getOtherConsumableLinesQuantity(lines, child),
+        child.maxQuantity - getOtherSharedStockLinesQuantity(lines, child),
       );
       return Math.floor(
         availableAccessoryQuantity /
@@ -195,20 +222,21 @@ export function clampCartLineQuantityToAvailableMaximum(
 }
 
 /** Gives required lines priority, then fits free lines into remaining stock. */
-export function reconcileConsumableCartLineQuantities<
+export function reconcileSharedCartLineQuantities<
   T extends CartLineQuantity,
 >(lines: T[]): T[] {
-  const consumableProductIds = new Set(
+  const stockGroupKeys = new Set(
     lines
-      .filter((line) => line.stockKind === 'consumable')
-      .map((line) => line.productId),
+      .map((line) => getCartStockGroupKey(lines, line))
+      .filter((key): key is string => Boolean(key)),
   );
   let reconciled = [...lines];
   const removedParentLineIds = new Set<string>();
 
-  for (const productId of consumableProductIds) {
+  for (const stockGroupKey of stockGroupKeys) {
     const productLines = reconciled.filter(
-      (line) => line.productId === productId,
+      (line) =>
+        getCartStockGroupKey(reconciled, line) === stockGroupKey,
     );
     const stockQuantity = Math.min(
       ...productLines.map((line) => Math.max(0, line.maxQuantity)),
@@ -219,7 +247,10 @@ export function reconcileConsumableCartLineQuantities<
     let remainingQuantity = Math.max(0, stockQuantity - requiredQuantity);
 
     reconciled = reconciled.flatMap((line) => {
-      if (line.productId !== productId || line.parentLineId) {
+      if (
+        getCartStockGroupKey(reconciled, line) !== stockGroupKey ||
+        line.parentLineId
+      ) {
         return [line];
       }
 
