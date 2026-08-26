@@ -51,6 +51,7 @@ import {
 } from '@/lib/referral/rewards';
 import { fromStripeCents } from '@/lib/stripe';
 import { stripe } from '@/lib/stripe/client';
+import { claimCompletedCheckoutPayment } from '@/lib/stripe/payment-completion';
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
 
 import { getStorefrontUrl } from '@/lib/storefront-url';
@@ -149,6 +150,24 @@ async function confirmPaidReservationOrThrow(params: {
   stripePaymentMethodId: string | null;
   depositStatus: 'none' | 'card_saved' | 'pending';
 }): Promise<boolean> {
+  // Keep payment/deposit metadata even when stock consumption rolls back. A
+  // merchant can then restock and confirm the paid reservation manually.
+  await db
+    .update(reservations)
+    .set({
+      stripeCustomerId: params.stripeCustomerId,
+      stripePaymentMethodId: params.stripePaymentMethodId,
+      depositStatus: params.depositStatus,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(reservations.id, params.reservationId),
+        eq(reservations.storeId, params.storeId),
+        eq(reservations.status, 'pending'),
+      ),
+    );
+
   return db.transaction(async (tx) => {
     const [lockedReservation] = await tx
       .select({ status: reservations.status })
@@ -399,7 +418,6 @@ async function handleCheckoutCompleted(
   const existingPayment = await db.query.payments.findFirst({
     where: eq(payments.stripeCheckoutSessionId, session.id),
   });
-  const paymentAlreadyCompleted = existingPayment?.status === 'completed';
 
   // Get reservation with store, customer, and items for notifications
   const reservation = await db.query.reservations.findFirst({
@@ -586,63 +604,22 @@ async function handleCheckoutCompleted(
     }
   }
 
-  // Payment + confirmation already handled (e.g. by the success page). PAYG usage is
-  // now recorded, so we can safely stop here without duplicating notifications.
-  if (paymentAlreadyCompleted) {
-    await confirmPaidReservation({
-      reservationId,
-      storeId: reservation.store.id,
-      stripeCustomerId,
-      stripePaymentMethodId,
-      depositStatus: newDepositStatus,
-    });
-    await tryGenerateInvoiceForPayment(
-      existingPayment.id,
-      'stripe_checkout_webhook_existing_payment',
-    );
-    console.log(
-      `Payment already completed for session ${session.id}, skipping`,
-    );
-    return;
-  }
-
-  // Update existing payment record (pending/failed/cancelled) or create a completed one.
-  const completedPaymentId = existingPayment?.id ?? nanoid();
-  if (existingPayment) {
-    await db
-      .update(payments)
-      .set({
-        status: 'completed',
-        stripePaymentIntentId: paymentIntentId,
-        stripeChargeId: chargeId,
-        stripePaymentMethodId,
-        paidAt,
-        updatedAt: new Date(),
-      })
-      .where(eq(payments.id, existingPayment.id));
-  } else {
-    // Create payment record (fallback if pending payment wasn't created)
-    await db.insert(payments).values({
-      id: completedPaymentId,
-      reservationId,
-      amount: totalAmount.toFixed(2),
-      type: 'rental',
-      method: 'stripe',
-      status: 'completed',
-      stripePaymentIntentId: paymentIntentId,
-      stripeChargeId: chargeId,
-      stripeCheckoutSessionId: session.id,
-      stripePaymentMethodId,
-      currency,
-      paidAt,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-  }
+  const paymentClaim = await claimCompletedCheckoutPayment({
+    reservationId,
+    amount: totalAmount,
+    currency,
+    stripeCheckoutSessionId: session.id,
+    stripePaymentIntentId: paymentIntentId,
+    stripeChargeId: chargeId,
+    stripePaymentMethodId,
+    paidAt,
+  });
 
   const invoiceGeneration = await tryGenerateInvoiceForPayment(
-    completedPaymentId,
-    'stripe_checkout_webhook',
+    paymentClaim.paymentId,
+    paymentClaim.claimed
+      ? 'stripe_checkout_webhook'
+      : 'stripe_checkout_webhook_existing_payment',
   );
 
   // Mark payment request as completed if this session was created from one
@@ -658,92 +635,98 @@ async function handleCheckoutCompleted(
   }
 
   // Always log payment received when this session is first processed as completed.
-  await db.insert(reservationActivity).values({
-    id: nanoid(),
-    reservationId,
-    activityType: 'payment_received',
-    description: null,
-    metadata: {
-      paymentIntentId,
-      chargeId,
-      checkoutSessionId: session.id,
-      amount: totalAmount,
-      currency,
-      method: 'stripe',
-      type: 'rental',
-    },
-    createdAt: paidAt,
-  });
+  if (paymentClaim.claimed) {
+    await db.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: 'payment_received',
+      description: null,
+      metadata: {
+        paymentIntentId,
+        chargeId,
+        checkoutSessionId: session.id,
+        amount: totalAmount,
+        currency,
+        method: 'stripe',
+        type: 'rental',
+      },
+      createdAt: paidAt,
+    });
+  }
 
-  await captureProductServerEvent({
-    distinctId: reservation.customerId,
-    event: productAnalyticsEvents.checkoutPaymentCompleted,
-    properties: {
-      feature: 'checkout',
-      surface: 'storefront',
-      store_id: reservation.store.id,
-      reservation_id: reservationId,
-      customer_id: reservation.customerId,
-      source: 'stripe_connect_webhook',
-      payment_provider: 'stripe',
-      amount_cents: toAnalyticsAmountCents(totalAmount),
-      deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
-      currency,
-      has_deposit: depositAmount > 0,
-      card_saved: Boolean(stripePaymentMethodId),
-      payment_intent_present: Boolean(paymentIntentId),
-      payment_request_present: Boolean(paymentRequestId),
-      reservation_status_before: reservation.status,
-      reservation_confirmed_by_event: reservation.status === 'pending',
-      is_pay_as_you_go_store: isPayAsYouGoStore,
-      application_fee_collected_cents: applicationFeeCollectedCents,
-      reservation_fee_cents: feeBreakdown.reservationFeeCents,
-    },
-  });
+  if (paymentClaim.claimed) {
+    await captureProductServerEvent({
+      distinctId: reservation.customerId,
+      event: productAnalyticsEvents.checkoutPaymentCompleted,
+      properties: {
+        feature: 'checkout',
+        surface: 'storefront',
+        store_id: reservation.store.id,
+        reservation_id: reservationId,
+        customer_id: reservation.customerId,
+        source: 'stripe_connect_webhook',
+        payment_provider: 'stripe',
+        amount_cents: toAnalyticsAmountCents(totalAmount),
+        deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
+        currency,
+        has_deposit: depositAmount > 0,
+        card_saved: Boolean(stripePaymentMethodId),
+        payment_intent_present: Boolean(paymentIntentId),
+        payment_request_present: Boolean(paymentRequestId),
+        reservation_status_before: reservation.status,
+        reservation_confirmed_by_event: reservation.status === 'pending',
+        is_pay_as_you_go_store: isPayAsYouGoStore,
+        application_fee_collected_cents: applicationFeeCollectedCents,
+        reservation_fee_cents: feeBreakdown.reservationFeeCents,
+      },
+    });
+  }
 
   // Dispatch admin notifications (SMS, Discord) for payment received.
-  dispatchNotification('payment_received', {
-    store: {
-      id: reservation.store.id,
-      name: reservation.store.name,
-      email: reservation.store.email,
-      discordWebhookUrl: reservation.store.discordWebhookUrl,
-      ownerPhone: reservation.store.ownerPhone,
-      notificationSettings: reservation.store.notificationSettings,
-      settings: reservation.store.settings,
-    },
-    reservation: {
-      id: reservationId,
-      number: reservation.number,
-      startDate: reservation.startDate,
-      endDate: reservation.endDate,
-      totalAmount: Number(reservation.totalAmount),
-    },
-    customer: reservation.customer
-      ? {
-          firstName: reservation.customer.firstName,
-          lastName: reservation.customer.lastName,
-          email: reservation.customer.email,
-          phone: reservation.customer.phone,
-        }
-      : undefined,
-    payment: {
-      amount: totalAmount,
-    },
-  }).catch((error) => {
-    console.error('Failed to dispatch payment received notification:', error);
-  });
+  if (paymentClaim.claimed) {
+    dispatchNotification('payment_received', {
+      store: {
+        id: reservation.store.id,
+        name: reservation.store.name,
+        email: reservation.store.email,
+        discordWebhookUrl: reservation.store.discordWebhookUrl,
+        ownerPhone: reservation.store.ownerPhone,
+        notificationSettings: reservation.store.notificationSettings,
+        settings: reservation.store.settings,
+      },
+      reservation: {
+        id: reservationId,
+        number: reservation.number,
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+        totalAmount: Number(reservation.totalAmount),
+      },
+      customer: reservation.customer
+        ? {
+            firstName: reservation.customer.firstName,
+            lastName: reservation.customer.lastName,
+            email: reservation.customer.email,
+            phone: reservation.customer.phone,
+          }
+        : undefined,
+      payment: {
+        amount: totalAmount,
+      },
+    }).catch((error) => {
+      console.error('Failed to dispatch payment received notification:', error);
+    });
 
-  notifyPaymentReceived(
-    {
-      id: reservation.store.id,
-      name: reservation.store.name,
-      slug: reservation.store.slug,
-    },
-    reservation.number,
-    totalAmount,
-    currency,
-  ).catch(() => {});
+    notifyPaymentReceived(
+      {
+        id: reservation.store.id,
+        name: reservation.store.name,
+        slug: reservation.store.slug,
+      },
+      reservation.number,
+      totalAmount,
+      currency,
+    ).catch(() => {});
+  }
 
   const reservationWasConfirmed = await confirmPaidReservation({
     reservationId,

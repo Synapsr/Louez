@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
+  canTransitionReservationStatus,
   canChangeProductStockKind,
   planConsumableStockMutation,
   reservationStatusConsumesStock,
@@ -75,4 +76,14 @@ test('reservation edits reconcile stock only while the locked status consumes st
   assert.equal(reservationStatusConsumesStock('cancelled'), false)
   assert.equal(reservationStatusConsumesStock('rejected'), false)
   assert.equal(reservationStatusConsumesStock('completed'), false)
+})
+
+test('status transitions are revalidated from the locked reservation state', () => {
+  assert.equal(canTransitionReservationStatus('pending', 'confirmed'), true)
+  assert.equal(canTransitionReservationStatus('quote', 'confirmed'), true)
+  assert.equal(canTransitionReservationStatus('quote', 'declined'), true)
+  assert.equal(canTransitionReservationStatus('confirmed', 'cancelled'), true)
+  assert.equal(canTransitionReservationStatus('ongoing', 'cancelled'), true)
+  assert.equal(canTransitionReservationStatus('cancelled', 'confirmed'), false)
+  assert.equal(canTransitionReservationStatus('completed', 'confirmed'), false)
 })

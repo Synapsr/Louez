@@ -7,6 +7,7 @@ import {
   db,
   effectiveProductQuantitySql,
   getEffectiveProductQuantities,
+  lockProductReservationsForStockKindChange,
   productCategories,
   productPricingTiers,
   productSeasonalPricing,
@@ -344,7 +345,61 @@ export function registerProductTools(
         return toolError('No fields to update.');
       }
 
-      await db.transaction(async (tx) => {
+      const updateResult = await db.transaction(async (tx) => {
+        const canChangeStockKind =
+          updates.stockKind === undefined
+            ? true
+            : await lockProductReservationsForStockKindChange(tx, {
+                productId,
+                storeId: ctx.storeId,
+              });
+        const [lockedProduct] = await tx
+          .select({
+            pricingKind: products.pricingKind,
+            stockKind: products.stockKind,
+            trackUnits: products.trackUnits,
+          })
+          .from(products)
+          .where(
+            and(eq(products.id, productId), eq(products.storeId, ctx.storeId)),
+          )
+          .for('update');
+
+        if (!lockedProduct) {
+          return { ok: false as const, error: 'Product not found.' };
+        }
+
+        const lockedNextPricingKind =
+          updates.pricingKind ?? lockedProduct.pricingKind;
+        const lockedNextStockKind = updates.stockKind ?? lockedProduct.stockKind;
+        if (
+          lockedNextStockKind === 'consumable' &&
+          (lockedNextPricingKind !== 'fixed' || lockedProduct.trackUnits)
+        ) {
+          return {
+            ok: false as const,
+            error:
+              'Consumable products must use fixed pricing and cannot track units.',
+          };
+        }
+        if (lockedProduct.trackUnits && updates.quantity !== undefined) {
+          return {
+            ok: false as const,
+            error:
+              'Quantity is derived from active units for unit-tracked products.',
+          };
+        }
+        if (
+          lockedProduct.stockKind !== lockedNextStockKind &&
+          !canChangeStockKind
+        ) {
+          return {
+            ok: false as const,
+            error:
+              'Stock kind cannot change while the product is used by a confirmed or ongoing reservation.',
+          };
+        }
+
         await tx
           .update(products)
           .set(updateData)
@@ -378,7 +433,13 @@ export function registerProductTools(
             .delete(productSeasonalPricing)
             .where(eq(productSeasonalPricing.productId, productId));
         }
+
+        return { ok: true as const };
       });
+
+      if (!updateResult.ok) {
+        return toolError(updateResult.error);
+      }
 
       return toolResult(`Product ${productId} updated successfully.`);
     },

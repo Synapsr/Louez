@@ -173,8 +173,20 @@ The discriminant that decides how a Product's price is computed: duration (price
 _Avoid_: pricing type, price type, product type
 
 **Fixed price (Forfait)**:
-A Pricing kind where the price is a flat amount per product unit per reservation, independent of rental duration — for example a bike-cleaning service. A fixed-price Product is a full catalog Product: it can carry a deposit, be an accessory of another Product, and consumes stock over the reservation window. French UI: "forfait".
+A Pricing kind where the price is a flat amount per product unit per reservation, independent of rental duration — for example a bike-cleaning service. A fixed-price Product is a full catalog Product: it can carry a deposit and be an accessory of another Product. Its inventory lifecycle is determined separately by its Stock kind. French UI: "forfait".
 _Avoid_: flat fee, service fee, fixed pricing mode (pricing mode is the legacy hour/day/week unit)
+
+**Stock kind**:
+The discriminant that decides how a Product's quantity changes through a reservation: returnable or consumable. It is independent from Pricing kind. French UI: "type de stock".
+_Avoid_: product type, inventory type, consumable flag
+
+**Returnable stock**:
+A Stock kind for Products that come back after a reservation. Availability depends on the selected rental window, and the owned quantity is not permanently reduced when a reservation is confirmed. French UI: "stock retournable".
+_Avoid_: rental product, reusable type
+
+**Consumable stock**:
+A Stock kind for Products that are used up. Quantity means stock currently on hand, confirmation decrements it, cancellation or rejection restores it, and completion leaves it consumed. Availability has no time dimension. French UI: "consommable".
+_Avoid_: disposable product type, service
 
 ## Relationships
 
@@ -213,7 +225,8 @@ _Avoid_: flat fee, service fee, fixed pricing mode (pricing mode is the legacy h
 - Assigning a **Unit** to a reservation is optional and merchant-driven; reservations consume product quantity even when no Unit is assigned, so a Unit's **Unit Operational State** only reflects reservations it is assigned to.
 - A return inspection rated damaged on an assigned **Unit** can suggest declaring a repair **Downtime**; the suggestion is never applied automatically.
 - Inventory management (Downtimes, Retirement, assignment) is open to all team members, owners and members alike.
-- A Product has exactly one **Pricing kind**; a **Fixed price** Product ignores pricing tiers, seasonal pricing, and duration limits, but keeps deposit, stock, and availability behavior.
+- A Product has exactly one **Pricing kind** and one **Stock kind**. These axes are orthogonal, except that **Consumable stock** requires a **Fixed price**.
+- A **Fixed price** Product ignores pricing tiers, seasonal pricing, and duration limits, while its deposit remains supported.
 
 ## Example Dialogue
 

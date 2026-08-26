@@ -20,6 +20,28 @@ export interface ConsumableStockMutationPlan {
 
 type ReservationStatus = typeof reservations.$inferSelect.status
 
+const reservationStatusTransitions: Partial<
+  Record<ReservationStatus, readonly ReservationStatus[]>
+> = {
+  pending: ['confirmed', 'rejected', 'cancelled'],
+  quote: ['confirmed', 'declined', 'cancelled'],
+  confirmed: ['ongoing', 'cancelled'],
+  ongoing: ['completed', 'cancelled'],
+}
+
+export function getAllowedReservationStatusTransitions(
+  status: ReservationStatus,
+): readonly ReservationStatus[] {
+  return reservationStatusTransitions[status] ?? []
+}
+
+export function canTransitionReservationStatus(
+  from: ReservationStatus,
+  to: ReservationStatus,
+): boolean {
+  return getAllowedReservationStatusTransitions(from).includes(to)
+}
+
 export function reservationStatusConsumesStock(status: ReservationStatus): boolean {
   return status === 'confirmed' || status === 'ongoing'
 }

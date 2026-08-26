@@ -288,30 +288,17 @@ export const createProductSchema = (
       pricingTiers: z.array(
         z.object({
           id: z.string().optional(),
-          minDuration: z
-            .number()
-            .int()
-            .min(1, t('minValue', { min: 1 })),
-          discountPercent: z
-            .number()
-            .min(0, t('minValue', { min: 0 }))
-            .max(99, t('maxValue', { max: 99 })),
+          minDuration: z.number(),
+          discountPercent: z.number(),
         }),
       ),
       rateTiers: z.array(
         z.object({
           id: z.string().optional(),
-          price: z.string().regex(/^\d+([.,]\d{1,2})?$/, t('positive')),
-          duration: z
-            .number()
-            .int()
-            .min(1, t('minValue', { min: 1 })),
+          price: z.string(),
+          duration: z.number(),
           unit: z.enum(['minute', 'hour', 'day', 'week']),
-          discountPercent: z
-            .number()
-            .min(0, t('minValue', { min: 0 }))
-            .max(99, t('maxValue', { max: 99 }))
-            .optional(),
+          discountPercent: z.number().optional(),
         }),
       ),
       enforceStrictTiers: z.boolean(),
@@ -401,6 +388,58 @@ export const createProductSchema = (
             path: ['basePriceDuration', 'duration'],
           });
         }
+
+        for (let index = 0; index < data.pricingTiers.length; index++) {
+          const tier = data.pricingTiers[index];
+          if (!Number.isInteger(tier.minDuration) || tier.minDuration < 1) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('minValue', { min: 1 }),
+              path: ['pricingTiers', index, 'minDuration'],
+            });
+          }
+          if (tier.discountPercent < 0 || tier.discountPercent > 99) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message:
+                tier.discountPercent < 0
+                  ? t('minValue', { min: 0 })
+                  : t('maxValue', { max: 99 }),
+              path: ['pricingTiers', index, 'discountPercent'],
+            });
+          }
+        }
+
+        for (let index = 0; index < data.rateTiers.length; index++) {
+          const tier = data.rateTiers[index];
+          if (!moneyInputRegex.test(tier.price)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('positive'),
+              path: ['rateTiers', index, 'price'],
+            });
+          }
+          if (!Number.isInteger(tier.duration) || tier.duration < 1) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: t('minValue', { min: 1 }),
+              path: ['rateTiers', index, 'duration'],
+            });
+          }
+          if (
+            tier.discountPercent !== undefined &&
+            (tier.discountPercent < 0 || tier.discountPercent > 99)
+          ) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message:
+                tier.discountPercent < 0
+                  ? t('minValue', { min: 0 })
+                  : t('maxValue', { max: 99 }),
+              path: ['rateTiers', index, 'discountPercent'],
+            });
+          }
+        }
       }
 
       if (data.stockKind === 'consumable' && data.pricingKind !== 'fixed') {
@@ -469,6 +508,7 @@ export const createProductSchema = (
       }
 
       if (
+        data.pricingKind !== 'fixed' &&
         data.rateTiers &&
         data.rateTiers.length > 0 &&
         hasDuplicateRateTierPeriods(data.rateTiers)

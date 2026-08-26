@@ -73,6 +73,31 @@ const UNIT_LIFECYCLE = {
 
 type ProductMutationTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+function isDatabaseDeadlock(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const databaseError = error as {
+    code?: unknown;
+    cause?: unknown;
+    errno?: unknown;
+    sqlState?: unknown;
+  };
+  return (
+    databaseError.code === "ER_LOCK_DEADLOCK" ||
+    databaseError.errno === 1213 ||
+    databaseError.sqlState === "40001" ||
+    (databaseError.cause !== error && isDatabaseDeadlock(databaseError.cause))
+  );
+}
+
+async function retryOnceOnDeadlock<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isDatabaseDeadlock(error)) throw error;
+    return operation();
+  }
+}
+
 // Resolve the submitted category selection to store-owned category ids,
 // preserving order and de-duplicating. Falls back to the legacy single
 // `categoryId` when `categoryIds` is absent (API/MCP callers).
@@ -116,7 +141,7 @@ async function replaceProductCategories(
  * another store, at the product itself, or at a duplicate accessory.
  */
 async function replaceProductAccessories(
-  tx: ProductMutationTx | typeof db,
+  tx: ProductMutationTx,
   params: {
     storeId: string;
     productId: string;
@@ -125,21 +150,25 @@ async function replaceProductAccessories(
 ) {
   const { storeId, productId, links } = params;
 
+  const requestedIds = Array.from(new Set(links.map((link) => link.accessoryId)));
+  const owned =
+    requestedIds.length === 0
+      ? []
+      : await tx
+          .select({ id: products.id })
+          .from(products)
+          .where(
+            and(
+              eq(products.storeId, storeId),
+              inArray(products.id, requestedIds),
+              ne(products.id, productId),
+            ),
+          )
+          .orderBy(products.id);
+  const ownedIds = new Set(owned.map((product) => product.id));
+
   await tx.delete(productAccessories).where(eq(productAccessories.productId, productId));
   if (links.length === 0) return;
-
-  const requestedIds = Array.from(new Set(links.map((link) => link.accessoryId)));
-  // Ownership check: a plain read, so it stays on the pool connection rather
-  // than the caller's transaction handle (no locks taken, no deadlock risk).
-  const owned = await db.query.products.findMany({
-    where: and(
-      eq(products.storeId, storeId),
-      inArray(products.id, requestedIds),
-      ne(products.id, productId),
-    ),
-    columns: { id: true },
-  });
-  const ownedIds = new Set(owned.map((product) => product.id));
 
   const seen = new Set<string>();
   const rows = links.flatMap((link) => {
@@ -761,16 +790,29 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
   const categoryIds = await resolveCategoryIds(store.id, validated.data);
 
-  const productUpdate = await db.transaction(async (tx) => {
-    if (product.stockKind !== stockKind) {
-      const canChangeStockKind = await lockProductReservationsForStockKindChange(tx, {
-        productId,
-        storeId: store.id,
-      });
+  const stockKindChangeExpected = product.stockKind !== stockKind;
+  const productUpdate = await retryOnceOnDeadlock(() => db.transaction(async (tx) => {
+    const canChangeStockKind = stockKindChangeExpected
+      ? await lockProductReservationsForStockKindChange(tx, {
+          productId,
+          storeId: store.id,
+        })
+      : true;
+    const [lockedProduct] = await tx
+      .select({ stockKind: products.stockKind })
+      .from(products)
+      .where(and(eq(products.id, productId), eq(products.storeId, store.id)))
+      .for("update");
 
-      if (!canChangeStockKind) {
-        return { error: "errors.cannotChangeStockKindWithActiveReservations" };
-      }
+    if (!lockedProduct) {
+      return { error: "errors.productNotFound" };
+    }
+
+    if (
+      lockedProduct.stockKind !== stockKind &&
+      (!stockKindChangeExpected || !canChangeStockKind)
+    ) {
+      return { error: "errors.cannotChangeStockKindWithActiveReservations" };
     }
 
     await tx
@@ -799,7 +841,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
           trackUnits && bookingAttributeAxes.length > 0 ? bookingAttributeAxes : null,
         updatedAt: new Date(),
       })
-      .where(eq(products.id, productId));
+      .where(and(eq(products.id, productId), eq(products.storeId, store.id)));
 
     await replaceProductCategories(tx, productId, categoryIds);
 
@@ -844,7 +886,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
     }
 
     return { success: true };
-  });
+  }));
 
   if ("error" in productUpdate) {
     return productUpdate;

@@ -1,9 +1,11 @@
 import { z } from "zod";
 import {
   ConsumableStockError,
+  canTransitionReservationStatus,
   consumeReservationStock,
   customers,
   db,
+  getAllowedReservationStatusTransitions,
   reservations,
   restoreReservationStock,
 } from "@louez/db";
@@ -220,13 +222,8 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
 
       if (!existing) return toolError("Reservation not found.");
 
-      const validTransitions: Record<string, string[]> = {
-        pending: ["confirmed", "rejected", "cancelled"],
-        confirmed: ["ongoing", "cancelled"],
-        ongoing: ["completed"],
-      };
-      const allowed = validTransitions[existing.status];
-      if (!allowed?.includes(newStatus)) {
+      const allowed = getAllowedReservationStatusTransitions(existing.status);
+      if (!canTransitionReservationStatus(existing.status, newStatus)) {
         return toolError(
           `Invalid transition: ${existing.status} → ${newStatus}. ` +
             `Allowed: ${allowed?.join(", ") ?? "none"}`,
@@ -237,8 +234,9 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
       if (newStatus === "ongoing") updateData.pickedUpAt = new Date();
       if (newStatus === "completed") updateData.returnedAt = new Date();
 
+      let transitionFrom = existing.status;
       try {
-        await db.transaction(async (tx) => {
+        const transitionResult = await db.transaction(async (tx) => {
           const [lockedReservation] = await tx
             .select({ status: reservations.status })
             .from(reservations)
@@ -246,10 +244,24 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
             .for("update");
 
           if (!lockedReservation) {
-            throw new ConsumableStockError({
-              code: "RESERVATION_NOT_FOUND",
-              message: "Reservation not found.",
-            });
+            return { ok: false as const, error: "Reservation not found." };
+          }
+
+          const lockedAllowed = getAllowedReservationStatusTransitions(
+            lockedReservation.status,
+          );
+          if (
+            !canTransitionReservationStatus(
+              lockedReservation.status,
+              newStatus,
+            )
+          ) {
+            return {
+              ok: false as const,
+              error:
+                `Invalid transition: ${lockedReservation.status} → ${newStatus}. ` +
+                `Allowed: ${lockedAllowed?.join(", ") ?? "none"}`,
+            };
           }
 
           if (
@@ -268,7 +280,14 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
             .update(reservations)
             .set(updateData)
             .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)));
+
+          return { ok: true as const, previousStatus: lockedReservation.status };
         });
+
+        if (!transitionResult.ok) {
+          return toolError(transitionResult.error);
+        }
+        transitionFrom = transitionResult.previousStatus;
       } catch (error) {
         if (error instanceof ConsumableStockError) {
           return toolError(error.message);
@@ -277,7 +296,7 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
       }
 
       return toolResult(
-        `Reservation #${existing.number} updated: ${formatStatus(existing.status)} → ${formatStatus(newStatus)}`,
+        `Reservation #${existing.number} updated: ${formatStatus(transitionFrom)} → ${formatStatus(newStatus)}`,
       );
     },
   );

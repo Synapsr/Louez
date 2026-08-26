@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-import type { PricingMode } from '@louez/types'
+import type { PricingKind, PricingMode } from '@louez/types'
 import {
   calculateDurationMinutes,
   isRateBasedProduct,
@@ -18,6 +18,18 @@ import type {
 
 function roundCurrency(value: number): number {
   return Math.round(value * 100) / 100
+}
+
+export function calculateUnitPriceFromTotal(params: {
+  totalPrice: number
+  quantity: number
+  duration: number
+  pricingKind: PricingKind
+}): number {
+  const effectiveDuration = params.pricingKind === 'fixed' ? 1 : params.duration
+  return effectiveDuration > 0 && params.quantity > 0
+    ? params.totalPrice / (effectiveDuration * params.quantity)
+    : params.totalPrice
 }
 
 /**
@@ -63,7 +75,7 @@ function buildTierLabel(
  * Product-based items delegate to `calculateCartItemPrice` which handles
  * all pricing modes: seasonal, rate-based, tier-based, and fixed.
  */
-function calculateEditableItemPrice(
+export function calculateEditableItemPrice(
   item: EditableItem,
   startDate: Date,
   endDate: Date,
@@ -114,7 +126,10 @@ function calculateEditableItemPrice(
   }
 
   const mode = item.pricingMode
-  const duration = calculateDuration(startDate, endDate, mode)
+  const duration =
+    item.product?.pricingKind === 'fixed'
+      ? 1
+      : calculateDuration(startDate, endDate, mode)
 
   // Manual price or custom item (no product): simple multiplication
   if (item.isManualPrice || !item.product) {
@@ -146,6 +161,7 @@ function calculateEditableItemPrice(
       startDate: startIso,
       endDate: endIso,
       pricingMode: mode,
+      pricingKind: product.pricingKind,
       productPricingMode: (product.pricingMode as PricingMode) ?? mode,
       basePeriodMinutes: product.basePeriodMinutes ?? null,
       enforceStrictTiers: product.enforceStrictTiers ?? false,
@@ -169,7 +185,10 @@ function calculateEditableItemPrice(
   })
     ? resolveRateDisplayPricingMode(durationMinutes, mode)
     : mode
-  const displayDuration = calculateDuration(startDate, endDate, displayPricingMode)
+  const displayDuration =
+    product.pricingKind === 'fixed'
+      ? 1
+      : calculateDuration(startDate, endDate, displayPricingMode)
 
   // Derive an effective unit price for display (total / duration / quantity)
   const effectiveUnitPrice =

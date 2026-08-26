@@ -1525,6 +1525,9 @@ export const payments = mysqlTable(
   },
   (table) => ({
     reservationIdx: index('payments_reservation_idx').on(table.reservationId),
+    stripeCheckoutSessionUnique: unique(
+      'payments_reservation_checkout_session_unique',
+    ).on(table.reservationId, table.stripeCheckoutSessionId),
     refundOfPaymentIdx: index('payments_refund_of_payment_idx').on(
       table.refundOfPaymentId,
     ),
@@ -2659,8 +2662,12 @@ export const productAccessories = mysqlTable(
   'product_accessories',
   {
     id: id(),
-    productId: varchar('product_id', { length: 21 }).notNull(),
-    accessoryId: varchar('accessory_id', { length: 21 }).notNull(),
+    productId: varchar('product_id', { length: 21 })
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    accessoryId: varchar('accessory_id', { length: 21 })
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
     required: boolean('required').notNull().default(false),
     quantity: int('quantity').notNull().default(1),
     displayOrder: int('display_order').default(0),
@@ -2668,6 +2675,7 @@ export const productAccessories = mysqlTable(
   },
   (table) => ({
     productIdx: index('product_accessories_product_idx').on(table.productId),
+    accessoryIdx: index('product_accessories_accessory_idx').on(table.accessoryId),
     uniqueProductAccessory: unique('product_accessories_unique').on(
       table.productId,
       table.accessoryId,

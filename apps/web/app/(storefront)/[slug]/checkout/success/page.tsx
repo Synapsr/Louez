@@ -5,13 +5,14 @@ import Link from 'next/link'
 import { CheckCircle2, Clock, Calendar, ArrowRight, Shield, Tag } from 'lucide-react'
 
 import { ConsumableStockError, consumeReservationStock, db } from '@louez/db'
-import { reservations, stores, payments, reservationActivity } from '@louez/db'
+import { reservations, stores, reservationActivity } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { formatCurrency, formatDate } from '@louez/utils'
 import { getCheckoutSession, fromStripeCents } from '@/lib/stripe'
 import { stripe } from '@/lib/stripe/client'
+import { claimCompletedCheckoutPayment } from '@/lib/stripe/payment-completion'
 import { nanoid } from 'nanoid'
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules'
 import {
@@ -23,6 +24,12 @@ import { log } from '@/lib/evlog'
 import { tryGenerateInvoiceForPayment } from '@/lib/invoicing/service'
 import { tryPrepareInitialInvoiceEmailDelivery } from '@/lib/invoicing/delivery'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
+import { dispatchNotification } from '@/lib/notifications/dispatcher'
+import {
+  notifyPaymentReceived,
+  notifyReservationConfirmed,
+} from '@/lib/discord/platform-notifications'
+import { markReservationForCalendarSync } from '@/lib/integrations/calendar/sync'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -64,6 +71,30 @@ async function confirmPaidReservationOrThrow(params: {
   stripePaymentMethodId?: string | null
   depositStatus?: 'none' | 'card_saved' | 'pending'
 }) {
+  // Payment metadata must survive an insufficient-stock rollback so a later
+  // dashboard confirmation can still create the deposit hold.
+  await db
+    .update(reservations)
+    .set({
+      ...(params.stripeCustomerId !== undefined && {
+        stripeCustomerId: params.stripeCustomerId,
+      }),
+      ...(params.stripePaymentMethodId !== undefined && {
+        stripePaymentMethodId: params.stripePaymentMethodId,
+      }),
+      ...(params.depositStatus !== undefined && {
+        depositStatus: params.depositStatus,
+      }),
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(reservations.id, params.reservationId),
+        eq(reservations.storeId, params.storeId),
+        eq(reservations.status, 'pending'),
+      ),
+    )
+
   return db.transaction(async (tx) => {
     const [lockedReservation] = await tx
       .select({ status: reservations.status })
@@ -131,24 +162,6 @@ async function verifyAndUpdatePayment(
       return null
     }
 
-    // Check if payment already exists for this session (webhook already processed)
-    const existingPayment = await db.query.payments.findFirst({
-      where: and(
-        eq(payments.stripeCheckoutSessionId, sessionId),
-        eq(payments.status, 'completed')
-      ),
-    })
-
-    if (existingPayment) {
-      // Webhook already processed, just return success
-      await confirmPaidReservation({ reservationId, storeId: store.id })
-      await tryGenerateInvoiceForPayment(
-        existingPayment.id,
-        'checkout_success_existing_payment',
-      )
-      return { alreadyProcessed: true }
-    }
-
     // Get payment intent details
     let paymentIntentId: string | null = null
     let chargeId: string | null = null
@@ -172,15 +185,22 @@ async function verifyAndUpdatePayment(
 
     // Get existing reservation
     const reservation = await db.query.reservations.findFirst({
-      where: eq(reservations.id, reservationId),
+      where: and(
+        eq(reservations.id, reservationId),
+        eq(reservations.storeId, store.id),
+      ),
       with: {
         customer: true,
         items: true,
       },
     })
 
-    if (!reservation || reservation.status !== 'pending') {
+    if (!reservation) {
       return null
+    }
+
+    if (reservation.status !== 'pending') {
+      return { alreadyProcessed: true, reservationConfirmed: false }
     }
 
     const validationWarnings = evaluateReservationRules({
@@ -207,54 +227,26 @@ async function verifyAndUpdatePayment(
       newDepositStatus = stripeCustomerId && stripePaymentMethodId ? 'card_saved' : 'pending'
     }
 
-    // Update or create payment record
-    const existingPendingPayment = await db.query.payments.findFirst({
-      where: and(
-        eq(payments.stripeCheckoutSessionId, sessionId),
-        eq(payments.status, 'pending')
-      ),
+    const paidAt = new Date()
+    const paymentClaim = await claimCompletedCheckoutPayment({
+      reservationId,
+      amount: totalAmount,
+      currency,
+      stripeCheckoutSessionId: sessionId,
+      stripePaymentIntentId: paymentIntentId,
+      stripeChargeId: chargeId,
+      stripePaymentMethodId,
+      paidAt,
     })
 
-    const completedPaymentId = existingPendingPayment?.id ?? nanoid()
-    if (existingPendingPayment) {
-      // Update existing pending payment
-      await db
-        .update(payments)
-        .set({
-          status: 'completed',
-          stripePaymentIntentId: paymentIntentId,
-          stripeChargeId: chargeId,
-          stripePaymentMethodId,
-          paidAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(payments.id, existingPendingPayment.id))
-    } else {
-      // Create new payment record (shouldn't happen normally)
-      await db.insert(payments).values({
-        id: completedPaymentId,
-        reservationId,
-        amount: totalAmount.toFixed(2),
-        type: 'rental',
-        method: 'stripe',
-        status: 'completed',
-        stripePaymentIntentId: paymentIntentId,
-        stripeChargeId: chargeId,
-        stripeCheckoutSessionId: sessionId,
-        stripePaymentMethodId,
-        currency,
-        paidAt: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-    }
-
-    const invoiceGeneration = await tryGenerateInvoiceForPayment(
-      completedPaymentId,
-      'checkout_success_fallback',
+    await tryGenerateInvoiceForPayment(
+      paymentClaim.paymentId,
+      paymentClaim.claimed
+        ? 'checkout_success_fallback'
+        : 'checkout_success_existing_payment',
     )
 
-    await confirmPaidReservation({
+    const reservationConfirmed = await confirmPaidReservation({
       reservationId,
       storeId: store.id,
       stripeCustomerId,
@@ -262,7 +254,7 @@ async function verifyAndUpdatePayment(
       depositStatus: newDepositStatus,
     })
 
-    if (invoiceGeneration.status === 'generated' && invoiceGeneration.kind === 'initial') {
+    if (reservationConfirmed) {
       const invoiceDelivery = await tryPrepareInitialInvoiceEmailDelivery(reservationId)
       const reservationUrl = getStorefrontUrl(
         store.slug,
@@ -321,65 +313,156 @@ async function verifyAndUpdatePayment(
       })
     }
 
-    // Log activity
-    await db.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: 'payment_received',
-      description: null,
-      metadata: {
-        paymentIntentId,
-        chargeId,
-        checkoutSessionId: sessionId,
-        amount: totalAmount,
+    // Only the completion path that atomically claimed the payment emits its
+    // effects. Every path may still retry the reservation confirmation.
+    if (paymentClaim.claimed) {
+      await db.insert(reservationActivity).values({
+        id: nanoid(),
+        reservationId,
+        activityType: 'payment_received',
+        description: null,
+        metadata: {
+          paymentIntentId,
+          chargeId,
+          checkoutSessionId: sessionId,
+          amount: totalAmount,
+          currency,
+          method: 'stripe',
+          type: 'rental',
+          source: 'success_page_verification',
+        },
+        createdAt: new Date(),
+      })
+
+      dispatchNotification('payment_received', {
+        store: {
+          id: store.id,
+          name: store.name,
+          email: store.email,
+          discordWebhookUrl: store.discordWebhookUrl,
+          ownerPhone: store.ownerPhone,
+          notificationSettings: store.notificationSettings,
+          settings: store.settings,
+        },
+        reservation: {
+          id: reservationId,
+          number: reservation.number,
+          startDate: reservation.startDate,
+          endDate: reservation.endDate,
+          totalAmount: Number(reservation.totalAmount),
+        },
+        customer: {
+          firstName: reservation.customer.firstName,
+          lastName: reservation.customer.lastName,
+          email: reservation.customer.email,
+          phone: reservation.customer.phone,
+        },
+        payment: { amount: totalAmount },
+      }).catch((error) => {
+        log.error(
+          'checkout-success',
+          `fallback payment notification dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      })
+
+      notifyPaymentReceived(
+        { id: store.id, name: store.name, slug: store.slug },
+        reservation.number,
+        totalAmount,
         currency,
-        method: 'stripe',
-        type: 'rental',
-        source: 'success_page_verification',
-      },
-      createdAt: new Date(),
-    })
+      ).catch(() => {})
+    }
 
-    await db.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: 'confirmed',
-      metadata: {
-        source: 'online_payment',
-        depositAmount,
-        depositStatus: newDepositStatus,
-        cardSaved: !!stripePaymentMethodId,
-        ...(validationWarnings.length > 0 && {
-          validationWarnings,
-          validationWarningsCount: validationWarnings.length,
-        }),
-      },
-      createdAt: new Date(),
-    })
+    if (reservationConfirmed) {
+      await db.insert(reservationActivity).values({
+        id: nanoid(),
+        reservationId,
+        activityType: 'confirmed',
+        metadata: {
+          source: 'online_payment',
+          depositAmount,
+          depositStatus: newDepositStatus,
+          cardSaved: !!stripePaymentMethodId,
+          ...(validationWarnings.length > 0 && {
+            validationWarnings,
+            validationWarningsCount: validationWarnings.length,
+          }),
+        },
+        createdAt: new Date(),
+      })
 
-    await captureProductServerEvent({
-      distinctId: reservation.customerId,
-      event: productAnalyticsEvents.checkoutPaymentCompleted,
-      properties: {
-        feature: 'checkout',
-        surface: 'storefront',
-        store_id: store.id,
-        reservation_id: reservationId,
-        customer_id: reservation.customerId,
-        source: 'success_page_verification',
-        payment_provider: 'stripe',
-        amount_cents: toAnalyticsAmountCents(totalAmount),
-        deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
-        currency,
-        has_deposit: depositAmount > 0,
-        card_saved: Boolean(stripePaymentMethodId),
-        payment_intent_present: Boolean(paymentIntentId),
-        reservation_status_before: reservation.status,
-        reservation_confirmed_by_event: true,
-      },
-    })
+      dispatchNotification('reservation_confirmed', {
+        store: {
+          id: store.id,
+          name: store.name,
+          email: store.email,
+          discordWebhookUrl: store.discordWebhookUrl,
+          ownerPhone: store.ownerPhone,
+          notificationSettings: store.notificationSettings,
+          settings: store.settings,
+        },
+        reservation: {
+          id: reservationId,
+          number: reservation.number,
+          startDate: reservation.startDate,
+          endDate: reservation.endDate,
+          totalAmount: Number(reservation.totalAmount),
+        },
+        customer: {
+          firstName: reservation.customer.firstName,
+          lastName: reservation.customer.lastName,
+          email: reservation.customer.email,
+          phone: reservation.customer.phone,
+        },
+      }).catch((error) => {
+        log.error(
+          'checkout-success',
+          `fallback reservation confirmation dispatch failed: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      })
 
-    return { updated: true }
+      notifyReservationConfirmed(
+        { id: store.id, name: store.name, slug: store.slug },
+        reservation.number,
+      ).catch(() => {})
+
+      await markReservationForCalendarSync(store.id, reservationId).catch((error) => {
+        log.error(
+          'checkout-success',
+          `calendar sync enqueue failed after confirmation: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      })
+    }
+
+    if (paymentClaim.claimed) {
+      await captureProductServerEvent({
+        distinctId: reservation.customerId,
+        event: productAnalyticsEvents.checkoutPaymentCompleted,
+        properties: {
+          feature: 'checkout',
+          surface: 'storefront',
+          store_id: store.id,
+          reservation_id: reservationId,
+          customer_id: reservation.customerId,
+          source: 'success_page_verification',
+          payment_provider: 'stripe',
+          amount_cents: toAnalyticsAmountCents(totalAmount),
+          deposit_amount_cents: toAnalyticsAmountCents(depositAmount),
+          currency,
+          has_deposit: depositAmount > 0,
+          card_saved: Boolean(stripePaymentMethodId),
+          payment_intent_present: Boolean(paymentIntentId),
+          reservation_status_before: reservation.status,
+          reservation_confirmed_by_event: reservationConfirmed,
+        },
+      })
+    }
+
+    return {
+      updated: true,
+      alreadyProcessed: !paymentClaim.claimed,
+      reservationConfirmed,
+    }
   } catch (error) {
     console.error('Error verifying payment:', error)
     return null
@@ -545,11 +628,13 @@ export default async function CheckoutSuccessPage({
           </div>
 
           {/* Email confirmation notice */}
-          <div className="rounded-lg bg-muted/50 p-4 text-sm text-center">
-            <p className="text-muted-foreground">
-              {t('success.emailSent', { email: reservation.customer.email })}
-            </p>
-          </div>
+          {isConfirmed && (
+            <div className="rounded-lg bg-muted/50 p-4 text-sm text-center">
+              <p className="text-muted-foreground">
+                {t('success.emailSent', { email: reservation.customer.email })}
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col gap-2 pt-2">

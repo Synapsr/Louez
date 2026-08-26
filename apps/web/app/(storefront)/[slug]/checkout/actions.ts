@@ -1550,6 +1550,37 @@ export async function createReservation(input: CreateReservationInput) {
         lockedProducts.map((product) => [product.id, product]),
       );
 
+      // Product links are mutable configuration. Re-read them only after the
+      // parent product locks so checkout enforces the rule that is current at
+      // the instant the reservation is written.
+      const lockedRequiredAccessories =
+        requestedProductIds.length > 0
+          ? await tx
+              .select({
+                parentProductId: productAccessories.productId,
+                accessoryProductId: productAccessories.accessoryId,
+                quantity: productAccessories.quantity,
+              })
+              .from(productAccessories)
+              .where(
+                and(
+                  eq(productAccessories.required, true),
+                  inArray(productAccessories.productId, requestedProductIds),
+                ),
+              )
+          : [];
+      const lockedRequiredAccessoryValidation = validateRequiredAccessoryLines({
+        lines: input.items,
+        requiredAccessories: lockedRequiredAccessories,
+      });
+      if (!lockedRequiredAccessoryValidation.valid) {
+        return {
+          ok: false as const,
+          error: 'errors.requiredAccessoriesMissing' as const,
+          missingAccessories: lockedRequiredAccessoryValidation.missing,
+        };
+      }
+
       // Recompute overlap and availability inside the transaction after row locks are acquired.
       const overlappingReservations = await tx.query.reservations.findMany({
         where: and(
@@ -2047,6 +2078,16 @@ export async function createReservation(input: CreateReservationInput) {
         return {
           error: reservationWriteResult.error,
           errorParams: { name: reservationWriteResult.productName || '' },
+        };
+      }
+
+      if (reservationWriteResult.error === 'errors.requiredAccessoriesMissing') {
+        return {
+          error: reservationWriteResult.error,
+          details: {
+            code: 'required_accessories_missing',
+            missingAccessories: reservationWriteResult.missingAccessories,
+          },
         };
       }
 

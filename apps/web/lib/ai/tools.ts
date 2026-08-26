@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import {
   ConsumableStockError,
+  canTransitionReservationStatus,
   categories,
   customers,
   dailyStats,
@@ -12,6 +13,7 @@ import {
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
+  getAllowedReservationStatusTransitions,
   loadConsumableReservedQuantities,
   payments,
   productCategories,
@@ -420,13 +422,8 @@ export function createAITools(ctx: AIChatContext) {
         });
         if (!existing) return { error: 'Reservation not found' };
 
-        const validTransitions: Record<string, string[]> = {
-          pending: ['confirmed', 'rejected', 'cancelled'],
-          confirmed: ['ongoing', 'cancelled'],
-          ongoing: ['completed'],
-        };
-        const allowed = validTransitions[existing.status];
-        if (!allowed?.includes(newStatus)) {
+        const allowed = getAllowedReservationStatusTransitions(existing.status);
+        if (!canTransitionReservationStatus(existing.status, newStatus)) {
           return {
             error: `Invalid transition: ${existing.status} → ${newStatus}. Allowed: ${allowed?.join(', ') ?? 'none'}`,
           };
@@ -436,8 +433,9 @@ export function createAITools(ctx: AIChatContext) {
         if (newStatus === 'ongoing') updateData.pickedUpAt = new Date();
         if (newStatus === 'completed') updateData.returnedAt = new Date();
 
+        let transitionFrom = existing.status;
         try {
-          await db.transaction(async (tx) => {
+          const transitionResult = await db.transaction(async (tx) => {
             const [lockedReservation] = await tx
               .select({ status: reservations.status })
               .from(reservations)
@@ -450,10 +448,22 @@ export function createAITools(ctx: AIChatContext) {
               .for('update');
 
             if (!lockedReservation) {
-              throw new ConsumableStockError({
-                code: 'RESERVATION_NOT_FOUND',
-                message: 'Reservation not found',
-              });
+              return { ok: false as const, error: 'Reservation not found' };
+            }
+
+            const lockedAllowed = getAllowedReservationStatusTransitions(
+              lockedReservation.status,
+            );
+            if (
+              !canTransitionReservationStatus(
+                lockedReservation.status,
+                newStatus,
+              )
+            ) {
+              return {
+                ok: false as const,
+                error: `Invalid transition: ${lockedReservation.status} → ${newStatus}. Allowed: ${lockedAllowed?.join(', ') ?? 'none'}`,
+              };
             }
 
             if (
@@ -479,7 +489,14 @@ export function createAITools(ctx: AIChatContext) {
                   eq(reservations.storeId, ctx.storeId),
                 ),
               );
+
+            return { ok: true as const, previousStatus: lockedReservation.status };
           });
+
+          if (!transitionResult.ok) {
+            return { error: transitionResult.error };
+          }
+          transitionFrom = transitionResult.previousStatus;
         } catch (error) {
           if (error instanceof ConsumableStockError) {
             return { error: error.message };
@@ -489,7 +506,7 @@ export function createAITools(ctx: AIChatContext) {
         return {
           success: true,
           number: existing.number,
-          from: existing.status,
+          from: transitionFrom,
           to: newStatus,
         };
       },

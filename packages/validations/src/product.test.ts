@@ -99,6 +99,27 @@ test("accepts a fixed-price consumable without tracked units", () => {
   assert.equal(productSchema.safeParse(product).success, true);
 });
 
+test("ignores incomplete duration fields when fixed pricing is selected", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "consumable",
+    pricingKind: "fixed",
+    basePriceDuration: { price: "", duration: 0, unit: "day" as const },
+    pricingTiers: [{ minDuration: 0, discountPercent: 100 }],
+    rateTiers: [
+      {
+        price: "",
+        duration: 0,
+        unit: "day" as const,
+        discountPercent: 100,
+      },
+    ],
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, true);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
 test("accepts a free fixed-price consumable", () => {
   const product = {
     ...validProduct,

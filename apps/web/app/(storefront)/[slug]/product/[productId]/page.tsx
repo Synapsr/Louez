@@ -9,7 +9,12 @@ import { and, asc, desc, eq, ne } from 'drizzle-orm';
 import { ArrowRight, Check } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
-import { db, getEffectiveProductQuantities } from '@louez/db';
+import {
+  db,
+  getBlockingReservationStatuses,
+  getEffectiveProductQuantities,
+  loadConsumableReservedQuantities,
+} from '@louez/db';
 import {
   productSeasonalPricing,
   productSeasonalPricingTiers,
@@ -192,9 +197,37 @@ export default async function ProductPage({ params }: ProductPageProps) {
     product.id,
     ...accessoryIds,
   ]);
+  const consumableProductIds = [
+    ...(product.stockKind === 'consumable' ? [product.id] : []),
+    ...(product.accessories || []).flatMap((link) =>
+      link.accessory?.stockKind === 'consumable' ? [link.accessory.id] : [],
+    ),
+  ];
+  const consumableReservedQuantities = await loadConsumableReservedQuantities(
+    db,
+    {
+      storeId: store.id,
+      productIds: consumableProductIds,
+      blockingStatuses: getBlockingReservationStatuses(
+        storeSettings.pendingBlocksAvailability ?? true,
+      ),
+    },
+  );
+  const getUntrackedAvailableQuantity = (stockProduct: {
+    id: string;
+    quantity: number;
+    stockKind: 'returnable' | 'consumable';
+  }) =>
+    stockProduct.stockKind === 'consumable'
+      ? Math.max(
+          0,
+          stockProduct.quantity -
+            (consumableReservedQuantities.get(stockProduct.id) ?? 0),
+        )
+      : stockProduct.quantity;
   const effectiveQuantity = product.trackUnits
     ? (effectiveQuantities.get(product.id) ?? 0)
-    : product.quantity;
+    : getUntrackedAvailableQuantity(product);
 
   const currentDowntimeUnitIds = await getCurrentDowntimeUnitIds(
     (product.units || []).map((unit) => unit.id),
@@ -266,13 +299,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
         acc.accessory.status === 'active' &&
         ((acc.accessory.trackUnits
           ? (effectiveQuantities.get(acc.accessory.id) ?? 0)
-          : acc.accessory.quantity) > 0 ||
+          : getUntrackedAvailableQuantity(acc.accessory)) > 0 ||
           acc.required),
     )
     .map((acc) => ({
       quantity: acc.accessory.trackUnits
         ? (effectiveQuantities.get(acc.accessory.id) ?? 0)
-        : acc.accessory.quantity,
+        : getUntrackedAvailableQuantity(acc.accessory),
       id: acc.accessory.id,
       name: acc.accessory.name,
       price: acc.accessory.price,

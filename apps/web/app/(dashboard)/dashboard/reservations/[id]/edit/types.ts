@@ -2,6 +2,7 @@ import type {
   DeliverySettings,
   LegMethod,
   PricingBreakdown,
+  PricingKind,
   PricingMode,
   ReservationLocationSnapshot,
   ProductSnapshot,
@@ -29,6 +30,7 @@ export interface Product {
   tulipInsurable?: boolean
   quantity: number
   stockKind: StockKind
+  pricingKind: PricingKind
   pricingMode: string | null
   basePeriodMinutes?: number | null
   enforceStrictTiers?: boolean

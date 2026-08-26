@@ -50,7 +50,9 @@ export {
 export type { BlockingReservationStatus, BusyUnitReason } from './unit-availability'
 export {
   ConsumableStockError,
+  canTransitionReservationStatus,
   consumeReservationStock,
+  getAllowedReservationStatusTransitions,
   loadConsumableReservedQuantities,
   lockProductReservationsForStockKindChange,
   planConsumableStockMutation,

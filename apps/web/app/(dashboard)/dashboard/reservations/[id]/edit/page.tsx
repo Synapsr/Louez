@@ -14,7 +14,7 @@ import {
   reservations,
   storeLocations,
 } from '@louez/db';
-import type { DeliverySettings, LegMethod, StockKind } from '@louez/types';
+import type { DeliverySettings, LegMethod, PricingKind, StockKind } from '@louez/types';
 import type { SeasonalPricingConfig } from '@louez/utils';
 
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
@@ -190,6 +190,7 @@ function mapProduct(p: {
   images: string[] | null;
   quantity: number;
   stockKind: StockKind;
+  pricingKind: PricingKind;
   pricingMode: string | null;
   basePeriodMinutes: number | null;
   enforceStrictTiers: boolean;
@@ -226,6 +227,7 @@ function mapProduct(p: {
     images: p.images ?? [],
     quantity: p.quantity,
     stockKind: p.stockKind,
+    pricingKind: p.pricingKind,
     pricingMode: p.pricingMode,
     basePeriodMinutes: p.basePeriodMinutes,
     enforceStrictTiers: p.enforceStrictTiers,
