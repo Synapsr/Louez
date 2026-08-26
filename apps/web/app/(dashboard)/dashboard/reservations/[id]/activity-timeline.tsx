@@ -1,6 +1,7 @@
 import { GlobeSolidIcon, UserPlusSolidIcon } from '@louez/ui/icons'
 import { getTranslations } from 'next-intl/server'
 
+import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server'
 import { formatStoreDate } from '@/lib/utils/store-date'
 import {
   Clock,
@@ -31,6 +32,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
+import { formatCurrency } from '@louez/utils'
 
 type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'payment_received' | 'payment_initiated' | 'payment_failed' | 'payment_expired' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed' | 'access_link_sent' | 'modified' | 'inspection_departure_started' | 'inspection_departure_completed' | 'inspection_return_started' | 'inspection_return_completed' | 'inspection_damage_detected' | 'inspection_signed'
 
@@ -213,6 +215,7 @@ export async function ActivityTimeline({
   timezone,
 }: ActivityTimelineProps) {
   const t = await getTranslations('dashboard.reservations')
+  const { intl: formatLocale } = await getRequestFormatLocale()
 
   // Sort activities by date (most recent first)
   const sortedActivities = [...activities].sort(
@@ -249,6 +252,7 @@ export async function ActivityTimeline({
                 timestamp={reservationCreatedAt}
                 user={null}
                 timezone={timezone}
+                locale={formatLocale}
               />
             ) : (
               sortedActivities.map((activity) => {
@@ -277,6 +281,7 @@ export async function ActivityTimeline({
                     metadata={activity.metadata}
                     source={isCreationEvent ? activitySource : undefined}
                     timezone={timezone}
+                    locale={formatLocale}
                     activityType={activity.activityType}
                   />
                 )
@@ -300,6 +305,7 @@ interface ActivityItemProps {
   metadata?: Record<string, unknown> | null
   source?: string | null
   timezone?: string
+  locale: string
 }
 
 async function ActivityItem({
@@ -313,6 +319,7 @@ async function ActivityItem({
   metadata,
   source,
   timezone,
+  locale,
   activityType,
 }: ActivityItemProps & { activityType?: ActivityType }) {
   const t = await getTranslations('dashboard.reservations')
@@ -382,7 +389,7 @@ async function ActivityItem({
                   className="h-4 px-1.5 py-0 font-mono text-[10px]"
                 >
                   {activityType === 'payment_received' ? '+' : ''}
-                  {paymentAmount.toFixed(2)} {paymentCurrency}
+                  {formatCurrency(paymentAmount, paymentCurrency, locale)}
                 </Badge>
               )}
             {/* Modified amount badge */}
@@ -397,12 +404,13 @@ async function ActivityItem({
                 }
                 className="h-4 px-1.5 py-0 font-mono text-[10px]"
               >
-                {(metadata.difference as number) >= 0 ? '+' : ''}{(metadata.difference as number).toFixed(2)} EUR
+                {(metadata.difference as number) >= 0 ? '+' : ''}
+                {formatCurrency(metadata.difference as number, 'EUR', locale)}
               </Badge>
             )}
           </div>
           <time className="text-xs text-muted-foreground">
-            {formatStoreDate(timestamp, timezone, 'COMPACT_DATETIME')}
+            {formatStoreDate(timestamp, timezone, 'COMPACT_DATETIME', locale)}
           </time>
         </div>
 

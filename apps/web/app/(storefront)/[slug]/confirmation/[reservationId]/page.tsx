@@ -13,6 +13,7 @@ import type { StoreSettings, StoreTheme } from '@louez/types'
 import { generateStoreMetadata } from '@/lib/seo'
 import { formatLocationSnapshotAddress } from '@/lib/reservations/location-snapshots'
 import { formatStoreDate } from '@/lib/utils/store-date'
+import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server'
 
 interface ConfirmationPageProps {
   params: Promise<{ slug: string; reservationId: string }>
@@ -52,6 +53,7 @@ export async function generateMetadata({
 export default async function ConfirmationPage({ params }: ConfirmationPageProps) {
   const { slug, reservationId } = await params
   const t = await getTranslations('storefront.confirmation')
+  const { intl: formatLocale } = await getRequestFormatLocale()
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
@@ -95,8 +97,18 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
 
   // Format dates with times in store timezone
   const storeTimezone = storeSettings.timezone
-  const startDateTime = formatStoreDate(reservation.startDate, storeTimezone, 'FULL_DATETIME')
-  const endDateTime = formatStoreDate(reservation.endDate, storeTimezone, 'FULL_DATETIME')
+  const startDateTime = formatStoreDate(
+    reservation.startDate,
+    storeTimezone,
+    'FULL_DATETIME',
+    formatLocale,
+  )
+  const endDateTime = formatStoreDate(
+    reservation.endDate,
+    storeTimezone,
+    'FULL_DATETIME',
+    formatLocale,
+  )
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -248,7 +260,9 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                   <span>
                     {item.productSnapshot.name} × {item.quantity}
                   </span>
-                  <span>{formatCurrency(parseFloat(item.totalPrice), currency)}</span>
+                  <span>
+                    {formatCurrency(parseFloat(item.totalPrice), currency, formatLocale)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -259,7 +273,13 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('subtotalLabel')}</span>
-                <span>{formatCurrency(parseFloat(reservation.subtotalAmount), currency)}</span>
+                <span>
+                  {formatCurrency(
+                    parseFloat(reservation.subtotalAmount),
+                    currency,
+                    formatLocale,
+                  )}
+                </span>
               </div>
               {deliveryFee > 0 && (
                 <div className="flex justify-between text-sm">
@@ -267,7 +287,7 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                     <Truck className="h-3.5 w-3.5" />
                     {t('deliveryFeeLabel')}
                   </span>
-                  <span>{formatCurrency(deliveryFee, currency)}</span>
+                  <span>{formatCurrency(deliveryFee, currency, formatLocale)}</span>
                 </div>
               )}
               {reservation.discountAmount && parseFloat(reservation.discountAmount) > 0 && (
@@ -281,18 +301,36 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                       </Badge>
                     )}
                   </span>
-                  <span>-{formatCurrency(parseFloat(reservation.discountAmount), currency)}</span>
+                  <span>
+                    -{formatCurrency(
+                      parseFloat(reservation.discountAmount),
+                      currency,
+                      formatLocale,
+                    )}
+                  </span>
                 </div>
               )}
               {parseFloat(reservation.depositAmount) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t('depositLabel')}</span>
-                  <span>{formatCurrency(parseFloat(reservation.depositAmount), currency)}</span>
+                  <span>
+                    {formatCurrency(
+                      parseFloat(reservation.depositAmount),
+                      currency,
+                      formatLocale,
+                    )}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between font-semibold text-lg pt-2">
                 <span>{t('totalLabel')}</span>
-                <span className="text-primary">{formatCurrency(parseFloat(reservation.totalAmount), currency)}</span>
+                <span className="text-primary">
+                  {formatCurrency(
+                    parseFloat(reservation.totalAmount),
+                    currency,
+                    formatLocale,
+                  )}
+                </span>
               </div>
             </div>
           </CardContent>

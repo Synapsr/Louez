@@ -205,7 +205,7 @@ export function UnifiedPaymentSection({
   onPaymentModalOpenChange: setPaymentModalOpen,
 }: UnifiedPaymentSectionProps) {
   const t = useTranslations("dashboard.reservations");
-  const { dateFns: dateLocale } = useFormatLocale();
+  const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const timezone = useStoreTimezone();
@@ -772,6 +772,7 @@ export function UnifiedPaymentSection({
                             new Date(stripeRentalPayment.paidAt),
                             timezone,
                             "SHORT_DATE_AT_TIME",
+                            formatLocale,
                           )
                         : ""}
                     </p>
@@ -1157,7 +1158,12 @@ export function UnifiedPaymentSection({
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {payment.paidAt
-                              ? formatStoreDate(new Date(payment.paidAt), timezone, "TIMESTAMP")
+                              ? formatStoreDate(
+                                  new Date(payment.paidAt),
+                                  timezone,
+                                  "TIMESTAMP",
+                                  formatLocale,
+                                )
                               : "-"}
                           </p>
                         </div>

@@ -34,8 +34,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
-import { cn } from '@louez/utils'
+import { cn, formatCurrency } from '@louez/utils'
 
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
 import { formatPaymentFailureDescription } from './utils/payment-failure-description'
@@ -326,6 +327,7 @@ export function ActivityTimelineV2({
 }: ActivityTimelineV2Props) {
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
+  const { intl: formatLocale } = useFormatLocale()
   const timezone = useStoreTimezone()
   const [isExpanded, setIsExpanded] = useState(false)
   const [expandedTechnicalDetails, setExpandedTechnicalDetails] = useState<Record<string, boolean>>({})
@@ -541,7 +543,7 @@ export function ActivityTimelineV2({
                     className="h-4 px-1.5 py-0 font-mono text-[10px]"
                   >
                     {showPositivePaymentPrefix ? '+' : ''}
-                    {paymentAmount.toFixed(2)} {paymentCurrency}
+                    {formatCurrency(paymentAmount, paymentCurrency, formatLocale)}
                   </Badge>
                 )}
               {/* Modified amount badge */}
@@ -558,12 +560,21 @@ export function ActivityTimelineV2({
                     className="h-4 px-1.5 py-0 font-mono text-[10px]"
                   >
                     {(activity.metadata.difference as number) >= 0 ? '+' : ''}
-                    {(activity.metadata.difference as number).toFixed(2)} EUR
+                    {formatCurrency(
+                      activity.metadata.difference as number,
+                      'EUR',
+                      formatLocale,
+                    )}
                   </Badge>
                 )}
             </div>
             <time className="text-xs text-muted-foreground">
-              {formatStoreDate(new Date(activity.createdAt), timezone, 'COMPACT_DATETIME')}
+              {formatStoreDate(
+                new Date(activity.createdAt),
+                timezone,
+                'COMPACT_DATETIME',
+                formatLocale,
+              )}
             </time>
           </div>
 
@@ -706,7 +717,12 @@ export function ActivityTimelineV2({
                       </Badge>
                     </div>
                     <time className="text-xs text-muted-foreground">
-                      {formatStoreDate(reservationCreatedAt, timezone, 'COMPACT_DATETIME')}
+                      {formatStoreDate(
+                        reservationCreatedAt,
+                        timezone,
+                        'COMPACT_DATETIME',
+                        formatLocale,
+                      )}
                     </time>
                   </div>
                 </div>

@@ -307,7 +307,7 @@ function parseManualDate(
   const explicitDate = parseExplicitDate(normalized, referenceDate ?? new Date());
   if (explicitDate) {
     const time = hasTimeIntent(normalized)
-      ? formatStoreDate(explicitDate, timezone, "TIME_ONLY")
+      ? formatStoreDate(explicitDate, timezone, "TIME_ONLY", locale)
       : fallbackTime;
     return buildStoreDate(explicitDate, time, timezone);
   }

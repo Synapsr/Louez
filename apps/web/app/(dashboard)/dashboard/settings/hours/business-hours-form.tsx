@@ -445,6 +445,7 @@ function ClosurePeriodDialog({
   timezone?: string;
 }) {
   const tValidation = useTranslations("validation");
+  const { intl: formatLocale } = useFormatLocale();
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -466,8 +467,8 @@ function ClosurePeriodDialog({
       return;
     }
 
-    setStartDate(formatStoreDate(date, timezone, "yyyy-MM-dd"));
-    setStartTime(formatStoreDate(date, timezone, "TIME_ONLY"));
+    setStartDate(formatStoreDate(date, timezone, "yyyy-MM-dd", formatLocale));
+    setStartTime(formatStoreDate(date, timezone, "TIME_ONLY", formatLocale));
   };
 
   const handleEndDateChange = (date: Date | undefined) => {
@@ -477,8 +478,8 @@ function ClosurePeriodDialog({
       return;
     }
 
-    setEndDate(formatStoreDate(date, timezone, "yyyy-MM-dd"));
-    setEndTime(formatStoreDate(date, timezone, "TIME_ONLY"));
+    setEndDate(formatStoreDate(date, timezone, "yyyy-MM-dd", formatLocale));
+    setEndTime(formatStoreDate(date, timezone, "TIME_ONLY", formatLocale));
   };
 
   const handleSubmit = () => {

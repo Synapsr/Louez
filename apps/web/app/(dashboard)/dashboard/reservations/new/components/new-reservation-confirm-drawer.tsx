@@ -18,6 +18,7 @@ import {
 } from "@louez/ui";
 import { formatCurrency } from "@louez/utils";
 
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import type { AvailabilityWarning, Customer, PeriodWarning } from "../types";
@@ -91,6 +92,7 @@ export function NewReservationConfirmDrawer({
 }: NewReservationConfirmDrawerProps) {
   const t = useTranslations("dashboard.reservations.manualForm");
   const tCommon = useTranslations("common");
+  const { intl: formatLocale } = useFormatLocale();
 
   const hasWarnings = periodWarnings.length > 0 || availabilityWarnings.length > 0;
   const hasDelivery = Boolean(outboundLeg || returnLeg);
@@ -172,13 +174,13 @@ export function NewReservationConfirmDrawer({
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="text-muted-foreground">{t("startDate")}</span>
                 <span className="tabular-nums">
-                  {formatStoreDate(startDate, timezone, "d MMM yyyy HH:mm")}
+                  {formatStoreDate(startDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
                 </span>
               </div>
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="text-muted-foreground">{t("endDate")}</span>
                 <span className="tabular-nums">
-                  {formatStoreDate(endDate, timezone, "d MMM yyyy HH:mm")}
+                  {formatStoreDate(endDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
                 </span>
               </div>
               <div className="flex items-baseline justify-between gap-3 text-sm font-medium">

@@ -367,11 +367,21 @@ export default async function ReservationDetailPage({
                   {t('start')}
                 </div>
                 <p className="font-semibold text-lg">
-                  {formatStoreDate(reservation.startDate, storeTimezone, 'DAY_AND_DATE')}
+                  {formatStoreDate(
+                    reservation.startDate,
+                    storeTimezone,
+                    'DAY_AND_DATE',
+                    formatLocale,
+                  )}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {formatStoreDate(reservation.startDate, storeTimezone, 'TIME_ONLY')}
+                  {formatStoreDate(
+                    reservation.startDate,
+                    storeTimezone,
+                    'TIME_ONLY',
+                    formatLocale,
+                  )}
                 </p>
               </div>
 
@@ -385,11 +395,21 @@ export default async function ReservationDetailPage({
                   {t('end')}
                 </div>
                 <p className="font-semibold text-lg">
-                  {formatStoreDate(reservation.endDate, storeTimezone, 'DAY_AND_DATE')}
+                  {formatStoreDate(
+                    reservation.endDate,
+                    storeTimezone,
+                    'DAY_AND_DATE',
+                    formatLocale,
+                  )}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {formatStoreDate(reservation.endDate, storeTimezone, 'TIME_ONLY')}
+                  {formatStoreDate(
+                    reservation.endDate,
+                    storeTimezone,
+                    'TIME_ONLY',
+                    formatLocale,
+                  )}
                 </p>
               </div>
             </div>
@@ -404,7 +424,12 @@ export default async function ReservationDetailPage({
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide opacity-80">{t('pickedUpAt')}</p>
                         <p className="font-medium">
-                          {formatStoreDate(reservation.pickedUpAt, storeTimezone, 'dd/MM/yyyy HH:mm')}
+                          {formatStoreDate(
+                            reservation.pickedUpAt,
+                            storeTimezone,
+                            'dd/MM/yyyy HH:mm',
+                            formatLocale,
+                          )}
                         </p>
                       </div>
                     </div>
@@ -415,7 +440,12 @@ export default async function ReservationDetailPage({
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide opacity-80">{t('returnedAt')}</p>
                         <p className="font-medium">
-                          {formatStoreDate(reservation.returnedAt, storeTimezone, 'dd/MM/yyyy HH:mm')}
+                          {formatStoreDate(
+                            reservation.returnedAt,
+                            storeTimezone,
+                            'dd/MM/yyyy HH:mm',
+                            formatLocale,
+                          )}
                         </p>
                       </div>
                     </div>

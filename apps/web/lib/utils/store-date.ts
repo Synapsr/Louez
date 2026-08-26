@@ -7,8 +7,8 @@
  *
  * Usage:
  *   import { formatStoreDate, DATE_FORMATS } from '@/lib/utils/store-date'
- *   formatStoreDate(date, timezone, 'SHORT_DATETIME')
- *   formatStoreDate(date, timezone, "d MMM yyyy 'à' HH:mm") // custom pattern
+ *   formatStoreDate(date, timezone, 'SHORT_DATETIME', locale)
+ *   formatStoreDate(date, timezone, "d MMM yyyy 'à' HH:mm", locale) // custom pattern
  */
 
 // eslint-disable-next-line no-restricted-imports
@@ -92,13 +92,13 @@ const isDateFormatPreset = (value: string): value is DateFormatPreset => value i
  * @param date      Date object or ISO string (typically UTC from database)
  * @param timezone  IANA timezone string (e.g. 'Europe/Paris'). Falls back gracefully if undefined.
  * @param preset    A key from DATE_FORMATS, or a custom date-fns format string
- * @param locale    Supported UI locale. Defaults to the built-in fallback.
+ * @param locale    Active UI locale. Required so callers cannot silently fall back to French.
  */
 export function formatStoreDate(
   date: Date | string,
   timezone: string | undefined | null,
   preset: DateFormatPreset | (string & {}),
-  locale?: string
+  locale: string
 ): string {
   const d = typeof date === 'string' ? new Date(date) : date
   const dateFnsLocale = resolveFormatLocale(locale).dateFns
@@ -147,7 +147,7 @@ export function formatStoreDateRange(
   startDate: Date | string,
   endDate: Date | string,
   timezone: string | undefined | null,
-  locale?: string,
+  locale: string,
   options?: { compact?: boolean }
 ): string {
   const startShort = formatStoreDate(startDate, timezone, 'SHORTEST_DATE', locale)
@@ -172,7 +172,8 @@ export function formatStoreDateRange(
  */
 export function formatStoreTime(
   date: Date | string,
-  timezone: string | undefined | null
+  timezone: string | undefined | null,
+  locale: string,
 ): string {
-  return formatStoreDate(date, timezone, 'TIME_ONLY')
+  return formatStoreDate(date, timezone, 'TIME_ONLY', locale)
 }
