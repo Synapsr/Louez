@@ -1,3 +1,5 @@
+import { resolveFormatLocale } from "@/lib/i18n/format-locale";
+
 // Currency utilities for multi-currency support
 
 export type CurrencyCode = 'EUR' | 'USD' | 'GBP' | 'CHF' | 'CAD' | 'AUD' | 'JPY' | 'CNY' | 'INR' | 'BRL' | 'MXN' | 'SEK' | 'NOK' | 'DKK' | 'PLN' | 'CZK' | 'HUF' | 'RON' | 'HRK' | 'SGD' | 'HKD' | 'KRW' | 'TWD' | 'THB' | 'MYR' | 'PHP' | 'VND' | 'AED' | 'SAR' | 'ILS' | 'ZAR' | 'MAD' | 'NZD' | 'ARS' | 'CLP' | 'COP'
@@ -161,15 +163,14 @@ export function getCurrenciesSortedByName(): Currency[] {
  * Format currency with dynamic currency code
  * @param amount - The amount to format
  * @param currency - The currency code (defaults to EUR)
- * @param locale - The locale for formatting (defaults to fr-FR)
+ * @param locale - The BCP 47 locale for formatting
  */
 export function formatCurrencyValue(
   amount: number,
   currency: CurrencyCode = 'EUR',
   locale?: string
 ): string {
-  const currencyInfo = getCurrencyByCode(currency)
-  const formatLocale = locale || currencyInfo?.locale || 'fr-FR'
+  const formatLocale = locale ?? resolveFormatLocale(undefined).intl
 
   return new Intl.NumberFormat(formatLocale, {
     style: 'currency',

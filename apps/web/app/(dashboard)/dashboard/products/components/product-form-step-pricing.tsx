@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { format } from "date-fns";
-import { enUS, fr } from "date-fns/locale";
 import {
   CalendarRange,
   Check,
@@ -14,7 +13,8 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import type { PricingMode, Rate, TaxSettings } from "@louez/types";
 import {
@@ -160,8 +160,7 @@ export function ProductFormStepPricing({
   const t = useTranslations("dashboard.products.form");
   const tUnitTracking = useTranslations("dashboard.products.form.unitTracking");
   const tValidation = useTranslations("validation");
-  const locale = useLocale();
-  const calendarLocale = locale === "fr" ? fr : enUS;
+  const { dateFns: calendarLocale } = useFormatLocale();
   const [highlightBaseRate, setHighlightBaseRate] = useState(false);
 
   // Stock mode stepper: the mode-choice screen only shows while no mode is

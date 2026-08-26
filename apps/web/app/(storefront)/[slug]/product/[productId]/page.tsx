@@ -43,6 +43,8 @@ import { sanitizeProductDescriptionHtml } from '@/lib/util.product-description';
 import { getStorefrontPathPrefix } from '@/lib/util.storefront-host';
 import { filterActiveVariantAxes } from '@/lib/util.variant-visibility';
 import { getStoreVariantActivity } from '@/lib/util.variant-visibility.server';
+import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale';
+import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server';
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
 import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
@@ -98,6 +100,7 @@ export async function generateMetadata({
   const { slug, productId } = await params;
   const t = await getTranslations('storefront.product');
   const locale = await getLocale();
+  const { intl: formatLocale } = getConfiguredFormatLocale(locale);
 
   const store = await getStoreBySlug(slug);
 
@@ -148,6 +151,7 @@ export async function generateMetadata({
         price: formatCurrency(
           parseFloat(product.price),
           settings.currency || 'EUR',
+          formatLocale,
         ),
       }),
     },
@@ -159,6 +163,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const t = await getTranslations('storefront.product');
   const tCatalog = await getTranslations('storefront.catalog');
   const tCommon = await getTranslations('common');
+  const { intl: formatLocale } = await getRequestFormatLocale();
 
   const store = await getStoreBySlug(slug);
 
@@ -563,14 +568,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span className="text-primary text-3xl font-bold">
-                  {formatCurrency(parseFloat(product.price), currency)}
+                  {formatCurrency(parseFloat(product.price), currency, formatLocale)}
                 </span>
                 <span className="text-muted-foreground text-base">
                   / {basePeriodLabel}
                 </span>
                 {depositAmount > 0 && (
                   <span className="text-muted-foreground text-sm">
-                    · {t('deposit')} {formatCurrency(depositAmount, currency)}
+                    · {t('deposit')} {formatCurrency(depositAmount, currency, formatLocale)}
                   </span>
                 )}
               </div>
@@ -680,7 +685,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     {t('specs.basePrice')}
                   </dt>
                   <dd className="text-right font-medium">
-                    {formatCurrency(parseFloat(product.price), currency)} /{' '}
+                    {formatCurrency(parseFloat(product.price), currency, formatLocale)} /{' '}
                     {basePeriodLabel}
                   </dd>
                 </div>
@@ -688,7 +693,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <div className="flex items-baseline justify-between gap-4 py-2">
                     <dt className="text-muted-foreground">{t('deposit')}</dt>
                     <dd className="text-right font-medium">
-                      {formatCurrency(depositAmount, currency)}
+                      {formatCurrency(depositAmount, currency, formatLocale)}
                     </dd>
                   </div>
                 )}

@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useTransition } from 'react';
 
-import { enUS, fr } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 
 import {
   Button,
@@ -68,7 +68,12 @@ function formatDateForInput(d: Date, loc: string): string {
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const year = d.getFullYear();
-  return loc === 'fr' ? `${day}/${month}/${year}` : `${month}/${day}/${year}`;
+  return usesMonthFirst(loc) ? `${month}/${day}/${year}` : `${day}/${month}/${year}`;
+}
+
+function usesMonthFirst(locale: string): boolean {
+  const parts = new Intl.DateTimeFormat(locale).formatToParts(new Date(2020, 10, 22));
+  return parts.findIndex((part) => part.type === 'month') < parts.findIndex((part) => part.type === 'day');
 }
 
 /** Parse a locale-aware date string back to a Date */
@@ -77,8 +82,7 @@ function parseDateFromInput(text: string, loc: string): Date | undefined {
   if (parts.length !== 3) return undefined;
   const [a, b, c] = parts.map(Number);
   if (!a || !b || !c || c < 1900 || c > 2100) return undefined;
-  // fr: dd/mm/yyyy, en: mm/dd/yyyy
-  const [day, month, year] = loc === 'fr' ? [a, b, c] : [b, a, c];
+  const [day, month, year] = usesMonthFirst(loc) ? [b, a, c] : [a, b, c];
   if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
   const d = new Date(year, month - 1, day);
   // Validate the date is real (e.g. not Feb 30)
@@ -102,8 +106,7 @@ export function SeasonalPeriodFormDialog({
   onUpdated,
 }: SeasonalPeriodFormDialogProps) {
   const t = useTranslations('dashboard.products.form');
-  const locale = useLocale();
-  const calendarLocale = locale === 'fr' ? fr : enUS;
+  const { intl: formatLocale, dateFns: calendarLocale } = useFormatLocale();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -115,7 +118,7 @@ export function SeasonalPeriodFormDialog({
   const [startDateText, setStartDateText] = useState('');
   const [endDateText, setEndDateText] = useState('');
 
-  const datePlaceholder = locale === 'fr' ? 'jj/mm/aaaa' : 'mm/dd/yyyy';
+  const datePlaceholder = usesMonthFirst(formatLocale) ? 'mm/dd/yyyy' : 'dd/mm/yyyy';
   const calendarStartMonth = new Date(new Date().getFullYear(), 0);
   const calendarEndMonth = new Date(new Date().getFullYear() + 10, 11);
 
@@ -129,8 +132,8 @@ export function SeasonalPeriodFormDialog({
       const ed = new Date(editingData.endDate + 'T00:00:00');
       setStartDate(sd);
       setEndDate(ed);
-      setStartDateText(formatDateForInput(sd, locale));
-      setEndDateText(formatDateForInput(ed, locale));
+      setStartDateText(formatDateForInput(sd, formatLocale));
+      setEndDateText(formatDateForInput(ed, formatLocale));
     } else {
       setName('');
       setStartDate(undefined);
@@ -139,7 +142,7 @@ export function SeasonalPeriodFormDialog({
       setEndDateText('');
     }
     setError(null);
-  }, [open, editingData, locale]);
+  }, [open, editingData, formatLocale]);
 
   const handleSave = () => {
     if (!name.trim() || !startDate || !endDate) {
@@ -252,18 +255,18 @@ export function SeasonalPeriodFormDialog({
                     value={startDateText}
                     onChange={(e) => setStartDateText(e.target.value)}
                     onBlur={() => {
-                      const parsed = parseDateFromInput(startDateText, locale);
+                      const parsed = parseDateFromInput(startDateText, formatLocale);
                       if (parsed) {
                         setStartDate(parsed);
                       } else if (startDate) {
-                        setStartDateText(formatDateForInput(startDate, locale));
+                        setStartDateText(formatDateForInput(startDate, formatLocale));
                       }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         const parsed = parseDateFromInput(
                           startDateText,
-                          locale,
+                          formatLocale,
                         );
                         if (parsed) setStartDate(parsed);
                       }
@@ -295,7 +298,7 @@ export function SeasonalPeriodFormDialog({
                         onSelect={(d) => {
                           setStartDate(d);
                           if (d)
-                            setStartDateText(formatDateForInput(d, locale));
+                            setStartDateText(formatDateForInput(d, formatLocale));
                         }}
                         locale={calendarLocale}
                         captionLayout="dropdown"
@@ -313,16 +316,16 @@ export function SeasonalPeriodFormDialog({
                     value={endDateText}
                     onChange={(e) => setEndDateText(e.target.value)}
                     onBlur={() => {
-                      const parsed = parseDateFromInput(endDateText, locale);
+                      const parsed = parseDateFromInput(endDateText, formatLocale);
                       if (parsed) {
                         setEndDate(parsed);
                       } else if (endDate) {
-                        setEndDateText(formatDateForInput(endDate, locale));
+                        setEndDateText(formatDateForInput(endDate, formatLocale));
                       }
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
-                        const parsed = parseDateFromInput(endDateText, locale);
+                        const parsed = parseDateFromInput(endDateText, formatLocale);
                         if (parsed) setEndDate(parsed);
                       }
                     }}
@@ -352,7 +355,7 @@ export function SeasonalPeriodFormDialog({
                         selected={endDate}
                         onSelect={(d) => {
                           setEndDate(d);
-                          if (d) setEndDateText(formatDateForInput(d, locale));
+                          if (d) setEndDateText(formatDateForInput(d, formatLocale));
                         }}
                         disabled={(date) =>
                           startDate ? date <= startDate : false

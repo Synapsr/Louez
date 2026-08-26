@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { useStore } from "@tanstack/react-form";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -50,6 +50,7 @@ import { formatStoreDate } from "@/lib/utils/store-date";
 import { useAppForm } from "@/hooks/form/form";
 
 import { updateBusinessHours } from "./actions";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 const MAX_RANGES_PER_DAY = 4;
 
@@ -67,6 +68,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
   const [isPending, startTransition] = useTransition();
   const [closureDialogOpen, setClosureDialogOpen] = useState(false);
   const t = useTranslations("dashboard.settings.businessHours");
+  const { dateFns: dateLocale } = useFormatLocale();
   const tCommon = useTranslations("common");
 
   // Normalize legacy format: stores that still have { openTime, closeTime }
@@ -231,11 +233,11 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
                           </div>
                           <p className="text-muted-foreground text-xs">
                             {format(new Date(field.startDate), "dd MMM yyyy", {
-                              locale: fr,
+                              locale: dateLocale,
                             })}
                             {" - "}
                             {format(new Date(field.endDate), "dd MMM yyyy", {
-                              locale: fr,
+                              locale: dateLocale,
                             })}
                             {field.startTime && field.endTime && (
                               <>

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { format, addDays, addWeeks, addHours, startOfWeek, endOfWeek } from "date-fns";
-import { fr } from "date-fns/locale";
 import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,6 +25,7 @@ import {
   buildStoreDate,
 } from "@/lib/utils/business-hours";
 import { getDefaultEndDateForStartDate } from "@/components/storefront/date-picker/core/use-rental-date-core";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 interface DateSelectionHeroProps {
   storeSlug: string;
@@ -52,6 +52,7 @@ export function DateSelectionHero({
   timezone,
 }: DateSelectionHeroProps) {
   const t = useTranslations("storefront.dateSelection");
+  const { dateFns: dateLocale } = useFormatLocale();
   const tBusinessHours = useTranslations("storefront.dateSelection.businessHours");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -491,7 +492,7 @@ export function DateSelectionHero({
                 >
                   <CalendarIcon className="h-4 w-4 shrink-0" />
                   <span className="font-medium">
-                    {startDate ? format(startDate, "EEE d MMM", { locale: fr }) : t("startDate")}
+                    {startDate ? format(startDate, "EEE d MMM", { locale: dateLocale }) : t("startDate")}
                   </span>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -500,7 +501,7 @@ export function DateSelectionHero({
                     selected={startDate}
                     onSelect={handleStartDateSelect}
                     disabled={isDateDisabled}
-                    locale={fr}
+                    locale={dateLocale}
                     initialFocus
                   />
                 </PopoverContent>
@@ -563,7 +564,7 @@ export function DateSelectionHero({
                 >
                   <CalendarIcon className="h-4 w-4 shrink-0" />
                   <span className="font-medium">
-                    {endDate ? format(endDate, "EEE d MMM", { locale: fr }) : t("endDate")}
+                    {endDate ? format(endDate, "EEE d MMM", { locale: dateLocale }) : t("endDate")}
                   </span>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -574,7 +575,7 @@ export function DateSelectionHero({
                     disabled={(date) =>
                       isDateDisabled(date) || isCalendarDateBeforeSelectedDate(date, startDate)
                     }
-                    locale={fr}
+                    locale={dateLocale}
                     initialFocus
                   />
                 </PopoverContent>

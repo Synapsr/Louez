@@ -3,9 +3,9 @@
 import * as React from "react";
 import { isValid, parse } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-import { enUS, fr } from "date-fns/locale";
 import { CalendarIcon, Clock } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import {
   de,
   en,
@@ -345,8 +345,8 @@ export function ReservationDatePickerControl({
 }: ReservationDatePickerControlProps) {
   const t = useTranslations("common.dateTimePicker");
   const locale = useLocale();
+  const { dateFns: dateLocale } = useFormatLocale();
   const isMobile = useIsMobile();
-  const dateLocale = locale === "fr" ? fr : enUS;
   const resolvedTimezone = timezone?.trim() || undefined;
   const [inputValue, setInputValue] = React.useState("");
   const [isFocused, setIsFocused] = React.useState(false);
@@ -456,7 +456,7 @@ export function ReservationDatePickerControl({
   const inputId = id ?? label;
   const formattedValue = React.useCallback(
     (date: Date) => {
-      const format = showTime ? (locale === "fr" ? "PPP 'à' HH:mm" : "PPP 'at' HH:mm") : "PPP";
+      const format = showTime ? "PPPp" : "PPP";
       return formatStoreDate(date, resolvedTimezone, format, locale);
     },
     [locale, resolvedTimezone, showTime],

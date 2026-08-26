@@ -2,9 +2,9 @@
 
 import * as React from 'react'
 import { format, addDays } from 'date-fns'
-import { fr, enUS } from 'date-fns/locale'
 import { CalendarIcon, Clock } from 'lucide-react'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 
 import { cn } from '@louez/utils'
 import { Button } from '@louez/ui'
@@ -96,8 +96,7 @@ export function RentalDatePicker({
   translations: translationsProp,
 }: RentalDatePickerProps) {
   const t = useTranslations('storefront.datePicker')
-  const locale = useLocale()
-  const dateLocale = locale === 'fr' ? fr : enUS
+  const { dateFns: dateLocale } = useFormatLocale()
 
   const [startPopoverOpen, setStartPopoverOpen] = React.useState(false)
   const [endPopoverOpen, setEndPopoverOpen] = React.useState(false)
@@ -217,8 +216,7 @@ export function RentalDatePicker({
   const formatDateDisplay = (date: Date | undefined): string => {
     if (!date) return translations.select
     if (showTime) {
-      const timeFormat = locale === 'fr' ? "d MMM 'à' HH:mm" : "d MMM 'at' HH:mm"
-      return format(date, timeFormat, { locale: dateLocale })
+      return format(date, 'PPp', { locale: dateLocale })
     }
     return format(date, 'd MMMM yyyy', { locale: dateLocale })
   }
@@ -252,7 +250,7 @@ export function RentalDatePicker({
               selected={startDate}
               onSelect={handleStartDateSelect}
               disabled={(date) => date < effectiveMinDate || isDateDisabledByBusinessHours(date)}
-              locale={fr}
+              locale={dateLocale}
             />
             {showTime && (
               <div className="px-3 pb-3">
@@ -300,7 +298,7 @@ export function RentalDatePicker({
                 isCalendarDateBeforeSelectedDate(date, startDate) ||
                 isDateDisabledByBusinessHours(date)
               }
-              locale={fr}
+              locale={dateLocale}
             />
             {showTime && (
               <div className="px-3 pb-3">

@@ -50,6 +50,7 @@ import {
 
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 import { useBrowserTimezoneCity } from "@/hooks/use-browser-timezone-city";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import { useCart } from "@/contexts/cart-context";
 
@@ -216,13 +217,14 @@ export function RentalContent({
 
   // Format start and end datetime in store timezone
   const storeTimezone = store.settings?.timezone;
+  const { intl: formatLocale } = useFormatLocale();
   const startDateTime = useMemo(
-    () => formatDateTime(startDate, { timezone: storeTimezone }),
-    [startDate, storeTimezone],
+    () => formatDateTime(startDate, { timezone: storeTimezone, locale: formatLocale }),
+    [formatLocale, startDate, storeTimezone],
   );
   const endDateTime = useMemo(
-    () => formatDateTime(endDate, { timezone: storeTimezone }),
-    [endDate, storeTimezone],
+    () => formatDateTime(endDate, { timezone: storeTimezone, locale: formatLocale }),
+    [endDate, formatLocale, storeTimezone],
   );
 
   const timezoneCity = useBrowserTimezoneCity(storeTimezone);

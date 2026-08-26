@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, addDays, isToday, isTomorrow } from 'date-fns'
+import type { Locale as DateFnsLocale } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
-import { fr } from 'date-fns/locale'
+
 import { cn } from '@louez/utils'
 import type { BusinessHours, TimeRange } from '@louez/types'
 import { isInClosurePeriod, getDaySchedule } from '@/lib/utils/business-hours'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 
 interface StoreStatusBadgeProps {
   businessHours?: BusinessHours
@@ -141,7 +143,11 @@ function findNextOpening(
   return undefined
 }
 
-function formatNextOpening(nextOpening: { day: Date; time: string }, t: (key: string) => string): string {
+function formatNextOpening(
+  nextOpening: { day: Date; time: string },
+  t: (key: string) => string,
+  locale: DateFnsLocale,
+): string {
   const { day, time } = nextOpening
 
   const [hours, minutes] = time.split(':')
@@ -155,12 +161,13 @@ function formatNextOpening(nextOpening: { day: Date; time: string }, t: (key: st
     return `${t('opensTomorrow')} ${formattedTime}`
   }
 
-  const dayName = format(day, 'EEEE', { locale: fr })
+  const dayName = format(day, 'EEEE', { locale })
   return `${t('opensOn')} ${dayName} ${formattedTime}`
 }
 
 export function StoreStatusBadge({ businessHours, timezone, className }: StoreStatusBadgeProps) {
   const t = useTranslations('storefront.status')
+  const { dateFns: dateLocale } = useFormatLocale()
   const [status, setStatus] = useState<StoreStatus>(() => getStoreStatus(businessHours, timezone))
 
   useEffect(() => {
@@ -206,7 +213,7 @@ export function StoreStatusBadge({ businessHours, timezone, className }: StoreSt
             {t('closed')}
             {status.nextOpening && (
               <span className="opacity-75 ml-1">
-                · {formatNextOpening(status.nextOpening, t)}
+                · {formatNextOpening(status.nextOpening, t, dateLocale)}
               </span>
             )}
           </>

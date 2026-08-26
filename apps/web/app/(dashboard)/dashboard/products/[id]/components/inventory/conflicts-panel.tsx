@@ -26,6 +26,7 @@ import {
 } from '@louez/ui';
 
 import { formatDateRange } from '@/lib/utils';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 
 import { reassignReservationItemUnit } from '../../actions';
 import type { InventoryConflict } from './unit-types';
@@ -49,6 +50,7 @@ export const ConflictsPanel = ({
   fromUnitId,
 }: ConflictsPanelProps) => {
   const t = useTranslations('dashboard.inventory.conflicts');
+  const { intl: formatLocale } = useFormatLocale();
   const tErrors = useTranslations('errors');
   const router = useRouter();
   const [selectedCandidates, setSelectedCandidates] = useState<
@@ -194,7 +196,7 @@ export const ConflictsPanel = ({
                     <ExternalLink className="text-muted-foreground h-3.5 w-3.5" />
                   </div>
                   <p className="text-muted-foreground text-sm">
-                    {formatDateRange(conflict.startDate, conflict.endDate)}
+                    {formatDateRange(conflict.startDate, conflict.endDate, formatLocale)}
                   </p>
                   <p className="text-muted-foreground text-sm">
                     {conflict.customerName ?? t('unknownCustomer')}

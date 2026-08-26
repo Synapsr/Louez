@@ -6,13 +6,14 @@ import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 
 import type { createReservation } from './actions';
 import type { CheckoutFormValues, DeliveryAddress } from './types';
+import type { Locale } from '@/i18n/config';
 
 type CreateReservationInput = Parameters<typeof createReservation>[0];
 
 interface BuildReservationPayloadInput {
   storeId: string;
   pricingMode?: 'day' | 'hour' | 'week';
-  locale: 'fr' | 'en';
+  locale: Locale;
   values: CheckoutFormValues;
   items: CartItem[];
   subtotalAmount: number;

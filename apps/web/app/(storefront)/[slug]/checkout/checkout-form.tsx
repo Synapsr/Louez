@@ -20,6 +20,7 @@ import {
 } from '@/lib/product-analytics/analytics-events';
 
 import { useAppForm } from '@/hooks/form/form';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
 import { useAnalytics } from '@/contexts/analytics-context';
@@ -55,6 +56,8 @@ import type {
 } from './types';
 import { sanitizeTranslationParams } from './utils';
 import { createCheckoutSchemaWithOptions } from './validation';
+import { defaultLocale } from '@/i18n/config';
+import { isLocale } from '@/lib/i18n/format-locale';
 
 const STEP_ICONS: Record<StepId, CheckoutStep['icon']> = {
   contact: User,
@@ -160,7 +163,9 @@ export function CheckoutForm({
   timezone,
 }: CheckoutFormProps) {
   const router = useRouter();
-  const locale = useLocale() as 'fr' | 'en';
+  const activeLocale = useLocale();
+  const locale = isLocale(activeLocale) ? activeLocale : defaultLocale;
+  const formatLocale = useFormatLocale();
   const t = useTranslations('storefront.checkout');
   const tErrors = useTranslations('errors');
   const currency = useStoreCurrency();
@@ -831,14 +836,11 @@ export function CheckoutForm({
   const advanceNoticeDisplay = advanceNoticeIssue
     ? {
         duration: advanceNoticeIssue.duration,
-        minimumStart: new Intl.DateTimeFormat(
-          locale === 'fr' ? 'fr-FR' : 'en-US',
-          {
-            dateStyle: 'long',
-            timeStyle: 'short',
-            ...(timezone ? { timeZone: timezone } : {}),
-          },
-        ).format(new Date(advanceNoticeIssue.minimumStartTime)),
+        minimumStart: new Intl.DateTimeFormat(formatLocale.intl, {
+          dateStyle: 'long',
+          timeStyle: 'short',
+          ...(timezone ? { timeZone: timezone } : {}),
+        }).format(new Date(advanceNoticeIssue.minimumStartTime)),
       }
     : undefined;
 
@@ -967,7 +969,6 @@ export function CheckoutForm({
           depositPercentage={depositPercentage}
           taxSettings={taxSettings}
           currency={currency}
-          locale={locale}
           globalStartDate={globalStartDate}
           globalEndDate={globalEndDate}
           subtotal={subtotal}

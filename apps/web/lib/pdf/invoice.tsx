@@ -16,6 +16,7 @@ import type {
 
 import { createContractStyles } from "./styles";
 import { getInvoicePdfTranslations, type InvoicePdfLocale } from "./invoice-i18n";
+import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
 
 type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>;
 const Document = BaseDocument as unknown as PdfComponent;
@@ -76,7 +77,7 @@ export interface InvoiceDocumentProps {
 }
 
 function formatMoney(value: string, locale: InvoicePdfLocale, currency: string): string {
-  return new Intl.NumberFormat(locale === "fr" ? "fr-FR" : "en-IE", {
+  return new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
     style: "currency",
     currency,
   })
@@ -86,7 +87,7 @@ function formatMoney(value: string, locale: InvoicePdfLocale, currency: string):
 
 function formatDate(value: string | Date, locale: InvoicePdfLocale): string {
   const date = value instanceof Date ? value : new Date(`${value}T12:00:00Z`);
-  return new Intl.DateTimeFormat(locale === "fr" ? "fr-FR" : "en-GB", {
+  return new Intl.DateTimeFormat(getConfiguredFormatLocale(locale).intl, {
     dateStyle: "long",
     timeZone: "UTC",
   }).format(date);
