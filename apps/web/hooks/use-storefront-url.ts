@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 import { useInstanceConfig } from "@/components/instance-provider";
-
-import { env } from "@/env";
+import { usePublicEnv } from "@/components/shared/public-env-provider";
 
 const subscribeToOrigin = () => () => undefined;
 const getBrowserOrigin = () => window.location.origin;
@@ -51,6 +50,7 @@ export function buildAbsoluteStorefrontUrl({
  */
 export function useStorefrontUrl(storeSlug: string) {
   const { standalone } = useInstanceConfig();
+  const { NEXT_PUBLIC_APP_DOMAIN: appDomain } = usePublicEnv();
   const [isSubdomain, setIsSubdomain] = useState(false);
   // React uses getServerOrigin() for both SSR and the first hydration pass,
   // then refreshes to window.location.origin. Reading window during render
@@ -110,14 +110,14 @@ export function useStorefrontUrl(storeSlug: string) {
   const getAbsoluteUrl = useCallback(
     (path: string = "/") => {
       return buildAbsoluteStorefrontUrl({
-        domain: env.NEXT_PUBLIC_APP_DOMAIN,
+        domain: appDomain,
         origin,
         path,
         standalone,
         storeSlug,
       });
     },
-    [origin, standalone, storeSlug],
+    [appDomain, origin, standalone, storeSlug],
   );
 
   return { getUrl, getAbsoluteUrl, isSubdomain };

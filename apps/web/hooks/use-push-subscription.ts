@@ -1,15 +1,13 @@
-'use client';
+"use client";
 
-import * as React from 'react';
+import * as React from "react";
 
-import { useMutation } from '@tanstack/react-query';
-import { log } from 'evlog/next/client';
+import { useMutation } from "@tanstack/react-query";
+import { log } from "evlog/next/client";
 
-import { env } from '@/env';
-import { detectPlatform, type PlatformInfo } from '@/lib/pwa/detect';
-import { orpc } from '@/lib/orpc/react';
-
-const VAPID_PUBLIC_KEY = env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+import { usePublicEnv } from "@/components/shared/public-env-provider";
+import { detectPlatform, type PlatformInfo } from "@/lib/pwa/detect";
+import { orpc } from "@/lib/orpc/react";
 
 /**
  *  - loading           — resolving capabilities (server / first paint)
@@ -20,33 +18,33 @@ const VAPID_PUBLIC_KEY = env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
  *  - prompt            — supported and can be enabled
  */
 export type PushState =
-  | 'loading'
-  | 'unsupported'
-  | 'ios-needs-install'
-  | 'denied'
-  | 'subscribed'
-  | 'prompt';
+  | "loading"
+  | "unsupported"
+  | "ios-needs-install"
+  | "denied"
+  | "subscribed"
+  | "prompt";
 
 function isStandalone(): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === "undefined") return false;
   return (
-    window.matchMedia?.('(display-mode: standalone)').matches ||
+    window.matchMedia?.("(display-mode: standalone)").matches ||
     window.navigator.standalone === true
   );
 }
 
 function pushSupported(): boolean {
   return (
-    typeof window !== 'undefined' &&
-    'serviceWorker' in navigator &&
-    'PushManager' in window &&
-    'Notification' in window
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
   );
 }
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const raw = atob(base64);
   const buffer = new ArrayBuffer(raw.length);
   const output = new Uint8Array(buffer);
@@ -65,9 +63,8 @@ export interface UsePushSubscription {
 }
 
 export function usePushSubscription(): UsePushSubscription {
-  const subscribeMutation = useMutation(
-    orpc.dashboard.notifications.subscribe.mutationOptions(),
-  );
+  const { NEXT_PUBLIC_VAPID_PUBLIC_KEY: vapidPublicKey } = usePublicEnv();
+  const subscribeMutation = useMutation(orpc.dashboard.notifications.subscribe.mutationOptions());
   const unsubscribeMutation = useMutation(
     orpc.dashboard.notifications.unsubscribe.mutationOptions(),
   );
@@ -75,16 +72,15 @@ export function usePushSubscription(): UsePushSubscription {
   const [platform, setPlatform] = React.useState<PlatformInfo | null>(null);
   const [supported, setSupported] = React.useState<boolean | null>(null);
   const [standalone, setStandalone] = React.useState<boolean | null>(null);
-  const [permission, setPermission] =
-    React.useState<NotificationPermission | null>(null);
+  const [permission, setPermission] = React.useState<NotificationPermission | null>(null);
   const [subscribed, setSubscribed] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     setPlatform(detectPlatform());
-    const isSupported = pushSupported() && Boolean(VAPID_PUBLIC_KEY);
+    const isSupported = pushSupported() && Boolean(vapidPublicKey);
     setSupported(isSupported);
     setStandalone(isStandalone());
-    setPermission(isSupported ? Notification.permission : 'default');
+    setPermission(isSupported ? Notification.permission : "default");
 
     if (isSupported) {
       navigator.serviceWorker.ready
@@ -94,40 +90,38 @@ export function usePushSubscription(): UsePushSubscription {
     } else {
       setSubscribed(false);
     }
-  }, []);
+  }, [vapidPublicKey]);
 
   const enable = React.useCallback(async (): Promise<boolean> => {
-    if (!VAPID_PUBLIC_KEY) return false;
-    let stage = 'permission';
+    if (!vapidPublicKey) return false;
+    let stage = "permission";
 
     try {
       // Once permission is granted, requesting it again can leave some
       // browsers waiting on a prompt that will never be shown. Reuse the
       // current grant and continue directly with the device subscription.
       const result =
-        Notification.permission === 'granted'
-          ? 'granted'
-          : await Notification.requestPermission();
+        Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
       setPermission(result);
-      if (result !== 'granted') return false;
+      if (result !== "granted") return false;
 
-      stage = 'browser_subscription';
+      stage = "browser_subscription";
       const reg = await navigator.serviceWorker.ready;
       const existing = await reg.pushManager.getSubscription();
       const sub =
         existing ??
         (await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
         }));
 
       const json = sub.toJSON();
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-        log.warn({ action: 'push_subscription_invalid', stage });
+        log.warn({ action: "push_subscription_invalid", stage });
         return false;
       }
 
-      stage = 'server_registration';
+      stage = "server_registration";
       await subscribeMutation.mutateAsync({
         endpoint: json.endpoint,
         keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
@@ -137,7 +131,7 @@ export function usePushSubscription(): UsePushSubscription {
       return true;
     } catch (error) {
       log.warn({
-        action: 'push_subscription_enable_failed',
+        action: "push_subscription_enable_failed",
         stage,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -145,7 +139,7 @@ export function usePushSubscription(): UsePushSubscription {
       setSubscribed(false);
       return false;
     }
-  }, [subscribeMutation]);
+  }, [subscribeMutation, vapidPublicKey]);
 
   const disable = React.useCallback(async (): Promise<void> => {
     const reg = await navigator.serviceWorker.ready;
@@ -158,7 +152,7 @@ export function usePushSubscription(): UsePushSubscription {
     setSubscribed(false);
   }, [unsubscribeMutation]);
 
-  let state: PushState = 'loading';
+  let state: PushState = "loading";
   if (
     supported !== null &&
     standalone !== null &&
@@ -166,11 +160,11 @@ export function usePushSubscription(): UsePushSubscription {
     subscribed !== null &&
     platform !== null
   ) {
-    if (platform.os === 'ios' && !standalone) state = 'ios-needs-install';
-    else if (!supported) state = 'unsupported';
-    else if (permission === 'denied') state = 'denied';
-    else if (subscribed) state = 'subscribed';
-    else state = 'prompt';
+    if (platform.os === "ios" && !standalone) state = "ios-needs-install";
+    else if (!supported) state = "unsupported";
+    else if (permission === "denied") state = "denied";
+    else if (subscribed) state = "subscribed";
+    else state = "prompt";
   }
 
   return {

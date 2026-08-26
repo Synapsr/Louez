@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import Gleap from 'gleap';
-import { env } from '@/env';
+import { useEffect } from "react";
+import Gleap from "gleap";
+import { usePublicEnv } from "@/components/shared/public-env-provider";
 
 interface GleapProviderProps {
   children: React.ReactNode;
@@ -18,9 +18,11 @@ interface GleapProviderProps {
 }
 
 export function GleapProvider({ children, user, store }: GleapProviderProps) {
+  const { NEXT_PUBLIC_GLEAP_API_KEY: gleapApiKey } = usePublicEnv();
+
   useEffect(() => {
-    if (env.NEXT_PUBLIC_GLEAP_API_KEY) {
-      Gleap.initialize(env.NEXT_PUBLIC_GLEAP_API_KEY);
+    if (gleapApiKey) {
+      Gleap.initialize(gleapApiKey);
       Gleap.showFeedbackButton(false);
 
       if (user) {
@@ -37,7 +39,7 @@ export function GleapProvider({ children, user, store }: GleapProviderProps) {
         });
       }
     }
-  }, [user, store]);
+  }, [gleapApiKey, user, store]);
 
   return <>{children}</>;
 }
