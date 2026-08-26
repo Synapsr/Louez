@@ -2,9 +2,9 @@
 
 import * as React from 'react'
 import { toZonedTime } from 'date-fns-tz'
-import { fr, enUS } from 'date-fns/locale'
 import { CalendarIcon, Clock } from 'lucide-react'
 import { useTranslations, useLocale } from 'next-intl'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 
 import { cn } from '@louez/utils'
 import { Button } from '@louez/ui'
@@ -95,7 +95,7 @@ export function DateTimePicker({
 }: DateTimePickerProps) {
   const t = useTranslations('common.dateTimePicker')
   const locale = useLocale()
-  const dateLocale = locale === 'fr' ? fr : enUS
+  const { dateFns: dateLocale } = useFormatLocale()
   const resolvedTimezone = timezone?.trim() || undefined
 
   const [internalOpen, setInternalOpen] = React.useState(false)
@@ -199,8 +199,7 @@ export function DateTimePicker({
 
   const formatDateTime = (d: Date) => {
     if (showTime) {
-      const timeFormat = locale === 'fr' ? "PPP 'à' HH:mm" : "PPP 'at' HH:mm"
-      return formatStoreDate(d, resolvedTimezone, timeFormat, locale)
+      return formatStoreDate(d, resolvedTimezone, 'PPPp', locale)
     }
     return formatStoreDate(d, resolvedTimezone, 'PPP', locale)
   }

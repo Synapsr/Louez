@@ -19,6 +19,7 @@ import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-se
 import { DashboardTrendBadge } from "@/components/dashboard/shared/dashboard-trend-badge";
 
 import { getRentalPaymentPeriodStats } from "@/lib/dashboard/metrics";
+import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { getPeriodConfig, parsePeriod, type Period } from "../period";
@@ -61,20 +62,21 @@ const DURATION_DAYS_THRESHOLD_HOURS = 48;
 /** Headline receipts of the period, sitting on top of the revenue chart. */
 async function RevenueHero({ storeId, period }: { storeId: string; period: Period }) {
   const t = await getTranslations("dashboard.statistics");
+  const { intl: formatLocale } = await getRequestFormatLocale();
   const stats = await getPeriodPaymentStats(storeId, period);
 
   return (
     <div className="space-y-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-2xl leading-tight font-bold tracking-tight tabular-nums sm:text-3xl">
-          {formatCurrency(stats.periodRevenue)}
+          {formatCurrency(stats.periodRevenue, "EUR", formatLocale)}
         </span>
         <DashboardTrendBadge trend={stats.revenueGrowth} />
         <span className="text-muted-foreground text-xs">{t("vsLastPeriod")}</span>
       </div>
       <p className="text-muted-foreground text-sm">
         {t("paymentsCount", { count: stats.periodPaymentCount })} ·{" "}
-        {t("avgPaymentInline", { amount: formatCurrency(stats.avgPaymentValue) })}
+        {t("avgPaymentInline", { amount: formatCurrency(stats.avgPaymentValue, "EUR", formatLocale) })}
       </p>
     </div>
   );
@@ -141,6 +143,7 @@ function StatStripSkeleton() {
 }
 
 async function SalesStatStrip({ storeId, period }: { storeId: string; period: Period }) {
+  const { intl: formatLocale } = await getRequestFormatLocale();
   const t = await getTranslations("dashboard.statistics");
   const [reservationStats, duration, payments] = await Promise.all([
     getPeriodReservationStats(storeId, period),
@@ -171,7 +174,7 @@ async function SalesStatStrip({ storeId, period }: { storeId: string; period: Pe
       />
       <StatStripItem
         label={t("totalRevenue")}
-        value={formatCurrency(payments.totalRevenue)}
+        value={formatCurrency(payments.totalRevenue, "EUR", formatLocale)}
         subtitle={t("sinceBeginning")}
       />
     </StatStrip>
@@ -194,6 +197,7 @@ function RentalActivitySkeleton() {
 }
 
 async function RentalActivitySection({ storeId, period }: { storeId: string; period: Period }) {
+  const { intl: formatLocale } = await getRequestFormatLocale();
   const t = await getTranslations("dashboard.statistics");
   const [occupancy, upcoming] = await Promise.all([
     getOccupancyStats(storeId, period),
@@ -226,7 +230,7 @@ async function RentalActivitySection({ storeId, period }: { storeId: string; per
           </p>
         </div>
         <span className="shrink-0 text-sm font-semibold tabular-nums">
-          {formatCurrency(upcoming.revenue)}
+          {formatCurrency(upcoming.revenue, "EUR", formatLocale)}
         </span>
       </div>
     </div>
@@ -234,7 +238,8 @@ async function RentalActivitySection({ storeId, period }: { storeId: string; per
 }
 
 async function RevenueChartSection({ storeId, period }: { storeId: string; period: Period }) {
-  const data = await getRevenueTimeSeries(storeId, period);
+  const { dateFns } = await getRequestFormatLocale();
+  const data = await getRevenueTimeSeries(storeId, period, dateFns);
   return <RevenueChart data={data} />;
 }
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import Script from "next/script";
+import { getLocale } from "next-intl/server";
 
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 
@@ -54,12 +55,14 @@ export default async function RootLayout({
   await connection();
   const instanceConfig = getInstanceConfig();
   const publicEnv = getPublicEnv();
+  // Drives the document language for screen readers and translation tools.
+  const locale = await getLocale();
 
   return (
     <>
       {/* {process.env.NODE_ENV === 'development' && <Agentation />} */}
 
-      <html lang="fr" suppressHydrationWarning className="overscroll-none">
+      <html lang={locale} suppressHydrationWarning className="overscroll-none">
         <UmamiAnalytics />
 
         {env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (

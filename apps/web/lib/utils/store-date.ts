@@ -7,30 +7,16 @@
  *
  * Usage:
  *   import { formatStoreDate, DATE_FORMATS } from '@/lib/utils/store-date'
- *   formatStoreDate(date, timezone, 'SHORT_DATETIME')
- *   formatStoreDate(date, timezone, "d MMM yyyy 'à' HH:mm") // custom pattern
+ *   formatStoreDate(date, timezone, 'SHORT_DATETIME', locale)
+ *   formatStoreDate(date, timezone, "d MMM yyyy 'à' HH:mm", locale) // custom pattern
  */
 
 // eslint-disable-next-line no-restricted-imports
 import { format } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
-import { fr, enUS, de, es, it, nl, pl, ptBR } from 'date-fns/locale'
-import type { Locale } from 'date-fns'
+import { resolveFormatLocale } from '@/lib/i18n/format-locale'
 
 const DEFAULT_TIMEZONE = 'UTC'
-
-// Covers every locale the email/notification layer can resolve, so localized
-// dates (weekday/month names) match the surrounding translated content.
-const LOCALE_MAP: Record<string, Locale> = {
-  fr,
-  en: enUS,
-  de,
-  es,
-  it,
-  nl,
-  pl,
-  pt: ptBR,
-}
 
 /**
  * Named format presets covering every pattern used across the codebase.
@@ -85,6 +71,18 @@ export const DATE_FORMATS = {
 
 export type DateFormatPreset = keyof typeof DATE_FORMATS
 
+const LOCALIZED_DATE_TIME_PARTS: Partial<
+  Record<DateFormatPreset, { date: string; time: string }>
+> = {
+  FULL_DATETIME: { date: 'EEEE d MMMM yyyy', time: 'HH:mm' },
+  SHORT_DATETIME: { date: 'EEE d MMM', time: 'HH:mm' },
+  DATE_AT_TIME: { date: 'd MMM yyyy', time: 'HH:mm' },
+  SHORT_DATE_AT_TIME: { date: 'd MMM', time: 'HH:mm' },
+  PRECISE_DATETIME: { date: 'd MMMM yyyy', time: 'HH:mm:ss' },
+}
+
+const isDateFormatPreset = (value: string): value is DateFormatPreset => value in DATE_FORMATS
+
 /**
  * Format a date in the store's timezone.
  *
@@ -94,18 +92,29 @@ export type DateFormatPreset = keyof typeof DATE_FORMATS
  * @param date      Date object or ISO string (typically UTC from database)
  * @param timezone  IANA timezone string (e.g. 'Europe/Paris'). Falls back gracefully if undefined.
  * @param preset    A key from DATE_FORMATS, or a custom date-fns format string
- * @param locale    Locale code ('fr' | 'en'). Defaults to 'fr'.
+ * @param locale    Active UI locale. Required so callers cannot silently fall back to French.
  */
 export function formatStoreDate(
   date: Date | string,
   timezone: string | undefined | null,
   preset: DateFormatPreset | (string & {}),
-  locale: string = 'fr'
+  locale: string
 ): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  const pattern =
-    (DATE_FORMATS as Record<string, string>)[preset] ?? preset
-  const dateFnsLocale = LOCALE_MAP[locale] ?? fr
+  const dateFnsLocale = resolveFormatLocale(locale).dateFns
+  const localizedParts = isDateFormatPreset(preset)
+    ? LOCALIZED_DATE_TIME_PARTS[preset]
+    : undefined
+  const localizedDateTimePattern = localizedParts
+    ? dateFnsLocale.formatLong?.dateTime({ width: 'long' })
+    : undefined
+  const pattern = localizedParts && localizedDateTimePattern
+    ? localizedDateTimePattern
+        .replace('{{date}}', localizedParts.date)
+        .replace('{{time}}', localizedParts.time)
+    : isDateFormatPreset(preset)
+      ? DATE_FORMATS[preset]
+      : preset
 
   const tz = timezone?.trim() || null
 
@@ -138,7 +147,7 @@ export function formatStoreDateRange(
   startDate: Date | string,
   endDate: Date | string,
   timezone: string | undefined | null,
-  locale: string = 'fr',
+  locale: string,
   options?: { compact?: boolean }
 ): string {
   const startShort = formatStoreDate(startDate, timezone, 'SHORTEST_DATE', locale)
@@ -163,7 +172,8 @@ export function formatStoreDateRange(
  */
 export function formatStoreTime(
   date: Date | string,
-  timezone: string | undefined | null
+  timezone: string | undefined | null,
+  locale: string,
 ): string {
-  return formatStoreDate(date, timezone, 'TIME_ONLY')
+  return formatStoreDate(date, timezone, 'TIME_ONLY', locale)
 }

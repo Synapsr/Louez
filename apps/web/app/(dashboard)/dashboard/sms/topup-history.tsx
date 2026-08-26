@@ -11,6 +11,7 @@ import { format, type Locale } from 'date-fns'
 import { fr, enUS, de, es, it, nl, pl, pt } from 'date-fns/locale'
 import { History } from 'lucide-react'
 import { formatStoreDate } from '@/lib/utils/store-date'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { useStoreTimezone } from '@/contexts/store-context'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
@@ -44,6 +45,7 @@ interface TopupHistoryProps {
 export function TopupHistory({ transactions }: TopupHistoryProps) {
   const t = useTranslations('dashboard.sms.topupHistory')
   const locale = useLocale()
+  const { intl: formatLocale } = useFormatLocale()
   const timezone = useStoreTimezone()
   const dateLocale = localeMap[locale] || fr
 
@@ -128,7 +130,12 @@ export function TopupHistory({ transactions }: TopupHistoryProps) {
                       })}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {formatStoreDate(new Date(transaction.createdAt), timezone, 'TIME_ONLY')}
+                      {formatStoreDate(
+                        new Date(transaction.createdAt),
+                        timezone,
+                        'TIME_ONLY',
+                        formatLocale,
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-medium">

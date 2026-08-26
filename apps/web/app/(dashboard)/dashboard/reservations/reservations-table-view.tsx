@@ -29,6 +29,7 @@ import {
   TooltipTrigger,
 } from '@louez/ui'
 import { formatStoreDateRange } from '@/lib/utils/store-date'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { getCurrencySymbol } from '@louez/utils'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
@@ -131,6 +132,7 @@ export function ReservationsTableView({
   handleStatusChange,
   openRejectDialog,
 }: ReservationsTableViewProps) {
+  const { intl: formatLocale } = useFormatLocale()
   const t = useTranslations('dashboard.reservations')
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -275,7 +277,12 @@ export function ReservationsTableView({
 
                     {/* Dates */}
                     <TableCell className="whitespace-nowrap text-sm">
-                      {formatStoreDateRange(reservation.startDate, reservation.endDate, timezone)}
+                      {formatStoreDateRange(
+                        reservation.startDate,
+                        reservation.endDate,
+                        timezone,
+                        formatLocale,
+                      )}
                     </TableCell>
 
                     {/* Amount */}

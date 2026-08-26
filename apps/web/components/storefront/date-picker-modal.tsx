@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { CalendarIcon, Clock, Check, AlertCircle, ArrowRight } from 'lucide-react'
 
 import { Button } from '@louez/ui'
@@ -34,6 +33,7 @@ import {
   isCalendarDateBeforeSelectedDate,
   useRentalDateCore,
 } from '@/components/storefront/date-picker/core/use-rental-date-core'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 
 interface DatePickerModalProps {
   storeSlug: string
@@ -63,6 +63,7 @@ export function DatePickerModal({
   redirectOnSubmit = true,
 }: DatePickerModalProps) {
   const t = useTranslations('storefront.dateSelection')
+  const { dateFns: dateLocale } = useFormatLocale()
   const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
   const router = useRouter()
   const { setGlobalDates, setPricingMode } = useCart()
@@ -253,7 +254,7 @@ export function DatePickerModal({
                     <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                     <span className="font-medium text-sm truncate">
                       {startDate
-                        ? format(startDate, 'EEEE d MMMM yyyy', { locale: fr })
+                        ? format(startDate, 'EEEE d MMMM yyyy', { locale: dateLocale })
                         : t('startDate')}
                     </span>
                 </PopoverTrigger>
@@ -263,7 +264,7 @@ export function DatePickerModal({
                     selected={startDate}
                     onSelect={handleStartDateSelect}
                     disabled={isDateDisabled}
-                    locale={fr}
+                    locale={dateLocale}
                     initialFocus
                   />
                 </PopoverContent>
@@ -303,7 +304,7 @@ export function DatePickerModal({
                     <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                     <span className="font-medium text-sm truncate">
                       {endDate
-                        ? format(endDate, 'EEEE d MMMM yyyy', { locale: fr })
+                        ? format(endDate, 'EEEE d MMMM yyyy', { locale: dateLocale })
                         : t('endDate')}
                     </span>
                 </PopoverTrigger>
@@ -315,7 +316,7 @@ export function DatePickerModal({
                     disabled={(date) =>
                       isDateDisabled(date) || isCalendarDateBeforeSelectedDate(date, startDate)
                     }
-                    locale={fr}
+                    locale={dateLocale}
                     initialFocus
                   />
                 </PopoverContent>

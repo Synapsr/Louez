@@ -21,6 +21,7 @@ import type { UnitAttributes } from '@louez/types';
 
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatDate } from '@/lib/utils';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 
 import { closeDowntime, reinstateUnit } from '../actions';
 import type { ProductInventoryUnit } from '../queries';
@@ -44,6 +45,7 @@ function isUnitAttributes(value: unknown): value is UnitAttributes {
 }
 
 export function ProductUnitsTable({ units }: ProductUnitsTableProps) {
+  const { intl: formatLocale } = useFormatLocale();
   const t = useTranslations('dashboard.products.detail.inventory');
   const tInventory = useTranslations('dashboard.inventory');
   const tErrors = useTranslations('errors');
@@ -161,7 +163,7 @@ export function ProductUnitsTable({ units }: ProductUnitsTableProps) {
                             )
                           : '—'}
                         {unit.retiredAt
-                          ? ` · ${formatDate(unit.retiredAt)}`
+                          ? ` · ${formatDate(unit.retiredAt, undefined, formatLocale)}`
                           : ''}
                       </span>
                     ) : unit.currentDowntime ? (

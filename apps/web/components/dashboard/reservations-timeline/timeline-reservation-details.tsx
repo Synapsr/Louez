@@ -12,11 +12,13 @@ import { getTimelineRentalAmount, type TimelineReservation } from "./timeline-ut
 interface TimelineReservationDetailsProps {
   reservation: TimelineReservation;
   currency: string;
+  locale: string;
 }
 
 export const TimelineReservationDetails = ({
   reservation,
   currency,
+  locale,
 }: TimelineReservationDetailsProps) => {
   const t = useTranslations("dashboard.reservations");
   const hasDelivery = Boolean(
@@ -128,21 +130,21 @@ export const TimelineReservationDetails = ({
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground/70">{t("periodStart")}</span>
           <span>
-            {formatDateShort(reservation.startDate)}{" "}
-            <span className="tabular-nums">{formatTime(reservation.startDate)}</span>
+            {formatDateShort(reservation.startDate, locale)}{" "}
+            <span className="tabular-nums">{formatTime(reservation.startDate, locale)}</span>
           </span>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground/70">{t("periodEnd")}</span>
           <span>
-            {formatDateShort(reservation.endDate)}{" "}
-            <span className="tabular-nums">{formatTime(reservation.endDate)}</span>
+            {formatDateShort(reservation.endDate, locale)}{" "}
+            <span className="tabular-nums">{formatTime(reservation.endDate, locale)}</span>
           </span>
         </div>
         <div className="flex items-center justify-between gap-3 pt-0.5 font-medium">
           <span className="text-muted-foreground/70">{t("totalAmount")}</span>
           <span className="text-foreground tabular-nums">
-            {formatCurrency(getTimelineRentalAmount(reservation), currency)}
+            {formatCurrency(getTimelineRentalAmount(reservation), currency, locale)}
           </span>
         </div>
       </div>

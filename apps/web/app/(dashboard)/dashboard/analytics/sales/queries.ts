@@ -8,7 +8,8 @@ import {
   subDays,
   subMonths,
 } from "date-fns";
-import { fr } from "date-fns/locale";
+import type { Locale as DateFnsLocale } from "date-fns";
+
 import { and, count, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@louez/db";
@@ -53,6 +54,7 @@ export const getWindowStart = (period: Period, now: Date) => {
 export async function getRevenueTimeSeries(
   storeId: string,
   period: Period,
+  locale: DateFnsLocale,
 ): Promise<RevenueTimeSeriesPoint[]> {
   const { granularity } = getPeriodConfig(period);
   const now = new Date();
@@ -92,7 +94,7 @@ export async function getRevenueTimeSeries(
     const bucket = bucketsByKey.get(format(date, bucketKey));
 
     return {
-      label: format(date, granularity === "month" ? "MMM yyyy" : "d MMM", { locale: fr }),
+      label: format(date, granularity === "month" ? "MMM yyyy" : "d MMM", { locale }),
       revenue: parseFloat(bucket?.total || "0"),
       payments: bucket?.count || 0,
     };

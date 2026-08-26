@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 import { format } from 'date-fns'
-import { fr, enUS } from 'date-fns/locale'
+import type { Locale as DateFnsLocale } from 'date-fns'
 import {
   CalendarRange,
   Check,
@@ -12,7 +12,8 @@ import {
   Loader2,
   Plus,
 } from 'lucide-react'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 
 import { cn } from '@louez/utils'
 import {
@@ -47,13 +48,11 @@ function computePriceDiffPercent(
   return { percent: Math.abs(percent), isHigher: seasonal > base }
 }
 
-function formatDateRange(startDate: string, endDate: string, locale: Locale): string {
+function formatDateRange(startDate: string, endDate: string, locale: DateFnsLocale): string {
   const start = new Date(startDate + 'T00:00:00')
   const end = new Date(endDate + 'T00:00:00')
   return `${format(start, 'd MMM yyyy', { locale })} → ${format(end, 'd MMM yyyy', { locale })}`
 }
-
-type Locale = typeof fr
 
 export function PricingPeriodSelector({
   selectedPeriodId,
@@ -64,8 +63,7 @@ export function PricingPeriodSelector({
   isLoading,
 }: PricingPeriodSelectorProps) {
   const t = useTranslations('dashboard.products.form')
-  const locale = useLocale()
-  const calendarLocale = locale === 'fr' ? fr : enUS
+  const { dateFns: calendarLocale } = useFormatLocale()
   const [open, setOpen] = useState(false)
 
   const selectedPeriod = selectedPeriodId

@@ -27,6 +27,7 @@ import {
 } from "@louez/ui/icons";
 import { cn, formatCurrency } from "@louez/utils";
 
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import { getReservationDetailHref } from "@/lib/product-analytics/reservation-analytics";
 
 import { TimelineReservationDetails } from "./timeline-reservation-details";
@@ -128,6 +129,7 @@ export function TimelineReservationBar({
   style,
 }: TimelineReservationBarProps) {
   const t = useTranslations("dashboard.calendar");
+  const { intl: formatLocale } = useFormatLocale();
   const status = getTimelineStatus(reservation.status);
   const colorClass = BAR_COLORS[status] ?? BAR_COLORS.pending;
   const reservationHref = getReservationDetailHref(
@@ -135,7 +137,11 @@ export function TimelineReservationBar({
     "reservations_timeline",
     returnTo,
   );
-  const rentalPrice = formatCurrency(getTimelineRentalAmount(reservation), currency);
+  const rentalPrice = formatCurrency(
+    getTimelineRentalAmount(reservation),
+    currency,
+    formatLocale,
+  );
 
   const hasOutboundDelivery = Boolean(reservation.outboundDeliveryAddress);
   const hasReturnDelivery = Boolean(reservation.returnDeliveryAddress);
@@ -227,7 +233,11 @@ export function TimelineReservationBar({
                 {t(`status.${status}`)}
               </Badge>
             </div>
-            <TimelineReservationDetails reservation={reservation} currency={currency} />
+            <TimelineReservationDetails
+              reservation={reservation}
+              currency={currency}
+              locale={formatLocale}
+            />
           </div>
         </TooltipContent>
       </Tooltip>
@@ -263,7 +273,11 @@ export function TimelineReservationBar({
             </div>
           </DrawerHeader>
           <DrawerPanel className="space-y-2">
-            <TimelineReservationDetails reservation={reservation} currency={currency} />
+            <TimelineReservationDetails
+              reservation={reservation}
+              currency={currency}
+              locale={formatLocale}
+            />
           </DrawerPanel>
           <DrawerFooter>
             <Button

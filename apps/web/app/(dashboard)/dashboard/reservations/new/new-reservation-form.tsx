@@ -49,6 +49,7 @@ import {
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { useAppForm } from "@/hooks/form/form";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 import { useStoreTimezone } from "@/contexts/store-context";
@@ -147,6 +148,7 @@ export function NewReservationForm({
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const tValidation = useTranslations("validation");
+  const { intl: formatLocale } = useFormatLocale();
   const posthog = usePostHog();
 
   useEffect(() => {
@@ -1402,10 +1404,20 @@ export function NewReservationForm({
                         <div className="bg-card relative flex items-center justify-between gap-3 rounded-xl border px-4 py-3 sm:gap-4">
                           <div className="min-w-0">
                             <p className="text-xs font-medium tabular-nums">
-                              {formatStoreDate(watchStartDate, timezone, "d MMM yyyy")}
+                              {formatStoreDate(
+                                watchStartDate,
+                                timezone,
+                                "d MMM yyyy",
+                                formatLocale,
+                              )}
                             </p>
                             <p className="text-muted-foreground text-[11px] tabular-nums">
-                              {formatStoreDate(watchStartDate, timezone, "HH:mm")}
+                              {formatStoreDate(
+                                watchStartDate,
+                                timezone,
+                                "HH:mm",
+                                formatLocale,
+                              )}
                             </p>
                           </div>
 
@@ -1448,10 +1460,20 @@ export function NewReservationForm({
 
                           <div className="min-w-0 text-right">
                             <p className="text-xs font-medium tabular-nums">
-                              {formatStoreDate(watchEndDate, timezone, "d MMM yyyy")}
+                              {formatStoreDate(
+                                watchEndDate,
+                                timezone,
+                                "d MMM yyyy",
+                                formatLocale,
+                              )}
                             </p>
                             <p className="text-muted-foreground text-[11px] tabular-nums">
-                              {formatStoreDate(watchEndDate, timezone, "HH:mm")}
+                              {formatStoreDate(
+                                watchEndDate,
+                                timezone,
+                                "HH:mm",
+                                formatLocale,
+                              )}
                             </p>
                           </div>
                         </div>

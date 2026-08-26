@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { db, effectiveProductQuantitySql } from "@louez/db";
@@ -29,6 +29,7 @@ import { getStoreVariantActivity } from "@/lib/util.variant-visibility.server";
 import { getCurrentDowntimeUnitIds } from "@/lib/utils/unit-current-downtime";
 
 import { RentalContent } from "./rental-content";
+import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 
 /** `?category=` values that mean "browse everything" / "no category", rather than a real id. */
 const RESERVED_CATEGORY_VALUES = new Set(["all", "uncategorized"]);
@@ -62,6 +63,7 @@ export async function generateMetadata({
 
   const theme = (store.theme as StoreTheme) || {};
   const settings = (store.settings as StoreSettings) || {};
+  const { dateFns: dateLocale } = await getRequestFormatLocale();
 
   // Format dates for title if valid
   let dateRange = "";
@@ -70,7 +72,7 @@ export async function generateMetadata({
       const start = new Date(startDate);
       const end = new Date(endDate);
       if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-        dateRange = ` du ${format(start, "d MMM", { locale: fr })} au ${format(end, "d MMM yyyy", { locale: fr })}`;
+        dateRange = ` du ${format(start, "d MMM", { locale: dateLocale })} au ${format(end, "d MMM yyyy", { locale: dateLocale })}`;
       }
     } catch {
       // Ignore date formatting errors

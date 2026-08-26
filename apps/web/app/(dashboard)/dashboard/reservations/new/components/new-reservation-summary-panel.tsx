@@ -22,6 +22,7 @@ import {
 } from "@louez/ui";
 import { cn, formatCurrency } from "@louez/utils";
 
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { useReservationDurationLabel } from "../hooks/use-reservation-duration-label";
@@ -94,6 +95,7 @@ export function NewReservationSummaryPanel({
   onNavigateToSection,
 }: NewReservationSummaryPanelProps) {
   const t = useTranslations("dashboard.reservations.manualForm");
+  const { intl: formatLocale } = useFormatLocale();
   const [isEditingDiscount, setIsEditingDiscount] = useState(false);
   const [isEditingDeposit, setIsEditingDeposit] = useState(false);
 
@@ -199,13 +201,13 @@ export function NewReservationSummaryPanel({
             <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">{t("startDate")}</span>
               <span className="tabular-nums">
-                {formatStoreDate(startDate, timezone, "d MMM yyyy HH:mm")}
+                {formatStoreDate(startDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
               </span>
             </div>
             <div className="flex justify-between gap-2">
               <span className="text-muted-foreground">{t("endDate")}</span>
               <span className="tabular-nums">
-                {formatStoreDate(endDate, timezone, "d MMM yyyy HH:mm")}
+                {formatStoreDate(endDate, timezone, "d MMM yyyy HH:mm", formatLocale)}
               </span>
             </div>
             <div className="flex justify-between gap-2 font-medium">

@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import {
   CalendarIcon,
   ArrowRight,
@@ -32,6 +31,7 @@ import {
   useRentalDateCore,
 } from '@/components/storefront/date-picker/core/use-rental-date-core'
 import { useBrowserTimezoneCity } from '@/hooks/use-browser-timezone-city'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -154,6 +154,7 @@ export function EmbedDatePicker({
   timezone,
 }: EmbedDatePickerProps) {
   const t = useTranslations('storefront.dateSelection')
+  const { dateFns: dateLocale } = useFormatLocale()
   const tEmbed = useTranslations('storefront.embed')
   const tHero = useTranslations('storefront.hero')
   const tBusinessHours = useTranslations(
@@ -378,9 +379,9 @@ export function EmbedDatePicker({
   // Show the selected date as context when choosing a time slot
   const stepContext = useMemo(() => {
     if (step === 'startTime' && startDate)
-      return format(startDate, 'd MMM', { locale: fr })
+      return format(startDate, 'd MMM', { locale: dateLocale })
     if (step === 'endTime' && endDate)
-      return format(endDate, 'd MMM', { locale: fr })
+      return format(endDate, 'd MMM', { locale: dateLocale })
     return null
   }, [step, startDate, endDate])
 
@@ -528,7 +529,7 @@ export function EmbedDatePicker({
                           isDateDisabled(date) ||
                           isCalendarDateBeforeSelectedDate(date, startDate)
                   }
-                  locale={fr}
+                  locale={dateLocale}
                   autoFocus
                 />
               </div>
@@ -587,6 +588,8 @@ function DateTimeField({
   onDateClick: () => void
   onTimeClick: () => void
 }) {
+  const { dateFns: dateLocale } = useFormatLocale()
+
   return (
     <div>
       <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
@@ -613,7 +616,7 @@ function DateTimeField({
           <span
             className={cn('text-xs truncate', isFilled && 'font-medium')}
           >
-            {date ? format(date, 'd MMM', { locale: fr }) : datePlaceholder}
+            {date ? format(date, 'd MMM', { locale: dateLocale }) : datePlaceholder}
           </span>
         </button>
 

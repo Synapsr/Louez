@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 
 import { formatDateTime } from '@/lib/utils';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 
 import type { InventoryDowntimeSummary } from '../../queries';
 
@@ -16,6 +17,7 @@ export const DowntimeCell = ({
   nextDowntime,
 }: DowntimeCellProps) => {
   const t = useTranslations('dashboard.inventory');
+  const { intl: formatLocale } = useFormatLocale();
   const tReasons = useTranslations('dashboard.inventory.downtimeReasons');
 
   if (currentDowntime) {
@@ -29,7 +31,7 @@ export const DowntimeCell = ({
         <p className="text-muted-foreground text-xs">
           {currentDowntime.endsAt
             ? t('downtime.until', {
-                date: formatDateTime(currentDowntime.endsAt),
+                date: formatDateTime(currentDowntime.endsAt, formatLocale),
               })
             : t('downtime.openEnded')}
         </p>
@@ -46,7 +48,7 @@ export const DowntimeCell = ({
           })}
         </p>
         <p className="text-muted-foreground text-xs">
-          {formatDateTime(nextDowntime.startsAt)}
+          {formatDateTime(nextDowntime.startsAt, formatLocale)}
         </p>
       </div>
     );

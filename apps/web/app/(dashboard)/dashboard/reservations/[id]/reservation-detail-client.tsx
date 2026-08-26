@@ -32,8 +32,9 @@ import {
   TableHeader,
   TableRow,
 } from "@louez/ui";
-import { cn, getCurrencySymbol } from "@louez/utils";
+import { cn, formatCurrency, formatNumber } from "@louez/utils";
 
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 import { orpc } from "@/lib/orpc/react";
 import { captureReservationViewed } from "@/lib/product-analytics/reservation-analytics-client";
@@ -146,6 +147,7 @@ export function ReservationDetailClient({
 }: ReservationDetailClientProps) {
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
+  const { intl: formatLocale } = useFormatLocale();
   const hasCapturedReservationView = useRef(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
@@ -176,8 +178,6 @@ export function ReservationDetailClient({
   }, [initialReservation, inspectionSettings.enabled, inspectionSettings.mode, reservationId]);
 
   if (!reservation) return null;
-
-  const currencySymbol = getCurrencySymbol(currency);
 
   const status = (reservation.status || "pending") as ReservationStatus;
 
@@ -363,9 +363,23 @@ export function ReservationDetailClient({
               <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 text-sm">
                 <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
-                  <span>{formatStoreDate(startDate, storeTimezone, "SHORT_DATETIME")}</span>
+                  <span>
+                    {formatStoreDate(
+                      startDate,
+                      storeTimezone,
+                      "SHORT_DATETIME",
+                      formatLocale,
+                    )}
+                  </span>
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{formatStoreDate(endDate, storeTimezone, "SHORT_DATETIME")}</span>
+                  <span>
+                    {formatStoreDate(
+                      endDate,
+                      storeTimezone,
+                      "SHORT_DATETIME",
+                      formatLocale,
+                    )}
+                  </span>
                   <span className="text-muted-foreground">
                     ({durationDays > 0 && tCommon("days", { count: durationDays })}
                     {durationDays > 0 && durationHours > 0 && ` ${tCommon("and")} `}
@@ -467,12 +481,19 @@ export function ReservationDetailClient({
                             {item.quantity}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground align-top pt-4">
-                            {parseFloat(item.unitPrice).toFixed(2)}
-                            {currencySymbol}/u
+                            {formatCurrency(
+                              parseFloat(item.unitPrice),
+                              currency,
+                              formatLocale,
+                            )}
+                            /u
                           </TableCell>
                           <TableCell className="text-right font-medium align-top pt-4">
-                            {parseFloat(item.totalPrice).toFixed(2)}
-                            {currencySymbol}
+                            {formatCurrency(
+                              parseFloat(item.totalPrice),
+                              currency,
+                              formatLocale,
+                            )}
                           </TableCell>
                         </TableRow>
                       );
@@ -489,24 +510,41 @@ export function ReservationDetailClient({
                       <div className="flex justify-between text-muted-foreground">
                         <span>{t("subtotalExclTax")}</span>
                         <span>
-                          {parseFloat(
-                            reservation.subtotalExclTax || reservation.subtotalAmount,
-                          ).toFixed(2)}
-                          {currencySymbol}
+                          {formatCurrency(
+                            parseFloat(
+                              reservation.subtotalExclTax || reservation.subtotalAmount,
+                            ),
+                            currency,
+                            formatLocale,
+                          )}
                         </span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
-                        <span>{t("taxLine", { rate: reservation.taxRate || "0" })}</span>
                         <span>
-                          {parseFloat(reservation.taxAmount).toFixed(2)}
-                          {currencySymbol}
+                          {t("taxLine", {
+                            rate: formatNumber(
+                              parseFloat(reservation.taxRate || "0"),
+                              2,
+                              formatLocale,
+                            ),
+                          })}
+                        </span>
+                        <span>
+                          {formatCurrency(
+                            parseFloat(reservation.taxAmount),
+                            currency,
+                            formatLocale,
+                          )}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>{t("subtotalInclTax")}</span>
                         <span className="font-medium">
-                          {parseFloat(reservation.subtotalAmount).toFixed(2)}
-                          {currencySymbol}
+                          {formatCurrency(
+                            parseFloat(reservation.subtotalAmount),
+                            currency,
+                            formatLocale,
+                          )}
                         </span>
                       </div>
                     </>
@@ -514,8 +552,11 @@ export function ReservationDetailClient({
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">{t("subtotalRental")}</span>
                       <span className="font-medium">
-                        {parseFloat(reservation.subtotalAmount).toFixed(2)}
-                        {currencySymbol}
+                        {formatCurrency(
+                          parseFloat(reservation.subtotalAmount),
+                          currency,
+                          formatLocale,
+                        )}
                       </span>
                     </div>
                   )}
@@ -532,8 +573,11 @@ export function ReservationDetailClient({
                         )}
                       </span>
                       <span>
-                        -{parseFloat(reservation.discountAmount).toFixed(2)}
-                        {currencySymbol}
+                        -{formatCurrency(
+                          parseFloat(reservation.discountAmount),
+                          currency,
+                          formatLocale,
+                        )}
                       </span>
                     </div>
                   )}
@@ -545,8 +589,11 @@ export function ReservationDetailClient({
                         {t("deliveryFeeLabel")}
                       </span>
                       <span>
-                        {parseFloat(reservation.deliveryFee).toFixed(2)}
-                        {currencySymbol}
+                        {formatCurrency(
+                          parseFloat(reservation.deliveryFee),
+                          currency,
+                          formatLocale,
+                        )}
                       </span>
                     </div>
                   )}
@@ -554,8 +601,7 @@ export function ReservationDetailClient({
                   <div className="flex justify-between border-t pt-2 font-semibold">
                     <span>{t("totalAmount")}</span>
                     <span>
-                      {rental.toFixed(2)}
-                      {currencySymbol}
+                      {formatCurrency(rental, currency, formatLocale)}
                     </span>
                   </div>
 
@@ -563,8 +609,11 @@ export function ReservationDetailClient({
                     <div className="flex justify-between text-muted-foreground">
                       <span>{t("totalDeposit")}</span>
                       <span>
-                        {parseFloat(reservation.depositAmount).toFixed(2)}
-                        {currencySymbol}
+                        {formatCurrency(
+                          parseFloat(reservation.depositAmount),
+                          currency,
+                          formatLocale,
+                        )}
                       </span>
                     </div>
                   )}
@@ -667,7 +716,12 @@ export function ReservationDetailClient({
                       </div>
                       {reservation.deliveryDistanceKm && (
                         <p className="text-xs text-muted-foreground ml-5.5">
-                          {parseFloat(reservation.deliveryDistanceKm).toFixed(1)} km
+                          {formatNumber(
+                            parseFloat(reservation.deliveryDistanceKm),
+                            1,
+                            formatLocale,
+                          )}{" "}
+                          km
                         </p>
                       )}
                     </>
@@ -706,7 +760,12 @@ export function ReservationDetailClient({
                       </div>
                       {reservation.returnDistanceKm && (
                         <p className="text-xs text-muted-foreground ml-5.5">
-                          {parseFloat(reservation.returnDistanceKm).toFixed(1)} km
+                          {formatNumber(
+                            parseFloat(reservation.returnDistanceKm),
+                            1,
+                            formatLocale,
+                          )}{" "}
+                          km
                         </p>
                       )}
                     </>
@@ -735,8 +794,11 @@ export function ReservationDetailClient({
                   <div className="flex justify-between items-center border-t pt-3 text-sm">
                     <span className="text-muted-foreground">{t("deliveryFeeLabel")}</span>
                     <span className="font-medium">
-                      {parseFloat(reservation.deliveryFee).toFixed(2)}
-                      {currencySymbol}
+                      {formatCurrency(
+                        parseFloat(reservation.deliveryFee),
+                        currency,
+                        formatLocale,
+                      )}
                     </span>
                   </div>
                 )}

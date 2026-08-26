@@ -67,6 +67,7 @@ services:
       # runtime. Keep the explicit list aligned with apps/web's public env
       # schema; NEXT_PUBLIC_APP_VERSION is omitted because it identifies the
       # immutable image rather than the deployment.
+      NEXT_PUBLIC_FORMAT_LOCALE: ${NEXT_PUBLIC_FORMAT_LOCALE:-}
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}

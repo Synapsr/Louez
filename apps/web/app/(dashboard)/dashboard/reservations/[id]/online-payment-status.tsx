@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { getCurrencySymbol } from '@louez/utils'
 
 import { formatStoreDate } from '@/lib/utils/store-date'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { useStoreTimezone } from '@/contexts/store-context'
 import { orpc } from '@/lib/orpc/react'
 
@@ -60,6 +61,7 @@ export function OnlinePaymentStatus({
   currency = 'EUR',
 }: OnlinePaymentStatusProps) {
   const t = useTranslations('dashboard.reservations.onlinePayment')
+  const { intl: formatLocale } = useFormatLocale()
   const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
 
@@ -145,7 +147,12 @@ export function OnlinePaymentStatus({
   if (stripeRentalPayment) {
     const paymentAmount = parseFloat(stripeRentalPayment.amount)
     const paymentDate = stripeRentalPayment.paidAt
-      ? formatStoreDate(new Date(stripeRentalPayment.paidAt), timezone, 'DATE_AT_TIME')
+      ? formatStoreDate(
+          new Date(stripeRentalPayment.paidAt),
+          timezone,
+          'DATE_AT_TIME',
+          formatLocale,
+        )
       : null
 
     const hasCardSaved = !!stripePaymentMethodId && depositStatus !== 'pending'

@@ -34,15 +34,16 @@ export const getTranslatedActionError = (
 export const formatPurchaseInfo = (
   unit: ProductInventoryUnit,
   currency: string,
+  locale?: string,
 ) => {
   const parts: string[] = [];
 
   if (unit.purchasePrice) {
-    parts.push(formatCurrency(parseFloat(unit.purchasePrice), currency));
+    parts.push(formatCurrency(parseFloat(unit.purchasePrice), currency, locale));
   }
 
   if (unit.purchasedAt) {
-    parts.push(formatDate(unit.purchasedAt));
+    parts.push(formatDate(unit.purchasedAt, undefined, locale));
   }
 
   return parts.join(' · ');

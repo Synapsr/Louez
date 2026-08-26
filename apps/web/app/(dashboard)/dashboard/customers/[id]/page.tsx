@@ -5,7 +5,7 @@ import { eq, and, desc } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+
 import { getTranslations } from 'next-intl/server'
 import {
   ArrowLeft,
@@ -34,6 +34,7 @@ import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-bread
 import { EmailContactPopover } from '@/components/dashboard/email-contact-popover'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { CustomerNotes } from './customer-notes'
+import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -56,6 +57,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
   const t = await getTranslations('dashboard.customers')
   const tReservations = await getTranslations('dashboard.reservations')
   const tCommon = await getTranslations('common')
+  const { intl: formatLocale, dateFns: dateLocale } = await getRequestFormatLocale()
   const store = await getCurrentStore()
 
   if (!store) {
@@ -126,7 +128,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {t('contact')}: {customer.firstName} {customer.lastName} · {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: fr })}
+                  {t('contact')}: {customer.firstName} {customer.lastName} · {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: dateLocale })}
                 </p>
               </>
             ) : (
@@ -140,7 +142,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: fr })}
+                  {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: dateLocale })}
                 </p>
               </>
             )}
@@ -173,7 +175,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalSpent)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.totalSpent, 'EUR', formatLocale)}</div>
           </CardContent>
         </Card>
 
@@ -183,7 +185,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.avgOrderValue)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.avgOrderValue, 'EUR', formatLocale)}</div>
           </CardContent>
         </Card>
 
@@ -282,9 +284,9 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        {format(reservation.startDate, 'dd/MM/yyyy', { locale: fr })}
+                        {format(reservation.startDate, 'dd/MM/yyyy', { locale: dateLocale })}
                         {' - '}
-                        {format(reservation.endDate, 'dd/MM/yyyy', { locale: fr })}
+                        {format(reservation.endDate, 'dd/MM/yyyy', { locale: dateLocale })}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -304,7 +306,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(parseFloat(reservation.totalAmount))}
+                      {formatCurrency(parseFloat(reservation.totalAmount), 'EUR', formatLocale)}
                     </TableCell>
                   </TableRow>
                 ))}
