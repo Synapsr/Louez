@@ -87,7 +87,9 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       price: true,
       images: true,
     },
-    orderBy: (p, { asc }) => [asc(p.name)],
+    // Same order as the products list and the storefront catalog: the manual
+    // order first, newest first for products that were never reordered.
+    orderBy: (p, { asc, desc }) => [asc(p.displayOrder), desc(p.createdAt)],
   });
 
   // Accessory links carry their booking rules (required + quantity per parent

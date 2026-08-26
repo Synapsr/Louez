@@ -1216,7 +1216,9 @@ export async function getAvailableAccessories(excludeProductId?: string) {
       price: true,
       images: true,
     },
-    orderBy: (p, { asc }) => [asc(p.name)],
+    // Same order as the products list and the storefront catalog: the manual
+    // order first, newest first for products that were never reordered.
+    orderBy: (p, { asc, desc }) => [asc(p.displayOrder), desc(p.createdAt)],
   });
 
   // Filter out the current product if provided
