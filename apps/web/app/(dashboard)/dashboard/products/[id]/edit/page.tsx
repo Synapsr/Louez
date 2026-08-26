@@ -90,8 +90,13 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     orderBy: (p, { asc }) => [asc(p.name)],
   });
 
-  // Extract accessory IDs for the form
-  const accessoryIds = product.accessories.map((a) => a.accessoryId);
+  // Accessory links carry their booking rules (required + quantity per parent
+  // unit), not just the association.
+  const accessoryLinks = product.accessories.map((link) => ({
+    accessoryId: link.accessoryId,
+    required: link.required,
+    quantity: link.quantity,
+  }));
   const editableUnits = product.units.filter((unit) => unit.lifecycleStatus === "active");
   const unitIds = editableUnits.map((unit) => unit.id);
   const blockingStatuses = getBlockingReservationStatuses(
@@ -140,7 +145,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
         product={{
           ...product,
           quantity: effectiveQuantity,
-          accessoryIds,
+          accessories: accessoryLinks,
           categoryIds: product.categoryLinks.map((link) => link.categoryId),
           units: editableUnits.map((unit) => ({
             id: unit.id,

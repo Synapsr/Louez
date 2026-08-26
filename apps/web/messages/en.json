@@ -1110,6 +1110,14 @@
         "stock": "Stock",
         "quantity": "Available quantity",
         "quantityHelp": "Number of units available for rent",
+        "consumableQuantityHelp": "Stock on the shelf: it goes down on every confirmed booking and back up when you restock.",
+        "stockKindLabel": "Stock type",
+        "stockKindReturnable": "Returnable stock",
+        "stockKindReturnableDescription": "The item comes back after each rental and becomes available again.",
+        "stockKindConsumable": "Consumable",
+        "stockKindConsumableDescription": "The item leaves with the customer: stock goes down on every confirmed booking and the quantity is what sits on the shelf.",
+        "stockKindConsumableRequiresFixed": "A consumable is sold at a flat rate: switch pricing to \"Flat rate\" to enable it.",
+        "stockKindConsumableRequiresNoUnits": "A consumable is not tracked unit by unit: turn off unit tracking to enable it.",
         "publication": "Publication",
         "statusActive": "Active",
         "statusActiveDescription": "Visible on the store",
@@ -1357,6 +1365,10 @@
         "noProductsFound": "No products found",
         "noProductsAvailable": "No products available",
         "accessoriesHelp": "Accessories will be suggested when adding to cart",
+        "accessoryRequired": "Required",
+        "accessoryQuantity": "Quantity",
+        "accessoryQuantityPerUnit": "per rented unit",
+        "accessoryOptionalHint": "Only suggested to the customer.",
         "seasonalPricing": "Seasonal pricing",
         "seasonalPricingDescription": "Set different rates for specific periods (summer, holidays, etc.).",
         "addSeasonalPeriod": "Add period",
@@ -1508,6 +1520,8 @@
         "inventory": {
           "title": "Inventory",
           "manageStock": "Manage stock",
+          "consumableBadge": "Consumable",
+          "consumableQuantity": "On the shelf",
           "quantity": "Quantity",
           "available": "Available",
           "noUnits": "No units registered",
@@ -5762,6 +5776,8 @@
         "availability": "Availability"
       },
       "unavailableHelp": "This product is not available for rent right now. Browse the rest of the catalog.",
+      "requiredAccessoryOutOfStock": "A required accessory is out of stock",
+      "requiredAccessoriesIncluded": "Automatically added: {names}",
       "backToCatalog": "View the catalog"
     },
     "accessories": {
@@ -5868,6 +5884,8 @@
         "availableCount": "{count} available",
         "limited": "{count} left",
         "unavailable": "Unavailable",
+        "outOfStock": "Out of stock",
+        "requiredAccessoryOutOfStock": "Required accessory out of stock",
         "inCart": "In cart"
       },
       "businessHoursWarning": {
@@ -5930,7 +5948,14 @@
         "cancel": "Cancel",
         "confirm": "Clear"
       },
-      "lineMaxReached": "Maximum reached for this option. Add another option as a separate line."
+      "lineMaxReached": "Maximum reached for this option. Add another option as a separate line.",
+      "requiredWith": "Required with {name}",
+      "included": "Included",
+      "unavailable": {
+        "product_unavailable": "This product is no longer available",
+        "insufficient_stock": "Not enough stock for this quantity",
+        "required_accessory_unavailable": "A required accessory is out of stock"
+      }
     },
     "checkout": {
       "title": "Complete my reservation",

@@ -1110,6 +1110,14 @@
         "stock": "Stock",
         "quantity": "Quantité disponible",
         "quantityHelp": "Nombre d'unités disponibles à la location",
+        "consumableQuantityHelp": "Stock en rayon : il diminue à chaque réservation confirmée et augmente quand vous réapprovisionnez.",
+        "stockKindLabel": "Type de stock",
+        "stockKindReturnable": "Stock retournable",
+        "stockKindReturnableDescription": "Le produit revient après chaque location et redevient disponible.",
+        "stockKindConsumable": "Consommable",
+        "stockKindConsumableDescription": "Le produit part avec le client : le stock diminue à chaque réservation confirmée et la quantité correspond au stock en rayon.",
+        "stockKindConsumableRequiresFixed": "Un consommable se vend au forfait : choisissez la tarification « Forfait » pour l'activer.",
+        "stockKindConsumableRequiresNoUnits": "Un consommable ne se suit pas à l'unité : désactivez le suivi à l'unité pour l'activer.",
         "publication": "Publication",
         "statusActive": "Actif",
         "statusActiveDescription": "Visible sur la boutique",
@@ -1357,6 +1365,10 @@
         "noProductsFound": "Aucun produit trouvé",
         "noProductsAvailable": "Aucun produit disponible",
         "accessoriesHelp": "Les accessoires seront proposés lors de l'ajout au panier",
+        "accessoryRequired": "Requis",
+        "accessoryQuantity": "Quantité",
+        "accessoryQuantityPerUnit": "par unité louée",
+        "accessoryOptionalHint": "Simplement suggéré au client.",
         "assurance": {
           "title": "Assurance Tulip",
           "description": "Gérez le mapping assurance de ce produit sans quitter la fiche d'édition.",
@@ -1508,6 +1520,8 @@
         "inventory": {
           "title": "Inventaire",
           "manageStock": "Gérer le stock",
+          "consumableBadge": "Consommable",
+          "consumableQuantity": "Stock en rayon",
           "quantity": "Quantité",
           "available": "Disponible",
           "noUnits": "Aucune unité enregistrée",
@@ -5762,6 +5776,8 @@
         "availability": "Disponibilité"
       },
       "unavailableHelp": "Ce produit n'est pas disponible à la location pour le moment. Découvrez le reste du catalogue.",
+      "requiredAccessoryOutOfStock": "Un accessoire requis est en rupture de stock",
+      "requiredAccessoriesIncluded": "Ajouté automatiquement : {names}",
       "backToCatalog": "Voir le catalogue"
     },
     "accessories": {
@@ -5868,6 +5884,8 @@
         "availableCount": "{count} disponibles",
         "limited": "{count} restant(s)",
         "unavailable": "Non disponible",
+        "outOfStock": "Rupture de stock",
+        "requiredAccessoryOutOfStock": "Accessoire requis en rupture",
         "inCart": "Dans le panier"
       },
       "businessHoursWarning": {
@@ -5930,7 +5948,14 @@
         "cancel": "Annuler",
         "confirm": "Vider"
       },
-      "lineMaxReached": "Limite atteinte pour cette option. Ajoutez une autre option comme ligne séparée."
+      "lineMaxReached": "Limite atteinte pour cette option. Ajoutez une autre option comme ligne séparée.",
+      "requiredWith": "Requis avec {name}",
+      "included": "Inclus",
+      "unavailable": {
+        "product_unavailable": "Ce produit n'est plus disponible",
+        "insufficient_stock": "Stock insuffisant pour cette quantité",
+        "required_accessory_unavailable": "Un accessoire requis est en rupture de stock"
+      }
     },
     "checkout": {
       "title": "Finaliser ma réservation",

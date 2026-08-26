@@ -46,7 +46,7 @@ const validProduct = {
   enforceStrictTiers: true,
   taxSettings: { inheritFromStore: true },
   videoUrl: "",
-  accessoryIds: [],
+  accessories: [],
   trackUnits: false,
   units: [],
   bookingAttributeAxes: [],
@@ -117,6 +117,43 @@ test("rejects tracked units for a consumable", () => {
     pricingKind: "fixed",
     trackUnits: true,
     units: [{ identifier: "MEDIA-001" }],
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("normalizes a bare accessory id into an optional single-unit link", () => {
+  const product = {
+    ...validProduct,
+    accessories: ["accessory-1"],
+  };
+
+  const parsed = productSchema.safeParse(product);
+  assert.equal(parsed.success, true);
+  assert.deepEqual(parsed.success ? parsed.data.accessories : null, [
+    { accessoryId: "accessory-1", required: false, quantity: 1 },
+  ]);
+});
+
+test("keeps the required flag and quantity of a detailed accessory link", () => {
+  const product = {
+    ...validProduct,
+    accessories: [{ accessoryId: "accessory-1", required: true, quantity: 2 }],
+  };
+
+  const clientParsed = createProductSchema(translate).safeParse(product);
+  assert.equal(clientParsed.success, true);
+  assert.deepEqual(clientParsed.success ? clientParsed.data.accessories : null, [
+    { accessoryId: "accessory-1", required: true, quantity: 2 },
+  ]);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
+test("rejects an accessory link with a quantity below one", () => {
+  const product = {
+    ...validProduct,
+    accessories: [{ accessoryId: "accessory-1", required: true, quantity: 0 }],
   };
 
   assert.equal(createProductSchema(translate).safeParse(product).success, false);

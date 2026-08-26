@@ -16,6 +16,7 @@ import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { formatCurrency, isFixedPriceProduct } from '@louez/utils'
 import { cn } from '@louez/utils'
+import { selectOptionalAccessories } from '@/lib/utils/cart-required-accessories'
 import { useCart } from '@/contexts/cart-context'
 import type { PricingKind, PricingMode } from '@louez/types'
 
@@ -26,6 +27,8 @@ interface Accessory {
   deposit: string
   images: string[] | null
   quantity: number
+  required?: boolean | null
+  requiredQuantity?: number | null
   pricingKind?: PricingKind | null
   pricingMode: PricingMode | null
   basePeriodMinutes?: number | null
@@ -62,9 +65,12 @@ export function AccessoriesModal({
   const [isAdding, setIsAdding] = useState(false)
   const carouselRef = useRef<HTMLDivElement>(null)
 
-  // Filter out accessories that are already in the cart
+  // Upsell list: never the required accessories (the cart already carries
+  // them with their parent), never what is already in the cart.
   const cartProductIds = new Set(cartItems.map((item) => item.productId))
-  const availableAccessories = accessories.filter((acc) => !cartProductIds.has(acc.id))
+  const availableAccessories = selectOptionalAccessories(accessories).filter(
+    (acc) => !cartProductIds.has(acc.id),
+  )
 
   const toggleAccessory = (id: string) => {
     setSelectedIds((prev) => {

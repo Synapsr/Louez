@@ -8,7 +8,10 @@ import { Check, Minus, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import type { PricingKind, Rate } from '@louez/types';
-import type { CombinationAvailability } from '@louez/types';
+import type {
+  CombinationAvailability,
+  ProductAvailability,
+} from '@louez/types';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Card, CardContent } from '@louez/ui';
@@ -29,6 +32,11 @@ import {
 } from '@louez/utils';
 import type { PricingMode } from '@louez/utils';
 
+import {
+  buildRequiredAccessoryCartInputs,
+  findBlockingRequiredAccessories,
+  selectOptionalAccessories,
+} from '@/lib/utils/cart-required-accessories';
 import { calculateDuration, getDetailedDuration } from '@/lib/utils/duration';
 
 import { useCart } from '@/contexts/cart-context';
@@ -59,6 +67,8 @@ interface Accessory {
   deposit: string;
   images: string[] | null;
   quantity: number;
+  required?: boolean | null;
+  requiredQuantity?: number | null;
   pricingKind?: PricingKind | null;
   pricingMode: PricingMode | null;
   basePeriodMinutes?: number | null;
@@ -98,6 +108,8 @@ interface ProductCardAvailableProps {
   };
   storeSlug: string;
   availableQuantity: number;
+  /** Why availability is zero, straight from the server availability call. */
+  unavailableReason?: ProductAvailability['reason'];
   startDate: string;
   endDate: string;
   availableCombinations?: CombinationAvailability[];
@@ -126,6 +138,7 @@ export function ProductCardAvailable({
   product,
   storeSlug,
   availableQuantity,
+  unavailableReason,
   startDate,
   endDate,
   availableCombinations = [],
@@ -143,9 +156,12 @@ export function ProductCardAvailable({
   const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false);
 
   const cartLines = getCartLinesByProductId(product.id);
-  const firstLine = cartLines[0];
+  // A required accessory line is driven by its parent — never by this card.
+  const firstLine = cartLines.find((line) => !line.parentLineId);
   const cartQuantity = getProductQuantityInCart(product.id);
-  const inCart = cartQuantity > 0;
+  // Only a line of its own makes this card an "in cart" card: a line the
+  // customer owns as a required accessory is driven by its parent.
+  const inCart = Boolean(firstLine);
   const totalQuantity = product.displayQuantity ?? product.quantity;
 
   const price = parseFloat(product.price);
@@ -266,10 +282,29 @@ export function ProductCardAvailable({
   const hasDiscount = priceResult.savings > 0;
   const discountPercent = priceResult.discountPercent;
 
+  // Upsell accessories: optional and in stock. Required ones ride along with
+  // the product, and block it when the store cannot supply them.
+  const availableAccessories = selectOptionalAccessories(
+    product.accessories || [],
+  ).filter((acc) => acc.quantity > 0);
+  const requiredAccessories = buildRequiredAccessoryCartInputs(
+    product.accessories || [],
+  );
+  const hasBlockingRequiredAccessory =
+    findBlockingRequiredAccessories(product.accessories || [], 1).length > 0;
+
+  const isUnavailable = availableQuantity === 0 || hasBlockingRequiredAccessory;
+  const unavailableStatus: AvailabilityStatus =
+    hasBlockingRequiredAccessory ||
+    unavailableReason === 'required_accessory_out_of_stock'
+      ? 'required_accessory_out_of_stock'
+      : unavailableReason === 'out_of_stock'
+        ? 'out_of_stock'
+        : 'unavailable';
   const status: AvailabilityStatus = inCart
     ? 'in_cart'
-    : availableQuantity === 0
-      ? 'unavailable'
+    : isUnavailable
+      ? unavailableStatus
       : availableQuantity < totalQuantity
         ? 'limited'
         : 'available';
@@ -279,11 +314,6 @@ export function ProductCardAvailable({
   const firstLineMaxQuantity = firstLine?.maxQuantity || maxQuantity;
   const canAddMore = firstLineQuantity < firstLineMaxQuantity;
   const hasBookingAttributes = (product.bookingAttributeAxes?.length || 0) > 0;
-
-  // Filter available accessories (active with stock)
-  const availableAccessories = (product.accessories || []).filter(
-    (acc) => acc.quantity > 0,
-  );
 
   const detailedDuration = getDetailedDuration(startDate, endDate);
   const durationLabel = (() => {
@@ -315,7 +345,7 @@ export function ProductCardAvailable({
     e.preventDefault();
     e.stopPropagation();
 
-    if (status === 'unavailable') return;
+    if (availableQuantity === 0 || hasBlockingRequiredAccessory) return;
     if (hasBookingAttributes) {
       setIsModalOpen(true);
       return;
@@ -358,6 +388,7 @@ export function ProductCardAvailable({
           })),
           productPricingMode: product.pricingMode,
           seasonalPricings: product.seasonalPricings,
+          requiredAccessories,
         },
         storeSlug,
       );
@@ -384,8 +415,6 @@ export function ProductCardAvailable({
   const handleOpenModal = () => {
     setIsModalOpen(true);
   };
-
-  const isUnavailable = status === 'unavailable';
 
   return (
     <>

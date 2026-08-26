@@ -106,6 +106,58 @@ async function replaceProductCategories(
   }
 }
 
+/**
+ * Rewrite the accessory links of a product. Links are stored in submission
+ * order (`displayOrder`) and silently dropped when they point at a product of
+ * another store, at the product itself, or at a duplicate accessory.
+ */
+async function replaceProductAccessories(
+  tx: ProductMutationTx | typeof db,
+  params: {
+    storeId: string;
+    productId: string;
+    links: NonNullable<ProductInput["accessories"]>;
+  },
+) {
+  const { storeId, productId, links } = params;
+
+  await tx.delete(productAccessories).where(eq(productAccessories.productId, productId));
+  if (links.length === 0) return;
+
+  const requestedIds = Array.from(new Set(links.map((link) => link.accessoryId)));
+  // Ownership check: a plain read, so it stays on the pool connection rather
+  // than the caller's transaction handle (no locks taken, no deadlock risk).
+  const owned = await db.query.products.findMany({
+    where: and(
+      eq(products.storeId, storeId),
+      inArray(products.id, requestedIds),
+      ne(products.id, productId),
+    ),
+    columns: { id: true },
+  });
+  const ownedIds = new Set(owned.map((product) => product.id));
+
+  const seen = new Set<string>();
+  const rows = links.flatMap((link) => {
+    if (!ownedIds.has(link.accessoryId) || seen.has(link.accessoryId)) return [];
+    seen.add(link.accessoryId);
+    return [
+      {
+        id: nanoid(),
+        productId,
+        accessoryId: link.accessoryId,
+        required: link.required,
+        quantity: link.quantity,
+        displayOrder: seen.size - 1,
+      },
+    ];
+  });
+
+  if (rows.length > 0) {
+    await tx.insert(productAccessories).values(rows);
+  }
+}
+
 function normalizeBookingAttributeAxes(
   axes: ProductInput["bookingAttributeAxes"],
 ): BookingAttributeAxis[] {
@@ -389,6 +441,12 @@ export async function createProduct(data: ProductInput) {
       });
 
       await replaceProductCategories(tx, productId, categoryIds);
+
+      await replaceProductAccessories(tx, {
+        storeId: store.id,
+        productId,
+        links: validated.data.accessories ?? [],
+      });
 
       // Create pricing tiers if provided
       if (rateTierRows.length > 0) {
@@ -730,6 +788,12 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
     await replaceProductCategories(tx, productId, categoryIds);
 
+    await replaceProductAccessories(tx, {
+      storeId: store.id,
+      productId,
+      links: validated.data.accessories ?? [],
+    });
+
     await tx.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId));
 
     if (rateTierRows.length > 0) {
@@ -878,35 +942,6 @@ export async function updateProduct(productId: string, data: ProductInput) {
         })),
       );
     });
-  }
-
-  // Update accessories: delete all existing and insert new ones
-  const accessoryIds = validated.data.accessoryIds || [];
-  await db.delete(productAccessories).where(eq(productAccessories.productId, productId));
-
-  if (accessoryIds.length > 0) {
-    // Verify all accessories belong to the same store and are not the product itself
-    const validAccessories = await db.query.products.findMany({
-      where: and(
-        eq(products.storeId, store.id),
-        inArray(products.id, accessoryIds),
-        ne(products.id, productId),
-      ),
-      columns: { id: true },
-    });
-
-    const validAccessoryIds = validAccessories.map((a) => a.id);
-
-    if (validAccessoryIds.length > 0) {
-      await db.insert(productAccessories).values(
-        validAccessoryIds.map((accessoryId, index) => ({
-          id: nanoid(),
-          productId: productId,
-          accessoryId: accessoryId,
-          displayOrder: index,
-        })),
-      );
-    }
   }
 
   notifyProductUpdated(

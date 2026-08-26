@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Copy } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { PricingKind, PricingMode } from "@louez/types";
+import type { PricingKind, PricingMode, StockKind } from "@louez/types";
 import {
   Button,
   DropdownMenu,
@@ -288,7 +288,7 @@ export function ProductForm({
   const validationFieldLabels = useMemo(
     () =>
       new Map([
-        ["accessoryIds", t("accessories")],
+        ["accessories", t("accessories")],
         ["basePriceDuration", t("baseRate")],
         ["bookingAttributeAxes", t("stock")],
         ["categoryIds", t("category")],
@@ -301,6 +301,7 @@ export function ProductForm({
         ["quantity", t("stock")],
         ["rateTiers", t("additionalRates")],
         ["status", t("publication")],
+        ["stockKind", t("stock")],
         ["units", t("stock")],
         ["videoUrl", t("video")],
       ]),
@@ -339,6 +340,7 @@ export function ProductForm({
   })();
 
   const initialPricingKind: PricingKind = product?.pricingKind ?? "duration";
+  const initialStockKind: StockKind = product?.stockKind ?? "returnable";
 
   const defaultSubmitMeta: ProductFormSubmitMeta = { intent: "save" };
   const form = useAppForm({
@@ -358,6 +360,7 @@ export function ProductForm({
         product?.images ?? [],
         product?.imageHistory ?? [],
       ),
+      stockKind: initialStockKind,
       pricingKind: initialPricingKind,
       pricingMode: (product?.pricingMode ?? "day") as PricingMode,
       pricingTiers: initialPricingTiers,
@@ -365,7 +368,7 @@ export function ProductForm({
       enforceStrictTiers: product?.enforceStrictTiers ?? true,
       taxSettings: product?.taxSettings ?? { inheritFromStore: true },
       videoUrl: product?.videoUrl || "",
-      accessoryIds: product?.accessoryIds ?? [],
+      accessories: product?.accessories ?? [],
       trackUnits: product?.trackUnits || false,
       units: initialUnits,
       bookingAttributeAxes: initialBookingAttributeAxes,

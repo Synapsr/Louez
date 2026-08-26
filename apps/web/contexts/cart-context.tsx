@@ -17,6 +17,7 @@ import type { SeasonalPricingConfig } from '@louez/utils';
 
 import { orpc } from '@/lib/orpc/react';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
+import type { RequiredAccessoryCartInput } from '@/lib/utils/cart-required-accessories';
 import { type PricingMode, calculateDuration } from '@/lib/utils/duration';
 
 interface CartItemPricingTier {
@@ -26,6 +27,12 @@ interface CartItemPricingTier {
   period?: number | null;
   price?: number | null;
 }
+
+/** Why the last server resolution refused a cart line. */
+export type CartLineUnavailableReason =
+  | 'product_unavailable'
+  | 'insufficient_stock'
+  | 'required_accessory_unavailable';
 
 export interface CartItem {
   lineId: string;
@@ -52,6 +59,13 @@ export interface CartItem {
   resolvedAttributes?: Record<string, string>;
   // Seasonal pricing overrides (per-product)
   seasonalPricings?: SeasonalPricingConfig[];
+  // Required accessories: set on a line auto-added with its parent product.
+  // The line is then owned by the parent — locked in quantity, removed with it.
+  parentLineId?: string;
+  // Units of this accessory required per unit of the parent line.
+  requiredQuantity?: number;
+  // Set by the server cart resolution when the line cannot be booked as is.
+  unavailableReason?: CartLineUnavailableReason;
   // Legacy fields for backwards compatibility
   startDate: string;
   endDate: string;
@@ -113,8 +127,16 @@ type AddCartItemInput = Omit<
   | 'startDate'
   | 'endDate'
   | 'pricingKind'
+  | 'parentLineId'
+  | 'requiredQuantity'
+  | 'unavailableReason'
 > & {
   pricingKind?: PricingKind;
+  /**
+   * Accessories the store marked as required for this product. They are added
+   * as child lines of the new parent line, at `requiredQuantity x quantity`.
+   */
+  requiredAccessories?: RequiredAccessoryCartInput[];
 };
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
@@ -130,6 +152,8 @@ interface StoredCartItem {
   quantity: number;
   pricingKind?: PricingKind;
   selectedAttributes?: Record<string, string>;
+  parentLineId?: string;
+  requiredQuantity?: number;
   startDate: string;
   endDate: string;
 }
@@ -201,12 +225,29 @@ function normalizeStoredItem(
     resolvedCombinationKey: item.resolvedCombinationKey,
     resolvedAttributes: item.resolvedAttributes,
     seasonalPricings: item.seasonalPricings,
+    parentLineId: item.parentLineId,
+    requiredQuantity: item.requiredQuantity,
     startDate: item.startDate || new Date().toISOString(),
     endDate: item.endDate || new Date().toISOString(),
     pricingMode: item.pricingMode || fallbackPricingMode,
     lineId,
     selectionSignature,
   };
+}
+
+/**
+ * A child line whose parent is gone (older cart, hand-edited storage) would be
+ * locked forever: it can neither be removed on its own nor follow a parent.
+ * Freeing it keeps the cart usable.
+ */
+function detachOrphanRequiredLines(items: CartItem[]): CartItem[] {
+  const lineIds = new Set(items.map((item) => item.lineId));
+
+  return items.map((item) =>
+    item.parentLineId && !lineIds.has(item.parentLineId)
+      ? { ...item, parentLineId: undefined, requiredQuantity: undefined }
+      : item,
+  );
 }
 
 function toStoredCartItem(item: CartItem): StoredCartItem {
@@ -219,9 +260,100 @@ function toStoredCartItem(item: CartItem): StoredCartItem {
     quantity: item.quantity,
     pricingKind: item.pricingKind,
     selectedAttributes: item.selectedAttributes,
+    parentLineId: item.parentLineId,
+    requiredQuantity: item.requiredQuantity,
     startDate: item.startDate,
     endDate: item.endDate,
   };
+}
+
+/** Quantity a required accessory line must carry for `parentQuantity` parents. */
+function getRequiredLineQuantity(
+  item: Pick<CartItem, 'requiredQuantity'>,
+  parentQuantity: number,
+): number {
+  return Math.max(1, item.requiredQuantity ?? 1) * Math.max(1, parentQuantity);
+}
+
+/** Realigns every required accessory line of `parentLineId` on its parent. */
+function syncRequiredLineQuantities(
+  items: CartItem[],
+  parentLineId: string,
+  parentQuantity: number,
+): CartItem[] {
+  return items.map((item) =>
+    item.parentLineId === parentLineId
+      ? { ...item, quantity: getRequiredLineQuantity(item, parentQuantity) }
+      : item,
+  );
+}
+
+/**
+ * Attaches the required accessories of a parent line, creating a child line
+ * per accessory or refreshing the one already attached. Free-standing lines of
+ * the same accessory are left untouched: they belong to the customer.
+ */
+function attachRequiredAccessoryLines(params: {
+  items: CartItem[];
+  parentLineId: string;
+  parentQuantity: number;
+  requiredAccessories: RequiredAccessoryCartInput[];
+  startDate: string;
+  endDate: string;
+}): CartItem[] {
+  const { items, parentLineId, parentQuantity, requiredAccessories } = params;
+  if (requiredAccessories.length === 0) {
+    return items;
+  }
+
+  const nextItems = [...items];
+
+  for (const accessory of requiredAccessories) {
+    const quantity =
+      Math.max(1, accessory.requiredQuantity) * Math.max(1, parentQuantity);
+    const existingIndex = nextItems.findIndex(
+      (item) =>
+        item.parentLineId === parentLineId &&
+        item.productId === accessory.productId,
+    );
+
+    if (existingIndex >= 0) {
+      nextItems[existingIndex] = {
+        ...nextItems[existingIndex],
+        productName: accessory.productName,
+        productImage: accessory.productImage,
+        price: accessory.price,
+        deposit: accessory.deposit,
+        maxQuantity: accessory.maxQuantity,
+        requiredQuantity: accessory.requiredQuantity,
+        quantity,
+      };
+      continue;
+    }
+
+    nextItems.push({
+      lineId: createCartLineId(),
+      selectionSignature: buildSelectionSignature(undefined),
+      productId: accessory.productId,
+      productName: accessory.productName,
+      productImage: accessory.productImage,
+      price: accessory.price,
+      deposit: accessory.deposit,
+      quantity,
+      maxQuantity: accessory.maxQuantity,
+      pricingKind: accessory.pricingKind,
+      pricingTiers: accessory.pricingTiers,
+      basePeriodMinutes: accessory.basePeriodMinutes,
+      productPricingMode: accessory.productPricingMode,
+      pricingMode: accessory.pricingMode,
+      parentLineId,
+      requiredQuantity: accessory.requiredQuantity,
+      startDate: params.startDate,
+      endDate: params.endDate,
+    });
+  }
+
+  return nextItems;
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -235,6 +367,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     () => ({
       lines: items.map((item) => ({
         lineId: item.lineId,
+        parentLineId: item.parentLineId,
         productId: item.productId,
         quantity: item.quantity,
         startDate: globalStartDate || item.startDate,
@@ -266,12 +399,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
       currentItems.map((item) => {
         const resolved = resolvedByLineId.get(item.lineId);
 
-        if (!resolved || resolved.status !== 'resolved') {
-          return resolved?.status === 'unavailable' &&
-            typeof resolved.maxQuantity === 'number'
-            ? { ...item, maxQuantity: resolved.maxQuantity }
-            : item;
+        if (!resolved) {
+          return item;
         }
+
+        if (resolved.status === 'unavailable') {
+          return {
+            ...item,
+            unavailableReason: resolved.reason,
+            ...(typeof resolved.maxQuantity === 'number'
+              ? { maxQuantity: resolved.maxQuantity }
+              : {}),
+          };
+        }
+
+        // The store owns the requirement: a link dropped server-side unlocks
+        // the line here instead of leaving the customer with a stuck child.
+        const stillRequired = Boolean(resolved.required && item.parentLineId);
 
         return {
           ...item,
@@ -287,6 +431,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           enforceStrictTiers: resolved.enforceStrictTiers,
           pricingTiers: resolved.pricingTiers,
           seasonalPricings: resolved.seasonalPricings,
+          parentLineId: stillRequired ? item.parentLineId : undefined,
+          requiredQuantity: stillRequired
+            ? (resolved.requiredQuantity ?? item.requiredQuantity)
+            : undefined,
+          unavailableReason: undefined,
         };
       }),
     );
@@ -302,7 +451,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           const normalizedItems = (parsed.items || []).map((item) =>
             normalizeStoredItem(item, parsedPricingMode),
           );
-          setItems(normalizedItems);
+          setItems(detachOrphanRequiredLines(normalizedItems));
           setStoreSlug(parsed.storeSlug || null);
           setGlobalStartDate(parsed.globalStartDate || null);
           setGlobalEndDate(parsed.globalEndDate || null);
@@ -385,19 +534,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const selectionSignature = buildSelectionSignature(
         item.selectedAttributes,
       );
+      const { requiredAccessories = [], ...lineInput } = item;
 
       const buildFullItem = (): CartItem => ({
-        ...item,
-        pricingKind: item.pricingKind || 'duration',
+        ...lineInput,
+        pricingKind: lineInput.pricingKind || 'duration',
         lineId: createCartLineId(),
         selectionSignature,
         startDate,
         endDate,
       });
 
+      const withRequiredAccessories = (
+        items: CartItem[],
+        parentLineId: string,
+        parentQuantity: number,
+      ) =>
+        attachRequiredAccessoryLines({
+          items,
+          parentLineId,
+          parentQuantity,
+          requiredAccessories,
+          startDate,
+          endDate,
+        });
+
       if (storeSlug && storeSlug !== newStoreSlug) {
         // Different store, clear cart and add new item
-        setItems([buildFullItem()]);
+        const newItem = buildFullItem();
+        setItems(
+          withRequiredAccessories([newItem], newItem.lineId, newItem.quantity),
+        );
         setStoreSlug(newStoreSlug);
         setGlobalStartDate(startDate);
         setGlobalEndDate(endDate);
@@ -408,30 +575,43 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const existingIndex = currentItems.findIndex(
           (i) =>
             i.productId === item.productId &&
-            i.selectionSignature === selectionSignature,
+            i.selectionSignature === selectionSignature &&
+            !i.parentLineId,
         );
 
         if (existingIndex >= 0) {
           // Same product + same selection: merge quantities.
           const updated = [...currentItems];
           const existing = updated[existingIndex];
+          const mergedQuantity = Math.min(
+            existing.quantity + item.quantity,
+            item.maxQuantity,
+          );
           updated[existingIndex] = {
             ...existing,
-            ...item,
-            pricingKind: item.pricingKind || existing.pricingKind,
+            ...lineInput,
+            pricingKind: lineInput.pricingKind || existing.pricingKind,
             selectionSignature,
-            quantity: Math.min(
-              existing.quantity + item.quantity,
-              item.maxQuantity,
-            ),
+            quantity: mergedQuantity,
             maxQuantity: item.maxQuantity,
+            parentLineId: existing.parentLineId,
+            requiredQuantity: existing.requiredQuantity,
             startDate,
             endDate,
           };
-          return updated;
+          return withRequiredAccessories(
+            updated,
+            existing.lineId,
+            mergedQuantity,
+          );
         }
 
-        return [...currentItems, buildFullItem()];
+        const newItem = buildFullItem();
+        return withRequiredAccessories(
+          [...currentItems, newItem],
+          newItem.lineId,
+          newItem.quantity,
+        );
       });
 
       if (storeSlug !== newStoreSlug) {
@@ -444,9 +624,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const removeItemByLineId = useCallback((lineId: string) => {
-    setItems((currentItems) =>
-      currentItems.filter((item) => item.lineId !== lineId),
-    );
+    setItems((currentItems) => {
+      const target = currentItems.find((item) => item.lineId === lineId);
+      // A required accessory only leaves the cart with its parent.
+      if (!target || target.parentLineId) {
+        return currentItems;
+      }
+
+      return currentItems.filter(
+        (item) => item.lineId !== lineId && item.parentLineId !== lineId,
+      );
+    });
   }, []);
 
   const updateItemQuantityByLineId = useCallback(
@@ -456,16 +644,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setItems((currentItems) =>
-        currentItems.map((item) =>
-          item.lineId === lineId
-            ? {
-                ...item,
-                quantity: Math.min(Math.max(1, quantity), item.maxQuantity),
-              }
-            : item,
-        ),
-      );
+      setItems((currentItems) => {
+        const target = currentItems.find((item) => item.lineId === lineId);
+        // Required accessory quantities are driven by the parent line only.
+        if (!target || target.parentLineId) {
+          return currentItems;
+        }
+
+        const nextQuantity = Math.min(
+          Math.max(1, quantity),
+          target.maxQuantity,
+        );
+        const updated = currentItems.map((item) =>
+          item.lineId === lineId ? { ...item, quantity: nextQuantity } : item,
+        );
+
+        return syncRequiredLineQuantities(updated, lineId, nextQuantity);
+      });
     },
     [removeItemByLineId],
   );
@@ -487,9 +682,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const removeItem = useCallback((productId: string) => {
-    setItems((currentItems) =>
-      currentItems.filter((item) => item.productId !== productId),
-    );
+    setItems((currentItems) => {
+      const removedLineIds = new Set(
+        currentItems
+          .filter((item) => item.productId === productId && !item.parentLineId)
+          .map((item) => item.lineId),
+      );
+
+      return currentItems.filter(
+        (item) =>
+          !removedLineIds.has(item.lineId) &&
+          !(item.parentLineId && removedLineIds.has(item.parentLineId)),
+      );
+    });
   }, []);
 
   const updateItemQuantity = useCallback(

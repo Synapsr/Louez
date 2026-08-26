@@ -71,6 +71,8 @@ interface Accessory {
   deposit: string;
   images: string[] | null;
   quantity: number;
+  required?: boolean | null;
+  requiredQuantity?: number | null;
   pricingKind?: PricingKind | null;
   pricingMode: "day" | "hour" | "week" | null;
   basePeriodMinutes?: number | null;
@@ -682,6 +684,7 @@ export function RentalContent({
                     availableQuantity={
                       avail?.availableQuantity ?? product.displayQuantity ?? product.quantity
                     }
+                    unavailableReason={avail?.reason}
                     startDate={startDate}
                     endDate={endDate}
                     availableCombinations={availableCombinations as CombinationAvailability[]}

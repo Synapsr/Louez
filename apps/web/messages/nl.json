@@ -1071,6 +1071,14 @@
         "stock": "Voorraad",
         "quantity": "Beschikbare hoeveelheid",
         "quantityHelp": "Aantal beschikbare eenheden voor verhuur",
+        "consumableQuantityHelp": "Voorraad in het schap: die daalt bij elke bevestigde reservering en stijgt wanneer u aanvult.",
+        "stockKindLabel": "Voorraadtype",
+        "stockKindReturnable": "Retourneerbare voorraad",
+        "stockKindReturnableDescription": "Het product komt na elke verhuur terug en wordt opnieuw beschikbaar.",
+        "stockKindConsumable": "Verbruiksartikel",
+        "stockKindConsumableDescription": "Het product gaat mee met de klant: de voorraad daalt bij elke bevestigde reservering en het aantal is de voorraad in het schap.",
+        "stockKindConsumableRequiresFixed": "Een verbruiksartikel wordt tegen een vaste prijs verkocht: kies de tarifering \"Vaste prijs\" om het in te schakelen.",
+        "stockKindConsumableRequiresNoUnits": "Een verbruiksartikel wordt niet per eenheid gevolgd: schakel het volgen per eenheid uit om het in te schakelen.",
         "publication": "Publicatie",
         "statusActive": "Actief",
         "statusActiveDescription": "Zichtbaar in de winkel",
@@ -1318,6 +1326,10 @@
         "noProductsFound": "Geen producten gevonden",
         "noProductsAvailable": "Geen producten beschikbaar",
         "accessoriesHelp": "Accessoires worden voorgesteld bij het toevoegen aan winkelwagen",
+        "accessoryRequired": "Verplicht",
+        "accessoryQuantity": "Aantal",
+        "accessoryQuantityPerUnit": "per verhuurde eenheid",
+        "accessoryOptionalHint": "Wordt alleen aan de klant voorgesteld.",
         "seasonalPricing": "Seizoensprijzen",
         "seasonalPricingDescription": "Stel verschillende tarieven in voor specifieke periodes (zomer, feestdagen, enz.).",
         "addSeasonalPeriod": "Periode toevoegen",
@@ -1469,6 +1481,8 @@
         "inventory": {
           "title": "Inventaris",
           "manageStock": "Voorraad beheren",
+          "consumableBadge": "Verbruiksartikel",
+          "consumableQuantity": "In het schap",
           "quantity": "Aantal",
           "available": "Beschikbaar",
           "noUnits": "Geen eenheden geregistreerd",
@@ -5762,6 +5776,8 @@
         "availability": "Beschikbaarheid"
       },
       "unavailableHelp": "Dit product is momenteel niet te huur. Bekijk de rest van de catalogus.",
+      "requiredAccessoryOutOfStock": "Een verplicht accessoire is niet op voorraad",
+      "requiredAccessoriesIncluded": "Automatisch toegevoegd: {names}",
       "backToCatalog": "Bekijk de catalogus"
     },
     "accessories": {
@@ -5868,6 +5884,8 @@
         "availableCount": "{count} beschikbaar",
         "limited": "{count} over",
         "unavailable": "Niet beschikbaar",
+        "outOfStock": "Niet op voorraad",
+        "requiredAccessoryOutOfStock": "Verplicht accessoire niet op voorraad",
         "inCart": "In winkelwagen"
       },
       "businessHoursWarning": {
@@ -5930,7 +5948,14 @@
         "cancel": "Annuleren",
         "confirm": "Legen"
       },
-      "lineMaxReached": "Maximum bereikt voor deze optie. Voeg een andere optie toe als afzonderlijke regel."
+      "lineMaxReached": "Maximum bereikt voor deze optie. Voeg een andere optie toe als afzonderlijke regel.",
+      "requiredWith": "Verplicht bij {name}",
+      "included": "Inbegrepen",
+      "unavailable": {
+        "product_unavailable": "Dit product is niet meer beschikbaar",
+        "insufficient_stock": "Onvoldoende voorraad voor dit aantal",
+        "required_accessory_unavailable": "Een verplicht accessoire is niet op voorraad"
+      }
     },
     "checkout": {
       "title": "Mijn reservering voltooien",

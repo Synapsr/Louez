@@ -46,6 +46,7 @@ import { filterActiveVariantAxes } from '@/lib/util.variant-visibility';
 import { getStoreVariantActivity } from '@/lib/util.variant-visibility.server';
 import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale';
 import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server';
+import { findBlockingRequiredAccessories } from '@/lib/utils/cart-required-accessories';
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
 import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
@@ -255,15 +256,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
     };
   });
 
-  // Filter accessories to only include active ones with stock
+  // Keep active accessories with stock, plus every required one: an
+  // out-of-stock required accessory must still reach the UI to explain why the
+  // parent product cannot be booked.
   const availableAccessories = (product.accessories || [])
     .filter(
       (acc) =>
         acc.accessory &&
         acc.accessory.status === 'active' &&
-        (acc.accessory.trackUnits
+        ((acc.accessory.trackUnits
           ? (effectiveQuantities.get(acc.accessory.id) ?? 0)
-          : acc.accessory.quantity) > 0,
+          : acc.accessory.quantity) > 0 ||
+          acc.required),
     )
     .map((acc) => ({
       quantity: acc.accessory.trackUnits
@@ -274,6 +278,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
       price: acc.accessory.price,
       deposit: acc.accessory.deposit || '0',
       images: acc.accessory.images,
+      required: acc.required,
+      requiredQuantity: acc.quantity,
       pricingKind: acc.accessory.pricingKind,
       pricingMode: acc.accessory.pricingMode,
       basePeriodMinutes: acc.accessory.basePeriodMinutes,
@@ -285,6 +291,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
         price: tier.price,
       })),
     }));
+  const blockingRequiredAccessories = findBlockingRequiredAccessories(
+    availableAccessories,
+    1,
+  );
 
   // Get related products from same category
   const relatedProductsRaw = product.categoryId
@@ -339,7 +349,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
           !currentDowntimeUnitIds.has(unit.id),
       ).length
     : effectiveQuantity;
-  const isAvailable = effectiveQuantity > 0;
+  // A consumable at zero and a missing required accessory are both "not
+  // bookable", but the customer deserves to know which one it is.
+  const isAvailable =
+    effectiveQuantity > 0 && blockingRequiredAccessories.length === 0;
+  const unavailableLabel =
+    effectiveQuantity === 0 && product.stockKind === 'consumable'
+      ? tCatalog('consumableOutOfStock')
+      : blockingRequiredAccessories.length > 0
+        ? t('requiredAccessoryOutOfStock')
+        : tCatalog('unavailable');
   const storedBookingAttributeAxes = [
     ...((product.bookingAttributeAxes as Array<{
       key: string;
@@ -597,7 +616,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     </span>
                   </>
                 ) : (
-                  <Badge variant="failed">{tCatalog('unavailable')}</Badge>
+                  <Badge variant="failed">{unavailableLabel}</Badge>
                 )}
               </div>
             </div>
@@ -661,6 +680,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               />
             ) : (
               <div className="bg-muted/40 space-y-3 rounded-xl border p-4">
+                <p className="text-sm font-medium">{unavailableLabel}</p>
                 <p className="text-muted-foreground text-sm">
                   {t('unavailableHelp')}
                 </p>
@@ -716,7 +736,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <dd className="text-right font-medium">
                     {isAvailable
                       ? t('availableCount', { count: displayQuantity })
-                      : tCatalog('unavailable')}
+                      : unavailableLabel}
                   </dd>
                 </div>
               </dl>

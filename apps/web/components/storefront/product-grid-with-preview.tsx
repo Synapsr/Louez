@@ -13,7 +13,7 @@ import { formatCurrency, minutesToPriceDuration } from '@louez/utils'
 import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
 import { ProductImage } from '@/components/product/product-image'
 import { ProductPreviewModal } from './product-preview-modal'
-import type { PricingKind, PricingMode } from '@louez/types'
+import type { PricingKind, PricingMode, StockKind } from '@louez/types'
 import type { BusinessHours } from '@louez/types'
 import { getStorefrontPricingSummary } from '@/lib/utils/storefront-pricing'
 
@@ -33,6 +33,7 @@ interface Product {
   price: string
   images: string[] | null
   quantity: number
+  stockKind?: StockKind | null
   deposit: string | null
   pricingKind?: PricingKind | null
   pricingMode?: PricingMode | null
@@ -70,6 +71,11 @@ function ProductCardInteractive({
   const maxDiscountPercent = useStoreMaxDiscountPercent()
   const mainImage = product.images?.[0]
   const isAvailable = product.quantity > 0
+  // A consumable at zero is a restock away, not a scheduling conflict — say so.
+  const unavailableLabel =
+    product.stockKind === 'consumable'
+      ? tCatalog('consumableOutOfStock')
+      : tCatalog('unavailable')
 
   const pricingSummary = getStorefrontPricingSummary(product)
   const cardDiscount = maxDiscountPercent == null
@@ -119,7 +125,7 @@ function ProductCardInteractive({
           {!isAvailable && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm">
               <Badge variant="failed" className="text-sm px-4 py-1.5">
-                {tCatalog('unavailable')}
+                {unavailableLabel}
               </Badge>
             </div>
           )}

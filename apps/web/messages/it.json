@@ -1071,6 +1071,14 @@
         "stock": "Stock",
         "quantity": "Quantita disponibile",
         "quantityHelp": "Numero di unita disponibili per il noleggio",
+        "consumableQuantityHelp": "Stock a magazzino: cala a ogni prenotazione confermata e risale quando rifornisci.",
+        "stockKindLabel": "Tipo di stock",
+        "stockKindReturnable": "Stock restituibile",
+        "stockKindReturnableDescription": "Il prodotto torna dopo ogni noleggio e ridiventa disponibile.",
+        "stockKindConsumable": "Consumabile",
+        "stockKindConsumableDescription": "Il prodotto parte con il cliente: lo stock cala a ogni prenotazione confermata e la quantità è lo stock a magazzino.",
+        "stockKindConsumableRequiresFixed": "Un consumabile si vende a prezzo forfettario: scegli la tariffazione «Prezzo forfettario» per attivarlo.",
+        "stockKindConsumableRequiresNoUnits": "Un consumabile non si traccia unità per unità: disattiva il tracciamento per unità per attivarlo.",
         "publication": "Pubblicazione",
         "statusActive": "Attivo",
         "statusActiveDescription": "Visibile nel negozio",
@@ -1318,6 +1326,10 @@
         "noProductsFound": "Nessun prodotto trovato",
         "noProductsAvailable": "Nessun prodotto disponibile",
         "accessoriesHelp": "Gli accessori verranno suggeriti quando si aggiunge al carrello",
+        "accessoryRequired": "Obbligatorio",
+        "accessoryQuantity": "Quantità",
+        "accessoryQuantityPerUnit": "per unità noleggiata",
+        "accessoryOptionalHint": "Viene solo suggerito al cliente.",
         "seasonalPricing": "Prezzi stagionali",
         "seasonalPricingDescription": "Imposta tariffe diverse per periodi specifici (estate, festività, ecc.).",
         "addSeasonalPeriod": "Aggiungi periodo",
@@ -1469,6 +1481,8 @@
         "inventory": {
           "title": "Inventario",
           "manageStock": "Gestisci lo stock",
+          "consumableBadge": "Consumabile",
+          "consumableQuantity": "A magazzino",
           "quantity": "Quantità",
           "available": "Disponibile",
           "noUnits": "Nessuna unità registrata",
@@ -5762,6 +5776,8 @@
         "availability": "Disponibilità"
       },
       "unavailableHelp": "Questo prodotto non è disponibile a noleggio al momento. Scopri il resto del catalogo.",
+      "requiredAccessoryOutOfStock": "Un accessorio obbligatorio è esaurito",
+      "requiredAccessoriesIncluded": "Aggiunto automaticamente: {names}",
       "backToCatalog": "Vedi il catalogo"
     },
     "accessories": {
@@ -5868,6 +5884,8 @@
         "availableCount": "{count} disponibili",
         "limited": "{count} rimanente/i",
         "unavailable": "Non disponibile",
+        "outOfStock": "Esaurito",
+        "requiredAccessoryOutOfStock": "Accessorio obbligatorio esaurito",
         "inCart": "Nel carrello"
       },
       "businessHoursWarning": {
@@ -5930,7 +5948,14 @@
         "cancel": "Annulla",
         "confirm": "Svuota"
       },
-      "lineMaxReached": "Quantita massima raggiunta per questa opzione. Aggiunga un'altra opzione come riga separata."
+      "lineMaxReached": "Quantita massima raggiunta per questa opzione. Aggiunga un'altra opzione come riga separata.",
+      "requiredWith": "Obbligatorio con {name}",
+      "included": "Incluso",
+      "unavailable": {
+        "product_unavailable": "Questo prodotto non è più disponibile",
+        "insufficient_stock": "Disponibilità insufficiente per questa quantità",
+        "required_accessory_unavailable": "Un accessorio obbligatorio è esaurito"
+      }
     },
     "checkout": {
       "title": "Completa la mia prenotazione",

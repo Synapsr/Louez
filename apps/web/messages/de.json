@@ -1110,6 +1110,14 @@
         "stock": "Bestand",
         "quantity": "Verfügbare Menge",
         "quantityHelp": "Anzahl der zur Vermietung verfügbaren Einheiten",
+        "consumableQuantityHelp": "Lagerbestand: Er sinkt bei jeder bestätigten Buchung und steigt, wenn Sie nachfüllen.",
+        "stockKindLabel": "Bestandsart",
+        "stockKindReturnable": "Rückläufiger Bestand",
+        "stockKindReturnableDescription": "Der Artikel kommt nach jeder Vermietung zurück und wird wieder verfügbar.",
+        "stockKindConsumable": "Verbrauchsartikel",
+        "stockKindConsumableDescription": "Der Artikel geht mit dem Kunden mit: Der Bestand sinkt bei jeder bestätigten Buchung, und die Menge entspricht dem Lagerbestand.",
+        "stockKindConsumableRequiresFixed": "Ein Verbrauchsartikel wird pauschal verkauft: Wählen Sie die Preisart „Pauschalpreis“, um ihn zu aktivieren.",
+        "stockKindConsumableRequiresNoUnits": "Ein Verbrauchsartikel wird nicht pro Einheit verfolgt: Deaktivieren Sie die Einheitenverfolgung, um ihn zu aktivieren.",
         "publication": "Veröffentlichung",
         "statusActive": "Aktiv",
         "statusActiveDescription": "Im Shop sichtbar",
@@ -1357,6 +1365,10 @@
         "noProductsFound": "Keine Produkte gefunden",
         "noProductsAvailable": "Keine Produkte verfügbar",
         "accessoriesHelp": "Zubehör wird beim Hinzufügen zum Warenkorb vorgeschlagen",
+        "accessoryRequired": "Erforderlich",
+        "accessoryQuantity": "Menge",
+        "accessoryQuantityPerUnit": "pro vermieteter Einheit",
+        "accessoryOptionalHint": "Wird dem Kunden nur vorgeschlagen.",
         "seasonalPricing": "Saisonale Preisgestaltung",
         "seasonalPricingDescription": "Legen Sie unterschiedliche Tarife für bestimmte Zeiträume fest (Sommer, Feiertage usw.).",
         "addSeasonalPeriod": "Zeitraum hinzufügen",
@@ -1508,6 +1520,8 @@
         "inventory": {
           "title": "Inventar",
           "manageStock": "Bestand verwalten",
+          "consumableBadge": "Verbrauchsartikel",
+          "consumableQuantity": "Lagerbestand",
           "quantity": "Menge",
           "available": "Verfügbar",
           "noUnits": "Keine Einheiten registriert",
@@ -5762,6 +5776,8 @@
         "availability": "Verfügbarkeit"
       },
       "unavailableHelp": "Dieses Produkt ist derzeit nicht zur Miete verfügbar. Entdecken Sie den übrigen Katalog.",
+      "requiredAccessoryOutOfStock": "Ein erforderliches Zubehör ist nicht vorrätig",
+      "requiredAccessoriesIncluded": "Automatisch hinzugefügt: {names}",
       "backToCatalog": "Zum Katalog"
     },
     "accessories": {
@@ -5868,6 +5884,8 @@
         "availableCount": "{count} verfügbar",
         "limited": "{count} übrig",
         "unavailable": "Nicht verfügbar",
+        "outOfStock": "Nicht vorrätig",
+        "requiredAccessoryOutOfStock": "Erforderliches Zubehör nicht vorrätig",
         "inCart": "Im Warenkorb"
       },
       "businessHoursWarning": {
@@ -5930,7 +5948,14 @@
         "cancel": "Abbrechen",
         "confirm": "Leeren"
       },
-      "lineMaxReached": "Maximum für diese Option erreicht. Fügen Sie eine weitere Option als separate Zeile hinzu."
+      "lineMaxReached": "Maximum für diese Option erreicht. Fügen Sie eine weitere Option als separate Zeile hinzu.",
+      "requiredWith": "Erforderlich mit {name}",
+      "included": "Inbegriffen",
+      "unavailable": {
+        "product_unavailable": "Dieses Produkt ist nicht mehr verfügbar",
+        "insufficient_stock": "Nicht genug Bestand für diese Menge",
+        "required_accessory_unavailable": "Ein erforderliches Zubehör ist nicht vorrätig"
+      }
     },
     "checkout": {
       "title": "Reservierung abschließen",

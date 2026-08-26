@@ -47,10 +47,9 @@ import {
   Separator,
   toastManager,
 } from "@louez/ui";
-import { ArrowLeftIcon, DatabaseIcon, LinkIcon, PricingIcon, PuzzleIcon } from "@louez/ui/icons";
+import { PricingIcon } from "@louez/ui/icons";
 import { minutesToPriceDuration, priceDurationToMinutes } from "@louez/utils";
 
-import { AccessoriesSelector } from "@/components/dashboard/accessories-selector";
 import {
   CHART_RANGE_PRESETS,
   type ChartRangePreset,
@@ -61,10 +60,6 @@ import {
   buildChartTicks,
   resolveChartMaxMinutes,
 } from "@/components/dashboard/rates-editor";
-import {
-  StockModeIndicator,
-  UnitTrackingEditor,
-} from "@/components/dashboard/unit-tracking-editor";
 import { PriceDurationInput, type PriceDurationValue } from "@/components/ui/price-duration-input";
 
 import { getFieldError } from "@/hooks/form/form-context";
@@ -82,6 +77,8 @@ import type {
   SeasonalPricingData,
 } from "../types";
 import { PricingPeriodSelector } from "./pricing-period-selector";
+import { ProductFormSectionAccessories } from "./product-form-section-accessories";
+import { ProductFormSectionStock } from "./product-form-section-stock";
 import { SeasonalPeriodFormDialog } from "./seasonal-period-form-dialog";
 
 interface ProductFormStepPricingProps {
@@ -164,21 +161,9 @@ export function ProductFormStepPricing({
   isLoadingSeasonalPricings = false,
 }: ProductFormStepPricingProps) {
   const t = useTranslations("dashboard.products.form");
-  const tUnitTracking = useTranslations("dashboard.products.form.unitTracking");
   const tValidation = useTranslations("validation");
   const { dateFns: calendarLocale } = useFormatLocale();
   const [highlightBaseRate, setHighlightBaseRate] = useState(false);
-
-  // Stock mode stepper: the mode-choice screen only shows while no mode is
-  // established (fresh creation). Editing an existing product lands directly
-  // on the second step.
-  const [stockModeChosen, setStockModeChosen] = useState(
-    () =>
-      Boolean(productId) ||
-      Boolean(watchedValues.trackUnits) ||
-      (watchedValues.units?.length ?? 0) > 0 ||
-      (parseInt(watchedValues.quantity || "1", 10) || 1) > 1,
-  );
 
   // Seasonal inline editing state
   const [seasonalPriceDuration, setSeasonalPriceDuration] = useState<
@@ -602,7 +587,16 @@ export function ProductFormStepPricing({
               <form.RadioGroup
                 label={t("pricingKindLabel")}
                 value={field.state.value ?? "duration"}
-                onValueChange={(value) => field.handleChange(toPricingKind(value))}
+                onValueChange={(value) => {
+                  const nextKind = toPricingKind(value);
+                  field.handleChange(nextKind);
+                  // Only a flat rate can carry consumable stock; dropping back
+                  // to duration pricing has to release that choice too,
+                  // otherwise the form would submit a state the server rejects.
+                  if (nextKind !== "fixed" && watchedValues.stockKind === "consumable") {
+                    form.setFieldValue("stockKind", "returnable");
+                  }
+                }}
                 disabled={isSaving}
                 className="grid gap-3 sm:grid-cols-2"
               >
@@ -925,105 +919,22 @@ export function ProductFormStepPricing({
   );
 
   const stockCard = (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          {stockModeChosen ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground h-6 w-6"
-              onClick={() => setStockModeChosen(false)}
-              aria-label={tUnitTracking("changeMode")}
-            >
-              <ArrowLeftIcon data-slot="icon" />
-            </Button>
-          ) : null}
-
-          <CardTitle className="flex items-center gap-2">
-            {" "}
-            <DatabaseIcon className="text-primary h-5 w-5 shrink-0 stroke-2" />
-            {t("stock")}
-          </CardTitle>
-          <StockModeIndicator
-            modeChosen={stockModeChosen}
-            trackUnits={watchedValues.trackUnits || false}
-            onBack={() => setStockModeChosen(false)}
-            disabled={isSaving}
-          />
-        </div>
-        <CardDescription>{t("quantityHelp")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <UnitTrackingEditor
-          currency={currency}
-          trackUnits={watchedValues.trackUnits || false}
-          onTrackUnitsChange={(value) => form.setFieldValue("trackUnits", value)}
-          bookingAttributeAxes={watchedValues.bookingAttributeAxes || []}
-          onBookingAttributeAxesChange={(axes) => form.setFieldValue("bookingAttributeAxes", axes)}
-          units={watchedValues.units || []}
-          onChange={(units) => form.setFieldValue("units", units)}
-          quantity={watchedValues.quantity || "1"}
-          onQuantityChange={(value) => {
-            form.setFieldMeta("quantity", (prev: any) => ({
-              ...prev,
-              errorMap: { ...prev?.errorMap, onSubmit: undefined },
-            }));
-            form.setFieldValue("quantity", value);
-          }}
-          modeChosen={stockModeChosen}
-          onModeChosenChange={setStockModeChosen}
-          disabled={isSaving}
-          showValidationErrors={showUnitValidationErrors}
-          productId={productId}
-        />
-      </CardContent>
-    </Card>
+    <ProductFormSectionStock
+      form={form}
+      watchedValues={watchedValues}
+      currency={currency}
+      disabled={isSaving}
+      showValidationErrors={showUnitValidationErrors}
+    />
   );
 
   const accessoriesCard = (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <LinkIcon className="h-5 w-5 shrink-0" />
-          {t("accessories")}
-        </CardTitle>
-        <CardDescription>{t("accessoriesDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {availableAccessories.length > 0 ? (
-          <form.Field name="accessoryIds">
-            {(field) => (
-              <div>
-                <AccessoriesSelector
-                  availableProducts={availableAccessories}
-                  selectedIds={field.state.value || []}
-                  onChange={field.handleChange}
-                  currency={currency}
-                  disabled={isSaving}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-destructive text-sm font-medium">
-                    {getFieldError(field.state.meta.errors[0])}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="bg-muted mb-3 rounded-full p-3">
-              <PuzzleIcon className="text-muted-foreground h-6 w-6" />
-            </div>
-            <p className="text-sm font-medium">{t("noAccessoriesAvailable")}</p>
-            <p className="text-muted-foreground mt-1 max-w-[260px] text-sm">
-              {t("noAccessoriesHint")}
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <ProductFormSectionAccessories
+      form={form}
+      availableAccessories={availableAccessories}
+      currency={currency}
+      disabled={isSaving}
+    />
   );
 
   // Pricing-only mode (edit mode renders stock/accessories as separate sections)

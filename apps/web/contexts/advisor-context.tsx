@@ -27,6 +27,7 @@ import {
 } from '@/lib/ai/advisor/kickoff';
 import { useCart } from '@/contexts/cart-context';
 import { orpcClient } from '@/lib/orpc';
+import type { RequiredAccessoryCartInput } from '@/lib/utils/cart-required-accessories';
 
 /**
  * Why the widget was opened. 'checkout' surfaces the reservation-validation
@@ -107,6 +108,61 @@ function toStrictIso(value: string | null): string | undefined {
   if (!value) return undefined;
   const time = Date.parse(value);
   return Number.isNaN(time) ? undefined : new Date(time).toISOString();
+}
+
+/**
+ * Resolves the required accessories of a product through the cart endpoint so
+ * the advisor adds them with server-priced, server-checked lines. Accessories
+ * that fail to resolve are dropped: the checkout validation then rejects the
+ * incomplete cart rather than the advisor inventing a price.
+ */
+async function resolveRequiredAccessories(params: {
+  requiredAccessories: Array<{ productId: string; quantity: number }>;
+  parentQuantity: number;
+  startDate: string;
+  endDate: string;
+}): Promise<RequiredAccessoryCartInput[]> {
+  const { requiredAccessories, parentQuantity, startDate, endDate } = params;
+  const requiredQuantityByProductId = new Map(
+    requiredAccessories.map((accessory) => [
+      accessory.productId,
+      Math.max(1, accessory.quantity),
+    ]),
+  );
+
+  const resolved = await orpcClient.storefront.cart.resolve({
+    lines: requiredAccessories.map((accessory) => ({
+      lineId: `advisor-required-${accessory.productId}`,
+      productId: accessory.productId,
+      quantity: Math.max(1, accessory.quantity) * parentQuantity,
+      startDate,
+      endDate,
+    })),
+  });
+
+  return resolved.lines.flatMap((line) => {
+    const requiredQuantity = requiredQuantityByProductId.get(line.productId);
+    if (line.status !== 'resolved' || !requiredQuantity) {
+      return [];
+    }
+
+    return [
+      {
+        productId: line.productId,
+        productName: line.productName,
+        productImage: line.productImage,
+        price: line.price,
+        deposit: line.deposit,
+        maxQuantity: line.maxQuantity,
+        requiredQuantity,
+        pricingKind: line.pricingKind,
+        pricingMode: line.pricingMode,
+        productPricingMode: line.productPricingMode,
+        basePeriodMinutes: line.basePeriodMinutes,
+        pricingTiers: line.pricingTiers,
+      },
+    ];
+  });
 }
 
 export function AdvisorProvider({
@@ -291,6 +347,18 @@ export function AdvisorProvider({
           };
         }
 
+        // Required accessories travel with the product: resolve them through
+        // the same endpoint so their price and stock are server-authoritative.
+        const requiredAccessories =
+          line.requiredAccessories.length > 0
+            ? await resolveRequiredAccessories({
+                requiredAccessories: line.requiredAccessories,
+                parentQuantity: quantity,
+                startDate,
+                endDate,
+              })
+            : [];
+
         currentCart.addItem(
           {
             productId,
@@ -307,6 +375,7 @@ export function AdvisorProvider({
             productPricingMode: line.productPricingMode,
             seasonalPricings: line.seasonalPricings,
             pricingMode: line.pricingMode,
+            requiredAccessories,
           },
           storeSlug,
         );

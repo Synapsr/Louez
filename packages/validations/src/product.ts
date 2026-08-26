@@ -120,6 +120,42 @@ export const productUnitSchema = z.union([
   }),
 ]);
 
+/**
+ * A product → accessory link: which accessory, whether it is booked with its
+ * parent, and how many of it per parent unit.
+ */
+const buildProductAccessoryLinkSchema = (messages: { quantityMin: string }) =>
+  z.object({
+    accessoryId: z.string().min(1),
+    required: z.boolean(),
+    quantity: z.number().int().min(1, messages.quantityMin),
+  });
+
+/**
+ * Boundary variant. Callers that only care about the association (older
+ * clients, stored drafts, imports) may send a bare accessory id or omit the
+ * booking rules; both stand for an optional accessory booked one per parent
+ * unit.
+ */
+export const productAccessoryLinkSchema = z
+  .union([
+    z.string().min(1),
+    z.object({
+      accessoryId: z.string().min(1),
+      required: z.boolean().optional(),
+      quantity: z.number().int().min(1, 'validation.minValue').optional(),
+    }),
+  ])
+  .transform((link) =>
+    typeof link === 'string'
+      ? { accessoryId: link, required: false, quantity: 1 }
+      : {
+          accessoryId: link.accessoryId,
+          required: link.required ?? false,
+          quantity: link.quantity ?? 1,
+        },
+  );
+
 export const bookingAttributeAxisSchema = z.object({
   key: z
     .string()
@@ -137,6 +173,9 @@ export type PricingTierInput = z.infer<typeof pricingTierSchema>;
 export type PriceDurationInput = z.infer<typeof priceDurationSchema>;
 export type RateTierInput = z.infer<typeof rateTierSchema>;
 export type ProductUnitInput = z.infer<typeof productUnitSchema>;
+export type ProductAccessoryLinkInput = z.infer<
+  typeof productAccessoryLinkSchema
+>;
 export type BookingAttributeAxisInput = z.infer<
   typeof bookingAttributeAxisSchema
 >;
@@ -233,7 +272,9 @@ export const createProductSchema = (
         z.string().refine(isProductImageUrl, t('invalidImageUrl')),
       ),
       imageHistory: z.array(productImageHistorySchema).max(5),
-      stockKind: z.enum(['returnable', 'consumable']).default('returnable'),
+      // The dashboard form always carries a stock kind; only the server-side
+      // schema below defaults it, for callers that omit it.
+      stockKind: z.enum(['returnable', 'consumable']),
       pricingKind: z.enum(['duration', 'fixed']),
       pricingMode: z.enum(['hour', 'day', 'week']),
       // Kept structurally required so the form can hold on to a base period
@@ -279,7 +320,11 @@ export const createProductSchema = (
         .string()
         .regex(youtubeUrlRegex, t('invalidYoutubeUrl'))
         .or(z.literal('')),
-      accessoryIds: z.array(z.string()),
+      accessories: z.array(
+        buildProductAccessoryLinkSchema({
+          quantityMin: t('minValue', { min: 1 }),
+        }),
+      ),
       // Unit tracking
       trackUnits: z.boolean(),
       units: z.array(
@@ -486,7 +531,7 @@ export const productSchema = z
       .regex(youtubeUrlRegex, 'validation.invalidYoutubeUrl')
       .optional()
       .or(z.literal('')),
-    accessoryIds: z.array(z.string()).optional(),
+    accessories: z.array(productAccessoryLinkSchema).optional(),
     // Unit tracking
     trackUnits: z.boolean().optional(),
     units: z.array(productUnitSchema).optional(),

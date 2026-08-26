@@ -42,12 +42,12 @@ export function ProductFormSectionAccessories({
       </CardHeader>
       <CardContent>
         {availableAccessories.length > 0 ? (
-          <form.Field name="accessoryIds">
+          <form.Field name="accessories">
             {(field) => (
               <div>
                 <AccessoriesSelector
                   availableProducts={availableAccessories}
-                  selectedIds={field.state.value || []}
+                  value={field.state.value || []}
                   onChange={field.handleChange}
                   currency={currency}
                   disabled={disabled}

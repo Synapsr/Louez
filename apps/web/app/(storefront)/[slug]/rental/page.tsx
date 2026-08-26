@@ -171,6 +171,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
     deposit: string;
     images: string[] | null;
     quantity: number;
+    required: boolean;
+    requiredQuantity: number;
     pricingMode: "day" | "hour" | "week" | null;
     pricingTiers?: PricingTier[];
   }
@@ -354,6 +356,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
         productId: productAccessories.productId,
         accessoryId: productAccessories.accessoryId,
         displayOrder: productAccessories.displayOrder,
+        required: productAccessories.required,
+        requiredQuantity: productAccessories.quantity,
       })
       .from(productAccessories)
       .where(inArray(productAccessories.productId, productIdsArray))
@@ -426,6 +430,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       deposit: string;
       images: string[] | null;
       quantity: number;
+      required: boolean;
+      requiredQuantity: number;
       pricingKind: PricingKind;
       pricingMode: "day" | "hour" | "week" | null;
       pricingTiers?: PricingTier[];
@@ -433,11 +439,12 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
     const accessoriesByProductId = new Map<string, ProductAccessory[]>();
     for (const acc of accessoriesResults) {
       const accessoryProduct = accessoryProductMap.get(acc.accessoryId);
-      // Only include active accessories with stock
+      // Active accessories with stock, plus every required one: an out-of-stock
+      // required accessory still has to reach the UI to explain the block.
       if (
         accessoryProduct &&
         accessoryProduct.status === "active" &&
-        accessoryProduct.quantity > 0
+        (accessoryProduct.quantity > 0 || acc.required)
       ) {
         const accessories = accessoriesByProductId.get(acc.productId) || [];
         accessories.push({
@@ -447,6 +454,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
           deposit: accessoryProduct.deposit || "0",
           images: accessoryProduct.images,
           quantity: accessoryProduct.quantity,
+          required: acc.required,
+          requiredQuantity: acc.requiredQuantity,
           pricingKind: accessoryProduct.pricingKind,
           pricingMode: accessoryProduct.pricingMode,
           pricingTiers: accessoryTiersByProductId.get(accessoryProduct.id),
