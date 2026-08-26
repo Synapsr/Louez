@@ -1,4 +1,4 @@
-import type { PricingKind, PricingMode } from '@louez/types';
+import type { PricingKind, PricingMode, StockKind } from '@louez/types';
 
 /**
  * Minimal accessory-link shape shared by every storefront surface that can put
@@ -73,6 +73,110 @@ export function getRequiredAccessoryUnitQuantity(
   accessory: Pick<AccessoryLink, 'requiredQuantity'>,
 ): number {
   return Math.max(1, accessory.requiredQuantity ?? 1);
+}
+
+interface RequiredAccessoryCartLineQuantity {
+  maxQuantity: number;
+  requiredQuantity?: number | null;
+}
+
+interface CartLineQuantity extends RequiredAccessoryCartLineQuantity {
+  lineId: string;
+  productId: string;
+  stockKind?: StockKind | null;
+  quantity: number;
+  parentLineId?: string;
+}
+
+/** Minimum units the child line must carry for its current parent quantity. */
+export function getRequiredAccessoryLineMinimumQuantity(
+  line: Pick<RequiredAccessoryCartLineQuantity, 'requiredQuantity'>,
+  parentQuantity: number,
+): number {
+  return getRequiredAccessoryUnitQuantity(line) * Math.max(1, parentQuantity);
+}
+
+/** Lets the customer add units while enforcing the requirement and stock cap. */
+export function clampRequiredAccessoryLineQuantity(
+  line: RequiredAccessoryCartLineQuantity,
+  params: { parentQuantity: number; requestedQuantity: number },
+): number {
+  const minimumQuantity = getRequiredAccessoryLineMinimumQuantity(
+    line,
+    params.parentQuantity,
+  );
+  const maximumQuantity = Math.max(minimumQuantity, line.maxQuantity);
+
+  return Math.min(
+    Math.max(minimumQuantity, params.requestedQuantity),
+    maximumQuantity,
+  );
+}
+
+/** Keeps the customer's selected total unless a changed requirement is higher. */
+export function reconcileRequiredAccessoryLineQuantity(
+  line: RequiredAccessoryCartLineQuantity & { quantity: number },
+  params: {
+    nextParentQuantity: number;
+    nextRequiredQuantity: number;
+  },
+): number {
+  return clampRequiredAccessoryLineQuantity(
+    { ...line, requiredQuantity: params.nextRequiredQuantity },
+    {
+      parentQuantity: params.nextParentQuantity,
+      requestedQuantity: line.quantity,
+    },
+  );
+}
+
+function getOtherConsumableLinesQuantity(
+  lines: CartLineQuantity[],
+  line: Pick<CartLineQuantity, 'lineId' | 'productId' | 'stockKind'>,
+): number {
+  if (line.stockKind !== 'consumable') {
+    return 0;
+  }
+
+  return lines.reduce(
+    (total, candidate) =>
+      candidate.lineId !== line.lineId &&
+      candidate.productId === line.productId &&
+      candidate.stockKind === 'consumable'
+        ? total + candidate.quantity
+        : total,
+    0,
+  );
+}
+
+/** Maximum this line can reach after stock allocated to sibling lines. */
+export function getCartLineAvailableMaximumQuantity(
+  lines: CartLineQuantity[],
+  line: CartLineQuantity,
+): number {
+  const ownMaximum = Math.max(
+    0,
+    line.maxQuantity - getOtherConsumableLinesQuantity(lines, line),
+  );
+
+  if (line.parentLineId) {
+    return ownMaximum;
+  }
+
+  const requiredAccessoryMaximums = lines
+    .filter((candidate) => candidate.parentLineId === line.lineId)
+    .map((child) => {
+      const availableAccessoryQuantity = Math.max(
+        0,
+        child.maxQuantity - getOtherConsumableLinesQuantity(lines, child),
+      );
+      return Math.floor(
+        availableAccessoryQuantity /
+          getRequiredAccessoryUnitQuantity(child),
+      );
+    });
+
+  return Math.min(ownMaximum, ...requiredAccessoryMaximums);
 }
 
 export function isRequiredAccessory(

@@ -36,7 +36,10 @@ import { cn, formatCurrency } from '@louez/utils';
 
 import { CartLineItem } from '@/components/storefront/cart-line-item';
 
-import { groupCartLinesByParent } from '@/lib/utils/cart-required-accessories';
+import {
+  getCartLineAvailableMaximumQuantity,
+  groupCartLinesByParent,
+} from '@/lib/utils/cart-required-accessories';
 
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
@@ -150,6 +153,10 @@ export function CartSidebar({
                 <div key={group.line.lineId} className="space-y-2">
                   <CartLineItem
                     item={group.line}
+                    maximumQuantity={getCartLineAvailableMaximumQuantity(
+                      items,
+                      group.line,
+                    )}
                     currency={currency}
                     globalStartDate={globalStartDate}
                     globalEndDate={globalEndDate}
@@ -162,10 +169,17 @@ export function CartSidebar({
                         <CartLineItem
                           key={child.lineId}
                           item={child}
+                          maximumQuantity={getCartLineAvailableMaximumQuantity(
+                            items,
+                            child,
+                          )}
                           currency={currency}
                           globalStartDate={globalStartDate}
                           globalEndDate={globalEndDate}
-                          parentName={group.line.productName}
+                          parent={{
+                            name: group.line.productName,
+                            quantity: group.line.quantity,
+                          }}
                           onQuantityChange={updateItemQuantityByLineId}
                           onRemove={removeItemByLineId}
                         />

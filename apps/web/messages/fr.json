@@ -5938,6 +5938,8 @@
       "total": "Total",
       "checkout": "Passer commande",
       "remove": "Retirer",
+      "decreaseQuantity": "Réduire la quantité de {name}",
+      "increaseQuantity": "Augmenter la quantité de {name}",
       "updateDates": "Modifier les dates",
       "clearCart": "Vider le panier",
       "clear": "Vider le panier",

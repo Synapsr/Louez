@@ -289,6 +289,16 @@ export async function resolveStorefrontCart(
               0,
             )
         : (productAvailability?.availableQuantity ?? 0);
+    const requestedOwnQuantity =
+      product.stockKind === 'consumable'
+        ? lines.reduce(
+            (quantity, candidate) =>
+              candidate.productId === product.id
+                ? quantity + candidate.quantity
+                : quantity,
+            0,
+          )
+        : line.quantity;
     const requiredAccessories =
       requiredAccessoriesByParentId.get(product.id) ?? [];
     const requiredAccessoryMaxQuantity = requiredAccessories.reduce(
@@ -308,13 +318,17 @@ export async function resolveStorefrontCart(
     );
     const maxQuantity = Math.min(ownMaxQuantity, requiredAccessoryMaxQuantity);
 
-    if (maxQuantity < line.quantity) {
+    if (
+      ownMaxQuantity < requestedOwnQuantity ||
+      maxQuantity < line.quantity
+    ) {
       resolvedLines.push({
         status: 'unavailable',
         lineId: line.lineId,
         parentLineId: line.parentLineId,
         productId: line.productId,
         reason:
+          ownMaxQuantity >= requestedOwnQuantity &&
           requiredAccessoryMaxQuantity < line.quantity
             ? 'required_accessory_unavailable'
             : 'insufficient_stock',

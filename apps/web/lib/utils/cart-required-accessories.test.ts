@@ -3,8 +3,11 @@ import { test } from 'node:test';
 
 import {
   buildRequiredAccessoryCartInputs,
+  clampRequiredAccessoryLineQuantity,
   findBlockingRequiredAccessories,
+  getCartLineAvailableMaximumQuantity,
   groupCartLinesByParent,
+  reconcileRequiredAccessoryLineQuantity,
   selectOptionalAccessories,
 } from './cart-required-accessories';
 
@@ -59,6 +62,182 @@ test('flags a required accessory that cannot cover the parent quantity', () => {
   assert.equal(
     findBlockingRequiredAccessories([{ ...tripod, quantity: 0 }], 1).length,
     0,
+  );
+});
+
+test('allows extra required accessories without going below the parent minimum', () => {
+  const line = {
+    requiredQuantity: 2,
+    maxQuantity: 8,
+  };
+
+  assert.equal(
+    clampRequiredAccessoryLineQuantity(line, {
+      parentQuantity: 2,
+      requestedQuantity: 3,
+    }),
+    4,
+  );
+  assert.equal(
+    clampRequiredAccessoryLineQuantity(line, {
+      parentQuantity: 2,
+      requestedQuantity: 5,
+    }),
+    5,
+  );
+  assert.equal(
+    clampRequiredAccessoryLineQuantity(line, {
+      parentQuantity: 2,
+      requestedQuantity: 12,
+    }),
+    8,
+  );
+});
+
+test('preserves the selected total when the parent quantity changes', () => {
+  const line = {
+    quantity: 3,
+    requiredQuantity: 1,
+    maxQuantity: 8,
+  };
+
+  assert.equal(
+    reconcileRequiredAccessoryLineQuantity(line, {
+      nextParentQuantity: 2,
+      nextRequiredQuantity: 1,
+    }),
+    3,
+  );
+  assert.equal(
+    reconcileRequiredAccessoryLineQuantity(
+      { ...line, quantity: 4 },
+      {
+        nextParentQuantity: 1,
+        nextRequiredQuantity: 1,
+      },
+    ),
+    4,
+  );
+  assert.equal(
+    reconcileRequiredAccessoryLineQuantity(line, {
+      nextParentQuantity: 2,
+      nextRequiredQuantity: 2,
+    }),
+    4,
+  );
+});
+
+test('shares an accessory stock cap across every cart line', () => {
+  const lines = [
+    {
+      lineId: 'parent',
+      productId: 'smoke-machine',
+      quantity: 1,
+      maxQuantity: 5,
+    },
+    {
+      lineId: 'required-fluid',
+      parentLineId: 'parent',
+      productId: 'fog-fluid',
+      stockKind: 'consumable' as const,
+      quantity: 1,
+      maxQuantity: 5,
+      requiredQuantity: 1,
+    },
+    {
+      lineId: 'free-fluid',
+      productId: 'fog-fluid',
+      stockKind: 'consumable' as const,
+      quantity: 2,
+      maxQuantity: 5,
+    },
+  ];
+
+  assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[1]), 3);
+  assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[2]), 4);
+});
+
+test('leaves returnable stock allocation to the canonical server resolver', () => {
+  const lines = [
+    {
+      lineId: 'small',
+      productId: 'helmet',
+      stockKind: 'returnable' as const,
+      quantity: 1,
+      maxQuantity: 2,
+    },
+    {
+      lineId: 'large',
+      productId: 'helmet',
+      stockKind: 'returnable' as const,
+      quantity: 1,
+      maxQuantity: 3,
+    },
+  ];
+
+  assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[0]), 2);
+  assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[1]), 3);
+});
+
+test('limits the parent when another line uses required accessory stock', () => {
+  const lines = [
+    {
+      lineId: 'parent',
+      productId: 'smoke-machine',
+      quantity: 1,
+      maxQuantity: 5,
+    },
+    {
+      lineId: 'required-fluid',
+      parentLineId: 'parent',
+      productId: 'fog-fluid',
+      stockKind: 'consumable' as const,
+      quantity: 1,
+      maxQuantity: 5,
+      requiredQuantity: 2,
+    },
+    {
+      lineId: 'free-fluid',
+      productId: 'fog-fluid',
+      stockKind: 'consumable' as const,
+      quantity: 1,
+      maxQuantity: 5,
+    },
+  ];
+
+  assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[0]), 2);
+  assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[1]), 4);
+});
+
+test('reports when shared stock falls below a required child minimum', () => {
+  const lines = [
+    {
+      lineId: 'parent',
+      productId: 'smoke-machine',
+      quantity: 2,
+      maxQuantity: 5,
+    },
+    {
+      lineId: 'required-fluid',
+      parentLineId: 'parent',
+      productId: 'fog-fluid',
+      stockKind: 'consumable' as const,
+      quantity: 2,
+      maxQuantity: 2,
+      requiredQuantity: 1,
+    },
+    {
+      lineId: 'free-fluid',
+      productId: 'fog-fluid',
+      stockKind: 'consumable' as const,
+      quantity: 1,
+      maxQuantity: 2,
+    },
+  ];
+
+  assert.equal(
+    getCartLineAvailableMaximumQuantity(lines, lines[1]),
+    1,
   );
 });
 

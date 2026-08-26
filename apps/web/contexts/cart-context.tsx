@@ -12,12 +12,18 @@ import {
 
 import { useQuery } from '@tanstack/react-query';
 
-import type { PricingKind } from '@louez/types';
+import type { PricingKind, StockKind } from '@louez/types';
 import type { SeasonalPricingConfig } from '@louez/utils';
 
 import { orpc } from '@/lib/orpc/react';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
-import type { RequiredAccessoryCartInput } from '@/lib/utils/cart-required-accessories';
+import {
+  clampRequiredAccessoryLineQuantity,
+  getCartLineAvailableMaximumQuantity,
+  getRequiredAccessoryLineMinimumQuantity,
+  reconcileRequiredAccessoryLineQuantity,
+  type RequiredAccessoryCartInput,
+} from '@/lib/utils/cart-required-accessories';
 import { type PricingMode, calculateDuration } from '@/lib/utils/duration';
 
 interface CartItemPricingTier {
@@ -45,6 +51,7 @@ export interface CartItem {
   quantity: number;
   maxQuantity: number;
   pricingKind: PricingKind;
+  stockKind?: StockKind;
   // Pricing tiers for this product
   pricingTiers?: CartItemPricingTier[];
   // Rate-based pricing period in minutes
@@ -60,7 +67,7 @@ export interface CartItem {
   // Seasonal pricing overrides (per-product)
   seasonalPricings?: SeasonalPricingConfig[];
   // Required accessories: set on a line auto-added with its parent product.
-  // The line is then owned by the parent — locked in quantity, removed with it.
+  // The line is owned by the parent and cannot go below its required quantity.
   parentLineId?: string;
   // Units of this accessory required per unit of the parent line.
   requiredQuantity?: number;
@@ -267,23 +274,21 @@ function toStoredCartItem(item: CartItem): StoredCartItem {
   };
 }
 
-/** Quantity a required accessory line must carry for `parentQuantity` parents. */
-function getRequiredLineQuantity(
-  item: Pick<CartItem, 'requiredQuantity'>,
-  parentQuantity: number,
-): number {
-  return Math.max(1, item.requiredQuantity ?? 1) * Math.max(1, parentQuantity);
-}
-
-/** Realigns every required accessory line of `parentLineId` on its parent. */
+/** Realigns required lines while retaining units added by the customer. */
 function syncRequiredLineQuantities(
   items: CartItem[],
   parentLineId: string,
-  parentQuantity: number,
+  nextParentQuantity: number,
 ): CartItem[] {
   return items.map((item) =>
     item.parentLineId === parentLineId
-      ? { ...item, quantity: getRequiredLineQuantity(item, parentQuantity) }
+      ? {
+          ...item,
+          quantity: reconcileRequiredAccessoryLineQuantity(item, {
+            nextParentQuantity,
+            nextRequiredQuantity: Math.max(1, item.requiredQuantity ?? 1),
+          }),
+        }
       : item,
   );
 }
@@ -301,7 +306,12 @@ function attachRequiredAccessoryLines(params: {
   startDate: string;
   endDate: string;
 }): CartItem[] {
-  const { items, parentLineId, parentQuantity, requiredAccessories } = params;
+  const {
+    items,
+    parentLineId,
+    parentQuantity,
+    requiredAccessories,
+  } = params;
   if (requiredAccessories.length === 0) {
     return items;
   }
@@ -309,8 +319,10 @@ function attachRequiredAccessoryLines(params: {
   const nextItems = [...items];
 
   for (const accessory of requiredAccessories) {
-    const quantity =
-      Math.max(1, accessory.requiredQuantity) * Math.max(1, parentQuantity);
+    const minimumQuantity = getRequiredAccessoryLineMinimumQuantity(
+      accessory,
+      parentQuantity,
+    );
     const existingIndex = nextItems.findIndex(
       (item) =>
         item.parentLineId === parentLineId &&
@@ -318,15 +330,22 @@ function attachRequiredAccessoryLines(params: {
     );
 
     if (existingIndex >= 0) {
+      const existing = nextItems[existingIndex];
       nextItems[existingIndex] = {
-        ...nextItems[existingIndex],
+        ...existing,
         productName: accessory.productName,
         productImage: accessory.productImage,
         price: accessory.price,
         deposit: accessory.deposit,
         maxQuantity: accessory.maxQuantity,
         requiredQuantity: accessory.requiredQuantity,
-        quantity,
+        quantity: reconcileRequiredAccessoryLineQuantity(
+          { ...existing, maxQuantity: accessory.maxQuantity },
+          {
+            nextParentQuantity: parentQuantity,
+            nextRequiredQuantity: accessory.requiredQuantity,
+          },
+        ),
       };
       continue;
     }
@@ -339,7 +358,7 @@ function attachRequiredAccessoryLines(params: {
       productImage: accessory.productImage,
       price: accessory.price,
       deposit: accessory.deposit,
-      quantity,
+      quantity: minimumQuantity,
       maxQuantity: accessory.maxQuantity,
       pricingKind: accessory.pricingKind,
       pricingTiers: accessory.pricingTiers,
@@ -417,7 +436,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         // the line here instead of leaving the customer with a stuck child.
         const stillRequired = Boolean(resolved.required && item.parentLineId);
 
-        return {
+        const nextItem = {
           ...item,
           productName: resolved.productName,
           productImage: resolved.productImage,
@@ -425,6 +444,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           deposit: resolved.deposit,
           maxQuantity: resolved.maxQuantity,
           pricingKind: resolved.pricingKind,
+          stockKind: resolved.stockKind,
           pricingMode: resolved.pricingMode,
           productPricingMode: resolved.productPricingMode,
           basePeriodMinutes: resolved.basePeriodMinutes,
@@ -436,6 +456,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
             ? (resolved.requiredQuantity ?? item.requiredQuantity)
             : undefined,
           unavailableReason: undefined,
+        };
+
+        if (!stillRequired) {
+          return nextItem;
+        }
+
+        const parent = currentItems.find(
+          (candidate) => candidate.lineId === item.parentLineId,
+        );
+        if (!parent) {
+          return nextItem;
+        }
+
+        return {
+          ...nextItem,
+          quantity: reconcileRequiredAccessoryLineQuantity(nextItem, {
+            nextParentQuantity: parent.quantity,
+            nextRequiredQuantity: Math.max(
+              1,
+              nextItem.requiredQuantity ?? 1,
+            ),
+          }),
         };
       }),
     );
@@ -639,21 +681,50 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const updateItemQuantityByLineId = useCallback(
     (lineId: string, quantity: number) => {
-      if (quantity <= 0) {
-        removeItemByLineId(lineId);
-        return;
-      }
-
       setItems((currentItems) => {
         const target = currentItems.find((item) => item.lineId === lineId);
-        // Required accessory quantities are driven by the parent line only.
-        if (!target || target.parentLineId) {
+        if (!target) {
           return currentItems;
+        }
+
+        if (target.parentLineId) {
+          const parent = currentItems.find(
+            (item) => item.lineId === target.parentLineId,
+          );
+          if (!parent) {
+            return currentItems;
+          }
+
+          const availableMaximumQuantity =
+            getCartLineAvailableMaximumQuantity(currentItems, target);
+          const clampedQuantity = clampRequiredAccessoryLineQuantity(
+            { ...target, maxQuantity: availableMaximumQuantity },
+            {
+              parentQuantity: parent.quantity,
+              requestedQuantity: quantity,
+            },
+          );
+
+          return currentItems.map((item) =>
+            item.lineId === lineId
+              ? { ...item, quantity: clampedQuantity }
+              : item,
+          );
+        }
+
+        if (quantity <= 0) {
+          return currentItems.filter(
+            (item) =>
+              item.lineId !== lineId && item.parentLineId !== lineId,
+          );
         }
 
         const nextQuantity = Math.min(
           Math.max(1, quantity),
-          target.maxQuantity,
+          Math.max(
+            1,
+            getCartLineAvailableMaximumQuantity(currentItems, target),
+          ),
         );
         const updated = currentItems.map((item) =>
           item.lineId === lineId ? { ...item, quantity: nextQuantity } : item,
@@ -662,7 +733,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return syncRequiredLineQuantities(updated, lineId, nextQuantity);
       });
     },
-    [removeItemByLineId],
+    [],
   );
 
   const getCartLinesByProductId = useCallback(

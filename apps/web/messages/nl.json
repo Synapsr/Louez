@@ -5938,6 +5938,8 @@
       "total": "Totaal",
       "checkout": "Afrekenen",
       "remove": "Verwijderen",
+      "decreaseQuantity": "Aantal van {name} verlagen",
+      "increaseQuantity": "Aantal van {name} verhogen",
       "updateDates": "Data wijzigen",
       "clearCart": "Winkelwagen legen",
       "clear": "Winkelwagen legen",

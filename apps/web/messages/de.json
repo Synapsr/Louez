@@ -5938,6 +5938,8 @@
       "total": "Gesamt",
       "checkout": "Zur Kasse",
       "remove": "Entfernen",
+      "decreaseQuantity": "Menge von {name} verringern",
+      "increaseQuantity": "Menge von {name} erhöhen",
       "updateDates": "Daten ändern",
       "clearCart": "Warenkorb leeren",
       "clear": "Warenkorb leeren",
