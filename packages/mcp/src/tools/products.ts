@@ -73,6 +73,7 @@ export function registerProductTools(
           price: products.price,
           deposit: products.deposit,
           pricingKind: products.pricingKind,
+          stockKind: products.stockKind,
           pricingMode: products.pricingMode,
           quantity: effectiveProductQuantitySql(),
           status: products.status,
@@ -95,7 +96,7 @@ export function registerProductTools(
       const lines = rows.map(
         (p) =>
           `- **${p.name}** (${p.id})\n` +
-          `  Price: ${formatCurrency(p.price)}${p.pricingKind === 'fixed' ? ' (fixed)' : `/${p.pricingMode}`} | Deposit: ${formatCurrency(p.deposit ?? '0')} | Stock: ${p.quantity}\n` +
+          `  Price: ${formatCurrency(p.price)}${p.pricingKind === 'fixed' ? ' (fixed)' : `/${p.pricingMode}`} | Deposit: ${formatCurrency(p.deposit ?? '0')} | Stock: ${p.quantity} (${p.stockKind})\n` +
           `  Status: ${p.status}${p.categoryName ? ` | Category: ${p.categoryName}` : ''}`,
       );
 
@@ -142,6 +143,7 @@ export function registerProductTools(
         `- **ID**: ${product.id}\n` +
         `- **Status**: ${product.status}\n` +
         `- **Pricing kind**: ${product.pricingKind}\n` +
+        `- **Stock kind**: ${product.stockKind}\n` +
         `- **Price**: ${formatCurrency(product.price)}${product.pricingKind === 'fixed' ? '' : `/${product.pricingMode}`}\n` +
         `- **Deposit**: ${formatCurrency(product.deposit ?? '0')}\n` +
         `- **Stock**: ${effectiveQuantity}\n` +
@@ -153,7 +155,10 @@ export function registerProductTools(
         text += `\n### Description\n${product.description}\n`;
       }
 
-      if (product.pricingKind === 'duration' && product.pricingTiers.length > 0) {
+      if (
+        product.pricingKind === 'duration' &&
+        product.pricingTiers.length > 0
+      ) {
         text += `\n### Pricing tiers\n`;
         for (const tier of product.pricingTiers) {
           const duration = tier.minDuration ?? tier.period ?? '—';
@@ -179,12 +184,18 @@ export function registerProductTools(
     {
       name: z.string().min(1).describe('Product name'),
       description: z.string().optional().describe('Product description'),
-      price: z.string().describe('Price per period or fixed unit price (e.g. "25.00")'),
+      price: z
+        .string()
+        .describe('Price per period or fixed unit price (e.g. "25.00")'),
       deposit: z.string().optional().describe('Deposit amount (e.g. "100.00")'),
       pricingKind: z
         .enum(['duration', 'fixed'])
         .default('duration')
         .describe('Whether pricing depends on rental duration'),
+      stockKind: z
+        .enum(['returnable', 'consumable'])
+        .default('returnable')
+        .describe('Whether stock returns after the reservation'),
       pricingMode: z
         .enum(['hour', 'day', 'week'])
         .default('day')
@@ -203,11 +214,16 @@ export function registerProductTools(
       price,
       deposit,
       pricingKind,
+      stockKind,
       pricingMode,
       quantity,
       categoryId,
     }) => {
       requirePermission(ctx, 'products', 'write');
+
+      if (stockKind === 'consumable' && pricingKind !== 'fixed') {
+        return toolError('Consumable products must use fixed pricing.');
+      }
 
       const [created] = await db
         .insert(products)
@@ -218,6 +234,7 @@ export function registerProductTools(
           price,
           deposit: deposit ?? '0',
           pricingKind,
+          stockKind,
           pricingMode,
           basePeriodMinutes: null,
           enforceStrictTiers: false,
@@ -240,6 +257,7 @@ export function registerProductTools(
           `- **Name**: ${name}\n` +
           `- **ID**: ${created.id}\n` +
           `- **Pricing kind**: ${pricingKind}\n` +
+          `- **Stock kind**: ${stockKind}\n` +
           `- **Price**: ${formatCurrency(price)}${pricingKind === 'fixed' ? '' : `/${pricingMode}`}\n` +
           `- **Stock**: ${quantity ?? 1}`,
       );
@@ -260,6 +278,10 @@ export function registerProductTools(
         .enum(['duration', 'fixed'])
         .optional()
         .describe('New pricing behavior'),
+      stockKind: z
+        .enum(['returnable', 'consumable'])
+        .optional()
+        .describe('New stock behavior'),
       quantity: z.number().int().optional().describe('New stock quantity'),
       status: z
         .enum(['active', 'draft', 'archived'])
@@ -274,12 +296,27 @@ export function registerProductTools(
           eq(products.storeId, ctx.storeId),
           eq(products.id, productId),
         ),
-        columns: { id: true, trackUnits: true },
+        columns: {
+          id: true,
+          pricingKind: true,
+          stockKind: true,
+          trackUnits: true,
+        },
       });
       if (!existing) return toolError('Product not found.');
       if (existing.trackUnits && updates.quantity !== undefined) {
         return toolError(
           'Quantity is derived from active units for unit-tracked products.',
+        );
+      }
+      const nextPricingKind = updates.pricingKind ?? existing.pricingKind;
+      const nextStockKind = updates.stockKind ?? existing.stockKind;
+      if (
+        nextStockKind === 'consumable' &&
+        (nextPricingKind !== 'fixed' || existing.trackUnits)
+      ) {
+        return toolError(
+          'Consumable products must use fixed pricing and cannot track units.',
         );
       }
 
@@ -296,6 +333,9 @@ export function registerProductTools(
           updateData.enforceStrictTiers = false;
         }
       }
+      if (updates.stockKind !== undefined) {
+        updateData.stockKind = updates.stockKind;
+      }
       if (updates.quantity !== undefined)
         updateData.quantity = updates.quantity;
       if (updates.status !== undefined) updateData.status = updates.status;
@@ -308,7 +348,9 @@ export function registerProductTools(
         await tx
           .update(products)
           .set(updateData)
-          .where(and(eq(products.id, productId), eq(products.storeId, ctx.storeId)));
+          .where(
+            and(eq(products.id, productId), eq(products.storeId, ctx.storeId)),
+          );
 
         if (updates.pricingKind === 'fixed') {
           await tx

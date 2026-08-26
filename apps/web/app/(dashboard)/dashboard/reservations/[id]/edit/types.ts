@@ -6,6 +6,7 @@ import type {
   ReservationLocationSnapshot,
   ProductSnapshot,
   StoreSettings,
+  StockKind,
   TulipPublicMode,
 } from '@louez/types'
 import type { SeasonalPricingConfig } from '@louez/utils'
@@ -27,6 +28,7 @@ export interface Product {
   images?: string[]
   tulipInsurable?: boolean
   quantity: number
+  stockKind: StockKind
   pricingMode: string | null
   basePeriodMinutes?: number | null
   enforceStrictTiers?: boolean
@@ -38,6 +40,7 @@ export interface ReservationItem {
   id: string
   productId: string | null
   quantity: number
+  consumedQuantity: number
   unitPrice: string
   depositPerUnit: string
   totalPrice: string
@@ -52,7 +55,12 @@ export interface ExistingReservation {
   startDate: Date
   endDate: Date
   status: string
-  items: { productId: string | null; quantity: number }[]
+  items: {
+    productId: string | null
+    quantity: number
+    consumedQuantity: number
+    stockKind: StockKind
+  }[]
 }
 
 export interface ReservationDelivery {
@@ -104,6 +112,7 @@ export interface EditableItem {
   id: string
   productId: string | null
   quantity: number
+  consumedQuantity: number
   unitPrice: number
   depositPerUnit: number
   isManualPrice: boolean

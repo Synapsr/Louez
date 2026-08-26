@@ -5664,6 +5664,7 @@
       "productCount": "{count, plural, =0 {No hay productos disponibles} one {# producto disponible} other {# productos disponibles}}",
       "available": "{count} disponible(s)",
       "unavailable": "No disponible",
+      "consumableOutOfStock": "Consumible agotado",
       "lastOne": "Ultimo!",
       "left": "restantes",
       "clearFilters": "Limpiar filtros"
@@ -6893,6 +6894,8 @@
     "permissionDenied": "Permiso insuficiente",
     "customerNotFound": "Cliente no encontrado",
     "reservationNotFound": "Reserva no encontrada",
+    "consumableInsufficientStock": "Stock insuficiente del consumible",
+    "requiredAccessoriesMissing": "Faltan accesorios obligatorios o su cantidad es incorrecta",
     "emailAlreadyExists": "Ya existe un cliente con este correo",
     "customerHasReservations": "No se puede eliminar un cliente con reservas",
     "cannotCancelReservation": "Esta reserva no puede ser cancelada",

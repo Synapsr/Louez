@@ -3,6 +3,7 @@ import { and, desc, eq, gte, inArray, like, lte, sql, sum } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
+  ConsumableStockError,
   categories,
   customers,
   dailyStats,
@@ -11,6 +12,7 @@ import {
   buildReservationOverlapPredicate,
   buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
+  loadConsumableReservedQuantities,
   payments,
   productCategories,
   productStats,
@@ -18,6 +20,8 @@ import {
   products,
   reservationItems,
   reservations,
+  consumeReservationStock,
+  restoreReservationStock,
   stores,
 } from '@louez/db';
 import type { ApiKeyPermissions } from '@louez/db/schema';
@@ -432,10 +436,56 @@ export function createAITools(ctx: AIChatContext) {
         if (newStatus === 'ongoing') updateData.pickedUpAt = new Date();
         if (newStatus === 'completed') updateData.returnedAt = new Date();
 
-        await db
-          .update(reservations)
-          .set(updateData)
-          .where(eq(reservations.id, reservationId));
+        try {
+          await db.transaction(async (tx) => {
+            const [lockedReservation] = await tx
+              .select({ status: reservations.status })
+              .from(reservations)
+              .where(
+                and(
+                  eq(reservations.id, reservationId),
+                  eq(reservations.storeId, ctx.storeId),
+                ),
+              )
+              .for('update');
+
+            if (!lockedReservation) {
+              throw new ConsumableStockError({
+                code: 'RESERVATION_NOT_FOUND',
+                message: 'Reservation not found',
+              });
+            }
+
+            if (
+              newStatus === 'confirmed' &&
+              (lockedReservation.status === 'pending' ||
+                lockedReservation.status === 'quote')
+            ) {
+              await consumeReservationStock(tx, reservationId, ctx.storeId);
+            } else if (
+              (newStatus === 'cancelled' || newStatus === 'rejected') &&
+              (lockedReservation.status === 'confirmed' ||
+                lockedReservation.status === 'ongoing')
+            ) {
+              await restoreReservationStock(tx, reservationId, ctx.storeId);
+            }
+
+            await tx
+              .update(reservations)
+              .set(updateData)
+              .where(
+                and(
+                  eq(reservations.id, reservationId),
+                  eq(reservations.storeId, ctx.storeId),
+                ),
+              );
+          });
+        } catch (error) {
+          if (error instanceof ConsumableStockError) {
+            return { error: error.message };
+          }
+          throw error;
+        }
         return {
           success: true,
           number: existing.number,
@@ -1157,7 +1207,13 @@ export function createAITools(ctx: AIChatContext) {
             eq(products.storeId, ctx.storeId),
             eq(products.id, productId),
           ),
-          columns: { id: true, name: true, quantity: true, trackUnits: true },
+          columns: {
+            id: true,
+            name: true,
+            quantity: true,
+            trackUnits: true,
+            stockKind: true,
+          },
         });
         if (!product) return { error: 'Product not found' };
 
@@ -1230,7 +1286,23 @@ export function createAITools(ctx: AIChatContext) {
           turnoverBufferMinutes,
           excludedProductUnitIds,
           excludedUnitInfo,
+          consumableProductIds:
+            product.stockKind === 'consumable'
+              ? new Set([product.id])
+              : undefined,
         });
+        if (product.stockKind === 'consumable') {
+          const consumableReservedByProduct =
+            await loadConsumableReservedQuantities(db, {
+              storeId: ctx.storeId,
+              productIds: [product.id],
+              blockingStatuses,
+            });
+          reservedByProduct.set(
+            product.id,
+            consumableReservedByProduct.get(product.id) ?? 0,
+          );
+        }
         const reserved = reservedByProduct.get(productId) ?? 0;
         const capacity = product.trackUnits
           ? rentableUnits.length

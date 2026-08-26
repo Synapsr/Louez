@@ -5664,6 +5664,7 @@
       "productCount": "{count, plural, =0 {Brak dostępnych produktów} one {# produkt dostępny} few {# produkty dostępne} many {# produktów dostępnych} other {# produktów dostępnych}}",
       "available": "{count} dostępne",
       "unavailable": "Niedostępne",
+      "consumableOutOfStock": "Brak materiału eksploatacyjnego",
       "lastOne": "Ostatni!",
       "left": "pozostało",
       "clearFilters": "Wyczyść filtry"
@@ -6893,6 +6894,8 @@
     "permissionDenied": "Niewystarczające uprawnienia",
     "customerNotFound": "Nie znaleziono klienta",
     "reservationNotFound": "Nie znaleziono rezerwacji",
+    "consumableInsufficientStock": "Niewystarczający zapas materiału eksploatacyjnego",
+    "requiredAccessoriesMissing": "Brakuje wymaganych akcesoriów lub ich ilość jest nieprawidłowa",
     "emailAlreadyExists": "Klient z tym emailem już istnieje",
     "customerHasReservations": "Nie można usunąć klienta z rezerwacjami",
     "cannotCancelReservation": "Tej rezerwacji nie można anulować",

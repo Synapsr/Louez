@@ -11,7 +11,15 @@ import {
   getStorefrontAvailability,
   loadExcludedUnitInfo,
 } from "@louez/api/services";
-import { db, getEffectiveProductQuantities } from "@louez/db";
+import {
+  ConsumableStockError,
+  consumeReservationStock,
+  db,
+  getEffectiveProductQuantities,
+  loadConsumableReservedQuantities,
+  reconcileReservationStock,
+  restoreReservationStock,
+} from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
   buildReservationOverlapPredicate,
@@ -366,7 +374,7 @@ export async function updateReservationStatus(
         })
       : [];
 
-  const previousStatus = reservation.status;
+  let previousStatus = reservation.status;
   const updateData: Record<string, unknown> = {
     status,
     updatedAt: new Date(),
@@ -379,7 +387,46 @@ export async function updateReservationStatus(
     updateData.returnedAt = new Date();
   }
 
-  await db.update(reservations).set(updateData).where(eq(reservations.id, reservationId));
+  try {
+    previousStatus = await db.transaction(async (tx) => {
+      const [lockedReservation] = await tx
+        .select({ status: reservations.status })
+        .from(reservations)
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
+        .for("update");
+
+      if (!lockedReservation) {
+        throw new ConsumableStockError({
+          code: "RESERVATION_NOT_FOUND",
+          message: "errors.reservationNotFound",
+        });
+      }
+
+      if (
+        status === "confirmed" &&
+        (lockedReservation.status === "pending" || lockedReservation.status === "quote")
+      ) {
+        await consumeReservationStock(tx, reservationId, store.id);
+      } else if (
+        (status === "cancelled" || status === "rejected") &&
+        (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
+      ) {
+        await restoreReservationStock(tx, reservationId, store.id);
+      }
+
+      await tx
+        .update(reservations)
+        .set(updateData)
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
+
+      return lockedReservation.status;
+    });
+  } catch (error) {
+    if (error instanceof ConsumableStockError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 
   // Log activity based on status transition
   const activityMap: Record<string, ActivityType> = {
@@ -632,21 +679,60 @@ export async function cancelReservation(reservationId: string) {
     return { error: "errors.reservationNotFound" };
   }
 
-  if (["cancelled", "completed", "rejected", "declined"].includes(reservation.status || "")) {
-    return { error: "errors.cannotCancelReservation" };
-  }
+  let previousStatus = reservation.status;
+  try {
+    type CancellationResult =
+      | { cancelled: false }
+      | {
+          cancelled: true;
+          previousStatus: typeof reservations.$inferSelect.status;
+        };
+    const cancellation = await db.transaction(async (tx): Promise<CancellationResult> => {
+      const [lockedReservation] = await tx
+        .select({ status: reservations.status })
+        .from(reservations)
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
+        .for("update");
 
-  await db
-    .update(reservations)
-    .set({
-      status: "cancelled",
-      updatedAt: new Date(),
-    })
-    .where(eq(reservations.id, reservationId));
+      if (
+        !lockedReservation ||
+        ["cancelled", "completed", "rejected", "declined"].includes(lockedReservation.status)
+      ) {
+        return { cancelled: false };
+      }
+
+      if (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing") {
+        await restoreReservationStock(tx, reservationId, store.id);
+      }
+
+      await tx
+        .update(reservations)
+        .set({
+          status: "cancelled",
+          updatedAt: new Date(),
+        })
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
+
+      return {
+        cancelled: true,
+        previousStatus: lockedReservation.status,
+      };
+    });
+
+    if (!cancellation.cancelled) {
+      return { error: "errors.cannotCancelReservation" };
+    }
+    previousStatus = cancellation.previousStatus;
+  } catch (error) {
+    if (error instanceof ConsumableStockError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 
   // Log activity
   await logReservationActivity(reservationId, "cancelled", {
-    previousStatus: reservation.status,
+    previousStatus,
   });
 
   // Pay-as-you-go: drop the (not-yet-billed) commission for this rental.
@@ -1238,7 +1324,7 @@ export async function createManualReservation(data: CreateReservationData) {
         sql`, `,
       );
       await tx.execute(
-        sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) FOR UPDATE`,
+        sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) AND store_id = ${store.id} FOR UPDATE`,
       );
     }
 
@@ -1313,7 +1399,22 @@ export async function createManualReservation(data: CreateReservationData) {
       turnoverBufferMinutes,
       excludedProductUnitIds,
       excludedUnitInfo,
+      consumableProductIds: new Set(
+        lockedProducts
+          .filter((product) => product.stockKind === "consumable")
+          .map((product) => product.id),
+      ),
     });
+    const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
+      storeId: store.id,
+      productIds: lockedProducts
+        .filter((product) => product.stockKind === "consumable")
+        .map((product) => product.id),
+      blockingStatuses,
+    });
+    for (const [productId, reservedQuantity] of consumableReservedByProduct) {
+      reservedByProduct.set(productId, reservedQuantity);
+    }
     const combinationsByProduct = new Map<
       string,
       Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
@@ -1571,6 +1672,10 @@ export async function createManualReservation(data: CreateReservationData) {
           images: [],
         },
       });
+    }
+
+    if (!data.sendAsQuote) {
+      await consumeReservationStock(tx, reservationId, store.id);
     }
 
     return {
@@ -2562,6 +2667,9 @@ export async function updateReservation(
         if (!existingItem) {
           return { error: "errors.invalidData" };
         }
+        if (existingItem.productId !== itemValues.productId) {
+          return { error: "errors.invalidData" };
+        }
         if (hasReservationItemChanges(existingItem, itemValues)) {
           itemWrites.push({
             type: "update",
@@ -3282,7 +3390,30 @@ export async function updateReservation(
     }
 
     if (itemIdsToDelete.length > 0) {
-      await tx.delete(reservationItems).where(inArray(reservationItems.id, itemIdsToDelete));
+      await tx
+        .update(reservationItems)
+        .set({ quantity: 0 })
+        .where(
+          and(
+            eq(reservationItems.reservationId, reservationId),
+            inArray(reservationItems.id, itemIdsToDelete),
+          ),
+        );
+    }
+
+    if (reservation.status === "confirmed" || reservation.status === "ongoing") {
+      await reconcileReservationStock(tx, reservationId, store.id);
+    }
+
+    if (itemIdsToDelete.length > 0) {
+      await tx
+        .delete(reservationItems)
+        .where(
+          and(
+            eq(reservationItems.reservationId, reservationId),
+            inArray(reservationItems.id, itemIdsToDelete),
+          ),
+        );
     }
 
     await tx
@@ -3304,6 +3435,11 @@ export async function updateReservation(
       .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
 
     return { success: true };
+  }).catch((error: unknown) => {
+    if (error instanceof ConsumableStockError) {
+      return { error: error.message };
+    }
+    throw error;
   });
 
   if (transactionResult.error) {

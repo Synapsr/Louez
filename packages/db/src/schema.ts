@@ -947,6 +947,10 @@ export const pricingKindEnum = mysqlEnum('pricing_kind', [
   'duration',
   'fixed',
 ]);
+export const stockKindEnum = mysqlEnum('stock_kind', [
+  'returnable',
+  'consumable',
+]);
 
 export const products = mysqlTable(
   'products',
@@ -978,6 +982,7 @@ export const products = mysqlTable(
     // Product pricing mode
     pricingMode: pricingModeEnum.notNull(),
     pricingKind: pricingKindEnum.notNull().default('duration'),
+    stockKind: stockKindEnum.notNull().default('returnable'),
 
     // Video URL (YouTube)
     videoUrl: text('video_url'),
@@ -1410,6 +1415,7 @@ export const reservationItems = mysqlTable(
 
     // Quantity and price at reservation time
     quantity: int('quantity').notNull(),
+    consumedQuantity: int('consumed_quantity').notNull().default(0),
     unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
     depositPerUnit: decimal('deposit_per_unit', {
       precision: 10,
@@ -2655,6 +2661,8 @@ export const productAccessories = mysqlTable(
     id: id(),
     productId: varchar('product_id', { length: 21 }).notNull(),
     accessoryId: varchar('accessory_id', { length: 21 }).notNull(),
+    required: boolean('required').notNull().default(false),
+    quantity: int('quantity').notNull().default(1),
     displayOrder: int('display_order').default(0),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },

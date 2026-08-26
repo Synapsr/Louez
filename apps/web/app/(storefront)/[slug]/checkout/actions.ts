@@ -8,8 +8,9 @@ import {
   computeReservedNetOfExcludedUnits,
   getRouteDistance,
   loadExcludedUnitInfo,
+  validateRequiredAccessoryLines,
 } from '@louez/api/services';
-import { db } from '@louez/db';
+import { db, loadConsumableReservedQuantities } from '@louez/db';
 import {
   aiAdvisorConversations,
   buildReservationOverlapPredicate,
@@ -19,6 +20,7 @@ import {
   payments,
   productSeasonalPricing,
   productSeasonalPricingTiers,
+  productAccessories,
   productUnits,
   products,
   promoCodes,
@@ -770,8 +772,8 @@ export async function createReservation(input: CreateReservationInput) {
     }
 
     const cartProductIds = [...new Set(input.items.map((item) => item.productId))];
-    const cartProductPricingKinds = await db
-      .select({ pricingKind: products.pricingKind })
+    const cartProducts = await db
+      .select({ id: products.id, pricingKind: products.pricingKind })
       .from(products)
       .where(
         and(
@@ -780,7 +782,40 @@ export async function createReservation(input: CreateReservationInput) {
           inArray(products.id, cartProductIds),
         ),
       );
-    const hasDurationProduct = cartProductPricingKinds.some(
+    if (cartProducts.length !== cartProductIds.length) {
+      return { error: 'errors.productNotFound' };
+    }
+
+    const requiredAccessories = await db
+      .select({
+        parentProductId: productAccessories.productId,
+        accessoryProductId: productAccessories.accessoryId,
+        quantity: productAccessories.quantity,
+      })
+      .from(productAccessories)
+      .innerJoin(products, eq(productAccessories.productId, products.id))
+      .where(
+        and(
+          eq(products.storeId, input.storeId),
+          eq(productAccessories.required, true),
+          inArray(productAccessories.productId, cartProductIds),
+        ),
+      );
+    const requiredAccessoryValidation = validateRequiredAccessoryLines({
+      lines: input.items,
+      requiredAccessories,
+    });
+    if (!requiredAccessoryValidation.valid) {
+      return {
+        error: 'errors.requiredAccessoriesMissing',
+        details: {
+          code: 'required_accessories_missing',
+          missingAccessories: requiredAccessoryValidation.missing,
+        },
+      };
+    }
+
+    const hasDurationProduct = cartProducts.some(
       ({ pricingKind }) => pricingKind === 'duration',
     );
 
@@ -1498,7 +1533,7 @@ export async function createReservation(input: CreateReservationInput) {
           sql`, `,
         );
         await tx.execute(
-          sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) FOR UPDATE`,
+          sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) AND store_id = ${input.storeId} FOR UPDATE`,
         );
       }
 
@@ -1588,7 +1623,23 @@ export async function createReservation(input: CreateReservationInput) {
           turnoverBufferMinutes,
           excludedProductUnitIds,
           excludedUnitInfo,
+          consumableProductIds: new Set(
+            lockedProducts
+              .filter((product) => product.stockKind === 'consumable')
+              .map((product) => product.id),
+          ),
         });
+      const consumableReservedByProduct =
+        await loadConsumableReservedQuantities(tx, {
+          storeId: input.storeId,
+          productIds: lockedProducts
+            .filter((product) => product.stockKind === 'consumable')
+            .map((product) => product.id),
+          blockingStatuses,
+        });
+      for (const [productId, reservedQuantity] of consumableReservedByProduct) {
+        reservedByProduct.set(productId, reservedQuantity);
+      }
 
       const combinationsByProduct = new Map<
         string,

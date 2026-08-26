@@ -30,6 +30,7 @@ if (env.NODE_ENV !== 'production') {
 export const db = drizzle(pool, { schema, mode: 'default' })
 
 export type Database = typeof db
+export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 // Re-export schema for convenience
 export * from './schema'
@@ -47,6 +48,19 @@ export {
   getBlockingReservationStatuses,
 } from './unit-availability'
 export type { BlockingReservationStatus, BusyUnitReason } from './unit-availability'
+export {
+  ConsumableStockError,
+  consumeReservationStock,
+  loadConsumableReservedQuantities,
+  planConsumableStockMutation,
+  reconcileReservationStock,
+  restoreReservationStock,
+} from './consumable-stock'
+export type {
+  ConsumableStockItem,
+  ConsumableStockMutationMode,
+  ConsumableStockMutationPlan,
+} from './consumable-stock'
 
 // Database setup utilities
 export { setupDatabase, CORE_TABLES } from './setup'

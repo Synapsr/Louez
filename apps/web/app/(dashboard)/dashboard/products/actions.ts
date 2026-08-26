@@ -316,6 +316,10 @@ export async function createProduct(data: ProductInput) {
   }
 
   const pricingKind = validated.data.pricingKind;
+  const stockKind = validated.data.stockKind;
+  if (stockKind === "consumable" && (pricingKind !== "fixed" || validated.data.trackUnits)) {
+    return { error: "errors.invalidData" };
+  }
   const basePriceDuration = pricingKind === "fixed" ? undefined : validated.data.basePriceDuration;
   const price = normalizePriceInput(
     pricingKind === "fixed"
@@ -369,6 +373,7 @@ export async function createProduct(data: ProductInput) {
         deposit: deposit,
         pricingMode: legacyPricingMode,
         pricingKind,
+        stockKind,
         basePeriodMinutes,
         ...(!trackUnits ? { quantity: manualQuantity } : {}),
         status: validated.data.status,
@@ -523,6 +528,10 @@ export async function updateProduct(productId: string, data: ProductInput) {
   }
 
   const pricingKind = validated.data.pricingKind;
+  const stockKind = validated.data.stockKind;
+  if (stockKind === "consumable" && (pricingKind !== "fixed" || validated.data.trackUnits)) {
+    return { error: "errors.invalidData" };
+  }
   const basePriceDuration = pricingKind === "fixed" ? undefined : validated.data.basePriceDuration;
   const price = normalizePriceInput(
     pricingKind === "fixed"
@@ -702,6 +711,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
         deposit: deposit,
         pricingMode: legacyPricingMode,
         pricingKind,
+        stockKind,
         basePeriodMinutes,
         ...(!trackUnits ? { quantity: manualQuantity } : {}),
         status: validated.data.status,
@@ -1048,6 +1058,7 @@ export async function duplicateProduct(productId: string) {
     deposit: product.deposit,
     pricingMode: product.pricingMode,
     pricingKind: product.pricingKind,
+    stockKind: product.stockKind,
     basePeriodMinutes: product.pricingKind === "fixed" ? null : product.basePeriodMinutes,
     quantity: duplicateQuantity,
     status: "draft",

@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { CheckCircle2, Clock, Calendar, ArrowRight, Shield, Tag } from 'lucide-react'
 
-import { db } from '@louez/db'
+import { ConsumableStockError, consumeReservationStock, db } from '@louez/db'
 import { reservations, stores, payments, reservationActivity } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
@@ -31,6 +31,85 @@ export const instant = false;
 interface SuccessPageProps {
   params: Promise<{ slug: string }>
   searchParams: Promise<{ reservation?: string; session_id?: string }>
+}
+
+async function confirmPaidReservation(params: {
+  reservationId: string
+  storeId: string
+  stripeCustomerId?: string | null
+  stripePaymentMethodId?: string | null
+  depositStatus?: 'none' | 'card_saved' | 'pending'
+}) {
+  try {
+    return await confirmPaidReservationOrThrow(params)
+  } catch (error) {
+    if (error instanceof ConsumableStockError) {
+      // Paid but a consumable ran out before confirmation. Never break the
+      // customer's success page: leave the reservation pending — the webhook
+      // logs the incident and the merchant resolves it from the dashboard.
+      log.error(
+        'checkout-success',
+        `Consumable stock insufficient while confirming reservation ${params.reservationId}: product ${error.productId}`,
+      )
+      return false
+    }
+    throw error
+  }
+}
+
+async function confirmPaidReservationOrThrow(params: {
+  reservationId: string
+  storeId: string
+  stripeCustomerId?: string | null
+  stripePaymentMethodId?: string | null
+  depositStatus?: 'none' | 'card_saved' | 'pending'
+}) {
+  return db.transaction(async (tx) => {
+    const [lockedReservation] = await tx
+      .select({ status: reservations.status })
+      .from(reservations)
+      .where(and(eq(reservations.id, params.reservationId), eq(reservations.storeId, params.storeId)))
+      .for('update')
+
+    if (!lockedReservation) {
+      return false
+    }
+
+    if (lockedReservation.status === 'confirmed') {
+      await consumeReservationStock(tx, params.reservationId, params.storeId)
+      return false
+    }
+
+    if (lockedReservation.status !== 'pending') {
+      return false
+    }
+
+    await consumeReservationStock(tx, params.reservationId, params.storeId)
+    await tx
+      .update(reservations)
+      .set({
+        status: 'confirmed',
+        ...(params.stripeCustomerId !== undefined && {
+          stripeCustomerId: params.stripeCustomerId,
+        }),
+        ...(params.stripePaymentMethodId !== undefined && {
+          stripePaymentMethodId: params.stripePaymentMethodId,
+        }),
+        ...(params.depositStatus !== undefined && {
+          depositStatus: params.depositStatus,
+        }),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(reservations.id, params.reservationId),
+          eq(reservations.storeId, params.storeId),
+          eq(reservations.status, 'pending'),
+        ),
+      )
+
+    return true
+  })
 }
 
 /**
@@ -62,6 +141,7 @@ async function verifyAndUpdatePayment(
 
     if (existingPayment) {
       // Webhook already processed, just return success
+      await confirmPaidReservation({ reservationId, storeId: store.id })
       await tryGenerateInvoiceForPayment(
         existingPayment.id,
         'checkout_success_existing_payment',
@@ -174,17 +254,13 @@ async function verifyAndUpdatePayment(
       'checkout_success_fallback',
     )
 
-    // Update reservation status
-    await db
-      .update(reservations)
-      .set({
-        status: 'confirmed',
-        stripeCustomerId,
-        stripePaymentMethodId,
-        depositStatus: newDepositStatus,
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId))
+    await confirmPaidReservation({
+      reservationId,
+      storeId: store.id,
+      stripeCustomerId,
+      stripePaymentMethodId,
+      depositStatus: newDepositStatus,
+    })
 
     if (invoiceGeneration.status === 'generated' && invoiceGeneration.kind === 'initial') {
       const invoiceDelivery = await tryPrepareInitialInvoiceEmailDelivery(reservationId)

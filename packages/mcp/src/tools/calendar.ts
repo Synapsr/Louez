@@ -8,6 +8,7 @@ import {
   customers,
   db,
   getBlockingReservationStatuses,
+  loadConsumableReservedQuantities,
   productUnits,
   products,
   reservationItems,
@@ -183,7 +184,13 @@ export function registerCalendarTools(
           eq(products.storeId, ctx.storeId),
           eq(products.id, productId),
         ),
-        columns: { id: true, name: true, quantity: true, trackUnits: true },
+        columns: {
+          id: true,
+          name: true,
+          quantity: true,
+          trackUnits: true,
+          stockKind: true,
+        },
       });
 
       if (!product) return toolResult('Product not found.');
@@ -194,7 +201,7 @@ export function registerCalendarTools(
       });
       const turnoverBufferMinutes = store?.settings?.turnoverBufferMinutes ?? 0;
       const blockingStatuses = getBlockingReservationStatuses(
-        (store?.settings?.pendingBlocksAvailability) ?? true,
+        store?.settings?.pendingBlocksAvailability ?? true,
       );
 
       const overlappingReservations = await db.query.reservations.findMany({
@@ -256,7 +263,23 @@ export function registerCalendarTools(
         turnoverBufferMinutes,
         excludedProductUnitIds,
         excludedUnitInfo,
+        consumableProductIds:
+          product.stockKind === 'consumable'
+            ? new Set([product.id])
+            : undefined,
       });
+      if (product.stockKind === 'consumable') {
+        const consumableReservedByProduct =
+          await loadConsumableReservedQuantities(db, {
+            storeId: ctx.storeId,
+            productIds: [product.id],
+            blockingStatuses,
+          });
+        reservedByProduct.set(
+          product.id,
+          consumableReservedByProduct.get(product.id) ?? 0,
+        );
+      }
       const reserved = reservedByProduct.get(productId) ?? 0;
       const capacity = product.trackUnits
         ? rentableUnits.length

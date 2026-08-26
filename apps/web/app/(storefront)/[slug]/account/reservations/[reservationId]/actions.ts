@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
-import { db } from '@louez/db';
+import { ConsumableStockError, consumeReservationStock, db } from '@louez/db';
 import { payments, reservationActivity, reservations, stores } from '@louez/db';
 
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
@@ -104,7 +104,9 @@ async function createReservationPaymentSessionForCustomer(
         try {
           await getStripe().checkout.sessions.expire(
             pending.stripeCheckoutSessionId,
-            { stripeAccount: stripeAccountId },
+            {
+              stripeAccount: stripeAccountId,
+            },
           );
         } catch {
           // Session may already be expired or completed — safe to ignore
@@ -201,9 +203,7 @@ async function createReservationPaymentSessionForCustomer(
         payment_mode: 'full',
         amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
         total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
-        deposit_amount_cents: toAnalyticsAmountCents(
-          reservation.depositAmount,
-        ),
+        deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
         application_fee_cents: feePlan.applicationFeeCents,
         reservation_fee_cents: feePlan.reservationFeeCents,
         currency,
@@ -268,33 +268,42 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
     return { error: 'errors.invalidStatus' };
   }
 
-  const accepted = await db.transaction(async (tx) => {
-    const result = await tx
-      .update(reservations)
-      .set({ status: 'confirmed', updatedAt: new Date() })
-      .where(
-        and(
-          eq(reservations.id, reservationId),
-          eq(reservations.storeId, store.id),
-          eq(reservations.customerId, session.customerId),
-          eq(reservations.status, 'quote'),
-        ),
-      );
+  let accepted = false;
+  try {
+    accepted = await db.transaction(async (tx) => {
+      const result = await tx
+        .update(reservations)
+        .set({ status: 'confirmed', updatedAt: new Date() })
+        .where(
+          and(
+            eq(reservations.id, reservationId),
+            eq(reservations.storeId, store.id),
+            eq(reservations.customerId, session.customerId),
+            eq(reservations.status, 'quote'),
+          ),
+        );
 
-    if ((result[0]?.affectedRows ?? 0) === 0) {
-      return false;
-    }
+      if ((result[0]?.affectedRows ?? 0) === 0) {
+        return false;
+      }
 
-    await tx.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: 'quote_accepted',
-      metadata: { source: 'quote_acceptance', actor: 'customer' },
-      createdAt: new Date(),
+      await consumeReservationStock(tx, reservationId, store.id);
+      await tx.insert(reservationActivity).values({
+        id: nanoid(),
+        reservationId,
+        activityType: 'quote_accepted',
+        metadata: { source: 'quote_acceptance', actor: 'customer' },
+        createdAt: new Date(),
+      });
+
+      return true;
     });
-
-    return true;
-  });
+  } catch (error) {
+    if (error instanceof ConsumableStockError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 
   if (!accepted) {
     return { error: 'errors.invalidStatus' };

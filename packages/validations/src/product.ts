@@ -233,6 +233,7 @@ export const createProductSchema = (
         z.string().refine(isProductImageUrl, t('invalidImageUrl')),
       ),
       imageHistory: z.array(productImageHistorySchema).max(5),
+      stockKind: z.enum(['returnable', 'consumable']).default('returnable'),
       pricingKind: z.enum(['duration', 'fixed']),
       pricingMode: z.enum(['hour', 'day', 'week']),
       // Kept structurally required so the form can hold on to a base period
@@ -354,6 +355,22 @@ export const createProductSchema = (
         }
       }
 
+      if (data.stockKind === 'consumable' && data.pricingKind !== 'fixed') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('invalidData'),
+          path: ['pricingKind'],
+        });
+      }
+
+      if (data.stockKind === 'consumable' && data.trackUnits) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t('invalidData'),
+          path: ['trackUnits'],
+        });
+      }
+
       const axes = data.bookingAttributeAxes || [];
       const normalizedAxisKeys = axes.map((axis) =>
         axis.key.trim().toLowerCase(),
@@ -456,6 +473,7 @@ export const productSchema = z
     status: z.enum(['draft', 'active', 'archived']),
     images: z.array(imageUrlSchema).optional(),
     imageHistory: z.array(productImageHistorySchema).max(5).optional(),
+    stockKind: z.enum(['returnable', 'consumable']).default('returnable'),
     pricingKind: z.enum(['duration', 'fixed']).default('duration'),
     pricingMode: z.enum(['hour', 'day', 'week']),
     basePriceDuration: priceDurationSchema.optional(),
@@ -491,6 +509,22 @@ export const productSchema = z
         code: z.ZodIssueCode.custom,
         message: 'validation.required',
         path: ['basePriceDuration'],
+      });
+    }
+
+    if (data.stockKind === 'consumable' && data.pricingKind !== 'fixed') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.invalidData',
+        path: ['pricingKind'],
+      });
+    }
+
+    if (data.stockKind === 'consumable' && data.trackUnits) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'validation.invalidData',
+        path: ['trackUnits'],
       });
     }
 
@@ -569,9 +603,10 @@ export const categorySchema = z.object({
 type ParsedProductInput = z.infer<typeof productSchema>;
 export type ProductInput = Omit<
   ParsedProductInput,
-  'basePriceDuration' | 'pricingKind'
+  'basePriceDuration' | 'pricingKind' | 'stockKind'
 > & {
   basePriceDuration: PriceDurationInput;
   pricingKind?: 'duration' | 'fixed';
+  stockKind?: 'returnable' | 'consumable';
 };
 export type CategoryInput = z.infer<typeof categorySchema>;

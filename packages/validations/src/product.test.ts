@@ -37,6 +37,7 @@ const validProduct = {
       ],
     },
   ],
+  stockKind: "returnable",
   pricingKind: "duration" as const,
   pricingMode: "day" as const,
   basePriceDuration: { price: "10", duration: 1, unit: "day" as const },
@@ -81,6 +82,41 @@ test("validates every URL stored in product image history", () => {
         ],
       },
     ],
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("accepts a fixed-price consumable without tracked units", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "consumable",
+    pricingKind: "fixed",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, true);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
+test("rejects a duration-priced consumable", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "consumable",
+    pricingKind: "duration",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("rejects tracked units for a consumable", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "consumable",
+    pricingKind: "fixed",
+    trackUnits: true,
+    units: [{ identifier: "MEDIA-001" }],
   };
 
   assert.equal(createProductSchema(translate).safeParse(product).success, false);

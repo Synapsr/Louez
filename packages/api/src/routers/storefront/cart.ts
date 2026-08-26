@@ -33,13 +33,25 @@ const cartLineResolutionSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('resolved'),
     lineId: z.string(),
+    parentLineId: z.string().optional(),
     productId: z.string(),
     productName: z.string(),
     productImage: z.string().nullable(),
     price: z.number(),
     deposit: z.number(),
     maxQuantity: z.number(),
+    quantity: z.number(),
     pricingKind: z.enum(['duration', 'fixed']),
+    stockKind: z.enum(['returnable', 'consumable']),
+    required: z.boolean(),
+    requiredQuantity: z.number().nullable(),
+    requiredAccessories: z.array(
+      z.object({
+        productId: z.string(),
+        required: z.literal(true),
+        quantity: z.number().int().min(1),
+      }),
+    ),
     pricingMode: z.enum(['hour', 'day', 'week']),
     productPricingMode: z.enum(['hour', 'day', 'week']),
     basePeriodMinutes: z.number().nullable(),
@@ -58,8 +70,13 @@ const cartLineResolutionSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('unavailable'),
     lineId: z.string(),
+    parentLineId: z.string().optional(),
     productId: z.string(),
-    reason: z.enum(['product_unavailable', 'insufficient_stock']),
+    reason: z.enum([
+      'product_unavailable',
+      'insufficient_stock',
+      'required_accessory_unavailable',
+    ]),
     maxQuantity: z.number().optional(),
   }),
 ]);

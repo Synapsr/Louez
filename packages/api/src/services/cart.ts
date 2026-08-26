@@ -4,10 +4,16 @@ import {
   db,
   productSeasonalPricing,
   productSeasonalPricingTiers,
+  productAccessories,
   products,
   stores,
 } from '@louez/db';
-import type { PricingKind, PricingMode, UnitAttributes } from '@louez/types';
+import type {
+  PricingKind,
+  PricingMode,
+  StockKind,
+  UnitAttributes,
+} from '@louez/types';
 import {
   type SeasonalPricingConfig,
   matchesSelectedAttributes,
@@ -20,6 +26,7 @@ interface ResolveStorefrontCartParams {
   storeSlug: string;
   lines: Array<{
     lineId: string;
+    parentLineId?: string;
     productId: string;
     quantity: number;
     startDate: string;
@@ -38,7 +45,17 @@ type CartLineResolution =
       price: number;
       deposit: number;
       maxQuantity: number;
+      quantity: number;
       pricingKind: PricingKind;
+      stockKind: StockKind;
+      parentLineId?: string;
+      required: boolean;
+      requiredQuantity: number | null;
+      requiredAccessories: Array<{
+        productId: string;
+        required: true;
+        quantity: number;
+      }>;
       pricingMode: PricingMode;
       productPricingMode: PricingMode;
       basePeriodMinutes: number | null;
@@ -56,8 +73,12 @@ type CartLineResolution =
       status: 'unavailable';
       lineId: string;
       productId: string;
-      reason: 'product_unavailable' | 'insufficient_stock';
+      reason:
+        | 'product_unavailable'
+        | 'insufficient_stock'
+        | 'required_accessory_unavailable';
       maxQuantity?: number;
+      parentLineId?: string;
     };
 
 function getPrimaryProductImage(images: unknown): string | null {
@@ -178,6 +199,38 @@ export async function resolveStorefrontCart(
   const productsById = new Map(
     storeProducts.map((product) => [product.id, product]),
   );
+  const requiredAccessoryLinks = await db
+    .select({
+      parentProductId: productAccessories.productId,
+      accessoryProductId: productAccessories.accessoryId,
+      quantity: productAccessories.quantity,
+    })
+    .from(productAccessories)
+    .innerJoin(products, eq(productAccessories.productId, products.id))
+    .where(
+      and(
+        eq(products.storeId, store.id),
+        eq(productAccessories.required, true),
+        inArray(productAccessories.productId, productIds),
+      ),
+    );
+  const requiredAccessoriesByParentId = new Map<
+    string,
+    typeof requiredAccessoryLinks
+  >();
+  for (const link of requiredAccessoryLinks) {
+    requiredAccessoriesByParentId.set(link.parentProductId, [
+      ...(requiredAccessoriesByParentId.get(link.parentProductId) ?? []),
+      link,
+    ]);
+  }
+  const lineById = new Map(lines.map((line) => [line.lineId, line]));
+  const availabilityProductIds = [
+    ...new Set([
+      ...productIds,
+      ...requiredAccessoryLinks.map((link) => link.accessoryProductId),
+    ]),
+  ];
   const seasonalPricingsByProductId = await getSeasonalPricings(
     storeProducts.map((product) => product.id),
   );
@@ -197,7 +250,7 @@ export async function resolveStorefrontCart(
       storeSlug,
       startDate,
       endDate,
-      productIds,
+      productIds: availabilityProductIds,
     });
     availabilityByPeriod.set(key, availability);
     return availability;
@@ -211,6 +264,7 @@ export async function resolveStorefrontCart(
       resolvedLines.push({
         status: 'unavailable',
         lineId: line.lineId,
+        parentLineId: line.parentLineId,
         productId: line.productId,
         reason: 'product_unavailable',
       });
@@ -221,7 +275,7 @@ export async function resolveStorefrontCart(
     const productAvailability = availability.products.find(
       (item) => item.productId === line.productId,
     );
-    const maxQuantity =
+    const ownMaxQuantity =
       product.trackUnits && productAvailability?.combinations?.length
         ? productAvailability.combinations
             .filter((combination) =>
@@ -235,17 +289,50 @@ export async function resolveStorefrontCart(
               0,
             )
         : (productAvailability?.availableQuantity ?? 0);
+    const requiredAccessories =
+      requiredAccessoriesByParentId.get(product.id) ?? [];
+    const requiredAccessoryMaxQuantity = requiredAccessories.reduce(
+      (maximum, link) => {
+        const accessoryAvailability = availability.products.find(
+          (item) => item.productId === link.accessoryProductId,
+        );
+        return Math.min(
+          maximum,
+          Math.floor(
+            (accessoryAvailability?.availableQuantity ?? 0) /
+              Math.max(1, link.quantity),
+          ),
+        );
+      },
+      Number.POSITIVE_INFINITY,
+    );
+    const maxQuantity = Math.min(ownMaxQuantity, requiredAccessoryMaxQuantity);
 
     if (maxQuantity < line.quantity) {
       resolvedLines.push({
         status: 'unavailable',
         lineId: line.lineId,
+        parentLineId: line.parentLineId,
         productId: line.productId,
-        reason: 'insufficient_stock',
+        reason:
+          requiredAccessoryMaxQuantity < line.quantity
+            ? 'required_accessory_unavailable'
+            : 'insufficient_stock',
         maxQuantity,
       });
       continue;
     }
+
+    const parentLine = line.parentLineId
+      ? lineById.get(line.parentLineId)
+      : undefined;
+    const requiredLink = parentLine
+      ? requiredAccessoryLinks.find(
+          (link) =>
+            link.parentProductId === parentLine.productId &&
+            link.accessoryProductId === line.productId,
+        )
+      : undefined;
 
     resolvedLines.push({
       status: 'resolved',
@@ -256,7 +343,19 @@ export async function resolveStorefrontCart(
       price: Number(product.price),
       deposit: Number(product.deposit || 0),
       maxQuantity: Math.max(1, maxQuantity),
+      quantity: line.quantity,
       pricingKind: product.pricingKind,
+      stockKind: product.stockKind,
+      parentLineId: line.parentLineId,
+      required: Boolean(requiredLink),
+      requiredQuantity: requiredLink
+        ? Math.max(1, requiredLink.quantity)
+        : null,
+      requiredAccessories: requiredAccessories.map((link) => ({
+        productId: link.accessoryProductId,
+        required: true,
+        quantity: Math.max(1, link.quantity),
+      })),
       pricingMode: product.pricingMode,
       productPricingMode: product.pricingMode,
       basePeriodMinutes: product.basePeriodMinutes ?? null,

@@ -7,6 +7,7 @@ import type {
   PricingKind,
   PricingMode,
   Rate,
+  StockKind,
   TulipPublicMode,
   UnitAttributes,
 } from "@louez/types";
@@ -34,6 +35,7 @@ export interface Product {
   deposit: string | null;
   tulipInsurable?: boolean;
   quantity: number;
+  stockKind: StockKind;
   pricingKind: PricingKind;
   pricingMode: PricingMode | null;
   basePeriodMinutes?: number | null;
@@ -141,6 +143,8 @@ export interface NewReservationFormProps {
     items: Array<{
       productId: string | null;
       quantity: number;
+      consumedQuantity: number;
+      stockKind: StockKind;
       combinationKey: string | null;
     }>;
   }>;

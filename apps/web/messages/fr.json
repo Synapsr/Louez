@@ -5664,6 +5664,7 @@
       "productCount": "{count, plural, =0 {Aucun produit disponible} one {# produit disponible} other {# produits disponibles}}",
       "available": "{count} disponible(s)",
       "unavailable": "Indisponible",
+      "consumableOutOfStock": "Consommable en rupture de stock",
       "lastOne": "Dernier !",
       "left": "restants",
       "clearFilters": "Effacer les filtres"
@@ -6893,6 +6894,8 @@
     "permissionDenied": "Permission insuffisante",
     "customerNotFound": "Client introuvable",
     "reservationNotFound": "Réservation introuvable",
+    "consumableInsufficientStock": "Stock de consommable insuffisant",
+    "requiredAccessoriesMissing": "Des accessoires requis sont absents ou en quantité incorrecte",
     "emailAlreadyExists": "Un client avec cet email existe déjà",
     "customerHasReservations": "Impossible de supprimer un client avec des réservations",
     "cannotCancelReservation": "Cette réservation ne peut pas être annulée",

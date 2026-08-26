@@ -346,6 +346,7 @@ export interface PromoCodeSnapshot {
 
 export type PricingMode = 'hour' | 'day' | 'week';
 export type PricingKind = 'duration' | 'fixed';
+export type StockKind = 'returnable' | 'consumable';
 
 export interface PricingTier {
   id: string;

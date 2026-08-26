@@ -5,7 +5,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type Stripe from 'stripe';
 
-import { db } from '@louez/db';
+import { ConsumableStockError, consumeReservationStock, db } from '@louez/db';
 import {
   paymentRequests,
   payments,
@@ -21,6 +21,7 @@ import {
   notifyReservationConfirmed,
   notifyStripeConnected,
 } from '@/lib/discord/platform-notifications';
+import { log } from '@/lib/evlog';
 import { markReservationForCalendarSync } from '@/lib/integrations/calendar/sync';
 import { tryPrepareInitialInvoiceEmailDelivery } from '@/lib/invoicing/delivery';
 import {
@@ -116,6 +117,85 @@ async function queueReservationCalendarSync(
   }
 }
 
+async function confirmPaidReservation(params: {
+  reservationId: string;
+  storeId: string;
+  stripeCustomerId: string | null;
+  stripePaymentMethodId: string | null;
+  depositStatus: 'none' | 'card_saved' | 'pending';
+}): Promise<boolean> {
+  try {
+    return await confirmPaidReservationOrThrow(params);
+  } catch (error) {
+    if (error instanceof ConsumableStockError) {
+      // The customer paid but a consumable ran out between checkout and
+      // confirmation. Never fail the webhook (Stripe would retry forever):
+      // leave the reservation pending so the merchant restocks and confirms
+      // manually from the dashboard.
+      log.error(
+        'stripe-webhook',
+        `Consumable stock insufficient while confirming reservation ${params.reservationId}: product ${error.productId}, requested ${error.requestedQuantity}, available ${error.availableQuantity}`,
+      );
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function confirmPaidReservationOrThrow(params: {
+  reservationId: string;
+  storeId: string;
+  stripeCustomerId: string | null;
+  stripePaymentMethodId: string | null;
+  depositStatus: 'none' | 'card_saved' | 'pending';
+}): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [lockedReservation] = await tx
+      .select({ status: reservations.status })
+      .from(reservations)
+      .where(
+        and(
+          eq(reservations.id, params.reservationId),
+          eq(reservations.storeId, params.storeId),
+        ),
+      )
+      .for('update');
+
+    if (!lockedReservation) {
+      return false;
+    }
+
+    if (lockedReservation.status === 'confirmed') {
+      await consumeReservationStock(tx, params.reservationId, params.storeId);
+      return false;
+    }
+
+    if (lockedReservation.status !== 'pending') {
+      return false;
+    }
+
+    await consumeReservationStock(tx, params.reservationId, params.storeId);
+    await tx
+      .update(reservations)
+      .set({
+        status: 'confirmed',
+        stripeCustomerId: params.stripeCustomerId,
+        stripePaymentMethodId: params.stripePaymentMethodId,
+        depositStatus: params.depositStatus,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(reservations.id, params.reservationId),
+          eq(reservations.storeId, params.storeId),
+          eq(reservations.status, 'pending'),
+        ),
+      );
+
+    return true;
+  });
+}
+
 // ===== VALIDATION HELPERS =====
 // Validates Stripe metadata to prevent manipulation attacks
 
@@ -186,7 +266,10 @@ export async function POST(request: Request) {
   }
 
   if (!env.STRIPE_CONNECT_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: 'Stripe is not configured' }, { status: 503 });
+    return NextResponse.json(
+      { error: 'Stripe is not configured' },
+      { status: 503 },
+    );
   }
 
   let event: Stripe.Event;
@@ -506,6 +589,13 @@ async function handleCheckoutCompleted(
   // Payment + confirmation already handled (e.g. by the success page). PAYG usage is
   // now recorded, so we can safely stop here without duplicating notifications.
   if (paymentAlreadyCompleted) {
+    await confirmPaidReservation({
+      reservationId,
+      storeId: reservation.store.id,
+      stripeCustomerId,
+      stripePaymentMethodId,
+      depositStatus: newDepositStatus,
+    });
     await tryGenerateInvoiceForPayment(
       existingPayment.id,
       'stripe_checkout_webhook_existing_payment',
@@ -655,8 +745,16 @@ async function handleCheckoutCompleted(
     currency,
   ).catch(() => {});
 
+  const reservationWasConfirmed = await confirmPaidReservation({
+    reservationId,
+    storeId: reservation.store.id,
+    stripeCustomerId,
+    stripePaymentMethodId,
+    depositStatus: newDepositStatus,
+  });
+
   // Update reservation only if still pending
-  if (reservation.status === 'pending') {
+  if (reservationWasConfirmed) {
     const validationWarnings = evaluateReservationRules({
       startDate: reservation.startDate,
       endDate: reservation.endDate,
@@ -673,17 +771,6 @@ async function handleCheckoutCompleted(
         },
       );
     }
-
-    await db
-      .update(reservations)
-      .set({
-        status: 'confirmed',
-        stripeCustomerId,
-        stripePaymentMethodId,
-        depositStatus: newDepositStatus,
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId));
 
     // Log confirmation activity
     await db.insert(reservationActivity).values({
@@ -736,7 +823,8 @@ async function handleCheckoutCompleted(
     // Dispatch customer notification for reservation confirmed (email/SMS based on store preferences)
     if (reservation.customer) {
       const invoiceDelivery =
-        invoiceGeneration.status === 'generated' && invoiceGeneration.kind === 'initial'
+        invoiceGeneration.status === 'generated' &&
+        invoiceGeneration.kind === 'initial'
           ? await tryPrepareInitialInvoiceEmailDelivery(reservationId)
           : undefined;
       const reservationUrl = getStorefrontUrl(
@@ -883,7 +971,9 @@ async function handleDepositAuthorized(
   if (!isValidReservationId(reservationId)) {
     console.error(
       '[SECURITY] Invalid reservationId in deposit PaymentIntent metadata',
-      { reservationId },
+      {
+        reservationId,
+      },
     );
     return;
   }
@@ -976,7 +1066,9 @@ async function handleDepositReleased(
   if (!isValidReservationId(reservationId)) {
     console.error(
       '[SECURITY] Invalid reservationId in deposit release metadata',
-      { reservationId },
+      {
+        reservationId,
+      },
     );
     return;
   }
@@ -1048,7 +1140,9 @@ async function handleDepositCaptured(
   if (!isValidReservationId(reservationId)) {
     console.error(
       '[SECURITY] Invalid reservationId in deposit capture metadata',
-      { reservationId },
+      {
+        reservationId,
+      },
     );
     return;
   }

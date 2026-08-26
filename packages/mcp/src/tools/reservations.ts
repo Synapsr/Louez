@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { db, reservations, customers } from "@louez/db";
+import {
+  ConsumableStockError,
+  consumeReservationStock,
+  customers,
+  db,
+  reservations,
+  restoreReservationStock,
+} from "@louez/db";
 import { and, eq, desc, sql, gte } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
@@ -230,7 +237,44 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
       if (newStatus === "ongoing") updateData.pickedUpAt = new Date();
       if (newStatus === "completed") updateData.returnedAt = new Date();
 
-      await db.update(reservations).set(updateData).where(eq(reservations.id, reservationId));
+      try {
+        await db.transaction(async (tx) => {
+          const [lockedReservation] = await tx
+            .select({ status: reservations.status })
+            .from(reservations)
+            .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)))
+            .for("update");
+
+          if (!lockedReservation) {
+            throw new ConsumableStockError({
+              code: "RESERVATION_NOT_FOUND",
+              message: "Reservation not found.",
+            });
+          }
+
+          if (
+            newStatus === "confirmed" &&
+            (lockedReservation.status === "pending" || lockedReservation.status === "quote")
+          ) {
+            await consumeReservationStock(tx, reservationId, ctx.storeId);
+          } else if (
+            (newStatus === "cancelled" || newStatus === "rejected") &&
+            (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
+          ) {
+            await restoreReservationStock(tx, reservationId, ctx.storeId);
+          }
+
+          await tx
+            .update(reservations)
+            .set(updateData)
+            .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)));
+        });
+      } catch (error) {
+        if (error instanceof ConsumableStockError) {
+          return toolError(error.message);
+        }
+        throw error;
+      }
 
       return toolResult(
         `Reservation #${existing.number} updated: ${formatStatus(existing.status)} → ${formatStatus(newStatus)}`,
