@@ -61,13 +61,21 @@ export const ProductFormStockKindField = ({
             className="h-8 w-auto min-w-36"
             aria-label={t("stockKindLabel")}
           >
-            <SelectValue />
+            <SelectValue>
+              {(field.state.value ?? "returnable") === "consumable"
+                ? t("stockKindConsumable")
+                : t("stockKindReturnable")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent align="end">
-            <SelectItem value="returnable">
+            <SelectItem value="returnable" label={t("stockKindReturnable")}>
               {t("stockKindReturnable")}
             </SelectItem>
-            <SelectItem value="consumable" disabled={consumableDisabled}>
+            <SelectItem
+              value="consumable"
+              label={t("stockKindConsumable")}
+              disabled={consumableDisabled}
+            >
               <span className="flex flex-col items-start">
                 <span>{t("stockKindConsumable")}</span>
                 {consumableDisabled && blockedHint ? (

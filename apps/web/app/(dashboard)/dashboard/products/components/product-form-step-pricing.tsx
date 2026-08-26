@@ -577,11 +577,21 @@ export function ProductFormStepPricing({
                     className="h-8 w-auto min-w-36"
                     aria-label={t("pricingKindLabel")}
                   >
-                    <SelectValue />
+                    <SelectValue>
+                      {
+                        pricingKindOptions.find(
+                          (option) => option.value === (field.state.value ?? "duration"),
+                        )?.label
+                      }
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent align="end">
                     {pricingKindOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        label={option.label}
+                      >
                         {option.label}
                       </SelectItem>
                     ))}
