@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { planConsumableStockMutation } from './consumable-stock'
+import {
+  canChangeProductStockKind,
+  planConsumableStockMutation,
+  reservationStatusConsumesStock,
+} from './consumable-stock'
 
 const item = {
   itemId: 'item-1',
@@ -53,4 +57,22 @@ test('reservation edit applies positive and negative consumed deltas', () => {
     itemChanges: [{ itemId: 'item-1', consumedQuantity: 1 }],
     productChanges: [{ productId: 'product-1', quantityDelta: 2 }],
   })
+})
+
+test('stock kind cannot change while a reservation can still restore consumed stock', () => {
+  assert.equal(canChangeProductStockKind(['confirmed']), false)
+  assert.equal(canChangeProductStockKind(['ongoing']), false)
+  assert.equal(canChangeProductStockKind(['pending', 'quote']), true)
+  assert.equal(
+    canChangeProductStockKind(['completed', 'cancelled', 'rejected', 'declined']),
+    true,
+  )
+})
+
+test('reservation edits reconcile stock only while the locked status consumes stock', () => {
+  assert.equal(reservationStatusConsumesStock('confirmed'), true)
+  assert.equal(reservationStatusConsumesStock('ongoing'), true)
+  assert.equal(reservationStatusConsumesStock('cancelled'), false)
+  assert.equal(reservationStatusConsumesStock('rejected'), false)
+  assert.equal(reservationStatusConsumesStock('completed'), false)
 })

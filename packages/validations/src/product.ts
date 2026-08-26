@@ -370,7 +370,10 @@ export const createProductSchema = (
     })
     .superRefine((data, ctx) => {
       if (data.pricingKind === 'fixed') {
-        if (!data.price || !isPositiveMoneyInput(data.price)) {
+        if (
+          !data.price ||
+          (data.stockKind !== 'consumable' && !isPositiveMoneyInput(data.price))
+        ) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: t('positive'),
@@ -542,7 +545,10 @@ export const productSchema = z
   }))
   .superRefine((data, ctx) => {
     if (data.pricingKind === 'fixed') {
-      if (!data.price || !isPositiveMoneyInput(data.price)) {
+      if (
+        !data.price ||
+        (data.stockKind !== 'consumable' && !isPositiveMoneyInput(data.price))
+      ) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'validation.positive',

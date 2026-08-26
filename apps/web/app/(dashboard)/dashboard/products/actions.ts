@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { and, eq, gte, inArray, ne, not, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import { db, getEffectiveProductQuantities } from "@louez/db";
+import {
+  db,
+  getEffectiveProductQuantities,
+  lockProductReservationsForStockKindChange,
+} from "@louez/db";
 import {
   categories,
   getBlockingReservationStatuses,
@@ -757,7 +761,18 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
   const categoryIds = await resolveCategoryIds(store.id, validated.data);
 
-  await db.transaction(async (tx) => {
+  const productUpdate = await db.transaction(async (tx) => {
+    if (product.stockKind !== stockKind) {
+      const canChangeStockKind = await lockProductReservationsForStockKindChange(tx, {
+        productId,
+        storeId: store.id,
+      });
+
+      if (!canChangeStockKind) {
+        return { error: "errors.cannotChangeStockKindWithActiveReservations" };
+      }
+    }
+
     await tx
       .update(products)
       .set({
@@ -827,7 +842,13 @@ export async function updateProduct(productId: string, data: ProductInput) {
         .delete(productSeasonalPricing)
         .where(eq(productSeasonalPricing.productId, productId));
     }
+
+    return { success: true };
   });
+
+  if ("error" in productUpdate) {
+    return productUpdate;
+  }
 
   // Update product units: sync with provided units
   if (trackUnits || product.trackUnits) {

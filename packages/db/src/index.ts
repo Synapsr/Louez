@@ -52,8 +52,10 @@ export {
   ConsumableStockError,
   consumeReservationStock,
   loadConsumableReservedQuantities,
+  lockProductReservationsForStockKindChange,
   planConsumableStockMutation,
   reconcileReservationStock,
+  reservationStatusConsumesStock,
   restoreReservationStock,
 } from './consumable-stock'
 export type {

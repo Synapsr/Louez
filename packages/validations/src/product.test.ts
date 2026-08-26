@@ -99,6 +99,40 @@ test("accepts a fixed-price consumable without tracked units", () => {
   assert.equal(productSchema.safeParse(product).success, true);
 });
 
+test("accepts a free fixed-price consumable", () => {
+  const product = {
+    ...validProduct,
+    price: "0",
+    stockKind: "consumable",
+    pricingKind: "fixed",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, true);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
+test("keeps rejecting a free fixed-price returnable product", () => {
+  const product = {
+    ...validProduct,
+    price: "0",
+    stockKind: "returnable",
+    pricingKind: "fixed",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("keeps rejecting a zero duration rate", () => {
+  const product = {
+    ...validProduct,
+    basePriceDuration: { ...validProduct.basePriceDuration, price: "0" },
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
 test("rejects a duration-priced consumable", () => {
   const product = {
     ...validProduct,

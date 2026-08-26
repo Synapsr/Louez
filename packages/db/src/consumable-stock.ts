@@ -18,6 +18,36 @@ export interface ConsumableStockMutationPlan {
   productChanges: Array<{ productId: string; quantityDelta: number }>
 }
 
+type ReservationStatus = typeof reservations.$inferSelect.status
+
+export function reservationStatusConsumesStock(status: ReservationStatus): boolean {
+  return status === 'confirmed' || status === 'ongoing'
+}
+
+export function canChangeProductStockKind(statuses: ReservationStatus[]): boolean {
+  return statuses.every((status) => !reservationStatusConsumesStock(status))
+}
+
+export async function lockProductReservationsForStockKindChange(
+  tx: Transaction,
+  params: { productId: string; storeId: string },
+): Promise<boolean> {
+  const linkedReservations = await tx
+    .select({ status: reservations.status })
+    .from(reservations)
+    .innerJoin(reservationItems, eq(reservationItems.reservationId, reservations.id))
+    .where(
+      and(
+        eq(reservations.storeId, params.storeId),
+        eq(reservationItems.productId, params.productId),
+      ),
+    )
+    .orderBy(reservations.id)
+    .for('update')
+
+  return canChangeProductStockKind(linkedReservations.map(({ status }) => status))
+}
+
 export class ConsumableStockError extends Error {
   readonly code: 'INSUFFICIENT_STOCK' | 'PRODUCT_NOT_FOUND' | 'RESERVATION_NOT_FOUND'
   readonly productId: string | null

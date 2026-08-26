@@ -18,6 +18,7 @@ import {
   getEffectiveProductQuantities,
   loadConsumableReservedQuantities,
   reconcileReservationStock,
+  reservationStatusConsumesStock,
   restoreReservationStock,
 } from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
@@ -3151,13 +3152,21 @@ export async function updateReservation(
 
   const transactionResult = await db.transaction(async (tx) => {
     const [lockedReservation] = await tx
-      .select({ id: reservations.id })
+      .select({ id: reservations.id, status: reservations.status })
       .from(reservations)
       .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
       .for("update");
 
     if (!lockedReservation) {
       return { error: "errors.reservationNotFound" };
+    }
+
+    if (lockedReservation.status !== reservation.status) {
+      return { error: "errors.reservationStatusChanged" };
+    }
+
+    if (lockedReservation.status === "completed") {
+      return { error: "errors.cannotEditCompletedReservation" };
     }
 
     await tx
@@ -3401,7 +3410,7 @@ export async function updateReservation(
         );
     }
 
-    if (reservation.status === "confirmed" || reservation.status === "ongoing") {
+    if (reservationStatusConsumesStock(lockedReservation.status)) {
       await reconcileReservationStock(tx, reservationId, store.id);
     }
 
@@ -3434,7 +3443,7 @@ export async function updateReservation(
       })
       .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
 
-    return { success: true };
+    return { success: true, reservationStatus: lockedReservation.status };
   }).catch((error: unknown) => {
     if (error instanceof ConsumableStockError) {
       return { error: error.message };
@@ -3442,11 +3451,13 @@ export async function updateReservation(
     throw error;
   });
 
-  if (transactionResult.error) {
+  if ("error" in transactionResult) {
     return transactionResult;
   }
 
-  if (reservation.status === "confirmed" || reservation.status === "ongoing") {
+  const currentReservationStatus = transactionResult.reservationStatus;
+
+  if (reservationStatusConsumesStock(currentReservationStatus)) {
     try {
       await syncTulipContractForReservation({ reservationId });
     } catch (error) {
@@ -3528,7 +3539,7 @@ export async function updateReservation(
     reservationId,
     action: reservationAnalyticsActions.editReservation,
     properties: {
-      reservation_status: reservation.status,
+      reservation_status: currentReservationStatus,
       item_count: data.items?.length ?? reservation.items.length,
       warning_count: responseWarnings.length,
       notify_customer: Boolean(data.notifyCustomerByEmail),
