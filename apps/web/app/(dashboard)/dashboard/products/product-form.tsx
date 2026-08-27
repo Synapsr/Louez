@@ -130,7 +130,7 @@ function getDuplicateRateTierIndexes(rateTiers: RateTierInput[] | undefined): nu
 
 export function ProductForm({
   product,
-  stockKindChangeBlocked = false,
+  stockKindChangeBlockers = [],
   categories,
   currency = "EUR",
   storeTaxSettings,
@@ -730,7 +730,7 @@ export function ProductForm({
                   <ProductFormSectionStock
                     form={form as unknown as ProductFormComponentApi}
                     productId={product.id}
-                    stockKindChangeBlocked={stockKindChangeBlocked}
+                    stockKindChangeBlockers={stockKindChangeBlockers}
                     watchedValues={watchedValues}
                     currency={currency}
                     disabled={isSaving}

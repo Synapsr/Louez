@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { FormRadioGroupProps } from "@/components/form/form-radio-group";
+import type { StockKindChangeBlocker } from "@louez/db";
 import type {
   PricingKind,
   PricingMode,
@@ -137,7 +138,7 @@ export interface AvailableAccessory {
 
 export interface ProductFormProps {
   product?: Product;
-  stockKindChangeBlocked?: boolean;
+  stockKindChangeBlockers?: StockKindChangeBlocker[];
   categories: Category[];
   currency?: string;
   storeTaxSettings?: TaxSettings;

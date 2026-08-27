@@ -9,7 +9,7 @@ import {
   db,
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
-  hasProductStockKindChangeBlockers,
+  getProductStockKindChangeBlockers,
   products,
   reservationItemUnits,
   reservationItems,
@@ -76,13 +76,13 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     notFound();
   }
 
-  const [categoriesList, availableAccessories, stockKindChangeBlocked] = await Promise.all([
+  const [categoriesList, availableAccessories, stockKindChangeBlockers] = await Promise.all([
     db.query.categories.findMany({
       where: eq(categories.storeId, store.id),
       orderBy: [categories.order],
     }),
     getAccessoryCandidates({ storeId: store.id, excludeProductId: id }),
-    hasProductStockKindChangeBlockers(db, { productId: id, storeId: store.id }),
+    getProductStockKindChangeBlockers(db, { productId: id, storeId: store.id }),
   ]);
 
   // Accessory links carry their booking rules (required + quantity per parent
@@ -137,7 +137,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       </div>
 
       <ProductForm
-        stockKindChangeBlocked={stockKindChangeBlocked}
+        stockKindChangeBlockers={stockKindChangeBlockers}
         product={{
           ...product,
           quantity: effectiveQuantity,

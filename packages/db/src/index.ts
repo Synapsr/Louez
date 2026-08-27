@@ -53,7 +53,7 @@ export {
   canTransitionReservationStatus,
   consumeReservationStock,
   getAllowedReservationStatusTransitions,
-  hasProductStockKindChangeBlockers,
+  getProductStockKindChangeBlockers,
   loadConsumableReservedQuantities,
   lockProductReservationsForStockKindChange,
   planConsumableStockMutation,
@@ -65,6 +65,7 @@ export type {
   ConsumableStockItem,
   ConsumableStockMutationMode,
   ConsumableStockMutationPlan,
+  StockKindChangeBlocker,
 } from './consumable-stock'
 
 // Database setup utilities

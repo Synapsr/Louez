@@ -1,24 +1,36 @@
 "use client";
 
+import Link from "next/link";
+
 import { useTranslations } from "next-intl";
 
+import type { StockKindChangeBlocker } from "@louez/db";
 import type { StockKind } from "@louez/types";
 import {
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTitle,
+  PopoverTrigger,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@louez/ui";
+import { ArrowRightIcon, ChevronsUpDownIcon } from "@louez/ui/icons";
+
+import { getReservationDetailHref } from "@/lib/product-analytics/reservation-analytics";
 
 import type { ProductFormComponentApi, ProductFormValues } from "../types";
 
 interface ProductFormStockKindFieldProps {
   form: ProductFormComponentApi;
+  productId?: string;
   watchedValues: ProductFormValues;
   disabled?: boolean;
-  stockKindChangeBlocked?: boolean;
-  ariaDescribedBy?: string;
+  stockKindChangeBlockers?: StockKindChangeBlocker[];
 }
 
 /** Base UI selects hand back an `unknown` value; narrow it here. */
@@ -32,10 +44,10 @@ function toStockKind(value: unknown): StockKind {
  */
 export const ProductFormStockKindField = ({
   form,
+  productId,
   watchedValues,
   disabled,
-  stockKindChangeBlocked = false,
-  ariaDescribedBy,
+  stockKindChangeBlockers = [],
 }: ProductFormStockKindFieldProps) => {
   const t = useTranslations("dashboard.products.form");
 
@@ -55,44 +67,99 @@ export const ProductFormStockKindField = ({
 
   return (
     <form.Field name="stockKind">
-      {(field) => (
-        <Select
-          value={field.state.value ?? "returnable"}
-          onValueChange={(value) => field.handleChange(toStockKind(value))}
-          disabled={disabled || stockKindChangeBlocked}
-        >
-          <SelectTrigger
-            className="h-8 w-auto min-w-36"
-            aria-label={t("stockKindLabel")}
-            aria-describedby={ariaDescribedBy}
+      {(field) => {
+        const stockKind = field.state.value ?? "returnable";
+        const stockKindLabel =
+          stockKind === "consumable" ? t("stockKindConsumable") : t("stockKindReturnable");
+
+        if (stockKindChangeBlockers.length > 0) {
+          return (
+            <Popover>
+              <PopoverTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="min-w-36 justify-between text-sm font-normal"
+                    disabled={disabled}
+                    aria-label={t("stockKindChangeBlockedTrigger", { kind: stockKindLabel })}
+                  />
+                }
+              >
+                {stockKindLabel}
+                <ChevronsUpDownIcon data-slot="icon" className="text-muted-foreground" />
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80">
+                <div className="space-y-3 p-2">
+                  <div className="space-y-1">
+                    <PopoverTitle className="text-sm">
+                      {t("stockKindChangeBlockedTitle")}
+                    </PopoverTitle>
+                    <PopoverDescription className="text-xs">
+                      {t("stockKindChangeBlocked")}
+                    </PopoverDescription>
+                  </div>
+                  <ul className="space-y-1">
+                    {stockKindChangeBlockers.map((reservation) => (
+                      <li key={reservation.id}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-between"
+                          render={
+                            <Link
+                              href={getReservationDetailHref(
+                                reservation.id,
+                                "product_detail",
+                                productId ? `/dashboard/products/${productId}/edit` : undefined,
+                              )}
+                            />
+                          }
+                        >
+                          {t("stockKindBlockingReservation", {
+                            number: reservation.number,
+                          })}
+                          <ArrowRightIcon data-slot="icon" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </PopoverContent>
+            </Popover>
+          );
+        }
+
+        return (
+          <Select
+            value={stockKind}
+            onValueChange={(value) => field.handleChange(toStockKind(value))}
+            disabled={disabled}
           >
-            <SelectValue>
-              {(field.state.value ?? "returnable") === "consumable"
-                ? t("stockKindConsumable")
-                : t("stockKindReturnable")}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent align="end">
-            <SelectItem value="returnable" label={t("stockKindReturnable")}>
-              {t("stockKindReturnable")}
-            </SelectItem>
-            <SelectItem
-              value="consumable"
-              label={t("stockKindConsumable")}
-              disabled={consumableDisabled}
-            >
-              <span className="flex flex-col items-start">
-                <span>{t("stockKindConsumable")}</span>
-                {consumableDisabled && blockedHint ? (
-                  <span className="text-muted-foreground text-xs">
-                    {blockedHint}
-                  </span>
-                ) : null}
-              </span>
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      )}
+            <SelectTrigger className="h-8 w-auto min-w-36" aria-label={t("stockKindLabel")}>
+              <SelectValue>{stockKindLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent align="end">
+              <SelectItem value="returnable" label={t("stockKindReturnable")}>
+                {t("stockKindReturnable")}
+              </SelectItem>
+              <SelectItem
+                value="consumable"
+                label={t("stockKindConsumable")}
+                disabled={consumableDisabled}
+              >
+                <span className="flex flex-col items-start">
+                  <span>{t("stockKindConsumable")}</span>
+                  {consumableDisabled && blockedHint ? (
+                    <span className="text-muted-foreground text-xs">{blockedHint}</span>
+                  ) : null}
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        );
+      }}
     </form.Field>
   );
 };
