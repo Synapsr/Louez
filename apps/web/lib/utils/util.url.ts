@@ -1,11 +1,12 @@
-import { env } from '@/env';
-
 const DEFAULT_CALLBACK_URL = '/dashboard';
 const RELATIVE_CALLBACK_PATTERN = /^\/(?!\/)[a-zA-Z0-9\-_/?&=#%]*$/;
 
 export const LOGIN_CALLBACK_PATH_HEADER = 'x-louez-login-callback-path';
 
-export function sanitizeCallbackUrl(input: string | null | undefined): string {
+export function sanitizeCallbackUrl(
+  input: string | null | undefined,
+  appUrl?: string,
+): string {
   if (!input) {
     return DEFAULT_CALLBACK_URL;
   }
@@ -14,9 +15,13 @@ export function sanitizeCallbackUrl(input: string | null | undefined): string {
     return input;
   }
 
+  if (!appUrl) {
+    return DEFAULT_CALLBACK_URL;
+  }
+
   try {
     const parsedCallbackUrl = new URL(input);
-    const appDomain = new URL(env.NEXT_PUBLIC_APP_URL).hostname;
+    const appDomain = new URL(appUrl).hostname;
 
     if (
       parsedCallbackUrl.hostname === appDomain ||
@@ -31,9 +36,12 @@ export function sanitizeCallbackUrl(input: string | null | undefined): string {
   return DEFAULT_CALLBACK_URL;
 }
 
-export function createLoginUrl(callbackUrl: string | null | undefined): string {
+export function createLoginUrl(
+  callbackUrl: string | null | undefined,
+  appUrl?: string,
+): string {
   const searchParams = new URLSearchParams({
-    callbackUrl: sanitizeCallbackUrl(callbackUrl),
+    callbackUrl: sanitizeCallbackUrl(callbackUrl, appUrl),
   });
 
   return `/login?${searchParams.toString()}`;
