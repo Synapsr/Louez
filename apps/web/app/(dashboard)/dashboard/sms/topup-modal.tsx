@@ -17,7 +17,7 @@ import { Button } from '@louez/ui'
 import { cn } from '@louez/utils'
 
 import { DashboardIconTile } from '@/components/dashboard/shared/dashboard-icon-tile'
-import { SMS_TOPUP_PACKAGES } from '@/lib/plans'
+import { SMS_TOPUP_PACKAGES } from '@/lib/sms/sms-topup.constants'
 
 import { createTopupCheckout } from './actions'
 

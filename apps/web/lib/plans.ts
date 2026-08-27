@@ -18,10 +18,6 @@ export const SMS_TOPUP_PRICING: Record<string, number | null> = {
   pay_as_you_go: 7, // 0.07€ per SMS (unlimited tier, Ultra parity)
 };
 
-// Available SMS top-up packages
-export const SMS_TOPUP_PACKAGES = [50, 100, 250, 500] as const;
-export type SmsTopupPackage = (typeof SMS_TOPUP_PACKAGES)[number];
-
 // ── AI advisor credits ──────────────────────────────────────────────────────
 // Every commercial value below is read from env — nothing is hardcoded, so the
 // repo never reveals token cost, credit value or margin.
