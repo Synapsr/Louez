@@ -30,6 +30,7 @@ import {
 } from '@louez/ui'
 
 import { useStoreTimezone } from '@/contexts/store-context'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { formatStoreDate } from '@/lib/utils/store-date'
 
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
@@ -63,6 +64,7 @@ export function ReservationActions({
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const { intl: formatLocale } = useFormatLocale()
   const timezone = useStoreTimezone()
   const queryClient = useQueryClient()
 
@@ -333,7 +335,7 @@ export function ReservationActions({
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('confirmedCard.pickupOn', {
-                  date: formatStoreDate(startDate, timezone, 'SHORT_DATETIME'),
+                  date: formatStoreDate(startDate, timezone, 'SHORT_DATETIME', formatLocale),
                 })}
               </p>
 
@@ -393,7 +395,7 @@ export function ReservationActions({
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('ongoingCard.returnOn', {
-                  date: formatStoreDate(endDate, timezone, 'SHORT_DATETIME'),
+                  date: formatStoreDate(endDate, timezone, 'SHORT_DATETIME', formatLocale),
                 })}
               </p>
 

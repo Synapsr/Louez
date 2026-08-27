@@ -8,6 +8,7 @@ import { Users } from 'lucide-react'
 import { SparklesSolidIcon, StarSolidIcon, ZapSolidIcon } from '@louez/ui/icons'
 import { useTranslations } from 'next-intl'
 import { formatDate } from '@louez/utils'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import type { ReferralData } from './actions'
 
 interface ReferralsListProps {
@@ -74,6 +75,7 @@ function RewardBadge({ rewarded }: { rewarded: boolean }) {
 }
 
 export function ReferralsList({ referrals }: ReferralsListProps) {
+  const { intl: formatLocale } = useFormatLocale()
   const t = useTranslations('dashboard.referrals.list')
 
   if (referrals.length === 0) {
@@ -132,7 +134,7 @@ export function ReferralsList({ referrals }: ReferralsListProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {formatDate(referral.joinedAt)}
+                    {formatDate(referral.joinedAt, undefined, formatLocale)}
                   </TableCell>
                   <TableCell>
                     <PlanBadge plan={referral.planSlug} />

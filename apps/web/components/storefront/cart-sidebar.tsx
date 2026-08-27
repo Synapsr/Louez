@@ -3,7 +3,7 @@
 import Link from 'next/link';
 
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+
 import {
   ArrowRight,
   CalendarDays,
@@ -50,6 +50,7 @@ import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
 import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 
 interface CartSidebarProps {
   storeSlug: string;
@@ -63,7 +64,10 @@ export function CartSidebar({
   showDates = true,
 }: CartSidebarProps) {
   const t = useTranslations('storefront.cart');
+  const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
   const currency = useStoreCurrency();
+  const formatMoney = (amount: number, currencyOverride = currency) =>
+    formatCurrency(amount, currencyOverride, formatLocale);
   const { getUrl } = useStorefrontUrl(storeSlug);
   const {
     items,
@@ -126,9 +130,9 @@ export function CartSidebar({
             <span className="font-medium">{t('period')}</span>
           </div>
           <p className="text-muted-foreground mt-1 text-sm">
-            {format(new Date(globalStartDate), 'dd MMM yyyy', { locale: fr })}
+            {format(new Date(globalStartDate), 'dd MMM yyyy', { locale: dateLocale })}
             {' → '}
-            {format(new Date(globalEndDate), 'dd MMM yyyy', { locale: fr })}
+            {format(new Date(globalEndDate), 'dd MMM yyyy', { locale: dateLocale })}
           </p>
           <Badge variant="expired" className="mt-2">
             {durationLabel}
@@ -176,7 +180,7 @@ export function CartSidebar({
                         </p>
                       )}
                     <p className="text-muted-foreground text-xs">
-                      {formatCurrency(
+                      {formatMoney(
                         calculateCartItemPrice(
                           item,
                           globalStartDate,
@@ -250,35 +254,35 @@ export function CartSidebar({
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t('subtotal')}</span>
                   <span className="text-muted-foreground line-through">
-                    {formatCurrency(getOriginalSubtotal(), currency)}
+                    {formatMoney(getOriginalSubtotal(), currency)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm text-green-600">
                   <span>{t('discount')}</span>
-                  <span>-{formatCurrency(getTotalSavings(), currency)}</span>
+                  <span>-{formatMoney(getTotalSavings(), currency)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-medium">
                   <span>{t('discountedSubtotal')}</span>
-                  <span>{formatCurrency(getSubtotal(), currency)}</span>
+                  <span>{formatMoney(getSubtotal(), currency)}</span>
                 </div>
               </>
             ) : (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('subtotal')}</span>
-                <span>{formatCurrency(getSubtotal(), currency)}</span>
+                <span>{formatMoney(getSubtotal(), currency)}</span>
               </div>
             )}
             <Separator />
             <div className="flex justify-between font-semibold">
               <span>{t('total')}</span>
               <span className="text-primary">
-                {formatCurrency(getTotal(), currency)}
+                {formatMoney(getTotal(), currency)}
               </span>
             </div>
             {getTotalSavings() > 0 && (
               <p className="text-center text-xs text-green-600">
                 {t('youSave', {
-                  amount: formatCurrency(getTotalSavings(), currency),
+                  amount: formatMoney(getTotalSavings(), currency),
                 })}
               </p>
             )}

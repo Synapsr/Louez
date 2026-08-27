@@ -18,6 +18,7 @@ import {
 import { DashboardSectionCard } from "@/components/dashboard/shared/dashboard-section-card";
 import { DashboardStatCard } from "@/components/dashboard/shared/dashboard-stat-card";
 
+import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { getCurrentStore } from "@/lib/store-context";
 
 import { DeviceBreakdown } from "../device-breakdown";
@@ -87,7 +88,8 @@ async function TrafficStatsSection({ storeId, period }: { storeId: string; perio
 }
 
 async function TrendChartSection({ storeId, period }: { storeId: string; period: Period }) {
-  const data = await getTrendData(storeId, period);
+  const { dateFns } = await getRequestFormatLocale();
+  const data = await getTrendData(storeId, period, dateFns);
   return <TrendChart data={data} />;
 }
 

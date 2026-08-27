@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Users, BadgeCheck, Gift, Wallet } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { formatCurrency } from '@/lib/utils'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import type { ReferralStats as Stats } from './actions'
 
 interface ReferralStatsProps {
@@ -11,13 +12,15 @@ interface ReferralStatsProps {
 }
 
 export function ReferralStats({ stats }: ReferralStatsProps) {
+  const { intl: formatLocale } = useFormatLocale()
   const t = useTranslations('dashboard.referrals.stats')
   const currency = stats.currency.toUpperCase()
 
-  const earnedValue = formatCurrency(stats.rewardValueCents / 100, currency)
+  const earnedValue = formatCurrency(stats.rewardValueCents / 100, currency, formatLocale)
   const remainingValue = formatCurrency(
     stats.freeReservationsRemainingValueCents / 100,
     currency,
+    formatLocale,
   )
 
   const cards = [

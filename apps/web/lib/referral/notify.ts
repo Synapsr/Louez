@@ -8,6 +8,7 @@ import { env } from '@/env';
 import { getLocaleFromCountry } from '@/lib/email/i18n';
 import { sendRewardUnlockedEmail } from '@/lib/email/send';
 import { formatCurrency } from '@/lib/utils';
+import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale';
 
 import type { ReferralRewardKind } from './reward';
 
@@ -50,7 +51,11 @@ export async function notifyReferrerRewardGranted(
     if (!to) return;
 
     const currency = (store.settings?.currency || 'EUR').toUpperCase();
-    const rewardValue = formatCurrency(input.displayValueCents / 100, currency);
+    const rewardValue = formatCurrency(
+      input.displayValueCents / 100,
+      currency,
+      getConfiguredFormatLocale().intl,
+    );
 
     await sendRewardUnlockedEmail({
       to,

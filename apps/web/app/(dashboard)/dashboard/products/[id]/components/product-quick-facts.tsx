@@ -6,6 +6,7 @@ import { formatCurrency } from '@louez/utils';
 import type { BookingAttributeAxis, ProductTaxSettings } from '@louez/types';
 
 import { formatDate } from '@/lib/utils';
+import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server';
 
 interface ProductQuickFactsProduct {
   createdAt: Date;
@@ -25,6 +26,7 @@ export async function ProductQuickFacts({
   currency,
 }: ProductQuickFactsProps) {
   const t = await getTranslations('dashboard.products.detail.quickFacts');
+  const { intl: formatLocale } = await getRequestFormatLocale();
 
   const depositAmount = product.deposit ? parseFloat(product.deposit) : 0;
   const taxLabel = product.taxSettings?.inheritFromStore
@@ -44,17 +46,17 @@ export async function ProductQuickFacts({
       <CardContent className="space-y-3 text-sm">
         <div className="flex items-baseline justify-between gap-3">
           <span className="shrink-0 text-muted-foreground">{t('createdAt')}</span>
-          <span className="min-w-0 text-right">{formatDate(product.createdAt)}</span>
+          <span className="min-w-0 text-right">{formatDate(product.createdAt, undefined, formatLocale)}</span>
         </div>
         <div className="flex items-baseline justify-between gap-3">
           <span className="shrink-0 text-muted-foreground">{t('updatedAt')}</span>
-          <span className="min-w-0 text-right">{formatDate(product.updatedAt)}</span>
+          <span className="min-w-0 text-right">{formatDate(product.updatedAt, undefined, formatLocale)}</span>
         </div>
         <div className="flex items-baseline justify-between gap-3">
           <span className="shrink-0 text-muted-foreground">{t('deposit')}</span>
           <span className="min-w-0 text-right">
             {depositAmount > 0
-              ? formatCurrency(depositAmount, currency)
+              ? formatCurrency(depositAmount, currency, formatLocale)
               : t('noDeposit')}
           </span>
         </div>

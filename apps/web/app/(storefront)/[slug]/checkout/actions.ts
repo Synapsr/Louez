@@ -112,6 +112,7 @@ import {
 
 import { getStorefrontUrl } from '@/lib/storefront-url';
 import { env } from '@/env';
+import type { Locale } from '@/i18n/config';
 
 interface ReservationItem {
   lineId?: string;
@@ -165,7 +166,7 @@ interface CreateReservationInput {
   depositAmount: number;
   totalAmount: number;
   tulipInsuranceOptIn?: boolean;
-  locale?: 'fr' | 'en';
+  locale?: Locale;
   delivery?: DeliveryInput;
   promoCode?: string;
   advisorConversationId?: string;

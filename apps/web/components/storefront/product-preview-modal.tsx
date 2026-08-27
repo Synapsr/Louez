@@ -8,7 +8,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { format, setHours, setMinutes } from "date-fns";
-import { fr } from "date-fns/locale";
 import {
   AlertCircle,
   ArrowRight,
@@ -54,6 +53,7 @@ import { getStorefrontPricingSummary, getStorefrontRateRows } from "@/lib/utils/
 import { useAnalytics } from "@/contexts/analytics-context";
 import { useCart } from "@/contexts/cart-context";
 import { useStoreCurrency, useStoreMaxDiscountPercent } from "@/contexts/store-context";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 interface PricingTier {
   id: string;
@@ -112,8 +112,11 @@ export function ProductPreviewModal({
   timezone,
 }: ProductPreviewModalProps) {
   const tProduct = useTranslations("storefront.product");
+  const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
   const tDateSelection = useTranslations("storefront.dateSelection");
   const currency = useStoreCurrency();
+  const formatMoney = (amount: number, currencyOverride = currency) =>
+    formatCurrency(amount, currencyOverride, formatLocale);
   const maxDiscountPercent = useStoreMaxDiscountPercent();
   const router = useRouter();
   const { setGlobalDates, setPricingMode } = useCart();
@@ -501,7 +504,7 @@ export function ProductPreviewModal({
                   </span>
                 )}
                 <span className="text-primary text-2xl font-bold md:text-3xl">
-                  {formatCurrency(pricingSummary.displayPrice, currency)}
+                  {formatMoney(pricingSummary.displayPrice, currency)}
                 </span>
                 <span className="text-muted-foreground text-base">
                   / {formatPeriodLabel(displayPeriodMinutes)}
@@ -569,7 +572,7 @@ export function ProductPreviewModal({
                           </div>
                           <div className="text-right">
                             <span className="font-semibold">
-                              {formatCurrency(rate.price, currency)}
+                              {formatMoney(rate.price, currency)}
                             </span>
                             {(() => {
                               const period = minutesToPriceDuration(rate.periodMinutes);
@@ -577,7 +580,7 @@ export function ProductPreviewModal({
                               const unitMinutes = rate.periodMinutes / period.duration;
                               return (
                                 <div className="text-muted-foreground text-xs">
-                                  {formatCurrency(rate.price / period.duration, currency)}/
+                                  {formatMoney(rate.price / period.duration, currency)}/
                                   {formatPeriodLabel(unitMinutes)}
                                 </div>
                               );
@@ -615,7 +618,7 @@ export function ProductPreviewModal({
                                   </div>
                                   <div className="text-right">
                                     <span className="font-semibold">
-                                      {formatCurrency(rate.price, currency)}
+                                      {formatMoney(rate.price, currency)}
                                     </span>
                                     {(() => {
                                       const period = minutesToPriceDuration(rate.periodMinutes);
@@ -623,7 +626,7 @@ export function ProductPreviewModal({
                                       const unitMinutes = rate.periodMinutes / period.duration;
                                       return (
                                         <div className="text-muted-foreground text-xs">
-                                          {formatCurrency(rate.price / period.duration, currency)}/
+                                          {formatMoney(rate.price / period.duration, currency)}/
                                           {formatPeriodLabel(unitMinutes)}
                                         </div>
                                       );
@@ -686,7 +689,7 @@ export function ProductPreviewModal({
                       <CalendarIcon className="text-primary h-4 w-4 shrink-0" />
                       <span className="truncate text-sm font-medium">
                         {startDate
-                          ? format(startDate, "d MMM", { locale: fr })
+                          ? format(startDate, "d MMM", { locale: dateLocale })
                           : tDateSelection("startDate")}
                       </span>
                     </PopoverTrigger>
@@ -696,7 +699,7 @@ export function ProductPreviewModal({
                         selected={startDate}
                         onSelect={handleStartDateSelect}
                         disabled={isDateDisabled}
-                        locale={fr}
+                        locale={dateLocale}
                         initialFocus
                       />
                     </PopoverContent>
@@ -744,7 +747,7 @@ export function ProductPreviewModal({
                       <CalendarIcon className="text-primary h-4 w-4 shrink-0" />
                       <span className="truncate text-sm font-medium">
                         {endDate
-                          ? format(endDate, "d MMM", { locale: fr })
+                          ? format(endDate, "d MMM", { locale: dateLocale })
                           : tDateSelection("endDate")}
                       </span>
                     </PopoverTrigger>
@@ -756,7 +759,7 @@ export function ProductPreviewModal({
                         disabled={(date) =>
                           isDateDisabled(date) || isCalendarDateBeforeSelectedDate(date, startDate)
                         }
-                        locale={fr}
+                        locale={dateLocale}
                         initialFocus
                       />
                     </PopoverContent>

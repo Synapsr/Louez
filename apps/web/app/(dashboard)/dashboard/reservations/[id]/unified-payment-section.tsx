@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { toastManager } from "@louez/ui";
 import { formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
 
 import { Button } from "@louez/ui";
 import { Badge } from "@louez/ui";
@@ -76,6 +75,7 @@ import {
   isManualPaymentMethod,
   isManualPaymentRefundEligible,
 } from "./util.payment-refunds";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 interface Payment {
   id: string;
@@ -205,6 +205,7 @@ export function UnifiedPaymentSection({
   onPaymentModalOpenChange: setPaymentModalOpen,
 }: UnifiedPaymentSectionProps) {
   const t = useTranslations("dashboard.reservations");
+  const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const timezone = useStoreTimezone();
@@ -295,7 +296,7 @@ export function UnifiedPaymentSection({
 
   const authorizationTimeRemaining = depositAuthorizationExpiresAt
     ? formatDistanceToNow(new Date(depositAuthorizationExpiresAt), {
-        locale: fr,
+        locale: dateLocale,
         addSuffix: false,
       })
     : null;
@@ -771,6 +772,7 @@ export function UnifiedPaymentSection({
                             new Date(stripeRentalPayment.paidAt),
                             timezone,
                             "SHORT_DATE_AT_TIME",
+                            formatLocale,
                           )
                         : ""}
                     </p>
@@ -1156,7 +1158,12 @@ export function UnifiedPaymentSection({
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {payment.paidAt
-                              ? formatStoreDate(new Date(payment.paidAt), timezone, "TIMESTAMP")
+                              ? formatStoreDate(
+                                  new Date(payment.paidAt),
+                                  timezone,
+                                  "TIMESTAMP",
+                                  formatLocale,
+                                )
                               : "-"}
                           </p>
                         </div>

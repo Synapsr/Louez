@@ -22,6 +22,7 @@ import { createLoginUrl } from "@/lib/utils/util.url";
 
 import { ImageProcessingBenchmarkButton } from "./image-processing-benchmark-button";
 import { ImageProcessingStoreFilter } from "./image-processing-store-filter";
+import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -34,30 +35,6 @@ export const metadata: Metadata = {
     follow: false,
   },
 };
-
-const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
-  dateStyle: "medium",
-  timeStyle: "medium",
-  timeZone: "Europe/Paris",
-});
-
-const usdFormatter = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 3,
-  maximumFractionDigits: 4,
-});
-
-const eurFormatter = new Intl.NumberFormat("fr-FR", {
-  style: "currency",
-  currency: "EUR",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 3,
-});
-
-const numberFormatter = new Intl.NumberFormat("fr-FR", {
-  maximumFractionDigits: 2,
-});
 
 const searchParamsSchema = z.object({
   store: z.union([z.string().length(21), z.literal(IMAGE_PROCESSING_BENCHMARK_FILTER)]).optional(),
@@ -87,11 +64,14 @@ function formatRange(range: { min: number; max: number }, formatter: Intl.Number
   return `${formatter.format(range.min)} – ${formatter.format(range.max)}`;
 }
 
-function formatPercentageRange(range: { min: number; max: number }): string {
+function formatPercentageRange(
+  range: { min: number; max: number },
+  formatter: Intl.NumberFormat,
+): string {
   if (Math.abs(range.max - range.min) < 0.01) {
-    return `${numberFormatter.format(range.min)} %`;
+    return `${formatter.format(range.min)} %`;
   }
-  return `${numberFormatter.format(range.min)} – ${numberFormatter.format(range.max)} %`;
+  return `${formatter.format(range.min)} – ${formatter.format(range.max)} %`;
 }
 
 function providerCostSourceLabel(
@@ -162,6 +142,27 @@ function summarizeEconomics(runs: ImageProcessingDebugRun[]) {
 }
 
 const ImageProcessingDevPage = async ({ searchParams }: ImageProcessingDevPageProps) => {
+  const formatLocale = await getRequestFormatLocale();
+  const dateFormatter = new Intl.DateTimeFormat(formatLocale.intl, {
+    dateStyle: "medium",
+    timeStyle: "medium",
+    timeZone: "Europe/Paris",
+  });
+  const usdFormatter = new Intl.NumberFormat(formatLocale.intl, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 4,
+  });
+  const eurFormatter = new Intl.NumberFormat(formatLocale.intl, {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 3,
+  });
+  const numberFormatter = new Intl.NumberFormat(formatLocale.intl, {
+    maximumFractionDigits: 2,
+  });
   await connection();
 
   if (!isImageProcessingDebugEnabled()) {
@@ -364,7 +365,7 @@ const ImageProcessingDevPage = async ({ searchParams }: ImageProcessingDevPagePr
                 <p className="text-xs text-muted-foreground">Marge brute indicative</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">
                   {economicsSummary.grossMarginPercent
-                    ? formatPercentageRange(economicsSummary.grossMarginPercent)
+                    ? formatPercentageRange(economicsSummary.grossMarginPercent, numberFormatter)
                     : "Non disponible"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -492,7 +493,7 @@ const ImageProcessingDevPage = async ({ searchParams }: ImageProcessingDevPagePr
                           <p className="text-xs text-muted-foreground">Marge brute indicative</p>
                           <p className="text-base font-semibold tabular-nums">
                             {run.economics.grossMarginPercent
-                              ? formatPercentageRange(run.economics.grossMarginPercent)
+                              ? formatPercentageRange(run.economics.grossMarginPercent, numberFormatter)
                               : "Conversion non configurée"}
                           </p>
                           <p className="text-xs text-muted-foreground">

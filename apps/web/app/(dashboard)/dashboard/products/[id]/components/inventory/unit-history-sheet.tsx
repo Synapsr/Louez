@@ -26,6 +26,7 @@ import {
 
 import { productUnitHistoryQueries } from "@/lib/queries/product-unit-history.queries";
 import { formatDateTime, formatRelativeTime } from "@/lib/utils";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import type { ProductInventoryUnit } from "../../queries";
 import {
@@ -58,6 +59,7 @@ export const UnitHistorySheet = ({ open, unit, onOpenChange }: UnitHistorySheetP
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const { intl: formatLocale } = useFormatLocale();
   const unitId = unit?.id ?? "";
   const historyQuery = useQuery({
     ...productUnitHistoryQueries.detail(unitId),
@@ -137,9 +139,9 @@ export const UnitHistorySheet = ({ open, unit, onOpenChange }: UnitHistorySheetP
                               </Badge>
                             </div>
                             <p className="text-muted-foreground">
-                              {formatDateTime(downtime.startsAt)} →{" "}
+                              {formatDateTime(downtime.startsAt, formatLocale)} →{" "}
                               {downtime.endsAt
-                                ? formatDateTime(downtime.endsAt)
+                                ? formatDateTime(downtime.endsAt, formatLocale)
                                 : tDowntime("openEnded")}
                             </p>
                             {downtime.note ? (
@@ -187,7 +189,7 @@ export const UnitHistorySheet = ({ open, unit, onOpenChange }: UnitHistorySheetP
                         <p className="text-muted-foreground text-sm">{t("byActor", { actor })}</p>
                         <p className="text-muted-foreground text-xs">
                           <ClockSolidIcon className="mr-1 inline size-3" />
-                          {formatDateTime(entry.createdAt)}
+                          {formatDateTime(entry.createdAt, formatLocale)}
                         </p>
                         {entry.kind === "assignment" ? (
                           <Link

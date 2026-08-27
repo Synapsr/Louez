@@ -5,6 +5,7 @@ import { minutesToPriceDuration, toAbsoluteUrl } from '@louez/utils'
 import { type Locale, defaultLocale, locales } from '@/i18n/config'
 import { isStandaloneMode } from '@/lib/deployment'
 import { env } from '@/env'
+import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale'
 
 const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
 
@@ -240,7 +241,7 @@ export function generateProductMetadata(
   const { path = '', locale } = options
 
   const currency = store.settings?.currency || 'EUR'
-  const priceFormatted = formatPrice(parseFloat(product.price), currency)
+  const priceFormatted = formatPrice(parseFloat(product.price), currency, locale)
 
   const title = options.title || `${product.name} - Location ${priceFormatted}`
   const description = product.description
@@ -532,8 +533,8 @@ export function truncateText(text: string, maxLength: number): string {
 /**
  * Format price with currency
  */
-function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat('fr-FR', {
+function formatPrice(price: number, currency: string, locale?: string): string {
+  return new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,

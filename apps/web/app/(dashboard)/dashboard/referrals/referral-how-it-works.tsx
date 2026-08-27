@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Popover, PopoverContent, PopoverTrigger } from '@louez/ui';
 
 import { formatCurrency } from '@/lib/utils';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 
 interface ReferralHowItWorksProps {
   referrerReward: number;
@@ -27,9 +28,11 @@ export function ReferralHowItWorks({
   currency,
 }: ReferralHowItWorksProps) {
   const t = useTranslations('dashboard.referrals.howItWorks');
+  const { intl: formatLocale } = useFormatLocale();
   const minAmount = formatCurrency(
     minQualifyingAmountCents / 100,
     currency.toUpperCase(),
+    formatLocale,
   );
 
   const steps = [

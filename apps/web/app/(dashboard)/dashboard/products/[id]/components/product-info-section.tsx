@@ -9,6 +9,7 @@ import { formatCurrency } from "@louez/utils";
 import { ProductImage } from "@/components/product/product-image";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate } from "@/lib/utils";
+import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 
 import { ProductImageGallery } from "./product-image-gallery";
 import { ProductPricingTiersTable } from "./product-pricing-tiers-table";
@@ -56,6 +57,7 @@ interface ProductInfoSectionProps {
 }
 
 export async function ProductInfoSection({ product, currency }: ProductInfoSectionProps) {
+  const { intl: formatLocale } = await getRequestFormatLocale();
   const t = await getTranslations("dashboard.products.detail.info");
   const tForm = await getTranslations("dashboard.products.form");
 
@@ -88,7 +90,7 @@ export async function ProductInfoSection({ product, currency }: ProductInfoSecti
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <p className="text-lg font-semibold">
-              {formatCurrency(parseFloat(product.price), currency)}
+              {formatCurrency(parseFloat(product.price), currency, formatLocale)}
             </p>
             <Badge variant="expired">{tForm(`pricingModes.${product.pricingMode}`)}</Badge>
           </div>
@@ -105,10 +107,10 @@ export async function ProductInfoSection({ product, currency }: ProductInfoSecti
                     className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5"
                   >
                     <span className="min-w-0">
-                      {season.name} · {formatDate(season.startDate)} – {formatDate(season.endDate)}
+                      {season.name} · {formatDate(season.startDate, undefined, formatLocale)} – {formatDate(season.endDate, undefined, formatLocale)}
                     </span>
                     <span className="font-medium">
-                      {formatCurrency(parseFloat(season.price), currency)}
+                      {formatCurrency(parseFloat(season.price), currency, formatLocale)}
                     </span>
                   </li>
                 ))}
@@ -145,7 +147,7 @@ export async function ProductInfoSection({ product, currency }: ProductInfoSecti
                     <div className="p-2">
                       <p className="truncate text-xs font-medium">{link.accessory.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {formatCurrency(parseFloat(link.accessory.price), currency)}
+                        {formatCurrency(parseFloat(link.accessory.price), currency, formatLocale)}
                       </p>
                     </div>
                   </Link>

@@ -52,6 +52,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez
 import { cn, getCurrencySymbol } from "@louez/utils";
 
 import { formatStoreDate } from "@/lib/utils/store-date";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import { useStoreTimezone } from "@/contexts/store-context";
 import { orpc } from "@/lib/orpc/react";
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
@@ -116,6 +117,7 @@ export function PaymentSummary({
   const t = useTranslations("dashboard.reservations");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
+  const { intl: formatLocale } = useFormatLocale();
   const timezone = useStoreTimezone();
   const currencySymbol = getCurrencySymbol(currency);
   const queryClient = useQueryClient();
@@ -637,7 +639,12 @@ export function PaymentSummary({
                         </div>
                         <p className="text-[10px] text-muted-foreground">
                           {payment.paidAt
-                            ? formatStoreDate(new Date(payment.paidAt), timezone, "TIMESTAMP")
+                            ? formatStoreDate(
+                                new Date(payment.paidAt),
+                                timezone,
+                                "TIMESTAMP",
+                                formatLocale,
+                              )
                             : "-"}
                         </p>
                       </div>

@@ -15,6 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@loue
 import { Alert, AlertDescription } from '@louez/ui'
 import { Loader2, Shield, Info } from 'lucide-react'
 import { formatCurrency } from '@louez/utils'
+import { useFormatLocale } from '@/hooks/use-format-locale'
+import type { Locale } from '@/i18n/config'
 import {
   createDepositPaymentIntent,
   confirmDepositAuthorization,
@@ -38,7 +40,7 @@ interface DepositFormProps {
     email: string
   }
   currency: string
-  locale: string
+  locale: Locale
   token: string
   stripePublishableKey: string
 }
@@ -53,6 +55,7 @@ function CheckoutForm({
   onSuccess: (redirectUrl?: string) => void
   t: ReturnType<typeof useTranslations<'storefront.authorizeDeposit'>>
 }) {
+  const { intl: formatLocale } = useFormatLocale()
   const stripe = useStripe()
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
@@ -170,7 +173,13 @@ function CheckoutForm({
         }}
       >
         <Shield data-slot="icon" />
-        {t('authorizeButton', { amount: formatCurrency(reservation.depositAmount, currency) })}
+        {t('authorizeButton', {
+          amount: formatCurrency(
+            reservation.depositAmount,
+            currency,
+            formatLocale,
+          ),
+        })}
       </Button>
 
       {/* Security note */}
@@ -182,6 +191,7 @@ function CheckoutForm({
 }
 
 export function DepositForm(props: DepositFormProps) {
+  const { intl: formatLocale } = useFormatLocale()
   const router = useRouter()
   const t = useTranslations('storefront.authorizeDeposit')
   const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null)
@@ -331,7 +341,11 @@ export function DepositForm(props: DepositFormProps) {
         <div className="mb-6 p-4 rounded-lg bg-muted/50 text-center">
           <p className="text-sm text-muted-foreground mb-1">{t('depositAmount')}</p>
           <p className="text-3xl font-bold">
-            {formatCurrency(props.reservation.depositAmount, props.currency)}
+            {formatCurrency(
+              props.reservation.depositAmount,
+              props.currency,
+              formatLocale,
+            )}
           </p>
         </div>
 
@@ -345,7 +359,7 @@ export function DepositForm(props: DepositFormProps) {
                 colorPrimary: props.store.theme?.primaryColor || '#0066FF',
               },
             },
-            locale: props.locale as 'fr' | 'en' | 'de' | 'es' | 'it' | 'nl' | 'pl' | 'pt',
+            locale: props.locale,
           }}
         >
           <CheckoutForm

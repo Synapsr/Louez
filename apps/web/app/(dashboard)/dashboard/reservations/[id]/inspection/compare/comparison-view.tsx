@@ -18,6 +18,7 @@ import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { formatStoreDate } from '@/lib/utils/store-date'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { useStoreTimezone } from '@/contexts/store-context'
 import {
   Dialog,
@@ -98,6 +99,7 @@ export function ComparisonView({
   return_,
 }: ComparisonViewProps) {
   const t = useTranslations('dashboard.settings.inspection')
+  const { intl: formatLocale } = useFormatLocale()
   const timezone = useStoreTimezone()
   const [activeTab, setActiveTab] = useState<'departure' | 'return'>(
     departure ? 'departure' : 'return'
@@ -172,7 +174,12 @@ export function ComparisonView({
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            {formatStoreDate(new Date(inspection.createdAt), timezone, 'DATE_AT_TIME')}
+            {formatStoreDate(
+              new Date(inspection.createdAt),
+              timezone,
+              'DATE_AT_TIME',
+              formatLocale,
+            )}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">

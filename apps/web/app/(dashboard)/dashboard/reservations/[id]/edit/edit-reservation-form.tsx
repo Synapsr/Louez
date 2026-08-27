@@ -44,6 +44,7 @@ import { Alert, AlertDescription } from '@louez/ui'
 import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-breadcrumbs-context'
 import { ReservationDatePickerControl } from '@/components/form/form-reservation-date-picker'
 import { cn, formatCurrency, getCurrencySymbol, minutesToPriceDuration } from '@louez/utils'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { calculateDuration } from '@/lib/utils/duration'
 import { useStoreTimezone } from '@/contexts/store-context'
 import {
@@ -72,10 +73,15 @@ function parseCoordinate(value: string | null): number | null {
   return value ? parseFloat(value) : null
 }
 
-function isSameStoreDay(dateA: Date, dateB: Date, timezone?: string): boolean {
+function isSameStoreDay(
+  dateA: Date,
+  dateB: Date,
+  timezone: string | undefined,
+  locale: string,
+): boolean {
   return (
-    formatStoreDate(dateA, timezone, 'yyyy-MM-dd') ===
-    formatStoreDate(dateB, timezone, 'yyyy-MM-dd')
+    formatStoreDate(dateA, timezone, 'yyyy-MM-dd', locale) ===
+    formatStoreDate(dateB, timezone, 'yyyy-MM-dd', locale)
   )
 }
 
@@ -270,6 +276,7 @@ export function EditReservationForm({
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const tValidation = useTranslations('validation')
+  const { intl: formatLocale } = useFormatLocale()
   const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
 
@@ -298,19 +305,24 @@ export function EditReservationForm({
   const [startDate, setStartDate] = useState<Date | undefined>(new Date(reservation.startDate))
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(reservation.endDate))
   const endMinTime =
-    startDate && endDate && isSameStoreDay(startDate, endDate, timezone)
-      ? formatStoreDate(startDate, timezone, 'TIME_ONLY')
+    startDate && endDate && isSameStoreDay(startDate, endDate, timezone, formatLocale)
+      ? formatStoreDate(startDate, timezone, 'TIME_ONLY', formatLocale)
       : '00:00'
   const handleEndDateChange = useCallback(
     (date: Date | undefined) => {
-      if (date && startDate && isSameStoreDay(startDate, date, timezone) && date < startDate) {
+      if (
+        date &&
+        startDate &&
+        isSameStoreDay(startDate, date, timezone, formatLocale) &&
+        date < startDate
+      ) {
         setEndDate(startDate)
         return
       }
 
       setEndDate(date)
     },
-    [startDate, timezone],
+    [formatLocale, startDate, timezone],
   )
   const editableReservationItems = reservation.items.filter(
     (item) =>

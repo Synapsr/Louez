@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+
 import { useTranslations } from 'next-intl'
 import { MoreHorizontal, Mail, Phone, MapPin, Eye, Pencil, Trash2, Users, Building2 } from 'lucide-react'
 import { useState, useTransition } from 'react'
@@ -39,6 +39,7 @@ import { orpc } from '@/lib/orpc/react'
 import { EmailContactPopover } from '@/components/dashboard/email-contact-popover'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { deleteCustomer } from './actions'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 
 interface Customer {
   id: string
@@ -61,6 +62,7 @@ interface CustomersTableProps {
 
 export function CustomersTable({ customers }: CustomersTableProps) {
   const t = useTranslations('dashboard.customers')
+  const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale()
   const tCommon = useTranslations('common')
   const queryClient = useQueryClient()
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -166,12 +168,12 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                   <Badge variant="expired">{customer.reservationCount}</Badge>
                 </TableCell>
                 <TableCell className="text-right font-medium">
-                  {formatCurrency(parseFloat(customer.totalSpent))}
+                  {formatCurrency(parseFloat(customer.totalSpent), 'EUR', formatLocale)}
                 </TableCell>
                 <TableCell>
                   {customer.lastReservation ? (
                     <span className="text-sm text-muted-foreground">
-                      {format(new Date(customer.lastReservation), 'dd MMM yyyy', { locale: fr })}
+                      {format(new Date(customer.lastReservation), 'dd MMM yyyy', { locale: dateLocale })}
                     </span>
                   ) : (
                     <span className="text-sm text-muted-foreground">-</span>

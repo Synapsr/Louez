@@ -1,9 +1,23 @@
 import { z } from "zod";
 
+const isRegionalLocale = (value: string): boolean => {
+  try {
+    const canonicalLocale = Intl.getCanonicalLocales(value)[0];
+    return Boolean(canonicalLocale && new Intl.Locale(canonicalLocale).region);
+  } catch {
+    return false;
+  }
+};
+
 export const publicEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.url("NEXT_PUBLIC_APP_URL must be a valid URL"),
   NEXT_PUBLIC_APP_DOMAIN: z.string().min(1, "NEXT_PUBLIC_APP_DOMAIN is required"),
   NEXT_PUBLIC_DASHBOARD_SUBDOMAIN: z.string().default("app"),
+  NEXT_PUBLIC_FORMAT_LOCALE: z
+    .string()
+    .trim()
+    .refine(isRegionalLocale, "NEXT_PUBLIC_FORMAT_LOCALE must include a valid language and region")
+    .optional(),
   NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
@@ -54,6 +68,7 @@ export const getPublicEnvRuntimeValues = (
     NEXT_PUBLIC_APP_URL: appUrl,
     NEXT_PUBLIC_APP_DOMAIN: appDomain,
     NEXT_PUBLIC_DASHBOARD_SUBDOMAIN: source.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN,
+    NEXT_PUBLIC_FORMAT_LOCALE: source.NEXT_PUBLIC_FORMAT_LOCALE,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: source.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: source.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     NEXT_PUBLIC_POSTHOG_KEY: source.NEXT_PUBLIC_POSTHOG_KEY,

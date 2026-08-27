@@ -42,9 +42,10 @@ import {
   Label,
   Textarea,
 } from "@louez/ui";
-import { cn, getCurrencySymbol } from "@louez/utils";
+import { cn, formatCurrency } from "@louez/utils";
 
 import { useStoreTimezone } from "@/contexts/store-context";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { invalidateReservationAll } from "@/lib/orpc/invalidation";
@@ -119,8 +120,8 @@ export function SmartReservationActions({
   const tInspection = useTranslations("dashboard.settings.inspection");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
+  const { intl: formatLocale } = useFormatLocale();
   const timezone = useStoreTimezone();
-  const currencySymbol = getCurrencySymbol(currency);
   const queryClient = useQueryClient();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -484,7 +485,7 @@ export function SmartReservationActions({
               </div>
               <p className="text-xs text-muted-foreground">
                 {t("confirmedCard.pickupOn", {
-                  date: formatStoreDate(startDate, timezone, "SHORT_DATETIME"),
+                  date: formatStoreDate(startDate, timezone, "SHORT_DATETIME", formatLocale),
                 })}
               </p>
 
@@ -501,7 +502,7 @@ export function SmartReservationActions({
                       <CreditCard className="h-3 w-3 shrink-0" />
                       <p className="text-[11px]">
                         {t("smartActions.paymentIncomplete", {
-                          remaining: `${rentalRemaining.toFixed(2)}${currencySymbol}`,
+                          remaining: formatCurrency(rentalRemaining, currency, formatLocale),
                         })}
                       </p>
                     </div>
@@ -511,7 +512,7 @@ export function SmartReservationActions({
                       <Shield className="h-3 w-3 shrink-0" />
                       <p className="text-[11px]">
                         {t("smartActions.depositNotCollected", {
-                          amount: `${depositRemaining.toFixed(2)}${currencySymbol}`,
+                          amount: formatCurrency(depositRemaining, currency, formatLocale),
                         })}
                       </p>
                     </div>
@@ -548,7 +549,7 @@ export function SmartReservationActions({
               </div>
               <p className="text-xs text-muted-foreground">
                 {t("ongoingCard.returnOn", {
-                  date: formatStoreDate(endDate, timezone, "SHORT_DATETIME"),
+                  date: formatStoreDate(endDate, timezone, "SHORT_DATETIME", formatLocale),
                 })}
               </p>
 
@@ -781,9 +782,9 @@ export function SmartReservationActions({
                       </p>
                       <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
                         {t("smartActions.warningPaymentDescription", {
-                          paid: `${rentalPaid.toFixed(2)}${currencySymbol}`,
-                          total: `${rentalAmount.toFixed(2)}${currencySymbol}`,
-                          remaining: `${rentalRemaining.toFixed(2)}${currencySymbol}`,
+                          paid: formatCurrency(rentalPaid, currency, formatLocale),
+                          total: formatCurrency(rentalAmount, currency, formatLocale),
+                          remaining: formatCurrency(rentalRemaining, currency, formatLocale),
                         })}
                       </p>
                     </div>
@@ -801,7 +802,7 @@ export function SmartReservationActions({
                       </p>
                       <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
                         {t("smartActions.warningDepositDescription", {
-                          amount: `${depositRemaining.toFixed(2)}${currencySymbol}`,
+                          amount: formatCurrency(depositRemaining, currency, formatLocale),
                         })}
                       </p>
                     </div>
@@ -876,8 +877,8 @@ export function SmartReservationActions({
                     {isRentalFullyPaid
                       ? t("smartActions.fullyPaid")
                       : t("smartActions.partiallyPaid", {
-                          paid: `${rentalPaid.toFixed(2)}${currencySymbol}`,
-                          total: `${rentalAmount.toFixed(2)}${currencySymbol}`,
+                          paid: formatCurrency(rentalPaid, currency, formatLocale),
+                          total: formatCurrency(rentalAmount, currency, formatLocale),
                         })}
                   </span>
                 </div>
@@ -892,7 +893,7 @@ export function SmartReservationActions({
                       )}
                     >
                       {isDepositFullyCollected
-                        ? `${depositCollected.toFixed(2)}${currencySymbol} ${t("smartActions.collected")}`
+                        ? `${formatCurrency(depositCollected, currency, formatLocale)} ${t("smartActions.collected")}`
                         : hasActiveAuthorization
                           ? t("smartActions.authorized")
                           : t("smartActions.notCollected")}
@@ -906,8 +907,7 @@ export function SmartReservationActions({
                       {t("smartActions.toReturnToCustomer")}
                     </span>
                     <span className="font-medium text-blue-600">
-                      {depositToReturn.toFixed(2)}
-                      {currencySymbol}
+                      {formatCurrency(depositToReturn, currency, formatLocale)}
                     </span>
                   </div>
                 )}

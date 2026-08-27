@@ -8,11 +8,13 @@ test("parses runtime public values without exposing private variables", () => {
     AUTH_SECRET: "must-not-reach-the-browser",
     NEXT_PUBLIC_APP_DOMAIN: "runtime.example.com",
     NEXT_PUBLIC_APP_URL: "https://runtime.example.com",
+    NEXT_PUBLIC_FORMAT_LOCALE: "de-AT",
     NEXT_PUBLIC_GLEAP_API_KEY: "runtime-gleap-key",
   });
 
   assert.equal(config.NEXT_PUBLIC_APP_URL, "https://runtime.example.com");
   assert.equal(config.NEXT_PUBLIC_APP_DOMAIN, "runtime.example.com");
+  assert.equal(config.NEXT_PUBLIC_FORMAT_LOCALE, "de-AT");
   assert.equal(config.NEXT_PUBLIC_GLEAP_API_KEY, "runtime-gleap-key");
   assert.equal("AUTH_SECRET" in config, false);
 });

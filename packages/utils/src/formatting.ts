@@ -1,5 +1,11 @@
+const DEFAULT_FORMAT_LOCALE = 'fr-FR'
+
 // Currency formatting
-export function formatCurrency(amount: number, currency: string = 'EUR'): string {
+export function formatCurrency(
+  amount: number,
+  currency: string = 'EUR',
+  locale?: string,
+): string {
   // Determine the best locale for the currency
   const localeMap: Record<string, string> = {
     EUR: 'fr-FR',
@@ -39,9 +45,9 @@ export function formatCurrency(amount: number, currency: string = 'EUR'): string
     COP: 'es-CO',
   }
 
-  const locale = localeMap[currency] || 'fr-FR'
+  const formatLocale = locale || localeMap[currency] || DEFAULT_FORMAT_LOCALE
 
-  return new Intl.NumberFormat(locale, {
+  return new Intl.NumberFormat(formatLocale, {
     style: 'currency',
     currency: currency,
   }).format(amount)
@@ -51,8 +57,12 @@ export function formatCurrency(amount: number, currency: string = 'EUR'): string
  * Format currency for SMS (uses text instead of symbol to stay in GSM-7)
  * Example: "54,00 euros" instead of "54,00 €"
  */
-export function formatCurrencyForSms(amount: number, currency: string = 'EUR'): string {
-  const formatted = new Intl.NumberFormat('fr-FR', {
+export function formatCurrencyForSms(
+  amount: number,
+  currency: string = 'EUR',
+  locale: string = DEFAULT_FORMAT_LOCALE,
+): string {
+  const formatted = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount)
@@ -70,16 +80,20 @@ export function formatCurrencyForSms(amount: number, currency: string = 'EUR'): 
 }
 
 // Number formatting
-export function formatNumber(value: number, decimals = 0): string {
-  return new Intl.NumberFormat('fr-FR', {
+export function formatNumber(
+  value: number,
+  decimals = 0,
+  locale: string = DEFAULT_FORMAT_LOCALE,
+): string {
+  return new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value)
 }
 
 // Percentage formatting
-export function formatPercent(value: number): string {
-  return new Intl.NumberFormat('fr-FR', {
+export function formatPercent(value: number, locale: string = DEFAULT_FORMAT_LOCALE): string {
+  return new Intl.NumberFormat(locale, {
     style: 'percent',
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
@@ -87,9 +101,13 @@ export function formatPercent(value: number): string {
 }
 
 // Date formatting
-export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
+export function formatDate(
+  date: Date | string,
+  options?: Intl.DateTimeFormatOptions,
+  locale: string = DEFAULT_FORMAT_LOCALE,
+): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -113,18 +131,24 @@ export function toDatePickerValue(
 }
 
 // Short date formatting (e.g., "15 jan.")
-export function formatDateShort(date: Date | string): string {
+export function formatDateShort(
+  date: Date | string,
+  locale: string = DEFAULT_FORMAT_LOCALE,
+): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     month: 'short',
   }).format(d)
 }
 
 // Date with time formatting
-export function formatDateTime(date: Date | string): string {
+export function formatDateTime(
+  date: Date | string,
+  locale: string = DEFAULT_FORMAT_LOCALE,
+): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -134,16 +158,23 @@ export function formatDateTime(date: Date | string): string {
 }
 
 // Time only formatting
-export function formatTime(date: Date | string): string {
+export function formatTime(
+  date: Date | string,
+  locale: string = DEFAULT_FORMAT_LOCALE,
+): string {
   const d = typeof date === 'string' ? new Date(date) : date
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',
   }).format(d)
 }
 
 // Date range formatting (e.g., "15 - 18 janvier 2025")
-export function formatDateRange(startDate: Date | string, endDate: Date | string): string {
+export function formatDateRange(
+  startDate: Date | string,
+  endDate: Date | string,
+  locale: string = DEFAULT_FORMAT_LOCALE,
+): string {
   const start = typeof startDate === 'string' ? new Date(startDate) : startDate
   const end = typeof endDate === 'string' ? new Date(endDate) : endDate
 
@@ -151,11 +182,11 @@ export function formatDateRange(startDate: Date | string, endDate: Date | string
   const sameYear = start.getFullYear() === end.getFullYear()
 
   if (sameMonth && sameYear) {
-    return `${start.getDate()} - ${formatDate(end)}`
+    return `${start.getDate()} - ${formatDate(end, undefined, locale)}`
   } else if (sameYear) {
-    return `${formatDateShort(start)} - ${formatDate(end)}`
+    return `${formatDateShort(start, locale)} - ${formatDate(end, undefined, locale)}`
   } else {
-    return `${formatDate(start)} - ${formatDate(end)}`
+    return `${formatDate(start, undefined, locale)} - ${formatDate(end, undefined, locale)}`
   }
 }
 
