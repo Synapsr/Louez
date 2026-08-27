@@ -11,6 +11,7 @@ import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Separator } fr
 import { formatCurrency } from '@louez/utils'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import { generateStoreMetadata } from '@/lib/seo'
+import { getReservationConfirmationVariant } from '@/lib/reservation-mode'
 import { formatLocationSnapshotAddress } from '@/lib/reservations/location-snapshots'
 import { formatStoreDate } from '@/lib/utils/store-date'
 
@@ -79,7 +80,8 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
     notFound()
   }
 
-  const isRequest = store.settings?.reservationMode === 'request'
+  const isRequest =
+    getReservationConfirmationVariant(reservation.status) === 'request'
 
   // Delivery information — leg-based model
   const outboundMethod = (reservation.outboundMethod as 'store' | 'address') ?? 'store'

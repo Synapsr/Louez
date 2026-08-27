@@ -92,6 +92,7 @@ import {
   type CompanySearchResult,
 } from '@/lib/recherche-entreprises';
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
+import { getEffectiveReservationMode } from '@/lib/reservation-mode';
 import { normalizePhoneNumber } from '@/lib/sms/phone';
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
 import { validateRentalPeriod } from '@/lib/utils/business-hours';
@@ -2164,11 +2165,11 @@ export async function createReservation(input: CreateReservationInput) {
     // Check if we should process payment via Stripe. A 'phone' reservation is
     // always a pending REQUEST (no card on the call), so it never enters the
     // online-payment flow even when the store is in immediate-payment mode.
-    const shouldProcessPayment =
-      input.source !== 'phone' &&
-      store.settings?.reservationMode === 'payment' &&
-      store.stripeAccountId &&
-      store.stripeChargesEnabled;
+    const effectiveReservationMode =
+      input.source === 'phone'
+        ? 'request'
+        : getEffectiveReservationMode(store);
+    const shouldProcessPayment = effectiveReservationMode === 'payment';
 
     let paymentUrl: string | null = null;
 
