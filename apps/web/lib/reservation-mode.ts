@@ -17,6 +17,7 @@
  */
 
 export type ReservationMode = 'payment' | 'request';
+export type ReservationConfirmationVariant = 'confirmed' | 'request';
 
 interface ReservationModeStore {
   settings?: { reservationMode?: ReservationMode | null } | null;
@@ -46,6 +47,21 @@ export function getEffectiveReservationMode(
   return getIntendedReservationMode(store) === 'payment' &&
     isStripeChargeable(store)
     ? 'payment'
+    : 'request';
+}
+
+/**
+ * The confirmation page describes the reservation that was actually created.
+ * A payment-mode Store can still have a pending request when Stripe checkout
+ * could not start, so Store configuration is not authoritative here.
+ */
+export function getReservationConfirmationVariant(
+  reservationStatus: string,
+): ReservationConfirmationVariant {
+  return reservationStatus === 'confirmed' ||
+    reservationStatus === 'ongoing' ||
+    reservationStatus === 'completed'
+    ? 'confirmed'
     : 'request';
 }
 

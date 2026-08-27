@@ -5,7 +5,10 @@ import { smsLogs, customers, smsTopupTransactions } from '@louez/db'
 import { eq, desc, and, gte, lt, count } from 'drizzle-orm'
 import { getCurrentStore, verifyStoreAccess } from '@/lib/store-context'
 import { createSmsTopupCheckoutSession, getSmsTopupPrice } from '@/lib/stripe/sms-topup'
-import { SMS_TOPUP_PACKAGES, type SmsTopupPackage } from '@/lib/plans'
+import {
+  SMS_TOPUP_PACKAGES,
+  type SmsTopupPackage,
+} from '@/lib/sms/sms-topup.constants'
 import { env } from '@/env'
 
 // ===== INPUT VALIDATION HELPERS =====

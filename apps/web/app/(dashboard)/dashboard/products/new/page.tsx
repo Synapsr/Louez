@@ -40,6 +40,7 @@ export default async function NewProductPage() {
       </div>
 
       <ProductForm
+        key="new-product"
         categories={categoriesList}
         availableAccessories={availableAccessories}
         storeTaxSettings={store.settings?.tax}

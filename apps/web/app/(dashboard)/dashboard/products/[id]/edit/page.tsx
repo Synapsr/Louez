@@ -137,6 +137,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       </div>
 
       <ProductForm
+        key={product.id}
         stockKindChangeBlockers={stockKindChangeBlockers}
         product={{
           ...product,
