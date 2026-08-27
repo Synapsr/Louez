@@ -1,14 +1,18 @@
 'use client';
 
+import { useState } from 'react';
+
 import { ArrowRight, Wand2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button, Card, CardContent, Checkbox, Label } from '@louez/ui';
 
+import { AddressInput } from '@/components/ui/address-input';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { getFieldError } from '@/hooks/form/form-context';
 
 import type { CheckoutFormComponentApi } from '../types';
+import { getCustomerAddressFields } from '../util.customer-address';
 import { CheckoutBusinessFields } from './checkout-business-fields';
 
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
@@ -24,7 +28,7 @@ interface CheckoutContactStepProps {
   onContinue: () => void;
 }
 
-export function CheckoutContactStep({
+export const CheckoutContactStep = ({
   form,
   storeId,
   storeCountry,
@@ -32,10 +36,15 @@ export function CheckoutContactStep({
   isBusinessCustomer,
   onBusinessCustomerUnchecked,
   onContinue,
-}: CheckoutContactStepProps) {
+}: CheckoutContactStepProps) => {
   const t = useTranslations('storefront.checkout');
+  const [addressCoordinates, setAddressCoordinates] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+  }>({ latitude: null, longitude: null });
 
   const handleDevAutofill = () => {
+    setAddressCoordinates({ latitude: null, longitude: null });
     form.setFieldValue('firstName', 'Teo');
     form.setFieldValue('lastName', 'Lumy');
     form.setFieldValue('email', 'teo+@lumy.bzh');
@@ -122,14 +131,53 @@ export function CheckoutContactStep({
 
         {showAddressFields && (
           <>
-            <form.AppField name="address">
+            <form.Field name="address">
               {(field) => (
-                <field.Input
-                  label={t('address')}
-                  placeholder={t('addressPlaceholder')}
-                />
+                <div className="flex min-w-0 flex-col gap-2">
+                  <Label
+                    htmlFor={field.name}
+                    data-error={field.state.meta.errors.length > 0}
+                  >
+                    {t('address')}
+                  </Label>
+                  <AddressInput
+                    id={field.name}
+                    name={field.name}
+                    value={field.state.value}
+                    displayAddress={field.state.value}
+                    latitude={addressCoordinates.latitude}
+                    longitude={addressCoordinates.longitude}
+                    onChange={(address, latitude, longitude) => {
+                      field.handleChange(address);
+                      setAddressCoordinates({ latitude, longitude });
+
+                      if (latitude === null && longitude === null) {
+                        form.setFieldValue('postalCode', '');
+                        form.setFieldValue('city', '');
+                      }
+                    }}
+                    onAddressResolved={(details) => {
+                      const addressFields = getCustomerAddressFields(details);
+                      field.handleChange(addressFields.address);
+                      form.setFieldValue(
+                        'postalCode',
+                        addressFields.postalCode,
+                      );
+                      form.setFieldValue('city', addressFields.city);
+                    }}
+                    onBlur={field.handleBlur}
+                    placeholder={t('addressPlaceholder')}
+                    ariaInvalid={field.state.meta.errors.length > 0}
+                    showMapPicker={false}
+                  />
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-destructive text-sm">
+                      {getFieldError(field.state.meta.errors[0])}
+                    </p>
+                  )}
+                </div>
               )}
-            </form.AppField>
+            </form.Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <form.AppField name="postalCode">
@@ -204,4 +252,4 @@ export function CheckoutContactStep({
       </CardContent>
     </Card>
   );
-}
+};

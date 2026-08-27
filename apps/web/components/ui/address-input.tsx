@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 import { useDebouncedCallback } from 'use-debounce';
 
-import type { AddressSuggestion } from '@louez/types';
+import type { AddressDetails, AddressSuggestion } from '@louez/types';
 import {
   InputGroup,
   InputGroupAddon,
@@ -22,6 +22,8 @@ import { AddressMapModal } from '@/components/ui/address-map-modal';
 import { orpc } from '@/lib/orpc/react';
 
 interface AddressInputProps {
+  id?: string;
+  name?: string;
   value?: string;
   displayAddress?: string;
   additionalInfo?: string;
@@ -37,9 +39,15 @@ interface AddressInputProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  ariaInvalid?: boolean;
+  showMapPicker?: boolean;
+  onBlur?: () => void;
+  onAddressResolved?: (details: AddressDetails) => void;
 }
 
-export function AddressInput({
+export const AddressInput = ({
+  id,
+  name,
   value = '',
   displayAddress = '',
   additionalInfo = '',
@@ -49,7 +57,11 @@ export function AddressInput({
   placeholder,
   disabled,
   className,
-}: AddressInputProps) {
+  ariaInvalid,
+  showMapPicker = true,
+  onBlur,
+  onAddressResolved,
+}: AddressInputProps) => {
   const t = useTranslations('common.addressInput');
   const queryClient = useQueryClient();
   const [inputValue, setInputValue] = useState(value);
@@ -172,6 +184,7 @@ export function AddressInput({
 
       setInputValue(formattedAddress);
       onChange(formattedAddress, lat, lng, formattedAddress, additionalInfo);
+      onAddressResolved?.(data.details);
     } catch (error) {
       console.error('Address resolve error:', error);
     } finally {
@@ -185,6 +198,7 @@ export function AddressInput({
     latitude,
     longitude,
     onChange,
+    onAddressResolved,
     queryClient,
   ]);
 
@@ -217,6 +231,7 @@ export function AddressInput({
           } = data.details;
           setInputValue(formattedAddress);
           onChange(formattedAddress, lat, lng, formattedAddress, '');
+          onAddressResolved?.(data.details);
         } else {
           setInputValue(suggestion.description);
           onChange(
@@ -244,7 +259,7 @@ export function AddressInput({
         inputRef.current?.blur();
       }
     },
-    [onChange, queryClient],
+    [onAddressResolved, onChange, queryClient],
   );
 
   const handleClear = () => {
@@ -289,6 +304,8 @@ export function AddressInput({
   };
 
   const handleBlur = () => {
+    onBlur?.();
+
     window.setTimeout(() => {
       if (shouldSkipBlurResolveRef.current) {
         shouldSkipBlurResolveRef.current = false;
@@ -329,6 +346,8 @@ export function AddressInput({
         <InputGroup>
           <InputGroupInput
             ref={inputRef}
+            id={id}
+            name={name}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
@@ -337,28 +356,28 @@ export function AddressInput({
             onFocus={() => suggestions.length > 0 && setIsOpen(true)}
             placeholder={placeholder || t('placeholder')}
             disabled={disabled}
+            aria-invalid={ariaInvalid}
             autoComplete="one-time-code"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
             data-form-type="other"
             data-lpignore="true"
-            className="py-0.5"
           />
-          <InputGroupAddon align="inline-end" className="gap-0.5">
+          <InputGroupAddon align="inline-end" className="gap-0.5 py-1">
             {isLoading && (
               <InputGroupButton
                 type="button"
-                size="icon-sm"
+                size="icon-xs"
                 title={t('editLocation')}
               >
                 <Loader2 className="text-muted-foreground size-4 animate-spin" />
               </InputGroupButton>
             )}
-            {!isLoading && (
+            {!isLoading && showMapPicker && (
               <InputGroupButton
                 type="button"
-                size="icon-sm"
+                size="icon-xs"
                 className={cn(
                   hasCoordinates
                     ? 'text-primary hover:text-primary hover:bg-primary/10'
@@ -373,7 +392,7 @@ export function AddressInput({
             {inputValue && !isLoading && (
               <InputGroupButton
                 type="button"
-                size="icon-sm"
+                size="icon-xs"
                 className="text-muted-foreground hover:text-foreground"
                 onClick={handleClear}
               >
@@ -424,16 +443,18 @@ export function AddressInput({
         )}
 
       {/* Address detail modal */}
-      <AddressMapModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        address={value}
-        displayAddress={displayAddress || value}
-        additionalInfo={additionalInfo}
-        latitude={latitude ?? null}
-        longitude={longitude ?? null}
-        onSave={handleModalSave}
-      />
+      {showMapPicker && (
+        <AddressMapModal
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          address={value}
+          displayAddress={displayAddress || value}
+          additionalInfo={additionalInfo}
+          latitude={latitude ?? null}
+          longitude={longitude ?? null}
+          onSave={handleModalSave}
+        />
+      )}
     </>
   );
-}
+};
