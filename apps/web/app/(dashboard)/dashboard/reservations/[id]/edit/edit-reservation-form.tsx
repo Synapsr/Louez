@@ -65,7 +65,10 @@ import { EditReservationItemsSection } from './components/edit-reservation-items
 import { EditReservationSummarySection } from './components/edit-reservation-summary-section'
 import { EditReservationDeliverySection } from './components/edit-reservation-delivery-section'
 import { useEditReservationAvailability } from './hooks/use-edit-reservation-availability'
-import { useEditReservationPricing } from './hooks/use-edit-reservation-pricing'
+import {
+  calculateUnitPriceFromTotal,
+  useEditReservationPricing,
+} from './hooks/use-edit-reservation-pricing'
 import { useEditReservationDelivery } from './hooks/use-edit-reservation-delivery'
 import type { EditReservationFormProps, EditableItem, ReservationItem } from './types'
 
@@ -217,7 +220,10 @@ function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): 
   const pricingMode = isManualPrice
     ? resolveInitialManualPricingMode(item.product, fallbackPricingMode, startDate, endDate)
     : fallbackPricingMode
-  const duration = calculateDuration(startDate, endDate, pricingMode)
+  const duration =
+    item.product?.pricingKind === 'fixed'
+      ? 1
+      : calculateDuration(startDate, endDate, pricingMode)
   const preciseManualUnitPrice =
     isManualPrice && item.quantity > 0 && duration > 0
       ? Number(item.totalPrice) / (duration * item.quantity)
@@ -227,6 +233,7 @@ function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): 
     id: item.id,
     productId: item.productId,
     quantity: item.quantity,
+    consumedQuantity: item.consumedQuantity,
     unitPrice: preciseManualUnitPrice,
     depositPerUnit: parseFloat(item.depositPerUnit),
     isManualPrice,
@@ -576,10 +583,12 @@ export function EditReservationForm({
         const itemDuration = startDate && endDate
           ? getDurationForMode(effectivePricingMode)
           : 0
-        const unitPrice =
-          itemDuration > 0 && item.quantity > 0
-            ? totalPrice / (itemDuration * item.quantity)
-            : totalPrice
+        const unitPrice = calculateUnitPriceFromTotal({
+          totalPrice,
+          quantity: item.quantity,
+          duration: itemDuration,
+          pricingKind: item.product?.pricingKind ?? 'duration',
+        })
 
         return {
           ...item,
@@ -644,6 +653,7 @@ export function EditReservationForm({
       id: `new-${Date.now()}`,
       productId: product.id,
       quantity: 1,
+      consumedQuantity: 0,
       unitPrice: parseFloat(product.price),
       depositPerUnit: parseFloat(product.deposit),
       isManualPrice: false,
@@ -742,6 +752,7 @@ export function EditReservationForm({
       id: `custom-${Date.now()}`,
       productId: null,
       quantity,
+      consumedQuantity: 0,
       unitPrice: effectiveUnitPrice,
       depositPerUnit: deposit,
       isManualPrice: true,

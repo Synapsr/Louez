@@ -1110,6 +1110,18 @@
         "stock": "Bestand",
         "quantity": "Verfügbare Menge",
         "quantityHelp": "Anzahl der zur Vermietung verfügbaren Einheiten",
+        "consumableQuantityHelp": "Lagerbestand: Er sinkt bei jeder bestätigten Buchung und steigt, wenn Sie nachfüllen.",
+        "stockKindLabel": "Bestandsart",
+        "stockKindReturnable": "Rückläufiger Bestand",
+        "stockKindReturnableDescription": "Der Artikel kommt nach jeder Vermietung zurück und wird wieder verfügbar.",
+        "stockKindConsumable": "Verbrauchsartikel",
+        "stockKindConsumableDescription": "Der Artikel geht mit dem Kunden mit: Der Bestand sinkt bei jeder bestätigten Buchung, und die Menge entspricht dem Lagerbestand.",
+        "stockKindConsumableRequiresFixed": "Ein Verbrauchsartikel wird pauschal verkauft: Wählen Sie die Preisart „Pauschalpreis“, um ihn zu aktivieren.",
+        "stockKindConsumableRequiresNoUnits": "Ein Verbrauchsartikel wird nicht pro Einheit verfolgt: Deaktivieren Sie die Einheitenverfolgung, um ihn zu aktivieren.",
+        "stockKindChangeBlockedTitle": "Bestandsart gesperrt",
+        "stockKindChangeBlocked": "Dieses Produkt ist in den folgenden Reservierungen enthalten. Stornieren oder beenden Sie sie, bevor Sie die Bestandsart ändern.",
+        "stockKindChangeBlockedTrigger": "{kind}. Blockierende Reservierungen anzeigen.",
+        "stockKindBlockingReservation": "Reservierung #{number}",
         "publication": "Veröffentlichung",
         "statusActive": "Aktiv",
         "statusActiveDescription": "Im Shop sichtbar",
@@ -1129,6 +1141,14 @@
         "categoryOptional": "Optional - hilft Kunden, Ihr Produkt zu finden",
         "noCategories": "Noch keine Kategorien",
         "pricingDescription": "Legen Sie den Mietpreis und die Tarife fest",
+        "pricingKindLabel": "Preismodell",
+        "pricingKindDuration": "Preis nach Mietdauer",
+        "pricingKindDurationDescription": "Der Preis richtet sich nach der Mietdauer.",
+        "pricingKindFixed": "Pauschalpreis",
+        "pricingKindFixedDescription": "Ein fester Preis, unabhängig von der Mietdauer.",
+        "fixedPrice": "Pauschalpreis",
+        "fixedPriceDescription": "Wird einmal pro Artikel berechnet, unabhängig von der Mietdauer.",
+        "fixedPriceLabel": "Pauschale",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -1345,10 +1365,16 @@
         "addAccessory": "Zubehör hinzufügen",
         "selectAccessories": "Zubehör auswählen",
         "selectAccessoriesDescription": "Wählen Sie Produkte aus, die mit diesem Produkt vorgeschlagen werden sollen",
+        "accessoriesSelectedCount": "{count, plural, =0 {Kein Zubehör ausgewählt} one {# Zubehör ausgewählt} other {# Zubehörteile ausgewählt}}",
+        "clearSearch": "Suche löschen",
         "searchProducts": "Produkt suchen...",
         "noProductsFound": "Keine Produkte gefunden",
         "noProductsAvailable": "Keine Produkte verfügbar",
         "accessoriesHelp": "Zubehör wird beim Hinzufügen zum Warenkorb vorgeschlagen",
+        "accessoryRequired": "Erforderlich",
+        "accessoryQuantity": "Menge",
+        "accessoryQuantityPerUnit": "pro vermieteter Einheit",
+        "accessoryOptionalHint": "Wird dem Kunden nur vorgeschlagen.",
         "seasonalPricing": "Saisonale Preisgestaltung",
         "seasonalPricingDescription": "Legen Sie unterschiedliche Tarife für bestimmte Zeiträume fest (Sommer, Feiertage usw.).",
         "addSeasonalPeriod": "Zeitraum hinzufügen",
@@ -1500,6 +1526,8 @@
         "inventory": {
           "title": "Inventar",
           "manageStock": "Bestand verwalten",
+          "consumableBadge": "Verbrauchsartikel",
+          "consumableQuantity": "Lagerbestand",
           "quantity": "Menge",
           "available": "Verfügbar",
           "noUnits": "Keine Einheiten registriert",
@@ -5423,8 +5451,8 @@
           "description": "Die Seite Reservierungen öffnet jetzt im Kalender. Er scrollt durchgehend von Woche zu Woche, ohne Seitenwechsel, und ein Mouseover zeigt die komplette Reservierung. Liste und Belegungsplan bleiben einen Klick entfernt."
         },
         "product-creation-flow-redesign": {
-          "title": "Zwei Abschnitte, und Ihr Produkt ist online",
-          "description": "Der vierstufige Assistent weicht einer einzigen Seite. Zubehör und Versicherung werden beim Anlegen nicht mehr abgefragt — die ergänzen Sie später, wenn Sie sie brauchen. Rechts: eine Vorschau der Seite und die Liste der offenen Angaben."
+          "title": "Eine Seite, und Ihr Produkt ist online",
+          "description": "Der vierstufige Assistent weicht einer einzigen Seite. Zubehör können Sie direkt beim Anlegen oder später hinzufügen; die Versicherung richten Sie weiterhin danach ein. Rechts sehen Sie eine Vorschau und die noch fehlenden Angaben."
         },
         "keyboard-shortcuts": {
           "title": "Für alle, die die Tastatur nicht loslassen",
@@ -5656,6 +5684,7 @@
       "productCount": "{count, plural, =0 {Keine Produkte verfügbar} one {# Produkt verfügbar} other {# Produkte verfügbar}}",
       "available": "{count} verfügbar",
       "unavailable": "Nicht verfügbar",
+      "consumableOutOfStock": "Verbrauchsartikel nicht vorrätig",
       "lastOne": "Letztes!",
       "left": "übrig",
       "clearFilters": "Filter löschen"
@@ -5677,6 +5706,7 @@
       "perHour": "Stunde",
       "perWeek": "Woche",
       "startingFrom": "Ab",
+      "fixedPricingLabel": "Pauschale",
       "pricingUnit": {
         "day": {
           "singular": "Tag",
@@ -5752,6 +5782,8 @@
         "availability": "Verfügbarkeit"
       },
       "unavailableHelp": "Dieses Produkt ist derzeit nicht zur Miete verfügbar. Entdecken Sie den übrigen Katalog.",
+      "requiredAccessoryOutOfStock": "Ein erforderliches Zubehör ist nicht vorrätig",
+      "requiredAccessoriesIncluded": "Automatisch hinzugefügt: {names}",
       "backToCatalog": "Zum Katalog"
     },
     "accessories": {
@@ -5858,6 +5890,8 @@
         "availableCount": "{count} verfügbar",
         "limited": "{count} übrig",
         "unavailable": "Nicht verfügbar",
+        "outOfStock": "Nicht vorrätig",
+        "requiredAccessoryOutOfStock": "Erforderliches Zubehör nicht vorrätig",
         "inCart": "Im Warenkorb"
       },
       "businessHoursWarning": {
@@ -5908,6 +5942,8 @@
       "total": "Gesamt",
       "checkout": "Zur Kasse",
       "remove": "Entfernen",
+      "decreaseQuantity": "Menge von {name} verringern",
+      "increaseQuantity": "Menge von {name} erhöhen",
       "updateDates": "Daten ändern",
       "clearCart": "Warenkorb leeren",
       "clear": "Warenkorb leeren",
@@ -5920,7 +5956,14 @@
         "cancel": "Abbrechen",
         "confirm": "Leeren"
       },
-      "lineMaxReached": "Maximum für diese Option erreicht. Fügen Sie eine weitere Option als separate Zeile hinzu."
+      "lineMaxReached": "Maximum für diese Option erreicht. Fügen Sie eine weitere Option als separate Zeile hinzu.",
+      "requiredWith": "Erforderlich mit {name}",
+      "included": "Inbegriffen",
+      "unavailable": {
+        "product_unavailable": "Dieses Produkt ist nicht mehr verfügbar",
+        "insufficient_stock": "Nicht genug Bestand für diese Menge",
+        "required_accessory_unavailable": "Ein erforderliches Zubehör ist nicht vorrätig"
+      }
     },
     "checkout": {
       "title": "Reservierung abschließen",
@@ -6884,10 +6927,13 @@
     "permissionDenied": "Unzureichende Berechtigung",
     "customerNotFound": "Kunde nicht gefunden",
     "reservationNotFound": "Reservierung nicht gefunden",
+    "consumableInsufficientStock": "Unzureichender Bestand an Verbrauchsartikeln",
+    "requiredAccessoriesMissing": "Erforderliches Zubehör fehlt oder hat eine falsche Menge",
     "emailAlreadyExists": "Ein Kunde mit dieser E-Mail existiert bereits",
     "customerHasReservations": "Kunde mit Reservierungen kann nicht gelöscht werden",
     "cannotCancelReservation": "Diese Reservierung kann nicht storniert werden",
     "cannotEditCompletedReservation": "Abgeschlossene Reservierungen können nicht bearbeitet werden",
+    "reservationStatusChanged": "Der Reservierungsstatus hat sich während der Bearbeitung geändert. Laden Sie die Seite neu und versuchen Sie es erneut.",
     "endDateBeforeStart": "Enddatum muss nach oder gleich dem Startdatum sein",
     "negativeAmountOnlyForAdjustment": "Negative Beträge sind nur für Anpassungen zulässig",
     "productRequired": "Produkt erforderlich",
@@ -6904,6 +6950,7 @@
     "unitProductMismatch": "Ausgewählte Einheiten gehören nicht zu diesem Produkt",
     "unitCombinationMismatch": "Ausgewählte Einheiten stimmen nicht mit der reservierten Kombination für diese Position überein",
     "cannotDisableUnitTrackingWithCombinations": "Einheitenverfolgung kann nicht deaktiviert werden, solange aktive Reservierungen verfolgte Kombinationen für dieses Produkt verwenden.",
+    "cannotChangeStockKindWithActiveReservations": "Der Bestandstyp kann nicht geändert werden, solange dieses Produkt in einer bestätigten oder laufenden Reservierung verwendet wird.",
     "unitStatusConflictsWithReservations": "Diese Änderung würde zukünftige Reservierungen für mindestens eine verfolgte Kombination unmöglich machen.",
     "unitAssigned": "Diese Einheit ist einer blockierenden Reservierung zugeordnet und kann nicht gelöscht werden.",
     "assignUnitsFailed": "Zuweisung der Einheiten fehlgeschlagen",

@@ -44,7 +44,14 @@ export function useEditReservationAvailability({
       }
 
       const reserved = reservedByProduct.get(item.productId) || 0
-      const available = Math.max(0, item.product.quantity - reserved)
+      const available = Math.max(
+        0,
+        item.product.quantity -
+          reserved +
+          (item.product.stockKind === 'consumable'
+            ? item.consumedQuantity
+            : 0),
+      )
 
       if (item.quantity > available) {
         warnings.push({
@@ -79,9 +86,20 @@ export function useEditReservationAvailability({
       const inCurrentItems = items
         .filter((item) => item.productId === product.id)
         .reduce((sum, item) => sum + item.quantity, 0)
+      const currentConsumedQuantity = items
+        .filter((item) => item.productId === product.id)
+        .reduce((sum, item) => sum + item.consumedQuantity, 0)
       map.set(
         product.id,
-        Math.max(0, product.quantity - reserved - inCurrentItems),
+        Math.max(
+          0,
+          product.quantity -
+            reserved +
+            (product.stockKind === 'consumable'
+              ? currentConsumedQuantity
+              : 0) -
+            inCurrentItems,
+        ),
       )
     }
 

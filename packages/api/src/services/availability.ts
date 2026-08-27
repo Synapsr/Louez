@@ -6,8 +6,10 @@ import {
   db,
   type Database,
   getBlockingReservationStatuses,
+  loadConsumableReservedQuantities,
   productUnitDowntimes,
   productUnits,
+  productAccessories,
   products,
   reservations,
   stores,
@@ -18,6 +20,7 @@ import type {
   BusinessHours,
   CombinationAvailability,
   ProductAvailability,
+  StockKind,
   UnitAttributes,
 } from '@louez/types';
 import {
@@ -52,7 +55,10 @@ function downtimeOverlaps(
   startDate: Date,
   endDate: Date,
 ) {
-  return downtime.startsAt < endDate && (!downtime.endsAt || downtime.endsAt > startDate);
+  return (
+    downtime.startsAt < endDate &&
+    (!downtime.endsAt || downtime.endsAt > startDate)
+  );
 }
 
 function excludedUnitAbsorbsReservation(params: {
@@ -131,6 +137,7 @@ export function computeReservedNetOfExcludedUnits(params: {
   turnoverBufferMinutes: number;
   excludedProductUnitIds: ReadonlySet<string>;
   excludedUnitInfo: ReadonlyMap<string, ExcludedUnitInfo>;
+  consumableProductIds?: ReadonlySet<string>;
 }): {
   reservedByProduct: Map<string, number>;
   reservedByProductCombination: Map<string, number>;
@@ -139,13 +146,14 @@ export function computeReservedNetOfExcludedUnits(params: {
     startDate: reservation.startDate,
     endDate: reservation.endDate,
     items: reservation.items.flatMap((item) => {
-      const excludedAssignedUnitCount = item.assignedUnits.filter((unit) =>
-        unit.productUnitId &&
-        params.excludedProductUnitIds.has(unit.productUnitId) &&
-        excludedUnitAbsorbsReservation({
-          reservation,
-          unitInfo: params.excludedUnitInfo.get(unit.productUnitId),
-        }),
+      const excludedAssignedUnitCount = item.assignedUnits.filter(
+        (unit) =>
+          unit.productUnitId &&
+          params.excludedProductUnitIds.has(unit.productUnitId) &&
+          excludedUnitAbsorbsReservation({
+            reservation,
+            unitInfo: params.excludedUnitInfo.get(unit.productUnitId),
+          }),
       ).length;
       const quantity = Math.max(
         0,
@@ -156,11 +164,18 @@ export function computeReservedNetOfExcludedUnits(params: {
         return [];
       }
 
+      const stockKind: StockKind =
+        item.productId && params.consumableProductIds?.has(item.productId)
+          ? 'consumable'
+          : 'returnable';
+
       return [
         {
           productId: item.productId,
           combinationKey: item.combinationKey,
           quantity,
+          stockKind,
+          consumedQuantity: 0,
         },
       ];
     }),
@@ -416,6 +431,45 @@ export async function getStorefrontAvailability(
     };
   }
 
+  const requestedProductIds = storeProducts.map((product) => product.id);
+  const requiredAccessoryLinks = await db
+    .select({
+      parentProductId: productAccessories.productId,
+      accessoryProductId: productAccessories.accessoryId,
+      quantity: productAccessories.quantity,
+    })
+    .from(productAccessories)
+    .innerJoin(products, eq(productAccessories.productId, products.id))
+    .where(
+      and(
+        eq(products.storeId, store.id),
+        eq(productAccessories.required, true),
+        inArray(productAccessories.productId, requestedProductIds),
+      ),
+    );
+  const requestedProductIdSet = new Set(requestedProductIds);
+  const additionalAccessoryIds = [
+    ...new Set(
+      requiredAccessoryLinks
+        .map((link) => link.accessoryProductId)
+        .filter((productId) => !requestedProductIdSet.has(productId)),
+    ),
+  ];
+  const additionalAccessoryProducts =
+    additionalAccessoryIds.length > 0
+      ? await db.query.products.findMany({
+          where: and(
+            eq(products.storeId, store.id),
+            eq(products.status, 'active'),
+            inArray(products.id, additionalAccessoryIds),
+          ),
+        })
+      : [];
+  const productsForAvailability = [
+    ...storeProducts,
+    ...additionalAccessoryProducts,
+  ];
+
   const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
   const blockingStatuses = getBlockingReservationStatuses(
     store.settings?.pendingBlocksAvailability ?? true,
@@ -440,7 +494,7 @@ export async function getStorefrontAvailability(
     },
   });
 
-  const trackedProductIds = storeProducts
+  const trackedProductIds = productsForAvailability
     .filter((product) => product.trackUnits)
     .map((product) => product.id);
   const trackedUnits =
@@ -488,7 +542,25 @@ export async function getStorefrontAvailability(
       turnoverBufferMinutes,
       excludedProductUnitIds,
       excludedUnitInfo,
+      consumableProductIds: new Set(
+        productsForAvailability
+          .filter((product) => product.stockKind === 'consumable')
+          .map((product) => product.id),
+      ),
     });
+  const consumableReservedByProduct = await loadConsumableReservedQuantities(
+    db,
+    {
+      storeId: store.id,
+      productIds: productsForAvailability
+        .filter((product) => product.stockKind === 'consumable')
+        .map((product) => product.id),
+      blockingStatuses,
+    },
+  );
+  for (const [productId, reservedQuantity] of consumableReservedByProduct) {
+    reservedByProduct.set(productId, reservedQuantity);
+  }
 
   const combinationsByProduct = new Map<
     string,
@@ -519,8 +591,8 @@ export async function getStorefrontAvailability(
     combinationsByProduct.set(unit.productId, productMap);
   }
 
-  const productAvailability: ProductAvailability[] = storeProducts.map(
-    (product) => {
+  const productAvailability: ProductAvailability[] =
+    productsForAvailability.map((product) => {
       if (!product.trackUnits) {
         const reservedQuantity = reservedByProduct.get(product.id) || 0;
         const availableQuantity = Math.max(
@@ -541,6 +613,9 @@ export async function getStorefrontAvailability(
           reservedQuantity,
           availableQuantity,
           status,
+          ...(product.stockKind === 'consumable' && availableQuantity === 0
+            ? { reason: 'out_of_stock' }
+            : {}),
         };
       }
 
@@ -621,11 +696,50 @@ export async function getStorefrontAvailability(
         combinations,
         combinationsByKey,
       };
-    },
+    });
+
+  const availabilityByProductId = new Map(
+    productAvailability.map((availability) => [
+      availability.productId,
+      availability,
+    ]),
   );
+  for (const link of requiredAccessoryLinks) {
+    const parentAvailability = availabilityByProductId.get(
+      link.parentProductId,
+    );
+    const accessoryAvailability = availabilityByProductId.get(
+      link.accessoryProductId,
+    );
+    if (!parentAvailability || !accessoryAvailability) {
+      if (parentAvailability) {
+        parentAvailability.availableQuantity = 0;
+        parentAvailability.status = 'unavailable';
+        parentAvailability.reason = 'required_accessory_out_of_stock';
+      }
+      continue;
+    }
+
+    const requiredPerParent = Math.max(1, link.quantity);
+    const accessoryCapacity = Math.floor(
+      accessoryAvailability.availableQuantity / requiredPerParent,
+    );
+    if (accessoryCapacity >= parentAvailability.availableQuantity) {
+      continue;
+    }
+
+    parentAvailability.availableQuantity = accessoryCapacity;
+    parentAvailability.status =
+      accessoryCapacity === 0 ? 'unavailable' : 'limited';
+    if (accessoryCapacity === 0) {
+      parentAvailability.reason = 'required_accessory_out_of_stock';
+    }
+  }
 
   return {
-    products: productAvailability,
+    products: productAvailability.filter((availability) =>
+      requestedProductIdSet.has(availability.productId),
+    ),
     period: { startDate: startDateStr, endDate: endDateStr },
     businessHoursValidation,
     advanceNoticeValidation,

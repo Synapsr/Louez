@@ -1071,6 +1071,18 @@
         "stock": "Voorraad",
         "quantity": "Beschikbare hoeveelheid",
         "quantityHelp": "Aantal beschikbare eenheden voor verhuur",
+        "consumableQuantityHelp": "Voorraad in het schap: die daalt bij elke bevestigde reservering en stijgt wanneer u aanvult.",
+        "stockKindLabel": "Voorraadtype",
+        "stockKindReturnable": "Retourneerbare voorraad",
+        "stockKindReturnableDescription": "Het product komt na elke verhuur terug en wordt opnieuw beschikbaar.",
+        "stockKindConsumable": "Verbruiksartikel",
+        "stockKindConsumableDescription": "Het product gaat mee met de klant: de voorraad daalt bij elke bevestigde reservering en het aantal is de voorraad in het schap.",
+        "stockKindConsumableRequiresFixed": "Een verbruiksartikel wordt tegen een vaste prijs verkocht: kies de tarifering \"Vaste prijs\" om het in te schakelen.",
+        "stockKindConsumableRequiresNoUnits": "Een verbruiksartikel wordt niet per eenheid gevolgd: schakel het volgen per eenheid uit om het in te schakelen.",
+        "stockKindChangeBlockedTitle": "Voorraadtype vergrendeld",
+        "stockKindChangeBlocked": "Dit product staat in de volgende reserveringen. Annuleer of voltooi ze voordat u het voorraadtype wijzigt.",
+        "stockKindChangeBlockedTrigger": "{kind}. Bekijk reserveringen die de wijziging blokkeren.",
+        "stockKindBlockingReservation": "Reservering #{number}",
         "publication": "Publicatie",
         "statusActive": "Actief",
         "statusActiveDescription": "Zichtbaar in de winkel",
@@ -1090,6 +1102,14 @@
         "categoryOptional": "Optioneel - helpt klanten uw product te vinden",
         "noCategories": "Nog geen categorieën",
         "pricingDescription": "Stel de huurprijs en tarieven in",
+        "pricingKindLabel": "Prijsmodel",
+        "pricingKindDuration": "Prijs per duur",
+        "pricingKindDurationDescription": "De prijs hangt af van de huurduur.",
+        "pricingKindFixed": "Vaste prijs",
+        "pricingKindFixedDescription": "Eén prijs, ongeacht de huurduur.",
+        "fixedPrice": "Vaste prijs",
+        "fixedPriceDescription": "Eenmaal per artikel in rekening gebracht, ongeacht de huurduur.",
+        "fixedPriceLabel": "Vaste prijs",
         "baseRate": "Basistarief",
         "baseRateDescription": "Duurste tarief per minuut, gebruikt als prijsbasis.",
         "additionalRates": "Extra tarieven",
@@ -1306,10 +1326,16 @@
         "addAccessory": "Accessoire toevoegen",
         "selectAccessories": "Accessoires selecteren",
         "selectAccessoriesDescription": "Kies producten om bij dit product voor te stellen",
+        "accessoriesSelectedCount": "{count, plural, =0 {Geen accessoire geselecteerd} one {# accessoire geselecteerd} other {# accessoires geselecteerd}}",
+        "clearSearch": "Zoekopdracht wissen",
         "searchProducts": "Zoek een product...",
         "noProductsFound": "Geen producten gevonden",
         "noProductsAvailable": "Geen producten beschikbaar",
         "accessoriesHelp": "Accessoires worden voorgesteld bij het toevoegen aan winkelwagen",
+        "accessoryRequired": "Verplicht",
+        "accessoryQuantity": "Aantal",
+        "accessoryQuantityPerUnit": "per verhuurde eenheid",
+        "accessoryOptionalHint": "Wordt alleen aan de klant voorgesteld.",
         "seasonalPricing": "Seizoensprijzen",
         "seasonalPricingDescription": "Stel verschillende tarieven in voor specifieke periodes (zomer, feestdagen, enz.).",
         "addSeasonalPeriod": "Periode toevoegen",
@@ -1461,6 +1487,8 @@
         "inventory": {
           "title": "Inventaris",
           "manageStock": "Voorraad beheren",
+          "consumableBadge": "Verbruiksartikel",
+          "consumableQuantity": "In het schap",
           "quantity": "Aantal",
           "available": "Beschikbaar",
           "noUnits": "Geen eenheden geregistreerd",
@@ -5423,8 +5451,8 @@
           "description": "De pagina Reserveringen opent nu op de agenda. Die scrolt doorlopend, van week tot week zonder van pagina te wisselen, en één beweging met de muis toont de volledige reservering. Lijst en planning per product blijven één klik verwijderd."
         },
         "product-creation-flow-redesign": {
-          "title": "Twee secties, en uw product staat online",
-          "description": "De wizard in vier stappen maakt plaats voor één pagina. Accessoires en verzekering worden bij het aanmaken niet meer gevraagd — die voegt u later toe als u ze nodig hebt. Rechts: een voorbeeld van de pagina en de lijst van wat nog ontbreekt."
+          "title": "Eén pagina en uw product staat online",
+          "description": "De wizard in vier stappen staat nu op één pagina. Voeg accessoires meteen toe of doe dat later; de verzekering stelt u nog steeds achteraf in. Rechts ziet u een voorbeeld van de productpagina en wat nog moet worden ingevuld."
         },
         "keyboard-shortcuts": {
           "title": "Voor wie het toetsenbord niet loslaat",
@@ -5656,6 +5684,7 @@
       "productCount": "{count, plural, =0 {Geen producten beschikbaar} one {# product beschikbaar} other {# producten beschikbaar}}",
       "available": "{count} beschikbaar",
       "unavailable": "Niet beschikbaar",
+      "consumableOutOfStock": "Verbruiksartikel niet op voorraad",
       "lastOne": "Laatste!",
       "left": "over",
       "clearFilters": "Filters wissen"
@@ -5677,6 +5706,7 @@
       "perHour": "uur",
       "perWeek": "week",
       "startingFrom": "Vanaf",
+      "fixedPricingLabel": "Vast tarief",
       "pricingUnit": {
         "day": {
           "singular": "dag",
@@ -5752,6 +5782,8 @@
         "availability": "Beschikbaarheid"
       },
       "unavailableHelp": "Dit product is momenteel niet te huur. Bekijk de rest van de catalogus.",
+      "requiredAccessoryOutOfStock": "Een verplicht accessoire is niet op voorraad",
+      "requiredAccessoriesIncluded": "Automatisch toegevoegd: {names}",
       "backToCatalog": "Bekijk de catalogus"
     },
     "accessories": {
@@ -5858,6 +5890,8 @@
         "availableCount": "{count} beschikbaar",
         "limited": "{count} over",
         "unavailable": "Niet beschikbaar",
+        "outOfStock": "Niet op voorraad",
+        "requiredAccessoryOutOfStock": "Verplicht accessoire niet op voorraad",
         "inCart": "In winkelwagen"
       },
       "businessHoursWarning": {
@@ -5908,6 +5942,8 @@
       "total": "Totaal",
       "checkout": "Afrekenen",
       "remove": "Verwijderen",
+      "decreaseQuantity": "Aantal van {name} verlagen",
+      "increaseQuantity": "Aantal van {name} verhogen",
       "updateDates": "Data wijzigen",
       "clearCart": "Winkelwagen legen",
       "clear": "Winkelwagen legen",
@@ -5920,7 +5956,14 @@
         "cancel": "Annuleren",
         "confirm": "Legen"
       },
-      "lineMaxReached": "Maximum bereikt voor deze optie. Voeg een andere optie toe als afzonderlijke regel."
+      "lineMaxReached": "Maximum bereikt voor deze optie. Voeg een andere optie toe als afzonderlijke regel.",
+      "requiredWith": "Verplicht bij {name}",
+      "included": "Inbegrepen",
+      "unavailable": {
+        "product_unavailable": "Dit product is niet meer beschikbaar",
+        "insufficient_stock": "Onvoldoende voorraad voor dit aantal",
+        "required_accessory_unavailable": "Een verplicht accessoire is niet op voorraad"
+      }
     },
     "checkout": {
       "title": "Mijn reservering voltooien",
@@ -6884,10 +6927,13 @@
     "permissionDenied": "Onvoldoende rechten",
     "customerNotFound": "Klant niet gevonden",
     "reservationNotFound": "Reservering niet gevonden",
+    "consumableInsufficientStock": "Onvoldoende voorraad van het verbruiksartikel",
+    "requiredAccessoriesMissing": "Verplichte accessoires ontbreken of hebben een onjuiste hoeveelheid",
     "emailAlreadyExists": "Er bestaat al een klant met dit e-mailadres",
     "customerHasReservations": "Kan een klant met reserveringen niet verwijderen",
     "cannotCancelReservation": "Deze reservering kan niet worden geannuleerd",
     "cannotEditCompletedReservation": "Voltooide reserveringen kunnen niet worden bewerkt",
+    "reservationStatusChanged": "De reserveringsstatus is gewijzigd tijdens het bewerken. Laad de pagina opnieuw en probeer het nogmaals.",
     "endDateBeforeStart": "Einddatum moet na of gelijk aan startdatum zijn",
     "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",
@@ -6904,6 +6950,7 @@
     "unitProductMismatch": "Geselecteerde eenheden behoren niet tot dit product",
     "unitCombinationMismatch": "Geselecteerde eenheden komen niet overeen met de gereserveerde combinatie voor dit regelitem",
     "cannotDisableUnitTrackingWithCombinations": "Kan eenheidtracering niet uitschakelen terwijl actieve reserveringen gevolgde combinaties gebruiken voor dit product.",
+    "cannotChangeStockKindWithActiveReservations": "Het voorraadtype kan niet worden gewijzigd zolang dit product in een bevestigde of lopende reservering wordt gebruikt.",
     "unitStatusConflictsWithReservations": "Deze wijziging zou toekomstige reserveringen onmogelijk maken voor ten minste één gevolgde combinatie.",
     "unitAssigned": "Deze eenheid is toegewezen aan een blokkerende reservering en kan niet worden verwijderd.",
     "assignUnitsFailed": "Toewijzing van eenheden mislukt",

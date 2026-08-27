@@ -1110,6 +1110,18 @@
         "stock": "Stock",
         "quantity": "Cantidad disponible",
         "quantityHelp": "Numero de unidades disponibles para alquilar",
+        "consumableQuantityHelp": "Stock en estantería: baja en cada reserva confirmada y sube cuando repones.",
+        "stockKindLabel": "Tipo de stock",
+        "stockKindReturnable": "Stock retornable",
+        "stockKindReturnableDescription": "El producto vuelve después de cada alquiler y queda disponible de nuevo.",
+        "stockKindConsumable": "Consumible",
+        "stockKindConsumableDescription": "El producto se va con el cliente: el stock baja en cada reserva confirmada y la cantidad es el stock en estantería.",
+        "stockKindConsumableRequiresFixed": "Un consumible se vende a precio fijo: elige la tarificación «Precio fijo» para activarlo.",
+        "stockKindConsumableRequiresNoUnits": "Un consumible no se controla unidad por unidad: desactiva el seguimiento por unidad para activarlo.",
+        "stockKindChangeBlockedTitle": "Tipo de stock bloqueado",
+        "stockKindChangeBlocked": "Este producto figura en las siguientes reservas. Cancélalas o complétalas antes de cambiar el tipo de stock.",
+        "stockKindChangeBlockedTrigger": "{kind}. Ver las reservas que impiden el cambio.",
+        "stockKindBlockingReservation": "Reserva #{number}",
         "publication": "Publicacion",
         "statusActive": "Activo",
         "statusActiveDescription": "Visible en la tienda",
@@ -1129,6 +1141,14 @@
         "categoryOptional": "Opcional - ayuda a los clientes a encontrar su producto",
         "noCategories": "Sin categorías aún",
         "pricingDescription": "Establezca el precio de alquiler y las tarifas",
+        "pricingKindLabel": "Modelo de precios",
+        "pricingKindDuration": "Precio por duración",
+        "pricingKindDurationDescription": "El precio depende de la duración del alquiler.",
+        "pricingKindFixed": "Precio fijo",
+        "pricingKindFixedDescription": "Un precio único, sea cual sea la duración.",
+        "fixedPrice": "Precio fijo",
+        "fixedPriceDescription": "Se cobra una vez por artículo, sea cual sea la duración del alquiler.",
+        "fixedPriceLabel": "Precio fijo",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -1345,10 +1365,16 @@
         "addAccessory": "Añadir accesorio",
         "selectAccessories": "Seleccionar accesorios",
         "selectAccessoriesDescription": "Elige los productos a sugerir con este producto",
+        "accessoriesSelectedCount": "{count, plural, =0 {Ningún accesorio seleccionado} one {# accesorio seleccionado} other {# accesorios seleccionados}}",
+        "clearSearch": "Borrar la búsqueda",
         "searchProducts": "Buscar un producto...",
         "noProductsFound": "Ningún producto encontrado",
         "noProductsAvailable": "Ningún producto disponible",
         "accessoriesHelp": "Los accesorios se sugerirán al añadir al carrito",
+        "accessoryRequired": "Obligatorio",
+        "accessoryQuantity": "Cantidad",
+        "accessoryQuantityPerUnit": "por unidad alquilada",
+        "accessoryOptionalHint": "Solo se sugiere al cliente.",
         "seasonalPricing": "Precios estacionales",
         "seasonalPricingDescription": "Establezca tarifas diferentes para períodos específicos (verano, vacaciones, etc.).",
         "addSeasonalPeriod": "Añadir período",
@@ -1500,6 +1526,8 @@
         "inventory": {
           "title": "Inventario",
           "manageStock": "Gestionar stock",
+          "consumableBadge": "Consumible",
+          "consumableQuantity": "En estantería",
           "quantity": "Cantidad",
           "available": "Disponible",
           "noUnits": "Ninguna unidad registrada",
@@ -5423,8 +5451,8 @@
           "description": "La página Reservas se abre ahora en el calendario. Se desplaza de forma continua, de una semana a otra sin cambiar de página, y basta pasar el ratón para ver la reserva completa. La lista y el planning por producto siguen a un clic."
         },
         "product-creation-flow-redesign": {
-          "title": "Dos secciones y su producto está en línea",
-          "description": "El asistente de cuatro pasos da paso a una sola página. Los accesorios y el seguro ya no se piden al crear: los añadirá más tarde si los necesita. A la derecha, una vista previa de la ficha y la lista de lo que falta por rellenar."
+          "title": "Una sola página y su producto está en línea",
+          "description": "El asistente de cuatro pasos se convierte en una sola página. Puede añadir los accesorios al crear el producto o más tarde; el seguro se sigue configurando después. A la derecha verá una vista previa de la ficha y lo que falta por completar."
         },
         "keyboard-shortcuts": {
           "title": "Para quienes no sueltan el teclado",
@@ -5656,6 +5684,7 @@
       "productCount": "{count, plural, =0 {No hay productos disponibles} one {# producto disponible} other {# productos disponibles}}",
       "available": "{count} disponible(s)",
       "unavailable": "No disponible",
+      "consumableOutOfStock": "Consumible agotado",
       "lastOne": "Ultimo!",
       "left": "restantes",
       "clearFilters": "Limpiar filtros"
@@ -5677,6 +5706,7 @@
       "perHour": "hora",
       "perWeek": "semana",
       "startingFrom": "Desde",
+      "fixedPricingLabel": "Tarifa fija",
       "pricingUnit": {
         "day": {
           "singular": "dia",
@@ -5752,6 +5782,8 @@
         "availability": "Disponibilidad"
       },
       "unavailableHelp": "Este producto no está disponible para alquilar en este momento. Descubre el resto del catálogo.",
+      "requiredAccessoryOutOfStock": "Un accesorio obligatorio está agotado",
+      "requiredAccessoriesIncluded": "Añadido automáticamente: {names}",
       "backToCatalog": "Ver el catálogo"
     },
     "accessories": {
@@ -5858,6 +5890,8 @@
         "availableCount": "{count} disponibles",
         "limited": "{count} restante(s)",
         "unavailable": "No disponible",
+        "outOfStock": "Agotado",
+        "requiredAccessoryOutOfStock": "Accesorio obligatorio agotado",
         "inCart": "En el carrito"
       },
       "businessHoursWarning": {
@@ -5908,6 +5942,8 @@
       "total": "Total",
       "checkout": "Finalizar pedido",
       "remove": "Quitar",
+      "decreaseQuantity": "Reducir la cantidad de {name}",
+      "increaseQuantity": "Aumentar la cantidad de {name}",
       "updateDates": "Cambiar fechas",
       "clearCart": "Vaciar carrito",
       "clear": "Vaciar carrito",
@@ -5920,7 +5956,14 @@
         "cancel": "Cancelar",
         "confirm": "Vaciar"
       },
-      "lineMaxReached": "Maximo alcanzado para esta opcion. Agregue otra opcion como linea separada."
+      "lineMaxReached": "Maximo alcanzado para esta opcion. Agregue otra opcion como linea separada.",
+      "requiredWith": "Obligatorio con {name}",
+      "included": "Incluido",
+      "unavailable": {
+        "product_unavailable": "Este producto ya no está disponible",
+        "insufficient_stock": "Stock insuficiente para esta cantidad",
+        "required_accessory_unavailable": "Un accesorio obligatorio está agotado"
+      }
     },
     "checkout": {
       "title": "Completar mi reserva",
@@ -6884,10 +6927,13 @@
     "permissionDenied": "Permiso insuficiente",
     "customerNotFound": "Cliente no encontrado",
     "reservationNotFound": "Reserva no encontrada",
+    "consumableInsufficientStock": "Stock insuficiente del consumible",
+    "requiredAccessoriesMissing": "Faltan accesorios obligatorios o su cantidad es incorrecta",
     "emailAlreadyExists": "Ya existe un cliente con este correo",
     "customerHasReservations": "No se puede eliminar un cliente con reservas",
     "cannotCancelReservation": "Esta reserva no puede ser cancelada",
     "cannotEditCompletedReservation": "Las reservas completadas no se pueden editar",
+    "reservationStatusChanged": "El estado de la reserva cambió durante la edición. Recarga la página e inténtalo de nuevo.",
     "endDateBeforeStart": "La fecha de fin debe ser posterior o igual a la de inicio",
     "negativeAmountOnlyForAdjustment": "Los importes negativos solo están permitidos para ajustes",
     "productRequired": "Producto requerido",
@@ -6904,6 +6950,7 @@
     "unitProductMismatch": "Las unidades seleccionadas no pertenecen a este producto",
     "unitCombinationMismatch": "Las unidades seleccionadas no coinciden con la combinacion reservada para este articulo",
     "cannotDisableUnitTrackingWithCombinations": "No se puede desactivar el seguimiento de unidades mientras haya reservas activas que utilicen combinaciones rastreadas para este producto.",
+    "cannotChangeStockKindWithActiveReservations": "No se puede cambiar el tipo de stock mientras este producto se use en una reserva confirmada o en curso.",
     "unitStatusConflictsWithReservations": "Este cambio haria imposibles las reservas futuras para al menos una combinacion rastreada.",
     "unitAssigned": "Esta unidad está asignada a una reserva bloqueante y no se puede eliminar.",
     "assignUnitsFailed": "Error al asignar unidades",

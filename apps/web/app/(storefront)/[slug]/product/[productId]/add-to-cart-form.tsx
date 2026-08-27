@@ -14,6 +14,7 @@ import { useTranslations } from 'next-intl';
 import type {
   BusinessHours,
   CombinationAvailability,
+  PricingKind,
   PricingMode,
 } from '@louez/types';
 import type { Rate } from '@louez/types';
@@ -36,6 +37,7 @@ import {
   allocateAcrossCombinations,
   buildCombinationKey,
   calculateDurationMinutes,
+  calculateFixedPrice,
   calculateRateBasedPrice,
   calculateRentalPrice,
   calculateSeasonalAwarePrice,
@@ -43,6 +45,7 @@ import {
   getAvailableDurations,
   getDeterministicCombinationSortValue,
   getSelectionCapacity,
+  isFixedPriceProduct,
   isRateBasedProduct,
   snapToNearestRatePeriod,
   snapToNearestTier,
@@ -56,6 +59,11 @@ import {
 
 import { orpc } from '@/lib/orpc/react';
 import { pickActiveVariantAttributes } from '@/lib/util.variant-visibility';
+import {
+  buildRequiredAccessoryCartInputs,
+  findBlockingRequiredAccessories,
+  selectOptionalAccessories,
+} from '@/lib/utils/cart-required-accessories';
 import { getMinStartDate } from '@/lib/utils/duration';
 import {
   formatDurationFromMinutes,
@@ -72,6 +80,9 @@ interface Accessory {
   deposit: string;
   images: string[] | null;
   quantity: number;
+  required?: boolean | null;
+  requiredQuantity?: number | null;
+  pricingKind?: PricingKind | null;
   pricingMode: PricingMode | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: {
@@ -90,6 +101,7 @@ interface AddToCartFormProps {
   price: number;
   deposit: number;
   maxQuantity: number;
+  pricingKind?: PricingKind;
   pricingMode: 'day' | 'hour' | 'week';
   basePeriodMinutes?: number | null;
   storeSlug: string;
@@ -133,6 +145,7 @@ export function AddToCartForm({
   price,
   deposit,
   maxQuantity,
+  pricingKind = 'duration',
   pricingMode,
   basePeriodMinutes,
   storeSlug,
@@ -399,9 +412,23 @@ export function AddToCartForm({
 
   // Use seasonal-aware calculation when seasonal pricings exist and dates are set
   const hasSeasonalPricings = seasonalPricings.length > 0;
+  // A forfait is billed per unit, per booking: dates never enter the total.
+  const isFixedPricing = isFixedPriceProduct({ pricingKind });
 
-  const priceResult =
-    hasSeasonalPricings && startDate && endDate
+  const priceResult = isFixedPricing
+    ? (() => {
+        const result = calculateFixedPrice(
+          { basePrice: price, deposit, pricingMode },
+          quantity,
+        );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: null,
+        };
+      })()
+    : hasSeasonalPricings && startDate && endDate
       ? (() => {
           const result = calculateSeasonalAwarePrice(
             {
@@ -467,11 +494,21 @@ export function AddToCartForm({
   const discountPercent = priceResult.discountPercent;
   const totalDeposit = deposit * quantity;
 
-  // Filter accessories to only show available ones (in stock, active status is already filtered server-side, and not in cart)
+  // Optional accessories feed the upsell modal: in stock, not already in the
+  // cart, and never a required one (those ride along with the product).
   const cartProductIds = new Set(cartItems.map((item) => item.productId));
-  const availableAccessories = accessories.filter(
+  const availableAccessories = selectOptionalAccessories(accessories).filter(
     (acc) => acc.quantity > 0 && !cartProductIds.has(acc.id),
   );
+  const requiredAccessories = useMemo(
+    () => buildRequiredAccessoryCartInputs(accessories),
+    [accessories],
+  );
+  const blockingRequiredAccessories = findBlockingRequiredAccessories(
+    accessories,
+    quantity,
+  );
+  const hasBlockingRequiredAccessory = blockingRequiredAccessories.length > 0;
 
   const handleAddToCart = () => {
     if (!startDate || !endDate) {
@@ -481,6 +518,14 @@ export function AddToCartForm({
 
     if (isSelectionUnavailable) {
       toastManager.add({ title: t('selectionUnavailable'), type: 'error' });
+      return;
+    }
+
+    if (hasBlockingRequiredAccessory) {
+      toastManager.add({
+        title: t('requiredAccessoryOutOfStock'),
+        type: 'error',
+      });
       return;
     }
 
@@ -527,6 +572,7 @@ export function AddToCartForm({
               1,
               allocation.combination.availableQuantity || 0,
             ),
+            pricingKind,
             pricingMode,
             basePeriodMinutes: basePeriodMinutes ?? null,
             enforceStrictTiers,
@@ -544,6 +590,7 @@ export function AddToCartForm({
               bookingAttributeAxes,
               allocation.combination.selectedAttributes,
             ),
+            requiredAccessories,
           },
           storeSlug,
         );
@@ -558,6 +605,7 @@ export function AddToCartForm({
           deposit,
           quantity,
           maxQuantity: Math.max(1, effectiveMaxQuantity),
+          pricingKind,
           pricingMode,
           basePeriodMinutes: basePeriodMinutes ?? null,
           enforceStrictTiers,
@@ -572,6 +620,7 @@ export function AddToCartForm({
           seasonalPricings:
             seasonalPricings.length > 0 ? seasonalPricings : undefined,
           selectedAttributes,
+          requiredAccessories,
         },
         storeSlug,
       );
@@ -749,15 +798,26 @@ export function AddToCartForm({
         </div>
       </div>
 
-      {/* Price Summary */}
-      {startDate && endDate && duration > 0 && (
+      {/* Price Summary — a forfait needs no dates to be priced. */}
+      {(isFixedPricing || Boolean(startDate && endDate && duration > 0)) && (
         <div className="bg-muted/30 space-y-2 rounded-lg border p-4">
           <div className="flex justify-between text-sm">
             <span>
-              {formatCurrency(price, currency)} x {quantity} x {duration}{' '}
-              {duration > 1
-                ? t(`pricingUnit.${pricingMode}.plural`)
-                : t(`pricingUnit.${pricingMode}.singular`)}
+              {isFixedPricing ? (
+                <>
+                  {formatCurrency(price, currency)} x {quantity}{' '}
+                  <span className="text-muted-foreground">
+                    ({t('fixedPricingLabel')})
+                  </span>
+                </>
+              ) : (
+                <>
+                  {formatCurrency(price, currency)} x {quantity} x {duration}{' '}
+                  {duration > 1
+                    ? t(`pricingUnit.${pricingMode}.plural`)
+                    : t(`pricingUnit.${pricingMode}.singular`)}
+                </>
+              )}
             </span>
             {savings > 0 ? (
               <span className="text-muted-foreground line-through">
@@ -801,12 +861,32 @@ export function AddToCartForm({
         </div>
       )}
 
+      {/* Required accessories — added with the product, or blocking it */}
+      {hasBlockingRequiredAccessory ? (
+        <p className="text-destructive text-sm">
+          {t('requiredAccessoryOutOfStock')}
+        </p>
+      ) : requiredAccessories.length > 0 ? (
+        <p className="text-muted-foreground text-sm">
+          {t('requiredAccessoriesIncluded', {
+            names: requiredAccessories
+              .map((accessory) => accessory.productName)
+              .join(', '),
+          })}
+        </p>
+      ) : null}
+
       {/* Add to Cart Button */}
       <Button
         size="lg"
         className="w-full"
         onClick={handleAddToCart}
-        disabled={!startDate || !endDate || isSelectionUnavailable}
+        disabled={
+          !startDate ||
+          !endDate ||
+          isSelectionUnavailable ||
+          hasBlockingRequiredAccessory
+        }
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
         {t('addToCart')}

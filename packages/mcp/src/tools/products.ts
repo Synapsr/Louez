@@ -7,7 +7,11 @@ import {
   db,
   effectiveProductQuantitySql,
   getEffectiveProductQuantities,
+  lockProductReservationsForStockKindChange,
   productCategories,
+  productPricingTiers,
+  productSeasonalPricing,
+  productSeasonalPricingTiers,
   products,
   reservationItems,
   reservations,
@@ -69,6 +73,8 @@ export function registerProductTools(
           name: products.name,
           price: products.price,
           deposit: products.deposit,
+          pricingKind: products.pricingKind,
+          stockKind: products.stockKind,
           pricingMode: products.pricingMode,
           quantity: effectiveProductQuantitySql(),
           status: products.status,
@@ -91,7 +97,7 @@ export function registerProductTools(
       const lines = rows.map(
         (p) =>
           `- **${p.name}** (${p.id})\n` +
-          `  Price: ${formatCurrency(p.price)}/${p.pricingMode} | Deposit: ${formatCurrency(p.deposit ?? '0')} | Stock: ${p.quantity}\n` +
+          `  Price: ${formatCurrency(p.price)}${p.pricingKind === 'fixed' ? ' (fixed)' : `/${p.pricingMode}`} | Deposit: ${formatCurrency(p.deposit ?? '0')} | Stock: ${p.quantity} (${p.stockKind})\n` +
           `  Status: ${p.status}${p.categoryName ? ` | Category: ${p.categoryName}` : ''}`,
       );
 
@@ -137,7 +143,9 @@ export function registerProductTools(
         `## ${product.name}\n\n` +
         `- **ID**: ${product.id}\n` +
         `- **Status**: ${product.status}\n` +
-        `- **Price**: ${formatCurrency(product.price)}/${product.pricingMode}\n` +
+        `- **Pricing kind**: ${product.pricingKind}\n` +
+        `- **Stock kind**: ${product.stockKind}\n` +
+        `- **Price**: ${formatCurrency(product.price)}${product.pricingKind === 'fixed' ? '' : `/${product.pricingMode}`}\n` +
         `- **Deposit**: ${formatCurrency(product.deposit ?? '0')}\n` +
         `- **Stock**: ${effectiveQuantity}\n` +
         `- **Category**: ${product.category?.name ?? '—'}\n` +
@@ -148,7 +156,10 @@ export function registerProductTools(
         text += `\n### Description\n${product.description}\n`;
       }
 
-      if (product.pricingTiers.length > 0) {
+      if (
+        product.pricingKind === 'duration' &&
+        product.pricingTiers.length > 0
+      ) {
         text += `\n### Pricing tiers\n`;
         for (const tier of product.pricingTiers) {
           const duration = tier.minDuration ?? tier.period ?? '—';
@@ -174,9 +185,22 @@ export function registerProductTools(
     {
       name: z.string().min(1).describe('Product name'),
       description: z.string().optional().describe('Product description'),
-      price: z.string().describe('Price per period (e.g. "25.00")'),
+      price: z
+        .string()
+        .describe('Price per period or fixed unit price (e.g. "25.00")'),
       deposit: z.string().optional().describe('Deposit amount (e.g. "100.00")'),
-      pricingMode: z.enum(['hour', 'day', 'week']).describe('Pricing period'),
+      pricingKind: z
+        .enum(['duration', 'fixed'])
+        .default('duration')
+        .describe('Whether pricing depends on rental duration'),
+      stockKind: z
+        .enum(['returnable', 'consumable'])
+        .default('returnable')
+        .describe('Whether stock returns after the reservation'),
+      pricingMode: z
+        .enum(['hour', 'day', 'week'])
+        .default('day')
+        .describe('Pricing period for duration products'),
       quantity: z
         .number()
         .int()
@@ -190,11 +214,17 @@ export function registerProductTools(
       description,
       price,
       deposit,
+      pricingKind,
+      stockKind,
       pricingMode,
       quantity,
       categoryId,
     }) => {
       requirePermission(ctx, 'products', 'write');
+
+      if (stockKind === 'consumable' && pricingKind !== 'fixed') {
+        return toolError('Consumable products must use fixed pricing.');
+      }
 
       const [created] = await db
         .insert(products)
@@ -204,7 +234,11 @@ export function registerProductTools(
           description: description ?? null,
           price,
           deposit: deposit ?? '0',
+          pricingKind,
+          stockKind,
           pricingMode,
+          basePeriodMinutes: null,
+          enforceStrictTiers: false,
           quantity: quantity ?? 1,
           categoryId: categoryId ?? null,
           status: 'active',
@@ -223,7 +257,9 @@ export function registerProductTools(
         `Product created successfully.\n\n` +
           `- **Name**: ${name}\n` +
           `- **ID**: ${created.id}\n` +
-          `- **Price**: ${formatCurrency(price)}/${pricingMode}\n` +
+          `- **Pricing kind**: ${pricingKind}\n` +
+          `- **Stock kind**: ${stockKind}\n` +
+          `- **Price**: ${formatCurrency(price)}${pricingKind === 'fixed' ? '' : `/${pricingMode}`}\n` +
           `- **Stock**: ${quantity ?? 1}`,
       );
     },
@@ -239,6 +275,14 @@ export function registerProductTools(
       description: z.string().optional().describe('New description'),
       price: z.string().optional().describe('New price'),
       deposit: z.string().optional().describe('New deposit amount'),
+      pricingKind: z
+        .enum(['duration', 'fixed'])
+        .optional()
+        .describe('New pricing behavior'),
+      stockKind: z
+        .enum(['returnable', 'consumable'])
+        .optional()
+        .describe('New stock behavior'),
       quantity: z.number().int().optional().describe('New stock quantity'),
       status: z
         .enum(['active', 'draft', 'archived'])
@@ -253,7 +297,12 @@ export function registerProductTools(
           eq(products.storeId, ctx.storeId),
           eq(products.id, productId),
         ),
-        columns: { id: true, trackUnits: true },
+        columns: {
+          id: true,
+          pricingKind: true,
+          stockKind: true,
+          trackUnits: true,
+        },
       });
       if (!existing) return toolError('Product not found.');
       if (existing.trackUnits && updates.quantity !== undefined) {
@@ -261,13 +310,33 @@ export function registerProductTools(
           'Quantity is derived from active units for unit-tracked products.',
         );
       }
+      const nextPricingKind = updates.pricingKind ?? existing.pricingKind;
+      const nextStockKind = updates.stockKind ?? existing.stockKind;
+      if (
+        nextStockKind === 'consumable' &&
+        (nextPricingKind !== 'fixed' || existing.trackUnits)
+      ) {
+        return toolError(
+          'Consumable products must use fixed pricing and cannot track units.',
+        );
+      }
 
-      const updateData: Record<string, unknown> = {};
+      const updateData: Partial<typeof products.$inferInsert> = {};
       if (updates.name !== undefined) updateData.name = updates.name;
       if (updates.description !== undefined)
         updateData.description = updates.description;
       if (updates.price !== undefined) updateData.price = updates.price;
       if (updates.deposit !== undefined) updateData.deposit = updates.deposit;
+      if (updates.pricingKind !== undefined) {
+        updateData.pricingKind = updates.pricingKind;
+        if (updates.pricingKind === 'fixed') {
+          updateData.basePeriodMinutes = null;
+          updateData.enforceStrictTiers = false;
+        }
+      }
+      if (updates.stockKind !== undefined) {
+        updateData.stockKind = updates.stockKind;
+      }
       if (updates.quantity !== undefined)
         updateData.quantity = updates.quantity;
       if (updates.status !== undefined) updateData.status = updates.status;
@@ -276,10 +345,101 @@ export function registerProductTools(
         return toolError('No fields to update.');
       }
 
-      await db
-        .update(products)
-        .set(updateData)
-        .where(eq(products.id, productId));
+      const updateResult = await db.transaction(async (tx) => {
+        const canChangeStockKind =
+          updates.stockKind === undefined
+            ? true
+            : await lockProductReservationsForStockKindChange(tx, {
+                productId,
+                storeId: ctx.storeId,
+              });
+        const [lockedProduct] = await tx
+          .select({
+            pricingKind: products.pricingKind,
+            stockKind: products.stockKind,
+            trackUnits: products.trackUnits,
+          })
+          .from(products)
+          .where(
+            and(eq(products.id, productId), eq(products.storeId, ctx.storeId)),
+          )
+          .for('update');
+
+        if (!lockedProduct) {
+          return { ok: false as const, error: 'Product not found.' };
+        }
+
+        const lockedNextPricingKind =
+          updates.pricingKind ?? lockedProduct.pricingKind;
+        const lockedNextStockKind = updates.stockKind ?? lockedProduct.stockKind;
+        if (
+          lockedNextStockKind === 'consumable' &&
+          (lockedNextPricingKind !== 'fixed' || lockedProduct.trackUnits)
+        ) {
+          return {
+            ok: false as const,
+            error:
+              'Consumable products must use fixed pricing and cannot track units.',
+          };
+        }
+        if (lockedProduct.trackUnits && updates.quantity !== undefined) {
+          return {
+            ok: false as const,
+            error:
+              'Quantity is derived from active units for unit-tracked products.',
+          };
+        }
+        if (
+          lockedProduct.stockKind !== lockedNextStockKind &&
+          !canChangeStockKind
+        ) {
+          return {
+            ok: false as const,
+            error:
+              'Stock kind cannot change while the product is used by a confirmed or ongoing reservation.',
+          };
+        }
+
+        await tx
+          .update(products)
+          .set(updateData)
+          .where(
+            and(eq(products.id, productId), eq(products.storeId, ctx.storeId)),
+          );
+
+        if (updates.pricingKind === 'fixed') {
+          await tx
+            .delete(productPricingTiers)
+            .where(eq(productPricingTiers.productId, productId));
+
+          const seasonalPricings = await tx
+            .select({ id: productSeasonalPricing.id })
+            .from(productSeasonalPricing)
+            .where(eq(productSeasonalPricing.productId, productId));
+          const seasonalPricingIds = seasonalPricings.map(({ id }) => id);
+
+          if (seasonalPricingIds.length > 0) {
+            await tx
+              .delete(productSeasonalPricingTiers)
+              .where(
+                inArray(
+                  productSeasonalPricingTiers.seasonalPricingId,
+                  seasonalPricingIds,
+                ),
+              );
+          }
+
+          await tx
+            .delete(productSeasonalPricing)
+            .where(eq(productSeasonalPricing.productId, productId));
+        }
+
+        return { ok: true as const };
+      });
+
+      if (!updateResult.ok) {
+        return toolError(updateResult.error);
+      }
 
       return toolResult(`Product ${productId} updated successfully.`);
     },

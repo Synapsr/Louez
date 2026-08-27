@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { BusinessHours } from "@louez/types";
+import type { BusinessHours, PricingKind, StockKind } from "@louez/types";
 import { Button } from "@louez/ui";
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from "@louez/ui";
 import { Popover, PopoverContent, PopoverTrigger } from "@louez/ui";
@@ -84,7 +84,9 @@ interface ProductPreviewModalProps {
     price: string;
     deposit: string | null;
     quantity: number;
+    stockKind?: StockKind | null;
     category?: { name: string } | null;
+    pricingKind?: PricingKind | null;
     pricingMode?: PricingMode | null;
     basePeriodMinutes?: number | null;
     pricingTiers?: PricingTier[];
@@ -113,6 +115,7 @@ export function ProductPreviewModal({
 }: ProductPreviewModalProps) {
   const tProduct = useTranslations("storefront.product");
   const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
+  const tCatalog = useTranslations("storefront.catalog");
   const tDateSelection = useTranslations("storefront.dateSelection");
   const currency = useStoreCurrency();
   const formatMoney = (amount: number, currencyOverride = currency) =>
@@ -491,7 +494,9 @@ export function ProductPreviewModal({
                 </div>
                 {product.quantity === 0 && (
                   <Badge variant="failed" className="shrink-0 text-xs">
-                    {tProduct("unavailable")}
+                    {product.stockKind === "consumable"
+                      ? tCatalog("consumableOutOfStock")
+                      : tProduct("unavailable")}
                   </Badge>
                 )}
               </div>
@@ -507,7 +512,9 @@ export function ProductPreviewModal({
                   {formatMoney(pricingSummary.displayPrice, currency)}
                 </span>
                 <span className="text-muted-foreground text-base">
-                  / {formatPeriodLabel(displayPeriodMinutes)}
+                  {displayPeriodMinutes == null
+                    ? tProduct("fixedPricingLabel")
+                    : `/ ${formatPeriodLabel(displayPeriodMinutes)}`}
                 </span>
                 {modalDiscount > 0 && (
                   <Badge variant="progress" className="ml-2">

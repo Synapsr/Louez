@@ -166,7 +166,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
             currency={currency}
           />
 
-          <ProductInventorySection productId={product.id} inventoryDetail={inventoryDetail} />
+          <ProductInventorySection
+            productId={product.id}
+            inventoryDetail={inventoryDetail}
+            stockKind={product.stockKind}
+          />
 
           <ProductReservationsSection
             reservationsPage={reservationsPage}

@@ -21,7 +21,7 @@ import {
 import { useTranslations } from 'next-intl'
 
 import type { CombinationAvailability } from '@louez/types'
-import type { Rate } from '@louez/types'
+import type { PricingKind, Rate } from '@louez/types'
 import { toastManager } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from '@louez/ui'
@@ -42,10 +42,12 @@ import {
   type SeasonalPricingConfig,
   calculateDurationMinutes,
   calculateEffectivePrice,
+  calculateFixedPrice,
   calculateRateBasedPrice,
   calculateRentalPrice,
   calculateSeasonalAwarePrice,
   findSeasonalPricingForDate,
+  isFixedPriceProduct,
   isRateBasedProduct,
   sortTiersByDuration,
 } from '@louez/utils';
@@ -56,6 +58,11 @@ import {
   getDetailedDuration,
 } from '@/lib/utils/duration';
 import { pickActiveVariantAttributes } from '@/lib/util.variant-visibility';
+import {
+  buildRequiredAccessoryCartInputs,
+  findBlockingRequiredAccessories,
+  selectOptionalAccessories,
+} from '@/lib/utils/cart-required-accessories';
 
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useCart } from '@/contexts/cart-context';
@@ -101,6 +108,9 @@ interface Accessory {
   deposit: string;
   images: string[] | null;
   quantity: number;
+  required?: boolean | null;
+  requiredQuantity?: number | null;
+  pricingKind?: PricingKind | null;
   pricingMode: PricingMode | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: PricingTier[];
@@ -128,6 +138,7 @@ interface ProductModalProps {
     deposit: string | null;
     quantity: number;
     category?: { name: string } | null;
+    pricingKind?: PricingKind | null;
     pricingMode?: PricingMode | null;
     basePeriodMinutes?: number | null;
     enforceStrictTiers?: boolean;
@@ -182,8 +193,13 @@ export function ProductModal({
     reductionPercent > 0 &&
     (maxDiscountPercent == null || reductionPercent <= maxDiscountPercent);
 
+  // Required accessory lines belong to their parent: they are never the line
+  // this modal edits.
   const cartLines = useMemo(
-    () => cartItems.filter((item) => item.productId === product.id),
+    () =>
+      cartItems.filter(
+        (item) => item.productId === product.id && !item.parentLineId,
+      ),
     [cartItems, product.id],
   );
   const wasOpenRef = useRef(false);
@@ -195,10 +211,14 @@ export function ProductModal({
   >({});
   const [tiersExpanded, setTiersExpanded] = useState(false);
 
-  // Filter available accessories (active with stock and not already in cart)
+  // Upsell accessories: optional, in stock and not already in the cart.
   const cartProductIds = new Set(cartItems.map((item) => item.productId));
-  const availableAccessories = (product.accessories || []).filter(
-    (acc) => acc.quantity > 0 && !cartProductIds.has(acc.id),
+  const availableAccessories = selectOptionalAccessories(
+    product.accessories || [],
+  ).filter((acc) => acc.quantity > 0 && !cartProductIds.has(acc.id));
+  const requiredAccessories = useMemo(
+    () => buildRequiredAccessoryCartInputs(product.accessories || []),
+    [product.accessories],
   );
 
   useEffect(() => {
@@ -298,8 +318,25 @@ export function ProductModal({
 
   // Use seasonal-aware calculation when seasonal pricings exist
   const hasSeasonalPricings = (product.seasonalPricings?.length ?? 0) > 0;
+  // A forfait is billed per unit, per booking: the selected dates never
+  // change its price, and it carries no rate grid.
+  const isFixedPricing = isFixedPriceProduct(product);
 
-  const priceResult = hasSeasonalPricings
+  const priceResult = isFixedPricing
+    ? (() => {
+        const result = calculateFixedPrice(
+          { basePrice: price, deposit, pricingMode: effectivePricingMode },
+          quantity,
+        );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: null,
+          isSeasonal: false,
+        };
+      })()
+    : hasSeasonalPricings
     ? (() => {
         const result = calculateSeasonalAwarePrice(
           {
@@ -500,6 +537,10 @@ export function ProductModal({
     : maxQuantity;
   const isSelectionUnavailable =
     hasBookingAttributes && effectiveMaxQuantity === 0;
+  // A required accessory the store cannot supply blocks the parent product.
+  const hasBlockingRequiredAccessory =
+    findBlockingRequiredAccessories(product.accessories || [], quantity)
+      .length > 0;
 
   const images =
     product.images && product.images.length > 0 ? product.images : [];
@@ -540,6 +581,10 @@ export function ProductModal({
       return;
     }
 
+    if (hasBlockingRequiredAccessory) {
+      return;
+    }
+
     if (shouldSplitAcrossCombinations) {
       const allocations = allocateAcrossCombinations(
         bookingAttributeAxes,
@@ -565,6 +610,7 @@ export function ProductModal({
               1,
               allocation.combination.availableQuantity || 0,
             ),
+            pricingKind: product.pricingKind ?? 'duration',
             pricingMode: effectivePricingMode,
             basePeriodMinutes: product.basePeriodMinutes ?? null,
             pricingTiers: product.pricingTiers?.map((tier) => ({
@@ -586,6 +632,7 @@ export function ProductModal({
               bookingAttributeAxes,
               allocation.combination.selectedAttributes,
             ),
+            requiredAccessories,
           },
           storeSlug,
         );
@@ -643,6 +690,7 @@ export function ProductModal({
           deposit,
           quantity,
           maxQuantity: Math.max(1, effectiveMaxQuantity),
+          pricingKind: product.pricingKind ?? 'duration',
           pricingMode: effectivePricingMode,
           basePeriodMinutes: product.basePeriodMinutes ?? null,
           pricingTiers: product.pricingTiers?.map((tier) => ({
@@ -661,6 +709,7 @@ export function ProductModal({
           productPricingMode: product.pricingMode,
           seasonalPricings: product.seasonalPricings,
           selectedAttributes,
+          requiredAccessories,
         },
         storeSlug,
       );
@@ -1005,10 +1054,13 @@ export function ProductModal({
                     )}
                   </span>
                   <span className="text-muted-foreground text-base">
-                    /{' '}
-                    {contextualDisplay
-                      ? formatPeriodLabel(contextualDisplay.periodMinutes)
-                      : pricingUnitLabel}
+                    {isFixedPricing
+                      ? tProduct('fixedPricingLabel')
+                      : `/ ${
+                          contextualDisplay
+                            ? formatPeriodLabel(contextualDisplay.periodMinutes)
+                            : pricingUnitLabel
+                        }`}
                   </span>
                 </div>
               </div>
@@ -1027,8 +1079,10 @@ export function ProductModal({
                 </div>
               )}
 
-              {/* Pricing tiers section */}
-              {isRateBased
+              {/* Pricing tiers section — never shown for a forfait */}
+              {isFixedPricing
+                ? null
+                : isRateBased
                 ? rateRows.length > 1 &&
                   (() => {
                     const MAX_VISIBLE = 3;
@@ -1533,7 +1587,11 @@ export function ProductModal({
             <div className="mb-4 flex items-center justify-between">
               <div className="flex flex-col">
                 <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                  {tProduct('total')} ({durationLabel})
+                  {tProduct('total')} (
+                  {isFixedPricing
+                    ? tProduct('fixedPricingLabel')
+                    : durationLabel}
+                  )
                 </span>
                 <div className="mt-0.5 flex items-baseline gap-2">
                   {savings > 0 && (
@@ -1589,7 +1647,11 @@ export function ProductModal({
               {/* Add to cart button */}
               <Button
                 onClick={handleAddToCart}
-                disabled={isUnavailable || isSelectionUnavailable}
+                disabled={
+                  isUnavailable ||
+                  isSelectionUnavailable ||
+                  hasBlockingRequiredAccessory
+                }
                 size="lg"
                 className="h-12 flex-1 rounded-xl text-base font-semibold"
               >
@@ -1597,6 +1659,19 @@ export function ProductModal({
                 {isInCart ? t('updateCart') : t('addToCart')}
               </Button>
             </div>
+            {hasBlockingRequiredAccessory ? (
+              <p className="text-destructive mt-2 text-xs">
+                {tProduct('requiredAccessoryOutOfStock')}
+              </p>
+            ) : requiredAccessories.length > 0 ? (
+              <p className="text-muted-foreground mt-2 text-xs">
+                {tProduct('requiredAccessoriesIncluded', {
+                  names: requiredAccessories
+                    .map((accessory) => accessory.productName)
+                    .join(', '),
+                })}
+              </p>
+            ) : null}
             {productCartQuantity > 0 && (
               <p className="text-muted-foreground mt-2 text-xs">
                 {tProduct('inCartCount', { count: productCartQuantity })}

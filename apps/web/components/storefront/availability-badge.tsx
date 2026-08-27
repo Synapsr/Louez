@@ -10,7 +10,13 @@ import {
   XCircleSolidIcon,
 } from "@louez/ui/icons";
 
-export type AvailabilityStatus = "available" | "limited" | "unavailable" | "in_cart";
+export type AvailabilityStatus =
+  | "available"
+  | "limited"
+  | "unavailable"
+  | "out_of_stock"
+  | "required_accessory_out_of_stock"
+  | "in_cart";
 
 interface AvailabilityBadgeProps {
   status: AvailabilityStatus;
@@ -48,6 +54,16 @@ export function AvailabilityBadge({
     unavailable: {
       icon: XCircleSolidIcon,
       label: t("unavailable"),
+      variant: "failed" as const,
+    },
+    out_of_stock: {
+      icon: XCircleSolidIcon,
+      label: t("outOfStock"),
+      variant: "failed" as const,
+    },
+    required_accessory_out_of_stock: {
+      icon: XCircleSolidIcon,
+      label: t("requiredAccessoryOutOfStock"),
       variant: "failed" as const,
     },
     in_cart: {

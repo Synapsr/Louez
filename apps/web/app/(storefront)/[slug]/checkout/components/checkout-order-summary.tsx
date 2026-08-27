@@ -18,13 +18,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@louez/ui';
-import { formatCurrency } from '@louez/utils';
+import { cn, formatCurrency, isFixedPriceProduct } from '@louez/utils';
 
 import { ProductImage } from '@/components/product/product-image';
 import { useFormatLocale } from '@/hooks/use-format-locale';
 
 import { getDetailedDuration } from '@/lib/utils/duration';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
+import { groupCartLinesByParent } from '@/lib/utils/cart-required-accessories';
 
 import type { CartItem } from '@/contexts/cart-context';
 import { useStoreMaxDiscountPercent } from '@/contexts/store-context';
@@ -109,6 +110,7 @@ export function CheckoutOrderSummary({
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
+  const tProduct = useTranslations('storefront.product');
   const tErrors = useTranslations('errors');
   const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
   const formatMoney = (amount: number, currencyOverride = currency) =>
@@ -131,6 +133,16 @@ export function CheckoutOrderSummary({
     tulipQuotePreview?.quoteError?.startsWith('errors.')
       ? tErrors(tulipQuotePreview.quoteError.slice('errors.'.length) as never)
       : null;
+
+  // Required accessories are listed right under the line they belong to.
+  const orderedLines: Array<{ item: CartItem; parentName?: string }> =
+    groupCartLinesByParent(items).flatMap((group) => [
+      { item: group.line },
+      ...group.children.map((child) => ({
+        item: child,
+        parentName: group.line.productName,
+      })),
+    ]);
 
   const durationLabel = (() => {
     if (!globalStartDate || !globalEndDate) return '';
@@ -180,7 +192,7 @@ export function CheckoutOrderSummary({
 
           <div className="space-y-3">
             <TooltipProvider>
-              {items.map((item, index) => {
+              {orderedLines.map(({ item, parentName }, index) => {
                 const priceResult = calculateCartItemPrice(
                   item,
                   globalStartDate,
@@ -202,7 +214,10 @@ export function CheckoutOrderSummary({
                 return (
                   <div
                     key={item.lineId || `${item.productId}-${index}`}
-                    className="flex gap-3"
+                    className={cn(
+                      'flex gap-3',
+                      parentName && 'border-border ml-4 border-l pl-3',
+                    )}
                   >
                     <ProductImage
                       src={item.productImage}
@@ -258,11 +273,30 @@ export function CheckoutOrderSummary({
                           {t('lineNeedsUpdateInline')}
                         </p>
                       )}
+                      {item.unavailableReason && (
+                        <p className="text-destructive truncate text-[11px]">
+                          {tCart(`unavailable.${item.unavailableReason}`)}
+                        </p>
+                      )}
+                      {parentName && (
+                        <p className="text-muted-foreground truncate text-[11px]">
+                          {tCart('requiredWith', { name: parentName })}
+                        </p>
+                      )}
                       <p className="text-muted-foreground text-xs">
-                        {item.quantity} {'\u00d7'}{' '}
-                        {formatMoney(
-                          itemTotal / Math.max(1, item.quantity),
-                          currency,
+                        {parentName && itemTotal === 0 ? (
+                          tCart('included')
+                        ) : (
+                          <>
+                            {item.quantity} {'\u00d7'}{' '}
+                            {formatMoney(
+                              itemTotal / Math.max(1, item.quantity),
+                              currency,
+                            )}
+                            {isFixedPriceProduct(item)
+                              ? ` \u00b7 ${tProduct('fixedPricingLabel')}`
+                              : null}
+                          </>
                         )}
                       </p>
                       {discountPercent != null && discountPercent > 0 &&

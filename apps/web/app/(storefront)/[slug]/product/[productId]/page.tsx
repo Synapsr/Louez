@@ -9,7 +9,12 @@ import { and, asc, desc, eq, ne } from 'drizzle-orm';
 import { ArrowRight, Check } from 'lucide-react';
 import { getLocale, getTranslations } from 'next-intl/server';
 
-import { db, getEffectiveProductQuantities } from '@louez/db';
+import {
+  db,
+  getBlockingReservationStatuses,
+  getEffectiveProductQuantities,
+  loadConsumableReservedQuantities,
+} from '@louez/db';
 import {
   productSeasonalPricing,
   productSeasonalPricingTiers,
@@ -24,6 +29,7 @@ import {
   buildCombinationKey,
   formatCurrency,
   getDeterministicCombinationSortValue,
+  isFixedPriceProduct,
   minutesToPriceDuration,
   pricingModeToMinutes,
 } from '@louez/utils';
@@ -45,6 +51,7 @@ import { filterActiveVariantAxes } from '@/lib/util.variant-visibility';
 import { getStoreVariantActivity } from '@/lib/util.variant-visibility.server';
 import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale';
 import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server';
+import { findBlockingRequiredAccessories } from '@/lib/utils/cart-required-accessories';
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
 import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
@@ -135,6 +142,7 @@ export async function generateMetadata({
       // Effective quantity is irrelevant for metadata (only the JSON-LD
       // schema reads availability) — skip that extra query here.
       quantity: product.quantity,
+      pricingKind: product.pricingKind,
       pricingMode: product.pricingMode,
       basePeriodMinutes: product.basePeriodMinutes,
       category: product.category
@@ -189,9 +197,37 @@ export default async function ProductPage({ params }: ProductPageProps) {
     product.id,
     ...accessoryIds,
   ]);
+  const consumableProductIds = [
+    ...(product.stockKind === 'consumable' ? [product.id] : []),
+    ...(product.accessories || []).flatMap((link) =>
+      link.accessory?.stockKind === 'consumable' ? [link.accessory.id] : [],
+    ),
+  ];
+  const consumableReservedQuantities = await loadConsumableReservedQuantities(
+    db,
+    {
+      storeId: store.id,
+      productIds: consumableProductIds,
+      blockingStatuses: getBlockingReservationStatuses(
+        storeSettings.pendingBlocksAvailability ?? true,
+      ),
+    },
+  );
+  const getUntrackedAvailableQuantity = (stockProduct: {
+    id: string;
+    quantity: number;
+    stockKind: 'returnable' | 'consumable';
+  }) =>
+    stockProduct.stockKind === 'consumable'
+      ? Math.max(
+          0,
+          stockProduct.quantity -
+            (consumableReservedQuantities.get(stockProduct.id) ?? 0),
+        )
+      : stockProduct.quantity;
   const effectiveQuantity = product.trackUnits
     ? (effectiveQuantities.get(product.id) ?? 0)
-    : product.quantity;
+    : getUntrackedAvailableQuantity(product);
 
   const currentDowntimeUnitIds = await getCurrentDowntimeUnitIds(
     (product.units || []).map((unit) => unit.id),
@@ -253,25 +289,31 @@ export default async function ProductPage({ params }: ProductPageProps) {
     };
   });
 
-  // Filter accessories to only include active ones with stock
+  // Keep active accessories with stock, plus every required one: an
+  // out-of-stock required accessory must still reach the UI to explain why the
+  // parent product cannot be booked.
   const availableAccessories = (product.accessories || [])
     .filter(
       (acc) =>
         acc.accessory &&
         acc.accessory.status === 'active' &&
-        (acc.accessory.trackUnits
+        ((acc.accessory.trackUnits
           ? (effectiveQuantities.get(acc.accessory.id) ?? 0)
-          : acc.accessory.quantity) > 0,
+          : getUntrackedAvailableQuantity(acc.accessory)) > 0 ||
+          acc.required),
     )
     .map((acc) => ({
       quantity: acc.accessory.trackUnits
         ? (effectiveQuantities.get(acc.accessory.id) ?? 0)
-        : acc.accessory.quantity,
+        : getUntrackedAvailableQuantity(acc.accessory),
       id: acc.accessory.id,
       name: acc.accessory.name,
       price: acc.accessory.price,
       deposit: acc.accessory.deposit || '0',
       images: acc.accessory.images,
+      required: acc.required,
+      requiredQuantity: acc.quantity,
+      pricingKind: acc.accessory.pricingKind,
       pricingMode: acc.accessory.pricingMode,
       basePeriodMinutes: acc.accessory.basePeriodMinutes,
       pricingTiers: acc.accessory.pricingTiers?.map((tier) => ({
@@ -282,6 +324,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
         price: tier.price,
       })),
     }));
+  const blockingRequiredAccessories = findBlockingRequiredAccessories(
+    availableAccessories,
+    1,
+  );
 
   // Get related products from same category
   const relatedProductsRaw = product.categoryId
@@ -313,6 +359,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const basePath = await getStorefrontPathPrefix(slug);
   const effectivePricingMode = product.pricingMode ?? 'day';
   const depositAmount = product.deposit ? parseFloat(product.deposit) : 0;
+  // A forfait is billed per booking: the price carries no period, no tiers.
+  const isFixedPricing = isFixedPriceProduct(product);
 
   // Rate-based products price a custom period ("50 € / 2 heures"), not one
   // pricingMode unit — mirror what the catalog card and booking form charge.
@@ -334,7 +382,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
           !currentDowntimeUnitIds.has(unit.id),
       ).length
     : effectiveQuantity;
-  const isAvailable = effectiveQuantity > 0;
+  // A consumable at zero and a missing required accessory are both "not
+  // bookable", but the customer deserves to know which one it is.
+  const isAvailable =
+    effectiveQuantity > 0 && blockingRequiredAccessories.length === 0;
+  const unavailableLabel =
+    effectiveQuantity === 0 && product.stockKind === 'consumable'
+      ? tCatalog('consumableOutOfStock')
+      : blockingRequiredAccessories.length > 0
+        ? t('requiredAccessoryOutOfStock')
+        : tCatalog('unavailable');
   const storedBookingAttributeAxes = [
     ...((product.bookingAttributeAxes as Array<{
       key: string;
@@ -451,6 +508,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     deposit: product.deposit,
     images: product.images,
     quantity: effectiveQuantity,
+    pricingKind: product.pricingKind,
     pricingMode: effectivePricingMode,
     basePeriodMinutes: product.basePeriodMinutes,
     category: product.category
@@ -571,7 +629,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   {formatCurrency(parseFloat(product.price), currency, formatLocale)}
                 </span>
                 <span className="text-muted-foreground text-base">
-                  / {basePeriodLabel}
+                  {isFixedPricing
+                    ? t('fixedPricingLabel')
+                    : `/ ${basePeriodLabel}`}
                 </span>
                 {depositAmount > 0 && (
                   <span className="text-muted-foreground text-sm">
@@ -589,7 +649,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     </span>
                   </>
                 ) : (
-                  <Badge variant="failed">{tCatalog('unavailable')}</Badge>
+                  <Badge variant="failed">{unavailableLabel}</Badge>
                 )}
               </div>
             </div>
@@ -598,6 +658,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             {product.pricingTiers && product.pricingTiers.length > 0 && (
               <PricingTiersDisplay
                 basePrice={parseFloat(product.price)}
+                pricingKind={product.pricingKind}
                 pricingMode={effectivePricingMode}
                 basePeriodMinutes={product.basePeriodMinutes}
                 tiers={product.pricingTiers}
@@ -615,6 +676,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 price={parseFloat(product.price)}
                 deposit={product.deposit ? parseFloat(product.deposit) : 0}
                 maxQuantity={displayQuantity}
+                pricingKind={product.pricingKind}
                 pricingMode={effectivePricingMode}
                 basePeriodMinutes={product.basePeriodMinutes}
                 storeSlug={slug}
@@ -651,6 +713,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               />
             ) : (
               <div className="bg-muted/40 space-y-3 rounded-xl border p-4">
+                <p className="text-sm font-medium">{unavailableLabel}</p>
                 <p className="text-muted-foreground text-sm">
                   {t('unavailableHelp')}
                 </p>
@@ -685,8 +748,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     {t('specs.basePrice')}
                   </dt>
                   <dd className="text-right font-medium">
-                    {formatCurrency(parseFloat(product.price), currency, formatLocale)} /{' '}
-                    {basePeriodLabel}
+                    {formatCurrency(parseFloat(product.price), currency, formatLocale)}
+                    {isFixedPricing
+                      ? ` · ${t('fixedPricingLabel')}`
+                      : ` / ${basePeriodLabel}`}
                   </dd>
                 </div>
                 {depositAmount > 0 && (
@@ -704,7 +769,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <dd className="text-right font-medium">
                     {isAvailable
                       ? t('availableCount', { count: displayQuantity })
-                      : tCatalog('unavailable')}
+                      : unavailableLabel}
                   </dd>
                 </div>
               </dl>

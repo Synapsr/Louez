@@ -3,15 +3,7 @@
 import Link from 'next/link';
 
 import { format } from 'date-fns';
-
-import {
-  ArrowRight,
-  CalendarDays,
-  Minus,
-  Plus,
-  ShoppingCart,
-  Trash2,
-} from 'lucide-react';
+import { ArrowRight, CalendarDays, ShoppingCart, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@louez/ui';
@@ -42,9 +34,12 @@ import {
 import { Badge } from '@louez/ui';
 import { cn, formatCurrency } from '@louez/utils';
 
-import { ProductImage } from '@/components/product/product-image';
+import { CartLineItem } from '@/components/storefront/cart-line-item';
 
-import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
+import {
+  getCartLineAvailableMaximumQuantity,
+  groupCartLinesByParent,
+} from '@/lib/utils/cart-required-accessories';
 
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
@@ -86,6 +81,7 @@ export function CartSidebar({
 
   const itemCount = getItemCount();
   const tProduct = useTranslations('storefront.product');
+  const lineGroups = groupCartLinesByParent(items);
 
   const getItemDuration = (item: (typeof items)[number]) => {
     const start = globalStartDate
@@ -120,7 +116,7 @@ export function CartSidebar({
   // Format duration label
   const durationLabel = items.length > 0 ? getItemDurationLabel(items[0]) : '';
 
-  const CartContent = () => (
+  const renderCartContent = () => (
     <>
       {/* Period Display - only shown when showDates is true */}
       {showDates && globalStartDate && globalEndDate && (
@@ -150,96 +146,46 @@ export function CartSidebar({
         </div>
       ) : (
         <>
-          {/* Items List */}
+          {/* Items List — required accessories nest under their parent line */}
           <div className="-mx-4 max-h-64 flex-1 overflow-y-auto px-4">
             <div className="space-y-3">
-              {items.map((item) => (
-                <div
-                  key={item.lineId}
-                  className="bg-muted/30 flex gap-3 rounded-lg p-3"
-                >
-                  {/* Image */}
-                  <ProductImage
-                    src={item.productImage}
-                    alt={item.productName}
-                    sizes="88px"
-                    containerClassName="h-16 shrink-0 rounded-md"
-                  />
-
-                  {/* Info */}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {item.productName}
-                    </p>
-                    {item.selectedAttributes &&
-                      Object.keys(item.selectedAttributes).length > 0 && (
-                        <p className="text-muted-foreground truncate text-[11px]">
-                          {Object.entries(item.selectedAttributes)
-                            .map(([key, value]) => `${key}: ${value}`)
-                            .join(' • ')}
-                        </p>
-                      )}
-                    <p className="text-muted-foreground text-xs">
-                      {formatMoney(
-                        calculateCartItemPrice(
-                          item,
-                          globalStartDate,
-                          globalEndDate,
-                        ).subtotal / Math.max(1, item.quantity),
-                        currency,
-                      )}{' '}
-                      × {item.quantity}
-                    </p>
-
-                    {/* Quantity Controls */}
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() =>
-                            updateItemQuantityByLineId(
-                              item.lineId,
-                              item.quantity - 1,
-                            )
-                          }
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center text-sm">
-                          {item.quantity}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() =>
-                            updateItemQuantityByLineId(
-                              item.lineId,
-                              item.quantity + 1,
-                            )
-                          }
-                          disabled={item.quantity >= item.maxQuantity}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive h-6 w-6"
-                        onClick={() => removeItemByLineId(item.lineId)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    {item.quantity >= item.maxQuantity && (
-                      <p className="text-muted-foreground mt-1 text-[11px]">
-                        {t('lineMaxReached')}
-                      </p>
+              {lineGroups.map((group) => (
+                <div key={group.line.lineId} className="space-y-2">
+                  <CartLineItem
+                    item={group.line}
+                    maximumQuantity={getCartLineAvailableMaximumQuantity(
+                      items,
+                      group.line,
                     )}
-                  </div>
+                    currency={currency}
+                    globalStartDate={globalStartDate}
+                    globalEndDate={globalEndDate}
+                    onQuantityChange={updateItemQuantityByLineId}
+                    onRemove={removeItemByLineId}
+                  />
+                  {group.children.length > 0 && (
+                    <div className="border-border ml-5 space-y-2 border-l pl-3">
+                      {group.children.map((child) => (
+                        <CartLineItem
+                          key={child.lineId}
+                          item={child}
+                          maximumQuantity={getCartLineAvailableMaximumQuantity(
+                            items,
+                            child,
+                          )}
+                          currency={currency}
+                          globalStartDate={globalStartDate}
+                          globalEndDate={globalEndDate}
+                          parent={{
+                            name: group.line.productName,
+                            quantity: group.line.quantity,
+                          }}
+                          onQuantityChange={updateItemQuantityByLineId}
+                          onRemove={removeItemByLineId}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -354,9 +300,7 @@ export function CartSidebar({
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <CartContent />
-        </CardContent>
+        <CardContent>{renderCartContent()}</CardContent>
       </Card>
 
       {/* Mobile Floating Button + Sheet */}
@@ -386,7 +330,7 @@ export function CartSidebar({
               </SheetTitle>
             </SheetHeader>
             <div className="flex h-[calc(100%-60px)] flex-col">
-              <CartContent />
+              {renderCartContent()}
             </div>
           </SheetContent>
         </Sheet>

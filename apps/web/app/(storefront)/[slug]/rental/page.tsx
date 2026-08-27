@@ -19,7 +19,7 @@ import {
   products,
   stores,
 } from "@louez/db";
-import type { StoreSettings, StoreTheme } from "@louez/types";
+import type { PricingKind, StoreSettings, StoreTheme } from "@louez/types";
 import { Skeleton } from "@louez/ui";
 
 import { generateStoreMetadata } from "@/lib/seo";
@@ -171,6 +171,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
     deposit: string;
     images: string[] | null;
     quantity: number;
+    required: boolean;
+    requiredQuantity: number;
     pricingMode: "day" | "hour" | "week" | null;
     pricingTiers?: PricingTier[];
   }
@@ -221,6 +223,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
         price: products.price,
         deposit: products.deposit,
         basePeriodMinutes: products.basePeriodMinutes,
+        pricingKind: products.pricingKind,
+        stockKind: products.stockKind,
         pricingMode: products.pricingMode,
         videoUrl: products.videoUrl,
         quantity: effectiveProductQuantitySql(),
@@ -352,6 +356,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
         productId: productAccessories.productId,
         accessoryId: productAccessories.accessoryId,
         displayOrder: productAccessories.displayOrder,
+        required: productAccessories.required,
+        requiredQuantity: productAccessories.quantity,
       })
       .from(productAccessories)
       .where(inArray(productAccessories.productId, productIdsArray))
@@ -369,6 +375,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       images: string[] | null;
       quantity: number;
       status: "active" | "draft" | "archived" | null;
+      pricingKind: PricingKind;
       pricingMode: "day" | "hour" | "week" | null;
     }[] = [];
     if (accessoryIds.length > 0) {
@@ -381,6 +388,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
           images: products.images,
           quantity: effectiveProductQuantitySql(),
           status: products.status,
+          pricingKind: products.pricingKind,
           pricingMode: products.pricingMode,
         })
         .from(products)
@@ -422,17 +430,21 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       deposit: string;
       images: string[] | null;
       quantity: number;
+      required: boolean;
+      requiredQuantity: number;
+      pricingKind: PricingKind;
       pricingMode: "day" | "hour" | "week" | null;
       pricingTiers?: PricingTier[];
     }
     const accessoriesByProductId = new Map<string, ProductAccessory[]>();
     for (const acc of accessoriesResults) {
       const accessoryProduct = accessoryProductMap.get(acc.accessoryId);
-      // Only include active accessories with stock
+      // Active accessories with stock, plus every required one: an out-of-stock
+      // required accessory still has to reach the UI to explain the block.
       if (
         accessoryProduct &&
         accessoryProduct.status === "active" &&
-        accessoryProduct.quantity > 0
+        (accessoryProduct.quantity > 0 || acc.required)
       ) {
         const accessories = accessoriesByProductId.get(acc.productId) || [];
         accessories.push({
@@ -442,6 +454,9 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
           deposit: accessoryProduct.deposit || "0",
           images: accessoryProduct.images,
           quantity: accessoryProduct.quantity,
+          required: acc.required,
+          requiredQuantity: acc.requiredQuantity,
+          pricingKind: accessoryProduct.pricingKind,
           pricingMode: accessoryProduct.pricingMode,
           pricingTiers: accessoryTiersByProductId.get(accessoryProduct.id),
         });
@@ -466,6 +481,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
         price: row.price,
         deposit: row.deposit,
         basePeriodMinutes: row.basePeriodMinutes,
+        pricingKind: row.pricingKind,
+        stockKind: row.stockKind,
         pricingMode: row.pricingMode,
         videoUrl: row.videoUrl,
         quantity: row.quantity,

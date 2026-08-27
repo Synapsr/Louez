@@ -29,6 +29,7 @@ export const storefrontCartResolveInputSchema = z.object({
     .array(
       z.object({
         lineId: z.string().min(1).max(128),
+        parentLineId: z.string().min(1).max(128).optional(),
         productId: z.string().length(21),
         quantity: z.number().int().min(1),
         startDate: dateTimeOrDateSchema,

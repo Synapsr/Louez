@@ -84,6 +84,7 @@ export function getPeriodAvailability(params: {
     startDate,
     endDate,
     turnoverBufferMinutes,
+    pendingBlocksAvailability,
   });
 
   peakAvailability.reservedByProduct.forEach((quantity, productId) => {

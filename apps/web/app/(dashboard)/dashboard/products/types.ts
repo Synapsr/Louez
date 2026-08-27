@@ -1,14 +1,17 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { FormRadioGroupProps } from "@/components/form/form-radio-group";
+import type { StockKindChangeBlocker } from "@louez/db";
 import type {
+  PricingKind,
   PricingMode,
   ProductImageHistory,
   ProductTaxSettings,
+  StockKind,
   TaxSettings,
 } from "@louez/types";
 import type { DurationUnit } from "@louez/utils";
-import type { ProductInput } from "@louez/validations";
+import type { ProductAccessoryLinkInput, ProductInput } from "@louez/validations";
 
 export interface Category {
   id: string;
@@ -108,6 +111,8 @@ export interface Product {
   categoryIds?: string[];
   price: string;
   deposit: string | null;
+  pricingKind?: PricingKind | null;
+  stockKind?: StockKind | null;
   pricingMode?: PricingMode | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: PricingTierData[];
@@ -118,7 +123,7 @@ export interface Product {
   videoUrl: string | null;
   taxSettings?: ProductTaxSettings | null;
   enforceStrictTiers?: boolean;
-  accessoryIds?: string[];
+  accessories?: ProductAccessoryLinkInput[];
   trackUnits?: boolean;
   units?: ProductUnitData[];
   bookingAttributeAxes?: BookingAttributeAxisData[] | null;
@@ -133,6 +138,7 @@ export interface AvailableAccessory {
 
 export interface ProductFormProps {
   product?: Product;
+  stockKindChangeBlockers?: StockKindChangeBlocker[];
   categories: Category[];
   currency?: string;
   storeTaxSettings?: TaxSettings;

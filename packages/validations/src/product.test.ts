@@ -37,6 +37,8 @@ const validProduct = {
       ],
     },
   ],
+  stockKind: "returnable",
+  pricingKind: "duration" as const,
   pricingMode: "day" as const,
   basePriceDuration: { price: "10", duration: 1, unit: "day" as const },
   pricingTiers: [],
@@ -44,7 +46,7 @@ const validProduct = {
   enforceStrictTiers: true,
   taxSettings: { inheritFromStore: true },
   videoUrl: "",
-  accessoryIds: [],
+  accessories: [],
   trackUnits: false,
   units: [],
   bookingAttributeAxes: [],
@@ -80,6 +82,133 @@ test("validates every URL stored in product image history", () => {
         ],
       },
     ],
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("accepts a fixed-price consumable without tracked units", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "consumable",
+    pricingKind: "fixed",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, true);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
+test("ignores incomplete duration fields when fixed pricing is selected", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "consumable",
+    pricingKind: "fixed",
+    basePriceDuration: { price: "", duration: 0, unit: "day" as const },
+    pricingTiers: [{ minDuration: 0, discountPercent: 100 }],
+    rateTiers: [
+      {
+        price: "",
+        duration: 0,
+        unit: "day" as const,
+        discountPercent: 100,
+      },
+    ],
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, true);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
+test("accepts a free fixed-price consumable", () => {
+  const product = {
+    ...validProduct,
+    price: "0",
+    stockKind: "consumable",
+    pricingKind: "fixed",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, true);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
+test("keeps rejecting a free fixed-price returnable product", () => {
+  const product = {
+    ...validProduct,
+    price: "0",
+    stockKind: "returnable",
+    pricingKind: "fixed",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("keeps rejecting a zero duration rate", () => {
+  const product = {
+    ...validProduct,
+    basePriceDuration: { ...validProduct.basePriceDuration, price: "0" },
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("rejects a duration-priced consumable", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "consumable",
+    pricingKind: "duration",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("rejects tracked units for a consumable", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "consumable",
+    pricingKind: "fixed",
+    trackUnits: true,
+    units: [{ identifier: "MEDIA-001" }],
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("normalizes a bare accessory id into an optional single-unit link", () => {
+  const product = {
+    ...validProduct,
+    accessories: ["accessory-1"],
+  };
+
+  const parsed = productSchema.safeParse(product);
+  assert.equal(parsed.success, true);
+  assert.deepEqual(parsed.success ? parsed.data.accessories : null, [
+    { accessoryId: "accessory-1", required: false, quantity: 1 },
+  ]);
+});
+
+test("keeps the required flag and quantity of a detailed accessory link", () => {
+  const product = {
+    ...validProduct,
+    accessories: [{ accessoryId: "accessory-1", required: true, quantity: 2 }],
+  };
+
+  const clientParsed = createProductSchema(translate).safeParse(product);
+  assert.equal(clientParsed.success, true);
+  assert.deepEqual(clientParsed.success ? clientParsed.data.accessories : null, [
+    { accessoryId: "accessory-1", required: true, quantity: 2 },
+  ]);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
+test("rejects an accessory link with a quantity below one", () => {
+  const product = {
+    ...validProduct,
+    accessories: [{ accessoryId: "accessory-1", required: true, quantity: 0 }],
   };
 
   assert.equal(createProductSchema(translate).safeParse(product).success, false);

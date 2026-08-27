@@ -1,6 +1,6 @@
-import { db } from "@louez/db";
+import { getAccessoryCandidates } from "@louez/api/services";
+import { categories, db } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
-import { categories } from "@louez/db";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
@@ -22,10 +22,13 @@ export default async function NewProductPage() {
     redirect("/onboarding");
   }
 
-  const categoriesList = await db.query.categories.findMany({
-    where: eq(categories.storeId, store.id),
-    orderBy: [categories.order],
-  });
+  const [categoriesList, availableAccessories] = await Promise.all([
+    db.query.categories.findMany({
+      where: eq(categories.storeId, store.id),
+      orderBy: [categories.order],
+    }),
+    getAccessoryCandidates({ storeId: store.id }),
+  ]);
 
   const showAiContext = store.aiAdvisorSettings?.enabled === true;
 
@@ -39,6 +42,7 @@ export default async function NewProductPage() {
       <ProductForm
         key="new-product"
         categories={categoriesList}
+        availableAccessories={availableAccessories}
         storeTaxSettings={store.settings?.tax}
         showAiContext={showAiContext}
         imageEnhanceEnabled={isAiImageEnhanceEnabled()}

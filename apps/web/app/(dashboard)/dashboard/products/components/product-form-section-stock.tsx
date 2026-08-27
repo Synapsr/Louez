@@ -6,6 +6,7 @@ import Link from 'next/link';
 
 import { useTranslations } from 'next-intl';
 
+import type { StockKindChangeBlocker } from '@louez/db';
 import {
   Button,
   Card,
@@ -22,6 +23,7 @@ import {
 } from '@/components/dashboard/unit-tracking-editor';
 
 import type { ProductFormComponentApi, ProductFormValues } from '../types';
+import { ProductFormStockKindField } from './product-form-stock-kind-field';
 
 type QuantityFieldMeta = {
   errorMap?: Record<string, unknown>;
@@ -30,6 +32,7 @@ type QuantityFieldMeta = {
 interface ProductFormSectionStockProps {
   form: ProductFormComponentApi;
   productId?: string;
+  stockKindChangeBlockers?: StockKindChangeBlocker[];
   watchedValues: ProductFormValues;
   currency: string;
   disabled?: boolean;
@@ -39,6 +42,7 @@ interface ProductFormSectionStockProps {
 export function ProductFormSectionStock({
   form,
   productId,
+  stockKindChangeBlockers = [],
   watchedValues,
   currency,
   disabled,
@@ -58,6 +62,10 @@ export function ProductFormSectionStock({
       (parseInt(watchedValues.quantity || '1', 10) || 1) > 1,
   );
 
+  // A consumable is never tracked unit by unit, so the returnable stepper
+  // (quantity vs tracked units) has nothing left to ask.
+  const isConsumable = watchedValues.stockKind === 'consumable';
+
   // "Vélo gravel VFD" → "VELO-" : accent-stripped first word, used as the
   // suggested reference prefix for generated units.
   const defaultPrefix = useMemo(() => {
@@ -76,7 +84,7 @@ export function ProductFormSectionStock({
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            {modeChosen ? (
+            {modeChosen && !isConsumable ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -93,32 +101,45 @@ export function ProductFormSectionStock({
               <DatabaseIcon className="text-primary h-5 w-5 shrink-0 stroke-2" />
               {t('stock')}
             </CardTitle>
-            <StockModeIndicator
-              modeChosen={modeChosen}
-              trackUnits={watchedValues.trackUnits || false}
-              onBack={() => setModeChosen(false)}
-              disabled={disabled}
-            />
+            {isConsumable ? null : (
+              <StockModeIndicator
+                modeChosen={modeChosen}
+                trackUnits={watchedValues.trackUnits || false}
+                onBack={() => setModeChosen(false)}
+                disabled={disabled}
+              />
+            )}
           </div>
-          <CardDescription>{t('quantityHelp')}</CardDescription>
+          <CardDescription>
+            {isConsumable ? t('consumableQuantityHelp') : t('quantityHelp')}
+          </CardDescription>
         </div>
-        {productId ? (
-          <Button
-            variant="outline"
-            size="sm"
-            render={
-              <Link href={`/dashboard/products/${productId}`} />
-            }
-          >
-            <DatabaseIcon className="h-4 w-4" />
-            {tInventory('openInventory')}
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <ProductFormStockKindField
+            form={form}
+            productId={productId}
+            watchedValues={watchedValues}
+            disabled={disabled}
+            stockKindChangeBlockers={stockKindChangeBlockers}
+          />
+          {productId ? (
+            <Button
+              variant="outline"
+              size="sm"
+              render={
+                <Link href={`/dashboard/products/${productId}`} />
+              }
+            >
+              <DatabaseIcon className="h-4 w-4" />
+              {tInventory('openInventory')}
+            </Button>
+          ) : null}
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
         <UnitTrackingEditor
           currency={currency}
-          trackUnits={watchedValues.trackUnits || false}
+          trackUnits={!isConsumable && (watchedValues.trackUnits || false)}
           onTrackUnitsChange={(value) =>
             form.setFieldValue('trackUnits', value)
           }
@@ -139,7 +160,7 @@ export function ProductFormSectionStock({
             );
             form.setFieldValue('quantity', value);
           }}
-          modeChosen={modeChosen}
+          modeChosen={isConsumable || modeChosen}
           onModeChosenChange={setModeChosen}
           defaultPrefix={defaultPrefix}
           disabled={disabled}

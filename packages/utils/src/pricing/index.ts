@@ -8,6 +8,7 @@ export {
   findApplicableTier,
   calculateEffectivePrice,
   calculateRentalPrice,
+  calculateFixedPrice,
   calculateRateBasedPrice,
   calculateUnitPrice,
   generatePricingBreakdown,
@@ -19,6 +20,7 @@ export {
   getAvailableDurationMinutes,
   snapToNearestRatePeriod,
   isRateBasedProduct,
+  isFixedPriceProduct,
 } from './calculate'
 
 export {

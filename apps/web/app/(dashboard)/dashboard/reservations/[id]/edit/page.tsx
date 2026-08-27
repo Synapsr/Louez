@@ -1,15 +1,20 @@
 import { notFound, redirect } from 'next/navigation';
 
 import { subDays } from 'date-fns';
-import { and, eq, gte, inArray, ne } from 'drizzle-orm';
+import { and, eq, exists, gte, inArray, ne, or } from 'drizzle-orm';
 
 import {
   db,
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
 } from '@louez/db';
-import { products, reservations, storeLocations } from '@louez/db';
-import type { DeliverySettings, LegMethod } from '@louez/types';
+import {
+  products,
+  reservationItems,
+  reservations,
+  storeLocations,
+} from '@louez/db';
+import type { DeliverySettings, LegMethod, PricingKind, StockKind } from '@louez/types';
 import type { SeasonalPricingConfig } from '@louez/utils';
 
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
@@ -43,18 +48,39 @@ async function getActiveReservations(
     pendingBlocksAvailability,
   );
 
-  return db.query.reservations.findMany({
+  const activeReservations = await db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
       ne(reservations.id, excludeReservationId),
       inArray(reservations.status, blockingStatuses),
-      gte(reservations.endDate, thirtyDaysAgo),
+      or(
+        gte(reservations.endDate, thirtyDaysAgo),
+        exists(
+          db
+            .select({ id: reservationItems.id })
+            .from(reservationItems)
+            .innerJoin(products, eq(reservationItems.productId, products.id))
+            .where(
+              and(
+                eq(reservationItems.reservationId, reservations.id),
+                eq(products.storeId, storeId),
+                eq(products.stockKind, 'consumable'),
+              ),
+            ),
+        ),
+      ),
     ),
     with: {
       items: {
         columns: {
           productId: true,
           quantity: true,
+          consumedQuantity: true,
+        },
+        with: {
+          product: {
+            columns: { stockKind: true },
+          },
         },
       },
     },
@@ -65,6 +91,16 @@ async function getActiveReservations(
       status: true,
     },
   });
+
+  return activeReservations.map((reservation) => ({
+    ...reservation,
+    items: reservation.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      consumedQuantity: item.consumedQuantity,
+      stockKind: item.product?.stockKind ?? 'returnable',
+    })),
+  }));
 }
 
 /**
@@ -153,6 +189,8 @@ function mapProduct(p: {
   deposit: string | null;
   images: string[] | null;
   quantity: number;
+  stockKind: StockKind;
+  pricingKind: PricingKind;
   pricingMode: string | null;
   basePeriodMinutes: number | null;
   enforceStrictTiers: boolean;
@@ -188,6 +226,8 @@ function mapProduct(p: {
     deposit: p.deposit ?? '0',
     images: p.images ?? [],
     quantity: p.quantity,
+    stockKind: p.stockKind,
+    pricingKind: p.pricingKind,
     pricingMode: p.pricingMode,
     basePeriodMinutes: p.basePeriodMinutes,
     enforceStrictTiers: p.enforceStrictTiers,
@@ -385,6 +425,7 @@ export default async function EditReservationPage({
           id: item.id,
           productId: item.productId,
           quantity: item.quantity,
+          consumedQuantity: item.consumedQuantity,
           unitPrice: item.unitPrice,
           depositPerUnit: item.depositPerUnit,
           totalPrice: item.totalPrice,

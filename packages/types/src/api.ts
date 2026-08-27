@@ -15,6 +15,7 @@ export interface ProductAvailability {
   reservedQuantity: number;
   availableQuantity: number;
   status: 'available' | 'limited' | 'unavailable';
+  reason?: 'out_of_stock' | 'required_accessory_out_of_stock';
   combinations?: CombinationAvailability[];
   combinationsByKey?: Record<string, CombinationAvailability>;
 }

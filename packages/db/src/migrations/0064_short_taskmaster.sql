@@ -1,0 +1,1 @@
+ALTER TABLE `products` ADD `pricing_kind` enum('duration','fixed') DEFAULT 'duration' NOT NULL;

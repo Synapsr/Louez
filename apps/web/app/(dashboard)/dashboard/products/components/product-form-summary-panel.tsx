@@ -50,7 +50,12 @@ export function ProductFormSummaryPanel({
 }: ProductFormSummaryPanelProps) {
   const t = useTranslations("dashboard.products.form");
 
-  const basePrice = watchedValues.basePriceDuration?.price || watchedValues.price || "";
+  // Fixed pricing owns the flat `price` field; base rate values linger in the
+  // form state after a mode switch and must not leak into the preview.
+  const isFixedPricing = watchedValues.pricingKind === "fixed";
+  const basePrice = isFixedPricing
+    ? watchedValues.price || ""
+    : watchedValues.basePriceDuration?.price || watchedValues.price || "";
   const descriptionText = (watchedValues.description || "").replace(/<[^>]*>/g, "").trim();
 
   const checklist: ChecklistItem[] = [
@@ -62,7 +67,7 @@ export function ProductFormSummaryPanel({
     },
     {
       key: "price",
-      label: t("baseRate"),
+      label: isFixedPricing ? t("fixedPrice") : t("baseRate"),
       done: isValidPrice(basePrice),
       required: true,
     },

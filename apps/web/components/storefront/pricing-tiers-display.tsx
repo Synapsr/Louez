@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp, Layers } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { PricingMode } from "@louez/types";
+import type { PricingKind, PricingMode } from "@louez/types";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
 import { formatCurrency, minutesToPriceDuration } from "@louez/utils";
 
@@ -29,6 +29,7 @@ interface PricingTier {
 
 interface PricingTiersDisplayProps {
   basePrice: number;
+  pricingKind?: PricingKind | null;
   pricingMode: PricingMode;
   basePeriodMinutes?: number | null;
   tiers: PricingTier[];
@@ -37,6 +38,7 @@ interface PricingTiersDisplayProps {
 
 export function PricingTiersDisplay({
   basePrice,
+  pricingKind,
   pricingMode,
   basePeriodMinutes,
   tiers,
@@ -53,8 +55,10 @@ export function PricingTiersDisplay({
   // rate-based tier collapsing onto the base price. Legacy duration tiers can
   // carry a NULL minDuration meaning "from 1" — pricing still applies them,
   // so the display must too.
+  // A forfait has no rate grid, so this yields no rows and the card is skipped.
   const rateRows = getStorefrontRateRows({
     price: basePrice,
+    pricingKind,
     pricingMode,
     basePeriodMinutes,
     pricingTiers: tiers.map((tier) => ({

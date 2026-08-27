@@ -60,11 +60,13 @@ export function EditReservationItemCard({
   const t = useTranslations("dashboard.reservations");
   const tForm = useTranslations("dashboard.reservations.manualForm");
   const tCommon = useTranslations("common");
+  const tProductForm = useTranslations("dashboard.products.form");
 
   // Conflicted items start expanded so their controls are immediately at hand
   const [open, setOpen] = useState(() => Boolean(warning));
 
   const unitLabel = getDurationUnit(item.displayPricingMode);
+  const isFixedPrice = item.product?.pricingKind === "fixed";
   const displayedUnitPrice = item.isManualPrice ? item.unitPrice : item.effectiveUnitPrice;
 
   return (
@@ -175,8 +177,17 @@ export function EditReservationItemCard({
               )
             )}
             <span>
-              {item.quantity} × {item.duration} {unitLabel} · {displayedUnitPrice.toFixed(2)}
-              {currencySymbol}/{unitLabel}
+              {isFixedPrice ? (
+                <>
+                  {item.quantity} × {displayedUnitPrice.toFixed(2)}
+                  {currencySymbol} · {tProductForm("fixedPriceLabel")}
+                </>
+              ) : (
+                <>
+                  {item.quantity} × {item.duration} {unitLabel} · {displayedUnitPrice.toFixed(2)}
+                  {currencySymbol}/{unitLabel}
+                </>
+              )}
             </span>
           </span>
           <span className="font-semibold tabular-nums">
@@ -218,7 +229,7 @@ export function EditReservationItemCard({
                   onValueCommitted={(price) =>
                     onPriceChange(item.id, price, item.displayPricingMode)
                   }
-                  suffix={`${currencySymbol}/${unitLabel}`}
+                  suffix={isFixedPrice ? currencySymbol : `${currencySymbol}/${unitLabel}`}
                   ariaLabel={`${t("edit.unitPrice")}, ${item.productSnapshot.name}`}
                   className={cn(
                     item.isManualPrice && "border-amber-300 bg-amber-50 dark:bg-amber-950/20",
