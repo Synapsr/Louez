@@ -20,6 +20,8 @@ export interface ConsumableStockMutationPlan {
 
 type ReservationStatus = typeof reservations.$inferSelect.status
 
+const stockConsumingReservationStatuses: ReservationStatus[] = ['confirmed', 'ongoing']
+
 const reservationStatusTransitions: Partial<
   Record<ReservationStatus, readonly ReservationStatus[]>
 > = {
@@ -43,11 +45,31 @@ export function canTransitionReservationStatus(
 }
 
 export function reservationStatusConsumesStock(status: ReservationStatus): boolean {
-  return status === 'confirmed' || status === 'ongoing'
+  return stockConsumingReservationStatuses.includes(status)
 }
 
 export function canChangeProductStockKind(statuses: ReservationStatus[]): boolean {
   return statuses.every((status) => !reservationStatusConsumesStock(status))
+}
+
+export async function hasProductStockKindChangeBlockers(
+  database: Database,
+  params: { productId: string; storeId: string },
+): Promise<boolean> {
+  const linkedReservation = await database
+    .select({ id: reservations.id })
+    .from(reservations)
+    .innerJoin(reservationItems, eq(reservationItems.reservationId, reservations.id))
+    .where(
+      and(
+        eq(reservations.storeId, params.storeId),
+        eq(reservationItems.productId, params.productId),
+        inArray(reservations.status, stockConsumingReservationStatuses),
+      ),
+    )
+    .limit(1)
+
+  return linkedReservation.length > 0
 }
 
 export async function lockProductReservationsForStockKindChange(

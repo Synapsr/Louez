@@ -53,6 +53,7 @@ export {
   canTransitionReservationStatus,
   consumeReservationStock,
   getAllowedReservationStatusTransitions,
+  hasProductStockKindChangeBlockers,
   loadConsumableReservedQuantities,
   lockProductReservationsForStockKindChange,
   planConsumableStockMutation,

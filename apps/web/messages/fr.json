@@ -1118,6 +1118,7 @@
         "stockKindConsumableDescription": "Le produit part avec le client : le stock diminue à chaque réservation confirmée et la quantité correspond au stock en rayon.",
         "stockKindConsumableRequiresFixed": "Un consommable se vend au forfait : choisissez la tarification « Forfait » pour l'activer.",
         "stockKindConsumableRequiresNoUnits": "Un consommable ne se suit pas à l'unité : désactivez le suivi à l'unité pour l'activer.",
+        "stockKindChangeBlocked": "Le type de stock est verrouillé tant que ce produit figure dans une réservation confirmée ou en cours. Annulez ou terminez ces réservations pour le modifier.",
         "publication": "Publication",
         "statusActive": "Actif",
         "statusActiveDescription": "Visible sur la boutique",

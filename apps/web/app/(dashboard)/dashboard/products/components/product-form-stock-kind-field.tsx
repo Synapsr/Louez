@@ -17,6 +17,8 @@ interface ProductFormStockKindFieldProps {
   form: ProductFormComponentApi;
   watchedValues: ProductFormValues;
   disabled?: boolean;
+  stockKindChangeBlocked?: boolean;
+  ariaDescribedBy?: string;
 }
 
 /** Base UI selects hand back an `unknown` value; narrow it here. */
@@ -32,6 +34,8 @@ export const ProductFormStockKindField = ({
   form,
   watchedValues,
   disabled,
+  stockKindChangeBlocked = false,
+  ariaDescribedBy,
 }: ProductFormStockKindFieldProps) => {
   const t = useTranslations("dashboard.products.form");
 
@@ -55,11 +59,12 @@ export const ProductFormStockKindField = ({
         <Select
           value={field.state.value ?? "returnable"}
           onValueChange={(value) => field.handleChange(toStockKind(value))}
-          disabled={disabled}
+          disabled={disabled || stockKindChangeBlocked}
         >
           <SelectTrigger
             className="h-8 w-auto min-w-36"
             aria-label={t("stockKindLabel")}
+            aria-describedby={ariaDescribedBy}
           >
             <SelectValue>
               {(field.state.value ?? "returnable") === "consumable"

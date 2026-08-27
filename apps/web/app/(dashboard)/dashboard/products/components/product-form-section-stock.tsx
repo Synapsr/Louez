@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 
@@ -31,6 +31,7 @@ type QuantityFieldMeta = {
 interface ProductFormSectionStockProps {
   form: ProductFormComponentApi;
   productId?: string;
+  stockKindChangeBlocked?: boolean;
   watchedValues: ProductFormValues;
   currency: string;
   disabled?: boolean;
@@ -40,6 +41,7 @@ interface ProductFormSectionStockProps {
 export function ProductFormSectionStock({
   form,
   productId,
+  stockKindChangeBlocked = false,
   watchedValues,
   currency,
   disabled,
@@ -48,6 +50,7 @@ export function ProductFormSectionStock({
   const t = useTranslations('dashboard.products.form');
   const tInventory = useTranslations('dashboard.inventory.productScoped');
   const tUnitTracking = useTranslations('dashboard.products.form.unitTracking');
+  const stockKindBlockedDescriptionId = useId();
 
   // Stock mode stepper: editing an existing product always lands directly on
   // the second step (mode already established).
@@ -111,12 +114,26 @@ export function ProductFormSectionStock({
             {isConsumable ? t('consumableQuantityHelp') : t('quantityHelp')}
           </CardDescription>
         </div>
-        <div className="flex items-center gap-2">
-          <ProductFormStockKindField
-            form={form}
-            watchedValues={watchedValues}
-            disabled={disabled}
-          />
+        <div className="flex flex-wrap items-start gap-2 sm:justify-end">
+          <div className="flex max-w-80 flex-col gap-1 sm:items-end">
+            <ProductFormStockKindField
+              form={form}
+              watchedValues={watchedValues}
+              disabled={disabled}
+              stockKindChangeBlocked={stockKindChangeBlocked}
+              ariaDescribedBy={
+                stockKindChangeBlocked ? stockKindBlockedDescriptionId : undefined
+              }
+            />
+            {stockKindChangeBlocked ? (
+              <p
+                id={stockKindBlockedDescriptionId}
+                className="text-muted-foreground text-xs sm:text-right"
+              >
+                {t('stockKindChangeBlocked')}
+              </p>
+            ) : null}
+          </div>
           {productId ? (
             <Button
               variant="outline"

@@ -137,6 +137,7 @@ export interface AvailableAccessory {
 
 export interface ProductFormProps {
   product?: Product;
+  stockKindChangeBlocked?: boolean;
   categories: Category[];
   currency?: string;
   storeTaxSettings?: TaxSettings;

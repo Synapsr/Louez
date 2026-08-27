@@ -1118,6 +1118,7 @@
         "stockKindConsumableDescription": "The item leaves with the customer: stock goes down on every confirmed booking and the quantity is what sits on the shelf.",
         "stockKindConsumableRequiresFixed": "A consumable is sold at a flat rate: switch pricing to \"Flat rate\" to enable it.",
         "stockKindConsumableRequiresNoUnits": "A consumable is not tracked unit by unit: turn off unit tracking to enable it.",
+        "stockKindChangeBlocked": "Stock type is locked while this product is in a confirmed or ongoing reservation. Cancel or complete those reservations to change it.",
         "publication": "Publication",
         "statusActive": "Active",
         "statusActiveDescription": "Visible on the store",

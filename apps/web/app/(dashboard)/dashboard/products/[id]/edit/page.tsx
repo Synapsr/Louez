@@ -4,10 +4,12 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
 import { getAccessoryCandidates } from "@louez/api/services";
-import { db, getEffectiveProductQuantities } from "@louez/db";
 import {
   categories,
+  db,
   getBlockingReservationStatuses,
+  getEffectiveProductQuantities,
+  hasProductStockKindChangeBlockers,
   products,
   reservationItemUnits,
   reservationItems,
@@ -74,12 +76,13 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     notFound();
   }
 
-  const [categoriesList, availableAccessories] = await Promise.all([
+  const [categoriesList, availableAccessories, stockKindChangeBlocked] = await Promise.all([
     db.query.categories.findMany({
       where: eq(categories.storeId, store.id),
       orderBy: [categories.order],
     }),
     getAccessoryCandidates({ storeId: store.id, excludeProductId: id }),
+    hasProductStockKindChangeBlockers(db, { productId: id, storeId: store.id }),
   ]);
 
   // Accessory links carry their booking rules (required + quantity per parent
@@ -134,6 +137,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       </div>
 
       <ProductForm
+        stockKindChangeBlocked={stockKindChangeBlocked}
         product={{
           ...product,
           quantity: effectiveQuantity,

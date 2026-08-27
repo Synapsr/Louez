@@ -1079,6 +1079,7 @@
         "stockKindConsumableDescription": "Produkt zostaje u klienta: stan spada przy każdej potwierdzonej rezerwacji, a ilość to stan na półce.",
         "stockKindConsumableRequiresFixed": "Materiał zużywalny sprzedaje się w cenie ryczałtowej: wybierz cennik „Cena ryczałtowa”, aby go włączyć.",
         "stockKindConsumableRequiresNoUnits": "Materiał zużywalny nie jest śledzony sztuka po sztuce: wyłącz śledzenie jednostek, aby go włączyć.",
+        "stockKindChangeBlocked": "Rodzaj zapasu jest zablokowany, gdy produkt znajduje się w potwierdzonej lub trwającej rezerwacji. Anuluj lub zakończ te rezerwacje, aby go zmienić.",
         "publication": "Publikacja",
         "statusActive": "Aktywny",
         "statusActiveDescription": "Widoczny w sklepie",
