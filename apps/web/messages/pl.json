@@ -5437,6 +5437,18 @@
         "fix": "Poprawka"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "Cena, która nie zależy już od czasu",
+          "description": "Czyszczenie, dostawa, usługa: nie wszystko rozlicza się na godziny. Przełącz model cenowy na „Cenę ryczałtową”, a cena przestanie się zmieniać, czy wynajem potrwa dwie godziny, czy dwa tygodnie. Progi, sezony i wykres znikają; zostaje jedna kwota, jej podatek i kaucja."
+        },
+        "consumable-stock": {
+          "title": "To, co wychodzi razem z klientem",
+          "description": "Smar, gaz, worki: wszystko, co nie wraca. Przełącz produkt na „Materiał zużywalny”, a jego ilość stanie się stanem na półce — spada przy każdej potwierdzonej rezerwacji, rośnie po anulowaniu lub odrzuceniu i nie zależy już od dat."
+        },
+        "required-accessories": {
+          "title": "Kask zawsze wyjeżdża razem z rowerem",
+          "description": "Akcesorium może być teraz wymagane, z własną ilością na wynajętą jednostkę. Samo dodaje się do koszyka klienta, nadąża, gdy bierze trzy rowery zamiast jednego, i nie da się go usunąć. Za darmo widnieje po prostu jako „W zestawie”."
+        },
         "product-image-ai": {
           "title": "Twoje zdjęcia produktów przechodzą przez studio",
           "description": "Przy przesyłaniu AI wycina produkt, czyści tło i centruje go — albo tylko usuwa tło, jeśli wolisz zachować swój kadr. A każda wersja zostaje w historii zdjęcia: porównuj, zmieniaj zdanie, wracaj do oryginału."

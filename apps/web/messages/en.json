@@ -5437,6 +5437,18 @@
         "fix": "Fixed"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "A price that no longer depends on duration",
+          "description": "A cleaning, a delivery, a service: not everything is billed by the hour. Switch the pricing to \"Flat rate\" and the price stops moving, whether the rental runs two hours or two weeks. Tiers, seasons and the chart step aside; one amount is left, with its tax and its deposit."
+        },
+        "consumable-stock": {
+          "title": "The things that leave with your customer",
+          "description": "Wax, gas cartridges, bags: everything that never comes back. Switch a product to \"Consumable\" and its quantity becomes stock on the shelf — down on every confirmed booking, back up if it is cancelled or rejected, and no longer tied to the dates."
+        },
+        "required-accessories": {
+          "title": "The helmet always goes out with the bike",
+          "description": "An accessory can now be required, with its own quantity per rented unit. It adds itself to your customer's cart, follows along when they take three bikes instead of one, and cannot be removed. Free of charge, it simply reads \"Included\"."
+        },
         "product-image-ai": {
           "title": "Your product photos get the studio treatment",
           "description": "On upload, AI cuts out your product, cleans up the background and centres it — or only removes the backdrop if you'd rather keep your framing. And every version stays in the photo's history: compare, change your mind, go back to the original."

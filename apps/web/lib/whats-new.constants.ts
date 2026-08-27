@@ -7,10 +7,13 @@ import {
   KeyboardIcon,
   LayersIcon,
   LayoutIcon,
+  PackageIcon,
   PanelLeftIcon,
   ProductIcon,
+  PuzzleIcon,
   ReservationsIcon,
   SearchIcon,
+  TagIcon,
 } from "@louez/ui/icons";
 
 type BadgeVariant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
@@ -106,6 +109,51 @@ export const parseWhatsNewDate = (date: string) => {
  * `content/whats-new/<id>/<locale>.md`.
  */
 export const WHATS_NEW_ANNOUNCEMENTS: WhatsNewAnnouncement[] = [
+  {
+    id: "fixed-pricing",
+    category: "feature",
+    date: "2026-08-27",
+    titleKey: "announcements.fixed-pricing.title",
+    descriptionKey: "announcements.fixed-pricing.description",
+    featureId: "fixed-pricing",
+    href: "/dashboard/products",
+    media: {
+      type: "video",
+      src: "/videos/whats-new/fixed-pricing.mp4",
+      posterSrc: "/images/whats-new/fixed-pricing.webp",
+    },
+    icon: TagIcon,
+  },
+  {
+    id: "consumable-stock",
+    category: "feature",
+    date: "2026-08-27",
+    titleKey: "announcements.consumable-stock.title",
+    descriptionKey: "announcements.consumable-stock.description",
+    featureId: "consumable-stock",
+    href: "/dashboard/products",
+    media: {
+      type: "video",
+      src: "/videos/whats-new/consumable-stock.mp4",
+      posterSrc: "/images/whats-new/consumable-stock.webp",
+    },
+    icon: PackageIcon,
+  },
+  {
+    id: "required-accessories",
+    category: "feature",
+    date: "2026-08-27",
+    titleKey: "announcements.required-accessories.title",
+    descriptionKey: "announcements.required-accessories.description",
+    featureId: "required-accessories",
+    href: "/dashboard/products",
+    media: {
+      type: "video",
+      src: "/videos/whats-new/required-accessories.mp4",
+      posterSrc: "/images/whats-new/required-accessories.webp",
+    },
+    icon: PuzzleIcon,
+  },
   {
     id: "product-image-ai",
     category: "feature",

@@ -5437,6 +5437,18 @@
         "fix": "Opgelost"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "Een prijs die niet meer van de duur afhangt",
+          "description": "Een reiniging, een levering, een dienst: niet alles wordt per uur gefactureerd. Zet de tarifering op \"Vaste prijs\" en de prijs beweegt niet meer, of de verhuur nu twee uur of twee weken duurt. Staffels, seizoenen en de grafiek verdwijnen; wat blijft is één bedrag, met btw en waarborg."
+        },
+        "consumable-stock": {
+          "title": "Wat met de klant mee naar buiten gaat",
+          "description": "Wax, gaspatronen, zakken: alles wat niet terugkomt. Zet een product op \"Verbruiksartikel\" en de hoeveelheid wordt voorraad in het schap — die daalt bij elke bevestigde reservering, stijgt weer bij annulering of weigering, en hangt niet langer van de datums af."
+        },
+        "required-accessories": {
+          "title": "De helm gaat altijd mee met de fiets",
+          "description": "Een accessoire kan nu verplicht zijn, met een eigen aantal per verhuurde eenheid. Het legt zichzelf in het winkelmandje van uw klant, gaat mee wanneer die drie fietsen neemt in plaats van één, en kan niet worden verwijderd. Gratis staat er gewoon \"Inbegrepen\"."
+        },
         "product-image-ai": {
           "title": "Uw productfoto's krijgen een studiobehandeling",
           "description": "Bij het uploaden snijdt de AI uw product uit, maakt de achtergrond schoon en centreert het — of verwijdert alleen de achtergrond als u uw kadrering wilt houden. En elke versie blijft bewaard in de geschiedenis van de foto: vergelijk, verander van gedachten, ga terug naar het origineel."

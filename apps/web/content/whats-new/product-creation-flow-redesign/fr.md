@@ -1,12 +1,12 @@
 Créer un produit demandait quatre étapes — Photos, Informations, Tarifs, Aperçu — chacune avec son bouton Suivant, et l'aperçu réservé à la toute fin. Pour vérifier une ligne de tarif, il fallait revenir en arrière puis tout re-parcourir.
 
-## Une page, deux sections
+## Une page, trois sections
 
-La création tient désormais sur une seule page : **Produit** — nom, catégories, photos, description — puis **Tarifs et stock**. C'est tout. Vous descendez, vous remplissez, vous créez.
+La création tient désormais sur une seule page : **Produit** — nom, catégories, photos, description — puis **Tarification**, stock compris, et **Accessoires**. C'est tout. Vous descendez, vous remplissez, vous créez.
 
-## Moins de champs à la création
+## Les accessoires se règlent dès la création
 
-Les accessoires et l'assurance ne sont plus demandés au moment de créer. Ce sont des réglages qu'on affine une fois le produit en ligne : ils vous attendent sur la fiche, dans le formulaire de modification.
+À la sortie de cette page, ni les accessoires ni l'assurance n'y figuraient : c'étaient des réglages à reprendre une fois le produit en ligne. Depuis le 27 août 2026, la carte **Accessoires** est là aussi — vous rattachez les compléments d'un produit, et vous les marquez requis si le client ne doit pas pouvoir les décocher, avant même d'enregistrer. L'assurance, elle, reste un réglage d'après-coup, dans le formulaire de modification.
 
 ## Ce que vous voyez pendant que vous tapez
 

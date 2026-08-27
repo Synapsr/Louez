@@ -5437,6 +5437,18 @@
         "fix": "Correção"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "Um preço que já não depende da duração",
+          "description": "Uma limpeza, uma entrega, um serviço: nem tudo se cobra à hora. Mude a tarifação para «Preço fixo» e o preço deixa de mexer, dure o aluguer duas horas ou duas semanas. Escalões, épocas e o gráfico desaparecem; fica um montante, o seu imposto e a sua caução."
+        },
+        "consumable-stock": {
+          "title": "O que sai com o cliente",
+          "description": "A cera, o gás, os sacos: tudo o que não volta. Mude um produto para «Consumível» e a quantidade passa a ser estoque na prateleira — desce a cada reserva confirmada, sobe se for cancelada ou recusada, e deixa de depender das datas."
+        },
+        "required-accessories": {
+          "title": "O capacete sai sempre com a bicicleta",
+          "description": "Um acessório pode agora ser obrigatório, com a sua quantidade por unidade alugada. Adiciona-se sozinho ao carrinho do cliente, acompanha quando ele leva três bicicletas em vez de uma, e não pode ser retirado. Sem custo, aparece simplesmente como «Incluído»."
+        },
         "product-image-ai": {
           "title": "As suas fotos de produto passam pelo estúdio",
           "description": "Ao carregar, a IA recorta o seu produto, limpa o fundo e centra-o — ou remove apenas o fundo se preferir manter o seu enquadramento. E cada versão fica guardada no histórico da foto: compare, mude de ideias, volte à original."

@@ -1,12 +1,12 @@
 Creating a product took four steps — Photos, Information, Pricing, Preview — each with its own Next button, and the preview saved for the very end. To check one pricing line you had to walk back, then walk the whole thing again.
 
-## One page, two sections
+## One page, three sections
 
-Creation now fits on a single page: **Product** — name, categories, photos, description — then **Pricing and stock**. That is all. You scroll, you fill in, you create.
+Creation now fits on a single page: **Product** — name, categories, photos, description — then **Pricing**, stock included, and **Accessories**. That is all. You scroll, you fill in, you create.
 
-## Fewer fields at creation time
+## Accessories are set up at creation time
 
-Accessories and insurance are no longer asked for when you create. They are settings you refine once the product is live: they wait for you on the product's page, in the edit form.
+When this page shipped, neither accessories nor insurance were on it: they were settings to come back to once the product was live. Since 27 August 2026 the **Accessories** card is there too — you attach a product's add-ons, and mark them required if the customer must not be able to opt out, before you even save. Insurance is still configured afterwards, in the edit form.
 
 ## What you see while you type
 

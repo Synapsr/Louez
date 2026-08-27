@@ -5437,6 +5437,18 @@
         "fix": "Correctif"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "Un prix qui ne dépend plus de la durée",
+          "description": "Un nettoyage, une livraison, une prestation : tout ne se facture pas à l'heure. Passez la tarification en « Forfait » et le prix ne bouge plus, que la location dure deux heures ou deux semaines. Les paliers, les saisons et le graphique s'effacent ; il ne reste qu'un montant, sa TVA et sa caution."
+        },
+        "consumable-stock": {
+          "title": "Ce qui part avec le client",
+          "description": "Le fart, le gaz, les sacs : tout ce qui ne revient pas. Passez un produit en « Consommable » et sa quantité devient un stock en rayon — il baisse à chaque réservation confirmée, remonte si elle est annulée ou refusée, et ne dépend plus des dates."
+        },
+        "required-accessories": {
+          "title": "Le casque part toujours avec le vélo",
+          "description": "Un accessoire peut désormais être requis, avec sa quantité par unité louée. Il s'ajoute seul au panier de votre client, suit quand il prend trois vélos au lieu d'un, et ne peut pas être retiré. Offert, il s'affiche simplement « Inclus »."
+        },
         "product-image-ai": {
           "title": "Vos photos produit passent au studio",
           "description": "À l'upload, l'IA détoure votre produit, nettoie le fond et le centre — ou retire seulement l'arrière-plan si vous préférez garder votre cadrage. Et chaque version est conservée dans l'historique de la photo : comparez, changez d'avis, revenez à l'originale."

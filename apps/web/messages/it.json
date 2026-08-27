@@ -5437,6 +5437,18 @@
         "fix": "Correzione"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "Un prezzo che non dipende più dalla durata",
+          "description": "Una pulizia, una consegna, una prestazione: non tutto si fattura a ore. Portate la tariffazione su «Prezzo forfettario» e il prezzo non si muove più, che il noleggio duri due ore o due settimane. Scaglioni, stagioni e grafico spariscono; restano un importo, la sua imposta e la sua cauzione."
+        },
+        "consumable-stock": {
+          "title": "Quello che se ne va con il cliente",
+          "description": "La sciolina, il gas, i sacchetti: tutto ciò che non torna. Portate un prodotto su «Consumabile» e la sua quantità diventa stock a magazzino — cala a ogni prenotazione confermata, risale se viene annullata o rifiutata, e non dipende più dalle date."
+        },
+        "required-accessories": {
+          "title": "Il casco esce sempre con la bici",
+          "description": "Un accessorio può ora essere obbligatorio, con la sua quantità per unità noleggiata. Si aggiunge da solo al carrello del vostro cliente, lo segue quando prende tre bici invece di una, e non può essere tolto. Se è gratuito, compare semplicemente come «Incluso»."
+        },
         "product-image-ai": {
           "title": "Le vostre foto prodotto passano in studio",
           "description": "Al caricamento, l'IA scontorna il prodotto, pulisce lo sfondo e lo centra — o rimuove solo lo sfondo se preferite tenere la vostra inquadratura. E ogni versione resta nella cronologia della foto: confrontate, cambiate idea, tornate all'originale."

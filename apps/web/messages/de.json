@@ -5437,6 +5437,18 @@
         "fix": "Behoben"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "Ein Preis, der nicht mehr von der Dauer abhängt",
+          "description": "Eine Reinigung, eine Lieferung, eine Dienstleistung: Nicht alles wird nach Stunden abgerechnet. Stellen Sie das Preismodell auf „Pauschalpreis“ um, und der Preis bleibt gleich, ob die Miete zwei Stunden oder zwei Wochen läuft. Staffeln, Saisonpreise und die Kurve verschwinden; es bleiben ein Betrag, seine Steuer und seine Kaution."
+        },
+        "consumable-stock": {
+          "title": "Was mit dem Kunden aus dem Laden geht",
+          "description": "Wachs, Gaskartuschen, Beutel: alles, was nicht zurückkommt. Stellen Sie ein Produkt auf „Verbrauchsartikel“ um, und seine Menge wird zum Lagerbestand — er sinkt bei jeder bestätigten Buchung, steigt bei Stornierung oder Ablehnung wieder und hängt nicht mehr vom Datum ab."
+        },
+        "required-accessories": {
+          "title": "Der Helm geht immer mit dem Fahrrad raus",
+          "description": "Ein Zubehörteil kann jetzt erforderlich sein, mit eigener Menge pro vermieteter Einheit. Es legt sich von selbst in den Warenkorb Ihres Kunden, zieht mit, wenn er drei Fahrräder statt einem nimmt, und lässt sich nicht entfernen. Kostenlos steht dort einfach „Inbegriffen“."
+        },
         "product-image-ai": {
           "title": "Ihre Produktfotos bekommen den Studio-Look",
           "description": "Beim Hochladen stellt die KI Ihr Produkt frei, säubert den Hintergrund und zentriert es — oder entfernt nur den Hintergrund, wenn Sie Ihren Bildausschnitt behalten möchten. Und jede Version bleibt im Verlauf des Fotos erhalten: vergleichen, umentscheiden, zum Original zurückkehren."
