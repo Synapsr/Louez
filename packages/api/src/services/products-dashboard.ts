@@ -93,6 +93,7 @@ export async function getDashboardProductsList({
       price: products.price,
       deposit: products.deposit,
       quantity: effectiveProductQuantitySql(),
+      stockKind: products.stockKind,
       status: products.status,
       categoryId: products.categoryId,
       categoryName: categories.name,
@@ -120,6 +121,7 @@ export async function getDashboardProductsList({
         price: row.price,
         deposit: row.deposit,
         quantity: row.quantity,
+        stockKind: row.stockKind,
         status: row.status,
         category:
           row.categoryId && row.categoryName

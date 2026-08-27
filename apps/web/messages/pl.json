@@ -1079,6 +1079,9 @@
         "stockKindConsumableDescription": "Produkt zostaje u klienta: stan spada przy każdej potwierdzonej rezerwacji, a ilość to stan na półce.",
         "stockKindConsumableRequiresFixed": "Materiał zużywalny sprzedaje się w cenie ryczałtowej: wybierz cennik „Cena ryczałtowa”, aby go włączyć.",
         "stockKindConsumableRequiresNoUnits": "Materiał zużywalny nie jest śledzony sztuka po sztuce: wyłącz śledzenie jednostek, aby go włączyć.",
+        "stockKindUntracked": "Bez śledzenia stanu",
+        "stockKindUntrackedRequiresNoUnits": "Stan bez śledzenia nie może używać śledzenia jednostek.",
+        "untrackedStockHelp": "Ilość nie jest śledzona ani ograniczana. Daty i zasady rezerwacji nadal obowiązują.",
         "stockKindChangeBlockedTitle": "Rodzaj zapasu zablokowany",
         "stockKindChangeBlocked": "Ten produkt znajduje się w poniższych rezerwacjach. Anuluj lub zakończ je przed zmianą rodzaju zapasu.",
         "stockKindChangeBlockedTrigger": "{kind}. Wyświetl blokujące rezerwacje.",
@@ -1482,7 +1485,10 @@
           "utilization": "Wykorzystanie",
           "utilizationSubtitle": "Ostatnie 30 dni",
           "stock": "Stan magazynowy",
-          "unitsActiveValue": "{active}/{total} aktywnych"
+          "unitsActiveValue": "{active}/{total} aktywnych",
+          "notTracked": "Nieśledzony",
+          "notApplicable": "Nie dotyczy",
+          "notTrackedSubtitle": "Brak pojemności magazynowej"
         },
         "inventory": {
           "title": "Inwentarz",
@@ -1512,6 +1518,7 @@
           "viewCalendar": "Kalendarz",
           "timeline": {
             "stock": "Stan magazynowy",
+            "bookings": "Rezerwacje",
             "statusFilter": "Filtruj według statusu",
             "showAll": "Pokaż wszystkie",
             "previous": "Poprzedni okres",
@@ -5699,6 +5706,7 @@
       "selectQuantity": "Ilość",
       "quantity": "Ilość",
       "availableCount": "{count, plural, one {# dostępny} few {# dostępne} many {# dostępnych} other {# dostępnych}}",
+      "availableWithoutStockLimit": "Dostępny",
       "available": "Dostępne",
       "unavailable": "Niedostępne",
       "deposit": "Kaucja",

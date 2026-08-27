@@ -1079,6 +1079,9 @@
         "stockKindConsumableDescription": "Il prodotto parte con il cliente: lo stock cala a ogni prenotazione confermata e la quantità è lo stock a magazzino.",
         "stockKindConsumableRequiresFixed": "Un consumabile si vende a prezzo forfettario: scegli la tariffazione «Prezzo forfettario» per attivarlo.",
         "stockKindConsumableRequiresNoUnits": "Un consumabile non si traccia unità per unità: disattiva il tracciamento per unità per attivarlo.",
+        "stockKindUntracked": "Stock non tracciato",
+        "stockKindUntrackedRequiresNoUnits": "Lo stock non tracciato non può usare il tracciamento per unità.",
+        "untrackedStockHelp": "Nessuna quantità viene tracciata o limitata. Le date e le regole di prenotazione continuano ad applicarsi.",
         "stockKindChangeBlockedTitle": "Tipo di stock bloccato",
         "stockKindChangeBlocked": "Questo prodotto figura nelle seguenti prenotazioni. Annullale o completale prima di modificare il tipo di stock.",
         "stockKindChangeBlockedTrigger": "{kind}. Visualizza le prenotazioni che impediscono la modifica.",
@@ -1482,7 +1485,10 @@
           "utilization": "Tasso di utilizzo",
           "utilizationSubtitle": "Ultimi 30 giorni",
           "stock": "Stock",
-          "unitsActiveValue": "{active}/{total} attive"
+          "unitsActiveValue": "{active}/{total} attive",
+          "notTracked": "Non tracciato",
+          "notApplicable": "Non applicabile",
+          "notTrackedSubtitle": "Nessuna capacità di stock"
         },
         "inventory": {
           "title": "Inventario",
@@ -1512,6 +1518,7 @@
           "viewCalendar": "Calendario",
           "timeline": {
             "stock": "Stock",
+            "bookings": "Prenotazioni",
             "statusFilter": "Filtra per stato",
             "showAll": "Mostra tutto",
             "previous": "Periodo precedente",
@@ -5699,6 +5706,7 @@
       "selectQuantity": "Quantita",
       "quantity": "Quantita",
       "availableCount": "{count, plural, one {# disponibile} other {# disponibili}}",
+      "availableWithoutStockLimit": "Disponibile",
       "available": "Disponibile",
       "unavailable": "Non disponibile",
       "deposit": "Deposito",

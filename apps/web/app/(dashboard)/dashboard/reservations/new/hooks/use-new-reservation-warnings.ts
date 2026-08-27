@@ -3,7 +3,10 @@ import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 
 import type { ProductAvailability } from '@louez/types';
-import { calculatePeakReservedQuantities } from '@louez/utils';
+import {
+  calculatePeakReservedQuantities,
+  getAvailableStockQuantity,
+} from '@louez/utils';
 
 import {
   formatDaySchedule,
@@ -249,9 +252,13 @@ export function useNewReservationWarnings({
         0;
       const available = serviceProduct
         ? serviceProduct.availableQuantity
-        : Math.max(0, product.quantity - reserved);
+        : getAvailableStockQuantity({
+            stockKind: product.stockKind,
+            totalQuantity: product.quantity,
+            reservedQuantity: reserved,
+          });
 
-      if (requestedQuantity > available) {
+      if (available !== null && requestedQuantity > available) {
         warnings.push({
           productId,
           productName: product.name,

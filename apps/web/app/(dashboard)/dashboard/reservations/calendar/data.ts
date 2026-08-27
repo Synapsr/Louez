@@ -31,6 +31,7 @@ export async function getCalendarProducts(storeId: string) {
         // Thumbnail for the product filter combobox
         images: products.images,
         trackUnits: products.trackUnits,
+        stockKind: products.stockKind,
       })
       .from(products)
       .where(and(eq(products.storeId, storeId), eq(products.status, "active")))

@@ -6,6 +6,7 @@
  */
 
 import type { ReservationCalendarPeriodEntry } from "@louez/validations";
+import type { StockKind } from "@louez/types";
 
 import type { TimelineReservation } from "@/components/dashboard/reservations-timeline/timeline-utils";
 
@@ -42,6 +43,7 @@ export interface Product {
   categoryId?: string | null;
   /** Unit-tracked products get one planning row per real unit */
   trackUnits?: boolean;
+  stockKind: StockKind;
   /** Active units, empty for simple-quantity products */
   units?: ProductUnit[];
 }

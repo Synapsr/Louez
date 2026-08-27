@@ -492,7 +492,7 @@ export function ProductPreviewModal({
                     {product.name}
                   </h2>
                 </div>
-                {product.quantity === 0 && (
+                {product.stockKind !== "untracked" && product.quantity === 0 && (
                   <Badge variant="failed" className="shrink-0 text-xs">
                     {product.stockKind === "consumable"
                       ? tCatalog("consumableOutOfStock")
@@ -805,7 +805,10 @@ export function ProductPreviewModal({
             {/* CTA Button */}
             <Button
               onClick={handleSubmit}
-              disabled={!canSubmit || product.quantity === 0}
+              disabled={
+                !canSubmit ||
+                (product.stockKind !== "untracked" && product.quantity === 0)
+              }
               size="lg"
               className="h-12 w-full text-base font-semibold"
             >

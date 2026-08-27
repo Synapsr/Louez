@@ -99,6 +99,27 @@ test("accepts a fixed-price consumable without tracked units", () => {
   assert.equal(productSchema.safeParse(product).success, true);
 });
 
+test("accepts a fixed-price product without stock tracking", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "untracked",
+    pricingKind: "fixed",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, true);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
+test("accepts a duration-priced product without stock tracking", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "untracked",
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, true);
+  assert.equal(productSchema.safeParse(product).success, true);
+});
+
 test("ignores incomplete duration fields when fixed pricing is selected", () => {
   const product = {
     ...validProduct,
@@ -172,6 +193,19 @@ test("rejects tracked units for a consumable", () => {
     pricingKind: "fixed",
     trackUnits: true,
     units: [{ identifier: "MEDIA-001" }],
+  };
+
+  assert.equal(createProductSchema(translate).safeParse(product).success, false);
+  assert.equal(productSchema.safeParse(product).success, false);
+});
+
+test("rejects tracked units when stock is not tracked", () => {
+  const product = {
+    ...validProduct,
+    stockKind: "untracked",
+    pricingKind: "fixed",
+    trackUnits: true,
+    units: [{ identifier: "SERVICE-001" }],
   };
 
   assert.equal(createProductSchema(translate).safeParse(product).success, false);

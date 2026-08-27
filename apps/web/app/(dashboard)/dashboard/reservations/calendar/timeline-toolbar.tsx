@@ -290,6 +290,7 @@ function ProductFilterCombobox({
 }) {
   const t = useTranslations("dashboard.calendar");
   const tTimeline = useTranslations("dashboard.calendar.timeline");
+  const tProducts = useTranslations("dashboard.products.form");
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -365,7 +366,9 @@ function ProductFilterCombobox({
                     />
                     <span className="min-w-0 flex-1 truncate">{product.name}</span>
                     <Badge variant="expired" className="tabular-nums">
-                      {t("productsView.units", { count: product.quantity })}
+                      {product.stockKind === "untracked"
+                        ? tProducts("stockKindUntracked")
+                        : t("productsView.units", { count: product.quantity })}
                     </Badge>
                     <Check className={cn("size-4 shrink-0", !isSelected && "opacity-0")} />
                   </CommandItem>

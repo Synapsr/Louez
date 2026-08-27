@@ -790,7 +790,11 @@ export function NewReservationForm({
           hasSelectedPeriod,
           getPeriodProductAvailability(product.id),
         );
-        if (constraints.lineMaxQuantity <= 0 && !options.allowUnavailable) {
+        if (
+          constraints.lineMaxQuantity !== null &&
+          constraints.lineMaxQuantity <= 0 &&
+          !options.allowUnavailable
+        ) {
           return prev;
         }
 
@@ -813,7 +817,11 @@ export function NewReservationForm({
           hasSelectedPeriod,
           getPeriodProductAvailability(product.id),
         );
-        if (constraints.lineMaxQuantity <= 0 && !options.allowUnavailable) {
+        if (
+          constraints.lineMaxQuantity !== null &&
+          constraints.lineMaxQuantity <= 0 &&
+          !options.allowUnavailable
+        ) {
           return prev;
         }
 
@@ -832,6 +840,8 @@ export function NewReservationForm({
       );
       const nextQuantity = options.allowUnavailable
         ? existingLine.quantity + 1
+        : constraints.lineMaxQuantity === null
+          ? existingLine.quantity + 1
         : Math.min(
             existingLine.quantity + 1,
             Math.max(existingLine.quantity, constraints.lineMaxQuantity),
@@ -904,10 +914,16 @@ export function NewReservationForm({
         hasSelectedPeriod,
         getPeriodProductAvailability(product.id),
       );
-      const nextQuantity = Math.max(
-        1,
-        Math.min(currentLine.quantity + delta, Math.max(1, constraints.lineMaxQuantity)),
-      );
+      const nextQuantity =
+        constraints.lineMaxQuantity === null
+          ? Math.max(1, currentLine.quantity + delta)
+          : Math.max(
+              1,
+              Math.min(
+                currentLine.quantity + delta,
+                Math.max(1, constraints.lineMaxQuantity),
+              ),
+            );
 
       if (nextQuantity === currentLine.quantity) {
         return prev;
@@ -965,7 +981,10 @@ export function NewReservationForm({
         hasSelectedPeriod,
         getPeriodProductAvailability(product.id),
       );
-      const nextQuantity = Math.min(nextLine.quantity, constraints.lineMaxQuantity);
+      const nextQuantity =
+        constraints.lineMaxQuantity === null
+          ? nextLine.quantity
+          : Math.min(nextLine.quantity, constraints.lineMaxQuantity);
 
       const normalizedLine: SelectedProduct =
         nextQuantity > 0

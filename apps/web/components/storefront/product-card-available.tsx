@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { Check, Minus, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
-import type { PricingKind, Rate } from '@louez/types';
+import type { PricingKind, Rate, StockKind } from '@louez/types';
 import type {
   CombinationAvailability,
   ProductAvailability,
@@ -16,7 +16,8 @@ import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Card, CardContent } from '@louez/ui';
 import { Badge } from '@louez/ui';
-import { cn, formatCurrency } from '@louez/utils';
+import type { StockQuantityLimit } from '@louez/utils';
+import { cn, formatCurrency, isWithinStockQuantityLimit } from '@louez/utils';
 
 import { ProductImage } from '@/components/product/product-image';
 import {
@@ -66,7 +67,7 @@ interface Accessory {
   price: string;
   deposit: string;
   images: string[] | null;
-  quantity: number;
+  quantity: StockQuantityLimit;
   required?: boolean | null;
   requiredQuantity?: number | null;
   pricingKind?: PricingKind | null;
@@ -84,6 +85,7 @@ interface ProductCardAvailableProps {
     price: string;
     deposit: string | null;
     quantity: number;
+    stockKind?: StockKind | null;
     displayQuantity?: number;
     category?: { name: string } | null;
     pricingKind?: PricingKind | null;
@@ -107,7 +109,7 @@ interface ProductCardAvailableProps {
     seasonalPricings?: SeasonalPricingConfig[];
   };
   storeSlug: string;
-  availableQuantity: number;
+  availableQuantity: StockQuantityLimit;
   /** Why availability is zero, straight from the server availability call. */
   unavailableReason?: ProductAvailability['reason'];
   startDate: string;
@@ -162,7 +164,10 @@ export function ProductCardAvailable({
   // Only a line of its own makes this card an "in cart" card: a line the
   // customer owns as a required accessory is driven by its parent.
   const inCart = Boolean(firstLine);
-  const totalQuantity = product.displayQuantity ?? product.quantity;
+  const totalQuantity =
+    product.stockKind === 'untracked'
+      ? null
+      : (product.displayQuantity ?? product.quantity);
 
   const price = parseFloat(product.price);
   const deposit = product.deposit ? parseFloat(product.deposit) : 0;
@@ -286,7 +291,7 @@ export function ProductCardAvailable({
   // the product, and block it when the store cannot supply them.
   const availableAccessories = selectOptionalAccessories(
     product.accessories || [],
-  ).filter((acc) => acc.quantity > 0);
+  ).filter((acc) => acc.quantity === null || acc.quantity > 0);
   const requiredAccessories = buildRequiredAccessoryCartInputs(
     product.accessories || [],
   );
@@ -305,14 +310,18 @@ export function ProductCardAvailable({
     ? 'in_cart'
     : isUnavailable
       ? unavailableStatus
-      : availableQuantity < totalQuantity
+      : availableQuantity !== null &&
+          (totalQuantity === null || availableQuantity < totalQuantity)
         ? 'limited'
         : 'available';
 
   const maxQuantity = availableQuantity;
   const firstLineQuantity = firstLine?.quantity || 0;
-  const firstLineMaxQuantity = firstLine?.maxQuantity || maxQuantity;
-  const canAddMore = firstLineQuantity < firstLineMaxQuantity;
+  const firstLineMaxQuantity = firstLine?.maxQuantity ?? maxQuantity;
+  const canAddMore = isWithinStockQuantityLimit(
+    firstLineQuantity + 1,
+    firstLineMaxQuantity,
+  );
   const hasBookingAttributes = (product.bookingAttributeAxes?.length || 0) > 0;
 
   const detailedDuration = getDetailedDuration(startDate, endDate);

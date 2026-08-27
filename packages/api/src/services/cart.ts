@@ -15,7 +15,11 @@ import type {
   UnitAttributes,
 } from '@louez/types';
 import {
+  combineStockQuantityLimits,
+  divideStockQuantityLimit,
+  isWithinStockQuantityLimit,
   type SeasonalPricingConfig,
+  type StockQuantityLimit,
   matchesSelectedAttributes,
 } from '@louez/utils';
 
@@ -45,7 +49,7 @@ type CartLineResolution =
       productImage: string | null;
       price: number;
       deposit: number;
-      maxQuantity: number;
+      maxQuantity: StockQuantityLimit;
       quantity: number;
       pricingKind: PricingKind;
       stockKind: StockKind;
@@ -277,7 +281,7 @@ export async function resolveStorefrontCart(
     const productAvailability = availability.products.find(
       (item) => item.productId === line.productId,
     );
-    const ownMaxQuantity =
+    const ownMaxQuantity: StockQuantityLimit =
       product.trackUnits && productAvailability?.combinations?.length
         ? productAvailability.combinations
             .filter((combination) =>
@@ -290,7 +294,9 @@ export async function resolveStorefrontCart(
               (sum, combination) => sum + combination.availableQuantity,
               0,
             )
-        : (productAvailability?.availableQuantity ?? 0);
+        : productAvailability
+          ? productAvailability.availableQuantity
+          : 0;
     const requestedOwnQuantity = getCartRequestedQuantity(
       lines,
       line,
@@ -298,26 +304,37 @@ export async function resolveStorefrontCart(
     );
     const requiredAccessories =
       requiredAccessoriesByParentId.get(product.id) ?? [];
-    const requiredAccessoryMaxQuantity = requiredAccessories.reduce(
+    const requiredAccessoryMaxQuantity = requiredAccessories.reduce<StockQuantityLimit>(
       (maximum, link) => {
         const accessoryAvailability = availability.products.find(
           (item) => item.productId === link.accessoryProductId,
         );
-        return Math.min(
-          maximum,
-          Math.floor(
-            (accessoryAvailability?.availableQuantity ?? 0) /
+        const accessoryLimit = accessoryAvailability
+          ? divideStockQuantityLimit(
+              accessoryAvailability.availableQuantity,
               Math.max(1, link.quantity),
-          ),
+            )
+          : 0;
+
+        return combineStockQuantityLimits(
+          maximum,
+          accessoryLimit,
         );
       },
-      Number.POSITIVE_INFINITY,
+      null,
     );
-    const maxQuantity = Math.min(ownMaxQuantity, requiredAccessoryMaxQuantity);
+    const maxQuantity = combineStockQuantityLimits(
+      ownMaxQuantity,
+      requiredAccessoryMaxQuantity,
+    );
+    const ownStockIsAvailable = isWithinStockQuantityLimit(
+      requestedOwnQuantity,
+      ownMaxQuantity,
+    );
 
     if (
-      ownMaxQuantity < requestedOwnQuantity ||
-      maxQuantity < line.quantity
+      !ownStockIsAvailable ||
+      !isWithinStockQuantityLimit(line.quantity, maxQuantity)
     ) {
       resolvedLines.push({
         status: 'unavailable',
@@ -325,12 +342,15 @@ export async function resolveStorefrontCart(
         parentLineId: line.parentLineId,
         productId: line.productId,
         reason:
-          ownMaxQuantity >= requestedOwnQuantity &&
-          requiredAccessoryMaxQuantity < line.quantity
+          ownStockIsAvailable &&
+          !isWithinStockQuantityLimit(
+            line.quantity,
+            requiredAccessoryMaxQuantity,
+          )
             ? 'required_accessory_unavailable'
             : 'insufficient_stock',
         stockKind: product.stockKind,
-        maxQuantity,
+        ...(maxQuantity === null ? {} : { maxQuantity }),
       });
       continue;
     }
@@ -354,7 +374,8 @@ export async function resolveStorefrontCart(
       productImage: getPrimaryProductImage(product.images),
       price: Number(product.price),
       deposit: Number(product.deposit || 0),
-      maxQuantity: Math.max(1, maxQuantity),
+      maxQuantity:
+        maxQuantity === null ? null : Math.max(1, maxQuantity),
       quantity: line.quantity,
       pricingKind: product.pricingKind,
       stockKind: product.stockKind,

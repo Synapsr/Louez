@@ -25,6 +25,7 @@ export {
 export * from './pricing'
 export * from './variants'
 export * from './availability'
+export * from './stock-capacity'
 
 // Permissions
 export {

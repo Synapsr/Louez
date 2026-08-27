@@ -267,8 +267,11 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
       const trackUnits = Boolean(product.trackUnits) && units.length > 0;
       const quantity = Math.max(1, product.quantity);
 
-      // Stacked fallback: no unit identity, as few rows as the overlap needs
-      if (!trackUnits && quantity > AGGREGATE_THRESHOLD) {
+      // Untracked and high-volume simple stock have no useful per-unit lanes.
+      if (
+        product.stockKind === "untracked" ||
+        (!trackUnits && quantity > AGGREGATE_THRESHOLD)
+      ) {
         const { placed, laneCount } = stackReservations({ reservations, windowStart });
         const rows = Array.from(
           { length: Math.max(laneCount, MIN_AGGREGATE_ROWS) },
@@ -775,9 +778,11 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
                     >
                       {block.product.name}
                     </span>
-                    <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums">
-                      {block.product.quantity}
-                    </span>
+                    {block.product.stockKind === "untracked" ? null : (
+                      <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums">
+                        {block.product.quantity}
+                      </span>
+                    )}
                   </button>
 
                   <div className="relative" style={{ width: timelineWidth }}>

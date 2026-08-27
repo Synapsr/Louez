@@ -30,6 +30,7 @@ export interface ProductListItem {
   price: string;
   deposit: string | null;
   quantity: number;
+  stockKind: StockKind;
   status: "draft" | "active" | "archived" | null;
   category: {
     id: string;

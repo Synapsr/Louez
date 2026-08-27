@@ -13,7 +13,10 @@ import {
 import { useQuery } from '@tanstack/react-query';
 
 import type { PricingKind, StockKind } from '@louez/types';
-import type { SeasonalPricingConfig } from '@louez/utils';
+import type {
+  SeasonalPricingConfig,
+  StockQuantityLimit,
+} from '@louez/utils';
 
 import { orpc } from '@/lib/orpc/react';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
@@ -51,7 +54,7 @@ export interface CartItem {
   price: number; // Base price
   deposit: number;
   quantity: number;
-  maxQuantity: number;
+  maxQuantity: StockQuantityLimit;
   pricingKind: PricingKind;
   stockKind?: StockKind;
   // Pricing tiers for this product
@@ -159,6 +162,7 @@ interface StoredCartItem {
   productName?: string;
   productImage?: string | null;
   quantity: number;
+  maxQuantity?: StockQuantityLimit;
   pricingKind?: PricingKind;
   stockKind?: StockKind;
   selectedAttributes?: Record<string, string>;
@@ -225,7 +229,10 @@ function normalizeStoredItem(
     price: item.price || 0,
     deposit: item.deposit || 0,
     quantity: item.quantity,
-    maxQuantity: item.maxQuantity || Math.max(1, item.quantity),
+    maxQuantity:
+      item.stockKind === 'untracked'
+        ? null
+        : (item.maxQuantity ?? Math.max(1, item.quantity)),
     pricingKind: item.pricingKind || 'duration',
     stockKind: item.stockKind,
     pricingTiers: item.pricingTiers,
@@ -269,6 +276,7 @@ function toStoredCartItem(item: CartItem): StoredCartItem {
     productName: item.productName,
     productImage: item.productImage,
     quantity: item.quantity,
+    maxQuantity: item.maxQuantity,
     pricingKind: item.pricingKind,
     stockKind: item.stockKind,
     selectedAttributes: item.selectedAttributes,
@@ -635,10 +643,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           // Same product + same selection: merge quantities.
           const updated = [...currentItems];
           const existing = updated[existingIndex];
-          const mergedQuantity = Math.min(
-            existing.quantity + item.quantity,
-            item.maxQuantity,
-          );
+          const requestedQuantity = existing.quantity + item.quantity;
+          const mergedQuantity =
+            item.maxQuantity === null
+              ? requestedQuantity
+              : Math.min(requestedQuantity, item.maxQuantity);
           updated[existingIndex] = {
             ...existing,
             ...lineInput,
@@ -750,13 +759,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
           );
         }
 
-        const nextQuantity = Math.min(
-          Math.max(1, quantity),
-          Math.max(
-            1,
-            getCartLineAvailableMaximumQuantity(currentItems, target),
-          ),
+        const requestedQuantity = Math.max(1, quantity);
+        const maximumQuantity = getCartLineAvailableMaximumQuantity(
+          currentItems,
+          target,
         );
+        const nextQuantity =
+          maximumQuantity === null
+            ? requestedQuantity
+            : Math.min(requestedQuantity, Math.max(1, maximumQuantity));
         const updated = currentItems.map((item) =>
           item.lineId === lineId ? { ...item, quantity: nextQuantity } : item,
         );

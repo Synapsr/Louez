@@ -1118,6 +1118,9 @@
         "stockKindConsumableDescription": "Le produit part avec le client : le stock diminue à chaque réservation confirmée et la quantité correspond au stock en rayon.",
         "stockKindConsumableRequiresFixed": "Un consommable se vend au forfait : choisissez la tarification « Forfait » pour l'activer.",
         "stockKindConsumableRequiresNoUnits": "Un consommable ne se suit pas à l'unité : désactivez le suivi à l'unité pour l'activer.",
+        "stockKindUntracked": "Sans suivi de stock",
+        "stockKindUntrackedRequiresNoUnits": "Un stock non suivi ne peut pas utiliser le suivi à l'unité.",
+        "untrackedStockHelp": "Aucune quantité n'est suivie ni limitée. Les dates et les règles de réservation restent appliquées.",
         "stockKindChangeBlockedTitle": "Type de stock verrouillé",
         "stockKindChangeBlocked": "Ce produit figure dans les réservations suivantes. Annulez-les ou terminez-les avant de modifier le type de stock.",
         "stockKindChangeBlockedTrigger": "{kind}. Voir les réservations qui bloquent la modification.",
@@ -1521,7 +1524,10 @@
           "utilization": "Taux d'utilisation",
           "utilizationSubtitle": "30 derniers jours",
           "stock": "Stock",
-          "unitsActiveValue": "{active}/{total} actives"
+          "unitsActiveValue": "{active}/{total} actives",
+          "notTracked": "Non suivi",
+          "notApplicable": "Non applicable",
+          "notTrackedSubtitle": "Aucune capacité de stock"
         },
         "inventory": {
           "title": "Inventaire",
@@ -1551,6 +1557,7 @@
           "viewCalendar": "Calendrier",
           "timeline": {
             "stock": "Stock",
+            "bookings": "Réservations",
             "statusFilter": "Filtrer par statut",
             "showAll": "Tout afficher",
             "previous": "Période précédente",
@@ -5703,6 +5710,7 @@
       "bookingAttributesNoOptions": "Aucune option disponible pour {attribute} aux dates sélectionnées.",
       "bookingAttributeNone": "Aucun",
       "availableCount": "{count, plural, one {# disponible} other {# disponibles}}",
+      "availableWithoutStockLimit": "Disponible",
       "available": "Disponible",
       "unavailable": "Indisponible",
       "deposit": "Caution",

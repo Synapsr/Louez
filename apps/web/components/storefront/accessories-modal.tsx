@@ -19,6 +19,7 @@ import { cn } from '@louez/utils'
 import { selectOptionalAccessories } from '@/lib/utils/cart-required-accessories'
 import { useCart } from '@/contexts/cart-context'
 import type { PricingKind, PricingMode } from '@louez/types'
+import type { StockQuantityLimit } from '@louez/utils'
 
 interface Accessory {
   id: string
@@ -26,7 +27,7 @@ interface Accessory {
   price: string
   deposit: string
   images: string[] | null
-  quantity: number
+  quantity: StockQuantityLimit
   required?: boolean | null
   requiredQuantity?: number | null
   pricingKind?: PricingKind | null
@@ -255,7 +256,9 @@ export function AccessoriesModal({
                         variant="success"
                         className="absolute bottom-2 left-2 text-[10px] px-1.5 py-0.5"
                       >
-                        {t('available', { count: accessory.quantity })}
+                        {accessory.quantity === null
+                          ? tProduct('availableWithoutStockLimit')
+                          : t('available', { count: accessory.quantity })}
                       </Badge>
                     </div>
 

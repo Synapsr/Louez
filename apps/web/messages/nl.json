@@ -1079,6 +1079,9 @@
         "stockKindConsumableDescription": "Het product gaat mee met de klant: de voorraad daalt bij elke bevestigde reservering en het aantal is de voorraad in het schap.",
         "stockKindConsumableRequiresFixed": "Een verbruiksartikel wordt tegen een vaste prijs verkocht: kies de tarifering \"Vaste prijs\" om het in te schakelen.",
         "stockKindConsumableRequiresNoUnits": "Een verbruiksartikel wordt niet per eenheid gevolgd: schakel het volgen per eenheid uit om het in te schakelen.",
+        "stockKindUntracked": "Voorraad niet volgen",
+        "stockKindUntrackedRequiresNoUnits": "Niet-gevolgde voorraad kan geen eenheidstracering gebruiken.",
+        "untrackedStockHelp": "Er wordt geen hoeveelheid bijgehouden of beperkt. Datums en boekingsregels blijven van toepassing.",
         "stockKindChangeBlockedTitle": "Voorraadtype vergrendeld",
         "stockKindChangeBlocked": "Dit product staat in de volgende reserveringen. Annuleer of voltooi ze voordat u het voorraadtype wijzigt.",
         "stockKindChangeBlockedTrigger": "{kind}. Bekijk reserveringen die de wijziging blokkeren.",
@@ -1482,7 +1485,10 @@
           "utilization": "Bezettingsgraad",
           "utilizationSubtitle": "Laatste 30 dagen",
           "stock": "Voorraad",
-          "unitsActiveValue": "{active}/{total} actief"
+          "unitsActiveValue": "{active}/{total} actief",
+          "notTracked": "Niet gevolgd",
+          "notApplicable": "Niet van toepassing",
+          "notTrackedSubtitle": "Geen voorraadcapaciteit"
         },
         "inventory": {
           "title": "Inventaris",
@@ -1512,6 +1518,7 @@
           "viewCalendar": "Kalender",
           "timeline": {
             "stock": "Voorraad",
+            "bookings": "Reserveringen",
             "statusFilter": "Filteren op status",
             "showAll": "Alles tonen",
             "previous": "Vorige periode",
@@ -5699,6 +5706,7 @@
       "selectQuantity": "Aantal",
       "quantity": "Aantal",
       "availableCount": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
+      "availableWithoutStockLimit": "Beschikbaar",
       "available": "Beschikbaar",
       "unavailable": "Niet beschikbaar",
       "deposit": "Borg",

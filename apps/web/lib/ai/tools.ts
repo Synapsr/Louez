@@ -101,6 +101,7 @@ export function createAITools(ctx: AIChatContext) {
             price: products.price,
             deposit: products.deposit,
             pricingMode: products.pricingMode,
+            stockKind: products.stockKind,
             quantity: effectiveProductQuantitySql(),
             status: products.status,
             categoryName: categories.name,
@@ -116,7 +117,14 @@ export function createAITools(ctx: AIChatContext) {
           .from(products)
           .where(and(...conditions));
 
-        return { products: rows, total: countResult?.total ?? 0 };
+        return {
+          products: rows.map((product) => ({
+            ...product,
+            quantity:
+              product.stockKind === 'untracked' ? null : product.quantity,
+          })),
+          total: countResult?.total ?? 0,
+        };
       },
     }),
 
@@ -138,10 +146,14 @@ export function createAITools(ctx: AIChatContext) {
 
         if (!product) return { error: 'Product not found' };
 
-        const effectiveQuantity = product.trackUnits
-          ? product.units.filter((unit) => unit.lifecycleStatus === 'active')
-              .length
-          : product.quantity;
+        const effectiveQuantity =
+          product.stockKind === 'untracked'
+            ? null
+            : product.trackUnits
+              ? product.units.filter(
+                  (unit) => unit.lifecycleStatus === 'active',
+                ).length
+              : product.quantity;
 
         return { product: { ...product, quantity: effectiveQuantity } };
       },
@@ -1323,13 +1335,16 @@ export function createAITools(ctx: AIChatContext) {
         const reserved = reservedByProduct.get(productId) ?? 0;
         const capacity = product.trackUnits
           ? rentableUnits.length
-          : product.quantity;
-        const available = Math.max(0, capacity - reserved);
+          : product.stockKind === 'untracked'
+            ? null
+            : product.quantity;
+        const available =
+          capacity === null ? null : Math.max(0, capacity - reserved);
 
         return {
           product: product.name,
           totalStock: capacity,
-          reserved,
+          reserved: capacity === null ? null : reserved,
           available,
           turnoverBufferMinutes,
           startDate,

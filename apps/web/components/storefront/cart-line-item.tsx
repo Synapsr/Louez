@@ -4,7 +4,12 @@ import { Minus, Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@louez/ui';
-import { cn, formatCurrency, isFixedPriceProduct } from '@louez/utils';
+import {
+  cn,
+  formatCurrency,
+  isFixedPriceProduct,
+  type StockQuantityLimit,
+} from '@louez/utils';
 
 import { ProductImage } from '@/components/product/product-image';
 
@@ -17,7 +22,7 @@ import type { CartItem } from '@/contexts/cart-context';
 
 interface CartLineItemProps {
   item: CartItem;
-  maximumQuantity: number;
+  maximumQuantity: StockQuantityLimit;
   currency: string;
   globalStartDate: string | null;
   globalEndDate: string | null;
@@ -122,7 +127,9 @@ export const CartLineItem = ({
               className="h-6 w-6"
               aria-label={t('increaseQuantity', { name: item.productName })}
               onClick={() => onQuantityChange(item.lineId, item.quantity + 1)}
-              disabled={item.quantity >= maximumQuantity}
+              disabled={
+                maximumQuantity !== null && item.quantity >= maximumQuantity
+              }
             >
               <Plus className="h-3 w-3" />
             </Button>
@@ -139,7 +146,7 @@ export const CartLineItem = ({
             </Button>
           )}
         </div>
-        {item.quantity >= maximumQuantity && (
+        {maximumQuantity !== null && item.quantity >= maximumQuantity && (
           <p className="text-muted-foreground mt-1 text-[11px]">
             {t('lineMaxReached')}
           </p>

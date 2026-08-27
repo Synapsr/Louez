@@ -274,7 +274,7 @@ export const createProductSchema = (
       imageHistory: z.array(productImageHistorySchema).max(5),
       // The dashboard form always carries a stock kind; only the server-side
       // schema below defaults it, for callers that omit it.
-      stockKind: z.enum(['returnable', 'consumable']),
+      stockKind: z.enum(['returnable', 'consumable', 'untracked']),
       pricingKind: z.enum(['duration', 'fixed']),
       pricingMode: z.enum(['hour', 'day', 'week']),
       // Kept structurally required so the form can hold on to a base period
@@ -450,7 +450,7 @@ export const createProductSchema = (
         });
       }
 
-      if (data.stockKind === 'consumable' && data.trackUnits) {
+      if (data.stockKind !== 'returnable' && data.trackUnits) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: t('invalidData'),
@@ -561,7 +561,9 @@ export const productSchema = z
     status: z.enum(['draft', 'active', 'archived']),
     images: z.array(imageUrlSchema).optional(),
     imageHistory: z.array(productImageHistorySchema).max(5).optional(),
-    stockKind: z.enum(['returnable', 'consumable']).default('returnable'),
+    stockKind: z
+      .enum(['returnable', 'consumable', 'untracked'])
+      .default('returnable'),
     pricingKind: z.enum(['duration', 'fixed']).default('duration'),
     pricingMode: z.enum(['hour', 'day', 'week']),
     basePriceDuration: priceDurationSchema.optional(),
@@ -611,7 +613,7 @@ export const productSchema = z
       });
     }
 
-    if (data.stockKind === 'consumable' && data.trackUnits) {
+    if (data.stockKind !== 'returnable' && data.trackUnits) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'validation.invalidData',
@@ -698,6 +700,6 @@ export type ProductInput = Omit<
 > & {
   basePriceDuration: PriceDurationInput;
   pricingKind?: 'duration' | 'fixed';
-  stockKind?: 'returnable' | 'consumable';
+  stockKind?: 'returnable' | 'consumable' | 'untracked';
 };
 export type CategoryInput = z.infer<typeof categorySchema>;

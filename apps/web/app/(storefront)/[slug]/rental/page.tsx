@@ -19,8 +19,14 @@ import {
   products,
   stores,
 } from "@louez/db";
-import type { PricingKind, StoreSettings, StoreTheme } from "@louez/types";
+import type {
+  PricingKind,
+  StockKind,
+  StoreSettings,
+  StoreTheme,
+} from "@louez/types";
 import { Skeleton } from "@louez/ui";
+import type { StockQuantityLimit } from "@louez/utils";
 
 import { generateStoreMetadata } from "@/lib/seo";
 import { storefrontRedirect } from "@/lib/storefront-url";
@@ -170,7 +176,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
     price: string;
     deposit: string;
     images: string[] | null;
-    quantity: number;
+    quantity: StockQuantityLimit;
     required: boolean;
     requiredQuantity: number;
     pricingMode: "day" | "hour" | "week" | null;
@@ -374,6 +380,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       deposit: string | null;
       images: string[] | null;
       quantity: number;
+      stockKind: StockKind;
       status: "active" | "draft" | "archived" | null;
       pricingKind: PricingKind;
       pricingMode: "day" | "hour" | "week" | null;
@@ -387,6 +394,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
           deposit: products.deposit,
           images: products.images,
           quantity: effectiveProductQuantitySql(),
+          stockKind: products.stockKind,
           status: products.status,
           pricingKind: products.pricingKind,
           pricingMode: products.pricingMode,
@@ -429,7 +437,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       price: string;
       deposit: string;
       images: string[] | null;
-      quantity: number;
+      quantity: number | null;
       required: boolean;
       requiredQuantity: number;
       pricingKind: PricingKind;
@@ -444,7 +452,9 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       if (
         accessoryProduct &&
         accessoryProduct.status === "active" &&
-        (accessoryProduct.quantity > 0 || acc.required)
+        (accessoryProduct.stockKind === "untracked" ||
+          accessoryProduct.quantity > 0 ||
+          acc.required)
       ) {
         const accessories = accessoriesByProductId.get(acc.productId) || [];
         accessories.push({
@@ -453,7 +463,10 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
           price: accessoryProduct.price,
           deposit: accessoryProduct.deposit || "0",
           images: accessoryProduct.images,
-          quantity: accessoryProduct.quantity,
+          quantity:
+            accessoryProduct.stockKind === "untracked"
+              ? null
+              : accessoryProduct.quantity,
           required: acc.required,
           requiredQuantity: acc.requiredQuantity,
           pricingKind: accessoryProduct.pricingKind,

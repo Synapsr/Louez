@@ -39,10 +39,10 @@ const cartLineResolutionSchema = z.discriminatedUnion('status', [
     productImage: z.string().nullable(),
     price: z.number(),
     deposit: z.number(),
-    maxQuantity: z.number(),
+    maxQuantity: z.number().nullable(),
     quantity: z.number(),
     pricingKind: z.enum(['duration', 'fixed']),
-    stockKind: z.enum(['returnable', 'consumable']),
+    stockKind: z.enum(['returnable', 'consumable', 'untracked']),
     required: z.boolean(),
     requiredQuantity: z.number().nullable(),
     requiredAccessories: z.array(
@@ -77,7 +77,9 @@ const cartLineResolutionSchema = z.discriminatedUnion('status', [
       'insufficient_stock',
       'required_accessory_unavailable',
     ]),
-    stockKind: z.enum(['returnable', 'consumable']).optional(),
+    stockKind: z
+      .enum(['returnable', 'consumable', 'untracked'])
+      .optional(),
     maxQuantity: z.number().optional(),
   }),
 ]);

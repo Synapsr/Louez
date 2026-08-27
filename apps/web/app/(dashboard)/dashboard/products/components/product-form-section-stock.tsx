@@ -65,6 +65,8 @@ export function ProductFormSectionStock({
   // A consumable is never tracked unit by unit, so the returnable stepper
   // (quantity vs tracked units) has nothing left to ask.
   const isConsumable = watchedValues.stockKind === 'consumable';
+  const isUntracked = watchedValues.stockKind === 'untracked';
+  const hasManagedStock = !isUntracked;
 
   // "Vélo gravel VFD" → "VELO-" : accent-stripped first word, used as the
   // suggested reference prefix for generated units.
@@ -84,7 +86,7 @@ export function ProductFormSectionStock({
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            {modeChosen && !isConsumable ? (
+            {modeChosen && !isConsumable && hasManagedStock ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -101,7 +103,7 @@ export function ProductFormSectionStock({
               <DatabaseIcon className="text-primary h-5 w-5 shrink-0 stroke-2" />
               {t('stock')}
             </CardTitle>
-            {isConsumable ? null : (
+            {isConsumable || !hasManagedStock ? null : (
               <StockModeIndicator
                 modeChosen={modeChosen}
                 trackUnits={watchedValues.trackUnits || false}
@@ -111,7 +113,11 @@ export function ProductFormSectionStock({
             )}
           </div>
           <CardDescription>
-            {isConsumable ? t('consumableQuantityHelp') : t('quantityHelp')}
+            {isUntracked
+              ? t('untrackedStockHelp')
+              : isConsumable
+                ? t('consumableQuantityHelp')
+                : t('quantityHelp')}
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -122,7 +128,7 @@ export function ProductFormSectionStock({
             disabled={disabled}
             stockKindChangeBlockers={stockKindChangeBlockers}
           />
-          {productId ? (
+          {productId && hasManagedStock ? (
             <Button
               variant="outline"
               size="sm"
@@ -136,38 +142,40 @@ export function ProductFormSectionStock({
           ) : null}
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <UnitTrackingEditor
-          currency={currency}
-          trackUnits={!isConsumable && (watchedValues.trackUnits || false)}
-          onTrackUnitsChange={(value) =>
-            form.setFieldValue('trackUnits', value)
-          }
-          bookingAttributeAxes={watchedValues.bookingAttributeAxes || []}
-          onBookingAttributeAxesChange={(axes) =>
-            form.setFieldValue('bookingAttributeAxes', axes)
-          }
-          units={watchedValues.units || []}
-          onChange={(units) => form.setFieldValue('units', units)}
-          quantity={watchedValues.quantity || '1'}
-          onQuantityChange={(value) => {
-            form.setFieldMeta(
-              'quantity',
-              (prev: QuantityFieldMeta | undefined) => ({
-                ...prev,
-                errorMap: { ...prev?.errorMap, onSubmit: undefined },
-              }),
-            );
-            form.setFieldValue('quantity', value);
-          }}
-          modeChosen={isConsumable || modeChosen}
-          onModeChosenChange={setModeChosen}
-          defaultPrefix={defaultPrefix}
-          disabled={disabled}
-          showValidationErrors={showValidationErrors}
-          productId={productId}
-        />
-      </CardContent>
+      {hasManagedStock ? (
+        <CardContent className="space-y-6">
+          <UnitTrackingEditor
+            currency={currency}
+            trackUnits={!isConsumable && (watchedValues.trackUnits || false)}
+            onTrackUnitsChange={(value) =>
+              form.setFieldValue('trackUnits', value)
+            }
+            bookingAttributeAxes={watchedValues.bookingAttributeAxes || []}
+            onBookingAttributeAxesChange={(axes) =>
+              form.setFieldValue('bookingAttributeAxes', axes)
+            }
+            units={watchedValues.units || []}
+            onChange={(units) => form.setFieldValue('units', units)}
+            quantity={watchedValues.quantity || '1'}
+            onQuantityChange={(value) => {
+              form.setFieldMeta(
+                'quantity',
+                (prev: QuantityFieldMeta | undefined) => ({
+                  ...prev,
+                  errorMap: { ...prev?.errorMap, onSubmit: undefined },
+                }),
+              );
+              form.setFieldValue('quantity', value);
+            }}
+            modeChosen={isConsumable || modeChosen}
+            onModeChosenChange={setModeChosen}
+            defaultPrefix={defaultPrefix}
+            disabled={disabled}
+            showValidationErrors={showValidationErrors}
+            productId={productId}
+          />
+        </CardContent>
+      ) : null}
     </Card>
   );
 }

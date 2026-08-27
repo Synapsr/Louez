@@ -937,7 +937,10 @@ export async function createReservation(input: CreateReservationInput) {
             },
           };
         }
-      } else if (product.quantity < item.quantity) {
+      } else if (
+        product.stockKind !== 'untracked' &&
+        product.quantity < item.quantity
+      ) {
         return {
           error: 'errors.insufficientStock',
           errorParams: {
@@ -1718,6 +1721,10 @@ export async function createReservation(input: CreateReservationInput) {
         if (!product) continue;
 
         if (!product.trackUnits) {
+          if (product.stockKind === 'untracked') {
+            continue;
+          }
+
           const reserved = reservedByProduct.get(item.productId) || 0;
           const available = Math.max(0, product.quantity - reserved);
 

@@ -283,16 +283,19 @@ export function registerCalendarTools(
       const reserved = reservedByProduct.get(productId) ?? 0;
       const capacity = product.trackUnits
         ? rentableUnits.length
-        : product.quantity;
-      const available = Math.max(0, capacity - reserved);
+        : product.stockKind === 'untracked'
+          ? null
+          : product.quantity;
+      const available =
+        capacity === null ? null : Math.max(0, capacity - reserved);
 
       return toolResult(
         `## Availability — ${product.name}\n\n` +
           `- Period: ${formatDate(start)} → ${formatDate(end)}\n` +
-          `- Total stock: ${capacity}\n` +
-          `- Reserved: ${reserved}\n` +
+          `- Total stock: ${capacity === null ? 'not tracked' : capacity}\n` +
+          `- Reserved: ${capacity === null ? 'not applicable' : reserved}\n` +
           `- Buffer after return: ${turnoverBufferMinutes} min\n` +
-          `- **Available: ${available}**`,
+          `- **Available: ${available === null ? 'not quantity-limited' : available}**`,
       );
     },
   );

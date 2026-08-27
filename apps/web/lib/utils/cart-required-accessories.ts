@@ -1,4 +1,8 @@
 import type { PricingKind, PricingMode, StockKind } from '@louez/types';
+import {
+  combineStockQuantityLimits,
+  type StockQuantityLimit,
+} from '@louez/utils';
 
 /**
  * Minimal accessory-link shape shared by every storefront surface that can put
@@ -13,7 +17,7 @@ export interface AccessoryLink {
   deposit: string;
   images: string[] | null;
   /** Units of this accessory currently bookable (already effective stock). */
-  quantity: number;
+  quantity: StockQuantityLimit;
   /** True when the accessory must be booked with its parent product. */
   required?: boolean | null;
   /** Units of this accessory required per unit of the parent product. */
@@ -41,7 +45,7 @@ export interface RequiredAccessoryCartInput {
   productImage: string | null;
   price: number;
   deposit: number;
-  maxQuantity: number;
+  maxQuantity: StockQuantityLimit;
   /** Units required per unit of the parent line. */
   requiredQuantity: number;
   pricingKind: PricingKind;
@@ -76,7 +80,7 @@ export function getRequiredAccessoryUnitQuantity(
 }
 
 interface RequiredAccessoryCartLineQuantity {
-  maxQuantity: number;
+  maxQuantity: StockQuantityLimit;
   requiredQuantity?: number | null;
 }
 
@@ -106,12 +110,17 @@ export function clampRequiredAccessoryLineQuantity(
     line,
     params.parentQuantity,
   );
-  const maximumQuantity = Math.max(minimumQuantity, line.maxQuantity);
-
-  return Math.min(
-    Math.max(minimumQuantity, params.requestedQuantity),
-    maximumQuantity,
+  const requestedQuantity = Math.max(
+    minimumQuantity,
+    params.requestedQuantity,
   );
+
+  return line.maxQuantity === null
+    ? requestedQuantity
+    : Math.min(
+        requestedQuantity,
+        Math.max(minimumQuantity, line.maxQuantity),
+      );
 }
 
 /** Keeps the customer's selected total unless a changed requirement is higher. */
@@ -152,6 +161,9 @@ function getCartStockGroupKey(
   if (!productStockKind) {
     return null;
   }
+  if (productStockKind === 'untracked') {
+    return null;
+  }
 
   return JSON.stringify([
     line.productId,
@@ -184,11 +196,14 @@ function getOtherSharedStockLinesQuantity(
 export function getCartLineAvailableMaximumQuantity(
   lines: CartLineQuantity[],
   line: CartLineQuantity,
-): number {
-  const ownMaximum = Math.max(
-    0,
-    line.maxQuantity - getOtherSharedStockLinesQuantity(lines, line),
-  );
+): StockQuantityLimit {
+  const ownMaximum =
+    line.maxQuantity === null
+      ? null
+      : Math.max(
+          0,
+          line.maxQuantity - getOtherSharedStockLinesQuantity(lines, line),
+        );
 
   if (line.parentLineId) {
     return ownMaximum;
@@ -197,6 +212,10 @@ export function getCartLineAvailableMaximumQuantity(
   const requiredAccessoryMaximums = lines
     .filter((candidate) => candidate.parentLineId === line.lineId)
     .map((child) => {
+      if (child.maxQuantity === null) {
+        return null;
+      }
+
       const availableAccessoryQuantity = Math.max(
         0,
         child.maxQuantity - getOtherSharedStockLinesQuantity(lines, child),
@@ -207,7 +226,7 @@ export function getCartLineAvailableMaximumQuantity(
       );
     });
 
-  return Math.min(ownMaximum, ...requiredAccessoryMaximums);
+  return combineStockQuantityLimits(ownMaximum, ...requiredAccessoryMaximums);
 }
 
 /** Clamps one line after accounting for stock already used by sibling lines. */
@@ -215,10 +234,12 @@ export function clampCartLineQuantityToAvailableMaximum(
   lines: CartLineQuantity[],
   line: CartLineQuantity,
 ): number {
-  return Math.min(
-    Math.max(0, line.quantity),
-    getCartLineAvailableMaximumQuantity(lines, line),
-  );
+  const maximumQuantity = getCartLineAvailableMaximumQuantity(lines, line);
+  const quantity = Math.max(0, line.quantity);
+
+  return maximumQuantity === null
+    ? quantity
+    : Math.min(quantity, maximumQuantity);
 }
 
 /** Gives required lines priority, then fits free lines into remaining stock. */
@@ -244,9 +265,12 @@ export function reconcileSharedCartLineQuantities<
     if (productLines.length < 2) {
       continue;
     }
-    const stockQuantity = Math.min(
-      ...productLines.map((line) => Math.max(0, line.maxQuantity)),
+    const stockQuantity = combineStockQuantityLimits(
+      ...productLines.map((line) => line.maxQuantity),
     );
+    if (stockQuantity === null) {
+      continue;
+    }
     const requiredQuantity = productLines
       .filter((line) => Boolean(line.parentLineId))
       .reduce((total, line) => total + line.quantity, 0);
@@ -310,8 +334,9 @@ export function findBlockingRequiredAccessories<
   const neededParents = Math.max(1, parentQuantity);
   return selectRequiredAccessories(accessories).filter(
     (accessory) =>
+      accessory.quantity !== null &&
       accessory.quantity <
-      getRequiredAccessoryUnitQuantity(accessory) * neededParents,
+        getRequiredAccessoryUnitQuantity(accessory) * neededParents,
   );
 }
 
@@ -328,7 +353,10 @@ export function buildRequiredAccessoryCartInputs(
       productImage: accessory.images?.[0] || null,
       price: toNumber(accessory.price) ?? 0,
       deposit: toNumber(accessory.deposit) ?? 0,
-      maxQuantity: Math.max(1, accessory.quantity),
+      maxQuantity:
+        accessory.quantity === null
+          ? null
+          : Math.max(1, accessory.quantity),
       requiredQuantity: getRequiredAccessoryUnitQuantity(accessory),
       pricingKind: accessory.pricingKind ?? 'duration',
       pricingMode: accessoryPricingMode,

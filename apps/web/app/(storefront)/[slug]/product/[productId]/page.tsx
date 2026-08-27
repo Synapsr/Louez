@@ -21,13 +21,19 @@ import {
   products,
   stores,
 } from '@louez/db';
-import type { BusinessHours, StoreSettings, StoreTheme } from '@louez/types';
+import type {
+  BusinessHours,
+  StockKind,
+  StoreSettings,
+  StoreTheme,
+} from '@louez/types';
 import { Badge } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Separator } from '@louez/ui';
 import {
   buildCombinationKey,
   formatCurrency,
+  getAvailableStockQuantity,
   getDeterministicCombinationSortValue,
   isFixedPriceProduct,
   minutesToPriceDuration,
@@ -213,21 +219,22 @@ export default async function ProductPage({ params }: ProductPageProps) {
       ),
     },
   );
-  const getUntrackedAvailableQuantity = (stockProduct: {
+  const getBulkAvailableQuantity = (stockProduct: {
     id: string;
     quantity: number;
-    stockKind: 'returnable' | 'consumable';
+    stockKind: StockKind;
   }) =>
-    stockProduct.stockKind === 'consumable'
-      ? Math.max(
-          0,
-          stockProduct.quantity -
-            (consumableReservedQuantities.get(stockProduct.id) ?? 0),
-        )
-      : stockProduct.quantity;
+    getAvailableStockQuantity({
+      stockKind: stockProduct.stockKind,
+      totalQuantity: stockProduct.quantity,
+      reservedQuantity:
+        stockProduct.stockKind === 'consumable'
+          ? (consumableReservedQuantities.get(stockProduct.id) ?? 0)
+          : 0,
+    });
   const effectiveQuantity = product.trackUnits
     ? (effectiveQuantities.get(product.id) ?? 0)
-    : getUntrackedAvailableQuantity(product);
+    : getBulkAvailableQuantity(product);
 
   const currentDowntimeUnitIds = await getCurrentDowntimeUnitIds(
     (product.units || []).map((unit) => unit.id),
@@ -297,15 +304,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
       (acc) =>
         acc.accessory &&
         acc.accessory.status === 'active' &&
-        ((acc.accessory.trackUnits
+        (((acc.accessory.trackUnits
           ? (effectiveQuantities.get(acc.accessory.id) ?? 0)
-          : getUntrackedAvailableQuantity(acc.accessory)) > 0 ||
+          : getBulkAvailableQuantity(acc.accessory)) ?? 1) > 0 ||
           acc.required),
     )
     .map((acc) => ({
       quantity: acc.accessory.trackUnits
         ? (effectiveQuantities.get(acc.accessory.id) ?? 0)
-        : getUntrackedAvailableQuantity(acc.accessory),
+        : getBulkAvailableQuantity(acc.accessory),
       id: acc.accessory.id,
       name: acc.accessory.name,
       price: acc.accessory.price,
@@ -351,7 +358,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
   );
   const relatedProducts = relatedProductsRaw.map((relatedProduct) => ({
     ...relatedProduct,
-    quantity: relatedProduct.trackUnits
+    quantity: relatedProduct.stockKind === 'untracked'
+      ? null
+      : relatedProduct.trackUnits
       ? (relatedQuantities.get(relatedProduct.id) ?? 0)
       : relatedProduct.quantity,
   }));
@@ -385,7 +394,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   // A consumable at zero and a missing required accessory are both "not
   // bookable", but the customer deserves to know which one it is.
   const isAvailable =
-    effectiveQuantity > 0 && blockingRequiredAccessories.length === 0;
+    (effectiveQuantity === null || effectiveQuantity > 0) &&
+    blockingRequiredAccessories.length === 0;
   const unavailableLabel =
     effectiveQuantity === 0 && product.stockKind === 'consumable'
       ? tCatalog('consumableOutOfStock')
@@ -507,7 +517,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     price: product.price,
     deposit: product.deposit,
     images: product.images,
-    quantity: effectiveQuantity,
+    quantity: effectiveQuantity ?? 1,
     pricingKind: product.pricingKind,
     pricingMode: effectivePricingMode,
     basePeriodMinutes: product.basePeriodMinutes,
@@ -645,7 +655,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <>
                     <Check className="text-success size-4" />
                     <span className="text-success text-sm font-medium">
-                      {t('availableCount', { count: displayQuantity })}
+                      {displayQuantity === null
+                        ? t('availableWithoutStockLimit')
+                        : t('availableCount', { count: displayQuantity })}
                     </span>
                   </>
                 ) : (
@@ -768,7 +780,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   </dt>
                   <dd className="text-right font-medium">
                     {isAvailable
-                      ? t('availableCount', { count: displayQuantity })
+                      ? displayQuantity === null
+                        ? t('availableWithoutStockLimit')
+                        : t('availableCount', { count: displayQuantity })
                       : unavailableLabel}
                   </dd>
                 </div>

@@ -177,7 +177,7 @@ A Pricing kind where the price is a flat amount per product unit per reservation
 _Avoid_: flat fee, service fee, fixed pricing mode (pricing mode is the legacy hour/day/week unit)
 
 **Stock kind**:
-The discriminant that decides how a Product's quantity changes through a reservation: returnable or consumable. It is independent from Pricing kind. French UI: "type de stock".
+The discriminant that decides whether and how Louez controls a Product's quantity through a reservation: returnable, consumable, or untracked. It is independent from Pricing kind. French UI: "type de stock".
 _Avoid_: product type, inventory type, consumable flag
 
 **Returnable stock**:
@@ -187,6 +187,10 @@ _Avoid_: rental product, reusable type
 **Consumable stock**:
 A Stock kind for Products that are used up. Quantity means stock currently on hand, confirmation decrements it, cancellation or rejection restores it, and completion leaves it consumed. Availability has no time dimension. French UI: "consommable".
 _Avoid_: disposable product type, service
+
+**Untracked stock**:
+A Stock kind for Products whose quantity Louez does not control, such as a bike-cleaning service. Reservations never reserve, consume, or restore a quantity for the Product. Reservation dates and other booking rules still apply, and a required accessory with finite stock can still limit it. French UI: "sans suivi de stock".
+_Avoid_: infinite stock, unlimited capacity, service product type
 
 ## Relationships
 
@@ -226,6 +230,7 @@ _Avoid_: disposable product type, service
 - A return inspection rated damaged on an assigned **Unit** can suggest declaring a repair **Downtime**; the suggestion is never applied automatically.
 - Inventory management (Downtimes, Retirement, assignment) is open to all team members, owners and members alike.
 - A Product has exactly one **Pricing kind** and one **Stock kind**. These axes are orthogonal, except that **Consumable stock** requires a **Fixed price**.
+- **Untracked stock** can use either Pricing kind, cannot track individual Units, and has no stock quantity or utilization rate in Louez.
 - A **Fixed price** Product ignores pricing tiers, seasonal pricing, and duration limits, while its deposit remains supported.
 
 ## Example Dialogue

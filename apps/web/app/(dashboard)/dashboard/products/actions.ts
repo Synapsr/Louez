@@ -402,7 +402,10 @@ export async function createProduct(data: ProductInput) {
 
   const pricingKind = validated.data.pricingKind;
   const stockKind = validated.data.stockKind;
-  if (stockKind === "consumable" && (pricingKind !== "fixed" || validated.data.trackUnits)) {
+  if (
+    (stockKind === "consumable" && pricingKind !== "fixed") ||
+    (stockKind !== "returnable" && validated.data.trackUnits)
+  ) {
     return { error: "errors.invalidData" };
   }
   const basePriceDuration = pricingKind === "fixed" ? undefined : validated.data.basePriceDuration;
@@ -620,7 +623,10 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
   const pricingKind = validated.data.pricingKind;
   const stockKind = validated.data.stockKind;
-  if (stockKind === "consumable" && (pricingKind !== "fixed" || validated.data.trackUnits)) {
+  if (
+    (stockKind === "consumable" && pricingKind !== "fixed") ||
+    (stockKind !== "returnable" && validated.data.trackUnits)
+  ) {
     return { error: "errors.invalidData" };
   }
   const basePriceDuration = pricingKind === "fixed" ? undefined : validated.data.basePriceDuration;

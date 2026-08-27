@@ -22,6 +22,7 @@ import { useTranslations } from 'next-intl'
 
 import type { CombinationAvailability } from '@louez/types'
 import type { PricingKind, Rate } from '@louez/types'
+import type { StockQuantityLimit } from '@louez/utils';
 import { toastManager } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from '@louez/ui'
@@ -33,6 +34,7 @@ import {
   cn,
   computeReductionPercent,
   formatCurrency,
+  combineStockQuantityLimits,
   getDeterministicCombinationSortValue,
   getSelectionCapacity,
   minutesToPriceDuration,
@@ -107,7 +109,7 @@ interface Accessory {
   price: string;
   deposit: string;
   images: string[] | null;
-  quantity: number;
+  quantity: StockQuantityLimit;
   required?: boolean | null;
   requiredQuantity?: number | null;
   pricingKind?: PricingKind | null;
@@ -161,7 +163,7 @@ interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
   storeSlug: string;
-  availableQuantity: number;
+  availableQuantity: StockQuantityLimit;
   startDate: string;
   endDate: string;
   availableCombinations?: CombinationAvailability[];
@@ -215,7 +217,11 @@ export function ProductModal({
   const cartProductIds = new Set(cartItems.map((item) => item.productId));
   const availableAccessories = selectOptionalAccessories(
     product.accessories || [],
-  ).filter((acc) => acc.quantity > 0 && !cartProductIds.has(acc.id));
+  ).filter(
+    (acc) =>
+      (acc.quantity === null || acc.quantity > 0) &&
+      !cartProductIds.has(acc.id),
+  );
   const requiredAccessories = useMemo(
     () => buildRequiredAccessoryCartInputs(product.accessories || []),
     [product.accessories],
@@ -533,7 +539,7 @@ export function ProductModal({
   const shouldSplitAcrossCombinations =
     hasBookingAttributes && selectionCapacity.allocationMode === 'split';
   const effectiveMaxQuantity = hasBookingAttributes
-    ? Math.min(maxQuantity, selectionCapacity.capacity)
+    ? combineStockQuantityLimits(maxQuantity, selectionCapacity.capacity)
     : maxQuantity;
   const isSelectionUnavailable =
     hasBookingAttributes && effectiveMaxQuantity === 0;
@@ -556,8 +562,13 @@ export function ProductModal({
   const isVideoSelected = hasVideo && selectedImageIndex === images.length;
 
   const handleQuantityChange = (delta: number) => {
-    const cap = Math.max(1, effectiveMaxQuantity);
-    const newQty = Math.max(1, Math.min(quantity + delta, cap));
+    const newQty =
+      effectiveMaxQuantity === null
+        ? Math.max(1, quantity + delta)
+        : Math.max(
+            1,
+            Math.min(quantity + delta, Math.max(1, effectiveMaxQuantity)),
+          );
     setQuantity(newQty);
   };
 
@@ -566,18 +577,27 @@ export function ProductModal({
 
     if (matchingCartLine) {
       setQuantity(
-        Math.min(matchingCartLine.quantity, Math.max(1, effectiveMaxQuantity)),
+        effectiveMaxQuantity === null
+          ? matchingCartLine.quantity
+          : Math.min(
+              matchingCartLine.quantity,
+              Math.max(1, effectiveMaxQuantity),
+            ),
       );
       return;
     }
 
-    if (effectiveMaxQuantity > 0 && quantity > effectiveMaxQuantity) {
+    if (
+      effectiveMaxQuantity !== null &&
+      effectiveMaxQuantity > 0 &&
+      quantity > effectiveMaxQuantity
+    ) {
       setQuantity(effectiveMaxQuantity);
     }
   }, [isOpen, matchingCartLine, effectiveMaxQuantity, quantity]);
 
   const handleAddToCart = () => {
-    if (hasBookingAttributes && effectiveMaxQuantity <= 0) {
+    if (hasBookingAttributes && effectiveMaxQuantity === 0) {
       return;
     }
 
@@ -689,7 +709,10 @@ export function ProductModal({
           price,
           deposit,
           quantity,
-          maxQuantity: Math.max(1, effectiveMaxQuantity),
+          maxQuantity:
+            effectiveMaxQuantity === null
+              ? null
+              : Math.max(1, effectiveMaxQuantity),
           pricingKind: product.pricingKind ?? 'duration',
           pricingMode: effectivePricingMode,
           basePeriodMinutes: product.basePeriodMinutes ?? null,
@@ -1032,11 +1055,11 @@ export function ProductModal({
                     variant={isUnavailable ? 'failed' : 'expired'}
                     className="shrink-0 text-xs"
                   >
-                    {availableQuantity}{' '}
-                    {t('stock', { count: availableQuantity }).replace(
-                      /^\d+\s*/,
-                      '',
-                    )}
+                    {availableQuantity === null
+                      ? tProduct('availableWithoutStockLimit')
+                      : `${availableQuantity} ${t('stock', {
+                          count: availableQuantity,
+                        }).replace(/^\d+\s*/, '')}`}
                   </Badge>
                 </div>
 
@@ -1567,7 +1590,7 @@ export function ProductModal({
                   <div className="mt-2 space-y-1">
                     <p className="text-xs font-medium">
                       {tProduct('availableForSelection', {
-                        count: effectiveMaxQuantity,
+                        count: effectiveMaxQuantity ?? 0,
                       })}
                     </p>
                     <p className="text-muted-foreground text-xs">
@@ -1635,7 +1658,8 @@ export function ProductModal({
                   className="hover:bg-background h-10 w-10 rounded-lg"
                   onClick={() => handleQuantityChange(1)}
                   disabled={
-                    quantity >= effectiveMaxQuantity ||
+                    (effectiveMaxQuantity !== null &&
+                      quantity >= effectiveMaxQuantity) ||
                     isUnavailable ||
                     isSelectionUnavailable
                   }

@@ -25,6 +25,7 @@ import {
 } from "@louez/ui";
 import { useIsMobile } from "@louez/ui/hooks/use-mobile";
 import { cn } from "@louez/utils";
+import type { StockQuantityLimit } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
 
@@ -36,7 +37,7 @@ export interface ProductAddComboboxProduct {
 
 interface ProductAddComboboxProps {
   products: ProductAddComboboxProduct[];
-  availableQuantityByProduct: Map<string, number>;
+  availableQuantityByProduct: Map<string, StockQuantityLimit>;
   onAddProduct: (productId: string) => void;
   placeholder: string;
   searchPlaceholder: string;
@@ -155,7 +156,8 @@ export function ProductAddCombobox({
         <CommandGroup>
           {filteredProducts.map((product) => {
             const remaining = availableQuantityByProduct.get(product.id);
-            const isUnavailable = remaining !== undefined && remaining <= 0;
+            const isUnavailable =
+              remaining !== undefined && remaining !== null && remaining <= 0;
             const selectedQuantity = selectedQuantityByProduct?.get(product.id) ?? 0;
 
             return (
@@ -207,7 +209,7 @@ export function ProductAddCombobox({
                 ) : (
                   remaining !== undefined && (
                     <Badge variant="expired" className="tabular-nums">
-                      {remaining} {availableLabel}
+                      {remaining === null ? availableLabel : `${remaining} ${availableLabel}`}
                     </Badge>
                   )
                 )}

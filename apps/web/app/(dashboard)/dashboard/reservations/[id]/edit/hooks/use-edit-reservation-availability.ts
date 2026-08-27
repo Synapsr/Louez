@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { calculatePeakReservedQuantities } from '@louez/utils'
+import type { StockQuantityLimit } from '@louez/utils'
 
 import type {
   AvailabilityWarning,
@@ -42,6 +43,9 @@ export function useEditReservationAvailability({
       if (!item.productId || !item.product) {
         continue
       }
+      if (item.product.stockKind === 'untracked') {
+        continue
+      }
 
       const reserved = reservedByProduct.get(item.productId) || 0
       const available = Math.max(
@@ -68,8 +72,10 @@ export function useEditReservationAvailability({
   }, [endDate, existingReservations, items, startDate, turnoverBufferMinutes])
 
   // Remaining stock per product on the period, minus what the current edit already uses
-  const availableQuantityByProduct = useMemo<Map<string, number>>(() => {
-    const map = new Map<string, number>()
+  const availableQuantityByProduct = useMemo<
+    Map<string, StockQuantityLimit>
+  >(() => {
+    const map = new Map<string, StockQuantityLimit>()
     if (!startDate || !endDate) {
       return map
     }
@@ -82,6 +88,11 @@ export function useEditReservationAvailability({
     })
 
     for (const product of products) {
+      if (product.stockKind === 'untracked') {
+        map.set(product.id, null)
+        continue
+      }
+
       const reserved = reservedByProduct.get(product.id) || 0
       const inCurrentItems = items
         .filter((item) => item.productId === product.id)

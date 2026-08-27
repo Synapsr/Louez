@@ -18,6 +18,7 @@ import type {
   PricingMode,
 } from '@louez/types';
 import type { Rate } from '@louez/types';
+import type { StockQuantityLimit } from '@louez/utils';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Label } from '@louez/ui';
@@ -41,6 +42,7 @@ import {
   calculateRateBasedPrice,
   calculateRentalPrice,
   calculateSeasonalAwarePrice,
+  combineStockQuantityLimits,
   getAvailableDurationMinutes,
   getAvailableDurations,
   getDeterministicCombinationSortValue,
@@ -79,7 +81,7 @@ interface Accessory {
   price: string;
   deposit: string;
   images: string[] | null;
-  quantity: number;
+  quantity: StockQuantityLimit;
   required?: boolean | null;
   requiredQuantity?: number | null;
   pricingKind?: PricingKind | null;
@@ -100,7 +102,7 @@ interface AddToCartFormProps {
   productImage: string | null;
   price: number;
   deposit: number;
-  maxQuantity: number;
+  maxQuantity: StockQuantityLimit;
   pricingKind?: PricingKind;
   pricingMode: 'day' | 'hour' | 'week';
   basePeriodMinutes?: number | null;
@@ -301,7 +303,9 @@ export function AddToCartForm({
     periodProductAvailability,
   ]);
   const periodAwareMaxQuantity = hasSelectedDates
-    ? (periodProductAvailability?.availableQuantity ?? 0)
+    ? periodProductAvailability
+      ? periodProductAvailability.availableQuantity
+      : 0
     : maxQuantity;
   const isAvailabilityLoadingForSelection =
     hasSelectedDates &&
@@ -322,7 +326,10 @@ export function AddToCartForm({
   const shouldSplitAcrossCombinations =
     hasBookingAttributes && selectionCapacity.allocationMode === 'split';
   const effectiveMaxQuantity = hasBookingAttributes
-    ? Math.min(availabilityBoundQuantity, selectionCapacity.capacity)
+    ? combineStockQuantityLimits(
+        availabilityBoundQuantity,
+        selectionCapacity.capacity,
+      )
     : availabilityBoundQuantity;
   const isSelectionUnavailable = effectiveMaxQuantity === 0;
 
@@ -498,7 +505,9 @@ export function AddToCartForm({
   // cart, and never a required one (those ride along with the product).
   const cartProductIds = new Set(cartItems.map((item) => item.productId));
   const availableAccessories = selectOptionalAccessories(accessories).filter(
-    (acc) => acc.quantity > 0 && !cartProductIds.has(acc.id),
+    (acc) =>
+      (acc.quantity === null || acc.quantity > 0) &&
+      !cartProductIds.has(acc.id),
   );
   const requiredAccessories = useMemo(
     () => buildRequiredAccessoryCartInputs(accessories),
@@ -604,7 +613,10 @@ export function AddToCartForm({
           price,
           deposit,
           quantity,
-          maxQuantity: Math.max(1, effectiveMaxQuantity),
+          maxQuantity:
+            effectiveMaxQuantity === null
+              ? null
+              : Math.max(1, effectiveMaxQuantity),
           pricingKind,
           pricingMode,
           basePeriodMinutes: basePeriodMinutes ?? null,
@@ -644,7 +656,11 @@ export function AddToCartForm({
   };
 
   useEffect(() => {
-    if (effectiveMaxQuantity > 0 && quantity > effectiveMaxQuantity) {
+    if (
+      effectiveMaxQuantity !== null &&
+      effectiveMaxQuantity > 0 &&
+      quantity > effectiveMaxQuantity
+    ) {
       setQuantity(effectiveMaxQuantity);
     }
   }, [effectiveMaxQuantity, quantity]);
@@ -748,7 +764,9 @@ export function AddToCartForm({
           </p>
           <div className="space-y-1">
             <p className="text-xs font-medium">
-              {t('availableForSelection', { count: effectiveMaxQuantity })}
+              {t('availableForSelection', {
+                count: effectiveMaxQuantity ?? 0,
+              })}
             </p>
             <p className="text-muted-foreground text-xs">
               {selectionCapacity.allocationMode === 'single'
@@ -779,22 +797,27 @@ export function AddToCartForm({
             size="icon"
             onClick={() =>
               setQuantity(
-                Math.min(Math.max(1, effectiveMaxQuantity), quantity + 1),
+                effectiveMaxQuantity === null
+                  ? quantity + 1
+                  : Math.min(
+                      Math.max(1, effectiveMaxQuantity),
+                      quantity + 1,
+                    ),
               )
             }
             disabled={
-              quantity >= effectiveMaxQuantity || isSelectionUnavailable
+              (effectiveMaxQuantity !== null &&
+                quantity >= effectiveMaxQuantity) ||
+              isSelectionUnavailable
             }
           >
             <Plus className="h-4 w-4" />
           </Button>
-          <span className="text-muted-foreground text-sm">
-            (
-            {t('availableCount', {
-              count: hasSelectedDates ? effectiveMaxQuantity : maxQuantity,
-            })}
-            )
-          </span>
+          {effectiveMaxQuantity === null ? null : (
+            <span className="text-muted-foreground text-sm">
+              ({t('availableCount', { count: effectiveMaxQuantity })})
+            </span>
+          )}
         </div>
       </div>
 

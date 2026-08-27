@@ -26,6 +26,8 @@ import type {
 import {
   DEFAULT_COMBINATION_KEY,
   calculatePeakReservedQuantities,
+  divideStockQuantityLimit,
+  getAvailableStockQuantity,
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
   normalizeDaySchedule,
@@ -595,22 +597,28 @@ export async function getStorefrontAvailability(
     productsForAvailability.map((product) => {
       if (!product.trackUnits) {
         const reservedQuantity = reservedByProduct.get(product.id) || 0;
-        const availableQuantity = Math.max(
-          0,
-          product.quantity - reservedQuantity,
-        );
+        const availableQuantity = getAvailableStockQuantity({
+          stockKind: product.stockKind,
+          totalQuantity: product.quantity,
+          reservedQuantity,
+        });
 
         let status: ProductAvailability['status'] = 'available';
         if (availableQuantity === 0) {
           status = 'unavailable';
-        } else if (availableQuantity < product.quantity) {
+        } else if (
+          availableQuantity !== null &&
+          availableQuantity < product.quantity
+        ) {
           status = 'limited';
         }
 
         return {
           productId: product.id,
-          totalQuantity: product.quantity,
-          reservedQuantity,
+          totalQuantity:
+            product.stockKind === 'untracked' ? null : product.quantity,
+          reservedQuantity:
+            product.stockKind === 'untracked' ? 0 : reservedQuantity,
           availableQuantity,
           status,
           ...(product.stockKind === 'consumable' && availableQuantity === 0
@@ -721,10 +729,15 @@ export async function getStorefrontAvailability(
     }
 
     const requiredPerParent = Math.max(1, link.quantity);
-    const accessoryCapacity = Math.floor(
-      accessoryAvailability.availableQuantity / requiredPerParent,
+    const accessoryCapacity = divideStockQuantityLimit(
+      accessoryAvailability.availableQuantity,
+      requiredPerParent,
     );
-    if (accessoryCapacity >= parentAvailability.availableQuantity) {
+    if (
+      accessoryCapacity === null ||
+      (parentAvailability.availableQuantity !== null &&
+        accessoryCapacity >= parentAvailability.availableQuantity)
+    ) {
       continue;
     }
 

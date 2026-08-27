@@ -70,7 +70,7 @@ function ProductCardInteractive({
   const currency = useStoreCurrency()
   const maxDiscountPercent = useStoreMaxDiscountPercent()
   const mainImage = product.images?.[0]
-  const isAvailable = product.quantity > 0
+  const isAvailable = product.stockKind === 'untracked' || product.quantity > 0
   // A consumable at zero is a restock away, not a scheduling conflict — say so.
   const unavailableLabel =
     product.stockKind === 'consumable'
@@ -141,7 +141,9 @@ function ProductCardInteractive({
           )}
 
           {/* Discount badge */}
-          {isAvailable && cardDiscount > 0 && product.quantity > 2 && (
+          {isAvailable &&
+            cardDiscount > 0 &&
+            (product.stockKind === 'untracked' || product.quantity > 2) && (
             <Badge variant="progress" className="absolute top-3 left-3 text-xs font-medium">
               <TrendingDownSolidIcon className="h-3 w-3 mr-1" />-{Math.floor(cardDiscount)}%
             </Badge>

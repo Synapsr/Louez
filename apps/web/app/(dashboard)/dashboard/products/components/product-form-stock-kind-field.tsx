@@ -35,7 +35,10 @@ interface ProductFormStockKindFieldProps {
 
 /** Base UI selects hand back an `unknown` value; narrow it here. */
 function toStockKind(value: unknown): StockKind {
-  return value === "consumable" ? "consumable" : "returnable";
+  if (value === "consumable" || value === "untracked") {
+    return value;
+  }
+  return "returnable";
 }
 
 /**
@@ -57,6 +60,7 @@ export const ProductFormStockKindField = ({
   const blockedByPricing = watchedValues.pricingKind !== "fixed";
   const blockedByUnitTracking = Boolean(watchedValues.trackUnits);
   const consumableDisabled = disabled || blockedByPricing || blockedByUnitTracking;
+  const untrackedDisabled = disabled || blockedByUnitTracking;
   // The reason lives inside the disabled option itself: visible exactly when
   // the user opens the menu and wonders why "Consumable" is out of reach.
   const blockedHint = blockedByPricing
@@ -70,7 +74,11 @@ export const ProductFormStockKindField = ({
       {(field) => {
         const stockKind = field.state.value ?? "returnable";
         const stockKindLabel =
-          stockKind === "consumable" ? t("stockKindConsumable") : t("stockKindReturnable");
+          stockKind === "consumable"
+            ? t("stockKindConsumable")
+            : stockKind === "untracked"
+              ? t("stockKindUntracked")
+              : t("stockKindReturnable");
 
         if (stockKindChangeBlockers.length > 0) {
           return (
@@ -153,6 +161,20 @@ export const ProductFormStockKindField = ({
                   <span>{t("stockKindConsumable")}</span>
                   {consumableDisabled && blockedHint ? (
                     <span className="text-muted-foreground text-xs">{blockedHint}</span>
+                  ) : null}
+                </span>
+              </SelectItem>
+              <SelectItem
+                value="untracked"
+                label={t("stockKindUntracked")}
+                disabled={untrackedDisabled}
+              >
+                <span className="flex flex-col items-start">
+                  <span>{t("stockKindUntracked")}</span>
+                  {blockedByUnitTracking ? (
+                    <span className="text-muted-foreground text-xs">
+                      {t("stockKindUntrackedRequiresNoUnits")}
+                    </span>
                   ) : null}
                 </span>
               </SelectItem>

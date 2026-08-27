@@ -103,3 +103,27 @@ test('returnable products keep temporal peak availability', () => {
 
   assert.equal(result.reservedByProduct.get('returnable'), 2)
 })
+
+test('untracked products never reserve stock capacity', () => {
+  const result = calculatePeakReservedQuantities({
+    reservations: [
+      {
+        status: 'confirmed',
+        startDate: requestedStart,
+        endDate: requestedEnd,
+        items: [
+          {
+            productId: 'cleaning-service',
+            stockKind: 'untracked',
+            quantity: 50,
+            consumedQuantity: 0,
+          },
+        ],
+      },
+    ],
+    startDate: requestedStart,
+    endDate: requestedEnd,
+  })
+
+  assert.equal(result.reservedByProduct.has('cleaning-service'), false)
+})

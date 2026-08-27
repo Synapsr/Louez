@@ -505,6 +505,13 @@
       "when": 1787761796705,
       "tag": "0066_typical_wrecking_crew",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "5",
+      "when": 1787824488553,
+      "tag": "0067_eager_starbolt",
+      "breakpoints": true
     }
   ]
 }

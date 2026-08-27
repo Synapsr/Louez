@@ -11,9 +11,9 @@ export interface CombinationAvailability {
 
 export interface ProductAvailability {
   productId: string;
-  totalQuantity: number;
+  totalQuantity: number | null;
   reservedQuantity: number;
-  availableQuantity: number;
+  availableQuantity: number | null;
   status: 'available' | 'limited' | 'unavailable';
   reason?: 'out_of_stock' | 'required_accessory_out_of_stock';
   combinations?: CombinationAvailability[];
@@ -44,7 +44,7 @@ export interface AvailabilityResponse {
 export interface CombinationResolutionResult {
   combinationKey: string;
   selectedAttributes: UnitAttributes;
-  availableQuantity: number;
+  availableQuantity: number | null;
 }
 
 export interface ReservationPollResponse {

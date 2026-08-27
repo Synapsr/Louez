@@ -337,6 +337,53 @@ test('limits the parent when another line uses required accessory stock', () => 
   assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[1]), 4);
 });
 
+test('limits an untracked parent only through its finite required accessory', () => {
+  const lines = [
+    {
+      lineId: 'parent',
+      productId: 'cleaning-service',
+      stockKind: 'untracked' as const,
+      quantity: 1,
+      maxQuantity: null,
+    },
+    {
+      lineId: 'required-product',
+      parentLineId: 'parent',
+      productId: 'cleaning-product',
+      stockKind: 'consumable' as const,
+      quantity: 2,
+      maxQuantity: 5,
+      requiredQuantity: 2,
+    },
+  ];
+
+  assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[0]), 2);
+});
+
+test('an untracked required accessory does not limit its parent', () => {
+  const lines = [
+    {
+      lineId: 'parent',
+      productId: 'bike',
+      stockKind: 'returnable' as const,
+      quantity: 1,
+      maxQuantity: 4,
+    },
+    {
+      lineId: 'required-service',
+      parentLineId: 'parent',
+      productId: 'cleaning-service',
+      stockKind: 'untracked' as const,
+      quantity: 1,
+      maxQuantity: null,
+      requiredQuantity: 1,
+    },
+  ];
+
+  assert.equal(getCartLineAvailableMaximumQuantity(lines, lines[0]), 4);
+  assert.equal(clampCartLineQuantityToAvailableMaximum(lines, lines[1]), 1);
+});
+
 test('reports when shared stock falls below a required child minimum', () => {
   const lines = [
     {

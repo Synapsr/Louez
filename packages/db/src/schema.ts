@@ -950,6 +950,7 @@ export const pricingKindEnum = mysqlEnum('pricing_kind', [
 export const stockKindEnum = mysqlEnum('stock_kind', [
   'returnable',
   'consumable',
+  'untracked',
 ]);
 
 export const products = mysqlTable(

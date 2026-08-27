@@ -1503,6 +1503,10 @@ export async function createManualReservation(data: CreateReservationData) {
 
     for (const product of lockedProducts) {
       if (!product.trackUnits) {
+        if (product.stockKind === "untracked") {
+          continue;
+        }
+
         const reserved = reservedByProduct.get(product.id) || 0;
         remainingByProduct.set(product.id, Math.max(0, product.quantity - reserved));
         continue;
@@ -1529,6 +1533,10 @@ export async function createManualReservation(data: CreateReservationData) {
       }
 
       if (!product.trackUnits) {
+        if (product.stockKind === "untracked") {
+          continue;
+        }
+
         const available = remainingByProduct.get(product.id) || 0;
         if (detail.quantity > available) {
           shortfalls.push({

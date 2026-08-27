@@ -23,6 +23,7 @@ import type {
   CombinationAvailability,
   PricingKind,
   ProductAvailability,
+  StockKind,
 } from "@louez/types";
 import { Button } from "@louez/ui";
 import { Input } from "@louez/ui";
@@ -54,6 +55,7 @@ import { useBrowserTimezoneCity } from "@/hooks/use-browser-timezone-city";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import { useCart } from "@/contexts/cart-context";
+import type { StockQuantityLimit } from "@louez/utils";
 
 interface PricingTier {
   id: string;
@@ -70,7 +72,7 @@ interface Accessory {
   price: string;
   deposit: string;
   images: string[] | null;
-  quantity: number;
+  quantity: StockQuantityLimit;
   required?: boolean | null;
   requiredQuantity?: number | null;
   pricingKind?: PricingKind | null;
@@ -102,6 +104,7 @@ interface Product {
   price: string;
   deposit: string | null;
   quantity: number;
+  stockKind?: StockKind | null;
   displayQuantity?: number;
   category: { id: string; name: string; order?: number | null } | null;
   pricingKind?: PricingKind | null;
@@ -682,7 +685,9 @@ export function RentalContent({
                     product={product}
                     storeSlug={store.slug}
                     availableQuantity={
-                      avail?.availableQuantity ?? product.displayQuantity ?? product.quantity
+                      avail
+                        ? avail.availableQuantity
+                        : (product.displayQuantity ?? product.quantity)
                     }
                     unavailableReason={avail?.reason}
                     startDate={startDate}

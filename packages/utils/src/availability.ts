@@ -97,7 +97,11 @@ export function calculatePeakReservedQuantities(params: {
     }
 
     for (const item of reservation.items) {
-      if (!item.productId || item.stockKind === 'consumable') {
+      if (
+        !item.productId ||
+        item.stockKind === 'consumable' ||
+        item.stockKind === 'untracked'
+      ) {
         continue
       }
 

@@ -1118,6 +1118,9 @@
         "stockKindConsumableDescription": "El producto se va con el cliente: el stock baja en cada reserva confirmada y la cantidad es el stock en estantería.",
         "stockKindConsumableRequiresFixed": "Un consumible se vende a precio fijo: elige la tarificación «Precio fijo» para activarlo.",
         "stockKindConsumableRequiresNoUnits": "Un consumible no se controla unidad por unidad: desactiva el seguimiento por unidad para activarlo.",
+        "stockKindUntracked": "Sin seguimiento de stock",
+        "stockKindUntrackedRequiresNoUnits": "El stock sin seguimiento no puede usar el seguimiento por unidad.",
+        "untrackedStockHelp": "No se controla ni limita ninguna cantidad. Las fechas y las reglas de reserva siguen aplicándose.",
         "stockKindChangeBlockedTitle": "Tipo de stock bloqueado",
         "stockKindChangeBlocked": "Este producto figura en las siguientes reservas. Cancélalas o complétalas antes de cambiar el tipo de stock.",
         "stockKindChangeBlockedTrigger": "{kind}. Ver las reservas que impiden el cambio.",
@@ -1521,7 +1524,10 @@
           "utilization": "Tasa de utilización",
           "utilizationSubtitle": "Últimos 30 días",
           "stock": "Stock",
-          "unitsActiveValue": "{active}/{total} activas"
+          "unitsActiveValue": "{active}/{total} activas",
+          "notTracked": "Sin seguimiento",
+          "notApplicable": "No aplicable",
+          "notTrackedSubtitle": "Sin capacidad de stock"
         },
         "inventory": {
           "title": "Inventario",
@@ -1551,6 +1557,7 @@
           "viewCalendar": "Calendario",
           "timeline": {
             "stock": "Stock",
+            "bookings": "Reservas",
             "statusFilter": "Filtrar por estado",
             "showAll": "Mostrar todo",
             "previous": "Periodo anterior",
@@ -5699,6 +5706,7 @@
       "selectQuantity": "Cantidad",
       "quantity": "Cantidad",
       "availableCount": "{count, plural, one {# disponible} other {# disponibles}}",
+      "availableWithoutStockLimit": "Disponible",
       "available": "Disponible",
       "unavailable": "No disponible",
       "deposit": "Deposito",

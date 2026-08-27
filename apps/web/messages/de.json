@@ -1118,6 +1118,9 @@
         "stockKindConsumableDescription": "Der Artikel geht mit dem Kunden mit: Der Bestand sinkt bei jeder bestätigten Buchung, und die Menge entspricht dem Lagerbestand.",
         "stockKindConsumableRequiresFixed": "Ein Verbrauchsartikel wird pauschal verkauft: Wählen Sie die Preisart „Pauschalpreis“, um ihn zu aktivieren.",
         "stockKindConsumableRequiresNoUnits": "Ein Verbrauchsartikel wird nicht pro Einheit verfolgt: Deaktivieren Sie die Einheitenverfolgung, um ihn zu aktivieren.",
+        "stockKindUntracked": "Bestand nicht verfolgen",
+        "stockKindUntrackedRequiresNoUnits": "Nicht verfolgter Bestand kann keine Einheitenverfolgung verwenden.",
+        "untrackedStockHelp": "Es wird keine Menge verfolgt oder begrenzt. Datums- und Buchungsregeln gelten weiterhin.",
         "stockKindChangeBlockedTitle": "Bestandsart gesperrt",
         "stockKindChangeBlocked": "Dieses Produkt ist in den folgenden Reservierungen enthalten. Stornieren oder beenden Sie sie, bevor Sie die Bestandsart ändern.",
         "stockKindChangeBlockedTrigger": "{kind}. Blockierende Reservierungen anzeigen.",
@@ -1521,7 +1524,10 @@
           "utilization": "Auslastung",
           "utilizationSubtitle": "Letzte 30 Tage",
           "stock": "Bestand",
-          "unitsActiveValue": "{active}/{total} aktiv"
+          "unitsActiveValue": "{active}/{total} aktiv",
+          "notTracked": "Nicht verfolgt",
+          "notApplicable": "Nicht anwendbar",
+          "notTrackedSubtitle": "Keine Bestandskapazität"
         },
         "inventory": {
           "title": "Inventar",
@@ -1551,6 +1557,7 @@
           "viewCalendar": "Kalender",
           "timeline": {
             "stock": "Bestand",
+            "bookings": "Reservierungen",
             "statusFilter": "Nach Status filtern",
             "showAll": "Alle anzeigen",
             "previous": "Vorheriger Zeitraum",
@@ -5699,6 +5706,7 @@
       "selectQuantity": "Menge",
       "quantity": "Menge",
       "availableCount": "{count, plural, one {# verfügbar} other {# verfügbar}}",
+      "availableWithoutStockLimit": "Verfügbar",
       "available": "Verfügbar",
       "unavailable": "Nicht verfügbar",
       "deposit": "Kaution",

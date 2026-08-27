@@ -97,7 +97,7 @@ export function registerProductTools(
       const lines = rows.map(
         (p) =>
           `- **${p.name}** (${p.id})\n` +
-          `  Price: ${formatCurrency(p.price)}${p.pricingKind === 'fixed' ? ' (fixed)' : `/${p.pricingMode}`} | Deposit: ${formatCurrency(p.deposit ?? '0')} | Stock: ${p.quantity} (${p.stockKind})\n` +
+          `  Price: ${formatCurrency(p.price)}${p.pricingKind === 'fixed' ? ' (fixed)' : `/${p.pricingMode}`} | Deposit: ${formatCurrency(p.deposit ?? '0')} | Stock: ${p.stockKind === 'untracked' ? 'not tracked' : p.quantity} (${p.stockKind})\n` +
           `  Status: ${p.status}${p.categoryName ? ` | Category: ${p.categoryName}` : ''}`,
       );
 
@@ -147,7 +147,7 @@ export function registerProductTools(
         `- **Stock kind**: ${product.stockKind}\n` +
         `- **Price**: ${formatCurrency(product.price)}${product.pricingKind === 'fixed' ? '' : `/${product.pricingMode}`}\n` +
         `- **Deposit**: ${formatCurrency(product.deposit ?? '0')}\n` +
-        `- **Stock**: ${effectiveQuantity}\n` +
+        `- **Stock**: ${product.stockKind === 'untracked' ? 'not tracked' : effectiveQuantity}\n` +
         `- **Category**: ${product.category?.name ?? '—'}\n` +
         `- **Unit tracking**: ${product.trackUnits ? 'Yes' : 'No'}\n` +
         `- **Created**: ${formatDate(product.createdAt)}\n`;
@@ -194,9 +194,11 @@ export function registerProductTools(
         .default('duration')
         .describe('Whether pricing depends on rental duration'),
       stockKind: z
-        .enum(['returnable', 'consumable'])
+        .enum(['returnable', 'consumable', 'untracked'])
         .default('returnable')
-        .describe('Whether stock returns after the reservation'),
+        .describe(
+          'Whether stock returns, is consumed, or is not quantity-limited',
+        ),
       pricingMode: z
         .enum(['hour', 'day', 'week'])
         .default('day')
@@ -260,7 +262,7 @@ export function registerProductTools(
           `- **Pricing kind**: ${pricingKind}\n` +
           `- **Stock kind**: ${stockKind}\n` +
           `- **Price**: ${formatCurrency(price)}${pricingKind === 'fixed' ? '' : `/${pricingMode}`}\n` +
-          `- **Stock**: ${quantity ?? 1}`,
+          `- **Stock**: ${stockKind === 'untracked' ? 'not tracked' : (quantity ?? 1)}`,
       );
     },
   );
@@ -280,7 +282,7 @@ export function registerProductTools(
         .optional()
         .describe('New pricing behavior'),
       stockKind: z
-        .enum(['returnable', 'consumable'])
+        .enum(['returnable', 'consumable', 'untracked'])
         .optional()
         .describe('New stock behavior'),
       quantity: z.number().int().optional().describe('New stock quantity'),
@@ -319,6 +321,9 @@ export function registerProductTools(
         return toolError(
           'Consumable products must use fixed pricing and cannot track units.',
         );
+      }
+      if (nextStockKind === 'untracked' && existing.trackUnits) {
+        return toolError('Untracked products cannot track individual units.');
       }
 
       const updateData: Partial<typeof products.$inferInsert> = {};
@@ -380,6 +385,12 @@ export function registerProductTools(
             ok: false as const,
             error:
               'Consumable products must use fixed pricing and cannot track units.',
+          };
+        }
+        if (lockedNextStockKind === 'untracked' && lockedProduct.trackUnits) {
+          return {
+            ok: false as const,
+            error: 'Untracked products cannot track individual units.',
           };
         }
         if (lockedProduct.trackUnits && updates.quantity !== undefined) {
