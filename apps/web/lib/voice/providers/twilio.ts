@@ -410,7 +410,11 @@ export class TwilioVoiceProvider implements VoiceProvider {
   async releaseNumber(providerNumberId: string): Promise<void> {
     const auth = this.authHeader()
     const sid = env.TWILIO_ACCOUNT_SID
-    if (!auth || !sid) return
+    if (!auth || !sid) {
+      throw new Error(
+        'cannot release Twilio number: provider credentials are not configured',
+      )
+    }
     const url = `${TWILIO_REST_BASE}/Accounts/${encodeURIComponent(
       sid,
     )}/IncomingPhoneNumbers/${encodeURIComponent(providerNumberId)}.json`

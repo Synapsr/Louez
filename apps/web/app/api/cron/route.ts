@@ -4,6 +4,7 @@ import {
   aggregateDailyAnalytics,
   cleanupOldAnalyticsData,
 } from '@/lib/analytics/aggregation';
+import { purgeExpiredLegalRetentionRecords } from '@/lib/account-deletion/retention-cleanup';
 import { createError, useLogger, withEvlog } from '@/lib/evlog';
 import {
   cleanExpiredCache,
@@ -32,6 +33,7 @@ import { env } from '@/env';
  * - Google Places cache refresh: daily at 3:00 AM
  * - Analytics cleanup: daily at 3:30 AM UTC (removes raw data older than 90 days)
  * - Cache cleanup: daily at 4:00 AM UTC
+ * - Expired legal archive cleanup: daily at 4:30 AM UTC
  *
  * vercel.json:
  *   "crons": [{ "path": "/api/cron", "schedule": "* * * * *" }]
@@ -114,6 +116,12 @@ async function handleCron(request: Request) {
       tasks.push('cache-cleanup');
       const cleaned = await cleanExpiredCache();
       results.cacheCleanup = { cleaned };
+    }
+
+    if (now.getUTCHours() === 4 && now.getUTCMinutes() === 30) {
+      tasks.push('legal-retention-cleanup');
+      const deleted = await purgeExpiredLegalRetentionRecords(now);
+      results.legalRetentionCleanup = { deleted };
     }
 
     // Voice-number rental renewals: daily at 8:00 AM (warn → debit → grace →

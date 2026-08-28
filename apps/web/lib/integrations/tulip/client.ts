@@ -500,6 +500,26 @@ export async function tulipUpdateProduct(
   return null;
 }
 
+export async function tulipDeleteProduct(
+  apiKey: string,
+  tulipProductId: string,
+): Promise<void> {
+  try {
+    await request<unknown>(
+      `/products/${encodeURIComponent(tulipProductId)}`,
+      apiKey,
+      {
+        method: 'DELETE',
+      },
+    );
+  } catch (error) {
+    if (error instanceof TulipApiError && error.status === 404) {
+      return;
+    }
+    throw error;
+  }
+}
+
 export type TulipContract = {
   cid?: string;
   price?: number;

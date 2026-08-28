@@ -11,5 +11,6 @@ export interface SendEmailOptions {
   subject: string
   html: string
   attachments?: EmailAttachment[]
+  devPreviewUrl?: string
   fromName?: string
 }

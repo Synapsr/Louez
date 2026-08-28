@@ -1614,6 +1614,61 @@ export const documents = mysqlTable('documents', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
+// Global account-departure totals. Deliberately stores no user, Store,
+// free-text answer, or timestamp so a response cannot be linked back to a
+// deleted account.
+export const accountDepartureReason = mysqlEnum('account_departure_reason', [
+  'too_expensive',
+  'missing_features',
+  'difficult_to_use',
+  'no_longer_needed',
+  'switched_service',
+  'technical_issues',
+  'privacy_concerns',
+  'other',
+]);
+
+export const accountDepartureReasonCounters = mysqlTable(
+  'account_departure_reason_counters',
+  {
+    reason: accountDepartureReason.primaryKey(),
+    count: int('count', { unsigned: true }).default(0).notNull(),
+  },
+);
+
+// Restricted accounting archive used only for Louez's own billing records.
+// Merchant-issued and supplier invoices are deleted with the Store. The
+// original user and Store IDs are absent from this encrypted snapshot.
+export const legalRetentionRecords = mysqlTable(
+  'legal_retention_records',
+  {
+    id: id(),
+    retentionGroupId: varchar('retention_group_id', { length: 21 }).notNull(),
+    sourceType: mysqlEnum('legal_retention_source_type', [
+      'platform_invoice',
+    ]).notNull(),
+    sourceRecordHash: varchar('source_record_hash', { length: 64 }).notNull(),
+    documentNumber: varchar('document_number', { length: 255 }),
+    issuedAt: date('issued_at', { mode: 'string' }).notNull(),
+    retainUntil: date('retain_until', { mode: 'string' }).notNull(),
+    legalBasis: varchar('legal_basis', { length: 100 })
+      .notNull()
+      .default('fr_code_commerce_l123_22'),
+    encryptedPayload: longtext('encrypted_payload').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    retentionGroupIdx: index('legal_retention_group_idx').on(
+      table.retentionGroupId,
+    ),
+    retainUntilIdx: index('legal_retention_until_idx').on(table.retainUntil),
+    sourceUnique: unique('legal_retention_source_unique').on(
+      table.sourceType,
+      table.sourceRecordHash,
+    ),
+  }),
+);
+
 // ============================================================================
 // Electronic Invoicing
 // ============================================================================

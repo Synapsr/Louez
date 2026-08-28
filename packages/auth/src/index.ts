@@ -12,9 +12,21 @@ import { render } from '@react-email/render'
 import { db } from '@louez/db'
 import * as schema from '@louez/db'
 import { env as dbEnv } from '@louez/db/env'
-import { sendEmail, isEmailConfigured, MagicLinkEmail, OTPEmail } from '@louez/email'
+import {
+  DeleteAccountEmail,
+  getDeleteAccountEmailSubject,
+  isEmailConfigured,
+  MagicLinkEmail,
+  OTPEmail,
+  sendEmail,
+} from '@louez/email'
 import type { EmailLocale } from '@louez/email'
 
+import {
+  buildAccountDeletionConfirmationFragment,
+  getAccountDeletionReasonFromRequest,
+  type AccountDeletionReason,
+} from './account-deletion'
 import { env } from './env'
 
 // Standalone (self-host) deployments enable email + password sign-in so the
@@ -46,7 +58,20 @@ export interface AuthSession {
 
 function getLocaleFromHeaders(hdrs: Headers): EmailLocale {
   const acceptLanguage = hdrs.get('accept-language') || ''
-  return acceptLanguage.toLowerCase().startsWith('en') ? 'en' : 'fr'
+  const candidate = acceptLanguage.toLowerCase().slice(0, 2)
+  switch (candidate) {
+    case 'de':
+    case 'en':
+    case 'es':
+    case 'fr':
+    case 'it':
+    case 'nl':
+    case 'pl':
+    case 'pt':
+      return candidate
+    default:
+      return 'fr'
+  }
 }
 
 const subjectTranslations: Record<string, string> = {
@@ -71,6 +96,17 @@ const otpSubjectTranslations: Record<string, string> = {
 
 let _sessionHook: ((session: { userId: string }) => Promise<void>) | null = null
 let _userCreatedHook: ((user: { userId: string }) => Promise<void>) | null = null
+let _userDeleteRequestHook:
+  | ((user: { userId: string }) => Promise<void>)
+  | null = null
+let _userDeleteHook:
+  | ((user: {
+      userId: string
+      reason: AccountDeletionReason | null
+    }) => Promise<
+      { status: 'deleted' } | { status: 'blocked'; reason: 'shared-store' }
+    >)
+  | null = null
 
 export function setSessionHook(
   hook: (session: { userId: string }) => Promise<void>,
@@ -82,6 +118,23 @@ export function setUserCreatedHook(
   hook: (user: { userId: string }) => Promise<void>,
 ) {
   _userCreatedHook = hook
+}
+
+export function setUserDeleteHook(
+  hook: (user: {
+    userId: string
+    reason: AccountDeletionReason | null
+  }) => Promise<
+    { status: 'deleted' } | { status: 'blocked'; reason: 'shared-store' }
+  >,
+) {
+  _userDeleteHook = hook
+}
+
+export function setUserDeleteRequestHook(
+  hook: (user: { userId: string }) => Promise<void>,
+) {
+  _userDeleteRequestHook = hook
 }
 
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 90
@@ -134,6 +187,78 @@ export const authInstance = betterAuth({
   account: {
     accountLinking: {
       enabled: true,
+    },
+  },
+
+  user: {
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (user, request) => {
+        if (!_userDeleteHook) {
+          throw new APIError('INTERNAL_SERVER_ERROR', {
+            message: 'Account deletion service is unavailable',
+            code: 'ACCOUNT_DELETION_UNAVAILABLE',
+          })
+        }
+
+        const result = await _userDeleteHook({
+          userId: user.id,
+          reason: getAccountDeletionReasonFromRequest(request),
+        })
+        if (result.status === 'blocked') {
+          throw new APIError('CONFLICT', {
+            message: 'A shared store blocks account deletion',
+            code: 'ACCOUNT_DELETION_BLOCKED',
+          })
+        }
+      },
+      ...(isStandaloneMode
+        ? {}
+        : {
+            sendDeleteAccountVerification: async (
+              {
+                user,
+                token,
+              }: { user: { id: string; email: string }; token: string },
+              request?: Request,
+            ) => {
+              if (!_userDeleteRequestHook) {
+                throw new APIError('SERVICE_UNAVAILABLE', {
+                  message: 'Account deletion is temporarily unavailable',
+                  code: 'ACCOUNT_DELETION_UNAVAILABLE',
+                })
+              }
+              try {
+                await _userDeleteRequestHook({ userId: user.id })
+              } catch {
+                throw new APIError('SERVICE_UNAVAILABLE', {
+                  message: 'Account deletion is temporarily unavailable',
+                  code: 'ACCOUNT_DELETION_UNAVAILABLE',
+                })
+              }
+              if (!isEmailConfigured()) {
+                throw new APIError('SERVICE_UNAVAILABLE', {
+                  message: 'Account deletion email is unavailable',
+                  code: 'ACCOUNT_DELETION_EMAIL_UNAVAILABLE',
+                })
+              }
+              const locale = getLocaleFromHeaders(
+                request ? new Headers(request.headers) : new Headers(),
+              )
+              const reason = getAccountDeletionReasonFromRequest(request)
+              const fragment = buildAccountDeletionConfirmationFragment(token, reason)
+              const confirmationUrl = `${env.AUTH_URL}/account/delete/confirm#${fragment}`
+              const html = await render(
+                DeleteAccountEmail({ url: confirmationUrl, locale }),
+              )
+              await sendEmail({
+                to: user.email,
+                subject: getDeleteAccountEmailSubject(locale),
+                html,
+                devPreviewUrl: confirmationUrl,
+              })
+            },
+          }),
     },
   },
 

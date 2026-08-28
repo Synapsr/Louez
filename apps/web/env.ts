@@ -115,6 +115,34 @@ export const env = createEnv({
         "INTEGRATION_ENCRYPTION_KEY must be a base64url-encoded 32-byte key",
       )
       .optional(),
+    LEGAL_ARCHIVE_ENCRYPTION_KEY: z
+      .string()
+      .regex(
+        /^[A-Za-z0-9_-]{43}=$|^[A-Za-z0-9_-]{43}$/,
+        "LEGAL_ARCHIVE_ENCRYPTION_KEY must be a base64url-encoded 32-byte key",
+      )
+      .optional(),
+    LEGAL_ARCHIVE_FISCAL_YEAR_END: z
+      .string()
+      .regex(
+        /^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/,
+        "LEGAL_ARCHIVE_FISCAL_YEAR_END must use MM-DD",
+      )
+      .refine((value) => {
+        const [monthText, dayText] = value.split("-");
+        const month = Number(monthText);
+        const day = Number(dayText);
+        return day <= new Date(Date.UTC(2000, month, 0)).getUTCDate();
+      }, "LEGAL_ARCHIVE_FISCAL_YEAR_END must be a valid calendar date")
+      .default("12-31"),
+    POSTHOG_API_HOST: z
+      .url("POSTHOG_API_HOST must be a valid URL")
+      .default("https://eu.posthog.com"),
+    POSTHOG_PROJECT_ID: z.string().optional(),
+    POSTHOG_PERSONAL_API_KEY: z.string().optional(),
+    GLEAP_API_TOKEN: z.string().optional(),
+    OPENREPLAY_API_URL: z.url("OPENREPLAY_API_URL must be a valid URL").optional(),
+    OPENREPLAY_ORGANIZATION_API_KEY: z.string().optional(),
     GOOGLE_CALENDAR_CLIENT_ID: z.string().optional(),
     GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional(),
     SUPERPDP_CLIENT_ID: z.string().optional(),
@@ -388,6 +416,14 @@ export const env = createEnv({
     TULIP_API_KEY: process.env.TULIP_API_KEY,
     TULIP_CALENDLY_URL: process.env.TULIP_CALENDLY_URL,
     INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY,
+    LEGAL_ARCHIVE_ENCRYPTION_KEY: process.env.LEGAL_ARCHIVE_ENCRYPTION_KEY,
+    LEGAL_ARCHIVE_FISCAL_YEAR_END: process.env.LEGAL_ARCHIVE_FISCAL_YEAR_END,
+    POSTHOG_API_HOST: process.env.POSTHOG_API_HOST,
+    POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
+    POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
+    GLEAP_API_TOKEN: process.env.GLEAP_API_TOKEN,
+    OPENREPLAY_API_URL: process.env.OPENREPLAY_API_URL,
+    OPENREPLAY_ORGANIZATION_API_KEY: process.env.OPENREPLAY_ORGANIZATION_API_KEY,
     GOOGLE_CALENDAR_CLIENT_ID: process.env.GOOGLE_CALENDAR_CLIENT_ID,
     GOOGLE_CALENDAR_CLIENT_SECRET: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
     SUPERPDP_CLIENT_ID: process.env.SUPERPDP_CLIENT_ID,

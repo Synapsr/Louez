@@ -4,7 +4,6 @@ import { db } from '@louez/db'
 import { users } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
-import { Mail, Calendar, Shield } from 'lucide-react'
 import { format } from 'date-fns'
 
 import {
@@ -17,9 +16,14 @@ import {
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Separator } from '@louez/ui'
+import { CalendarIcon, MailIcon, ShieldIcon } from '@louez/ui/icons'
 
+import { getAccountDeletionPreview } from '@/lib/account-deletion/account-deletion'
+import { accountDeletionRepository } from '@/lib/account-deletion/database-repository'
+import { isStandaloneMode } from '@/lib/deployment'
 import { parseKeyboardShortcutOverrides } from '@/lib/keyboard-shortcuts'
 
+import { AccountDeletionDialog } from './account-deletion-dialog'
 import { AccountInfoForm } from './account-info-form'
 import { KeyboardShortcutsSettings } from './keyboard-shortcuts-settings'
 import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server'
@@ -43,8 +47,11 @@ export default async function AccountSettingsPage() {
   }
 
   const t = await getTranslations('dashboard.settings')
-  const tCommon = await getTranslations('common')
   const { dateFns: dateLocale } = await getRequestFormatLocale()
+  const accountDeletionPreview = await getAccountDeletionPreview({
+    userId: user.id,
+    repository: accountDeletionRepository,
+  })
 
   return (
     <div className="space-y-8">
@@ -75,7 +82,7 @@ export default async function AccountSettingsPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="h-4 w-4" />
+                <MailIcon className="h-4 w-4" />
                 {t('accountSettings.email')}
               </div>
               <p className="font-medium">{user.email}</p>
@@ -88,7 +95,7 @@ export default async function AccountSettingsPage() {
 
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
+                <CalendarIcon className="h-4 w-4" />
                 {t('accountSettings.memberSince')}
               </div>
               <p className="font-medium">
@@ -107,7 +114,7 @@ export default async function AccountSettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
+            <ShieldIcon className="h-5 w-5" />
             {t('accountSettings.security')}
           </CardTitle>
           <CardDescription>
@@ -153,9 +160,10 @@ export default async function AccountSettingsPage() {
                 {t('accountSettings.deleteAccountDescription')}
               </p>
             </div>
-            <Button variant="destructive" disabled>
-              {tCommon('delete')}
-            </Button>
+            <AccountDeletionDialog
+              preview={accountDeletionPreview}
+              verification={isStandaloneMode() ? 'password' : 'email'}
+            />
           </div>
         </CardContent>
       </Card>
