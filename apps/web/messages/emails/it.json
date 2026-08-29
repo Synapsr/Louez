@@ -130,6 +130,7 @@
     "email": "Email:",
     "period": "Periodo:",
     "amount": "Importo:",
+    "notes": "Messaggio del cliente",
     "viewRequest": "Vedi richiesta",
     "connectToManage": "Accedi alla tua dashboard per accettare o rifiutare questa richiesta."
   },

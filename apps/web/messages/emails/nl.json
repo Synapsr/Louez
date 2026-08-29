@@ -139,6 +139,7 @@
     "email": "E-mail:",
     "period": "Periode:",
     "amount": "Bedrag:",
+    "notes": "Bericht van de klant",
     "viewRequest": "Aanvraag bekijken",
     "connectToManage": "Log in op uw dashboard om deze aanvraag te accepteren of af te wijzen."
   },

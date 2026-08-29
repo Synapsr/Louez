@@ -991,6 +991,7 @@ export async function sendNewRequestLandlordEmail({
     startDate: Date
     endDate: Date
     totalAmount: number
+    customerNotes?: string | null
   }
   dashboardUrl: string
   locale?: EmailLocale
@@ -1010,6 +1011,7 @@ export async function sendNewRequestLandlordEmail({
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       total: reservation.totalAmount,
+      customerNotes: reservation.customerNotes,
       dashboardUrl,
       locale,
       currency: store.settings?.currency || 'EUR',

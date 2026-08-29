@@ -130,6 +130,7 @@
     "email": "Email:",
     "period": "Periodo:",
     "amount": "Valor:",
+    "notes": "Mensagem do cliente",
     "viewRequest": "Ver solicitacao",
     "connectToManage": "Entre no seu painel para aceitar ou rejeitar esta solicitacao."
   },

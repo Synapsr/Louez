@@ -141,6 +141,7 @@
     "email": "Email:",
     "period": "Period:",
     "amount": "Amount:",
+    "notes": "Customer message",
     "viewRequest": "View request",
     "connectToManage": "Log in to your dashboard to accept or reject this request."
   },

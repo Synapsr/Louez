@@ -141,6 +141,7 @@
     "email": "Email :",
     "period": "Période :",
     "amount": "Montant :",
+    "notes": "Message du client",
     "viewRequest": "Voir la demande",
     "connectToManage": "Connectez-vous à votre tableau de bord pour accepter ou refuser cette demande."
   },

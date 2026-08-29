@@ -130,6 +130,7 @@
     "email": "E-Mail:",
     "period": "Zeitraum:",
     "amount": "Betrag:",
+    "notes": "Nachricht des Kunden",
     "viewRequest": "Anfrage ansehen",
     "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Anfrage anzunehmen oder abzulehnen."
   },

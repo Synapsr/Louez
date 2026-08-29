@@ -2192,6 +2192,7 @@ export async function createReservation(input: CreateReservationInput) {
         startDate,
         endDate,
         totalAmount: finalTotal,
+        customerNotes: input.customerNotes || null,
         // Tax info for emails
         taxEnabled,
         taxRate,

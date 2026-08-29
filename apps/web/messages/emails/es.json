@@ -139,6 +139,7 @@
     "email": "Correo:",
     "period": "Periodo:",
     "amount": "Monto:",
+    "notes": "Mensaje del cliente",
     "viewRequest": "Ver solicitud",
     "connectToManage": "Inicie sesion en su panel para aceptar o rechazar esta solicitud."
   },

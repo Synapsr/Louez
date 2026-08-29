@@ -684,6 +684,8 @@ export function ReservationDetailClient({
             onRecordPayment={() => setPaymentModalOpen(true)}
           />
 
+          <ReservationCustomerNotes notes={reservation.customerNotes || ""} />
+
           {/* Delivery & Return card */}
           {(reservation.outboundMethod === "address" ||
             reservation.returnMethod === "address" ||
@@ -839,8 +841,6 @@ export function ReservationDetailClient({
           />
 
           <AdvisorConversationCard reservationId={reservation.id} />
-
-          <ReservationCustomerNotes notes={reservation.customerNotes || ""} />
 
           <ReservationNotes
             reservationId={reservation.id}
