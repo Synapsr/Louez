@@ -1887,6 +1887,13 @@
       "productUnitPrice": "Cena jedn.",
       "productTotal": "Suma",
       "deliveryAndReturn": "Dostawa i zwrot",
+      "pickupAndReturn": "Odbiór i zwrot",
+      "storeLegsSummary": {
+        "sameLocation": "Odbiór i zwrot w sklepie",
+        "pickup": "Odbiór",
+        "return": "Zwrot",
+        "edit": "Edytuj"
+      },
       "outboundLegLabel": "Odbiór sprzętu",
       "returnLegLabel": "Zwrot sprzętu",
       "deliveryAddressLabel": "Adres dostawy",
@@ -6266,6 +6273,7 @@
       "deliveryLabel": "Dostawa na Twój adres",
       "returnDeliveryLabel": "Odbiór z Twojego adresu",
       "storeReturnLabel": "Zwrot w sklepie",
+      "pickupAndReturnLabel": "Odbiór i zwrot w sklepie",
       "pickupLabel": "Odbiór w sklepie",
       "deliveryFeeLabel": "Koszt dostawy",
       "free": "Bezpłatnie",

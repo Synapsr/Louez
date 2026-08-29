@@ -12,6 +12,7 @@
     "address": "Adres",
     "pickupAddress": "Ophaaladres",
     "returnAddress": "Retourgadres",
+    "pickupAndReturnAddress": "Ophaal- en retouradres",
     "subtotal": "Subtotaal",
     "subtotalExclTax": "Subtotaal excl. BTW",
     "taxAmount": "BTW ({rate}%)",

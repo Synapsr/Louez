@@ -12,6 +12,7 @@
     "address": "Adresse",
     "pickupAddress": "Abholadresse",
     "returnAddress": "Rückgabeadresse",
+    "pickupAndReturnAddress": "Abhol- und Rückgabeadresse",
     "subtotal": "Zwischensumme",
     "subtotalExclTax": "Zwischensumme netto",
     "taxAmount": "MwSt ({rate}%)",

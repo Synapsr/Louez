@@ -106,6 +106,11 @@ export function ReservationConfirmationEmail({
 
   const formatDate = (date: Date) =>
     formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry)
+  const isSameStoreLocation =
+    Boolean(pickupLocationSnapshot) &&
+    (!returnLocationSnapshot ||
+      (returnLocationSnapshot.name === pickupLocationSnapshot?.name &&
+        returnLocationSnapshot.address === pickupLocationSnapshot?.address))
 
   const { greeting, message } = resolveCustomContent(
     customContent,
@@ -163,7 +168,19 @@ export function ReservationConfirmationEmail({
         }
         footnote={timezoneLine}
       >
-        {pickupLocationSnapshot && (
+        {pickupLocationSnapshot && isSameStoreLocation && (
+          <InfoCardItem
+            label={tc.pickupAndReturnAddress}
+            value={
+              <>
+                {pickupLocationSnapshot.name}
+                <br />
+                {pickupLocationSnapshot.address}
+              </>
+            }
+          />
+        )}
+        {pickupLocationSnapshot && !isSameStoreLocation && (
           <InfoCardItem
             label={tc.pickupAddress}
             value={
@@ -175,7 +192,7 @@ export function ReservationConfirmationEmail({
             }
           />
         )}
-        {returnLocationSnapshot && (
+        {returnLocationSnapshot && !isSameStoreLocation && (
           <InfoCardItem
             label={tc.returnAddress}
             value={

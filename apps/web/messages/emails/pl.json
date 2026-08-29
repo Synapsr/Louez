@@ -12,6 +12,7 @@
     "address": "Adres",
     "pickupAddress": "Adres odbioru",
     "returnAddress": "Adres zwrotu",
+    "pickupAndReturnAddress": "Adres odbioru i zwrotu",
     "subtotal": "Suma częściowa",
     "subtotalExclTax": "Suma netto",
     "taxAmount": "VAT ({rate}%)",

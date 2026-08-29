@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { MapPin, Store, Truck } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
@@ -19,6 +20,8 @@ import {
 } from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
 
+import { ReservationStoreLegsSummary } from '@/components/dashboard/reservation-store-legs-summary'
+import { resolveStoreLegLocation } from '@/components/dashboard/util.reservation-store-legs'
 import { AddressInput } from '@/components/ui/address-input'
 
 import type { DeliveryAddress, ReservationLocationOption } from '../types'
@@ -321,12 +324,44 @@ export function NewReservationStepDelivery({
   totalFee,
 }: NewReservationStepDeliveryProps) {
   const t = useTranslations('dashboard.reservations.manualForm')
+  const [isExpanded, setIsExpanded] = useState(false)
   const hasAnyDelivery = outboundMethod === 'address' || returnMethod === 'address'
+  const isCollapsed = !isExpanded && !isDeliveryForced && !hasAnyDelivery
   const deliveryMinimumAmount = deliverySettings.minimumOrderAmountForDelivery ?? null
   const isBelowDeliveryMinimum =
     deliverySettings.mode === 'optional' &&
     deliveryMinimumAmount !== null &&
     subtotal < deliveryMinimumAmount
+
+  if (isCollapsed) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5" />
+            {t('deliveryTitle')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ReservationStoreLegsSummary
+            pickupLocation={resolveStoreLegLocation({
+              locations,
+              selectedLocationId: pickupLocationId,
+              storeAddress,
+              fallbackName: t('storeLocationFallback'),
+            })}
+            returnLocation={resolveStoreLegLocation({
+              locations,
+              selectedLocationId: returnLocationId,
+              storeAddress,
+              fallbackName: t('storeLocationFallback'),
+            })}
+            onEdit={() => setIsExpanded(true)}
+          />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>

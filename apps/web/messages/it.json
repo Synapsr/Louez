@@ -1887,6 +1887,13 @@
       "productUnitPrice": "Prezzo unit.",
       "productTotal": "Totale",
       "deliveryAndReturn": "Consegna e restituzione",
+      "pickupAndReturn": "Ritiro e restituzione",
+      "storeLegsSummary": {
+        "sameLocation": "Ritiro e restituzione in negozio",
+        "pickup": "Ritiro",
+        "return": "Restituzione",
+        "edit": "Modifica"
+      },
       "outboundLegLabel": "Ricezione attrezzatura",
       "returnLegLabel": "Restituzione attrezzatura",
       "deliveryAddressLabel": "Indirizzo di consegna",
@@ -6266,6 +6273,7 @@
       "deliveryLabel": "Consegna al tuo indirizzo",
       "returnDeliveryLabel": "Ritiro dal tuo indirizzo",
       "storeReturnLabel": "Restituzione in negozio",
+      "pickupAndReturnLabel": "Ritiro e restituzione in negozio",
       "pickupLabel": "Ritiro in negozio",
       "deliveryFeeLabel": "Spese di consegna",
       "free": "Gratuito",

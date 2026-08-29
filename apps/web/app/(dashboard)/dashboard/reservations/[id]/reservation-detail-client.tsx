@@ -51,7 +51,10 @@ import { hasMobileReservationQuickActions } from "./util.mobile-reservation-quic
 import { getNetCompletedPaymentAmount } from "./util.payment-refunds";
 import { UnitAssignmentSelector } from "@/components/dashboard/unit-assignment-selector";
 import { InspectionStatusCard } from "@/components/dashboard/inspection-status-card";
+import { ReservationStoreLegsSummary } from "@/components/dashboard/reservation-store-legs-summary";
+import { storeLegLocationFromSnapshot } from "@/components/dashboard/util.reservation-store-legs";
 import { InvoiceDocumentsCard, type ReservationInvoiceDocument } from "./invoice-documents-card";
+import { getReservationDeliveryDisplayMode } from "./util.reservation-delivery-display";
 
 type ReservationStatus =
   | "pending"
@@ -101,6 +104,7 @@ interface ReservationDetailClientProps {
   smsConfigured: boolean;
   stripeConfigured: boolean;
   inspectionSettings: InspectionSettingsLike;
+  showStoreLocations: boolean;
   departureInspection: InspectionData | null;
   returnInspection: InspectionData | null;
   defaultPaymentMethod?: PaymentMethod;
@@ -139,6 +143,7 @@ export function ReservationDetailClient({
   smsConfigured: _smsConfigured,
   stripeConfigured,
   inspectionSettings,
+  showStoreLocations,
   departureInspection,
   returnInspection,
   defaultPaymentMethod,
@@ -191,6 +196,10 @@ export function ReservationDetailClient({
 
   const rental = getRentalAmount(reservation);
   const deposit = parseFloat(reservation.depositAmount || "0");
+  const deliveryDisplayMode = getReservationDeliveryDisplayMode({
+    reservation,
+    showStoreLocations,
+  });
 
   const rentalPaid = getNetCompletedPaymentAmount(reservation.payments || [], "rental");
 
@@ -686,12 +695,29 @@ export function ReservationDetailClient({
 
           <ReservationCustomerNotes notes={reservation.customerNotes || ""} />
 
+          {deliveryDisplayMode === "compact" && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Store className="h-4 w-4" />
+                  {t("pickupAndReturn")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ReservationStoreLegsSummary
+                  pickupLocation={storeLegLocationFromSnapshot(
+                    reservation.pickupLocationSnapshot ?? reservation.returnLocationSnapshot,
+                  )}
+                  returnLocation={storeLegLocationFromSnapshot(
+                    reservation.returnLocationSnapshot ?? reservation.pickupLocationSnapshot,
+                  )}
+                />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Delivery & Return card */}
-          {(reservation.outboundMethod === "address" ||
-            reservation.returnMethod === "address" ||
-            reservation.deliveryOption === "delivery" ||
-            reservation.pickupLocationSnapshot ||
-            reservation.returnLocationSnapshot) && (
+          {deliveryDisplayMode === "full" && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">

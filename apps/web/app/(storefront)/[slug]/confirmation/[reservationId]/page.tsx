@@ -94,8 +94,14 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
   const deliveryFee = reservation.deliveryFee ? parseFloat(reservation.deliveryFee) : 0
   const pickupLocationAddress =
     formatLocationSnapshotAddress(reservation.pickupLocationSnapshot) ?? store.address
+  const returnLocationSnapshot =
+    reservation.returnLocationSnapshot ?? reservation.pickupLocationSnapshot
   const returnLocationAddress =
-    formatLocationSnapshotAddress(reservation.returnLocationSnapshot) ?? store.address
+    formatLocationSnapshotAddress(returnLocationSnapshot) ?? store.address
+  const isSameStoreLocation =
+    !hasAnyDelivery &&
+    reservation.pickupLocationSnapshot?.name === returnLocationSnapshot?.name &&
+    pickupLocationAddress === returnLocationAddress
 
   // Format dates with times in store timezone
   const storeTimezone = storeSettings.timezone
@@ -158,6 +164,23 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
 
             {/* Delivery / Pickup — per-leg display */}
             <div className="rounded-lg bg-muted/50 p-4 space-y-3">
+              {isSameStoreLocation ? (
+                <div className="flex items-start gap-3">
+                  <Store className="h-5 w-5 text-primary mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                      {t('pickupAndReturnLabel')}
+                    </p>
+                    <p className="font-medium">
+                      {reservation.pickupLocationSnapshot?.name ?? store.name}
+                    </p>
+                    {pickupLocationAddress && (
+                      <p className="text-sm text-muted-foreground">{pickupLocationAddress}</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
               {/* Outbound leg */}
               <div className="flex items-start gap-3">
                 {hasOutboundDelivery ? (
@@ -237,6 +260,8 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                   )}
                 </div>
               </div>
+                </>
+              )}
 
               {/* Fee badge */}
               {hasAnyDelivery && deliveryFee === 0 && (

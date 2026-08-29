@@ -12,6 +12,7 @@
     "address": "Direccion",
     "pickupAddress": "Direccion de recogida",
     "returnAddress": "Direccion de devolucion",
+    "pickupAndReturnAddress": "Dirección de recogida y devolución",
     "subtotal": "Subtotal",
     "subtotalExclTax": "Subtotal sin IVA",
     "taxAmount": "IVA ({rate}%)",

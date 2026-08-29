@@ -1926,6 +1926,13 @@
       "productUnitPrice": "Stückpreis",
       "productTotal": "Gesamt",
       "deliveryAndReturn": "Lieferung & Rückgabe",
+      "pickupAndReturn": "Abholung & Rückgabe",
+      "storeLegsSummary": {
+        "sameLocation": "Abholung und Rückgabe im Geschäft",
+        "pickup": "Abholung",
+        "return": "Rückgabe",
+        "edit": "Bearbeiten"
+      },
       "outboundLegLabel": "Materialempfang",
       "returnLegLabel": "Materialrückgabe",
       "deliveryAddressLabel": "Lieferadresse",
@@ -6266,6 +6273,7 @@
       "deliveryLabel": "Lieferung an Ihre Adresse",
       "returnDeliveryLabel": "Abholung von Ihrer Adresse",
       "storeReturnLabel": "Rückgabe im Geschäft",
+      "pickupAndReturnLabel": "Abholung und Rückgabe im Geschäft",
       "pickupLabel": "Abholung im Geschäft",
       "deliveryFeeLabel": "Liefergebühr",
       "free": "Kostenlos",

@@ -1887,6 +1887,13 @@
       "productUnitPrice": "Eenheidsprijs",
       "productTotal": "Totaal",
       "deliveryAndReturn": "Levering & retour",
+      "pickupAndReturn": "Ophalen & retour",
+      "storeLegsSummary": {
+        "sameLocation": "Ophalen en retourneren in de winkel",
+        "pickup": "Ophalen",
+        "return": "Retour",
+        "edit": "Wijzigen"
+      },
       "outboundLegLabel": "Materiaal ontvangen",
       "returnLegLabel": "Materiaal retourneren",
       "deliveryAddressLabel": "Leveringsadres",
@@ -6266,6 +6273,7 @@
       "deliveryLabel": "Levering op uw adres",
       "returnDeliveryLabel": "Ophaling op uw adres",
       "storeReturnLabel": "Retour in winkel",
+      "pickupAndReturnLabel": "Ophalen en retourneren in de winkel",
       "pickupLabel": "Ophalen in winkel",
       "deliveryFeeLabel": "Bezorgkosten",
       "free": "Gratis",

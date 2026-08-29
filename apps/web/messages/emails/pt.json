@@ -12,6 +12,7 @@
     "address": "Endereco",
     "pickupAddress": "Endereco de retirada",
     "returnAddress": "Endereco de devolucao",
+    "pickupAndReturnAddress": "Morada de levantamento e devolução",
     "subtotal": "Subtotal",
     "subtotalExclTax": "Subtotal sem IVA",
     "taxAmount": "IVA ({rate}%)",

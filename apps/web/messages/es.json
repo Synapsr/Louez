@@ -1926,6 +1926,13 @@
       "productUnitPrice": "Precio unit.",
       "productTotal": "Total",
       "deliveryAndReturn": "Entrega y devolución",
+      "pickupAndReturn": "Recogida y devolución",
+      "storeLegsSummary": {
+        "sameLocation": "Recogida y devolución en tienda",
+        "pickup": "Recogida",
+        "return": "Devolución",
+        "edit": "Modificar"
+      },
       "outboundLegLabel": "Recepción del material",
       "returnLegLabel": "Devolución del material",
       "deliveryAddressLabel": "Dirección de entrega",
@@ -6266,6 +6273,7 @@
       "deliveryLabel": "Entrega en su dirección",
       "returnDeliveryLabel": "Recogida en su dirección",
       "storeReturnLabel": "Devolución en tienda",
+      "pickupAndReturnLabel": "Recogida y devolución en tienda",
       "pickupLabel": "Recogida en tienda",
       "deliveryFeeLabel": "Gastos de envío",
       "free": "Gratis",

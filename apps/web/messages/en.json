@@ -1926,6 +1926,13 @@
       "productUnitPrice": "Unit price",
       "productTotal": "Total",
       "deliveryAndReturn": "Delivery & return",
+      "pickupAndReturn": "Pickup & return",
+      "storeLegsSummary": {
+        "sameLocation": "Pickup and return in store",
+        "pickup": "Pickup",
+        "return": "Return",
+        "edit": "Edit"
+      },
       "outboundLegLabel": "Receive equipment",
       "returnLegLabel": "Return equipment",
       "deliveryAddressLabel": "Delivery address",
@@ -6267,6 +6274,7 @@
       "pickupLabel": "Store pickup",
       "returnDeliveryLabel": "Collection from your address",
       "storeReturnLabel": "Return at store",
+      "pickupAndReturnLabel": "Pickup and return at store",
       "deliveryFeeLabel": "Delivery fee",
       "free": "Free",
       "returnAddressLabel": "Return address",

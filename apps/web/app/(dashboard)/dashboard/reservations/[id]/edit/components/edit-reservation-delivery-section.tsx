@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { MapPin, Store, Truck } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
@@ -17,6 +18,8 @@ import {
 } from '@louez/ui'
 import { cn } from '@louez/utils'
 
+import { ReservationStoreLegsSummary } from '@/components/dashboard/reservation-store-legs-summary'
+import { resolveStoreLegLocation } from '@/components/dashboard/util.reservation-store-legs'
 import { AddressInput } from '@/components/ui/address-input'
 
 import type { DeliveryLegAddress, DeliveryLegState } from '../hooks/use-edit-reservation-delivery'
@@ -251,9 +254,38 @@ export function EditReservationDeliverySection({
   onInboundAddressChange,
 }: EditReservationDeliverySectionProps) {
   const t = useTranslations('dashboard.reservations.edit.delivery')
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const hasDeliveryLegs =
     outbound.method === 'address' || inbound.method === 'address'
+  const isCollapsed = !isExpanded && !hasDeliveryLegs
+
+  if (isCollapsed) {
+    return (
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <h2 className="mb-4 text-sm font-medium text-muted-foreground">
+            {t('title')}
+          </h2>
+          <ReservationStoreLegsSummary
+            pickupLocation={resolveStoreLegLocation({
+              locations,
+              selectedLocationId: outbound.locationId,
+              storeAddress,
+              fallbackName: t('storeLocationFallback'),
+            })}
+            returnLocation={resolveStoreLegLocation({
+              locations,
+              selectedLocationId: inbound.locationId,
+              storeAddress,
+              fallbackName: t('storeLocationFallback'),
+            })}
+            onEdit={() => setIsExpanded(true)}
+          />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>

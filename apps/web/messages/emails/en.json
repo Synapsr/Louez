@@ -13,6 +13,7 @@
     "address": "Address",
     "pickupAddress": "Pickup address",
     "returnAddress": "Return address",
+    "pickupAndReturnAddress": "Pickup and return address",
     "subtotal": "Subtotal",
     "subtotalExclTax": "Subtotal excl. tax",
     "taxAmount": "VAT ({rate}%)",

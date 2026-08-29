@@ -1887,6 +1887,13 @@
       "productUnitPrice": "Preco unit.",
       "productTotal": "Total",
       "deliveryAndReturn": "Entrega e devolução",
+      "pickupAndReturn": "Levantamento e devolução",
+      "storeLegsSummary": {
+        "sameLocation": "Levantamento e devolução na loja",
+        "pickup": "Levantamento",
+        "return": "Devolução",
+        "edit": "Editar"
+      },
       "outboundLegLabel": "Receção do equipamento",
       "returnLegLabel": "Devolução do equipamento",
       "deliveryAddressLabel": "Endereço de entrega",
@@ -6266,6 +6273,7 @@
       "deliveryLabel": "Entrega no seu endereço",
       "returnDeliveryLabel": "Recolha no seu endereço",
       "storeReturnLabel": "Devolução na loja",
+      "pickupAndReturnLabel": "Levantamento e devolução na loja",
       "pickupLabel": "Retirada na loja",
       "deliveryFeeLabel": "Taxa de entrega",
       "free": "Grátis",

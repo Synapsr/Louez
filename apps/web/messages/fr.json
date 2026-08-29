@@ -1930,6 +1930,13 @@
       "tulipContractCardTitle": "Contrat assurance",
       "tulipContractCardDescription": "Ouvrir le contrat dans Colibri.",
       "deliveryAndReturn": "Livraison & retour",
+      "pickupAndReturn": "Retrait & retour",
+      "storeLegsSummary": {
+        "sameLocation": "Retrait et retour en magasin",
+        "pickup": "Retrait",
+        "return": "Retour",
+        "edit": "Modifier"
+      },
       "outboundLegLabel": "Réception du matériel",
       "returnLegLabel": "Retour du matériel",
       "deliveryAddressLabel": "Adresse de livraison",
@@ -6267,6 +6274,7 @@
       "pickupLabel": "Retrait en magasin",
       "returnDeliveryLabel": "Récupération à votre adresse",
       "storeReturnLabel": "Retour en magasin",
+      "pickupAndReturnLabel": "Retrait et retour en magasin",
       "deliveryFeeLabel": "Frais de livraison",
       "free": "Gratuit",
       "returnAddressLabel": "Adresse de retour",

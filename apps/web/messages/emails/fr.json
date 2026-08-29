@@ -13,6 +13,7 @@
     "address": "Adresse",
     "pickupAddress": "Adresse de retrait",
     "returnAddress": "Adresse de retour",
+    "pickupAndReturnAddress": "Adresse de retrait et de retour",
     "subtotal": "Sous-total",
     "subtotalExclTax": "Sous-total HT",
     "taxAmount": "TVA ({rate}%)",
