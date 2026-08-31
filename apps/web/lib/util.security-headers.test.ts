@@ -17,6 +17,17 @@ test("adds runtime deployment origins to the CSP", () => {
   assert.match(csp ?? "", /frame-src[^;]*https:\/\/\*\.runtime\.example\.com/);
 });
 
+test("allows OpenFreeMap assets without the retired CARTO and Leaflet origins", () => {
+  const headers = buildSecurityHeaders({
+    isDevelopment: false,
+  });
+  const csp = headers.find((header) => header.key === "Content-Security-Policy")?.value ?? "";
+
+  assert.match(csp, /img-src[^;]*https:\/\/tiles\.openfreemap\.org/);
+  assert.match(csp, /connect-src[^;]*https:\/\/tiles\.openfreemap\.org/);
+  assert.doesNotMatch(csp, /cartocdn|unpkg\.com/);
+});
+
 test("embed headers allow framing without emitting X-Frame-Options", () => {
   const headers = buildEmbedSecurityHeaders({
     appDomain: "runtime.example.com",

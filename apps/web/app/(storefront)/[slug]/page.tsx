@@ -764,7 +764,6 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       primaryColor={primaryColor}
                       interactive={false}
                       showZoomControl={false}
-                      showAttribution={false}
                       showRecenterControl
                       tileTheme="dark"
                       popupTheme="light"
