@@ -1,15 +1,17 @@
-import type { PlanFeatures } from '@louez/types';
-
 import { env } from '@/env';
+import type { Plan } from '@/lib/plans.shared';
 
-export type Currency = 'eur' | 'usd';
-
-export const SUPPORTED_CURRENCIES: Currency[] = ['eur', 'usd'];
-
-export const CURRENCY_SYMBOLS: Record<Currency, string> = {
-  eur: '€',
-  usd: '$',
-};
+export {
+  CURRENCY_SYMBOLS,
+  SUPPORTED_CURRENCIES,
+  formatPlanPrice,
+  getPlanPriceId,
+  getYearlyPrice,
+  isPlanAvailable,
+  type Currency,
+  type Plan,
+  type PlanPrices,
+} from '@/lib/plans.shared';
 
 // SMS top-up pricing per plan (in cents)
 export const SMS_TOPUP_PRICING: Record<string, number | null> = {
@@ -77,25 +79,6 @@ export function getAiCreditPackages(): AiCreditPackage[] {
   } catch {
     return [];
   }
-}
-
-export interface PlanPrices {
-  monthly?: string;
-  yearly?: string;
-}
-
-export interface Plan {
-  slug: string;
-  name: string;
-  description: string;
-  price: number; // Monthly price (same in EUR and USD)
-  features: PlanFeatures;
-  isPopular?: boolean;
-  // Legacy fields for backwards compatibility
-  stripePriceMonthly?: string;
-  stripePriceYearly?: string;
-  // Multi-currency support
-  stripePrices?: Record<Currency, PlanPrices>;
 }
 
 /**
@@ -279,60 +262,4 @@ export function isStripeConfigured(): boolean {
     env.STRIPE_PRICE_PRO_MONTHLY &&
     env.STRIPE_PRICE_ULTRA_MONTHLY
   );
-}
-
-/**
- * Check if a plan is available for purchase in a specific currency
- */
-export function isPlanAvailable(
-  plan: Plan,
-  interval: 'monthly' | 'yearly',
-  currency: Currency = 'eur',
-): boolean {
-  const priceId = getPlanPriceId(plan, interval, currency);
-  return !!priceId;
-}
-
-/**
- * Get the Stripe price ID for a plan, interval, and currency
- */
-export function getPlanPriceId(
-  plan: Plan,
-  interval: 'monthly' | 'yearly',
-  currency: Currency = 'eur',
-): string | undefined {
-  // Try multi-currency prices first
-  if (plan.stripePrices?.[currency]) {
-    return interval === 'monthly'
-      ? plan.stripePrices[currency].monthly
-      : plan.stripePrices[currency].yearly;
-  }
-  // Fallback to legacy EUR prices
-  if (currency === 'eur') {
-    return interval === 'monthly'
-      ? plan.stripePriceMonthly
-      : plan.stripePriceYearly;
-  }
-  return undefined;
-}
-
-/**
- * Get yearly price (2 months free)
- */
-export function getYearlyPrice(plan: Plan): number {
-  return plan.price * 10;
-}
-
-/**
- * Format price with currency symbol
- */
-export function formatPlanPrice(
-  price: number,
-  currency: Currency = 'eur',
-): string {
-  const symbol = CURRENCY_SYMBOLS[currency];
-  if (currency === 'eur') {
-    return `${price}${symbol}`;
-  }
-  return `${symbol}${price}`;
 }

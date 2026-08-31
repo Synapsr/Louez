@@ -55,13 +55,14 @@ import {
 } from '@louez/ui';
 import { cn } from '@louez/utils';
 
-import type { Currency, Plan } from '@/lib/plans';
 import {
   CURRENCY_SYMBOLS,
   SUPPORTED_CURRENCIES,
   getYearlyPrice,
   isPlanAvailable,
-} from '@/lib/plans';
+  type Currency,
+  type Plan,
+} from '@/lib/plans.shared';
 
 import {
   cancelSubscription,
