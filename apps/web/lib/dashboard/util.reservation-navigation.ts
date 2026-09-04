@@ -58,3 +58,32 @@ export function getDashboardReservationBackHref(
     return RESERVATIONS_LIST_PATH;
   }
 }
+
+export function tryRestoreReservationTimelineHistory({
+  historyLength,
+  restoreHistory,
+  returnTo,
+  source,
+}: {
+  historyLength: number;
+  restoreHistory: () => void;
+  returnTo?: string | null;
+  source?: string | null;
+}): boolean {
+  if (historyLength <= 1 || source !== 'reservations_timeline') {
+    return false;
+  }
+
+  const backHref = getDashboardReservationBackHref(returnTo);
+  const url = new URL(backHref, LOCAL_ORIGIN);
+  const view = url.searchParams.get('view');
+  const isTimelineReturn =
+    url.pathname === RESERVATIONS_LIST_PATH && (view === 'calendar' || view === 'planning');
+
+  if (!isTimelineReturn) {
+    return false;
+  }
+
+  restoreHistory();
+  return true;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type MouseEvent as ReactMouseEvent } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import {
@@ -32,7 +32,10 @@ import { PaymentStatusBadge } from "./payment-status-badge";
 import { SendEmailModal } from "./send-email-modal";
 import { STATUS_CONFIG } from "../reservations-utils";
 import { generateAccessUrl } from "@/app/(dashboard)/dashboard/reservations/actions";
-import { getDashboardReservationBackHref } from "@/lib/dashboard/util.reservation-navigation";
+import {
+  getDashboardReservationBackHref,
+  tryRestoreReservationTimelineHistory,
+} from "@/lib/dashboard/util.reservation-navigation";
 import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
@@ -101,7 +104,31 @@ export function ReservationHeader({
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const backHref = getDashboardReservationBackHref(searchParams.get("returnTo"));
+  const returnTo = searchParams.get("returnTo");
+  const backHref = getDashboardReservationBackHref(returnTo);
+
+  const handleBackClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    tryRestoreReservationTimelineHistory({
+      historyLength: window.history.length,
+      restoreHistory: () => {
+        event.preventDefault();
+        router.back();
+      },
+      returnTo,
+      source: searchParams.get("source"),
+    });
+  };
 
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -217,7 +244,7 @@ export function ReservationHeader({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <Button
-              render={<Link href={backHref} />}
+              render={<Link href={backHref} onClick={handleBackClick} />}
               variant="ghost"
               size="icon"
               className="shrink-0 -ml-2 mt-0.5"
