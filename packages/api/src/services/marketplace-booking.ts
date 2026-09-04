@@ -6,10 +6,10 @@ import {
   customers,
   db,
   marketplaceBookingAttempts,
+  payments,
   reservationActivity,
   reservationItems,
   reservations,
-  storeMarketplaceChannels,
   stores,
 } from "@louez/db";
 import type { Rate, StoreSettings } from "@louez/types";
@@ -19,6 +19,7 @@ import type { BookingCheckoutInput, BookingHoldInput, BookingQuoteInput } from "
 import { getStorefrontAvailability } from "./availability";
 import { resolveStorefrontCart } from "./cart";
 import { ApiServiceError } from "./errors";
+import { loadMarketplaceBookingStore } from "./marketplace-availability";
 
 const QUOTE_TTL_MS = 10 * 60 * 1000;
 const HOLD_TTL_MS = 15 * 60 * 1000;
@@ -325,6 +326,7 @@ export async function quoteMarketplaceBooking(params: {
   quoteToken: string;
   expiresAt: string;
   currency: string;
+  country: string;
   lines: Array<{
     productId: string;
     name: string;
@@ -338,20 +340,7 @@ export async function quoteMarketplaceBooking(params: {
 }> {
   await expireMarketplaceBookingAttempts({ storeId: params.input.storeId });
 
-  const store = await db
-    .select({
-      id: stores.id,
-      slug: stores.slug,
-      settings: stores.settings,
-      channelStatus: storeMarketplaceChannels.status,
-    })
-    .from(stores)
-    .leftJoin(storeMarketplaceChannels, eq(storeMarketplaceChannels.storeId, stores.id))
-    .where(eq(stores.id, params.input.storeId))
-    .limit(1)
-    .then((rows) => rows[0]);
-
-  if (!store) throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
+  const store = await loadMarketplaceBookingStore(params.input.storeId);
 
   const productIds = params.input.items.map((item) => item.productId);
   if (store.channelStatus !== "published") {
@@ -484,6 +473,7 @@ export async function quoteMarketplaceBooking(params: {
   const deposit = tokenLines.reduce((sum, line) => sum + line.depositPerUnit * line.quantity, 0);
   const total = subtotal;
   const currency = store.settings?.currency ?? "EUR";
+  const country = store.settings?.country ?? "FR";
   const expiresAt = new Date(Date.now() + QUOTE_TTL_MS).toISOString();
   const payload: QuoteTokenPayload = {
     version: 1,
@@ -503,6 +493,7 @@ export async function quoteMarketplaceBooking(params: {
     quoteToken: await createQuoteToken(payload, params.secret),
     expiresAt,
     currency,
+    country,
     lines: tokenLines.map((line) => ({
       productId: line.productId,
       name: line.name,
@@ -1195,4 +1186,150 @@ export async function failMarketplaceBookingAttempt(reservationId: string): Prom
       await expireAttempt(tx, attempt.reservationId);
     }
   });
+}
+
+/**
+ * Contract download and signature follow the raw Louez reservation status, not
+ * the derived marketplace status: `ongoing` maps to marketplace `confirmed`.
+ */
+const CONTRACT_READY_RESERVATION_STATUSES = ["confirmed", "ongoing", "completed"];
+
+export interface BookingPaymentView {
+  id: string;
+  type: string;
+  method: string;
+  status: string;
+  amount: string;
+  currency: string;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * Superset of {@link BookingSnapshot} served by `/bookings/[id]/detail`.
+ * Additive by contract: the marketplace parses it with a non-strict schema, so
+ * new fields can land here without a lockstep client release.
+ */
+export interface BookingDetailSnapshot extends BookingSnapshot {
+  createdAt: string;
+  subtotalAmount: string;
+  timezone: string;
+  pickedUpAt: string | null;
+  returnedAt: string | null;
+  contract: {
+    available: boolean;
+    signedAt: string | null;
+  };
+  amountPaid: string;
+  payments: BookingPaymentView[];
+}
+
+export async function getMarketplaceBookingDetail(params: {
+  getCanonicalUrl: BookingUrlBuilder;
+  mediaBaseUrl: string;
+  reservationId: string;
+}): Promise<BookingDetailSnapshot> {
+  const snapshot = await getMarketplaceBooking(params);
+
+  const extra = await db
+    .select({
+      createdAt: reservations.createdAt,
+      subtotalAmount: reservations.subtotalAmount,
+      reservationStatus: reservations.status,
+      pickedUpAt: reservations.pickedUpAt,
+      returnedAt: reservations.returnedAt,
+      signedAt: reservations.signedAt,
+      storeSettings: stores.settings,
+    })
+    .from(reservations)
+    .innerJoin(stores, eq(stores.id, reservations.storeId))
+    .where(eq(reservations.id, params.reservationId))
+    .limit(1)
+    .then((rows) => rows[0]);
+  if (!extra) {
+    throw new ApiServiceError("NOT_FOUND", "errors.reservationNotFound");
+  }
+
+  const paymentRows = await db
+    .select({
+      id: payments.id,
+      type: payments.type,
+      method: payments.method,
+      status: payments.status,
+      amount: payments.amount,
+      currency: payments.currency,
+      paidAt: payments.paidAt,
+      createdAt: payments.createdAt,
+    })
+    .from(payments)
+    .where(eq(payments.reservationId, params.reservationId))
+    .orderBy(asc(payments.createdAt), asc(payments.id));
+
+  const amountPaid = paymentRows
+    .filter((payment) => payment.status === "completed")
+    .reduce((sum, payment) => sum + Number.parseFloat(payment.amount), 0);
+
+  return {
+    ...snapshot,
+    createdAt: extra.createdAt.toISOString(),
+    subtotalAmount: extra.subtotalAmount,
+    timezone: extra.storeSettings?.timezone ?? "Europe/Paris",
+    pickedUpAt: extra.pickedUpAt?.toISOString() ?? null,
+    returnedAt: extra.returnedAt?.toISOString() ?? null,
+    contract: {
+      available: CONTRACT_READY_RESERVATION_STATUSES.includes(extra.reservationStatus),
+      signedAt: extra.signedAt?.toISOString() ?? null,
+    },
+    amountPaid: amountPaid.toFixed(2),
+    payments: paymentRows.map((payment) => ({
+      id: payment.id,
+      type: payment.type,
+      method: payment.method,
+      status: payment.status,
+      amount: payment.amount,
+      currency: payment.currency ?? snapshot.currency,
+      paidAt: payment.paidAt?.toISOString() ?? null,
+      createdAt: payment.createdAt.toISOString(),
+    })),
+  };
+}
+
+/**
+ * Marketplace-scoped reservation lookup shared by the contract, sign and
+ * access-link routes: the HMAC channel may only ever touch reservations it
+ * created (`source = "marketplace"`).
+ */
+export async function getMarketplaceReservationContext(reservationId: string): Promise<{
+  id: string;
+  storeId: string;
+  storeSlug: string;
+  customerId: string;
+  customerEmail: string;
+  reservationStatus: string;
+  signedAt: Date | null;
+  contractAvailable: boolean;
+}> {
+  const row = await db
+    .select({
+      id: reservations.id,
+      storeId: reservations.storeId,
+      storeSlug: stores.slug,
+      customerId: reservations.customerId,
+      customerEmail: customers.email,
+      reservationStatus: reservations.status,
+      signedAt: reservations.signedAt,
+    })
+    .from(reservations)
+    .innerJoin(stores, eq(stores.id, reservations.storeId))
+    .innerJoin(customers, eq(customers.id, reservations.customerId))
+    .where(and(eq(reservations.id, reservationId), eq(reservations.source, "marketplace")))
+    .limit(1)
+    .then((rows) => rows[0]);
+  if (!row) {
+    throw new ApiServiceError("NOT_FOUND", "errors.reservationNotFound");
+  }
+  return {
+    ...row,
+    contractAvailable: CONTRACT_READY_RESERVATION_STATUSES.includes(row.reservationStatus),
+  };
 }

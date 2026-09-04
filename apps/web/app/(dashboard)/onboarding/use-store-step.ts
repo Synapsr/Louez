@@ -15,6 +15,7 @@ import {
 } from "@louez/validations";
 
 import { getDefaultCurrencyForCountry } from "@/lib/utils/currency";
+import { createLoginUrl } from "@/lib/utils/util.url";
 import { detectCountryFromBrowser } from "@/lib/utils/util.browser-country-detection";
 
 import { useAppForm } from "@/hooks/form/form";
@@ -97,6 +98,11 @@ export const useStoreStep = ({
         await mutation.mutateAsync(value);
         router.push("/onboarding/branding");
       } catch (error) {
+        if (error instanceof Error && error.message === "errors.unauthenticated") {
+          window.location.replace(createLoginUrl("/onboarding"));
+          return;
+        }
+
         // Map the slug conflict to a field-level error, everything else to a toast
         if (error instanceof Error && error.message === "errors.slugTaken") {
           setSlugTakenError();

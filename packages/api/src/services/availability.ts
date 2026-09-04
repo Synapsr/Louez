@@ -185,7 +185,7 @@ const WEEKDAY_INDEX: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
   Sat: 6,
 };
 
-function normalizeTimezone(timezone: unknown): string | undefined {
+export function normalizeTimezone(timezone: unknown): string | undefined {
   if (typeof timezone !== 'string') {
     return undefined;
   }

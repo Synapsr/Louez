@@ -63,6 +63,8 @@ export const users = mysqlTable("users", {
   acquisitionChannelOther: varchar("acquisition_channel_other", {
     length: 255,
   }),
+  // First-touch acquisition origin captured from the signup-origin cookie (e.g. "reeent").
+  signupOrigin: varchar("signup_origin", { length: 32 }),
   // Self-reported segment ("you are: independent / established store /
   // association / individual"), optional, captured on the profile onboarding step.
   businessType: varchar("business_type", { length: 32 }),
@@ -82,6 +84,9 @@ export const users = mysqlTable("users", {
   // Set once the user has been through the "introduce yourself" onboarding
   // step. Google users get a prefilled name but still confirm it once.
   profileCompletedAt: timestamp("profile_completed_at", { mode: "date" }),
+  reeentIntroAcknowledgedAt: timestamp("reeent_intro_acknowledged_at", {
+    mode: "date",
+  }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });
@@ -543,6 +548,7 @@ export const stores = mysqlTable(
     referralCode: varchar("referral_code", { length: 12 }).unique(),
     referredByUserId: varchar("referred_by_user_id", { length: 21 }),
     referredByStoreId: varchar("referred_by_store_id", { length: 21 }),
+    signupOrigin: varchar("signup_origin", { length: 32 }),
 
     // Trial period (platform admin only)
     trialDays: int("trial_days").default(0).notNull(),
@@ -1078,6 +1084,9 @@ export const customers = mysqlTable(
 
     // Business info (only for business customers)
     companyName: varchar("company_name", { length: 255 }),
+    companyNumber: varchar("company_number", { length: 64 }),
+    companyNumberScheme: mysqlEnum("company_number_scheme", ["fr_siren", "be_bce"]),
+    vatNumber: varchar("vat_number", { length: 64 }),
 
     // Contact
     phone: varchar("phone", { length: 50 }),

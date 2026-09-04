@@ -24,6 +24,10 @@
     "timezone": "Fuso horário: {timezone}",
     "seeYouSoon": "Até breve,\n{storeName}"
   },
+  "payAsYouGoInvoice": {
+    "usageLine": "Aluguéis {billingMonth} — {count, plural, one {# aluguel} other {# aluguéis}}",
+    "marketplaceLine": "Reservas reeent {billingMonth} — {count, plural, one {# reserva} other {# reservas}}"
+  },
   "verificationCode": {
     "subject": "Seu codigo de login: {code}",
     "title": "Codigo de login",

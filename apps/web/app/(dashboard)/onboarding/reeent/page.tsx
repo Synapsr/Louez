@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { eq } from "drizzle-orm";
 
-import { getMarketplaceCohortStatus } from "@louez/api/services";
 import { db, users } from "@louez/db";
 
 import { isReeentSignupOrigin } from "@/lib/acquisition/signup-origin";
@@ -34,9 +33,7 @@ export default async function OnboardingReeentPage() {
     redirect("/onboarding/profile");
   }
 
-  // Live count, read on every render: the offer is the reason people finish
-  // this step, so a stale "places restantes" would be worse than none.
-  const cohort = await getMarketplaceCohortStatus();
-
-  return <ReeentClientPage remaining={cohort.remaining} total={cohort.total} />;
+  // The cohort count and the stored status are read once in the layout: the
+  // explanation panel that carries them sits in the shell's right column.
+  return <ReeentClientPage />;
 }

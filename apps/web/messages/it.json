@@ -160,6 +160,8 @@
     "or": "o",
     "loginTitle": "Benvenuto su louez",
     "loginDescription": "Inserisci la tua email per continuare. Se non hai un account, verrà creato automaticamente.",
+    "reeentLoginTitle": "Benvenuto su louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent è la vetrina, louez è il tuo strumento: prenotazioni, pagamenti e calendario si gestiscono qui. Se non hai un account, verrà creato automaticamente.",
     "linkWillBeSent": "Un link sicuro ti verrà inviato via email. Nessuna password da ricordare.",
     "checkEmail": "Controlla la tua email",
     "emailSentTo": "Un link di accesso e stato inviato a",
@@ -337,6 +339,9 @@
       "manage": "Gestisci",
       "dashboard": "Dashboard",
       "viewStore": "Vedi negozio",
+      "viewOnReeent": "Vedi la mia pagina reeent",
+      "openStorefront": "Il mio sito",
+      "openReeentListing": "La mia pagina reeent",
       "newReservation": "Nuova prenotazione",
       "reservationLimitReached": "Limite raggiunto",
       "help": "Aiuto",
@@ -644,6 +649,13 @@
         "description": "I tuoi clienti attendono una risposta",
         "action": "Gestisci"
       },
+      "reeentStripe": {
+        "title": "Il tuo negozio non è ancora visibile su <reeent>reeent</reeent>",
+        "description": "Finché i pagamenti online non sono attivi, reeent non pubblica il tuo negozio. L'offerta di lancio (0 € di commissione reeent a vita) vale dalla pubblicazione, finché restano posti.",
+        "continueSetup": "Continua la configurazione di Stripe",
+        "activate": "Attiva i pagamenti online",
+        "paymentSettings": "Impostazioni di pagamento"
+      },
       "setup": {
         "title": "Primi passi",
         "description": "Alcuni passaggi per iniziare",
@@ -659,6 +671,7 @@
         "descriptions": {
           "addFirstProduct": "Aggiungi il tuo primo prodotto così i clienti possono prenotare.",
           "connectStripe": "Collega Stripe per accettare pagamenti con carta al momento della prenotazione.",
+          "connectStripeReeent": "Finché Stripe non è attivo, il tuo negozio non è visibile su reeent. Collega Stripe per essere pubblicato e accettare pagamenti con carta.",
           "firstReservation": "Condividi il tuo negozio con i clienti o crea una prenotazione manualmente.",
           "firstCompleted": "Una volta restituito il noleggio, segna la prenotazione come completata."
         },
@@ -6364,6 +6377,17 @@
       "requestModeDescription": "I clienti inviano una richiesta. Confermi e incassi tu stesso (contanti, bonifico, carta in negozio).",
       "requestModeNote": "Confermi e incassi ogni prenotazione. Potrai passare al pagamento online in qualsiasi momento dalle impostazioni.",
       "configComplete": "Configurazione completata!",
+      "reeent": {
+        "title": "Attiva il pagamento online",
+        "description": "Su reeent i tuoi clienti prenotano e pagano online. È questo che rende il tuo negozio «Réservable en ligne» e lo fa salire nei risultati.",
+        "whyTitle": "Perché è necessario",
+        "panelWhyTitle": "Perché Stripe su reeent?",
+        "why1": "Il pagamento va direttamente dal cliente al tuo conto bancario, tramite Stripe. Né reeent né Louez toccano il denaro.",
+        "why2": "È questo che rende possibile la prenotazione immediata, senza solleciti né insoluti da gestire.",
+        "withoutStripe": "Senza un account Stripe attivo il tuo negozio Louez funziona (le prenotazioni passano alla conferma manuale), ma comparirà su reeent solo quando Stripe sarà attivo.",
+        "later": "Più tardi",
+        "laterNote": "Puoi attivarlo dalla dashboard quando vuoi. Il tuo negozio verrà pubblicato su reeent automaticamente non appena Stripe sarà attivo; nel frattempo le prenotazioni Louez passano alla conferma manuale."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "Perché il pagamento online?",
@@ -6439,21 +6463,40 @@
       "reeent": "reeent"
     },
     "reeent": {
-      "title": "Arrivi da reeent",
-      "description": "Due minuti per capire come reeent e Louez lavorano insieme.",
-      "products": {
-        "title": "I due prodotti",
-        "body": "reeent è la vetrina, Louez è il tuo strumento. I privati trovano la tua attrezzatura su reeent; qui gestisci prenotazioni, pagamenti e calendario."
+      "title": "Arrivi da <reeent>reeent</reeent>",
+      "description": "Una domanda prima di creare il tuo negozio.",
+      "introDescription": "Tre punti, poi una domanda.",
+      "status": {
+        "label": "Noleggi",
+        "professional": "Come professionista",
+        "professionalHint": "Hai un'azienda, un'associazione o un'attività registrata.",
+        "individual": "Come privato",
+        "individualHint": "Noleggi le tue cose, senza azienda.",
+        "hint": "Il tuo stato è mostrato su reeent e adatta il seguito."
       },
-      "offer": {
-        "title": "L'offerta",
-        "body": "Offerta reeent a vita: i primi 1000 noleggiatori pubblicati su reeent mantengono 0 € di commissione reeent, per sempre.",
-        "remaining": "Restano {remaining} posti su {total}.",
-        "closedBody": "L'offerta di lancio è esaurita. Pubblicare su reeent resta il modo più semplice per farti trovare dai privati."
-      },
-      "pricing": {
-        "title": "Il pricing Louez",
-        "body": "Il pricing Louez si applica normalmente: nessun abbonamento, paghi a consumo — 1 € per prenotazione, decrescente in base al volume. Nessun costo fisso."
+      "panel": {
+        "title": "L'essenziale",
+        "products": {
+          "title": "Due prodotti, un account",
+          "body": "reeent è la vetrina: è lì che i clienti trovano la tua attrezzatura. Louez è il tuo strumento: prenotazioni, pagamenti e calendario si gestiscono qui.",
+          "individualBody": "Non serve un'azienda. reeent è la vetrina, Louez è il tuo strumento: pubblica i tuoi oggetti, gestisci le prenotazioni e incassa online."
+        },
+        "offer": {
+          "title": "Offerta di lancio",
+          "body": "I primi {total} noleggiatori pubblicati su reeent mantengono 0 € di commissione reeent, per sempre.",
+          "remaining": "Restano {remaining} posti su {total}.",
+          "closedBody": "L'offerta di lancio è esaurita. Pubblicare su reeent resta il modo più semplice per farsi trovare."
+        },
+        "pricing": {
+          "title": "Quanto costa Louez",
+          "amount": "1 €",
+          "amountUnit": "per prenotazione",
+          "amountDetail": "Decrescente al volume.",
+          "quietMonth": "Un mese senza noleggi: nulla da pagare.",
+          "subscription": "Un abbonamento mensile se noleggi molto.",
+          "switch": "Passi dall'uno all'altro quando vuoi.",
+          "individualNote": "I redditi da noleggio vanno dichiarati in base alla tua situazione; se l'attività diventa professionale, ti chiederemo di cambiare stato."
+        }
       }
     }
   },

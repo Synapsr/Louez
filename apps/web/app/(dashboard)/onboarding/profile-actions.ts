@@ -11,6 +11,7 @@ import {
 } from "@louez/validations";
 import { z } from "zod";
 
+import { persistSignupOrigin } from "@/lib/acquisition/signup-origin";
 import { auth } from "@/lib/auth";
 import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
@@ -37,6 +38,7 @@ export async function updateUserProfile(input: UpdateUserProfileInput) {
     return { error: "errors.invalidData" };
   }
 
+  await persistSignupOrigin(session.user.id);
   await db
     .update(users)
     .set({

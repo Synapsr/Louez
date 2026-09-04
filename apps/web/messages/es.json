@@ -160,6 +160,8 @@
     "or": "o",
     "loginTitle": "Bienvenido a louez",
     "loginDescription": "Ingrese su correo para continuar. Si no tiene una cuenta, se creará automáticamente.",
+    "reeentLoginTitle": "Bienvenido a louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent es el escaparate, louez es su herramienta: las reservas, los pagos y el calendario se gestionan aquí. Si no tiene una cuenta, se creará automáticamente.",
     "linkWillBeSent": "Un enlace seguro será enviado a su correo. Sin contraseña que recordar.",
     "checkEmail": "Revise su correo",
     "emailSentTo": "Se ha enviado un enlace de inicio de sesion a",
@@ -337,6 +339,9 @@
       "manage": "Gestionar",
       "dashboard": "Panel",
       "viewStore": "Ver tienda",
+      "viewOnReeent": "Ver mi página reeent",
+      "openStorefront": "Mi sitio",
+      "openReeentListing": "Mi página reeent",
       "newReservation": "Nueva reserva",
       "reservationLimitReached": "Limite alcanzado",
       "help": "Ayuda",
@@ -683,6 +688,13 @@
         "description": "Sus clientes esperan su respuesta",
         "action": "Gestionar"
       },
+      "reeentStripe": {
+        "title": "Su tienda todavía no es visible en <reeent>reeent</reeent>",
+        "description": "Mientras los pagos online no estén activos, reeent no publica su tienda. La oferta de lanzamiento (0 € de comisión reeent de por vida) se aplica desde la publicación, mientras queden plazas.",
+        "continueSetup": "Continuar la configuración de Stripe",
+        "activate": "Activar los pagos online",
+        "paymentSettings": "Configuración de pagos"
+      },
       "setup": {
         "title": "Primeros pasos",
         "description": "Algunos pasos para comenzar",
@@ -698,6 +710,7 @@
         "descriptions": {
           "addFirstProduct": "Añada su primer producto para que sus clientes puedan reservar.",
           "connectStripe": "Conecte Stripe para aceptar pagos con tarjeta al reservar.",
+          "connectStripeReeent": "Mientras Stripe no esté activo, su tienda no es visible en reeent. Conecte Stripe para publicarse y aceptar pagos con tarjeta.",
           "firstReservation": "Comparta su tienda con sus clientes o cree una reserva manualmente.",
           "firstCompleted": "Una vez devuelto el alquiler, marque la reserva como completada."
         },
@@ -6364,6 +6377,17 @@
       "requestModeDescription": "Los clientes envían una solicitud. Tú validas y cobras por tu cuenta (efectivo, transferencia, tarjeta en el local).",
       "requestModeNote": "Tú validas y cobras cada reserva. Podrás pasar al pago online en cualquier momento desde los ajustes.",
       "configComplete": "¡Configuración completada!",
+      "reeent": {
+        "title": "Activa el pago online",
+        "description": "En reeent, tus clientes reservan y pagan online. Eso es lo que hace que tu tienda sea «Réservable en ligne» y suba en los resultados.",
+        "whyTitle": "Por qué es necesario",
+        "panelWhyTitle": "¿Por qué Stripe en reeent?",
+        "why1": "El pago va directamente del cliente a tu cuenta bancaria, a través de Stripe. Ni reeent ni Louez tocan el dinero.",
+        "why2": "Eso es lo que permite la reserva instantánea, sin reclamaciones ni impagos por tu parte.",
+        "withoutStripe": "Sin una cuenta de Stripe activa tu tienda Louez sigue funcionando (las reservas pasan a validación manual), pero solo aparecerá en reeent cuando Stripe esté activo.",
+        "later": "Más tarde",
+        "laterNote": "Puedes activarlo desde tu panel cuando quieras. Tu tienda se publicará en reeent automáticamente en cuanto Stripe esté activo; mientras tanto, tus reservas de Louez pasan a validación manual."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "¿Por qué el pago online?",
@@ -6439,21 +6463,40 @@
       "reeent": "reeent"
     },
     "reeent": {
-      "title": "Vienes de reeent",
-      "description": "Dos minutos para entender cómo funcionan reeent y Louez juntos.",
-      "products": {
-        "title": "Los dos productos",
-        "body": "reeent es el escaparate, Louez es tu herramienta. Los particulares encuentran tu material en reeent; aquí gestionas tus reservas, pagos y calendario."
+      "title": "Vienes de <reeent>reeent</reeent>",
+      "description": "Una pregunta antes de crear tu tienda.",
+      "introDescription": "Tres puntos y una pregunta.",
+      "status": {
+        "label": "Alquilas",
+        "professional": "Como profesional",
+        "professionalHint": "Tienes una empresa, una asociación o una actividad dada de alta.",
+        "individual": "Como particular",
+        "individualHint": "Alquilas tus propias cosas, sin empresa.",
+        "hint": "Tu estatus se muestra en reeent y adapta lo que sigue."
       },
-      "offer": {
-        "title": "La oferta",
-        "body": "Oferta reeent de por vida: los 1000 primeros arrendadores publicados en reeent mantienen 0 € de comisión reeent, para siempre.",
-        "remaining": "Quedan {remaining} plazas de {total}.",
-        "closedBody": "La oferta de lanzamiento está completa. Publicar en reeent sigue siendo la forma más sencilla de darte a conocer entre los particulares."
-      },
-      "pricing": {
-        "title": "El precio de Louez",
-        "body": "El precio de Louez se aplica con normalidad: sin suscripción, pagas por uso — 1 € por reserva, decreciente por volumen. Sin gastos fijos."
+      "panel": {
+        "title": "Lo esencial",
+        "products": {
+          "title": "Dos productos, una cuenta",
+          "body": "reeent es el escaparate: ahí es donde los clientes encuentran tu material. Louez es tu herramienta: aquí gestionas reservas, pagos y calendario.",
+          "individualBody": "No necesitas una empresa. reeent es el escaparate, Louez es tu herramienta: publica tus objetos, gestiona tus reservas y cobra en línea."
+        },
+        "offer": {
+          "title": "Oferta de lanzamiento",
+          "body": "Los primeros {total} propietarios publicados en reeent se quedan con 0 € de comisión reeent, para siempre.",
+          "remaining": "Quedan {remaining} plazas de {total}.",
+          "closedBody": "La oferta de lanzamiento está completa. Publicar en reeent sigue siendo la forma más sencilla de hacerte visible."
+        },
+        "pricing": {
+          "title": "Lo que cuesta Louez",
+          "amount": "1 €",
+          "amountUnit": "por reserva",
+          "amountDetail": "Decreciente según el volumen.",
+          "quietMonth": "Un mes sin alquileres: nada que pagar.",
+          "subscription": "Una suscripción mensual si alquilas mucho.",
+          "switch": "Cambias de fórmula cuando quieras.",
+          "individualNote": "Los ingresos por alquiler debes declararlos según tu situación; si la actividad pasa a ser profesional, te pediremos que cambies de estatus."
+        }
       }
     }
   },

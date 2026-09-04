@@ -24,6 +24,10 @@
     "timezone": "Zeitzone: {timezone}",
     "seeYouSoon": "Bis bald,\n{storeName}"
   },
+  "payAsYouGoInvoice": {
+    "usageLine": "Vermietungen {billingMonth} — {count, plural, one {# Vermietung} other {# Vermietungen}}",
+    "marketplaceLine": "reeent-Buchungen {billingMonth} — {count, plural, one {# Buchung} other {# Buchungen}}"
+  },
   "verificationCode": {
     "subject": "Ihr Anmeldecode: {code}",
     "title": "Anmeldecode",

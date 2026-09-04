@@ -1,8 +1,11 @@
+import type { ReactNode } from "react";
+
 export function OnboardingStepHeader({
   title,
   description,
 }: {
-  title: string;
+  /** Rich so a step can brand a wordmark inside its title. */
+  title: ReactNode;
   description: string;
 }) {
   return (

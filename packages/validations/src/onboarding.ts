@@ -120,6 +120,13 @@ export const BUSINESS_TYPES = [
 ] as const;
 export type BusinessType = (typeof BUSINESS_TYPES)[number];
 
+// ADR 010: the pro/particulier question is mandatory — the owner's quality is
+// displayed on the marketplace and it drives the renter's legal regime. It is
+// asked on the reeent education step first, where it also adapts the copy, then
+// refined by the profile step's three professional options.
+export const REEENT_INTRO_STATUSES = ['professional', 'individual'] as const;
+export type ReeentIntroStatus = (typeof REEENT_INTRO_STATUSES)[number];
+
 // Self-reported intent, captured once on the profile onboarding step. Both are
 // optional and exist to segment analytics (ICP discovery), not to gate features.
 export const PRODUCT_CATEGORIES = [
@@ -160,7 +167,8 @@ export const createProfileSchema = (
       .trim()
       .min(2, t('minLength', { min: 2 }))
       .max(255, t('maxLength', { max: 255 })),
-    businessType: z.enum(BUSINESS_TYPES).nullable(),
+    // Required (ADR 010), unlike the two segmentation questions below.
+    businessType: z.enum(BUSINESS_TYPES, t('required')),
     productCategory: z.enum(PRODUCT_CATEGORIES).nullable(),
     fleetSize: z.enum(FLEET_SIZES).nullable(),
   });
@@ -171,7 +179,7 @@ export const profileSchema = z.object({
     .trim()
     .min(2, 'validation.minLength')
     .max(255, 'validation.maxLength'),
-  businessType: z.enum(BUSINESS_TYPES).nullable(),
+  businessType: z.enum(BUSINESS_TYPES, 'validation.required'),
   productCategory: z.enum(PRODUCT_CATEGORIES).nullable(),
   fleetSize: z.enum(FLEET_SIZES).nullable(),
 });
@@ -181,8 +189,13 @@ export const acquisitionSchema = z.object({
   other: z.string().trim().max(255).optional().or(z.literal('')),
 });
 
+export const reeentIntroSchema = z.object({
+  status: z.enum(REEENT_INTRO_STATUSES),
+});
+
 export type ProfileInput = z.infer<typeof profileSchema>;
 export type AcquisitionInput = z.infer<typeof acquisitionSchema>;
+export type ReeentIntroInput = z.infer<typeof reeentIntroSchema>;
 
 // ===== SCHEMA FACTORIES =====
 // These schemas accept a translation function for client-side validation with i18n

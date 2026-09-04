@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { Suspense } from 'react';
 
+import { resolveSignupOrigin } from '@/lib/acquisition/signup-origin';
 import { getInstanceConfig } from '@/lib/deployment';
 import { getReferralInviteContext } from '@/lib/referral/invite';
 
@@ -21,8 +22,15 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function LoginPage() {
-  const referral = await getReferralInviteContext();
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string | string[] }>;
+}) {
+  const [referral, signupOrigin] = await Promise.all([
+    getReferralInviteContext(),
+    searchParams.then(({ from }) => resolveSignupOrigin(from)),
+  ]);
   const instance = getInstanceConfig();
 
   const signInMethods: SignInMethods = {
@@ -39,7 +47,11 @@ export default async function LoginPage() {
 
   return (
     <Suspense>
-      <LoginPageClient referral={referral} signInMethods={signInMethods} />
+      <LoginPageClient
+        referral={referral}
+        signupOrigin={signupOrigin}
+        signInMethods={signInMethods}
+      />
     </Suspense>
   );
 }

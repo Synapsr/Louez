@@ -452,6 +452,8 @@ const nextConfig: NextConfig = {
     "*.worktree-onboarding-redesign.louez.localify",
     "agent-redesign-product-creation-flow.louez.localify",
     "*.agent-redesign-product-creation-flow.louez.localify",
+    "feat-marketplace-channel.louez.localify",
+    "*.feat-marketplace-channel.louez.localify",
   ],
 };
 

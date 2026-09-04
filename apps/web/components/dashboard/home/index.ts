@@ -3,6 +3,7 @@ export { AdaptiveStats } from "./adaptive-stats";
 export { DashboardAlert } from "./dashboard-alert";
 export { PendingRequests } from "./pending-requests";
 export { QuickActions } from "./quick-actions";
+export { ReeentStripeSetupCard } from "./reeent-stripe-setup-card";
 export { ReservationsCalendarPrefetch } from "./reservations-calendar-prefetch";
 export { SetupChecklist, type OnlinePaymentsStep } from "./setup-checklist";
 export { ShareModal } from "./share-modal";

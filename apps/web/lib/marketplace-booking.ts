@@ -27,6 +27,10 @@ export const marketplaceHoldAdapter: MarketplaceHoldAdapter = {
         firstName: input.customer.firstName,
         lastName: input.customer.lastName,
         ...(input.customer.phone ? { phone: input.customer.phone } : {}),
+        customerType: input.customer.customerType ?? "individual",
+        ...(input.customer.companyName ? { companyName: input.customer.companyName } : {}),
+        ...(input.customer.companyNumber ? { companyNumber: input.customer.companyNumber } : {}),
+        ...(input.customer.vatNumber ? { vatNumber: input.customer.vatNumber } : {}),
       },
       items: input.items.map((item, index) => ({
         lineId: index.toString(),

@@ -59,6 +59,25 @@ async function countFreeReservationsUsed(storeId: string): Promise<number> {
   return Number(value) || 0;
 }
 
+export interface StoreBillingPreferences {
+  currency: string;
+  country: string | null;
+}
+
+/** Store locale/currency inputs fetched together for billing and invoice copy. */
+export async function getStoreBillingPreferences(
+  storeId: string,
+): Promise<StoreBillingPreferences> {
+  const store = await db.query.stores.findFirst({
+    where: eq(stores.id, storeId),
+    columns: { settings: true },
+  });
+  return {
+    currency: (store?.settings?.currency || 'eur').toLowerCase().slice(0, 3),
+    country: store?.settings?.country ?? null,
+  };
+}
+
 /**
  * A store's own currency (ISO 4217, lowercase 3-char), from its settings.
  * Defaults to `eur` when unset. Pay-as-you-go pricing is currency-agnostic (identical
@@ -66,11 +85,8 @@ async function countFreeReservationsUsed(storeId: string): Promise<number> {
  * in this currency, so it must follow the store rather than a stored config field.
  */
 export async function getStoreCurrency(storeId: string): Promise<string> {
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.id, storeId),
-    columns: { settings: true },
-  });
-  return (store?.settings?.currency || 'eur').toLowerCase().slice(0, 3);
+  const { currency } = await getStoreBillingPreferences(storeId);
+  return currency;
 }
 
 /**

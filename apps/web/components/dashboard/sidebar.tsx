@@ -98,6 +98,10 @@ interface DashboardSidebarProps {
    * A zero count stays silent until the store has actually spent a credit.
    */
   aiCredits?: { low: boolean; credits: number | null; hasUsedCredits: boolean } | null;
+  /** Public reeent listing of the store, null while it is not published there. */
+  marketplaceListingUrl: string | null;
+  /** The store signed up from the reeent consumer marketplace (ADR 010). */
+  isFromReeent: boolean;
 }
 
 const mainNavigation = [
@@ -423,16 +427,27 @@ const DashboardNavSection = ({
   );
 };
 
+/**
+ * Shared by the plain storefront link and the menu trigger so the header keeps
+ * the exact same shape whichever public page a store gets.
+ */
+const HEADER_ACTION_CLASS_NAME =
+  "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-8 shrink-0 items-center justify-center rounded-md transition-colors group-data-[collapsible=icon]:hidden";
+
 const StoreHeader = ({
   stores,
   currentStoreId,
   storeSlug,
   planSlug,
+  marketplaceListingUrl,
+  isFromReeent,
 }: {
   stores: StoreWithRole[];
   currentStoreId: string;
   storeSlug?: string;
   planSlug?: string;
+  marketplaceListingUrl: string | null;
+  isFromReeent: boolean;
 }) => {
   const t = useTranslations("dashboard.sidebar");
   const { getAbsoluteUrl } = useStorefrontUrl(storeSlug ?? "");
@@ -454,23 +469,68 @@ const StoreHeader = ({
           <PlanBadge planSlug={planSlug} />
         </div>
 
-        {storeSlug && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <SidebarLink
-                  href={getAbsoluteUrl()}
-                  target="_blank"
-                  className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-8 shrink-0 items-center justify-center rounded-md transition-colors group-data-[collapsible=icon]:hidden"
-                />
-              }
-            >
-              <OpenInNewIcon className="h-4 w-4" />
-              <span className="sr-only">{t("viewStore")}</span>
-            </TooltipTrigger>
-            <TooltipContent side="right">{t("viewStore")}</TooltipContent>
-          </Tooltip>
-        )}
+        {/* A store that came from reeent has no Louez storefront to promote:
+            the marketplace listing is its public page, and there is nothing to
+            link to until that listing goes live. */}
+        {isFromReeent ? (
+          marketplaceListingUrl && (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <SidebarLink
+                    href={marketplaceListingUrl}
+                    target="_blank"
+                    className={HEADER_ACTION_CLASS_NAME}
+                  />
+                }
+              >
+                <OpenInNewIcon className="h-4 w-4" />
+                <span className="sr-only">{t("viewOnReeent")}</span>
+              </TooltipTrigger>
+              <TooltipContent side="right">{t("viewOnReeent")}</TooltipContent>
+            </Tooltip>
+          )
+        ) : storeSlug ? (
+          marketplaceListingUrl ? (
+            <DropdownMenu>
+              <Tooltip>
+                <TooltipTrigger
+                  render={<DropdownMenuTrigger className={HEADER_ACTION_CLASS_NAME} />}
+                >
+                  <OpenInNewIcon className="h-4 w-4" />
+                  <span className="sr-only">{t("viewStore")}</span>
+                </TooltipTrigger>
+                <TooltipContent side="right">{t("viewStore")}</TooltipContent>
+              </Tooltip>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuItem render={<SidebarLink href={getAbsoluteUrl()} target="_blank" />}>
+                  {t("openStorefront")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  render={<SidebarLink href={marketplaceListingUrl} target="_blank" />}
+                >
+                  {t("openReeentListing")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <SidebarLink
+                    href={getAbsoluteUrl()}
+                    target="_blank"
+                    className={HEADER_ACTION_CLASS_NAME}
+                  />
+                }
+              >
+                <OpenInNewIcon className="h-4 w-4" />
+                <span className="sr-only">{t("viewStore")}</span>
+              </TooltipTrigger>
+              <TooltipContent side="right">{t("viewStore")}</TooltipContent>
+            </Tooltip>
+          )
+        ) : null}
       </div>
       <div className="mx-auto w-fit group-data-[state=expanded]:w-full max-md:w-full">
         <StoreSwitcher stores={stores} currentStoreId={currentStoreId} />
@@ -568,6 +628,8 @@ export const DashboardSidebar = ({
   planSlug,
   isPlatformAdmin,
   aiCredits = null,
+  marketplaceListingUrl,
+  isFromReeent,
 }: DashboardSidebarProps) => {
   const pathname = usePathname();
   const balanceQuery = useQuery({
@@ -593,6 +655,8 @@ export const DashboardSidebar = ({
           currentStoreId={currentStoreId}
           storeSlug={storeSlug}
           planSlug={planSlug}
+          marketplaceListingUrl={marketplaceListingUrl}
+          isFromReeent={isFromReeent}
         />
 
         <SidebarContent className="max-md:px-2 ">

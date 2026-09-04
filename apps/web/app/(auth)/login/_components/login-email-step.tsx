@@ -3,6 +3,13 @@
 import { useTranslations } from 'next-intl';
 
 import { Button, Separator } from '@louez/ui';
+import { cn } from '@louez/utils';
+
+import { reeentRichTags } from '@/components/shared/reeent-wordmark';
+import {
+  REEENT_SIGNUP_ORIGIN,
+  type SignupOrigin,
+} from '@/lib/utils/signup-origin';
 
 import { GoogleIcon } from './google-icon';
 import { LoginErrorAlert } from './login-error-alert';
@@ -14,24 +21,40 @@ interface LoginEmailStepProps {
   showGoogle?: boolean;
   /** Present when password sign-in is also available (standalone mode). */
   onUsePassword?: () => void;
+  /** Co-brands the entry screen for visitors sent here by another surface. */
+  signupOrigin?: SignupOrigin | null;
 }
 
 export const LoginEmailStep = ({
   onOtpSent,
   showGoogle = true,
   onUsePassword,
+  signupOrigin = null,
 }: LoginEmailStepProps) => {
   const t = useTranslations('auth');
   const { form, handleGoogleSignIn, isPending, rootError } = useEmailStep({
     onOtpSent,
   });
 
+  // Loueurs sent here by reeent need the relationship spelled out before they
+  // sign up: reeent is the storefront, Louez is where rentals are run (ADR 010).
+  const isFromReeent = signupOrigin === REEENT_SIGNUP_ORIGIN;
+
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center">
-        <h2 className="text-2xl font-semibold">{t('loginTitle')}</h2>
-        <p className="text-muted-foreground mx-auto max-w-sm text-sm">
-          {t('loginDescription')}
+        <h2 className="text-2xl font-semibold">
+          {isFromReeent
+            ? t.rich('reeentLoginTitle', reeentRichTags)
+            : t('loginTitle')}
+        </h2>
+        <p
+          className={cn(
+            'text-muted-foreground mx-auto text-sm',
+            isFromReeent ? 'max-w-md text-balance' : 'max-w-sm',
+          )}
+        >
+          {isFromReeent ? t('reeentLoginDescription') : t('loginDescription')}
         </p>
       </div>
       <div className="space-y-6">

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { env } from "@/env";
 import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
 import { db } from "@louez/db";
 import { getCurrentStore } from "@/lib/store-context";
@@ -8,8 +9,10 @@ import { getStoreMetrics, determineStoreState, getTimeOfDay } from "@/lib/dashbo
 import { getIntendedReservationMode, isStripeChargeable } from "@/lib/reservation-mode";
 import type { OnlinePaymentsStep } from "@/components/dashboard/home";
 import { MarketplaceCohortNotice } from "@/components/dashboard/marketplace-cohort-notice";
+import { REEENT_SIGNUP_ORIGIN } from "@/lib/utils/signup-origin";
 import {
   DashboardAlert,
+  ReeentStripeSetupCard,
   SetupChecklist,
   AdaptiveHeader,
   AdaptiveStats,
@@ -112,6 +115,9 @@ interface DashboardContentProps {
   storeSlug: string;
   firstName: string;
   onlinePaymentsStep: OnlinePaymentsStep;
+  /** The store signed up from the reeent consumer marketplace (ADR 010). */
+  isFromReeent: boolean;
+  hasStripeAccount: boolean;
 }
 
 async function DashboardContent({
@@ -119,6 +125,8 @@ async function DashboardContent({
   storeSlug,
   firstName,
   onlinePaymentsStep,
+  isFromReeent,
+  hasStripeAccount,
 }: DashboardContentProps) {
   // Fetch all data in parallel
   const [metrics, departures, returns, pending, channelState, cohort] = await Promise.all([
@@ -127,11 +135,12 @@ async function DashboardContent({
     getTodaysReturnsList(storeId),
     getPendingReservationsList(storeId),
     getMarketplaceChannelState({ storeId }),
-    getMarketplaceCohortStatus(),
+    getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
   ]);
 
   const storeState = determineStoreState(metrics);
   const timeOfDay = getTimeOfDay();
+  const lifetimeFeeWaiverAt = channelState.channel?.lifetimeFeeWaiverAt ?? null;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -148,12 +157,22 @@ async function DashboardContent({
       {/* Priority Alert for pending requests */}
       <DashboardAlert pendingCount={metrics.pendingReservations} />
 
-      {/* Launch-cohort status: the earned waiver, or the seats still open. */}
-      <MarketplaceCohortNotice
-        lifetimeFeeWaiverAt={channelState.channel?.lifetimeFeeWaiverAt ?? null}
-        cohortRank={channelState.channel?.cohortRank ?? null}
-        remaining={cohort.remaining}
-      />
+      {/* Stores from reeent are not published there until Stripe can charge. */}
+      {isFromReeent && onlinePaymentsStep === "todo" && (
+        <ReeentStripeSetupCard hasStripeAccount={hasStripeAccount} />
+      )}
+
+      {/* Launch-cohort status: the earned waiver, or the seats still open. The
+          seats pitch is dropped for a reeent store that has not earned the
+          waiver yet — it already signed up, and the card above carries the
+          offer. The earned badge still shows everywhere. */}
+      {(lifetimeFeeWaiverAt !== null || !isFromReeent) && (
+        <MarketplaceCohortNotice
+          lifetimeFeeWaiverAt={lifetimeFeeWaiverAt}
+          cohortRank={channelState.channel?.cohortRank ?? null}
+          remaining={cohort.remaining}
+        />
+      )}
 
       {/* Setup Checklist for new stores (floating widget) */}
       {(storeState === "virgin" || storeState === "building") && (
@@ -161,6 +180,7 @@ async function DashboardContent({
           metrics={metrics}
           storeSlug={storeSlug}
           onlinePaymentsStep={onlinePaymentsStep}
+          onlinePaymentsContext={isFromReeent ? "reeent" : "default"}
         />
       )}
 
@@ -211,6 +231,8 @@ export default async function DashboardHomePage() {
       storeSlug={store.slug}
       firstName={firstName}
       onlinePaymentsStep={onlinePaymentsStep}
+      isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
+      hasStripeAccount={store.stripeAccountId !== null}
     />
   );
 }

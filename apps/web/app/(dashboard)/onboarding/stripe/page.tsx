@@ -4,8 +4,10 @@ import { eq } from "drizzle-orm";
 
 import { db, users } from "@louez/db";
 
+import { isReeentLoueur } from "@/lib/acquisition/signup-origin";
 import { auth } from "@/lib/auth";
 
+import { ReeentStripeClientPage } from "./reeent-stripe-client-page";
 import { OnboardingStripeClientPage } from "./stripe-client-page";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
@@ -25,5 +27,13 @@ export default async function OnboardingStripePage() {
   // Ask "how did you hear about us?" once, at the very end of the flow.
   const nextPath = user?.acquisitionChannel ? "/dashboard" : "/onboarding/source";
 
-  return <OnboardingStripeClientPage nextPath={nextPath} />;
+  // reeent never publishes a store that cannot charge online, so the loueurs it
+  // sends over get the Stripe-only variant instead of the mode choice.
+  const fromReeent = await isReeentLoueur(user);
+
+  return fromReeent ? (
+    <ReeentStripeClientPage nextPath={nextPath} />
+  ) : (
+    <OnboardingStripeClientPage nextPath={nextPath} />
+  );
 }

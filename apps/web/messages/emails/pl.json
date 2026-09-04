@@ -24,6 +24,10 @@
     "timezone": "Strefa czasowa: {timezone}",
     "seeYouSoon": "Do zobaczenia,\n{storeName}"
   },
+  "payAsYouGoInvoice": {
+    "usageLine": "Wynajmy {billingMonth} — {count, plural, one {# wynajem} few {# wynajmy} many {# wynajmów} other {# wynajmu}}",
+    "marketplaceLine": "Rezerwacje reeent {billingMonth} — {count, plural, one {# rezerwacja} few {# rezerwacje} many {# rezerwacji} other {# rezerwacji}}"
+  },
   "verificationCode": {
     "subject": "Twój kod logowania: {code}",
     "title": "Kod logowania",

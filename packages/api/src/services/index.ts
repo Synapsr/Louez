@@ -8,6 +8,7 @@ export * from "./combination-resolver";
 export * from "./distance";
 export * from "./errors";
 export * from "./marketplace-booking";
+export * from "./marketplace-availability";
 export * from "./marketplace-channel";
 export * from "./marketplace-cohort";
 export * from "./marketplace-default-publication";

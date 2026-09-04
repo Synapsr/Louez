@@ -5,19 +5,13 @@
  * stay free of `next/headers`, the database and any Node built-in.
  */
 
-export const SIGNUP_ORIGIN_COOKIE = 'louez_signup_origin';
+export const SIGNUP_ORIGIN_COOKIE = "louez_signup_origin";
 
 /** 30-day attribution window, same as the referral cookie. */
 export const SIGNUP_ORIGIN_COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
-/**
- * Marks the reeent education step as already shown, so the onboarding gate does
- * not send the user back to it on every navigation.
- */
-export const REEENT_INTRO_SEEN_COOKIE = 'louez_reeent_intro_seen';
-
 /** The consumer marketplace that refers renters to Louez (ADR 010). */
-export const REEENT_SIGNUP_ORIGIN = 'reeent';
+export const REEENT_SIGNUP_ORIGIN = "reeent";
 
 /**
  * Allow-list rather than a free-form string: the value is written to a cookie
@@ -28,7 +22,5 @@ export const SIGNUP_ORIGINS = [REEENT_SIGNUP_ORIGIN] as const;
 export type SignupOrigin = (typeof SIGNUP_ORIGINS)[number];
 
 export function isKnownSignupOrigin(value: string | null | undefined): value is SignupOrigin {
-  return (
-    typeof value === 'string' && (SIGNUP_ORIGINS as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (SIGNUP_ORIGINS as readonly string[]).includes(value);
 }

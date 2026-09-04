@@ -512,6 +512,20 @@
       "when": 1787040838730,
       "tag": "0067_premium_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "5",
+      "when": 1787150661555,
+      "tag": "0068_calm_hellfire_club",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "5",
+      "when": 1788443586162,
+      "tag": "0069_wide_mongoose",
+      "breakpoints": true
     }
   ]
 }

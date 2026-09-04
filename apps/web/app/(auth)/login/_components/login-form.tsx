@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import type { SignupOrigin } from '@/lib/utils/signup-origin';
+
 import { LoginEmailStep } from './login-email-step';
 import { LoginOtpStep } from './login-otp-step';
 import { LoginPasswordStep } from './login-password-step';
@@ -12,7 +14,13 @@ type LoginStep =
   | { name: 'email' }
   | { name: 'otp'; email: string };
 
-export const LoginForm = ({ methods }: { methods: SignInMethods }) => {
+interface LoginFormProps {
+  methods: SignInMethods;
+  /** Only the entry step is co-branded; later steps stay focused on the code. */
+  signupOrigin: SignupOrigin | null;
+}
+
+export const LoginForm = ({ methods, signupOrigin }: LoginFormProps) => {
   const [step, setStep] = useState<LoginStep>(
     methods.password ? { name: 'password' } : { name: 'email' },
   );
@@ -40,6 +48,7 @@ export const LoginForm = ({ methods }: { methods: SignInMethods }) => {
   return (
     <LoginEmailStep
       showGoogle={methods.google}
+      signupOrigin={signupOrigin}
       onUsePassword={
         methods.password ? () => setStep({ name: 'password' }) : undefined
       }

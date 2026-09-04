@@ -1,11 +1,13 @@
 import { cookies } from "next/headers";
 
+import { and, eq, isNull } from "drizzle-orm";
+
+import { db, users } from "@louez/db";
+
 import {
   isKnownSignupOrigin,
-  REEENT_INTRO_SEEN_COOKIE,
   REEENT_SIGNUP_ORIGIN,
   SIGNUP_ORIGIN_COOKIE,
-  SIGNUP_ORIGIN_COOKIE_MAX_AGE,
   type SignupOrigin,
 } from "@/lib/utils/signup-origin";
 
@@ -19,27 +21,46 @@ export async function getSignupOrigin(): Promise<SignupOrigin | null> {
   return isKnownSignupOrigin(value) ? value : null;
 }
 
+/**
+ * Sign-up origin for a page that may be rendering the very request which
+ * captured `?from=`: the proxy only writes the cookie to the outgoing response,
+ * so `getSignupOrigin()` still reads nothing on that first render. Falling back
+ * to the query parameter keeps the landing hit co-branded, while the cookie
+ * covers later visits and the OAuth round-trip that drops the parameter.
+ */
+export async function resolveSignupOrigin(
+  from: string | string[] | undefined,
+): Promise<SignupOrigin | null> {
+  const param = Array.isArray(from) ? from[0] : from;
+  if (isKnownSignupOrigin(param)) return param;
+  return getSignupOrigin();
+}
+
+/** Persist the first signup origin without allowing later visits to overwrite it. */
+export async function persistSignupOrigin(userId: string): Promise<void> {
+  const signupOrigin = await getSignupOrigin();
+  if (signupOrigin === null) return;
+
+  await db
+    .update(users)
+    .set({ signupOrigin, updatedAt: new Date() })
+    .where(and(eq(users.id, userId), isNull(users.signupOrigin)));
+}
+
 /** True for loueurs who arrived from the reeent consumer marketplace. */
 export async function isReeentSignupOrigin(): Promise<boolean> {
   return (await getSignupOrigin()) === REEENT_SIGNUP_ORIGIN;
 }
 
 /**
- * The reeent education step is a one-off: once acknowledged, the onboarding
- * gate stops sending the user back to it. Purely a UI marker — nothing about
- * eligibility or the cohort depends on it.
+ * True for loueurs who arrived from reeent, whether or not the attribution
+ * cookie is still around. The column is checked first because it is written on
+ * the first authenticated request and outlives the 30-day cookie; the cookie
+ * covers the window before that write, when the column is still null.
  */
-export async function hasSeenReeentIntro(): Promise<boolean> {
-  return (await cookies()).get(REEENT_INTRO_SEEN_COOKIE)?.value === "1";
-}
-
-/** Host-only cookie: the marker is only ever read on the dashboard host. */
-export async function markReeentIntroSeen(): Promise<void> {
-  (await cookies()).set(REEENT_INTRO_SEEN_COOKIE, "1", {
-    maxAge: SIGNUP_ORIGIN_COOKIE_MAX_AGE,
-    path: "/",
-    sameSite: "lax",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-  });
+export async function isReeentLoueur(
+  user: { signupOrigin: string | null } | null | undefined,
+): Promise<boolean> {
+  if (user?.signupOrigin === REEENT_SIGNUP_ORIGIN) return true;
+  return isReeentSignupOrigin();
 }

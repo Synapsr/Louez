@@ -5,6 +5,11 @@ import type Stripe from 'stripe';
 import { db } from '@louez/db';
 import { payAsYouGoInvoices, platformFees, subscriptions } from '@louez/db';
 
+import {
+  getEmailTranslator,
+  getLocaleFromCountry,
+  type EmailLocale,
+} from '@/lib/email/i18n';
 import { getOrCreateStripeCustomer } from '@/lib/stripe/subscriptions';
 import { stripe } from '@/lib/stripe/client';
 
@@ -16,7 +21,7 @@ import {
 import {
   ACTIVE_FEE_STATUSES,
   billingMonthOf,
-  getStoreCurrency,
+  getStoreBillingPreferences,
 } from './metering';
 
 /** First day (UTC) of the month preceding `reference`. */
@@ -121,13 +126,15 @@ export async function billStoreForMonth(
   billingMonth: string,
 ): Promise<BillStoreOutcome> {
   // ---- Aggregate this month's usage. ----
-  const [subscription, storeCurrency] = await Promise.all([
+  const [subscription, storeBillingPreferences] = await Promise.all([
     db.query.subscriptions.findFirst({
       where: eq(subscriptions.storeId, storeId),
       columns: { billingMode: true, payAsYouGoConfig: true },
     }),
-    getStoreCurrency(storeId),
+    getStoreBillingPreferences(storeId),
   ]);
+  const storeCurrency = storeBillingPreferences.currency;
+  const locale = getLocaleFromCountry(storeBillingPreferences.country);
   const config = resolvePayAsYouGoConfig(subscription?.payAsYouGoConfig ?? null);
   // Invoice in the store's currency — it must match the currency the at-source
   // commission was collected in (same tariff numbers across currencies).
@@ -232,6 +239,7 @@ export async function billStoreForMonth(
       billMarketplaceReservationCount,
       billMarketplaceFeeCents,
       storeId,
+      locale,
     );
   } else {
     // Create the draft invoice first (exclude any stray pending items), persist its
@@ -270,6 +278,7 @@ export async function billStoreForMonth(
       billMarketplaceReservationCount,
       billMarketplaceFeeCents,
       storeId,
+      locale,
     );
   }
 
@@ -482,11 +491,13 @@ async function ensureInvoiceCollected(
   marketplaceReservationCount: number,
   marketplaceFeeAmountCents: number,
   storeId: string,
+  locale: EmailLocale,
 ): Promise<Stripe.Invoice> {
   const invoiceId = invoice.id;
   if (!invoiceId) return invoice;
 
   if (invoice.status === 'draft') {
+    const translate = getEmailTranslator(locale);
     if (usageFeeAmountCents > 0) {
       await stripe.invoiceItems.create(
         {
@@ -494,7 +505,10 @@ async function ensureInvoiceCollected(
           invoice: invoiceId,
           amount: usageFeeAmountCents,
           currency,
-          description: `Locations ${billingMonth} — ${usageLocationCount} location(s)`,
+          description: translate('payAsYouGoInvoice.usageLine', {
+            billingMonth,
+            count: usageLocationCount,
+          }),
           metadata: { type: 'pay_as_you_go', storeId, billingMonth },
         },
         { idempotencyKey: idemKey('item', storeId, billingMonth) },
@@ -507,7 +521,10 @@ async function ensureInvoiceCollected(
           invoice: invoiceId,
           amount: marketplaceFeeAmountCents,
           currency,
-          description: `Réservations reeent ${billingMonth} — ${marketplaceReservationCount} réservation(s)`,
+          description: translate('payAsYouGoInvoice.marketplaceLine', {
+            billingMonth,
+            count: marketplaceReservationCount,
+          }),
           metadata: { type: 'marketplace', storeId, billingMonth },
         },
         { idempotencyKey: idemKey('marketplace_item', storeId, billingMonth) },

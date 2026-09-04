@@ -18,11 +18,13 @@ import {
 } from "@/lib/product-analytics/analytics-events";
 
 import { OnboardingPreviewProvider, type OnboardingPreviewState } from "../_lib/preview-context";
+import { ReeentIntroProvider, type ReeentIntroSeed } from "../_lib/reeent-intro-context";
 import { type OnboardingStep, getOnboardingStepIndex } from "../_lib/steps";
 import { OnboardingStepsProvider } from "../_lib/steps-context";
 import { DashboardPreview } from "./dashboard-preview";
 import { FounderNotePanel } from "./founder-note-panel";
 import { PaymentModePanel } from "./payment-mode-panel";
+import { ReeentIntroPanel } from "./reeent-intro-panel";
 import { StorefrontPreview } from "./storefront-preview";
 
 export function OnboardingShell({
@@ -30,11 +32,17 @@ export function OnboardingShell({
   steps,
   initialPreview,
   isPlatformAdmin,
+  fromReeent,
+  reeentIntro,
 }: {
   children: React.ReactNode;
   steps: OnboardingStep[];
   initialPreview?: Partial<OnboardingPreviewState>;
   isPlatformAdmin: boolean;
+  /** Loueurs reeent sent over: some steps drop the choices reeent forbids. */
+  fromReeent: boolean;
+  /** Only set for people reeent sent over, the only ones who get that step. */
+  reeentIntro: ReeentIntroSeed | null;
 }) {
   const pathname = usePathname();
   const t = useTranslations("onboarding");
@@ -63,13 +71,18 @@ export function OnboardingShell({
   const isProfileStep = pathname === "/onboarding/profile";
   const isStripeStep = pathname === "/onboarding/stripe";
   const isSourceStep = pathname === "/onboarding/source";
-  // When the source step is still due, the Stripe KYC detour must come back
-  // to it instead of the settings callback screen.
-  const stripeReturnPath = steps.some((step) => step.path === "/onboarding/source")
-    ? "/onboarding/source"
-    : undefined;
 
-  return (
+  // Steps that explain themselves in words replace the preview with a readable
+  // panel; everything else keeps the live preview bleeding off the right edge.
+  const sidePanel = isStripeStep ? (
+    <PaymentModePanel fromReeent={fromReeent} />
+  ) : isSourceStep ? (
+    <FounderNotePanel />
+  ) : isReeentStep ? (
+    <ReeentIntroPanel />
+  ) : null;
+
+  const shell = (
     <OnboardingStepsProvider steps={steps}>
       <OnboardingPreviewProvider initial={initialPreview}>
         <div className="dashboard bg-background flex min-h-svh">
@@ -116,21 +129,17 @@ export function OnboardingShell({
           </div>
 
           {/* Right: live preview, bleeds off the right edge like the moodboard.
-            The stripe step swaps it for a readable mode explainer instead. */}
+            Steps that need words swap it for a readable panel instead. */}
           <aside className="bg-background relative hidden flex-1 items-center overflow-hidden border-l lg:flex lg:flex-1">
-            {isStripeStep || isSourceStep ? (
+            {sidePanel ? (
               <div className="mx-auto max-h-full w-full max-w-md overflow-y-auto px-10 py-10">
-                {isStripeStep ? (
-                  <PaymentModePanel stripeReturnPath={stripeReturnPath} />
-                ) : (
-                  <FounderNotePanel />
-                )}
+                {sidePanel}
               </div>
             ) : (
               <div className="w-216 shrink-0 pl-10 xl:pl-16">
-                {/* The reeent step is the "Louez is your tool" pitch, so it gets
+                {/* The profile step is the "Louez is your tool" pitch, so it gets
                     the dashboard preview rather than an empty storefront. */}
-                {isProfileStep || isReeentStep ? <DashboardPreview /> : <StorefrontPreview />}
+                {isProfileStep ? <DashboardPreview /> : <StorefrontPreview />}
               </div>
             )}
           </aside>
@@ -138,4 +147,6 @@ export function OnboardingShell({
       </OnboardingPreviewProvider>
     </OnboardingStepsProvider>
   );
+
+  return reeentIntro ? <ReeentIntroProvider {...reeentIntro}>{shell}</ReeentIntroProvider> : shell;
 }

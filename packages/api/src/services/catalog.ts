@@ -124,6 +124,9 @@ export interface ProductSnapshot {
   quantity: number;
   accessoryProductIds: string[];
   bookingUrl: string;
+  /** Manual storefront position; the storefront lists by `displayOrder` asc, then `createdAt` desc. */
+  displayOrder: number;
+  createdAt: string;
   updatedAt: string;
   version: number;
 }
@@ -170,6 +173,17 @@ function normalizeLimit(limit: number | undefined): number {
     throw new ApiServiceError("BAD_REQUEST", "errors.invalidData");
   }
   return limit;
+}
+
+/**
+ * A cursor timestamp as a MySQL expression. Binding the `Date` directly lets the
+ * driver format it in the Node process's local time zone while `timestamp`
+ * columns compare in the session zone (UTC), which on a non-UTC host shifts
+ * every page boundary and silently empties the following pages.
+ * `from_unixtime` is evaluated in the session zone, so both sides agree.
+ */
+function timestampParam(value: Date) {
+  return sql`from_unixtime(${Math.floor(value.getTime() / 1000)})`;
 }
 
 function encodeCursor(cursor: CatalogCursor): string {
@@ -339,8 +353,8 @@ export async function listStoreSnapshots(params: CatalogListParams): Promise<{
     );
   const cursorCondition = cursor
     ? or(
-        gt(snapshotUpdatedAt, cursor.updatedAt),
-        and(eq(snapshotUpdatedAt, cursor.updatedAt), gt(stores.id, cursor.id)),
+        gt(snapshotUpdatedAt, timestampParam(cursor.updatedAt)),
+        and(eq(snapshotUpdatedAt, timestampParam(cursor.updatedAt)), gt(stores.id, cursor.id)),
       )
     : undefined;
   const channelStatusCondition = inArray(storeMarketplaceChannels.status, [
@@ -526,8 +540,8 @@ export async function listProductSnapshots(params: CatalogListParams): Promise<{
   )`.mapWith(products.updatedAt);
   const cursorCondition = cursor
     ? or(
-        gt(snapshotUpdatedAt, cursor.updatedAt),
-        and(eq(snapshotUpdatedAt, cursor.updatedAt), gt(products.id, cursor.id)),
+        gt(snapshotUpdatedAt, timestampParam(cursor.updatedAt)),
+        and(eq(snapshotUpdatedAt, timestampParam(cursor.updatedAt)), gt(products.id, cursor.id)),
       )
     : undefined;
 
@@ -549,6 +563,8 @@ export async function listProductSnapshots(params: CatalogListParams): Promise<{
       enforceStrictTiers: products.enforceStrictTiers,
       bookingAttributeAxes: products.bookingAttributeAxes,
       quantity: effectiveProductQuantitySql(),
+      displayOrder: products.displayOrder,
+      createdAt: products.createdAt,
       updatedAt: snapshotUpdatedAt,
     })
     .from(products)
@@ -913,6 +929,8 @@ export async function listProductSnapshots(params: CatalogListParams): Promise<{
       quantity: row.quantity,
       accessoryProductIds: accessoriesByProduct.get(row.id) ?? [],
       bookingUrl: bookingUrl.toString(),
+      displayOrder: row.displayOrder ?? 0,
+      createdAt: row.createdAt.toISOString(),
       updatedAt: updatedAt.toISOString(),
       version: versionFromUpdatedAt(updatedAt),
     };
@@ -951,9 +969,9 @@ export async function listTombstones(params: {
   const cursor = decodeCursor(params.cursor);
   const cursorCondition = cursor
     ? or(
-        gt(marketplaceCatalogTombstones.deletedAt, cursor.updatedAt),
+        gt(marketplaceCatalogTombstones.deletedAt, timestampParam(cursor.updatedAt)),
         and(
-          eq(marketplaceCatalogTombstones.deletedAt, cursor.updatedAt),
+          eq(marketplaceCatalogTombstones.deletedAt, timestampParam(cursor.updatedAt)),
           gt(marketplaceCatalogTombstones.id, cursor.id),
         ),
       )
@@ -966,7 +984,12 @@ export async function listTombstones(params: {
       deletedAt: marketplaceCatalogTombstones.deletedAt,
     })
     .from(marketplaceCatalogTombstones)
-    .where(and(gte(marketplaceCatalogTombstones.deletedAt, params.since), cursorCondition))
+    .where(
+      and(
+        gte(marketplaceCatalogTombstones.deletedAt, timestampParam(params.since)),
+        cursorCondition,
+      ),
+    )
     .orderBy(asc(marketplaceCatalogTombstones.deletedAt), asc(marketplaceCatalogTombstones.id))
     .limit(limit + 1);
   const pageRows = rows.slice(0, limit);

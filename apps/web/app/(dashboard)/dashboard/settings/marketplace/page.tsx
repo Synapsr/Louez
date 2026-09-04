@@ -6,6 +6,7 @@ import { getTranslations } from "next-intl/server";
 import { getMarketplaceChannelState, getMarketplaceCohortStatus } from "@louez/api/services";
 import { categories, db } from "@louez/db";
 
+import { env } from "@/env";
 import { SettingsPageShell } from "@/components/dashboard/settings-page-shell";
 import { fetchMarketplaceMatches, inferMarketplaceMatchCity } from "@/lib/marketplace-match";
 import { fetchMarketplaceTaxonomy } from "@/lib/marketplace-taxonomy";
@@ -43,7 +44,7 @@ export default async function MarketplaceChannelSettingsPage() {
           city: inferMarketplaceMatchCity(store.address),
         })
       : Promise.resolve(null),
-    getMarketplaceCohortStatus(),
+    getMarketplaceCohortStatus(env.REEENT_LAUNCH_COHORT_SIZE),
   ]);
 
   return (

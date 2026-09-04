@@ -1,38 +1,38 @@
-import { StyleSheet } from '@react-pdf/renderer'
+import { StyleSheet } from "@react-pdf/renderer";
 
 // Helper to convert hex to rgba for lighter tints
 export function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // Get a lighter version of a color for backgrounds (very subtle)
 export function getLighterColor(hex: string, intensity: number = 0.08): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const lightR = Math.round(r * intensity + 255 * (1 - intensity))
-  const lightG = Math.round(g * intensity + 255 * (1 - intensity))
-  const lightB = Math.round(b * intensity + 255 * (1 - intensity))
-  return `rgb(${lightR}, ${lightG}, ${lightB})`
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const lightR = Math.round(r * intensity + 255 * (1 - intensity));
+  const lightG = Math.round(g * intensity + 255 * (1 - intensity));
+  const lightB = Math.round(b * intensity + 255 * (1 - intensity));
+  return `rgb(${lightR}, ${lightG}, ${lightB})`;
 }
 
 // Get contrasting text color (white or dark)
 // Uses threshold of 0.55 to favor white text on medium-dark colors
 export function getContrastColor(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return luminance > 0.55 ? '#1a1a1a' : '#ffffff'
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.55 ? "#1a1a1a" : "#ffffff";
 }
 
 // Create dynamic styles based on primary color
-export function createContractStyles(primaryColor: string = '#0066FF') {
-  const lightBg = getLighterColor(primaryColor, 0.06)
-  const contrastColor = getContrastColor(primaryColor)
+export function createContractStyles(primaryColor: string = "#0066FF") {
+  const lightBg = getLighterColor(primaryColor, 0.06);
+  const contrastColor = getContrastColor(primaryColor);
 
   return StyleSheet.create({
     // Page
@@ -41,14 +41,14 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       paddingBottom: 70,
       paddingHorizontal: 40,
       fontSize: 9,
-      fontFamily: 'Helvetica',
-      color: '#2d2d2d',
+      fontFamily: "Helvetica",
+      color: "#2d2d2d",
       lineHeight: 1.5,
     },
 
     // Header accent bar
     headerBar: {
-      position: 'absolute',
+      position: "absolute",
       top: 0,
       left: 0,
       right: 0,
@@ -58,33 +58,33 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
 
     // Header
     header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
       marginBottom: 25,
       paddingBottom: 15,
       borderBottomWidth: 1,
-      borderBottomColor: '#e5e5e5',
+      borderBottomColor: "#e5e5e5",
     },
     logoContainer: {
-      flexDirection: 'column',
-      justifyContent: 'center',
-      maxWidth: '50%',
+      flexDirection: "column",
+      justifyContent: "center",
+      maxWidth: "50%",
       minHeight: 70,
     },
     logo: {
       maxWidth: 180,
       maxHeight: 70,
-      objectFit: 'contain',
+      objectFit: "contain",
     },
     storeName: {
       fontSize: 20,
-      fontFamily: 'Helvetica-Bold',
-      color: '#1a1a1a',
+      fontFamily: "Helvetica-Bold",
+      color: "#1a1a1a",
     },
     headerRight: {
-      flexDirection: 'column',
-      alignItems: 'flex-end',
+      flexDirection: "column",
+      alignItems: "flex-end",
     },
     documentTypeContainer: {
       backgroundColor: primaryColor,
@@ -95,34 +95,34 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
     },
     documentType: {
       fontSize: 11,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: "Helvetica-Bold",
       color: contrastColor,
-      textTransform: 'uppercase',
+      textTransform: "uppercase",
       letterSpacing: 1,
     },
     documentInfo: {
-      textAlign: 'right',
+      textAlign: "right",
     },
     documentNumber: {
       fontSize: 10,
-      fontFamily: 'Helvetica-Bold',
-      color: '#1a1a1a',
+      fontFamily: "Helvetica-Bold",
+      color: "#1a1a1a",
       marginBottom: 2,
     },
     documentDate: {
       fontSize: 9,
-      color: '#666666',
+      color: "#666666",
     },
 
     // Parties section
     partiesContainer: {
-      flexDirection: 'row',
+      flexDirection: "row",
       marginBottom: 20,
       gap: 15,
     },
     partyCard: {
       flex: 1,
-      backgroundColor: '#fafafa',
+      backgroundColor: "#fafafa",
       borderRadius: 4,
       padding: 12,
       borderLeftWidth: 3,
@@ -130,26 +130,26 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
     },
     partyLabel: {
       fontSize: 8,
-      fontFamily: 'Helvetica-Bold',
-      color: '#666666',
-      textTransform: 'uppercase',
+      fontFamily: "Helvetica-Bold",
+      color: "#666666",
+      textTransform: "uppercase",
       letterSpacing: 0.5,
       marginBottom: 6,
     },
     partyName: {
       fontSize: 10,
-      fontFamily: 'Helvetica-Bold',
-      color: '#1a1a1a',
+      fontFamily: "Helvetica-Bold",
+      color: "#1a1a1a",
       marginBottom: 3,
     },
     partyInfo: {
       fontSize: 8,
-      color: '#444444',
+      color: "#444444",
       marginBottom: 1,
     },
     partyLegal: {
       fontSize: 7,
-      color: '#888888',
+      color: "#888888",
       marginTop: 4,
     },
 
@@ -159,17 +159,17 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
     },
     sectionTitle: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
-      color: '#1a1a1a',
-      textTransform: 'uppercase',
+      fontFamily: "Helvetica-Bold",
+      color: "#1a1a1a",
+      textTransform: "uppercase",
       letterSpacing: 0.5,
       marginBottom: 8,
       paddingBottom: 4,
       borderBottomWidth: 1,
-      borderBottomColor: '#eeeeee',
+      borderBottomColor: "#eeeeee",
     },
     periodContainer: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: 12,
     },
     periodCard: {
@@ -177,21 +177,21 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       backgroundColor: lightBg,
       borderRadius: 4,
       padding: 10,
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
     },
     periodIconCircle: {
       width: 28,
       height: 28,
       borderRadius: 14,
       backgroundColor: primaryColor,
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: "center",
+      alignItems: "center",
       marginRight: 10,
     },
     periodIconText: {
       fontSize: 10,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: "Helvetica-Bold",
       color: contrastColor,
     },
     periodContent: {
@@ -199,25 +199,25 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
     },
     periodLabel: {
       fontSize: 7,
-      color: '#666666',
-      textTransform: 'uppercase',
+      color: "#666666",
+      textTransform: "uppercase",
       letterSpacing: 0.3,
       marginBottom: 1,
     },
     periodDate: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
-      color: '#1a1a1a',
+      fontFamily: "Helvetica-Bold",
+      color: "#1a1a1a",
     },
     periodTime: {
       fontSize: 8,
-      color: '#555555',
+      color: "#555555",
     },
     periodDeliveryInfo: {
       fontSize: 7.5,
-      color: '#777777',
+      color: "#777777",
       marginTop: 2,
-      fontStyle: 'italic' as const,
+      fontStyle: "italic" as const,
     },
 
     // Table section
@@ -226,81 +226,81 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
     },
     table: {
       borderWidth: 1,
-      borderColor: '#e0e0e0',
+      borderColor: "#e0e0e0",
       borderRadius: 4,
     },
     tableHeader: {
-      flexDirection: 'row',
-      backgroundColor: '#f5f5f5',
+      flexDirection: "row",
+      backgroundColor: "#f5f5f5",
       paddingVertical: 8,
       paddingHorizontal: 10,
       borderBottomWidth: 1,
-      borderBottomColor: '#e0e0e0',
+      borderBottomColor: "#e0e0e0",
     },
     tableHeaderCell: {
       fontSize: 8,
-      fontFamily: 'Helvetica-Bold',
-      color: '#444444',
-      textTransform: 'uppercase',
+      fontFamily: "Helvetica-Bold",
+      color: "#444444",
+      textTransform: "uppercase",
       letterSpacing: 0.3,
     },
     tableRow: {
-      flexDirection: 'row',
+      flexDirection: "row",
       paddingVertical: 8,
       paddingHorizontal: 10,
       borderBottomWidth: 1,
-      borderBottomColor: '#f0f0f0',
+      borderBottomColor: "#f0f0f0",
     },
     tableRowAlt: {
-      backgroundColor: '#fafafa',
+      backgroundColor: "#fafafa",
     },
     tableRowLast: {
       borderBottomWidth: 0,
     },
     tableCell: {
       fontSize: 9,
-      color: '#333333',
+      color: "#333333",
     },
     tableCellName: {
       flex: 4,
     },
     tableCellQty: {
       flex: 1,
-      textAlign: 'center',
+      textAlign: "center",
     },
     tableCellPrice: {
       flex: 1.5,
-      textAlign: 'right',
+      textAlign: "right",
     },
     tableCellTotal: {
       flex: 1.5,
-      textAlign: 'right',
+      textAlign: "right",
     },
     unitIdentifiers: {
       fontSize: 7.5,
-      color: '#666666',
-      fontStyle: 'italic',
+      color: "#666666",
+      fontStyle: "italic",
       marginTop: 2,
     },
 
     // Totals
     totalsContainer: {
       marginTop: 10,
-      alignItems: 'flex-end',
+      alignItems: "flex-end",
     },
     totalsBox: {
       width: 220,
       borderWidth: 1,
-      borderColor: '#e0e0e0',
+      borderColor: "#e0e0e0",
       borderRadius: 4,
-      overflow: 'hidden',
+      overflow: "hidden",
     },
     totalRow: {
-      flexDirection: 'row',
+      flexDirection: "row",
       paddingVertical: 6,
       paddingHorizontal: 12,
       borderBottomWidth: 1,
-      borderBottomColor: '#f0f0f0',
+      borderBottomColor: "#f0f0f0",
     },
     totalRowLast: {
       borderBottomWidth: 0,
@@ -308,13 +308,13 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
     totalLabel: {
       flex: 1,
       fontSize: 9,
-      color: '#555555',
+      color: "#555555",
     },
     totalValue: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
-      color: '#333333',
-      textAlign: 'right',
+      fontFamily: "Helvetica-Bold",
+      color: "#333333",
+      textAlign: "right",
     },
     totalRowMain: {
       backgroundColor: primaryColor,
@@ -323,28 +323,28 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
     totalLabelMain: {
       flex: 1,
       fontSize: 10,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: "Helvetica-Bold",
       color: contrastColor,
     },
     totalValueMain: {
       fontSize: 10,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: "Helvetica-Bold",
       color: contrastColor,
-      textAlign: 'right',
+      textAlign: "right",
     },
     depositRow: {
-      backgroundColor: '#fffbeb',
+      backgroundColor: "#fffbeb",
     },
     depositLabel: {
       flex: 1,
       fontSize: 9,
-      color: '#92400e',
+      color: "#92400e",
     },
     depositValue: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
-      color: '#92400e',
-      textAlign: 'right',
+      fontFamily: "Helvetica-Bold",
+      color: "#92400e",
+      textAlign: "right",
     },
 
     // Payments section
@@ -353,89 +353,89 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
     },
     paymentsList: {
       borderWidth: 1,
-      borderColor: '#e0e0e0',
+      borderColor: "#e0e0e0",
       borderRadius: 4,
     },
     paymentRow: {
-      flexDirection: 'row',
+      flexDirection: "row",
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderBottomWidth: 1,
-      borderBottomColor: '#f0f0f0',
-      alignItems: 'center',
+      borderBottomColor: "#f0f0f0",
+      alignItems: "center",
     },
     paymentRowLast: {
       borderBottomWidth: 0,
     },
     paymentStatus: {
       fontSize: 8,
-      fontFamily: 'Helvetica-Bold',
+      fontFamily: "Helvetica-Bold",
       marginRight: 10,
       width: 55,
     },
     paymentStatusCompleted: {
-      color: '#16a34a',
+      color: "#16a34a",
     },
     paymentStatusPending: {
-      color: '#d97706',
+      color: "#d97706",
     },
     paymentDetails: {
       flex: 1,
     },
     paymentType: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
-      color: '#333333',
+      fontFamily: "Helvetica-Bold",
+      color: "#333333",
     },
     paymentMethod: {
       fontSize: 8,
-      color: '#666666',
+      color: "#666666",
     },
     paymentDate: {
       fontSize: 8,
-      color: '#888888',
+      color: "#888888",
       marginRight: 10,
     },
     paymentAmount: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
-      color: '#16a34a',
+      fontFamily: "Helvetica-Bold",
+      color: "#16a34a",
     },
     paymentAmountPending: {
-      color: '#d97706',
+      color: "#d97706",
     },
     noPayments: {
       padding: 12,
       fontSize: 8,
-      color: '#888888',
-      fontStyle: 'italic',
-      textAlign: 'center',
+      color: "#888888",
+      fontStyle: "italic",
+      textAlign: "center",
     },
     paymentSummary: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
+      flexDirection: "row",
+      justifyContent: "flex-end",
       paddingTop: 8,
       marginTop: 8,
       borderTopWidth: 1,
-      borderTopColor: '#e0e0e0',
+      borderTopColor: "#e0e0e0",
     },
     paymentSummaryItem: {
       marginLeft: 20,
     },
     paymentSummaryLabel: {
       fontSize: 8,
-      color: '#666666',
+      color: "#666666",
     },
     paymentSummaryValue: {
       fontSize: 10,
-      fontFamily: 'Helvetica-Bold',
-      color: '#333333',
+      fontFamily: "Helvetica-Bold",
+      color: "#333333",
     },
     paymentSummaryValueSuccess: {
-      color: '#16a34a',
+      color: "#16a34a",
     },
     paymentSummaryValueWarning: {
-      color: '#d97706',
+      color: "#d97706",
     },
 
     // Conditions section
@@ -443,12 +443,12 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       marginBottom: 15,
     },
     conditionsList: {
-      backgroundColor: '#fafafa',
+      backgroundColor: "#fafafa",
       borderRadius: 4,
       padding: 12,
     },
     conditionItem: {
-      flexDirection: 'row',
+      flexDirection: "row",
       marginBottom: 4,
     },
     conditionBullet: {
@@ -462,7 +462,7 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
     conditionText: {
       flex: 1,
       fontSize: 8,
-      color: '#555555',
+      color: "#555555",
       lineHeight: 1.4,
     },
 
@@ -471,7 +471,7 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       marginTop: 15,
     },
     signaturesContainer: {
-      flexDirection: 'row',
+      flexDirection: "row",
       gap: 15,
     },
     signatureBox: {
@@ -484,53 +484,58 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       borderLeftWidth: 3,
     },
     signatureHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       marginBottom: 8,
       paddingBottom: 8,
       borderBottomWidth: 1,
-      borderBottomColor: '#e5e5e5',
+      borderBottomColor: "#e5e5e5",
     },
     signatureTitle: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
-      color: '#333333',
-      textTransform: 'uppercase',
+      fontFamily: "Helvetica-Bold",
+      color: "#333333",
+      textTransform: "uppercase",
       letterSpacing: 0.3,
     },
     signatureStatusText: {
       fontSize: 8,
-      fontFamily: 'Helvetica-Bold',
-      color: '#16a34a',
+      fontFamily: "Helvetica-Bold",
+      color: "#16a34a",
+    },
+    signatureStatusPendingText: {
+      fontSize: 8,
+      fontFamily: "Helvetica-Bold",
+      color: "#b45309",
     },
     signatureContent: {
       marginTop: 6,
     },
     signatureText: {
       fontSize: 7,
-      color: '#666666',
+      color: "#666666",
       marginBottom: 8,
       lineHeight: 1.4,
     },
     signatureDateRow: {
-      flexDirection: 'row',
+      flexDirection: "row",
       marginBottom: 2,
     },
     signatureDateLabel: {
       fontSize: 7,
-      color: '#666666',
+      color: "#666666",
       width: 45,
     },
     signatureDate: {
       fontSize: 7,
-      fontFamily: 'Helvetica-Bold',
-      color: '#333333',
+      fontFamily: "Helvetica-Bold",
+      color: "#333333",
       flex: 1,
     },
     signatureIp: {
       fontSize: 7,
-      color: '#999999',
+      color: "#999999",
       marginTop: 4,
     },
 
@@ -539,18 +544,18 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       marginTop: 15,
       paddingTop: 10,
       borderTopWidth: 1,
-      borderTopColor: '#eeeeee',
+      borderTopColor: "#eeeeee",
     },
     legalText: {
       fontSize: 7,
-      color: '#888888',
+      color: "#888888",
       lineHeight: 1.4,
       marginBottom: 2,
     },
     legalTitle: {
       fontSize: 7,
-      fontFamily: 'Helvetica-Bold',
-      color: '#666666',
+      fontFamily: "Helvetica-Bold",
+      color: "#666666",
       marginBottom: 3,
       marginTop: 6,
     },
@@ -560,40 +565,40 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       marginTop: 8,
       paddingTop: 6,
       borderTopWidth: 1,
-      borderTopColor: '#eeeeee',
+      borderTopColor: "#eeeeee",
     },
     cgvAnnexTitle: {
       fontSize: 10,
-      fontFamily: 'Helvetica-Bold',
-      color: '#1a1a1a',
-      textTransform: 'uppercase',
+      fontFamily: "Helvetica-Bold",
+      color: "#1a1a1a",
+      textTransform: "uppercase",
       letterSpacing: 0.4,
       marginBottom: 10,
     },
     cgvAnnexHeading1: {
       fontSize: 9,
-      fontFamily: 'Helvetica-Bold',
-      color: '#222222',
+      fontFamily: "Helvetica-Bold",
+      color: "#222222",
       marginTop: 8,
       marginBottom: 4,
     },
     cgvAnnexHeading2: {
       fontSize: 8.5,
-      fontFamily: 'Helvetica-Bold',
-      color: '#333333',
+      fontFamily: "Helvetica-Bold",
+      color: "#333333",
       marginTop: 7,
       marginBottom: 3,
     },
     cgvAnnexHeading3: {
       fontSize: 8,
-      fontFamily: 'Helvetica-Bold',
-      color: '#444444',
+      fontFamily: "Helvetica-Bold",
+      color: "#444444",
       marginTop: 6,
       marginBottom: 3,
     },
     cgvAnnexParagraph: {
       fontSize: 8,
-      color: '#444444',
+      color: "#444444",
       lineHeight: 1.5,
       marginBottom: 4,
     },
@@ -601,60 +606,60 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       marginBottom: 5,
     },
     cgvAnnexListItem: {
-      flexDirection: 'row',
+      flexDirection: "row",
       marginBottom: 2,
     },
     cgvAnnexListMarker: {
       width: 14,
       fontSize: 8,
-      color: '#444444',
-      fontFamily: 'Helvetica-Bold',
+      color: "#444444",
+      fontFamily: "Helvetica-Bold",
     },
     cgvAnnexListText: {
       flex: 1,
       fontSize: 8,
-      color: '#444444',
+      color: "#444444",
       lineHeight: 1.45,
     },
 
     // Footer
     footer: {
-      position: 'absolute',
+      position: "absolute",
       bottom: 15,
       left: 40,
       right: 40,
       paddingTop: 10,
       borderTopWidth: 1,
-      borderTopColor: '#eeeeee',
+      borderTopColor: "#eeeeee",
     },
     footerContent: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
     },
     footerLeft: {
       fontSize: 7,
-      color: '#999999',
+      color: "#999999",
     },
     footerCenter: {
       fontSize: 7,
-      color: '#888888',
+      color: "#888888",
     },
     footerRight: {
       fontSize: 7,
-      color: '#999999',
+      color: "#999999",
     },
 
     // Page number
     pageNumber: {
-      position: 'absolute',
+      position: "absolute",
       bottom: 25,
       right: 40,
       fontSize: 7,
-      color: '#999999',
+      color: "#999999",
     },
-  })
+  });
 }
 
 // Default styles (backwards compatibility)
-export const styles = createContractStyles('#0066FF')
+export const styles = createContractStyles("#0066FF");

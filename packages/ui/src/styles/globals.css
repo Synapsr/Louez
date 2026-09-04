@@ -20,6 +20,20 @@
   src: url("/fonts/Inter-4.1/web/InterVariable-Italic.woff2") format("woff2");
 }
 
+/* Bricolage Grotesque, the reeent wordmark face. Same latin subset Google
+   serves to the marketplace, self-hosted here so co-branded surfaces render the
+   partner logo exactly and the build keeps no Google Fonts dependency. */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  font-style: normal;
+  font-weight: 700 800;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url("/fonts/BricolageGrotesque-1.0/web/BricolageGrotesque-latin.woff2") format("woff2");
+  unicode-range: U+??, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 @font-face {
   font-family: "Inter Variable Fallback";
   font-style: normal;
@@ -46,6 +60,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Inter Variable", "Inter Variable Fallback", sans-serif;
+  --font-reeent: "Bricolage Grotesque", var(--font-sans);
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -80,6 +95,7 @@
   --color-louez-cyan: var(--louez-cyan);
   --color-louez-purple: var(--louez-purple);
   --color-louez-pink: var(--louez-pink);
+  --color-reeent: var(--reeent);
   --color-reservation-pending: var(--reservation-pending);
   --color-reservation-pending-hover: var(--reservation-pending-hover);
   --color-reservation-pending-foreground: var(--reservation-pending-foreground);
@@ -219,6 +235,9 @@
   --louez-cyan: oklch(0.66 0.122 221.771);
   --louez-purple: oklch(0.556 0.183 305.86);
   --louez-pink: oklch(0.617 0.208 346.003);
+  /* reeent brand orange, copied verbatim from the marketplace's --primary so
+     the two products cannot drift apart; lifted in dark like reeent does. */
+  --reeent: #ff5533;
   --reservation-pending: var(--louez-yellow);
   --reservation-pending-hover: oklch(0.776 0.164 85.568);
   --reservation-pending-foreground: oklch(0.145 0 0);
@@ -315,6 +334,7 @@
 }
 
 .dark {
+  --reeent: #ff6b4a;
   --shadow-border: inset 0 0 0 1px rgb(255 255 255 / 15%), 0 0 0 1px rgb(255 255 255 / 10%);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);

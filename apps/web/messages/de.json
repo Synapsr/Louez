@@ -160,6 +160,8 @@
     "or": "oder",
     "loginTitle": "Willkommen bei louez",
     "loginDescription": "Geben Sie Ihre E-Mail ein, um fortzufahren. Wenn Sie kein Konto haben, wird automatisch eines erstellt.",
+    "reeentLoginTitle": "Willkommen bei louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent ist das Schaufenster, louez ist Ihr Werkzeug: Buchungen, Zahlungen und Kalender verwalten Sie hier. Wenn Sie kein Konto haben, wird automatisch eines erstellt.",
     "linkWillBeSent": "Ein sicherer Link wird an Ihre E-Mail gesendet. Kein Passwort zu merken.",
     "checkEmail": "Überprüfen Sie Ihre E-Mail",
     "emailSentTo": "Ein Anmeldelink wurde gesendet an",
@@ -337,6 +339,9 @@
       "manage": "Verwalten",
       "dashboard": "Dashboard",
       "viewStore": "Shop ansehen",
+      "viewOnReeent": "Meine reeent-Seite ansehen",
+      "openStorefront": "Meine Website",
+      "openReeentListing": "Meine reeent-Seite",
       "newReservation": "Neue Reservierung",
       "reservationLimitReached": "Limit erreicht",
       "help": "Hilfe",
@@ -683,6 +688,13 @@
         "description": "Ihre Kunden warten auf Ihre Antwort",
         "action": "Bearbeiten"
       },
+      "reeentStripe": {
+        "title": "Ihr Shop ist auf <reeent>reeent</reeent> noch nicht sichtbar",
+        "description": "Solange die Online-Zahlungen nicht aktiv sind, veröffentlicht reeent Ihren Shop nicht. Das Startangebot (0 € reeent-Provision auf Lebenszeit) gilt ab der Veröffentlichung, solange es noch Plätze gibt.",
+        "continueSetup": "Stripe-Einrichtung fortsetzen",
+        "activate": "Online-Zahlungen aktivieren",
+        "paymentSettings": "Zahlungseinstellungen"
+      },
       "setup": {
         "title": "Erste Schritte",
         "description": "Einige Schritte zum Starten",
@@ -698,6 +710,7 @@
         "descriptions": {
           "addFirstProduct": "Fügen Sie Ihr erstes Produkt hinzu, damit Kunden buchen können.",
           "connectStripe": "Verbinden Sie Stripe, um Kartenzahlungen bei der Buchung zu akzeptieren.",
+          "connectStripeReeent": "Solange Stripe nicht aktiv ist, ist Ihr Shop auf reeent nicht sichtbar. Verbinden Sie Stripe, um veröffentlicht zu werden und Kartenzahlungen zu akzeptieren.",
           "firstReservation": "Teilen Sie Ihren Shop mit Kunden oder erstellen Sie eine Reservierung manuell.",
           "firstCompleted": "Sobald die Vermietung zurückgegeben wurde, markieren Sie die Reservierung als abgeschlossen."
         },
@@ -6364,6 +6377,17 @@
       "requestModeDescription": "Kunden senden eine Anfrage. Sie bestätigen und kassieren selbst (bar, Überweisung, Karte vor Ort).",
       "requestModeNote": "Sie bestätigen und kassieren jede Buchung selbst. Sie können jederzeit in den Einstellungen zur Online-Zahlung wechseln.",
       "configComplete": "Einrichtung abgeschlossen!",
+      "reeent": {
+        "title": "Online-Zahlung aktivieren",
+        "description": "Auf reeent buchen und bezahlen Ihre Kunden online. Das macht Ihren Shop „Réservable en ligne“ und bringt ihn in den Ergebnissen nach oben.",
+        "whyTitle": "Warum das nötig ist",
+        "panelWhyTitle": "Warum Stripe auf reeent?",
+        "why1": "Die Zahlung geht über Stripe direkt vom Kunden auf Ihr Bankkonto. Weder reeent noch Louez berühren das Geld.",
+        "why2": "Genau das macht die sofortige Buchung möglich — ohne Mahnungen und ohne offene Beträge auf Ihrer Seite.",
+        "withoutStripe": "Ohne aktives Stripe-Konto funktioniert Ihr Louez-Shop weiter (Reservierungen laufen über die manuelle Bestätigung), auf reeent erscheint er aber erst, sobald Stripe aktiv ist.",
+        "later": "Später",
+        "laterNote": "Sie können es jederzeit über Ihr Dashboard aktivieren. Ihr Shop wird automatisch auf reeent veröffentlicht, sobald Stripe aktiv ist; bis dahin laufen Ihre Louez-Reservierungen über die manuelle Bestätigung."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "Warum Online-Zahlung?",
@@ -6439,21 +6463,40 @@
       "reeent": "reeent"
     },
     "reeent": {
-      "title": "Sie kommen von reeent",
-      "description": "Zwei Minuten, um zu verstehen, wie reeent und Louez zusammenspielen.",
-      "products": {
-        "title": "Die beiden Produkte",
-        "body": "reeent ist das Schaufenster, Louez ist Ihr Werkzeug. Privatpersonen finden Ihre Ausrüstung auf reeent; hier verwalten Sie Ihre Reservierungen, Zahlungen und Ihren Kalender."
+      "title": "Sie kommen von <reeent>reeent</reeent>",
+      "description": "Eine Frage, bevor Sie Ihren Shop einrichten.",
+      "introDescription": "Drei Punkte, dann eine Frage.",
+      "status": {
+        "label": "Sie vermieten",
+        "professional": "Als Unternehmen",
+        "professionalHint": "Sie haben ein Unternehmen, einen Verein oder eine angemeldete Tätigkeit.",
+        "individual": "Als Privatperson",
+        "individualHint": "Sie vermieten Ihre eigenen Sachen, ohne Unternehmen.",
+        "hint": "Ihr Status wird auf reeent angezeigt und passt das Folgende an."
       },
-      "offer": {
-        "title": "Das Angebot",
-        "body": "reeent-Angebot auf Lebenszeit: Die ersten 1000 auf reeent veröffentlichten Vermieter behalten für immer 0 € reeent-Provision.",
-        "remaining": "Es sind noch {remaining} von {total} Plätzen frei.",
-        "closedBody": "Das Startangebot ist vollständig vergeben. Auf reeent zu veröffentlichen bleibt der einfachste Weg, für Privatpersonen sichtbar zu werden."
-      },
-      "pricing": {
-        "title": "Die Louez-Preise",
-        "body": "Die Louez-Preise gelten wie gewohnt: kein Abo, Sie zahlen nach Nutzung — 1 € pro Reservierung, günstiger bei mehr Volumen. Keine Fixkosten."
+      "panel": {
+        "title": "Gut zu wissen",
+        "products": {
+          "title": "Zwei Produkte, ein Konto",
+          "body": "reeent ist das Schaufenster: dort finden Kunden Ihre Ausrüstung. Louez ist Ihr Werkzeug: Reservierungen, Zahlungen und Kalender verwalten Sie hier.",
+          "individualBody": "Sie brauchen kein Unternehmen. reeent ist das Schaufenster, Louez ist Ihr Werkzeug: Stellen Sie Ihre Sachen ein, verwalten Sie Ihre Reservierungen und kassieren Sie online."
+        },
+        "offer": {
+          "title": "Startangebot",
+          "body": "Die ersten {total} Vermieter, die auf reeent veröffentlichen, zahlen dauerhaft 0 € reeent-Provision.",
+          "remaining": "Noch {remaining} von {total} Plätzen frei.",
+          "closedBody": "Das Startangebot ist ausgebucht. Auf reeent zu veröffentlichen bleibt der einfachste Weg, sichtbar zu werden."
+        },
+        "pricing": {
+          "title": "Was Louez kostet",
+          "amount": "1 €",
+          "amountUnit": "pro Reservierung",
+          "amountDetail": "Wird mit steigendem Volumen günstiger.",
+          "quietMonth": "Ein Monat ohne Vermietung: nichts zu zahlen.",
+          "subscription": "Ein Monatsabo, wenn Sie viel vermieten.",
+          "switch": "Sie wechseln jederzeit zwischen beiden.",
+          "individualNote": "Mieteinnahmen müssen Sie je nach Ihrer Situation selbst angeben; wird daraus eine gewerbliche Tätigkeit, bitten wir Sie, den Status zu wechseln."
+        }
       }
     }
   },

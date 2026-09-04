@@ -24,6 +24,10 @@
     "timezone": "Tijdzone: {timezone}",
     "seeYouSoon": "Tot snel,\n{storeName}"
   },
+  "payAsYouGoInvoice": {
+    "usageLine": "Verhuringen {billingMonth} — {count, plural, one {# verhuring} other {# verhuringen}}",
+    "marketplaceLine": "reeent-reserveringen {billingMonth} — {count, plural, one {# reservering} other {# reserveringen}}"
+  },
   "verificationCode": {
     "subject": "Uw inlogcode: {code}",
     "title": "Inlogcode",

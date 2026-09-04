@@ -127,7 +127,7 @@ export function ProfileClientPage({
           <form.AppField name="businessType">
             {(field) => (
               <field.Select
-                label={`${t("businessType")} (${tCommon("optional")})`}
+                label={t("businessType")}
                 placeholder={t("businessTypePlaceholder")}
                 items={businessTypeItems}
               >

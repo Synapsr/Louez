@@ -51,6 +51,8 @@ export type StoreWithFullData = {
   customerNotificationSettings: CustomerNotificationSettings | null
   icsToken: string | null
   referralCode: string | null
+  /** Where the sign-up came from, e.g. the reeent marketplace (ADR 010). */
+  signupOrigin: string | null
   trialDays: number
   discountPercent: number
   discountDurationMonths: number

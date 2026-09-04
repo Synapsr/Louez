@@ -13,6 +13,7 @@ import {
   referralAnalyticsEvents,
 } from '@/lib/referral/analytics-events';
 import type { ReferralInviteContext } from '@/lib/referral/invite';
+import type { SignupOrigin } from '@/lib/utils/signup-origin';
 
 import { LoginForm } from './login-form';
 import { LoginSocialProof } from './login-social-proof';
@@ -20,11 +21,14 @@ import type { SignInMethods } from './sign-in-methods';
 
 interface LoginPageClientProps {
   referral: ReferralInviteContext | null;
+  /** Where the visitor came from, so the entry step can greet them for it. */
+  signupOrigin: SignupOrigin | null;
   signInMethods: SignInMethods;
 }
 
 export const LoginPageClient = ({
   referral,
+  signupOrigin,
   signInMethods,
 }: LoginPageClientProps) => {
   const t = useTranslations('auth');
@@ -63,7 +67,7 @@ export const LoginPageClient = ({
             </div>
           ) : null}
 
-          <LoginForm methods={signInMethods} />
+          <LoginForm methods={signInMethods} signupOrigin={signupOrigin} />
         </div>
 
         <p className="text-muted-foreground absolute right-6 bottom-2 left-6 text-center text-[13.5px] lg:right-12 lg:bottom-2.5 lg:left-12">

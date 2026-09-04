@@ -29,10 +29,18 @@ interface StoreMetrics {
  */
 export type OnlinePaymentsStep = "hidden" | "todo" | "done";
 
+/**
+ * Why the store needs online payments. A store that came from reeent is not
+ * published there until Stripe is chargeable, which makes the step urgent
+ * enough to outrank the catalogue and worth its own wording.
+ */
+export type OnlinePaymentsContext = "default" | "reeent";
+
 interface SetupChecklistProps {
   metrics: StoreMetrics;
   storeSlug: string;
   onlinePaymentsStep?: OnlinePaymentsStep;
+  onlinePaymentsContext?: OnlinePaymentsContext;
   className?: string;
 }
 
@@ -129,6 +137,7 @@ export function SetupChecklist({
   metrics,
   storeSlug,
   onlinePaymentsStep = "hidden",
+  onlinePaymentsContext = "default",
 }: SetupChecklistProps) {
   const t = useTranslations("dashboard.home");
   const tCommon = useTranslations("common");
@@ -145,6 +154,21 @@ export function SetupChecklist({
     size: measuredSize,
   } = useMeasuredSize({ observeHeight: !itemHeightIsAnimating });
 
+  const isReeentContext = onlinePaymentsContext === "reeent";
+
+  const onlinePaymentsItems: ChecklistItem[] =
+    onlinePaymentsStep === "hidden"
+      ? []
+      : [
+          {
+            key: "connectStripe",
+            completed: onlinePaymentsStep === "done",
+            href: "/dashboard/settings/payments",
+            action: "setup.connectStripe",
+            description: isReeentContext ? "connectStripeReeent" : "connectStripe",
+          },
+        ];
+
   const items: ChecklistItem[] = [
     {
       key: "createAccount",
@@ -154,6 +178,9 @@ export function SetupChecklist({
       key: "configureStore",
       completed: true,
     },
+    // A reeent store stays unlisted there until Stripe is chargeable, so the
+    // payment step comes before the catalogue and becomes the current step.
+    ...(isReeentContext ? onlinePaymentsItems : []),
     {
       key: "addFirstProduct",
       completed: metrics.activeProductCount > 0,
@@ -161,17 +188,7 @@ export function SetupChecklist({
       action: "setup.addFirstProduct",
       description: "addFirstProduct",
     },
-    ...(onlinePaymentsStep !== "hidden"
-      ? [
-          {
-            key: "connectStripe",
-            completed: onlinePaymentsStep === "done",
-            href: "/dashboard/settings/payments",
-            action: "setup.connectStripe",
-            description: "connectStripe",
-          },
-        ]
-      : []),
+    ...(isReeentContext ? [] : onlinePaymentsItems),
     {
       key: "firstReservation",
       completed: metrics.totalReservations > 0,

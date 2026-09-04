@@ -4,6 +4,7 @@ export * from "./api";
 export * from "./booking";
 export * from "./business-hours";
 export * from "./catalog";
+export * from "./company-identity";
 export * from "./customer";
 export * from "./image";
 export * from "./inspection";

@@ -160,6 +160,8 @@
     "or": "or",
     "loginTitle": "Welcome to louez",
     "loginDescription": "Enter your email to continue. If you don't have an account, one will be created for you.",
+    "reeentLoginTitle": "Welcome to louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent is the storefront, louez is your tool: bookings, payments and calendar are handled here. If you don't have an account, one will be created for you.",
     "linkWillBeSent": "A secure link will be sent to your email. No password to remember.",
     "checkEmail": "Check your email",
     "emailSentTo": "A login link has been sent to",
@@ -337,6 +339,9 @@
       "manage": "Manage",
       "dashboard": "Dashboard",
       "viewStore": "View store",
+      "viewOnReeent": "View my reeent page",
+      "openStorefront": "My site",
+      "openReeentListing": "My reeent page",
       "newReservation": "New reservation",
       "reservationLimitReached": "Limit reached",
       "help": "Help",
@@ -683,6 +688,13 @@
         "description": "Your customers are waiting for your response",
         "action": "Handle"
       },
+      "reeentStripe": {
+        "title": "Your store isn't visible on <reeent>reeent</reeent> yet",
+        "description": "Until online payments are active, reeent does not publish your store. The launch offer (0 € reeent commission for life) applies from publication, as long as spots remain.",
+        "continueSetup": "Continue Stripe setup",
+        "activate": "Activate online payments",
+        "paymentSettings": "Payment settings"
+      },
       "setup": {
         "title": "Getting started",
         "description": "A few steps to get started",
@@ -698,6 +710,7 @@
         "descriptions": {
           "addFirstProduct": "Add your first product so customers can start booking.",
           "connectStripe": "Connect Stripe to accept online card payments when customers book.",
+          "connectStripeReeent": "Until Stripe is active, your store is not visible on reeent. Connect Stripe to get published and accept card payments.",
           "firstReservation": "Share your store with customers or create a reservation manually.",
           "firstCompleted": "Once the rental is returned, mark the reservation as completed."
         },
@@ -6364,6 +6377,17 @@
       "requestModeDescription": "Customers send a request. You approve and collect payment yourself (cash, bank transfer, card on site).",
       "requestModeNote": "You approve and collect payment for every booking. You can switch to online payment anytime from settings.",
       "configComplete": "Setup complete!",
+      "reeent": {
+        "title": "Turn on online payments",
+        "description": "On reeent, customers book and pay online. That's what earns your store the “Book online” badge and lifts it up the results.",
+        "whyTitle": "Why it's required",
+        "panelWhyTitle": "Why Stripe on reeent?",
+        "why1": "Payments go straight from the customer to your bank account, through Stripe. Neither reeent nor Louez ever touches the money.",
+        "why2": "That's what makes instant booking possible — nothing to chase, nothing left unpaid on your side.",
+        "withoutStripe": "Without an active Stripe account your Louez store still works (reservations fall back to manual approval), but it only shows up on reeent once Stripe is active.",
+        "later": "Later",
+        "laterNote": "You can turn it on from your dashboard whenever you want. Your store is published on reeent automatically as soon as Stripe is active; until then, your Louez reservations go through manual approval."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "Why online payment?",
@@ -6439,21 +6463,40 @@
       "reeent": "reeent"
     },
     "reeent": {
-      "title": "You're coming from reeent",
-      "description": "Two minutes to see how reeent and Louez work together.",
-      "products": {
-        "title": "The two products",
-        "body": "reeent is the storefront, Louez is your tool. Renters find your equipment on reeent; here you manage your bookings, payments and calendar."
+      "title": "You're coming from <reeent>reeent</reeent>",
+      "description": "One question before you set up your shop.",
+      "introDescription": "Three things to know, then one question.",
+      "status": {
+        "label": "You rent out",
+        "professional": "As a business",
+        "professionalHint": "You have a company, an association or a registered activity.",
+        "individual": "As an individual",
+        "individualHint": "You rent out your own things, without a company.",
+        "hint": "Your status is shown on reeent and adapts what follows."
       },
-      "offer": {
-        "title": "The offer",
-        "body": "reeent lifetime offer: the first 1000 owners published on reeent keep 0 € reeent commission, forever.",
-        "remaining": "{remaining} spots left out of {total}.",
-        "closedBody": "The launch offer is now full. Publishing on reeent is still the simplest way to get seen by renters."
-      },
-      "pricing": {
-        "title": "Louez pricing",
-        "body": "Louez pricing applies as usual: no subscription, you pay as you go — 1 € per booking, decreasing with volume. No fixed fees."
+      "panel": {
+        "title": "What to know",
+        "products": {
+          "title": "Two products, one account",
+          "body": "reeent is the storefront: that's where customers find your gear. Louez is your tool: bookings, payments and calendar are handled here.",
+          "individualBody": "You don't need a company. reeent is the storefront, Louez is your tool: list your items, manage your bookings and get paid online."
+        },
+        "offer": {
+          "title": "Launch offer",
+          "body": "The first {total} owners published on reeent keep 0 € reeent commission, forever.",
+          "remaining": "{remaining} spots left out of {total}.",
+          "closedBody": "The launch offer is full. Publishing on reeent is still the simplest way to get seen."
+        },
+        "pricing": {
+          "title": "What Louez costs",
+          "amount": "1 €",
+          "amountUnit": "per booking",
+          "amountDetail": "Decreasing with volume.",
+          "quietMonth": "A month without rentals: nothing to pay.",
+          "subscription": "A monthly subscription if you rent a lot.",
+          "switch": "Switch between the two whenever you like.",
+          "individualNote": "Rental income is yours to declare according to your situation; if the activity becomes professional, we'll ask you to switch status."
+        }
       }
     }
   },
@@ -6554,6 +6597,7 @@
     "signature": {
       "validated": "Validated",
       "signed": "Signed",
+      "pending": "Awaiting signature",
       "landlordText": "The landlord certifies the accuracy of the above information and the availability of the equipment for the indicated period.",
       "customerText": "I acknowledge that I have read and agree to the general rental terms and conditions without reservation.",
       "dateLabel": "Date:",

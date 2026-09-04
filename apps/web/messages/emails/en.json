@@ -24,6 +24,10 @@
     "summary": "Summary",
     "seeYouSoon": "See you soon,\n{storeName}"
   },
+  "payAsYouGoInvoice": {
+    "usageLine": "Rentals {billingMonth} — {count, plural, one {# rental} other {# rentals}}",
+    "marketplaceLine": "reeent reservations {billingMonth} — {count, plural, one {# reservation} other {# reservations}}"
+  },
   "verificationCode": {
     "subject": "Your login code: {code}",
     "title": "Login code",

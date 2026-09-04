@@ -81,6 +81,12 @@ export const useProfileStep = ({
           imageUrl = uploaded.url;
         }
 
+        // The onSubmit validator already rejects a missing status (ADR 010);
+        // this only narrows the nullable form value for the server action.
+        if (value.businessType === null) {
+          throw new Error("errors.invalidData");
+        }
+
         const result = await updateUserProfile({
           name: value.name,
           businessType: value.businessType,

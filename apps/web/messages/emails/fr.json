@@ -24,6 +24,10 @@
     "summary": "Récapitulatif",
     "seeYouSoon": "À bientôt,\n{storeName}"
   },
+  "payAsYouGoInvoice": {
+    "usageLine": "Locations {billingMonth} — {count} location(s)",
+    "marketplaceLine": "Réservations reeent {billingMonth} — {count} réservation(s)"
+  },
   "verificationCode": {
     "subject": "Votre code de connexion: {code}",
     "title": "Code de connexion",

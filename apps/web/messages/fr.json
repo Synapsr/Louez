@@ -160,6 +160,8 @@
     "or": "ou",
     "loginTitle": "Bienvenue sur louez",
     "loginDescription": "Entrez votre email pour continuer. Si vous n'avez pas de compte, il sera créé automatiquement.",
+    "reeentLoginTitle": "Bienvenue sur louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent est la vitrine, louez est votre outil : réservations, paiements et calendrier se gèrent ici. Si vous n'avez pas de compte, il sera créé automatiquement.",
     "linkWillBeSent": "Un lien sécurisé vous sera envoyé par email. Pas de mot de passe à retenir.",
     "checkEmail": "Vérifiez votre boîte mail",
     "emailSentTo": "Un lien de connexion a été envoyé à",
@@ -337,6 +339,9 @@
       "manage": "Gestion",
       "dashboard": "Dashboard",
       "viewStore": "Voir la boutique",
+      "viewOnReeent": "Voir ma page reeent",
+      "openStorefront": "Mon site",
+      "openReeentListing": "Ma page reeent",
       "newReservation": "Nouvelle réservation",
       "reservationLimitReached": "Limite atteinte",
       "help": "Aide",
@@ -683,6 +688,13 @@
         "description": "Vos clients attendent votre réponse",
         "action": "Traiter"
       },
+      "reeentStripe": {
+        "title": "Votre boutique n'est pas encore visible sur <reeent>reeent</reeent>",
+        "description": "Tant que les paiements en ligne ne sont pas activés, reeent ne publie pas votre boutique. L'offre de lancement (0 € de commission reeent à vie) s'applique dès la publication, tant qu'il reste des places.",
+        "continueSetup": "Continuer la configuration Stripe",
+        "activate": "Activer les paiements en ligne",
+        "paymentSettings": "Paramètres de paiement"
+      },
       "setup": {
         "title": "Mise en route",
         "description": "Quelques étapes pour bien démarrer",
@@ -698,6 +710,7 @@
         "descriptions": {
           "addFirstProduct": "Ajoutez votre premier produit pour que vos clients puissent réserver.",
           "connectStripe": "Connectez Stripe pour accepter les paiements par carte lors de la réservation.",
+          "connectStripeReeent": "Tant que Stripe n'est pas activé, votre boutique n'est pas visible sur reeent. Connectez Stripe pour être publié et accepter les paiements par carte.",
           "firstReservation": "Partagez votre boutique avec vos clients ou créez une réservation manuellement.",
           "firstCompleted": "Une fois la location rendue, marquez la réservation comme terminée."
         },
@@ -6364,6 +6377,17 @@
       "requestModeDescription": "Les clients envoient une demande. Vous validez et encaissez vous-même (espèces, virement, CB sur place).",
       "requestModeNote": "Vous gérez la validation et le paiement de chaque réservation. Vous pourrez passer au paiement en ligne à tout moment depuis les paramètres.",
       "configComplete": "Configuration terminée !",
+      "reeent": {
+        "title": "Activez le paiement en ligne",
+        "description": "Sur reeent, vos clients réservent et paient en ligne. C'est ce qui rend votre boutique « Réservable en ligne » et la fait remonter dans les résultats.",
+        "whyTitle": "Pourquoi c'est nécessaire",
+        "panelWhyTitle": "Pourquoi Stripe sur reeent ?",
+        "why1": "Le paiement va directement du client à votre compte bancaire, via Stripe. Ni reeent ni Louez ne touchent l'argent.",
+        "why2": "C'est ce qui permet la réservation instantanée, sans relance ni impayé de votre côté.",
+        "withoutStripe": "Sans compte Stripe actif, votre boutique Louez fonctionne (réservations en validation manuelle), mais elle n'apparaîtra sur reeent qu'une fois Stripe activé.",
+        "later": "Plus tard",
+        "laterNote": "Vous pourrez l'activer depuis votre dashboard. Votre boutique sera publiée sur reeent automatiquement dès que Stripe sera actif ; en attendant, vos réservations Louez passent en validation manuelle."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "Pourquoi le paiement en ligne ?",
@@ -6439,21 +6463,40 @@
       "reeent": "reeent"
     },
     "reeent": {
-      "title": "Vous arrivez de reeent",
-      "description": "Deux minutes pour comprendre comment reeent et Louez fonctionnent ensemble.",
-      "products": {
-        "title": "Les deux produits",
-        "body": "reeent est la vitrine, Louez est votre outil. Les particuliers trouvent votre matériel sur reeent ; vous gérez ici vos réservations, paiements et calendrier."
+      "title": "Vous arrivez de <reeent>reeent</reeent>",
+      "description": "Une question avant de créer votre boutique.",
+      "introDescription": "Trois points, puis une question.",
+      "status": {
+        "label": "Vous louez",
+        "professional": "En professionnel",
+        "professionalHint": "Vous avez une entreprise, une association ou une activité déclarée.",
+        "individual": "En particulier",
+        "individualHint": "Vous louez vos propres objets, sans entreprise.",
+        "hint": "Votre statut est affiché sur reeent et adapte la suite."
       },
-      "offer": {
-        "title": "L'offre",
-        "body": "Offre reeent à vie : les 1000 premiers loueurs publiés sur reeent gardent 0 € de commission reeent, pour toujours.",
-        "remaining": "Il reste {remaining} places sur {total}.",
-        "closedBody": "L'offre de lancement est complète. Publier sur reeent reste le moyen le plus simple de vous rendre visible auprès des particuliers."
-      },
-      "pricing": {
-        "title": "Le pricing Louez",
-        "body": "Le pricing Louez s'applique normalement : sans abonnement, vous payez à l'usage — 1 € par réservation, dégressif au volume. Aucuns frais fixes."
+      "panel": {
+        "title": "Ce qu'il faut savoir",
+        "products": {
+          "title": "Deux produits, un compte",
+          "body": "reeent est la vitrine : vos clients y trouvent votre matériel. Louez est votre outil : réservations, paiements et calendrier se gèrent ici.",
+          "individualBody": "Pas besoin d'entreprise. reeent est la vitrine, Louez est votre outil : publiez vos objets, gérez vos réservations et encaissez en ligne."
+        },
+        "offer": {
+          "title": "Offre de lancement",
+          "body": "Les {total} premiers loueurs publiés sur reeent gardent 0 € de commission reeent, pour toujours.",
+          "remaining": "Il reste {remaining} places sur {total}.",
+          "closedBody": "L'offre de lancement est complète. Publier sur reeent reste le moyen le plus simple de vous rendre visible."
+        },
+        "pricing": {
+          "title": "Ce que coûte Louez",
+          "amount": "1 €",
+          "amountUnit": "par réservation",
+          "amountDetail": "Dégressif au volume.",
+          "quietMonth": "Un mois sans location : rien à payer.",
+          "subscription": "Un abonnement mensuel si vous louez beaucoup.",
+          "switch": "On change de formule quand on veut.",
+          "individualNote": "Vos revenus de location sont à déclarer selon votre situation ; si l'activité devient professionnelle, nous vous demanderons de changer de statut."
+        }
       }
     }
   },
@@ -6554,6 +6597,7 @@
     "signature": {
       "validated": "Validé",
       "signed": "Signé",
+      "pending": "En attente de signature",
       "landlordText": "Le loueur certifie l'exactitude des informations ci-dessus et la disponibilité du matériel pour la période indiquée.",
       "customerText": "Je reconnais avoir pris connaissance des conditions générales de location et les accepte sans réserve.",
       "dateLabel": "Date :",

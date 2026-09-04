@@ -9,21 +9,4 @@ SET
   `usage_fee_amount_cents` = `invoiced_amount_cents`;--> statement-breakpoint
 ALTER TABLE `store_marketplace_channels` ADD `lifetime_fee_waiver_at` timestamp;--> statement-breakpoint
 ALTER TABLE `store_marketplace_channels` ADD `cohort_rank` int;--> statement-breakpoint
-CREATE TEMPORARY TABLE `reeent_launch_cohort_backfill` AS
-SELECT
-  `id`,
-  ROW_NUMBER() OVER (
-    ORDER BY COALESCE(`published_at`, `created_at`), `created_at`, `id`
-  ) AS `cohort_rank`
-FROM `store_marketplace_channels`
-WHERE `published_at` IS NOT NULL
-ORDER BY COALESCE(`published_at`, `created_at`), `created_at`, `id`
-LIMIT 1000;--> statement-breakpoint
-UPDATE `store_marketplace_channels` AS `channel`
-INNER JOIN `reeent_launch_cohort_backfill` AS `cohort`
-  ON `cohort`.`id` = `channel`.`id`
-SET
-  `channel`.`cohort_rank` = `cohort`.`cohort_rank`,
-  `channel`.`lifetime_fee_waiver_at` = COALESCE(`channel`.`published_at`, `channel`.`created_at`);--> statement-breakpoint
-DROP TEMPORARY TABLE `reeent_launch_cohort_backfill`;--> statement-breakpoint
 ALTER TABLE `store_marketplace_channels` ADD CONSTRAINT `store_marketplace_channels_cohort_rank_unique` UNIQUE(`cohort_rank`);

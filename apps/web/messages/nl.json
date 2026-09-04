@@ -160,6 +160,8 @@
     "or": "of",
     "loginTitle": "Welkom bij louez",
     "loginDescription": "Voer uw e-mail in om door te gaan. Als u geen account heeft, wordt er automatisch een aangemaakt.",
+    "reeentLoginTitle": "Welkom bij louez × <reeent>reeent</reeent>",
+    "reeentLoginDescription": "reeent is de etalage, louez is uw tool: reserveringen, betalingen en agenda beheert u hier. Als u geen account heeft, wordt er automatisch een aangemaakt.",
     "linkWillBeSent": "Een beveiligde link wordt naar uw e-mail gestuurd. Geen wachtwoord te onthouden.",
     "checkEmail": "Controleer uw e-mail",
     "emailSentTo": "Een inloglink is verzonden naar",
@@ -337,6 +339,9 @@
       "manage": "Beheren",
       "dashboard": "Dashboard",
       "viewStore": "Winkel bekijken",
+      "viewOnReeent": "Mijn reeent-pagina bekijken",
+      "openStorefront": "Mijn site",
+      "openReeentListing": "Mijn reeent-pagina",
       "newReservation": "Nieuwe reservering",
       "reservationLimitReached": "Limiet bereikt",
       "help": "Hulp",
@@ -644,6 +649,13 @@
         "description": "Uw klanten wachten op uw reactie",
         "action": "Afhandelen"
       },
+      "reeentStripe": {
+        "title": "Je winkel is nog niet zichtbaar op <reeent>reeent</reeent>",
+        "description": "Zolang online betalingen niet actief zijn, publiceert reeent je winkel niet. De lanceeraanbieding (0 € reeent-commissie voor het leven) geldt vanaf de publicatie, zolang er plaatsen zijn.",
+        "continueSetup": "Stripe-configuratie voortzetten",
+        "activate": "Online betalingen activeren",
+        "paymentSettings": "Betalingsinstellingen"
+      },
       "setup": {
         "title": "Aan de slag",
         "description": "Enkele stappen om te beginnen",
@@ -659,6 +671,7 @@
         "descriptions": {
           "addFirstProduct": "Voeg je eerste product toe zodat klanten kunnen boeken.",
           "connectStripe": "Koppel Stripe om kaartbetalingen bij het boeken te accepteren.",
+          "connectStripeReeent": "Zolang Stripe niet actief is, is je winkel niet zichtbaar op reeent. Koppel Stripe om gepubliceerd te worden en kaartbetalingen te accepteren.",
           "firstReservation": "Deel je winkel met klanten of maak handmatig een reservering aan.",
           "firstCompleted": "Zodra de verhuur is teruggebracht, markeer je de reservering als voltooid."
         },
@@ -6364,6 +6377,17 @@
       "requestModeDescription": "Klanten sturen een aanvraag. Jij keurt goed en int zelf de betaling (contant, overschrijving, kaart ter plaatse).",
       "requestModeNote": "Je keurt elke reservering goed en int zelf de betaling. Je kunt via de instellingen altijd overstappen op online betaling.",
       "configComplete": "Configuratie voltooid!",
+      "reeent": {
+        "title": "Zet online betalen aan",
+        "description": "Op reeent reserveren en betalen je klanten online. Dat maakt je shop “Réservable en ligne” en zet hem hoger in de resultaten.",
+        "whyTitle": "Waarom dit nodig is",
+        "panelWhyTitle": "Waarom Stripe op reeent?",
+        "why1": "De betaling gaat via Stripe rechtstreeks van de klant naar je bankrekening. reeent noch Louez raakt het geld aan.",
+        "why2": "Daardoor is direct reserveren mogelijk — niets achteraf innen, niets onbetaald aan jouw kant.",
+        "withoutStripe": "Zonder actief Stripe-account blijft je Louez-shop werken (reserveringen vallen terug op handmatige goedkeuring), maar hij verschijnt pas op reeent zodra Stripe actief is.",
+        "later": "Later",
+        "laterNote": "Je kunt het altijd via je dashboard aanzetten. Je shop wordt automatisch op reeent gepubliceerd zodra Stripe actief is; tot die tijd gaan je Louez-reserveringen via handmatige goedkeuring."
+      },
       "panel": {
         "payment": {
           "benefitsTitle": "Waarom online betaling?",
@@ -6439,21 +6463,40 @@
       "reeent": "reeent"
     },
     "reeent": {
-      "title": "Je komt van reeent",
-      "description": "Twee minuten om te zien hoe reeent en Louez samenwerken.",
-      "products": {
-        "title": "De twee producten",
-        "body": "reeent is de etalage, Louez is jouw gereedschap. Particulieren vinden je materiaal op reeent; hier beheer je je reserveringen, betalingen en agenda."
+      "title": "Je komt van <reeent>reeent</reeent>",
+      "description": "Eén vraag voordat je je shop aanmaakt.",
+      "introDescription": "Drie punten, dan één vraag.",
+      "status": {
+        "label": "Je verhuurt",
+        "professional": "Als bedrijf",
+        "professionalHint": "Je hebt een bedrijf, een vereniging of een ingeschreven activiteit.",
+        "individual": "Als particulier",
+        "individualHint": "Je verhuurt je eigen spullen, zonder bedrijf.",
+        "hint": "Je status wordt op reeent getoond en past het vervolg aan."
       },
-      "offer": {
-        "title": "De aanbieding",
-        "body": "reeent-aanbieding voor het leven: de eerste 1000 verhuurders die op reeent gepubliceerd zijn, houden voor altijd 0 € reeent-commissie.",
-        "remaining": "Er zijn nog {remaining} van de {total} plaatsen vrij.",
-        "closedBody": "De lanceeraanbieding is volzet. Publiceren op reeent blijft de eenvoudigste manier om zichtbaar te worden bij particulieren."
-      },
-      "pricing": {
-        "title": "De Louez-prijzen",
-        "body": "De Louez-prijzen gelden gewoon: geen abonnement, je betaalt per gebruik — 1 € per reservering, degressief bij volume. Geen vaste kosten."
+      "panel": {
+        "title": "Goed om te weten",
+        "products": {
+          "title": "Twee producten, één account",
+          "body": "reeent is de etalage: daar vinden klanten je materiaal. Louez is jouw gereedschap: reserveringen, betalingen en agenda beheer je hier.",
+          "individualBody": "Je hebt geen bedrijf nodig. reeent is de etalage, Louez is jouw gereedschap: plaats je spullen, beheer je reserveringen en word online betaald."
+        },
+        "offer": {
+          "title": "Lanceeraanbod",
+          "body": "De eerste {total} verhuurders die op reeent publiceren, houden 0 € reeent-commissie, voor altijd.",
+          "remaining": "Nog {remaining} van {total} plaatsen vrij.",
+          "closedBody": "Het lanceeraanbod is vol. Publiceren op reeent blijft de eenvoudigste manier om zichtbaar te worden."
+        },
+        "pricing": {
+          "title": "Wat Louez kost",
+          "amount": "1 €",
+          "amountUnit": "per reservering",
+          "amountDetail": "Lager bij meer volume.",
+          "quietMonth": "Een maand zonder verhuur: niets te betalen.",
+          "subscription": "Een maandabonnement als je veel verhuurt.",
+          "switch": "Je wisselt wanneer je wilt.",
+          "individualNote": "Huurinkomsten geef je zelf op volgens je situatie; wordt het een beroepsactiviteit, dan vragen we je van status te wisselen."
+        }
       }
     }
   },

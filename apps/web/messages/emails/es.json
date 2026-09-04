@@ -24,6 +24,10 @@
     "timezone": "Zona horaria: {timezone}",
     "seeYouSoon": "Hasta pronto,\n{storeName}"
   },
+  "payAsYouGoInvoice": {
+    "usageLine": "Alquileres {billingMonth} — {count, plural, one {# alquiler} other {# alquileres}}",
+    "marketplaceLine": "Reservas reeent {billingMonth} — {count, plural, one {# reserva} other {# reservas}}"
+  },
   "verificationCode": {
     "subject": "Su codigo de acceso: {code}",
     "title": "Codigo de acceso",
