@@ -21,7 +21,9 @@ import type {
   BusinessHours,
   BusinessHoursValidation,
   CombinationAvailability,
+  PricingKind,
   ProductAvailability,
+  StockKind,
 } from "@louez/types";
 import { Button } from "@louez/ui";
 import { Input } from "@louez/ui";
@@ -50,8 +52,10 @@ import {
 
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 import { useBrowserTimezoneCity } from "@/hooks/use-browser-timezone-city";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import { useCart } from "@/contexts/cart-context";
+import type { StockQuantityLimit } from "@louez/utils";
 
 interface PricingTier {
   id: string;
@@ -68,7 +72,10 @@ interface Accessory {
   price: string;
   deposit: string;
   images: string[] | null;
-  quantity: number;
+  quantity: StockQuantityLimit;
+  required?: boolean | null;
+  requiredQuantity?: number | null;
+  pricingKind?: PricingKind | null;
   pricingMode: "day" | "hour" | "week" | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: PricingTier[];
@@ -97,8 +104,10 @@ interface Product {
   price: string;
   deposit: string | null;
   quantity: number;
+  stockKind?: StockKind | null;
   displayQuantity?: number;
   category: { id: string; name: string; order?: number | null } | null;
+  pricingKind?: PricingKind | null;
   pricingMode?: PricingMode | null;
   basePeriodMinutes?: number | null;
   enforceStrictTiers?: boolean;
@@ -216,13 +225,14 @@ export function RentalContent({
 
   // Format start and end datetime in store timezone
   const storeTimezone = store.settings?.timezone;
+  const { intl: formatLocale } = useFormatLocale();
   const startDateTime = useMemo(
-    () => formatDateTime(startDate, { timezone: storeTimezone }),
-    [startDate, storeTimezone],
+    () => formatDateTime(startDate, { timezone: storeTimezone, locale: formatLocale }),
+    [formatLocale, startDate, storeTimezone],
   );
   const endDateTime = useMemo(
-    () => formatDateTime(endDate, { timezone: storeTimezone }),
-    [endDate, storeTimezone],
+    () => formatDateTime(endDate, { timezone: storeTimezone, locale: formatLocale }),
+    [endDate, formatLocale, storeTimezone],
   );
 
   const timezoneCity = useBrowserTimezoneCity(storeTimezone);
@@ -675,8 +685,11 @@ export function RentalContent({
                     product={product}
                     storeSlug={store.slug}
                     availableQuantity={
-                      avail?.availableQuantity ?? product.displayQuantity ?? product.quantity
+                      avail
+                        ? avail.availableQuantity
+                        : (product.displayQuantity ?? product.quantity)
                     }
+                    unavailableReason={avail?.reason}
                     startDate={startDate}
                     endDate={endDate}
                     availableCombinations={availableCombinations as CombinationAvailability[]}

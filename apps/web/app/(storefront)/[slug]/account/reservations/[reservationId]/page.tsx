@@ -7,14 +7,14 @@ import {
   XCircleSolidIcon,
 } from '@louez/ui/icons'
 import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
+import { getLocale, getTranslations } from 'next-intl/server'
 import { db } from '@louez/db'
-import { stores, reservations } from '@louez/db'
-import { eq, and } from 'drizzle-orm'
+import { documents, invoices, stores, reservations } from '@louez/db'
+import { eq, and, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { getStorefrontUrl, storefrontRedirect } from '@/lib/storefront-url'
 import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+
 import {
   ArrowLeft,
   Calendar,
@@ -30,6 +30,7 @@ import {
   AlertCircle,
   History,
   Banknote,
+  Download,
 } from 'lucide-react'
 
 import { Button } from '@louez/ui'
@@ -42,10 +43,12 @@ import { getCustomerSession } from '../../actions'
 import { DownloadContractButton } from './download-contract-button'
 import { PayNowButton } from './pay-now-button'
 import { QuoteActions } from './quote-actions'
+import { SignContractButton } from './sign-contract-button'
 import { ProductImage } from '@/components/product/product-image'
 import { ReviewPromptCard } from '@/components/storefront/review-prompt-card'
 import { buildReviewUrl } from '@/lib/google-places'
 import { formatStoreDate } from '@/lib/utils/store-date'
+import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale'
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -61,6 +64,8 @@ export default async function ReservationDetailPage({
   const { slug, reservationId } = await params
   const t = await getTranslations('storefront.account')
   const tCart = await getTranslations('storefront.cart')
+  const locale = await getLocale()
+  const { intl: formatLocale, dateFns: dateLocale } = getConfiguredFormatLocale(locale)
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
@@ -193,6 +198,26 @@ export default async function ReservationDetailPage({
     notFound()
   }
 
+  const invoiceDocuments = await db
+    .select({
+      id: invoices.id,
+      number: invoices.number,
+      type: invoices.type,
+      issueDate: invoices.issueDate,
+      totalInclTax: invoices.totalInclTax,
+      currency: invoices.currency,
+    })
+    .from(invoices)
+    .innerJoin(documents, eq(documents.id, invoices.documentId))
+    .where(
+      and(
+        eq(invoices.reservationId, reservationId),
+        eq(invoices.storeId, store.id),
+        eq(invoices.customerId, session.customerId),
+      ),
+    )
+    .orderBy(desc(invoices.issueDate), desc(invoices.createdAt))
+
   const config = statusConfig[reservation.status as ReservationStatus]
   const StatusIcon = config.icon
 
@@ -240,15 +265,25 @@ export default async function ReservationDetailPage({
               </h1>
             </div>
             <p className="text-sm text-muted-foreground">
-              {t('createdAt', { date: format(reservation.createdAt, 'dd MMMM yyyy', { locale: fr }) })}
+              {t('createdAt', { date: format(reservation.createdAt, 'dd MMMM yyyy', { locale: dateLocale }) })}
             </p>
           </div>
-          {canDownloadContract && (
-            <DownloadContractButton
-              href={getStorefrontUrl(slug, `/account/reservations/${reservationId}/contract`)}
-              label={t('downloadContract')}
-            />
-          )}
+          <div className="flex flex-wrap items-start gap-2">
+            {canDownloadContract && !reservation.signedAt && (
+              <SignContractButton
+                reservationId={reservationId}
+                label={t('signContract')}
+                confirmation={t('signContractConfirmation')}
+                errorLabel={t('signContractError')}
+              />
+            )}
+            {canDownloadContract && (
+              <DownloadContractButton
+                href={getStorefrontUrl(slug, `/account/reservations/${reservationId}/contract`)}
+                label={t('downloadContract')}
+              />
+            )}
+          </div>
         </div>
 
         {/* Status Card */}
@@ -332,11 +367,21 @@ export default async function ReservationDetailPage({
                   {t('start')}
                 </div>
                 <p className="font-semibold text-lg">
-                  {formatStoreDate(reservation.startDate, storeTimezone, 'DAY_AND_DATE')}
+                  {formatStoreDate(
+                    reservation.startDate,
+                    storeTimezone,
+                    'DAY_AND_DATE',
+                    formatLocale,
+                  )}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {formatStoreDate(reservation.startDate, storeTimezone, 'TIME_ONLY')}
+                  {formatStoreDate(
+                    reservation.startDate,
+                    storeTimezone,
+                    'TIME_ONLY',
+                    formatLocale,
+                  )}
                 </p>
               </div>
 
@@ -350,11 +395,21 @@ export default async function ReservationDetailPage({
                   {t('end')}
                 </div>
                 <p className="font-semibold text-lg">
-                  {formatStoreDate(reservation.endDate, storeTimezone, 'DAY_AND_DATE')}
+                  {formatStoreDate(
+                    reservation.endDate,
+                    storeTimezone,
+                    'DAY_AND_DATE',
+                    formatLocale,
+                  )}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {formatStoreDate(reservation.endDate, storeTimezone, 'TIME_ONLY')}
+                  {formatStoreDate(
+                    reservation.endDate,
+                    storeTimezone,
+                    'TIME_ONLY',
+                    formatLocale,
+                  )}
                 </p>
               </div>
             </div>
@@ -369,7 +424,12 @@ export default async function ReservationDetailPage({
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide opacity-80">{t('pickedUpAt')}</p>
                         <p className="font-medium">
-                          {formatStoreDate(reservation.pickedUpAt, storeTimezone, 'dd/MM/yyyy HH:mm')}
+                          {formatStoreDate(
+                            reservation.pickedUpAt,
+                            storeTimezone,
+                            'dd/MM/yyyy HH:mm',
+                            formatLocale,
+                          )}
                         </p>
                       </div>
                     </div>
@@ -380,7 +440,12 @@ export default async function ReservationDetailPage({
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide opacity-80">{t('returnedAt')}</p>
                         <p className="font-medium">
-                          {formatStoreDate(reservation.returnedAt, storeTimezone, 'dd/MM/yyyy HH:mm')}
+                          {formatStoreDate(
+                            reservation.returnedAt,
+                            storeTimezone,
+                            'dd/MM/yyyy HH:mm',
+                            formatLocale,
+                          )}
                         </p>
                       </div>
                     </div>
@@ -420,12 +485,12 @@ export default async function ReservationDetailPage({
                     <h4 className="font-medium text-base">{item.productSnapshot.name}</h4>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5 text-sm text-muted-foreground">
                       <span>{t('quantityLabel')}: {item.quantity}</span>
-                      <span>{formatCurrency(parseFloat(item.unitPrice), currency)} {t('unitPrice')}</span>
+                      <span>{formatCurrency(parseFloat(item.unitPrice), currency, formatLocale)} {t('unitPrice')}</span>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="font-semibold text-base">
-                      {formatCurrency(parseFloat(item.totalPrice), currency)}
+                      {formatCurrency(parseFloat(item.totalPrice), currency, formatLocale)}
                     </p>
                   </div>
                 </div>
@@ -438,18 +503,18 @@ export default async function ReservationDetailPage({
             <div className="space-y-3 max-w-xs ml-auto">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('subtotalRental')}</span>
-                <span>{formatCurrency(parseFloat(reservation.subtotalAmount), currency)}</span>
+                <span>{formatCurrency(parseFloat(reservation.subtotalAmount), currency, formatLocale)}</span>
               </div>
               {parseFloat(reservation.depositAmount) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{tCart('deposit')}</span>
-                  <span>{formatCurrency(parseFloat(reservation.depositAmount), currency)}</span>
+                  <span>{formatCurrency(parseFloat(reservation.depositAmount), currency, formatLocale)}</span>
                 </div>
               )}
               <Separator />
               <div className="flex justify-between font-semibold text-lg pt-1">
                 <span>{tCart('total')}</span>
-                <span className="text-primary">{formatCurrency(parseFloat(reservation.totalAmount), currency)}</span>
+                <span className="text-primary">{formatCurrency(parseFloat(reservation.totalAmount), currency, formatLocale)}</span>
               </div>
               {/* Show paid amount if partially or fully paid */}
               {totalPaid > 0 && (
@@ -458,7 +523,7 @@ export default async function ReservationDetailPage({
                     <CheckCircle className="h-3.5 w-3.5" />
                     {t('amountPaid')}
                   </span>
-                  <span>{formatCurrency(totalPaid, currency)}</span>
+                  <span>{formatCurrency(totalPaid, currency, formatLocale)}</span>
                 </div>
               )}
 
@@ -524,7 +589,7 @@ export default async function ReservationDetailPage({
                           <p className="text-xs text-muted-foreground">
                             {t(`paymentHistory.methods.${paymentMethod}`)}
                             {' • '}
-                            {format(payment.paidAt || payment.createdAt, 'dd MMM yyyy', { locale: fr })}
+                            {format(payment.paidAt || payment.createdAt, 'dd MMM yyyy', { locale: dateLocale })}
                           </p>
                         </div>
                       </div>
@@ -536,7 +601,7 @@ export default async function ReservationDetailPage({
                             ? 'text-amber-600 dark:text-amber-400'
                             : 'text-muted-foreground'
                         }`}>
-                          {isRefund ? '-' : ''}{formatCurrency(parseFloat(payment.amount), currency)}
+                          {isRefund ? '-' : ''}{formatCurrency(parseFloat(payment.amount), currency, formatLocale)}
                         </p>
                         <p className={`text-xs ${
                           isCompleted
@@ -552,6 +617,59 @@ export default async function ReservationDetailPage({
                   )
                 })}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {invoiceDocuments.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <FileText className="h-5 w-5 text-primary" />
+                {t('invoiceDocuments.title')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0">
+              <p className="text-sm text-muted-foreground">
+                {t('invoiceDocuments.description')}
+              </p>
+              {invoiceDocuments.map((invoice) => (
+                <div
+                  key={invoice.id}
+                  className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {t(`invoiceDocuments.types.${invoice.type}`)} {invoice.number}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatStoreDate(
+                        `${invoice.issueDate}T12:00:00Z`,
+                        'UTC',
+                        'SHORT_DATE',
+                        locale,
+                      )}
+                      {' • '}
+                      {formatCurrency(Number(invoice.totalInclTax), invoice.currency, formatLocale)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="gap-2 self-start sm:self-auto"
+                    render={
+                      <a
+                        href={getStorefrontUrl(
+                          slug,
+                          `/account/reservations/${reservationId}/invoices/${invoice.id}`,
+                        )}
+                      />
+                    }
+                  >
+                    <Download data-slot="icon" />
+                    {t('invoiceDocuments.download')}
+                  </Button>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}

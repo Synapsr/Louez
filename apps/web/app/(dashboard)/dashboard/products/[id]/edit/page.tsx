@@ -1,12 +1,15 @@
 import { notFound, redirect } from "next/navigation";
 
-import { and, eq, inArray, ne } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
-import { db, getEffectiveProductQuantities } from "@louez/db";
+import { getAccessoryCandidates } from "@louez/api/services";
 import {
   categories,
+  db,
   getBlockingReservationStatuses,
+  getEffectiveProductQuantities,
+  getProductStockKindChangeBlockers,
   products,
   reservationItemUnits,
   reservationItems,
@@ -73,25 +76,22 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     notFound();
   }
 
-  const categoriesList = await db.query.categories.findMany({
-    where: eq(categories.storeId, store.id),
-    orderBy: [categories.order],
-  });
+  const [categoriesList, availableAccessories, stockKindChangeBlockers] = await Promise.all([
+    db.query.categories.findMany({
+      where: eq(categories.storeId, store.id),
+      orderBy: [categories.order],
+    }),
+    getAccessoryCandidates({ storeId: store.id, excludeProductId: id }),
+    getProductStockKindChangeBlockers(db, { productId: id, storeId: store.id }),
+  ]);
 
-  // Get all active products for the accessories selector (excluding current product)
-  const availableAccessories = await db.query.products.findMany({
-    where: and(eq(products.storeId, store.id), eq(products.status, "active"), ne(products.id, id)),
-    columns: {
-      id: true,
-      name: true,
-      price: true,
-      images: true,
-    },
-    orderBy: (p, { asc }) => [asc(p.name)],
-  });
-
-  // Extract accessory IDs for the form
-  const accessoryIds = product.accessories.map((a) => a.accessoryId);
+  // Accessory links carry their booking rules (required + quantity per parent
+  // unit), not just the association.
+  const accessoryLinks = product.accessories.map((link) => ({
+    accessoryId: link.accessoryId,
+    required: link.required,
+    quantity: link.quantity,
+  }));
   const editableUnits = product.units.filter((unit) => unit.lifecycleStatus === "active");
   const unitIds = editableUnits.map((unit) => unit.id);
   const blockingStatuses = getBlockingReservationStatuses(
@@ -137,10 +137,12 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       </div>
 
       <ProductForm
+        key={product.id}
+        stockKindChangeBlockers={stockKindChangeBlockers}
         product={{
           ...product,
           quantity: effectiveQuantity,
-          accessoryIds,
+          accessories: accessoryLinks,
           categoryIds: product.categoryLinks.map((link) => link.categoryId),
           units: editableUnits.map((unit) => ({
             id: unit.id,

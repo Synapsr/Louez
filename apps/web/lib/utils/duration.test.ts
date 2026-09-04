@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { getMinStartDateTime, validateAdvanceNotice } from "@/lib/utils/duration";
+import {
+  formatDateTime,
+  getMinStartDateTime,
+  validateAdvanceNotice,
+} from "@/lib/utils/duration";
 
 const NOW = new Date("2026-08-11T10:00:00.000Z");
 
@@ -37,4 +41,15 @@ test("revalidates a previously acceptable date against the current clock", () =>
 
   assert.equal(validateAdvanceNotice(startDate, 24 * 60, NOW).valid, true);
   assert.equal(validateAdvanceNotice(startDate, 24 * 60, laterNow).valid, false);
+});
+
+test("formats the rental summary in the caller locale", () => {
+  assert.deepEqual(
+    formatDateTime(new Date("2026-08-27T09:00:00.000Z"), {
+      includeYear: true,
+      locale: "de-DE",
+      timezone: "UTC",
+    }),
+    { date: "Do., 27. Aug. 2026", time: "09:00" },
+  );
 });

@@ -11,8 +11,10 @@ import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Separator } fr
 import { formatCurrency } from '@louez/utils'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import { generateStoreMetadata } from '@/lib/seo'
+import { getReservationConfirmationVariant } from '@/lib/reservation-mode'
 import { formatLocationSnapshotAddress } from '@/lib/reservations/location-snapshots'
 import { formatStoreDate } from '@/lib/utils/store-date'
+import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server'
 
 interface ConfirmationPageProps {
   params: Promise<{ slug: string; reservationId: string }>
@@ -52,6 +54,7 @@ export async function generateMetadata({
 export default async function ConfirmationPage({ params }: ConfirmationPageProps) {
   const { slug, reservationId } = await params
   const t = await getTranslations('storefront.confirmation')
+  const { intl: formatLocale } = await getRequestFormatLocale()
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
@@ -79,7 +82,8 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
     notFound()
   }
 
-  const isRequest = store.settings?.reservationMode === 'request'
+  const isRequest =
+    getReservationConfirmationVariant(reservation.status) === 'request'
 
   // Delivery information — leg-based model
   const outboundMethod = (reservation.outboundMethod as 'store' | 'address') ?? 'store'
@@ -90,13 +94,29 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
   const deliveryFee = reservation.deliveryFee ? parseFloat(reservation.deliveryFee) : 0
   const pickupLocationAddress =
     formatLocationSnapshotAddress(reservation.pickupLocationSnapshot) ?? store.address
+  const returnLocationSnapshot =
+    reservation.returnLocationSnapshot ?? reservation.pickupLocationSnapshot
   const returnLocationAddress =
-    formatLocationSnapshotAddress(reservation.returnLocationSnapshot) ?? store.address
+    formatLocationSnapshotAddress(returnLocationSnapshot) ?? store.address
+  const isSameStoreLocation =
+    !hasAnyDelivery &&
+    reservation.pickupLocationSnapshot?.name === returnLocationSnapshot?.name &&
+    pickupLocationAddress === returnLocationAddress
 
   // Format dates with times in store timezone
   const storeTimezone = storeSettings.timezone
-  const startDateTime = formatStoreDate(reservation.startDate, storeTimezone, 'FULL_DATETIME')
-  const endDateTime = formatStoreDate(reservation.endDate, storeTimezone, 'FULL_DATETIME')
+  const startDateTime = formatStoreDate(
+    reservation.startDate,
+    storeTimezone,
+    'FULL_DATETIME',
+    formatLocale,
+  )
+  const endDateTime = formatStoreDate(
+    reservation.endDate,
+    storeTimezone,
+    'FULL_DATETIME',
+    formatLocale,
+  )
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -144,6 +164,23 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
 
             {/* Delivery / Pickup — per-leg display */}
             <div className="rounded-lg bg-muted/50 p-4 space-y-3">
+              {isSameStoreLocation ? (
+                <div className="flex items-start gap-3">
+                  <Store className="h-5 w-5 text-primary mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                      {t('pickupAndReturnLabel')}
+                    </p>
+                    <p className="font-medium">
+                      {reservation.pickupLocationSnapshot?.name ?? store.name}
+                    </p>
+                    {pickupLocationAddress && (
+                      <p className="text-sm text-muted-foreground">{pickupLocationAddress}</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
               {/* Outbound leg */}
               <div className="flex items-start gap-3">
                 {hasOutboundDelivery ? (
@@ -223,6 +260,8 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                   )}
                 </div>
               </div>
+                </>
+              )}
 
               {/* Fee badge */}
               {hasAnyDelivery && deliveryFee === 0 && (
@@ -248,7 +287,9 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                   <span>
                     {item.productSnapshot.name} × {item.quantity}
                   </span>
-                  <span>{formatCurrency(parseFloat(item.totalPrice), currency)}</span>
+                  <span>
+                    {formatCurrency(parseFloat(item.totalPrice), currency, formatLocale)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -259,7 +300,13 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('subtotalLabel')}</span>
-                <span>{formatCurrency(parseFloat(reservation.subtotalAmount), currency)}</span>
+                <span>
+                  {formatCurrency(
+                    parseFloat(reservation.subtotalAmount),
+                    currency,
+                    formatLocale,
+                  )}
+                </span>
               </div>
               {deliveryFee > 0 && (
                 <div className="flex justify-between text-sm">
@@ -267,7 +314,7 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                     <Truck className="h-3.5 w-3.5" />
                     {t('deliveryFeeLabel')}
                   </span>
-                  <span>{formatCurrency(deliveryFee, currency)}</span>
+                  <span>{formatCurrency(deliveryFee, currency, formatLocale)}</span>
                 </div>
               )}
               {reservation.discountAmount && parseFloat(reservation.discountAmount) > 0 && (
@@ -281,18 +328,36 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                       </Badge>
                     )}
                   </span>
-                  <span>-{formatCurrency(parseFloat(reservation.discountAmount), currency)}</span>
+                  <span>
+                    -{formatCurrency(
+                      parseFloat(reservation.discountAmount),
+                      currency,
+                      formatLocale,
+                    )}
+                  </span>
                 </div>
               )}
               {parseFloat(reservation.depositAmount) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t('depositLabel')}</span>
-                  <span>{formatCurrency(parseFloat(reservation.depositAmount), currency)}</span>
+                  <span>
+                    {formatCurrency(
+                      parseFloat(reservation.depositAmount),
+                      currency,
+                      formatLocale,
+                    )}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between font-semibold text-lg pt-2">
                 <span>{t('totalLabel')}</span>
-                <span className="text-primary">{formatCurrency(parseFloat(reservation.totalAmount), currency)}</span>
+                <span className="text-primary">
+                  {formatCurrency(
+                    parseFloat(reservation.totalAmount),
+                    currency,
+                    formatLocale,
+                  )}
+                </span>
               </div>
             </div>
           </CardContent>

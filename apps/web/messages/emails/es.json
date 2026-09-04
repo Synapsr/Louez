@@ -12,6 +12,7 @@
     "address": "Direccion",
     "pickupAddress": "Direccion de recogida",
     "returnAddress": "Direccion de devolucion",
+    "pickupAndReturnAddress": "Dirección de recogida y devolución",
     "subtotal": "Subtotal",
     "subtotalExclTax": "Subtotal sin IVA",
     "taxAmount": "IVA ({rate}%)",
@@ -143,6 +144,7 @@
     "email": "Correo:",
     "period": "Periodo:",
     "amount": "Monto:",
+    "notes": "Mensaje del cliente",
     "viewRequest": "Ver solicitud",
     "connectToManage": "Inicie sesion en su panel para aceptar o rechazar esta solicitud."
   },

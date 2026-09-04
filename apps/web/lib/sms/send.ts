@@ -15,6 +15,7 @@ import {
   deductPrepaidSmsCredit,
 } from '@/lib/plan-limits'
 import { getEmailMessages, getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
+import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale'
 
 /**
  * Localized SMS templates for customer notifications
@@ -203,21 +204,15 @@ function getSmsTemplate(locale: EmailLocale = 'en') {
 /**
  * Format date for SMS based on locale
  */
-function formatSmsDate(date: Date, locale: EmailLocale): string {
-  const localeMap: Record<EmailLocale, string> = {
-    fr: 'fr-FR',
-    en: 'en-US',
-    de: 'de-DE',
-    es: 'es-ES',
-    it: 'it-IT',
-    nl: 'nl-NL',
-    pl: 'pl-PL',
-    pt: 'pt-BR',
-  }
-
-  return date.toLocaleDateString(localeMap[locale] || 'en-US', {
+function formatSmsDate(
+  date: Date,
+  locale: EmailLocale,
+  options?: Intl.DateTimeFormatOptions
+): string {
+  return date.toLocaleDateString(getConfiguredFormatLocale(locale).intl, {
     day: '2-digit',
     month: '2-digit',
+    ...options,
   })
 }
 
@@ -585,12 +580,7 @@ export async function sendReminderPickupSms({
   const templates = getSmsTemplate(locale)
 
   // Format date for locale (with weekday for reminders)
-  const startDateStr = reservation.startDate.toLocaleDateString(
-    locale === 'fr' ? 'fr-FR' : locale === 'de' ? 'de-DE' : locale === 'es' ? 'es-ES' :
-    locale === 'it' ? 'it-IT' : locale === 'nl' ? 'nl-NL' : locale === 'pl' ? 'pl-PL' :
-    locale === 'pt' ? 'pt-BR' : 'en-US',
-    { weekday: 'short', day: '2-digit', month: '2-digit' }
-  )
+  const startDateStr = formatSmsDate(reservation.startDate, locale, { weekday: 'short' })
 
   const message = templates.reminder_pickup({
     storeName: store.name,
@@ -688,12 +678,7 @@ export async function sendReminderReturnSms({
   const templates = getSmsTemplate(locale)
 
   // Format date for locale (with weekday for reminders)
-  const endDateStr = reservation.endDate.toLocaleDateString(
-    locale === 'fr' ? 'fr-FR' : locale === 'de' ? 'de-DE' : locale === 'es' ? 'es-ES' :
-    locale === 'it' ? 'it-IT' : locale === 'nl' ? 'nl-NL' : locale === 'pl' ? 'pl-PL' :
-    locale === 'pt' ? 'pt-BR' : 'en-US',
-    { weekday: 'short', day: '2-digit', month: '2-digit' }
-  )
+  const endDateStr = formatSmsDate(reservation.endDate, locale, { weekday: 'short' })
 
   const message = templates.reminder_return({
     storeName: store.name,
@@ -1260,7 +1245,7 @@ export async function sendPaymentRequestSms({
   const templates = getSmsTemplate(locale)
 
   // Format amount
-  const formattedAmount = new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+  const formattedAmount = new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
     style: 'currency',
     currency,
   }).format(amount)
@@ -1366,7 +1351,7 @@ export async function sendDepositAuthorizationRequestSms({
   const templates = getSmsTemplate(locale)
 
   // Format amount
-  const formattedAmount = new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+  const formattedAmount = new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
     style: 'currency',
     currency,
   }).format(depositAmount)

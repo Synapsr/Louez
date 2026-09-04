@@ -36,7 +36,10 @@ export function getStoreTimezoneLabel(
   const resolvedTimezone = resolveStoreTimezone(timezone, countryCode)
 
   try {
-    const offset = formatStoreDate(date, resolvedTimezone, 'xxx')
+    // The numeric UTC offset is locale-invariant, but the formatter requires
+    // callers to make that choice explicit so human-readable dates cannot fall
+    // back silently.
+    const offset = formatStoreDate(date, resolvedTimezone, 'xxx', 'en')
     return `${resolvedTimezone} (UTC${offset})`
   } catch {
     return 'UTC (UTC+00:00)'

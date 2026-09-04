@@ -20,5 +20,7 @@ export * from "./products-dashboard";
 export * from "./push-notifications";
 export * from "./reservation-poll";
 export * from "./reservation-sign";
+export * from "./reservation-timeline";
+export * from "./required-accessories";
 export * from "./reservations-dashboard";
 export * from "./store-settings";

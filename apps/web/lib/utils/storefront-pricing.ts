@@ -1,6 +1,7 @@
-import type { PricingMode } from '@louez/types'
+import type { PricingKind, PricingMode } from '@louez/types'
 import {
   computeReductionPercent,
+  isFixedPriceProduct,
   isRateBasedProduct,
   pricingModeToMinutes,
 } from '@louez/utils'
@@ -15,6 +16,7 @@ interface StorefrontPricingTier {
 
 interface StorefrontPricingProduct {
   price: string | number
+  pricingKind?: PricingKind | null
   pricingMode?: PricingMode | null
   basePeriodMinutes?: number | null
   pricingTiers?: StorefrontPricingTier[] | null
@@ -28,8 +30,13 @@ export interface StorefrontRateRow {
 }
 
 export interface StorefrontPricingSummary {
+  pricingKind: PricingKind
   displayPrice: number
-  displayPeriodMinutes: number
+  /**
+   * Period the displayed price covers, or `null` on a fixed-price product —
+   * a forfait is billed per booking, so there is no "/ day" suffix to render.
+   */
+  displayPeriodMinutes: number | null
   showStartingFrom: boolean
   maxReductionPercent: number
   allReductionPercents: number[]
@@ -63,6 +70,9 @@ function getLegacyPricingMode(mode?: PricingMode | null): PricingMode {
 }
 
 function normalizeRateRows(product: StorefrontPricingProduct): StorefrontRateRow[] {
+  // A forfait has no rate grid: one price, whatever the rental period.
+  if (isFixedPriceProduct(product)) return []
+
   const basePrice = parseMoney(product.price)
   const pricingMode = getLegacyPricingMode(product.pricingMode)
   const basePeriodMinutes = isRateBasedProduct({
@@ -151,16 +161,31 @@ export function getStorefrontRateRows(
  * Previous behaviour normalised the cheapest per-minute rate to the base
  * period, producing misleading prices like "3.83 €/4 h" when the real
  * 4-hour price is 27 €.
+ *
+ * A fixed-price product ("forfait") short-circuits all of this: its price is
+ * the whole story — no period, no tiers, no discount.
  */
 export function getStorefrontPricingSummary(
   product: StorefrontPricingProduct,
 ): StorefrontPricingSummary {
+  if (isFixedPriceProduct(product)) {
+    return {
+      pricingKind: 'fixed',
+      displayPrice: parseMoney(product.price),
+      displayPeriodMinutes: null,
+      showStartingFrom: false,
+      maxReductionPercent: 0,
+      allReductionPercents: [],
+    }
+  }
+
   const rows = normalizeRateRows(product)
   const baseRow = rows.find((r) => r.id === '__base__') ?? rows[0]
   const allReductionPercents = rows.map((row) => row.reductionPercent).filter((p) => p > 0)
   const maxReductionPercent = Math.max(...allReductionPercents, 0)
 
   return {
+    pricingKind: 'duration',
     displayPrice: baseRow.price,
     displayPeriodMinutes: baseRow.periodMinutes,
     showStartingFrom: false,

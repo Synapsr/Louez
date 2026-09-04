@@ -3,6 +3,8 @@ import { and, desc, eq, gte, inArray, like, lte, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 
 import {
+  ConsumableStockError,
+  canTransitionReservationStatus,
   categories,
   customers,
   dailyStats,
@@ -12,6 +14,8 @@ import {
   buildUnitRentableDuringPredicate,
   getBlockingReservationStatuses,
   marketplaceCatalogTombstones,
+  getAllowedReservationStatusTransitions,
+  loadConsumableReservedQuantities,
   payments,
   productCategories,
   productStats,
@@ -19,6 +23,8 @@ import {
   products,
   reservationItems,
   reservations,
+  consumeReservationStock,
+  restoreReservationStock,
   stores,
 } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
@@ -90,6 +96,7 @@ export function createAITools(ctx: AIChatContext) {
             price: products.price,
             deposit: products.deposit,
             pricingMode: products.pricingMode,
+            stockKind: products.stockKind,
             quantity: effectiveProductQuantitySql(),
             status: products.status,
             categoryName: categories.name,
@@ -105,7 +112,13 @@ export function createAITools(ctx: AIChatContext) {
           .from(products)
           .where(and(...conditions));
 
-        return { products: rows, total: countResult?.total ?? 0 };
+        return {
+          products: rows.map((product) => ({
+            ...product,
+            quantity: product.stockKind === "untracked" ? null : product.quantity,
+          })),
+          total: countResult?.total ?? 0,
+        };
       },
     }),
 
@@ -124,9 +137,12 @@ export function createAITools(ctx: AIChatContext) {
 
         if (!product) return { error: "Product not found" };
 
-        const effectiveQuantity = product.trackUnits
-          ? product.units.filter((unit) => unit.lifecycleStatus === "active").length
-          : product.quantity;
+        const effectiveQuantity =
+          product.stockKind === "untracked"
+            ? null
+            : product.trackUnits
+              ? product.units.filter((unit) => unit.lifecycleStatus === "active").length
+              : product.quantity;
 
         return { product: { ...product, quantity: effectiveQuantity } };
       },
@@ -379,13 +395,8 @@ export function createAITools(ctx: AIChatContext) {
         });
         if (!existing) return { error: "Reservation not found" };
 
-        const validTransitions: Record<string, string[]> = {
-          pending: ["confirmed", "rejected", "cancelled"],
-          confirmed: ["ongoing", "cancelled"],
-          ongoing: ["completed"],
-        };
-        const allowed = validTransitions[existing.status];
-        if (!allowed?.includes(newStatus)) {
+        const allowed = getAllowedReservationStatusTransitions(existing.status);
+        if (!canTransitionReservationStatus(existing.status, newStatus)) {
           return {
             error: `Invalid transition: ${existing.status} → ${newStatus}. Allowed: ${allowed?.join(", ") ?? "none"}`,
           };
@@ -395,11 +406,63 @@ export function createAITools(ctx: AIChatContext) {
         if (newStatus === "ongoing") updateData.pickedUpAt = new Date();
         if (newStatus === "completed") updateData.returnedAt = new Date();
 
-        await db.update(reservations).set(updateData).where(eq(reservations.id, reservationId));
+        let transitionFrom = existing.status;
+        try {
+          const transitionResult = await db.transaction(async (tx) => {
+            const [lockedReservation] = await tx
+              .select({ status: reservations.status })
+              .from(reservations)
+              .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)))
+              .for("update");
+
+            if (!lockedReservation) {
+              return { ok: false as const, error: "Reservation not found" };
+            }
+
+            const lockedAllowed = getAllowedReservationStatusTransitions(lockedReservation.status);
+            if (!canTransitionReservationStatus(lockedReservation.status, newStatus)) {
+              return {
+                ok: false as const,
+                error: `Invalid transition: ${lockedReservation.status} → ${newStatus}. Allowed: ${lockedAllowed?.join(", ") ?? "none"}`,
+              };
+            }
+
+            if (
+              newStatus === "confirmed" &&
+              (lockedReservation.status === "pending" || lockedReservation.status === "quote")
+            ) {
+              await consumeReservationStock(tx, reservationId, ctx.storeId);
+            } else if (
+              (newStatus === "cancelled" || newStatus === "rejected") &&
+              (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
+            ) {
+              await restoreReservationStock(tx, reservationId, ctx.storeId);
+            }
+
+            await tx
+              .update(reservations)
+              .set(updateData)
+              .where(
+                and(eq(reservations.id, reservationId), eq(reservations.storeId, ctx.storeId)),
+              );
+
+            return { ok: true as const, previousStatus: lockedReservation.status };
+          });
+
+          if (!transitionResult.ok) {
+            return { error: transitionResult.error };
+          }
+          transitionFrom = transitionResult.previousStatus;
+        } catch (error) {
+          if (error instanceof ConsumableStockError) {
+            return { error: error.message };
+          }
+          throw error;
+        }
         return {
           success: true,
           number: existing.number,
-          from: existing.status,
+          from: transitionFrom,
           to: newStatus,
         };
       },
@@ -1046,7 +1109,13 @@ export function createAITools(ctx: AIChatContext) {
 
         const product = await db.query.products.findFirst({
           where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
-          columns: { id: true, name: true, quantity: true, trackUnits: true },
+          columns: {
+            id: true,
+            name: true,
+            quantity: true,
+            trackUnits: true,
+            stockKind: true,
+          },
         });
         if (!product) return { error: "Product not found" };
 
@@ -1113,15 +1182,29 @@ export function createAITools(ctx: AIChatContext) {
           turnoverBufferMinutes,
           excludedProductUnitIds,
           excludedUnitInfo,
+          consumableProductIds:
+            product.stockKind === "consumable" ? new Set([product.id]) : undefined,
         });
+        if (product.stockKind === "consumable") {
+          const consumableReservedByProduct = await loadConsumableReservedQuantities(db, {
+            storeId: ctx.storeId,
+            productIds: [product.id],
+            blockingStatuses,
+          });
+          reservedByProduct.set(product.id, consumableReservedByProduct.get(product.id) ?? 0);
+        }
         const reserved = reservedByProduct.get(productId) ?? 0;
-        const capacity = product.trackUnits ? rentableUnits.length : product.quantity;
-        const available = Math.max(0, capacity - reserved);
+        const capacity = product.trackUnits
+          ? rentableUnits.length
+          : product.stockKind === "untracked"
+            ? null
+            : product.quantity;
+        const available = capacity === null ? null : Math.max(0, capacity - reserved);
 
         return {
           product: product.name,
           totalStock: capacity,
-          reserved,
+          reserved: capacity === null ? null : reserved,
           available,
           turnoverBufferMinutes,
           startDate,

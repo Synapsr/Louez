@@ -8,11 +8,10 @@ import { Button, Label } from "@louez/ui";
 
 import { StoreSwitcher } from "@/components/dashboard/store-switcher";
 import { FormStoreNameSlug } from "@/components/form/form-store-name-slug";
+import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { AddressInput } from "@/components/ui/address-input";
 
 import { getFieldError } from "@/hooks/form/form-context";
-
-import { env } from "@/env";
 
 import { OnboardingStepHeader } from "./_components/step-header";
 import { useOnboardingSteps } from "./_lib/steps-context";
@@ -48,7 +47,7 @@ export function StoreOnboardingClientPage({
   const { form, clearSlugSubmitError, handleCountrySelection, country, latitude, longitude } =
     useStoreStep({ editingStoreId, initialCountry, shouldDetectBrowserCountry });
 
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+  const { NEXT_PUBLIC_APP_DOMAIN: domain } = usePublicEnv();
   const canSwitchAccount = Boolean(currentStoreId && stores.length > 0);
   // Back to profile only when it is part of this flow (first onboarding):
   // the step list is snapshotted per page load, so it still includes the

@@ -37,7 +37,9 @@ const advisorProductColumns = {
   description: products.description,
   price: products.price,
   deposit: products.deposit,
+  pricingKind: products.pricingKind,
   pricingMode: products.pricingMode,
+  stockKind: products.stockKind,
 } as const
 
 /**
@@ -75,7 +77,13 @@ export function createAdvisorTools(ctx: AdvisorChatContext) {
           .orderBy(products.displayOrder, products.name)
           .limit(50)
 
-        return { products: rows }
+        return {
+          products: rows.map((product) => ({
+            ...product,
+            quantity:
+              product.stockKind === 'untracked' ? null : product.quantity,
+          })),
+        }
       },
     }),
 
@@ -116,7 +124,13 @@ export function createAdvisorTools(ctx: AdvisorChatContext) {
           },
         })
 
-        return { product: { ...row, pricingTiers } }
+        return {
+          product: {
+            ...row,
+            quantity: row.stockKind === 'untracked' ? null : row.quantity,
+            pricingTiers,
+          },
+        }
       },
     }),
 
@@ -224,6 +238,7 @@ export function createAdvisorTools(ctx: AdvisorChatContext) {
             name: row.name,
             price: row.price,
             deposit: row.deposit,
+            pricingKind: row.pricingKind,
             pricingMode: row.pricingMode,
             image: row.images?.[0] ?? null,
           })),

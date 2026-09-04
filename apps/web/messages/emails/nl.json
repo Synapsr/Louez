@@ -12,6 +12,7 @@
     "address": "Adres",
     "pickupAddress": "Ophaaladres",
     "returnAddress": "Retourgadres",
+    "pickupAndReturnAddress": "Ophaal- en retouradres",
     "subtotal": "Subtotaal",
     "subtotalExclTax": "Subtotaal excl. BTW",
     "taxAmount": "BTW ({rate}%)",
@@ -143,6 +144,7 @@
     "email": "E-mail:",
     "period": "Periode:",
     "amount": "Bedrag:",
+    "notes": "Bericht van de klant",
     "viewRequest": "Aanvraag bekijken",
     "connectToManage": "Log in op uw dashboard om deze aanvraag te accepteren of af te wijzen."
   },

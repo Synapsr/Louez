@@ -24,6 +24,7 @@ const productListItemSchema = z.object({
   price: z.string(),
   deposit: z.string().nullable(),
   quantity: z.number(),
+  stockKind: z.enum(["returnable", "consumable", "untracked"]),
   status: z.enum(DASHBOARD_PRODUCT_STATUSES).nullable(),
   category: z
     .object({

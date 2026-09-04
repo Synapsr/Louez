@@ -8,6 +8,7 @@ export {
   findApplicableTier,
   calculateEffectivePrice,
   calculateRentalPrice,
+  calculateFixedPrice,
   calculateRateBasedPrice,
   calculateUnitPrice,
   generatePricingBreakdown,
@@ -20,6 +21,7 @@ export {
   snapToNearestRatePeriod,
   isRateBasedProduct,
   roundCurrency,
+  isFixedPriceProduct,
 } from "./calculate";
 
 export {
@@ -35,11 +37,17 @@ export {
 export {
   type TaxConfig,
   type PriceCalculationResultWithTax,
+  type TaxableLine,
+  type TaxLineCalculation,
+  type VatBreakdownEntry,
+  type TaxBreakdownCalculation,
+  type CalculateTaxBreakdownInput,
   calculateTaxFromExclusive,
   extractExclusiveFromInclusive,
   extractTaxFromInclusive,
   taxSettingsToConfig,
   getEffectiveTaxRate,
+  calculateTaxBreakdown,
   applyTaxToCalculation,
   calculateRentalPriceWithTax,
   formatTaxLabel,

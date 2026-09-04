@@ -130,12 +130,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
       ? inventoryDetail.units.filter((unit) => unit.lifecycleStatus === "active").length
       : 0;
 
-  const utilization = await getProductUtilizationRate({
-    storeId: store.id,
-    productId: id,
-    trackUnits: product.trackUnits,
-    totalUnits: product.trackUnits ? activeUnitCount : product.quantity,
-  });
+  const utilization =
+    product.stockKind === "untracked"
+      ? null
+      : await getProductUtilizationRate({
+          storeId: store.id,
+          productId: id,
+          trackUnits: product.trackUnits,
+          totalUnits: product.trackUnits ? activeUnitCount : product.quantity,
+        });
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -163,10 +166,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
             reservationCounts={reservationCounts}
             utilization={utilization}
             inventoryDetail={inventoryDetail}
+            stockKind={product.stockKind}
             currency={currency}
           />
 
-          <ProductInventorySection productId={product.id} inventoryDetail={inventoryDetail} />
+          {product.stockKind !== "untracked" ? (
+            <ProductInventorySection
+              productId={product.id}
+              inventoryDetail={inventoryDetail}
+              stockKind={product.stockKind}
+            />
+          ) : null}
 
           <ProductReservationsSection
             reservationsPage={reservationsPage}
@@ -174,6 +184,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             timezone={store.settings?.timezone}
             productId={product.id}
             trackUnits={product.trackUnits}
+            stockKind={product.stockKind}
             units={
               inventoryDetail.mode === "tracked"
                 ? inventoryDetail.units

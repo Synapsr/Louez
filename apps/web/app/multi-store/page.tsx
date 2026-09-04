@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { getTranslations } from 'next-intl/server'
 
 import { getUserStores } from '@/lib/store-context'
+import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server'
 import { Skeleton } from '@louez/ui'
 import { Card, CardContent, CardHeader } from '@louez/ui'
 
@@ -185,7 +186,8 @@ async function RevenueChartSection({
 }) {
   const t = await getTranslations('dashboard.multiStore')
   const tEmpty = await getTranslations('dashboard.multiStore.empty')
-  const { data, storeNames } = await getMultiStoreRevenueTrend(storeIds, period)
+  const { dateFns } = await getRequestFormatLocale()
+  const { data, storeNames } = await getMultiStoreRevenueTrend(storeIds, period, dateFns)
 
   return (
     <StoresRevenueChart

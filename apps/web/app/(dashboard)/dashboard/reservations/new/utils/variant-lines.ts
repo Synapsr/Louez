@@ -11,11 +11,12 @@ import {
   getSelectionMode,
   getTotalAvailableForSelection,
 } from '@louez/utils';
+import type { StockQuantityLimit } from '@louez/utils';
 
 import type { Product, SelectedProduct } from '../types';
 
 export interface LineQuantityConstraints {
-  lineMaxQuantity: number;
+  lineMaxQuantity: StockQuantityLimit;
   selectionCapacity: number;
   selectionMode: 'none' | 'partial' | 'full';
   hasBookingAttributes: boolean;
@@ -130,7 +131,7 @@ function getTrackedPoolCapacity(
   }
 
   if (periodProductAvailability) {
-    return Math.max(0, periodProductAvailability.availableQuantity);
+    return Math.max(0, periodProductAvailability.availableQuantity ?? 0);
   }
 
   if (combinations.length === 0) {
@@ -144,6 +145,9 @@ function getTrackedPoolCapacity(
 
 function getProductSelectableQuantity(product: Product) {
   if (!product.trackUnits) {
+    if (product.stockKind === 'untracked') {
+      return null;
+    }
     return Math.max(0, product.quantity);
   }
 
@@ -179,23 +183,25 @@ export function getLineQuantityConstraints(
     0,
   );
 
-  const productCapacity = product.trackUnits
+  const productCapacity: StockQuantityLimit = product.trackUnits
     ? getTrackedPoolCapacity(product, combinations, periodProductAvailability)
+    : product.stockKind === 'untracked'
+      ? null
     : Math.max(
         0,
         periodProductAvailability?.availableQuantity ??
           product.quantity - reservedQuantity,
       );
   const productSelectableQuantity = getProductSelectableQuantity(product);
-  const remainingSelectableQuantity = Math.max(
-    0,
-    productSelectableQuantity - otherProductQuantity,
-  );
+  const remainingSelectableQuantity =
+    productSelectableQuantity === null
+      ? null
+      : Math.max(0, productSelectableQuantity - otherProductQuantity);
 
   if (!hasBookingAttributes) {
     return {
       lineMaxQuantity: remainingSelectableQuantity,
-      selectionCapacity: productCapacity,
+      selectionCapacity: productCapacity ?? 0,
       selectionMode: 'none',
       hasBookingAttributes: false,
     };
@@ -251,7 +257,7 @@ export function getLineQuantityConstraints(
   return {
     lineMaxQuantity: Math.max(
       0,
-      Math.min(remainingSelectableQuantity, selectionCapacity),
+      Math.min(remainingSelectableQuantity ?? 0, selectionCapacity),
     ),
     selectionCapacity,
     selectionMode: selection.mode,

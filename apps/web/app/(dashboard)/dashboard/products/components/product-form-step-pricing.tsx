@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { format } from "date-fns";
-import { enUS, fr } from "date-fns/locale";
 import {
   CalendarRange,
   Check,
@@ -14,9 +13,10 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
-import type { PricingMode, Rate, TaxSettings } from "@louez/types";
+import type { PricingKind, PricingMode, Rate, TaxSettings } from "@louez/types";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -46,10 +46,9 @@ import {
   Separator,
   toastManager,
 } from "@louez/ui";
-import { ArrowLeftIcon, DatabaseIcon, LinkIcon, PricingIcon, PuzzleIcon } from "@louez/ui/icons";
+import { PricingIcon } from "@louez/ui/icons";
 import { minutesToPriceDuration, priceDurationToMinutes } from "@louez/utils";
 
-import { AccessoriesSelector } from "@/components/dashboard/accessories-selector";
 import {
   CHART_RANGE_PRESETS,
   type ChartRangePreset,
@@ -60,10 +59,6 @@ import {
   buildChartTicks,
   resolveChartMaxMinutes,
 } from "@/components/dashboard/rates-editor";
-import {
-  StockModeIndicator,
-  UnitTrackingEditor,
-} from "@/components/dashboard/unit-tracking-editor";
 import { PriceDurationInput, type PriceDurationValue } from "@/components/ui/price-duration-input";
 
 import { getFieldError } from "@/hooks/form/form-context";
@@ -81,6 +76,8 @@ import type {
   SeasonalPricingData,
 } from "../types";
 import { PricingPeriodSelector } from "./pricing-period-selector";
+import { ProductFormSectionAccessories } from "./product-form-section-accessories";
+import { ProductFormSectionStock } from "./product-form-section-stock";
 import { SeasonalPeriodFormDialog } from "./seasonal-period-form-dialog";
 
 interface ProductFormStepPricingProps {
@@ -110,6 +107,11 @@ function toLegacyPricingMode(unit: PriceDurationValue["unit"]): PricingMode {
   if (unit === "week") return "week";
   if (unit === "day") return "day";
   return "hour";
+}
+
+/** Base UI radio groups hand back an `unknown` value; narrow it here. */
+function toPricingKind(value: unknown): PricingKind {
+  return value === "fixed" ? "fixed" : "duration";
 }
 
 function hasValidBaseRate(value: PriceDurationValue | undefined): boolean {
@@ -158,22 +160,9 @@ export function ProductFormStepPricing({
   isLoadingSeasonalPricings = false,
 }: ProductFormStepPricingProps) {
   const t = useTranslations("dashboard.products.form");
-  const tUnitTracking = useTranslations("dashboard.products.form.unitTracking");
   const tValidation = useTranslations("validation");
-  const locale = useLocale();
-  const calendarLocale = locale === "fr" ? fr : enUS;
+  const { dateFns: calendarLocale } = useFormatLocale();
   const [highlightBaseRate, setHighlightBaseRate] = useState(false);
-
-  // Stock mode stepper: the mode-choice screen only shows while no mode is
-  // established (fresh creation). Editing an existing product lands directly
-  // on the second step.
-  const [stockModeChosen, setStockModeChosen] = useState(
-    () =>
-      Boolean(productId) ||
-      Boolean(watchedValues.trackUnits) ||
-      (watchedValues.units?.length ?? 0) > 0 ||
-      (parseInt(watchedValues.quantity || "1", 10) || 1) > 1,
-  );
 
   // Seasonal inline editing state
   const [seasonalPriceDuration, setSeasonalPriceDuration] = useState<
@@ -195,8 +184,12 @@ export function ProductFormStepPricing({
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
 
+  // A fixed price never varies with the season, so seasonal editing stays out
+  // of reach while that mode is on — without discarding the stored periods.
+  const isFixedPricing = watchedValues.pricingKind === "fixed";
+
   // Track the previous period id to detect changes and auto-save
-  const isSeasonalMode = selectedSeasonalPeriodId !== null;
+  const isSeasonalMode = !isFixedPricing && selectedSeasonalPeriodId !== null;
   const selectedPeriod = isSeasonalMode
     ? (seasonalPricings.find((sp) => sp.id === selectedSeasonalPeriodId) ?? null)
     : null;
@@ -545,6 +538,11 @@ export function ProductFormStepPricing({
     </div>
   ) : null;
 
+  const pricingKindOptions: Array<{ value: PricingKind; label: string }> = [
+    { value: "duration", label: t("pricingKindDuration") },
+    { value: "fixed", label: t("pricingKindFixed") },
+  ];
+
   const pricingCard = (
     <Card>
       <CardHeader>
@@ -556,16 +554,62 @@ export function ProductFormStepPricing({
             </CardTitle>
             <CardDescription className="mt-1.5">{t("pricingDescription")}</CardDescription>
           </div>
-          {productId && (
-            <PricingPeriodSelector
-              selectedPeriodId={selectedSeasonalPeriodId}
-              seasonalPricings={seasonalPricings}
-              basePriceValue={watchedValues.basePriceDuration?.price}
-              onSelectPeriod={handleSelectPeriod}
-              onAddPeriod={handleAddPeriod}
-              isLoading={isLoadingSeasonalPricings}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            {/* Pricing kind: a once-made choice, kept compact in the header */}
+            <form.Field name="pricingKind">
+              {(field) => (
+                <Select
+                  value={field.state.value ?? "duration"}
+                  onValueChange={(value) => {
+                    const nextKind = toPricingKind(value);
+                    field.handleChange(nextKind);
+                    // Only a flat rate can carry consumable stock; dropping
+                    // back to duration pricing has to release that choice too,
+                    // otherwise the form would submit a state the server
+                    // rejects.
+                    if (nextKind !== "fixed" && watchedValues.stockKind === "consumable") {
+                      form.setFieldValue("stockKind", "returnable");
+                    }
+                  }}
+                  disabled={isSaving || isSeasonalMode}
+                >
+                  <SelectTrigger
+                    className="h-8 w-auto min-w-36"
+                    aria-label={t("pricingKindLabel")}
+                  >
+                    <SelectValue>
+                      {
+                        pricingKindOptions.find(
+                          (option) => option.value === (field.state.value ?? "duration"),
+                        )?.label
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {pricingKindOptions.map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        label={option.label}
+                      >
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </form.Field>
+            {productId && !isFixedPricing && (
+              <PricingPeriodSelector
+                selectedPeriodId={selectedSeasonalPeriodId}
+                seasonalPricings={seasonalPricings}
+                basePriceValue={watchedValues.basePriceDuration?.price}
+                onSelectPeriod={handleSelectPeriod}
+                onAddPeriod={handleAddPeriod}
+                isLoading={isLoadingSeasonalPricings}
+              />
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -659,83 +703,101 @@ export function ProductFormStepPricing({
           </>
         ) : (
           <>
-            {/* Base pricing mode: original content */}
-            <form.Field name="basePriceDuration">
-              {(field) => {
-                const fallbackBaseRate: PriceDurationValue = {
-                  price: watchedValues.price || "",
-                  duration: 1,
-                  unit:
-                    watchedValues.pricingMode === "week"
-                      ? "week"
-                      : watchedValues.pricingMode === "hour"
-                        ? "hour"
-                        : "day",
-                };
-                const baseRateValue = field.state.value ?? fallbackBaseRate;
-                const showBaseRateHighlight =
-                  (highlightBaseRate ||
-                    showValidationErrors ||
-                    field.state.meta.errors.length > 0) &&
-                  !hasValidBaseRate(baseRateValue);
-                const baseRateError =
-                  field.state.meta.errors.length > 0
-                    ? getFieldError(field.state.meta.errors[0])
-                    : showBaseRateHighlight
-                      ? tValidation("positive")
-                      : null;
-
-                return (
-                  <div className="space-y-2">
-                    <Label helper={t("baseRateDescription")}>{t("baseRate")}</Label>
-                    <PriceDurationInput
-                      value={baseRateValue}
-                      onChange={(next) => {
-                        field.handleChange(next);
-                        form.setFieldValue("price", next.price);
-                        form.setFieldValue("pricingMode", toLegacyPricingMode(next.unit));
-                        if (highlightBaseRate && hasValidBaseRate(next)) {
-                          setHighlightBaseRate(false);
-                        }
-                      }}
-                      currency={currency}
-                      disabled={isSaving}
-                      invalid={showBaseRateHighlight}
-                    />
-                    {baseRateError ? (
-                      <p className="text-destructive text-sm font-medium">{baseRateError}</p>
-                    ) : null}
-                  </div>
-                );
-              }}
-            </form.Field>
-            <form.Field name="rateTiers">
-              {(field) => (
-                <div>
-                  <RatesEditor
-                    basePriceDuration={watchedValues.basePriceDuration}
-                    rates={field.state.value || []}
-                    onChange={(next) => {
-                      field.handleChange(next);
-                      onRateTiersEdit?.();
-                    }}
-                    enforceStrictTiers={watchedValues.enforceStrictTiers ?? true}
-                    onEnforceStrictTiersChange={(value) =>
-                      form.setFieldValue("enforceStrictTiers", value)
-                    }
-                    onRequireBaseRate={() => setHighlightBaseRate(true)}
-                    invalidRateIndexes={duplicateRateTierIndexes}
-                    currency={currency}
-                    disabled={isSaving}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-destructive text-sm font-medium">
-                      {getFieldError(field.state.meta.errors[0])}
-                    </p>
-                  )}
+            {/* Fixed pricing: one flat amount, no period, tiers or curve */}
+            {isFixedPricing ? (
+              <div className="space-y-2">
+                <Label htmlFor="price" helper={t("fixedPriceDescription")}>
+                  {t("fixedPrice")}
+                </Label>
+                <div className="w-44">
+                  <form.AppField name="price">
+                    {(field) => (
+                      <field.Input suffix={currencySymbol} placeholder={t("pricePlaceholder")} />
+                    )}
+                  </form.AppField>
                 </div>
-              )}
-            </form.Field>
+              </div>
+            ) : (
+              <>
+                {/* Base pricing mode: original content */}
+                <form.Field name="basePriceDuration">
+                  {(field) => {
+                    const fallbackBaseRate: PriceDurationValue = {
+                      price: watchedValues.price || "",
+                      duration: 1,
+                      unit:
+                        watchedValues.pricingMode === "week"
+                          ? "week"
+                          : watchedValues.pricingMode === "hour"
+                            ? "hour"
+                            : "day",
+                    };
+                    const baseRateValue = field.state.value ?? fallbackBaseRate;
+                    const showBaseRateHighlight =
+                      (highlightBaseRate ||
+                        showValidationErrors ||
+                        field.state.meta.errors.length > 0) &&
+                      !hasValidBaseRate(baseRateValue);
+                    const baseRateError =
+                      field.state.meta.errors.length > 0
+                        ? getFieldError(field.state.meta.errors[0])
+                        : showBaseRateHighlight
+                          ? tValidation("positive")
+                          : null;
+
+                    return (
+                      <div className="space-y-2">
+                        <Label helper={t("baseRateDescription")}>{t("baseRate")}</Label>
+                        <PriceDurationInput
+                          value={baseRateValue}
+                          onChange={(next) => {
+                            field.handleChange(next);
+                            form.setFieldValue("price", next.price);
+                            form.setFieldValue("pricingMode", toLegacyPricingMode(next.unit));
+                            if (highlightBaseRate && hasValidBaseRate(next)) {
+                              setHighlightBaseRate(false);
+                            }
+                          }}
+                          currency={currency}
+                          disabled={isSaving}
+                          invalid={showBaseRateHighlight}
+                        />
+                        {baseRateError ? (
+                          <p className="text-destructive text-sm font-medium">{baseRateError}</p>
+                        ) : null}
+                      </div>
+                    );
+                  }}
+                </form.Field>
+                <form.Field name="rateTiers">
+                  {(field) => (
+                    <div>
+                      <RatesEditor
+                        basePriceDuration={watchedValues.basePriceDuration}
+                        rates={field.state.value || []}
+                        onChange={(next) => {
+                          field.handleChange(next);
+                          onRateTiersEdit?.();
+                        }}
+                        enforceStrictTiers={watchedValues.enforceStrictTiers ?? true}
+                        onEnforceStrictTiersChange={(value) =>
+                          form.setFieldValue("enforceStrictTiers", value)
+                        }
+                        onRequireBaseRate={() => setHighlightBaseRate(true)}
+                        invalidRateIndexes={duplicateRateTierIndexes}
+                        currency={currency}
+                        disabled={isSaving}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-destructive text-sm font-medium">
+                          {getFieldError(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </form.Field>
+              </>
+            )}
             {storeTaxSettings?.enabled && (
               <>
                 <Separator />
@@ -853,105 +915,22 @@ export function ProductFormStepPricing({
   );
 
   const stockCard = (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          {stockModeChosen ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground hover:text-foreground h-6 w-6"
-              onClick={() => setStockModeChosen(false)}
-              aria-label={tUnitTracking("changeMode")}
-            >
-              <ArrowLeftIcon data-slot="icon" />
-            </Button>
-          ) : null}
-
-          <CardTitle className="flex items-center gap-2">
-            {" "}
-            <DatabaseIcon className="text-primary h-5 w-5 shrink-0 stroke-2" />
-            {t("stock")}
-          </CardTitle>
-          <StockModeIndicator
-            modeChosen={stockModeChosen}
-            trackUnits={watchedValues.trackUnits || false}
-            onBack={() => setStockModeChosen(false)}
-            disabled={isSaving}
-          />
-        </div>
-        <CardDescription>{t("quantityHelp")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <UnitTrackingEditor
-          currency={currency}
-          trackUnits={watchedValues.trackUnits || false}
-          onTrackUnitsChange={(value) => form.setFieldValue("trackUnits", value)}
-          bookingAttributeAxes={watchedValues.bookingAttributeAxes || []}
-          onBookingAttributeAxesChange={(axes) => form.setFieldValue("bookingAttributeAxes", axes)}
-          units={watchedValues.units || []}
-          onChange={(units) => form.setFieldValue("units", units)}
-          quantity={watchedValues.quantity || "1"}
-          onQuantityChange={(value) => {
-            form.setFieldMeta("quantity", (prev: any) => ({
-              ...prev,
-              errorMap: { ...prev?.errorMap, onSubmit: undefined },
-            }));
-            form.setFieldValue("quantity", value);
-          }}
-          modeChosen={stockModeChosen}
-          onModeChosenChange={setStockModeChosen}
-          disabled={isSaving}
-          showValidationErrors={showUnitValidationErrors}
-          productId={productId}
-        />
-      </CardContent>
-    </Card>
+    <ProductFormSectionStock
+      form={form}
+      watchedValues={watchedValues}
+      currency={currency}
+      disabled={isSaving}
+      showValidationErrors={showUnitValidationErrors}
+    />
   );
 
   const accessoriesCard = (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <LinkIcon className="h-5 w-5 shrink-0" />
-          {t("accessories")}
-        </CardTitle>
-        <CardDescription>{t("accessoriesDescription")}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {availableAccessories.length > 0 ? (
-          <form.Field name="accessoryIds">
-            {(field) => (
-              <div>
-                <AccessoriesSelector
-                  availableProducts={availableAccessories}
-                  selectedIds={field.state.value || []}
-                  onChange={field.handleChange}
-                  currency={currency}
-                  disabled={isSaving}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-destructive text-sm font-medium">
-                    {getFieldError(field.state.meta.errors[0])}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="bg-muted mb-3 rounded-full p-3">
-              <PuzzleIcon className="text-muted-foreground h-6 w-6" />
-            </div>
-            <p className="text-sm font-medium">{t("noAccessoriesAvailable")}</p>
-            <p className="text-muted-foreground mt-1 max-w-[260px] text-sm">
-              {t("noAccessoriesHint")}
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <ProductFormSectionAccessories
+      form={form}
+      availableAccessories={availableAccessories}
+      currency={currency}
+      disabled={isSaving}
+    />
   );
 
   // Pricing-only mode (edit mode renders stock/accessories as separate sections)

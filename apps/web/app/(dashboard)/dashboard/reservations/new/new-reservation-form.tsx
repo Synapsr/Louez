@@ -49,6 +49,7 @@ import {
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 import { useAppForm } from "@/hooks/form/form";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 import { useStoreTimezone } from "@/contexts/store-context";
@@ -123,6 +124,7 @@ function isInsufficientCapacityResult(result: unknown): result is {
 }
 
 export function NewReservationForm({
+  onReservationCreated,
   openReplaySource,
   customers,
   products,
@@ -137,7 +139,7 @@ export function NewReservationForm({
   storeLongitude,
   storeAddress,
   storeLocations,
-}: NewReservationFormProps) {
+}: NewReservationFormProps & { onReservationCreated: () => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -146,6 +148,7 @@ export function NewReservationForm({
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const tValidation = useTranslations("validation");
+  const { intl: formatLocale } = useFormatLocale();
   const posthog = usePostHog();
 
   useEffect(() => {
@@ -481,7 +484,8 @@ export function NewReservationForm({
         title: sendAsQuoteRef.current ? t("quoteSent") : t("reservationCreated"),
         type: "success",
       });
-      router.push(`/dashboard/reservations/${result.reservationId}`);
+      onReservationCreated();
+      router.replace(`/dashboard/reservations/${result.reservationId}`);
     } catch (error) {
       posthog.capture(productAnalyticsEvents.dashboardReservationCreationFailed, {
         ...dashboardReservationAnalyticsBaseProperties,
@@ -786,7 +790,11 @@ export function NewReservationForm({
           hasSelectedPeriod,
           getPeriodProductAvailability(product.id),
         );
-        if (constraints.lineMaxQuantity <= 0 && !options.allowUnavailable) {
+        if (
+          constraints.lineMaxQuantity !== null &&
+          constraints.lineMaxQuantity <= 0 &&
+          !options.allowUnavailable
+        ) {
           return prev;
         }
 
@@ -809,7 +817,11 @@ export function NewReservationForm({
           hasSelectedPeriod,
           getPeriodProductAvailability(product.id),
         );
-        if (constraints.lineMaxQuantity <= 0 && !options.allowUnavailable) {
+        if (
+          constraints.lineMaxQuantity !== null &&
+          constraints.lineMaxQuantity <= 0 &&
+          !options.allowUnavailable
+        ) {
           return prev;
         }
 
@@ -828,6 +840,8 @@ export function NewReservationForm({
       );
       const nextQuantity = options.allowUnavailable
         ? existingLine.quantity + 1
+        : constraints.lineMaxQuantity === null
+          ? existingLine.quantity + 1
         : Math.min(
             existingLine.quantity + 1,
             Math.max(existingLine.quantity, constraints.lineMaxQuantity),
@@ -900,10 +914,16 @@ export function NewReservationForm({
         hasSelectedPeriod,
         getPeriodProductAvailability(product.id),
       );
-      const nextQuantity = Math.max(
-        1,
-        Math.min(currentLine.quantity + delta, Math.max(1, constraints.lineMaxQuantity)),
-      );
+      const nextQuantity =
+        constraints.lineMaxQuantity === null
+          ? Math.max(1, currentLine.quantity + delta)
+          : Math.max(
+              1,
+              Math.min(
+                currentLine.quantity + delta,
+                Math.max(1, constraints.lineMaxQuantity),
+              ),
+            );
 
       if (nextQuantity === currentLine.quantity) {
         return prev;
@@ -961,7 +981,10 @@ export function NewReservationForm({
         hasSelectedPeriod,
         getPeriodProductAvailability(product.id),
       );
-      const nextQuantity = Math.min(nextLine.quantity, constraints.lineMaxQuantity);
+      const nextQuantity =
+        constraints.lineMaxQuantity === null
+          ? nextLine.quantity
+          : Math.min(nextLine.quantity, constraints.lineMaxQuantity);
 
       const normalizedLine: SelectedProduct =
         nextQuantity > 0
@@ -1400,10 +1423,20 @@ export function NewReservationForm({
                         <div className="bg-card relative flex items-center justify-between gap-3 rounded-xl border px-4 py-3 sm:gap-4">
                           <div className="min-w-0">
                             <p className="text-xs font-medium tabular-nums">
-                              {formatStoreDate(watchStartDate, timezone, "d MMM yyyy")}
+                              {formatStoreDate(
+                                watchStartDate,
+                                timezone,
+                                "d MMM yyyy",
+                                formatLocale,
+                              )}
                             </p>
                             <p className="text-muted-foreground text-[11px] tabular-nums">
-                              {formatStoreDate(watchStartDate, timezone, "HH:mm")}
+                              {formatStoreDate(
+                                watchStartDate,
+                                timezone,
+                                "HH:mm",
+                                formatLocale,
+                              )}
                             </p>
                           </div>
 
@@ -1446,10 +1479,20 @@ export function NewReservationForm({
 
                           <div className="min-w-0 text-right">
                             <p className="text-xs font-medium tabular-nums">
-                              {formatStoreDate(watchEndDate, timezone, "d MMM yyyy")}
+                              {formatStoreDate(
+                                watchEndDate,
+                                timezone,
+                                "d MMM yyyy",
+                                formatLocale,
+                              )}
                             </p>
                             <p className="text-muted-foreground text-[11px] tabular-nums">
-                              {formatStoreDate(watchEndDate, timezone, "HH:mm")}
+                              {formatStoreDate(
+                                watchEndDate,
+                                timezone,
+                                "HH:mm",
+                                formatLocale,
+                              )}
                             </p>
                           </div>
                         </div>

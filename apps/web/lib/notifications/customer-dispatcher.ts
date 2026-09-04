@@ -28,6 +28,7 @@ import {
   sendDepositAuthorizationRequestSms,
 } from "@/lib/sms/send";
 import { getSmsQuotaStatus } from "@/lib/plan-limits";
+import type { EmailAttachment } from "@/lib/email/client";
 import type {
   CustomerNotificationEventType,
   CustomerNotificationSettings,
@@ -125,6 +126,8 @@ export interface CustomerNotificationContext {
   // Deposit authorization specific fields
   depositAuthorizationAmount?: number;
   depositAuthorizationUrl?: string;
+  documentAttachments?: EmailAttachment[];
+  contractSignatureUrl?: string;
 }
 
 export interface CustomerNotificationResult {
@@ -314,6 +317,8 @@ async function sendCustomerEmail(
         ...emailParams,
         items: ctx.items || [],
         reservationUrl: ctx.reservationUrl || "",
+        documentAttachments: ctx.documentAttachments,
+        contractSignatureUrl: ctx.contractSignatureUrl,
       });
 
     case "customer_reminder_pickup":

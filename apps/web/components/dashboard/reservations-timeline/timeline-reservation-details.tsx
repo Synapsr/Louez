@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 
-import { ExternalLinkIcon, TruckIcon } from "@louez/ui/icons";
+import { DeliveryTruckIcon, ExternalLinkIcon, ReturnTruckIcon } from "@louez/ui/icons";
 import { cn, formatCurrency, formatDateShort, formatTime } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
@@ -12,11 +12,13 @@ import { getTimelineRentalAmount, type TimelineReservation } from "./timeline-ut
 interface TimelineReservationDetailsProps {
   reservation: TimelineReservation;
   currency: string;
+  locale: string;
 }
 
 export const TimelineReservationDetails = ({
   reservation,
   currency,
+  locale,
 }: TimelineReservationDetailsProps) => {
   const t = useTranslations("dashboard.reservations");
   const hasDelivery = Boolean(
@@ -82,7 +84,11 @@ export const TimelineReservationDetails = ({
           {reservation.outboundDeliveryAddress && (
             <div className="space-y-0.5">
               <span className="text-muted-foreground/70 flex items-center gap-1">
-                <TruckIcon className="h-3 w-3 shrink-0" />
+                <DeliveryTruckIcon
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0"
+                  strokeWidth={1.75}
+                />
                 {t("deliveryAddressLabel")}
               </span>
               <a
@@ -99,7 +105,11 @@ export const TimelineReservationDetails = ({
           {reservation.returnDeliveryAddress && (
             <div className="space-y-0.5">
               <span className="text-muted-foreground/70 flex items-center gap-1">
-                <TruckIcon className="h-3 w-3 shrink-0" />
+                <ReturnTruckIcon
+                  aria-hidden="true"
+                  className="size-3.5 shrink-0"
+                  strokeWidth={1.75}
+                />
                 {t("returnAddressLabel")}
               </span>
               <a
@@ -120,21 +130,21 @@ export const TimelineReservationDetails = ({
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground/70">{t("periodStart")}</span>
           <span>
-            {formatDateShort(reservation.startDate)}{" "}
-            <span className="tabular-nums">{formatTime(reservation.startDate)}</span>
+            {formatDateShort(reservation.startDate, locale)}{" "}
+            <span className="tabular-nums">{formatTime(reservation.startDate, locale)}</span>
           </span>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="text-muted-foreground/70">{t("periodEnd")}</span>
           <span>
-            {formatDateShort(reservation.endDate)}{" "}
-            <span className="tabular-nums">{formatTime(reservation.endDate)}</span>
+            {formatDateShort(reservation.endDate, locale)}{" "}
+            <span className="tabular-nums">{formatTime(reservation.endDate, locale)}</span>
           </span>
         </div>
         <div className="flex items-center justify-between gap-3 pt-0.5 font-medium">
           <span className="text-muted-foreground/70">{t("totalAmount")}</span>
           <span className="text-foreground tabular-nums">
-            {formatCurrency(getTimelineRentalAmount(reservation), currency)}
+            {formatCurrency(getTimelineRentalAmount(reservation), currency, locale)}
           </span>
         </div>
       </div>

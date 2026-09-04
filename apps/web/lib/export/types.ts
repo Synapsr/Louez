@@ -1,4 +1,9 @@
 import { z } from 'zod'
+import type { ReservationStatus } from '@louez/validations'
+import {
+  isExportDateRangeWithinLimit,
+  isValidExportDateRange,
+} from './date-range'
 
 export const exportTypes = ['payments', 'reservations', 'products'] as const
 export type ExportType = (typeof exportTypes)[number]
@@ -10,8 +15,8 @@ export const exportParamsSchema = z
   .object({
     type: z.enum(exportTypes),
     format: z.enum(exportFormats),
-    startDate: z.coerce.date().optional(),
-    endDate: z.coerce.date().optional(),
+    startDate: z.iso.date().optional(),
+    endDate: z.iso.date().optional(),
   })
   .refine(
     (data) => {
@@ -23,18 +28,56 @@ export const exportParamsSchema = z
   .refine(
     (data) => {
       if (!data.startDate || !data.endDate) return true
-      return data.endDate >= data.startDate
+      return isValidExportDateRange(data.startDate, data.endDate)
     },
     { message: 'End date must be after start date' }
   )
   .refine(
     (data) => {
       if (!data.startDate || !data.endDate) return true
-      const diffMs = data.endDate.getTime() - data.startDate.getTime()
-      const oneYearMs = 365 * 24 * 60 * 60 * 1000
-      return diffMs <= oneYearMs
+      return isExportDateRangeWithinLimit(data.startDate, data.endDate)
     },
     { message: 'Date range cannot exceed one year' }
   )
 
-export type ExportParams = z.infer<typeof exportParamsSchema>
+export type ExportRequestParams = z.infer<typeof exportParamsSchema>
+
+export type ExportParams = Omit<
+  ExportRequestParams,
+  'startDate' | 'endDate'
+> & {
+  startDate?: Date
+  endDate?: Date
+}
+
+export const contractExportStatuses = [
+  'pending',
+  'confirmed',
+  'ongoing',
+  'completed',
+  'cancelled',
+  'rejected',
+  'quote',
+  'declined',
+] as const satisfies readonly ReservationStatus[]
+
+const contractExportStatusSchema = z.enum(contractExportStatuses)
+
+export const contractExportParamsSchema = z
+  .object({
+    startDate: z.iso.date(),
+    endDate: z.iso.date(),
+    statuses: z.array(contractExportStatusSchema).min(1),
+    locale: z.enum(['fr', 'en']).default('fr'),
+  })
+  .refine((data) => isValidExportDateRange(data.startDate, data.endDate), {
+    message: 'End date must be after start date',
+  })
+  .refine(
+    (data) => isExportDateRangeWithinLimit(data.startDate, data.endDate),
+    {
+      message: 'Date range cannot exceed one year',
+    }
+  )
+
+export type ContractExportParams = z.infer<typeof contractExportParamsSchema>

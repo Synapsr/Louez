@@ -16,6 +16,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from '@louez/ui';
+import type { StockKind } from '@louez/types';
 
 import {
   ReservationConfirmDialogs,
@@ -38,6 +39,7 @@ interface ProductReservationsSectionBodyProps {
   timezone?: string;
   productId: string;
   trackUnits: boolean;
+  stockKind: StockKind;
   units: { id: string; identifier: string }[];
   quantity: number;
 }
@@ -48,6 +50,7 @@ export function ProductReservationsSectionBody({
   timezone,
   productId,
   trackUnits,
+  stockKind,
   units,
   quantity,
 }: ProductReservationsSectionBodyProps) {
@@ -116,6 +119,7 @@ export function ProductReservationsSectionBody({
             productId={productId}
             currency={currency}
             trackUnits={trackUnits}
+            stockKind={stockKind}
             units={units}
             quantity={quantity}
           />

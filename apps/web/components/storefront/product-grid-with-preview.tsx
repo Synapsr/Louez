@@ -13,7 +13,7 @@ import { formatCurrency, minutesToPriceDuration } from '@louez/utils'
 import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
 import { ProductImage } from '@/components/product/product-image'
 import { ProductPreviewModal } from './product-preview-modal'
-import type { PricingMode } from '@louez/types'
+import type { PricingKind, PricingMode, StockKind } from '@louez/types'
 import type { BusinessHours } from '@louez/types'
 import { getStorefrontPricingSummary } from '@/lib/utils/storefront-pricing'
 
@@ -33,7 +33,9 @@ interface Product {
   price: string
   images: string[] | null
   quantity: number
+  stockKind?: StockKind | null
   deposit: string | null
+  pricingKind?: PricingKind | null
   pricingMode?: PricingMode | null
   basePeriodMinutes?: number | null
   pricingTiers?: PricingTier[]
@@ -68,15 +70,25 @@ function ProductCardInteractive({
   const currency = useStoreCurrency()
   const maxDiscountPercent = useStoreMaxDiscountPercent()
   const mainImage = product.images?.[0]
-  const isAvailable = product.quantity > 0
+  const isAvailable = product.stockKind === 'untracked' || product.quantity > 0
+  // A consumable at zero is a restock away, not a scheduling conflict — say so.
+  const unavailableLabel =
+    product.stockKind === 'consumable'
+      ? tCatalog('consumableOutOfStock')
+      : tCatalog('unavailable')
 
   const pricingSummary = getStorefrontPricingSummary(product)
   const cardDiscount = maxDiscountPercent == null
     ? pricingSummary.maxReductionPercent
     : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0)
-  const displayPeriod = minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
-  const periodLabel =
-    displayPeriod.unit === 'minute'
+  // A forfait prices the whole booking — there is no period to suffix.
+  const displayPeriod =
+    pricingSummary.displayPeriodMinutes == null
+      ? null
+      : minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
+  const periodLabel = !displayPeriod
+    ? null
+    : displayPeriod.unit === 'minute'
       ? displayPeriod.duration === 1
         ? tCommon('minuteUnit', { count: 1 })
         : `${displayPeriod.duration} ${tCommon('minuteUnit', { count: displayPeriod.duration })}`
@@ -113,7 +125,7 @@ function ProductCardInteractive({
           {!isAvailable && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm">
               <Badge variant="failed" className="text-sm px-4 py-1.5">
-                {tCatalog('unavailable')}
+                {unavailableLabel}
               </Badge>
             </div>
           )}
@@ -129,7 +141,9 @@ function ProductCardInteractive({
           )}
 
           {/* Discount badge */}
-          {isAvailable && cardDiscount > 0 && product.quantity > 2 && (
+          {isAvailable &&
+            cardDiscount > 0 &&
+            (product.stockKind === 'untracked' || product.quantity > 2) && (
             <Badge variant="progress" className="absolute top-3 left-3 text-xs font-medium">
               <TrendingDownSolidIcon className="h-3 w-3 mr-1" />-{Math.floor(cardDiscount)}%
             </Badge>
@@ -152,7 +166,7 @@ function ProductCardInteractive({
               {formatCurrency(pricingSummary.displayPrice, currency)}
             </span>
             <span className="text-xs md:text-sm text-muted-foreground">
-              / {periodLabel}
+              {periodLabel ? `/ ${periodLabel}` : t('fixedPricingLabel')}
             </span>
           </div>
         </CardContent>

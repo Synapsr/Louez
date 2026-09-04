@@ -7,6 +7,7 @@ import {
   ClockIcon,
   CodeIcon,
   DownloadIcon,
+  FileCheckIcon,
   FileTextIcon,
   GlobeIcon,
   LinkIcon,
@@ -34,6 +35,8 @@ export type SettingsNavigationItem = {
   labelPath: string;
   navigation: boolean;
   platformAdminOnly?: boolean;
+  /** Hidden unless the store's electronic-invoicing rollout flag is on. */
+  requiresElectronicInvoicing?: boolean;
   searchPaths: string[];
 };
 
@@ -117,6 +120,17 @@ export const SETTINGS_NAVIGATION_ITEMS: SettingsNavigationItem[] = [
     labelPath: "dashboard.settings.taxes.title",
     descriptionPath: "dashboard.settings.taxes.description",
     searchPaths: ["dashboard.settings.taxes"],
+    group: "rental",
+    navigation: true,
+  },
+  {
+    id: "invoicing",
+    href: "/dashboard/settings/invoicing",
+    icon: FileCheckIcon,
+    labelPath: "dashboard.settings.invoicing.title",
+    descriptionPath: "dashboard.settings.invoicing.description",
+    searchPaths: ["dashboard.settings.invoicing"],
+    requiresElectronicInvoicing: true,
     group: "rental",
     navigation: true,
   },

@@ -43,6 +43,7 @@ import {
   SelectValue,
   Separator,
 } from "@louez/ui";
+import type { StockQuantityLimit } from "@louez/utils";
 import { cn, formatCurrency, minutesToPriceDuration } from "@louez/utils";
 
 import { ProductAddCombobox } from "@/components/dashboard/product-add-combobox";
@@ -157,7 +158,7 @@ export function NewReservationStepProducts({
   );
 
   const availableQuantityByProduct = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, StockQuantityLimit>();
 
     for (const product of products) {
       const selectedQuantity = selectedProducts
@@ -171,16 +172,23 @@ export function NewReservationStepProducts({
         hasSelectedPeriod,
         periodProductAvailability,
       );
-      const productCapacity = product.trackUnits
+      const productCapacity: StockQuantityLimit = product.trackUnits
         ? (periodProductAvailability?.availableQuantity ??
           productCombinations.reduce(
             (sum, combination) => sum + Math.max(0, combination.availableQuantity || 0),
             0,
           ))
-        : (periodProductAvailability?.availableQuantity ??
-          Math.max(0, product.quantity - productReservedQuantity));
+        : product.stockKind === "untracked"
+          ? null
+          : (periodProductAvailability?.availableQuantity ??
+            Math.max(0, product.quantity - productReservedQuantity));
 
-      map.set(product.id, Math.max(0, productCapacity - selectedQuantity));
+      map.set(
+        product.id,
+        productCapacity === null
+          ? null
+          : Math.max(0, productCapacity - selectedQuantity),
+      );
     }
 
     return map;
@@ -199,8 +207,8 @@ export function NewReservationStepProducts({
   }, [selectedProducts]);
 
   const handleAddFromCombobox = (productId: string) => {
-    const remaining = availableQuantityByProduct.get(productId) ?? 0;
-    if (remaining <= 0) {
+    const remaining = availableQuantityByProduct.get(productId);
+    if (remaining !== null && (remaining === undefined || remaining <= 0)) {
       setConfirmUnavailableProductId(productId);
       return;
     }
@@ -275,6 +283,9 @@ export function NewReservationStepProducts({
 
   const getSelectableQuantity = (product: Product) => {
     if (!product.trackUnits) {
+      if (product.stockKind === "untracked") {
+        return null;
+      }
       return Math.max(0, product.quantity);
     }
 
@@ -353,21 +364,26 @@ export function NewReservationStepProducts({
                 hasSelectedPeriod,
                 periodProductAvailability,
               );
-              const productCapacity = product.trackUnits
+              const productCapacity: StockQuantityLimit = product.trackUnits
                 ? (periodProductAvailability?.availableQuantity ??
                   productCombinations.reduce(
                     (sum, combination) => sum + Math.max(0, combination.availableQuantity || 0),
                     0,
                   ))
-                : (periodProductAvailability?.availableQuantity ??
-                  Math.max(0, product.quantity - productReservedQuantity));
+                : product.stockKind === "untracked"
+                  ? null
+                  : (periodProductAvailability?.availableQuantity ??
+                    Math.max(0, product.quantity - productReservedQuantity));
               const isOutOfStock = productCapacity === 0;
-              const remainingStock = Math.max(0, productCapacity - selectedQuantity);
+              const remainingStock =
+                productCapacity === null
+                  ? null
+                  : Math.max(0, productCapacity - selectedQuantity);
               const selectableQuantity = getSelectableQuantity(product);
-              const remainingSelectableQuantity = Math.max(
-                0,
-                selectableQuantity - selectedQuantity,
-              );
+              const remainingSelectableQuantity =
+                selectableQuantity === null
+                  ? null
+                  : Math.max(0, selectableQuantity - selectedQuantity);
               const bookingAttributeAxes = (product.bookingAttributeAxes || [])
                 .slice()
                 .sort((a, b) => a.position - b.position);
@@ -522,10 +538,14 @@ export function NewReservationStepProducts({
                             <span
                               className={cn(
                                 "text-xs",
-                                remainingStock <= 2 ? "text-orange-600" : "text-muted-foreground",
+                                remainingStock !== null && remainingStock <= 2
+                                  ? "text-orange-600"
+                                  : "text-muted-foreground",
                               )}
                             >
-                              {remainingStock} {t("available")}
+                              {remainingStock === null
+                                ? t("available")
+                                : `${remainingStock} ${t("available")}`}
                             </span>
                           )}
                           {hasTieredPricing && !hasDiscount && (
@@ -542,7 +562,10 @@ export function NewReservationStepProducts({
                           type="button"
                           variant={isOutOfStock ? "ghost" : "outline"}
                           onClick={() => addProduct(product.id)}
-                          disabled={selectableQuantity <= 0}
+                          disabled={
+                            selectableQuantity !== null &&
+                            selectableQuantity <= 0
+                          }
                           className="w-full sm:w-auto"
                         >
                           <Plus className="mr-1 h-4 w-4" />
@@ -553,7 +576,10 @@ export function NewReservationStepProducts({
                           type="button"
                           variant="outline"
                           onClick={() => addProduct(product.id)}
-                          disabled={remainingSelectableQuantity <= 0}
+                          disabled={
+                            remainingSelectableQuantity !== null &&
+                            remainingSelectableQuantity <= 0
+                          }
                           className="w-full sm:w-auto"
                         >
                           <Plus className="mr-1 h-4 w-4" />
@@ -567,9 +593,13 @@ export function NewReservationStepProducts({
                     <div className="mt-3 space-y-3 border-t pt-3">
                       {lineStates.map(({ line, pricing, constraints }, index) => {
                         const lineMaxQuantity = constraints.lineMaxQuantity;
-                        const canIncreaseLine = line.quantity < lineMaxQuantity;
+                        const canIncreaseLine =
+                          lineMaxQuantity === null ||
+                          line.quantity < lineMaxQuantity;
                         const lineReachedMax =
-                          lineMaxQuantity > 0 && line.quantity >= lineMaxQuantity;
+                          lineMaxQuantity !== null &&
+                          lineMaxQuantity > 0 &&
+                          line.quantity >= lineMaxQuantity;
 
                         return (
                           <div
@@ -677,7 +707,7 @@ export function NewReservationStepProducts({
                                 </div>
                                 <p className="text-muted-foreground text-xs">
                                   {t("availableForSelection", {
-                                    count: lineMaxQuantity,
+                                    count: lineMaxQuantity ?? 0,
                                   })}
                                 </p>
                               </div>

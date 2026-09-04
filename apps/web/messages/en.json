@@ -237,6 +237,85 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Supplier invoices",
+      "description": "Invoices your suppliers sent to your company through the electronic invoicing network.",
+      "columns": {
+        "seller": "Supplier",
+        "number": "Invoice",
+        "issueDate": "Issue date",
+        "totalInclTax": "Total incl. VAT",
+        "status": "Network status",
+        "ourAction": "Your response",
+        "actions": "Actions"
+      },
+      "statuses": {
+        "received": "Received",
+        "acknowledged": "Acknowledged",
+        "accepted": "Accepted",
+        "disputed": "Disputed",
+        "refused": "Refused",
+        "paid": "Paid",
+        "paymentSent": "Payment sent",
+        "rejected": "Rejected",
+        "validated": "Validated"
+      },
+      "ourActions": {
+        "none": "No response",
+        "acknowledged": "Acknowledged",
+        "accepted": "Accepted",
+        "refused": "Refused"
+      },
+      "actions": {
+        "download": "Download",
+        "downloadNamed": "Download invoice {number}",
+        "menuLabel": "Actions for invoice {number}",
+        "acknowledge": "Acknowledge receipt",
+        "accept": "Accept invoice",
+        "refuse": "Refuse invoice",
+        "acknowledgeSuccess": "Receipt acknowledged",
+        "acceptSuccess": "Invoice accepted",
+        "refuseSuccess": "Invoice refused"
+      },
+      "accept": {
+        "title": "Accept this invoice?",
+        "description": "Accepting invoice {number} sends a binding statement to the electronic invoicing network. It cannot be undone.",
+        "confirm": "Accept invoice"
+      },
+      "refuse": {
+        "title": "Refuse this invoice?",
+        "description": "Refusing invoice {number} sends a binding statement to the electronic invoicing network. It cannot be undone.",
+        "reasonLabel": "Reason for refusal",
+        "reasonPlaceholder": "e.g. wrong amount, service not delivered…",
+        "reasonHelp": "The reason is forwarded to your supplier.",
+        "confirm": "Refuse invoice"
+      },
+      "empty": {
+        "title": "No supplier invoices yet",
+        "description": "Invoices arrive here automatically as soon as a supplier sends one to your company through the electronic invoicing network.",
+        "settingsAction": "View invoicing settings"
+      },
+      "notConnected": {
+        "title": "Connect your company to receive supplier invoices",
+        "description": "Supplier invoices reach this inbox once your company is enrolled with our accredited platform (PDP).",
+        "deadlineTitle": "September 2026 deadline",
+        "deadlineDescription": "From September 2026, every French company must be able to receive its invoices electronically.",
+        "howItWorks": "Once connected, incoming invoices appear here automatically. You can download them and acknowledge, accept or refuse them.",
+        "connectAction": "Set up electronic invoicing"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {No invoices} one {1 invoice} other {# invoices}}",
+        "page": "Page {current} of {total}",
+        "previous": "Previous page",
+        "next": "Next page"
+      },
+      "sync": "Sync",
+      "viewAll": "Open the full page"
+    },
+    "electronicInvoicingUnavailable": {
+      "title": "Electronic invoicing is not available",
+      "description": "This feature is not enabled for your store yet."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "AI Assistant",
@@ -1044,6 +1123,21 @@
         "stock": "Stock",
         "quantity": "Available quantity",
         "quantityHelp": "Number of units available for rent",
+        "consumableQuantityHelp": "Stock on the shelf: it goes down on every confirmed booking and back up when you restock.",
+        "stockKindLabel": "Stock type",
+        "stockKindReturnable": "Returnable stock",
+        "stockKindReturnableDescription": "The item comes back after each rental and becomes available again.",
+        "stockKindConsumable": "Consumable",
+        "stockKindConsumableDescription": "The item leaves with the customer: stock goes down on every confirmed booking and the quantity is what sits on the shelf.",
+        "stockKindConsumableRequiresFixed": "A consumable is sold at a flat rate: switch pricing to \"Flat rate\" to enable it.",
+        "stockKindConsumableRequiresNoUnits": "A consumable is not tracked unit by unit: turn off unit tracking to enable it.",
+        "stockKindUntracked": "Untracked stock",
+        "stockKindUntrackedRequiresNoUnits": "Untracked stock cannot use individual unit tracking.",
+        "untrackedStockHelp": "No quantity is tracked or limited. Dates and booking rules still apply.",
+        "stockKindChangeBlockedTitle": "Stock type locked",
+        "stockKindChangeBlocked": "This product is used in the following reservations. Cancel or complete them before changing the stock type.",
+        "stockKindChangeBlockedTrigger": "{kind}. View blocking reservations.",
+        "stockKindBlockingReservation": "Reservation #{number}",
         "publication": "Publication",
         "statusActive": "Active",
         "statusActiveDescription": "Visible on the store",
@@ -1063,6 +1157,14 @@
         "categoryOptional": "Optional - helps customers find your product",
         "noCategories": "No categories yet",
         "pricingDescription": "Set the rental price and rates",
+        "pricingKindLabel": "Pricing mode",
+        "pricingKindDuration": "Duration-based pricing",
+        "pricingKindDurationDescription": "The price depends on how long the item is rented.",
+        "pricingKindFixed": "Flat rate",
+        "pricingKindFixedDescription": "A single price, whatever the rental duration.",
+        "fixedPrice": "Flat price",
+        "fixedPriceDescription": "Charged once per item, whatever the rental duration.",
+        "fixedPriceLabel": "Flat rate",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -1279,10 +1381,16 @@
         "addAccessory": "Add an accessory",
         "selectAccessories": "Select accessories",
         "selectAccessoriesDescription": "Choose products to suggest with this product",
+        "accessoriesSelectedCount": "{count, plural, =0 {No accessory selected} one {# accessory selected} other {# accessories selected}}",
+        "clearSearch": "Clear search",
         "searchProducts": "Search for a product...",
         "noProductsFound": "No products found",
         "noProductsAvailable": "No products available",
         "accessoriesHelp": "Accessories will be suggested when adding to cart",
+        "accessoryRequired": "Required",
+        "accessoryQuantity": "Quantity",
+        "accessoryQuantityPerUnit": "per rented unit",
+        "accessoryOptionalHint": "Only suggested to the customer.",
         "seasonalPricing": "Seasonal pricing",
         "seasonalPricingDescription": "Set different rates for specific periods (summer, holidays, etc.).",
         "addSeasonalPeriod": "Add period",
@@ -1429,11 +1537,16 @@
           "utilization": "Utilization",
           "utilizationSubtitle": "Last 30 days",
           "stock": "Stock",
-          "unitsActiveValue": "{active}/{total} active"
+          "unitsActiveValue": "{active}/{total} active",
+          "notTracked": "Not tracked",
+          "notApplicable": "Not applicable",
+          "notTrackedSubtitle": "No stock capacity"
         },
         "inventory": {
           "title": "Inventory",
           "manageStock": "Manage stock",
+          "consumableBadge": "Consumable",
+          "consumableQuantity": "On the shelf",
           "quantity": "Quantity",
           "available": "Available",
           "noUnits": "No units registered",
@@ -1457,6 +1570,7 @@
           "viewCalendar": "Calendar",
           "timeline": {
             "stock": "Stock",
+            "bookings": "Reservations",
             "statusFilter": "Filter by status",
             "showAll": "Show all",
             "previous": "Previous period",
@@ -1790,6 +1904,28 @@
       "sendEmail": "Send email",
       "customerInfo": "Customer information",
       "viewCustomer": "View customer",
+      "invoiceDocuments": {
+        "title": "Invoices and credit notes",
+        "empty": "No invoice has been generated yet.",
+        "generate": "Generate invoice",
+        "generationSuccess": "The available invoice documents were generated.",
+        "generationError": "The invoice could not be generated.",
+        "download": "Download",
+        "downloadNamed": "Download {number}",
+        "types": {
+          "invoice": "Invoice",
+          "credit_note": "Credit note"
+        },
+        "transmission": {
+          "not_applicable": "Not transmitted",
+          "pending": "Pending transmission",
+          "sent": "Sent",
+          "validated": "Validated",
+          "rejected": "Rejected",
+          "failed": "Transmission failed"
+        },
+        "recheck": "Refresh transmission status"
+      },
       "periodStart": "Start",
       "periodEnd": "End",
       "duration": "Duration",
@@ -1804,6 +1940,13 @@
       "productUnitPrice": "Unit price",
       "productTotal": "Total",
       "deliveryAndReturn": "Delivery & return",
+      "pickupAndReturn": "Pickup & return",
+      "storeLegsSummary": {
+        "sameLocation": "Pickup and return in store",
+        "pickup": "Pickup",
+        "return": "Return",
+        "edit": "Edit"
+      },
       "outboundLegLabel": "Receive equipment",
       "returnLegLabel": "Return equipment",
       "deliveryAddressLabel": "Delivery address",
@@ -2322,6 +2465,16 @@
         "maxReturnable": "Maximum returnable",
         "history": "Payment history",
         "recorded": "Payment recorded",
+        "refundBadge": "Refund",
+        "refundAction": "Refund",
+        "refundTitle": "Refund this payment",
+        "refundDescription": "You can refund up to {amount} from this payment.",
+        "refundNote": "Refund note",
+        "refundNotePlaceholder": "Reason, transfer reference...",
+        "refundConfirm": "Confirm refund",
+        "invalidRefundAmount": "Enter a refund amount within the remaining refundable balance.",
+        "creditNoteGenerated": "Credit note {number} generated",
+        "refundRecorded": "Refund recorded",
         "deleted": "Payment deleted",
         "depositReturned": "Deposit returned",
         "damageRecorded": "Damages recorded",
@@ -2369,7 +2522,8 @@
         "statusAuthorized": "Authorized",
         "statusRefunded": "Refunded",
         "statusCancelled": "Cancelled",
-        "requestPayment": "Request payment"
+        "requestPayment": "Request payment",
+        "invoiceGenerated": "Invoice {number} generated"
       },
       "requestPaymentModal": {
         "title": "Request payment",
@@ -2627,6 +2781,13 @@
         "businessCustomerDescription": "Check if this customer represents a company",
         "companyName": "Company name",
         "companyNamePlaceholder": "ACME Ltd",
+        "companyNumber": "Company number",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Company number (BCE/KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Required to issue a B2B electronic invoice.",
+        "vatNumber": "VAT number",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "First name *",
         "firstNamePlaceholder": "John",
         "lastName": "Last name *",
@@ -3150,6 +3311,19 @@
             },
             "resources": {
               "help": "iCalendar reference"
+            }
+          },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Connect your company to an accredited platform to send and receive electronic invoices.",
+            "about": "Super PDP connects Louez to the official electronic invoicing network and handles company enrollment, invoice transmission, receipt, and lifecycle updates.",
+            "features": {
+              "send": "Send customer invoices over the official network.",
+              "receive": "Receive supplier invoices in Louez.",
+              "lifecycle": "Track invoice delivery and payment statuses."
+            },
+            "resources": {
+              "website": "Super PDP website"
             }
           },
           "tulip": {
@@ -3931,6 +4105,16 @@
           "description": "Export your full product catalog with prices, categories, and stock information.",
           "button": "Export products"
         },
+        "contracts": {
+          "title": "Contracts",
+          "description": "Download a ZIP archive of contracts for rentals starting within the selected period.",
+          "button": "Export contracts",
+          "format": "ZIP archive containing one PDF per reservation",
+          "statusesLabel": "Statuses to include",
+          "selectAll": "Select all",
+          "clearAll": "Clear all",
+          "exporting": "Preparing ZIP..."
+        },
         "dateRange": {
           "label": "Date range",
           "startDate": "Start date",
@@ -3946,6 +4130,8 @@
           "invalidDateRange": "End date must be after start date.",
           "dateRequired": "Please select a date range.",
           "maxRange": "Date range cannot exceed one year.",
+          "statusRequired": "Select at least one status.",
+          "noContracts": "No reservations match this date range and these statuses.",
           "exportFailed": "Export failed. Please try again."
         }
       },
@@ -4158,6 +4344,166 @@
         "taxNumberDescription": "Your VAT number (displayed on contracts)",
         "depositNoTaxInfo": "Deposits are not subject to VAT as they are returned to the customer.",
         "saved": "Tax settings saved"
+      },
+      "invoicing": {
+        "title": "Electronic invoicing",
+        "description": "Set up mandatory e-invoice reception and choose whether Louez also issues your invoices.",
+        "saved": "Invoicing settings saved",
+        "statusComplete": "Complete",
+        "statusIncomplete": "To complete",
+        "setup": {
+          "steps": {
+            "identity": "Legal identity",
+            "activation": "Activation",
+            "transmission": "Transmission"
+          },
+          "continue": "Continue",
+          "later": "Set up later",
+          "intro": {
+            "title": "Get your company ready for electronic invoicing",
+            "description": "Connect your company to the official network to receive supplier invoices. You can also have Louez issue your invoices now.",
+            "bullets": {
+              "generate": "If you enable issuing, Louez generates and numbers a compliant invoice with every payment.",
+              "transmit": "If you enable issuing, Louez sends invoices to business customers and handles sales e-reporting.",
+              "receive": "Centralized reception of your suppliers' invoices."
+            },
+            "start": "Start setup",
+            "resume": "Resume setup",
+            "stepProgress": "Step {current} of {total}"
+          }
+        },
+        "identity": {
+          "title": "Legal identity",
+          "description": "Your company's legal details, printed on every invoice you issue.",
+          "search": {
+            "label": "Find your company",
+            "description": "Search by company name, SIREN or SIRET to prefill the form. Every field stays editable.",
+            "placeholder": "Company name, SIREN or SIRET",
+            "noResults": "No company found. Enter the details manually.",
+            "closed": "Closed",
+            "prefilledTitle": "Fields prefilled",
+            "prefilledDescription": "The data comes from the public company registry. Check it before saving."
+          },
+          "country": "Country of registration",
+          "countryDescription": "The country where your company is registered.",
+          "legalName": "Legal name",
+          "legalNamePlaceholder": "LOUEZ SAS",
+          "legalNameDescription": "Your company's exact name as it appears in the registry.",
+          "legalForm": "Legal form",
+          "legalFormPlaceholder": "SAS",
+          "legalFormDescription": "For example SAS, SARL, sole trader.",
+          "siren": "SIREN",
+          "sirenDescription": "The 9 digits identifying your company.",
+          "bce": "Company number (BCE)",
+          "bceDescription": "10 digits, for example 0123456789.",
+          "companyNumber": "Company number",
+          "companyNumberDescription": "Your company's identifier in the national registry.",
+          "siret": "Head office SIRET",
+          "siretDescription": "The 14 digits identifying the establishment issuing the invoices.",
+          "vatNumber": "VAT number",
+          "vatNumberDescription": "The intra-community VAT number printed on your invoices. Leave empty if you are VAT exempt.",
+          "vatNumberWarningTitle": "Unusual VAT format",
+          "vatNumberWarningFr": "A French VAT number is FR followed by 11 characters. Please double-check this value.",
+          "vatNumberWarningBe": "A Belgian VAT number is BE followed by 10 digits. Please double-check this value.",
+          "rcsCity": "RCS city",
+          "rcsCityDescription": "The city of the registry your company is filed with, for example Paris.",
+          "shareCapital": "Share capital",
+          "shareCapitalDescription": "Required on invoices for companies that must disclose it.",
+          "addressSection": "Registered office address",
+          "address": "Address",
+          "addressPlaceholder": "25 rue du Terrage",
+          "addressComplement": "Address line 2",
+          "postalCode": "Postal code",
+          "city": "City"
+        },
+        "louezInvoicing": {
+          "title": "Invoice issuing",
+          "description": "Choose whether Louez should issue your invoices now. You can change this choice at any time.",
+          "statusActive": "Issuing enabled",
+          "statusReceptionOnly": "Reception only",
+          "statusInactive": "Disabled",
+          "lockedTitle": "Complete your legal identity first",
+          "lockedDescription": "A legal invoice must carry your legal name, legal form, company number and registered address. Fill in step 1 before choosing your invoicing mode.",
+          "choiceLabel": "How would you like to use electronic invoicing?",
+          "emissionAndReception": "Issuing + reception (recommended)",
+          "emissionAndReceptionDescription": "Louez generates, numbers and transmits your invoices with every payment. Your company also receives supplier invoices.",
+          "receptionOnly": "Reception only — I am not issuing invoices through Louez yet",
+          "receptionOnlyDescription": "Louez does not issue invoices. Your company stays connected to receive supplier invoices.",
+          "reformTimeline": "Receiving e-invoices becomes mandatory in September 2026. Issuing becomes mandatory in September 2027 and can be enabled here at any time.",
+          "vatRegime": "VAT regime",
+          "vatRegimePlaceholder": "Choose your regime",
+          "vatRegimeDescription": "Determines the reporting calendar sent to the invoicing platform.",
+          "vatRegimeOptions": {
+            "monthly": "Monthly return",
+            "quarterly": "Quarterly return",
+            "simplified": "Simplified (annual) regime",
+            "vat_exemption": "VAT exemption"
+          },
+          "hasVatOnDebits": "VAT on debits",
+          "hasVatOnDebitsDescription": "Turn on if you opted for VAT on debits rather than on payments received."
+        },
+        "transmission": {
+          "title": "Electronic transmission (PDP)",
+          "description": "Connect your company to an accredited platform to receive invoices and, if issuing is enabled, send customer invoices through the official network.",
+          "statusPending": "Enrollment in progress",
+          "statusActionRequired": "Action required",
+          "deadlineTitle": "September 2026 deadline",
+          "deadlineDescription": "From September 2026, every French company must be connected to an accredited platform to receive its electronic invoices; issuing becomes mandatory in September 2027. Connecting from Louez is free of charge.",
+          "benefits": {
+            "send": "Send invoices to business customers if you enable issuing.",
+            "receive": "Receive all your supplier invoices in one place.",
+            "reporting": "Automatic e-reporting of your sales to consumers."
+          },
+          "connectAction": "Connect my company",
+          "pendingTitle": "Enrollment in progress",
+          "pendingDescription": "Your enrollment has been started but is not complete yet. Resume it to finish the identity checks of the accredited platform.",
+          "pendingValidationDescription": "The platform is validating your account. No action is required: the connection will activate automatically once its checks are complete.",
+          "resumeAction": "Resume enrollment",
+          "errorTitle": "Connection interrupted",
+          "reconnectAction": "Reconnect my company",
+          "errorHints": {
+            "reconnectRequired": "The platform revoked Louez's access. Reconnect your company to receive invoices and resume any enabled sending.",
+            "oauthFailed": "The enrollment could not be completed. Start it again; if the problem persists, contact support.",
+            "operationFailed": "The last exchange with the platform failed. Louez will retry automatically; reconnect if the problem persists."
+          },
+          "lockedTitle": "Connection not available yet",
+          "lockedReasons": {
+            "identityIncomplete": "Complete your legal identity in step 1: the platform verifies it before enrolling your company.",
+            "countryUnsupported": "Electronic transmission is currently available for companies registered in France or Belgium only."
+          },
+          "details": {
+            "verification": "Identity verification",
+            "directory": "Network directory",
+            "environment": "Environment"
+          },
+          "verificationStatus": {
+            "verified": "Verified",
+            "pending": "Being verified",
+            "failed": "Verification failed"
+          },
+          "verificationPendingNote": "The platform is still reviewing your company details. The connection will become operational once the check is complete.",
+          "directoryStatus": {
+            "pending": "Registration in progress",
+            "created": "Registered",
+            "error": "Registration failed",
+            "missing": "Not registered"
+          },
+          "environments": {
+            "sandbox": "Test environment",
+            "production": "Production"
+          },
+          "result": {
+            "successTitle": "Company connected",
+            "successDescription": "Your company is now enrolled with the accredited platform and can receive supplier invoices. Invoices issued by Louez will also be transmitted if you enable issuing.",
+            "errorTitle": "Connection failed",
+            "errors": {
+              "oauth": "The enrollment was interrupted before it could be completed. You can start it again.",
+              "legalProfileIncomplete": "Your legal identity is incomplete. Fill in step 1, then start the connection again.",
+              "notConfigured": "Electronic transmission is not configured on this environment. Contact Louez support."
+            }
+          },
+          "purchaseInvoicesAction": "Open supplier invoices"
+        }
       },
       "delivery": {
         "title": "Delivery",
@@ -4673,8 +5019,51 @@
         "dangerZone": "Danger zone",
         "dangerZoneDescription": "Irreversible actions on your account",
         "deleteAccount": "Delete account",
-        "deleteAccountDescription": "Permanently delete your account and all your data",
-        "deleteAccountWarning": "This action is irreversible. All your data will be deleted.",
+        "deleteAccountDescription": "Delete your account, your stores and their active data",
+        "deleteAccountWarning": "This action is irreversible. Only records required by law may remain in a separate archive.",
+      "accountDeletion": {
+        "reasonTitle": "Before you go",
+        "reasonDescription": "Why are you leaving Louez? Your answer is optional and saved without your identity.",
+        "reasons": {
+          "tooExpensive": "The price is too high",
+          "missingFeatures": "I need features that are missing",
+          "difficultToUse": "Louez is too difficult to use",
+          "noLongerNeeded": "I no longer need Louez",
+          "switchedService": "I use another solution",
+          "technicalIssues": "I had too many technical issues",
+          "privacyConcerns": "I have privacy concerns",
+          "other": "Another reason"
+        },
+        "continue": "Continue",
+        "back": "Back",
+        "title": "Delete your account",
+          "description": "Review what will happen before you continue. Deletion cannot be undone. Louez billing records required by law may remain archived.",
+          "storesDeleted": "Stores deleted with all their active data:",
+          "membershipsLeft": "You will also leave {count, plural, one {# other store} other {# other stores}} where you are a member.",
+          "businessDocumentsDeleted": "{count, plural, one {# business invoice from your store will be deleted from Louez} other {# business invoices from your stores will be deleted from Louez}}. Export them before continuing if you need to keep them.",
+          "legalRetention": "{count, plural, one {# Louez billing record will be kept} other {# Louez billing records will be kept}} for 10 years after the financial year closes, in a separate restricted-access archive.",
+          "confirmationLabel": "Enter {email} to confirm",
+          "passwordLabel": "Current password",
+          "passwordRequired": "Enter your current password.",
+          "confirmationMismatch": "The address entered does not match this account.",
+          "sendConfirmation": "Send confirmation email",
+          "deleteNow": "Delete permanently",
+          "cancel": "Cancel",
+          "close": "Close",
+          "emailSentTitle": "Confirmation email sent",
+          "emailSentDescription": "Check {email}. Nothing has been deleted yet: you must confirm one last time from the link in the email.",
+          "blockedTitle": "Account cannot be deleted yet",
+          "blockedDescription": "A store you own still has other members. Remove them from the Team page, or contact support to transfer ownership.",
+          "blockedStore": "{name} — {count, plural, one {# other member} other {# other members}}",
+          "genericError": "Deletion could not be started. Try again.",
+          "invalidLink": "This link is invalid, expired or has already been used. Start a new request from account settings.",
+          "confirmPageTitle": "Final confirmation",
+          "confirmPageDescription": "This will immediately delete your account, your stores and their active data. It cannot be undone.",
+          "confirmFinal": "Permanently delete my account",
+          "deletedTitle": "Account deleted",
+          "deletedDescription": "Your account, stores, and their data have been deleted. Only any Louez billing records remain isolated until their statutory retention period ends.",
+          "backHome": "Back to home"
+        },
         "signOut": "Sign out",
         "comingSoon": "Coming soon",
         "administration": "Administration",
@@ -5155,6 +5544,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Supplier invoices",
       "aiAssistant": "AI Assistant",
       "aiConversations": "Customer conversations",
       "aiAdvisor": "Online advisor",
@@ -5188,6 +5578,7 @@
       "settingsHours": "Hours",
       "settingsInspections": "Inspections",
       "settingsIntegrations": "Integrations",
+      "settingsInvoicing": "Electronic invoicing",
       "settingsLegal": "Legal pages",
       "settingsNotifications": "Notifications",
       "settingsPayments": "Payments",
@@ -5201,6 +5592,8 @@
       "title": "Notifications",
       "description": "Items that need your attention",
       "pendingReservations": "Pending requests",
+      "supplierInvoices": "Supplier invoices",
+      "pendingSupplierInvoices": "{count, plural, one {# supplier invoice to process} other {# supplier invoices to process}}",
       "emptyTitle": "Nothing to review",
       "emptyDescription": "New requests will appear here.",
       "viewAllPending": "View all pending requests"
@@ -5230,6 +5623,18 @@
         "fix": "Fixed"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "A price that no longer depends on duration",
+          "description": "A cleaning, a delivery, a service: not everything is billed by the hour. Switch the pricing to \"Flat rate\" and the price stops moving, whether the rental runs two hours or two weeks. Tiers, seasons and the chart step aside; one amount is left, with its tax and its deposit."
+        },
+        "consumable-stock": {
+          "title": "The things that leave with your customer",
+          "description": "Wax, gas cartridges, bags: everything that never comes back. Switch a product to \"Consumable\" and its quantity becomes stock on the shelf — down on every confirmed booking, back up if it is cancelled or rejected, and no longer tied to the dates."
+        },
+        "required-accessories": {
+          "title": "The helmet always goes out with the bike",
+          "description": "An accessory can now be required, with its own quantity per rented unit. It adds itself to your customer's cart, follows along when they take three bikes instead of one, and cannot be removed. Free of charge, it simply reads \"Included\"."
+        },
         "product-image-ai": {
           "title": "Your product photos get the studio treatment",
           "description": "On upload, AI cuts out your product, cleans up the background and centres it — or only removes the backdrop if you'd rather keep your framing. And every version stays in the photo's history: compare, change your mind, go back to the original."
@@ -5251,8 +5656,8 @@
           "description": "The Reservations page now opens on the calendar. It scrolls continuously, from one week to the next without changing page, and a hover gives you the whole reservation. The list and the per-product planning stay one click away."
         },
         "product-creation-flow-redesign": {
-          "title": "Two sections, and your product is live",
-          "description": "The four-step wizard gives way to a single page. Accessories and insurance are no longer asked for at creation time — you add them later if you need them. On the right, a preview of the listing and a list of what is left to fill in."
+          "title": "One page, and your product is live",
+          "description": "The four-step wizard is now a single page. Add accessories while creating the product or come back to them later; insurance is still configured afterwards. On the right, you can preview the listing and see what is left to fill in."
         },
         "keyboard-shortcuts": {
           "title": "For those who never leave the keyboard",
@@ -5484,6 +5889,7 @@
       "productCount": "{count, plural, =0 {No products available} one {# product available} other {# products available}}",
       "available": "{count} available",
       "unavailable": "Unavailable",
+      "consumableOutOfStock": "Consumable out of stock",
       "lastOne": "Last one!",
       "left": "left",
       "clearFilters": "Clear filters"
@@ -5502,6 +5908,7 @@
       "bookingAttributesNoOptions": "No options available for {attribute} on selected dates.",
       "bookingAttributeNone": "None",
       "availableCount": "{count, plural, one {# available} other {# available}}",
+      "availableWithoutStockLimit": "Available",
       "available": "Available",
       "unavailable": "Unavailable",
       "deposit": "Deposit",
@@ -5509,6 +5916,7 @@
       "perHour": "hour",
       "perWeek": "week",
       "startingFrom": "From",
+      "fixedPricingLabel": "Flat rate",
       "pricingUnit": {
         "day": {
           "singular": "day",
@@ -5580,6 +5988,8 @@
         "availability": "Availability"
       },
       "unavailableHelp": "This product is not available for rent right now. Browse the rest of the catalog.",
+      "requiredAccessoryOutOfStock": "A required accessory is out of stock",
+      "requiredAccessoriesIncluded": "Automatically added: {names}",
       "backToCatalog": "View the catalog"
     },
     "accessories": {
@@ -5686,6 +6096,8 @@
         "availableCount": "{count} available",
         "limited": "{count} left",
         "unavailable": "Unavailable",
+        "outOfStock": "Out of stock",
+        "requiredAccessoryOutOfStock": "Required accessory out of stock",
         "inCart": "In cart"
       },
       "businessHoursWarning": {
@@ -5736,6 +6148,8 @@
       "total": "Total",
       "checkout": "Checkout",
       "remove": "Remove",
+      "decreaseQuantity": "Decrease the quantity of {name}",
+      "increaseQuantity": "Increase the quantity of {name}",
       "updateDates": "Change dates",
       "clearCart": "Clear cart",
       "clear": "Clear cart",
@@ -5748,7 +6162,14 @@
         "cancel": "Cancel",
         "confirm": "Clear"
       },
-      "lineMaxReached": "Maximum reached for this option. Add another option as a separate line."
+      "lineMaxReached": "Maximum reached for this option. Add another option as a separate line.",
+      "requiredWith": "Required with {name}",
+      "included": "Included",
+      "unavailable": {
+        "product_unavailable": "This product is no longer available",
+        "insufficient_stock": "Not enough stock for this quantity",
+        "required_accessory_unavailable": "A required accessory is out of stock"
+      }
     },
     "checkout": {
       "title": "Complete my reservation",
@@ -5842,6 +6263,20 @@
       "isBusinessCustomerDescription": "Check this box if you are renting on behalf of a company",
       "companyName": "Company name",
       "companyNamePlaceholder": "ACME Ltd",
+      "companyNumber": "Company number (optional)",
+      "companyNumberSiren": "SIREN (optional)",
+      "companyNumberBce": "Company number (BCE/KBO, optional)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Optional — we need it to issue a business invoice.",
+      "vatNumber": "VAT number (optional)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Find your company",
+        "placeholder": "Company name, SIREN or SIRET",
+        "description": "Optional: search to fill in your company details automatically.",
+        "noResults": "No company found. Enter the details manually.",
+        "closed": "Closed"
+      },
       "contact": "Contact",
       "address": "Address",
       "addressPlaceholder": "123 Rental Street",
@@ -5870,6 +6305,8 @@
         "phoneRequired": "Phone required",
         "invalidPhone": "Invalid phone format",
         "companyNameRequired": "Please enter the company name",
+        "invalidCompanyNumber": "Invalid company number",
+        "invalidVatNumber": "Invalid VAT number",
         "acceptCgv": "You must accept the terms and conditions"
       },
       "pricing": {
@@ -5973,6 +6410,7 @@
       "pickupLabel": "Store pickup",
       "returnDeliveryLabel": "Collection from your address",
       "storeReturnLabel": "Return at store",
+      "pickupAndReturnLabel": "Pickup and return at store",
       "deliveryFeeLabel": "Delivery fee",
       "free": "Free",
       "returnAddressLabel": "Return address",
@@ -6118,6 +6556,17 @@
       "signContract": "Sign contract",
       "contractSigned": "Contract signed",
       "downloadContract": "Download contract",
+      "signContractConfirmation": "By continuing, you confirm that you have read and accept this rental contract.",
+      "signContractError": "The contract could not be signed. Please try again.",
+      "invoiceDocuments": {
+        "title": "Invoices and credit notes",
+        "description": "Download the accounting documents for this reservation.",
+        "download": "Download",
+        "types": {
+          "invoice": "Invoice",
+          "credit_note": "Credit note"
+        }
+      },
       "paymentPaid": "Paid",
       "paymentPending": "Unpaid",
       "amountPaid": "Amount paid",
@@ -6725,6 +7174,7 @@
     "notFound": "Page not found",
     "notFoundDescription": "The page you're looking for doesn't exist or has been moved.",
     "unauthorized": "Unauthorized",
+    "paymentInvoiced": "This payment has been invoiced and cannot be deleted.",
     "unauthenticated": "Not authenticated",
     "invalidData": "Invalid data",
     "slugTaken": "This address is already in use",
@@ -6738,10 +7188,13 @@
     "permissionDenied": "Insufficient permission",
     "customerNotFound": "Customer not found",
     "reservationNotFound": "Reservation not found",
+    "consumableInsufficientStock": "Insufficient consumable stock",
+    "requiredAccessoriesMissing": "Required accessories are missing or have an incorrect quantity",
     "emailAlreadyExists": "A customer with this email already exists",
     "customerHasReservations": "Cannot delete a customer with reservations",
     "cannotCancelReservation": "This reservation cannot be cancelled",
     "cannotEditCompletedReservation": "Completed reservations cannot be edited",
+    "reservationStatusChanged": "The reservation status changed while you were editing. Reload the page and try again.",
     "endDateBeforeStart": "End date must be after or equal to start date",
     "negativeAmountOnlyForAdjustment": "Negative amounts are only allowed for adjustments",
     "productRequired": "Product required",
@@ -6758,6 +7211,7 @@
     "unitProductMismatch": "Selected units do not belong to this product",
     "unitCombinationMismatch": "Selected units do not match the reserved combination for this line item",
     "cannotDisableUnitTrackingWithCombinations": "Cannot disable unit tracking while active reservations use tracked combinations for this product.",
+    "cannotChangeStockKindWithActiveReservations": "Stock type cannot be changed while this product is used by a confirmed or ongoing reservation.",
     "unitStatusConflictsWithReservations": "This change would make future reservations impossible for at least one tracked combination.",
     "unitAssigned": "This unit is assigned to a blocking reservation and cannot be deleted.",
     "assignUnitsFailed": "Failed to assign units",
@@ -6967,7 +7421,7 @@
       },
       "s5": {
         "title": "Retention period",
-        "body": "Your data is retained for the entire duration of your subscription. Upon termination, it is kept for a maximum period of three years for evidentiary purposes, then deleted or anonymised. Accounting and tax data is retained for ten years in accordance with legal obligations."
+        "body": "Your active data is kept while your account exists. When you delete it, that data is removed from our active systems without delay, including invoices issued or received by your stores. Export them first if you need to keep them. Only Louez billing records that must be retained by law are isolated in a restricted archive for ten years after the financial year closes, then deleted. Backup copies follow their expiry cycle and are not restored to active systems."
       },
       "s6": {
         "title": "Your rights",

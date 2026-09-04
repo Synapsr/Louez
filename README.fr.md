@@ -340,7 +340,7 @@ Voir [SECURITY.md](SECURITY.md) pour notre politique de sécurité complète.
 
 ### Ressources tierces
 
-Le dashboard utilise des icônes [Nucleo](https://nucleoapp.com) © Nucleo — voir [NOTICE](NOTICE). Elles ne sont **pas** couvertes par la licence de ce dépôt et nécessitent une [licence Nucleo](https://nucleoapp.com/license) valide. Les sources ne sont pas incluses dans le dépôt — elles proviennent du package npm officiel [`nucleo-glass`](https://www.npmjs.com/package/nucleo-glass) à l'installation. N'extrayez pas et ne réutilisez pas ces icônes hors de l'application. Les contributeurs doivent garder le total sous 100 (suivi dans `packages/ui/src/icons/glass.tsx`) ; chaque personne qui auto-héberge Louez reste responsable de la conformité de son usage.
+Le dashboard utilise des icônes [Nucleo](https://nucleoapp.com) © Nucleo — voir [NOTICE](NOTICE). Elles ne sont **pas** couvertes par la licence de ce dépôt et nécessitent une [licence Nucleo](https://nucleoapp.com/license) valide. Les sources ne sont pas incluses dans le dépôt : elles proviennent des packages npm officiels [`nucleo-glass`](https://www.npmjs.com/package/nucleo-glass) et [`nucleo-ui-outline-18`](https://www.npmjs.com/package/nucleo-ui-outline-18) à l'installation. N'extrayez pas et ne réutilisez pas ces icônes hors de l'application. Les contributeurs doivent garder le total sous 100, avec un usage centralisé dans `packages/ui/src/icons/` ; chaque personne qui auto-héberge Louez reste responsable de la conformité de son usage.
 
 L'image de détourage inclut [`rembg`](https://github.com/danielgatis/rembg) sous licence MIT et le [modèle `isnet-general-use` de DIS/IS-Net](https://github.com/xuebinqin/DIS) sous licence Apache 2.0. Leurs attributions figurent dans [NOTICE](NOTICE).
 

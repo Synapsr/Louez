@@ -15,9 +15,10 @@ are not licensed under it. Their use requires a valid Nucleo license
 themes, plugins, and open-source projects at 100 icons and require this
 copyright notice. This project intentionally stays below that ceiling.
 The icon source files are not redistributed in this repository: they are
-consumed at install time from the official `nucleo-glass` npm package
-published by Nucleo. You may not extract, sublicense, resell, share, or
-redistribute these icons outside of this application.
+consumed at install time from the official `nucleo-glass` and
+`nucleo-ui-outline-18` npm packages published by Nucleo. You may not extract,
+sublicense, resell, share, or redistribute these icons outside of this
+application.
 
 The background-removal container includes rembg
 (https://github.com/danielgatis/rembg), Copyright (c) 2020-present

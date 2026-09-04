@@ -1,5 +1,6 @@
-import type { PricingMode, Rate } from '@louez/types'
+import type { PricingKind, PricingMode, Rate } from '@louez/types'
 import {
+  calculateFixedPrice,
   calculateRentalPrice,
   calculateRateBasedPrice,
   calculateDurationMinutes,
@@ -21,6 +22,7 @@ interface CartItemForPricing {
   startDate: string
   endDate: string
   pricingMode: PricingMode
+  pricingKind?: PricingKind
   productPricingMode?: PricingMode | null
   basePeriodMinutes?: number | null
   enforceStrictTiers?: boolean
@@ -62,6 +64,24 @@ export function calculateCartItemPrice(
   const end = globalEndDate || item.endDate
   const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
 
+  if (item.pricingKind === 'fixed') {
+    const result = calculateFixedPrice(
+      {
+        basePrice: item.price,
+        deposit: item.deposit,
+        pricingMode: itemPricingMode,
+      },
+      item.quantity,
+    )
+
+    return {
+      subtotal: result.subtotal,
+      originalSubtotal: result.originalSubtotal,
+      savings: 0,
+      discountPercent: 0,
+    }
+  }
+
   // Build rates array from pricing tiers (for rate-based products)
   const rates: Rate[] = (item.pricingTiers || [])
     .filter(
@@ -85,6 +105,7 @@ export function calculateCartItemPrice(
         basePrice: item.price,
         basePeriodMinutes: item.basePeriodMinutes ?? null,
         deposit: item.deposit,
+        pricingKind: item.pricingKind,
         pricingMode: itemPricingMode,
         enforceStrictTiers: item.enforceStrictTiers ?? false,
         tiers: (item.pricingTiers || []).map((t, i) => ({
@@ -142,6 +163,7 @@ export function calculateCartItemPrice(
     const pricing: ProductPricing = {
       basePrice: item.price,
       deposit: item.deposit,
+      pricingKind: item.pricingKind,
       pricingMode: itemPricingMode,
       tiers: item.pricingTiers.map((t, i) => ({
         ...t,
@@ -158,7 +180,7 @@ export function calculateCartItemPrice(
     }
   }
 
-  // 4. Simple fixed-price fallback
+  // 4. Simple duration-based fallback
   const duration = start && end ? calculateDuration(start, end, itemPricingMode) : 1
   const subtotal = item.price * item.quantity * duration
 

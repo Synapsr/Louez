@@ -15,6 +15,7 @@ import {
   referralAnalyticsEvents,
 } from '@/lib/referral/analytics-events';
 import { formatCurrency } from '@/lib/utils';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 
 interface ReferralLinkProps {
   storeId: string;
@@ -36,12 +37,14 @@ export const ReferralLink = ({
   currency,
 }: ReferralLinkProps) => {
   const t = useTranslations('dashboard.referrals.link');
+  const { intl: formatLocale } = useFormatLocale();
   const posthog = usePostHog();
   const [copied, setCopied] = useState(false);
 
   const rewardValue = formatCurrency(
     rewardValueCents / 100,
     currency.toUpperCase(),
+    formatLocale,
   );
 
   const writeClipboard = async (value: string) => {

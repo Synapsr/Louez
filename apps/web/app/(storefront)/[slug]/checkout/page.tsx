@@ -12,6 +12,7 @@ import { PageTracker } from '@/components/storefront/page-tracker';
 
 import { isAdvisorReachableForStore } from '@/lib/ai/advisor/eligibility';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
+import { getEffectiveReservationMode } from '@/lib/reservation-mode';
 import { generateStoreMetadata } from '@/lib/seo';
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration';
 
@@ -66,7 +67,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   }
 
   const pricingMode = 'day' as const;
-  const reservationMode = store.settings?.reservationMode || 'payment';
+  const reservationMode = getEffectiveReservationMode(store);
   const taxSettings = store.settings?.tax;
   const depositPercentage =
     store.settings?.onlinePaymentDepositPercentage ?? 100;
@@ -174,6 +175,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           storeLatitude={storeLatitude}
           storeLongitude={storeLongitude}
           storeName={store.name}
+          storeCountry={store.settings?.country ?? 'FR'}
           locations={locations}
           tulipInsurance={{
             enabled: tulipConnected && tulipMode !== 'no_public',

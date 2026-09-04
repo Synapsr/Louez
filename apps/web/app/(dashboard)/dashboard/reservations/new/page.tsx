@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 import { subDays } from 'date-fns';
-import { and, eq, gte, inArray } from 'drizzle-orm';
+import { and, eq, exists, gte, inArray, or } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 
 import {
@@ -9,7 +9,13 @@ import {
   getBlockingReservationStatuses,
   getEffectiveProductQuantities,
 } from '@louez/db';
-import { customers, products, reservations, storeLocations } from '@louez/db';
+import {
+  customers,
+  products,
+  reservationItems,
+  reservations,
+  storeLocations,
+} from '@louez/db';
 
 import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
 import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
@@ -17,7 +23,7 @@ import { resolveDashboardCreationSource } from '@/lib/openreplay/events';
 import { getCurrentStore } from '@/lib/store-context';
 import { getCurrentDowntimeUnitIds } from '@/lib/utils/unit-current-downtime';
 
-import { NewReservationForm } from './new-reservation-form';
+import { NewReservationFormBoundary } from './new-reservation-form-boundary';
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -121,18 +127,39 @@ async function getActiveReservations(
     pendingBlocksAvailability,
   );
 
-  return db.query.reservations.findMany({
+  const activeReservations = await db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
       inArray(reservations.status, blockingStatuses),
-      gte(reservations.endDate, thirtyDaysAgo),
+      or(
+        gte(reservations.endDate, thirtyDaysAgo),
+        exists(
+          db
+            .select({ id: reservationItems.id })
+            .from(reservationItems)
+            .innerJoin(products, eq(reservationItems.productId, products.id))
+            .where(
+              and(
+                eq(reservationItems.reservationId, reservations.id),
+                eq(products.storeId, storeId),
+                eq(products.stockKind, 'consumable'),
+              ),
+            ),
+        ),
+      ),
     ),
     with: {
       items: {
         columns: {
           productId: true,
           quantity: true,
+          consumedQuantity: true,
           combinationKey: true,
+        },
+        with: {
+          product: {
+            columns: { stockKind: true },
+          },
         },
       },
     },
@@ -143,6 +170,17 @@ async function getActiveReservations(
       status: true,
     },
   });
+
+  return activeReservations.map((reservation) => ({
+    ...reservation,
+    items: reservation.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      consumedQuantity: item.consumedQuantity,
+      combinationKey: item.combinationKey,
+      stockKind: item.product?.stockKind ?? 'returnable',
+    })),
+  }));
 }
 
 interface NewReservationPageProps {
@@ -198,7 +236,7 @@ export default async function NewReservationPage({
         <p className="text-muted-foreground">{t('createManually')}</p>
       </div>
 
-      <NewReservationForm
+      <NewReservationFormBoundary
         openReplaySource={openReplaySource}
         customers={customersList}
         products={productsList}

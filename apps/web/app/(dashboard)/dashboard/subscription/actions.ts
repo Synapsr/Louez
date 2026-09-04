@@ -10,7 +10,7 @@ import {
   switchToPayAsYouGo as switchToPayg,
 } from '@/lib/stripe/subscriptions'
 import { revalidatePath } from 'next/cache'
-import type { Currency } from '@/lib/plans'
+import type { Currency } from '@/lib/plans.shared'
 import { env } from '@/env'
 
 export async function createCheckoutSession({

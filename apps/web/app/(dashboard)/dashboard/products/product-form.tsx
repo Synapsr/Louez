@@ -9,7 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, ChevronDown, Copy } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { PricingMode } from "@louez/types";
+import type { PricingKind, PricingMode, StockKind } from "@louez/types";
 import {
   Button,
   DropdownMenu,
@@ -130,6 +130,7 @@ function getDuplicateRateTierIndexes(rateTiers: RateTierInput[] | undefined): nu
 
 export function ProductForm({
   product,
+  stockKindChangeBlockers = [],
   categories,
   currency = "EUR",
   storeTaxSettings,
@@ -288,7 +289,7 @@ export function ProductForm({
   const validationFieldLabels = useMemo(
     () =>
       new Map([
-        ["accessoryIds", t("accessories")],
+        ["accessories", t("accessories")],
         ["basePriceDuration", t("baseRate")],
         ["bookingAttributeAxes", t("stock")],
         ["categoryIds", t("category")],
@@ -296,9 +297,12 @@ export function ProductForm({
         ["description", t("description")],
         ["images", t("photos")],
         ["name", t("name")],
+        // Only fixed pricing validates the flat `price` field on its own.
+        ["price", t("fixedPrice")],
         ["quantity", t("stock")],
         ["rateTiers", t("additionalRates")],
         ["status", t("publication")],
+        ["stockKind", t("stock")],
         ["units", t("stock")],
         ["videoUrl", t("video")],
       ]),
@@ -336,6 +340,9 @@ export function ProductForm({
     };
   })();
 
+  const initialPricingKind: PricingKind = product?.pricingKind ?? "duration";
+  const initialStockKind: StockKind = product?.stockKind ?? "returnable";
+
   const defaultSubmitMeta: ProductFormSubmitMeta = { intent: "save" };
   const form = useAppForm({
     onSubmitMeta: defaultSubmitMeta,
@@ -354,13 +361,15 @@ export function ProductForm({
         product?.images ?? [],
         product?.imageHistory ?? [],
       ),
+      stockKind: initialStockKind,
+      pricingKind: initialPricingKind,
       pricingMode: (product?.pricingMode ?? "day") as PricingMode,
       pricingTiers: initialPricingTiers,
       rateTiers: initialRateTiers,
       enforceStrictTiers: product?.enforceStrictTiers ?? true,
       taxSettings: product?.taxSettings ?? { inheritFromStore: true },
       videoUrl: product?.videoUrl || "",
-      accessoryIds: product?.accessoryIds ?? [],
+      accessories: product?.accessories ?? [],
       trackUnits: product?.trackUnits || false,
       units: initialUnits,
       bookingAttributeAxes: initialBookingAttributeAxes,
@@ -552,9 +561,14 @@ export function ProductForm({
     clearSubmitError("rateTiers");
   }, [clearSubmitError]);
 
+  // Fixed pricing keeps any rate tiers around in form state but never submits
+  // them, so their duplicates must not block the save.
   const localDuplicateRateTierIndexes = useMemo(
-    () => getDuplicateRateTierIndexes(watchedValues.rateTiers as RateTierInput[]),
-    [watchedValues.rateTiers],
+    () =>
+      watchedValues.pricingKind === "fixed"
+        ? []
+        : getDuplicateRateTierIndexes(watchedValues.rateTiers as RateTierInput[]),
+    [watchedValues.pricingKind, watchedValues.rateTiers],
   );
   const effectiveDuplicateRateTierIndexes = useMemo(
     () =>
@@ -626,12 +640,24 @@ export function ProductForm({
         ? "day"
         : "hour";
 
-  const priceLabel =
+  const durationPriceLabel =
     effectivePricingMode === "day"
       ? t("pricePerDay")
       : effectivePricingMode === "hour"
         ? t("pricePerHour")
         : t("pricePerWeek");
+  const priceLabel =
+    watchedValues.pricingKind === "fixed" ? t("fixedPriceLabel") : durationPriceLabel;
+  const accessoriesSection = (
+    <div id="section-accessories" className="scroll-mt-8">
+      <ProductFormSectionAccessories
+        form={form as unknown as ProductFormComponentApi}
+        availableAccessories={availableAccessories}
+        currency={currency}
+        disabled={isSaving}
+      />
+    </div>
+  );
 
   // Edit mode: single column with sticky TOC on desktop
   if (isEditMode) {
@@ -704,6 +730,7 @@ export function ProductForm({
                   <ProductFormSectionStock
                     form={form as unknown as ProductFormComponentApi}
                     productId={product.id}
+                    stockKindChangeBlockers={stockKindChangeBlockers}
                     watchedValues={watchedValues}
                     currency={currency}
                     disabled={isSaving}
@@ -711,14 +738,7 @@ export function ProductForm({
                   />
                 </div>
 
-                <div id="section-accessories" className="scroll-mt-8">
-                  <ProductFormSectionAccessories
-                    form={form as unknown as ProductFormComponentApi}
-                    availableAccessories={availableAccessories}
-                    currency={currency}
-                    disabled={isSaving}
-                  />
-                </div>
+                {accessoriesSection}
 
                 {product?.id ? <ProductAssuranceSection productId={product.id} /> : null}
               </div>
@@ -830,6 +850,8 @@ export function ProductForm({
                   showUnitValidationErrors={hasUnitsSubmitError || submissionAttempts > 0}
                 />
               </div>
+
+              {accessoriesSection}
             </div>
 
             <aside className="w-full shrink-0 lg:sticky lg:top-4 lg:w-80 xl:w-88">

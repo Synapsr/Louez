@@ -3,10 +3,14 @@ import {
   inspections,
   inspectionItems,
   inspectionPhotos,
+  documents,
+  invoicePayments,
+  invoices,
   payments,
   reservations,
+  storeLegalProfiles,
 } from '@louez/db'
-import { and, desc, eq, ne } from 'drizzle-orm'
+import { and, desc, eq, gt, inArray, isNull, ne, notInArray } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 
 import { getDashboardReservationById } from '@louez/api/services'
@@ -123,6 +127,46 @@ export default async function ReservationDetailPage({
     : null
   const returnData = returnInspection ? await getInspectionData(returnInspection.id) : null
 
+  const linkedPaymentIds = db.select({ paymentId: invoicePayments.paymentId }).from(invoicePayments)
+  const [reservationInvoices, legalProfile, uninvoicedPayment] = await Promise.all([
+    db
+      .select({
+        id: invoices.id,
+        number: invoices.number,
+        type: invoices.type,
+        issueDate: invoices.issueDate,
+        totalInclTax: invoices.totalInclTax,
+        currency: invoices.currency,
+        transmissionStatus: invoices.transmissionStatus,
+      })
+      .from(invoices)
+      .innerJoin(documents, eq(documents.id, invoices.documentId))
+      .where(and(eq(invoices.reservationId, id), eq(invoices.storeId, store.id)))
+      .orderBy(desc(invoices.issueDate), desc(invoices.createdAt)),
+    db
+      .select({ invoicingEnabled: storeLegalProfiles.invoicingEnabled })
+      .from(storeLegalProfiles)
+      .where(eq(storeLegalProfiles.storeId, store.id))
+      .limit(1)
+      .then(([profile]) => profile ?? null),
+    db
+      .select({ id: payments.id })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.reservationId, id),
+          eq(payments.status, 'completed'),
+          isNull(payments.stripeRefundId),
+          isNull(payments.refundOfPaymentId),
+          inArray(payments.type, ['rental', 'damage', 'adjustment', 'deposit_capture']),
+          gt(payments.amount, '0'),
+          notInArray(payments.id, linkedPaymentIds),
+        ),
+      )
+      .limit(1)
+      .then(([payment]) => payment ?? null),
+  ])
+
   const formattedDepartureInspection =
     departureInspection && departureData
       ? {
@@ -164,8 +208,11 @@ export default async function ReservationDetailPage({
         stripeConfigured={stripeConfigured}
         defaultPaymentMethod={defaultPaymentMethod}
         inspectionSettings={inspectionSettings}
+        showStoreLocations={Boolean(store.settings?.delivery?.multiLocationEnabled)}
         departureInspection={formattedDepartureInspection}
         returnInspection={formattedReturnInspection}
+        invoices={reservationInvoices}
+        canGenerateInvoice={Boolean(legalProfile?.invoicingEnabled && uninvoicedPayment)}
       />
     </>
   )

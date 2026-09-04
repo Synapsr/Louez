@@ -387,7 +387,11 @@ export async function quoteMarketplaceBooking(params: {
     const productAvailability = availability.products.find(
       (product) => product.productId === productId,
     );
-    if (productAvailability && requestedQuantity > productAvailability.availableQuantity) {
+    if (
+      productAvailability?.availableQuantity !== null &&
+      productAvailability !== undefined &&
+      requestedQuantity > productAvailability.availableQuantity
+    ) {
       reasons.push({ productId, code: "out_of_stock" });
     }
   }

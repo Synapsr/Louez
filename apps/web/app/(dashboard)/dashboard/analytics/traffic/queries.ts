@@ -1,5 +1,6 @@
 import { eachDayOfInterval, endOfDay, format, startOfDay, subDays } from "date-fns";
-import { fr } from "date-fns/locale";
+import type { Locale as DateFnsLocale } from "date-fns";
+
 import { and, count, eq, gte, lt, lte, ne, sql } from "drizzle-orm";
 
 import { db } from "@louez/db";
@@ -276,7 +277,11 @@ export async function getTrafficStats(storeId: string, period: Period) {
   }
 }
 
-export async function getTrendData(storeId: string, period: Period): Promise<TrendDataPoint[]> {
+export async function getTrendData(
+  storeId: string,
+  period: Period,
+  locale: DateFnsLocale,
+): Promise<TrendDataPoint[]> {
   const now = new Date();
   const { days, startDate, endDate } = getPeriodBounds(period, now);
   const todayStart = startOfDay(now);
@@ -321,7 +326,7 @@ export async function getTrendData(storeId: string, period: Period): Promise<Tre
       const stat = statsMap.get(key);
       return {
         date: key,
-        label: format(day, days > 30 ? "dd/MM" : "EEE dd", { locale: fr }),
+        label: format(day, days > 30 ? "dd/MM" : "EEE dd", { locale }),
         visitors: toNumber(stat?.visitors),
         pageViews: toNumber(stat?.pageViews),
         conversions: toNumber(stat?.conversions),
@@ -332,7 +337,7 @@ export async function getTrendData(storeId: string, period: Period): Promise<Tre
     // Return empty array with all days showing 0
     return allDays.map((day) => ({
       date: format(day, "yyyy-MM-dd"),
-      label: format(day, days > 30 ? "dd/MM" : "EEE dd", { locale: fr }),
+      label: format(day, days > 30 ? "dd/MM" : "EEE dd", { locale }),
       visitors: 0,
       pageViews: 0,
       conversions: 0,

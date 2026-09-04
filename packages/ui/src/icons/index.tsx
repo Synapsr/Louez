@@ -137,6 +137,13 @@ export {
   Zap as ZapIcon,
   ArrowRight as ArrowRightIcon,
   ArrowLeft as ArrowLeftIcon,
+  ChevronLeft as ChevronLeftIcon,
+  TriangleAlert as TriangleAlertIcon,
 } from "lucide-react";
+
+export {
+  IconTruckFastOutline18 as DeliveryTruckIcon,
+  IconTruckRefreshOutline18 as ReturnTruckIcon,
+} from "nucleo-ui-outline-18";
 
 export { GoogleCalendar as GoogleCalendarIcon } from "./icon.google-calendar";

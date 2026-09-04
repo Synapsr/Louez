@@ -44,6 +44,7 @@ import { Alert, AlertDescription } from '@louez/ui'
 import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-breadcrumbs-context'
 import { ReservationDatePickerControl } from '@/components/form/form-reservation-date-picker'
 import { cn, formatCurrency, getCurrencySymbol, minutesToPriceDuration } from '@louez/utils'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { calculateDuration } from '@/lib/utils/duration'
 import { useStoreTimezone } from '@/contexts/store-context'
 import {
@@ -64,7 +65,10 @@ import { EditReservationItemsSection } from './components/edit-reservation-items
 import { EditReservationSummarySection } from './components/edit-reservation-summary-section'
 import { EditReservationDeliverySection } from './components/edit-reservation-delivery-section'
 import { useEditReservationAvailability } from './hooks/use-edit-reservation-availability'
-import { useEditReservationPricing } from './hooks/use-edit-reservation-pricing'
+import {
+  calculateUnitPriceFromTotal,
+  useEditReservationPricing,
+} from './hooks/use-edit-reservation-pricing'
 import { useEditReservationDelivery } from './hooks/use-edit-reservation-delivery'
 import type { EditReservationFormProps, EditableItem, ReservationItem } from './types'
 
@@ -72,10 +76,15 @@ function parseCoordinate(value: string | null): number | null {
   return value ? parseFloat(value) : null
 }
 
-function isSameStoreDay(dateA: Date, dateB: Date, timezone?: string): boolean {
+function isSameStoreDay(
+  dateA: Date,
+  dateB: Date,
+  timezone: string | undefined,
+  locale: string,
+): boolean {
   return (
-    formatStoreDate(dateA, timezone, 'yyyy-MM-dd') ===
-    formatStoreDate(dateB, timezone, 'yyyy-MM-dd')
+    formatStoreDate(dateA, timezone, 'yyyy-MM-dd', locale) ===
+    formatStoreDate(dateB, timezone, 'yyyy-MM-dd', locale)
   )
 }
 
@@ -211,7 +220,10 @@ function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): 
   const pricingMode = isManualPrice
     ? resolveInitialManualPricingMode(item.product, fallbackPricingMode, startDate, endDate)
     : fallbackPricingMode
-  const duration = calculateDuration(startDate, endDate, pricingMode)
+  const duration =
+    item.product?.pricingKind === 'fixed'
+      ? 1
+      : calculateDuration(startDate, endDate, pricingMode)
   const preciseManualUnitPrice =
     isManualPrice && item.quantity > 0 && duration > 0
       ? Number(item.totalPrice) / (duration * item.quantity)
@@ -221,6 +233,7 @@ function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): 
     id: item.id,
     productId: item.productId,
     quantity: item.quantity,
+    consumedQuantity: item.consumedQuantity,
     unitPrice: preciseManualUnitPrice,
     depositPerUnit: parseFloat(item.depositPerUnit),
     isManualPrice,
@@ -270,6 +283,7 @@ export function EditReservationForm({
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const tValidation = useTranslations('validation')
+  const { intl: formatLocale } = useFormatLocale()
   const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
 
@@ -298,19 +312,24 @@ export function EditReservationForm({
   const [startDate, setStartDate] = useState<Date | undefined>(new Date(reservation.startDate))
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(reservation.endDate))
   const endMinTime =
-    startDate && endDate && isSameStoreDay(startDate, endDate, timezone)
-      ? formatStoreDate(startDate, timezone, 'TIME_ONLY')
+    startDate && endDate && isSameStoreDay(startDate, endDate, timezone, formatLocale)
+      ? formatStoreDate(startDate, timezone, 'TIME_ONLY', formatLocale)
       : '00:00'
   const handleEndDateChange = useCallback(
     (date: Date | undefined) => {
-      if (date && startDate && isSameStoreDay(startDate, date, timezone) && date < startDate) {
+      if (
+        date &&
+        startDate &&
+        isSameStoreDay(startDate, date, timezone, formatLocale) &&
+        date < startDate
+      ) {
         setEndDate(startDate)
         return
       }
 
       setEndDate(date)
     },
-    [startDate, timezone],
+    [formatLocale, startDate, timezone],
   )
   const editableReservationItems = reservation.items.filter(
     (item) =>
@@ -564,10 +583,12 @@ export function EditReservationForm({
         const itemDuration = startDate && endDate
           ? getDurationForMode(effectivePricingMode)
           : 0
-        const unitPrice =
-          itemDuration > 0 && item.quantity > 0
-            ? totalPrice / (itemDuration * item.quantity)
-            : totalPrice
+        const unitPrice = calculateUnitPriceFromTotal({
+          totalPrice,
+          quantity: item.quantity,
+          duration: itemDuration,
+          pricingKind: item.product?.pricingKind ?? 'duration',
+        })
 
         return {
           ...item,
@@ -632,6 +653,7 @@ export function EditReservationForm({
       id: `new-${Date.now()}`,
       productId: product.id,
       quantity: 1,
+      consumedQuantity: 0,
       unitPrice: parseFloat(product.price),
       depositPerUnit: parseFloat(product.deposit),
       isManualPrice: false,
@@ -730,6 +752,7 @@ export function EditReservationForm({
       id: `custom-${Date.now()}`,
       productId: null,
       quantity,
+      consumedQuantity: 0,
       unitPrice: effectiveUnitPrice,
       depositPerUnit: deposit,
       isManualPrice: true,

@@ -7,6 +7,7 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./account-deletion": "./src/account-deletion.ts",
     "./client": "./src/client.ts",
     "./env": "./src/env.ts"
   },

@@ -12,6 +12,7 @@
     "address": "Indirizzo",
     "pickupAddress": "Indirizzo ritiro",
     "returnAddress": "Indirizzo di reso",
+    "pickupAndReturnAddress": "Indirizzo di ritiro e restituzione",
     "subtotal": "Subtotale",
     "subtotalExclTax": "Subtotale IVA esclusa",
     "taxAmount": "IVA ({rate}%)",
@@ -134,6 +135,7 @@
     "email": "Email:",
     "period": "Periodo:",
     "amount": "Importo:",
+    "notes": "Messaggio del cliente",
     "viewRequest": "Vedi richiesta",
     "connectToManage": "Accedi alla tua dashboard per accettare o rifiutare questa richiesta."
   },

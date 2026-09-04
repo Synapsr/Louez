@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "2a4772be-6fd1-42d6-98d7-e1091a2c8d74",
-  "prevId": "bad60bd9-18b4-40ff-b0cf-2d795114d74a",
+  "id": "00706bd7-36ac-4ac1-99b7-9f9bfad42526",
+  "prevId": "3109d815-38f6-426d-9d96-10d961204051",
   "tables": {
     "accounts": {
       "name": "accounts",
@@ -1318,16 +1318,30 @@
           "notNull": true,
           "autoincrement": false
         },
-        "marketplace_user_id": {
-          "name": "marketplace_user_id",
+        "company_name": {
+          "name": "company_name",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "company_name": {
-          "name": "company_name",
-          "type": "varchar(255)",
+        "company_number": {
+          "name": "company_number",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "company_number_scheme": {
+          "name": "company_number_scheme",
+          "type": "enum('fr_siren','be_bce')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "vat_number": {
+          "name": "vat_number",
+          "type": "varchar(64)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1404,13 +1418,6 @@
           "name": "customers_email_idx",
           "columns": [
             "email"
-          ],
-          "isUnique": false
-        },
-        "customers_marketplace_user_idx": {
-          "name": "customers_marketplace_user_idx",
-          "columns": [
-            "marketplace_user_id"
           ],
           "isUnique": false
         }
@@ -1706,7 +1713,7 @@
           "name": "reservation_id",
           "type": "varchar(21)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "document_type": {
@@ -2841,8 +2848,8 @@
       },
       "checkConstraint": {}
     },
-    "marketplace_booking_attempts": {
-      "name": "marketplace_booking_attempts",
+    "invoice_payments": {
+      "name": "invoice_payments",
       "columns": {
         "id": {
           "name": "id",
@@ -2851,52 +2858,16 @@
           "notNull": true,
           "autoincrement": false
         },
-        "booking_attempt_id": {
-          "name": "booking_attempt_id",
-          "type": "varchar(36)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
+        "invoice_id": {
+          "name": "invoice_id",
           "type": "varchar(21)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "quote_token_hash": {
-          "name": "quote_token_hash",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "hold_id": {
-          "name": "hold_id",
+        "payment_id": {
+          "name": "payment_id",
           "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "reservation_id": {
-          "name": "reservation_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'creating_hold'"
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -2919,62 +2890,43 @@
         }
       },
       "indexes": {
-        "marketplace_booking_attempts_store_idx": {
-          "name": "marketplace_booking_attempts_store_idx",
+        "invoice_payments_invoice_idx": {
+          "name": "invoice_payments_invoice_idx",
           "columns": [
-            "store_id"
+            "invoice_id"
           ],
           "isUnique": false
         },
-        "marketplace_booking_attempts_expires_at_idx": {
-          "name": "marketplace_booking_attempts_expires_at_idx",
+        "invoice_payments_payment_idx": {
+          "name": "invoice_payments_payment_idx",
           "columns": [
-            "expires_at"
-          ],
-          "isUnique": false
-        },
-        "marketplace_booking_attempts_updated_at_id_idx": {
-          "name": "marketplace_booking_attempts_updated_at_id_idx",
-          "columns": [
-            "updated_at",
-            "id"
+            "payment_id"
           ],
           "isUnique": false
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "marketplace_booking_attempts_id": {
-          "name": "marketplace_booking_attempts_id",
+        "invoice_payments_id": {
+          "name": "invoice_payments_id",
           "columns": [
             "id"
           ]
         }
       },
       "uniqueConstraints": {
-        "marketplace_booking_attempts_booking_attempt_id_unique": {
-          "name": "marketplace_booking_attempts_booking_attempt_id_unique",
+        "invoice_payments_invoice_payment_unique": {
+          "name": "invoice_payments_invoice_payment_unique",
           "columns": [
-            "booking_attempt_id"
-          ]
-        },
-        "marketplace_booking_attempts_reservation_idx": {
-          "name": "marketplace_booking_attempts_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ]
-        },
-        "marketplace_booking_attempts_hold_idx": {
-          "name": "marketplace_booking_attempts_hold_idx",
-          "columns": [
-            "hold_id"
+            "invoice_id",
+            "payment_id"
           ]
         }
       },
       "checkConstraint": {}
     },
-    "marketplace_catalog_tombstones": {
-      "name": "marketplace_catalog_tombstones",
+    "invoice_sequences": {
+      "name": "invoice_sequences",
       "columns": {
         "id": {
           "name": "id",
@@ -2983,27 +2935,34 @@
           "notNull": true,
           "autoincrement": false
         },
-        "entity_type": {
-          "name": "entity_type",
-          "type": "enum('store','product')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "entity_id": {
-          "name": "entity_id",
+        "store_id": {
+          "name": "store_id",
           "type": "varchar(21)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "deleted_at": {
-          "name": "deleted_at",
-          "type": "timestamp",
+        "series": {
+          "name": "series",
+          "type": "enum('invoice','credit_note')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "year": {
+          "name": "year",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "next_number": {
+          "name": "next_number",
+          "type": "int",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "(now())"
+          "default": 1
         },
         "created_at": {
           "name": "created_at",
@@ -3012,36 +2971,318 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
         }
       },
       "indexes": {
-        "marketplace_catalog_tombstones_deleted_at_id_idx": {
-          "name": "marketplace_catalog_tombstones_deleted_at_id_idx",
+        "invoice_sequences_store_idx": {
+          "name": "invoice_sequences_store_idx",
           "columns": [
-            "deleted_at",
-            "id"
-          ],
-          "isUnique": false
-        },
-        "marketplace_catalog_tombstones_entity_idx": {
-          "name": "marketplace_catalog_tombstones_entity_idx",
-          "columns": [
-            "entity_type",
-            "entity_id"
+            "store_id"
           ],
           "isUnique": false
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "marketplace_catalog_tombstones_id": {
-          "name": "marketplace_catalog_tombstones_id",
+        "invoice_sequences_id": {
+          "name": "invoice_sequences_id",
           "columns": [
             "id"
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "invoice_sequences_store_series_year_unique": {
+          "name": "invoice_sequences_store_series_year_unique",
+          "columns": [
+            "store_id",
+            "series",
+            "year"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "invoices": {
+      "name": "invoices",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reservation_id": {
+          "name": "reservation_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "enum('invoice','credit_note')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "enum('initial','complementary','credit_note')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "number": {
+          "name": "number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "issue_date": {
+          "name": "issue_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seller_snapshot": {
+          "name": "seller_snapshot",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "buyer_snapshot": {
+          "name": "buyer_snapshot",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lines": {
+          "name": "lines",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vat_breakdown": {
+          "name": "vat_breakdown",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_excl_tax": {
+          "name": "total_excl_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_tax": {
+          "name": "total_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_incl_tax": {
+          "name": "total_incl_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "en16931_snapshot": {
+          "name": "en16931_snapshot",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "preceding_invoice_id": {
+          "name": "preceding_invoice_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "processing_rule": {
+          "name": "processing_rule",
+          "type": "enum('b2b','b2c')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "transmission_status": {
+          "name": "transmission_status",
+          "type": "enum('not_applicable','pending','sent','validated','rejected','failed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'not_applicable'"
+        },
+        "super_pdp_invoice_id": {
+          "name": "super_pdp_invoice_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "attempt_count": {
+          "name": "attempt_count",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "latest_super_pdp_status": {
+          "name": "latest_super_pdp_status",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "invoices_store_idx": {
+          "name": "invoices_store_idx",
+          "columns": [
+            "store_id"
+          ],
+          "isUnique": false
+        },
+        "invoices_reservation_idx": {
+          "name": "invoices_reservation_idx",
+          "columns": [
+            "reservation_id"
+          ],
+          "isUnique": false
+        },
+        "invoices_customer_idx": {
+          "name": "invoices_customer_idx",
+          "columns": [
+            "customer_id"
+          ],
+          "isUnique": false
+        },
+        "invoices_preceding_invoice_idx": {
+          "name": "invoices_preceding_invoice_idx",
+          "columns": [
+            "preceding_invoice_id"
+          ],
+          "isUnique": false
+        },
+        "invoices_transmission_idx": {
+          "name": "invoices_transmission_idx",
+          "columns": [
+            "transmission_status",
+            "next_attempt_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "invoices_id": {
+          "name": "invoices_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "invoices_store_number_unique": {
+          "name": "invoices_store_number_unique",
+          "columns": [
+            "store_id",
+            "number"
+          ]
+        },
+        "invoices_document_unique": {
+          "name": "invoices_document_unique",
+          "columns": [
+            "document_id"
+          ]
+        },
+        "invoices_super_pdp_invoice_unique": {
+          "name": "invoices_super_pdp_invoice_unique",
+          "columns": [
+            "super_pdp_invoice_id"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "page_views": {
@@ -3509,6 +3750,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "refund_of_payment_id": {
+          "name": "refund_of_payment_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "stripe_payment_method_id": {
           "name": "stripe_payment_method_id",
           "type": "varchar(255)",
@@ -3574,6 +3822,13 @@
           "name": "payments_reservation_idx",
           "columns": [
             "reservation_id"
+          ],
+          "isUnique": false
+        },
+        "payments_refund_of_payment_idx": {
+          "name": "payments_refund_of_payment_idx",
+          "columns": [
+            "refund_of_payment_id"
           ],
           "isUnique": false
         }
@@ -3799,6 +4054,22 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "required": {
+          "name": "required",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
         },
         "display_order": {
           "name": "display_order",
@@ -4811,6 +5082,14 @@
           "notNull": true,
           "autoincrement": false
         },
+        "pricing_kind": {
+          "name": "pricing_kind",
+          "type": "enum('duration','fixed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'duration'"
+        },
         "video_url": {
           "name": "video_url",
           "type": "text",
@@ -4840,6 +5119,14 @@
           "notNull": true,
           "autoincrement": false,
           "default": 1
+        },
+        "stock_kind": {
+          "name": "stock_kind",
+          "type": "enum('returnable','consumable')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'returnable'"
         },
         "track_units": {
           "name": "track_units",
@@ -5264,6 +5551,168 @@
           "name": "push_subscriptions_endpoint_unique",
           "columns": [
             "endpoint_hash"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "received_invoices": {
+      "name": "received_invoices",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "super_pdp_invoice_id": {
+          "name": "super_pdp_invoice_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seller_name": {
+          "name": "seller_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seller_identifier": {
+          "name": "seller_identifier",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "number": {
+          "name": "number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "issue_date": {
+          "name": "issue_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_excl_tax": {
+          "name": "total_excl_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_tax": {
+          "name": "total_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_incl_tax": {
+          "name": "total_incl_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "latest_status": {
+          "name": "latest_status",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "our_action": {
+          "name": "our_action",
+          "type": "enum('none','acknowledged','accepted','refused')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'none'"
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "received_invoices_store_idx": {
+          "name": "received_invoices_store_idx",
+          "columns": [
+            "store_id"
+          ],
+          "isUnique": false
+        },
+        "received_invoices_issue_date_idx": {
+          "name": "received_invoices_issue_date_idx",
+          "columns": [
+            "issue_date"
+          ],
+          "isUnique": false
+        },
+        "received_invoices_document_idx": {
+          "name": "received_invoices_document_idx",
+          "columns": [
+            "document_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "received_invoices_id": {
+          "name": "received_invoices_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "received_invoices_store_super_pdp_invoice_unique": {
+          "name": "received_invoices_store_super_pdp_invoice_unique",
+          "columns": [
+            "store_id",
+            "super_pdp_invoice_id"
           ]
         }
       },
@@ -5915,6 +6364,14 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "consumed_quantity": {
+          "name": "consumed_quantity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "unit_price": {
           "name": "unit_price",
@@ -7337,6 +7794,182 @@
       },
       "checkConstraint": {}
     },
+    "store_legal_profiles": {
+      "name": "store_legal_profiles",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "legal_name": {
+          "name": "legal_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "legal_form": {
+          "name": "legal_form",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "company_number": {
+          "name": "company_number",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "company_number_scheme": {
+          "name": "company_number_scheme",
+          "type": "enum('fr_siren','be_bce')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "siret": {
+          "name": "siret",
+          "type": "varchar(14)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "vat_number": {
+          "name": "vat_number",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rcs_city": {
+          "name": "rcs_city",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "share_capital": {
+          "name": "share_capital",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "registered_address": {
+          "name": "registered_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "registered_address_complement": {
+          "name": "registered_address_complement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "registered_postal_code": {
+          "name": "registered_postal_code",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "registered_city": {
+          "name": "registered_city",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "country": {
+          "name": "country",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "invoicing_enabled": {
+          "name": "invoicing_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "vat_regime": {
+          "name": "vat_regime",
+          "type": "enum('monthly','quarterly','simplified','vat_exemption')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "has_vat_on_debits": {
+          "name": "has_vat_on_debits",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "store_legal_profiles_store_idx": {
+          "name": "store_legal_profiles_store_idx",
+          "columns": [
+            "store_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "store_legal_profiles_id": {
+          "name": "store_legal_profiles_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "store_legal_profiles_store_unique": {
+          "name": "store_legal_profiles_store_unique",
+          "columns": [
+            "store_id"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
     "store_locations": {
       "name": "store_locations",
       "columns": {
@@ -7470,219 +8103,6 @@
         }
       },
       "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "store_marketplace_category_mappings": {
-      "name": "store_marketplace_category_mappings",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "category_id": {
-          "name": "category_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "marketplace_category_slug": {
-          "name": "marketplace_category_slug",
-          "type": "varchar(160)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "store_marketplace_category_mappings_store_idx": {
-          "name": "store_marketplace_category_mappings_store_idx",
-          "columns": [
-            "store_id"
-          ],
-          "isUnique": false
-        },
-        "store_marketplace_category_mappings_category_idx": {
-          "name": "store_marketplace_category_mappings_category_idx",
-          "columns": [
-            "category_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "store_marketplace_category_mappings_id": {
-          "name": "store_marketplace_category_mappings_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "store_marketplace_category_mappings_store_category_unique": {
-          "name": "store_marketplace_category_mappings_store_category_unique",
-          "columns": [
-            "store_id",
-            "category_id"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
-    "store_marketplace_channels": {
-      "name": "store_marketplace_channels",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "enabled_by_owner": {
-          "name": "enabled_by_owner",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "status": {
-          "name": "status",
-          "type": "enum('setup_required','pending','published','paused','disabled')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'setup_required'"
-        },
-        "published_at": {
-          "name": "published_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "disabled_at": {
-          "name": "disabled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "terms_accepted_at": {
-          "name": "terms_accepted_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "claimed_business_id": {
-          "name": "claimed_business_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "claim_confirmed_at": {
-          "name": "claim_confirmed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status_reason": {
-          "name": "status_reason",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "version": {
-          "name": "version",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 1
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "store_marketplace_channels_status_updated_idx": {
-          "name": "store_marketplace_channels_status_updated_idx",
-          "columns": [
-            "status",
-            "updated_at"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "store_marketplace_channels_id": {
-          "name": "store_marketplace_channels_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "store_marketplace_channels_store_id_unique": {
-          "name": "store_marketplace_channels_store_id_unique",
-          "columns": [
-            "store_id"
-          ]
-        }
-      },
       "checkConstraint": {}
     },
     "store_members": {
@@ -7892,6 +8312,133 @@
           "name": "store_phone_numbers_e164_unique",
           "columns": [
             "e164"
+          ]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "store_super_pdp_integrations": {
+      "name": "store_super_pdp_integrations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "integration_id": {
+          "name": "integration_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "environment": {
+          "name": "environment",
+          "type": "enum('sandbox','production')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'sandbox'"
+        },
+        "super_pdp_company_id": {
+          "name": "super_pdp_company_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "company_verification_status": {
+          "name": "company_verification_status",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "directory_entry_id": {
+          "name": "directory_entry_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "directory_entry_status": {
+          "name": "directory_entry_status",
+          "type": "enum('pending','created','error')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "send_and_receive": {
+          "name": "send_and_receive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "last_event_cursor": {
+          "name": "last_event_cursor",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "connected_at": {
+          "name": "connected_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "store_super_pdp_integrations_integration_idx": {
+          "name": "store_super_pdp_integrations_integration_idx",
+          "columns": [
+            "integration_id"
+          ],
+          "isUnique": false
+        },
+        "store_super_pdp_integrations_company_idx": {
+          "name": "store_super_pdp_integrations_company_idx",
+          "columns": [
+            "super_pdp_company_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "store_super_pdp_integrations_id": {
+          "name": "store_super_pdp_integrations_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "store_super_pdp_integrations_integration_unique": {
+          "name": "store_super_pdp_integrations_integration_unique",
+          "columns": [
+            "integration_id"
           ]
         }
       },

@@ -349,7 +349,7 @@ See [SECURITY.md](SECURITY.md) for our full security policy.
 
 ### Third-party assets
 
-The dashboard uses icons from [Nucleo](https://nucleoapp.com) © Nucleo — see [NOTICE](NOTICE). They are **not** covered by this repository's license and require a valid [Nucleo license](https://nucleoapp.com/license). The icon sources are not vendored here — they come from the official [`nucleo-glass`](https://www.npmjs.com/package/nucleo-glass) npm package at install time. Don't extract or reuse these icons outside the app. Contributors must keep the total below 100 (tracked in `packages/ui/src/icons/glass.tsx`); self-hosters remain responsible for ensuring their use is licensed.
+The dashboard uses icons from [Nucleo](https://nucleoapp.com) © Nucleo — see [NOTICE](NOTICE). They are **not** covered by this repository's license and require a valid [Nucleo license](https://nucleoapp.com/license). The icon sources are not vendored here: they come from the official [`nucleo-glass`](https://www.npmjs.com/package/nucleo-glass) and [`nucleo-ui-outline-18`](https://www.npmjs.com/package/nucleo-ui-outline-18) npm packages at install time. Don't extract or reuse these icons outside the app. Contributors must keep the total below 100, with usage centralized in `packages/ui/src/icons/`; self-hosters remain responsible for ensuring their use is licensed.
 
 The background-removal image includes MIT-licensed [`rembg`](https://github.com/danielgatis/rembg) and the Apache-2.0 [`isnet-general-use` model from DIS/IS-Net](https://github.com/xuebinqin/DIS). Their attribution is recorded in [NOTICE](NOTICE).
 

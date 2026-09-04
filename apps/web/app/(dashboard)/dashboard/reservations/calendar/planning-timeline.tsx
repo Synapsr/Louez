@@ -3,8 +3,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent, UIEvent } from "react";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
+import { useQueries } from "@tanstack/react-query";
 import { CalendarIcon, ChevronDown, ChevronRight } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 
@@ -24,20 +25,18 @@ import {
   addDays,
   computeMonthSegments,
   diffInDays,
-  getMondayOf,
   isWeekend,
   placeReservations,
   stackReservations,
 } from "@/components/dashboard/reservations-timeline/timeline-utils";
+import { reservationPlanningQueries } from "@/lib/queries/reservation-planning.queries";
 
-import { type StoreTimelineReservation, fetchStoreReservationTimeline } from "./actions";
-import {
-  type CalendarRange,
-  matchesTodayOperation,
-  parseCalendarDateParam,
-} from "./calendar-query";
+import { type CalendarRange, matchesTodayOperation } from "./calendar-query";
 import { TimelineToolbar, useTimelineFilters } from "./timeline-toolbar";
-import type { Product } from "./types";
+import type { Product, StoreTimelineReservation } from "./types";
+import { useTimelineDateAnchor } from "./use-timeline-date-anchor";
+import { useTimelineDateParam } from "./use-timeline-date-param";
+import { toStoreTimelineReservation } from "./util.planning-timeline";
 
 // =============================================================================
 // Constants — mirror the product page timeline so both feel identical
@@ -85,9 +84,6 @@ const DRAG_CREATE_END_HOUR = 18;
 /** Prevent a click or tiny pointer jitter from starting a reservation */
 const DRAG_START_THRESHOLD_PX = 4;
 
-/** Days loaded initially before the anchor date (Monday aligned) */
-const INITIAL_PAST_DAYS = 28;
-const INITIAL_DAYS_COUNT = 84;
 /** Days added per infinite-scroll extension (multiple of 7 keeps Monday alignment) */
 const EXTEND_CHUNK_DAYS = 28;
 /** Distance from an edge (px) that triggers an extension */
@@ -133,10 +129,9 @@ interface PlanningTimelineProps {
 export function PlanningTimeline({ products, currency, storeId }: PlanningTimelineProps) {
   const t = useTranslations("dashboard.calendar.timeline");
   const tCalendar = useTranslations("dashboard.calendar");
-  const tErrors = useTranslations("errors");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [dateParam] = useTimelineDateParam();
 
   // ---------------------------------------------------------------------------
   // URL-persisted view state (zoom + status/product filters) — shareable links
@@ -152,15 +147,13 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   // Window state (infinite horizontal scroll)
   // ---------------------------------------------------------------------------
 
-  // Anchor on the `date` param when present (legacy links, month-view "+N")
-  const anchorDateRef = useRef(
-    parseCalendarDateParam(searchParams.get("date") ?? undefined) ?? new Date(),
-  );
+  // Anchor on the `date` param when present (deep links, `returnTo` round-trips)
+  const anchorDateRef = useRef(dateParam ?? new Date());
 
-  const [windowStart, setWindowStart] = useState(() =>
-    getMondayOf(addDays(anchorDateRef.current, -INITIAL_PAST_DAYS)),
-  );
-  const [daysCount, setDaysCount] = useState(INITIAL_DAYS_COUNT);
+  const initialWindowRef = useRef(reservationPlanningQueries.initialWindow(anchorDateRef.current));
+
+  const [windowStart, setWindowStart] = useState(initialWindowRef.current.start);
+  const [daysCount, setDaysCount] = useState(initialWindowRef.current.daysCount);
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const scrollRafRef = useRef<number | null>(null);
@@ -170,96 +163,46 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
   const didInitialScrollRef = useRef(false);
 
   // ---------------------------------------------------------------------------
-  // Data (coverage-gap fetching, identical to the product page timeline)
+  // Data — React Query, one cached query per fixed 28-day chunk. Scrolling
+  // mounts the next chunks; cached chunks render instantly, so navigating
+  // through time never shows a loading state.
   // ---------------------------------------------------------------------------
 
-  const [reservationsById, setReservationsById] = useState<Map<string, StoreTimelineReservation>>(
-    () => new Map(),
+  const chunkQueries = useMemo(
+    () => reservationPlanningQueries.forWindow(storeId, windowStart, daysCount),
+    [storeId, windowStart, daysCount],
   );
-  const [isFetching, setIsFetching] = useState(true);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [retryToken, setRetryToken] = useState(0);
-  const coverageRef = useRef<{ start: number; end: number } | null>(null);
-  const pendingFetchesRef = useRef(0);
-  const fetchGenerationRef = useRef(0);
 
-  // Coverage is claimed before fetching so overlapping effect runs don't
-  // refetch the same range. A date jump starts a new generation so late results
-  // from the previous window cannot roll back or overwrite the new state.
-  useEffect(() => {
-    const fetchGeneration = fetchGenerationRef.current;
-    const winStart = windowStart;
-    const winEnd = addDays(windowStart, daysCount - 1);
-    winEnd.setHours(23, 59, 59, 999);
-
-    const coverage = coverageRef.current;
-    const gaps: Array<[Date, Date]> = [];
-
-    if (!coverage) {
-      gaps.push([winStart, winEnd]);
-    } else {
-      if (winStart.getTime() < coverage.start) {
-        gaps.push([winStart, new Date(coverage.start)]);
-      }
-      if (winEnd.getTime() > coverage.end) {
-        gaps.push([new Date(coverage.end), winEnd]);
-      }
-    }
-
-    if (gaps.length === 0) return;
-
-    // Claimed before fetching; rolled back on failure so a retry refetches.
-    const previousCoverage = coverage;
-    coverageRef.current = {
-      start: Math.min(winStart.getTime(), coverage?.start ?? Infinity),
-      end: Math.max(winEnd.getTime(), coverage?.end ?? -Infinity),
-    };
-
-    pendingFetchesRef.current += 1;
-    setIsFetching(true);
-    setError(null);
-
-    void Promise.all(
-      gaps.map(([start, end]) =>
-        fetchStoreReservationTimeline(start.toISOString(), end.toISOString()),
-      ),
-    )
-      .then((results) => {
-        if (fetchGeneration !== fetchGenerationRef.current) return;
-
-        const failed = results.find((result) => "error" in result);
-        if (failed && "error" in failed) {
-          coverageRef.current = previousCoverage;
-          setError(failed.error);
-          return;
+  const { entries, isFetching, hasError, retry } = useQueries({
+    queries: chunkQueries,
+    combine: (results) => {
+      // A reservation overlapping two chunks comes back from both — key on the
+      // (reservation, product) pair so it is placed exactly once.
+      const byPair = new Map<string, StoreTimelineReservation>();
+      for (const result of results) {
+        for (const row of result.data ?? []) {
+          byPair.set(`${row.id}_${row.productId}`, toStoreTimelineReservation(row));
         }
+      }
 
-        setReservationsById((previous) => {
-          const next = new Map(previous);
-          for (const result of results) {
-            if (!("data" in result)) continue;
-            for (const reservation of result.data) {
-              next.set(`${reservation.id}_${reservation.productId}`, reservation);
-            }
-          }
-          return next;
-        });
-        setHasLoadedOnce(true);
-      })
-      .catch(() => {
-        if (fetchGeneration !== fetchGenerationRef.current) return;
+      return {
+        entries: Array.from(byPair.values()),
+        isFetching: results.some((result) => result.isFetching),
+        hasError: results.some((result) => result.isError),
+        retry: () =>
+          Promise.all(
+            results.filter((result) => result.isError).map((result) => result.refetch()),
+          ),
+      };
+    },
+  });
 
-        coverageRef.current = previousCoverage;
-        setError("errors.generic");
-      })
-      .finally(() => {
-        if (fetchGeneration !== fetchGenerationRef.current) return;
+  const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
 
-        pendingFetchesRef.current -= 1;
-        if (pendingFetchesRef.current === 0) setIsFetching(false);
-      });
-  }, [windowStart, daysCount, retryToken]);
+  useEffect(() => {
+    if (hasCompletedInitialLoad || isFetching) return;
+    setHasCompletedInitialLoad(true);
+  }, [hasCompletedInitialLoad, isFetching]);
 
   // ---------------------------------------------------------------------------
   // Derived layout data
@@ -306,7 +249,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
 
   const reservationsByProduct = useMemo(() => {
     const map = new Map<string, StoreTimelineReservation[]>();
-    for (const reservation of reservationsById.values()) {
+    for (const reservation of entries) {
       if (!matchesTodayOperation(reservation, todayOperation)) continue;
       if (hiddenStatuses.has(getTimelineStatus(reservation.status))) continue;
       const list = map.get(reservation.productId) ?? [];
@@ -314,7 +257,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
       map.set(reservation.productId, list);
     }
     return map;
-  }, [reservationsById, hiddenStatuses, todayOperation]);
+  }, [entries, hiddenStatuses, todayOperation]);
 
   const blocks = useMemo((): ProductBlock[] => {
     return displayProducts.map((product) => {
@@ -324,8 +267,11 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
       const trackUnits = Boolean(product.trackUnits) && units.length > 0;
       const quantity = Math.max(1, product.quantity);
 
-      // Stacked fallback: no unit identity, as few rows as the overlap needs
-      if (!trackUnits && quantity > AGGREGATE_THRESHOLD) {
+      // Untracked and high-volume simple stock have no useful per-unit lanes.
+      if (
+        product.stockKind === "untracked" ||
+        (!trackUnits && quantity > AGGREGATE_THRESHOLD)
+      ) {
         const { placed, laneCount } = stackReservations({ reservations, windowStart });
         const rows = Array.from(
           { length: Math.max(laneCount, MIN_AGGREGATE_ROWS) },
@@ -426,7 +372,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
 
     const anchorIndex = diffInDays(windowStart, anchorDateRef.current);
     const target =
-      anchorIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 3);
+      anchorIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 2);
     element.scrollLeft = Math.max(0, target);
     updateVisibleViewport(element);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -498,7 +444,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
     });
   };
 
-  const goToDate = (date: Date) => {
+  const goToDate = (date: Date, behavior: ScrollBehavior = "smooth") => {
     const element = scrollerRef.current;
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
@@ -507,21 +453,28 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
 
     if (element && targetIndex >= 0 && targetIndex < daysCount) {
       const target =
-        targetIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 3);
-      element.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+        targetIndex * dayWidth - Math.max(0, (element.clientWidth - PRODUCT_COLUMN_WIDTH) / 2);
+      const left = Math.max(0, target);
+      if (behavior === "auto") {
+        // Restoration jumps straight there: a smooth scroll across months
+        // would animate the whole way and read as jank.
+        element.scrollLeft = left;
+        updateVisibleViewport(element);
+      } else {
+        element.scrollTo({ left, behavior });
+      }
       return;
     }
 
-    // The chosen date fell outside the loaded window — reset around it.
-    fetchGenerationRef.current += 1;
-    coverageRef.current = null;
-    pendingFetchesRef.current = 0;
-    setReservationsById(new Map());
-    setHasLoadedOnce(false);
-    setIsFetching(true);
+    // The chosen date fell outside the loaded window — reset around it. Cached
+    // chunks stay warm, so a jump back to a visited period renders instantly.
+    pendingPrependRef.current = 0;
+    appendLockRef.current = false;
     didInitialScrollRef.current = false;
-    setWindowStart(getMondayOf(addDays(targetDate, -INITIAL_PAST_DAYS)));
-    setDaysCount(INITIAL_DAYS_COUNT);
+
+    const nextWindow = reservationPlanningQueries.initialWindow(targetDate);
+    setWindowStart(nextWindow.start);
+    setDaysCount(nextWindow.daysCount);
   };
 
   const goToToday = () => goToDate(new Date());
@@ -533,6 +486,13 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
     }
     filters.setRange(range);
   };
+
+  const { persistVisibleDate, returnTo } = useTimelineDateAnchor({
+    view: "planning",
+    dateParam,
+    visibleDate,
+    goToDate,
+  });
 
   // ---------------------------------------------------------------------------
   // Drag-to-create (mouse only — touch keeps native scrolling)
@@ -645,7 +605,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
         filters={filters}
         currentDate={visibleDate}
         monthLabel={visibleMonthLabel}
-        isFetching={isFetching && hasLoadedOnce}
+        isFetching={isFetching && hasCompletedInitialLoad}
         onPrevious={() => scrollByDays(-NAV_DAYS[zoom])}
         onNext={() => scrollByDays(NAV_DAYS[zoom])}
         onToday={goToToday}
@@ -653,18 +613,11 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
         onRangeChange={handleZoomChange}
       />
 
-      {error && (
+      {hasError && (
         <Alert variant="error">
           <AlertDescription className="flex items-center justify-between gap-3">
-            {tErrors(error.startsWith("errors.") ? error.replace("errors.", "") : "generic")}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setError(null);
-                setRetryToken((token) => token + 1);
-              }}
-            >
+            {t("loadError")}
+            <Button variant="outline" size="sm" disabled={isFetching} onClick={() => void retry()}>
               {t("retry")}
             </Button>
           </AlertDescription>
@@ -789,7 +742,7 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
             </div>
 
             {/* Initial loading shimmer */}
-            {!hasLoadedOnce && !error && (
+            {!hasCompletedInitialLoad && isFetching && !hasError && (
               <div
                 className="bg-muted/40 absolute inset-y-0 animate-pulse"
                 style={{ left: PRODUCT_COLUMN_WIDTH, width: timelineWidth }}
@@ -825,9 +778,11 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
                     >
                       {block.product.name}
                     </span>
-                    <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums">
-                      {block.product.quantity}
-                    </span>
+                    {block.product.stockKind === "untracked" ? null : (
+                      <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums">
+                        {block.product.quantity}
+                      </span>
+                    )}
                   </button>
 
                   <div className="relative" style={{ width: timelineWidth }}>
@@ -905,6 +860,8 @@ export function PlanningTimeline({ products, currency, storeId }: PlanningTimeli
                             key={`${placed.reservation.id}-${placed.laneIndex}`}
                             reservation={placed.reservation}
                             currency={currency}
+                            onBeforeNavigate={persistVisibleDate}
+                            returnTo={returnTo}
                             isLabelSticky
                             stickyLabelOffset={PRODUCT_COLUMN_WIDTH}
                             continuesBeforeViewport={placed.startIndex < leftmostVisibleDayIndex}

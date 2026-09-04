@@ -7,23 +7,12 @@ import { env as emailEnv } from "@louez/email/env";
 import { env as validationsEnv } from "@louez/validations/env";
 
 import { payAsYouGoConfigSchema } from "@/lib/pay-as-you-go/config";
-
-// NEXT_PUBLIC_* references are inlined at build time, and the published
-// Docker image is built without them — server chunks would otherwise see
-// empty values no matter what the container env says. AUTH_URL is a plain
-// server variable (never inlined) carrying the same origin, so server-side
-// reads fall back to it at runtime. Builds that do receive the public vars
-// (the cloud, local dev) short-circuit on the inlined value.
-const runtimeAppUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.AUTH_URL;
-const runtimeAppDomain =
-  process.env.NEXT_PUBLIC_APP_DOMAIN ||
-  (() => {
-    try {
-      return runtimeAppUrl ? new URL(runtimeAppUrl).host : undefined;
-    } catch {
-      return undefined;
-    }
-  })();
+import {
+  publicEnvSchema,
+  readPublicEnvRuntimeValues,
+  selectPublicEnv,
+  type PublicEnv,
+} from "@/lib/validators/validator.public-env";
 
 // Keep this lookup dynamic so Next.js does not bake the builder's
 // SKIP_ENV_VALIDATION=true into the standalone server bundle. The Docker build
@@ -31,6 +20,15 @@ const runtimeAppDomain =
 // the builder stage; the final container must validate and coerce its own env.
 const readRuntimeEnv = (name: string): string | undefined => process.env[name];
 const skipEnvValidation = readRuntimeEnv("SKIP_ENV_VALIDATION") === "true";
+
+// A published image must be promotable between environments. Next.js inlines
+// static NEXT_PUBLIC_* reads during `next build`, so every runtime-configurable
+// public value uses a computed lookup here. The artifact version is the one
+// intentional exception: it identifies the build and remains immutable.
+const runtimePublicEnv = readPublicEnvRuntimeValues({
+  appVersion: process.env.NEXT_PUBLIC_APP_VERSION,
+  readEnv: readRuntimeEnv,
+});
 
 export const env = createEnv({
   extends: [dbEnv, validationsEnv, authEnv, emailEnv],
@@ -83,7 +81,7 @@ export const env = createEnv({
     // ===== Google Places (Required for address search) =====
     // Optional: without it the address autocomplete degrades to plain input.
     GOOGLE_PLACES_API_KEY: z.string().optional(),
-    GOOGLE_PLACES_CACHE_TTL_HOURS: z.coerce.number().int().positive().default(120),
+    GOOGLE_PLACES_CACHE_TTL_HOURS: z.coerce.number().int().positive().default(24),
 
     // ===== Platform Admin (Required) =====
     PLATFORM_ADMIN_EMAILS: z
@@ -117,8 +115,40 @@ export const env = createEnv({
         "INTEGRATION_ENCRYPTION_KEY must be a base64url-encoded 32-byte key",
       )
       .optional(),
+    LEGAL_ARCHIVE_ENCRYPTION_KEY: z
+      .string()
+      .regex(
+        /^[A-Za-z0-9_-]{43}=$|^[A-Za-z0-9_-]{43}$/,
+        "LEGAL_ARCHIVE_ENCRYPTION_KEY must be a base64url-encoded 32-byte key",
+      )
+      .optional(),
+    LEGAL_ARCHIVE_FISCAL_YEAR_END: z
+      .string()
+      .regex(
+        /^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$/,
+        "LEGAL_ARCHIVE_FISCAL_YEAR_END must use MM-DD",
+      )
+      .refine((value) => {
+        const [monthText, dayText] = value.split("-");
+        const month = Number(monthText);
+        const day = Number(dayText);
+        return day <= new Date(Date.UTC(2000, month, 0)).getUTCDate();
+      }, "LEGAL_ARCHIVE_FISCAL_YEAR_END must be a valid calendar date")
+      .default("12-31"),
+    POSTHOG_API_HOST: z
+      .url("POSTHOG_API_HOST must be a valid URL")
+      .default("https://eu.posthog.com"),
+    POSTHOG_PROJECT_ID: z.string().optional(),
+    POSTHOG_PERSONAL_API_KEY: z.string().optional(),
+    GLEAP_API_TOKEN: z.string().optional(),
+    OPENREPLAY_API_URL: z.url("OPENREPLAY_API_URL must be a valid URL").optional(),
+    OPENREPLAY_ORGANIZATION_API_KEY: z.string().optional(),
     GOOGLE_CALENDAR_CLIENT_ID: z.string().optional(),
     GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional(),
+    SUPERPDP_CLIENT_ID: z.string().optional(),
+    SUPERPDP_CLIENT_SECRET: z.string().optional(),
+    SUPERPDP_ENVIRONMENT: z.enum(["sandbox", "production"]).default("sandbox"),
+    SUPERPDP_REDIRECT_URL: z.url("SUPERPDP_REDIRECT_URL must be a valid URL").optional(),
 
     // ===== Cron Jobs (Required) =====
     // Optional: cron routes reject requests until it is set.
@@ -367,50 +397,7 @@ export const env = createEnv({
     PREVIEW_STORE_SLUG: z.string().default(""),
   },
 
-  client: {
-    // ===== Application URLs (Required) =====
-    NEXT_PUBLIC_APP_URL: z.url("NEXT_PUBLIC_APP_URL must be a valid URL"),
-    NEXT_PUBLIC_APP_DOMAIN: z.string().min(1, "NEXT_PUBLIC_APP_DOMAIN is required"),
-    NEXT_PUBLIC_DASHBOARD_SUBDOMAIN: z.string().default("app"),
-
-    // ===== Stripe (Optional — payments) =====
-    // Optional to match its server-side Stripe siblings: without it Stripe.js
-    // is not initialized and storefronts run in request mode.
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: z.string().optional(),
-
-    // ===== Web Push (Optional — VAPID public key for subscribe()) =====
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
-
-    // ===== PostHog Analytics (Optional — analytics disabled when unset) =====
-    NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
-    NEXT_PUBLIC_POSTHOG_HOST: z.url().default("https://eu.i.posthog.com"),
-    NEXT_PUBLIC_APP_VERSION: z.string().min(1).max(100).optional(),
-
-    // ===== Umami Analytics (Required) =====
-    NEXT_PUBLIC_UMAMI_SCRIPT_URL: z
-      .url("NEXT_PUBLIC_UMAMI_SCRIPT_URL must be a valid URL")
-      .optional(),
-    NEXT_PUBLIC_UMAMI_WEBSITE_ID: z.string().optional(),
-
-    // ===== Gleap (Required for feedback) =====
-    NEXT_PUBLIC_GLEAP_API_KEY: z.string().optional(),
-
-    // ===== OpenReplay (Optional — session replay) =====
-    NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY: z.string().optional(),
-    NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY: z.string().optional(),
-    NEXT_PUBLIC_OPENREPLAY_INGEST_POINT: z
-      .url("NEXT_PUBLIC_OPENREPLAY_INGEST_POINT must be a valid URL")
-      .optional(),
-
-    // ===== fromHello (Optional — engagement & growth) =====
-    NEXT_PUBLIC_FROMHELLO_API_URL: z.url().optional(),
-    NEXT_PUBLIC_FROMHELLO_KEY: z.string().optional(),
-    // Set to e.g. ".louez.io" when marketing and app live on
-    // different subdomains so the fh_aid cookie follows visitors
-    // across the signup boundary. Leave unset for single-domain
-    // deploys.
-    NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN: z.string().optional(),
-  },
+  client: publicEnvSchema.shape,
 
   runtimeEnv: {
     // Server
@@ -445,8 +432,20 @@ export const env = createEnv({
     TULIP_API_KEY: process.env.TULIP_API_KEY,
     TULIP_CALENDLY_URL: process.env.TULIP_CALENDLY_URL,
     INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY,
+    LEGAL_ARCHIVE_ENCRYPTION_KEY: process.env.LEGAL_ARCHIVE_ENCRYPTION_KEY,
+    LEGAL_ARCHIVE_FISCAL_YEAR_END: process.env.LEGAL_ARCHIVE_FISCAL_YEAR_END,
+    POSTHOG_API_HOST: process.env.POSTHOG_API_HOST,
+    POSTHOG_PROJECT_ID: process.env.POSTHOG_PROJECT_ID,
+    POSTHOG_PERSONAL_API_KEY: process.env.POSTHOG_PERSONAL_API_KEY,
+    GLEAP_API_TOKEN: process.env.GLEAP_API_TOKEN,
+    OPENREPLAY_API_URL: process.env.OPENREPLAY_API_URL,
+    OPENREPLAY_ORGANIZATION_API_KEY: process.env.OPENREPLAY_ORGANIZATION_API_KEY,
     GOOGLE_CALENDAR_CLIENT_ID: process.env.GOOGLE_CALENDAR_CLIENT_ID,
     GOOGLE_CALENDAR_CLIENT_SECRET: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+    SUPERPDP_CLIENT_ID: process.env.SUPERPDP_CLIENT_ID,
+    SUPERPDP_CLIENT_SECRET: process.env.SUPERPDP_CLIENT_SECRET,
+    SUPERPDP_ENVIRONMENT: process.env.SUPERPDP_ENVIRONMENT,
+    SUPERPDP_REDIRECT_URL: process.env.SUPERPDP_REDIRECT_URL,
     CRON_SECRET: process.env.CRON_SECRET,
     MARKETPLACE_CATALOG_SECRET: process.env.MARKETPLACE_CATALOG_SECRET,
     MARKETPLACE_URL: process.env.MARKETPLACE_URL,
@@ -514,27 +513,13 @@ export const env = createEnv({
     REFERRAL_MONTHLY_CAP: process.env.REFERRAL_MONTHLY_CAP,
     REFERRAL_CLAWBACK_DAYS: process.env.REFERRAL_CLAWBACK_DAYS,
 
-    // Client
-    NEXT_PUBLIC_APP_URL: runtimeAppUrl,
-    NEXT_PUBLIC_APP_DOMAIN: runtimeAppDomain,
-    NEXT_PUBLIC_DASHBOARD_SUBDOMAIN: process.env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN,
-    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
-    NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
-    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
-    NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
-    NEXT_PUBLIC_UMAMI_SCRIPT_URL: process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL,
-    NEXT_PUBLIC_UMAMI_WEBSITE_ID: process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID,
-    NEXT_PUBLIC_GLEAP_API_KEY: process.env.NEXT_PUBLIC_GLEAP_API_KEY,
-    NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY: process.env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY,
-    NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY:
-      process.env.NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY,
-    NEXT_PUBLIC_OPENREPLAY_INGEST_POINT: process.env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
-    NEXT_PUBLIC_FROMHELLO_API_URL: process.env.NEXT_PUBLIC_FROMHELLO_API_URL,
-    NEXT_PUBLIC_FROMHELLO_KEY: process.env.NEXT_PUBLIC_FROMHELLO_KEY,
-    NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN: process.env.NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN,
+    // Public values are validated on the server, then passed to the browser by
+    // PublicEnvProvider. Client modules never read process.env directly.
+    ...runtimePublicEnv,
   },
 
   skipValidation: skipEnvValidation,
   emptyStringAsUndefined: true,
 });
+
+export const getPublicEnv = (): PublicEnv => selectPublicEnv(env);

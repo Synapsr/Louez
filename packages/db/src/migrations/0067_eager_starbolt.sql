@@ -1,0 +1,1 @@
+ALTER TABLE `products` MODIFY COLUMN `stock_kind` enum('returnable','consumable','untracked') NOT NULL DEFAULT 'returnable';

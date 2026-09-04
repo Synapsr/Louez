@@ -1,6 +1,5 @@
 "use client";
 
-import { ChevronLeft, ExternalLink, Truck, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -19,7 +18,17 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@louez/ui";
+import {
+  ChevronLeftIcon,
+  DeliveryTruckIcon,
+  ExternalLinkIcon,
+  ReturnTruckIcon,
+  TriangleAlertIcon,
+} from "@louez/ui/icons";
 import { cn, formatCurrency } from "@louez/utils";
+
+import { useFormatLocale } from "@/hooks/use-format-locale";
+import { getReservationDetailHref } from "@/lib/product-analytics/reservation-analytics";
 
 import { TimelineReservationDetails } from "./timeline-reservation-details";
 import { getTimelineRentalAmount, type TimelineReservation } from "./timeline-utils";
@@ -91,6 +100,8 @@ interface TimelineReservationBarProps {
   currency: string;
   /** Persists the timeline viewport before navigating to reservation details. */
   onBeforeNavigate?: () => void;
+  /** Dashboard path the reservation detail page should send the user back to. */
+  returnTo?: string | null;
   /** Flags an overbooked placement (no free unit lane was available) */
   isConflict?: boolean;
   /** Keeps the label visible while its reservation intersects the horizontal viewport */
@@ -110,6 +121,7 @@ export function TimelineReservationBar({
   reservation,
   currency,
   onBeforeNavigate,
+  returnTo,
   isConflict = false,
   isLabelSticky = false,
   stickyLabelOffset = 0,
@@ -117,14 +129,22 @@ export function TimelineReservationBar({
   style,
 }: TimelineReservationBarProps) {
   const t = useTranslations("dashboard.calendar");
+  const { intl: formatLocale } = useFormatLocale();
   const status = getTimelineStatus(reservation.status);
   const colorClass = BAR_COLORS[status] ?? BAR_COLORS.pending;
-  const reservationHref = `/dashboard/reservations/${encodeURIComponent(reservation.id)}?source=reservations_timeline`;
-  const rentalPrice = formatCurrency(getTimelineRentalAmount(reservation), currency);
-
-  const hasDelivery = Boolean(
-    reservation.outboundDeliveryAddress || reservation.returnDeliveryAddress,
+  const reservationHref = getReservationDetailHref(
+    reservation.id,
+    "reservations_timeline",
+    returnTo,
   );
+  const rentalPrice = formatCurrency(
+    getTimelineRentalAmount(reservation),
+    currency,
+    formatLocale,
+  );
+
+  const hasOutboundDelivery = Boolean(reservation.outboundDeliveryAddress);
+  const hasReturnDelivery = Boolean(reservation.returnDeliveryAddress);
 
   const barLabel = (
     <span
@@ -135,10 +155,21 @@ export function TimelineReservationBar({
       style={isLabelSticky ? { left: stickyLabelOffset } : undefined}
     >
       {continuesBeforeViewport && (
-        <ChevronLeft aria-hidden="true" className="h-3 w-3 shrink-0 opacity-60" />
+        <ChevronLeftIcon aria-hidden="true" className="h-3 w-3 shrink-0 opacity-60" />
       )}
-      {isConflict && <TriangleAlert className="text-destructive h-3 w-3 shrink-0" />}
-      {hasDelivery && <Truck className="h-3 w-3 shrink-0" />}
+      {isConflict && (
+        <TriangleAlertIcon aria-hidden="true" className="text-destructive h-3 w-3 shrink-0" />
+      )}
+      {hasOutboundDelivery && (
+        <span role="img" aria-label={t("logistics.delivery")} className="inline-flex shrink-0">
+          <DeliveryTruckIcon aria-hidden="true" className="size-3.5" strokeWidth={1.75} />
+        </span>
+      )}
+      {hasReturnDelivery && (
+        <span role="img" aria-label={t("logistics.return")} className="inline-flex shrink-0">
+          <ReturnTruckIcon aria-hidden="true" className="size-3.5" strokeWidth={1.75} />
+        </span>
+      )}
       <span className="truncate">{reservation.customerName}</span>
       {reservation.quantity > 1 && (
         <span className="shrink-0 opacity-70">×{reservation.quantity}</span>
@@ -186,7 +217,7 @@ export function TimelineReservationBar({
                     className="text-foreground hover:text-primary focus-visible:ring-ring group inline-flex max-w-full items-center gap-1 rounded-sm text-sm font-semibold focus-visible:ring-2 focus-visible:outline-none"
                   >
                     <span className="truncate">{reservation.customerName}</span>
-                    <ExternalLink className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+                    <ExternalLinkIcon className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
                   </a>
                 ) : (
                   <p className="truncate text-sm font-semibold">{reservation.customerName}</p>
@@ -202,7 +233,11 @@ export function TimelineReservationBar({
                 {t(`status.${status}`)}
               </Badge>
             </div>
-            <TimelineReservationDetails reservation={reservation} currency={currency} />
+            <TimelineReservationDetails
+              reservation={reservation}
+              currency={currency}
+              locale={formatLocale}
+            />
           </div>
         </TooltipContent>
       </Tooltip>
@@ -238,7 +273,11 @@ export function TimelineReservationBar({
             </div>
           </DrawerHeader>
           <DrawerPanel className="space-y-2">
-            <TimelineReservationDetails reservation={reservation} currency={currency} />
+            <TimelineReservationDetails
+              reservation={reservation}
+              currency={currency}
+              locale={formatLocale}
+            />
           </DrawerPanel>
           <DrawerFooter>
             <Button

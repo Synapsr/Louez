@@ -22,6 +22,7 @@ import { Button } from '@louez/ui';
 import { Input } from '@louez/ui';
 import { Label } from '@louez/ui';
 import { Textarea } from '@louez/ui';
+import { AddressPickerMap } from '@/components/ui/address-picker-map';
 import { orpc } from '@/lib/orpc/react';
 
 interface AddressMapModalProps {
@@ -68,9 +69,6 @@ export function AddressMapModal({
   const [latitude, setLatitude] = useState(initialLatitude);
   const [longitude, setLongitude] = useState(initialLongitude);
 
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<unknown>(null);
-  const markerRef = useRef<unknown>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
@@ -135,217 +133,6 @@ export function AddressMapModal({
       window.removeEventListener('resize', updatePosition);
     };
   }, [showSuggestions, suggestions.length]);
-
-  // Initialize map
-  useEffect(() => {
-    if (!open) return;
-
-    // Load Leaflet CSS
-    if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-      link.crossOrigin = '';
-      document.head.appendChild(link);
-    }
-
-    const loadLeaflet = async () => {
-      if (typeof window !== 'undefined' && !window.L) {
-        await new Promise<void>((resolve) => {
-          const script = document.createElement('script');
-          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-          script.integrity =
-            'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-          script.crossOrigin = '';
-          script.onload = () => resolve();
-          document.head.appendChild(script);
-        });
-      }
-
-      // Small delay to ensure DOM is ready
-      setTimeout(initMap, 100);
-    };
-
-    const initMap = () => {
-      if (!mapRef.current || !window.L) return;
-
-      // Destroy existing map
-      if (mapInstanceRef.current) {
-        (mapInstanceRef.current as { remove: () => void }).remove();
-        mapInstanceRef.current = null;
-        markerRef.current = null;
-      }
-
-      const L = window.L as typeof import('leaflet');
-
-      // Default to Paris if no coordinates
-      const lat = latitude ?? 48.8566;
-      const lng = longitude ?? 2.3522;
-      const hasCoords = latitude !== null && longitude !== null;
-
-      const map = L.map(mapRef.current, {
-        zoomControl: true,
-      }).setView([lat, lng], hasCoords ? 16 : 5);
-
-      // Add CartoDB Positron tiles (cleaner, simpler style)
-      L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-        {
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-          subdomains: 'abcd',
-          maxZoom: 20,
-        },
-      ).addTo(map);
-
-      // Custom draggable marker with explicit colors
-      const customIcon = L.divIcon({
-        className: 'custom-marker-draggable',
-        html: `<div style="
-          background-color: #2563eb;
-          width: 36px;
-          height: 36px;
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 3px 12px rgba(0,0,0,0.3);
-          border: 2px solid white;
-          cursor: grab;
-        ">
-          <svg style="transform: rotate(45deg); width: 16px; height: 16px;" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
-        </div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
-      });
-
-      if (hasCoords) {
-        const marker = L.marker([lat, lng], {
-          icon: customIcon,
-          draggable: true,
-        }).addTo(map);
-
-        marker.on('dragend', () => {
-          const pos = marker.getLatLng();
-          setLatitude(pos.lat);
-          setLongitude(pos.lng);
-          void reverseGeocodeRef.current(pos.lat, pos.lng);
-        });
-
-        markerRef.current = marker;
-      }
-
-      // Click on map to place/move marker
-      map.on('click', (e: { latlng: { lat: number; lng: number } }) => {
-        const { lat, lng } = e.latlng;
-        setLatitude(lat);
-        setLongitude(lng);
-        void reverseGeocodeRef.current(lat, lng);
-
-        if (markerRef.current) {
-          (
-            markerRef.current as {
-              setLatLng: (latlng: [number, number]) => void;
-            }
-          ).setLatLng([lat, lng]);
-        } else {
-          const marker = L.marker([lat, lng], {
-            icon: customIcon,
-            draggable: true,
-          }).addTo(map);
-
-          marker.on('dragend', () => {
-            const pos = marker.getLatLng();
-            setLatitude(pos.lat);
-            setLongitude(pos.lng);
-            void reverseGeocodeRef.current(pos.lat, pos.lng);
-          });
-
-          markerRef.current = marker;
-        }
-      });
-
-      mapInstanceRef.current = map;
-    };
-
-    loadLeaflet();
-
-    return () => {
-      if (mapInstanceRef.current) {
-        (mapInstanceRef.current as { remove: () => void }).remove();
-        mapInstanceRef.current = null;
-        markerRef.current = null;
-      }
-    };
-  }, [open, initialLatitude, initialLongitude]);
-
-  // Update marker when coordinates change from search
-  useEffect(() => {
-    if (
-      !mapInstanceRef.current ||
-      !window.L ||
-      latitude === null ||
-      longitude === null
-    )
-      return;
-
-    const L = window.L as typeof import('leaflet');
-    const map = mapInstanceRef.current as {
-      setView: (latlng: [number, number], zoom: number) => void;
-    };
-
-    // Center map on new coordinates
-    map.setView([latitude, longitude], 16);
-
-    // Update or create marker
-    if (markerRef.current) {
-      (
-        markerRef.current as { setLatLng: (latlng: [number, number]) => void }
-      ).setLatLng([latitude, longitude]);
-    } else {
-      const customIcon = L.divIcon({
-        className: 'custom-marker-draggable',
-        html: `<div style="
-          background-color: #2563eb;
-          width: 36px;
-          height: 36px;
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 3px 12px rgba(0,0,0,0.3);
-          border: 2px solid white;
-          cursor: grab;
-        ">
-          <svg style="transform: rotate(45deg); width: 16px; height: 16px;" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
-        </div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
-      });
-
-      const marker = L.marker([latitude, longitude], {
-        icon: customIcon,
-        draggable: true,
-      }).addTo(mapInstanceRef.current as import('leaflet').Map);
-
-      marker.on('dragend', () => {
-        const pos = marker.getLatLng();
-        setLatitude(pos.lat);
-        setLongitude(pos.lng);
-        void reverseGeocodeRef.current(pos.lat, pos.lng);
-      });
-
-      markerRef.current = marker;
-    }
-  }, [latitude, longitude]);
 
   // Search addresses
   const searchAddresses = useCallback(async (query: string) => {
@@ -430,6 +217,12 @@ export function AddressMapModal({
   useEffect(() => {
     reverseGeocodeRef.current = reverseGeocodeCoords;
   }, [reverseGeocodeCoords]);
+
+  const handleCoordinatesChange = useCallback((lat: number, lng: number) => {
+    setLatitude(lat);
+    setLongitude(lng);
+    void reverseGeocodeRef.current(lat, lng);
+  }, []);
 
   const handleSave = () => {
     onSave({
@@ -517,10 +310,10 @@ export function AddressMapModal({
             <div className="space-y-1.5">
               <Label className="text-sm font-medium">{t('mapLabel')}</Label>
               <p className="text-muted-foreground text-xs">{t('mapHint')}</p>
-              <div
-                ref={mapRef}
-                className="bg-muted h-[250px] rounded-lg border"
-                style={{ zIndex: 0 }}
+              <AddressPickerMap
+                latitude={latitude}
+                longitude={longitude}
+                onCoordinatesChange={handleCoordinatesChange}
               />
               {hasCoordinates && (
                 <p className="text-muted-foreground text-xs">
@@ -579,11 +372,4 @@ export function AddressMapModal({
       </DialogPopup>
     </Dialog>
   );
-}
-
-// Type declaration for Leaflet on window
-declare global {
-  interface Window {
-    L?: typeof import('leaflet');
-  }
 }

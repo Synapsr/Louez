@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
+
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { db, effectiveProductQuantitySql } from "@louez/db";
@@ -19,8 +19,14 @@ import {
   products,
   stores,
 } from "@louez/db";
-import type { StoreSettings, StoreTheme } from "@louez/types";
+import type {
+  PricingKind,
+  StockKind,
+  StoreSettings,
+  StoreTheme,
+} from "@louez/types";
 import { Skeleton } from "@louez/ui";
+import type { StockQuantityLimit } from "@louez/utils";
 
 import { generateStoreMetadata } from "@/lib/seo";
 import { storefrontRedirect } from "@/lib/storefront-url";
@@ -29,6 +35,7 @@ import { getStoreVariantActivity } from "@/lib/util.variant-visibility.server";
 import { getCurrentDowntimeUnitIds } from "@/lib/utils/unit-current-downtime";
 
 import { RentalContent } from "./rental-content";
+import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 
 /** `?category=` values that mean "browse everything" / "no category", rather than a real id. */
 const RESERVED_CATEGORY_VALUES = new Set(["all", "uncategorized"]);
@@ -62,6 +69,7 @@ export async function generateMetadata({
 
   const theme = (store.theme as StoreTheme) || {};
   const settings = (store.settings as StoreSettings) || {};
+  const { dateFns: dateLocale } = await getRequestFormatLocale();
 
   // Format dates for title if valid
   let dateRange = "";
@@ -70,7 +78,7 @@ export async function generateMetadata({
       const start = new Date(startDate);
       const end = new Date(endDate);
       if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-        dateRange = ` du ${format(start, "d MMM", { locale: fr })} au ${format(end, "d MMM yyyy", { locale: fr })}`;
+        dateRange = ` du ${format(start, "d MMM", { locale: dateLocale })} au ${format(end, "d MMM yyyy", { locale: dateLocale })}`;
       }
     } catch {
       // Ignore date formatting errors
@@ -168,7 +176,9 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
     price: string;
     deposit: string;
     images: string[] | null;
-    quantity: number;
+    quantity: StockQuantityLimit;
+    required: boolean;
+    requiredQuantity: number;
     pricingMode: "day" | "hour" | "week" | null;
     pricingTiers?: PricingTier[];
   }
@@ -219,6 +229,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
         price: products.price,
         deposit: products.deposit,
         basePeriodMinutes: products.basePeriodMinutes,
+        pricingKind: products.pricingKind,
+        stockKind: products.stockKind,
         pricingMode: products.pricingMode,
         videoUrl: products.videoUrl,
         quantity: effectiveProductQuantitySql(),
@@ -350,6 +362,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
         productId: productAccessories.productId,
         accessoryId: productAccessories.accessoryId,
         displayOrder: productAccessories.displayOrder,
+        required: productAccessories.required,
+        requiredQuantity: productAccessories.quantity,
       })
       .from(productAccessories)
       .where(inArray(productAccessories.productId, productIdsArray))
@@ -366,7 +380,9 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       deposit: string | null;
       images: string[] | null;
       quantity: number;
+      stockKind: StockKind;
       status: "active" | "draft" | "archived" | null;
+      pricingKind: PricingKind;
       pricingMode: "day" | "hour" | "week" | null;
     }[] = [];
     if (accessoryIds.length > 0) {
@@ -378,7 +394,9 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
           deposit: products.deposit,
           images: products.images,
           quantity: effectiveProductQuantitySql(),
+          stockKind: products.stockKind,
           status: products.status,
+          pricingKind: products.pricingKind,
           pricingMode: products.pricingMode,
         })
         .from(products)
@@ -419,18 +437,24 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       price: string;
       deposit: string;
       images: string[] | null;
-      quantity: number;
+      quantity: number | null;
+      required: boolean;
+      requiredQuantity: number;
+      pricingKind: PricingKind;
       pricingMode: "day" | "hour" | "week" | null;
       pricingTiers?: PricingTier[];
     }
     const accessoriesByProductId = new Map<string, ProductAccessory[]>();
     for (const acc of accessoriesResults) {
       const accessoryProduct = accessoryProductMap.get(acc.accessoryId);
-      // Only include active accessories with stock
+      // Active accessories with stock, plus every required one: an out-of-stock
+      // required accessory still has to reach the UI to explain the block.
       if (
         accessoryProduct &&
         accessoryProduct.status === "active" &&
-        accessoryProduct.quantity > 0
+        (accessoryProduct.stockKind === "untracked" ||
+          accessoryProduct.quantity > 0 ||
+          acc.required)
       ) {
         const accessories = accessoriesByProductId.get(acc.productId) || [];
         accessories.push({
@@ -439,7 +463,13 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
           price: accessoryProduct.price,
           deposit: accessoryProduct.deposit || "0",
           images: accessoryProduct.images,
-          quantity: accessoryProduct.quantity,
+          quantity:
+            accessoryProduct.stockKind === "untracked"
+              ? null
+              : accessoryProduct.quantity,
+          required: acc.required,
+          requiredQuantity: acc.requiredQuantity,
+          pricingKind: accessoryProduct.pricingKind,
           pricingMode: accessoryProduct.pricingMode,
           pricingTiers: accessoryTiersByProductId.get(accessoryProduct.id),
         });
@@ -464,6 +494,8 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
         price: row.price,
         deposit: row.deposit,
         basePeriodMinutes: row.basePeriodMinutes,
+        pricingKind: row.pricingKind,
+        stockKind: row.stockKind,
         pricingMode: row.pricingMode,
         videoUrl: row.videoUrl,
         quantity: row.quantity,

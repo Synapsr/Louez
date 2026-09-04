@@ -17,6 +17,7 @@ import {
   referralAnalyticsEvents,
 } from '@/lib/referral/analytics-events';
 import { formatCurrency } from '@/lib/utils';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 
 interface ReferralNudgeProps {
   className?: string;
@@ -31,6 +32,7 @@ const REFERRAL_NUDGE_DISMISSED_KEY = 'louez:referral-nudge-dismissed';
  */
 export const ReferralNudge = ({ className }: ReferralNudgeProps) => {
   const t = useTranslations('dashboard.referrals.nudge');
+  const { intl: formatLocale } = useFormatLocale();
   const posthog = usePostHog();
   const hasTrackedView = useRef(false);
   const [dismissed, setDismissed] = useState(() => {
@@ -72,6 +74,7 @@ export const ReferralNudge = ({ className }: ReferralNudgeProps) => {
   const rewardValue = formatCurrency(
     summary.rewardValueCents / 100,
     summary.currency.toUpperCase(),
+    formatLocale,
   );
 
   const dismiss = () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { ArrowDownLeftSolidIcon, CheckSolidIcon, ReviewSolidIcon } from "@louez/ui/icons";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
@@ -26,7 +27,6 @@ import {
 } from "lucide-react";
 import { toastManager } from "@louez/ui";
 import { formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
 
 import { Button } from "@louez/ui";
 import { Badge } from "@louez/ui";
@@ -67,7 +67,15 @@ import {
   captureReservationActionFailed,
   captureReservationActionStarted,
 } from "@/lib/product-analytics/reservation-analytics-client";
+import { ManualPaymentRefundDialog } from "./manual-payment-refund-dialog";
 import { RequestPaymentModal } from "./request-payment-modal";
+import {
+  getNetCompletedPaymentAmount,
+  getRemainingRefundableAmount,
+  isManualPaymentMethod,
+  isManualPaymentRefundEligible,
+} from "./util.payment-refunds";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 interface Payment {
   id: string;
@@ -88,6 +96,7 @@ interface Payment {
   stripeChargeId?: string | null;
   stripePaymentIntentId?: string | null;
   stripeCheckoutSessionId?: string | null;
+  refundOfPaymentId: string | null;
 }
 
 interface PaymentMethodInfo {
@@ -196,17 +205,20 @@ export function UnifiedPaymentSection({
   onPaymentModalOpenChange: setPaymentModalOpen,
 }: UnifiedPaymentSectionProps) {
   const t = useTranslations("dashboard.reservations");
+  const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const timezone = useStoreTimezone();
   const currencySymbol = getCurrencySymbol(currency);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(false);
   const [depositReturnModalOpen, setDepositReturnModalOpen] = useState(false);
   const [damageModalOpen, setDamageModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<Payment | null>(null);
+  const [paymentToRefund, setPaymentToRefund] = useState<Payment | null>(null);
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [captureModalOpen, setCaptureModalOpen] = useState(false);
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
@@ -241,9 +253,7 @@ export function UnifiedPaymentSection({
   const deposit = parseFloat(depositAmount);
   const depositStatusVal = depositStatusProp || "none";
 
-  const rentalPaid = payments
-    .filter((p) => p.type === "rental" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const rentalPaid = getNetCompletedPaymentAmount(payments, "rental");
 
   const depositCollected = payments
     .filter((p) => p.type === "deposit" && p.status === "completed")
@@ -253,9 +263,7 @@ export function UnifiedPaymentSection({
     .filter((p) => p.type === "deposit_return" && p.status === "completed")
     .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
-  const damagesPaid = payments
-    .filter((p) => p.type === "damage" && p.status === "completed")
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const damagesPaid = getNetCompletedPaymentAmount(payments, "damage");
 
   const rentalRemaining = Math.max(0, rental - rentalPaid);
   const depositRemaining = Math.max(0, deposit - depositCollected);
@@ -288,7 +296,7 @@ export function UnifiedPaymentSection({
 
   const authorizationTimeRemaining = depositAuthorizationExpiresAt
     ? formatDistanceToNow(new Date(depositAuthorizationExpiresAt), {
-        locale: fr,
+        locale: dateLocale,
         addSuffix: false,
       })
     : null;
@@ -408,7 +416,7 @@ export function UnifiedPaymentSection({
 
     setIsLoading(true);
     try {
-      await recordPaymentMutation.mutateAsync({
+      const result = await recordPaymentMutation.mutateAsync({
         reservationId,
         payload: {
           type: paymentType,
@@ -418,7 +426,15 @@ export function UnifiedPaymentSection({
         },
       });
 
-      toastManager.add({ title: t("payment.recorded"), type: "success" });
+      toastManager.add({
+        title: result.invoiceNumber
+          ? t("payment.invoiceGenerated", { number: result.invoiceNumber })
+          : t("payment.recorded"),
+        type: "success",
+      });
+      // The invoices card is server-rendered; RPC revalidation alone does not
+      // refresh it.
+      router.refresh();
       setPaymentModalOpen(false);
       resetForm();
     } catch {
@@ -542,14 +558,20 @@ export function UnifiedPaymentSection({
       toastManager.add({ title: t("payment.deleted"), type: "success" });
       setDeleteDialogOpen(false);
       setPaymentToDelete(null);
-    } catch {
+    } catch (error) {
       captureReservationActionFailed({
         reservationId,
         reservationStatus: status,
         action: reservationAnalyticsActions.deletePayment,
         properties: { error_code: "delete_payment_failed" },
       });
-      toastManager.add({ title: tErrors("generic"), type: "error" });
+      toastManager.add({
+        title:
+          error instanceof Error && error.message === "errors.paymentInvoiced"
+            ? tErrors("paymentInvoiced")
+            : tErrors("generic"),
+        type: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -750,6 +772,7 @@ export function UnifiedPaymentSection({
                             new Date(stripeRentalPayment.paidAt),
                             timezone,
                             "SHORT_DATE_AT_TIME",
+                            formatLocale,
                           )
                         : ""}
                     </p>
@@ -1122,6 +1145,11 @@ export function UnifiedPaymentSection({
                                 {t("payment.statusRefunded")}
                               </Badge>
                             )}
+                            {payment.refundOfPaymentId && (
+                              <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
+                                {t("payment.refundBadge")}
+                              </Badge>
+                            )}
                             {payment.status === "cancelled" && (
                               <Badge variant="expired" className="h-4 px-1 text-[9px] border-0">
                                 {t("payment.statusCancelled")}
@@ -1130,7 +1158,12 @@ export function UnifiedPaymentSection({
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {payment.paidAt
-                              ? formatStoreDate(new Date(payment.paidAt), timezone, "TIMESTAMP")
+                              ? formatStoreDate(
+                                  new Date(payment.paidAt),
+                                  timezone,
+                                  "TIMESTAMP",
+                                  formatLocale,
+                                )
                               : "-"}
                           </p>
                         </div>
@@ -1139,7 +1172,7 @@ export function UnifiedPaymentSection({
                         <span
                           className={cn(
                             "font-mono font-medium",
-                            payment.type === "deposit_return" &&
+                            (payment.type === "deposit_return" || payment.refundOfPaymentId) &&
                               "text-emerald-600 dark:text-emerald-400",
                             payment.type === "damage" && "text-red-600 dark:text-red-400",
                             payment.type === "deposit_capture" && "text-red-600 dark:text-red-400",
@@ -1152,7 +1185,7 @@ export function UnifiedPaymentSection({
                             payment.status === "cancelled" && "text-muted-foreground line-through",
                           )}
                         >
-                          {payment.type === "deposit_return"
+                          {payment.type === "deposit_return" || payment.refundOfPaymentId
                             ? "-"
                             : payment.type === "adjustment"
                               ? parseFloat(payment.amount) < 0
@@ -1162,6 +1195,16 @@ export function UnifiedPaymentSection({
                           {parseFloat(payment.amount).toFixed(2)}
                           {currencySymbol}
                         </span>
+                        {isManualPaymentRefundEligible(payment, payments) && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => setPaymentToRefund(payment)}
+                          >
+                            {t("payment.refundAction")}
+                          </Button>
+                        )}
                         {payment.method !== "stripe" && (
                           <Tooltip>
                             <TooltipTrigger
@@ -1525,6 +1568,17 @@ export function UnifiedPaymentSection({
           </DialogFooter>
         </DialogPopup>
       </Dialog>
+
+      {paymentToRefund && isManualPaymentMethod(paymentToRefund.method) && (
+        <ManualPaymentRefundDialog
+          reservationId={reservationId}
+          paymentId={paymentToRefund.id}
+          remainingAmount={getRemainingRefundableAmount(paymentToRefund, payments)}
+          currencySymbol={currencySymbol}
+          defaultMethod={paymentToRefund.method}
+          onClose={() => setPaymentToRefund(null)}
+        />
+      )}
 
       {/* Delete Payment Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

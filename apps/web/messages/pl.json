@@ -237,6 +237,85 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Faktury od dostawców",
+      "description": "Faktury, które Twoi dostawcy przesłali Twojej firmie przez sieć e-fakturowania.",
+      "columns": {
+        "seller": "Dostawca",
+        "number": "Faktura",
+        "issueDate": "Data wystawienia",
+        "totalInclTax": "Razem z VAT",
+        "status": "Status w sieci",
+        "ourAction": "Twoja odpowiedź",
+        "actions": "Akcje"
+      },
+      "statuses": {
+        "received": "Otrzymana",
+        "acknowledged": "Odbiór potwierdzony",
+        "accepted": "Zaakceptowana",
+        "disputed": "Sporna",
+        "refused": "Odrzucona",
+        "paid": "Opłacona",
+        "paymentSent": "Płatność przesłana",
+        "rejected": "Odrzucona przez sieć",
+        "validated": "Zwalidowana"
+      },
+      "ourActions": {
+        "none": "Brak odpowiedzi",
+        "acknowledged": "Odbiór potwierdzony",
+        "accepted": "Zaakceptowana",
+        "refused": "Odrzucona"
+      },
+      "actions": {
+        "download": "Pobierz",
+        "downloadNamed": "Pobierz fakturę {number}",
+        "menuLabel": "Akcje dla faktury {number}",
+        "acknowledge": "Potwierdź odbiór",
+        "accept": "Zaakceptuj fakturę",
+        "refuse": "Odrzuć fakturę",
+        "acknowledgeSuccess": "Odbiór potwierdzony",
+        "acceptSuccess": "Faktura zaakceptowana",
+        "refuseSuccess": "Faktura odrzucona"
+      },
+      "accept": {
+        "title": "Zaakceptować tę fakturę?",
+        "description": "Zaakceptowanie faktury {number} wysyła wiążące oświadczenie do sieci e-fakturowania. Nie można tego cofnąć.",
+        "confirm": "Zaakceptuj fakturę"
+      },
+      "refuse": {
+        "title": "Odrzucić tę fakturę?",
+        "description": "Odrzucenie faktury {number} wysyła wiążące oświadczenie do sieci e-fakturowania. Nie można tego cofnąć.",
+        "reasonLabel": "Powód odrzucenia",
+        "reasonPlaceholder": "Np. błędna kwota, usługa niewykonana…",
+        "reasonHelp": "Powód zostanie przekazany dostawcy.",
+        "confirm": "Odrzuć fakturę"
+      },
+      "empty": {
+        "title": "Brak faktur od dostawców",
+        "description": "Faktury pojawią się tutaj automatycznie, gdy tylko dostawca prześle je Twojej firmie przez sieć e-fakturowania.",
+        "settingsAction": "Zobacz ustawienia fakturowania"
+      },
+      "notConnected": {
+        "title": "Połącz swoją firmę, aby otrzymywać faktury od dostawców",
+        "description": "Faktury od dostawców trafiają do tej skrzynki, gdy Twoja firma zostanie zarejestrowana na naszej akredytowanej platformie (PDP).",
+        "deadlineTitle": "Termin: wrzesień 2026",
+        "deadlineDescription": "Od września 2026 każda francuska firma musi być w stanie odbierać faktury w formie elektronicznej.",
+        "howItWorks": "Po połączeniu przychodzące faktury pojawiają się tutaj automatycznie. Możesz je pobrać, potwierdzić odbiór, zaakceptować lub odrzucić.",
+        "connectAction": "Skonfiguruj e-fakturowanie"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Brak faktur} one {1 faktura} few {# faktury} other {# faktur}}",
+        "page": "Strona {current} z {total}",
+        "previous": "Poprzednia strona",
+        "next": "Następna strona"
+      },
+      "sync": "Synchronizuj",
+      "viewAll": "Otwórz pełną stronę"
+    },
+    "electronicInvoicingUnavailable": {
+      "title": "Fakturowanie elektroniczne jest niedostępne",
+      "description": "Ta funkcja nie jest jeszcze włączona dla Twojego sklepu."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "Asystent AI",
@@ -1005,6 +1084,21 @@
         "stock": "Stan magazynowy",
         "quantity": "Dostępna ilość",
         "quantityHelp": "Liczba jednostek dostępnych do wynajmu",
+        "consumableQuantityHelp": "Stan na półce: spada przy każdej potwierdzonej rezerwacji i rośnie po uzupełnieniu.",
+        "stockKindLabel": "Rodzaj stanu",
+        "stockKindReturnable": "Stan zwrotny",
+        "stockKindReturnableDescription": "Produkt wraca po każdym wynajmie i znów jest dostępny.",
+        "stockKindConsumable": "Materiał zużywalny",
+        "stockKindConsumableDescription": "Produkt zostaje u klienta: stan spada przy każdej potwierdzonej rezerwacji, a ilość to stan na półce.",
+        "stockKindConsumableRequiresFixed": "Materiał zużywalny sprzedaje się w cenie ryczałtowej: wybierz cennik „Cena ryczałtowa”, aby go włączyć.",
+        "stockKindConsumableRequiresNoUnits": "Materiał zużywalny nie jest śledzony sztuka po sztuce: wyłącz śledzenie jednostek, aby go włączyć.",
+        "stockKindUntracked": "Bez śledzenia stanu",
+        "stockKindUntrackedRequiresNoUnits": "Stan bez śledzenia nie może używać śledzenia jednostek.",
+        "untrackedStockHelp": "Ilość nie jest śledzona ani ograniczana. Daty i zasady rezerwacji nadal obowiązują.",
+        "stockKindChangeBlockedTitle": "Rodzaj zapasu zablokowany",
+        "stockKindChangeBlocked": "Ten produkt znajduje się w poniższych rezerwacjach. Anuluj lub zakończ je przed zmianą rodzaju zapasu.",
+        "stockKindChangeBlockedTrigger": "{kind}. Wyświetl blokujące rezerwacje.",
+        "stockKindBlockingReservation": "Rezerwacja #{number}",
         "publication": "Publikacja",
         "statusActive": "Aktywny",
         "statusActiveDescription": "Widoczny w sklepie",
@@ -1024,6 +1118,14 @@
         "categoryOptional": "Opcjonalne - pomaga klientom znaleźć produkt",
         "noCategories": "Brak kategorii",
         "pricingDescription": "Ustaw cenę wynajmu i stawki",
+        "pricingKindLabel": "Model cenowy",
+        "pricingKindDuration": "Cena zależna od czasu",
+        "pricingKindDurationDescription": "Cena zależy od długości wynajmu.",
+        "pricingKindFixed": "Cena ryczałtowa",
+        "pricingKindFixedDescription": "Jedna cena, niezależnie od długości wynajmu.",
+        "fixedPrice": "Cena ryczałtowa",
+        "fixedPriceDescription": "Naliczana raz za sztukę, niezależnie od długości wynajmu.",
+        "fixedPriceLabel": "Ryczałt",
         "baseRate": "Stawka bazowa",
         "baseRateDescription": "Najdroższa stawka za minutę, używana jako bazowa cena.",
         "additionalRates": "Dodatkowe stawki",
@@ -1240,10 +1342,16 @@
         "addAccessory": "Dodaj akcesorium",
         "selectAccessories": "Wybierz akcesoria",
         "selectAccessoriesDescription": "Wybierz produkty do zaproponowania z tym produktem",
+        "accessoriesSelectedCount": "{count, plural, =0 {Nie wybrano akcesoriów} one {Wybrano # akcesorium} few {Wybrano # akcesoria} many {Wybrano # akcesoriów} other {Wybrano # akcesoriów}}",
+        "clearSearch": "Wyczyść wyszukiwanie",
         "searchProducts": "Szukaj produktu...",
         "noProductsFound": "Nie znaleziono produktów",
         "noProductsAvailable": "Brak dostępnych produktów",
         "accessoriesHelp": "Akcesoria będą proponowane przy dodawaniu do koszyka",
+        "accessoryRequired": "Wymagane",
+        "accessoryQuantity": "Ilość",
+        "accessoryQuantityPerUnit": "na wynajętą jednostkę",
+        "accessoryOptionalHint": "Tylko proponowane klientowi.",
         "seasonalPricing": "Ceny sezonowe",
         "seasonalPricingDescription": "Ustaw różne stawki dla określonych okresów (lato, święta itp.).",
         "addSeasonalPeriod": "Dodaj okres",
@@ -1390,11 +1498,16 @@
           "utilization": "Wykorzystanie",
           "utilizationSubtitle": "Ostatnie 30 dni",
           "stock": "Stan magazynowy",
-          "unitsActiveValue": "{active}/{total} aktywnych"
+          "unitsActiveValue": "{active}/{total} aktywnych",
+          "notTracked": "Nieśledzony",
+          "notApplicable": "Nie dotyczy",
+          "notTrackedSubtitle": "Brak pojemności magazynowej"
         },
         "inventory": {
           "title": "Inwentarz",
           "manageStock": "Zarządzaj stanem",
+          "consumableBadge": "Materiał zużywalny",
+          "consumableQuantity": "Na półce",
           "quantity": "Ilość",
           "available": "Dostępne",
           "noUnits": "Brak zarejestrowanych jednostek",
@@ -1418,6 +1531,7 @@
           "viewCalendar": "Kalendarz",
           "timeline": {
             "stock": "Stan magazynowy",
+            "bookings": "Rezerwacje",
             "statusFilter": "Filtruj według statusu",
             "showAll": "Pokaż wszystkie",
             "previous": "Poprzedni okres",
@@ -1751,6 +1865,28 @@
       "sendEmail": "Wyślij email",
       "customerInfo": "Informacje o kliencie",
       "viewCustomer": "Zobacz klienta",
+      "invoiceDocuments": {
+        "title": "Faktury i noty kredytowe",
+        "empty": "Nie wygenerowano jeszcze żadnej faktury.",
+        "generate": "Wygeneruj fakturę",
+        "generationSuccess": "Dostępne dokumenty rozliczeniowe zostały wygenerowane.",
+        "generationError": "Nie udało się wygenerować faktury.",
+        "download": "Pobierz",
+        "downloadNamed": "Pobierz {number}",
+        "types": {
+          "invoice": "Faktura",
+          "credit_note": "Nota kredytowa"
+        },
+        "transmission": {
+          "not_applicable": "Nie przesłano",
+          "pending": "Oczekuje na przesłanie",
+          "sent": "Wysłano",
+          "validated": "Zatwierdzono",
+          "rejected": "Odrzucono",
+          "failed": "Przesyłanie nie powiodło się"
+        },
+        "recheck": "Odśwież status przesyłki"
+      },
       "periodStart": "Początek",
       "periodEnd": "Koniec",
       "duration": "Czas trwania",
@@ -1765,6 +1901,13 @@
       "productUnitPrice": "Cena jedn.",
       "productTotal": "Suma",
       "deliveryAndReturn": "Dostawa i zwrot",
+      "pickupAndReturn": "Odbiór i zwrot",
+      "storeLegsSummary": {
+        "sameLocation": "Odbiór i zwrot w sklepie",
+        "pickup": "Odbiór",
+        "return": "Zwrot",
+        "edit": "Edytuj"
+      },
       "outboundLegLabel": "Odbiór sprzętu",
       "returnLegLabel": "Zwrot sprzętu",
       "deliveryAddressLabel": "Adres dostawy",
@@ -2283,6 +2426,16 @@
         "maxReturnable": "Maksymalny zwrot",
         "history": "Historia płatności",
         "recorded": "Płatność zapisana",
+        "refundBadge": "Zwrot",
+        "refundAction": "Zwróć",
+        "refundTitle": "Zwróć tę płatność",
+        "refundDescription": "Z tej płatności można zwrócić maksymalnie {amount}.",
+        "refundNote": "Notatka do zwrotu",
+        "refundNotePlaceholder": "Powód, numer referencyjny przelewu...",
+        "refundConfirm": "Potwierdź zwrot",
+        "invalidRefundAmount": "Wprowadź kwotę mieszczącą się w pozostałym saldzie do zwrotu.",
+        "creditNoteGenerated": "Nota korygująca {number} została utworzona",
+        "refundRecorded": "Zwrot zapisany",
         "deleted": "Płatność usunięta",
         "depositReturned": "Kaucja zwrócona",
         "damageRecorded": "Uszkodzenia zapisane",
@@ -2330,7 +2483,8 @@
         "statusAuthorized": "Autoryzowana",
         "statusRefunded": "Zwrócona",
         "statusCancelled": "Anulowana",
-        "requestPayment": "Poproś o płatność"
+        "requestPayment": "Poproś o płatność",
+        "invoiceGenerated": "Faktura {number} wygenerowana"
       },
       "requestPaymentModal": {
         "title": "Poproś o płatność",
@@ -2588,6 +2742,13 @@
         "businessCustomerDescription": "Zaznacz, jeśli ten klient reprezentuje firmę",
         "companyName": "Nazwa firmy",
         "companyNamePlaceholder": "ACME Sp. z o.o.",
+        "companyNumber": "Numer firmy",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Numer przedsiębiorstwa (BCE/KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Wymagane do wystawienia elektronicznej faktury B2B.",
+        "vatNumber": "Numer VAT",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Imię *",
         "firstNamePlaceholder": "Jan",
         "lastName": "Nazwisko *",
@@ -3744,6 +3905,19 @@
               "help": "Dokumentacja iCalendar"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Połącz firmę z akredytowaną platformą, aby wysyłać i odbierać faktury elektroniczne.",
+            "about": "Super PDP łączy Louez z oficjalną siecią e-fakturowania i obsługuje rejestrację, wysyłkę, odbiór oraz zmiany statusów faktur.",
+            "features": {
+              "send": "Wysyłaj faktury klientów przez oficjalną sieć.",
+              "receive": "Odbieraj faktury dostawców w Louez.",
+              "lifecycle": "Śledź statusy dostarczenia i płatności faktur."
+            },
+            "resources": {
+              "website": "Witryna Super PDP"
+            }
+          },
           "tulip": {
             "name": "Ubezpieczenie Tulip",
             "description": "Połącz Tulip, aby wyceniać i generować umowy ubezpieczenia wynajmu.",
@@ -3797,6 +3971,16 @@
           "description": "Eksportuj pełny katalog produktów z cenami, kategoriami i informacjami o stanach magazynowych.",
           "button": "Eksportuj produkty"
         },
+        "contracts": {
+          "title": "Umowy",
+          "description": "Pobierz archiwum ZIP z umowami najmu rozpoczynającego się w wybranym okresie.",
+          "button": "Eksportuj umowy",
+          "format": "Archiwum ZIP z jednym plikiem PDF na rezerwację",
+          "statusesLabel": "Statusy do uwzględnienia",
+          "selectAll": "Zaznacz wszystko",
+          "clearAll": "Odznacz wszystko",
+          "exporting": "Przygotowywanie ZIP..."
+        },
         "dateRange": {
           "label": "Okres",
           "startDate": "Data początkowa",
@@ -3812,6 +3996,8 @@
           "invalidDateRange": "Data końcowa musi być późniejsza niż data początkowa.",
           "dateRequired": "Wybierz okres.",
           "maxRange": "Okres nie może przekraczać jednego roku.",
+          "statusRequired": "Wybierz co najmniej jeden status.",
+          "noContracts": "Brak rezerwacji pasujących do tego okresu i statusów.",
           "exportFailed": "Eksport nie powiódł się. Spróbuj ponownie."
         }
       },
@@ -4024,6 +4210,166 @@
         "taxNumberDescription": "Twój numer NIP (wyświetlany na umowach)",
         "depositNoTaxInfo": "Kaucje nie podlegają VAT, ponieważ są zwracane klientowi.",
         "saved": "Ustawienia podatków zapisane"
+      },
+      "invoicing": {
+        "title": "Faktury elektroniczne",
+        "description": "Skonfiguruj obowiązkowy odbiór e-faktur i zdecyduj, czy Louez ma również wystawiać Twoje faktury.",
+        "saved": "Zapisano ustawienia fakturowania",
+        "statusComplete": "Kompletne",
+        "statusIncomplete": "Do uzupełnienia",
+        "setup": {
+          "steps": {
+            "identity": "Tożsamość prawna",
+            "activation": "Aktywacja",
+            "transmission": "Transmisja"
+          },
+          "continue": "Kontynuuj",
+          "later": "Skonfiguruj później",
+          "intro": {
+            "title": "Przygotuj firmę do fakturowania elektronicznego",
+            "description": "Połącz firmę z oficjalną siecią, aby odbierać faktury od dostawców. Możesz też już teraz zlecić Louez wystawianie swoich faktur.",
+            "bullets": {
+              "generate": "Jeśli włączysz wystawianie, Louez wygeneruje i ponumeruje zgodną fakturę przy każdej płatności.",
+              "transmit": "Jeśli włączysz wystawianie, Louez wyśle faktury do klientów biznesowych i obsłuży e-raportowanie sprzedaży.",
+              "receive": "Scentralizowany odbiór faktur od dostawców."
+            },
+            "start": "Rozpocznij konfigurację",
+            "resume": "Wznów konfigurację",
+            "stepProgress": "Krok {current} z {total}"
+          }
+        },
+        "identity": {
+          "title": "Dane prawne firmy",
+          "description": "Dane prawne Twojej firmy, drukowane na każdej wystawionej fakturze.",
+          "search": {
+            "label": "Znajdź swoją firmę",
+            "description": "Wyszukaj po nazwie, numerze SIREN lub SIRET, aby wstępnie wypełnić formularz. Wszystkie pola pozostają edytowalne.",
+            "placeholder": "Nazwa firmy, SIREN lub SIRET",
+            "noResults": "Nie znaleziono firmy. Wprowadź dane ręcznie.",
+            "closed": "Zamknięta",
+            "prefilledTitle": "Pola wypełnione wstępnie",
+            "prefilledDescription": "Dane pochodzą z publicznego rejestru przedsiębiorstw. Sprawdź je przed zapisaniem."
+          },
+          "country": "Kraj rejestracji",
+          "countryDescription": "Kraj, w którym zarejestrowana jest Twoja firma.",
+          "legalName": "Nazwa prawna",
+          "legalNamePlaceholder": "LOUEZ SAS",
+          "legalNameDescription": "Dokładna nazwa Twojej firmy widniejąca w rejestrze.",
+          "legalForm": "Forma prawna",
+          "legalFormPlaceholder": "SAS",
+          "legalFormDescription": "Na przykład SAS, SARL, jednoosobowa działalność gospodarcza.",
+          "siren": "SIREN",
+          "sirenDescription": "9 cyfr identyfikujących Twoją firmę.",
+          "bce": "Numer przedsiębiorstwa (BCE)",
+          "bceDescription": "10 cyfr, na przykład 0123456789.",
+          "companyNumber": "Numer przedsiębiorstwa",
+          "companyNumberDescription": "Identyfikator Twojej firmy w rejestrze krajowym.",
+          "siret": "SIRET siedziby",
+          "siretDescription": "14 cyfr identyfikujących zakład wystawiający faktury.",
+          "vatNumber": "Numer VAT",
+          "vatNumberDescription": "Numer VAT UE drukowany na Twoich fakturach. Pozostaw puste, jeśli korzystasz ze zwolnienia z VAT.",
+          "vatNumberWarningTitle": "Nietypowy format numeru VAT",
+          "vatNumberWarningFr": "Francuski numer VAT to FR i 11 znaków. Sprawdź tę wartość.",
+          "vatNumberWarningBe": "Belgijski numer VAT to BE i 10 cyfr. Sprawdź tę wartość.",
+          "rcsCity": "Miasto rejestru (RCS)",
+          "rcsCityDescription": "Miasto sądu rejestrowego, w którym wpisana jest firma, na przykład Paryż.",
+          "shareCapital": "Kapitał zakładowy",
+          "shareCapitalDescription": "Wymagany na fakturach spółek, które muszą go ujawniać.",
+          "addressSection": "Adres siedziby",
+          "address": "Adres",
+          "addressPlaceholder": "25 rue du Terrage",
+          "addressComplement": "Dodatkowe informacje adresowe",
+          "postalCode": "Kod pocztowy",
+          "city": "Miasto"
+        },
+        "louezInvoicing": {
+          "title": "Wystawianie faktur",
+          "description": "Zdecyduj, czy Louez ma już teraz wystawiać Twoje faktury. Możesz zmienić tę decyzję w dowolnym momencie.",
+          "statusActive": "Wystawianie włączone",
+          "statusReceptionOnly": "Tylko odbiór",
+          "statusInactive": "Wyłączone",
+          "lockedTitle": "Najpierw uzupełnij dane prawne",
+          "lockedDescription": "Faktura musi zawierać nazwę prawną, formę prawną, numer przedsiębiorstwa i adres siedziby. Uzupełnij krok 1 przed wyborem trybu fakturowania.",
+          "choiceLabel": "Jak chcesz korzystać z fakturowania elektronicznego?",
+          "emissionAndReception": "Wystawianie + odbiór (zalecane)",
+          "emissionAndReceptionDescription": "Louez generuje, numeruje i przesyła Twoje faktury przy każdej płatności. Firma odbiera również faktury od dostawców.",
+          "receptionOnly": "Tylko odbiór — nie wystawiam jeszcze faktur przez Louez",
+          "receptionOnlyDescription": "Louez nie wystawia faktur. Firma pozostaje połączona, aby odbierać faktury od dostawców.",
+          "reformTimeline": "Odbiór e-faktur stanie się obowiązkowy we wrześniu 2026. Wystawianie stanie się obowiązkowe we wrześniu 2027 i można je włączyć tutaj w dowolnym momencie.",
+          "vatRegime": "Rodzaj rozliczenia VAT",
+          "vatRegimePlaceholder": "Wybierz rodzaj rozliczenia",
+          "vatRegimeDescription": "Określa kalendarz deklaracji przekazywany platformie fakturowej.",
+          "vatRegimeOptions": {
+            "monthly": "Deklaracja miesięczna",
+            "quarterly": "Deklaracja kwartalna",
+            "simplified": "Uproszczony (roczny) system",
+            "vat_exemption": "Zwolnienie z VAT"
+          },
+          "hasVatOnDebits": "VAT od wystawienia faktury",
+          "hasVatOnDebitsDescription": "Włącz, jeśli wybrano VAT rozliczany od wystawienia faktury zamiast od otrzymanej płatności."
+        },
+        "transmission": {
+          "title": "Przesyłanie elektroniczne (PDP)",
+          "description": "Połącz firmę z akredytowaną platformą, aby odbierać faktury oraz, po włączeniu wystawiania, wysyłać faktury klientów przez oficjalną sieć.",
+          "statusPending": "Rejestracja w toku",
+          "statusActionRequired": "Wymagane działanie",
+          "deadlineTitle": "Termin: wrzesień 2026",
+          "deadlineDescription": "Od września 2026 każda francuska firma musi być podłączona do akredytowanej platformy, aby odbierać faktury elektroniczne; wystawianie stanie się obowiązkowe we wrześniu 2027. Podłączenie przez Louez jest bezpłatne.",
+          "benefits": {
+            "send": "Wysyłaj faktury do klientów biznesowych po włączeniu wystawiania.",
+            "receive": "Odbieraj wszystkie faktury od dostawców w jednym miejscu.",
+            "reporting": "Automatyczny e-reporting sprzedaży na rzecz konsumentów."
+          },
+          "connectAction": "Połącz moją firmę",
+          "pendingTitle": "Rejestracja w toku",
+          "pendingDescription": "Rejestracja została rozpoczęta, ale nie jest jeszcze zakończona. Wznów ją, aby dokończyć weryfikację tożsamości przez akredytowaną platformę.",
+          "pendingValidationDescription": "Platforma weryfikuje Twoje konto. Nie musisz nic robić: po zakończeniu kontroli połączenie zostanie aktywowane automatycznie.",
+          "resumeAction": "Wznów rejestrację",
+          "errorTitle": "Połączenie przerwane",
+          "reconnectAction": "Połącz firmę ponownie",
+          "errorHints": {
+            "reconnectRequired": "Platforma cofnęła dostęp przyznany Louez. Połącz firmę ponownie, aby odbierać faktury i wznowić włączoną wysyłkę.",
+            "oauthFailed": "Nie udało się zakończyć rejestracji. Rozpocznij ją ponownie; jeśli problem się utrzyma, skontaktuj się z pomocą.",
+            "operationFailed": "Ostatnia wymiana z platformą nie powiodła się. Louez spróbuje ponownie automatycznie; połącz ponownie, jeśli problem się utrzyma."
+          },
+          "lockedTitle": "Połączenie nie jest jeszcze dostępne",
+          "lockedReasons": {
+            "identityIncomplete": "Uzupełnij dane prawne w kroku 1: platforma zweryfikuje je przed rejestracją firmy.",
+            "countryUnsupported": "Transmisja elektroniczna jest obecnie dostępna tylko dla firm zarejestrowanych we Francji lub Belgii."
+          },
+          "details": {
+            "verification": "Weryfikacja tożsamości",
+            "directory": "Katalog sieci",
+            "environment": "Środowisko"
+          },
+          "verificationStatus": {
+            "verified": "Zweryfikowano",
+            "pending": "W trakcie weryfikacji",
+            "failed": "Weryfikacja nie powiodła się"
+          },
+          "verificationPendingNote": "Platforma nadal sprawdza dane firmy. Połączenie będzie aktywne po zakończeniu weryfikacji.",
+          "directoryStatus": {
+            "pending": "Rejestracja w toku",
+            "created": "Zarejestrowano",
+            "error": "Rejestracja nie powiodła się",
+            "missing": "Niezarejestrowano"
+          },
+          "environments": {
+            "sandbox": "Środowisko testowe",
+            "production": "Produkcja"
+          },
+          "result": {
+            "successTitle": "Firma połączona",
+            "successDescription": "Firma jest teraz zarejestrowana na akredytowanej platformie i może odbierać faktury od dostawców. Faktury wystawiane przez Louez będą również przesyłane po włączeniu wystawiania.",
+            "errorTitle": "Połączenie nie powiodło się",
+            "errors": {
+              "oauth": "Rejestracja została przerwana przed zakończeniem. Możesz rozpocząć ją ponownie.",
+              "legalProfileIncomplete": "Dane prawne są niepełne. Uzupełnij krok 1, a następnie ponownie rozpocznij łączenie.",
+              "notConfigured": "Transmisja elektroniczna nie jest skonfigurowana w tym środowisku. Skontaktuj się z pomocą Louez."
+            }
+          },
+          "purchaseInvoicesAction": "Otwórz faktury od dostawców"
+        }
       },
       "delivery": {
         "title": "Dostawa",
@@ -4539,8 +4885,51 @@
         "dangerZone": "Strefa zagrożenia",
         "dangerZoneDescription": "Nieodwracalne akcje na Twoim koncie",
         "deleteAccount": "Usuń konto",
-        "deleteAccountDescription": "Trwale usuń konto i wszystkie dane",
-        "deleteAccountWarning": "Ta akcja jest nieodwracalna. Wszystkie Twoje dane zostaną usunięte.",
+        "deleteAccountDescription": "Usuń konto, sklepy i ich aktywne dane",
+        "deleteAccountWarning": "Ta operacja jest nieodwracalna. Tylko dokumenty wymagane prawem mogą pozostać w oddzielnym archiwum.",
+      "accountDeletion": {
+        "reasonTitle": "Zanim odejdziesz",
+        "reasonDescription": "Dlaczego rezygnujesz z Louez? Odpowiedź jest opcjonalna i zapisywana bez powiązania z Twoją tożsamością.",
+        "reasons": {
+          "tooExpensive": "Cena jest zbyt wysoka",
+          "missingFeatures": "Brakuje mi potrzebnych funkcji",
+          "difficultToUse": "Louez jest zbyt trudne w obsłudze",
+          "noLongerNeeded": "Nie potrzebuję już Louez",
+          "switchedService": "Korzystam z innego rozwiązania",
+          "technicalIssues": "Wystąpiło zbyt wiele problemów technicznych",
+          "privacyConcerns": "Mam obawy dotyczące prywatności",
+          "other": "Inny powód"
+        },
+        "continue": "Kontynuuj",
+        "back": "Wstecz",
+        "title": "Usuń konto",
+          "description": "Przed kontynuowaniem sprawdź skutki. Usunięcia nie można cofnąć. Dokumenty rozliczeniowe Louez wymagane prawem mogą pozostać w archiwum.",
+          "storesDeleted": "Sklepy usuwane wraz ze wszystkimi aktywnymi danymi:",
+          "membershipsLeft": "Opuścisz również {count, plural, one {# inny sklep} other {# inne sklepy}}, w których jesteś członkiem.",
+          "businessDocumentsDeleted": "{count, plural, one {# faktura firmowa Twojego sklepu zostanie usunięta z Louez} other {# faktury firmowe Twoich sklepów zostaną usunięte z Louez}}. Wyeksportuj je wcześniej, jeśli musisz je zachować.",
+          "legalRetention": "{count, plural, one {# dokument rozliczeniowy Louez będzie przechowywany} other {# dokumenty rozliczeniowe Louez będą przechowywane}} przez 10 lat od zamknięcia roku obrotowego, w oddzielnym archiwum z ograniczonym dostępem.",
+          "confirmationLabel": "Wpisz {email}, aby potwierdzić",
+          "passwordLabel": "Aktualne hasło",
+          "passwordRequired": "Wpisz aktualne hasło.",
+          "confirmationMismatch": "Wpisany adres nie pasuje do tego konta.",
+          "sendConfirmation": "Wyślij email z potwierdzeniem",
+          "deleteNow": "Usuń trwale",
+          "cancel": "Anuluj",
+          "close": "Zamknij",
+          "emailSentTitle": "Wysłano email z potwierdzeniem",
+          "emailSentDescription": "Sprawdź {email}. Nic nie zostało jeszcze usunięte: musisz potwierdzić operację przez otrzymany link.",
+          "blockedTitle": "Konta nie można jeszcze usunąć",
+          "blockedDescription": "Sklep, którego jesteś właścicielem, ma innych członków. Usuń ich na stronie Zespół lub skontaktuj się z pomocą, aby przenieść własność.",
+          "blockedStore": "{name} — {count, plural, one {# inny członek} other {# innych członków}}",
+          "genericError": "Nie udało się rozpocząć usuwania. Spróbuj ponownie.",
+          "invalidLink": "Link jest nieprawidłowy, wygasł lub został już użyty. Rozpocznij nowe żądanie w ustawieniach konta.",
+          "confirmPageTitle": "Ostateczne potwierdzenie",
+          "confirmPageDescription": "Konto, sklepy i ich aktywne dane zostaną natychmiast usunięte. Tej operacji nie można cofnąć.",
+          "confirmFinal": "Trwale usuń moje konto",
+          "deletedTitle": "Konto usunięte",
+          "deletedDescription": "Twoje konto, sklepy i ich dane zostały usunięte. Tylko ewentualne dokumenty rozliczeniowe Louez pozostają odizolowane do końca ustawowego okresu przechowywania.",
+          "backHome": "Wróć na stronę główną"
+        },
         "signOut": "Wyloguj się",
         "comingSoon": "Wkrótce",
         "administration": "Administracja",
@@ -5155,6 +5544,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Faktury od dostawców",
       "aiAssistant": "Asystent AI",
       "aiConversations": "Rozmowy z klientami",
       "aiAdvisor": "Doradca online",
@@ -5188,6 +5578,7 @@
       "settingsHours": "Godziny",
       "settingsInspections": "Inspekcje",
       "settingsIntegrations": "Integracje",
+      "settingsInvoicing": "Faktury elektroniczne",
       "settingsLegal": "Strony prawne",
       "settingsNotifications": "Powiadomienia",
       "settingsPayments": "Płatności",
@@ -5201,6 +5592,8 @@
       "title": "Powiadomienia",
       "description": "Sprawy wymagające uwagi",
       "pendingReservations": "Oczekujące prośby",
+      "supplierInvoices": "Faktury od dostawców",
+      "pendingSupplierInvoices": "{count, plural, one {# faktura dostawcy do obsłużenia} few {# faktury dostawców do obsłużenia} many {# faktur dostawców do obsłużenia} other {# faktury dostawcy do obsłużenia}}",
       "emptyTitle": "Nic do sprawdzenia",
       "emptyDescription": "Nowe prośby pojawią się tutaj.",
       "viewAllPending": "Zobacz wszystkie oczekujące prośby"
@@ -5230,6 +5623,18 @@
         "fix": "Poprawka"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "Cena, która nie zależy już od czasu",
+          "description": "Czyszczenie, dostawa, usługa: nie wszystko rozlicza się na godziny. Przełącz model cenowy na „Cenę ryczałtową”, a cena przestanie się zmieniać, czy wynajem potrwa dwie godziny, czy dwa tygodnie. Progi, sezony i wykres znikają; zostaje jedna kwota, jej podatek i kaucja."
+        },
+        "consumable-stock": {
+          "title": "To, co wychodzi razem z klientem",
+          "description": "Smar, gaz, worki: wszystko, co nie wraca. Przełącz produkt na „Materiał zużywalny”, a jego ilość stanie się stanem na półce — spada przy każdej potwierdzonej rezerwacji, rośnie po anulowaniu lub odrzuceniu i nie zależy już od dat."
+        },
+        "required-accessories": {
+          "title": "Kask zawsze wyjeżdża razem z rowerem",
+          "description": "Akcesorium może być teraz wymagane, z własną ilością na wynajętą jednostkę. Samo dodaje się do koszyka klienta, nadąża, gdy bierze trzy rowery zamiast jednego, i nie da się go usunąć. Za darmo widnieje po prostu jako „W zestawie”."
+        },
         "product-image-ai": {
           "title": "Twoje zdjęcia produktów przechodzą przez studio",
           "description": "Przy przesyłaniu AI wycina produkt, czyści tło i centruje go — albo tylko usuwa tło, jeśli wolisz zachować swój kadr. A każda wersja zostaje w historii zdjęcia: porównuj, zmieniaj zdanie, wracaj do oryginału."
@@ -5251,8 +5656,8 @@
           "description": "Strona Rezerwacje otwiera się teraz na kalendarzu. Przewija się płynnie z tygodnia na tydzień bez zmiany strony, a najechanie kursorem pokazuje całą rezerwację. Lista i planowanie według produktu są o jedno kliknięcie stąd."
         },
         "product-creation-flow-redesign": {
-          "title": "Dwie sekcje i produkt jest online",
-          "description": "Kreator w czterech krokach ustępuje miejsca jednej stronie. Akcesoria i ubezpieczenie nie są już wymagane przy tworzeniu — dodasz je później, jeśli będą potrzebne. Po prawej podgląd karty i lista tego, co zostało do wypełnienia."
+          "title": "Jedna strona i produkt jest online",
+          "description": "Czteroetapowy kreator mieści się teraz na jednej stronie. Akcesoria możesz dodać podczas tworzenia produktu lub później; ubezpieczenie nadal skonfigurujesz po zapisaniu. Po prawej zobaczysz podgląd karty i brakujące informacje."
         },
         "keyboard-shortcuts": {
           "title": "Dla tych, którzy nie odrywają rąk od klawiatury",
@@ -5484,6 +5889,7 @@
       "productCount": "{count, plural, =0 {Brak dostępnych produktów} one {# produkt dostępny} few {# produkty dostępne} many {# produktów dostępnych} other {# produktów dostępnych}}",
       "available": "{count} dostępne",
       "unavailable": "Niedostępne",
+      "consumableOutOfStock": "Brak materiału eksploatacyjnego",
       "lastOne": "Ostatni!",
       "left": "pozostało",
       "clearFilters": "Wyczyść filtry"
@@ -5498,6 +5904,7 @@
       "selectQuantity": "Ilość",
       "quantity": "Ilość",
       "availableCount": "{count, plural, one {# dostępny} few {# dostępne} many {# dostępnych} other {# dostępnych}}",
+      "availableWithoutStockLimit": "Dostępny",
       "available": "Dostępne",
       "unavailable": "Niedostępne",
       "deposit": "Kaucja",
@@ -5505,6 +5912,7 @@
       "perHour": "godzina",
       "perWeek": "tydzień",
       "startingFrom": "Od",
+      "fixedPricingLabel": "Ryczałt",
       "pricingUnit": {
         "day": {
           "singular": "dzień",
@@ -5580,6 +5988,8 @@
         "availability": "Dostępność"
       },
       "unavailableHelp": "Ten produkt nie jest obecnie dostępny do wynajęcia. Zobacz resztę katalogu.",
+      "requiredAccessoryOutOfStock": "Wymagane akcesorium jest niedostępne",
+      "requiredAccessoriesIncluded": "Dodawane automatycznie: {names}",
       "backToCatalog": "Zobacz katalog"
     },
     "accessories": {
@@ -5686,6 +6096,8 @@
         "availableCount": "{count} dostępnych",
         "limited": "{count} pozostało",
         "unavailable": "Niedostępne",
+        "outOfStock": "Brak w magazynie",
+        "requiredAccessoryOutOfStock": "Brak wymaganego akcesorium",
         "inCart": "W koszyku"
       },
       "businessHoursWarning": {
@@ -5736,6 +6148,8 @@
       "total": "Suma",
       "checkout": "Zamów",
       "remove": "Usuń",
+      "decreaseQuantity": "Zmniejsz ilość {name}",
+      "increaseQuantity": "Zwiększ ilość {name}",
       "updateDates": "Zmień daty",
       "clearCart": "Opróżnij koszyk",
       "clear": "Opróżnij koszyk",
@@ -5748,7 +6162,14 @@
         "cancel": "Anuluj",
         "confirm": "Opróżnij"
       },
-      "lineMaxReached": "Osiągnięto maksimum dla tej opcji. Dodaj kolejną opcję jako osobną linię."
+      "lineMaxReached": "Osiągnięto maksimum dla tej opcji. Dodaj kolejną opcję jako osobną linię.",
+      "requiredWith": "Wymagane z: {name}",
+      "included": "W zestawie",
+      "unavailable": {
+        "product_unavailable": "Ten produkt nie jest już dostępny",
+        "insufficient_stock": "Niewystarczający stan magazynowy dla tej ilości",
+        "required_accessory_unavailable": "Wymagane akcesorium jest niedostępne"
+      }
     },
     "checkout": {
       "title": "Dokończ rezerwację",
@@ -5842,6 +6263,20 @@
       "isBusinessCustomerDescription": "Zaznacz to pole, jeśli wynajmujesz w imieniu firmy",
       "companyName": "Nazwa firmy",
       "companyNamePlaceholder": "ACME Sp. z o.o.",
+      "companyNumber": "Numer firmy (opcjonalnie)",
+      "companyNumberSiren": "SIREN (opcjonalnie)",
+      "companyNumberBce": "Numer przedsiębiorstwa (BCE/KBO, opcjonalnie)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Opcjonalne — potrzebujemy go do wystawienia faktury firmowej.",
+      "vatNumber": "Numer VAT (opcjonalnie)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Znajdź swoją firmę",
+        "placeholder": "Nazwa firmy, SIREN lub SIRET",
+        "description": "Opcjonalnie: wyszukaj, aby automatycznie uzupełnić dane firmy.",
+        "noResults": "Nie znaleziono firmy. Wprowadź dane ręcznie.",
+        "closed": "Zamknięta"
+      },
       "contact": "Kontakt",
       "address": "Adres",
       "addressPlaceholder": "ul. Wynajmu 123",
@@ -5870,6 +6305,8 @@
         "phoneRequired": "Telefon wymagany",
         "invalidPhone": "Nieprawidłowy format telefonu",
         "companyNameRequired": "Proszę podać nazwę firmy",
+        "invalidCompanyNumber": "Nieprawidłowy numer firmy",
+        "invalidVatNumber": "Nieprawidłowy numer VAT",
         "acceptCgv": "Musisz zaakceptować regulamin"
       },
       "pricing": {
@@ -5972,6 +6409,7 @@
       "deliveryLabel": "Dostawa na Twój adres",
       "returnDeliveryLabel": "Odbiór z Twojego adresu",
       "storeReturnLabel": "Zwrot w sklepie",
+      "pickupAndReturnLabel": "Odbiór i zwrot w sklepie",
       "pickupLabel": "Odbiór w sklepie",
       "deliveryFeeLabel": "Koszt dostawy",
       "free": "Bezpłatnie",
@@ -6118,6 +6556,17 @@
       "signContract": "Podpisz umowę",
       "contractSigned": "Umowa podpisana",
       "downloadContract": "Pobierz umowę",
+      "signContractConfirmation": "Kontynuując, potwierdzasz przeczytanie i akceptację tej umowy najmu.",
+      "signContractError": "Nie udało się podpisać umowy. Spróbuj ponownie.",
+      "invoiceDocuments": {
+        "title": "Faktury i noty kredytowe",
+        "description": "Pobierz dokumenty księgowe dotyczące tej rezerwacji.",
+        "download": "Pobierz",
+        "types": {
+          "invoice": "Faktura",
+          "credit_note": "Nota kredytowa"
+        }
+      },
       "paymentPaid": "Opłacone",
       "paymentPending": "Nieopłacone",
       "amountPaid": "Zapłacona kwota",
@@ -6724,6 +7173,7 @@
     "notFound": "Nie znaleziono strony",
     "notFoundDescription": "Strona, której szukasz, nie istnieje lub została przeniesiona.",
     "unauthorized": "Nieautoryzowany",
+    "paymentInvoiced": "Ta płatność została zafakturowana i nie można jej usunąć.",
     "unauthenticated": "Nieuwierzytelniony",
     "invalidData": "Nieprawidłowe dane",
     "slugTaken": "Ten adres jest już używany",
@@ -6737,10 +7187,13 @@
     "permissionDenied": "Niewystarczające uprawnienia",
     "customerNotFound": "Nie znaleziono klienta",
     "reservationNotFound": "Nie znaleziono rezerwacji",
+    "consumableInsufficientStock": "Niewystarczający zapas materiału eksploatacyjnego",
+    "requiredAccessoriesMissing": "Brakuje wymaganych akcesoriów lub ich ilość jest nieprawidłowa",
     "emailAlreadyExists": "Klient z tym emailem już istnieje",
     "customerHasReservations": "Nie można usunąć klienta z rezerwacjami",
     "cannotCancelReservation": "Tej rezerwacji nie można anulować",
     "cannotEditCompletedReservation": "Zakończone rezerwacje nie mogą być edytowane",
+    "reservationStatusChanged": "Status rezerwacji zmienił się podczas edycji. Odśwież stronę i spróbuj ponownie.",
     "endDateBeforeStart": "Data zakończenia musi być po lub równa dacie rozpoczęcia",
     "negativeAmountOnlyForAdjustment": "Ujemne kwoty są dozwolone tylko dla korekt",
     "productRequired": "Produkt wymagany",
@@ -6757,6 +7210,7 @@
     "unitProductMismatch": "Wybrane jednostki nie należą do tego produktu",
     "unitCombinationMismatch": "Wybrane jednostki nie odpowiadają zarezerwowanej kombinacji dla tej pozycji",
     "cannotDisableUnitTrackingWithCombinations": "Nie można wyłączyć śledzenia jednostek, gdy aktywne rezerwacje korzystają ze śledzonych kombinacji",
+    "cannotChangeStockKindWithActiveReservations": "Nie można zmienić rodzaju zapasu, gdy produkt jest używany w potwierdzonej lub trwającej rezerwacji.",
     "unitStatusConflictsWithReservations": "Ta zmiana uniemożliwiłaby przyszłe rezerwacje dla co najmniej jednej śledzonej kombinacji",
     "unitAssigned": "Ta jednostka jest przypisana do blokującej rezerwacji i nie można jej usunąć.",
     "assignUnitsFailed": "Nie udało się przypisać jednostek",
@@ -6966,7 +7420,7 @@
       },
       "s5": {
         "title": "Okres przechowywania",
-        "body": "Twoje dane są przechowywane przez cały okres obowiązywania abonamentu. Po jego rozwiązaniu są przechowywane przez okres maksymalnie trzech lat w celach dowodowych, a następnie usuwane lub anonimizowane. Dane księgowe i podatkowe są przechowywane przez dziesięć lat zgodnie z obowiązującymi przepisami."
+        "body": "Aktywne dane są przechowywane tak długo, jak istnieje konto. Po jego usunięciu dane te są niezwłocznie usuwane z aktywnych systemów, w tym faktury wystawione lub otrzymane przez Twoje sklepy. Wyeksportuj je wcześniej, jeśli musisz je zachować. Tylko dokumenty rozliczeniowe Louez, które muszą być przechowywane zgodnie z prawem, pozostają w oddzielnym archiwum z ograniczonym dostępem przez dziesięć lat od zamknięcia roku obrotowego, a następnie są usuwane. Kopie zapasowe wygasają zgodnie ze swoim cyklem i nie są przywracane do aktywnych systemów."
       },
       "s6": {
         "title": "Twoje prawa",

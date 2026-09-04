@@ -18,6 +18,7 @@ import {
   dashboardReservationGetEmailRenderContextInputSchema,
   dashboardReservationPreviewTulipQuoteInputSchema,
   dashboardReservationRecordDamageInputSchema,
+  dashboardReservationRefundManualPaymentInputSchema,
   dashboardReservationRecordPaymentInputSchema,
   dashboardReservationReleaseDepositHoldInputSchema,
   dashboardReservationRequestPaymentInputSchema,
@@ -26,6 +27,9 @@ import {
   dashboardReservationSendAccessLinkSmsInputSchema,
   dashboardReservationSendModificationEmailInputSchema,
   dashboardReservationSendReservationEmailInputSchema,
+  dashboardReservationCalendarPeriodEntrySchema,
+  dashboardReservationPlanningTimelineEntrySchema,
+  dashboardReservationTimelinePeriodInputSchema,
   dashboardReservationUpdateNotesInputSchema,
   dashboardReservationUpdateReservationInputSchema,
   dashboardReservationUpdateStatusInputSchema,
@@ -37,7 +41,9 @@ import { dashboardProcedure, requirePermission } from '../../procedures';
 import {
   getDashboardReservationById,
   getDashboardReservationsList,
+  getReservationsForCalendarPeriod,
   getReservationPollData,
+  getStorePlanningTimeline,
   signReservationAsAdmin,
 } from '../../services';
 import { toORPCError } from '../../utils/orpc-error';
@@ -85,6 +91,44 @@ const list = dashboardProcedure
         sortDirection: input.sortDirection,
         page: input.page,
         pageSize: input.pageSize,
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const calendarPeriod = dashboardProcedure
+  .input(dashboardReservationTimelinePeriodInputSchema)
+  .output(z.array(dashboardReservationCalendarPeriodEntrySchema))
+  .handler(async ({ context, input }) => {
+    if (input.storeId !== context.store.id) {
+      throw new ORPCError('FORBIDDEN', { message: 'errors.unauthorized' });
+    }
+
+    try {
+      return await getReservationsForCalendarPeriod({
+        storeId: context.store.id,
+        startDate: new Date(input.startDate),
+        endDate: new Date(input.endDate),
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const planningTimeline = dashboardProcedure
+  .input(dashboardReservationTimelinePeriodInputSchema)
+  .output(z.array(dashboardReservationPlanningTimelineEntrySchema))
+  .handler(async ({ context, input }) => {
+    if (input.storeId !== context.store.id) {
+      throw new ORPCError('FORBIDDEN', { message: 'errors.unauthorized' });
+    }
+
+    try {
+      return await getStorePlanningTimeline({
+        storeId: context.store.id,
+        startDate: new Date(input.startDate),
+        endDate: new Date(input.endDate),
       });
     } catch (error) {
       throw toORPCError(error);
@@ -357,6 +401,26 @@ const recordPayment = requirePermission('write')
         ...input.payload,
         paidAt: toDate(input.payload.paidAt),
       });
+      if (result.error) {
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
+      }
+      return result;
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const refundManualPayment = requirePermission('write')
+  .input(dashboardReservationRefundManualPaymentInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn = context.dashboardReservationActions?.refundManualPayment;
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message: 'dashboardReservationActions.refundManualPayment not provided',
+        });
+      }
+      const result = await fn(input.reservationId, input.payload);
       if (result.error) {
         throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
@@ -733,6 +797,8 @@ const sign = dashboardProcedure
 export const dashboardReservationsRouter = {
   poll,
   list,
+  calendarPeriod,
+  planningTimeline,
   getById,
   getPaymentMethod,
   getAvailableUnitsForItem,
@@ -744,6 +810,7 @@ export const dashboardReservationsRouter = {
   updateStatus,
   cancel,
   recordPayment,
+  refundManualPayment,
   deletePayment,
   returnDeposit,
   recordDamage,

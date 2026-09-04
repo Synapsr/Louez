@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Electronic invoicing platform">
+  <rect width="48" height="48" rx="10" fill="#f1f5f9"/>
+  <path d="M15 8h11l8 8v21a3 3 0 0 1-3 3H15a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3z" fill="#0f172a"/>
+  <path d="M26 8l8 8h-6a2 2 0 0 1-2-2V8z" fill="#64748b"/>
+  <path fill="#f8fafc" d="M16.5 20h13v2.5h-13zm0 5.5h13V28h-13zm0 5.5h8v2.5h-8z"/>
+  <circle cx="35" cy="34" r="7.5" fill="#475569" stroke="#f1f5f9" stroke-width="2"/>
+  <path d="M31.8 34h5.4m-2.4-2.4L37.4 34 34.8 36.4" fill="none" stroke="#f8fafc" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

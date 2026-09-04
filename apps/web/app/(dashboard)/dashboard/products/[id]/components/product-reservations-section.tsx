@@ -1,4 +1,5 @@
 import { Card } from '@louez/ui';
+import type { StockKind } from '@louez/types';
 
 import type { Reservation } from '@/app/(dashboard)/dashboard/reservations/reservations-types';
 
@@ -10,6 +11,7 @@ interface ProductReservationsSectionProps {
   timezone?: string;
   productId: string;
   trackUnits: boolean;
+  stockKind: StockKind;
   /** Active tracked units (empty for simple-quantity products) */
   units: { id: string; identifier: string }[];
   /** Stock quantity for simple-quantity products */
@@ -22,6 +24,7 @@ export function ProductReservationsSection({
   timezone,
   productId,
   trackUnits,
+  stockKind,
   units,
   quantity,
 }: ProductReservationsSectionProps) {
@@ -33,6 +36,7 @@ export function ProductReservationsSection({
         timezone={timezone}
         productId={productId}
         trackUnits={trackUnits}
+        stockKind={stockKind}
         units={units}
         quantity={quantity}
       />

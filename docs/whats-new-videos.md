@@ -27,13 +27,16 @@ Sans `media`, l'entrée s'affiche en texte seul — aucun placeholder, rien à c
 
 ## Avancement
 
+- [x] `fixed-pricing` — Un prix qui ne dépend plus de la durée · 40 s · en ligne
+- [x] `consumable-stock` — Ce qui part avec le client · 18 s · en ligne (plan 1 seulement)
+- [x] `required-accessories` — Le casque part toujours avec le vélo · 57 s · en ligne
 - [x] `product-image-ai` — Vos photos produit passent au studio · 52 s · en ligne
 - [x] `sidebar-simplified` — Un menu plus court · 45 s · en ligne
 - [x] `navigation-refresh` — ⌘K vous emmène partout · 23 s · en ligne
 - [x] `product-variants` — Des variantes simples · 46 s · en ligne
 - [x] `product-detail-hub` — Chaque produit a sa fiche · 34 s · en ligne
 - [x] `reservations-unified-views` — Vos réservations s'ouvrent sur le calendrier · 50 s · en ligne
-- [ ] `product-creation-flow-redesign` — Deux sections et votre produit est en ligne (~35 s)
+- [ ] `product-creation-flow-redesign` — Une seule page et votre produit est en ligne (~35 s)
 - [x] `reservation-creation-simplified` — Une réservation, une seule page · 53 s · en ligne
 
 ### Traitement appliqué
@@ -43,6 +46,13 @@ tel quel — les cadres de la page changelog portent `aspect-1734/1080`. Ni rogn
 zooms vont bord à bord, on couperait de l'UI) ni bandes de remplissage. Enregistrer une
 prochaine vidéo dans un autre ratio impose de mettre à jour cette classe dans
 `whats-new-entry-media.tsx` et `whats-new-entry-thumbnail.tsx`.
+
+**Exception connue** — `required-accessories` a été exporté en 3604 × 2160, soit 1,669:1.
+Le forcer en 1734 × 1080 l'aurait déformé, alors il est encodé en **1802 × 1080**, ratio
+d'origine préservé. Dans le cadre `aspect-1734/1080`, `object-contain` lui met environ
+2 % de bande grise en haut et en bas ; la vignette, en `object-cover`, rogne autant sur
+les côtés. C'est le compromis le moins mauvais sans réenregistrement. Exporter les
+prochaines vidéos depuis la même fenêtre Screen Studio évite le problème.
 
 ```sh
 ffmpeg -i source.mp4 -vf "scale=1734:1080:flags=lanczos,format=yuv420p" \
@@ -60,7 +70,62 @@ Monter `-crf` à 26 si le fichier dépasse 5 Mo.
 
 ---
 
-## 1. `product-image-ai` — ~50 s
+## 1. `fixed-pricing` — ~30 s
+
+**Tourné le 27/08 — 40 s, en ligne.** Le montage suit le plan et finit sur le panier de la boutique, ligne « fog fluid · Flat rate ». Boutique en anglais, dashboard en français.
+
+Tout tient dans une bascule : le prix arrête de dépendre du temps. Ne pas partir d'un produit vide — partir d'un produit qui a des paliers, pour que la carte se vide à l'écran.
+
+- [ ] **0–5 s** — Fiche produit avec paliers dégressifs et graphique visibles. Plan fixe 2 s sur la carte **Tarification** telle qu'elle est aujourd'hui.
+- [ ] **5–12 s** — Ouvrir le select **Mode de tarification** en haut de la carte, choisir **Forfait**. Périodes, paliers et graphique disparaissent. Ne pas couper : c'est le plan qui porte la vidéo.
+- [ ] **12–18 s** — Saisir le **Prix forfaitaire**. Montrer la TVA et la caution qui, elles, restent. Enregistrer.
+- [ ] **18–26 s** — La même fiche côté boutique : le montant seul, le label **Forfait**, aucun « / jour ». Changer la période dans le sélecteur de dates — le prix ne bouge pas.
+- [ ] **26–30 s** — Ajouter au panier. Le total est le même pour deux jours que pour dix.
+
+**À préparer** — [ ] un produit de service crédible (nettoyage, livraison, remise en état) plutôt qu'un vélo, [ ] un produit à paliers dont vous acceptez de perdre les paliers.
+
+**Piège** — la bascule **supprime** paliers et tarifs saisonniers pour de bon. Tourner sur une copie, jamais sur le produit de démo qui sert aux autres vidéos.
+
+---
+
+## 2. `consumable-stock` — ~45 s
+
+**Tourné le 27/08 — 18 s, en ligne, plan 1 seulement.** Le montage montre le passage en Consommable et l'aide « Stock en rayon », puis s'arrête sur la barre « Modifications non enregistrées ». Le stock qui descend après confirmation, l'option grisée, le badge de la fiche et le verrou n'ont pas été tournés. Les plans ci-dessous restent valables pour un complément.
+
+Le stock qui descend est le seul plan qui compte. Tout le reste l'installe.
+
+- [ ] **0–6 s** — Produit déjà au forfait, carte **Stock**. Ouvrir le select **Type de stock**, choisir **Consommable**, enregistrer.
+- [ ] **6–12 s** — Sur un second produit tarifé à la durée, rouvrir le même select : **Consommable** est grisé et porte sa raison dans l'option, « Un consommable se vend au forfait ». Refermer sans rien changer.
+- [ ] **12–20 s** — Fiche du consommable : badge **Consommable**, quantité intitulée **Stock en rayon**. Plan fixe 2 s sur le chiffre.
+- [ ] **20–32 s** — Boutique : réserver le consommable. Retour au dashboard, **confirmer** la réservation, revenir sur la fiche produit. Le stock en rayon a baissé. Pas de zoom, le chiffre suffit.
+- [ ] **32–40 s** — Annuler la réservation, revenir sur la fiche : le stock est remonté.
+- [ ] **40–45 s** — Sur un produit engagé dans une réservation confirmée, ouvrir le select : **Type de stock verrouillé**, et la liste des réservations bloquantes.
+
+**À préparer** — [ ] un consommable crédible avec un stock à deux chiffres (fart, gaz, sangle), [ ] un produit tarifé à la durée pour le plan de l'option grisée, [ ] une réservation confirmée sur un troisième produit pour le plan du verrou.
+
+**Piège** — le stock bouge à la **confirmation**, pas à la création. Créer la réservation, puis attendre avant de confirmer : sinon on ne voit jamais les deux états.
+
+---
+
+## 3. `required-accessories` — ~40 s
+
+**Tourné le 27/08 — 57 s, en ligne.** Le montage va jusqu'au panier avec la ligne « Casque adulte · Required with … » verrouillée sous le VAE. Boutique en anglais. Seule vidéo de la série avec des photos produit réelles.
+
+Deux moitiés : le réglage côté loueur, l'effet côté client. La seconde vend, la première explique.
+
+- [ ] **0–8 s** — Carte **Accessoires** d'un vélo, ouvrir le sélecteur. Taper dans la recherche, cocher deux produits à la suite : ils restent en place, cochés, et le compteur du pied monte. Fermer.
+- [ ] **8–16 s** — Sur le casque, activer **Requis**. Le champ de quantité apparaît, avec « par unité louée » à côté. Laisser le second accessoire sur off — « Simplement suggéré au client ». Enregistrer.
+- [ ] **16–26 s** — Boutique, fiche du vélo, ajouter au panier. Le casque se pose seul sous le vélo, **Requis avec Vélo**, sans bouton Supprimer.
+- [ ] **26–34 s** — Passer le vélo à 3. La ligne casque passe à 3 toute seule. Essayer de la baisser : le bouton est inactif.
+- [ ] **34–40 s** — Supprimer le vélo. Le casque part avec. Fin sur le panier vide.
+
+**À préparer** — [ ] un vélo, un casque et un accessoire facultatif, tous avec photo, [ ] au moins 3 casques en stock, [ ] un catalogue d'au moins six produits pour que la recherche du sélecteur ait de quoi filtrer.
+
+**Variante** — si un accessoire requis à 0 € est prêt, ajouter 3 s sur la ligne **Inclus**. C'est le plan qui fait comprendre l'intérêt commercial.
+
+---
+
+## 4. `product-image-ai` — ~50 s
 
 C'est l'avant qui vend : les photos de départ doivent être moches de façon crédible (fond de cuisine, garage, lumière quelconque). Solde de crédits confortable — l'alerte « Crédits IA insuffisants » ne doit jamais apparaître.
 
@@ -78,7 +143,7 @@ C'est l'avant qui vend : les photos de départ doivent être moches de façon cr
 
 ---
 
-## 2. `sidebar-simplified` — ~38 s
+## 5. `sidebar-simplified` — ~38 s
 
 À chaque entrée disparue du menu, on montre où elle a atterri.
 
@@ -93,7 +158,7 @@ C'est l'avant qui vend : les photos de départ doivent être moches de façon cr
 
 ---
 
-## 3. `navigation-refresh` — ~50 s
+## 6. `navigation-refresh` — ~50 s
 
 - [x] **0–4 s** — Sur Réservations. `⌘K` : la palette s'ouvre. 2 s sur les groupes fermés.
 - [x] **4–14 s** — Taper un nom de client, lentement. Entrée → sa fiche s'ouvre.
@@ -106,7 +171,7 @@ C'est l'avant qui vend : les photos de départ doivent être moches de façon cr
 
 ---
 
-## 4. `product-variants` — ~50 s
+## 7. `product-variants` — ~50 s
 
 Le plan final est la **liste des produits**, pas la boutique.
 
@@ -123,7 +188,7 @@ Le plan final est la **liste des produits**, pas la boutique.
 
 ---
 
-## 5. `product-detail-hub` — ~60 s
+## 8. `product-detail-hub` — ~60 s
 
 Les plans 3 et 5 doivent être **dans la même prise**.
 
@@ -138,7 +203,7 @@ Les plans 3 et 5 doivent être **dans la même prise**.
 
 ---
 
-## 6. `reservations-unified-views` — ~55 s
+## 9. `reservations-unified-views` — ~55 s
 
 On ne clique presque pas, on fait défiler.
 
@@ -153,20 +218,20 @@ On ne clique presque pas, on fait défiler.
 
 ---
 
-## 7. `product-creation-flow-redesign` — ~35 s
+## 10. `product-creation-flow-redesign` — ~35 s
 
 Le message est « c'est court » : la vidéo doit l'être.
 
-- [ ] **0–4 s** — Produits → **Ajouter un produit**. Plan fixe : une page, deux sections, un panneau à droite.
+- [ ] **0–4 s** — Produits → **Ajouter un produit**. Plan fixe : une page, trois sections, un panneau à droite.
 - [ ] **4–18 s** — Nom, prix, 2 photos déposées. **Aperçu et progression dans le cadre**, ils se remplissent pendant la saisie.
-- [ ] **18–26 s** — Descendre jusqu'à Tarifs et stock, saisir une quantité. Pas d'accessoires, pas d'assurance.
+- [ ] **18–26 s** — Descendre jusqu'à Tarification, saisir une quantité, puis rattacher un accessoire dans la carte **Accessoires** — elle est sur la page de création depuis le 27 août. Toujours pas d'assurance ici.
 - [ ] **26–35 s** — **Créer et dupliquer**. La copie « (copie) » s'ouvre pré-remplie.
 
-**À préparer** — [ ] 2 photos correctes, [ ] un nom de produit crédible.
+**À préparer** — [ ] 2 photos correctes, [ ] un nom de produit crédible, [ ] un produit déjà en catalogue à rattacher comme accessoire.
 
 ---
 
-## 8. `reservation-creation-simplified` — ~55 s
+## 11. `reservation-creation-simplified` — ~55 s
 
 **Un seul mouvement de scroll, pas de coupe.**
 
@@ -184,4 +249,7 @@ Le message est « c'est court » : la vidéo doit l'être.
 
 ## Arbitrages à trancher
 
+- [ ] **`consumable-stock` s'arrête avant sa démonstration** (18 s au lieu de 45 s). Le plan qui vend la fonctionnalité est le stock qui descend à la confirmation, et il n'est pas dans le montage. Soit on complète, soit on assume que l'article porte l'explication.
+- [ ] **La boutique est en anglais dans les trois vidéos**, le dashboard en français. Cohérent pour l'entrée `en`, bancal pour l'entrée `fr` — décider si on refait les plans boutique avec la vitrine en français.
+- [ ] **Les données de démo divergent d'une vidéo à l'autre.** `required-accessories` a de vraies photos de vélos ; `fixed-pricing` et `consumable-stock` tournent sur « fog fluid », « smoke machine » et « DEMO », sans photo. Les réglages communs demandent des données crédibles.
 - [ ] **Le cliquer-glisser apparaît dans deux vidéos** (`reservations-unified-views` plan 6 et `product-detail-hub` plan 4). Il est décoratif dans la première, structurant dans la seconde — envisager de le couper de la première.

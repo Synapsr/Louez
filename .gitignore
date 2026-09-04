@@ -89,3 +89,6 @@ SPECIFICATIONS*.md
 .playwright-cli
 .email-previews/
 .localify/project.json
+
+# pnpm store accidentally created in-repo by sandboxed runs
+.pnpm-store/

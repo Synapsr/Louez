@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import Script from "next/script";
+import { getLocale } from "next-intl/server";
 
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 
@@ -8,9 +9,11 @@ import { AnchoredToastProvider, ToastProvider } from "@louez/ui";
 
 import { EvlogProvider } from "@/components/evlog-provider";
 import { InstanceProvider } from "@/components/instance-provider";
+import { PostHogBootstrap } from "@/components/shared/posthog-bootstrap";
+import { PublicEnvProvider } from "@/components/shared/public-env-provider";
 import { UmamiAnalytics } from "@/components/umami-analytics";
 
-import { env } from "@/env";
+import { env, getPublicEnv } from "@/env";
 import { getInstanceConfig } from "@/lib/deployment";
 import { ORPCProvider } from "@/lib/orpc/provider";
 
@@ -51,12 +54,15 @@ export default async function RootLayout({
   // client with the wrong deployment mode.
   await connection();
   const instanceConfig = getInstanceConfig();
+  const publicEnv = getPublicEnv();
+  // Drives the document language for screen readers and translation tools.
+  const locale = await getLocale();
 
   return (
     <>
       {/* {process.env.NODE_ENV === 'development' && <Agentation />} */}
 
-      <html lang="fr" suppressHydrationWarning className="overscroll-none">
+      <html lang={locale} suppressHydrationWarning className="overscroll-none">
         <UmamiAnalytics />
 
         {env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
@@ -78,17 +84,20 @@ export default async function RootLayout({
           />
         </head>
         <body className="font-sans antialiased">
-          <InstanceProvider config={instanceConfig}>
-            <NuqsAdapter>
-              <EvlogProvider>
-                <ORPCProvider>
-                  <ToastProvider position="top-center">
-                    <AnchoredToastProvider>{children}</AnchoredToastProvider>
-                  </ToastProvider>
-                </ORPCProvider>
-              </EvlogProvider>
-            </NuqsAdapter>
-          </InstanceProvider>
+          <PublicEnvProvider config={publicEnv}>
+            <PostHogBootstrap />
+            <InstanceProvider config={instanceConfig}>
+              <NuqsAdapter>
+                <EvlogProvider>
+                  <ORPCProvider>
+                    <ToastProvider position="top-center">
+                      <AnchoredToastProvider>{children}</AnchoredToastProvider>
+                    </ToastProvider>
+                  </ORPCProvider>
+                </EvlogProvider>
+              </NuqsAdapter>
+            </InstanceProvider>
+          </PublicEnvProvider>
         </body>
       </html>
     </>

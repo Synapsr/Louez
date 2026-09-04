@@ -8,7 +8,7 @@ import type {
 } from "react";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { useQueries } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Plus } from "lucide-react";
@@ -38,14 +38,11 @@ import {
 } from "@/components/dashboard/reservations-timeline/timeline-utils";
 import { reservationCalendarQueries } from "@/lib/queries/reservation-calendar.queries";
 
-import {
-  type CalendarRange,
-  matchesTodayOperation,
-  parseCalendarDateParam,
-  persistCalendarDateInHistory,
-} from "./calendar-query";
+import { type CalendarRange, matchesTodayOperation } from "./calendar-query";
 import { TimelineToolbar, useTimelineFilters } from "./timeline-toolbar";
 import type { Product, Reservation } from "./types";
+import { useTimelineDateAnchor } from "./use-timeline-date-anchor";
+import { useTimelineDateParam } from "./use-timeline-date-param";
 
 // =============================================================================
 // Constants — mirror the planning timeline so both views feel identical
@@ -125,8 +122,7 @@ export function ReservationsCalendarView({
   const tTimeline = useTranslations("dashboard.calendar.timeline");
   const locale = useLocale();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const dateParam = searchParams.get("date");
+  const [dateParam] = useTimelineDateParam();
 
   // ---------------------------------------------------------------------------
   // URL-persisted view state (zoom + status/product filters) — shareable links
@@ -142,10 +138,8 @@ export function ReservationsCalendarView({
   // Window state (infinite horizontal scroll)
   // ---------------------------------------------------------------------------
 
-  // Anchor on the `date` param when present (legacy links)
-  const anchorDateRef = useRef(
-    parseCalendarDateParam(searchParams.get("date") ?? undefined) ?? new Date(),
-  );
+  // Anchor on the `date` param when present (deep links, `returnTo` round-trips)
+  const anchorDateRef = useRef(dateParam ?? new Date());
   const initialWindowRef = useRef(reservationCalendarQueries.initialWindow(anchorDateRef.current));
 
   const [windowStart, setWindowStart] = useState(initialWindowRef.current.start);
@@ -173,8 +167,8 @@ export function ReservationsCalendarView({
   // ---------------------------------------------------------------------------
 
   const chunkQueries = useMemo(
-    () => reservationCalendarQueries.forWindow(windowStart, daysCount),
-    [windowStart, daysCount],
+    () => reservationCalendarQueries.forWindow(storeId, windowStart, daysCount),
+    [storeId, windowStart, daysCount],
   );
 
   const { reservations, isFetching, hasError, retry } = useQueries({
@@ -183,7 +177,7 @@ export function ReservationsCalendarView({
       const byId = new Map<string, Reservation>();
       for (const result of results) {
         for (const reservation of result.data ?? []) {
-          byId.set(reservation.id, reservation as unknown as Reservation);
+          byId.set(reservation.id, reservation);
         }
       }
       return {
@@ -596,30 +590,12 @@ export function ReservationsCalendarView({
 
   const goToToday = () => goToDate(new Date(), "auto");
 
-  // Browser/Next scroll restoration can run after layout effects on a cached
-  // navigation. Re-apply any URL anchor after paint so it wins over an older
-  // horizontal scroll position restored by the browser.
-  useEffect(() => {
-    const targetDate = parseCalendarDateParam(dateParam ?? undefined);
-    if (!targetDate) return;
-
-    let finalFrame = 0;
-    const initialFrame = requestAnimationFrame(() => {
-      finalFrame = requestAnimationFrame(() => {
-        goToDate(targetDate, "auto");
-      });
-    });
-
-    return () => {
-      cancelAnimationFrame(initialFrame);
-      cancelAnimationFrame(finalFrame);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateParam]);
-
-  const persistVisibleDate = () => {
-    persistCalendarDateInHistory(visibleDate);
-  };
+  const { persistVisibleDate, returnTo } = useTimelineDateAnchor({
+    view: "calendar",
+    dateParam,
+    visibleDate,
+    goToDate,
+  });
 
   // ---------------------------------------------------------------------------
   // Drag-to-create (mouse only — touch keeps native scrolling)
@@ -866,6 +842,7 @@ export function ReservationsCalendarView({
                       reservation={item.reservation}
                       currency={currency}
                       onBeforeNavigate={persistVisibleDate}
+                      returnTo={returnTo}
                       isLabelSticky
                       continuesBeforeViewport={item.startIndex < visibleDayRange.startIndex}
                       style={{

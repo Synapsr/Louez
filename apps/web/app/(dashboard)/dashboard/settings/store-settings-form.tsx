@@ -26,13 +26,12 @@ import {
 
 import { FloatingSaveBar } from "@/components/dashboard/floating-save-bar";
 import { RootError } from "@/components/form/root-error";
+import { usePublicEnv } from "@/components/shared/public-env-provider";
 
 import { getMaxRentalMinutes, getMinRentalMinutes } from "@/lib/utils/rental-duration";
 import { getDefaultCurrencyForCountry } from "@/lib/utils/currency";
 
 import { useAppForm } from "@/hooks/form/form";
-
-import { env } from "@/env";
 
 import { updateStoreSettings } from "./actions";
 import { StoreSettingsBillingSection } from "./components/store-settings-billing-section";
@@ -105,7 +104,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
     (store.settings as StoreSettings | null)?.advanceNoticeMinutes ?? 0;
   const t = useTranslations("dashboard.settings");
 
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+  const { NEXT_PUBLIC_APP_DOMAIN: domain } = usePublicEnv();
   const tValidation = useTranslations("validation");
 
   const storeSettingsSchema = createStoreSettingsSchema(tValidation);

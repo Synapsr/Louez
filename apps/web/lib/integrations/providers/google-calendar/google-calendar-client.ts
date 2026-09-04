@@ -320,3 +320,42 @@ export async function deleteGoogleCalendarEvent(params: {
     );
   }
 }
+
+export async function deleteGoogleCalendar(params: {
+  accessToken: string;
+  calendarId: string;
+}): Promise<void> {
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(params.calendarId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${params.accessToken}`,
+      },
+    },
+  );
+
+  if (!response.ok && response.status !== 404 && response.status !== 410) {
+    throw new GoogleCalendarApiError(
+      `Google Calendar deletion failed (${response.status})`,
+      response.status,
+    );
+  }
+}
+
+export async function revokeGoogleToken(token: string): Promise<void> {
+  const response = await fetch('https://oauth2.googleapis.com/revoke', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ token }),
+  });
+
+  // Google returns 400 when a token has already expired or been revoked. In
+  // both cases it no longer grants Louez access, so the cleanup is idempotent.
+  if (!response.ok && response.status !== 400) {
+    throw new GoogleCalendarApiError(
+      `Google token revocation failed (${response.status})`,
+      response.status,
+    );
+  }
+}

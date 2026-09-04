@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { cn } from "@louez/utils";
 import { Badge } from "@louez/ui";
+import type { StockQuantityLimit } from "@louez/utils";
 import {
   CartSolidIcon,
   ReviewSolidIcon,
@@ -10,12 +11,18 @@ import {
   XCircleSolidIcon,
 } from "@louez/ui/icons";
 
-export type AvailabilityStatus = "available" | "limited" | "unavailable" | "in_cart";
+export type AvailabilityStatus =
+  | "available"
+  | "limited"
+  | "unavailable"
+  | "out_of_stock"
+  | "required_accessory_out_of_stock"
+  | "in_cart";
 
 interface AvailabilityBadgeProps {
   status: AvailabilityStatus;
-  availableQuantity?: number;
-  totalQuantity?: number;
+  availableQuantity?: StockQuantityLimit;
+  totalQuantity?: StockQuantityLimit;
   cartQuantity?: number;
   className?: string;
   showIcon?: boolean;
@@ -37,17 +44,29 @@ export function AvailabilityBadge({
     available: {
       icon: SuccessSolidIcon,
       label:
-        availableQuantity > 1 ? t("availableCount", { count: availableQuantity }) : t("available"),
+        availableQuantity !== null && availableQuantity > 1
+          ? t("availableCount", { count: availableQuantity })
+          : t("available"),
       variant: "success" as const,
     },
     limited: {
       icon: ReviewSolidIcon,
-      label: t("limited", { count: availableQuantity }),
+      label: t("limited", { count: availableQuantity ?? 0 }),
       variant: "review" as const,
     },
     unavailable: {
       icon: XCircleSolidIcon,
       label: t("unavailable"),
+      variant: "failed" as const,
+    },
+    out_of_stock: {
+      icon: XCircleSolidIcon,
+      label: t("outOfStock"),
+      variant: "failed" as const,
+    },
+    required_accessory_out_of_stock: {
+      icon: XCircleSolidIcon,
+      label: t("requiredAccessoryOutOfStock"),
       variant: "failed" as const,
     },
     in_cart: {

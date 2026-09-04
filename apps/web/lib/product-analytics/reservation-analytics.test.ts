@@ -38,6 +38,29 @@ test("builds a source-tagged reservation detail URL", () => {
   );
 });
 
+test("omits returnTo when the caller has no page to come back to", () => {
+  assert.equal(
+    getReservationDetailHref("reservation-1", "home_departure", null),
+    "/dashboard/reservations/reservation-1?source=home_departure",
+  );
+  assert.equal(
+    getReservationDetailHref("reservation-1", "home_departure", ""),
+    "/dashboard/reservations/reservation-1?source=home_departure",
+  );
+});
+
+test("encodes the returnTo path so its own query survives the round-trip", () => {
+  assert.equal(
+    getReservationDetailHref(
+      "reservation-1",
+      "reservations_timeline",
+      "/dashboard/reservations?view=planning&date=2026-07-08",
+    ),
+    "/dashboard/reservations/reservation-1?source=reservations_timeline" +
+      "&returnTo=%2Fdashboard%2Freservations%3Fview%3Dplanning%26date%3D2026-07-08",
+  );
+});
+
 test("maps status transitions to their product action", () => {
   assert.equal(
     getReservationStatusAnalyticsAction("ongoing"),

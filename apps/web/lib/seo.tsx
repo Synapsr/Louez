@@ -1,10 +1,15 @@
 import type { Metadata } from 'next'
-import type { StoreSettings, StoreTheme } from '@louez/types'
+import type { PricingKind, StoreSettings, StoreTheme } from '@louez/types'
 import type { ReactElement } from 'react'
-import { minutesToPriceDuration, toAbsoluteUrl } from '@louez/utils'
+import {
+  isFixedPriceProduct,
+  minutesToPriceDuration,
+  toAbsoluteUrl,
+} from '@louez/utils'
 import { type Locale, defaultLocale, locales } from '@/i18n/config'
 import { isStandaloneMode } from '@/lib/deployment'
 import { env } from '@/env'
+import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale'
 
 const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
 
@@ -74,6 +79,8 @@ export interface ProductSeoData {
   deposit?: string | null
   images?: string[] | null
   quantity: number
+  /** A `fixed` product is priced per booking, so its Offer carries no period. */
+  pricingKind?: PricingKind | null
   /** Rental period the price applies to — surfaced in the Offer schema. */
   pricingMode?: 'hour' | 'day' | 'week' | null
   /**
@@ -128,6 +135,9 @@ const PERIOD_UNIT_CODES: Record<string, string> = {
 function getPriceReferenceQuantity(
   product: ProductSeoData,
 ): { value: number; unitCode: string } | null {
+  // A forfait covers the whole booking — claiming a period would be a lie.
+  if (isFixedPriceProduct(product)) return null
+
   if (product.basePeriodMinutes && product.basePeriodMinutes > 0) {
     const period = minutesToPriceDuration(product.basePeriodMinutes)
     const unitCode = PERIOD_UNIT_CODES[period.unit]
@@ -240,7 +250,7 @@ export function generateProductMetadata(
   const { path = '', locale } = options
 
   const currency = store.settings?.currency || 'EUR'
-  const priceFormatted = formatPrice(parseFloat(product.price), currency)
+  const priceFormatted = formatPrice(parseFloat(product.price), currency, locale)
 
   const title = options.title || `${product.name} - Location ${priceFormatted}`
   const description = product.description
@@ -532,8 +542,8 @@ export function truncateText(text: string, maxLength: number): string {
 /**
  * Format price with currency
  */
-function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat('fr-FR', {
+function formatPrice(price: number, currency: string, locale?: string): string {
+  return new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,

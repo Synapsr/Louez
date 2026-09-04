@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from '@louez/ui'
 import { formatStoreDate } from '@/lib/utils/store-date'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { useStoreTimezone } from '@/contexts/store-context'
 import type { ConditionRating, InspectionStatus, InspectionType } from '@louez/types'
 
@@ -86,6 +87,7 @@ export function InspectionView({
 }: InspectionViewProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.settings.inspection')
+  const { intl: formatLocale } = useFormatLocale()
   const timezone = useStoreTimezone()
   const [previewPhoto, setPreviewPhoto] = useState<InspectionPhoto | null>(null)
 
@@ -156,7 +158,12 @@ export function InspectionView({
                         : t(`status.${inspection.status}`)}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {formatStoreDate(new Date(inspection.createdAt), timezone, 'DATE_AT_TIME')}
+                      {formatStoreDate(
+                        new Date(inspection.createdAt),
+                        timezone,
+                        'DATE_AT_TIME',
+                        formatLocale,
+                      )}
                     </p>
                   </div>
                 </div>
@@ -301,7 +308,12 @@ export function InspectionView({
                 {inspection.signedAt && (
                   <p className="text-xs text-muted-foreground text-center">
                     {t('signature.signedAt')}:{' '}
-                    {formatStoreDate(new Date(inspection.signedAt), timezone, "d MMM yyyy 'à' HH:mm:ss")}
+                    {formatStoreDate(
+                      new Date(inspection.signedAt),
+                      timezone,
+                      'PRECISE_DATETIME',
+                      formatLocale,
+                    )}
                   </p>
                 )}
               </CardContent>

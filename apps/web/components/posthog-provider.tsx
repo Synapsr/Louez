@@ -1,66 +1,66 @@
-'use client'
+"use client";
 
-import posthog from 'posthog-js'
-import { PostHogProvider as PHProvider, usePostHog } from 'posthog-js/react'
-import { usePathname, useSearchParams } from 'next/navigation'
-import { useEffect, Suspense } from 'react'
-import { env } from '@/env'
+import posthog from "posthog-js";
+import { PostHogProvider as PHProvider, usePostHog } from "posthog-js/react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useEffect, Suspense } from "react";
+import { usePublicEnv } from "@/components/shared/public-env-provider";
 
-type SalesChannel = 'marketplace'
+type SalesChannel = "marketplace";
 
 /**
  * Tracks page views on route changes in Next.js App Router.
  * Must be used inside PostHogProvider and Suspense boundary.
  */
 function PostHogPageView({ channel }: { channel?: SalesChannel }) {
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const posthogClient = usePostHog()
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const posthogClient = usePostHog();
 
   useEffect(() => {
     if (pathname && posthogClient) {
-      let url = window.origin + pathname
-      const search = searchParams?.toString()
+      let url = window.origin + pathname;
+      const search = searchParams?.toString();
       if (search) {
-        url = url + '?' + search
+        url = url + "?" + search;
       }
-      posthogClient.capture('$pageview', {
+      posthogClient.capture("$pageview", {
         $current_url: url,
         ...(channel && { channel }),
-      })
+      });
     }
-  }, [channel, pathname, searchParams, posthogClient])
+  }, [channel, pathname, searchParams, posthogClient]);
 
-  return null
+  return null;
 }
 
 /**
  * Identifies user in PostHog for session replay attribution.
  * Must be used inside PostHogProvider.
  */
-function PostHogIdentify({ user }: { user: PostHogProviderProps['user'] }) {
-  const posthogClient = usePostHog()
+function PostHogIdentify({ user }: { user: PostHogProviderProps["user"] }) {
+  const posthogClient = usePostHog();
 
   useEffect(() => {
     if (posthogClient && user) {
       posthogClient.identify(user.id, {
         email: user.email,
         name: user.name || undefined,
-      })
+      });
     }
-  }, [posthogClient, user])
+  }, [posthogClient, user]);
 
-  return null
+  return null;
 }
 
 interface PostHogProviderProps {
-  children: React.ReactNode
-  channel?: SalesChannel
+  children: React.ReactNode;
+  channel?: SalesChannel;
   user?: {
-    id: string
-    email: string
-    name?: string | null
-  }
+    id: string;
+    email: string;
+    name?: string | null;
+  };
 }
 
 /**
@@ -71,29 +71,28 @@ interface PostHogProviderProps {
  * - Access to PostHog hooks (usePostHog, useFeatureFlag, etc.)
  * - Session recording and analytics
  *
- * PostHog is initialized in instrumentation-client.ts, this provider
- * adds React context integration for the initialized instance.
+ * The root PostHogBootstrap initializes the SDK from validated runtime
+ * configuration before route-level analytics effects run. This provider adds
+ * the React context and user-aware tracking for configured deployments.
  */
-export function PostHogProvider({
-  children,
-  channel,
-  user,
-}: PostHogProviderProps) {
+export function PostHogProvider({ children, channel, user }: PostHogProviderProps) {
+  const { NEXT_PUBLIC_POSTHOG_KEY: posthogKey } = usePublicEnv();
+
   useEffect(() => {
-    if (!env.NEXT_PUBLIC_POSTHOG_KEY) {
-      return
+    if (!posthogKey) {
+      return;
     }
 
     if (channel) {
-      posthog.register_for_session({ channel })
+      posthog.register_for_session({ channel });
     } else {
-      posthog.unregister_for_session('channel')
+      posthog.unregister_for_session("channel");
     }
-  }, [channel])
+  }, [channel, posthogKey]);
 
   // Skip rendering if PostHog is not configured
-  if (!env.NEXT_PUBLIC_POSTHOG_KEY) {
-    return <>{children}</>
+  if (!posthogKey) {
+    return <>{children}</>;
   }
 
   return (
@@ -104,5 +103,5 @@ export function PostHogProvider({
       {user && <PostHogIdentify user={user} />}
       {children}
     </PHProvider>
-  )
+  );
 }

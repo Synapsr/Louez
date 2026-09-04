@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "5bf92c04-6f12-49dd-aa90-172043d94d9e",
-  "prevId": "3ecabd0f-f28f-44c3-89be-7969419e9e12",
+  "id": "0912cc25-2236-4371-8b91-6d3b0723b5fc",
+  "prevId": "6bd878bf-a574-4645-90a6-d7ce91d31a55",
   "tables": {
     "accounts": {
       "name": "accounts",
@@ -104,9 +104,7 @@
       "indexes": {
         "accounts_user_idx": {
           "name": "accounts_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -114,18 +112,13 @@
       "compositePrimaryKeys": {
         "accounts_id": {
           "name": "accounts_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "accounts_provider_idx": {
           "name": "accounts_provider_idx",
-          "columns": [
-            "provider",
-            "provider_account_id"
-          ]
+          "columns": ["provider", "provider_account_id"]
         }
       },
       "checkConstraint": {}
@@ -173,9 +166,7 @@
       "indexes": {
         "admin_digest_logs_store_idx": {
           "name": "admin_digest_logs_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         }
       },
@@ -183,19 +174,13 @@
       "compositePrimaryKeys": {
         "admin_digest_logs_id": {
           "name": "admin_digest_logs_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "admin_digest_logs_unique": {
           "name": "admin_digest_logs_unique",
-          "columns": [
-            "store_id",
-            "digest_date",
-            "reminder_channel"
-          ]
+          "columns": ["store_id", "digest_date", "reminder_channel"]
         }
       },
       "checkConstraint": {}
@@ -330,24 +315,17 @@
       "indexes": {
         "ai_advisor_conversations_store_created_idx": {
           "name": "ai_advisor_conversations_store_created_idx",
-          "columns": [
-            "store_id",
-            "created_at"
-          ],
+          "columns": ["store_id", "created_at"],
           "isUnique": false
         },
         "ai_advisor_conversations_customer_idx": {
           "name": "ai_advisor_conversations_customer_idx",
-          "columns": [
-            "customer_id"
-          ],
+          "columns": ["customer_id"],
           "isUnique": false
         },
         "ai_advisor_conversations_provider_call_idx": {
           "name": "ai_advisor_conversations_provider_call_idx",
-          "columns": [
-            "provider_call_id"
-          ],
+          "columns": ["provider_call_id"],
           "isUnique": false
         }
       },
@@ -355,17 +333,13 @@
       "compositePrimaryKeys": {
         "ai_advisor_conversations_id": {
           "name": "ai_advisor_conversations_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "ai_advisor_conversations_reservation_unique": {
           "name": "ai_advisor_conversations_reservation_unique",
-          "columns": [
-            "reservation_id"
-          ]
+          "columns": ["reservation_id"]
         }
       },
       "checkConstraint": {}
@@ -427,18 +401,12 @@
       "indexes": {
         "ai_advisor_messages_conversation_created_idx": {
           "name": "ai_advisor_messages_conversation_created_idx",
-          "columns": [
-            "conversation_id",
-            "created_at"
-          ],
+          "columns": ["conversation_id", "created_at"],
           "isUnique": false
         },
         "ai_advisor_messages_store_created_idx": {
           "name": "ai_advisor_messages_store_created_idx",
-          "columns": [
-            "store_id",
-            "created_at"
-          ],
+          "columns": ["store_id", "created_at"],
           "isUnique": false
         }
       },
@@ -446,9 +414,7 @@
       "compositePrimaryKeys": {
         "ai_advisor_messages_id": {
           "name": "ai_advisor_messages_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -504,9 +470,7 @@
       "indexes": {
         "ai_chat_messages_chat_idx": {
           "name": "ai_chat_messages_chat_idx",
-          "columns": [
-            "chat_id"
-          ],
+          "columns": ["chat_id"],
           "isUnique": false
         }
       },
@@ -514,9 +478,7 @@
       "compositePrimaryKeys": {
         "ai_chat_messages_id": {
           "name": "ai_chat_messages_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -573,10 +535,7 @@
       "indexes": {
         "ai_chats_store_user_idx": {
           "name": "ai_chats_store_user_idx",
-          "columns": [
-            "store_id",
-            "user_id"
-          ],
+          "columns": ["store_id", "user_id"],
           "isUnique": false
         }
       },
@@ -584,9 +543,7 @@
       "compositePrimaryKeys": {
         "ai_chats_id": {
           "name": "ai_chats_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -714,17 +671,12 @@
       "indexes": {
         "ai_credit_debits_store_created_idx": {
           "name": "ai_credit_debits_store_created_idx",
-          "columns": [
-            "store_id",
-            "created_at"
-          ],
+          "columns": ["store_id", "created_at"],
           "isUnique": false
         },
         "ai_credit_debits_conversation_idx": {
           "name": "ai_credit_debits_conversation_idx",
-          "columns": [
-            "conversation_id"
-          ],
+          "columns": ["conversation_id"],
           "isUnique": false
         }
       },
@@ -732,17 +684,13 @@
       "compositePrimaryKeys": {
         "ai_credit_debits_id": {
           "name": "ai_credit_debits_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "ai_credit_debits_dedup_key_unique": {
           "name": "ai_credit_debits_dedup_key_unique",
-          "columns": [
-            "dedup_key"
-          ]
+          "columns": ["dedup_key"]
         }
       },
       "checkConstraint": {}
@@ -849,23 +797,17 @@
       "indexes": {
         "ai_credit_txn_store_idx": {
           "name": "ai_credit_txn_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "ai_credit_txn_status_idx": {
           "name": "ai_credit_txn_status_idx",
-          "columns": [
-            "ai_credit_txn_status"
-          ],
+          "columns": ["ai_credit_txn_status"],
           "isUnique": false
         },
         "ai_credit_txn_stripe_session_idx": {
           "name": "ai_credit_txn_stripe_session_idx",
-          "columns": [
-            "stripe_session_id"
-          ],
+          "columns": ["stripe_session_id"],
           "isUnique": false
         }
       },
@@ -873,17 +815,13 @@
       "compositePrimaryKeys": {
         "ai_credit_transactions_id": {
           "name": "ai_credit_transactions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "ai_credit_transactions_dedup_key_unique": {
           "name": "ai_credit_transactions_dedup_key_unique",
-          "columns": [
-            "dedup_key"
-          ]
+          "columns": ["dedup_key"]
         }
       },
       "checkConstraint": {}
@@ -986,9 +924,7 @@
       "indexes": {
         "ai_credits_store_idx": {
           "name": "ai_credits_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         }
       },
@@ -996,17 +932,13 @@
       "compositePrimaryKeys": {
         "ai_credits_id": {
           "name": "ai_credits_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "ai_credits_store_id_unique": {
           "name": "ai_credits_store_id_unique",
-          "columns": [
-            "store_id"
-          ]
+          "columns": ["store_id"]
         }
       },
       "checkConstraint": {}
@@ -1096,16 +1028,12 @@
       "indexes": {
         "api_keys_store_idx": {
           "name": "api_keys_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "api_keys_prefix_idx": {
           "name": "api_keys_prefix_idx",
-          "columns": [
-            "key_prefix"
-          ],
+          "columns": ["key_prefix"],
           "isUnique": false
         }
       },
@@ -1113,17 +1041,13 @@
       "compositePrimaryKeys": {
         "api_keys_id": {
           "name": "api_keys_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "api_keys_key_hash_unique": {
           "name": "api_keys_key_hash_unique",
-          "columns": [
-            "key_hash"
-          ]
+          "columns": ["key_hash"]
         }
       },
       "checkConstraint": {}
@@ -1194,9 +1118,7 @@
       "indexes": {
         "categories_store_idx": {
           "name": "categories_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         }
       },
@@ -1204,9 +1126,7 @@
       "compositePrimaryKeys": {
         "categories_id": {
           "name": "categories_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1257,17 +1177,13 @@
       "compositePrimaryKeys": {
         "customer_sessions_id": {
           "name": "customer_sessions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "customer_sessions_token_unique": {
           "name": "customer_sessions_token_unique",
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "checkConstraint": {}
@@ -1318,16 +1234,30 @@
           "notNull": true,
           "autoincrement": false
         },
-        "marketplace_user_id": {
-          "name": "marketplace_user_id",
+        "company_name": {
+          "name": "company_name",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "company_name": {
-          "name": "company_name",
-          "type": "varchar(255)",
+        "company_number": {
+          "name": "company_number",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "company_number_scheme": {
+          "name": "company_number_scheme",
+          "type": "enum('fr_siren','be_bce')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "vat_number": {
+          "name": "vat_number",
+          "type": "varchar(64)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -1395,23 +1325,12 @@
       "indexes": {
         "customers_store_idx": {
           "name": "customers_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "customers_email_idx": {
           "name": "customers_email_idx",
-          "columns": [
-            "email"
-          ],
-          "isUnique": false
-        },
-        "customers_marketplace_user_idx": {
-          "name": "customers_marketplace_user_idx",
-          "columns": [
-            "marketplace_user_id"
-          ],
+          "columns": ["email"],
           "isUnique": false
         }
       },
@@ -1419,18 +1338,13 @@
       "compositePrimaryKeys": {
         "customers_id": {
           "name": "customers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "customers_unique_email_per_store": {
           "name": "customers_unique_email_per_store",
-          "columns": [
-            "store_id",
-            "email"
-          ]
+          "columns": ["store_id", "email"]
         }
       },
       "checkConstraint": {}
@@ -1583,24 +1497,17 @@
       "indexes": {
         "daily_stats_store_idx": {
           "name": "daily_stats_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "daily_stats_date_idx": {
           "name": "daily_stats_date_idx",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": false
         },
         "daily_stats_store_date_idx": {
           "name": "daily_stats_store_date_idx",
-          "columns": [
-            "store_id",
-            "date"
-          ],
+          "columns": ["store_id", "date"],
           "isUnique": false
         }
       },
@@ -1608,18 +1515,13 @@
       "compositePrimaryKeys": {
         "daily_stats_id": {
           "name": "daily_stats_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "daily_stats_unique_store_date": {
           "name": "daily_stats_unique_store_date",
-          "columns": [
-            "store_id",
-            "date"
-          ]
+          "columns": ["store_id", "date"]
         }
       },
       "checkConstraint": {}
@@ -1684,9 +1586,7 @@
       "compositePrimaryKeys": {
         "discord_logs_id": {
           "name": "discord_logs_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1706,7 +1606,7 @@
           "name": "reservation_id",
           "type": "varchar(21)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "document_type": {
@@ -1766,9 +1666,7 @@
       "compositePrimaryKeys": {
         "documents_id": {
           "name": "documents_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1862,9 +1760,7 @@
       "compositePrimaryKeys": {
         "email_logs_id": {
           "name": "email_logs_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1948,16 +1844,12 @@
       "indexes": {
         "google_places_cache_place_id_idx": {
           "name": "google_places_cache_place_id_idx",
-          "columns": [
-            "place_id"
-          ],
+          "columns": ["place_id"],
           "isUnique": false
         },
         "google_places_cache_expires_at_idx": {
           "name": "google_places_cache_expires_at_idx",
-          "columns": [
-            "expires_at"
-          ],
+          "columns": ["expires_at"],
           "isUnique": false
         }
       },
@@ -1965,17 +1857,13 @@
       "compositePrimaryKeys": {
         "google_places_cache_id": {
           "name": "google_places_cache_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "google_places_cache_place_id_unique": {
           "name": "google_places_cache_place_id_unique",
-          "columns": [
-            "place_id"
-          ]
+          "columns": ["place_id"]
         }
       },
       "checkConstraint": {}
@@ -2066,24 +1954,17 @@
       "indexes": {
         "inspection_field_values_item_idx": {
           "name": "inspection_field_values_item_idx",
-          "columns": [
-            "inspection_item_id"
-          ],
+          "columns": ["inspection_item_id"],
           "isUnique": false
         },
         "inspection_field_values_field_idx": {
           "name": "inspection_field_values_field_idx",
-          "columns": [
-            "template_field_id"
-          ],
+          "columns": ["template_field_id"],
           "isUnique": false
         },
         "inspection_field_values_issue_idx": {
           "name": "inspection_field_values_issue_idx",
-          "columns": [
-            "inspection_item_id",
-            "has_issue"
-          ],
+          "columns": ["inspection_item_id", "has_issue"],
           "isUnique": false
         }
       },
@@ -2091,9 +1972,7 @@
       "compositePrimaryKeys": {
         "inspection_field_values_id": {
           "name": "inspection_field_values_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2163,23 +2042,17 @@
       "indexes": {
         "inspection_items_inspection_idx": {
           "name": "inspection_items_inspection_idx",
-          "columns": [
-            "inspection_id"
-          ],
+          "columns": ["inspection_id"],
           "isUnique": false
         },
         "inspection_items_reservation_item_idx": {
           "name": "inspection_items_reservation_item_idx",
-          "columns": [
-            "reservation_item_id"
-          ],
+          "columns": ["reservation_item_id"],
           "isUnique": false
         },
         "inspection_items_unit_idx": {
           "name": "inspection_items_unit_idx",
-          "columns": [
-            "product_unit_id"
-          ],
+          "columns": ["product_unit_id"],
           "isUnique": false
         }
       },
@@ -2187,9 +2060,7 @@
       "compositePrimaryKeys": {
         "inspection_items_id": {
           "name": "inspection_items_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2274,16 +2145,12 @@
       "indexes": {
         "inspection_photos_item_idx": {
           "name": "inspection_photos_item_idx",
-          "columns": [
-            "inspection_item_id"
-          ],
+          "columns": ["inspection_item_id"],
           "isUnique": false
         },
         "inspection_photos_field_value_idx": {
           "name": "inspection_photos_field_value_idx",
-          "columns": [
-            "field_value_id"
-          ],
+          "columns": ["field_value_id"],
           "isUnique": false
         }
       },
@@ -2291,9 +2158,7 @@
       "compositePrimaryKeys": {
         "inspection_photos_id": {
           "name": "inspection_photos_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2402,17 +2267,12 @@
       "indexes": {
         "inspection_template_fields_template_idx": {
           "name": "inspection_template_fields_template_idx",
-          "columns": [
-            "template_id"
-          ],
+          "columns": ["template_id"],
           "isUnique": false
         },
         "inspection_template_fields_order_idx": {
           "name": "inspection_template_fields_order_idx",
-          "columns": [
-            "template_id",
-            "display_order"
-          ],
+          "columns": ["template_id", "display_order"],
           "isUnique": false
         }
       },
@@ -2420,9 +2280,7 @@
       "compositePrimaryKeys": {
         "inspection_template_fields_id": {
           "name": "inspection_template_fields_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2516,23 +2374,17 @@
       "indexes": {
         "inspection_templates_store_idx": {
           "name": "inspection_templates_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "inspection_templates_category_idx": {
           "name": "inspection_templates_category_idx",
-          "columns": [
-            "category_id"
-          ],
+          "columns": ["category_id"],
           "isUnique": false
         },
         "inspection_templates_product_idx": {
           "name": "inspection_templates_product_idx",
-          "columns": [
-            "product_id"
-          ],
+          "columns": ["product_id"],
           "isUnique": false
         }
       },
@@ -2540,20 +2392,13 @@
       "compositePrimaryKeys": {
         "inspection_templates_id": {
           "name": "inspection_templates_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "inspection_templates_unique_scope": {
           "name": "inspection_templates_unique_scope",
-          "columns": [
-            "store_id",
-            "inspection_template_scope",
-            "category_id",
-            "product_id"
-          ]
+          "columns": ["store_id", "inspection_template_scope", "category_id", "product_id"]
         }
       },
       "checkConstraint": {}
@@ -2702,16 +2547,12 @@
       "indexes": {
         "inspections_store_idx": {
           "name": "inspections_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "inspections_reservation_idx": {
           "name": "inspections_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
+          "columns": ["reservation_id"],
           "isUnique": false
         }
       },
@@ -2719,18 +2560,13 @@
       "compositePrimaryKeys": {
         "inspections_id": {
           "name": "inspections_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "inspections_unique_type": {
           "name": "inspections_unique_type",
-          "columns": [
-            "reservation_id",
-            "inspection_type"
-          ]
+          "columns": ["reservation_id", "inspection_type"]
         }
       },
       "checkConstraint": {}
@@ -2816,9 +2652,7 @@
       "indexes": {
         "integration_credentials_integration_idx": {
           "name": "integration_credentials_integration_idx",
-          "columns": [
-            "integration_id"
-          ],
+          "columns": ["integration_id"],
           "isUnique": false
         }
       },
@@ -2826,23 +2660,19 @@
       "compositePrimaryKeys": {
         "integration_credentials_id": {
           "name": "integration_credentials_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "integration_credentials_integration_unique": {
           "name": "integration_credentials_integration_unique",
-          "columns": [
-            "integration_id"
-          ]
+          "columns": ["integration_id"]
         }
       },
       "checkConstraint": {}
     },
-    "marketplace_booking_attempts": {
-      "name": "marketplace_booking_attempts",
+    "invoice_payments": {
+      "name": "invoice_payments",
       "columns": {
         "id": {
           "name": "id",
@@ -2851,52 +2681,16 @@
           "notNull": true,
           "autoincrement": false
         },
-        "booking_attempt_id": {
-          "name": "booking_attempt_id",
-          "type": "varchar(36)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
+        "invoice_id": {
+          "name": "invoice_id",
           "type": "varchar(21)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "quote_token_hash": {
-          "name": "quote_token_hash",
-          "type": "varchar(64)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "hold_id": {
-          "name": "hold_id",
+        "payment_id": {
+          "name": "payment_id",
           "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "reservation_id": {
-          "name": "reservation_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'creating_hold'"
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -2919,62 +2713,34 @@
         }
       },
       "indexes": {
-        "marketplace_booking_attempts_store_idx": {
-          "name": "marketplace_booking_attempts_store_idx",
-          "columns": [
-            "store_id"
-          ],
+        "invoice_payments_invoice_idx": {
+          "name": "invoice_payments_invoice_idx",
+          "columns": ["invoice_id"],
           "isUnique": false
         },
-        "marketplace_booking_attempts_expires_at_idx": {
-          "name": "marketplace_booking_attempts_expires_at_idx",
-          "columns": [
-            "expires_at"
-          ],
-          "isUnique": false
-        },
-        "marketplace_booking_attempts_updated_at_id_idx": {
-          "name": "marketplace_booking_attempts_updated_at_id_idx",
-          "columns": [
-            "updated_at",
-            "id"
-          ],
+        "invoice_payments_payment_idx": {
+          "name": "invoice_payments_payment_idx",
+          "columns": ["payment_id"],
           "isUnique": false
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "marketplace_booking_attempts_id": {
-          "name": "marketplace_booking_attempts_id",
-          "columns": [
-            "id"
-          ]
+        "invoice_payments_id": {
+          "name": "invoice_payments_id",
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
-        "marketplace_booking_attempts_booking_attempt_id_unique": {
-          "name": "marketplace_booking_attempts_booking_attempt_id_unique",
-          "columns": [
-            "booking_attempt_id"
-          ]
-        },
-        "marketplace_booking_attempts_reservation_idx": {
-          "name": "marketplace_booking_attempts_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ]
-        },
-        "marketplace_booking_attempts_hold_idx": {
-          "name": "marketplace_booking_attempts_hold_idx",
-          "columns": [
-            "hold_id"
-          ]
+        "invoice_payments_invoice_payment_unique": {
+          "name": "invoice_payments_invoice_payment_unique",
+          "columns": ["invoice_id", "payment_id"]
         }
       },
       "checkConstraint": {}
     },
-    "marketplace_catalog_tombstones": {
-      "name": "marketplace_catalog_tombstones",
+    "invoice_sequences": {
+      "name": "invoice_sequences",
       "columns": {
         "id": {
           "name": "id",
@@ -2983,27 +2749,394 @@
           "notNull": true,
           "autoincrement": false
         },
-        "entity_type": {
-          "name": "entity_type",
-          "type": "enum('store','product')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "entity_id": {
-          "name": "entity_id",
+        "store_id": {
+          "name": "store_id",
           "type": "varchar(21)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "deleted_at": {
-          "name": "deleted_at",
+        "series": {
+          "name": "series",
+          "type": "enum('invoice','credit_note')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "year": {
+          "name": "year",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "next_number": {
+          "name": "next_number",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
           "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "invoice_sequences_store_idx": {
+          "name": "invoice_sequences_store_idx",
+          "columns": ["store_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "invoice_sequences_id": {
+          "name": "invoice_sequences_id",
+          "columns": ["id"]
+        }
+      },
+      "uniqueConstraints": {
+        "invoice_sequences_store_series_year_unique": {
+          "name": "invoice_sequences_store_series_year_unique",
+          "columns": ["store_id", "series", "year"]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "invoices": {
+      "name": "invoices",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reservation_id": {
+          "name": "reservation_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "enum('invoice','credit_note')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "enum('initial','complementary','credit_note')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "number": {
+          "name": "number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "issue_date": {
+          "name": "issue_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seller_snapshot": {
+          "name": "seller_snapshot",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "buyer_snapshot": {
+          "name": "buyer_snapshot",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lines": {
+          "name": "lines",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vat_breakdown": {
+          "name": "vat_breakdown",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_excl_tax": {
+          "name": "total_excl_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_tax": {
+          "name": "total_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_incl_tax": {
+          "name": "total_incl_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "en16931_snapshot": {
+          "name": "en16931_snapshot",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "preceding_invoice_id": {
+          "name": "preceding_invoice_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "processing_rule": {
+          "name": "processing_rule",
+          "type": "enum('b2b','b2c')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "transmission_status": {
+          "name": "transmission_status",
+          "type": "enum('not_applicable','pending','sent','validated','rejected','failed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'not_applicable'"
+        },
+        "super_pdp_invoice_id": {
+          "name": "super_pdp_invoice_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "attempt_count": {
+          "name": "attempt_count",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "latest_super_pdp_status": {
+          "name": "latest_super_pdp_status",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "invoices_store_idx": {
+          "name": "invoices_store_idx",
+          "columns": ["store_id"],
+          "isUnique": false
+        },
+        "invoices_reservation_idx": {
+          "name": "invoices_reservation_idx",
+          "columns": ["reservation_id"],
+          "isUnique": false
+        },
+        "invoices_customer_idx": {
+          "name": "invoices_customer_idx",
+          "columns": ["customer_id"],
+          "isUnique": false
+        },
+        "invoices_preceding_invoice_idx": {
+          "name": "invoices_preceding_invoice_idx",
+          "columns": ["preceding_invoice_id"],
+          "isUnique": false
+        },
+        "invoices_transmission_idx": {
+          "name": "invoices_transmission_idx",
+          "columns": ["transmission_status", "next_attempt_at"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "invoices_id": {
+          "name": "invoices_id",
+          "columns": ["id"]
+        }
+      },
+      "uniqueConstraints": {
+        "invoices_store_number_unique": {
+          "name": "invoices_store_number_unique",
+          "columns": ["store_id", "number"]
+        },
+        "invoices_document_unique": {
+          "name": "invoices_document_unique",
+          "columns": ["document_id"]
+        },
+        "invoices_super_pdp_invoice_unique": {
+          "name": "invoices_super_pdp_invoice_unique",
+          "columns": ["super_pdp_invoice_id"]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "legal_retention_records": {
+      "name": "legal_retention_records",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "retention_group_id": {
+          "name": "retention_group_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "legal_retention_source_type": {
+          "name": "legal_retention_source_type",
+          "type": "enum('platform_invoice')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_record_hash": {
+          "name": "source_record_hash",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "document_number": {
+          "name": "document_number",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "issued_at": {
+          "name": "issued_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "retain_until": {
+          "name": "retain_until",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "legal_basis": {
+          "name": "legal_basis",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'fr_code_commerce_l123_22'"
+        },
+        "encrypted_payload": {
+          "name": "encrypted_payload",
+          "type": "longtext",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
@@ -3015,33 +3148,30 @@
         }
       },
       "indexes": {
-        "marketplace_catalog_tombstones_deleted_at_id_idx": {
-          "name": "marketplace_catalog_tombstones_deleted_at_id_idx",
-          "columns": [
-            "deleted_at",
-            "id"
-          ],
+        "legal_retention_group_idx": {
+          "name": "legal_retention_group_idx",
+          "columns": ["retention_group_id"],
           "isUnique": false
         },
-        "marketplace_catalog_tombstones_entity_idx": {
-          "name": "marketplace_catalog_tombstones_entity_idx",
-          "columns": [
-            "entity_type",
-            "entity_id"
-          ],
+        "legal_retention_until_idx": {
+          "name": "legal_retention_until_idx",
+          "columns": ["retain_until"],
           "isUnique": false
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "marketplace_catalog_tombstones_id": {
-          "name": "marketplace_catalog_tombstones_id",
-          "columns": [
-            "id"
-          ]
+        "legal_retention_records_id": {
+          "name": "legal_retention_records_id",
+          "columns": ["id"]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "legal_retention_source_unique": {
+          "name": "legal_retention_source_unique",
+          "columns": ["legal_retention_source_type", "source_record_hash"]
+        }
+      },
       "checkConstraint": {}
     },
     "page_views": {
@@ -3116,31 +3246,22 @@
       "indexes": {
         "page_views_store_idx": {
           "name": "page_views_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "page_views_session_idx": {
           "name": "page_views_session_idx",
-          "columns": [
-            "session_id"
-          ],
+          "columns": ["session_id"],
           "isUnique": false
         },
         "page_views_store_created_idx": {
           "name": "page_views_store_created_idx",
-          "columns": [
-            "store_id",
-            "created_at"
-          ],
+          "columns": ["store_id", "created_at"],
           "isUnique": false
         },
         "page_views_product_idx": {
           "name": "page_views_product_idx",
-          "columns": [
-            "product_id"
-          ],
+          "columns": ["product_id"],
           "isUnique": false
         }
       },
@@ -3148,9 +3269,7 @@
       "compositePrimaryKeys": {
         "page_views_id": {
           "name": "page_views_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -3206,38 +3325,6 @@
         },
         "invoiced_amount_cents": {
           "name": "invoiced_amount_cents",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "usage_location_count": {
-          "name": "usage_location_count",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "usage_fee_amount_cents": {
-          "name": "usage_fee_amount_cents",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "marketplace_reservation_count": {
-          "name": "marketplace_reservation_count",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "marketplace_fee_amount_cents": {
-          "name": "marketplace_fee_amount_cents",
           "type": "int",
           "primaryKey": false,
           "notNull": true,
@@ -3301,16 +3388,12 @@
       "indexes": {
         "payg_invoices_status_idx": {
           "name": "payg_invoices_status_idx",
-          "columns": [
-            "payg_invoice_status"
-          ],
+          "columns": ["payg_invoice_status"],
           "isUnique": false
         },
         "payg_invoices_stripe_invoice_idx": {
           "name": "payg_invoices_stripe_invoice_idx",
-          "columns": [
-            "stripe_invoice_id"
-          ],
+          "columns": ["stripe_invoice_id"],
           "isUnique": false
         }
       },
@@ -3318,18 +3401,13 @@
       "compositePrimaryKeys": {
         "pay_as_you_go_invoices_id": {
           "name": "pay_as_you_go_invoices_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "payg_invoices_store_month_unique": {
           "name": "payg_invoices_store_month_unique",
-          "columns": [
-            "store_id",
-            "billing_month"
-          ]
+          "columns": ["store_id", "billing_month"]
         }
       },
       "checkConstraint": {}
@@ -3428,23 +3506,17 @@
       "indexes": {
         "payment_requests_store_idx": {
           "name": "payment_requests_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "payment_requests_reservation_idx": {
           "name": "payment_requests_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
+          "columns": ["reservation_id"],
           "isUnique": false
         },
         "payment_requests_token_idx": {
           "name": "payment_requests_token_idx",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "isUnique": false
         }
       },
@@ -3452,17 +3524,13 @@
       "compositePrimaryKeys": {
         "payment_requests_id": {
           "name": "payment_requests_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "payment_requests_token_unique": {
           "name": "payment_requests_token_unique",
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "checkConstraint": {}
@@ -3541,6 +3609,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "refund_of_payment_id": {
+          "name": "refund_of_payment_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "stripe_payment_method_id": {
           "name": "stripe_payment_method_id",
           "type": "varchar(255)",
@@ -3604,9 +3679,12 @@
       "indexes": {
         "payments_reservation_idx": {
           "name": "payments_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
+          "columns": ["reservation_id"],
+          "isUnique": false
+        },
+        "payments_refund_of_payment_idx": {
+          "name": "payments_refund_of_payment_idx",
+          "columns": ["refund_of_payment_id"],
           "isUnique": false
         }
       },
@@ -3614,12 +3692,15 @@
       "compositePrimaryKeys": {
         "payments_id": {
           "name": "payments_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "payments_reservation_checkout_session_unique": {
+          "name": "payments_reservation_checkout_session_unique",
+          "columns": ["reservation_id", "stripe_checkout_session_id"]
+        }
+      },
       "checkConstraint": {}
     },
     "platform_fee": {
@@ -3685,7 +3766,7 @@
         },
         "platform_fee_source": {
           "name": "platform_fee_source",
-          "type": "enum('online','manual','free','marketplace_online','marketplace_manual','marketplace_waived')",
+          "type": "enum('online','manual','free')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -3759,33 +3840,22 @@
       "indexes": {
         "platform_fee_store_month_idx": {
           "name": "platform_fee_store_month_idx",
-          "columns": [
-            "store_id",
-            "billing_month",
-            "platform_fee_status"
-          ],
+          "columns": ["store_id", "billing_month", "platform_fee_status"],
           "isUnique": false
         },
         "platform_fee_status_idx": {
           "name": "platform_fee_status_idx",
-          "columns": [
-            "platform_fee_status"
-          ],
+          "columns": ["platform_fee_status"],
           "isUnique": false
         },
         "platform_fee_reservation_idx": {
           "name": "platform_fee_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
+          "columns": ["reservation_id"],
           "isUnique": false
         },
         "platform_fee_payment_intent_idx": {
           "name": "platform_fee_payment_intent_idx",
-          "columns": [
-            "stripe_payment_intent_id",
-            "platform_fee_status"
-          ],
+          "columns": ["stripe_payment_intent_id", "platform_fee_status"],
           "isUnique": false
         }
       },
@@ -3793,17 +3863,13 @@
       "compositePrimaryKeys": {
         "platform_fee_id": {
           "name": "platform_fee_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "platform_fee_dedup_key_unique": {
           "name": "platform_fee_dedup_key_unique",
-          "columns": [
-            "dedup_key"
-          ]
+          "columns": ["dedup_key"]
         }
       },
       "checkConstraint": {}
@@ -3832,6 +3898,22 @@
           "notNull": true,
           "autoincrement": false
         },
+        "required": {
+          "name": "required",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
         "display_order": {
           "name": "display_order",
           "type": "int",
@@ -3852,28 +3934,45 @@
       "indexes": {
         "product_accessories_product_idx": {
           "name": "product_accessories_product_idx",
-          "columns": [
-            "product_id"
-          ],
+          "columns": ["product_id"],
+          "isUnique": false
+        },
+        "product_accessories_accessory_idx": {
+          "name": "product_accessories_accessory_idx",
+          "columns": ["accessory_id"],
           "isUnique": false
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "product_accessories_product_id_products_id_fk": {
+          "name": "product_accessories_product_id_products_id_fk",
+          "tableFrom": "product_accessories",
+          "tableTo": "products",
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "product_accessories_accessory_id_products_id_fk": {
+          "name": "product_accessories_accessory_id_products_id_fk",
+          "tableFrom": "product_accessories",
+          "tableTo": "products",
+          "columnsFrom": ["accessory_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "product_accessories_id": {
           "name": "product_accessories_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "product_accessories_unique": {
           "name": "product_accessories_unique",
-          "columns": [
-            "product_id",
-            "accessory_id"
-          ]
+          "columns": ["product_id", "accessory_id"]
         }
       },
       "checkConstraint": {}
@@ -3922,16 +4021,12 @@
       "indexes": {
         "product_categories_product_idx": {
           "name": "product_categories_product_idx",
-          "columns": [
-            "product_id"
-          ],
+          "columns": ["product_id"],
           "isUnique": false
         },
         "product_categories_category_idx": {
           "name": "product_categories_category_idx",
-          "columns": [
-            "category_id"
-          ],
+          "columns": ["category_id"],
           "isUnique": false
         }
       },
@@ -3939,18 +4034,13 @@
       "compositePrimaryKeys": {
         "product_categories_id": {
           "name": "product_categories_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "product_categories_unique": {
           "name": "product_categories_unique",
-          "columns": [
-            "product_id",
-            "category_id"
-          ]
+          "columns": ["product_id", "category_id"]
         }
       },
       "checkConstraint": {}
@@ -4028,9 +4118,7 @@
       "indexes": {
         "product_pricing_tiers_product_idx": {
           "name": "product_pricing_tiers_product_idx",
-          "columns": [
-            "product_id"
-          ],
+          "columns": ["product_id"],
           "isUnique": false
         }
       },
@@ -4038,25 +4126,17 @@
       "compositePrimaryKeys": {
         "product_pricing_tiers_id": {
           "name": "product_pricing_tiers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "product_pricing_tiers_unique": {
           "name": "product_pricing_tiers_unique",
-          "columns": [
-            "product_id",
-            "min_duration"
-          ]
+          "columns": ["product_id", "min_duration"]
         },
         "product_pricing_tiers_unique_period": {
           "name": "product_pricing_tiers_unique_period",
-          "columns": [
-            "product_id",
-            "period"
-          ]
+          "columns": ["product_id", "period"]
         }
       },
       "checkConstraint": {}
@@ -4126,18 +4206,12 @@
       "indexes": {
         "product_seasonal_pricing_product_idx": {
           "name": "product_seasonal_pricing_product_idx",
-          "columns": [
-            "product_id"
-          ],
+          "columns": ["product_id"],
           "isUnique": false
         },
         "product_seasonal_pricing_product_date_idx": {
           "name": "product_seasonal_pricing_product_date_idx",
-          "columns": [
-            "product_id",
-            "start_date",
-            "end_date"
-          ],
+          "columns": ["product_id", "start_date", "end_date"],
           "isUnique": false
         }
       },
@@ -4145,9 +4219,7 @@
       "compositePrimaryKeys": {
         "product_seasonal_pricing_id": {
           "name": "product_seasonal_pricing_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -4226,9 +4298,7 @@
       "indexes": {
         "seasonal_pricing_tiers_seasonal_idx": {
           "name": "seasonal_pricing_tiers_seasonal_idx",
-          "columns": [
-            "seasonal_pricing_id"
-          ],
+          "columns": ["seasonal_pricing_id"],
           "isUnique": false
         }
       },
@@ -4236,9 +4306,7 @@
       "compositePrimaryKeys": {
         "product_seasonal_pricing_tiers_id": {
           "name": "product_seasonal_pricing_tiers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -4327,23 +4395,17 @@
       "indexes": {
         "product_stats_store_idx": {
           "name": "product_stats_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "product_stats_product_idx": {
           "name": "product_stats_product_idx",
-          "columns": [
-            "product_id"
-          ],
+          "columns": ["product_id"],
           "isUnique": false
         },
         "product_stats_date_idx": {
           "name": "product_stats_date_idx",
-          "columns": [
-            "date"
-          ],
+          "columns": ["date"],
           "isUnique": false
         }
       },
@@ -4351,19 +4413,13 @@
       "compositePrimaryKeys": {
         "product_stats_id": {
           "name": "product_stats_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "product_stats_unique": {
           "name": "product_stats_unique",
-          "columns": [
-            "store_id",
-            "product_id",
-            "date"
-          ]
+          "columns": ["store_id", "product_id", "date"]
         }
       },
       "checkConstraint": {}
@@ -4447,26 +4503,17 @@
       "indexes": {
         "product_unit_downtimes_unit_starts_at_idx": {
           "name": "product_unit_downtimes_unit_starts_at_idx",
-          "columns": [
-            "product_unit_id",
-            "starts_at"
-          ],
+          "columns": ["product_unit_id", "starts_at"],
           "isUnique": false
         },
         "product_unit_downtimes_store_idx": {
           "name": "product_unit_downtimes_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "product_unit_downtimes_active_at_idx": {
           "name": "product_unit_downtimes_active_at_idx",
-          "columns": [
-            "store_id",
-            "starts_at",
-            "ends_at"
-          ],
+          "columns": ["store_id", "starts_at", "ends_at"],
           "isUnique": false
         }
       },
@@ -4475,12 +4522,8 @@
           "name": "product_unit_downtimes_product_unit_id_product_units_id_fk",
           "tableFrom": "product_unit_downtimes",
           "tableTo": "product_units",
-          "columnsFrom": [
-            "product_unit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_unit_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -4488,9 +4531,7 @@
       "compositePrimaryKeys": {
         "product_unit_downtimes_id": {
           "name": "product_unit_downtimes_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -4560,10 +4601,7 @@
       "indexes": {
         "product_unit_events_unit_created_at_idx": {
           "name": "product_unit_events_unit_created_at_idx",
-          "columns": [
-            "product_unit_id",
-            "created_at"
-          ],
+          "columns": ["product_unit_id", "created_at"],
           "isUnique": false
         }
       },
@@ -4572,12 +4610,8 @@
           "name": "product_unit_events_product_unit_id_product_units_id_fk",
           "tableFrom": "product_unit_events",
           "tableTo": "product_units",
-          "columnsFrom": [
-            "product_unit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_unit_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -4585,9 +4619,7 @@
       "compositePrimaryKeys": {
         "product_unit_events_id": {
           "name": "product_unit_events_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -4710,26 +4742,17 @@
       "indexes": {
         "product_units_product_idx": {
           "name": "product_units_product_idx",
-          "columns": [
-            "product_id"
-          ],
+          "columns": ["product_id"],
           "isUnique": false
         },
         "product_units_lifecycle_status_idx": {
           "name": "product_units_lifecycle_status_idx",
-          "columns": [
-            "product_id",
-            "lifecycle_status"
-          ],
+          "columns": ["product_id", "lifecycle_status"],
           "isUnique": false
         },
         "product_units_lifecycle_status_combination_idx": {
           "name": "product_units_lifecycle_status_combination_idx",
-          "columns": [
-            "product_id",
-            "lifecycle_status",
-            "combination_key"
-          ],
+          "columns": ["product_id", "lifecycle_status", "combination_key"],
           "isUnique": false
         }
       },
@@ -4737,18 +4760,13 @@
       "compositePrimaryKeys": {
         "product_units_id": {
           "name": "product_units_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "product_units_unique_identifier": {
           "name": "product_units_unique_identifier",
-          "columns": [
-            "product_id",
-            "identifier"
-          ]
+          "columns": ["product_id", "identifier"]
         }
       },
       "checkConstraint": {}
@@ -4843,6 +4861,22 @@
           "notNull": true,
           "autoincrement": false
         },
+        "pricing_kind": {
+          "name": "pricing_kind",
+          "type": "enum('duration','fixed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'duration'"
+        },
+        "stock_kind": {
+          "name": "stock_kind",
+          "type": "enum('returnable','consumable','untracked')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'returnable'"
+        },
         "video_url": {
           "name": "video_url",
           "type": "text",
@@ -4924,32 +4958,22 @@
       "indexes": {
         "products_store_idx": {
           "name": "products_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "products_category_idx": {
           "name": "products_category_idx",
-          "columns": [
-            "category_id"
-          ],
+          "columns": ["category_id"],
           "isUnique": false
         },
         "products_status_idx": {
           "name": "products_status_idx",
-          "columns": [
-            "product_status"
-          ],
+          "columns": ["product_status"],
           "isUnique": false
         },
         "products_store_status_name_idx": {
           "name": "products_store_status_name_idx",
-          "columns": [
-            "store_id",
-            "product_status",
-            "name"
-          ],
+          "columns": ["store_id", "product_status", "name"],
           "isUnique": false
         }
       },
@@ -4957,9 +4981,7 @@
       "compositePrimaryKeys": {
         "products_id": {
           "name": "products_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -4993,9 +5015,7 @@
       "indexes": {
         "products_tulip_tulip_product_idx": {
           "name": "products_tulip_tulip_product_idx",
-          "columns": [
-            "tulip_product_id"
-          ],
+          "columns": ["tulip_product_id"],
           "isUnique": false
         }
       },
@@ -5004,12 +5024,8 @@
           "name": "products_tulip_product_id_products_id_fk",
           "tableFrom": "products_tulip",
           "tableTo": "products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -5017,17 +5033,13 @@
       "compositePrimaryKeys": {
         "products_tulip_id": {
           "name": "products_tulip_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "products_tulip_product_idx": {
           "name": "products_tulip_product_idx",
-          "columns": [
-            "product_id"
-          ]
+          "columns": ["product_id"]
         }
       },
       "checkConstraint": {}
@@ -5141,17 +5153,12 @@
       "indexes": {
         "promo_codes_store_idx": {
           "name": "promo_codes_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "promo_codes_active_idx": {
           "name": "promo_codes_active_idx",
-          "columns": [
-            "store_id",
-            "is_active"
-          ],
+          "columns": ["store_id", "is_active"],
           "isUnique": false
         }
       },
@@ -5159,18 +5166,13 @@
       "compositePrimaryKeys": {
         "promo_codes_id": {
           "name": "promo_codes_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "promo_codes_unique_code": {
           "name": "promo_codes_unique_code",
-          "columns": [
-            "store_id",
-            "code"
-          ]
+          "columns": ["store_id", "code"]
         }
       },
       "checkConstraint": {}
@@ -5269,16 +5271,12 @@
       "indexes": {
         "push_subscriptions_user_idx": {
           "name": "push_subscriptions_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         },
         "push_subscriptions_store_idx": {
           "name": "push_subscriptions_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         }
       },
@@ -5286,17 +5284,164 @@
       "compositePrimaryKeys": {
         "push_subscriptions_id": {
           "name": "push_subscriptions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "push_subscriptions_endpoint_unique": {
           "name": "push_subscriptions_endpoint_unique",
-          "columns": [
-            "endpoint_hash"
-          ]
+          "columns": ["endpoint_hash"]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "received_invoices": {
+      "name": "received_invoices",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "super_pdp_invoice_id": {
+          "name": "super_pdp_invoice_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seller_name": {
+          "name": "seller_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "seller_identifier": {
+          "name": "seller_identifier",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "number": {
+          "name": "number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "issue_date": {
+          "name": "issue_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_excl_tax": {
+          "name": "total_excl_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_tax": {
+          "name": "total_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_incl_tax": {
+          "name": "total_incl_tax",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "latest_status": {
+          "name": "latest_status",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "our_action": {
+          "name": "our_action",
+          "type": "enum('none','acknowledged','accepted','refused')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'none'"
+        },
+        "document_id": {
+          "name": "document_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "received_invoices_store_idx": {
+          "name": "received_invoices_store_idx",
+          "columns": ["store_id"],
+          "isUnique": false
+        },
+        "received_invoices_issue_date_idx": {
+          "name": "received_invoices_issue_date_idx",
+          "columns": ["issue_date"],
+          "isUnique": false
+        },
+        "received_invoices_document_idx": {
+          "name": "received_invoices_document_idx",
+          "columns": ["document_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "received_invoices_id": {
+          "name": "received_invoices_id",
+          "columns": ["id"]
+        }
+      },
+      "uniqueConstraints": {
+        "received_invoices_store_super_pdp_invoice_unique": {
+          "name": "received_invoices_store_super_pdp_invoice_unique",
+          "columns": ["store_id", "super_pdp_invoice_id"]
         }
       },
       "checkConstraint": {}
@@ -5447,24 +5592,17 @@
       "indexes": {
         "referral_rewards_referrer_month_idx": {
           "name": "referral_rewards_referrer_month_idx",
-          "columns": [
-            "referrer_store_id",
-            "granted_month"
-          ],
+          "columns": ["referrer_store_id", "granted_month"],
           "isUnique": false
         },
         "referral_rewards_charge_idx": {
           "name": "referral_rewards_charge_idx",
-          "columns": [
-            "stripe_charge_id"
-          ],
+          "columns": ["stripe_charge_id"],
           "isUnique": false
         },
         "referral_rewards_payment_intent_idx": {
           "name": "referral_rewards_payment_intent_idx",
-          "columns": [
-            "stripe_payment_intent_id"
-          ],
+          "columns": ["stripe_payment_intent_id"],
           "isUnique": false
         }
       },
@@ -5472,17 +5610,13 @@
       "compositePrimaryKeys": {
         "referral_rewards_id": {
           "name": "referral_rewards_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "referral_rewards_referred_store_id_unique": {
           "name": "referral_rewards_referred_store_id_unique",
-          "columns": [
-            "referred_store_id"
-          ]
+          "columns": ["referred_store_id"]
         }
       },
       "checkConstraint": {}
@@ -5552,16 +5686,12 @@
       "indexes": {
         "reminder_logs_reservation_idx": {
           "name": "reminder_logs_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
+          "columns": ["reservation_id"],
           "isUnique": false
         },
         "reminder_logs_store_idx": {
           "name": "reminder_logs_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         }
       },
@@ -5569,20 +5699,13 @@
       "compositePrimaryKeys": {
         "reminder_logs_id": {
           "name": "reminder_logs_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "reminder_logs_unique": {
           "name": "reminder_logs_unique",
-          "columns": [
-            "reservation_id",
-            "reminder_type",
-            "reminder_channel",
-            "reminder_audience"
-          ]
+          "columns": ["reservation_id", "reminder_type", "reminder_channel", "reminder_audience"]
         }
       },
       "checkConstraint": {}
@@ -5644,16 +5767,12 @@
       "indexes": {
         "reservation_activity_reservation_idx": {
           "name": "reservation_activity_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
+          "columns": ["reservation_id"],
           "isUnique": false
         },
         "reservation_activity_user_idx": {
           "name": "reservation_activity_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -5661,9 +5780,7 @@
       "compositePrimaryKeys": {
         "reservation_activity_id": {
           "name": "reservation_activity_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -5765,24 +5882,17 @@
       "indexes": {
         "reservation_calendar_events_reservation_idx": {
           "name": "reservation_calendar_events_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
+          "columns": ["reservation_id"],
           "isUnique": false
         },
         "reservation_calendar_events_integration_idx": {
           "name": "reservation_calendar_events_integration_idx",
-          "columns": [
-            "integration_id"
-          ],
+          "columns": ["integration_id"],
           "isUnique": false
         },
         "reservation_calendar_events_sync_idx": {
           "name": "reservation_calendar_events_sync_idx",
-          "columns": [
-            "sync_status",
-            "next_attempt_at"
-          ],
+          "columns": ["sync_status", "next_attempt_at"],
           "isUnique": false
         }
       },
@@ -5790,18 +5900,13 @@
       "compositePrimaryKeys": {
         "reservation_calendar_events_id": {
           "name": "reservation_calendar_events_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "reservation_calendar_events_reservation_integration_unique": {
           "name": "reservation_calendar_events_reservation_integration_unique",
-          "columns": [
-            "reservation_id",
-            "integration_id"
-          ]
+          "columns": ["reservation_id", "integration_id"]
         }
       },
       "checkConstraint": {}
@@ -5849,16 +5954,12 @@
       "indexes": {
         "reservation_item_units_item_idx": {
           "name": "reservation_item_units_item_idx",
-          "columns": [
-            "reservation_item_id"
-          ],
+          "columns": ["reservation_item_id"],
           "isUnique": false
         },
         "reservation_item_units_unit_idx": {
           "name": "reservation_item_units_unit_idx",
-          "columns": [
-            "product_unit_id"
-          ],
+          "columns": ["product_unit_id"],
           "isUnique": false
         }
       },
@@ -5867,12 +5968,8 @@
           "name": "riu_reservation_item_fk",
           "tableFrom": "reservation_item_units",
           "tableTo": "reservation_items",
-          "columnsFrom": [
-            "reservation_item_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reservation_item_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -5880,12 +5977,8 @@
           "name": "riu_product_unit_fk",
           "tableFrom": "reservation_item_units",
           "tableTo": "product_units",
-          "columnsFrom": [
-            "product_unit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_unit_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -5893,18 +5986,13 @@
       "compositePrimaryKeys": {
         "reservation_item_units_id": {
           "name": "reservation_item_units_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "reservation_item_units_unique": {
           "name": "reservation_item_units_unique",
-          "columns": [
-            "reservation_item_id",
-            "product_unit_id"
-          ]
+          "columns": ["reservation_item_id", "product_unit_id"]
         }
       },
       "checkConstraint": {}
@@ -5947,6 +6035,14 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "consumed_quantity": {
+          "name": "consumed_quantity",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
         },
         "unit_price": {
           "name": "unit_price",
@@ -6037,17 +6133,12 @@
       "indexes": {
         "reservation_items_reservation_idx": {
           "name": "reservation_items_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
+          "columns": ["reservation_id"],
           "isUnique": false
         },
         "reservation_items_product_combination_idx": {
           "name": "reservation_items_product_combination_idx",
-          "columns": [
-            "product_id",
-            "combination_key"
-          ],
+          "columns": ["product_id", "combination_key"],
           "isUnique": false
         }
       },
@@ -6055,9 +6146,7 @@
       "compositePrimaryKeys": {
         "reservation_items_id": {
           "name": "reservation_items_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -6472,31 +6561,22 @@
       "indexes": {
         "reservations_store_idx": {
           "name": "reservations_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "reservations_customer_idx": {
           "name": "reservations_customer_idx",
-          "columns": [
-            "customer_id"
-          ],
+          "columns": ["customer_id"],
           "isUnique": false
         },
         "reservations_status_idx": {
           "name": "reservations_status_idx",
-          "columns": [
-            "reservation_status"
-          ],
+          "columns": ["reservation_status"],
           "isUnique": false
         },
         "reservations_date_idx": {
           "name": "reservations_date_idx",
-          "columns": [
-            "start_date",
-            "end_date"
-          ],
+          "columns": ["start_date", "end_date"],
           "isUnique": false
         }
       },
@@ -6504,9 +6584,7 @@
       "compositePrimaryKeys": {
         "reservations_id": {
           "name": "reservations_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -6562,16 +6640,12 @@
       "indexes": {
         "review_request_logs_reservation_idx": {
           "name": "review_request_logs_reservation_idx",
-          "columns": [
-            "reservation_id"
-          ],
+          "columns": ["reservation_id"],
           "isUnique": false
         },
         "review_request_logs_store_idx": {
           "name": "review_request_logs_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         }
       },
@@ -6579,9 +6653,7 @@
       "compositePrimaryKeys": {
         "review_request_logs_id": {
           "name": "review_request_logs_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -6652,16 +6724,12 @@
       "indexes": {
         "sessions_user_idx": {
           "name": "sessions_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         },
         "sessions_token_idx": {
           "name": "sessions_token_idx",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "isUnique": false
         }
       },
@@ -6669,17 +6737,13 @@
       "compositePrimaryKeys": {
         "sessions_id": {
           "name": "sessions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "sessions_token_unique": {
           "name": "sessions_token_unique",
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "checkConstraint": {}
@@ -6745,9 +6809,7 @@
       "indexes": {
         "sms_credits_store_idx": {
           "name": "sms_credits_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         }
       },
@@ -6755,17 +6817,13 @@
       "compositePrimaryKeys": {
         "sms_credits_id": {
           "name": "sms_credits_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "sms_credits_store_id_unique": {
           "name": "sms_credits_store_id_unique",
-          "columns": [
-            "store_id"
-          ]
+          "columns": ["store_id"]
         }
       },
       "checkConstraint": {}
@@ -6866,9 +6924,7 @@
       "compositePrimaryKeys": {
         "sms_logs_id": {
           "name": "sms_logs_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -6961,23 +7017,17 @@
       "indexes": {
         "sms_topup_store_idx": {
           "name": "sms_topup_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "sms_topup_status_idx": {
           "name": "sms_topup_status_idx",
-          "columns": [
-            "sms_topup_status"
-          ],
+          "columns": ["sms_topup_status"],
           "isUnique": false
         },
         "sms_topup_stripe_session_idx": {
           "name": "sms_topup_stripe_session_idx",
-          "columns": [
-            "stripe_session_id"
-          ],
+          "columns": ["stripe_session_id"],
           "isUnique": false
         }
       },
@@ -6985,9 +7035,7 @@
       "compositePrimaryKeys": {
         "sms_topup_transactions_id": {
           "name": "sms_topup_transactions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -7083,9 +7131,7 @@
       "indexes": {
         "store_calendar_integrations_integration_idx": {
           "name": "store_calendar_integrations_integration_idx",
-          "columns": [
-            "integration_id"
-          ],
+          "columns": ["integration_id"],
           "isUnique": false
         }
       },
@@ -7093,17 +7139,13 @@
       "compositePrimaryKeys": {
         "store_calendar_integrations_id": {
           "name": "store_calendar_integrations_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "store_calendar_integrations_integration_unique": {
           "name": "store_calendar_integrations_integration_unique",
-          "columns": [
-            "integration_id"
-          ]
+          "columns": ["integration_id"]
         }
       },
       "checkConstraint": {}
@@ -7210,23 +7252,17 @@
       "indexes": {
         "store_integrations_store_idx": {
           "name": "store_integrations_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "store_integrations_provider_idx": {
           "name": "store_integrations_provider_idx",
-          "columns": [
-            "provider_key"
-          ],
+          "columns": ["provider_key"],
           "isUnique": false
         },
         "store_integrations_status_idx": {
           "name": "store_integrations_status_idx",
-          "columns": [
-            "status"
-          ],
+          "columns": ["status"],
           "isUnique": false
         }
       },
@@ -7234,18 +7270,13 @@
       "compositePrimaryKeys": {
         "store_integrations_id": {
           "name": "store_integrations_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "store_integrations_store_provider_unique": {
           "name": "store_integrations_store_provider_unique",
-          "columns": [
-            "store_id",
-            "provider_key"
-          ]
+          "columns": ["store_id", "provider_key"]
         }
       },
       "checkConstraint": {}
@@ -7330,23 +7361,17 @@
       "indexes": {
         "store_invitations_store_idx": {
           "name": "store_invitations_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "store_invitations_email_idx": {
           "name": "store_invitations_email_idx",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": false
         },
         "store_invitations_token_idx": {
           "name": "store_invitations_token_idx",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "isUnique": false
         }
       },
@@ -7354,17 +7379,183 @@
       "compositePrimaryKeys": {
         "store_invitations_id": {
           "name": "store_invitations_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "store_invitations_token_unique": {
           "name": "store_invitations_token_unique",
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "store_legal_profiles": {
+      "name": "store_legal_profiles",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "store_id": {
+          "name": "store_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "legal_name": {
+          "name": "legal_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "legal_form": {
+          "name": "legal_form",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "company_number": {
+          "name": "company_number",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "company_number_scheme": {
+          "name": "company_number_scheme",
+          "type": "enum('fr_siren','be_bce')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "siret": {
+          "name": "siret",
+          "type": "varchar(14)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "vat_number": {
+          "name": "vat_number",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "rcs_city": {
+          "name": "rcs_city",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "share_capital": {
+          "name": "share_capital",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "registered_address": {
+          "name": "registered_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "registered_address_complement": {
+          "name": "registered_address_complement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "registered_postal_code": {
+          "name": "registered_postal_code",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "registered_city": {
+          "name": "registered_city",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "country": {
+          "name": "country",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "invoicing_enabled": {
+          "name": "invoicing_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "vat_regime": {
+          "name": "vat_regime",
+          "type": "enum('monthly','quarterly','simplified','vat_exemption')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "has_vat_on_debits": {
+          "name": "has_vat_on_debits",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "store_legal_profiles_store_idx": {
+          "name": "store_legal_profiles_store_idx",
+          "columns": ["store_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "store_legal_profiles_id": {
+          "name": "store_legal_profiles_id",
+          "columns": ["id"]
+        }
+      },
+      "uniqueConstraints": {
+        "store_legal_profiles_store_unique": {
+          "name": "store_legal_profiles_store_unique",
+          "columns": ["store_id"]
         }
       },
       "checkConstraint": {}
@@ -7464,17 +7655,12 @@
       "indexes": {
         "store_locations_store_idx": {
           "name": "store_locations_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "store_locations_active_idx": {
           "name": "store_locations_active_idx",
-          "columns": [
-            "store_id",
-            "is_active"
-          ],
+          "columns": ["store_id", "is_active"],
           "isUnique": false
         }
       },
@@ -7483,12 +7669,8 @@
           "name": "store_locations_store_id_stores_id_fk",
           "tableFrom": "store_locations",
           "tableTo": "stores",
-          "columnsFrom": [
-            "store_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["store_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -7496,260 +7678,10 @@
       "compositePrimaryKeys": {
         "store_locations_id": {
           "name": "store_locations_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraint": {}
-    },
-    "store_marketplace_category_mappings": {
-      "name": "store_marketplace_category_mappings",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "category_id": {
-          "name": "category_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "marketplace_category_slug": {
-          "name": "marketplace_category_slug",
-          "type": "varchar(160)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "store_marketplace_category_mappings_store_idx": {
-          "name": "store_marketplace_category_mappings_store_idx",
-          "columns": [
-            "store_id"
-          ],
-          "isUnique": false
-        },
-        "store_marketplace_category_mappings_category_idx": {
-          "name": "store_marketplace_category_mappings_category_idx",
-          "columns": [
-            "category_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "store_marketplace_category_mappings_id": {
-          "name": "store_marketplace_category_mappings_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "store_marketplace_category_mappings_store_category_unique": {
-          "name": "store_marketplace_category_mappings_store_category_unique",
-          "columns": [
-            "store_id",
-            "category_id"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
-    "store_marketplace_channels": {
-      "name": "store_marketplace_channels",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "store_id": {
-          "name": "store_id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "enabled_by_owner": {
-          "name": "enabled_by_owner",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "owner_decided_at": {
-          "name": "owner_decided_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "enum('setup_required','pending','published','paused','disabled')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'setup_required'"
-        },
-        "published_at": {
-          "name": "published_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lifetime_fee_waiver_at": {
-          "name": "lifetime_fee_waiver_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "cohort_rank": {
-          "name": "cohort_rank",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "disabled_at": {
-          "name": "disabled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "terms_accepted_at": {
-          "name": "terms_accepted_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "consent_basis": {
-          "name": "consent_basis",
-          "type": "enum('explicit','terms_update')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'explicit'"
-        },
-        "claimed_business_id": {
-          "name": "claimed_business_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "claim_confirmed_at": {
-          "name": "claim_confirmed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "status_reason": {
-          "name": "status_reason",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "version": {
-          "name": "version",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 1
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {
-        "store_marketplace_channels_status_updated_idx": {
-          "name": "store_marketplace_channels_status_updated_idx",
-          "columns": [
-            "status",
-            "updated_at"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "store_marketplace_channels_id": {
-          "name": "store_marketplace_channels_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "store_marketplace_channels_store_id_unique": {
-          "name": "store_marketplace_channels_store_id_unique",
-          "columns": [
-            "store_id"
-          ]
-        },
-        "store_marketplace_channels_cohort_rank_unique": {
-          "name": "store_marketplace_channels_cohort_rank_unique",
-          "columns": [
-            "cohort_rank"
-          ]
-        }
-      },
       "checkConstraint": {}
     },
     "store_members": {
@@ -7811,16 +7743,12 @@
       "indexes": {
         "store_members_store_idx": {
           "name": "store_members_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "store_members_user_idx": {
           "name": "store_members_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -7828,18 +7756,13 @@
       "compositePrimaryKeys": {
         "store_members_id": {
           "name": "store_members_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "store_members_unique": {
           "name": "store_members_unique",
-          "columns": [
-            "store_id",
-            "user_id"
-          ]
+          "columns": ["store_id", "user_id"]
         }
       },
       "checkConstraint": {}
@@ -7939,9 +7862,7 @@
       "indexes": {
         "store_phone_numbers_store_idx": {
           "name": "store_phone_numbers_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         }
       },
@@ -7949,17 +7870,132 @@
       "compositePrimaryKeys": {
         "store_phone_numbers_id": {
           "name": "store_phone_numbers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "store_phone_numbers_e164_unique": {
           "name": "store_phone_numbers_e164_unique",
-          "columns": [
-            "e164"
-          ]
+          "columns": ["e164"]
+        }
+      },
+      "checkConstraint": {}
+    },
+    "store_super_pdp_integrations": {
+      "name": "store_super_pdp_integrations",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "integration_id": {
+          "name": "integration_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "environment": {
+          "name": "environment",
+          "type": "enum('sandbox','production')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'sandbox'"
+        },
+        "super_pdp_company_id": {
+          "name": "super_pdp_company_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "company_verification_status": {
+          "name": "company_verification_status",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "directory_entry_id": {
+          "name": "directory_entry_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "directory_entry_status": {
+          "name": "directory_entry_status",
+          "type": "enum('pending','created','error')",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "send_and_receive": {
+          "name": "send_and_receive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "last_event_cursor": {
+          "name": "last_event_cursor",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "connected_at": {
+          "name": "connected_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        }
+      },
+      "indexes": {
+        "store_super_pdp_integrations_integration_idx": {
+          "name": "store_super_pdp_integrations_integration_idx",
+          "columns": ["integration_id"],
+          "isUnique": false
+        },
+        "store_super_pdp_integrations_company_idx": {
+          "name": "store_super_pdp_integrations_company_idx",
+          "columns": ["super_pdp_company_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "store_super_pdp_integrations_id": {
+          "name": "store_super_pdp_integrations_id",
+          "columns": ["id"]
+        }
+      },
+      "uniqueConstraints": {
+        "store_super_pdp_integrations_integration_unique": {
+          "name": "store_super_pdp_integrations_integration_unique",
+          "columns": ["integration_id"]
         }
       },
       "checkConstraint": {}
@@ -8030,16 +8066,12 @@
       "indexes": {
         "store_tulip_integrations_integration_idx": {
           "name": "store_tulip_integrations_integration_idx",
-          "columns": [
-            "integration_id"
-          ],
+          "columns": ["integration_id"],
           "isUnique": false
         },
         "store_tulip_integrations_renter_uid_idx": {
           "name": "store_tulip_integrations_renter_uid_idx",
-          "columns": [
-            "renter_uid"
-          ],
+          "columns": ["renter_uid"],
           "isUnique": false
         }
       },
@@ -8047,17 +8079,13 @@
       "compositePrimaryKeys": {
         "store_tulip_integrations_id": {
           "name": "store_tulip_integrations_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "store_tulip_integrations_integration_unique": {
           "name": "store_tulip_integrations_integration_unique",
-          "columns": [
-            "integration_id"
-          ]
+          "columns": ["integration_id"]
         }
       },
       "checkConstraint": {}
@@ -8119,31 +8147,22 @@
       "indexes": {
         "storefront_events_store_idx": {
           "name": "storefront_events_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "storefront_events_session_idx": {
           "name": "storefront_events_session_idx",
-          "columns": [
-            "session_id"
-          ],
+          "columns": ["session_id"],
           "isUnique": false
         },
         "storefront_events_store_created_idx": {
           "name": "storefront_events_store_created_idx",
-          "columns": [
-            "store_id",
-            "created_at"
-          ],
+          "columns": ["store_id", "created_at"],
           "isUnique": false
         },
         "storefront_events_type_idx": {
           "name": "storefront_events_type_idx",
-          "columns": [
-            "storefront_event_type"
-          ],
+          "columns": ["storefront_event_type"],
           "isUnique": false
         }
       },
@@ -8151,9 +8170,7 @@
       "compositePrimaryKeys": {
         "storefront_events_id": {
           "name": "storefront_events_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -8392,13 +8409,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "signup_origin": {
-          "name": "signup_origin",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "trial_days": {
           "name": "trial_days",
           "type": "int",
@@ -8458,23 +8468,17 @@
       "indexes": {
         "stores_slug_idx": {
           "name": "stores_slug_idx",
-          "columns": [
-            "slug"
-          ],
+          "columns": ["slug"],
           "isUnique": false
         },
         "stores_user_idx": {
           "name": "stores_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         },
         "stores_referral_code_idx": {
           "name": "stores_referral_code_idx",
-          "columns": [
-            "referral_code"
-          ],
+          "columns": ["referral_code"],
           "isUnique": false
         }
       },
@@ -8482,23 +8486,17 @@
       "compositePrimaryKeys": {
         "stores_id": {
           "name": "stores_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "stores_slug_unique": {
           "name": "stores_slug_unique",
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         },
         "stores_referral_code_unique": {
           "name": "stores_referral_code_unique",
-          "columns": [
-            "referral_code"
-          ]
+          "columns": ["referral_code"]
         }
       },
       "checkConstraint": {}
@@ -8608,23 +8606,17 @@
       "indexes": {
         "subscriptions_store_idx": {
           "name": "subscriptions_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         },
         "subscriptions_stripe_subscription_idx": {
           "name": "subscriptions_stripe_subscription_idx",
-          "columns": [
-            "stripe_subscription_id"
-          ],
+          "columns": ["stripe_subscription_id"],
           "isUnique": false
         },
         "subscriptions_stripe_customer_idx": {
           "name": "subscriptions_stripe_customer_idx",
-          "columns": [
-            "stripe_customer_id"
-          ],
+          "columns": ["stripe_customer_id"],
           "isUnique": false
         }
       },
@@ -8632,23 +8624,17 @@
       "compositePrimaryKeys": {
         "subscriptions_id": {
           "name": "subscriptions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "subscriptions_store_id_unique": {
           "name": "subscriptions_store_id_unique",
-          "columns": [
-            "store_id"
-          ]
+          "columns": ["store_id"]
         },
         "subscriptions_stripe_subscription_id_unique": {
           "name": "subscriptions_stripe_subscription_id_unique",
-          "columns": [
-            "stripe_subscription_id"
-          ]
+          "columns": ["stripe_subscription_id"]
         }
       },
       "checkConstraint": {}
@@ -8706,13 +8692,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "signup_origin": {
-          "name": "signup_origin",
-          "type": "varchar(32)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "business_type": {
           "name": "business_type",
           "type": "varchar(32)",
@@ -8755,13 +8734,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "reeent_intro_acknowledged_at": {
-          "name": "reeent_intro_acknowledged_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -8784,17 +8756,13 @@
       "compositePrimaryKeys": {
         "users_id": {
           "name": "users_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "checkConstraint": {}
@@ -8874,9 +8842,7 @@
       "indexes": {
         "variant_definitions_store_idx": {
           "name": "variant_definitions_store_idx",
-          "columns": [
-            "store_id"
-          ],
+          "columns": ["store_id"],
           "isUnique": false
         }
       },
@@ -8884,18 +8850,13 @@
       "compositePrimaryKeys": {
         "variant_definitions_id": {
           "name": "variant_definitions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "variant_definitions_store_key_unique": {
           "name": "variant_definitions_store_key_unique",
-          "columns": [
-            "store_id",
-            "key"
-          ]
+          "columns": ["store_id", "key"]
         }
       },
       "checkConstraint": {}
@@ -8951,9 +8912,7 @@
       "indexes": {
         "variant_values_definition_idx": {
           "name": "variant_values_definition_idx",
-          "columns": [
-            "definition_id"
-          ],
+          "columns": ["definition_id"],
           "isUnique": false
         }
       },
@@ -8961,18 +8920,13 @@
       "compositePrimaryKeys": {
         "variant_values_id": {
           "name": "variant_values_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "variant_values_unique": {
           "name": "variant_values_unique",
-          "columns": [
-            "definition_id",
-            "label"
-          ]
+          "columns": ["definition_id", "label"]
         }
       },
       "checkConstraint": {}
@@ -9030,9 +8984,7 @@
       "compositePrimaryKeys": {
         "verification_id": {
           "name": "verification_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -9118,9 +9070,7 @@
       "compositePrimaryKeys": {
         "verification_codes_id": {
           "name": "verification_codes_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},

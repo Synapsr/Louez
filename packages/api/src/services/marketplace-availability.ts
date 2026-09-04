@@ -278,7 +278,7 @@ function availableQuantityForItem(
   const product = availability.products.find((candidate) => candidate.productId === item.productId);
   if (!product) return 0;
   if (!hasAttributeSelection(item.attributes) || !product.combinations?.length) {
-    return product.availableQuantity;
+    return product.availableQuantity ?? item.quantity;
   }
 
   return product.combinations
@@ -382,7 +382,8 @@ export async function availabilityMarketplaceBooking(
         const requestedForProduct = requestedByProduct.get(item.productId) ?? 0;
         if (
           requestedForSelection > responseItems[index].availableQuantity ||
-          requestedForProduct > (productAvailability?.availableQuantity ?? 0)
+          (productAvailability?.availableQuantity !== null &&
+            requestedForProduct > (productAvailability?.availableQuantity ?? 0))
         ) {
           reasons.push({ productId: item.productId, code: "out_of_stock" });
         }

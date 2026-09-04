@@ -1,12 +1,17 @@
+import type { StockKind } from '@louez/types'
+
 import { DEFAULT_COMBINATION_KEY } from './variants'
 
 export interface AvailabilityReservationItem {
   productId: string | null
   combinationKey?: string | null
   quantity: number
+  stockKind?: StockKind
+  consumedQuantity?: number
 }
 
 export interface AvailabilityReservation {
+  status?: string
   startDate: Date
   endDate: Date
   items: AvailabilityReservationItem[]
@@ -58,14 +63,32 @@ export function calculatePeakReservedQuantities(params: {
   startDate: Date
   endDate: Date
   turnoverBufferMinutes?: number
+  pendingBlocksAvailability?: boolean
 }): PeakReservedQuantities {
   const productDeltas = new Map<string, Map<number, number>>()
   const combinationDeltas = new Map<string, Map<number, number>>()
+  const consumableReservedByProduct = new Map<string, number>()
   const requestedStart = params.startDate.getTime()
   const bufferMs = Math.max(0, params.turnoverBufferMinutes ?? 0) * 60 * 1000
   const requestedEnd = params.endDate.getTime() + bufferMs
 
   for (const reservation of params.reservations) {
+    if (reservation.status === 'pending' && params.pendingBlocksAvailability === false) {
+      continue
+    }
+
+    for (const item of reservation.items) {
+      if (!item.productId || item.stockKind !== 'consumable') {
+        continue
+      }
+
+      const heldQuantity = Math.max(0, item.quantity - (item.consumedQuantity ?? 0))
+      consumableReservedByProduct.set(
+        item.productId,
+        (consumableReservedByProduct.get(item.productId) ?? 0) + heldQuantity,
+      )
+    }
+
     const overlapStart = Math.max(reservation.startDate.getTime(), requestedStart)
     const overlapEnd = Math.min(reservation.endDate.getTime() + bufferMs, requestedEnd)
 
@@ -74,7 +97,11 @@ export function calculatePeakReservedQuantities(params: {
     }
 
     for (const item of reservation.items) {
-      if (!item.productId) {
+      if (
+        !item.productId ||
+        item.stockKind === 'consumable' ||
+        item.stockKind === 'untracked'
+      ) {
         continue
       }
 
@@ -90,8 +117,13 @@ export function calculatePeakReservedQuantities(params: {
     }
   }
 
+  const reservedByProduct = calculatePeakByKey(productDeltas)
+  for (const [productId, quantity] of consumableReservedByProduct) {
+    reservedByProduct.set(productId, quantity)
+  }
+
   return {
-    reservedByProduct: calculatePeakByKey(productDeltas),
+    reservedByProduct,
     reservedByProductCombination: calculatePeakByKey(combinationDeltas),
   }
 }

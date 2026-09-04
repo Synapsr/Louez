@@ -22,6 +22,8 @@ mock.module("@louez/db", {
     buildUnitRentableDuringPredicate: () => undefined,
     db: {},
     getBlockingReservationStatuses: () => ["pending", "confirmed", "ongoing"],
+    loadConsumableReservedQuantities: async () => new Map(),
+    productAccessories: {},
     productUnitDowntimes: {},
     productUnits: {},
     products: {},
@@ -236,6 +238,41 @@ test("uses matching tracked-unit combinations for window quantities", async () =
 
   assert.deepEqual(result.windows[0].items, [{ productId, availableQuantity: 1 }]);
   assert.deepEqual(result.windows[0].reasons, [{ productId, code: "out_of_stock" }]);
+});
+
+test("treats null availability as untracked stock", async () => {
+  const result = await availabilityMarketplaceBooking(
+    {
+      input: {
+        storeId,
+        items: [{ productId, quantity: 25 }],
+        windows: [
+          {
+            startAt: "2026-08-31T09:00:00.000Z",
+            endAt: "2026-08-31T11:00:00.000Z",
+          },
+        ],
+      },
+    },
+    dependencies({
+      getAvailability: async () =>
+        availability({
+          products: [
+            {
+              productId,
+              totalQuantity: null,
+              reservedQuantity: 0,
+              availableQuantity: null,
+              status: "available",
+            },
+          ],
+        }),
+    }),
+  );
+
+  assert.equal(result.windows[0].available, true);
+  assert.deepEqual(result.windows[0].items, [{ productId, availableQuantity: 25 }]);
+  assert.deepEqual(result.windows[0].reasons, []);
 });
 
 test("returns every window unavailable when the marketplace channel is unpublished", async () => {

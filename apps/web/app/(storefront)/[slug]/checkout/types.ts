@@ -24,6 +24,8 @@ export interface CheckoutFormProps {
   storeLatitude?: number | null;
   storeLongitude?: number | null;
   storeName?: string;
+  /** ISO-2 country of the store — drives the company-identity fields (SIREN/BCE). */
+  storeCountry: string;
   locations?: CheckoutLocationOption[];
   tulipInsurance?: {
     enabled: boolean;
@@ -56,6 +58,9 @@ export interface CheckoutFormValues {
   phone: string;
   isBusinessCustomer: boolean;
   companyName: string;
+  /** SIREN (FR) / BCE (BE) — optional: absent means the invoice stays B2C. */
+  companyNumber: string;
+  vatNumber: string;
   address: string;
   city: string;
   postalCode: string;

@@ -1,9 +1,20 @@
-import { setSessionHook, setUserCreatedHook } from '@louez/auth';
+import {
+  setSessionHook,
+  setUserCreatedHook,
+  setUserDeleteHook,
+  setUserDeleteRequestHook,
+} from '@louez/auth';
 import { db } from '@louez/db';
 
+import { deleteAccountData } from '@/lib/account-deletion/account-deletion';
+import { accountDeletionRepository } from '@/lib/account-deletion/database-repository';
 import {
-  notifyUserSignedIn,
-} from '@/lib/discord/platform-notifications';
+  accountDeletionExternalServices,
+  assertAccountDeletionExternalConfiguration,
+} from '@/lib/account-deletion/external-services';
+import { env } from '@/env';
+import { notifyUserSignedIn } from '@/lib/discord/platform-notifications';
+import { log } from '@/lib/evlog';
 import { captureProductServerEvent } from '@/lib/product-analytics/analytics';
 import {
   authenticationAnalyticsBaseProperties,
@@ -23,6 +34,41 @@ setUserCreatedHook(async ({ userId }) => {
       source: 'auth_database_hook',
     },
   });
+});
+
+setUserDeleteRequestHook(async ({ userId }) => {
+  const context = await accountDeletionRepository.getContext(userId);
+  if (!context) {
+    throw new Error('Account not found');
+  }
+  assertAccountDeletionExternalConfiguration(context);
+  if (
+    context.stores.some((store) => store.legalRecordCount > 0) &&
+    !env.LEGAL_ARCHIVE_ENCRYPTION_KEY
+  ) {
+    throw new Error('Legal archive encryption is not configured');
+  }
+});
+
+setUserDeleteHook(async ({ userId, reason }) => {
+  const result = await deleteAccountData({
+    userId,
+    ...(reason ? { reason } : {}),
+    repository: accountDeletionRepository,
+    externalServices: accountDeletionExternalServices,
+  });
+
+  if (result.status === 'blocked') {
+    return { status: 'blocked', reason: result.reason };
+  }
+
+  log.info({
+    accountDeletion: {
+      storesDeleted: result.storesDeleted,
+      legalRecordsRetained: result.legalRecordsRetained,
+    },
+  });
+  return { status: 'deleted' };
 });
 
 // Wire Discord notifications for session creation

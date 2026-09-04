@@ -12,6 +12,7 @@
     "address": "Adresse",
     "pickupAddress": "Abholadresse",
     "returnAddress": "Rückgabeadresse",
+    "pickupAndReturnAddress": "Abhol- und Rückgabeadresse",
     "subtotal": "Zwischensumme",
     "subtotalExclTax": "Zwischensumme netto",
     "taxAmount": "MwSt ({rate}%)",
@@ -134,6 +135,7 @@
     "email": "E-Mail:",
     "period": "Zeitraum:",
     "amount": "Betrag:",
+    "notes": "Nachricht des Kunden",
     "viewRequest": "Anfrage ansehen",
     "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Anfrage anzunehmen oder abzulehnen."
   },

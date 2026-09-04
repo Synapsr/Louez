@@ -15,9 +15,14 @@ import { toastManager } from '@louez/ui'
 import type { ReservationPollResponse } from '@louez/types'
 import { useTranslations } from 'next-intl'
 import { orpc } from '@/lib/orpc/react'
+import {
+  invalidateReservationList,
+  invalidateReservationTimelines,
+} from '@/lib/orpc/invalidation'
 
 interface ReservationPollingContextValue {
   pendingCount: number
+  pendingSupplierInvoices: number
   pendingReservations: ReservationPollResponse['pendingReservations']
   isPolling: boolean
   lastUpdated: Date | null
@@ -47,6 +52,7 @@ export function ReservationPollingProvider({
   const t = useTranslations('dashboard.notifications')
 
   const [pendingCount, setPendingCount] = useState(0)
+  const [pendingSupplierInvoices, setPendingSupplierInvoices] = useState(0)
   const [pendingReservations, setPendingReservations] = useState<
     ReservationPollResponse['pendingReservations']
   >([])
@@ -89,6 +95,7 @@ export function ReservationPollingProvider({
 
       // Always update pending count
       setPendingCount(data.pendingCount)
+      setPendingSupplierInvoices(data.pendingSupplierInvoices)
       setPendingReservations(data.pendingReservations)
       setLastUpdated(new Date())
 
@@ -130,6 +137,10 @@ export function ReservationPollingProvider({
 
         // Refresh the page data
         router.refresh()
+        await Promise.all([
+          invalidateReservationList(queryClient),
+          invalidateReservationTimelines(queryClient),
+        ])
       } else if (
         data.latestReservation &&
         latestReservationCreatedAt !== null &&
@@ -165,6 +176,7 @@ export function ReservationPollingProvider({
     <ReservationPollingContext.Provider
       value={{
         pendingCount,
+        pendingSupplierInvoices,
         pendingReservations,
         isPolling,
         lastUpdated,

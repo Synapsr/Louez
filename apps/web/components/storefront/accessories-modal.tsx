@@ -14,10 +14,12 @@ import {
 } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
-import { formatCurrency } from '@louez/utils'
+import { formatCurrency, isFixedPriceProduct } from '@louez/utils'
 import { cn } from '@louez/utils'
+import { selectOptionalAccessories } from '@/lib/utils/cart-required-accessories'
 import { useCart } from '@/contexts/cart-context'
-import type { PricingMode } from '@louez/types'
+import type { PricingKind, PricingMode } from '@louez/types'
+import type { StockQuantityLimit } from '@louez/utils'
 
 interface Accessory {
   id: string
@@ -25,7 +27,10 @@ interface Accessory {
   price: string
   deposit: string
   images: string[] | null
-  quantity: number
+  quantity: StockQuantityLimit
+  required?: boolean | null
+  requiredQuantity?: number | null
+  pricingKind?: PricingKind | null
   pricingMode: PricingMode | null
   basePeriodMinutes?: number | null
   pricingTiers?: {
@@ -55,14 +60,18 @@ export function AccessoriesModal({
   currency = 'EUR',
 }: AccessoriesModalProps) {
   const t = useTranslations('storefront.accessories')
+  const tProduct = useTranslations('storefront.product')
   const { addItem, items: cartItems } = useCart()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isAdding, setIsAdding] = useState(false)
   const carouselRef = useRef<HTMLDivElement>(null)
 
-  // Filter out accessories that are already in the cart
+  // Upsell list: never the required accessories (the cart already carries
+  // them with their parent), never what is already in the cart.
   const cartProductIds = new Set(cartItems.map((item) => item.productId))
-  const availableAccessories = accessories.filter((acc) => !cartProductIds.has(acc.id))
+  const availableAccessories = selectOptionalAccessories(accessories).filter(
+    (acc) => !cartProductIds.has(acc.id),
+  )
 
   const toggleAccessory = (id: string) => {
     setSelectedIds((prev) => {
@@ -107,6 +116,7 @@ export function AccessoriesModal({
             deposit: parseFloat(accessory.deposit),
             quantity: 1,
             maxQuantity: accessory.quantity,
+            pricingKind: accessory.pricingKind ?? 'duration',
             pricingMode: effectivePricingMode,
             basePeriodMinutes: accessory.basePeriodMinutes ?? null,
             pricingTiers: accessory.pricingTiers?.map((tier) => ({
@@ -200,6 +210,7 @@ export function AccessoriesModal({
               {availableAccessories.map((accessory) => {
                 const isSelected = selectedIds.has(accessory.id)
                 const effectivePricingMode: PricingMode = accessory.pricingMode ?? 'day'
+                const isFixedPricing = isFixedPriceProduct(accessory)
 
                 return (
                   <button
@@ -245,7 +256,9 @@ export function AccessoriesModal({
                         variant="success"
                         className="absolute bottom-2 left-2 text-[10px] px-1.5 py-0.5"
                       >
-                        {t('available', { count: accessory.quantity })}
+                        {accessory.quantity === null
+                          ? tProduct('availableWithoutStockLimit')
+                          : t('available', { count: accessory.quantity })}
                       </Badge>
                     </div>
 
@@ -257,7 +270,9 @@ export function AccessoriesModal({
                           {formatCurrency(parseFloat(accessory.price), currency)}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
-                          /{t(`pricingUnit.${effectivePricingMode}`)}
+                          {isFixedPricing
+                            ? tProduct('fixedPricingLabel')
+                            : `/${t(`pricingUnit.${effectivePricingMode}`)}`}
                         </span>
                       </div>
                     </div>

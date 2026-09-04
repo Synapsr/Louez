@@ -14,9 +14,11 @@ import { useTranslations } from 'next-intl';
 import type {
   BusinessHours,
   CombinationAvailability,
+  PricingKind,
   PricingMode,
 } from '@louez/types';
 import type { Rate } from '@louez/types';
+import type { StockQuantityLimit } from '@louez/utils';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Label } from '@louez/ui';
@@ -36,13 +38,16 @@ import {
   allocateAcrossCombinations,
   buildCombinationKey,
   calculateDurationMinutes,
+  calculateFixedPrice,
   calculateRateBasedPrice,
   calculateRentalPrice,
   calculateSeasonalAwarePrice,
+  combineStockQuantityLimits,
   getAvailableDurationMinutes,
   getAvailableDurations,
   getDeterministicCombinationSortValue,
   getSelectionCapacity,
+  isFixedPriceProduct,
   isRateBasedProduct,
   snapToNearestRatePeriod,
   snapToNearestTier,
@@ -56,6 +61,11 @@ import {
 
 import { orpc } from '@/lib/orpc/react';
 import { pickActiveVariantAttributes } from '@/lib/util.variant-visibility';
+import {
+  buildRequiredAccessoryCartInputs,
+  findBlockingRequiredAccessories,
+  selectOptionalAccessories,
+} from '@/lib/utils/cart-required-accessories';
 import { getMinStartDate } from '@/lib/utils/duration';
 import {
   formatDurationFromMinutes,
@@ -71,7 +81,10 @@ interface Accessory {
   price: string;
   deposit: string;
   images: string[] | null;
-  quantity: number;
+  quantity: StockQuantityLimit;
+  required?: boolean | null;
+  requiredQuantity?: number | null;
+  pricingKind?: PricingKind | null;
   pricingMode: PricingMode | null;
   basePeriodMinutes?: number | null;
   pricingTiers?: {
@@ -89,7 +102,8 @@ interface AddToCartFormProps {
   productImage: string | null;
   price: number;
   deposit: number;
-  maxQuantity: number;
+  maxQuantity: StockQuantityLimit;
+  pricingKind?: PricingKind;
   pricingMode: 'day' | 'hour' | 'week';
   basePeriodMinutes?: number | null;
   storeSlug: string;
@@ -133,6 +147,7 @@ export function AddToCartForm({
   price,
   deposit,
   maxQuantity,
+  pricingKind = 'duration',
   pricingMode,
   basePeriodMinutes,
   storeSlug,
@@ -288,7 +303,9 @@ export function AddToCartForm({
     periodProductAvailability,
   ]);
   const periodAwareMaxQuantity = hasSelectedDates
-    ? (periodProductAvailability?.availableQuantity ?? 0)
+    ? periodProductAvailability
+      ? periodProductAvailability.availableQuantity
+      : 0
     : maxQuantity;
   const isAvailabilityLoadingForSelection =
     hasSelectedDates &&
@@ -309,7 +326,10 @@ export function AddToCartForm({
   const shouldSplitAcrossCombinations =
     hasBookingAttributes && selectionCapacity.allocationMode === 'split';
   const effectiveMaxQuantity = hasBookingAttributes
-    ? Math.min(availabilityBoundQuantity, selectionCapacity.capacity)
+    ? combineStockQuantityLimits(
+        availabilityBoundQuantity,
+        selectionCapacity.capacity,
+      )
     : availabilityBoundQuantity;
   const isSelectionUnavailable = effectiveMaxQuantity === 0;
 
@@ -399,9 +419,23 @@ export function AddToCartForm({
 
   // Use seasonal-aware calculation when seasonal pricings exist and dates are set
   const hasSeasonalPricings = seasonalPricings.length > 0;
+  // A forfait is billed per unit, per booking: dates never enter the total.
+  const isFixedPricing = isFixedPriceProduct({ pricingKind });
 
-  const priceResult =
-    hasSeasonalPricings && startDate && endDate
+  const priceResult = isFixedPricing
+    ? (() => {
+        const result = calculateFixedPrice(
+          { basePrice: price, deposit, pricingMode },
+          quantity,
+        );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: null,
+        };
+      })()
+    : hasSeasonalPricings && startDate && endDate
       ? (() => {
           const result = calculateSeasonalAwarePrice(
             {
@@ -467,11 +501,23 @@ export function AddToCartForm({
   const discountPercent = priceResult.discountPercent;
   const totalDeposit = deposit * quantity;
 
-  // Filter accessories to only show available ones (in stock, active status is already filtered server-side, and not in cart)
+  // Optional accessories feed the upsell modal: in stock, not already in the
+  // cart, and never a required one (those ride along with the product).
   const cartProductIds = new Set(cartItems.map((item) => item.productId));
-  const availableAccessories = accessories.filter(
-    (acc) => acc.quantity > 0 && !cartProductIds.has(acc.id),
+  const availableAccessories = selectOptionalAccessories(accessories).filter(
+    (acc) =>
+      (acc.quantity === null || acc.quantity > 0) &&
+      !cartProductIds.has(acc.id),
   );
+  const requiredAccessories = useMemo(
+    () => buildRequiredAccessoryCartInputs(accessories),
+    [accessories],
+  );
+  const blockingRequiredAccessories = findBlockingRequiredAccessories(
+    accessories,
+    quantity,
+  );
+  const hasBlockingRequiredAccessory = blockingRequiredAccessories.length > 0;
 
   const handleAddToCart = () => {
     if (!startDate || !endDate) {
@@ -481,6 +527,14 @@ export function AddToCartForm({
 
     if (isSelectionUnavailable) {
       toastManager.add({ title: t('selectionUnavailable'), type: 'error' });
+      return;
+    }
+
+    if (hasBlockingRequiredAccessory) {
+      toastManager.add({
+        title: t('requiredAccessoryOutOfStock'),
+        type: 'error',
+      });
       return;
     }
 
@@ -527,6 +581,7 @@ export function AddToCartForm({
               1,
               allocation.combination.availableQuantity || 0,
             ),
+            pricingKind,
             pricingMode,
             basePeriodMinutes: basePeriodMinutes ?? null,
             enforceStrictTiers,
@@ -544,6 +599,7 @@ export function AddToCartForm({
               bookingAttributeAxes,
               allocation.combination.selectedAttributes,
             ),
+            requiredAccessories,
           },
           storeSlug,
         );
@@ -557,7 +613,11 @@ export function AddToCartForm({
           price,
           deposit,
           quantity,
-          maxQuantity: Math.max(1, effectiveMaxQuantity),
+          maxQuantity:
+            effectiveMaxQuantity === null
+              ? null
+              : Math.max(1, effectiveMaxQuantity),
+          pricingKind,
           pricingMode,
           basePeriodMinutes: basePeriodMinutes ?? null,
           enforceStrictTiers,
@@ -572,6 +632,7 @@ export function AddToCartForm({
           seasonalPricings:
             seasonalPricings.length > 0 ? seasonalPricings : undefined,
           selectedAttributes,
+          requiredAccessories,
         },
         storeSlug,
       );
@@ -595,7 +656,11 @@ export function AddToCartForm({
   };
 
   useEffect(() => {
-    if (effectiveMaxQuantity > 0 && quantity > effectiveMaxQuantity) {
+    if (
+      effectiveMaxQuantity !== null &&
+      effectiveMaxQuantity > 0 &&
+      quantity > effectiveMaxQuantity
+    ) {
       setQuantity(effectiveMaxQuantity);
     }
   }, [effectiveMaxQuantity, quantity]);
@@ -699,7 +764,9 @@ export function AddToCartForm({
           </p>
           <div className="space-y-1">
             <p className="text-xs font-medium">
-              {t('availableForSelection', { count: effectiveMaxQuantity })}
+              {t('availableForSelection', {
+                count: effectiveMaxQuantity ?? 0,
+              })}
             </p>
             <p className="text-muted-foreground text-xs">
               {selectionCapacity.allocationMode === 'single'
@@ -730,34 +797,50 @@ export function AddToCartForm({
             size="icon"
             onClick={() =>
               setQuantity(
-                Math.min(Math.max(1, effectiveMaxQuantity), quantity + 1),
+                effectiveMaxQuantity === null
+                  ? quantity + 1
+                  : Math.min(
+                      Math.max(1, effectiveMaxQuantity),
+                      quantity + 1,
+                    ),
               )
             }
             disabled={
-              quantity >= effectiveMaxQuantity || isSelectionUnavailable
+              (effectiveMaxQuantity !== null &&
+                quantity >= effectiveMaxQuantity) ||
+              isSelectionUnavailable
             }
           >
             <Plus className="h-4 w-4" />
           </Button>
-          <span className="text-muted-foreground text-sm">
-            (
-            {t('availableCount', {
-              count: hasSelectedDates ? effectiveMaxQuantity : maxQuantity,
-            })}
-            )
-          </span>
+          {effectiveMaxQuantity === null ? null : (
+            <span className="text-muted-foreground text-sm">
+              ({t('availableCount', { count: effectiveMaxQuantity })})
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Price Summary */}
-      {startDate && endDate && duration > 0 && (
+      {/* Price Summary — a forfait needs no dates to be priced. */}
+      {(isFixedPricing || Boolean(startDate && endDate && duration > 0)) && (
         <div className="bg-muted/30 space-y-2 rounded-lg border p-4">
           <div className="flex justify-between text-sm">
             <span>
-              {formatCurrency(price, currency)} x {quantity} x {duration}{' '}
-              {duration > 1
-                ? t(`pricingUnit.${pricingMode}.plural`)
-                : t(`pricingUnit.${pricingMode}.singular`)}
+              {isFixedPricing ? (
+                <>
+                  {formatCurrency(price, currency)} x {quantity}{' '}
+                  <span className="text-muted-foreground">
+                    ({t('fixedPricingLabel')})
+                  </span>
+                </>
+              ) : (
+                <>
+                  {formatCurrency(price, currency)} x {quantity} x {duration}{' '}
+                  {duration > 1
+                    ? t(`pricingUnit.${pricingMode}.plural`)
+                    : t(`pricingUnit.${pricingMode}.singular`)}
+                </>
+              )}
             </span>
             {savings > 0 ? (
               <span className="text-muted-foreground line-through">
@@ -801,12 +884,32 @@ export function AddToCartForm({
         </div>
       )}
 
+      {/* Required accessories — added with the product, or blocking it */}
+      {hasBlockingRequiredAccessory ? (
+        <p className="text-destructive text-sm">
+          {t('requiredAccessoryOutOfStock')}
+        </p>
+      ) : requiredAccessories.length > 0 ? (
+        <p className="text-muted-foreground text-sm">
+          {t('requiredAccessoriesIncluded', {
+            names: requiredAccessories
+              .map((accessory) => accessory.productName)
+              .join(', '),
+          })}
+        </p>
+      ) : null}
+
       {/* Add to Cart Button */}
       <Button
         size="lg"
         className="w-full"
         onClick={handleAddToCart}
-        disabled={!startDate || !endDate || isSelectionUnavailable}
+        disabled={
+          !startDate ||
+          !endDate ||
+          isSelectionUnavailable ||
+          hasBlockingRequiredAccessory
+        }
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
         {t('addToCart')}

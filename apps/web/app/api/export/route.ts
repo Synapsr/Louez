@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getCurrentStore } from '@/lib/store-context'
 import { currentUserHasPermission } from '@/lib/store-context'
-import { exportParamsSchema } from '@/lib/export/types'
+import { exportParamsSchema, type ExportParams } from '@/lib/export/types'
 import { queryExportData } from '@/lib/export/queries'
 import { generateCsv } from '@/lib/export/csv'
+import { resolveStoreExportDateRange } from '@/lib/export/date-range'
 
 export async function GET(request: Request) {
   const store = await getCurrentStore()
@@ -28,13 +29,26 @@ export async function GET(request: Request) {
     return new NextResponse('Bad Request', { status: 400 })
   }
 
-  const params = parsed.data
+  const requestParams = parsed.data
+  const dateRange =
+    requestParams.startDate && requestParams.endDate
+      ? resolveStoreExportDateRange(
+          requestParams.startDate,
+          requestParams.endDate,
+          store.settings?.timezone
+        )
+      : {}
+  const params: ExportParams = {
+    type: requestParams.type,
+    format: requestParams.format,
+    ...dateRange,
+  }
   const data = await queryExportData(store.id, params)
 
   // Build filename
   const datePart =
-    params.startDate && params.endDate
-      ? `-${formatDateForFilename(params.startDate)}-to-${formatDateForFilename(params.endDate)}`
+    requestParams.startDate && requestParams.endDate
+      ? `-${requestParams.startDate}-to-${requestParams.endDate}`
       : ''
   const filename = `${sanitizeFilename(store.slug)}-${params.type}${datePart}.${params.format}`
 
@@ -54,10 +68,6 @@ export async function GET(request: Request) {
       'Content-Disposition': `attachment; filename="${filename}"`,
     },
   })
-}
-
-function formatDateForFilename(date: Date): string {
-  return date.toISOString().split('T')[0]
 }
 
 function sanitizeFilename(name: string): string {

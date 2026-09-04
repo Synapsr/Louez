@@ -15,7 +15,7 @@ import { getStorefrontUrl } from '@/lib/storefront-url'
 import { env } from '@/env'
 import { getDepositAuthorizationData } from './actions'
 import { DepositForm } from './deposit-form'
-import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
+import { getLocaleFromCountry } from '@/lib/email/i18n'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 
 interface AuthorizeDepositPageProps {
@@ -134,7 +134,7 @@ export default async function AuthorizeDepositPage({
     currency: string
   }
   const storeTheme = store.theme as StoreTheme | null
-  const locale = getLocaleFromCountry(store.country) as EmailLocale
+  const locale = getLocaleFromCountry(store.country)
 
   return (
     <div className="container mx-auto px-4 py-8">

@@ -20,6 +20,7 @@ interface NewRequestLandlordEmailProps {
   startDate: Date;
   endDate: Date;
   total: number;
+  customerNotes?: string | null;
   dashboardUrl: string;
   locale?: EmailLocale;
   currency?: string;
@@ -38,6 +39,7 @@ export function NewRequestLandlordEmail({
   startDate,
   endDate,
   total,
+  customerNotes,
   dashboardUrl,
   locale = "fr",
   currency = "EUR",
@@ -48,6 +50,7 @@ export function NewRequestLandlordEmail({
   const messages = t.newRequestLandlord;
   const datePatterns = getDateFormatPatterns(locale);
   const formatCurrency = getCurrencyFormatter(locale, currency);
+  const trimmedNotes = customerNotes?.trim();
 
   const buttonStyle = {
     ...button,
@@ -97,6 +100,13 @@ export function NewRequestLandlordEmail({
         </Text>
       </Section>
 
+      {trimmedNotes && (
+        <Section style={notesBox}>
+          <Text style={notesLabel}>{messages.notes}</Text>
+          <Text style={notesText}>{trimmedNotes}</Text>
+        </Section>
+      )}
+
       <Section style={ctaSection}>
         <Button href={dashboardUrl} style={buttonStyle}>
           {messages.viewRequest}
@@ -133,6 +143,31 @@ const infoRow = {
   fontSize: "14px",
   color: "#1a1a1a",
   margin: "0 0 8px 0",
+};
+
+const notesBox = {
+  backgroundColor: "#fffbeb",
+  border: "1px solid #fde68a",
+  borderRadius: "8px",
+  padding: "16px 20px",
+  margin: "0 0 24px 0",
+};
+
+const notesLabel = {
+  fontSize: "12px",
+  fontWeight: "bold" as const,
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.04em",
+  color: "#92400e",
+  margin: "0 0 8px 0",
+};
+
+const notesText = {
+  fontSize: "14px",
+  lineHeight: "22px",
+  color: "#1a1a1a",
+  whiteSpace: "pre-wrap" as const,
+  margin: "0",
 };
 
 const ctaSection = {

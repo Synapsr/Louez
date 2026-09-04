@@ -11,7 +11,17 @@ import {
   getStorefrontAvailability,
   loadExcludedUnitInfo,
 } from "@louez/api/services";
-import { db, getEffectiveProductQuantities } from "@louez/db";
+import {
+  ConsumableStockError,
+  canTransitionReservationStatus,
+  consumeReservationStock,
+  db,
+  getEffectiveProductQuantities,
+  loadConsumableReservedQuantities,
+  reconcileReservationStock,
+  reservationStatusConsumesStock,
+  restoreReservationStock,
+} from "@louez/db";
 import { isEmailConfigured } from "@louez/email";
 import {
   buildReservationOverlapPredicate,
@@ -19,6 +29,7 @@ import {
   customers,
   findBusyUnitIds,
   getBlockingReservationStatuses,
+  invoicePayments,
   paymentRequests,
   payments,
   productSeasonalPricing,
@@ -38,6 +49,7 @@ import type {
   BookingAttributeAxis,
   DeliverySettings,
   PricingBreakdown,
+  PricingKind,
   PricingMode,
   TulipPublicMode,
   UnitAttributes,
@@ -55,8 +67,10 @@ import {
 import {
   type PricingTier,
   type SeasonalPricingConfig,
+  type SeasonalPriceResult,
   calculateDuration,
   calculateDurationMinutes,
+  calculateFixedPrice,
   calculateSeasonalAwarePrice,
 } from "@louez/utils";
 import {
@@ -130,6 +144,12 @@ import {
 } from "@/lib/sms";
 import { getCurrentStore } from "@/lib/store-context";
 import { getStorefrontUrl } from "@/lib/storefront-url";
+import {
+  tryEnsureRefundPaymentRecord,
+  tryGenerateCreditNoteForRefund,
+  tryGenerateInvoiceForPayment,
+} from "@/lib/invoicing/service";
+import { trySendInitialInvoicePaymentConfirmation } from "@/lib/invoicing/delivery";
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
@@ -190,6 +210,63 @@ function toPricingMode(value: unknown): PricingMode {
     return value;
   }
   return "day";
+}
+
+function toPricingKind(value: unknown): PricingKind {
+  return value === "fixed" ? "fixed" : "duration";
+}
+
+function buildReservationPricingBreakdown(params: {
+  pricingKind: PricingKind;
+  basePrice: number;
+  deposit: number;
+  pricingMode: PricingMode;
+  quantity: number;
+  durationMinutes: number;
+  result: SeasonalPriceResult;
+}): PricingBreakdown {
+  if (params.pricingKind === "fixed") {
+    return calculateFixedPrice(
+      {
+        basePrice: params.basePrice,
+        deposit: params.deposit,
+        pricingMode: params.pricingMode,
+      },
+      params.quantity,
+    ).breakdown;
+  }
+
+  return {
+    basePrice: params.basePrice,
+    effectivePrice: params.result.subtotal / Math.max(1, params.quantity),
+    duration: params.durationMinutes,
+    pricingMode: params.pricingMode,
+    pricingKind: params.pricingKind,
+    discountPercent:
+      params.result.savings > 0 && params.result.originalSubtotal > 0
+        ? Math.round((params.result.savings / params.result.originalSubtotal) * 100)
+        : null,
+    discountAmount: params.result.savings,
+    tierApplied: null,
+    durationMinutes: params.durationMinutes,
+    appliedPeriods: undefined,
+    optimizerVersion: "v2",
+    taxRate: null,
+    taxAmount: null,
+    subtotalExclTax: null,
+    subtotalInclTax: null,
+    ...(params.result.isSeasonal
+      ? {
+          seasonalSegments: params.result.segments.map((segment) => ({
+            seasonalPricingId: segment.seasonalPricingId,
+            seasonalPricingName: segment.seasonalPricingName,
+            startDate: segment.startDate.toISOString(),
+            endDate: segment.endDate.toISOString(),
+            subtotal: segment.subtotal,
+          })),
+        }
+      : {}),
+  };
 }
 
 async function fetchSeasonalPricingConfigs(productId: string): Promise<SeasonalPricingConfig[]> {
@@ -363,7 +440,7 @@ export async function updateReservationStatus(
         })
       : [];
 
-  const previousStatus = reservation.status;
+  let previousStatus = reservation.status;
   const updateData: Record<string, unknown> = {
     status,
     updatedAt: new Date(),
@@ -376,7 +453,59 @@ export async function updateReservationStatus(
     updateData.returnedAt = new Date();
   }
 
-  await db.update(reservations).set(updateData).where(eq(reservations.id, reservationId));
+  try {
+    const transitionResult = await db.transaction(async (tx) => {
+      const [lockedReservation] = await tx
+        .select({ status: reservations.status })
+        .from(reservations)
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
+        .for("update");
+
+      if (!lockedReservation) {
+        throw new ConsumableStockError({
+          code: "RESERVATION_NOT_FOUND",
+          message: "errors.reservationNotFound",
+        });
+      }
+
+      if (lockedReservation.status !== reservation.status) {
+        return { ok: false as const, error: "errors.reservationStatusChanged" as const };
+      }
+
+      if (!canTransitionReservationStatus(lockedReservation.status, status)) {
+        return { ok: false as const, error: "errors.reservationStatusChanged" as const };
+      }
+
+      if (
+        status === "confirmed" &&
+        (lockedReservation.status === "pending" || lockedReservation.status === "quote")
+      ) {
+        await consumeReservationStock(tx, reservationId, store.id);
+      } else if (
+        (status === "cancelled" || status === "rejected") &&
+        (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
+      ) {
+        await restoreReservationStock(tx, reservationId, store.id);
+      }
+
+      await tx
+        .update(reservations)
+        .set(updateData)
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
+
+      return { ok: true as const, previousStatus: lockedReservation.status };
+    });
+
+    if (!transitionResult.ok) {
+      return { error: transitionResult.error };
+    }
+    previousStatus = transitionResult.previousStatus;
+  } catch (error) {
+    if (error instanceof ConsumableStockError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 
   // Log activity based on status transition
   const activityMap: Record<string, ActivityType> = {
@@ -640,21 +769,60 @@ export async function cancelReservation(reservationId: string) {
     return { error: "errors.reservationNotFound" };
   }
 
-  if (["cancelled", "completed", "rejected", "declined"].includes(reservation.status || "")) {
-    return { error: "errors.cannotCancelReservation" };
-  }
+  let previousStatus = reservation.status;
+  try {
+    type CancellationResult =
+      | { cancelled: false }
+      | {
+          cancelled: true;
+          previousStatus: typeof reservations.$inferSelect.status;
+        };
+    const cancellation = await db.transaction(async (tx): Promise<CancellationResult> => {
+      const [lockedReservation] = await tx
+        .select({ status: reservations.status })
+        .from(reservations)
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
+        .for("update");
 
-  await db
-    .update(reservations)
-    .set({
-      status: "cancelled",
-      updatedAt: new Date(),
-    })
-    .where(eq(reservations.id, reservationId));
+      if (
+        !lockedReservation ||
+        ["cancelled", "completed", "rejected", "declined"].includes(lockedReservation.status)
+      ) {
+        return { cancelled: false };
+      }
+
+      if (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing") {
+        await restoreReservationStock(tx, reservationId, store.id);
+      }
+
+      await tx
+        .update(reservations)
+        .set({
+          status: "cancelled",
+          updatedAt: new Date(),
+        })
+        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
+
+      return {
+        cancelled: true,
+        previousStatus: lockedReservation.status,
+      };
+    });
+
+    if (!cancellation.cancelled) {
+      return { error: "errors.cannotCancelReservation" };
+    }
+    previousStatus = cancellation.previousStatus;
+  } catch (error) {
+    if (error instanceof ConsumableStockError) {
+      return { error: error.message };
+    }
+    throw error;
+  }
 
   // Log activity
   await logReservationActivity(reservationId, "cancelled", {
-    previousStatus: reservation.status,
+    previousStatus,
   });
 
   // Pay-as-you-go: drop the (not-yet-billed) commission for this rental.
@@ -961,6 +1129,7 @@ export async function createManualReservation(data: CreateReservationData) {
           basePrice: parseFloat(product.price),
           basePeriodMinutes: product.basePeriodMinutes ?? null,
           deposit: parseFloat(product.deposit || "0"),
+          pricingKind: product.pricingKind,
           pricingMode: effectivePricingMode,
           enforceStrictTiers: product.enforceStrictTiers ?? false,
           tiers,
@@ -981,36 +1150,15 @@ export async function createManualReservation(data: CreateReservationData) {
         total: seasonalResult.total,
       };
 
-      let pricingBreakdown: PricingBreakdown = {
+      let pricingBreakdown = buildReservationPricingBreakdown({
+        pricingKind: product.pricingKind,
         basePrice: parseFloat(product.price),
-        effectivePrice: seasonalResult.subtotal / Math.max(1, item.quantity),
-        duration: durationMinutes,
+        deposit: parseFloat(product.deposit || "0"),
         pricingMode: effectivePricingMode,
-        discountPercent:
-          seasonalResult.savings > 0 && seasonalResult.originalSubtotal > 0
-            ? Math.round((seasonalResult.savings / seasonalResult.originalSubtotal) * 100)
-            : null,
-        discountAmount: seasonalResult.savings,
-        tierApplied: null,
+        quantity: item.quantity,
         durationMinutes,
-        appliedPeriods: undefined,
-        optimizerVersion: "v2",
-        taxRate: null,
-        taxAmount: null,
-        subtotalExclTax: null,
-        subtotalInclTax: null,
-        ...(seasonalResult.isSeasonal
-          ? {
-              seasonalSegments: seasonalResult.segments.map((seg) => ({
-                seasonalPricingId: seg.seasonalPricingId,
-                seasonalPricingName: seg.seasonalPricingName,
-                startDate: seg.startDate.toISOString(),
-                endDate: seg.endDate.toISOString(),
-                subtotal: seg.subtotal,
-              })),
-            }
-          : {}),
-      };
+        result: seasonalResult,
+      });
 
       // Check for price override
       const hasPriceOverride = !!item.priceOverride;
@@ -1019,7 +1167,10 @@ export async function createManualReservation(data: CreateReservationData) {
 
       if (hasPriceOverride) {
         effectiveUnitPrice = item.priceOverride!.unitPrice;
-        effectiveSubtotal = effectiveUnitPrice * duration * item.quantity;
+        effectiveSubtotal =
+          effectiveUnitPrice *
+          (product.pricingKind === "fixed" ? 1 : duration) *
+          item.quantity;
 
         // Update pricing breakdown to reflect the override
         pricingBreakdown = {
@@ -1241,7 +1392,7 @@ export async function createManualReservation(data: CreateReservationData) {
         sql`, `,
       );
       await tx.execute(
-        sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) FOR UPDATE`,
+        sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) AND store_id = ${store.id} FOR UPDATE`,
       );
     }
 
@@ -1316,7 +1467,22 @@ export async function createManualReservation(data: CreateReservationData) {
       turnoverBufferMinutes,
       excludedProductUnitIds,
       excludedUnitInfo,
+      consumableProductIds: new Set(
+        lockedProducts
+          .filter((product) => product.stockKind === "consumable")
+          .map((product) => product.id),
+      ),
     });
+    const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
+      storeId: store.id,
+      productIds: lockedProducts
+        .filter((product) => product.stockKind === "consumable")
+        .map((product) => product.id),
+      blockingStatuses,
+    });
+    for (const [productId, reservedQuantity] of consumableReservedByProduct) {
+      reservedByProduct.set(productId, reservedQuantity);
+    }
     const combinationsByProduct = new Map<
       string,
       Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
@@ -1352,6 +1518,10 @@ export async function createManualReservation(data: CreateReservationData) {
 
     for (const product of lockedProducts) {
       if (!product.trackUnits) {
+        if (product.stockKind === "untracked") {
+          continue;
+        }
+
         const reserved = reservedByProduct.get(product.id) || 0;
         remainingByProduct.set(product.id, Math.max(0, product.quantity - reserved));
         continue;
@@ -1378,6 +1548,10 @@ export async function createManualReservation(data: CreateReservationData) {
       }
 
       if (!product.trackUnits) {
+        if (product.stockKind === "untracked") {
+          continue;
+        }
+
         const available = remainingByProduct.get(product.id) || 0;
         if (detail.quantity > available) {
           shortfalls.push({
@@ -1574,6 +1748,10 @@ export async function createManualReservation(data: CreateReservationData) {
           images: [],
         },
       });
+    }
+
+    if (!data.sendAsQuote) {
+      await consumeReservationStock(tx, reservationId, store.id);
     }
 
     return {
@@ -2423,11 +2601,32 @@ export async function updateReservation(
       let itemPricingMode: PricingMode = toPricingMode(item.pricingMode);
       let duration = calculateDuration(newStartDate, newEndDate, itemPricingMode);
       let totalPrice = item.unitPrice * duration * item.quantity;
+      let manualPricingKind: PricingKind = "duration";
+
+      if (item.isManualPrice && item.productId) {
+        const manualPriceProduct = await db.query.products.findFirst({
+          where: and(
+            eq(products.id, item.productId),
+            eq(products.storeId, store.id),
+          ),
+          columns: { pricingKind: true },
+        });
+        // The product may have been deleted since the reservation was created;
+        // the stored breakdown keeps the kind so the manual price stays editable.
+        const existingBreakdown = item.id
+          ? existingItemsById.get(item.id)?.pricingBreakdown
+          : undefined;
+        manualPricingKind =
+          manualPriceProduct?.pricingKind ??
+          toPricingKind(existingBreakdown?.pricingKind);
+        duration = manualPricingKind === "fixed" ? 1 : duration;
+        totalPrice = item.unitPrice * duration * item.quantity;
+      }
 
       // If not manual price and has a productId, calculate with tiers
       if (!item.isManualPrice && item.productId) {
         const product = await db.query.products.findFirst({
-          where: eq(products.id, item.productId),
+          where: and(eq(products.id, item.productId), eq(products.storeId, store.id)),
           with: { pricingTiers: true },
         });
 
@@ -2464,6 +2663,7 @@ export async function updateReservation(
               basePrice: parseFloat(product.price),
               basePeriodMinutes: product.basePeriodMinutes ?? null,
               deposit: parseFloat(product.deposit || "0"),
+              pricingKind: product.pricingKind,
               pricingMode: itemPricingMode,
               enforceStrictTiers: product.enforceStrictTiers ?? false,
               tiers,
@@ -2482,38 +2682,15 @@ export async function updateReservation(
             deposit: seasonalResultForItem.deposit,
           };
 
-          pricingBreakdown = {
+          pricingBreakdown = buildReservationPricingBreakdown({
+            pricingKind: product.pricingKind,
             basePrice: parseFloat(product.price),
-            effectivePrice: seasonalResultForItem.subtotal / Math.max(1, item.quantity),
-            duration: durationMinutes,
+            deposit: parseFloat(product.deposit || "0"),
             pricingMode: itemPricingMode,
-            discountPercent:
-              seasonalResultForItem.savings > 0 && seasonalResultForItem.originalSubtotal > 0
-                ? Math.round(
-                    (seasonalResultForItem.savings / seasonalResultForItem.originalSubtotal) * 100,
-                  )
-                : null,
-            discountAmount: seasonalResultForItem.savings,
-            tierApplied: null,
+            quantity: item.quantity,
             durationMinutes,
-            appliedPeriods: undefined,
-            optimizerVersion: "v2",
-            taxRate: null,
-            taxAmount: null,
-            subtotalExclTax: null,
-            subtotalInclTax: null,
-            ...(seasonalResultForItem.isSeasonal
-              ? {
-                  seasonalSegments: seasonalResultForItem.segments.map((seg) => ({
-                    seasonalPricingId: seg.seasonalPricingId,
-                    seasonalPricingName: seg.seasonalPricingName,
-                    startDate: seg.startDate.toISOString(),
-                    endDate: seg.endDate.toISOString(),
-                    subtotal: seg.subtotal,
-                  })),
-                }
-              : {}),
-          };
+            result: seasonalResultForItem,
+          });
           finalUnitPrice = priceResult.subtotal / Math.max(1, item.quantity);
           totalPrice = priceResult.subtotal;
         }
@@ -2523,6 +2700,7 @@ export async function updateReservation(
           effectivePrice: item.unitPrice,
           duration,
           pricingMode: itemPricingMode,
+          pricingKind: manualPricingKind,
           discountPercent: null,
           discountAmount: 0,
           tierApplied: null,
@@ -2561,6 +2739,9 @@ export async function updateReservation(
       if (item.id) {
         const existingItem = existingItemsById.get(item.id);
         if (!existingItem) {
+          return { error: "errors.invalidData" };
+        }
+        if (existingItem.productId !== itemValues.productId) {
           return { error: "errors.invalidData" };
         }
         if (hasReservationItemChanges(existingItem, itemValues)) {
@@ -2629,6 +2810,7 @@ export async function updateReservation(
               basePrice: parseFloat(product.price),
               basePeriodMinutes: product.basePeriodMinutes ?? null,
               deposit: parseFloat(product.deposit || "0"),
+              pricingKind: product.pricingKind,
               pricingMode: effectivePricingMode,
               enforceStrictTiers: product.enforceStrictTiers ?? false,
               tiers,
@@ -2640,38 +2822,15 @@ export async function updateReservation(
             item.quantity,
           );
 
-          const newBreakdown: PricingBreakdown = {
+          const newBreakdown = buildReservationPricingBreakdown({
+            pricingKind: product.pricingKind,
             basePrice: parseFloat(product.price),
-            effectivePrice: seasonalResultForDate.subtotal / Math.max(1, item.quantity),
-            duration: itemDurationMinutes,
+            deposit: parseFloat(product.deposit || "0"),
             pricingMode: effectivePricingMode,
-            discountPercent:
-              seasonalResultForDate.savings > 0 && seasonalResultForDate.originalSubtotal > 0
-                ? Math.round(
-                    (seasonalResultForDate.savings / seasonalResultForDate.originalSubtotal) * 100,
-                  )
-                : null,
-            discountAmount: seasonalResultForDate.savings,
-            tierApplied: null,
+            quantity: item.quantity,
             durationMinutes: itemDurationMinutes,
-            appliedPeriods: undefined,
-            optimizerVersion: "v2",
-            taxRate: null,
-            taxAmount: null,
-            subtotalExclTax: null,
-            subtotalInclTax: null,
-            ...(seasonalResultForDate.isSeasonal
-              ? {
-                  seasonalSegments: seasonalResultForDate.segments.map((seg) => ({
-                    seasonalPricingId: seg.seasonalPricingId,
-                    seasonalPricingName: seg.seasonalPricingName,
-                    startDate: seg.startDate.toISOString(),
-                    endDate: seg.endDate.toISOString(),
-                    subtotal: seg.subtotal,
-                  })),
-                }
-              : {}),
-          };
+            result: seasonalResultForDate,
+          });
           finalUnitPrice = seasonalResultForDate.subtotal / Math.max(1, item.quantity);
           totalPrice = seasonalResultForDate.subtotal;
 
@@ -2693,7 +2852,11 @@ export async function updateReservation(
           }
         } else {
           const fallbackPricingMode = toPricingMode(pricingBreakdown?.pricingMode);
-          const itemDuration = calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
+          const fallbackPricingKind = toPricingKind(pricingBreakdown?.pricingKind);
+          const itemDuration =
+            fallbackPricingKind === "fixed"
+              ? 1
+              : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
           totalPrice = finalUnitPrice * itemDuration * item.quantity;
           const itemValues = {
             productId: item.productId,
@@ -2713,15 +2876,27 @@ export async function updateReservation(
           }
         }
       } else {
-        // Manual price - just multiply by new duration
+        // Manual overrides on fixed products stay independent of rental dates.
         const fallbackPricingMode = toPricingMode(pricingBreakdown?.pricingMode);
-        const itemDuration = calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
+        let manualPricingKind = toPricingKind(pricingBreakdown?.pricingKind);
+        if (item.productId) {
+          const manualPriceProduct = await db.query.products.findFirst({
+            where: and(eq(products.id, item.productId), eq(products.storeId, store.id)),
+            columns: { pricingKind: true },
+          });
+          manualPricingKind = manualPriceProduct?.pricingKind ?? manualPricingKind;
+        }
+        const itemDuration =
+          manualPricingKind === "fixed"
+            ? 1
+            : calculateDuration(newStartDate, newEndDate, fallbackPricingMode);
         totalPrice = finalUnitPrice * itemDuration * item.quantity;
         const nextPricingBreakdown = item.pricingBreakdown
           ? {
               ...item.pricingBreakdown,
               duration: itemDuration,
               pricingMode: fallbackPricingMode,
+              pricingKind: manualPricingKind,
             }
           : null;
         const itemValues = {
@@ -3042,13 +3217,21 @@ export async function updateReservation(
 
   const transactionResult = await db.transaction(async (tx) => {
     const [lockedReservation] = await tx
-      .select({ id: reservations.id })
+      .select({ id: reservations.id, status: reservations.status })
       .from(reservations)
       .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
       .for("update");
 
     if (!lockedReservation) {
       return { error: "errors.reservationNotFound" };
+    }
+
+    if (lockedReservation.status !== reservation.status) {
+      return { error: "errors.reservationStatusChanged" };
+    }
+
+    if (lockedReservation.status === "completed") {
+      return { error: "errors.cannotEditCompletedReservation" };
     }
 
     await tx
@@ -3281,7 +3464,30 @@ export async function updateReservation(
     }
 
     if (itemIdsToDelete.length > 0) {
-      await tx.delete(reservationItems).where(inArray(reservationItems.id, itemIdsToDelete));
+      await tx
+        .update(reservationItems)
+        .set({ quantity: 0 })
+        .where(
+          and(
+            eq(reservationItems.reservationId, reservationId),
+            inArray(reservationItems.id, itemIdsToDelete),
+          ),
+        );
+    }
+
+    if (reservationStatusConsumesStock(lockedReservation.status)) {
+      await reconcileReservationStock(tx, reservationId, store.id);
+    }
+
+    if (itemIdsToDelete.length > 0) {
+      await tx
+        .delete(reservationItems)
+        .where(
+          and(
+            eq(reservationItems.reservationId, reservationId),
+            inArray(reservationItems.id, itemIdsToDelete),
+          ),
+        );
     }
 
     await tx
@@ -3302,14 +3508,21 @@ export async function updateReservation(
       })
       .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
 
-    return { success: true };
+    return { success: true, reservationStatus: lockedReservation.status };
+  }).catch((error: unknown) => {
+    if (error instanceof ConsumableStockError) {
+      return { error: error.message };
+    }
+    throw error;
   });
 
-  if (transactionResult.error) {
+  if ("error" in transactionResult) {
     return transactionResult;
   }
 
-  if (reservation.status === "confirmed" || reservation.status === "ongoing") {
+  const currentReservationStatus = transactionResult.reservationStatus;
+
+  if (reservationStatusConsumesStock(currentReservationStatus)) {
     try {
       await syncTulipContractForReservation({ reservationId });
     } catch (error) {
@@ -3391,7 +3604,7 @@ export async function updateReservation(
     reservationId,
     action: reservationAnalyticsActions.editReservation,
     properties: {
-      reservation_status: reservation.status,
+      reservation_status: currentReservationStatus,
       item_count: data.items?.length ?? reservation.items.length,
       warning_count: responseWarnings.length,
       notify_customer: Boolean(data.notifyCustomerByEmail),
@@ -3421,6 +3634,13 @@ interface RecordPaymentData {
   amount: number;
   method: PaymentMethod;
   paidAt?: Date;
+  notes?: string;
+}
+
+interface RefundManualPaymentData {
+  paymentId: string;
+  amount: number;
+  method: PaymentMethod;
   notes?: string;
 }
 
@@ -3472,9 +3692,15 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   }
 
   if (data.amount > 0 && data.type === "rental") {
-    const rentalPaid = reservation.payments
-      .filter((p) => p.type === "rental" && p.status === "completed")
-      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const paymentsById = new Map(reservation.payments.map((payment) => [payment.id, payment]));
+    const rentalPaid = reservation.payments.reduce((total, payment) => {
+      if (payment.status !== "completed") return total;
+      if (payment.refundOfPaymentId) {
+        const originalPayment = paymentsById.get(payment.refundOfPaymentId);
+        return originalPayment?.type === "rental" ? total - Number(payment.amount) : total;
+      }
+      return payment.type === "rental" ? total + Number(payment.amount) : total;
+    }, 0);
     const rentalRemaining = roundMoney(getReservationRentalAmount(reservation) - rentalPaid);
 
     if (data.amount > rentalRemaining) {
@@ -3507,6 +3733,20 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
     notes: data.notes || null,
   });
 
+  let invoiceNumber: string | undefined;
+  if (["rental", "damage", "adjustment"].includes(data.type) && data.amount > 0) {
+    const invoiceGeneration = await tryGenerateInvoiceForPayment(
+      paymentId,
+      "dashboard_record_payment",
+    );
+    if (invoiceGeneration.status === "generated") {
+      invoiceNumber = invoiceGeneration.number;
+      if (invoiceGeneration.kind === "initial") {
+        await trySendInitialInvoicePaymentConfirmation(paymentId);
+      }
+    }
+  }
+
   // Log activity
   await logReservationActivity(reservationId, "payment_added", {
     paymentId,
@@ -3536,7 +3776,122 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
       amount_cents: toAnalyticsAmountCents(data.amount),
     },
   });
-  return { success: true, paymentId };
+  return { success: true, paymentId, invoiceNumber };
+}
+
+export async function refundManualPayment(
+  reservationId: string,
+  data: RefundManualPaymentData,
+) {
+  const store = await getStoreForUser();
+  if (!store) {
+    return { error: "errors.unauthorized" };
+  }
+
+  if (!Number.isFinite(data.amount) || data.amount <= 0) {
+    return { error: "errors.invalidAmount" };
+  }
+
+  let refundPaymentId: string;
+  try {
+    refundPaymentId = await db.transaction(async (tx) => {
+      const [originalPayment] = await tx
+        .select({
+          id: payments.id,
+          amount: payments.amount,
+          type: payments.type,
+          status: payments.status,
+          currency: payments.currency,
+          refundOfPaymentId: payments.refundOfPaymentId,
+        })
+        .from(payments)
+        .innerJoin(reservations, eq(reservations.id, payments.reservationId))
+        .where(
+          and(
+            eq(payments.id, data.paymentId),
+            eq(payments.reservationId, reservationId),
+            eq(reservations.storeId, store.id),
+          ),
+        )
+        .for("update");
+
+      if (!originalPayment) {
+        throw new Error("errors.paymentNotFound");
+      }
+
+      if (
+        originalPayment.status !== "completed" ||
+        !["rental", "damage", "adjustment", "deposit_capture"].includes(
+          originalPayment.type,
+        ) ||
+        originalPayment.refundOfPaymentId !== null ||
+        Number(originalPayment.amount) <= 0
+      ) {
+        throw new Error("errors.invalidAmount");
+      }
+
+      const [refundTotal] = await tx
+        .select({
+          amount: sql<string>`coalesce(sum(${payments.amount}), 0)`,
+        })
+        .from(payments)
+        .where(
+          and(
+            eq(payments.refundOfPaymentId, originalPayment.id),
+            eq(payments.status, "completed"),
+          ),
+        );
+
+      const remainingAmount = roundMoney(
+        Number(originalPayment.amount) - Number(refundTotal?.amount ?? 0),
+      );
+      if (data.amount > remainingAmount) {
+        throw new Error("errors.invalidAmount");
+      }
+
+      const paymentId = nanoid();
+      const paidAt = new Date();
+      await tx.insert(payments).values({
+        id: paymentId,
+        reservationId,
+        amount: data.amount.toFixed(2),
+        type: originalPayment.type === "deposit_capture" ? "deposit_return" : "rental",
+        method: data.method,
+        status: "completed",
+        refundOfPaymentId: originalPayment.id,
+        currency: originalPayment.currency,
+        notes: data.notes?.trim() || null,
+        paidAt,
+        createdAt: paidAt,
+        updatedAt: paidAt,
+      });
+
+      return paymentId;
+    });
+  } catch (error) {
+    return { error: getActionErrorKey(error, "errors.invalidAmount") };
+  }
+
+  const creditNoteGeneration = await tryGenerateCreditNoteForRefund(
+    { originalPaymentId: data.paymentId, refundPaymentId },
+    data.amount,
+    "dashboard_refund_manual_payment",
+  );
+  const creditNoteNumber =
+    creditNoteGeneration.status === "generated" ? creditNoteGeneration.number : undefined;
+
+  await logReservationActivity(reservationId, "payment_updated", {
+    paymentId: data.paymentId,
+    refundPaymentId,
+    amount: data.amount,
+    method: data.method,
+    action: "refunded",
+  });
+
+  revalidatePath("/dashboard/reservations");
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+
+  return { success: true, refundPaymentId, creditNoteNumber };
 }
 
 export async function deletePayment(paymentId: string) {
@@ -3555,6 +3910,15 @@ export async function deletePayment(paymentId: string) {
 
   if (!payment || payment.reservation.storeId !== store.id) {
     return { error: "errors.paymentNotFound" };
+  }
+
+  const [invoiceLink] = await db
+    .select({ id: invoicePayments.id })
+    .from(invoicePayments)
+    .where(eq(invoicePayments.paymentId, paymentId))
+    .limit(1);
+  if (invoiceLink) {
+    return { error: "errors.paymentInvoiced" };
   }
 
   // Cannot delete Stripe payments
@@ -3697,6 +4061,8 @@ export async function recordDamage(
     paidAt: new Date(),
     notes: data.notes,
   });
+
+  await tryGenerateInvoiceForPayment(paymentId, "dashboard_record_damage");
 
   // Log activity
   await logReservationActivity(reservationId, "payment_added", {
@@ -3962,8 +4328,9 @@ export async function captureDepositHold(
     }
 
     // Create deposit_capture payment record
+    const capturePaymentId = nanoid();
     await db.insert(payments).values({
-      id: nanoid(),
+      id: capturePaymentId,
       reservationId,
       amount: data.amount.toFixed(2),
       type: "deposit_capture",
@@ -3976,6 +4343,8 @@ export async function captureDepositHold(
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    await tryGenerateInvoiceForPayment(capturePaymentId, "dashboard_capture_deposit_hold");
 
     // Log activity
     const currencySymbol = getCurrencySymbol(currency);
@@ -4178,23 +4547,27 @@ export async function processStripeRefund(reservationId: string, data: ProcessSt
       amount: refundAmountCents,
     });
 
-    // Create payment record for the refund (negative amount for display)
-    const paymentId = nanoid();
-    await db.insert(payments).values({
-      id: paymentId,
-      reservationId,
-      amount: data.amount.toFixed(2),
-      type: data.type === "deposit_return" ? "deposit_return" : "rental",
-      method: "stripe",
-      status: "completed",
-      stripeRefundId: refund.refundId,
-      stripeChargeId: stripePayment.stripeChargeId,
-      currency: refund.currency,
-      notes: data.notes,
-      paidAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    const refundPaidAt = new Date();
+    const paymentId = await tryEnsureRefundPaymentRecord(
+      {
+        originalPaymentId: stripePayment.id,
+        stripeRefundId: refund.refundId,
+        amount: data.amount,
+        type: data.type === "deposit_return" ? "deposit_return" : "rental",
+        currency: refund.currency,
+        notes: data.notes,
+        paidAt: refundPaidAt,
+      },
+      "dashboard_process_stripe_refund",
+    );
+
+    if (data.type === "rental_refund" && paymentId) {
+      await tryGenerateCreditNoteForRefund(
+        { originalPaymentId: stripePayment.id, refundPaymentId: paymentId },
+        data.amount,
+        "dashboard_process_stripe_refund",
+      );
+    }
 
     // Log activity
     await logReservationActivity(reservationId, "payment_updated", {

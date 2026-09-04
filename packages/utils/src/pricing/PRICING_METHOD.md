@@ -1,5 +1,14 @@
 # Rate-Based Pricing Method
 
+## Pricing kind: duration vs fixed
+
+The per-product enum `pricingKind` (DB column `products.pricing_kind`, values `duration` | `fixed`, default `duration`) decides whether duration enters the price calculation at all.
+
+- `duration`: everything below applies (V1 legacy tiers, V2 rate-based, seasonal pricing).
+- `fixed` ("Forfait"): the line subtotal is `price × quantity`, full stop. `basePeriodMinutes` is `null`, pricing tiers and seasonal pricing are absent (product create/update purges them), and `enforceStrictTiers` is ignored. Deposits remain supported. Inventory is a separate axis: `stockKind=returnable` keeps time-window availability, `stockKind=consumable` decrements on confirmation, and `stockKind=untracked` has no quantity limit. Every calculation entry point (`calculateRentalPrice`, `calculateRateBasedPrice`, `calculateSeasonalAwarePrice`, `calculateCartItemPrice`) short-circuits through `calculateFixedPrice` when `isFixedPriceProduct` matches, and the resulting `PricingBreakdown` carries `pricingKind: 'fixed'` with `duration: 1`.
+
+The rest of this document describes `duration` products only.
+
 ## Overview
 
 Rate-based products (`basePeriodMinutes > 0`) have a base price/period and optional additional pricing tiers. Each tier defines a fixed price for a specific duration period (in minutes).

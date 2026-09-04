@@ -11,6 +11,7 @@ import {
   XCircleSolidIcon,
 } from "@louez/ui/icons";
 import { formatStoreDateRange } from "@/lib/utils/store-date";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 import { cn, getCurrencySymbol } from "@louez/utils";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -60,6 +61,8 @@ interface ReservationsCardViewProps {
   reservations: Reservation[];
   currency?: string;
   timezone?: string;
+  /** Dashboard path the reservation detail page should send the user back to. */
+  returnTo?: string | null;
   loadingAction: string | null;
   handleStatusChange: (
     e: React.MouseEvent,
@@ -73,11 +76,13 @@ export function ReservationsCardView({
   reservations,
   currency = "EUR",
   timezone,
+  returnTo,
   loadingAction,
   handleStatusChange,
   openRejectDialog,
 }: ReservationsCardViewProps) {
   const t = useTranslations("dashboard.reservations");
+  const { intl: formatLocale } = useFormatLocale();
   const searchParams = useSearchParams();
   const sourceParam = searchParams.get("source");
   const reservationSource = isReservationAnalyticsSource(sourceParam)
@@ -114,7 +119,7 @@ export function ReservationsCardView({
           return (
             <Link
               key={reservation.id}
-              href={getReservationDetailHref(reservation.id, reservationSource)}
+              href={getReservationDetailHref(reservation.id, reservationSource, returnTo)}
               className="block group"
             >
               <Card
@@ -195,7 +200,12 @@ export function ReservationsCardView({
                       {/* Dates */}
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <Calendar className="h-3.5 w-3.5" />
-                        {formatStoreDateRange(reservation.startDate, reservation.endDate, timezone)}
+                        {formatStoreDateRange(
+                          reservation.startDate,
+                          reservation.endDate,
+                          timezone,
+                          formatLocale,
+                        )}
                       </div>
                     </div>
 

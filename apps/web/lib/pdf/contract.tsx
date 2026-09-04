@@ -9,6 +9,7 @@ import {
 import { createContractStyles } from "./styles";
 import { parseCgvHtml } from "./cgv-parser";
 import { formatStoreDate } from "@/lib/utils/store-date";
+import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
 import { toAbsoluteUrl } from "@louez/utils";
 import { env } from "@/env";
 import type { ReservationLocationSnapshot } from "@louez/types";
@@ -216,19 +217,7 @@ function formatCurrencyValue(
 ): string {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
 
-  // Map currency to best locale for formatting
-  const currencyLocaleMap: Record<string, string> = {
-    EUR: locale === "fr" ? "fr-FR" : "en-IE",
-    USD: "en-US",
-    GBP: "en-GB",
-    CHF: "de-CH",
-    CAD: "en-CA",
-    AUD: "en-AU",
-  };
-
-  const formatLocale = currencyLocaleMap[currency] || (locale === "fr" ? "fr-FR" : "en-US");
-
-  return new Intl.NumberFormat(formatLocale, {
+  return new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
     style: "currency",
     currency: currency,
   })

@@ -65,7 +65,10 @@ export async function resolveStorefrontCombination(
   }
 
   if (!product.trackUnits) {
-    if (availableProduct.availableQuantity < quantity) {
+    if (
+      availableProduct.availableQuantity !== null &&
+      availableProduct.availableQuantity < quantity
+    ) {
       throw new ApiServiceError('BAD_REQUEST', 'errors.productNoLongerAvailable', {
         name: product.name,
       })

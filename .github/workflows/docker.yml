@@ -13,8 +13,16 @@ on:
       - "apps/background-removal/**"
       - "packages/db/**"
       - "apps/web/next.config.*"
+      - "apps/web/env.ts"
+      - "packages/auth/**"
       - "apps/web/instrumentation.ts"
+      - "apps/web/instrumentation-client.ts"
       - "apps/web/proxy.ts"
+      - "apps/web/components/shared/posthog-bootstrap.tsx"
+      - "apps/web/components/shared/public-env-provider.tsx"
+      - "apps/web/lib/posthog-client.ts"
+      - "apps/web/lib/validators/validator.public-env.ts"
+      - "apps/web/lib/util.security-headers.ts"
       - "apps/web/app/api/health/**"
       - "apps/web/app/api/standalone/**"
       - "pnpm-lock.yaml"
@@ -69,6 +77,15 @@ jobs:
           tags: louez-background-removal:smoke
           cache-from: type=gha,scope=background-removal
           cache-to: type=gha,mode=max,scope=background-removal
+
+      - name: Verify the web image contains no runtime marker
+        run: |
+          if docker run --rm --entrypoint sh louez-web:smoke -c \
+            'grep -R -F "runtime-public-config-smoke" /app/apps/web/.next/static'; then
+            echo "❌ Runtime configuration leaked into the immutable client bundles"
+            exit 1
+          fi
+          echo "✅ Client bundles remain environment-agnostic"
 
       - name: Start MySQL
         run: |
@@ -127,8 +144,17 @@ jobs:
             -e DATABASE_URL=mysql://root:smoketest@louez-db:3306/louez \
             -e AUTH_SECRET=smoke-test-secret-not-a-real-secret \
             -e BETTER_AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e S3_ENDPOINT=http://smoke-test.invalid:9000 \
+            -e S3_REGION=smoke \
+            -e S3_BUCKET=smoke-test \
+            -e S3_ACCESS_KEY_ID=smoke-test \
+            -e S3_SECRET_ACCESS_KEY=smoke-test \
+            -e S3_PUBLIC_URL=/media \
             -e NEXT_PUBLIC_APP_URL=http://localhost:3000 \
             -e NEXT_PUBLIC_APP_DOMAIN=localhost:3000 \
+            -e NEXT_PUBLIC_GLEAP_API_KEY=runtime-public-config-smoke-standalone \
+            -e NEXT_PUBLIC_FROMHELLO_API_URL=https://runtime-public-config-smoke-standalone.example.invalid \
+            -e NEXT_PUBLIC_OPENREPLAY_INGEST_POINT=https://runtime-public-config-smoke-replay-standalone.example.invalid/ingest \
             -e AI_IMAGE_BACKGROUND_REMOVAL_URL=http://louez-background-removal:7000 \
             -e AI_IMAGE_BACKGROUND_REMOVAL_TOKEN=smoke-test-background-removal-token \
             louez-web:smoke
@@ -166,6 +192,30 @@ jobs:
           done
           echo "✅ All core tables present"
 
+      - name: Verify standalone client runtime configuration
+        run: |
+          html=$(curl -fsSL http://localhost:3000/login)
+          if ! echo "$html" | grep -Fq "runtime-public-config-smoke-standalone"; then
+            echo "❌ Runtime public value is absent from the React bootstrap payload"
+            exit 1
+          fi
+          if ! echo "$html" | grep -Fq "${{ github.sha }}"; then
+            echo "❌ Build version is absent from the React bootstrap payload"
+            exit 1
+          fi
+          headers=$(curl -fsS -D - -o /dev/null http://localhost:3000/login | tr -d '\r')
+          if ! echo "$headers" | grep -Fi "content-security-policy:" | \
+            grep -Fq "https://runtime-public-config-smoke-standalone.example.invalid"; then
+            echo "❌ Runtime fromHello origin is absent from the CSP"
+            exit 1
+          fi
+          if ! echo "$headers" | grep -Fi "content-security-policy:" | \
+            grep -Fq "https://runtime-public-config-smoke-replay-standalone.example.invalid"; then
+            echo "❌ Runtime OpenReplay origin is absent from the CSP"
+            exit 1
+          fi
+          echo "✅ Standalone browser config comes from the container runtime"
+
       # The container above runs in standalone mode (LOUEZ_MODE unset — the
       # default): a fresh install must 404 the instance-store resolver and
       # walk visitors from the root to the login flow.
@@ -194,8 +244,16 @@ jobs:
             -e DATABASE_URL=mysql://root:smoketest@louez-db:3306/louez \
             -e AUTH_SECRET=smoke-test-secret-not-a-real-secret \
             -e BETTER_AUTH_SECRET=smoke-test-secret-not-a-real-secret \
+            -e S3_ENDPOINT=http://smoke-test.invalid:9000 \
+            -e S3_REGION=smoke \
+            -e S3_BUCKET=smoke-test \
+            -e S3_ACCESS_KEY_ID=smoke-test \
+            -e S3_SECRET_ACCESS_KEY=smoke-test \
+            -e S3_PUBLIC_URL=/media \
             -e NEXT_PUBLIC_APP_URL=http://localhost:3001 \
             -e NEXT_PUBLIC_APP_DOMAIN=localhost:3001 \
+            -e NEXT_PUBLIC_GLEAP_API_KEY=runtime-public-config-smoke-platform \
+            -e NEXT_PUBLIC_FROMHELLO_API_URL=https://runtime-public-config-smoke-platform.example.invalid \
             louez-web:smoke
           status=""
           for _ in $(seq 1 60); do
@@ -213,7 +271,26 @@ jobs:
             echo "❌ Platform mode must not expose the instance-store resolver (got $resolver)"
             exit 1
           fi
-          echo "✅ Platform mode boots with identical health and no standalone surface"
+          html=$(curl -fsSL http://localhost:3001/login)
+          if ! echo "$html" | grep -Fq "runtime-public-config-smoke-platform"; then
+            echo "❌ Second runtime value is absent from the React bootstrap payload"
+            exit 1
+          fi
+          if echo "$html" | grep -Fq "runtime-public-config-smoke-standalone"; then
+            echo "❌ Runtime configuration leaked between containers"
+            exit 1
+          fi
+          if ! echo "$html" | grep -Fq "${{ github.sha }}"; then
+            echo "❌ Build version changed between runtime configurations"
+            exit 1
+          fi
+          headers=$(curl -fsS -D - -o /dev/null http://localhost:3001/login | tr -d '\r')
+          if ! echo "$headers" | grep -Fi "content-security-policy:" | \
+            grep -Fq "https://runtime-public-config-smoke-platform.example.invalid"; then
+            echo "❌ Second runtime origin is absent from the CSP"
+            exit 1
+          fi
+          echo "✅ One image boots with two isolated runtime browser configurations"
 
       - name: Dump app logs
         if: always()

@@ -2,13 +2,15 @@
 
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { z } from "zod";
 
 import {
   computeReservedNetOfExcludedUnits,
   getRouteDistance,
   loadExcludedUnitInfo,
+  validateRequiredAccessoryLines,
 } from "@louez/api/services";
-import { db } from "@louez/db";
+import { db, loadConsumableReservedQuantities } from "@louez/db";
 import {
   aiAdvisorConversations,
   buildReservationAvailabilityPredicate,
@@ -19,6 +21,7 @@ import {
   payments,
   productSeasonalPricing,
   productSeasonalPricingTiers,
+  productAccessories,
   productUnits,
   products,
   promoCodes,
@@ -35,23 +38,25 @@ import type {
   PromoCodeSnapshot,
   UnitAttributes,
 } from "@louez/types";
-import type { ProductTaxSettings, StoreSettings, TaxSettings, TulipPublicMode } from "@louez/types";
+import type { ProductTaxSettings, StoreSettings, TulipPublicMode } from "@louez/types";
 import type { Rate } from "@louez/types";
 import {
-  advisorValidationCovers,
-  calculateTaxFromExclusive,
-  extractExclusiveFromInclusive,
-  getEffectiveTaxRate,
-} from "@louez/utils";
-import {
+  companySearchSchema,
   digitsOnly,
   isPlausibleVatNumber,
   isValidCompanyNumber,
   resolveCompanyNumberScheme,
 } from "@louez/validations";
-
+import {
+  advisorValidationCovers,
+  calculateTaxBreakdown,
+  extractExclusiveFromInclusive,
+  getEffectiveTaxRate,
+  taxSettingsToConfig,
+} from "@louez/utils";
 import {
   DEFAULT_COMBINATION_KEY,
+  calculateFixedPrice,
   calculateDuration as calcDuration,
   calculateSeasonalAwarePrice,
   getDeterministicCombinationSortValue,
@@ -81,7 +86,9 @@ import {
   toAnalyticsAmountCents,
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
+import { searchFrenchCompanies, type CompanySearchResult } from "@/lib/recherche-entreprises";
 import { resolveReservationLocationSnapshot } from "@/lib/reservations/location-snapshots";
+import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { normalizePhoneNumber } from "@/lib/sms/phone";
 import { createCheckoutSession, toStripeCents } from "@/lib/stripe";
 import { validateRentalPeriod } from "@/lib/utils/business-hours";
@@ -100,6 +107,7 @@ import {
 } from "@/lib/utils/rental-duration";
 
 import { getStorefrontUrl } from "@/lib/storefront-url";
+import type { Locale } from "@/i18n/config";
 
 interface ReservationItem {
   lineId?: string;
@@ -140,6 +148,7 @@ interface CreateReservationInput {
     phone?: string;
     customerType?: "individual" | "business";
     companyName?: string;
+    /** SIREN (FR) / BCE (BE). Optional — absent keeps the invoice B2C. */
     companyNumber?: string;
     vatNumber?: string;
     address?: string;
@@ -152,7 +161,7 @@ interface CreateReservationInput {
   depositAmount: number;
   totalAmount: number;
   tulipInsuranceOptIn?: boolean;
-  locale?: "fr" | "en" | "de" | "es" | "it" | "nl" | "pl" | "pt";
+  locale?: Locale;
   delivery?: DeliveryInput;
   promoCode?: string;
   advisorConversationId?: string;
@@ -179,6 +188,7 @@ interface CustomerCompanyIdentity {
   vatNumber: string | null;
 }
 
+/** Normalize and validate company identifiers before persisting invoice data. */
 function resolveCustomerCompanyIdentity(
   customer: CreateReservationInput["customer"],
   country: string,
@@ -211,6 +221,38 @@ function resolveCustomerCompanyIdentity(
   };
 }
 
+const checkoutCompanySearchSchema = z.object({
+  storeId: z.string().min(1).max(64),
+  query: companySearchSchema.shape.query,
+});
+
+/**
+ * Company lookup that prefills the business buyer's legal name and SIREN at
+ * checkout. Public on purpose (the storefront has no session) but scoped to a
+ * store, and only answered when that store operates in France — the registry
+ * is French-only. Any failure returns an empty list: typing the SIREN by hand
+ * must always stay possible.
+ */
+export async function searchCheckoutCompanyRegistry(input: {
+  storeId: string;
+  query: string;
+}): Promise<{ results: CompanySearchResult[] }> {
+  const validated = checkoutCompanySearchSchema.safeParse(input);
+  if (!validated.success) {
+    return { results: [] };
+  }
+
+  const store = await db.query.stores.findFirst({
+    where: eq(stores.id, validated.data.storeId),
+    columns: { id: true, settings: true },
+  });
+
+  if (!store || (store.settings?.country ?? "FR") !== "FR") {
+    return { results: [] };
+  }
+
+  return { results: await searchFrenchCompanies(validated.data.query) };
+}
 function getErrorKey(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.startsWith("errors.")) {
     return error.message;
@@ -687,9 +729,56 @@ export async function createReservation(input: CreateReservationInput) {
       };
     }
 
-    // Validate minimum rental duration
+    const cartProductIds = [...new Set(input.items.map((item) => item.productId))];
+    const cartProducts = await db
+      .select({ id: products.id, pricingKind: products.pricingKind })
+      .from(products)
+      .where(
+        and(
+          eq(products.storeId, input.storeId),
+          eq(products.status, "active"),
+          inArray(products.id, cartProductIds),
+        ),
+      );
+    if (cartProducts.length !== cartProductIds.length) {
+      return { error: "errors.productNotFound" };
+    }
+
+    const requiredAccessories = await db
+      .select({
+        parentProductId: productAccessories.productId,
+        accessoryProductId: productAccessories.accessoryId,
+        quantity: productAccessories.quantity,
+      })
+      .from(productAccessories)
+      .innerJoin(products, eq(productAccessories.productId, products.id))
+      .where(
+        and(
+          eq(products.storeId, input.storeId),
+          eq(productAccessories.required, true),
+          inArray(productAccessories.productId, cartProductIds),
+        ),
+      );
+    const requiredAccessoryValidation = validateRequiredAccessoryLines({
+      lines: input.items,
+      requiredAccessories,
+    });
+    if (!requiredAccessoryValidation.valid) {
+      return {
+        error: "errors.requiredAccessoriesMissing",
+        details: {
+          code: "required_accessories_missing",
+          missingAccessories: requiredAccessoryValidation.missing,
+        },
+      };
+    }
+
+    const hasDurationProduct = cartProducts.some(({ pricingKind }) => pricingKind === "duration");
+
+    // Fixed-price products do not impose their own duration constraints.
+    // A mixed cart still follows the store limits required by duration products.
     const minRentalMinutes = getMinRentalMinutes(store.settings as StoreSettings | null);
-    if (minRentalMinutes > 0) {
+    if (hasDurationProduct && minRentalMinutes > 0) {
       const durationCheck = validateMinRentalDurationMinutes(
         rentalStartDate,
         rentalEndDate,
@@ -707,7 +796,7 @@ export async function createReservation(input: CreateReservationInput) {
 
     // Validate maximum rental duration
     const maxRentalMinutes = getMaxRentalMinutes(store.settings as StoreSettings | null);
-    if (maxRentalMinutes !== null) {
+    if (hasDurationProduct && maxRentalMinutes !== null) {
       const maxCheck = validateMaxRentalDurationMinutes(
         rentalStartDate,
         rentalEndDate,
@@ -747,7 +836,7 @@ export async function createReservation(input: CreateReservationInput) {
         quantity: number;
         trackUnits: boolean;
         bookingAttributeAxes: BookingAttributeAxis[] | null;
-        taxSettings: unknown;
+        taxSettings: ProductTaxSettings | null;
       }
     >();
     let serverSubtotal = 0;
@@ -795,7 +884,7 @@ export async function createReservation(input: CreateReservationInput) {
             },
           };
         }
-      } else if (product.quantity < item.quantity) {
+      } else if (product.stockKind !== "untracked" && product.quantity < item.quantity) {
         return {
           error: "errors.insufficientStock",
           errorParams: {
@@ -819,102 +908,122 @@ export async function createReservation(input: CreateReservationInput) {
       const productPricingMode = product.pricingMode as PricingMode;
       const duration = calcDuration(item.startDate, item.endDate, productPricingMode);
 
-      // Fetch seasonal pricings for this product
-      const seasonalPricingsRaw = await db
-        .select()
-        .from(productSeasonalPricing)
-        .where(eq(productSeasonalPricing.productId, product.id));
-
-      let seasonalPricingConfigs: SeasonalPricingConfig[] = [];
-      if (seasonalPricingsRaw.length > 0) {
-        const spIds = seasonalPricingsRaw.map((sp) => sp.id);
-        const spTiersRaw = await db
-          .select()
-          .from(productSeasonalPricingTiers)
-          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds));
-
-        const spTiersByPricingId = new Map<string, typeof spTiersRaw>();
-        for (const tier of spTiersRaw) {
-          const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || [];
-          tiers.push(tier);
-          spTiersByPricingId.set(tier.seasonalPricingId, tiers);
-        }
-
-        seasonalPricingConfigs = seasonalPricingsRaw.map((sp) => {
-          const spTiers = spTiersByPricingId.get(sp.id) || [];
-          return {
-            id: sp.id,
-            name: sp.name,
-            startDate: sp.startDate,
-            endDate: sp.endDate,
-            basePrice: Number(sp.price),
-            tiers: spTiers
-              .filter((t) => t.minDuration !== null && t.discountPercent !== null)
-              .map((t) => ({
-                id: t.id,
-                minDuration: t.minDuration!,
-                discountPercent: Number(t.discountPercent!),
-                displayOrder: t.displayOrder ?? 0,
-              })),
-            rates: spTiers
-              .filter((t) => t.period !== null && t.price !== null)
-              .map((t) => ({
-                id: t.id,
-                period: t.period!,
-                price: Number(t.price!),
-                displayOrder: t.displayOrder ?? 0,
-              })),
-          };
-        });
-      }
-
-      // Use seasonal-aware pricing (short-circuits to normal pricing when no seasonal configs)
-      const baseTiers =
-        product.pricingTiers?.map((tier) => ({
-          id: tier.id,
-          minDuration: tier.minDuration ?? 1,
-          discountPercent: Number(tier.discountPercent ?? 0),
-          displayOrder: tier.displayOrder || 0,
-        })) || [];
-      const baseRates: Rate[] =
-        product.pricingTiers
-          ?.filter(
-            (tier): tier is typeof tier & { period: number; price: string } =>
-              typeof tier.period === "number" && tier.period > 0 && typeof tier.price === "string",
-          )
-          .map(
-            (tier, index): Rate => ({
-              id: tier.id,
-              period: tier.period,
-              price: Number(tier.price),
-              displayOrder: tier.displayOrder ?? index,
-            }),
-          ) || [];
-
-      const seasonalResult = calculateSeasonalAwarePrice(
-        {
-          basePrice: Number(product.price),
-          basePeriodMinutes: product.basePeriodMinutes ?? null,
-          deposit: Number(product.deposit || 0),
-          pricingMode: productPricingMode,
-          enforceStrictTiers: product.enforceStrictTiers ?? false,
-          tiers: baseTiers,
-          rates: baseRates,
-        },
-        seasonalPricingConfigs,
-        item.startDate,
-        item.endDate,
-        item.quantity,
-      );
-
-      const pricingResult = {
-        subtotal: seasonalResult.subtotal,
-        originalSubtotal: seasonalResult.originalSubtotal,
-        savings: seasonalResult.savings,
-        deposit: seasonalResult.deposit,
-        effectivePricePerUnit: seasonalResult.subtotal / Math.max(1, item.quantity),
+      let pricingResult: {
+        subtotal: number;
+        originalSubtotal: number;
+        savings: number;
+        deposit: number;
+        effectivePricePerUnit: number;
       };
 
+      if (product.pricingKind === "fixed") {
+        const fixedResult = calculateFixedPrice(
+          {
+            basePrice: Number(product.price),
+            deposit: Number(product.deposit || 0),
+            pricingMode: productPricingMode,
+          },
+          item.quantity,
+        );
+        pricingResult = fixedResult;
+      } else {
+        const seasonalPricingsRaw = await db
+          .select()
+          .from(productSeasonalPricing)
+          .where(eq(productSeasonalPricing.productId, product.id));
+
+        let seasonalPricingConfigs: SeasonalPricingConfig[] = [];
+        if (seasonalPricingsRaw.length > 0) {
+          const spIds = seasonalPricingsRaw.map((sp) => sp.id);
+          const spTiersRaw = await db
+            .select()
+            .from(productSeasonalPricingTiers)
+            .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds));
+
+          const spTiersByPricingId = new Map<string, typeof spTiersRaw>();
+          for (const tier of spTiersRaw) {
+            const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || [];
+            tiers.push(tier);
+            spTiersByPricingId.set(tier.seasonalPricingId, tiers);
+          }
+
+          seasonalPricingConfigs = seasonalPricingsRaw.map((sp) => {
+            const spTiers = spTiersByPricingId.get(sp.id) || [];
+            return {
+              id: sp.id,
+              name: sp.name,
+              startDate: sp.startDate,
+              endDate: sp.endDate,
+              basePrice: Number(sp.price),
+              tiers: spTiers
+                .filter((t) => t.minDuration !== null && t.discountPercent !== null)
+                .map((t) => ({
+                  id: t.id,
+                  minDuration: t.minDuration!,
+                  discountPercent: Number(t.discountPercent!),
+                  displayOrder: t.displayOrder ?? 0,
+                })),
+              rates: spTiers
+                .filter((t) => t.period !== null && t.price !== null)
+                .map((t) => ({
+                  id: t.id,
+                  period: t.period!,
+                  price: Number(t.price!),
+                  displayOrder: t.displayOrder ?? 0,
+                })),
+            };
+          });
+        }
+
+        const baseTiers =
+          product.pricingTiers?.map((tier) => ({
+            id: tier.id,
+            minDuration: tier.minDuration ?? 1,
+            discountPercent: Number(tier.discountPercent ?? 0),
+            displayOrder: tier.displayOrder || 0,
+          })) || [];
+        const baseRates: Rate[] =
+          product.pricingTiers
+            ?.filter(
+              (tier): tier is typeof tier & { period: number; price: string } =>
+                typeof tier.period === "number" &&
+                tier.period > 0 &&
+                typeof tier.price === "string",
+            )
+            .map(
+              (tier, index): Rate => ({
+                id: tier.id,
+                period: tier.period,
+                price: Number(tier.price),
+                displayOrder: tier.displayOrder ?? index,
+              }),
+            ) || [];
+
+        const seasonalResult = calculateSeasonalAwarePrice(
+          {
+            basePrice: Number(product.price),
+            basePeriodMinutes: product.basePeriodMinutes ?? null,
+            deposit: Number(product.deposit || 0),
+            pricingKind: product.pricingKind,
+            pricingMode: productPricingMode,
+            enforceStrictTiers: product.enforceStrictTiers ?? false,
+            tiers: baseTiers,
+            rates: baseRates,
+          },
+          seasonalPricingConfigs,
+          item.startDate,
+          item.endDate,
+          item.quantity,
+        );
+
+        pricingResult = {
+          subtotal: seasonalResult.subtotal,
+          originalSubtotal: seasonalResult.originalSubtotal,
+          savings: seasonalResult.savings,
+          deposit: seasonalResult.deposit,
+          effectivePricePerUnit: seasonalResult.subtotal / Math.max(1, item.quantity),
+        };
+      }
       serverCalculatedItems.push({
         productId: item.productId,
         quantity: item.quantity,
@@ -931,7 +1040,8 @@ export async function createReservation(input: CreateReservationInput) {
       // the phone source: the server-side receptionist tool passes the flat base
       // price as a best-effort input and cannot pre-compute tiered/seasonal
       // pricing, so a mismatch here is expected, not a fraud signal.
-      const clientItemSubtotal = item.unitPrice * item.quantity * duration;
+      const clientItemSubtotal =
+        item.unitPrice * item.quantity * (product.pricingKind === "fixed" ? 1 : duration);
       if (
         (input.source === undefined || input.source === "online") &&
         Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01
@@ -1256,8 +1366,48 @@ export async function createReservation(input: CreateReservationInput) {
     const finalDiscount = serverDiscountAmount;
     const finalDeposit = serverTotalDeposit;
     const finalDeliveryFee = deliveryFee;
-    // totalAmount excludes deposit — deposit is tracked separately in depositAmount
-    const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee;
+
+    const storeTaxSettings = storeSettings?.tax;
+    const taxConfig = taxSettingsToConfig(storeTaxSettings);
+    const taxEnabled = taxConfig?.enabled ?? false;
+    const storeTaxRate = taxConfig?.rate ?? 0;
+    const displayMode = taxConfig?.displayMode ?? "inclusive";
+    const taxableLines = serverCalculatedItems.map((serverItem, index) => {
+      const productInfo = productsForReservation.get(serverItem.productId);
+      const productTaxSettings = productInfo?.taxSettings;
+
+      return {
+        id: `item:${index}`,
+        amount: serverItem.subtotal,
+        taxRate: getEffectiveTaxRate(taxConfig, productTaxSettings),
+      };
+    });
+
+    if (tulipInsuranceAmount > 0) {
+      // Insurance premiums are VAT-exempt (art. 261 C, 2° CGI); Tulip
+      // premiums already include insurance tax (TCA), never VAT.
+      taxableLines.push({
+        id: "insurance",
+        amount: tulipInsuranceAmount,
+        taxRate: null,
+      });
+    }
+
+    const taxCalculation = calculateTaxBreakdown({
+      lines: taxableLines,
+      deliveryFee: finalDeliveryFee,
+      discountAmount: finalDiscount,
+      depositAmount: finalDeposit,
+      taxConfig,
+    });
+    const taxCalculationByLineId = new Map(taxCalculation.lines.map((line) => [line.id, line]));
+    // totalAmount excludes the untaxed deposit. In TTC mode the engine only
+    // splits the already-displayed cents, so this remains the legacy total.
+    // In HT mode, it adds the newly exact per-line VAT as approved in the spec.
+    const finalTotal = taxCalculation.totalInclTax;
+    const subtotalExclTax = taxEnabled ? taxCalculation.subtotalExclTax : null;
+    const taxAmount = taxEnabled ? taxCalculation.taxAmount : null;
+    const taxRate = taxEnabled ? storeTaxRate : null;
 
     // Quote-only (phone receptionist): return the authoritative server-computed
     // amounts WITHOUT creating anything, so the caller can be told the real price
@@ -1280,12 +1430,6 @@ export async function createReservation(input: CreateReservationInput) {
     const startDate = new Date(Math.min(...startDates.map((d) => d.getTime())));
     const endDate = new Date(Math.max(...endDates.map((d) => d.getTime())));
 
-    // Get tax settings from store
-    const storeTaxSettings = store.settings?.tax as TaxSettings | undefined;
-    const taxEnabled = storeTaxSettings?.enabled ?? false;
-    const storeTaxRate = storeTaxSettings?.defaultRate ?? 0;
-    const displayMode = storeTaxSettings?.displayMode ?? "inclusive";
-
     const blockingStatuses = getBlockingReservationStatuses(
       store.settings?.pendingBlocksAvailability ?? true,
     );
@@ -1300,7 +1444,7 @@ export async function createReservation(input: CreateReservationInput) {
           sql`, `,
         );
         await tx.execute(
-          sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) FOR UPDATE`,
+          sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) AND store_id = ${input.storeId} FOR UPDATE`,
         );
       }
 
@@ -1356,6 +1500,37 @@ export async function createReservation(input: CreateReservationInput) {
             taxAmount: existingReservation.taxAmount ? Number(existingReservation.taxAmount) : null,
           };
         }
+      }
+
+      // Product links are mutable configuration. Re-read them only after the
+      // parent product locks so checkout enforces the rule that is current at
+      // the instant the reservation is written.
+      const lockedRequiredAccessories =
+        requestedProductIds.length > 0
+          ? await tx
+              .select({
+                parentProductId: productAccessories.productId,
+                accessoryProductId: productAccessories.accessoryId,
+                quantity: productAccessories.quantity,
+              })
+              .from(productAccessories)
+              .where(
+                and(
+                  eq(productAccessories.required, true),
+                  inArray(productAccessories.productId, requestedProductIds),
+                ),
+              )
+          : [];
+      const lockedRequiredAccessoryValidation = validateRequiredAccessoryLines({
+        lines: input.items,
+        requiredAccessories: lockedRequiredAccessories,
+      });
+      if (!lockedRequiredAccessoryValidation.valid) {
+        return {
+          ok: false as const,
+          error: "errors.requiredAccessoriesMissing" as const,
+          missingAccessories: lockedRequiredAccessoryValidation.missing,
+        };
       }
 
       // Recompute overlap and availability inside the transaction after row locks are acquired.
@@ -1423,8 +1598,23 @@ export async function createReservation(input: CreateReservationInput) {
           turnoverBufferMinutes,
           excludedProductUnitIds,
           excludedUnitInfo,
+          consumableProductIds: new Set(
+            lockedProducts
+              .filter((product) => product.stockKind === "consumable")
+              .map((product) => product.id),
+          ),
         },
       );
+      const consumableReservedByProduct = await loadConsumableReservedQuantities(tx, {
+        storeId: input.storeId,
+        productIds: lockedProducts
+          .filter((product) => product.stockKind === "consumable")
+          .map((product) => product.id),
+        blockingStatuses,
+      });
+      for (const [productId, reservedQuantity] of consumableReservedByProduct) {
+        reservedByProduct.set(productId, reservedQuantity);
+      }
 
       const combinationsByProduct = new Map<
         string,
@@ -1463,6 +1653,10 @@ export async function createReservation(input: CreateReservationInput) {
         if (!product) continue;
 
         if (!product.trackUnits) {
+          if (product.stockKind === "untracked") {
+            continue;
+          }
+
           const reserved = reservedByProduct.get(item.productId) || 0;
           const available = Math.max(0, product.quantity - reserved);
 
@@ -1560,6 +1754,8 @@ export async function createReservation(input: CreateReservationInput) {
           where: eq(customers.id, newCustomer.id),
         });
       } else {
+        // Identifiers already on file survive a checkout that omits them; the
+        // scheme is re-derived from the buyer's own country, never trusted.
         const effectiveCompanyNumber =
           customerCompanyIdentity.companyNumber ?? customer.companyNumber;
         const buyerCountry = customer.country || storeCountry;
@@ -1591,21 +1787,6 @@ export async function createReservation(input: CreateReservationInput) {
           ok: false as const,
           error: "errors.createCustomerError" as const,
         };
-      }
-
-      let subtotalExclTax: number | null = null;
-      let taxAmount: number | null = null;
-      let taxRate: number | null = null;
-
-      if (taxEnabled && storeTaxRate > 0) {
-        taxRate = storeTaxRate;
-        if (displayMode === "inclusive") {
-          subtotalExclTax = extractExclusiveFromInclusive(finalSubtotal, storeTaxRate);
-          taxAmount = finalSubtotal - subtotalExclTax;
-        } else {
-          subtotalExclTax = finalSubtotal;
-          taxAmount = calculateTaxFromExclusive(finalSubtotal, storeTaxRate);
-        }
       }
 
       const reservationId = input.reservationId ?? nanoid();
@@ -1663,8 +1844,6 @@ export async function createReservation(input: CreateReservationInput) {
         const serverItem = serverCalculatedItems[i];
         const totalPrice = serverItem.subtotal;
 
-        const productInfo = productsForReservation.get(item.productId);
-        const productTaxSettings = productInfo?.taxSettings as ProductTaxSettings | undefined;
         const resolvedCombination = resolvedCombinationByItemKey.get(
           getReservationItemResolutionKey(item, i),
         );
@@ -1686,24 +1865,15 @@ export async function createReservation(input: CreateReservationInput) {
         let itemPriceExclTax: number | null = null;
         let itemTotalExclTax: number | null = null;
 
-        if (taxEnabled) {
-          const effectiveRate = getEffectiveTaxRate(
-            { enabled: true, rate: storeTaxRate, displayMode },
-            productTaxSettings,
-          );
-
-          if (effectiveRate !== null && effectiveRate > 0) {
-            itemTaxRate = effectiveRate;
-            if (displayMode === "inclusive") {
-              itemPriceExclTax = extractExclusiveFromInclusive(serverItem.unitPrice, effectiveRate);
-              itemTotalExclTax = extractExclusiveFromInclusive(totalPrice, effectiveRate);
-              itemTaxAmount = totalPrice - itemTotalExclTax;
-            } else {
-              itemPriceExclTax = serverItem.unitPrice;
-              itemTotalExclTax = totalPrice;
-              itemTaxAmount = calculateTaxFromExclusive(totalPrice, effectiveRate);
-            }
-          }
+        const itemTaxCalculation = taxCalculationByLineId.get(`item:${i}`);
+        if (taxEnabled && itemTaxCalculation && itemTaxCalculation.taxRate !== null) {
+          itemTaxRate = itemTaxCalculation.taxRate;
+          itemPriceExclTax =
+            displayMode === "inclusive"
+              ? extractExclusiveFromInclusive(serverItem.unitPrice, itemTaxCalculation.taxRate)
+              : serverItem.unitPrice;
+          itemTotalExclTax = itemTaxCalculation.amountExclTax;
+          itemTaxAmount = itemTaxCalculation.taxAmount;
         }
 
         await tx.insert(reservationItems).values({
@@ -1724,6 +1894,9 @@ export async function createReservation(input: CreateReservationInput) {
       }
 
       if (tulipInsuranceAmount > 0) {
+        const insuranceTaxCalculation = taxEnabled
+          ? taxCalculationByLineId.get("insurance")
+          : undefined;
         await tx.insert(reservationItems).values({
           reservationId,
           productId: null,
@@ -1732,6 +1905,10 @@ export async function createReservation(input: CreateReservationInput) {
           unitPrice: tulipInsuranceAmount.toFixed(2),
           depositPerUnit: "0.00",
           totalPrice: tulipInsuranceAmount.toFixed(2),
+          taxRate: insuranceTaxCalculation?.taxRate?.toFixed(2) ?? null,
+          taxAmount: insuranceTaxCalculation?.taxAmount.toFixed(2) ?? null,
+          priceExclTax: insuranceTaxCalculation?.amountExclTax.toFixed(2) ?? null,
+          totalExclTax: insuranceTaxCalculation?.amountExclTax.toFixed(2) ?? null,
           productSnapshot: {
             name: "Garantie casse/vol",
             description: "Garantie casse/vol",
@@ -1785,9 +1962,6 @@ export async function createReservation(input: CreateReservationInput) {
         reservationNumber,
         customerId: customer.id,
         customerEmail: customer.email,
-        taxRate,
-        subtotalExclTax,
-        taxAmount,
       };
     });
 
@@ -1799,19 +1973,21 @@ export async function createReservation(input: CreateReservationInput) {
         };
       }
 
+      if (reservationWriteResult.error === "errors.requiredAccessoriesMissing") {
+        return {
+          error: reservationWriteResult.error,
+          details: {
+            code: "required_accessories_missing",
+            missingAccessories: reservationWriteResult.missingAccessories,
+          },
+        };
+      }
+
       return { error: reservationWriteResult.error };
     }
 
-    const {
-      reservationId,
-      reservationNumber,
-      customerId,
-      customerEmail,
-      taxRate,
-      subtotalExclTax,
-      taxAmount,
-      idempotentReplay,
-    } = reservationWriteResult;
+    const { reservationId, reservationNumber, customerId, customerEmail, idempotentReplay } =
+      reservationWriteResult;
 
     if (idempotentReplay) {
       return {
@@ -1908,6 +2084,7 @@ export async function createReservation(input: CreateReservationInput) {
         startDate,
         endDate,
         totalAmount: finalTotal,
+        customerNotes: input.customerNotes || null,
         // Tax info for emails
         taxEnabled,
         taxRate,
@@ -2013,11 +2190,9 @@ export async function createReservation(input: CreateReservationInput) {
     // Check if we should process payment via Stripe. A 'phone' reservation is
     // always a pending REQUEST (no card on the call), so it never enters the
     // online-payment flow even when the store is in immediate-payment mode.
-    const shouldProcessPayment =
-      (input.source === undefined || input.source === "online") &&
-      store.settings?.reservationMode === "payment" &&
-      store.stripeAccountId &&
-      store.stripeChargesEnabled;
+    const effectiveReservationMode =
+      input.source === "phone" ? "request" : getEffectiveReservationMode(store);
+    const shouldProcessPayment = effectiveReservationMode === "payment";
 
     let paymentUrl: string | null = null;
 
@@ -2032,7 +2207,7 @@ export async function createReservation(input: CreateReservationInput) {
 
         // Calculate the amount to charge now (after promo discount, including delivery)
         // Round to 2 decimal places to avoid floating point issues
-        const chargeableTotal = finalSubtotal - finalDiscount + finalDeliveryFee;
+        const chargeableTotal = finalTotal;
         const amountToCharge = isPartialPayment
           ? Math.round(chargeableTotal * depositPercentage) / 100
           : chargeableTotal;
@@ -2046,6 +2221,24 @@ export async function createReservation(input: CreateReservationInput) {
         // Build line items for Stripe
         // For partial payments, create a single line item for the deposit
         // For full payments, itemize each product
+        const exclusiveTaxLineItems = input.items
+          .map((item, idx) => {
+            const itemTaxCalculation = taxCalculationByLineId.get(`item:${idx}`);
+            return itemTaxCalculation && itemTaxCalculation.amountInclTax > 0
+              ? {
+                  name: item.productSnapshot.name,
+                  description:
+                    item.quantity > 1
+                      ? `${item.quantity} × ${item.productSnapshot.name}`
+                      : undefined,
+                  quantity: 1,
+                  unitAmount: toStripeCents(itemTaxCalculation.amountInclTax, currency),
+                }
+              : null;
+          })
+          .filter((lineItem) => lineItem !== null);
+        const insuranceTaxLine = taxCalculationByLineId.get("insurance");
+        const deliveryTaxLine = taxCalculationByLineId.get("delivery");
         const lineItems = isPartialPayment
           ? [
               {
@@ -2055,35 +2248,58 @@ export async function createReservation(input: CreateReservationInput) {
                 unitAmount: toStripeCents(finalChargeAmount, currency),
               },
             ]
-          : [
-              ...input.items.map((item, idx) => {
-                const serverItem = serverCalculatedItems[idx];
-                return {
-                  name: item.productSnapshot.name,
-                  quantity: item.quantity,
-                  unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
-                };
-              }),
-              ...(tulipInsuranceAmount > 0
-                ? [
-                    {
-                      name: "Garantie casse/vol",
-                      description: `Garantie casse/vol - réservation ${reservationNumber}`,
-                      quantity: 1,
-                      unitAmount: toStripeCents(tulipInsuranceAmount, currency),
-                    },
-                  ]
-                : []),
-              ...(finalDeliveryFee > 0
-                ? [
-                    {
-                      name: "Livraison",
-                      quantity: 1,
-                      unitAmount: toStripeCents(finalDeliveryFee, currency),
-                    },
-                  ]
-                : []),
-            ];
+          : displayMode === "exclusive"
+            ? [
+                ...exclusiveTaxLineItems,
+                ...(insuranceTaxLine && insuranceTaxLine.amountInclTax > 0
+                  ? [
+                      {
+                        name: "Garantie casse/vol",
+                        description: `Garantie casse/vol - réservation ${reservationNumber}`,
+                        quantity: 1,
+                        unitAmount: toStripeCents(insuranceTaxLine.amountInclTax, currency),
+                      },
+                    ]
+                  : []),
+                ...(deliveryTaxLine && deliveryTaxLine.amountInclTax > 0
+                  ? [
+                      {
+                        name: "Livraison",
+                        quantity: 1,
+                        unitAmount: toStripeCents(deliveryTaxLine.amountInclTax, currency),
+                      },
+                    ]
+                  : []),
+              ]
+            : [
+                ...input.items.map((item, idx) => {
+                  const serverItem = serverCalculatedItems[idx];
+                  return {
+                    name: item.productSnapshot.name,
+                    quantity: item.quantity,
+                    unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
+                  };
+                }),
+                ...(tulipInsuranceAmount > 0
+                  ? [
+                      {
+                        name: "Garantie casse/vol",
+                        description: `Garantie casse/vol - réservation ${reservationNumber}`,
+                        quantity: 1,
+                        unitAmount: toStripeCents(tulipInsuranceAmount, currency),
+                      },
+                    ]
+                  : []),
+                ...(finalDeliveryFee > 0
+                  ? [
+                      {
+                        name: "Livraison",
+                        quantity: 1,
+                        unitAmount: toStripeCents(finalDeliveryFee, currency),
+                      },
+                    ]
+                  : []),
+              ];
 
         // Skim the platform fee directly from the online payment via a Stripe
         // application fee: the pay-as-you-go reservation commission. Capped below
@@ -2140,7 +2356,7 @@ export async function createReservation(input: CreateReservationInput) {
           metadata: {
             checkoutSessionId: sessionId,
             amount: finalChargeAmount,
-            fullAmount: finalSubtotal,
+            fullAmount: finalTotal,
             depositPercentage,
             isPartialPayment,
             currency,

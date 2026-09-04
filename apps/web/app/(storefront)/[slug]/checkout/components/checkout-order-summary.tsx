@@ -1,7 +1,6 @@
 'use client';
 
 import { format } from 'date-fns';
-import { enUS, fr } from 'date-fns/locale';
 import { CalendarDays, Shield, Tag, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -19,12 +18,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@louez/ui';
-import { formatCurrency } from '@louez/utils';
+import { cn, formatCurrency, isFixedPriceProduct } from '@louez/utils';
 
 import { ProductImage } from '@/components/product/product-image';
+import { useFormatLocale } from '@/hooks/use-format-locale';
 
 import { getDetailedDuration } from '@/lib/utils/duration';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
+import { groupCartLinesByParent } from '@/lib/utils/cart-required-accessories';
 
 import type { CartItem } from '@/contexts/cart-context';
 import { useStoreMaxDiscountPercent } from '@/contexts/store-context';
@@ -40,7 +41,6 @@ interface CheckoutOrderSummaryProps {
   depositPercentage: number;
   taxSettings?: TaxSettings;
   currency: string;
-  locale: 'fr' | 'en';
   globalStartDate: string | null;
   globalEndDate: string | null;
   subtotal: number;
@@ -85,7 +85,6 @@ export function CheckoutOrderSummary({
   depositPercentage,
   taxSettings,
   currency,
-  locale,
   globalStartDate,
   globalEndDate,
   subtotal,
@@ -111,7 +110,11 @@ export function CheckoutOrderSummary({
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
+  const tProduct = useTranslations('storefront.product');
   const tErrors = useTranslations('errors');
+  const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
+  const formatMoney = (amount: number, currencyOverride = currency) =>
+    formatCurrency(amount, currencyOverride, formatLocale);
   const maxDiscountPercent = useStoreMaxDiscountPercent();
   const showInsuranceUi =
     tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
@@ -119,7 +122,6 @@ export function CheckoutOrderSummary({
   const insuredProductIdSet = new Set(
     tulipQuotePreview?.insuredProductIds ?? [],
   );
-  const dateLocale = locale === 'fr' ? fr : enUS;
   const estimatedInsuranceAmount =
     tulipQuotePreview?.appliedOptIn && tulipQuotePreview.amount > 0
       ? tulipQuotePreview.amount
@@ -131,6 +133,16 @@ export function CheckoutOrderSummary({
     tulipQuotePreview?.quoteError?.startsWith('errors.')
       ? tErrors(tulipQuotePreview.quoteError.slice('errors.'.length) as never)
       : null;
+
+  // Required accessories are listed right under the line they belong to.
+  const orderedLines: Array<{ item: CartItem; parentName?: string }> =
+    groupCartLinesByParent(items).flatMap((group) => [
+      { item: group.line },
+      ...group.children.map((child) => ({
+        item: child,
+        parentName: group.line.productName,
+      })),
+    ]);
 
   const durationLabel = (() => {
     if (!globalStartDate || !globalEndDate) return '';
@@ -180,7 +192,7 @@ export function CheckoutOrderSummary({
 
           <div className="space-y-3">
             <TooltipProvider>
-              {items.map((item, index) => {
+              {orderedLines.map(({ item, parentName }, index) => {
                 const priceResult = calculateCartItemPrice(
                   item,
                   globalStartDate,
@@ -202,7 +214,10 @@ export function CheckoutOrderSummary({
                 return (
                   <div
                     key={item.lineId || `${item.productId}-${index}`}
-                    className="flex gap-3"
+                    className={cn(
+                      'flex gap-3',
+                      parentName && 'border-border ml-4 border-l pl-3',
+                    )}
                   >
                     <ProductImage
                       src={item.productImage}
@@ -258,11 +273,30 @@ export function CheckoutOrderSummary({
                           {t('lineNeedsUpdateInline')}
                         </p>
                       )}
+                      {item.unavailableReason && (
+                        <p className="text-destructive truncate text-[11px]">
+                          {tCart(`unavailable.${item.unavailableReason}`)}
+                        </p>
+                      )}
+                      {parentName && (
+                        <p className="text-muted-foreground truncate text-[11px]">
+                          {tCart('requiredWith', { name: parentName })}
+                        </p>
+                      )}
                       <p className="text-muted-foreground text-xs">
-                        {item.quantity} {'\u00d7'}{' '}
-                        {formatCurrency(
-                          itemTotal / Math.max(1, item.quantity),
-                          currency,
+                        {parentName && itemTotal === 0 ? (
+                          tCart('included')
+                        ) : (
+                          <>
+                            {item.quantity} {'\u00d7'}{' '}
+                            {formatMoney(
+                              itemTotal / Math.max(1, item.quantity),
+                              currency,
+                            )}
+                            {isFixedPriceProduct(item)
+                              ? ` \u00b7 ${tProduct('fixedPricingLabel')}`
+                              : null}
+                          </>
                         )}
                       </p>
                       {discountPercent != null && discountPercent > 0 &&
@@ -274,11 +308,11 @@ export function CheckoutOrderSummary({
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">
-                        {formatCurrency(itemTotal, currency)}
+                        {formatMoney(itemTotal, currency)}
                       </p>
                       {itemSavings > 0 && (
                         <p className="text-xs text-green-600">
-                          -{formatCurrency(itemSavings, currency)}
+                          -{formatMoney(itemSavings, currency)}
                         </p>
                       )}
                     </div>
@@ -298,12 +332,12 @@ export function CheckoutOrderSummary({
                     {tCart('subtotal')}
                   </span>
                   <span className="text-muted-foreground line-through">
-                    {formatCurrency(originalSubtotal, currency)}
+                    {formatMoney(originalSubtotal, currency)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm text-green-600">
                   <span>{t('pricing.discount')}</span>
-                  <span>-{formatCurrency(totalSavings, currency)}</span>
+                  <span>-{formatMoney(totalSavings, currency)}</span>
                 </div>
               </>
             )}
@@ -325,7 +359,7 @@ export function CheckoutOrderSummary({
                   <Tag className="h-3.5 w-3.5" />
                   {t('promoCode.discount', { code: appliedPromo.code })}
                 </span>
-                <span>-{formatCurrency(discountAmount, currency)}</span>
+                <span>-{formatMoney(discountAmount, currency)}</span>
               </div>
             )}
 
@@ -342,7 +376,7 @@ export function CheckoutOrderSummary({
                 >
                   {deliveryFee === 0
                     ? t('free')
-                    : formatCurrency(deliveryFee, currency)}
+                    : formatMoney(deliveryFee, currency)}
                 </span>
               </div>
             )}
@@ -354,7 +388,7 @@ export function CheckoutOrderSummary({
                 </span>
                 <span>
                   {estimatedInsuranceAmount > 0
-                    ? formatCurrency(estimatedInsuranceAmount, currency)
+                    ? formatMoney(estimatedInsuranceAmount, currency)
                     : t('insuranceRequiredBadge')}
                 </span>
               </div>
@@ -367,7 +401,7 @@ export function CheckoutOrderSummary({
                 </span>
                 <span>
                   {estimatedInsuranceAmount > 0
-                    ? formatCurrency(estimatedInsuranceAmount, currency)
+                    ? formatMoney(estimatedInsuranceAmount, currency)
                     : tulipQuotePreview?.quoteUnavailable
                       ? t('insuranceOptionalUnavailableShort')
                       : tulipInsuranceOptIn
@@ -418,7 +452,7 @@ export function CheckoutOrderSummary({
             <div className="flex justify-between text-lg font-semibold">
               <span>{tCart('total')}</span>
               <span className="text-primary">
-                {formatCurrency(totalWithEstimatedInsurance, currency)}
+                {formatMoney(totalWithEstimatedInsurance, currency)}
               </span>
             </div>
 
@@ -427,7 +461,7 @@ export function CheckoutOrderSummary({
                 <div className="flex justify-between text-base font-semibold">
                   <span>{t('toPayNow')}</span>
                   <span className="text-primary">
-                    {formatCurrency(
+                    {formatMoney(
                       Math.round(
                         (subtotalWithEstimatedInsurance - discountAmount) *
                           depositPercentage,
@@ -438,7 +472,7 @@ export function CheckoutOrderSummary({
                 </div>
                 <p className="text-muted-foreground text-xs">
                   {t('remainingAtPickup', {
-                    amount: formatCurrency(
+                    amount: formatMoney(
                       Math.round(
                         (subtotalWithEstimatedInsurance - discountAmount) *
                           (100 - depositPercentage),
@@ -462,7 +496,7 @@ export function CheckoutOrderSummary({
           {totalSavings > 0 && (
             <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300">
               {t('pricing.savingsBanner', {
-                amount: formatCurrency(totalSavings, currency),
+                amount: formatMoney(totalSavings, currency),
               })}
             </div>
           )}
@@ -474,7 +508,7 @@ export function CheckoutOrderSummary({
                   {t('depositLabel')}
                 </span>
                 <span className="font-medium">
-                  {formatCurrency(totalDeposit, currency)}
+                  {formatMoney(totalDeposit, currency)}
                 </span>
               </div>
               <p className="text-muted-foreground text-xs">
@@ -487,7 +521,7 @@ export function CheckoutOrderSummary({
             <div className="text-muted-foreground mt-2 border-t pt-3 text-xs">
               <p>
                 {t('depositInfo', {
-                  amount: formatCurrency(totalDeposit, currency),
+                  amount: formatMoney(totalDeposit, currency),
                 })}
               </p>
             </div>

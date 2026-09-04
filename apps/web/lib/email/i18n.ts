@@ -1,4 +1,3 @@
-import { fr, enUS, de, es, it, nl, pl, ptBR } from 'date-fns/locale'
 import type { Locale as DateFnsLocale } from 'date-fns'
 import { createTranslator } from 'next-intl'
 
@@ -15,6 +14,7 @@ import plEmails from '@/messages/emails/pl.json'
 import ptEmails from '@/messages/emails/pt.json'
 
 import type { EmailLocale } from '@louez/email'
+import { resolveFormatLocale } from '@/lib/i18n/format-locale'
 export type { EmailLocale }
 
 // Type for email messages structure (use the French subtree as reference)
@@ -31,18 +31,6 @@ const messagesMap: Record<EmailLocale, any> = {
   nl: { emails: nlEmails },
   pl: { emails: plEmails },
   pt: { emails: ptEmails },
-}
-
-// Map of locale to date-fns locale
-const dateFnsLocaleMap: Record<EmailLocale, DateFnsLocale> = {
-  fr: fr,
-  en: enUS,
-  de: de,
-  es: es,
-  it: it,
-  nl: nl,
-  pl: pl,
-  pt: ptBR,
 }
 
 // Date format patterns by locale
@@ -168,7 +156,7 @@ export function getEmailTranslator(locale: EmailLocale = 'fr') {
  * Get date-fns locale for formatting dates
  */
 export function getDateLocale(locale: EmailLocale = 'fr'): DateFnsLocale {
-  return dateFnsLocaleMap[locale] || dateFnsLocaleMap.fr
+  return resolveFormatLocale(locale).dateFns
 }
 
 /**
@@ -178,40 +166,10 @@ export function getDateFormatPatterns(locale: EmailLocale = 'fr') {
   return dateFormatPatterns[locale] || dateFormatPatterns.fr
 }
 
-/**
- * Get currency formatter for a locale and currency
- */
+/** Get a currency formatter using the email language. */
 export function getCurrencyFormatter(locale: EmailLocale = 'fr', currency: string = 'EUR') {
-  // Map of currency to best locale for formatting
-  const currencyLocaleMap: Record<string, string> = {
-    EUR: locale === 'fr' ? 'fr-FR' : 'en-IE',
-    USD: 'en-US',
-    GBP: 'en-GB',
-    CHF: 'de-CH',
-    CAD: 'en-CA',
-    AUD: 'en-AU',
-    JPY: 'ja-JP',
-    CNY: 'zh-CN',
-    INR: 'en-IN',
-    BRL: 'pt-BR',
-    MXN: 'es-MX',
-    SEK: 'sv-SE',
-    NOK: 'nb-NO',
-    DKK: 'da-DK',
-    PLN: 'pl-PL',
-    CZK: 'cs-CZ',
-    HUF: 'hu-HU',
-    RON: 'ro-RO',
-    SGD: 'en-SG',
-    HKD: 'zh-HK',
-    KRW: 'ko-KR',
-    NZD: 'en-NZ',
-  }
-
-  const formatLocale = currencyLocaleMap[currency] || (locale === 'fr' ? 'fr-FR' : 'en-US')
-
   return (amount: number) =>
-    new Intl.NumberFormat(formatLocale, {
+    new Intl.NumberFormat(resolveFormatLocale(locale).intl, {
       style: 'currency',
       currency: currency,
     }).format(amount)

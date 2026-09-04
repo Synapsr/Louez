@@ -828,9 +828,11 @@ async function main(): Promise<void> {
       cgv: DEMO_CGV,
       legalNotice: DEMO_LEGAL_NOTICE,
       includeCgvInContract: true,
-      stripeAccountId: `acct_demo_${nanoid(16)}`,
-      stripeOnboardingComplete: true,
-      stripeChargesEnabled: true,
+      // Demo history contains synthetic Stripe references, but the Store itself
+      // must not claim that it can create real Checkout sessions.
+      stripeAccountId: null,
+      stripeOnboardingComplete: false,
+      stripeChargesEnabled: false,
       emailSettings: buildEmailSettings(),
       notificationSettings: buildNotificationSettings(),
       customerNotificationSettings: buildCustomerNotificationSettings(),

@@ -43,6 +43,7 @@ import {
 } from "@louez/ui";
 import { useIsMobile } from "@louez/ui/hooks/use-mobile";
 import { cn, formatDateShort } from "@louez/utils";
+import type { StockKind } from "@louez/types";
 
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -123,13 +124,12 @@ const DEFAULT_VISIBLE_STATUSES = ALL_STATUSES.filter(
 const MONTH_ROW_HEIGHT = 26;
 const DAY_ROW_HEIGHT = 42;
 const AVAILABILITY_ROW_HEIGHT = 22;
-const HEADER_HEIGHT = MONTH_ROW_HEIGHT + DAY_ROW_HEIGHT + AVAILABILITY_ROW_HEIGHT;
 const ROW_HEIGHT = 44;
 const BAR_HEIGHT = 30;
 const MAX_BODY_HEIGHT = 440;
 
 /**
- * Untracked products with more stock than this switch to an aggregated view:
+ * Simple-stock products with more stock than this switch to an aggregated view:
  * reservations are stacked into as few rows as needed instead of one lane per
  * unit (200 chairs should not render 200 rows).
  */
@@ -343,6 +343,7 @@ interface ProductReservationsTimelineProps {
   productId: string;
   currency: string;
   trackUnits: boolean;
+  stockKind: StockKind;
   /** Active tracked units (empty for simple-quantity products) */
   units: { id: string; identifier: string }[];
   /** Stock quantity for simple-quantity products */
@@ -353,6 +354,7 @@ export function ProductReservationsTimeline({
   productId,
   currency,
   trackUnits,
+  stockKind,
   units,
   quantity,
 }: ProductReservationsTimelineProps) {
@@ -530,8 +532,10 @@ export function ProductReservationsTimeline({
   // Derived layout data
   // ---------------------------------------------------------------------------
 
-  /** High-quantity untracked stock renders stacked, not one lane per unit */
-  const isAggregated = !trackUnits && quantity > AGGREGATE_THRESHOLD;
+  /** Unlimited and high-quantity simple stock render stacked, not one lane per unit. */
+  const isUntrackedStock = stockKind === "untracked";
+  const isAggregated =
+    isUntrackedStock || (!trackUnits && quantity > AGGREGATE_THRESHOLD);
 
   const lanes = useMemo((): TimelineLane[] => {
     if (trackUnits) {
@@ -552,6 +556,10 @@ export function ProductReservationsTimeline({
   }, [trackUnits, units, quantity, isAggregated]);
 
   const totalUnits = trackUnits ? lanes.length : Math.max(1, quantity);
+  const headerHeight =
+    MONTH_ROW_HEIGHT +
+    DAY_ROW_HEIGHT +
+    (isUntrackedStock ? 0 : AVAILABILITY_ROW_HEIGHT);
   const unitColumnWidth = (isMobile ? MOBILE_UNIT_COLUMN_WIDTHS : UNIT_COLUMN_WIDTHS)[
     trackUnits ? "tracked" : "untracked"
   ];
@@ -1007,11 +1015,11 @@ export function ProductReservationsTimeline({
         ref={scrollerRef}
         onScroll={handleScroll}
         className="bg-card relative overflow-auto overscroll-x-contain rounded-lg border select-none"
-        style={{ maxHeight: HEADER_HEIGHT + MAX_BODY_HEIGHT }}
+        style={{ maxHeight: headerHeight + MAX_BODY_HEIGHT }}
       >
         <div className="relative" style={{ width: unitColumnWidth + timelineWidth }}>
           {/* Sticky header: months, days, availability */}
-          <div className="bg-card sticky top-0 z-30 border-b" style={{ height: HEADER_HEIGHT }}>
+          <div className="bg-card sticky top-0 z-30 border-b" style={{ height: headerHeight }}>
             <div
               className="absolute top-0 bottom-0"
               style={{ left: unitColumnWidth, width: timelineWidth }}
@@ -1076,28 +1084,32 @@ export function ProductReservationsTimeline({
                 })}
               </div>
 
-              {/* Availability row */}
-              <div
-                className="bg-muted/30 flex border-t"
-                style={{ height: AVAILABILITY_ROW_HEIGHT }}
-              >
-                {availability.map((free, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      "flex shrink-0 items-center justify-center text-[10px] leading-none tabular-nums",
-                      free === 0 ? "text-destructive font-semibold" : "text-muted-foreground",
-                    )}
-                    style={{ width: dayWidth }}
-                    title={t("availableOn", {
-                      count: free,
-                      date: formatDateShort(days[index]),
-                    })}
-                  >
-                    {hasLoadedOnce ? free : "·"}
-                  </div>
-                ))}
-              </div>
+              {/* Availability has no quantity dimension for untracked stock. */}
+              {isUntrackedStock ? null : (
+                <div
+                  className="bg-muted/30 flex border-t"
+                  style={{ height: AVAILABILITY_ROW_HEIGHT }}
+                >
+                  {availability.map((free, index) => (
+                    <div
+                      key={index}
+                      className={cn(
+                        "flex shrink-0 items-center justify-center text-[10px] leading-none tabular-nums",
+                        free === 0
+                          ? "text-destructive font-semibold"
+                          : "text-muted-foreground",
+                      )}
+                      style={{ width: dayWidth }}
+                      title={t("availableOn", {
+                        count: free,
+                        date: formatDateShort(days[index]),
+                      })}
+                    >
+                      {hasLoadedOnce ? free : "·"}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Corner cell */}
@@ -1106,10 +1118,14 @@ export function ProductReservationsTimeline({
               style={{ width: unitColumnWidth }}
             >
               <div className="flex w-full items-center justify-between gap-1">
-                <span className="text-muted-foreground text-xs font-medium">{t("stock")}</span>
-                <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums">
-                  {totalUnits}
+                <span className="text-muted-foreground text-xs font-medium">
+                  {isUntrackedStock ? t("bookings") : t("stock")}
                 </span>
+                {isUntrackedStock ? null : (
+                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-[10px] leading-none font-medium tabular-nums">
+                    {totalUnits}
+                  </span>
+                )}
               </div>
             </div>
           </div>

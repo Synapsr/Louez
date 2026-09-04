@@ -8,7 +8,8 @@ import {
 } from '@louez/db'
 import { eq, and, gte, lte, sql, count, inArray } from 'drizzle-orm'
 import { subDays, startOfDay, format, eachDayOfInterval } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import type { Locale as DateFnsLocale } from 'date-fns'
+
 import { getPlan, getDefaultPlan } from '@/lib/plans'
 import { getStoreUsage } from '@/lib/plan-limits'
 
@@ -447,6 +448,7 @@ export async function getStoresApproachingLimits(
 export async function getMultiStoreRevenueTrend(
   storeIds: string[],
   period: Period,
+  locale: DateFnsLocale,
   maxStores: number = 6
 ): Promise<{ data: StoreRevenueTrend[]; storeNames: string[] }> {
   if (storeIds.length === 0) {
@@ -520,7 +522,7 @@ export async function getMultiStoreRevenueTrend(
       const dateKey = format(day, 'yyyy-MM-dd')
       const point: StoreRevenueTrend = {
         date: dateKey,
-        label: format(day, days > 30 ? 'dd/MM' : 'EEE dd', { locale: fr }),
+        label: format(day, days > 30 ? 'dd/MM' : 'EEE dd', { locale }),
       }
 
       for (const storeId of topStoreIds) {

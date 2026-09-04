@@ -3,6 +3,8 @@ import { and, eq } from 'drizzle-orm';
 import { db, storeLocations } from '@louez/db';
 import type { ReservationLocationSnapshot } from '@louez/types';
 
+import { formatLocationAddress } from './format-location-address';
+
 interface StoreForLocationSnapshot {
   id: string;
   name: string;
@@ -85,12 +87,7 @@ export function formatLocationSnapshotAddress(
     return null;
   }
 
-  return [
-    snapshot.address,
-    [snapshot.postalCode, snapshot.city].filter(Boolean).join(' '),
-  ]
-    .filter(Boolean)
-    .join(', ') || null;
+  return formatLocationAddress(snapshot);
 }
 
 export function formatReservationRouteLabel({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -23,6 +23,7 @@ import { CalendarSyncIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
 import { BlurOverlay, LimitBanner, UpgradeModal } from "@/components/dashboard/upgrade-modal";
+import { createDashboardReturnTo } from "@/lib/dashboard/util.reservation-navigation";
 import { orpc } from "@/lib/orpc/react";
 import type { LimitStatus } from "@/lib/plan-limits";
 
@@ -142,6 +143,13 @@ export function ReservationsPageContent({
   const currentPageSize = pageSizeParam ? parseInt(pageSizeParam, 10) : 25;
 
   const isListView = activeView === "list";
+
+  // Filters, sort and page are all in the URL, so the current search string is
+  // enough to put the user back on the exact list they left.
+  const listReturnTo = useMemo(
+    () => createDashboardReturnTo("/dashboard/reservations", searchParams),
+    [searchParams],
+  );
 
   // List display mode — cards are the historical default users know; the
   // table is opt-in. URL-persisted so links keep the chosen display.
@@ -281,6 +289,7 @@ export function ReservationsPageContent({
         reservations={items}
         currency={currency}
         timezone={timezone}
+        returnTo={listReturnTo}
         loadingAction={loadingAction}
         handleStatusChange={handleStatusChange}
         openRejectDialog={openRejectDialog}
@@ -299,6 +308,7 @@ export function ReservationsPageContent({
             reservations={items}
             currency={currency}
             timezone={timezone}
+            returnTo={listReturnTo}
             currentSort={currentSort}
             currentSortDirection={currentSortDirection}
             onSortChange={handleSortChange}

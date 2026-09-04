@@ -237,6 +237,85 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Factures fournisseurs",
+      "description": "Les factures que vos fournisseurs ont adressées à votre entreprise via le réseau de facturation électronique.",
+      "columns": {
+        "seller": "Fournisseur",
+        "number": "Facture",
+        "issueDate": "Date d'émission",
+        "totalInclTax": "Total TTC",
+        "status": "Statut réseau",
+        "ourAction": "Votre réponse",
+        "actions": "Actions"
+      },
+      "statuses": {
+        "received": "Reçue",
+        "acknowledged": "Réception confirmée",
+        "accepted": "Acceptée",
+        "disputed": "En litige",
+        "refused": "Refusée",
+        "paid": "Encaissée",
+        "paymentSent": "Paiement transmis",
+        "rejected": "Rejetée",
+        "validated": "Validée"
+      },
+      "ourActions": {
+        "none": "Aucune réponse",
+        "acknowledged": "Réception confirmée",
+        "accepted": "Acceptée",
+        "refused": "Refusée"
+      },
+      "actions": {
+        "download": "Télécharger",
+        "downloadNamed": "Télécharger la facture {number}",
+        "menuLabel": "Actions pour la facture {number}",
+        "acknowledge": "Confirmer la réception",
+        "accept": "Accepter la facture",
+        "refuse": "Refuser la facture",
+        "acknowledgeSuccess": "Réception confirmée",
+        "acceptSuccess": "Facture acceptée",
+        "refuseSuccess": "Facture refusée"
+      },
+      "accept": {
+        "title": "Accepter cette facture ?",
+        "description": "Accepter la facture {number} transmet une déclaration engageante au réseau de facturation électronique. Cette action est irréversible.",
+        "confirm": "Accepter la facture"
+      },
+      "refuse": {
+        "title": "Refuser cette facture ?",
+        "description": "Refuser la facture {number} transmet une déclaration engageante au réseau de facturation électronique. Cette action est irréversible.",
+        "reasonLabel": "Motif du refus",
+        "reasonPlaceholder": "Ex. : montant erroné, prestation non réalisée…",
+        "reasonHelp": "Le motif est transmis à votre fournisseur.",
+        "confirm": "Refuser la facture"
+      },
+      "empty": {
+        "title": "Aucune facture fournisseur",
+        "description": "Les factures arrivent ici automatiquement dès qu'un fournisseur en adresse une à votre entreprise via le réseau de facturation électronique.",
+        "settingsAction": "Voir les paramètres de facturation"
+      },
+      "notConnected": {
+        "title": "Connectez votre entreprise pour recevoir vos factures fournisseurs",
+        "description": "Les factures fournisseurs arrivent dans cette boîte de réception une fois votre entreprise enrôlée auprès de notre plateforme agréée (PDP).",
+        "deadlineTitle": "Échéance de septembre 2026",
+        "deadlineDescription": "À partir de septembre 2026, toute entreprise française doit être en mesure de recevoir ses factures au format électronique.",
+        "howItWorks": "Une fois connectée, les factures entrantes apparaissent ici automatiquement. Vous pouvez les télécharger, confirmer leur réception, les accepter ou les refuser.",
+        "connectAction": "Configurer la facturation électronique"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Aucune facture} one {1 facture} other {# factures}}",
+        "page": "Page {current} sur {total}",
+        "previous": "Page précédente",
+        "next": "Page suivante"
+      },
+      "sync": "Synchroniser",
+      "viewAll": "Ouvrir la page complète"
+    },
+    "electronicInvoicingUnavailable": {
+      "title": "La facturation électronique n'est pas disponible",
+      "description": "Cette fonctionnalité n'est pas encore activée pour votre boutique."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "Assistant IA",
@@ -1044,6 +1123,21 @@
         "stock": "Stock",
         "quantity": "Quantité disponible",
         "quantityHelp": "Nombre d'unités disponibles à la location",
+        "consumableQuantityHelp": "Stock en rayon : il diminue à chaque réservation confirmée et augmente quand vous réapprovisionnez.",
+        "stockKindLabel": "Type de stock",
+        "stockKindReturnable": "Stock retournable",
+        "stockKindReturnableDescription": "Le produit revient après chaque location et redevient disponible.",
+        "stockKindConsumable": "Consommable",
+        "stockKindConsumableDescription": "Le produit part avec le client : le stock diminue à chaque réservation confirmée et la quantité correspond au stock en rayon.",
+        "stockKindConsumableRequiresFixed": "Un consommable se vend au forfait : choisissez la tarification « Forfait » pour l'activer.",
+        "stockKindConsumableRequiresNoUnits": "Un consommable ne se suit pas à l'unité : désactivez le suivi à l'unité pour l'activer.",
+        "stockKindUntracked": "Sans suivi de stock",
+        "stockKindUntrackedRequiresNoUnits": "Un stock non suivi ne peut pas utiliser le suivi à l'unité.",
+        "untrackedStockHelp": "Aucune quantité n'est suivie ni limitée. Les dates et les règles de réservation restent appliquées.",
+        "stockKindChangeBlockedTitle": "Type de stock verrouillé",
+        "stockKindChangeBlocked": "Ce produit figure dans les réservations suivantes. Annulez-les ou terminez-les avant de modifier le type de stock.",
+        "stockKindChangeBlockedTrigger": "{kind}. Voir les réservations qui bloquent la modification.",
+        "stockKindBlockingReservation": "Réservation #{number}",
         "publication": "Publication",
         "statusActive": "Actif",
         "statusActiveDescription": "Visible sur la boutique",
@@ -1063,6 +1157,14 @@
         "categoryOptional": "Optionnel - aide les clients à trouver votre produit",
         "noCategories": "Aucune catégorie créée",
         "pricingDescription": "Définissez le prix de location et les tarifs",
+        "pricingKindLabel": "Mode de tarification",
+        "pricingKindDuration": "Tarification à la durée",
+        "pricingKindDurationDescription": "Le prix dépend de la durée de location.",
+        "pricingKindFixed": "Forfait",
+        "pricingKindFixedDescription": "Un prix unique, quelle que soit la durée.",
+        "fixedPrice": "Prix forfaitaire",
+        "fixedPriceDescription": "Facturé une fois par article, quelle que soit la durée de location.",
+        "fixedPriceLabel": "Forfait",
         "baseRate": "Tarif de base",
         "baseRateDescription": "Tarif le plus cher à la minute, utilisé comme référence.",
         "additionalRates": "Tarifs additionnels",
@@ -1279,10 +1381,16 @@
         "addAccessory": "Ajouter un accessoire",
         "selectAccessories": "Sélectionner des accessoires",
         "selectAccessoriesDescription": "Choisissez les produits à suggérer avec ce produit",
+        "accessoriesSelectedCount": "{count, plural, =0 {Aucun accessoire sélectionné} one {# accessoire sélectionné} other {# accessoires sélectionnés}}",
+        "clearSearch": "Effacer la recherche",
         "searchProducts": "Rechercher un produit...",
         "noProductsFound": "Aucun produit trouvé",
         "noProductsAvailable": "Aucun produit disponible",
         "accessoriesHelp": "Les accessoires seront proposés lors de l'ajout au panier",
+        "accessoryRequired": "Requis",
+        "accessoryQuantity": "Quantité",
+        "accessoryQuantityPerUnit": "par unité louée",
+        "accessoryOptionalHint": "Simplement suggéré au client.",
         "assurance": {
           "title": "Assurance Tulip",
           "description": "Gérez le mapping assurance de ce produit sans quitter la fiche d'édition.",
@@ -1429,11 +1537,16 @@
           "utilization": "Taux d'utilisation",
           "utilizationSubtitle": "30 derniers jours",
           "stock": "Stock",
-          "unitsActiveValue": "{active}/{total} actives"
+          "unitsActiveValue": "{active}/{total} actives",
+          "notTracked": "Non suivi",
+          "notApplicable": "Non applicable",
+          "notTrackedSubtitle": "Aucune capacité de stock"
         },
         "inventory": {
           "title": "Inventaire",
           "manageStock": "Gérer le stock",
+          "consumableBadge": "Consommable",
+          "consumableQuantity": "Stock en rayon",
           "quantity": "Quantité",
           "available": "Disponible",
           "noUnits": "Aucune unité enregistrée",
@@ -1457,6 +1570,7 @@
           "viewCalendar": "Calendrier",
           "timeline": {
             "stock": "Stock",
+            "bookings": "Réservations",
             "statusFilter": "Filtrer par statut",
             "showAll": "Tout afficher",
             "previous": "Période précédente",
@@ -1790,6 +1904,28 @@
       "sendEmail": "Envoyer un email",
       "customerInfo": "Informations client",
       "viewCustomer": "Voir la fiche client",
+      "invoiceDocuments": {
+        "title": "Factures et avoirs",
+        "empty": "Aucune facture n’a encore été générée.",
+        "generate": "Générer la facture",
+        "generationSuccess": "Les documents de facturation disponibles ont été générés.",
+        "generationError": "La facture n’a pas pu être générée.",
+        "download": "Télécharger",
+        "downloadNamed": "Télécharger {number}",
+        "types": {
+          "invoice": "Facture",
+          "credit_note": "Avoir"
+        },
+        "transmission": {
+          "not_applicable": "Non transmise",
+          "pending": "Transmission en attente",
+          "sent": "Envoyée",
+          "validated": "Validée",
+          "rejected": "Rejetée",
+          "failed": "Échec de transmission"
+        },
+        "recheck": "Actualiser le statut de transmission"
+      },
       "periodStart": "Début",
       "periodEnd": "Fin",
       "duration": "Durée",
@@ -1808,6 +1944,13 @@
       "tulipContractCardTitle": "Contrat assurance",
       "tulipContractCardDescription": "Ouvrir le contrat dans Colibri.",
       "deliveryAndReturn": "Livraison & retour",
+      "pickupAndReturn": "Retrait & retour",
+      "storeLegsSummary": {
+        "sameLocation": "Retrait et retour en magasin",
+        "pickup": "Retrait",
+        "return": "Retour",
+        "edit": "Modifier"
+      },
       "outboundLegLabel": "Réception du matériel",
       "returnLegLabel": "Retour du matériel",
       "deliveryAddressLabel": "Adresse de livraison",
@@ -2331,6 +2474,16 @@
         "maxReturnable": "Maximum restituable",
         "history": "Historique des paiements",
         "recorded": "Paiement enregistré",
+        "refundBadge": "Remboursement",
+        "refundAction": "Rembourser",
+        "refundTitle": "Rembourser ce paiement",
+        "refundDescription": "Vous pouvez rembourser jusqu’à {amount} sur ce paiement.",
+        "refundNote": "Note de remboursement",
+        "refundNotePlaceholder": "Motif, référence du virement...",
+        "refundConfirm": "Confirmer le remboursement",
+        "invalidRefundAmount": "Saisissez un montant compris dans le solde encore remboursable.",
+        "creditNoteGenerated": "Avoir {number} généré",
+        "refundRecorded": "Remboursement enregistré",
         "deleted": "Paiement supprimé",
         "depositReturned": "Caution restituée",
         "damageRecorded": "Dommages enregistrés",
@@ -2378,7 +2531,8 @@
         "statusAuthorized": "Autorisé",
         "statusRefunded": "Remboursé",
         "statusCancelled": "Annulé",
-        "requestPayment": "Demander un paiement"
+        "requestPayment": "Demander un paiement",
+        "invoiceGenerated": "Facture {number} générée"
       },
       "requestPaymentModal": {
         "title": "Demander un paiement",
@@ -2627,6 +2781,13 @@
         "businessCustomerDescription": "Cochez si ce client représente une entreprise",
         "companyName": "Nom de l'entreprise",
         "companyNamePlaceholder": "ACME SAS",
+        "companyNumber": "Numéro d'entreprise",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Numéro d'entreprise (BCE)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Nécessaire pour émettre une facture électronique B2B.",
+        "vatNumber": "Numéro de TVA",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Prénom *",
         "firstNamePlaceholder": "Jean",
         "lastName": "Nom *",
@@ -3150,6 +3311,19 @@
             },
             "resources": {
               "help": "Référence iCalendar"
+            }
+          },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Connectez votre société à une plateforme agréée pour envoyer et recevoir des factures électroniques.",
+            "about": "Super PDP relie Louez au réseau officiel de facturation électronique et gère l'inscription de la société, la transmission, la réception et le cycle de vie des factures.",
+            "features": {
+              "send": "Envoyez les factures clients sur le réseau officiel.",
+              "receive": "Recevez les factures fournisseurs dans Louez.",
+              "lifecycle": "Suivez les statuts de livraison et de paiement des factures."
+            },
+            "resources": {
+              "website": "Site de Super PDP"
             }
           },
           "tulip": {
@@ -3931,6 +4105,16 @@
           "description": "Exportez votre catalogue produits complet avec les prix, catégories et informations de stock.",
           "button": "Exporter les produits"
         },
+        "contracts": {
+          "title": "Contrats",
+          "description": "Téléchargez dans une archive ZIP les contrats des locations commençant sur la période sélectionnée.",
+          "button": "Exporter les contrats",
+          "format": "Archive ZIP contenant un PDF par réservation",
+          "statusesLabel": "Statuts à inclure",
+          "selectAll": "Tout sélectionner",
+          "clearAll": "Tout désélectionner",
+          "exporting": "Préparation du ZIP..."
+        },
         "dateRange": {
           "label": "Période",
           "startDate": "Date de début",
@@ -3946,6 +4130,8 @@
           "invalidDateRange": "La date de fin doit être postérieure à la date de début.",
           "dateRequired": "Veuillez sélectionner une période.",
           "maxRange": "La période ne peut pas dépasser un an.",
+          "statusRequired": "Sélectionnez au moins un statut.",
+          "noContracts": "Aucune réservation ne correspond à cette période et à ces statuts.",
           "exportFailed": "L'export a échoué. Veuillez réessayer."
         }
       },
@@ -4158,6 +4344,166 @@
         "taxNumberDescription": "Votre numéro de TVA intracommunautaire (affiché sur les contrats)",
         "depositNoTaxInfo": "Les cautions ne sont pas soumises à la TVA car elles sont restituées au client.",
         "saved": "Paramètres de taxes enregistrés"
+      },
+      "invoicing": {
+        "title": "Facturation électronique",
+        "description": "Configurez la réception obligatoire de vos factures électroniques et choisissez si Louez émet aussi vos factures.",
+        "saved": "Paramètres de facturation enregistrés",
+        "statusComplete": "Complet",
+        "statusIncomplete": "À compléter",
+        "setup": {
+          "steps": {
+            "identity": "Identité légale",
+            "activation": "Activation",
+            "transmission": "Transmission"
+          },
+          "continue": "Continuer",
+          "later": "Configurer plus tard",
+          "intro": {
+            "title": "Préparez votre société à la facturation électronique",
+            "description": "Connectez votre société au réseau officiel pour recevoir vos factures fournisseurs. Vous pouvez aussi confier dès maintenant l'émission de vos factures à Louez.",
+            "bullets": {
+              "generate": "Si vous activez l'émission, Louez génère et numérote une facture conforme à chaque encaissement.",
+              "transmit": "Si vous activez l'émission, Louez envoie vos factures aux professionnels et transmet l'e-reporting de vos ventes.",
+              "receive": "Réception centralisée des factures de vos fournisseurs."
+            },
+            "start": "Commencer la configuration",
+            "resume": "Reprendre la configuration",
+            "stepProgress": "Étape {current} sur {total}"
+          }
+        },
+        "identity": {
+          "title": "Identité légale",
+          "description": "Les informations légales de votre société, imprimées sur chacune de vos factures.",
+          "search": {
+            "label": "Rechercher votre entreprise",
+            "description": "Recherchez par nom, SIREN ou SIRET pour préremplir le formulaire. Tous les champs restent modifiables.",
+            "placeholder": "Nom de société, SIREN ou SIRET",
+            "noResults": "Aucune entreprise trouvée. Saisissez les informations manuellement.",
+            "closed": "Fermée",
+            "prefilledTitle": "Champs préremplis",
+            "prefilledDescription": "Les données proviennent du registre public des entreprises. Vérifiez-les avant d'enregistrer."
+          },
+          "country": "Pays d'immatriculation",
+          "countryDescription": "Pays dans lequel votre société est immatriculée.",
+          "legalName": "Dénomination sociale",
+          "legalNamePlaceholder": "LOUEZ SAS",
+          "legalNameDescription": "Le nom exact de votre société, tel qu'il figure au registre.",
+          "legalForm": "Forme juridique",
+          "legalFormPlaceholder": "SAS",
+          "legalFormDescription": "Par exemple SAS, SARL, entrepreneur individuel.",
+          "siren": "SIREN",
+          "sirenDescription": "Les 9 chiffres qui identifient votre société.",
+          "bce": "Numéro d'entreprise (BCE)",
+          "bceDescription": "10 chiffres, par exemple 0123456789.",
+          "companyNumber": "Numéro d'entreprise",
+          "companyNumberDescription": "L'identifiant de votre société au registre national.",
+          "siret": "SIRET du siège",
+          "siretDescription": "Les 14 chiffres qui identifient l'établissement émetteur des factures.",
+          "vatNumber": "Numéro de TVA",
+          "vatNumberDescription": "Numéro de TVA intracommunautaire imprimé sur vos factures. Laissez vide si vous êtes en franchise en base.",
+          "vatNumberWarningTitle": "Format de TVA inhabituel",
+          "vatNumberWarningFr": "Un numéro de TVA français s'écrit FR suivi de 11 caractères. Vérifiez cette valeur.",
+          "vatNumberWarningBe": "Un numéro de TVA belge s'écrit BE suivi de 10 chiffres. Vérifiez cette valeur.",
+          "rcsCity": "Ville du RCS",
+          "rcsCityDescription": "Ville du greffe d'immatriculation, par exemple Paris.",
+          "shareCapital": "Capital social",
+          "shareCapitalDescription": "Mention obligatoire sur les factures des sociétés qui doivent l'indiquer.",
+          "addressSection": "Adresse du siège social",
+          "address": "Adresse",
+          "addressPlaceholder": "25 rue du Terrage",
+          "addressComplement": "Complément d'adresse",
+          "postalCode": "Code postal",
+          "city": "Ville"
+        },
+        "louezInvoicing": {
+          "title": "Émission des factures",
+          "description": "Choisissez si Louez émet vos factures dès maintenant. Vous pourrez modifier ce choix à tout moment.",
+          "statusActive": "Émission activée",
+          "statusReceptionOnly": "Réception seule",
+          "statusInactive": "Désactivée",
+          "lockedTitle": "Complétez d'abord votre identité légale",
+          "lockedDescription": "Une facture légale doit porter la dénomination, la forme juridique, le numéro d'entreprise et l'adresse du siège. Renseignez l'étape 1 avant de choisir votre mode de facturation.",
+          "choiceLabel": "Comment souhaitez-vous utiliser la facturation électronique ?",
+          "emissionAndReception": "Émission + réception (recommandé)",
+          "emissionAndReceptionDescription": "Louez génère, numérote et transmet vos factures à chaque encaissement. Votre société reçoit aussi ses factures fournisseurs.",
+          "receptionOnly": "Réception seule — je n'émets pas encore mes factures via Louez",
+          "receptionOnlyDescription": "Louez n'émet aucune facture. Votre société reste connectée pour recevoir ses factures fournisseurs.",
+          "reformTimeline": "La réception des factures électroniques devient obligatoire en septembre 2026. L'émission devient obligatoire en septembre 2027 et peut être activée ici à tout moment.",
+          "vatRegime": "Régime de TVA",
+          "vatRegimePlaceholder": "Choisissez votre régime",
+          "vatRegimeDescription": "Détermine le calendrier de déclaration transmis à la plateforme de facturation.",
+          "vatRegimeOptions": {
+            "monthly": "Déclaration mensuelle",
+            "quarterly": "Déclaration trimestrielle",
+            "simplified": "Régime simplifié (annuel)",
+            "vat_exemption": "Franchise en base de TVA"
+          },
+          "hasVatOnDebits": "TVA sur les débits",
+          "hasVatOnDebitsDescription": "Activez si vous avez opté pour la TVA sur les débits plutôt que sur les encaissements."
+        },
+        "transmission": {
+          "title": "Transmission électronique (PDP)",
+          "description": "Connectez votre société à une Plateforme Agréée pour recevoir vos factures et, si vous activez l'émission, envoyer celles de vos clients via le réseau officiel.",
+          "statusPending": "Inscription en cours",
+          "statusActionRequired": "Action requise",
+          "deadlineTitle": "Échéance de septembre 2026",
+          "deadlineDescription": "À partir de septembre 2026, toute entreprise française doit être raccordée à une plateforme agréée pour recevoir ses factures électroniques ; l'émission devient obligatoire en septembre 2027. Le raccordement depuis Louez est offert.",
+          "benefits": {
+            "send": "Envoi de vos factures à vos clients professionnels si vous activez l'émission.",
+            "receive": "Réception centralisée des factures de vos fournisseurs.",
+            "reporting": "E-reporting automatique de vos ventes aux particuliers."
+          },
+          "connectAction": "Connecter ma société",
+          "pendingTitle": "Inscription en cours",
+          "pendingDescription": "Votre inscription a été lancée mais n'est pas terminée. Reprenez-la pour finaliser les vérifications d'identité de la plateforme agréée.",
+          "pendingValidationDescription": "La plateforme valide votre compte. Vous n'avez rien à faire : la connexion s'activera automatiquement une fois ses vérifications terminées.",
+          "resumeAction": "Reprendre l'inscription",
+          "errorTitle": "Connexion interrompue",
+          "reconnectAction": "Reconnecter ma société",
+          "errorHints": {
+            "reconnectRequired": "La plateforme a révoqué l'accès accordé à Louez. Reconnectez votre société pour recevoir vos factures et reprendre les envois éventuellement activés.",
+            "oauthFailed": "L'inscription n'a pas pu aboutir. Relancez-la ; si le problème persiste, contactez le support.",
+            "operationFailed": "Le dernier échange avec la plateforme a échoué. Louez réessaiera automatiquement ; reconnectez-vous si le problème persiste."
+          },
+          "lockedTitle": "Connexion pas encore disponible",
+          "lockedReasons": {
+            "identityIncomplete": "Complétez votre identité légale à l'étape 1 : la plateforme la vérifie avant d'inscrire votre société.",
+            "countryUnsupported": "La transmission électronique est disponible uniquement pour les sociétés immatriculées en France ou en Belgique."
+          },
+          "details": {
+            "verification": "Vérification d'identité",
+            "directory": "Annuaire du réseau",
+            "environment": "Environnement"
+          },
+          "verificationStatus": {
+            "verified": "Vérifiée",
+            "pending": "En cours de vérification",
+            "failed": "Vérification échouée"
+          },
+          "verificationPendingNote": "La plateforme vérifie encore les informations de votre société. La connexion sera opérationnelle dès la fin du contrôle.",
+          "directoryStatus": {
+            "pending": "Enregistrement en cours",
+            "created": "Enregistrée",
+            "error": "Enregistrement en échec",
+            "missing": "Non enregistrée"
+          },
+          "environments": {
+            "sandbox": "Environnement de test",
+            "production": "Production"
+          },
+          "result": {
+            "successTitle": "Société connectée",
+            "successDescription": "Votre société est désormais inscrite auprès de la plateforme agréée et peut recevoir ses factures fournisseurs. Les factures émises par Louez seront aussi transmises si vous activez l'émission.",
+            "errorTitle": "Échec de la connexion",
+            "errors": {
+              "oauth": "L'inscription a été interrompue avant d'aboutir. Vous pouvez la relancer.",
+              "legalProfileIncomplete": "Votre identité légale est incomplète. Complétez l'étape 1, puis relancez la connexion.",
+              "notConfigured": "La transmission électronique n'est pas configurée sur cet environnement. Contactez le support Louez."
+            }
+          },
+          "purchaseInvoicesAction": "Ouvrir les factures fournisseurs"
+        }
       },
       "delivery": {
         "title": "Livraison",
@@ -4673,8 +5019,51 @@
         "dangerZone": "Zone de danger",
         "dangerZoneDescription": "Actions irréversibles sur votre compte",
         "deleteAccount": "Supprimer le compte",
-        "deleteAccountDescription": "Supprime définitivement votre compte et toutes vos données",
-        "deleteAccountWarning": "Cette action est irréversible. Toutes vos données seront supprimées.",
+        "deleteAccountDescription": "Supprime votre compte, vos boutiques et leurs données actives",
+        "deleteAccountWarning": "Cette action est irréversible. Seules les pièces exigées par la loi peuvent rester dans une archive séparée.",
+      "accountDeletion": {
+        "reasonTitle": "Avant de partir",
+        "reasonDescription": "Pourquoi quittez-vous Louez ? Votre réponse est facultative et enregistrée sans votre identité.",
+        "reasons": {
+          "tooExpensive": "Le prix est trop élevé",
+          "missingFeatures": "Il me manque des fonctionnalités",
+          "difficultToUse": "Louez est trop difficile à utiliser",
+          "noLongerNeeded": "Je n’ai plus besoin de Louez",
+          "switchedService": "J’utilise une autre solution",
+          "technicalIssues": "J’ai rencontré trop de problèmes techniques",
+          "privacyConcerns": "Je suis préoccupé par la confidentialité",
+          "other": "Autre raison"
+        },
+        "continue": "Continuer",
+        "back": "Retour",
+        "title": "Supprimer votre compte",
+          "description": "Vérifiez les conséquences avant de continuer. La suppression est irréversible. Les justificatifs de facturation propres à Louez imposés par la loi peuvent rester archivés.",
+          "storesDeleted": "Boutiques supprimées avec toutes leurs données actives :",
+          "membershipsLeft": "Vous quitterez aussi {count, plural, one {# autre boutique} other {# autres boutiques}} dont vous êtes membre.",
+          "businessDocumentsDeleted": "{count, plural, one {# facture métier de votre boutique sera supprimée de Louez} other {# factures métier de vos boutiques seront supprimées de Louez}}. Exportez-les avant de continuer si vous devez les conserver.",
+          "legalRetention": "{count, plural, one {# justificatif de facturation Louez sera conservé} other {# justificatifs de facturation Louez seront conservés}} pendant 10 ans à compter de la clôture de l’exercice, dans une archive séparée à accès limité.",
+          "confirmationLabel": "Saisissez {email} pour confirmer",
+          "passwordLabel": "Mot de passe actuel",
+          "passwordRequired": "Saisissez votre mot de passe actuel.",
+          "confirmationMismatch": "L’adresse saisie ne correspond pas à celle du compte.",
+          "sendConfirmation": "Envoyer l’email de confirmation",
+          "deleteNow": "Supprimer définitivement",
+          "cancel": "Annuler",
+          "close": "Fermer",
+          "emailSentTitle": "Email de confirmation envoyé",
+          "emailSentDescription": "Consultez {email}. Rien n’est encore supprimé : vous devrez confirmer une dernière fois depuis le lien reçu.",
+          "blockedTitle": "Suppression impossible pour le moment",
+          "blockedDescription": "Une boutique que vous possédez a encore d’autres membres. Retirez-les depuis la page Équipe, ou contactez le support pour transférer la propriété.",
+          "blockedStore": "{name} — {count, plural, one {# autre membre} other {# autres membres}}",
+          "genericError": "La suppression n’a pas pu être lancée. Réessayez.",
+          "invalidLink": "Ce lien est invalide, expiré ou a déjà été utilisé. Relancez la demande depuis les paramètres du compte.",
+          "confirmPageTitle": "Dernière confirmation",
+          "confirmPageDescription": "Cette action supprimera immédiatement votre compte, vos boutiques et leurs données actives. Elle ne peut pas être annulée.",
+          "confirmFinal": "Supprimer définitivement mon compte",
+          "deletedTitle": "Compte supprimé",
+          "deletedDescription": "Votre compte, vos boutiques et leurs données ont été supprimés. Seuls les éventuels justificatifs de facturation propres à Louez restent isolés jusqu’à la fin de leur durée légale de conservation.",
+          "backHome": "Retour à l’accueil"
+        },
         "signOut": "Se déconnecter",
         "comingSoon": "Bientôt",
         "administration": "Administration",
@@ -5155,6 +5544,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Factures fournisseurs",
       "aiAssistant": "Assistant IA",
       "aiConversations": "Conversations clients",
       "aiAdvisor": "Conseiller en ligne",
@@ -5188,6 +5578,7 @@
       "settingsHours": "Horaires",
       "settingsInspections": "États des lieux",
       "settingsIntegrations": "Intégrations",
+      "settingsInvoicing": "Facturation électronique",
       "settingsLegal": "Pages légales",
       "settingsNotifications": "Notifications",
       "settingsPayments": "Paiements",
@@ -5201,6 +5592,8 @@
       "title": "Notifications",
       "description": "Ce qui demande votre attention",
       "pendingReservations": "Demandes en attente",
+      "supplierInvoices": "Factures fournisseurs",
+      "pendingSupplierInvoices": "{count, plural, one {# facture fournisseur à traiter} other {# factures fournisseurs à traiter}}",
       "emptyTitle": "Rien à traiter",
       "emptyDescription": "Les nouvelles demandes apparaîtront ici.",
       "viewAllPending": "Voir toutes les demandes en attente"
@@ -5230,6 +5623,18 @@
         "fix": "Correctif"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "Un prix qui ne dépend plus de la durée",
+          "description": "Un nettoyage, une livraison, une prestation : tout ne se facture pas à l'heure. Passez la tarification en « Forfait » et le prix ne bouge plus, que la location dure deux heures ou deux semaines. Les paliers, les saisons et le graphique s'effacent ; il ne reste qu'un montant, sa TVA et sa caution."
+        },
+        "consumable-stock": {
+          "title": "Ce qui part avec le client",
+          "description": "Le fart, le gaz, les sacs : tout ce qui ne revient pas. Passez un produit en « Consommable » et sa quantité devient un stock en rayon — il baisse à chaque réservation confirmée, remonte si elle est annulée ou refusée, et ne dépend plus des dates."
+        },
+        "required-accessories": {
+          "title": "Le casque part toujours avec le vélo",
+          "description": "Un accessoire peut désormais être requis, avec sa quantité par unité louée. Il s'ajoute seul au panier de votre client, suit quand il prend trois vélos au lieu d'un, et ne peut pas être retiré. Offert, il s'affiche simplement « Inclus »."
+        },
         "product-image-ai": {
           "title": "Vos photos produit passent au studio",
           "description": "À l'upload, l'IA détoure votre produit, nettoie le fond et le centre — ou retire seulement l'arrière-plan si vous préférez garder votre cadrage. Et chaque version est conservée dans l'historique de la photo : comparez, changez d'avis, revenez à l'originale."
@@ -5251,8 +5656,8 @@
           "description": "La page Réservations s'ouvre désormais sur le calendrier. Il défile en continu, d'une semaine à l'autre sans changer de page, et un simple survol vous donne toute la réservation. La liste et le planning par produit restent à un clic."
         },
         "product-creation-flow-redesign": {
-          "title": "Deux sections, et votre produit est en ligne",
-          "description": "L'assistant en quatre étapes laisse place à une seule page. Les accessoires et l'assurance ne sont plus demandés à la création — vous les ajouterez plus tard si vous en avez besoin. À droite, un aperçu de la fiche et la liste de ce qu'il reste à remplir."
+          "title": "Une seule page, et votre produit est en ligne",
+          "description": "L'assistant en quatre étapes laisse place à une seule page. Ajoutez les accessoires dès la création ou revenez-y plus tard ; l'assurance reste configurable ensuite. À droite, vous retrouvez l'aperçu de la fiche et ce qu'il reste à remplir."
         },
         "keyboard-shortcuts": {
           "title": "Pour ceux qui ne lâchent pas le clavier",
@@ -5484,6 +5889,7 @@
       "productCount": "{count, plural, =0 {Aucun produit disponible} one {# produit disponible} other {# produits disponibles}}",
       "available": "{count} disponible(s)",
       "unavailable": "Indisponible",
+      "consumableOutOfStock": "Consommable en rupture de stock",
       "lastOne": "Dernier !",
       "left": "restants",
       "clearFilters": "Effacer les filtres"
@@ -5502,6 +5908,7 @@
       "bookingAttributesNoOptions": "Aucune option disponible pour {attribute} aux dates sélectionnées.",
       "bookingAttributeNone": "Aucun",
       "availableCount": "{count, plural, one {# disponible} other {# disponibles}}",
+      "availableWithoutStockLimit": "Disponible",
       "available": "Disponible",
       "unavailable": "Indisponible",
       "deposit": "Caution",
@@ -5509,6 +5916,7 @@
       "perHour": "heure",
       "perWeek": "semaine",
       "startingFrom": "À partir de",
+      "fixedPricingLabel": "Forfait",
       "pricingUnit": {
         "day": {
           "singular": "jour",
@@ -5580,6 +5988,8 @@
         "availability": "Disponibilité"
       },
       "unavailableHelp": "Ce produit n'est pas disponible à la location pour le moment. Découvrez le reste du catalogue.",
+      "requiredAccessoryOutOfStock": "Un accessoire requis est en rupture de stock",
+      "requiredAccessoriesIncluded": "Ajouté automatiquement : {names}",
       "backToCatalog": "Voir le catalogue"
     },
     "accessories": {
@@ -5686,6 +6096,8 @@
         "availableCount": "{count} disponibles",
         "limited": "{count} restant(s)",
         "unavailable": "Non disponible",
+        "outOfStock": "Rupture de stock",
+        "requiredAccessoryOutOfStock": "Accessoire requis en rupture",
         "inCart": "Dans le panier"
       },
       "businessHoursWarning": {
@@ -5736,6 +6148,8 @@
       "total": "Total",
       "checkout": "Passer commande",
       "remove": "Retirer",
+      "decreaseQuantity": "Réduire la quantité de {name}",
+      "increaseQuantity": "Augmenter la quantité de {name}",
       "updateDates": "Modifier les dates",
       "clearCart": "Vider le panier",
       "clear": "Vider le panier",
@@ -5748,7 +6162,14 @@
         "cancel": "Annuler",
         "confirm": "Vider"
       },
-      "lineMaxReached": "Limite atteinte pour cette option. Ajoutez une autre option comme ligne séparée."
+      "lineMaxReached": "Limite atteinte pour cette option. Ajoutez une autre option comme ligne séparée.",
+      "requiredWith": "Requis avec {name}",
+      "included": "Inclus",
+      "unavailable": {
+        "product_unavailable": "Ce produit n'est plus disponible",
+        "insufficient_stock": "Stock insuffisant pour cette quantité",
+        "required_accessory_unavailable": "Un accessoire requis est en rupture de stock"
+      }
     },
     "checkout": {
       "title": "Finaliser ma réservation",
@@ -5842,6 +6263,20 @@
       "isBusinessCustomerDescription": "Cochez cette case si vous louez au nom d'une société",
       "companyName": "Nom de l'entreprise",
       "companyNamePlaceholder": "ACME SAS",
+      "companyNumber": "Numéro d'entreprise (facultatif)",
+      "companyNumberSiren": "SIREN (facultatif)",
+      "companyNumberBce": "Numéro d'entreprise (BCE, facultatif)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Facultatif — nécessaire pour émettre une facture professionnelle.",
+      "vatNumber": "Numéro de TVA (facultatif)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Rechercher votre entreprise",
+        "placeholder": "Nom de société, SIREN ou SIRET",
+        "description": "Facultatif : recherchez pour remplir automatiquement les informations de votre entreprise.",
+        "noResults": "Aucune entreprise trouvée. Saisissez les informations manuellement.",
+        "closed": "Fermée"
+      },
       "contact": "Contact",
       "address": "Adresse",
       "addressPlaceholder": "123 rue de la Location",
@@ -5870,6 +6305,8 @@
         "phoneRequired": "Téléphone requis",
         "invalidPhone": "Format de téléphone invalide",
         "companyNameRequired": "Veuillez saisir le nom de l'entreprise",
+        "invalidCompanyNumber": "Numéro d'entreprise invalide",
+        "invalidVatNumber": "Numéro de TVA invalide",
         "acceptCgv": "Vous devez accepter les conditions générales"
       },
       "pricing": {
@@ -5973,6 +6410,7 @@
       "pickupLabel": "Retrait en magasin",
       "returnDeliveryLabel": "Récupération à votre adresse",
       "storeReturnLabel": "Retour en magasin",
+      "pickupAndReturnLabel": "Retrait et retour en magasin",
       "deliveryFeeLabel": "Frais de livraison",
       "free": "Gratuit",
       "returnAddressLabel": "Adresse de retour",
@@ -6118,6 +6556,17 @@
       "signContract": "Signer le contrat",
       "contractSigned": "Contrat signé",
       "downloadContract": "Télécharger le contrat",
+      "signContractConfirmation": "En continuant, vous confirmez avoir lu et accepter ce contrat de location.",
+      "signContractError": "Le contrat n’a pas pu être signé. Veuillez réessayer.",
+      "invoiceDocuments": {
+        "title": "Factures et avoirs",
+        "description": "Téléchargez les documents comptables de cette réservation.",
+        "download": "Télécharger",
+        "types": {
+          "invoice": "Facture",
+          "credit_note": "Avoir"
+        }
+      },
       "paymentPaid": "Payé",
       "paymentPending": "Non payé",
       "amountPaid": "Montant payé",
@@ -6725,6 +7174,7 @@
     "notFound": "Page introuvable",
     "notFoundDescription": "La page que vous recherchez n'existe pas ou a été déplacée.",
     "unauthorized": "Non autorisé",
+    "paymentInvoiced": "Ce paiement a été facturé et ne peut pas être supprimé.",
     "unauthenticated": "Non authentifié",
     "invalidData": "Données invalides",
     "slugTaken": "Cette adresse est déjà utilisée",
@@ -6738,10 +7188,13 @@
     "permissionDenied": "Permission insuffisante",
     "customerNotFound": "Client introuvable",
     "reservationNotFound": "Réservation introuvable",
+    "consumableInsufficientStock": "Stock de consommable insuffisant",
+    "requiredAccessoriesMissing": "Des accessoires requis sont absents ou en quantité incorrecte",
     "emailAlreadyExists": "Un client avec cet email existe déjà",
     "customerHasReservations": "Impossible de supprimer un client avec des réservations",
     "cannotCancelReservation": "Cette réservation ne peut pas être annulée",
     "cannotEditCompletedReservation": "Les réservations terminées ne peuvent pas être modifiées",
+    "reservationStatusChanged": "Le statut de la réservation a changé pendant la modification. Rechargez la page avant de réessayer.",
     "endDateBeforeStart": "La date de fin doit être après ou égale à la date de début",
     "negativeAmountOnlyForAdjustment": "Les montants négatifs sont réservés aux ajustements",
     "productRequired": "Produit requis",
@@ -6758,6 +7211,7 @@
     "unitProductMismatch": "Les unités sélectionnées n'appartiennent pas à ce produit",
     "unitCombinationMismatch": "Les unités sélectionnées ne correspondent pas à la combinaison réservée pour cette ligne",
     "cannotDisableUnitTrackingWithCombinations": "Impossible de désactiver le suivi unitaire tant que des réservations actives utilisent des combinaisons suivies pour ce produit.",
+    "cannotChangeStockKindWithActiveReservations": "Impossible de modifier le type de stock tant que ce produit est utilisé dans une réservation confirmée ou en cours.",
     "unitStatusConflictsWithReservations": "Cette modification rendrait impossibles des réservations futures pour au moins une combinaison suivie.",
     "unitAssigned": "Cette unité est assignée à une réservation bloquante et ne peut pas être supprimée.",
     "assignUnitsFailed": "Échec de l'assignation des unités",
@@ -6967,7 +7421,7 @@
       },
       "s5": {
         "title": "Durée de conservation",
-        "body": "Vos données sont conservées pendant toute la durée de votre abonnement. À la résiliation, elles sont conservées pendant une durée maximale de trois ans à des fins probatoires, puis supprimées ou anonymisées. Les données comptables et fiscales sont conservées dix ans conformément aux obligations légales."
+        "body": "Vos données actives sont conservées tant que votre compte existe. Lorsque vous le supprimez, elles sont effacées sans délai de nos systèmes actifs, y compris les factures émises ou reçues par vos boutiques. Exportez-les d’abord si vous devez les conserver. Seuls les justificatifs de facturation propres à Louez dont la loi impose la conservation sont isolés dans une archive à accès limité pendant dix ans à compter de la clôture de l’exercice, puis supprimés. Les copies de sauvegarde suivent leur cycle d’expiration et ne sont pas réutilisées dans les systèmes actifs."
       },
       "s6": {
         "title": "Vos droits",

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "react-image-crop/dist/ReactCrop.css";
+@import "maplibre-gl/dist/maplibre-gl.css";
 @plugin "@tailwindcss/typography";
 
 @import "@louez/ui/styles";

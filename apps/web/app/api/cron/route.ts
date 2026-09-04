@@ -3,10 +3,13 @@ import { NextResponse } from "next/server";
 import { runMarketplaceDefaultPublication } from "@louez/api/services";
 
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from "@/lib/analytics/aggregation";
+import { purgeExpiredLegalRetentionRecords } from "@/lib/account-deletion/retention-cleanup";
 import { createError, useLogger, withEvlog } from "@/lib/evlog";
 import { cleanExpiredCache, refreshAllStoresCache } from "@/lib/google-places/cache";
 import { processVoiceNumberRenewals } from "@/lib/ai/phone/number-renewals";
 import { processCalendarSyncQueue } from "@/lib/integrations/calendar/sync";
+import { pollSuperPdpInvoiceEvents } from "@/lib/invoicing/superpdp-events";
+import { processInvoiceTransmissionQueue } from "@/lib/invoicing/superpdp-transmission";
 import { runMonthlyPayAsYouGoBilling } from "@/lib/pay-as-you-go";
 import { processReminders } from "@/lib/reminders/automation";
 import { processReviewRequests } from "@/lib/review-booster/automation";
@@ -21,17 +24,20 @@ import { env } from "@/env";
  * - Automatic reminders: every minute (checks for upcoming pickups/returns)
  * - Calendar sync: every minute (pushes reservation updates to calendar providers)
  * - Marketplace default publication: daily at 1:00 AM UTC when explicitly enabled
+ * - Invoice transmission: every minute (converts, validates, and sends due invoices)
+ * - Super PDP lifecycle polling: every minute (outgoing statuses and received invoices)
  * - Analytics aggregation: daily at 2:00 AM UTC (aggregates yesterday's data)
- * - Google Places cache refresh: every 5 days (day 1, 6, 11, 16, 21, 26 at 3:00 AM UTC)
+ * - Google Places cache refresh: daily at 3:00 AM
  * - Analytics cleanup: daily at 3:30 AM UTC (removes raw data older than 90 days)
  * - Cache cleanup: daily at 4:00 AM UTC
+ * - Expired legal archive cleanup: daily at 4:30 AM UTC
  *
  * vercel.json:
  *   "crons": [{ "path": "/api/cron", "schedule": "* * * * *" }]
  *
  * Environment variables:
  * - CRON_SECRET: Required secret to authenticate cron requests
- * - GOOGLE_PLACES_CACHE_TTL_HOURS: Cache TTL in hours (default: 120 = 5 days)
+ * - GOOGLE_PLACES_CACHE_TTL_HOURS: Cache TTL in hours (default: 24)
  */
 async function handleCron(request: Request) {
   const logger = useLogger();
@@ -102,15 +108,23 @@ async function handleCron(request: Request) {
       }
     }
 
+    // Electronic invoice transmission and Super PDP event polling: every minute.
+    // Both functions start with indexed/connection-scoped queries and no-op cheaply
+    // when no due invoice or connected store exists.
+    tasks.push("invoice-transmission");
+    results.invoiceTransmission = await processInvoiceTransmissionQueue();
+
+    tasks.push("superpdp-invoice-events");
+    results.superPdpInvoiceEvents = await pollSuperPdpInvoiceEvents();
+
     // Analytics aggregation: daily at 2:00 AM
     if (hour === 2 && minute === 0) {
       tasks.push("analytics-aggregation");
       results.analyticsAggregation = await aggregateDailyAnalytics();
     }
 
-    // Google Places cache refresh: every 5 days at 3:00 AM
-    // Days 1, 6, 11, 16, 21, 26 of each month
-    if (hour === 3 && minute === 0 && [1, 6, 11, 16, 21, 26].includes(day)) {
+    // Google Places cache refresh: daily at 3:00 AM
+    if (hour === 3 && minute === 0) {
       tasks.push("google-places-refresh");
       results.googlePlacesRefresh = await refreshAllStoresCache();
     }
@@ -126,6 +140,12 @@ async function handleCron(request: Request) {
       tasks.push("cache-cleanup");
       const cleaned = await cleanExpiredCache();
       results.cacheCleanup = { cleaned };
+    }
+
+    if (now.getUTCHours() === 4 && now.getUTCMinutes() === 30) {
+      tasks.push("legal-retention-cleanup");
+      const deleted = await purgeExpiredLegalRetentionRecords(now);
+      results.legalRetentionCleanup = { deleted };
     }
 
     // Voice-number rental renewals: daily at 8:00 AM (warn → debit → grace →

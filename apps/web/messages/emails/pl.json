@@ -12,6 +12,7 @@
     "address": "Adres",
     "pickupAddress": "Adres odbioru",
     "returnAddress": "Adres zwrotu",
+    "pickupAndReturnAddress": "Adres odbioru i zwrotu",
     "subtotal": "Suma częściowa",
     "subtotalExclTax": "Suma netto",
     "taxAmount": "VAT ({rate}%)",
@@ -134,6 +135,7 @@
     "email": "Email:",
     "period": "Okres:",
     "amount": "Kwota:",
+    "notes": "Wiadomość od klienta",
     "viewRequest": "Zobacz żądanie",
     "connectToManage": "Zaloguj się do panelu, aby zaakceptować lub odrzucić to żądanie."
   },

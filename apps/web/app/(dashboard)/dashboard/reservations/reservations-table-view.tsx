@@ -29,6 +29,7 @@ import {
   TooltipTrigger,
 } from '@louez/ui'
 import { formatStoreDateRange } from '@/lib/utils/store-date'
+import { useFormatLocale } from '@/hooks/use-format-locale'
 import { getCurrencySymbol } from '@louez/utils'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
@@ -70,6 +71,8 @@ interface ReservationsTableViewProps {
   reservations: Reservation[]
   currency?: string
   timezone?: string
+  /** Dashboard path the reservation detail page should send the user back to. */
+  returnTo?: string | null
   currentSort?: SortField
   currentSortDirection?: SortDirection
   onSortChange: (field: SortField) => void
@@ -121,6 +124,7 @@ export function ReservationsTableView({
   reservations,
   currency = 'EUR',
   timezone,
+  returnTo,
   currentSort,
   currentSortDirection,
   onSortChange,
@@ -128,6 +132,7 @@ export function ReservationsTableView({
   handleStatusChange,
   openRejectDialog,
 }: ReservationsTableViewProps) {
+  const { intl: formatLocale } = useFormatLocale()
   const t = useTranslations('dashboard.reservations')
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -196,7 +201,11 @@ export function ReservationsTableView({
                 const isPending = status === 'pending'
                 const isConfirmed = status === 'confirmed'
                 const isOngoing = status === 'ongoing'
-                const reservationHref = getReservationDetailHref(reservation.id, reservationSource)
+                const reservationHref = getReservationDetailHref(
+                  reservation.id,
+                  reservationSource,
+                  returnTo
+                )
                 return (
                   <TableRow
                     key={reservation.id}
@@ -275,7 +284,12 @@ export function ReservationsTableView({
 
                     {/* Dates */}
                     <TableCell className="whitespace-nowrap text-sm">
-                      {formatStoreDateRange(reservation.startDate, reservation.endDate, timezone)}
+                      {formatStoreDateRange(
+                        reservation.startDate,
+                        reservation.endDate,
+                        timezone,
+                        formatLocale,
+                      )}
                     </TableCell>
 
                     {/* Amount */}

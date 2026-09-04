@@ -37,6 +37,7 @@ import {
   PaymentRequestEmail,
   DepositAuthorizationRequestEmail,
   QuoteSentEmail,
+  SupplierInvoiceReceivedEmail,
 } from './templates'
 
 interface Store {
@@ -186,6 +187,8 @@ export async function sendReservationConfirmationEmail({
   reservation,
   items,
   reservationUrl,
+  documentAttachments = [],
+  contractSignatureUrl,
   locale = 'fr',
 }: {
   to: string
@@ -209,6 +212,8 @@ export async function sendReservationConfirmationEmail({
   }
   items: ReservationItem[]
   reservationUrl: string
+  documentAttachments?: EmailAttachment[]
+  contractSignatureUrl?: string
   locale?: EmailLocale
 }) {
   const t = getEmailTranslations(locale)
@@ -239,6 +244,7 @@ export async function sendReservationConfirmationEmail({
       deposit: reservation.depositAmount,
       total: reservation.totalAmount,
       reservationUrl,
+      contractSignatureUrl,
       customContent,
       locale,
       currency: store.settings?.currency || 'EUR',
@@ -250,7 +256,13 @@ export async function sendReservationConfirmationEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
+    const result = await sendEmail({
+      to,
+      subject,
+      html,
+      attachments: [...logo.attachments, ...documentAttachments],
+      fromName: store.name,
+    })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -979,6 +991,7 @@ export async function sendNewRequestLandlordEmail({
     startDate: Date
     endDate: Date
     totalAmount: number
+    customerNotes?: string | null
   }
   dashboardUrl: string
   locale?: EmailLocale
@@ -998,6 +1011,7 @@ export async function sendNewRequestLandlordEmail({
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       total: reservation.totalAmount,
+      customerNotes: reservation.customerNotes,
       dashboardUrl,
       locale,
       currency: store.settings?.currency || 'EUR',
@@ -1585,6 +1599,8 @@ export async function sendPaymentConfirmationEmail({
   paymentDate,
   paymentMethod,
   reservationUrl,
+  documentAttachments = [],
+  contractSignatureUrl,
   locale = 'fr',
 }: {
   to: string
@@ -1598,6 +1614,8 @@ export async function sendPaymentConfirmationEmail({
   paymentDate: Date
   paymentMethod?: string | null
   reservationUrl?: string
+  documentAttachments?: EmailAttachment[]
+  contractSignatureUrl?: string
   locale?: EmailLocale
 }) {
   const t = getEmailTranslations(locale)
@@ -1620,13 +1638,20 @@ export async function sendPaymentConfirmationEmail({
       paymentDate,
       paymentMethod,
       reservationUrl,
+      contractSignatureUrl,
       locale,
       currency: store.settings?.currency || 'EUR',
     })
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
+    const result = await sendEmail({
+      to,
+      subject,
+      html,
+      attachments: [...logo.attachments, ...documentAttachments],
+      fromName: store.name,
+    })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1936,6 +1961,64 @@ export async function sendQuoteSentEmail({
       to,
       subject,
       templateType: 'quote_sent',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Supplier invoice received (admin / store owner)
+export async function sendSupplierInvoiceReceivedEmail({
+  to,
+  store,
+  invoice,
+  dashboardUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  invoice: {
+    sellerName: string
+    number: string
+    totalInclTax: string
+    currency: string
+  }
+  dashboardUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.supplierInvoiceReceived.subject
+  const html = await render(
+    SupplierInvoiceReceivedEmail({
+      storeName: store.name,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      sellerName: invoice.sellerName,
+      invoiceNumber: invoice.number,
+      totalInclTax: invoice.totalInclTax,
+      currency: invoice.currency,
+      dashboardUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, fromName: 'Louez.io' })
+    await logEmail({
+      storeId: store.id,
+      to,
+      subject,
+      templateType: 'supplier_invoice_received',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      to,
+      subject,
+      templateType: 'supplier_invoice_received',
       status: 'failed',
       error: String(error),
     })

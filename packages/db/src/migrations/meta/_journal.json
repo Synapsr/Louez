@@ -474,57 +474,64 @@
     {
       "idx": 62,
       "version": "5",
-      "when": 1786695662646,
-      "tag": "0062_amusing_maginty",
+      "when": 1787240250204,
+      "tag": "0062_fresh_bloodstorm",
       "breakpoints": true
     },
     {
       "idx": 63,
       "version": "5",
-      "when": 1786701349733,
-      "tag": "0063_glamorous_victor_mancha",
+      "when": 1787324381503,
+      "tag": "0063_mature_colleen_wing",
       "breakpoints": true
     },
     {
       "idx": 64,
       "version": "5",
-      "when": 1786703699644,
-      "tag": "0064_whole_paibok",
+      "when": 1787588587623,
+      "tag": "0064_short_taskmaster",
       "breakpoints": true
     },
     {
       "idx": 65,
       "version": "5",
-      "when": 1786706011352,
-      "tag": "0065_closed_mordo",
+      "when": 1787729448270,
+      "tag": "0065_cooing_moonstone",
       "breakpoints": true
     },
     {
       "idx": 66,
       "version": "5",
-      "when": 1787039744044,
-      "tag": "0066_strange_revanche",
+      "when": 1787761796705,
+      "tag": "0066_typical_wrecking_crew",
       "breakpoints": true
     },
     {
       "idx": 67,
       "version": "5",
-      "when": 1787040838730,
-      "tag": "0067_premium_loki",
+      "when": 1787824488553,
+      "tag": "0067_eager_starbolt",
       "breakpoints": true
     },
     {
       "idx": 68,
       "version": "5",
-      "when": 1787150661555,
-      "tag": "0068_calm_hellfire_club",
+      "when": 1787907940724,
+      "tag": "0068_easy_ogun",
       "breakpoints": true
     },
     {
       "idx": 69,
       "version": "5",
-      "when": 1788443586162,
-      "tag": "0069_wide_mongoose",
+      "when": 1787917243405,
+      "tag": "0069_careful_enchantress",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "5",
+      "when": 1788502866350,
+      "tag": "0070_wet_sleepwalker",
       "breakpoints": true
     }
   ]

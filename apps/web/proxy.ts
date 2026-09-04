@@ -1,17 +1,16 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-import { isStandaloneMode } from '@/lib/deployment';
-import { getSubdomain, isLoopbackHost } from '@/lib/util.host';
-import { isValidReferralCode } from '@/lib/utils/referral';
+import { isStandaloneMode } from "@/lib/deployment";
+import { buildEmbedSecurityHeaders, buildSecurityHeaders } from "@/lib/util.security-headers";
+import { isValidReferralCode } from "@/lib/utils/referral";
 import {
   isKnownSignupOrigin,
   SIGNUP_ORIGIN_COOKIE,
   SIGNUP_ORIGIN_COOKIE_MAX_AGE,
-} from '@/lib/utils/signup-origin';
-import { LOGIN_CALLBACK_PATH_HEADER } from '@/lib/utils/util.url';
-
-import { env } from '@/env';
+} from "@/lib/utils/signup-origin";
+import { LOGIN_CALLBACK_PATH_HEADER } from "@/lib/utils/util.url";
+import { readPublicEnvRuntime, type PublicEnv } from "@/lib/validators/validator.public-env";
 
 // =============================================================================
 // CONFIGURATION
@@ -27,22 +26,82 @@ import { env } from '@/env';
 //   PREVIEW_STORE_SLUG - For local dev, show this store's storefront instead of dashboard
 // =============================================================================
 
-const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
-const DASHBOARD_SUBDOMAIN = env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN;
-const PREVIEW_STORE_SLUG = env.PREVIEW_STORE_SLUG;
-const SALES_CHANNEL_COOKIE = 'louez_channel';
-const MARKETPLACE_CHANNEL = 'marketplace';
+// A published Docker image must pick these up from the container, not the
+// builder. Keep the lookup dynamic: Next inlines static NEXT_PUBLIC_* reads at
+// build time, and importing the full app env here would validate those frozen
+// values as soon as the proxy bundle loads.
+const readRuntimeEnv = (name: string): string | undefined => process.env[name];
+let runtimePublicEnv: PublicEnv | null = null;
+
+const getRuntimePublicEnv = (): PublicEnv => {
+  runtimePublicEnv ??= readPublicEnvRuntime({ readEnv: readRuntimeEnv });
+  return runtimePublicEnv;
+};
+
+function isEmbedPath(pathname: string): boolean {
+  return (
+    pathname === "/embed" ||
+    pathname.startsWith("/embed/") ||
+    /^\/[^/]+\/embed(?:\/|$)/.test(pathname)
+  );
+}
+
+function withRuntimeSecurityHeaders(
+  response: NextResponse,
+  pathname: string,
+  publicEnv: PublicEnv,
+) {
+  const options = {
+    appDomain: publicEnv.NEXT_PUBLIC_APP_DOMAIN,
+    fromHelloApiUrl: publicEnv.NEXT_PUBLIC_FROMHELLO_API_URL,
+    isDevelopment: process.env.NODE_ENV === "development",
+    openReplayIngestPoint: publicEnv.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
+  };
+  const securityHeaders = isEmbedPath(pathname)
+    ? buildEmbedSecurityHeaders(options)
+    : buildSecurityHeaders(options);
+
+  for (const { key, value } of securityHeaders) {
+    response.headers.set(key, value);
+  }
+
+  return response;
+}
+
+const SALES_CHANNEL_COOKIE = "louez_channel";
+const MARKETPLACE_CHANNEL = "marketplace";
 
 // Routes that should never be rewritten to storefront (dashboard/auth routes)
 const DASHBOARD_ROUTES = [
-  '/login',
-  '/register',
-  '/dashboard',
-  '/onboarding',
-  '/invitation',
-  '/multi-store',
-  '/admin', // platform-admin area (gated in its layout)
+  "/login",
+  "/register",
+  "/dashboard",
+  "/onboarding",
+  "/invitation",
+  "/multi-store",
+  "/admin", // platform-admin area (gated in its layout)
 ];
+
+/**
+ * Extract the subdomain from the host header relative to APP_DOMAIN.
+ */
+function getSubdomain(host: string, appDomain: string): string | null {
+  const hostname = host.split(":")[0];
+
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return null;
+  }
+
+  const hostParts = hostname.split(".");
+  const baseDomain = appDomain.split(":")[0];
+  const baseParts = baseDomain.split(".");
+
+  if (hostParts.length > baseParts.length) {
+    return hostParts.slice(0, hostParts.length - baseParts.length).join(".");
+  }
+
+  return null;
+}
 
 /**
  * Check if the pathname is a dashboard/auth route that should not be rewritten.
@@ -55,10 +114,15 @@ function isDashboardRoute(pathname: string): boolean {
  * Check if the request is for static assets or Next.js internals.
  */
 function isStaticAsset(pathname: string): boolean {
+  return pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname.includes(".");
+}
+
+function isLoopbackHost(hostname: string): boolean {
   return (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon') ||
-    pathname.includes('.')
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
   );
 }
 
@@ -67,7 +131,7 @@ function createInternalRewriteUrl(request: NextRequest, pathname: string) {
   url.pathname = pathname;
 
   if (isLoopbackHost(url.hostname)) {
-    url.protocol = 'http:';
+    url.protocol = "http:";
   }
 
   return url;
@@ -91,26 +155,26 @@ function createDashboardResponse(request: NextRequest) {
 function createStorefrontRewrite(request: NextRequest, slug: string) {
   const { pathname } = request.nextUrl;
   const url = createInternalRewriteUrl(request, `/${slug}${pathname}`);
-  const requestedChannel = request.nextUrl.searchParams.get('channel');
+  const requestedChannel = request.nextUrl.searchParams.get("channel");
   const hasMarketplaceCookie =
     request.cookies.get(SALES_CHANNEL_COOKIE)?.value === MARKETPLACE_CHANNEL;
   const isMarketplaceChannel =
     requestedChannel === MARKETPLACE_CHANNEL ||
-    (requestedChannel !== 'direct' && hasMarketplaceCookie);
+    (requestedChannel !== "direct" && hasMarketplaceCookie);
   const requestHeaders = new Headers(request.headers);
 
   // Never trust caller-provided mode headers. The proxy derives them from the
   // route, query, and cookie before forwarding the rewritten request upstream.
-  requestHeaders.delete('x-embed-mode');
-  requestHeaders.delete('x-sales-channel');
+  requestHeaders.delete("x-embed-mode");
+  requestHeaders.delete("x-sales-channel");
 
   if (isMarketplaceChannel) {
-    requestHeaders.set('x-sales-channel', MARKETPLACE_CHANNEL);
+    requestHeaders.set("x-sales-channel", MARKETPLACE_CHANNEL);
   }
 
   // Embed routes drop the app chrome (used by the layout).
-  if (pathname === '/embed' || pathname.startsWith('/embed/')) {
-    requestHeaders.set('x-embed-mode', '1');
+  if (pathname === "/embed" || pathname.startsWith("/embed/")) {
+    requestHeaders.set("x-embed-mode", "1");
   }
 
   const response = NextResponse.rewrite(url, {
@@ -121,12 +185,12 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
 
   if (requestedChannel === MARKETPLACE_CHANNEL) {
     response.cookies.set(SALES_CHANNEL_COOKIE, MARKETPLACE_CHANNEL, {
-      path: '/',
-      sameSite: 'lax',
+      path: "/",
+      sameSite: "lax",
       httpOnly: true,
       secure: !isLoopbackHost(request.nextUrl.hostname),
     });
-  } else if (requestedChannel === 'direct' && hasMarketplaceCookie) {
+  } else if (requestedChannel === "direct" && hasMarketplaceCookie) {
     response.cookies.delete(SALES_CHANNEL_COOKIE);
   }
 
@@ -165,11 +229,10 @@ async function getStandaloneStoreSlug(): Promise<string | null> {
 
   standaloneSlugInFlight = (async () => {
     try {
-      const port = process.env.PORT ?? '3000';
-      const response = await fetch(
-        `http://127.0.0.1:${port}/api/standalone/store`,
-        { cache: 'no-store' },
-      );
+      const port = process.env.PORT ?? "3000";
+      const response = await fetch(`http://127.0.0.1:${port}/api/standalone/store`, {
+        cache: "no-store",
+      });
       if (!response.ok) {
         // 404 = no onboarded store yet: do not cache, so onboarding flips the
         // root immediately. Other codes are transient: back off briefly.
@@ -206,7 +269,7 @@ async function getStandaloneStoreSlug(): Promise<string | null> {
 // ACQUISITION ATTRIBUTION
 // =============================================================================
 
-const REFERRAL_COOKIE = 'louez_referral';
+const REFERRAL_COOKIE = "louez_referral";
 const REFERRAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30-day attribution window
 
 /**
@@ -214,9 +277,9 @@ const REFERRAL_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30-day attribution window
  * e.g. louez.io) or any *.louez.io surface survives the hop to the dashboard
  * (app.louez.io). Omitted on localhost — browsers reject domain=localhost.
  */
-function referralCookieDomain(host: string): string | undefined {
-  const hostname = host.split(':')[0].toLowerCase();
-  const baseDomain = APP_DOMAIN.split(':')[0].toLowerCase();
+function referralCookieDomain(host: string, appDomain: string): string | undefined {
+  const hostname = host.split(":")[0].toLowerCase();
+  const baseDomain = appDomain.split(":")[0].toLowerCase();
   if (isLoopbackHost(hostname) || isLoopbackHost(baseDomain)) return undefined;
   if (hostname === baseDomain || hostname.endsWith(`.${baseDomain}`)) {
     return `.${baseDomain}`;
@@ -234,16 +297,17 @@ function captureReferral(
   request: NextRequest,
   response: NextResponse,
   host: string,
+  appDomain: string,
 ): NextResponse {
-  const ref = request.nextUrl.searchParams.get('ref');
+  const ref = request.nextUrl.searchParams.get("ref");
   if (ref && isValidReferralCode(ref)) {
     response.cookies.set(REFERRAL_COOKIE, ref, {
       maxAge: REFERRAL_COOKIE_MAX_AGE,
-      path: '/',
-      sameSite: 'lax',
+      path: "/",
+      sameSite: "lax",
       httpOnly: true,
-      secure: !isLoopbackHost(host.split(':')[0]),
-      domain: referralCookieDomain(host),
+      secure: !isLoopbackHost(host.split(":")[0]),
+      domain: referralCookieDomain(host, appDomain),
     });
   }
   return response;
@@ -259,16 +323,17 @@ function captureSignupOrigin(
   request: NextRequest,
   response: NextResponse,
   host: string,
+  appDomain: string,
 ): NextResponse {
-  const from = request.nextUrl.searchParams.get('from');
+  const from = request.nextUrl.searchParams.get("from");
   if (isKnownSignupOrigin(from)) {
     response.cookies.set(SIGNUP_ORIGIN_COOKIE, from, {
       maxAge: SIGNUP_ORIGIN_COOKIE_MAX_AGE,
-      path: '/',
-      sameSite: 'lax',
+      path: "/",
+      sameSite: "lax",
       httpOnly: true,
-      secure: !isLoopbackHost(host.split(':')[0]),
-      domain: referralCookieDomain(host),
+      secure: !isLoopbackHost(host.split(":")[0]),
+      domain: referralCookieDomain(host, appDomain),
     });
   }
   return response;
@@ -279,13 +344,18 @@ function captureAcquisition(
   request: NextRequest,
   response: NextResponse,
   host: string,
+  appDomain: string,
 ): NextResponse {
-  return captureSignupOrigin(request, captureReferral(request, response, host), host);
+  return captureSignupOrigin(
+    request,
+    captureReferral(request, response, host, appDomain),
+    host,
+    appDomain,
+  );
 }
 
 export async function proxy(request: NextRequest) {
-  const host = request.headers.get('host') || '';
-  const subdomain = getSubdomain(host);
+  const host = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
 
   // -----------------------------------------------------------------------------
@@ -293,13 +363,15 @@ export async function proxy(request: NextRequest) {
   // -----------------------------------------------------------------------------
   // /ingest must reach the next.config.ts rewrites untouched: rewriting it to
   // /{slug}/ingest on storefront subdomains 404s every PostHog capture call.
-  if (
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/ingest') ||
-    isStaticAsset(pathname)
-  ) {
+  if (pathname.startsWith("/api") || pathname.startsWith("/ingest") || isStaticAsset(pathname)) {
     return NextResponse.next();
   }
+
+  const publicEnv = getRuntimePublicEnv();
+  const appDomain = publicEnv.NEXT_PUBLIC_APP_DOMAIN;
+  const dashboardSubdomain = publicEnv.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN;
+  const previewStoreSlug = readRuntimeEnv("PREVIEW_STORE_SLUG") || "";
+  const subdomain = getSubdomain(host, appDomain);
 
   // -----------------------------------------------------------------------------
   // 2. STANDALONE: single store on a single origin (the default mode)
@@ -310,17 +382,17 @@ export async function proxy(request: NextRequest) {
   // deliberately absent here — the referral program is platform machinery.
   if (isStandaloneMode()) {
     if (isDashboardRoute(pathname)) {
-      return NextResponse.next();
+      return withRuntimeSecurityHeaders(NextResponse.next(), pathname, publicEnv);
     }
 
     const slug = await getStandaloneStoreSlug();
     if (!slug) {
       // Fresh install: no onboarded store yet. Fall through to the dashboard
       // root, which walks the visitor to /login and /onboarding.
-      return NextResponse.next();
+      return withRuntimeSecurityHeaders(NextResponse.next(), pathname, publicEnv);
     }
 
-    return createStorefrontRewrite(request, slug);
+    return withRuntimeSecurityHeaders(createStorefrontRewrite(request, slug), pathname, publicEnv);
   }
 
   // -----------------------------------------------------------------------------
@@ -328,18 +400,18 @@ export async function proxy(request: NextRequest) {
   // -----------------------------------------------------------------------------
   // When running locally with PREVIEW_STORE_SLUG set, rewrite to that store's
   // storefront (except for dashboard routes which should remain accessible).
-  const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1');
+  const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1");
 
-  if (
-    isLocalhost &&
-    !subdomain &&
-    PREVIEW_STORE_SLUG &&
-    !isDashboardRoute(pathname)
-  ) {
-    return captureAcquisition(
-      request,
-      createStorefrontRewrite(request, PREVIEW_STORE_SLUG),
-      host,
+  if (isLocalhost && !subdomain && previewStoreSlug && !isDashboardRoute(pathname)) {
+    return withRuntimeSecurityHeaders(
+      captureAcquisition(
+        request,
+        createStorefrontRewrite(request, previewStoreSlug),
+        host,
+        appDomain,
+      ),
+      pathname,
+      publicEnv,
     );
   }
 
@@ -349,8 +421,12 @@ export async function proxy(request: NextRequest) {
   // Dashboard is served from:
   //   - {DASHBOARD_SUBDOMAIN}.{APP_DOMAIN} (e.g., app.example.com)
   //   - localhost (when PREVIEW_STORE_SLUG is not set)
-  if (subdomain === DASHBOARD_SUBDOMAIN || (isLocalhost && !subdomain)) {
-    return captureAcquisition(request, createDashboardResponse(request), host);
+  if (subdomain === dashboardSubdomain || (isLocalhost && !subdomain)) {
+    return withRuntimeSecurityHeaders(
+      captureAcquisition(request, createDashboardResponse(request), host, appDomain),
+      pathname,
+      publicEnv,
+    );
   }
 
   // -----------------------------------------------------------------------------
@@ -358,18 +434,22 @@ export async function proxy(request: NextRequest) {
   // -----------------------------------------------------------------------------
   // {slug}.{APP_DOMAIN} → rewrite to /{slug}/* routes
   // Excludes "www" which should show the landing page
-  if (subdomain && subdomain !== 'www') {
-    return captureAcquisition(
-      request,
-      createStorefrontRewrite(request, subdomain),
-      host,
+  if (subdomain && subdomain !== "www") {
+    return withRuntimeSecurityHeaders(
+      captureAcquisition(request, createStorefrontRewrite(request, subdomain), host, appDomain),
+      pathname,
+      publicEnv,
     );
   }
 
   // -----------------------------------------------------------------------------
   // 6. DEFAULT: Pass through (landing page, www, etc.)
   // -----------------------------------------------------------------------------
-  return captureAcquisition(request, NextResponse.next(), host);
+  return withRuntimeSecurityHeaders(
+    captureAcquisition(request, NextResponse.next(), host, appDomain),
+    pathname,
+    publicEnv,
+  );
 }
 
 export const config = {
@@ -381,6 +461,6 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico (favicon)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };

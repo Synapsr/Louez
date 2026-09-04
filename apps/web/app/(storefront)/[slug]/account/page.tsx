@@ -33,6 +33,7 @@ import { LogoutButton } from '@/components/storefront/logout-button'
 import { PageTracker } from '@/components/storefront/page-tracker'
 import { SuccessToast } from './success-toast'
 import { formatStoreDate } from '@/lib/utils/store-date'
+import { getRequestFormatLocale } from '@/lib/i18n/format-locale.server'
 
 interface AccountPageProps {
   params: Promise<{ slug: string }>
@@ -72,6 +73,7 @@ export async function generateMetadata({
 export default async function AccountPage({ params }: AccountPageProps) {
   const { slug } = await params
   const t = await getTranslations('storefront.account')
+  const { intl: formatLocale } = await getRequestFormatLocale()
 
   const store = await db.query.stores.findFirst({
     where: eq(stores.slug, slug),
@@ -274,9 +276,19 @@ export default async function AccountPage({ params }: AccountPageProps) {
                               <span className="flex items-center gap-1.5">
                                 <Calendar className="h-4 w-4 flex-shrink-0" />
                                 <span>
-                                  {formatStoreDate(reservation.startDate, storeTimezone, 'RANGE_ELEMENT')}
+                                  {formatStoreDate(
+                                    reservation.startDate,
+                                    storeTimezone,
+                                    'RANGE_ELEMENT',
+                                    formatLocale,
+                                  )}
                                   {' → '}
-                                  {formatStoreDate(reservation.endDate, storeTimezone, 'RANGE_ELEMENT')}
+                                  {formatStoreDate(
+                                    reservation.endDate,
+                                    storeTimezone,
+                                    'RANGE_ELEMENT',
+                                    formatLocale,
+                                  )}
                                 </span>
                               </span>
                               <span className="flex items-center gap-1.5">
@@ -288,7 +300,11 @@ export default async function AccountPage({ params }: AccountPageProps) {
                           <div className="flex flex-col items-end gap-2 flex-shrink-0">
                             <div className="flex items-center gap-3">
                               <span className="font-semibold text-lg">
-                                {formatCurrency(parseFloat(reservation.totalAmount), currency)}
+                                {formatCurrency(
+                                  parseFloat(reservation.totalAmount),
+                                  currency,
+                                  formatLocale,
+                                )}
                               </span>
                               <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                             </div>
@@ -352,9 +368,19 @@ export default async function AccountPage({ params }: AccountPageProps) {
                                 <span className={`text-xs font-medium ${config.color}`}>{config.label}</span>
                               </div>
                               <p className="text-sm text-muted-foreground">
-                                {formatStoreDate(reservation.startDate, storeTimezone, 'dd/MM HH:mm')}
+                                {formatStoreDate(
+                                  reservation.startDate,
+                                  storeTimezone,
+                                  'dd/MM HH:mm',
+                                  formatLocale,
+                                )}
                                 {' - '}
-                                {formatStoreDate(reservation.endDate, storeTimezone, 'TIMESTAMP')}
+                                {formatStoreDate(
+                                  reservation.endDate,
+                                  storeTimezone,
+                                  'TIMESTAMP',
+                                  formatLocale,
+                                )}
                                 {' • '}
                                 {t('itemCount', { count: reservation.items.length })}
                               </p>
@@ -363,7 +389,11 @@ export default async function AccountPage({ params }: AccountPageProps) {
                           <div className="flex items-center gap-3 flex-shrink-0">
                             <div className="text-right">
                               <p className="font-medium">
-                                {formatCurrency(parseFloat(reservation.totalAmount), currency)}
+                                {formatCurrency(
+                                  parseFloat(reservation.totalAmount),
+                                  currency,
+                                  formatLocale,
+                                )}
                               </p>
                               <p className={`text-xs ${isPaid ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                 {isPaid ? t('paymentPaid') : t('paymentPending')}

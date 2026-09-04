@@ -54,6 +54,13 @@ function isAllowedDevRecipient(email: string) {
   );
 }
 
+function getDevPreviewUrl(html: string, explicitUrl?: string): string | undefined {
+  if (explicitUrl) return explicitUrl;
+
+  const href = html.match(/\bhref=(["'])(.*?)\1/i)?.[2];
+  return href?.replaceAll('&amp;', '&');
+}
+
 // Created lazily so importing this module never requires SMTP settings —
 // instances without an email provider must still boot and run.
 let transporter: Transporter | null = null;
@@ -76,6 +83,7 @@ export async function sendEmail({
   subject,
   html,
   attachments,
+  devPreviewUrl,
   fromName,
 }: SendEmailOptions) {
   // No transport configured: log-and-skip with a synthetic success so callers
@@ -106,6 +114,10 @@ export async function sendEmail({
     console.log('[DEV] Subject:', subject);
 
     if (!isAllowedDevRecipient(to)) {
+      const previewUrl = getDevPreviewUrl(html, devPreviewUrl);
+      if (previewUrl) {
+        console.log('[DEV] Email link:', previewUrl);
+      }
       console.log('[DEV] Email skipped: recipient not in DEV_EMAIL_ALLOWLIST');
 
       return { messageId: `dev-skipped-${Date.now()}`, success: true };

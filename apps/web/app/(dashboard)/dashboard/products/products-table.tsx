@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import { MoreHorizontal, Pencil, Copy, Archive, Trash2, Eye, EyeOff, Package } from 'lucide-react'
 
 import { Button } from '@louez/ui'
+import type { StockKind } from '@louez/types'
 import { Badge } from '@louez/ui'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@louez/ui'
 import {
@@ -38,6 +39,7 @@ interface Product {
   price: string
   deposit: string | null
   quantity: number
+  stockKind: StockKind
   status: 'draft' | 'active' | 'archived' | null
   category: {
     id: string
@@ -58,6 +60,7 @@ const STATUS_VARIANTS = {
 
 export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps) {
   const t = useTranslations('dashboard.products')
+  const tForm = useTranslations('dashboard.products.form')
   const tCommon = useTranslations('common')
   const currencySymbol = getCurrencySymbol(currency)
   const tableRef = useRef<HTMLTableElement>(null)
@@ -172,7 +175,11 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
                   <TableCell className="text-right font-medium">
                     {parseFloat(product.price).toFixed(2)} {currencySymbol}
                   </TableCell>
-                  <TableCell className="text-center">{product.quantity}</TableCell>
+                  <TableCell className="text-center">
+                    {product.stockKind === 'untracked'
+                      ? tForm('stockKindUntracked')
+                      : product.quantity}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={statusVariant}>
                       {t(`status.${product.status || 'draft'}`)}

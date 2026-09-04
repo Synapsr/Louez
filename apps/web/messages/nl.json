@@ -237,6 +237,85 @@
     }
   },
   "dashboard": {
+    "purchaseInvoices": {
+      "title": "Leveranciersfacturen",
+      "description": "Facturen die je leveranciers via het netwerk voor elektronische facturatie naar je bedrijf hebben gestuurd.",
+      "columns": {
+        "seller": "Leverancier",
+        "number": "Factuur",
+        "issueDate": "Factuurdatum",
+        "totalInclTax": "Totaal incl. btw",
+        "status": "Netwerkstatus",
+        "ourAction": "Jouw antwoord",
+        "actions": "Acties"
+      },
+      "statuses": {
+        "received": "Ontvangen",
+        "acknowledged": "Ontvangst bevestigd",
+        "accepted": "Geaccepteerd",
+        "disputed": "Betwist",
+        "refused": "Geweigerd",
+        "paid": "Betaald",
+        "paymentSent": "Betaling verzonden",
+        "rejected": "Afgewezen",
+        "validated": "Gevalideerd"
+      },
+      "ourActions": {
+        "none": "Geen antwoord",
+        "acknowledged": "Ontvangst bevestigd",
+        "accepted": "Geaccepteerd",
+        "refused": "Geweigerd"
+      },
+      "actions": {
+        "download": "Downloaden",
+        "downloadNamed": "Factuur {number} downloaden",
+        "menuLabel": "Acties voor factuur {number}",
+        "acknowledge": "Ontvangst bevestigen",
+        "accept": "Factuur accepteren",
+        "refuse": "Factuur weigeren",
+        "acknowledgeSuccess": "Ontvangst bevestigd",
+        "acceptSuccess": "Factuur geaccepteerd",
+        "refuseSuccess": "Factuur geweigerd"
+      },
+      "accept": {
+        "title": "Deze factuur accepteren?",
+        "description": "Het accepteren van factuur {number} stuurt een bindende verklaring naar het netwerk voor elektronische facturatie. Dit kan niet ongedaan worden gemaakt.",
+        "confirm": "Factuur accepteren"
+      },
+      "refuse": {
+        "title": "Deze factuur weigeren?",
+        "description": "Het weigeren van factuur {number} stuurt een bindende verklaring naar het netwerk voor elektronische facturatie. Dit kan niet ongedaan worden gemaakt.",
+        "reasonLabel": "Reden van weigering",
+        "reasonPlaceholder": "Bijv. verkeerd bedrag, dienst niet geleverd…",
+        "reasonHelp": "De reden wordt doorgestuurd naar je leverancier.",
+        "confirm": "Factuur weigeren"
+      },
+      "empty": {
+        "title": "Nog geen leveranciersfacturen",
+        "description": "Facturen komen hier automatisch binnen zodra een leverancier er een naar je bedrijf stuurt via het netwerk voor elektronische facturatie.",
+        "settingsAction": "Factuurinstellingen bekijken"
+      },
+      "notConnected": {
+        "title": "Verbind je bedrijf om leveranciersfacturen te ontvangen",
+        "description": "Leveranciersfacturen komen in deze inbox zodra je bedrijf is aangemeld bij ons geaccrediteerde platform (PDP).",
+        "deadlineTitle": "Deadline september 2026",
+        "deadlineDescription": "Vanaf september 2026 moet elk Frans bedrijf zijn facturen elektronisch kunnen ontvangen.",
+        "howItWorks": "Zodra je verbonden bent, verschijnen inkomende facturen hier automatisch. Je kunt ze downloaden, de ontvangst bevestigen, ze accepteren of weigeren.",
+        "connectAction": "Elektronische facturatie instellen"
+      },
+      "pagination": {
+        "total": "{count, plural, =0 {Geen facturen} one {1 factuur} other {# facturen}}",
+        "page": "Pagina {current} van {total}",
+        "previous": "Vorige pagina",
+        "next": "Volgende pagina"
+      },
+      "sync": "Synchroniseren",
+      "viewAll": "Volledige pagina openen"
+    },
+    "electronicInvoicingUnavailable": {
+      "title": "Elektronische facturatie is niet beschikbaar",
+      "description": "Deze functie is nog niet ingeschakeld voor je winkel."
+    },
     "aiAssistant": {
       "hero": {
         "eyebrow": "AI-assistent",
@@ -1005,6 +1084,21 @@
         "stock": "Voorraad",
         "quantity": "Beschikbare hoeveelheid",
         "quantityHelp": "Aantal beschikbare eenheden voor verhuur",
+        "consumableQuantityHelp": "Voorraad in het schap: die daalt bij elke bevestigde reservering en stijgt wanneer u aanvult.",
+        "stockKindLabel": "Voorraadtype",
+        "stockKindReturnable": "Retourneerbare voorraad",
+        "stockKindReturnableDescription": "Het product komt na elke verhuur terug en wordt opnieuw beschikbaar.",
+        "stockKindConsumable": "Verbruiksartikel",
+        "stockKindConsumableDescription": "Het product gaat mee met de klant: de voorraad daalt bij elke bevestigde reservering en het aantal is de voorraad in het schap.",
+        "stockKindConsumableRequiresFixed": "Een verbruiksartikel wordt tegen een vaste prijs verkocht: kies de tarifering \"Vaste prijs\" om het in te schakelen.",
+        "stockKindConsumableRequiresNoUnits": "Een verbruiksartikel wordt niet per eenheid gevolgd: schakel het volgen per eenheid uit om het in te schakelen.",
+        "stockKindUntracked": "Voorraad niet volgen",
+        "stockKindUntrackedRequiresNoUnits": "Niet-gevolgde voorraad kan geen eenheidstracering gebruiken.",
+        "untrackedStockHelp": "Er wordt geen hoeveelheid bijgehouden of beperkt. Datums en boekingsregels blijven van toepassing.",
+        "stockKindChangeBlockedTitle": "Voorraadtype vergrendeld",
+        "stockKindChangeBlocked": "Dit product staat in de volgende reserveringen. Annuleer of voltooi ze voordat u het voorraadtype wijzigt.",
+        "stockKindChangeBlockedTrigger": "{kind}. Bekijk reserveringen die de wijziging blokkeren.",
+        "stockKindBlockingReservation": "Reservering #{number}",
         "publication": "Publicatie",
         "statusActive": "Actief",
         "statusActiveDescription": "Zichtbaar in de winkel",
@@ -1024,6 +1118,14 @@
         "categoryOptional": "Optioneel - helpt klanten uw product te vinden",
         "noCategories": "Nog geen categorieën",
         "pricingDescription": "Stel de huurprijs en tarieven in",
+        "pricingKindLabel": "Prijsmodel",
+        "pricingKindDuration": "Prijs per duur",
+        "pricingKindDurationDescription": "De prijs hangt af van de huurduur.",
+        "pricingKindFixed": "Vaste prijs",
+        "pricingKindFixedDescription": "Eén prijs, ongeacht de huurduur.",
+        "fixedPrice": "Vaste prijs",
+        "fixedPriceDescription": "Eenmaal per artikel in rekening gebracht, ongeacht de huurduur.",
+        "fixedPriceLabel": "Vaste prijs",
         "baseRate": "Basistarief",
         "baseRateDescription": "Duurste tarief per minuut, gebruikt als prijsbasis.",
         "additionalRates": "Extra tarieven",
@@ -1240,10 +1342,16 @@
         "addAccessory": "Accessoire toevoegen",
         "selectAccessories": "Accessoires selecteren",
         "selectAccessoriesDescription": "Kies producten om bij dit product voor te stellen",
+        "accessoriesSelectedCount": "{count, plural, =0 {Geen accessoire geselecteerd} one {# accessoire geselecteerd} other {# accessoires geselecteerd}}",
+        "clearSearch": "Zoekopdracht wissen",
         "searchProducts": "Zoek een product...",
         "noProductsFound": "Geen producten gevonden",
         "noProductsAvailable": "Geen producten beschikbaar",
         "accessoriesHelp": "Accessoires worden voorgesteld bij het toevoegen aan winkelwagen",
+        "accessoryRequired": "Verplicht",
+        "accessoryQuantity": "Aantal",
+        "accessoryQuantityPerUnit": "per verhuurde eenheid",
+        "accessoryOptionalHint": "Wordt alleen aan de klant voorgesteld.",
         "seasonalPricing": "Seizoensprijzen",
         "seasonalPricingDescription": "Stel verschillende tarieven in voor specifieke periodes (zomer, feestdagen, enz.).",
         "addSeasonalPeriod": "Periode toevoegen",
@@ -1390,11 +1498,16 @@
           "utilization": "Bezettingsgraad",
           "utilizationSubtitle": "Laatste 30 dagen",
           "stock": "Voorraad",
-          "unitsActiveValue": "{active}/{total} actief"
+          "unitsActiveValue": "{active}/{total} actief",
+          "notTracked": "Niet gevolgd",
+          "notApplicable": "Niet van toepassing",
+          "notTrackedSubtitle": "Geen voorraadcapaciteit"
         },
         "inventory": {
           "title": "Inventaris",
           "manageStock": "Voorraad beheren",
+          "consumableBadge": "Verbruiksartikel",
+          "consumableQuantity": "In het schap",
           "quantity": "Aantal",
           "available": "Beschikbaar",
           "noUnits": "Geen eenheden geregistreerd",
@@ -1418,6 +1531,7 @@
           "viewCalendar": "Kalender",
           "timeline": {
             "stock": "Voorraad",
+            "bookings": "Reserveringen",
             "statusFilter": "Filteren op status",
             "showAll": "Alles tonen",
             "previous": "Vorige periode",
@@ -1751,6 +1865,28 @@
       "sendEmail": "E-mail verzenden",
       "customerInfo": "Klantinformatie",
       "viewCustomer": "Klant bekijken",
+      "invoiceDocuments": {
+        "title": "Facturen en creditnota’s",
+        "empty": "Er is nog geen factuur aangemaakt.",
+        "generate": "Factuur aanmaken",
+        "generationSuccess": "De beschikbare factuurdocumenten zijn aangemaakt.",
+        "generationError": "De factuur kon niet worden aangemaakt.",
+        "download": "Downloaden",
+        "downloadNamed": "{number} downloaden",
+        "types": {
+          "invoice": "Factuur",
+          "credit_note": "Creditnota"
+        },
+        "transmission": {
+          "not_applicable": "Niet verzonden",
+          "pending": "Verzending in afwachting",
+          "sent": "Verzonden",
+          "validated": "Gevalideerd",
+          "rejected": "Afgewezen",
+          "failed": "Verzending mislukt"
+        },
+        "recheck": "Verzendstatus vernieuwen"
+      },
       "periodStart": "Begin",
       "periodEnd": "Einde",
       "duration": "Duur",
@@ -1765,6 +1901,13 @@
       "productUnitPrice": "Eenheidsprijs",
       "productTotal": "Totaal",
       "deliveryAndReturn": "Levering & retour",
+      "pickupAndReturn": "Ophalen & retour",
+      "storeLegsSummary": {
+        "sameLocation": "Ophalen en retourneren in de winkel",
+        "pickup": "Ophalen",
+        "return": "Retour",
+        "edit": "Wijzigen"
+      },
       "outboundLegLabel": "Materiaal ontvangen",
       "returnLegLabel": "Materiaal retourneren",
       "deliveryAddressLabel": "Leveringsadres",
@@ -2283,6 +2426,16 @@
         "maxReturnable": "Maximaal retourneerbaar",
         "history": "Betalingsgeschiedenis",
         "recorded": "Betaling geregistreerd",
+        "refundBadge": "Terugbetaling",
+        "refundAction": "Terugbetalen",
+        "refundTitle": "Deze betaling terugbetalen",
+        "refundDescription": "Je kunt maximaal {amount} van deze betaling terugbetalen.",
+        "refundNote": "Notitie bij terugbetaling",
+        "refundNotePlaceholder": "Reden, overschrijvingskenmerk...",
+        "refundConfirm": "Terugbetaling bevestigen",
+        "invalidRefundAmount": "Voer een bedrag in binnen het resterende terugbetaalbare saldo.",
+        "creditNoteGenerated": "Creditnota {number} aangemaakt",
+        "refundRecorded": "Terugbetaling geregistreerd",
         "deleted": "Betaling verwijderd",
         "depositReturned": "Borg geretourneerd",
         "damageRecorded": "Schade geregistreerd",
@@ -2330,7 +2483,8 @@
         "statusAuthorized": "Geautoriseerd",
         "statusRefunded": "Terugbetaald",
         "statusCancelled": "Geannuleerd",
-        "requestPayment": "Betaling aanvragen"
+        "requestPayment": "Betaling aanvragen",
+        "invoiceGenerated": "Factuur {number} aangemaakt"
       },
       "requestPaymentModal": {
         "title": "Betaling aanvragen",
@@ -2588,6 +2742,13 @@
         "businessCustomerDescription": "Vink aan als deze klant een bedrijf vertegenwoordigt",
         "companyName": "Bedrijfsnaam",
         "companyNamePlaceholder": "ACME B.V.",
+        "companyNumber": "Ondernemingsnummer",
+        "companyNumberSiren": "SIREN",
+        "companyNumberBce": "Ondernemingsnummer (KBO)",
+        "companyNumberPlaceholder": "123456789",
+        "companyNumberHelp": "Nodig om een elektronische B2B-factuur op te maken.",
+        "vatNumber": "Btw-nummer",
+        "vatNumberPlaceholder": "FR12345678901",
         "firstName": "Voornaam *",
         "firstNamePlaceholder": "Jan",
         "lastName": "Achternaam *",
@@ -3744,6 +3905,19 @@
               "help": "iCalendar-referentie"
             }
           },
+          "superpdp": {
+            "name": "Super PDP",
+            "description": "Verbind je onderneming met een erkend platform om elektronische facturen te verzenden en ontvangen.",
+            "about": "Super PDP verbindt Louez met het officiële netwerk voor e-facturatie en beheert inschrijving, verzending, ontvangst en statusupdates.",
+            "features": {
+              "send": "Verzend klantfacturen via het officiële netwerk.",
+              "receive": "Ontvang leveranciersfacturen in Louez.",
+              "lifecycle": "Volg de aflever- en betaalstatus van facturen."
+            },
+            "resources": {
+              "website": "Website van Super PDP"
+            }
+          },
           "tulip": {
             "name": "Tulip Insurance",
             "description": "Verbind Tulip om offertes op te stellen en huurverzekeringscontracten te genereren.",
@@ -3797,6 +3971,16 @@
           "description": "Exporteer uw volledige productcatalogus met prijzen, categorieën en voorraadgegevens.",
           "button": "Producten exporteren"
         },
+        "contracts": {
+          "title": "Contracten",
+          "description": "Download een ZIP-bestand met contracten voor verhuringen die in de geselecteerde periode beginnen.",
+          "button": "Contracten exporteren",
+          "format": "ZIP-archief met één PDF per reservering",
+          "statusesLabel": "Op te nemen statussen",
+          "selectAll": "Alles selecteren",
+          "clearAll": "Alles deselecteren",
+          "exporting": "ZIP voorbereiden..."
+        },
         "dateRange": {
           "label": "Periode",
           "startDate": "Startdatum",
@@ -3812,6 +3996,8 @@
           "invalidDateRange": "De einddatum moet na de startdatum liggen.",
           "dateRequired": "Selecteer een periode.",
           "maxRange": "De periode mag niet langer dan een jaar zijn.",
+          "statusRequired": "Selecteer ten minste één status.",
+          "noContracts": "Geen reserveringen komen overeen met deze periode en statussen.",
           "exportFailed": "Export mislukt. Probeer het opnieuw."
         }
       },
@@ -4024,6 +4210,166 @@
         "taxNumberDescription": "Uw BTW-nummer (weergegeven op contracten)",
         "depositNoTaxInfo": "Borgen zijn niet onderworpen aan BTW omdat ze aan de klant worden terugbetaald.",
         "saved": "Belastinginstellingen opgeslagen"
+      },
+      "invoicing": {
+        "title": "Elektronische facturatie",
+        "description": "Stel de verplichte ontvangst van e-facturen in en kies of Louez ook je facturen uitgeeft.",
+        "saved": "Factuurinstellingen opgeslagen",
+        "statusComplete": "Volledig",
+        "statusIncomplete": "Aan te vullen",
+        "setup": {
+          "steps": {
+            "identity": "Juridische identiteit",
+            "activation": "Activering",
+            "transmission": "Verzending"
+          },
+          "continue": "Doorgaan",
+          "later": "Later instellen",
+          "intro": {
+            "title": "Bereid je onderneming voor op elektronische facturatie",
+            "description": "Verbind je onderneming met het officiële netwerk om leveranciersfacturen te ontvangen. Je kunt Louez ook nu al je facturen laten uitgeven.",
+            "bullets": {
+              "generate": "Als je uitgifte activeert, maakt en nummert Louez bij elke betaling een conforme factuur.",
+              "transmit": "Als je uitgifte activeert, verstuurt Louez facturen naar zakelijke klanten en verzorgt het de e-reporting van je verkopen.",
+              "receive": "Gecentraliseerde ontvangst van de facturen van je leveranciers."
+            },
+            "start": "Instellen starten",
+            "resume": "Instellen hervatten",
+            "stepProgress": "Stap {current} van {total}"
+          }
+        },
+        "identity": {
+          "title": "Juridische identiteit",
+          "description": "De juridische gegevens van je bedrijf, afgedrukt op elke factuur die je uitreikt.",
+          "search": {
+            "label": "Zoek je onderneming",
+            "description": "Zoek op naam, SIREN of SIRET om het formulier vooraf in te vullen. Alle velden blijven aanpasbaar.",
+            "placeholder": "Bedrijfsnaam, SIREN of SIRET",
+            "noResults": "Geen onderneming gevonden. Voer de gegevens handmatig in.",
+            "closed": "Stopgezet",
+            "prefilledTitle": "Velden vooraf ingevuld",
+            "prefilledDescription": "De gegevens komen uit het openbare ondernemingsregister. Controleer ze voordat je opslaat."
+          },
+          "country": "Land van inschrijving",
+          "countryDescription": "Het land waar je onderneming is ingeschreven.",
+          "legalName": "Statutaire naam",
+          "legalNamePlaceholder": "LOUEZ SAS",
+          "legalNameDescription": "De exacte naam van je onderneming zoals in het register.",
+          "legalForm": "Rechtsvorm",
+          "legalFormPlaceholder": "SAS",
+          "legalFormDescription": "Bijvoorbeeld SAS, SARL, eenmanszaak.",
+          "siren": "SIREN",
+          "sirenDescription": "De 9 cijfers die je onderneming identificeren.",
+          "bce": "Ondernemingsnummer (KBO)",
+          "bceDescription": "10 cijfers, bijvoorbeeld 0123456789.",
+          "companyNumber": "Ondernemingsnummer",
+          "companyNumberDescription": "De identificatie van je onderneming in het nationale register.",
+          "siret": "SIRET van de zetel",
+          "siretDescription": "De 14 cijfers van de vestiging die de facturen uitreikt.",
+          "vatNumber": "Btw-nummer",
+          "vatNumberDescription": "Het intracommunautaire btw-nummer dat op je facturen wordt afgedrukt. Laat leeg als je vrijgesteld bent van btw.",
+          "vatNumberWarningTitle": "Ongebruikelijk btw-formaat",
+          "vatNumberWarningFr": "Een Frans btw-nummer is FR gevolgd door 11 tekens. Controleer deze waarde.",
+          "vatNumberWarningBe": "Een Belgisch btw-nummer is BE gevolgd door 10 cijfers. Controleer deze waarde.",
+          "rcsCity": "RCS-stad",
+          "rcsCityDescription": "De stad van de griffie waar je onderneming is ingeschreven, bijvoorbeeld Parijs.",
+          "shareCapital": "Maatschappelijk kapitaal",
+          "shareCapitalDescription": "Verplicht op facturen van vennootschappen die dit moeten vermelden.",
+          "addressSection": "Adres van de maatschappelijke zetel",
+          "address": "Adres",
+          "addressPlaceholder": "25 rue du Terrage",
+          "addressComplement": "Adrestoevoeging",
+          "postalCode": "Postcode",
+          "city": "Stad"
+        },
+        "louezInvoicing": {
+          "title": "Uitgifte van facturen",
+          "description": "Kies of Louez je facturen nu al moet uitgeven. Je kunt deze keuze op elk moment wijzigen.",
+          "statusActive": "Uitgifte ingeschakeld",
+          "statusReceptionOnly": "Alleen ontvangst",
+          "statusInactive": "Uitgeschakeld",
+          "lockedTitle": "Vul eerst je juridische identiteit in",
+          "lockedDescription": "Een wettelijke factuur moet de statutaire naam, rechtsvorm, het ondernemingsnummer en het zeteladres bevatten. Vul stap 1 in voordat je de facturatiemodus kiest.",
+          "choiceLabel": "Hoe wil je elektronische facturatie gebruiken?",
+          "emissionAndReception": "Uitgifte + ontvangst (aanbevolen)",
+          "emissionAndReceptionDescription": "Louez maakt, nummert en verstuurt je facturen bij elke betaling. Je onderneming ontvangt ook leveranciersfacturen.",
+          "receptionOnly": "Alleen ontvangst — ik geef mijn facturen nog niet via Louez uit",
+          "receptionOnlyDescription": "Louez geeft geen facturen uit. Je onderneming blijft verbonden om leveranciersfacturen te ontvangen.",
+          "reformTimeline": "De ontvangst van e-facturen wordt verplicht in september 2026. Uitgifte wordt verplicht in september 2027 en kan hier op elk moment worden ingeschakeld.",
+          "vatRegime": "Btw-regime",
+          "vatRegimePlaceholder": "Kies je regime",
+          "vatRegimeDescription": "Bepaalt de aangiftekalender die naar het factuurplatform wordt gestuurd.",
+          "vatRegimeOptions": {
+            "monthly": "Maandelijkse aangifte",
+            "quarterly": "Kwartaalaangifte",
+            "simplified": "Vereenvoudigd (jaarlijks) regime",
+            "vat_exemption": "Btw-vrijstelling"
+          },
+          "hasVatOnDebits": "Btw op facturatie",
+          "hasVatOnDebitsDescription": "Zet aan als je hebt gekozen voor btw op facturatie in plaats van op ontvangst."
+        },
+        "transmission": {
+          "title": "Elektronische verzending (PDP)",
+          "description": "Verbind je onderneming met een erkend platform om facturen te ontvangen en, als uitgifte is ingeschakeld, klantfacturen via het officiële netwerk te versturen.",
+          "statusPending": "Inschrijving loopt",
+          "statusActionRequired": "Actie vereist",
+          "deadlineTitle": "Deadline september 2026",
+          "deadlineDescription": "Vanaf september 2026 moet elke Franse onderneming aangesloten zijn op een erkend platform om elektronische facturen te ontvangen; verzenden wordt verplicht in september 2027. Aansluiten via Louez is gratis.",
+          "benefits": {
+            "send": "Verstuur facturen naar zakelijke klanten als je uitgifte inschakelt.",
+            "receive": "Ontvang al je leveranciersfacturen op één plek.",
+            "reporting": "Automatische e-reporting van je verkopen aan particulieren."
+          },
+          "connectAction": "Mijn onderneming verbinden",
+          "pendingTitle": "Inschrijving loopt",
+          "pendingDescription": "Je inschrijving is gestart maar nog niet afgerond. Hervat ze om de identiteitscontroles van het erkende platform af te ronden.",
+          "pendingValidationDescription": "Het platform valideert je account. Je hoeft niets te doen: de verbinding wordt automatisch geactiveerd zodra de controles zijn afgerond.",
+          "resumeAction": "Inschrijving hervatten",
+          "errorTitle": "Verbinding onderbroken",
+          "reconnectAction": "Mijn onderneming opnieuw verbinden",
+          "errorHints": {
+            "reconnectRequired": "Het platform heeft de toegang van Louez ingetrokken. Verbind je onderneming opnieuw om facturen te ontvangen en ingeschakelde verzending te hervatten.",
+            "oauthFailed": "De inschrijving kon niet worden afgerond. Start opnieuw; neem contact op met support als het probleem aanhoudt.",
+            "operationFailed": "De laatste uitwisseling met het platform is mislukt. Louez probeert het automatisch opnieuw; verbind opnieuw als het probleem aanhoudt."
+          },
+          "lockedTitle": "Verbinding nog niet beschikbaar",
+          "lockedReasons": {
+            "identityIncomplete": "Vul je wettelijke identiteit in stap 1 aan: het platform controleert die voordat je onderneming wordt ingeschreven.",
+            "countryUnsupported": "Elektronische verzending is momenteel alleen beschikbaar voor ondernemingen die in Frankrijk of België zijn geregistreerd."
+          },
+          "details": {
+            "verification": "Identiteitscontrole",
+            "directory": "Netwerkregister",
+            "environment": "Omgeving"
+          },
+          "verificationStatus": {
+            "verified": "Geverifieerd",
+            "pending": "Wordt gecontroleerd",
+            "failed": "Controle mislukt"
+          },
+          "verificationPendingNote": "Het platform controleert je bedrijfsgegevens nog. De verbinding wordt actief zodra de controle is afgerond.",
+          "directoryStatus": {
+            "pending": "Registratie loopt",
+            "created": "Geregistreerd",
+            "error": "Registratie mislukt",
+            "missing": "Niet geregistreerd"
+          },
+          "environments": {
+            "sandbox": "Testomgeving",
+            "production": "Productie"
+          },
+          "result": {
+            "successTitle": "Onderneming verbonden",
+            "successDescription": "Je onderneming is nu ingeschreven bij het erkende platform en kan leveranciersfacturen ontvangen. Facturen die Louez uitgeeft, worden ook verzonden als je uitgifte inschakelt.",
+            "errorTitle": "Verbinding mislukt",
+            "errors": {
+              "oauth": "De inschrijving werd onderbroken voordat ze voltooid was. Je kunt opnieuw beginnen.",
+              "legalProfileIncomplete": "Je wettelijke identiteit is onvolledig. Vul stap 1 aan en start de verbinding opnieuw.",
+              "notConfigured": "Elektronische verzending is niet geconfigureerd in deze omgeving. Neem contact op met Louez-support."
+            }
+          },
+          "purchaseInvoicesAction": "Leveranciersfacturen openen"
+        }
       },
       "delivery": {
         "title": "Bezorging",
@@ -4539,8 +4885,51 @@
         "dangerZone": "Gevarenzone",
         "dangerZoneDescription": "Onomkeerbare acties op uw account",
         "deleteAccount": "Account verwijderen",
-        "deleteAccountDescription": "Verwijder permanent uw account en al uw gegevens",
-        "deleteAccountWarning": "Deze actie is onomkeerbaar. Al uw gegevens worden verwijderd.",
+        "deleteAccountDescription": "Verwijder uw account, uw winkels en hun actieve gegevens",
+        "deleteAccountWarning": "Deze actie is onomkeerbaar. Alleen wettelijk verplichte documenten mogen in een afzonderlijk archief blijven.",
+      "accountDeletion": {
+        "reasonTitle": "Voordat u vertrekt",
+        "reasonDescription": "Waarom stopt u met Louez? Uw antwoord is optioneel en wordt zonder koppeling aan uw identiteit opgeslagen.",
+        "reasons": {
+          "tooExpensive": "De prijs is te hoog",
+          "missingFeatures": "Ik mis functies",
+          "difficultToUse": "Louez is te moeilijk te gebruiken",
+          "noLongerNeeded": "Ik heb Louez niet meer nodig",
+          "switchedService": "Ik gebruik een andere oplossing",
+          "technicalIssues": "Ik had te veel technische problemen",
+          "privacyConcerns": "Ik maak me zorgen over privacy",
+          "other": "Een andere reden"
+        },
+        "continue": "Doorgaan",
+        "back": "Terug",
+        "title": "Uw account verwijderen",
+          "description": "Controleer de gevolgen voordat u doorgaat. Verwijderen kan niet ongedaan worden gemaakt. Wettelijk verplichte Louez-facturatiebewijzen kunnen gearchiveerd blijven.",
+          "storesDeleted": "Winkels die met al hun actieve gegevens worden verwijderd:",
+          "membershipsLeft": "U verlaat ook {count, plural, one {# andere winkel} other {# andere winkels}} waarvan u lid bent.",
+          "businessDocumentsDeleted": "{count, plural, one {# bedrijfsfactuur van uw winkel wordt uit Louez verwijderd} other {# bedrijfsfacturen van uw winkels worden uit Louez verwijderd}}. Exporteer ze eerst als u ze moet bewaren.",
+          "legalRetention": "{count, plural, one {# Louez-facturatiebewijs wordt} other {# Louez-facturatiebewijzen worden}} 10 jaar na afsluiting van het boekjaar bewaard in een afzonderlijk archief met beperkte toegang.",
+          "confirmationLabel": "Voer {email} in om te bevestigen",
+          "passwordLabel": "Huidig wachtwoord",
+          "passwordRequired": "Voer uw huidige wachtwoord in.",
+          "confirmationMismatch": "Het ingevoerde adres hoort niet bij dit account.",
+          "sendConfirmation": "Bevestigingsmail verzenden",
+          "deleteNow": "Definitief verwijderen",
+          "cancel": "Annuleren",
+          "close": "Sluiten",
+          "emailSentTitle": "Bevestigingsmail verzonden",
+          "emailSentDescription": "Controleer {email}. Er is nog niets verwijderd: u moet nog eenmaal bevestigen via de ontvangen link.",
+          "blockedTitle": "Account kan nog niet worden verwijderd",
+          "blockedDescription": "Een winkel waarvan u eigenaar bent heeft nog andere leden. Verwijder hen via de teampagina of neem contact op met support om het eigendom over te dragen.",
+          "blockedStore": "{name} — {count, plural, one {# ander lid} other {# andere leden}}",
+          "genericError": "Verwijderen kon niet worden gestart. Probeer het opnieuw.",
+          "invalidLink": "Deze link is ongeldig, verlopen of al gebruikt. Start een nieuw verzoek via de accountinstellingen.",
+          "confirmPageTitle": "Laatste bevestiging",
+          "confirmPageDescription": "Uw account, uw winkels en hun actieve gegevens worden onmiddellijk verwijderd. Dit kan niet ongedaan worden gemaakt.",
+          "confirmFinal": "Mijn account definitief verwijderen",
+          "deletedTitle": "Account verwijderd",
+          "deletedDescription": "Uw account, winkels en hun gegevens zijn verwijderd. Alleen eventuele Louez-facturatiebewijzen blijven geïsoleerd tot het einde van de wettelijke bewaartermijn.",
+          "backHome": "Terug naar home"
+        },
         "signOut": "Uitloggen",
         "comingSoon": "Binnenkort",
         "administration": "Beheer",
@@ -5155,6 +5544,7 @@
       }
     },
     "breadcrumbs": {
+      "purchaseInvoices": "Leveranciersfacturen",
       "aiAssistant": "AI-assistent",
       "aiConversations": "Klantgesprekken",
       "aiAdvisor": "Online adviseur",
@@ -5188,6 +5578,7 @@
       "settingsHours": "Openingstijden",
       "settingsInspections": "Inspecties",
       "settingsIntegrations": "Integraties",
+      "settingsInvoicing": "Elektronische facturatie",
       "settingsLegal": "Juridische pagina's",
       "settingsNotifications": "Meldingen",
       "settingsPayments": "Betalingen",
@@ -5201,6 +5592,8 @@
       "title": "Meldingen",
       "description": "Wat je aandacht vraagt",
       "pendingReservations": "Openstaande aanvragen",
+      "supplierInvoices": "Leveranciersfacturen",
+      "pendingSupplierInvoices": "{count, plural, one {# leveranciersfactuur te verwerken} other {# leveranciersfacturen te verwerken}}",
       "emptyTitle": "Niets te controleren",
       "emptyDescription": "Nieuwe aanvragen verschijnen hier.",
       "viewAllPending": "Alle openstaande aanvragen bekijken"
@@ -5230,6 +5623,18 @@
         "fix": "Opgelost"
       },
       "announcements": {
+        "fixed-pricing": {
+          "title": "Een prijs die niet meer van de duur afhangt",
+          "description": "Een reiniging, een levering, een dienst: niet alles wordt per uur gefactureerd. Zet de tarifering op \"Vaste prijs\" en de prijs beweegt niet meer, of de verhuur nu twee uur of twee weken duurt. Staffels, seizoenen en de grafiek verdwijnen; wat blijft is één bedrag, met btw en waarborg."
+        },
+        "consumable-stock": {
+          "title": "Wat met de klant mee naar buiten gaat",
+          "description": "Wax, gaspatronen, zakken: alles wat niet terugkomt. Zet een product op \"Verbruiksartikel\" en de hoeveelheid wordt voorraad in het schap — die daalt bij elke bevestigde reservering, stijgt weer bij annulering of weigering, en hangt niet langer van de datums af."
+        },
+        "required-accessories": {
+          "title": "De helm gaat altijd mee met de fiets",
+          "description": "Een accessoire kan nu verplicht zijn, met een eigen aantal per verhuurde eenheid. Het legt zichzelf in het winkelmandje van uw klant, gaat mee wanneer die drie fietsen neemt in plaats van één, en kan niet worden verwijderd. Gratis staat er gewoon \"Inbegrepen\"."
+        },
         "product-image-ai": {
           "title": "Uw productfoto's krijgen een studiobehandeling",
           "description": "Bij het uploaden snijdt de AI uw product uit, maakt de achtergrond schoon en centreert het — of verwijdert alleen de achtergrond als u uw kadrering wilt houden. En elke versie blijft bewaard in de geschiedenis van de foto: vergelijk, verander van gedachten, ga terug naar het origineel."
@@ -5251,8 +5656,8 @@
           "description": "De pagina Reserveringen opent nu op de agenda. Die scrolt doorlopend, van week tot week zonder van pagina te wisselen, en één beweging met de muis toont de volledige reservering. Lijst en planning per product blijven één klik verwijderd."
         },
         "product-creation-flow-redesign": {
-          "title": "Twee secties, en uw product staat online",
-          "description": "De wizard in vier stappen maakt plaats voor één pagina. Accessoires en verzekering worden bij het aanmaken niet meer gevraagd — die voegt u later toe als u ze nodig hebt. Rechts: een voorbeeld van de pagina en de lijst van wat nog ontbreekt."
+          "title": "Eén pagina en uw product staat online",
+          "description": "De wizard in vier stappen staat nu op één pagina. Voeg accessoires meteen toe of doe dat later; de verzekering stelt u nog steeds achteraf in. Rechts ziet u een voorbeeld van de productpagina en wat nog moet worden ingevuld."
         },
         "keyboard-shortcuts": {
           "title": "Voor wie het toetsenbord niet loslaat",
@@ -5484,6 +5889,7 @@
       "productCount": "{count, plural, =0 {Geen producten beschikbaar} one {# product beschikbaar} other {# producten beschikbaar}}",
       "available": "{count} beschikbaar",
       "unavailable": "Niet beschikbaar",
+      "consumableOutOfStock": "Verbruiksartikel niet op voorraad",
       "lastOne": "Laatste!",
       "left": "over",
       "clearFilters": "Filters wissen"
@@ -5498,6 +5904,7 @@
       "selectQuantity": "Aantal",
       "quantity": "Aantal",
       "availableCount": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
+      "availableWithoutStockLimit": "Beschikbaar",
       "available": "Beschikbaar",
       "unavailable": "Niet beschikbaar",
       "deposit": "Borg",
@@ -5505,6 +5912,7 @@
       "perHour": "uur",
       "perWeek": "week",
       "startingFrom": "Vanaf",
+      "fixedPricingLabel": "Vast tarief",
       "pricingUnit": {
         "day": {
           "singular": "dag",
@@ -5580,6 +5988,8 @@
         "availability": "Beschikbaarheid"
       },
       "unavailableHelp": "Dit product is momenteel niet te huur. Bekijk de rest van de catalogus.",
+      "requiredAccessoryOutOfStock": "Een verplicht accessoire is niet op voorraad",
+      "requiredAccessoriesIncluded": "Automatisch toegevoegd: {names}",
       "backToCatalog": "Bekijk de catalogus"
     },
     "accessories": {
@@ -5686,6 +6096,8 @@
         "availableCount": "{count} beschikbaar",
         "limited": "{count} over",
         "unavailable": "Niet beschikbaar",
+        "outOfStock": "Niet op voorraad",
+        "requiredAccessoryOutOfStock": "Verplicht accessoire niet op voorraad",
         "inCart": "In winkelwagen"
       },
       "businessHoursWarning": {
@@ -5736,6 +6148,8 @@
       "total": "Totaal",
       "checkout": "Afrekenen",
       "remove": "Verwijderen",
+      "decreaseQuantity": "Aantal van {name} verlagen",
+      "increaseQuantity": "Aantal van {name} verhogen",
       "updateDates": "Data wijzigen",
       "clearCart": "Winkelwagen legen",
       "clear": "Winkelwagen legen",
@@ -5748,7 +6162,14 @@
         "cancel": "Annuleren",
         "confirm": "Legen"
       },
-      "lineMaxReached": "Maximum bereikt voor deze optie. Voeg een andere optie toe als afzonderlijke regel."
+      "lineMaxReached": "Maximum bereikt voor deze optie. Voeg een andere optie toe als afzonderlijke regel.",
+      "requiredWith": "Verplicht bij {name}",
+      "included": "Inbegrepen",
+      "unavailable": {
+        "product_unavailable": "Dit product is niet meer beschikbaar",
+        "insufficient_stock": "Onvoldoende voorraad voor dit aantal",
+        "required_accessory_unavailable": "Een verplicht accessoire is niet op voorraad"
+      }
     },
     "checkout": {
       "title": "Mijn reservering voltooien",
@@ -5842,6 +6263,20 @@
       "isBusinessCustomerDescription": "Vink dit vakje aan als u huurt namens een bedrijf",
       "companyName": "Bedrijfsnaam",
       "companyNamePlaceholder": "ACME B.V.",
+      "companyNumber": "Ondernemingsnummer (optioneel)",
+      "companyNumberSiren": "SIREN (optioneel)",
+      "companyNumberBce": "Ondernemingsnummer (KBO, optioneel)",
+      "companyNumberPlaceholder": "123456789",
+      "companyNumberHelp": "Optioneel — nodig om een zakelijke factuur op te maken.",
+      "vatNumber": "Btw-nummer (optioneel)",
+      "vatNumberPlaceholder": "FR12345678901",
+      "companySearch": {
+        "label": "Zoek je onderneming",
+        "placeholder": "Bedrijfsnaam, SIREN of SIRET",
+        "description": "Optioneel: zoek om je bedrijfsgegevens automatisch in te vullen.",
+        "noResults": "Geen onderneming gevonden. Voer de gegevens handmatig in.",
+        "closed": "Stopgezet"
+      },
       "contact": "Contact",
       "address": "Adres",
       "addressPlaceholder": "Keizersgracht 123",
@@ -5870,6 +6305,8 @@
         "phoneRequired": "Telefoon vereist",
         "invalidPhone": "Ongeldig telefoonformaat",
         "companyNameRequired": "Vul de bedrijfsnaam in",
+        "invalidCompanyNumber": "Ongeldig ondernemingsnummer",
+        "invalidVatNumber": "Ongeldig btw-nummer",
         "acceptCgv": "U moet de algemene voorwaarden accepteren"
       },
       "pricing": {
@@ -5972,6 +6409,7 @@
       "deliveryLabel": "Levering op uw adres",
       "returnDeliveryLabel": "Ophaling op uw adres",
       "storeReturnLabel": "Retour in winkel",
+      "pickupAndReturnLabel": "Ophalen en retourneren in de winkel",
       "pickupLabel": "Ophalen in winkel",
       "deliveryFeeLabel": "Bezorgkosten",
       "free": "Gratis",
@@ -6126,6 +6564,17 @@
       "signContract": "Contract ondertekenen",
       "contractSigned": "Contract ondertekend",
       "downloadContract": "Contract downloaden",
+      "signContractConfirmation": "Door verder te gaan bevestigt u dat u deze huurovereenkomst hebt gelezen en aanvaard.",
+      "signContractError": "Het contract kon niet worden ondertekend. Probeer het opnieuw.",
+      "invoiceDocuments": {
+        "title": "Facturen en creditnota’s",
+        "description": "Download de boekhoudkundige documenten voor deze reservering.",
+        "download": "Downloaden",
+        "types": {
+          "invoice": "Factuur",
+          "credit_note": "Creditnota"
+        }
+      },
       "paymentPaid": "Betaald",
       "paymentPending": "Onbetaald",
       "amountPaid": "Betaald bedrag",
@@ -6724,6 +7173,7 @@
     "notFound": "Pagina niet gevonden",
     "notFoundDescription": "De pagina die u zoekt bestaat niet of is verplaatst.",
     "unauthorized": "Niet geautoriseerd",
+    "paymentInvoiced": "Deze betaling is gefactureerd en kan niet worden verwijderd.",
     "unauthenticated": "Niet geauthenticeerd",
     "invalidData": "Ongeldige gegevens",
     "slugTaken": "Dit adres is al in gebruik",
@@ -6737,10 +7187,13 @@
     "permissionDenied": "Onvoldoende rechten",
     "customerNotFound": "Klant niet gevonden",
     "reservationNotFound": "Reservering niet gevonden",
+    "consumableInsufficientStock": "Onvoldoende voorraad van het verbruiksartikel",
+    "requiredAccessoriesMissing": "Verplichte accessoires ontbreken of hebben een onjuiste hoeveelheid",
     "emailAlreadyExists": "Er bestaat al een klant met dit e-mailadres",
     "customerHasReservations": "Kan een klant met reserveringen niet verwijderen",
     "cannotCancelReservation": "Deze reservering kan niet worden geannuleerd",
     "cannotEditCompletedReservation": "Voltooide reserveringen kunnen niet worden bewerkt",
+    "reservationStatusChanged": "De reserveringsstatus is gewijzigd tijdens het bewerken. Laad de pagina opnieuw en probeer het nogmaals.",
     "endDateBeforeStart": "Einddatum moet na of gelijk aan startdatum zijn",
     "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",
@@ -6757,6 +7210,7 @@
     "unitProductMismatch": "Geselecteerde eenheden behoren niet tot dit product",
     "unitCombinationMismatch": "Geselecteerde eenheden komen niet overeen met de gereserveerde combinatie voor dit regelitem",
     "cannotDisableUnitTrackingWithCombinations": "Kan eenheidtracering niet uitschakelen terwijl actieve reserveringen gevolgde combinaties gebruiken voor dit product.",
+    "cannotChangeStockKindWithActiveReservations": "Het voorraadtype kan niet worden gewijzigd zolang dit product in een bevestigde of lopende reservering wordt gebruikt.",
     "unitStatusConflictsWithReservations": "Deze wijziging zou toekomstige reserveringen onmogelijk maken voor ten minste één gevolgde combinatie.",
     "unitAssigned": "Deze eenheid is toegewezen aan een blokkerende reservering en kan niet worden verwijderd.",
     "assignUnitsFailed": "Toewijzing van eenheden mislukt",
@@ -6966,7 +7420,7 @@
       },
       "s5": {
         "title": "Bewaartermijn",
-        "body": "Uw gegevens worden bewaard gedurende de gehele duur van uw abonnement. Bij beëindiging worden ze maximaal drie jaar bewaard voor bewijsdoeleinden en vervolgens verwijderd of geanonimiseerd. Boekhoudkundige en fiscale gegevens worden tien jaar bewaard in overeenstemming met de wettelijke verplichtingen."
+        "body": "Uw actieve gegevens worden bewaard zolang uw account bestaat. Wanneer u het verwijdert, worden deze gegevens zonder vertraging uit onze actieve systemen verwijderd, met inbegrip van facturen die uw winkels hebben uitgegeven of ontvangen. Exporteer ze eerst als u ze moet bewaren. Alleen wettelijk te bewaren Louez-facturatiebewijzen worden tien jaar na afsluiting van het boekjaar in een afzonderlijk archief met beperkte toegang bewaard en daarna verwijderd. Back-ups volgen hun vervalcyclus en worden niet teruggezet in actieve systemen."
       },
       "s6": {
         "title": "Uw rechten",

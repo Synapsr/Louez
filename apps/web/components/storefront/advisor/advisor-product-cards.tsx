@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { ImageIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { formatCurrency } from '@louez/utils';
+import type { PricingKind } from '@louez/types';
+import { formatCurrency, isFixedPriceProduct } from '@louez/utils';
 
 import { useStore } from '@/contexts/store-context';
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
@@ -15,6 +16,7 @@ export type AdvisorRecommendedProduct = {
   id: string;
   name: string;
   price: string;
+  pricingKind?: PricingKind | null;
   pricingMode: 'hour' | 'day' | 'week' | null;
   image: string | null;
 };
@@ -62,9 +64,11 @@ export const AdvisorProductCards = ({
             </p>
             <p className="text-xs text-muted-foreground">
               {formatCurrency(Number(product.price), currency)}
-              {product.pricingMode
-                ? ` / ${t(`pricingUnit.${product.pricingMode}.singular`)}`
-                : null}
+              {isFixedPriceProduct(product)
+                ? ` · ${t('fixedPricingLabel')}`
+                : product.pricingMode
+                  ? ` / ${t(`pricingUnit.${product.pricingMode}.singular`)}`
+                  : null}
             </p>
           </div>
         </Link>

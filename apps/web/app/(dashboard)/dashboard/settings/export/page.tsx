@@ -20,7 +20,7 @@ export default async function ExportSettingsPage() {
 
   return (
     <SettingsPageShell title={t("export.title")} description={t("export.description")}>
-      <ExportForm storeSlug={store.slug} />
+      <ExportForm timezone={store.settings?.timezone} />
     </SettingsPageShell>
   );
 }

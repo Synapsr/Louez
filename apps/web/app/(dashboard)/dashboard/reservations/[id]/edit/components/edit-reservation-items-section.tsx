@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import type { PricingMode } from "@louez/types";
 import { Button, Card, CardContent } from "@louez/ui";
+import type { StockQuantityLimit } from "@louez/utils";
 
 import { ProductAddCombobox } from "@/components/dashboard/product-add-combobox";
 
@@ -18,7 +19,7 @@ interface EditReservationItemsSectionProps {
   calculations: ReservationCalculations;
   availabilityWarnings: AvailabilityWarning[];
   availableToAdd: Product[];
-  availableQuantityByProduct: Map<string, number>;
+  availableQuantityByProduct: Map<string, StockQuantityLimit>;
   itemsCount: number;
   currencySymbol: string;
   getDurationUnit: (mode: PricingMode) => string;
