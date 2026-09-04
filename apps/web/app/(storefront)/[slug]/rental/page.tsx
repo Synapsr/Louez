@@ -563,7 +563,7 @@ export default async function RentalPage({ params, searchParams }: RentalPagePro
       <Suspense
         fallback={
           <div className="container mx-auto px-4 py-8">
-            <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="space-y-6">
                 <Skeleton className="h-8 w-48" />
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
