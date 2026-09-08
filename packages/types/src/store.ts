@@ -248,6 +248,10 @@ export interface StoreTheme {
   mode: 'light' | 'dark';
   primaryColor: string;
   heroImages?: string[];
+  /** Home hero layout. 'cover' (default) = the text over full-width photos; 'split' = the text beside a framed photo. Without photos both render the same centred band. */
+  heroLayout?: 'cover' | 'split';
+  /** Where the hero text sits. 'center' by default; ignored without photos (always centred). */
+  heroAlign?: 'start' | 'center' | 'end';
   /** How the storefront catalog is browsed. 'products' (default) = flat product grid. 'categories' = category cards first, then products. */
   catalogBrowseMode?: 'products' | 'categories';
   maxDiscountPercent?: number | null;

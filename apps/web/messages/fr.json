@@ -3638,7 +3638,32 @@
         "heroImagesDescription": "Images affichées dans la section héros de votre boutique (optionnel)",
         "addHeroImages": "Ajouter des images",
         "heroImagesHint": "Jusqu'à 5 images en slider",
-        "heroImagesOptional": "Ces images apparaîtront dans un slider sur la page d'accueil de votre boutique. Optionnel.",
+        "heroImagesFirst": "1re",
+        "removeImage": "Retirer l'image",
+        "previewHint": "Schéma de votre page d'accueil, mis à jour à chaque changement. Les textes et proportions réels varient.",
+        "home": {
+          "title": "Page d'accueil",
+          "description": "L'en-tête que vos clients voient en arrivant : photos, mise en page, position du texte."
+        },
+        "heroLayout": {
+          "title": "Mise en page",
+          "description": "Comment les photos et le texte se partagent l'en-tête.",
+          "cover": "Photo en fond",
+          "coverDescription": "Le nom et la recherche par-dessus les photos, pleine largeur.",
+          "split": "Photo à côté",
+          "splitDescription": "Le texte sur fond clair, la photo encadrée à côté."
+        },
+        "heroAlign": {
+          "title": "Position du texte",
+          "start": "Gauche",
+          "center": "Centre",
+          "end": "Droite",
+          "hint": "Sans photo, le texte est toujours centré."
+        },
+        "catalog": {
+          "title": "Catalogue",
+          "description": "Ce que vos clients voient après l'en-tête."
+        },
         "catalogBrowseMode": {
           "title": "Affichage du catalogue",
           "description": "Choisissez ce que vos clients voient en premier après avoir choisi leurs dates.",
@@ -3653,34 +3678,7 @@
           "upTo": "Afficher les réductions jusqu'à",
           "hint": "Les réductions dépassant ce pourcentage seront masquées sur la boutique."
         },
-        "moreImages": "image(s)",
         "preview": "Aperçu en direct",
-        "previewDescription": "Prévisualisation de l'apparence de votre boutique",
-        "previewWelcome": "Bienvenue sur {name}",
-        "previewCatalogText": "Découvrez notre catalogue de produits en location.",
-        "previewCatalogButton": "Voir le catalogue",
-        "previewNav": {
-          "catalog": "Catalogue",
-          "contact": "Contact"
-        },
-        "previewStats": "{count}+ produits",
-        "previewDatePicker": {
-          "title": "Quand souhaitez-vous louer ?",
-          "subtitle": "Sélectionnez vos dates",
-          "startLabel": "Début",
-          "endLabel": "Fin",
-          "startDateExample": "Sam 15 Jan",
-          "endDatePlaceholder": "Date de fin",
-          "submitButton": "Voir les disponibilités",
-          "quickSelectTitle": "Sélection rapide",
-          "quickSelectWeekend": "Ce weekend",
-          "quickSelectNextWeek": "Semaine pro.",
-          "quickSelectTwoWeeks": "2 semaines"
-        },
-        "previewProducts": {
-          "title": "Produits populaires",
-          "viewAll": "Voir tout →"
-        },
         "updated": "Apparence mise à jour",
         "colors": {
           "blue": "Bleu",
@@ -5792,7 +5790,10 @@
       "myAccount": "Mon compte",
       "myReservations": "Mes locations",
       "categories": "Catégories",
-      "menu": "Menu"
+      "menu": "Menu",
+      "signIn": "Se connecter",
+      "secure": "Paiement sécurisé",
+      "about": "À propos"
     },
     "status": {
       "open": "Ouvert",
@@ -5800,7 +5801,11 @@
       "until": "jusqu'à",
       "opensAt": "ouvre à",
       "opensTomorrow": "ouvre demain à",
-      "opensOn": "ouvre"
+      "opensOn": "ouvre",
+      "openUntil": "Ouvert · jusqu'à {time}",
+      "closedOpensAt": "Fermé · ouvre à {time}",
+      "closedOpensTomorrow": "Fermé · ouvre demain à {time}",
+      "closedOpensOn": "Fermé · ouvre {day} à {time}"
     },
     "datePicker": {
       "startDate": "Date de début",
@@ -5817,11 +5822,17 @@
       "securePayment": "Paiement sécurisé",
       "localPickup": "Retrait sur place",
       "localPickupOrDelivery": "Retrait ou livraison",
+      "requestConfirmation": "Confirmation par la boutique",
       "simpleReservation": "Réservation simple",
       "simpleReservationDesc": "Réservez en quelques clics",
       "securePaymentDesc": "Transactions 100% sécurisées",
       "localPickupDesc": "Récupérez votre matériel facilement",
-      "reviewsBadge": "avis"
+      "reviewsBadge": "avis",
+      "slides": "Photos de la boutique",
+      "previousImage": "Photo précédente",
+      "nextImage": "Photo suivante",
+      "goToImage": "Photo {index} sur {count}",
+      "seeReviews": "Voir les avis Google · {rating} sur 5"
     },
     "home": {
       "ourCategories": "Nos catégories",
@@ -5840,6 +5851,19 @@
       "contactLabel": "Nous trouver",
       "contactTitle": "Localisation & contact",
       "findUs": "Nous trouver",
+      "phoneContact": {
+        "call": "Appel",
+        "sms": "SMS",
+        "copy": "Copier le numéro de téléphone",
+        "copySuccess": "Numéro copié",
+        "copyError": "Impossible de copier le numéro"
+      },
+      "emailContact": {
+        "default": "Écrire avec l'app mail",
+        "copy": "Copier l'email",
+        "copySuccess": "Email copié",
+        "copyError": "Impossible de copier l'email"
+      },
       "findUsDesc": "Venez nous rendre visite pour récupérer votre matériel",
       "address": "Adresse",
       "phone": "Téléphone",
@@ -5848,7 +5872,8 @@
       "getDirections": "Obtenir l'itinéraire",
       "alreadyReserved": "Déjà une réservation ?",
       "alreadyReservedDesc": "Accédez à votre compte pour suivre vos réservations et télécharger vos contrats.",
-      "accessAccount": "Accéder à mon compte"
+      "accessAccount": "Accéder à mon compte",
+      "map": "Carte de {store}"
     },
     "reviews": {
       "label": "Témoignages",
@@ -5858,7 +5883,11 @@
       "basedOn": "sur {count} avis",
       "noReviewText": "Cet avis n'a pas de commentaire.",
       "seeAllOnGoogle": "Voir tous les avis",
-      "verifiedByGoogle": "Avis vérifiés par Google"
+      "verifiedByGoogle": "Avis vérifiés par Google",
+      "previous": "Avis précédent",
+      "next": "Avis suivant",
+      "starRating": "Note : {rating} sur 5",
+      "ratingLink": "{rating} sur 5 · {count, plural, one {# avis} other {# avis}}"
     },
     "catalog": {
       "title": "Catalogue",
@@ -5880,7 +5909,34 @@
       "consumableOutOfStock": "Consommable en rupture de stock",
       "lastOne": "Dernier !",
       "left": "restants",
-      "clearFilters": "Effacer les filtres"
+      "clearFilters": "Effacer les filtres",
+      "clearSearch": "Effacer la recherche",
+      "loadMore": "Charger plus",
+      "metaTitle": "Catalogue - {storeName}",
+      "metaDescription": "Matériel à louer chez {storeName}. Réservation en ligne.",
+      "metaCategoryTitle": "{category} - {storeName}",
+      "metaCategoryDescription": "{category} à louer chez {storeName}. Réservation en ligne.",
+      "sort": {
+        "label": "Trier",
+        "recommended": "Recommandés",
+        "priceAsc": "Prix croissant",
+        "priceDesc": "Prix décroissant"
+      },
+      "filters": "Filtres",
+      "activeFilters": "Filtres actifs",
+      "removeFilter": "Retirer ce filtre",
+      "price": "Prix",
+      "priceRange": "{min} – {max}",
+      "availability": "Disponibilité",
+      "availableOnly": "Disponibles uniquement",
+      "availableOnlyHint": "Choisissez vos dates pour filtrer",
+      "showResults": "{count, plural, =0 {Aucun produit} one {Voir # produit} other {Voir # produits}}",
+      "quantityLabel": "Nombre d'exemplaires",
+      "quantityChip": "{count} exemplaires ou plus",
+      "attributeChip": "{axis} : {value}",
+      "priceBaseHint": "Tarifs de base, avant choix des dates",
+      "pricePeriodHint": "Total pour vos dates",
+      "availableOfTotal": "{available} disponibles sur {total}"
     },
     "product": {
       "viewDetails": "Voir le produit",
@@ -5962,7 +6018,9 @@
         "label": "Photos de {name}",
         "imageAlt": "{name} — photo {index}",
         "counter": "{current} / {total}",
-        "zoom": "Agrandir"
+        "zoom": "Agrandir",
+        "video": "Lire la vidéo",
+        "goTo": "Aller à l'image {index}"
       },
       "meta": {
         "title": "{product} en location — {store}",
@@ -5978,11 +6036,23 @@
       "unavailableHelp": "Ce produit n'est pas disponible à la location pour le moment. Découvrez le reste du catalogue.",
       "requiredAccessoryOutOfStock": "Un accessoire requis est en rupture de stock",
       "requiredAccessoriesIncluded": "Ajouté automatiquement : {names}",
-      "backToCatalog": "Voir le catalogue"
+      "backToCatalog": "Voir le catalogue",
+      "booking": {
+        "dates": "Dates",
+        "anyOption": "Indifférent",
+        "checking": "Vérification…",
+        "reserve": "Réserver",
+        "included": "Inclus",
+        "shortage": "Stock insuffisant",
+        "extras": "Options",
+        "depositHold": "Caution",
+        "depositNotCharged": "Empreinte bancaire, non débitée"
+      }
     },
     "accessories": {
       "productAdded": "Ajouté au panier",
       "youMightAlsoLike": "Vous pourriez aussi aimer",
+      "requiredIncluded": "Les accessoires obligatoires de ce produit ont été ajoutés automatiquement à votre panier.",
       "selectAccessories": "Sélectionnez les accessoires à ajouter",
       "available": "{count, plural, one {# disponible} other {# disponibles}}",
       "pricingUnit": {
@@ -6036,7 +6106,12 @@
       "errors": {
         "required": "Veuillez sélectionner les dates",
         "startInPast": "La date de début doit être dans le futur",
-        "endBeforeStart": "La date de fin doit être après la date de début"
+        "endBeforeStart": "La date de fin doit être après la date de début",
+        "sameDayNotAllowed": "La location sur une seule journée n'est pas possible dans cette boutique.",
+        "businessHours": "Ces horaires sont en dehors des heures d'ouverture de la boutique.",
+        "advanceNotice": "Cette boutique demande un délai de {duration} avant le départ.",
+        "minDuration": "La durée minimale de location est de {duration}.",
+        "maxDuration": "La durée maximale de location est de {duration}."
       },
       "businessHours": {
         "storeClosed": "La boutique est fermée ce jour",
@@ -6048,7 +6123,9 @@
       },
       "modifyDates": "Modifier les dates",
       "applyDates": "Appliquer les dates",
-      "timezoneNotice": "Horaires affichés en heure de {city}"
+      "timezoneNotice": "Horaires affichés en heure de {city}",
+      "chooseDates": "Choisir mes dates",
+      "validate": "Valider"
     },
     "availability": {
       "title": "Produits disponibles",
@@ -6082,7 +6159,8 @@
       "badge": {
         "available": "Disponible",
         "availableCount": "{count} disponibles",
-        "limited": "{count} restant(s)",
+        "lastOne": "Dernier disponible",
+        "limited": "{count, plural, one {# restant} other {# restants}}",
         "unavailable": "Non disponible",
         "outOfStock": "Rupture de stock",
         "requiredAccessoryOutOfStock": "Accessoire requis en rupture",
@@ -6157,7 +6235,19 @@
         "product_unavailable": "Ce produit n'est plus disponible",
         "insufficient_stock": "Stock insuffisant pour cette quantité",
         "required_accessory_unavailable": "Un accessoire requis est en rupture de stock"
-      }
+      },
+      "open": "Ouvrir le panier",
+      "openWithCount": "Panier, {count, plural, one {# article} other {# articles}}",
+      "quantityOf": "Quantité de {name}",
+      "removeItem": "Retirer {name} du panier",
+      "removed": "{name} retiré du panier",
+      "undo": "Annuler",
+      "resolveError": "La disponibilité n'a pas pu être vérifiée. Réessayez dans un instant.",
+      "unavailableTitle": "{count, plural, one {# article n'est plus disponible} other {# articles ne sont plus disponibles}}",
+      "adjustTo": "Ramener à {count}",
+      "maxReached": "Quantité maximale atteinte",
+      "fixedPrice": "Forfait",
+      "depositHold": "caution non débitée"
     },
     "checkout": {
       "title": "Finaliser ma réservation",
@@ -6343,7 +6433,8 @@
         "promoCodeExpired": "Ce code promo a expiré",
         "promoCodeExhausted": "Ce code promo n'est plus disponible",
         "promoCodeMinimumNotMet": "Montant minimum de {amount} requis",
-        "promoCodeNotStarted": "Ce code promo n'est pas encore actif"
+        "promoCodeNotStarted": "Ce code promo n'est pas encore actif",
+        "remove": "Retirer le code promo"
       },
       "lineNeedsUpdate": "Certaines lignes ne sont plus disponibles. Mettez à jour votre panier avant de valider.",
       "advisor": {
@@ -6364,6 +6455,56 @@
         "statusChecking": "Vérification en cours…",
         "transcriptLabel": "Conversation de vérification",
         "completeVerificationHint": "Terminez la vérification ci-dessus pour continuer."
+      },
+      "submitError": {
+        "title": "Votre commande n'a pas pu être envoyée",
+        "goToStep": "Corriger"
+      },
+      "payAmount": "Payer {amount}",
+      "blocked": {
+        "resolving": "Vérification de la disponibilité…",
+        "insuranceRequired": "Choisissez une option d'assurance"
+      },
+      "acceptCgvRich": "J'accepte les <terms>conditions générales de location</terms>",
+      "returningCustomer": {
+        "prompt": "Déjà client ?",
+        "sendCode": "Recevoir un code",
+        "codeSent": "Code envoyé à {email}",
+        "codeLabel": "Code de vérification",
+        "cancel": "Annuler",
+        "resend": "Renvoyer",
+        "verifying": "Vérification…",
+        "signedInAs": "Connecté en tant que {name}",
+        "notYou": "Ce n'est pas vous ?"
+      },
+      "notesDisclosure": "Ajouter une note pour le loueur",
+      "yourAddress": "Votre adresse",
+      "viewCatalog": "Voir le catalogue",
+      "fixedPrice": "Forfait",
+      "pricesIncludeTax": "Prix TTC",
+      "pricesExcludeTax": "Prix HT",
+      "summaryBar": {
+        "show": "Voir le détail",
+        "hide": "Masquer le détail"
+      },
+      "deliveryCalculating": "Calcul des frais de livraison…",
+      "insuranceIncluded": "Assurance incluse",
+      "cancelled": {
+        "title": "Paiement interrompu",
+        "description": "Votre réservation {number} est en attente de paiement. Reprenez quand vous voulez, rien n'est perdu.",
+        "cartKept": "Votre panier a été conservé.",
+        "backToCart": "Retour au panier",
+        "resume": "Reprendre le paiement",
+        "redirecting": "Redirection…",
+        "alreadyPaidTitle": "Réservation déjà payée",
+        "alreadyPaidDescription": "Votre réservation {number} est confirmée. Aucun paiement supplémentaire n'est nécessaire.",
+        "viewReservation": "Voir ma réservation",
+        "errors": {
+          "notFound": "Cette réservation est introuvable.",
+          "invalidStatus": "Cette réservation n'attend plus de paiement.",
+          "unavailable": "Le paiement en ligne est indisponible pour cette boutique.",
+          "sessionFailed": "Le paiement n'a pas pu être relancé. Réessayez dans un instant."
+        }
       }
     },
     "confirmation": {
@@ -6609,8 +6750,29 @@
         "declineTitle": "Refuser ce devis ?",
         "declineDescription": "Vous êtes sur le point de refuser ce devis. Le loueur en sera informé.",
         "cancel": "Annuler",
-        "confirmDecline": "Refuser le devis"
-      }
+        "confirmDecline": "Refuser le devis",
+        "acceptTitle": "Accepter ce devis ?",
+        "acceptDescription": "Vous êtes sur le point d'accepter ce devis. Le loueur en sera informé et votre réservation sera confirmée.",
+        "confirmAccept": "Accepter le devis"
+      },
+      "loginTitle": "Accéder à mes locations",
+      "loginLine": "Entrez votre email : nous vous envoyons un code à usage unique, sans mot de passe.",
+      "codeLine": "Nous avons envoyé un code à {email}.",
+      "resendIn": "Nouveau code dans {seconds} s",
+      "currentReservations": "Locations en cours",
+      "pastReservations": "Locations passées",
+      "timeline": {
+        "title": "Période de location"
+      },
+      "actions": {
+        "title": "Actions",
+        "contractSigned": "Contrat signé le {date}"
+      },
+      "deposit": "Caution",
+      "total": "Total",
+      "notes": "Vos notes",
+      "signContractTitle": "Signer le contrat ?",
+      "confirmSign": "Signer le contrat"
     },
     "marketplaceShell": {
       "marketplaceName": "Louez Marketplace"
@@ -6623,7 +6785,13 @@
       "legalNotice": "Mentions légales",
       "signIn": "Se connecter",
       "allRightsReserved": "Tous droits réservés.",
-      "poweredBy": "Propulsé par"
+      "poweredBy": "Propulsé par",
+      "navigation": "Navigation",
+      "catalog": "Catalogue",
+      "reviews": "Avis",
+      "account": "Compte",
+      "myReservations": "Mes locations",
+      "about": "À propos"
     },
     "error": {
       "title": "Oups ! Une erreur est survenue",
@@ -6636,7 +6804,8 @@
       "cgv": {
         "title": "Conditions Générales de Vente",
         "noCgv": "Les conditions générales de vente ne sont pas encore disponibles.",
-        "contactSeller": "Veuillez contacter le vendeur pour plus d'informations."
+        "contactSeller": "Veuillez contacter le vendeur pour plus d'informations.",
+        "metaDescription": "Conditions générales de location de {name} : réservation, paiement, caution et annulation."
       },
       "legalNotice": {
         "title": "Mentions Légales",
@@ -6645,7 +6814,8 @@
         "headquarters": "Siège social",
         "email": "Email",
         "phone": "Téléphone",
-        "address": "Adresse"
+        "address": "Adresse",
+        "metaDescription": "Mentions légales de {name} : éditeur du site, hébergeur et coordonnées."
       },
       "hosting": {
         "title": "Hébergement",
@@ -6695,6 +6865,34 @@
         "unavailable": "Le conseiller n'est pas disponible pour le moment. Réessayez plus tard ou contactez la boutique."
       },
       "typing": "Le conseiller écrit"
+    },
+    "meta": {
+      "storeNotFound": "Boutique introuvable",
+      "homeTitle": "{store} · Location de matériel",
+      "description": "Location de matériel chez {store}. Réservez en ligne."
+    },
+    "about": {
+      "title": "À propos de {name}",
+      "metaTitle": "À propos - {name}",
+      "metaDescription": "{name} : horaires d'ouverture, adresse, contact et fonctionnement des locations.",
+      "hoursTitle": "Horaires d'ouverture",
+      "noHours": "Horaires sur demande",
+      "closed": "Fermé",
+      "closuresTitle": "Fermetures exceptionnelles",
+      "servicesTitle": "Comment ça marche",
+      "paymentMode": "Réservation et paiement en ligne, confirmation immédiate",
+      "requestMode": "Demande de réservation en ligne, confirmée par la boutique",
+      "pickup": "Retrait et retour en boutique",
+      "deliveryOptional": "Livraison possible",
+      "deliveryRequired": "Livraison à l'adresse de votre choix",
+      "deliveryIncluded": "Livraison incluse",
+      "deliveryRadius": "jusqu'à {km} km",
+      "deliveryFree": "offerte dès {amount}",
+      "deliveryFrom": "à partir de {amount} par trajet",
+      "moreTitle": "En savoir plus",
+      "catalog": "Voir le catalogue",
+      "terms": "Conditions générales",
+      "legal": "Mentions légales"
     }
   },
   "onboarding": {

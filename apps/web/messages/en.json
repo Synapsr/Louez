@@ -3638,7 +3638,32 @@
         "heroImagesDescription": "Images displayed in your store's hero section (optional)",
         "addHeroImages": "Add images",
         "heroImagesHint": "Up to 5 images in slider",
-        "heroImagesOptional": "These images will appear in a slider on your store's homepage. Optional.",
+        "heroImagesFirst": "1st",
+        "removeImage": "Remove image",
+        "previewHint": "A sketch of your home page, redrawn on every change. Real copy and proportions vary.",
+        "home": {
+          "title": "Home page",
+          "description": "The header your customers land on: photos, layout, text position."
+        },
+        "heroLayout": {
+          "title": "Layout",
+          "description": "How photos and text share the header.",
+          "cover": "Photo behind",
+          "coverDescription": "Name and search over full-width photos.",
+          "split": "Photo beside",
+          "splitDescription": "Text on a plain background, the photo framed next to it."
+        },
+        "heroAlign": {
+          "title": "Text position",
+          "start": "Left",
+          "center": "Centre",
+          "end": "Right",
+          "hint": "Without a photo, the text is always centred."
+        },
+        "catalog": {
+          "title": "Catalog",
+          "description": "What customers see after the header."
+        },
         "catalogBrowseMode": {
           "title": "Catalog display",
           "description": "Choose what customers see first after selecting their dates.",
@@ -3653,34 +3678,7 @@
           "upTo": "Show discounts up to",
           "hint": "Discounts exceeding this percentage will be hidden on the storefront."
         },
-        "moreImages": "image(s)",
         "preview": "Live preview",
-        "previewDescription": "Preview of your store's appearance",
-        "previewWelcome": "Welcome to {name}",
-        "previewCatalogText": "Discover our catalog of rental products.",
-        "previewCatalogButton": "View catalog",
-        "previewNav": {
-          "catalog": "Catalog",
-          "contact": "Contact"
-        },
-        "previewStats": "{count}+ products",
-        "previewDatePicker": {
-          "title": "When would you like to rent?",
-          "subtitle": "Select your dates",
-          "startLabel": "Start",
-          "endLabel": "End",
-          "startDateExample": "Sat Jan 15",
-          "endDatePlaceholder": "End date",
-          "submitButton": "Check availability",
-          "quickSelectTitle": "Quick select",
-          "quickSelectWeekend": "This weekend",
-          "quickSelectNextWeek": "Next week",
-          "quickSelectTwoWeeks": "2 weeks"
-        },
-        "previewProducts": {
-          "title": "Popular products",
-          "viewAll": "View all"
-        },
         "updated": "Appearance updated",
         "colors": {
           "blue": "Blue",
@@ -5792,7 +5790,10 @@
       "myAccount": "My account",
       "myReservations": "My rentals",
       "categories": "Categories",
-      "menu": "Menu"
+      "menu": "Menu",
+      "signIn": "Sign in",
+      "secure": "Secure payment",
+      "about": "About"
     },
     "status": {
       "open": "Open",
@@ -5800,7 +5801,11 @@
       "until": "until",
       "opensAt": "opens at",
       "opensTomorrow": "opens tomorrow at",
-      "opensOn": "opens"
+      "opensOn": "opens",
+      "openUntil": "Open · until {time}",
+      "closedOpensAt": "Closed · opens at {time}",
+      "closedOpensTomorrow": "Closed · opens tomorrow at {time}",
+      "closedOpensOn": "Closed · opens {day} at {time}"
     },
     "datePicker": {
       "startDate": "Start date",
@@ -5817,11 +5822,17 @@
       "securePayment": "Secure payment",
       "localPickup": "Local pickup",
       "localPickupOrDelivery": "Pickup or delivery",
+      "requestConfirmation": "Confirmed by the store",
       "simpleReservation": "Simple reservation",
       "simpleReservationDesc": "Book in a few clicks",
       "securePaymentDesc": "100% secure transactions",
       "localPickupDesc": "Easily pick up your equipment",
-      "reviewsBadge": "reviews"
+      "reviewsBadge": "reviews",
+      "slides": "Store photos",
+      "previousImage": "Previous photo",
+      "nextImage": "Next photo",
+      "goToImage": "Photo {index} of {count}",
+      "seeReviews": "See Google reviews · {rating} out of 5"
     },
     "home": {
       "ourCategories": "Our categories",
@@ -5840,6 +5851,19 @@
       "contactLabel": "Find us",
       "contactTitle": "Location & contact",
       "findUs": "Find us",
+      "phoneContact": {
+        "call": "Call",
+        "sms": "SMS",
+        "copy": "Copy phone number",
+        "copySuccess": "Phone number copied",
+        "copyError": "Could not copy the phone number"
+      },
+      "emailContact": {
+        "default": "Write with mail app",
+        "copy": "Copy email",
+        "copySuccess": "Email copied",
+        "copyError": "Could not copy the email"
+      },
       "findUsDesc": "Visit us to pick up your equipment",
       "address": "Address",
       "phone": "Phone",
@@ -5848,7 +5872,8 @@
       "getDirections": "Get directions",
       "alreadyReserved": "Already have a reservation?",
       "alreadyReservedDesc": "Access your account to track your reservations and download your contracts.",
-      "accessAccount": "Access my account"
+      "accessAccount": "Access my account",
+      "map": "Map of {store}"
     },
     "reviews": {
       "label": "Testimonials",
@@ -5858,7 +5883,11 @@
       "basedOn": "based on {count} reviews",
       "noReviewText": "This review has no comment.",
       "seeAllOnGoogle": "See all reviews",
-      "verifiedByGoogle": "Reviews verified by Google"
+      "verifiedByGoogle": "Reviews verified by Google",
+      "previous": "Previous review",
+      "next": "Next review",
+      "starRating": "Rating: {rating} out of 5",
+      "ratingLink": "{rating} out of 5 · {count, plural, one {# review} other {# reviews}}"
     },
     "catalog": {
       "title": "Catalog",
@@ -5880,7 +5909,34 @@
       "consumableOutOfStock": "Consumable out of stock",
       "lastOne": "Last one!",
       "left": "left",
-      "clearFilters": "Clear filters"
+      "clearFilters": "Clear filters",
+      "clearSearch": "Clear search",
+      "loadMore": "Load more",
+      "metaTitle": "Catalog - {storeName}",
+      "metaDescription": "Equipment to rent from {storeName}. Book online.",
+      "metaCategoryTitle": "{category} - {storeName}",
+      "metaCategoryDescription": "{category} to rent from {storeName}. Book online.",
+      "sort": {
+        "label": "Sort",
+        "recommended": "Recommended",
+        "priceAsc": "Price: low to high",
+        "priceDesc": "Price: high to low"
+      },
+      "filters": "Filters",
+      "activeFilters": "Active filters",
+      "removeFilter": "Remove this filter",
+      "price": "Price",
+      "priceRange": "{min} – {max}",
+      "availability": "Availability",
+      "availableOnly": "Available only",
+      "availableOnlyHint": "Pick your dates to filter",
+      "showResults": "{count, plural, =0 {No products} one {Show # product} other {Show # products}}",
+      "quantityLabel": "Number of units",
+      "quantityChip": "{count} or more units",
+      "attributeChip": "{axis}: {value}",
+      "priceBaseHint": "Base rates, before dates are picked",
+      "pricePeriodHint": "Total for your dates",
+      "availableOfTotal": "{available} of {total} available"
     },
     "product": {
       "viewDetails": "View product",
@@ -5962,7 +6018,9 @@
         "label": "{name} photos",
         "imageAlt": "{name} — photo {index}",
         "counter": "{current} / {total}",
-        "zoom": "Enlarge"
+        "zoom": "Enlarge",
+        "video": "Play the video",
+        "goTo": "Go to image {index}"
       },
       "meta": {
         "title": "{product} for rent — {store}",
@@ -5978,11 +6036,23 @@
       "unavailableHelp": "This product is not available for rent right now. Browse the rest of the catalog.",
       "requiredAccessoryOutOfStock": "A required accessory is out of stock",
       "requiredAccessoriesIncluded": "Automatically added: {names}",
-      "backToCatalog": "View the catalog"
+      "backToCatalog": "View the catalog",
+      "booking": {
+        "dates": "Dates",
+        "anyOption": "No preference",
+        "checking": "Checking…",
+        "reserve": "Book",
+        "included": "Included",
+        "shortage": "Not enough stock",
+        "extras": "Extras",
+        "depositHold": "Deposit",
+        "depositNotCharged": "Card hold, not charged"
+      }
     },
     "accessories": {
       "productAdded": "Added to cart",
       "youMightAlsoLike": "You might also like",
+      "requiredIncluded": "The accessories this product requires were added to your cart automatically.",
       "selectAccessories": "Select accessories to add",
       "available": "{count, plural, one {# available} other {# available}}",
       "pricingUnit": {
@@ -6036,7 +6106,12 @@
       "errors": {
         "required": "Please select dates",
         "startInPast": "Start date must be in the future",
-        "endBeforeStart": "End date must be after start date"
+        "endBeforeStart": "End date must be after start date",
+        "sameDayNotAllowed": "Same-day rentals are not available at this store.",
+        "businessHours": "Those times fall outside the store's opening hours.",
+        "advanceNotice": "This store needs {duration} notice before pickup.",
+        "minDuration": "The minimum rental duration is {duration}.",
+        "maxDuration": "The maximum rental duration is {duration}."
       },
       "businessHours": {
         "storeClosed": "Store is closed on this day",
@@ -6048,7 +6123,9 @@
       },
       "modifyDates": "Change dates",
       "applyDates": "Apply dates",
-      "timezoneNotice": "Times shown in {city} time"
+      "timezoneNotice": "Times shown in {city} time",
+      "chooseDates": "Pick your dates",
+      "validate": "Confirm"
     },
     "availability": {
       "title": "Available products",
@@ -6082,6 +6159,7 @@
       "badge": {
         "available": "Available",
         "availableCount": "{count} available",
+        "lastOne": "Last one available",
         "limited": "{count} left",
         "unavailable": "Unavailable",
         "outOfStock": "Out of stock",
@@ -6157,7 +6235,19 @@
         "product_unavailable": "This product is no longer available",
         "insufficient_stock": "Not enough stock for this quantity",
         "required_accessory_unavailable": "A required accessory is out of stock"
-      }
+      },
+      "open": "Open cart",
+      "openWithCount": "Cart, {count, plural, one {# item} other {# items}}",
+      "quantityOf": "Quantity of {name}",
+      "removeItem": "Remove {name} from the cart",
+      "removed": "{name} removed from the cart",
+      "undo": "Undo",
+      "resolveError": "Availability could not be checked. Try again in a moment.",
+      "unavailableTitle": "{count, plural, one {# item is no longer available} other {# items are no longer available}}",
+      "adjustTo": "Reduce to {count}",
+      "maxReached": "Maximum quantity reached",
+      "fixedPrice": "Flat rate",
+      "depositHold": "deposit not charged"
     },
     "checkout": {
       "title": "Complete my reservation",
@@ -6343,7 +6433,8 @@
         "promoCodeExpired": "This promo code has expired",
         "promoCodeExhausted": "This promo code is no longer available",
         "promoCodeMinimumNotMet": "Minimum amount of {amount} required",
-        "promoCodeNotStarted": "This promo code is not yet active"
+        "promoCodeNotStarted": "This promo code is not yet active",
+        "remove": "Remove the promo code"
       },
       "lineNeedsUpdate": "Some lines are no longer available. Update your cart before submitting.",
       "advisor": {
@@ -6364,6 +6455,56 @@
         "statusChecking": "Checking your verification…",
         "transcriptLabel": "Verification conversation",
         "completeVerificationHint": "Complete the verification above to continue."
+      },
+      "submitError": {
+        "title": "Your order could not be sent",
+        "goToStep": "Fix this"
+      },
+      "payAmount": "Pay {amount}",
+      "blocked": {
+        "resolving": "Checking availability…",
+        "insuranceRequired": "Choose an insurance option"
+      },
+      "acceptCgvRich": "I accept the <terms>rental terms and conditions</terms>",
+      "returningCustomer": {
+        "prompt": "Already a customer?",
+        "sendCode": "Send me a code",
+        "codeSent": "Code sent to {email}",
+        "codeLabel": "Verification code",
+        "cancel": "Cancel",
+        "resend": "Resend",
+        "verifying": "Verifying…",
+        "signedInAs": "Signed in as {name}",
+        "notYou": "Not you?"
+      },
+      "notesDisclosure": "Add a note for the store",
+      "yourAddress": "Your address",
+      "viewCatalog": "View the catalog",
+      "fixedPrice": "Flat rate",
+      "pricesIncludeTax": "Prices include tax",
+      "pricesExcludeTax": "Prices exclude tax",
+      "summaryBar": {
+        "show": "Show details",
+        "hide": "Hide details"
+      },
+      "deliveryCalculating": "Calculating delivery fees…",
+      "insuranceIncluded": "Insurance included",
+      "cancelled": {
+        "title": "Payment interrupted",
+        "description": "Your booking {number} is waiting for payment. Resume whenever you like, nothing is lost.",
+        "cartKept": "Your cart has been kept.",
+        "backToCart": "Back to the cart",
+        "resume": "Resume payment",
+        "redirecting": "Redirecting…",
+        "alreadyPaidTitle": "Booking already paid",
+        "alreadyPaidDescription": "Your booking {number} is confirmed. No further payment is needed.",
+        "viewReservation": "View my booking",
+        "errors": {
+          "notFound": "This booking could not be found.",
+          "invalidStatus": "This booking is no longer waiting for payment.",
+          "unavailable": "Online payment is unavailable for this store.",
+          "sessionFailed": "Payment could not be restarted. Try again in a moment."
+        }
       }
     },
     "confirmation": {
@@ -6609,8 +6750,29 @@
         "declineTitle": "Decline this quote?",
         "declineDescription": "You are about to decline this quote. The rental company will be notified.",
         "cancel": "Cancel",
-        "confirmDecline": "Decline quote"
-      }
+        "confirmDecline": "Decline quote",
+        "acceptTitle": "Accept this quote?",
+        "acceptDescription": "You are about to accept this quote. The store will be notified and your booking confirmed.",
+        "confirmAccept": "Accept the quote"
+      },
+      "loginTitle": "Access my rentals",
+      "loginLine": "Enter your email: we'll send you a one-time code, no password needed.",
+      "codeLine": "We sent a code to {email}.",
+      "resendIn": "New code in {seconds}s",
+      "currentReservations": "Current rentals",
+      "pastReservations": "Past rentals",
+      "timeline": {
+        "title": "Rental period"
+      },
+      "actions": {
+        "title": "Actions",
+        "contractSigned": "Contract signed on {date}"
+      },
+      "deposit": "Deposit",
+      "total": "Total",
+      "notes": "Your notes",
+      "signContractTitle": "Sign the contract?",
+      "confirmSign": "Sign the contract"
     },
     "marketplaceShell": {
       "marketplaceName": "Louez Marketplace"
@@ -6623,7 +6785,13 @@
       "legalNotice": "Legal Notice",
       "signIn": "Sign in",
       "allRightsReserved": "All rights reserved.",
-      "poweredBy": "Powered by"
+      "poweredBy": "Powered by",
+      "navigation": "Navigation",
+      "catalog": "Catalog",
+      "reviews": "Reviews",
+      "account": "Account",
+      "myReservations": "My rentals",
+      "about": "About"
     },
     "error": {
       "title": "Oops! An error occurred",
@@ -6636,7 +6804,8 @@
       "cgv": {
         "title": "Terms of Service",
         "noCgv": "Terms of service are not available yet.",
-        "contactSeller": "Please contact the seller for more information."
+        "contactSeller": "Please contact the seller for more information.",
+        "metaDescription": "Rental terms and conditions of {name}: booking, payment, deposit and cancellation."
       },
       "legalNotice": {
         "title": "Legal Notice",
@@ -6645,7 +6814,8 @@
         "headquarters": "Headquarters",
         "email": "Email",
         "phone": "Phone",
-        "address": "Address"
+        "address": "Address",
+        "metaDescription": "Legal notice for {name}: site publisher, host and contact details."
       },
       "hosting": {
         "title": "Hosting",
@@ -6695,6 +6865,34 @@
         "unavailable": "The advisor isn't available right now. Please try again later or contact the store."
       },
       "typing": "The advisor is typing"
+    },
+    "meta": {
+      "storeNotFound": "Store not found",
+      "homeTitle": "{store} · Equipment rental",
+      "description": "Rent equipment from {store}. Book online."
+    },
+    "about": {
+      "title": "About {name}",
+      "metaTitle": "About - {name}",
+      "metaDescription": "{name}: opening hours, address, contact and how renting works.",
+      "hoursTitle": "Opening hours",
+      "noHours": "Hours on request",
+      "closed": "Closed",
+      "closuresTitle": "Exceptional closures",
+      "servicesTitle": "How it works",
+      "paymentMode": "Book and pay online, instant confirmation",
+      "requestMode": "Booking request online, confirmed by the store",
+      "pickup": "Pickup and return in store",
+      "deliveryOptional": "Delivery available",
+      "deliveryRequired": "Delivery to the address of your choice",
+      "deliveryIncluded": "Delivery included",
+      "deliveryRadius": "up to {km} km",
+      "deliveryFree": "free from {amount}",
+      "deliveryFrom": "from {amount} per trip",
+      "moreTitle": "Learn more",
+      "catalog": "Browse the catalog",
+      "terms": "Terms and conditions",
+      "legal": "Legal notice"
     }
   },
   "onboarding": {

@@ -1,6 +1,7 @@
 import { db, stores } from "@louez/db";
 import type { UpdateStoreAppearanceInput, UpdateStoreLegalInput } from "@louez/validations";
 import { isOwnedImageUrl } from "@louez/validations";
+import { sanitizeRichTextHtml } from "@louez/utils";
 import { ApiServiceError } from "./errors";
 import { eq } from "drizzle-orm";
 
@@ -22,12 +23,14 @@ export async function updateStoreLegal(params: UpdateStoreLegalParams) {
     updatedAt: new Date(),
   };
 
+  // Editor HTML is sanitised on write so the stored value is safe whatever
+  // renders it later (storefront pages, contract PDF).
   if (cgv !== undefined) {
-    updateData.cgv = cgv;
+    updateData.cgv = sanitizeRichTextHtml(cgv);
   }
 
   if (legalNotice !== undefined) {
-    updateData.legalNotice = legalNotice;
+    updateData.legalNotice = sanitizeRichTextHtml(legalNotice);
   }
 
   if (includeFullCgvInContract !== undefined) {
@@ -80,12 +83,30 @@ export async function updateStoreAppearance(params: UpdateStoreAppearanceParams)
       mode: "light" | "dark";
       primaryColor: string;
       heroImages?: string[];
+      heroLayout?: "cover" | "split";
+      heroAlign?: "start" | "center" | "end";
       catalogBrowseMode?: "products" | "categories";
       maxDiscountPercent?: number | null;
     } = {
       mode: theme.mode,
       primaryColor: theme.primaryColor,
     };
+
+    if (existingTheme?.heroLayout !== undefined) {
+      mergedTheme.heroLayout = existingTheme.heroLayout;
+    }
+
+    if (existingTheme?.heroAlign !== undefined) {
+      mergedTheme.heroAlign = existingTheme.heroAlign;
+    }
+
+    if (theme.heroLayout !== undefined) {
+      mergedTheme.heroLayout = theme.heroLayout;
+    }
+
+    if (theme.heroAlign !== undefined) {
+      mergedTheme.heroAlign = theme.heroAlign;
+    }
 
     if (existingTheme?.heroImages !== undefined) {
       mergedTheme.heroImages = existingTheme.heroImages;

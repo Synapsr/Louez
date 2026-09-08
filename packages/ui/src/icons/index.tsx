@@ -142,6 +142,11 @@ export {
 } from "lucide-react";
 
 export {
+  IconBadgeCheckOutline18 as InstantConfirmationIcon,
+  IconBagPlusOutline18 as BagPlusIcon,
+  IconChatBubbleCheckOutline18 as RequestConfirmationIcon,
+  IconMapPinOutline18 as LocalPickupIcon,
+  IconShieldCheckOutline18 as SecurePaymentIcon,
   IconTruckFastOutline18 as DeliveryTruckIcon,
   IconTruckRefreshOutline18 as ReturnTruckIcon,
 } from "nucleo-ui-outline-18";
