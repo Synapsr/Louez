@@ -3355,9 +3355,15 @@
         },
         "heroAlign": {
           "title": "Położenie tekstu",
-          "start": "Lewo",
-          "center": "Środek",
-          "end": "Prawo",
+          "topStart": "Lewy górny róg",
+          "topCenter": "Góra, środek",
+          "topEnd": "Prawy górny róg",
+          "middleStart": "Środek, lewo",
+          "middleCenter": "Środek",
+          "middleEnd": "Środek, prawo",
+          "bottomStart": "Lewy dolny róg",
+          "bottomCenter": "Dół, środek",
+          "bottomEnd": "Prawy dolny róg",
           "hint": "Bez zdjęcia tekst jest zawsze wyśrodkowany."
         },
         "catalog": {

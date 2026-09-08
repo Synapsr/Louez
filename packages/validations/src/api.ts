@@ -632,6 +632,7 @@ export const updateStoreAppearanceInputSchema = z.object({
       heroImages: z.array(s3UrlSchema).max(5).optional(),
       heroLayout: z.enum(["cover", "split"]).optional(),
       heroAlign: z.enum(["start", "center", "end"]).optional(),
+      heroVerticalAlign: z.enum(["start", "center", "end"]).optional(),
       catalogBrowseMode: z.enum(["products", "categories"]).optional(),
       maxDiscountPercent: z.number().int().min(0).max(100).nullish(),
     })

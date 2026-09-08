@@ -252,6 +252,8 @@ export interface StoreTheme {
   heroLayout?: 'cover' | 'split';
   /** Where the hero text sits. 'center' by default; ignored without photos (always centred). */
   heroAlign?: 'start' | 'center' | 'end';
+  /** Vertical position of the hero text: top, middle or bottom. 'end' (bottom) by default; ignored without photos. */
+  heroVerticalAlign?: 'start' | 'center' | 'end';
   /** How the storefront catalog is browsed. 'products' (default) = flat product grid. 'categories' = category cards first, then products. */
   catalogBrowseMode?: 'products' | 'categories';
   maxDiscountPercent?: number | null;

@@ -13,6 +13,7 @@ interface StorefrontSketchProps {
     | "logoUrl"
     | "heroLayout"
     | "heroAlign"
+    | "heroVerticalAlign"
     | "heroImages"
     | "catalogBrowseMode"
   >;
@@ -53,6 +54,24 @@ const ALIGN_ITEMS = {
   end: "items-end",
 } as const;
 
+const VERTICAL_JUSTIFY = {
+  start: "justify-start",
+  center: "justify-center",
+  end: "justify-end",
+} as const;
+
+const VERTICAL_ITEMS = {
+  start: "items-start",
+  center: "items-center",
+  end: "items-end",
+} as const;
+
+const SCRIM = {
+  start: "bg-linear-to-b from-black/70 via-black/30 via-55% to-transparent to-95%",
+  center: "bg-black/40",
+  end: "bg-linear-to-t from-black/75 via-black/30 via-45% to-transparent to-90%",
+} as const;
+
 const ALIGN_JUSTIFY = {
   start: "justify-start",
   center: "justify-center",
@@ -69,7 +88,11 @@ const INVENTORY_TILES = ["a", "b", "c", "d"] as const;
 export const StorefrontSketch = ({ storeName, values, className }: StorefrontSketchProps) => {
   const p = PALETTE[values.themeMode];
   const hero = resolveStoreHeroPresentation({
-    theme: { heroLayout: values.heroLayout, heroAlign: values.heroAlign },
+    theme: {
+      heroLayout: values.heroLayout,
+      heroAlign: values.heroAlign,
+      heroVerticalAlign: values.heroVerticalAlign,
+    },
     imageCount: values.heroImages.length,
   });
   const photo = values.heroImages[0];
@@ -129,7 +152,7 @@ export const StorefrontSketch = ({ storeName, values, className }: StorefrontSke
       className={cn("overflow-hidden rounded-xl border", p.page, p.line, className)}
       data-slot="storefront-sketch"
     >
-      <div className={cn("flex h-9 items-center justify-between gap-3 border-b px-3", p.line)}>
+      <div className="flex h-9 items-center justify-between gap-3 px-3">
         <div className="flex min-w-0 items-center">
           {values.logoUrl ? (
             <img src={values.logoUrl} alt="" className="h-4 max-w-16 object-contain" />
@@ -149,11 +172,17 @@ export const StorefrontSketch = ({ storeName, values, className }: StorefrontSke
           {photo ? (
             <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : null}
-          <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/30 via-45% to-transparent to-90%" />
-          <div className="absolute inset-x-3 bottom-3">{textBlock}</div>
+          <div className={cn("absolute inset-0", SCRIM[hero.verticalAlign])} />
+          <div
+            className={cn("absolute inset-3 flex flex-col", VERTICAL_JUSTIFY[hero.verticalAlign])}
+          >
+            {textBlock}
+          </div>
         </div>
       ) : hero.shape === "split" ? (
-        <div className="grid grid-cols-[5fr_6fr] items-center gap-3 p-3">
+        <div
+          className={cn("grid grid-cols-[5fr_6fr] gap-3 p-3", VERTICAL_ITEMS[hero.verticalAlign])}
+        >
           <div className={cn(hero.align === "end" && "order-last")}>{textBlock}</div>
           <div className={cn("relative aspect-[5/4] overflow-hidden rounded-md", p.fill)}>
             {photo ? (

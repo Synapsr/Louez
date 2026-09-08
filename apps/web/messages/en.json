@@ -3655,9 +3655,15 @@
         },
         "heroAlign": {
           "title": "Text position",
-          "start": "Left",
-          "center": "Centre",
-          "end": "Right",
+          "topStart": "Top left",
+          "topCenter": "Top centre",
+          "topEnd": "Top right",
+          "middleStart": "Middle left",
+          "middleCenter": "Centre",
+          "middleEnd": "Middle right",
+          "bottomStart": "Bottom left",
+          "bottomCenter": "Bottom centre",
+          "bottomEnd": "Bottom right",
           "hint": "Without a photo, the text is always centred."
         },
         "catalog": {
