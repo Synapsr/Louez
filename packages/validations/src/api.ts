@@ -46,6 +46,153 @@ export const storefrontAvailabilityRouteQuerySchema = z.object({
   productIds: z.string().nullish(),
 });
 
+// ---------------------------------------------------------------------------
+// Storefront procedure outputs. They mirror the `AvailabilityResponse` and
+// `CombinationResolutionResult` shapes of @louez/types so the client keeps
+// the same inferred types once the procedures validate their output.
+// ---------------------------------------------------------------------------
+
+const stockStatusSchema = z.enum(["available", "limited", "unavailable"]);
+const unitAttributesSchema = z.record(z.string(), z.string());
+const pricingModeSchema = z.enum(["hour", "day", "week"]);
+const stockKindSchema = z.enum(["returnable", "consumable", "untracked"]);
+
+export const storefrontCombinationAvailabilitySchema = z.object({
+  combinationKey: z.string(),
+  selectedAttributes: unitAttributesSchema,
+  totalQuantity: z.number(),
+  reservedQuantity: z.number(),
+  availableQuantity: z.number(),
+  status: stockStatusSchema,
+});
+
+export const storefrontProductAvailabilitySchema = z.object({
+  productId: z.string(),
+  totalQuantity: z.number().nullable(),
+  reservedQuantity: z.number(),
+  availableQuantity: z.number().nullable(),
+  status: stockStatusSchema,
+  reason: z.enum(["out_of_stock", "required_accessory_out_of_stock"]).optional(),
+  combinations: z.array(storefrontCombinationAvailabilitySchema).optional(),
+  combinationsByKey: z.record(z.string(), storefrontCombinationAvailabilitySchema).optional(),
+});
+
+export const storefrontAvailabilityOutputSchema = z.object({
+  products: z.array(storefrontProductAvailabilitySchema),
+  period: z.object({
+    startDate: z.string(),
+    endDate: z.string(),
+  }),
+  businessHoursValidation: z
+    .object({
+      valid: z.boolean(),
+      errors: z.array(z.string()),
+    })
+    .optional(),
+  advanceNoticeValidation: z
+    .object({
+      valid: z.boolean(),
+      minimumStartTime: z.string().optional(),
+      advanceNoticeMinutes: z.number().optional(),
+    })
+    .optional(),
+});
+
+export const storefrontResolveCombinationOutputSchema = z.object({
+  combinationKey: z.string(),
+  selectedAttributes: unitAttributesSchema,
+  availableQuantity: z.number().nullable(),
+});
+
+const storefrontSeasonalPricingSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  startDate: z.string(),
+  endDate: z.string(),
+  basePrice: z.number(),
+  tiers: z.array(
+    z.object({
+      id: z.string(),
+      minDuration: z.number().nullable(),
+      discountPercent: z.number().nullable(),
+      displayOrder: z.number(),
+    }),
+  ),
+  rates: z.array(
+    z.object({
+      id: z.string(),
+      price: z.number(),
+      period: z.number(),
+      displayOrder: z.number(),
+    }),
+  ),
+});
+
+export const storefrontCartLineResolutionSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("resolved"),
+    lineId: z.string(),
+    parentLineId: z.string().optional(),
+    productId: z.string(),
+    productName: z.string(),
+    productImage: z.string().nullable(),
+    price: z.number(),
+    deposit: z.number(),
+    maxQuantity: z.number().nullable(),
+    quantity: z.number(),
+    pricingKind: z.enum(["duration", "fixed"]),
+    stockKind: stockKindSchema,
+    required: z.boolean(),
+    requiredQuantity: z.number().nullable(),
+    requiredAccessories: z.array(
+      z.object({
+        productId: z.string(),
+        required: z.literal(true),
+        quantity: z.number().int().min(1),
+      }),
+    ),
+    pricingMode: pricingModeSchema,
+    productPricingMode: pricingModeSchema,
+    basePeriodMinutes: z.number().nullable(),
+    enforceStrictTiers: z.boolean(),
+    pricingTiers: z.array(
+      z.object({
+        id: z.string(),
+        minDuration: z.number(),
+        discountPercent: z.number(),
+        period: z.number().nullable(),
+        price: z.number().nullable(),
+      }),
+    ),
+    seasonalPricings: z.array(storefrontSeasonalPricingSchema).optional(),
+    /**
+     * Deterministic unit combination the line books, resolved with the same
+     * rule as `availability.resolveCombination`. Null when no single
+     * combination holds the whole quantity (the line must be split).
+     */
+    combination: storefrontResolveCombinationOutputSchema.nullable(),
+  }),
+  z.object({
+    status: z.literal("unavailable"),
+    lineId: z.string(),
+    parentLineId: z.string().optional(),
+    productId: z.string(),
+    reason: z.enum(["product_unavailable", "insufficient_stock", "required_accessory_unavailable"]),
+    stockKind: stockKindSchema.optional(),
+    maxQuantity: z.number().optional(),
+  }),
+]);
+
+export const storefrontCartResolveOutputSchema = z.object({
+  lines: z.array(storefrontCartLineResolutionSchema),
+});
+
+export const reservationSignOutputSchema = z.object({
+  success: z.literal(true),
+  signedBy: z.enum(["customer", "admin"]),
+  signedAt: z.string(),
+});
+
 export const dashboardReservationPollInputSchema = z.object({});
 
 export const dashboardReservationTimelinePeriodInputSchema = z
@@ -483,6 +630,8 @@ export const updateStoreAppearanceInputSchema = z.object({
       mode: z.enum(["light", "dark"]),
       primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color"),
       heroImages: z.array(s3UrlSchema).max(5).optional(),
+      heroLayout: z.enum(["cover", "split"]).optional(),
+      heroAlign: z.enum(["start", "center", "end"]).optional(),
       catalogBrowseMode: z.enum(["products", "categories"]).optional(),
       maxDiscountPercent: z.number().int().min(0).max(100).nullish(),
     })
@@ -603,6 +752,14 @@ export type StorefrontResolveCombinationInput = z.infer<
   typeof storefrontResolveCombinationInputSchema
 >;
 export type StorefrontCartResolveInput = z.infer<typeof storefrontCartResolveInputSchema>;
+export type StorefrontAvailabilityOutput = z.infer<typeof storefrontAvailabilityOutputSchema>;
+export type StorefrontProductAvailability = z.infer<typeof storefrontProductAvailabilitySchema>;
+export type StorefrontResolveCombinationOutput = z.infer<
+  typeof storefrontResolveCombinationOutputSchema
+>;
+export type StorefrontCartLineResolution = z.infer<typeof storefrontCartLineResolutionSchema>;
+export type StorefrontCartResolveOutput = z.infer<typeof storefrontCartResolveOutputSchema>;
+export type ReservationSignOutput = z.infer<typeof reservationSignOutputSchema>;
 export type DashboardReservationPollInput = z.infer<typeof dashboardReservationPollInputSchema>;
 export type DashboardReservationTimelinePeriodInput = z.infer<
   typeof dashboardReservationTimelinePeriodInputSchema
