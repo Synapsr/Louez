@@ -156,7 +156,10 @@ export const StoreHero = ({
       {cover ? (
         <>
           <HeroImageSlider images={backgroundImages} />
-          <div aria-hidden className={cn("absolute inset-0", SCRIM[verticalAlign])} />
+          <div
+            aria-hidden
+            className={cn("pointer-events-none absolute inset-0", SCRIM[verticalAlign])}
+          />
         </>
       ) : null}
 
