@@ -26,8 +26,9 @@ interface HeroImageSliderProps {
  * one target zone, not four separate buttons to hunt for.
  */
 const controlBaseClassName =
-  "relative flex h-7 items-center justify-center rounded-full text-white transition-colors before:absolute before:inset-x-0 before:-inset-y-2 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
-const arrowClassName = cn(controlBaseClassName, "w-7 pointer-coarse:w-9");
+  "relative flex h-7 items-center justify-center rounded-full text-white transition-colors before:absolute before:inset-x-0 before:-inset-y-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
+// Only the arrows light up on hover; a dot's own width already shows which one is active.
+const arrowClassName = cn(controlBaseClassName, "w-7 pointer-coarse:w-9 hover:bg-white/15");
 const dotClassName = cn(controlBaseClassName, "w-4 pointer-coarse:w-5");
 
 /**
