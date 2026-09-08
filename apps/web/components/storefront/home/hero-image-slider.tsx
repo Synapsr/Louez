@@ -19,15 +19,23 @@ interface HeroImageSliderProps {
   className?: string;
 }
 
-const controlClassName =
-  "flex size-7 items-center justify-center rounded-full text-white transition-colors pointer-coarse:size-9 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
+/**
+ * Every control is a 28 px tall pill that also catches taps 8 px above and
+ * below it (`before:`), so the row reads small while the targets stay 44 px
+ * high. The dots sit 16 px apart (20 px with a finger): the whole strip is
+ * one target zone, not four separate buttons to hunt for.
+ */
+const controlBaseClassName =
+  "relative flex h-7 items-center justify-center rounded-full text-white transition-colors before:absolute before:inset-x-0 before:-inset-y-2 hover:bg-white/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
+const arrowClassName = cn(controlBaseClassName, "w-7 pointer-coarse:w-9");
+const dotClassName = cn(controlBaseClassName, "w-4 pointer-coarse:w-5");
 
 /**
  * Background photos of the home hero. The first slide loads with priority
  * (it is the largest contentful paint), the others fade in. Autoplay pauses
  * on hover and never runs for a visitor who asked for reduced motion. The
- * controls are a small pill (28 px targets with a mouse, 36 px with a
- * finger) raised above whatever the parent paints over the photos.
+ * controls are a small pill raised above whatever the parent paints over
+ * the photos.
  */
 export const HeroImageSlider = ({ images, className }: HeroImageSliderProps) => {
   const t = useTranslations("storefront.hero");
@@ -79,14 +87,14 @@ export const HeroImageSlider = ({ images, className }: HeroImageSliderProps) => 
 
       {count > 1 ? (
         <div
-          className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-0.5 rounded-full bg-black/35 p-0.5 backdrop-blur-sm md:right-6 md:left-auto md:translate-x-0"
+          className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center rounded-full bg-black/35 p-0.5 backdrop-blur-sm md:right-6 md:left-auto md:translate-x-0"
           role="group"
           aria-label={t("slides")}
         >
           <button
             type="button"
             onClick={() => goTo(index - 1)}
-            className={controlClassName}
+            className={arrowClassName}
             aria-label={t("previousImage")}
           >
             <ChevronLeftIcon aria-hidden className="size-3.5" />
@@ -96,7 +104,7 @@ export const HeroImageSlider = ({ images, className }: HeroImageSliderProps) => 
               key={src}
               type="button"
               onClick={() => goTo(slide)}
-              className={controlClassName}
+              className={dotClassName}
               aria-label={t("goToImage", { index: slide + 1, count })}
               aria-current={slide === index ? "true" : undefined}
             >
@@ -112,7 +120,7 @@ export const HeroImageSlider = ({ images, className }: HeroImageSliderProps) => 
           <button
             type="button"
             onClick={() => goTo(index + 1)}
-            className={controlClassName}
+            className={arrowClassName}
             aria-label={t("nextImage")}
           >
             <ChevronRightIcon aria-hidden className="size-3.5" />
