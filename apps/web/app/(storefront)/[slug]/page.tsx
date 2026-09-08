@@ -81,6 +81,7 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
         backgroundImages={heroImages}
         shape={hero.shape}
         align={hero.align}
+        verticalAlign={hero.verticalAlign}
         badges={
           <>
             <StoreStatusBadge

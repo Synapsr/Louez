@@ -3355,9 +3355,15 @@
         },
         "heroAlign": {
           "title": "Tekstpositie",
-          "start": "Links",
-          "center": "Midden",
-          "end": "Rechts",
+          "topStart": "Linksboven",
+          "topCenter": "Middenboven",
+          "topEnd": "Rechtsboven",
+          "middleStart": "Links midden",
+          "middleCenter": "Midden",
+          "middleEnd": "Rechts midden",
+          "bottomStart": "Linksonder",
+          "bottomCenter": "Middenonder",
+          "bottomEnd": "Rechtsonder",
           "hint": "Zonder foto staat de tekst altijd in het midden."
         },
         "catalog": {

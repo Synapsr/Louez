@@ -15,6 +15,7 @@ export const appearanceFormSchema = z.object({
   themeMode: z.enum(["light", "dark"]),
   heroLayout: z.enum(["cover", "split"]),
   heroAlign: z.enum(["start", "center", "end"]),
+  heroVerticalAlign: z.enum(["start", "center", "end"]),
   heroImages: z.array(z.string()).max(MAX_HERO_IMAGES),
   catalogBrowseMode: z.enum(["products", "categories"]),
   maxDiscountEnabled: z.boolean(),
@@ -41,6 +42,7 @@ export interface AppearancePayload {
     primaryColor: string;
     heroLayout: "cover" | "split";
     heroAlign: "start" | "center" | "end";
+    heroVerticalAlign: "start" | "center" | "end";
     catalogBrowseMode: "products" | "categories";
     maxDiscountPercent: number | null;
     heroImages?: string[];
@@ -54,6 +56,7 @@ export const buildAppearanceDefaults = (store: AppearanceStore): AppearanceFormV
   themeMode: store.theme?.mode === "dark" ? "dark" : "light",
   heroLayout: store.theme?.heroLayout ?? "cover",
   heroAlign: store.theme?.heroAlign ?? "center",
+  heroVerticalAlign: store.theme?.heroVerticalAlign ?? "end",
   heroImages: store.theme?.heroImages ?? [],
   catalogBrowseMode: store.theme?.catalogBrowseMode ?? "products",
   maxDiscountEnabled: store.theme?.maxDiscountPercent != null,
@@ -127,6 +130,7 @@ export const buildAppearancePayload = ({
       primaryColor: value.primaryColor,
       heroLayout: value.heroLayout,
       heroAlign: value.heroAlign,
+      heroVerticalAlign: value.heroVerticalAlign,
       catalogBrowseMode: value.catalogBrowseMode,
       maxDiscountPercent: value.maxDiscountEnabled ? value.maxDiscountPercent : null,
     },
@@ -176,6 +180,7 @@ export const APPEARANCE_EMPTY_VALUES: AppearanceFormValues = {
   themeMode: "light",
   heroLayout: "cover",
   heroAlign: "center",
+  heroVerticalAlign: "end",
   heroImages: [],
   catalogBrowseMode: "products",
   maxDiscountEnabled: false,

@@ -85,6 +85,7 @@ export async function updateStoreAppearance(params: UpdateStoreAppearanceParams)
       heroImages?: string[];
       heroLayout?: "cover" | "split";
       heroAlign?: "start" | "center" | "end";
+      heroVerticalAlign?: "start" | "center" | "end";
       catalogBrowseMode?: "products" | "categories";
       maxDiscountPercent?: number | null;
     } = {
@@ -100,12 +101,20 @@ export async function updateStoreAppearance(params: UpdateStoreAppearanceParams)
       mergedTheme.heroAlign = existingTheme.heroAlign;
     }
 
+    if (existingTheme?.heroVerticalAlign !== undefined) {
+      mergedTheme.heroVerticalAlign = existingTheme.heroVerticalAlign;
+    }
+
     if (theme.heroLayout !== undefined) {
       mergedTheme.heroLayout = theme.heroLayout;
     }
 
     if (theme.heroAlign !== undefined) {
       mergedTheme.heroAlign = theme.heroAlign;
+    }
+
+    if (theme.heroVerticalAlign !== undefined) {
+      mergedTheme.heroVerticalAlign = theme.heroVerticalAlign;
     }
 
     if (existingTheme?.heroImages !== undefined) {

@@ -16,6 +16,7 @@ const baseline: AppearanceFormValues = {
   themeMode: "light",
   heroLayout: "cover",
   heroAlign: "center",
+  heroVerticalAlign: "end",
   heroImages: ["https://s3/hero-1.jpg"],
   catalogBrowseMode: "products",
   maxDiscountEnabled: false,
@@ -33,12 +34,19 @@ test("a store without a theme gets the cover layout, centred", () => {
   });
   assert.equal(defaults.heroLayout, "cover");
   assert.equal(defaults.heroAlign, "center");
+  assert.equal(defaults.heroVerticalAlign, "end");
   assert.equal(defaults.maxDiscountEnabled, false);
 });
 
 test("the payload carries the hero layout and alignment, and clears the dark logo in light mode", () => {
   const payload = buildAppearancePayload({
-    value: { ...baseline, heroLayout: "split", heroAlign: "end", maxDiscountEnabled: true },
+    value: {
+      ...baseline,
+      heroLayout: "split",
+      heroAlign: "end",
+      heroVerticalAlign: "start",
+      maxDiscountEnabled: true,
+    },
     baseline,
   });
   assert.deepEqual(payload, {
@@ -49,6 +57,7 @@ test("the payload carries the hero layout and alignment, and clears the dark log
       primaryColor: "#2563eb",
       heroLayout: "split",
       heroAlign: "end",
+      heroVerticalAlign: "start",
       catalogBrowseMode: "products",
       maxDiscountPercent: 50,
       heroImages: ["https://s3/hero-1.jpg"],

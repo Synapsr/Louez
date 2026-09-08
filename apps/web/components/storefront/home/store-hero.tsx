@@ -3,7 +3,11 @@ import type { ReactNode } from "react";
 import { cn } from "@louez/utils";
 
 import { HeroImageSlider } from "@/components/storefront/home/hero-image-slider";
-import type { StoreHeroAlign, StoreHeroShape } from "@/lib/utils/util.store-hero";
+import type {
+  StoreHeroAlign,
+  StoreHeroShape,
+  StoreHeroVerticalAlign,
+} from "@/lib/utils/util.store-hero";
 
 interface StoreHeroProps {
   name: string;
@@ -14,6 +18,7 @@ interface StoreHeroProps {
   /** `cover` = text over the photos, `split` = text beside a framed photo, `band` = no photo. */
   shape: StoreHeroShape;
   align: StoreHeroAlign;
+  verticalAlign: StoreHeroVerticalAlign;
   /** Status badge and rating pill. */
   badges?: ReactNode;
   /** The period search. */
@@ -28,6 +33,30 @@ const ALIGN_ITEMS: Record<StoreHeroAlign, string> = {
   end: "items-end text-end",
 };
 
+const VERTICAL_ALIGN_ITEMS: Record<StoreHeroVerticalAlign, string> = {
+  start: "items-start",
+  center: "items-center",
+  end: "items-end",
+};
+
+/**
+ * The scrim follows the text: it darkens the edge the headline sits on and
+ * leaves the rest of the photo untinted; at the bottom it is fully clear
+ * over the last 5% so the photo runs untinted into the opaque header bar.
+ */
+const SCRIM: Record<StoreHeroVerticalAlign, string> = {
+  start: "bg-linear-to-b from-black/70 via-black/30 via-55% to-transparent to-95%",
+  center: "bg-black/40",
+  end: "bg-linear-to-t from-black/75 via-black/30 via-45% to-transparent to-90%",
+};
+
+/** Written out in full so Tailwind sees them. */
+const SPLIT_VERTICAL_ALIGN_ITEMS: Record<StoreHeroVerticalAlign, string> = {
+  start: "lg:items-start",
+  center: "lg:items-center",
+  end: "lg:items-end",
+};
+
 const ALIGN_JUSTIFY: Record<StoreHeroAlign, string> = {
   start: "justify-start",
   center: "justify-center",
@@ -39,13 +68,13 @@ const ALIGN_JUSTIFY: Record<StoreHeroAlign, string> = {
  *
  * `cover`: on the store photos, `min-h-[70svh]` so the inventory starts
  * before the first scroll; pulled under the header (`-mt-14 md:-mt-16`, the
- * header's own height). The scrim is fully clear over the last 5%, so the
- * photo runs untinted into the opaque bar instead of meeting it mid-fade,
- * and only carries the contrast the headline needs at the bottom.
+ * header's own height). The scrim only carries the contrast the headline
+ * needs, on the edge the text sits on.
  *
  * `split`: the text on the page surface next to the photo in a rounded
  * frame, no scrim, no white text, so a light illustration works as well as
- * a dark photo. `align` picks the side of the text column.
+ * a dark photo. `align` picks the side of the text column, `verticalAlign`
+ * where it sits against the photo.
  *
  * `band`: no photo, so a short muted band with everything centred; nothing
  * to look at, so the inventory arrives at once.
@@ -56,6 +85,7 @@ export const StoreHero = ({
   backgroundImages = [],
   shape,
   align,
+  verticalAlign,
   badges,
   children,
   footer,
@@ -76,7 +106,12 @@ export const StoreHero = ({
         aria-labelledby="store-hero-title"
         data-slot="store-hero"
       >
-        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:items-center lg:gap-12 lg:px-8 lg:py-12">
+        <div
+          className={cn(
+            "mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-12 lg:px-8 lg:py-12",
+            SPLIT_VERTICAL_ALIGN_ITEMS[verticalAlign],
+          )}
+        >
           <div
             className={cn(
               "relative aspect-[16/10] overflow-hidden rounded-2xl bg-muted lg:aspect-[5/4]",
@@ -109,7 +144,10 @@ export const StoreHero = ({
       className={cn(
         "relative flex overflow-hidden",
         cover
-          ? "-mt-14 min-h-[70svh] items-end bg-foreground text-white md:-mt-16"
+          ? cn(
+              "-mt-14 min-h-[70svh] bg-foreground text-white md:-mt-16",
+              VERTICAL_ALIGN_ITEMS[verticalAlign],
+            )
           : "bg-muted text-foreground",
       )}
       aria-labelledby="store-hero-title"
@@ -118,10 +156,7 @@ export const StoreHero = ({
       {cover ? (
         <>
           <HeroImageSlider images={backgroundImages} />
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-linear-to-t from-black/75 via-black/30 via-45% to-transparent to-90%"
-          />
+          <div aria-hidden className={cn("absolute inset-0", SCRIM[verticalAlign])} />
         </>
       ) : null}
 

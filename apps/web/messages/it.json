@@ -3355,9 +3355,15 @@
         },
         "heroAlign": {
           "title": "Posizione del testo",
-          "start": "Sinistra",
-          "center": "Centro",
-          "end": "Destra",
+          "topStart": "In alto a sinistra",
+          "topCenter": "In alto al centro",
+          "topEnd": "In alto a destra",
+          "middleStart": "Al centro a sinistra",
+          "middleCenter": "Al centro",
+          "middleEnd": "Al centro a destra",
+          "bottomStart": "In basso a sinistra",
+          "bottomCenter": "In basso al centro",
+          "bottomEnd": "In basso a destra",
           "hint": "Senza foto, il testo è sempre centrato."
         },
         "catalog": {

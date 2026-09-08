@@ -8,9 +8,9 @@ import { LayoutIcon } from "@louez/ui/icons";
 
 import { withForm } from "@/hooks/form/form";
 
-import { HeroAlignField } from "./hero-align-field";
 import { HeroImagesField } from "./hero-images-field";
 import { HeroLayoutField } from "./hero-layout-field";
+import { HeroPositionField } from "./hero-position-field";
 import type { PendingImageUploads } from "./use-pending-image-uploads";
 import {
   type AppearanceFormValues,
@@ -31,6 +31,8 @@ export const AppearanceHeroSection = withForm({
   render: ({ form, uploads, savedValues }) => {
     const t = useTranslations("dashboard.settings.appearanceSettings");
     const heroLayout = useStore(form.store, (state) => state.values.heroLayout);
+    const heroAlign = useStore(form.store, (state) => state.values.heroAlign);
+    const heroVerticalAlign = useStore(form.store, (state) => state.values.heroVerticalAlign);
 
     return (
       <Card>
@@ -70,15 +72,15 @@ export const AppearanceHeroSection = withForm({
             )}
           </form.Field>
 
-          <form.Field name="heroAlign">
-            {(field) => (
-              <HeroAlignField
-                value={field.state.value}
-                layout={heroLayout}
-                onChange={field.handleChange}
-              />
-            )}
-          </form.Field>
+          <HeroPositionField
+            align={heroAlign}
+            verticalAlign={heroVerticalAlign}
+            layout={heroLayout}
+            onChange={(position) => {
+              form.setFieldValue("heroAlign", position.align);
+              form.setFieldValue("heroVerticalAlign", position.verticalAlign);
+            }}
+          />
         </CardContent>
       </Card>
     );
