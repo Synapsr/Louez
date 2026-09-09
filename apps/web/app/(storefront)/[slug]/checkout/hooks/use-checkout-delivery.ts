@@ -66,7 +66,6 @@ export const useCheckoutDelivery = ({
   const [pickupLocationId, setPickupLocationId] = useState<string | null>(null);
   const [outboundAddress, setOutboundAddress] = useState<DeliveryAddress>(DEFAULT_DELIVERY_ADDRESS);
   const [outboundDistance, setOutboundDistance] = useState<number | null>(null);
-  const [outboundFee, setOutboundFee] = useState(0);
   const [outboundError, setOutboundError] = useState<string | null>(null);
   const [outboundIsCalculating, setOutboundIsCalculating] = useState(false);
 
@@ -82,13 +81,26 @@ export const useCheckoutDelivery = ({
   const [returnLocationId, setReturnLocationId] = useState<string | null>(null);
   const [returnAddress, setReturnAddress] = useState<DeliveryAddress>(DEFAULT_DELIVERY_ADDRESS);
   const [returnDistance, setReturnDistance] = useState<number | null>(null);
-  const [returnFee, setReturnFee] = useState(0);
   const [returnError, setReturnError] = useState<string | null>(null);
   const [returnIsCalculating, setReturnIsCalculating] = useState(false);
   const outboundRequestIdRef = useRef(0);
   const returnRequestIdRef = useRef(0);
 
-  const totalFee = outboundFee + returnFee;
+  // Derive both fees from the latest leg state; concurrent distance responses
+  // must not overwrite a total computed from an earlier render.
+  const { outboundFee, returnFee, totalFee } =
+    deliverySettings && !isDeliveryIncluded
+      ? calculateTotalDeliveryFee(
+          outboundMethod === "address" && !outboundError && !outboundIsCalculating
+            ? outboundDistance
+            : null,
+          returnMethod === "address" && !returnError && !returnIsCalculating
+            ? returnDistance
+            : null,
+          deliverySettings,
+          subtotal,
+        )
+      : { outboundFee: 0, returnFee: 0, totalFee: 0 };
 
   // Force outbound to address when delivery mode requires it
   useEffect(() => {
@@ -129,24 +141,6 @@ export const useCheckoutDelivery = ({
   }, [isDeliveryAmountEligible, outboundMethod, returnMethod]);
 
   // ---------------------------------------------------------------------------
-  // Fee recalculation helper
-  // ---------------------------------------------------------------------------
-  const recalculateFees = useCallback(
-    (outDist: number | null, retDist: number | null) => {
-      if (!deliverySettings || isDeliveryIncluded) {
-        setOutboundFee(0);
-        setReturnFee(0);
-        return;
-      }
-
-      const result = calculateTotalDeliveryFee(outDist, retDist, deliverySettings, subtotal);
-      setOutboundFee(result.outboundFee);
-      setReturnFee(result.returnFee);
-    },
-    [deliverySettings, isDeliveryIncluded, subtotal],
-  );
-
-  // ---------------------------------------------------------------------------
   // Shared address change handler for a single leg
   // ---------------------------------------------------------------------------
   const handleLegAddressChange = useCallback(
@@ -155,9 +149,6 @@ export const useCheckoutDelivery = ({
       address: string,
       latitude: number | null,
       longitude: number | null,
-      // Current state of the OTHER leg (to avoid stale closure)
-      otherLegDistance: number | null,
-      otherLegMethod: LegMethod,
     ) => {
       const setAddress = leg === "outbound" ? setOutboundAddress : setReturnAddress;
       const setDistance = leg === "outbound" ? setOutboundDistance : setReturnDistance;
@@ -170,8 +161,6 @@ export const useCheckoutDelivery = ({
       setError(null);
       const requestId = ++requestIdRef.current;
 
-      const otherDist = otherLegMethod === "address" ? otherLegDistance : null;
-
       if (
         latitude === null ||
         longitude === null ||
@@ -183,11 +172,6 @@ export const useCheckoutDelivery = ({
       ) {
         setIsCalculating(false);
         setDistance(null);
-        if (leg === "outbound") {
-          recalculateFees(null, otherDist);
-        } else {
-          recalculateFees(otherDist, null);
-        }
         return;
       }
 
@@ -220,21 +204,10 @@ export const useCheckoutDelivery = ({
             maxKm: deliverySettings.maximumDistance ?? 0,
           }),
         );
-        if (leg === "outbound") {
-          recalculateFees(null, otherDist);
-        } else {
-          recalculateFees(otherDist, null);
-        }
         return;
       }
-
-      if (leg === "outbound") {
-        recalculateFees(distance, otherDist);
-      } else {
-        recalculateFees(otherDist, distance);
-      }
     },
-    [deliverySettings, queryClient, recalculateFees, storeLatitude, storeLongitude, t],
+    [deliverySettings, queryClient, storeLatitude, storeLongitude, t],
   );
 
   // ---------------------------------------------------------------------------
@@ -263,20 +236,14 @@ export const useCheckoutDelivery = ({
         setReturnMethod(method);
         if (method === "store") {
           resetLegToStore("return");
-          recalculateFees(null, null);
           return;
         }
         // The mirrored address arrives with the next outbound address change.
         resetLegToStore("return");
-        recalculateFees(null, null);
         return;
       }
-
-      if (method === "store") {
-        recalculateFees(null, returnMethod === "address" ? returnDistance : null);
-      }
     },
-    [isReturnSameAsPickup, recalculateFees, resetLegToStore, returnDistance, returnMethod],
+    [isReturnSameAsPickup, resetLegToStore],
   );
 
   const handlePickupLocationChange = useCallback(
@@ -295,10 +262,9 @@ export const useCheckoutDelivery = ({
 
       if (method === "store") {
         resetLegToStore("return");
-        recalculateFees(outboundMethod === "address" ? outboundDistance : null, null);
       }
     },
-    [outboundDistance, outboundMethod, recalculateFees, resetLegToStore],
+    [resetLegToStore],
   );
 
   const handleReturnLocationChange = useCallback((locationId: string | null) => {
@@ -307,35 +273,21 @@ export const useCheckoutDelivery = ({
 
   const handleOutboundAddressChange = useCallback(
     (address: string, latitude: number | null, longitude: number | null) => {
-      void handleLegAddressChange(
-        "outbound",
-        address,
-        latitude,
-        longitude,
-        returnDistance,
-        returnMethod,
-      );
+      void handleLegAddressChange("outbound", address, latitude, longitude);
 
       // Same journey back: the distance lookup is cached, so this costs nothing.
       if (isReturnSameAsPickup) {
-        void handleLegAddressChange("return", address, latitude, longitude, null, "address");
+        void handleLegAddressChange("return", address, latitude, longitude);
       }
     },
-    [handleLegAddressChange, isReturnSameAsPickup, returnDistance, returnMethod],
+    [handleLegAddressChange, isReturnSameAsPickup],
   );
 
   const handleReturnAddressChange = useCallback(
     (address: string, latitude: number | null, longitude: number | null) => {
-      void handleLegAddressChange(
-        "return",
-        address,
-        latitude,
-        longitude,
-        outboundDistance,
-        outboundMethod,
-      );
+      void handleLegAddressChange("return", address, latitude, longitude);
     },
-    [handleLegAddressChange, outboundDistance, outboundMethod],
+    [handleLegAddressChange],
   );
 
   /** Point the return leg back at the pickup, or set it free. */
@@ -349,7 +301,6 @@ export const useCheckoutDelivery = ({
 
       if (outboundMethod === "store") {
         resetLegToStore("return");
-        recalculateFees(null, null);
         return;
       }
 
@@ -358,18 +309,9 @@ export const useCheckoutDelivery = ({
         outboundAddress.address,
         outboundAddress.latitude,
         outboundAddress.longitude,
-        null,
-        "address",
       );
     },
-    [
-      handleLegAddressChange,
-      outboundAddress,
-      outboundMethod,
-      pickupLocationId,
-      recalculateFees,
-      resetLegToStore,
-    ],
+    [handleLegAddressChange, outboundAddress, outboundMethod, pickupLocationId, resetLegToStore],
   );
 
   /** Whether the continue button should be disabled */

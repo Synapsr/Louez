@@ -6280,7 +6280,9 @@
       "adjustTo": "Reduzir para {count}",
       "maxReached": "Quantidade máxima atingida",
       "fixedPrice": "Preço fixo",
-      "depositHold": "caução sem débito"
+      "depositHold": "caução sem débito",
+      "checking": "A verificar a disponibilidade…",
+      "checkoutBlocked": "Altere os artigos indisponíveis antes de continuar."
     },
     "checkout": {
       "title": "Concluir minha reserva",
@@ -6329,7 +6331,10 @@
       "locationUnsupported": "Este navegador não consegue compartilhar sua localização, então os pontos mantêm a ordem da loja.",
       "yourPosition": "Sua localização",
       "returnSamePlace": "No mesmo local",
-      "returnSomewhereElse": "Em outro local",
+      "returnAnotherLocation": "Outro ponto",
+      "returnMyAddress": "Meu endereço",
+      "returnSameLocationSummary": "Devolução em {place}",
+      "returnSameAddressSummary": "Retirada em {address}",
       "mapExpand": "Ampliar o mapa",
       "mapCollapse": "Fechar o mapa",
       "getDirections": "Como chegar",
@@ -6922,6 +6927,28 @@
           "unexpected": "Não é possível confirmar esta data. Verifique os dados novamente ou contacte o locador.",
           "paymentMismatch": "Não é possível confirmar esta data. Verifique os dados novamente ou contacte o locador.",
           "tooManyAttempts": "Demasiadas tentativas. Tente novamente dentro de 15 minutos."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Pagamento confirmado",
+          "description": "O seu pagamento foi recebido. Consulte os detalhes abaixo."
+        },
+        "payment_received": {
+          "title": "Pagamento recebido",
+          "description": "O seu pagamento foi registado."
+        },
+        "deposit_authorized": {
+          "title": "Caução autorizada",
+          "description": "A autorização da sua caução foi registada."
+        },
+        "requested": {
+          "title": "Pedido enviado",
+          "description": "A loja irá analisar o seu pedido e confirmar a disponibilidade."
+        },
+        "processing": {
+          "title": "A verificar o pagamento",
+          "description": "O seu pagamento está a ser verificado. Atualize esta página dentro de instantes."
         }
       }
     },

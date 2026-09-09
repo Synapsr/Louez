@@ -6280,7 +6280,9 @@
       "adjustTo": "Zmniejsz do {count}",
       "maxReached": "Osiągnięto maksymalną ilość",
       "fixedPrice": "Ryczałt",
-      "depositHold": "kaucja bez obciążenia"
+      "depositHold": "kaucja bez obciążenia",
+      "checking": "Sprawdzanie dostępności…",
+      "checkoutBlocked": "Zmień niedostępne produkty przed kontynuowaniem."
     },
     "checkout": {
       "title": "Dokończ rezerwację",
@@ -6329,7 +6331,10 @@
       "locationUnsupported": "Ta przeglądarka nie może udostępnić Twojej lokalizacji, więc punkty pozostają w kolejności sklepu.",
       "yourPosition": "Twoja lokalizacja",
       "returnSamePlace": "To samo miejsce",
-      "returnSomewhereElse": "Gdzie indziej",
+      "returnAnotherLocation": "Inny punkt",
+      "returnMyAddress": "Mój adres",
+      "returnSameLocationSummary": "Zwrot do {place}",
+      "returnSameAddressSummary": "Odbiór pod adresem {address}",
       "mapExpand": "Powiększ mapę",
       "mapCollapse": "Zamknij mapę",
       "getDirections": "Wskazówki dojazdu",
@@ -6922,6 +6927,28 @@
           "unexpected": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
           "paymentMismatch": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
           "tooManyAttempts": "Zbyt wiele prób. Spróbuj ponownie za 15 minut."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Płatność potwierdzona",
+          "description": "Otrzymaliśmy płatność. Szczegóły znajdziesz poniżej."
+        },
+        "payment_received": {
+          "title": "Płatność otrzymana",
+          "description": "Płatność została zarejestrowana."
+        },
+        "deposit_authorized": {
+          "title": "Kaucja autoryzowana",
+          "description": "Autoryzacja kaucji została zarejestrowana."
+        },
+        "requested": {
+          "title": "Zapytanie wysłane",
+          "description": "Sklep sprawdzi zapytanie i potwierdzi dostępność."
+        },
+        "processing": {
+          "title": "Weryfikacja płatności",
+          "description": "Płatność jest weryfikowana. Odśwież stronę za chwilę."
         }
       }
     },

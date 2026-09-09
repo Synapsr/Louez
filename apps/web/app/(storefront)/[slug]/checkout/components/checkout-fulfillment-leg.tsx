@@ -20,6 +20,8 @@ interface CheckoutFulfillmentLegProps {
   leg: "outbound" | "return";
   method: LegMethod;
   onMethodChange: (method: LegMethod) => void;
+  /** False when the choice is made by a control above, as the return leg does. */
+  showMethodChoice?: boolean;
   isAddressDeliveryEnabled: boolean;
   isAddressDeliveryAvailable: boolean;
   /** Price shown on the address option, e.g. a per-km rate or "Free". */
@@ -49,6 +51,7 @@ export const CheckoutFulfillmentLeg = ({
   leg,
   method,
   onMethodChange,
+  showMethodChoice = true,
   isAddressDeliveryEnabled,
   isAddressDeliveryAvailable,
   deliveryPrice,
@@ -72,33 +75,35 @@ export const CheckoutFulfillmentLeg = ({
 
   return (
     <div className="flex flex-col gap-3">
-      <RadioGroup
-        name={`fulfillment-${leg}-method`}
-        aria-label={isOutbound ? t("outboundTitle") : t("returnTitle")}
-        value={method}
-        onValueChange={(value) => {
-          if (isLegMethod(value)) onMethodChange(value);
-        }}
-        className="flex-row flex-wrap gap-1.5"
-      >
-        <CheckoutMethodOption
-          value="store"
-          label={isOutbound ? t("pickupAtLocation") : t("returnAtLocation")}
-          price={t("free")}
-          isFree
-          isSelected={method === "store"}
-        />
-        {isAddressDeliveryEnabled ? (
+      {showMethodChoice ? (
+        <RadioGroup
+          name={`fulfillment-${leg}-method`}
+          aria-label={isOutbound ? t("outboundTitle") : t("returnTitle")}
+          value={method}
+          onValueChange={(value) => {
+            if (isLegMethod(value)) onMethodChange(value);
+          }}
+          className="flex-col gap-1.5 sm:flex-row sm:flex-wrap"
+        >
           <CheckoutMethodOption
-            value="address"
-            label={isOutbound ? t("deliverToAddress") : t("collectFromAddress")}
-            price={deliveryPrice}
-            isFree={isDeliveryFree}
-            isSelected={method === "address"}
-            isDisabled={!isAddressDeliveryAvailable}
+            value="store"
+            label={isOutbound ? t("pickupAtLocation") : t("returnAtLocation")}
+            price={t("free")}
+            isFree
+            isSelected={method === "store"}
           />
-        ) : null}
-      </RadioGroup>
+          {isAddressDeliveryEnabled ? (
+            <CheckoutMethodOption
+              value="address"
+              label={isOutbound ? t("deliverToAddress") : t("collectFromAddress")}
+              price={deliveryPrice}
+              isFree={isDeliveryFree}
+              isSelected={method === "address"}
+              isDisabled={!isAddressDeliveryAvailable}
+            />
+          ) : null}
+        </RadioGroup>
+      ) : null}
 
       {method === "store" ? (
         <>

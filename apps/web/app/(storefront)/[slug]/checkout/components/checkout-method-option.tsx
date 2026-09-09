@@ -29,7 +29,7 @@ export const CheckoutMethodOption = ({
 }: CheckoutMethodOptionProps) => (
   <label
     className={cn(
-      "flex cursor-pointer items-center gap-2 rounded-full py-1.5 pe-1.5 ps-3 text-xs font-medium transition-colors duration-150 has-[[data-disabled]]:cursor-not-allowed has-[[data-disabled]]:opacity-50 motion-reduce:transition-none",
+      "flex w-full cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150 has-[[data-disabled]]:cursor-not-allowed has-[[data-disabled]]:opacity-50 motion-reduce:transition-none sm:w-auto sm:justify-start sm:rounded-full sm:py-1.5 sm:pe-1.5 sm:ps-3 sm:text-xs",
       isSelected ? "bg-foreground text-background" : "bg-muted hover:bg-accent",
     )}
   >

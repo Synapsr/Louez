@@ -6,8 +6,7 @@ import { ArrowRight, ChevronLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { DeliverySettings } from "@louez/types";
-import { Button, RadioGroup, RadioGroupItem, StepActions } from "@louez/ui";
-import { cn } from "@louez/utils";
+import { Button, StepActions } from "@louez/ui";
 
 import { withForm } from "@/hooks/form/form";
 import { useFormatMoney } from "@/hooks/use-format-money";
@@ -16,11 +15,12 @@ import { isFreeDelivery } from "@/lib/utils/geo";
 
 import type { useCheckoutDelivery } from "../hooks/use-checkout-delivery";
 import { buildLegMapView } from "../util.checkout-fulfillment-map";
-import { buildCheckoutLocations, fromLocationKey } from "../util.checkout-locations";
+import { buildCheckoutLocations, fromLocationKey, toLocationKey } from "../util.checkout-locations";
 import { STEP_ACTIONS_CLASS } from "../util.checkout-steps";
 import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
 import { CheckoutFulfillmentLeg } from "./checkout-fulfillment-leg";
 import { CheckoutFulfillmentMapPanel } from "./checkout-fulfillment-map-panel";
+import { CheckoutReturnScope, type ReturnScope } from "./checkout-return-scope";
 
 type CheckoutDeliveryState = ReturnType<typeof useCheckoutDelivery>;
 type Leg = "outbound" | "return";
@@ -116,6 +116,38 @@ export const CheckoutDeliveryStep = withForm({
         : isDeliveryFree
           ? t("free")
           : t("pricePerKm", { price: pricePerKm });
+
+    const returnScope: ReturnScope = delivery.isReturnSameAsPickup
+      ? "same"
+      : delivery.returnMethod === "address"
+        ? "address"
+        : "location";
+
+    const handleReturnScopeChange = (scope: ReturnScope) => {
+      if (scope === "same") {
+        delivery.handleReturnSameAsPickupChange(true);
+        setActiveLeg("outbound");
+        return;
+      }
+
+      delivery.handleReturnSameAsPickupChange(false);
+      delivery.handleReturnMethodChange(scope === "address" ? "address" : "store");
+      if (scope === "address") onUseCustomerAddress("return");
+      setActiveLeg("return");
+    };
+
+    /** Spells out where "same place" actually sends the equipment back to. */
+    const pickupLocationName = locations.find(
+      (location) => location.key === toLocationKey(delivery.pickupLocationId),
+    )?.name;
+    const sameAsPickupSummary =
+      delivery.outboundMethod === "address"
+        ? delivery.outboundAddress.address
+          ? t("returnSameAddressSummary", { address: delivery.outboundAddress.address })
+          : null
+        : pickupLocationName
+          ? t("returnSameLocationSummary", { place: pickupLocationName })
+          : null;
 
     /** Distance and price for a delivery leg, once both are known. */
     const legSummary = (leg: Leg) => {
@@ -220,53 +252,26 @@ export const CheckoutDeliveryStep = withForm({
           onFocusCapture={() => setActiveLeg("return")}
           onPointerDownCapture={() => setActiveLeg("return")}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">{t("returnTitle")}</h3>
+          <h3 className="text-sm font-semibold">{t("returnTitle")}</h3>
 
-            <RadioGroup
-              name="fulfillment-return-scope"
-              aria-label={t("returnTitle")}
-              value={delivery.isReturnSameAsPickup ? "same" : "different"}
-              onValueChange={(value) => {
-                const isSame = value === "same";
-                delivery.handleReturnSameAsPickupChange(isSame);
-                setActiveLeg(isSame ? "outbound" : "return");
-              }}
-              className="flex-row gap-1.5"
-            >
-              {(
-                [
-                  ["same", t("returnSamePlace")],
-                  ["different", t("returnSomewhereElse")],
-                ] as const
-              ).map(([value, label]) => (
-                <label
-                  key={value}
-                  className={cn(
-                    "cursor-pointer rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none",
-                    (value === "same") === delivery.isReturnSameAsPickup
-                      ? "bg-foreground text-background"
-                      : "bg-muted hover:bg-accent",
-                  )}
-                >
-                  <span className="sr-only">
-                    <RadioGroupItem value={value} />
-                  </span>
-                  {label}
-                </label>
-              ))}
-            </RadioGroup>
-          </div>
+          <CheckoutReturnScope
+            scope={returnScope}
+            onScopeChange={handleReturnScopeChange}
+            isAddressDeliveryEnabled={delivery.isAddressDeliveryEnabled}
+            isAddressDeliveryAvailable={delivery.isDeliveryAmountEligible}
+            deliveryPrice={deliveryPrice}
+            isDeliveryFree={isDeliveryFree}
+            isPickupAtAddress={delivery.outboundMethod === "address"}
+            sameAsPickupSummary={sameAsPickupSummary}
+          />
 
           {isSplit ? (
             <CheckoutFulfillmentLeg
               {...sharedLegProps}
               leg="return"
+              showMethodChoice={false}
               method={delivery.returnMethod}
-              onMethodChange={(method) => {
-                delivery.handleReturnMethodChange(method);
-                if (method === "address") onUseCustomerAddress("return");
-              }}
+              onMethodChange={delivery.handleReturnMethodChange}
               selectedLocationId={delivery.returnLocationId}
               onLocationChange={delivery.handleReturnLocationChange}
               address={delivery.returnAddress}

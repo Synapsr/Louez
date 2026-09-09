@@ -6280,7 +6280,9 @@
       "adjustTo": "Verlagen naar {count}",
       "maxReached": "Maximale hoeveelheid bereikt",
       "fixedPrice": "Vast tarief",
-      "depositHold": "borg niet afgeschreven"
+      "depositHold": "borg niet afgeschreven",
+      "checking": "Beschikbaarheid controleren…",
+      "checkoutBlocked": "Pas niet-beschikbare artikelen aan voordat je doorgaat."
     },
     "checkout": {
       "title": "Mijn reservering voltooien",
@@ -6329,7 +6331,10 @@
       "locationUnsupported": "Deze browser kan je locatie niet delen, dus de locaties blijven in de volgorde van de winkel staan.",
       "yourPosition": "Jouw locatie",
       "returnSamePlace": "Zelfde plek",
-      "returnSomewhereElse": "Ergens anders",
+      "returnAnotherLocation": "Andere locatie",
+      "returnMyAddress": "Mijn adres",
+      "returnSameLocationSummary": "Terug naar {place}",
+      "returnSameAddressSummary": "Opgehaald op {address}",
       "mapExpand": "Kaart vergroten",
       "mapCollapse": "Kaart sluiten",
       "getDirections": "Route",
@@ -6922,6 +6927,28 @@
           "unexpected": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
           "paymentMismatch": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
           "tooManyAttempts": "Te veel pogingen. Probeer het over 15 minuten opnieuw."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Betaling bevestigd",
+          "description": "Je betaling is ontvangen. De details vind je hieronder."
+        },
+        "payment_received": {
+          "title": "Betaling ontvangen",
+          "description": "Je betaling is geregistreerd."
+        },
+        "deposit_authorized": {
+          "title": "Borg geautoriseerd",
+          "description": "De autorisatie van je borg is geregistreerd."
+        },
+        "requested": {
+          "title": "Aanvraag verstuurd",
+          "description": "De winkel beoordeelt je aanvraag en bevestigt de beschikbaarheid."
+        },
+        "processing": {
+          "title": "Betaling wordt gecontroleerd",
+          "description": "Je betaling wordt gecontroleerd. Vernieuw deze pagina over enkele ogenblikken."
         }
       }
     },

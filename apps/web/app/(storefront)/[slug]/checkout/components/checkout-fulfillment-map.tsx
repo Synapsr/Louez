@@ -184,11 +184,15 @@ export const CheckoutFulfillmentMap = ({
     );
   }
 
+  // The key is what the effect watches; the ref carries the values, so the
+  // targets never have to survive a round trip through JSON to stay typed.
   const fitKey = JSON.stringify(fitTargets);
+  const fitTargetsRef = useRef(fitTargets);
+  fitTargetsRef.current = fitTargets;
 
   const fitToTargets = useCallback(() => {
     const map = mapRef.current;
-    const targets = JSON.parse(fitKey) as Array<[number, number]>;
+    const targets = fitTargetsRef.current;
     if (!map || targets.length === 0) return;
 
     const longitudes = targets.map(([longitude]) => longitude);
@@ -201,6 +205,7 @@ export const CheckoutFulfillmentMap = ({
       ],
       { padding: FIT_PADDING, maxZoom: FIT_MAX_ZOOM, duration: 450 },
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fitKey stands in for the ref's contents
   }, [fitKey]);
 
   useEffect(() => {
@@ -371,16 +376,21 @@ export const CheckoutFulfillmentMap = ({
               longitude={pin.longitude}
               latitude={pin.latitude}
               anchor="bottom"
-              onClick={(event) => {
-                event.originalEvent.stopPropagation();
-                onSelect?.(pin.id);
+              ref={(marker) => {
+                if (!marker) return;
+                const element = marker.getElement();
+                element.setAttribute("role", "group");
+                element.setAttribute("aria-label", pin.label);
               }}
             >
               <button
                 type="button"
                 aria-label={pin.label}
                 aria-pressed={isSelected}
-                onClick={() => onSelect?.(pin.id)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSelect?.(pin.id);
+                }}
                 className={cn(
                   "relative flex flex-col items-center rounded-lg transition-transform duration-200 ease-out focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 motion-reduce:transition-none",
                   isSelected ? "z-10" : "scale-90 hover:scale-100",
