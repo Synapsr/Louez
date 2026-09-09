@@ -6280,7 +6280,9 @@
       "adjustTo": "Reduce to {count}",
       "maxReached": "Maximum quantity reached",
       "fixedPrice": "Flat rate",
-      "depositHold": "deposit not charged"
+      "depositHold": "deposit not charged",
+      "checking": "Checking availability…",
+      "checkoutBlocked": "Update unavailable items before continuing."
     },
     "checkout": {
       "title": "Complete my reservation",
@@ -6329,7 +6331,10 @@
       "locationUnsupported": "This browser cannot share your position, so locations stay in store order.",
       "yourPosition": "Your position",
       "returnSamePlace": "Same place",
-      "returnSomewhereElse": "Somewhere else",
+      "returnAnotherLocation": "Another location",
+      "returnMyAddress": "My address",
+      "returnSameLocationSummary": "Back to {place}",
+      "returnSameAddressSummary": "Collected from {address}",
       "mapExpand": "Expand the map",
       "mapCollapse": "Close the map",
       "getDirections": "Directions",
@@ -6922,6 +6927,28 @@
           "unexpected": "Unable to complete this action. Refresh the page and try again.",
           "paymentMismatch": "This payment could not be matched. Contact the rental provider.",
           "tooManyAttempts": "Too many extension attempts. Try again in 15 minutes."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Payment confirmed",
+          "description": "Your payment has been received. You can find the details below."
+        },
+        "payment_received": {
+          "title": "Payment received",
+          "description": "Your payment has been recorded."
+        },
+        "deposit_authorized": {
+          "title": "Deposit authorized",
+          "description": "Your deposit authorization has been recorded."
+        },
+        "requested": {
+          "title": "Request sent",
+          "description": "The store will review your request and confirm availability."
+        },
+        "processing": {
+          "title": "Payment being verified",
+          "description": "Your payment is being verified. Refresh this page in a moment."
         }
       }
     },

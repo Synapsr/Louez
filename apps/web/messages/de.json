@@ -6280,7 +6280,9 @@
       "adjustTo": "Auf {count} reduzieren",
       "maxReached": "Maximale Menge erreicht",
       "fixedPrice": "Pauschale",
-      "depositHold": "Kaution nicht belastet"
+      "depositHold": "Kaution nicht belastet",
+      "checking": "Verfügbarkeit wird geprüft…",
+      "checkoutBlocked": "Ändern Sie nicht verfügbare Artikel, bevor Sie fortfahren."
     },
     "checkout": {
       "title": "Reservierung abschließen",
@@ -6329,7 +6331,10 @@
       "locationUnsupported": "Dieser Browser kann Ihren Standort nicht teilen, daher bleibt die Reihenfolge der Standorte unverändert.",
       "yourPosition": "Ihr Standort",
       "returnSamePlace": "Am selben Ort",
-      "returnSomewhereElse": "Woanders",
+      "returnAnotherLocation": "Anderer Standort",
+      "returnMyAddress": "Meine Adresse",
+      "returnSameLocationSummary": "Zurück zu {place}",
+      "returnSameAddressSummary": "Abholung bei {address}",
       "mapExpand": "Karte vergrößern",
       "mapCollapse": "Karte schließen",
       "getDirections": "Route",
@@ -6922,6 +6927,28 @@
           "unexpected": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
           "paymentMismatch": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
           "tooManyAttempts": "Zu viele Verlängerungsversuche. Versuchen Sie es in 15 Minuten erneut."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Zahlung bestätigt",
+          "description": "Ihre Zahlung ist eingegangen. Die Details finden Sie unten."
+        },
+        "payment_received": {
+          "title": "Zahlung erhalten",
+          "description": "Ihre Zahlung wurde erfasst."
+        },
+        "deposit_authorized": {
+          "title": "Kaution autorisiert",
+          "description": "Ihre Kautionsautorisierung wurde erfasst."
+        },
+        "requested": {
+          "title": "Anfrage gesendet",
+          "description": "Der Shop wird Ihre Anfrage prüfen und die Verfügbarkeit bestätigen."
+        },
+        "processing": {
+          "title": "Zahlung wird geprüft",
+          "description": "Ihre Zahlung wird geprüft. Aktualisieren Sie diese Seite in Kürze."
         }
       }
     },

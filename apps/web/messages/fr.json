@@ -6280,7 +6280,9 @@
       "adjustTo": "Ramener à {count}",
       "maxReached": "Quantité maximale atteinte",
       "fixedPrice": "Forfait",
-      "depositHold": "caution non débitée"
+      "depositHold": "caution non débitée",
+      "checking": "Vérification des disponibilités…",
+      "checkoutBlocked": "Modifiez les articles indisponibles avant de continuer."
     },
     "checkout": {
       "title": "Finaliser ma réservation",
@@ -6331,7 +6333,10 @@
       "locationUnsupported": "Ce navigateur ne peut pas partager votre position : les points de retrait restent dans l'ordre de la boutique.",
       "yourPosition": "Votre position",
       "returnSamePlace": "Au même endroit",
-      "returnSomewhereElse": "Ailleurs",
+      "returnAnotherLocation": "Un autre point",
+      "returnMyAddress": "Mon adresse",
+      "returnSameLocationSummary": "Retour à {place}",
+      "returnSameAddressSummary": "Récupéré à {address}",
       "mapExpand": "Agrandir la carte",
       "mapCollapse": "Fermer la carte",
       "getDirections": "Itinéraire",
@@ -6922,6 +6927,28 @@
           "unexpected": "Impossible de terminer cette action. Actualisez la page et réessayez.",
           "paymentMismatch": "Ce paiement n’a pas pu être associé à la prolongation. Contactez le loueur.",
           "tooManyAttempts": "Trop de tentatives de prolongation. Réessayez dans 15 minutes."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Paiement confirmé",
+          "description": "Votre paiement a bien été reçu. Retrouvez les détails ci-dessous."
+        },
+        "payment_received": {
+          "title": "Paiement reçu",
+          "description": "Votre paiement a été enregistré."
+        },
+        "deposit_authorized": {
+          "title": "Caution autorisée",
+          "description": "Votre autorisation de caution a été enregistrée."
+        },
+        "requested": {
+          "title": "Demande envoyée",
+          "description": "La boutique va examiner votre demande et confirmer les disponibilités."
+        },
+        "processing": {
+          "title": "Vérification du paiement",
+          "description": "Votre paiement est en cours de vérification. Actualisez cette page dans quelques instants."
         }
       }
     },

@@ -6280,7 +6280,9 @@
       "adjustTo": "Riduci a {count}",
       "maxReached": "Quantità massima raggiunta",
       "fixedPrice": "Forfait",
-      "depositHold": "cauzione non addebitata"
+      "depositHold": "cauzione non addebitata",
+      "checking": "Verifica della disponibilità…",
+      "checkoutBlocked": "Modifica gli articoli non disponibili prima di continuare."
     },
     "checkout": {
       "title": "Completa la mia prenotazione",
@@ -6329,7 +6331,10 @@
       "locationUnsupported": "Questo browser non può condividere la tua posizione, quindi i punti restano nell'ordine del negozio.",
       "yourPosition": "La tua posizione",
       "returnSamePlace": "Stesso posto",
-      "returnSomewhereElse": "Altrove",
+      "returnAnotherLocation": "Un altro punto",
+      "returnMyAddress": "Il mio indirizzo",
+      "returnSameLocationSummary": "Riconsegna a {place}",
+      "returnSameAddressSummary": "Ritiro a {address}",
       "mapExpand": "Ingrandisci la mappa",
       "mapCollapse": "Chiudi la mappa",
       "getDirections": "Indicazioni",
@@ -6922,6 +6927,28 @@
           "unexpected": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
           "paymentMismatch": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
           "tooManyAttempts": "Troppi tentativi. Riprova tra 15 minuti."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Pagamento confermato",
+          "description": "Il pagamento è stato ricevuto. Trovi i dettagli qui sotto."
+        },
+        "payment_received": {
+          "title": "Pagamento ricevuto",
+          "description": "Il pagamento è stato registrato."
+        },
+        "deposit_authorized": {
+          "title": "Deposito autorizzato",
+          "description": "L’autorizzazione del deposito è stata registrata."
+        },
+        "requested": {
+          "title": "Richiesta inviata",
+          "description": "Il negozio esaminerà la richiesta e confermerà la disponibilità."
+        },
+        "processing": {
+          "title": "Verifica del pagamento",
+          "description": "Il pagamento è in fase di verifica. Aggiorna questa pagina tra qualche istante."
         }
       }
     },

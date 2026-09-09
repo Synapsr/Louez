@@ -6280,7 +6280,9 @@
       "adjustTo": "Reducir a {count}",
       "maxReached": "Cantidad máxima alcanzada",
       "fixedPrice": "Tarifa fija",
-      "depositHold": "fianza sin cargo"
+      "depositHold": "fianza sin cargo",
+      "checking": "Comprobando disponibilidad…",
+      "checkoutBlocked": "Modifica los artículos no disponibles antes de continuar."
     },
     "checkout": {
       "title": "Completar mi reserva",
@@ -6329,7 +6331,10 @@
       "locationUnsupported": "Este navegador no puede compartir tu ubicación, así que los puntos se mantienen en el orden de la tienda.",
       "yourPosition": "Tu ubicación",
       "returnSamePlace": "En el mismo sitio",
-      "returnSomewhereElse": "En otro sitio",
+      "returnAnotherLocation": "Otro punto",
+      "returnMyAddress": "Mi dirección",
+      "returnSameLocationSummary": "Devolución en {place}",
+      "returnSameAddressSummary": "Recogida en {address}",
       "mapExpand": "Ampliar el mapa",
       "mapCollapse": "Cerrar el mapa",
       "getDirections": "Cómo llegar",
@@ -6922,6 +6927,28 @@
           "unexpected": "No se puede confirmar esta fecha. Compruebe los datos de nuevo o contacte con el proveedor.",
           "paymentMismatch": "No se puede confirmar esta fecha. Compruebe los datos de nuevo o contacte con el proveedor.",
           "tooManyAttempts": "Demasiados intentos. Vuelva a intentarlo en 15 minutos."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Pago confirmado",
+          "description": "Hemos recibido tu pago. Encontrarás los detalles a continuación."
+        },
+        "payment_received": {
+          "title": "Pago recibido",
+          "description": "Tu pago se ha registrado."
+        },
+        "deposit_authorized": {
+          "title": "Fianza autorizada",
+          "description": "La autorización de tu fianza se ha registrado."
+        },
+        "requested": {
+          "title": "Solicitud enviada",
+          "description": "La tienda revisará tu solicitud y confirmará la disponibilidad."
+        },
+        "processing": {
+          "title": "Verificando el pago",
+          "description": "Tu pago se está verificando. Actualiza esta página en unos instantes."
         }
       }
     },
