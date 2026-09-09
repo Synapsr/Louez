@@ -86,6 +86,8 @@ export interface ContractTranslations {
     pending: string;
     landlordText: string;
     customerText: string;
+    automatic: string;
+    automaticText: string;
     dateLabel: string;
     ipLabel: string;
   };
@@ -177,6 +179,7 @@ interface Reservation {
   taxAmount?: string | null;
   taxRate?: string | null;
   signedAt?: Date | null;
+  automaticContractValidation?: boolean;
   signatureIp?: string | null;
   createdAt: Date;
   customer: Customer;
@@ -594,8 +597,7 @@ export function ContractDocument({
               </View>
             </View>
 
-            {/* Customer Signature — only an actual signature (signedAt) may
-                render as signed; an unsigned contract must say so. */}
+            {/* Automatic validation is distinct from a customer signature. */}
             <View style={styles.signatureBox}>
               <View style={styles.signatureHeader}>
                 <Text style={styles.signatureTitle}>{t.parties.customer}</Text>
@@ -606,11 +608,19 @@ export function ContractDocument({
                       : styles.signatureStatusPendingText
                   }
                 >
-                  {reservation.signedAt ? t.signature.signed : t.signature.pending}
+                  {reservation.automaticContractValidation
+                    ? t.signature.automatic
+                    : reservation.signedAt
+                      ? t.signature.signed
+                      : t.signature.pending}
                 </Text>
               </View>
               <View style={styles.signatureContent}>
-                <Text style={styles.signatureText}>{t.signature.customerText}</Text>
+                <Text style={styles.signatureText}>
+                  {reservation.automaticContractValidation
+                    ? t.signature.automaticText
+                    : t.signature.customerText}
+                </Text>
                 {reservation.signedAt && (
                   <View style={styles.signatureDateRow}>
                     <Text style={styles.signatureDateLabel}>{t.signature.dateLabel}</Text>

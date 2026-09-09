@@ -1,40 +1,41 @@
-import { renderToBuffer } from '@react-pdf/renderer'
-import { ContractDocument, ContractTranslations, SupportedLocale } from './contract'
-import { db } from '@louez/db'
-import { documents, reservations, stores } from '@louez/db'
-import { eq, and, sql, desc } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
-import { convertImageForPdf } from './image-utils'
-import { getLogoForLightBackground } from '@louez/utils'
+import { validateReservationContract } from "@louez/api/services";
+import { renderToBuffer } from "@react-pdf/renderer";
+import { ContractDocument, ContractTranslations, SupportedLocale } from "./contract";
+import { db } from "@louez/db";
+import { documents, reservations, stores } from "@louez/db";
+import { eq, and, sql, desc } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { convertImageForPdf } from "./image-utils";
+import { getLogoForLightBackground } from "@louez/utils";
 
 // Import translations
-import frMessages from '@/messages/fr.json'
-import enMessages from '@/messages/en.json'
+import frMessages from "@/messages/fr.json";
+import enMessages from "@/messages/en.json";
 
 interface GenerateContractOptions {
-  reservationId: string
-  regenerate?: boolean
-  locale?: SupportedLocale
+  reservationId: string;
+  regenerate?: boolean;
+  locale?: SupportedLocale;
 }
 
 // Get translations for the specified locale
 function getTranslations(locale: SupportedLocale): ContractTranslations {
-  const messages = locale === 'fr' ? frMessages : enMessages
-  return messages.contract as ContractTranslations
+  const messages = locale === "fr" ? frMessages : enMessages;
+  return messages.contract as ContractTranslations;
 }
 
 function toNonEmptyString(value: string | null | undefined): string | null {
   if (!value) {
-    return null
+    return null;
   }
 
-  return value.trim().length > 0 ? value : null
+  return value.trim().length > 0 ? value : null;
 }
 
 export async function generateContract({
   reservationId,
   regenerate = false,
-  locale = 'fr'
+  locale = "fr",
 }: GenerateContractOptions) {
   // Get reservation with all relations including payments and assigned units
   const reservation = await db.query.reservations.findFirst({
@@ -47,72 +48,119 @@ export async function generateContract({
       },
       customer: true,
       payments: true,
+      activity: { columns: { metadata: true } },
     },
-  })
+  });
 
   if (!reservation) {
-    throw new Error('Reservation not found')
+    throw new Error("Reservation not found");
   }
+
+  const automaticallyValidatedAt = !reservation.signedAt
+    ? await db.transaction((tx) =>
+        validateReservationContract(
+          tx,
+          reservation.id,
+          reservation.storeId,
+          reservation.payments.some(
+            (payment) =>
+              payment.type === "rental" &&
+              payment.status === "completed" &&
+              Number(payment.amount) > 0,
+          )
+            ? "payment"
+            : "confirmation",
+        ),
+      )
+    : null;
+  if (automaticallyValidatedAt) {
+    reservation.signedAt = automaticallyValidatedAt;
+    reservation.signatureIp = null;
+  }
+  if (!reservation.signedAt) {
+    const current = await db.query.reservations.findFirst({
+      where: and(
+        eq(reservations.id, reservation.id),
+        eq(reservations.storeId, reservation.storeId),
+      ),
+      columns: { signedAt: true, signatureIp: true },
+      with: { activity: { columns: { metadata: true } } },
+    });
+    if (current) {
+      reservation.signedAt = current.signedAt;
+      reservation.signatureIp = current.signatureIp;
+      reservation.activity = current.activity;
+    }
+  }
+  const automaticContractValidation =
+    Boolean(automaticallyValidatedAt) ||
+    reservation.activity.some(
+      (activity) => activity.metadata?.kind === "automatic_contract_validation",
+    );
 
   // Get store
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, reservation.storeId),
-  })
+  });
 
   if (!store) {
-    throw new Error('Store not found')
+    throw new Error("Store not found");
   }
 
   // Check if contract already exists
   const existingContract = await db.query.documents.findFirst({
-    where: and(
-      eq(documents.reservationId, reservationId),
-      eq(documents.type, 'contract')
-    ),
-  })
+    where: and(eq(documents.reservationId, reservationId), eq(documents.type, "contract")),
+  });
 
-  if (existingContract && !regenerate) {
-    return existingContract
+  if (
+    existingContract &&
+    !regenerate &&
+    !automaticallyValidatedAt &&
+    (!reservation.signedAt || existingContract.generatedAt >= reservation.signedAt)
+  ) {
+    return existingContract;
   }
 
   // Generate document number
-  const documentNumber = await generateDocumentNumber(store.id)
+  const documentNumber = await generateDocumentNumber(store.id);
 
   // Use reservation creation date as document date (for consistency across regenerations)
   const documentData = {
     number: documentNumber,
     generatedAt: reservation.createdAt,
-  }
+  };
 
   // Get translations for the locale
-  const translations = getTranslations(locale)
+  const translations = getTranslations(locale);
 
   // Convert store logo to PDF-compatible format (handles SVG conversion)
   // Use dark logo for PDFs (light background) when store has dark theme
-  const pdfLogoUrl = await convertImageForPdf(getLogoForLightBackground(store))
+  const pdfLogoUrl = await convertImageForPdf(getLogoForLightBackground(store));
 
-  const shouldIncludeFullCgv = store.includeCgvInContract
-  const isSignedContract = Boolean(reservation.signedAt)
-  const storeCgvRaw = store.cgv ?? ''
-  const storeCgv = toNonEmptyString(storeCgvRaw)
+  const shouldIncludeFullCgv = store.includeCgvInContract;
+  const isSignedContract = Boolean(reservation.signedAt);
+  const storeCgvRaw = store.cgv ?? "";
+  const storeCgv = toNonEmptyString(storeCgvRaw);
   const hasExistingCgvSnapshot =
-    existingContract?.cgvSnapshot !== null && existingContract?.cgvSnapshot !== undefined
-  const existingCgvSnapshotRaw = hasExistingCgvSnapshot ? (existingContract?.cgvSnapshot ?? '') : ''
+    existingContract?.cgvSnapshot !== null && existingContract?.cgvSnapshot !== undefined;
+  const existingCgvSnapshotRaw = hasExistingCgvSnapshot
+    ? (existingContract?.cgvSnapshot ?? "")
+    : "";
 
-  let fullCgvHtml: string | null = null
-  let cgvSnapshotToPersist: string | undefined = undefined
+  let fullCgvHtml: string | null = null;
+  let cgvSnapshotToPersist: string | undefined = undefined;
 
   // Signed contracts with existing snapshots must remain stable regardless of current store setting.
   if (isSignedContract && (shouldIncludeFullCgv || hasExistingCgvSnapshot)) {
-    const resolvedSnapshotRaw = hasExistingCgvSnapshot ? existingCgvSnapshotRaw : storeCgvRaw
-    fullCgvHtml = toNonEmptyString(resolvedSnapshotRaw)
+    const resolvedSnapshotRaw = hasExistingCgvSnapshot ? existingCgvSnapshotRaw : storeCgvRaw;
+    fullCgvHtml = toNonEmptyString(resolvedSnapshotRaw);
 
     // Legacy signed contracts can be backfilled on first regeneration.
     if (!hasExistingCgvSnapshot) {
-      cgvSnapshotToPersist = resolvedSnapshotRaw
+      cgvSnapshotToPersist = resolvedSnapshotRaw;
     }
   } else if (shouldIncludeFullCgv) {
-    fullCgvHtml = storeCgv
+    fullCgvHtml = storeCgv;
   }
 
   // Generate PDF buffer
@@ -130,6 +178,7 @@ export async function generateContract({
         taxAmount: reservation.taxAmount,
         taxRate: reservation.taxRate,
         signedAt: reservation.signedAt,
+        automaticContractValidation,
         signatureIp: reservation.signatureIp,
         createdAt: reservation.createdAt,
         customer: reservation.customer,
@@ -148,16 +197,15 @@ export async function generateContract({
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
-          assignedUnitIdentifiers: item.assignedUnits
-            ?.map((au) => au.identifierSnapshot)
-            .filter(Boolean) || [],
+          assignedUnitIdentifiers:
+            item.assignedUnits?.map((au) => au.identifierSnapshot).filter(Boolean) || [],
         })),
         payments: reservation.payments.map((payment) => ({
           id: payment.id,
           amount: payment.amount,
-          type: payment.type as 'rental' | 'deposit' | 'deposit_return' | 'damage',
-          method: payment.method as 'stripe' | 'cash' | 'card' | 'transfer' | 'check' | 'other',
-          status: payment.status as 'pending' | 'completed' | 'failed' | 'refunded',
+          type: payment.type as "rental" | "deposit" | "deposit_return" | "damage",
+          method: payment.method as "stripe" | "cash" | "card" | "transfer" | "check" | "other",
+          status: payment.status as "pending" | "completed" | "failed" | "refunded",
           paidAt: payment.paidAt,
           createdAt: payment.createdAt,
         })),
@@ -171,118 +219,116 @@ export async function generateContract({
         email: store.email,
         siret: null, // SIRET can be added to store settings in future
         tvaNumber: store.settings?.tax?.taxNumber || null,
-        primaryColor: store.theme?.primaryColor || '#0066FF',
+        primaryColor: store.theme?.primaryColor || "#0066FF",
         billingAddress: store.settings?.billingAddress || null,
       },
       document: documentData,
       locale,
       translations,
-      currency: store.settings?.currency || 'EUR',
+      currency: store.settings?.currency || "EUR",
       timezone: store.settings?.timezone || undefined,
       fullCgvHtml,
-    })
-  )
+    }),
+  );
 
   // For now, store in database as base64 (in production, upload to R2/S3)
-  const base64Content = pdfBuffer.toString('base64')
-  const fileName = locale === 'fr' ? `contrat-${reservation.number}.pdf` : `contract-${reservation.number}.pdf`
+  const base64Content = pdfBuffer.toString("base64");
+  const fileName =
+    locale === "fr" ? `contrat-${reservation.number}.pdf` : `contract-${reservation.number}.pdf`;
 
   // If regenerating, update existing document
   if (existingContract && regenerate) {
     const updateData: {
-      fileUrl: string
-      fileName: string
-      cgvSnapshot?: string | null
+      fileUrl: string;
+      fileName: string;
+      cgvSnapshot?: string | null;
     } = {
       fileUrl: `data:application/pdf;base64,${base64Content}`,
       fileName,
-    }
+    };
 
     if (cgvSnapshotToPersist !== undefined) {
-      updateData.cgvSnapshot = cgvSnapshotToPersist
+      updateData.cgvSnapshot = cgvSnapshotToPersist;
     }
 
-    await db
-      .update(documents)
-      .set(updateData)
-      .where(eq(documents.id, existingContract.id))
+    await db.update(documents).set(updateData).where(eq(documents.id, existingContract.id));
 
     return await db.query.documents.findFirst({
       where: eq(documents.id, existingContract.id),
-    })
+    });
   }
 
   // Create new document record
-  const documentId = nanoid()
+  const documentId = nanoid();
   await db.insert(documents).values({
     id: documentId,
     reservationId: reservation.id,
-    type: 'contract',
+    type: "contract",
     number: documentNumber,
     fileName,
     fileUrl: `data:application/pdf;base64,${base64Content}`,
     cgvSnapshot: isSignedContract && shouldIncludeFullCgv ? storeCgvRaw : null,
-  })
+  });
 
   return await db.query.documents.findFirst({
     where: eq(documents.id, documentId),
-  })
+  });
 }
 
 async function generateDocumentNumber(storeId: string): Promise<string> {
-  const year = new Date().getFullYear()
+  const year = new Date().getFullYear();
 
   // Get all documents for reservations belonging to this store
   const storeReservations = await db.query.reservations.findMany({
     where: eq(reservations.storeId, storeId),
     columns: { id: true },
-  })
+  });
 
-  const reservationIds = storeReservations.map((r) => r.id)
+  const reservationIds = storeReservations.map((r) => r.id);
 
   if (reservationIds.length === 0) {
-    return `${year}-0001`
+    return `${year}-0001`;
   }
 
   // Get last document for these reservations this year
   const lastDoc = await db.query.documents.findFirst({
     where: and(
-      sql`${documents.reservationId} IN (${sql.join(reservationIds.map(id => sql`${id}`), sql`, `)})`,
-      sql`YEAR(${documents.createdAt}) = ${year}`
+      sql`${documents.reservationId} IN (${sql.join(
+        reservationIds.map((id) => sql`${id}`),
+        sql`, `,
+      )})`,
+      sql`YEAR(${documents.createdAt}) = ${year}`,
     ),
     orderBy: [desc(documents.createdAt)],
-  })
+  });
 
-  let sequence = 1
+  let sequence = 1;
   if (lastDoc && lastDoc.number) {
-    const parts = lastDoc.number.split('-')
+    const parts = lastDoc.number.split("-");
     if (parts.length === 2) {
-      sequence = parseInt(parts[1], 10) + 1
+      sequence = parseInt(parts[1], 10) + 1;
     }
   }
 
-  return `${year}-${sequence.toString().padStart(4, '0')}`
+  return `${year}-${sequence.toString().padStart(4, "0")}`;
 }
 
 export async function getContractPdfBuffer(reservationId: string): Promise<Buffer | null> {
   const contract = await db.query.documents.findFirst({
-    where: and(
-      eq(documents.reservationId, reservationId),
-      eq(documents.type, 'contract')
-    ),
-  })
+    where: and(eq(documents.reservationId, reservationId), eq(documents.type, "contract")),
+  });
 
   if (!contract || !contract.fileUrl) {
-    return null
+    return null;
   }
 
   // If it's a base64 data URL
-  if (contract.fileUrl.startsWith('data:application/pdf;base64,')) {
-    const base64 = contract.fileUrl.replace('data:application/pdf;base64,', '')
-    return Buffer.from(base64, 'base64')
+  if (contract.fileUrl.startsWith("data:application/pdf;base64,")) {
+    const base64 = contract.fileUrl.replace("data:application/pdf;base64,", "");
+    return Buffer.from(base64, "base64");
   }
 
   // In production, fetch from R2/S3
   // For now, return null for URLs
-  return null
+  return null;
 }

@@ -5478,6 +5478,11 @@
           "incentiveBadge": "Lanceeraanbieding",
           "incentiveLine": "nog {remaining} plaatsen met 0 € reeent-commissie voor het leven"
         }
+      },
+      "extensions": {
+        "title": "Automatische huurverlengingen",
+        "description": "Klanten kunnen verlengen bij beschikbaarheid en een berekenbare meerprijs. Bijzondere gevallen vereisen uw goedkeuring.",
+        "maxDays": "Maximum extra dagen (leeg: geen limiet)"
       }
     },
     "commandPalette": {
@@ -5982,6 +5987,7 @@
         "badgeShort": "-{percent}%",
         "from": "vanaf {duration}",
         "viewRates": "Tarieven bekijken",
+        "viewAllRates": "Alle tarieven bekijken ({count})",
         "ratesTitle": "Tarieven",
         "basePriceLabel": "Basisprijs",
         "duration": "Duur",
@@ -6043,7 +6049,18 @@
       "requiredAccessoryOutOfStock": "Een verplicht accessoire is niet op voorraad",
       "requiredAccessoriesIncluded": "Automatisch toegevoegd: {names}",
       "backToCatalog": "Bekijk de catalogus",
+      "rentalInformation": {
+        "pickup": "Ophalen op locatie",
+        "locations": "Kies je ophaallocatie bij het boeken",
+        "optional": "Bezorging beschikbaar",
+        "required": "Bezorging verplicht",
+        "included": "Bezorging inbegrepen",
+        "deliveryDetails": "Beschikbaarheid en voorwaarden hangen af van je adres en worden bij het boeken getoond.",
+        "payment": "Bevestiging na online betaling",
+        "request": "Aanvraag onder voorbehoud van bevestiging door de verhuurder"
+      },
       "booking": {
+        "availableForDates": "{count} beschikbaar voor je datums",
         "dates": "Datums",
         "anyOption": "Geen voorkeur",
         "checking": "Controleren…",
@@ -6053,6 +6070,16 @@
         "extras": "Extra's",
         "depositHold": "Borg",
         "depositNotCharged": "Reservering op de kaart, niet afgeschreven"
+      }
+    },
+    "quickAdd": {
+      "chooseDates": "Kies je data",
+      "chooseOptions": "Kies je uitvoering",
+      "optionsIntro": "Dit product bestaat in meerdere uitvoeringen. Kies de jouwe en daarna het aantal.",
+      "steps": {
+        "dates": "Data",
+        "options": "Uitvoering",
+        "extras": "Accessoires"
       }
     },
     "accessories": {
@@ -6275,6 +6302,7 @@
       "deliveryRequiredNote": "Dit product vereist bezorging",
       "deliveryIncludedNote": "Bezorgkosten zijn inbegrepen in de prijs",
       "included": "Inbegrepen",
+      "fulfillmentTitle": "Ophalen en terugbrengen",
       "outboundTitle": "Apparatuur ontvangen",
       "returnTitle": "Apparatuur retourneren",
       "storePickup": "Afhalen in winkel",
@@ -6290,6 +6318,21 @@
       "deliveryOption": "Thuisbezorging",
       "deliveryOptionDescription": "Vanaf {pricePerKm}/km",
       "deliveryAvailableFrom": "Bezorging beschikbaar vanaf {amount} aan huur",
+      "distanceKm": "{distance} km",
+      "pricePerKm": "{price}/km",
+      "deliveryAreaSummary": "Bezorggebied van {maxKm} km · {pricePerKm}/km",
+      "useMyLocation": "Mijn locatie gebruiken",
+      "sortByDistance": "Op afstand sorteren",
+      "sortByDistanceHint": "Zie welke locatie het dichtstbij is",
+      "locationLocating": "Locatie bepalen…",
+      "locationBlocked": "Locatie is geblokkeerd voor deze site. Sta het toe via het icoon in de adresbalk om op afstand te sorteren.",
+      "locationUnsupported": "Deze browser kan je locatie niet delen, dus de locaties blijven in de volgorde van de winkel staan.",
+      "yourPosition": "Jouw locatie",
+      "returnSamePlace": "Zelfde plek",
+      "returnSomewhereElse": "Ergens anders",
+      "mapExpand": "Kaart vergroten",
+      "mapCollapse": "Kaart sluiten",
+      "getDirections": "Route",
       "freeDeliveryAbove": "Gratis bezorging vanaf {amount}",
       "freeDeliveryApplied": "Gratis bezorging toegepast!",
       "deliveryAddress": "Bezorgadres",
@@ -6473,6 +6516,7 @@
       },
       "acceptCgvRich": "Ik accepteer de <terms>algemene huurvoorwaarden</terms>",
       "returningCustomer": {
+        "loginLink": "Heb je al een account? <signin>Inloggen</signin>",
         "prompt": "Al klant?",
         "sendCode": "Stuur mij een code",
         "codeSent": "Code verzonden naar {email}",
@@ -6616,6 +6660,21 @@
       "backToStore": "Terug naar winkel"
     },
     "account": {
+      "communications": {
+        "title": "Communicatie",
+        "description": "Kies hoe je herinneringen voor ophalen en terugbrengen ontvangt, als de verhuurder deze aanbiedt.",
+        "email": "Herinneringen per e-mail ontvangen",
+        "sms": "Herinneringen per sms ontvangen",
+        "essential": "Deze voorkeuren gelden alleen voor herinneringen. Berichten over inloggen en boekingen (bevestiging, afwijzing, betaling of belangrijke wijzigingen) worden nog steeds verzonden."
+      },
+      "profile": {
+        "title": "Mijn gegevens",
+        "description": "Deze gegevens worden automatisch ingevuld bij je volgende boekingen.",
+        "emailHelp": "Je e-mailadres wordt gebruikt om in te loggen.",
+        "saved": "Gegevens opgeslagen",
+        "saveError": "Je gegevens konden niet worden opgeslagen. Probeer het opnieuw.",
+        "invalidData": "Controleer je gegevens, vooral je telefoonnummer en bedrijfsnaam."
+      },
       "title": "Mijn account",
       "accessAccount": "Naar mijn account",
       "accessDescription": "Voer het e-mailadres in dat u bij uw reservering heeft gebruikt om een inlogcode te ontvangen.",
@@ -6768,7 +6827,12 @@
       "currentReservations": "Lopende huurorders",
       "pastReservations": "Eerdere huurorders",
       "timeline": {
-        "title": "Huurperiode"
+        "title": "Huurperiode",
+        "requested": "Aanvraag verstuurd",
+        "quoteSent": "Offerte verstuurd",
+        "confirmed": "Reservering bevestigd",
+        "pickedUp": "Materiaal opgehaald",
+        "returned": "Materiaal teruggebracht"
       },
       "actions": {
         "title": "Acties",
@@ -6778,7 +6842,88 @@
       "total": "Totaal",
       "notes": "Uw notities",
       "signContractTitle": "Contract ondertekenen?",
-      "confirmSign": "Contract ondertekenen"
+      "confirmSign": "Contract ondertekenen",
+      "dateChange": {
+        "title": "Retourdatum wijzigen",
+        "description": "Meer tijd nodig of eerder terugbrengen? Vraag een nieuwe datum aan. De verhuurder moet deze goedkeuren en kan de prijs aanpassen.",
+        "open": "Wijziging aanvragen",
+        "newEnd": "Gewenste retourdatum",
+        "timezone": "Tijdzone van de winkel: {timezone}",
+        "reason": "Reden (optioneel)",
+        "error": "De aanvraag kon niet worden opgeslagen. Kies een toekomstige datum na het ophalen, die afwijkt van de huidige retourdatum.",
+        "sending": "Verzenden…",
+        "submit": "Aanvraag versturen",
+        "close": "Sluiten",
+        "pendingHelp": "Reservering en prijs blijven ongewijzigd totdat de verhuurder akkoord gaat.",
+        "reviewTitle": "Aanvraag voor een andere retourdatum",
+        "reviewHelp": "Controleer beschikbaarheid en prijs in het bewerkscherm. Opslaan van de gevraagde datum keurt de aanvraag goed. Een andere periode vervangt deze.",
+        "apply": "Gevraagde datum toepassen",
+        "review": "Aanvraag bekijken",
+        "reject": "Aanvraag afwijzen",
+        "reviewError": "De aanvraag kon niet worden verwerkt. Vernieuw de pagina en probeer opnieuw.",
+        "status": {
+          "pending": "Wacht op goedkeuring",
+          "accepted": "Aanvraag goedgekeurd",
+          "rejected": "Aanvraag afgewezen",
+          "cancelled": "Aanvraag geannuleerd",
+          "superseded": "Vervangen door een andere wijziging"
+        }
+      },
+      "actionRequired": {
+        "quote": "Reageer op de offerte",
+        "payment": "Betaal de reservering",
+        "signature": "Onderteken het contract"
+      },
+      "calendar": {
+        "add": "Toevoegen aan mijn agenda"
+      },
+      "extension": {
+        "title": "Mijn huur verlengen",
+        "description": "Kies een latere retourdatum. Controleer de beschikbaarheid en meerprijs voordat u bevestigt.",
+        "newEnd": "Nieuwe retourdatum",
+        "supplement": "Meerprijs",
+        "newTotal": "Nieuw totaal: {amount}",
+        "check": "Beschikbaarheid controleren",
+        "pay": "Betalen en verlengen",
+        "confirm": "Verlenging bevestigen",
+        "request": "Verlenging aanvragen",
+        "loading": "Even geduld…",
+        "close": "Sluiten",
+        "resume": "Betaling hervatten",
+        "cancel": "Verlenging annuleren",
+        "checkoutPending": "De verlenging wacht op betaling. Het materiaal is tijdelijk gereserveerd.",
+        "expired": "De betaaltermijn is verstreken. Controleer opnieuw de beschikbaarheid.",
+        "confirmed": "Uw huur is verlengd.",
+        "refund_pending": "De verlenging kon niet worden bevestigd. Uw betaling wordt terugbetaald.",
+        "refunded": "De verlenging is niet toegepast. Uw betaling is terugbetaald.",
+        "open": "Mijn huur verlengen",
+        "reasons": {
+          "disabled": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "insurance": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "manualPrice": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "unpaid": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "delivery": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "deposit": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "overdue": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "location": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden."
+        },
+        "errors": {
+          "invalidDate": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "invalidStatus": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "pending": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "tooLong": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "closed": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "unavailable": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "manualRequired": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "priceChanged": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "expired": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "paymentUnavailable": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "notFound": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "unexpected": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "paymentMismatch": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "tooManyAttempts": "Te veel pogingen. Probeer het over 15 minuten opnieuw."
+        }
+      }
     },
     "marketplaceShell": {
       "marketplaceName": "Louez Marketplace"

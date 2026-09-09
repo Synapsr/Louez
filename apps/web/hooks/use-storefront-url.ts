@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { useInstanceConfig } from "@/components/instance-provider";
 import { usePublicEnv } from "@/components/shared/public-env-provider";
+import { useStorefrontBasePath } from "@/contexts/store-context";
+import { buildStorefrontUrl } from "@/lib/util.storefront-url";
 
 const subscribeToOrigin = () => () => undefined;
 const getBrowserOrigin = () => window.location.origin;
@@ -17,68 +19,49 @@ interface AbsoluteStorefrontUrlOptions {
   storeSlug: string;
 }
 
-export function buildAbsoluteStorefrontUrl({
+/**
+ * Absolute storefront URL as seen from the browser. Thin adapter over the
+ * shared builder: the store subdomain is always https, and both standalone
+ * and local platform forms build on the current origin.
+ */
+export const buildAbsoluteStorefrontUrl = ({
   domain,
   origin,
   path = "/",
   standalone,
   storeSlug,
-}: AbsoluteStorefrontUrlOptions): string {
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  const suffix = normalizedPath === "/" ? "" : normalizedPath;
-
-  if (standalone) {
-    return `${origin}${suffix}` || "/";
-  }
-
-  if (!domain || domain.includes("localhost") || domain.includes("127.0.0.1")) {
-    return `${origin}/${storeSlug}${suffix}`;
-  }
-
-  return `https://${storeSlug}.${domain}${suffix}`;
-}
+}: AbsoluteStorefrontUrlOptions): string =>
+  buildStorefrontUrl({
+    slug: storeSlug,
+    path,
+    standalone,
+    appDomain: domain,
+    origin,
+    protocol: "https",
+  });
 
 /**
  * Hook to generate correct storefront URLs based on the routing context.
  *
- * In standalone mode the storefront is served at the root of the origin and
- * the proxy injects the slug internally, so generated URLs never carry it.
- *
- * In platform mode, when on a subdomain (e.g., store.example.com) the proxy
- * already adds the slug to the path, so we should NOT include it; on
- * localhost with PREVIEW_MODE or on the dashboard, we need to include it.
+ * Relative links take the prefix the server computed for this host
+ * (`StoreProvider.basePath`): nothing on the store subdomain, in standalone
+ * and in local preview mode, where the proxy injects the slug; `/{slug}` on
+ * the dashboard host, which serves the same pages under `/{slug}`. Outside
+ * the storefront tree (dashboard components) the prefix is unknown and links
+ * keep the slug, which is what every dashboard host needs.
  */
-export function useStorefrontUrl(storeSlug: string) {
+export const useStorefrontUrl = (storeSlug: string) => {
   const { standalone } = useInstanceConfig();
   const { NEXT_PUBLIC_APP_DOMAIN: appDomain } = usePublicEnv();
-  const [isSubdomain, setIsSubdomain] = useState(false);
+  const serverBasePath = useStorefrontBasePath();
   // React uses getServerOrigin() for both SSR and the first hydration pass,
   // then refreshes to window.location.origin. Reading window during render
   // made the server emit relative URLs while the client emitted absolute
   // ones, regenerating the dashboard tree on every load in standalone mode.
   const origin = useSyncExternalStore(subscribeToOrigin, getBrowserOrigin, getServerOrigin);
 
-  useEffect(() => {
-    const hostname = window.location.hostname;
-
-    // On localhost, we're never on a true subdomain
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      setIsSubdomain(false);
-      return;
-    }
-
-    // Simple and reliable detection: if the hostname starts with the store slug,
-    // we're on the store's subdomain (e.g., 'ddm.louez.io' starts with 'ddm')
-    const hostnamePrefix = hostname.split(".")[0];
-
-    // We're on a subdomain if the first part of hostname matches the store slug
-    // and is not 'www', 'app', or 'app-dev' (dashboard subdomains)
-    const dashboardPrefixes = ["www", "app", "app-dev", "localhost"];
-    const isStoreSubdomain =
-      hostnamePrefix === storeSlug && !dashboardPrefixes.includes(hostnamePrefix);
-
-    setIsSubdomain(isStoreSubdomain);
-  }, [storeSlug]);
+  const basePath = serverBasePath ?? (standalone ? "" : `/${storeSlug}`);
+  const isSubdomain = !standalone && basePath === "";
 
   /**
    * Generate a storefront URL path.
@@ -86,19 +69,10 @@ export function useStorefrontUrl(storeSlug: string) {
    */
   const getUrl = useCallback(
     (path: string) => {
-      // Ensure path starts with /
       const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-
-      if (standalone || isSubdomain) {
-        // The proxy injects the slug (root rewrite in standalone, subdomain
-        // rewrite in platform), so generated URLs must not repeat it.
-        return normalizedPath;
-      }
-
-      // On localhost or dashboard, include slug
-      return `/${storeSlug}${normalizedPath}`;
+      return `${basePath}${normalizedPath}`;
     },
-    [storeSlug, isSubdomain, standalone],
+    [basePath],
   );
 
   /**
@@ -108,17 +82,16 @@ export function useStorefrontUrl(storeSlug: string) {
    * localhost development, where subdomains do not resolve.
    */
   const getAbsoluteUrl = useCallback(
-    (path: string = "/") => {
-      return buildAbsoluteStorefrontUrl({
+    (path: string = "/") =>
+      buildAbsoluteStorefrontUrl({
         domain: appDomain,
         origin,
         path,
         standalone,
         storeSlug,
-      });
-    },
+      }),
     [appDomain, origin, standalone, storeSlug],
   );
 
   return { getUrl, getAbsoluteUrl, isSubdomain };
-}
+};

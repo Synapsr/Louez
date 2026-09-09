@@ -5478,6 +5478,11 @@
           "incentiveBadge": "Oferta startowa",
           "incentiveLine": "jeszcze {remaining} miejsc z 0 € prowizji reeent na zawsze"
         }
+      },
+      "extensions": {
+        "title": "Automatyczne przedłużenia",
+        "description": "Klienci mogą przedłużyć wynajem przy dostępności sprzętu i znanej dopłacie. Szczególne przypadki wymagają Twojej zgody.",
+        "maxDays": "Maksymalna liczba dodatkowych dni (puste: bez limitu)"
       }
     },
     "commandPalette": {
@@ -5982,6 +5987,7 @@
         "badgeShort": "-{percent}%",
         "from": "od {duration}",
         "viewRates": "Zobacz ceny",
+        "viewAllRates": "Zobacz wszystkie stawki ({count})",
         "ratesTitle": "Cennik",
         "basePriceLabel": "Cena bazowa",
         "duration": "Czas trwania",
@@ -6043,7 +6049,18 @@
       "requiredAccessoryOutOfStock": "Wymagane akcesorium jest niedostępne",
       "requiredAccessoriesIncluded": "Dodawane automatycznie: {names}",
       "backToCatalog": "Zobacz katalog",
+      "rentalInformation": {
+        "pickup": "Odbiór na miejscu",
+        "locations": "Wybierz punkt odbioru podczas rezerwacji",
+        "optional": "Dostawa dostępna",
+        "required": "Dostawa wymagana",
+        "included": "Dostawa w cenie",
+        "deliveryDetails": "Dostępność i warunki zależą od adresu i są podane podczas rezerwacji.",
+        "payment": "Potwierdzenie po płatności online",
+        "request": "Zgłoszenie wymaga potwierdzenia przez wypożyczalnię"
+      },
       "booking": {
+        "availableForDates": "{count} dostępnych w wybranym terminie",
         "dates": "Daty",
         "anyOption": "Bez znaczenia",
         "checking": "Sprawdzanie…",
@@ -6053,6 +6070,16 @@
         "extras": "Dodatki",
         "depositHold": "Kaucja",
         "depositNotCharged": "Blokada na karcie, bez obciążenia"
+      }
+    },
+    "quickAdd": {
+      "chooseDates": "Wybierz daty",
+      "chooseOptions": "Wybierz konfigurację",
+      "optionsIntro": "Ten produkt występuje w kilku konfiguracjach. Wybierz swoją, a potem liczbę sztuk.",
+      "steps": {
+        "dates": "Daty",
+        "options": "Konfiguracja",
+        "extras": "Akcesoria"
       }
     },
     "accessories": {
@@ -6275,6 +6302,7 @@
       "deliveryRequiredNote": "Ten produkt wymaga dostawy",
       "deliveryIncludedNote": "Koszty dostawy są wliczone w cenę",
       "included": "Wliczone",
+      "fulfillmentTitle": "Odbiór i zwrot",
       "outboundTitle": "Odbiór sprzętu",
       "returnTitle": "Zwrot sprzętu",
       "storePickup": "Odbiór w sklepie",
@@ -6290,6 +6318,21 @@
       "deliveryOption": "Dostawa do domu",
       "deliveryOptionDescription": "Od {pricePerKm}/km",
       "deliveryAvailableFrom": "Dostawa dostępna od {amount} wartości wynajmu",
+      "distanceKm": "{distance} km",
+      "pricePerKm": "{price}/km",
+      "deliveryAreaSummary": "Obszar dostawy {maxKm} km · {pricePerKm}/km",
+      "useMyLocation": "Użyj mojej lokalizacji",
+      "sortByDistance": "Sortuj według odległości",
+      "sortByDistanceHint": "Zobacz, który punkt jest najbliżej",
+      "locationLocating": "Ustalanie lokalizacji…",
+      "locationBlocked": "Lokalizacja jest zablokowana dla tej witryny. Zezwól na nią z ikony na pasku adresu, aby sortować według odległości.",
+      "locationUnsupported": "Ta przeglądarka nie może udostępnić Twojej lokalizacji, więc punkty pozostają w kolejności sklepu.",
+      "yourPosition": "Twoja lokalizacja",
+      "returnSamePlace": "To samo miejsce",
+      "returnSomewhereElse": "Gdzie indziej",
+      "mapExpand": "Powiększ mapę",
+      "mapCollapse": "Zamknij mapę",
+      "getDirections": "Wskazówki dojazdu",
       "freeDeliveryAbove": "Darmowa dostawa powyżej {amount}",
       "freeDeliveryApplied": "Darmowa dostawa zastosowana!",
       "deliveryAddress": "Adres dostawy",
@@ -6473,6 +6516,7 @@
       },
       "acceptCgvRich": "Akceptuję <terms>regulamin wynajmu</terms>",
       "returningCustomer": {
+        "loginLink": "Masz już konto? <signin>Zaloguj się</signin>",
         "prompt": "Masz już konto?",
         "sendCode": "Wyślij kod",
         "codeSent": "Kod wysłany na {email}",
@@ -6616,6 +6660,21 @@
       "backToStore": "Powrót do sklepu"
     },
     "account": {
+      "communications": {
+        "title": "Komunikacja",
+        "description": "Wybierz sposób otrzymywania przypomnień o odbiorze i zwrocie, jeśli wypożyczalnia je oferuje.",
+        "email": "Otrzymuj przypomnienia e-mailem",
+        "sms": "Otrzymuj przypomnienia SMS-em",
+        "essential": "Te preferencje dotyczą tylko przypomnień. Wiadomości dotyczące logowania i rezerwacji (potwierdzenie, odrzucenie, płatność lub ważne zmiany) nadal będą wysyłane."
+      },
+      "profile": {
+        "title": "Moje dane",
+        "description": "Te dane zostaną automatycznie uzupełnione przy kolejnych rezerwacjach.",
+        "emailHelp": "Twój adres e-mail służy do logowania.",
+        "saved": "Dane zapisane",
+        "saveError": "Nie udało się zapisać danych. Spróbuj ponownie.",
+        "invalidData": "Sprawdź dane, zwłaszcza numer telefonu i nazwę firmy."
+      },
       "title": "Moje konto",
       "accessAccount": "Wejdź na moje konto",
       "accessDescription": "Wpisz email użyty przy rezerwacji, aby otrzymać kod logowania.",
@@ -6768,7 +6827,12 @@
       "currentReservations": "Bieżące wypożyczenia",
       "pastReservations": "Poprzednie wypożyczenia",
       "timeline": {
-        "title": "Okres wypożyczenia"
+        "title": "Okres wypożyczenia",
+        "requested": "Prośba wysłana",
+        "quoteSent": "Oferta wysłana",
+        "confirmed": "Rezerwacja potwierdzona",
+        "pickedUp": "Sprzęt odebrany",
+        "returned": "Sprzęt zwrócony"
       },
       "actions": {
         "title": "Działania",
@@ -6778,7 +6842,88 @@
       "total": "Razem",
       "notes": "Twoje notatki",
       "signContractTitle": "Podpisać umowę?",
-      "confirmSign": "Podpisz umowę"
+      "confirmSign": "Podpisz umowę",
+      "dateChange": {
+        "title": "Zmień termin zwrotu",
+        "description": "Potrzebujesz więcej czasu lub chcesz zwrócić wcześniej? Poproś o nowy termin. Wypożyczalnia musi go zatwierdzić i może zmienić cenę.",
+        "open": "Poproś o zmianę",
+        "newEnd": "Proponowany zwrot",
+        "timezone": "Strefa czasowa wypożyczalni: {timezone}",
+        "reason": "Powód (opcjonalnie)",
+        "error": "Nie udało się zapisać prośby. Wybierz przyszły termin po odbiorze, inny niż obecny termin zwrotu.",
+        "sending": "Wysyłanie…",
+        "submit": "Wyślij prośbę",
+        "close": "Zamknij",
+        "pendingHelp": "Rezerwacja i cena pozostają bez zmian do zatwierdzenia przez wypożyczalnię.",
+        "reviewTitle": "Prośba o zmianę terminu zwrotu",
+        "reviewHelp": "Sprawdź dostępność i cenę w edytorze. Zapisanie proponowanej daty zatwierdza prośbę. Inny okres ją zastępuje.",
+        "apply": "Zastosuj proponowaną datę",
+        "review": "Rozpatrz prośbę",
+        "reject": "Odrzuć prośbę",
+        "reviewError": "Nie udało się rozpatrzyć prośby. Odśwież stronę i spróbuj ponownie.",
+        "status": {
+          "pending": "Oczekuje na zatwierdzenie",
+          "accepted": "Prośba zatwierdzona",
+          "rejected": "Prośba odrzucona",
+          "cancelled": "Prośba anulowana",
+          "superseded": "Zastąpiona inną zmianą"
+        }
+      },
+      "actionRequired": {
+        "quote": "Odpowiedz na ofertę",
+        "payment": "Opłać rezerwację",
+        "signature": "Podpisz umowę"
+      },
+      "calendar": {
+        "add": "Dodaj do mojego kalendarza"
+      },
+      "extension": {
+        "title": "Przedłuż wynajem",
+        "description": "Wybierz późniejszy termin zwrotu. Sprawdź dostępność i dopłatę przed potwierdzeniem.",
+        "newEnd": "Nowy termin zwrotu",
+        "supplement": "Dopłata",
+        "newTotal": "Nowa suma: {amount}",
+        "check": "Sprawdź dostępność",
+        "pay": "Zapłać i przedłuż",
+        "confirm": "Potwierdź przedłużenie",
+        "request": "Poproś o przedłużenie",
+        "loading": "Proszę czekać…",
+        "close": "Zamknij",
+        "resume": "Wznów płatność",
+        "cancel": "Anuluj przedłużenie",
+        "checkoutPending": "Przedłużenie oczekuje na płatność. Sprzęt jest tymczasowo zarezerwowany.",
+        "expired": "Termin płatności minął. Sprawdź dostępność ponownie.",
+        "confirmed": "Wynajem został przedłużony.",
+        "refund_pending": "Nie udało się potwierdzić przedłużenia. Trwa zwrot płatności.",
+        "refunded": "Przedłużenie nie zostało zastosowane. Płatność została zwrócona.",
+        "open": "Przedłuż wynajem",
+        "reasons": {
+          "disabled": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "insurance": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "manualPrice": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "unpaid": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "delivery": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "deposit": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "overdue": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "location": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu."
+        },
+        "errors": {
+          "invalidDate": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "invalidStatus": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "pending": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "tooLong": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "closed": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "unavailable": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "manualRequired": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "priceChanged": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "expired": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "paymentUnavailable": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "notFound": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "unexpected": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "paymentMismatch": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "tooManyAttempts": "Zbyt wiele prób. Spróbuj ponownie za 15 minut."
+        }
+      }
     },
     "marketplaceShell": {
       "marketplaceName": "Louez Marketplace"

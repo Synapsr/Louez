@@ -1,4 +1,4 @@
-import type { AddressDetails } from '@louez/types';
+import type { AddressDetails } from "@louez/types";
 
 interface CustomerAddressFields {
   address: string;
@@ -6,15 +6,12 @@ interface CustomerAddressFields {
   city: string;
 }
 
-export const getCustomerAddressFields = (
-  details: AddressDetails,
-): CustomerAddressFields => {
-  const streetAddress =
-    `${details.streetNumber ?? ''} ${details.street ?? ''}`.trim();
+export const getCustomerAddressFields = (details: AddressDetails): CustomerAddressFields => {
+  const streetAddress = `${details.streetNumber ?? ""} ${details.street ?? ""}`.trim();
 
   return {
     address: streetAddress || details.formattedAddress.trim(),
-    postalCode: details.postalCode?.trim() ?? '',
-    city: details.city?.trim() ?? '',
+    postalCode: details.postalCode?.trim() ?? "",
+    city: details.city?.trim() ?? "",
   };
 };

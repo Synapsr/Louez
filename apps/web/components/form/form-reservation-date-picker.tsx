@@ -89,6 +89,7 @@ export type ReservationDatePickerControlProps = {
   onChange: (date: Date | undefined) => void;
   /** When provided, the calendar becomes a two-month range picker shared between both endpoints. */
   range?: ReservationDateRangeLink;
+  fixedRangeStart?: Date;
   label?: string;
   description?: string;
   placeholder?: string;
@@ -322,6 +323,7 @@ export function ReservationDatePickerControl({
   value,
   onChange,
   range,
+  fixedRangeStart,
   label,
   description,
   placeholder,
@@ -444,11 +446,14 @@ export function ReservationDatePickerControl({
 
   const pickerDate = value ? getDateInPickerTimezone(value) : undefined;
   const pickerOtherDate = range?.otherValue ? getDateInPickerTimezone(range.otherValue) : undefined;
+  const pickerFixedStart = fixedRangeStart ? getDateInPickerTimezone(fixedRangeStart) : undefined;
   const rangeSelected = range
     ? range.role === "start"
       ? { from: pickerDate, to: pickerOtherDate }
       : { from: pickerOtherDate, to: pickerDate }
-    : undefined;
+    : pickerFixedStart
+      ? { from: pickerFixedStart, to: pickerDate }
+      : undefined;
   const calendarNavigationBounds = React.useMemo(
     () => getCalendarNavigationBounds(pickerDate ?? pickerOtherDate),
     [pickerDate, pickerOtherDate],
@@ -588,42 +593,53 @@ export function ReservationDatePickerControl({
     },
   };
 
-  const calendarElement = range ? (
-    <Calendar
-      mode="range"
-      // Two months side by side never fit a phone, and stacked they turn the
-      // sheet into a scroll marathon — one month at a time, navigable instead.
-      numberOfMonths={isMobile ? 1 : 2}
-      selected={rangeSelected}
-      defaultMonth={rangeSelected?.from ?? rangeSelected?.to}
-      captionLayout="dropdown"
-      startMonth={calendarNavigationBounds.startMonth}
-      endMonth={calendarNavigationBounds.endMonth}
-      modifiers={{ past: isBeforeToday }}
-      modifiersClassNames={{ past: "opacity-50" }}
-      onSelect={handleRangeSelect}
-      disabled={disabledDates}
-      initialFocus
-      locale={dateLocale}
-      {...(isMobile ? mobileCalendarProps : {})}
-    />
-  ) : (
-    <Calendar
-      mode="single"
-      selected={pickerDate}
-      defaultMonth={pickerDate}
-      captionLayout="dropdown"
-      startMonth={calendarNavigationBounds.startMonth}
-      endMonth={calendarNavigationBounds.endMonth}
-      modifiers={{ past: isBeforeToday }}
-      modifiersClassNames={{ past: "opacity-50" }}
-      onSelect={handleDateSelect}
-      disabled={disabledDates}
-      initialFocus
-      locale={dateLocale}
-      {...(isMobile ? mobileCalendarProps : {})}
-    />
-  );
+  const calendarElement =
+    range || pickerFixedStart ? (
+      <Calendar
+        mode="range"
+        // Two months side by side never fit a phone, and stacked they turn the
+        // sheet into a scroll marathon — one month at a time, navigable instead.
+        numberOfMonths={isMobile || pickerFixedStart ? 1 : 2}
+        selected={rangeSelected}
+        defaultMonth={
+          pickerFixedStart
+            ? (pickerDate ?? pickerFixedStart)
+            : (rangeSelected?.from ?? rangeSelected?.to)
+        }
+        captionLayout="dropdown"
+        startMonth={calendarNavigationBounds.startMonth}
+        endMonth={calendarNavigationBounds.endMonth}
+        modifiers={{ past: isBeforeToday }}
+        modifiersClassNames={{ past: "opacity-50" }}
+        onSelect={(selectedRange, selectedDay) => {
+          if (pickerFixedStart) {
+            handleDateSelect(selectedDay);
+          } else {
+            handleRangeSelect(selectedRange);
+          }
+        }}
+        disabled={disabledDates}
+        initialFocus
+        locale={dateLocale}
+        {...(isMobile ? mobileCalendarProps : {})}
+      />
+    ) : (
+      <Calendar
+        mode="single"
+        selected={pickerDate}
+        defaultMonth={pickerDate}
+        captionLayout="dropdown"
+        startMonth={calendarNavigationBounds.startMonth}
+        endMonth={calendarNavigationBounds.endMonth}
+        modifiers={{ past: isBeforeToday }}
+        modifiersClassNames={{ past: "opacity-50" }}
+        onSelect={handleDateSelect}
+        disabled={disabledDates}
+        initialFocus
+        locale={dateLocale}
+        {...(isMobile ? mobileCalendarProps : {})}
+      />
+    );
 
   // Inline label beside its select on the desktop popover; stacked above a
   // full-width select on the phone, where "Start 21:30 End 21:30" on one line

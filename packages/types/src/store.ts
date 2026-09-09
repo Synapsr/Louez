@@ -39,7 +39,7 @@ export interface BusinessHours {
 export interface TaxSettings {
   enabled: boolean; // Activer les taxes
   defaultRate: number; // Taux par défaut (ex: 20 pour 20%)
-  displayMode: 'inclusive' | 'exclusive'; // TTC (inclusive) ou HT (exclusive)
+  displayMode: "inclusive" | "exclusive"; // TTC (inclusive) ou HT (exclusive)
   taxLabel?: string; // Label personnalisé (défaut: "TVA")
   taxNumber?: string; // N° TVA de la boutique
 }
@@ -49,11 +49,7 @@ export interface ProductTaxSettings {
   customRate?: number; // Taux personnalisé si false
 }
 
-export type ProductImageVersionKind =
-  | 'original'
-  | 'cropped'
-  | 'ai-enhanced'
-  | 'background-removed';
+export type ProductImageVersionKind = "original" | "cropped" | "ai-enhanced" | "background-removed";
 
 export interface ProductImageVersion {
   id: string;
@@ -113,14 +109,14 @@ export interface BillingAddress {
  * - 'required': Outbound delivery is mandatory, return remains selectable
  * - 'included': Outbound delivery is mandatory and free (included in price)
  */
-export type DeliveryMode = 'optional' | 'required' | 'included';
+export type DeliveryMode = "optional" | "required" | "included";
 
 /**
  * Method for a single delivery leg (outbound or return).
  * - 'store': Equipment is handled at the store (pickup/return in person)
  * - 'address': Equipment is delivered to/collected from a custom address
  */
-export type LegMethod = 'store' | 'address';
+export type LegMethod = "store" | "address";
 
 export interface DeliverySettings {
   /** Whether delivery is enabled for this store */
@@ -142,7 +138,7 @@ export interface DeliverySettings {
 }
 
 export interface ReservationLocationSnapshot {
-  type: 'primary' | 'additional';
+  type: "primary" | "additional";
   name: string;
   address: string | null;
   city: string | null;
@@ -162,7 +158,7 @@ export interface ReservationLocationSnapshot {
  * - 'recommended': Reminder shown but can be skipped
  * - 'required': Cannot change status without completing inspection
  */
-export type InspectionMode = 'optional' | 'recommended' | 'required';
+export type InspectionMode = "optional" | "recommended" | "required";
 
 export interface InspectionSettings {
   /** Whether inspection feature is enabled */
@@ -182,7 +178,7 @@ export interface InspectionSettings {
  */
 export const DEFAULT_INSPECTION_SETTINGS: InspectionSettings = {
   enabled: false,
-  mode: 'optional',
+  mode: "optional",
   requireCustomerSignature: true,
   autoGeneratePdf: true,
   maxPhotosPerItem: 10,
@@ -192,7 +188,7 @@ export const DEFAULT_INSPECTION_SETTINGS: InspectionSettings = {
 // Integrations Settings
 // ============================================================================
 
-export type TulipPublicMode = 'required' | 'optional' | 'no_public';
+export type TulipPublicMode = "required" | "optional" | "no_public";
 
 export interface IntegrationStateSettings {
   enabled?: boolean;
@@ -209,7 +205,9 @@ export interface IntegrationData {
 // ============================================================================
 
 export interface StoreSettings {
-  reservationMode: 'payment' | 'request';
+  automaticExtensions?: boolean;
+  maxExtensionDays?: number | null;
+  reservationMode: "payment" | "request";
   /** Minimum rental duration in minutes. 0 = no restriction. Default: 60. */
   minRentalMinutes?: number;
   /** Maximum rental duration in minutes. null = no limit. */
@@ -245,17 +243,17 @@ export interface StoreSettings {
 }
 
 export interface StoreTheme {
-  mode: 'light' | 'dark';
+  mode: "light" | "dark";
   primaryColor: string;
   heroImages?: string[];
   /** Home hero layout. 'cover' (default) = the text over full-width photos; 'split' = the text beside a framed photo. Without photos both render the same centred band. */
-  heroLayout?: 'cover' | 'split';
+  heroLayout?: "cover" | "split";
   /** Where the hero text sits. 'center' by default; ignored without photos (always centred). */
-  heroAlign?: 'start' | 'center' | 'end';
+  heroAlign?: "start" | "center" | "end";
   /** Vertical position of the hero text: top, middle or bottom. 'end' (bottom) by default; ignored without photos. */
-  heroVerticalAlign?: 'start' | 'center' | 'end';
+  heroVerticalAlign?: "start" | "center" | "end";
   /** How the storefront catalog is browsed. 'products' (default) = flat product grid. 'categories' = category cards first, then products. */
-  catalogBrowseMode?: 'products' | 'categories';
+  catalogBrowseMode?: "products" | "categories";
   maxDiscountPercent?: number | null;
 }
 
@@ -338,7 +336,7 @@ export interface ProductSnapshot {
 // Promo Code Types
 // ============================================================================
 
-export type PromoCodeType = 'percentage' | 'fixed';
+export type PromoCodeType = "percentage" | "fixed";
 
 export interface PromoCodeSnapshot {
   code: string;
@@ -350,9 +348,9 @@ export interface PromoCodeSnapshot {
 // Pricing Types
 // ============================================================================
 
-export type PricingMode = 'hour' | 'day' | 'week';
-export type PricingKind = 'duration' | 'fixed';
-export type StockKind = 'returnable' | 'consumable' | 'untracked';
+export type PricingMode = "hour" | "day" | "week";
+export type PricingKind = "duration" | "fixed";
+export type StockKind = "returnable" | "consumable" | "untracked";
 
 export interface PricingTier {
   id: string;
@@ -409,7 +407,7 @@ export interface PricingBreakdown {
  * - `subscription`: fixed monthly plan (Start/Pro/Ultra) with usage caps.
  * - `pay_as_you_go`: billed per rental ("location"), no caps.
  */
-export type BillingMode = 'subscription' | 'pay_as_you_go';
+export type BillingMode = "subscription" | "pay_as_you_go";
 
 /**
  * A single graduated pricing band. `upToCount` is the inclusive upper bound of the
@@ -520,7 +518,7 @@ export interface ReviewBoosterSettings {
  * - 'recommended': non-blocking suggestion shown at checkout
  * - 'required': checkout is blocked until the advisor validates the conversation
  */
-export type AiAdvisorMode = 'optional' | 'recommended' | 'required';
+export type AiAdvisorMode = "optional" | "recommended" | "required";
 
 export interface AiAdvisorSettings {
   /** Whether the advisor widget is shown on the storefront */
@@ -561,7 +559,7 @@ export interface AdvisorValidatedCart {
  *   hours the AI always answers. Lets the AI act as an overflow / after-hours
  *   line without changing how the merchant handles calls during opening hours.
  */
-export type AiPhoneAnswerMode = 'always' | 'after_hours';
+export type AiPhoneAnswerMode = "always" | "after_hours";
 
 /**
  * Per-store configuration of the AI phone receptionist. Mirrors
@@ -612,28 +610,28 @@ export interface AiPhoneSettings {
 // ============================================================================
 
 export type NotificationEventType =
-  | 'reservation_new'
-  | 'reservation_confirmed'
-  | 'reservation_rejected'
-  | 'reservation_cancelled'
-  | 'reservation_picked_up'
-  | 'reservation_completed'
-  | 'reservation_reminder_pickup'
-  | 'reservation_reminder_return'
-  | 'payment_received'
-  | 'payment_failed';
+  | "reservation_new"
+  | "reservation_confirmed"
+  | "reservation_rejected"
+  | "reservation_cancelled"
+  | "reservation_picked_up"
+  | "reservation_completed"
+  | "reservation_reminder_pickup"
+  | "reservation_reminder_return"
+  | "payment_received"
+  | "payment_failed";
 
 export const NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
-  'reservation_new',
-  'reservation_confirmed',
-  'reservation_rejected',
-  'reservation_cancelled',
-  'reservation_picked_up',
-  'reservation_completed',
-  'reservation_reminder_pickup',
-  'reservation_reminder_return',
-  'payment_received',
-  'payment_failed',
+  "reservation_new",
+  "reservation_confirmed",
+  "reservation_rejected",
+  "reservation_cancelled",
+  "reservation_picked_up",
+  "reservation_completed",
+  "reservation_reminder_pickup",
+  "reservation_reminder_return",
+  "payment_received",
+  "payment_failed",
 ];
 
 export interface NotificationChannelConfig {
@@ -672,7 +670,7 @@ export interface NotificationSettings {
   };
 }
 
-export type AdminReminderMode = 'per_reservation' | 'daily_digest';
+export type AdminReminderMode = "per_reservation" | "daily_digest";
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   // Push defaults ON only for new reservations — the #1 real-time event.
@@ -692,7 +690,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   reminderSettings: {
     pickupReminderHours: 24,
     returnReminderHours: 24,
-    mode: 'per_reservation',
+    mode: "per_reservation",
     digestHour: 8,
   },
 };
@@ -702,30 +700,29 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
 // ============================================================================
 
 export type CustomerNotificationEventType =
-  | 'customer_request_received'
-  | 'customer_request_accepted'
-  | 'customer_request_rejected'
-  | 'customer_reservation_confirmed'
-  | 'customer_reminder_pickup'
-  | 'customer_reminder_return'
-  | 'customer_payment_requested'
-  | 'customer_deposit_authorization_requested'
-  | 'customer_quote_sent'
-  | 'customer_quote_accepted';
+  | "customer_request_received"
+  | "customer_request_accepted"
+  | "customer_request_rejected"
+  | "customer_reservation_confirmed"
+  | "customer_reminder_pickup"
+  | "customer_reminder_return"
+  | "customer_payment_requested"
+  | "customer_deposit_authorization_requested"
+  | "customer_quote_sent"
+  | "customer_quote_accepted";
 
-export const CUSTOMER_NOTIFICATION_EVENT_TYPES: CustomerNotificationEventType[] =
-  [
-    'customer_request_received',
-    'customer_request_accepted',
-    'customer_request_rejected',
-    'customer_reservation_confirmed',
-    'customer_reminder_pickup',
-    'customer_reminder_return',
-    'customer_payment_requested',
-    'customer_deposit_authorization_requested',
-    'customer_quote_sent',
-    'customer_quote_accepted',
-  ];
+export const CUSTOMER_NOTIFICATION_EVENT_TYPES: CustomerNotificationEventType[] = [
+  "customer_request_received",
+  "customer_request_accepted",
+  "customer_request_rejected",
+  "customer_reservation_confirmed",
+  "customer_reminder_pickup",
+  "customer_reminder_return",
+  "customer_payment_requested",
+  "customer_deposit_authorization_requested",
+  "customer_quote_sent",
+  "customer_quote_accepted",
+];
 
 export interface CustomerNotificationChannelConfig {
   enabled: boolean;
@@ -775,36 +772,35 @@ export interface CustomerNotificationSettings {
   };
 }
 
-export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSettings =
-  {
-    // Reservation journey - email enabled by default
-    customer_request_received: { enabled: true, email: true, sms: false },
-    customer_request_accepted: { enabled: true, email: true, sms: false },
-    customer_request_rejected: { enabled: true, email: true, sms: false },
-    customer_reservation_confirmed: { enabled: true, email: true, sms: false },
+export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSettings = {
+  // Reservation journey - email enabled by default
+  customer_request_received: { enabled: true, email: true, sms: false },
+  customer_request_accepted: { enabled: true, email: true, sms: false },
+  customer_request_rejected: { enabled: true, email: true, sms: false },
+  customer_reservation_confirmed: { enabled: true, email: true, sms: false },
 
-    // Reminders - email enabled by default (SMS disabled due to cost)
-    customer_reminder_pickup: { enabled: true, email: true, sms: false },
-    customer_reminder_return: { enabled: true, email: true, sms: false },
+  // Reminders - email enabled by default (SMS disabled due to cost)
+  customer_reminder_pickup: { enabled: true, email: true, sms: false },
+  customer_reminder_return: { enabled: true, email: true, sms: false },
 
-    // Payment requests - email enabled by default
-    customer_payment_requested: { enabled: true, email: true, sms: false },
-    customer_deposit_authorization_requested: {
-      enabled: true,
-      email: true,
-      sms: false,
-    },
+  // Payment requests - email enabled by default
+  customer_payment_requested: { enabled: true, email: true, sms: false },
+  customer_deposit_authorization_requested: {
+    enabled: true,
+    email: true,
+    sms: false,
+  },
 
-    // Quotes - email enabled by default
-    customer_quote_sent: { enabled: true, email: true, sms: false },
-    customer_quote_accepted: { enabled: true, email: true, sms: false },
+  // Quotes - email enabled by default
+  customer_quote_sent: { enabled: true, email: true, sms: false },
+  customer_quote_accepted: { enabled: true, email: true, sms: false },
 
-    // No custom templates by default
-    templates: {},
+  // No custom templates by default
+  templates: {},
 
-    // Default reminder timing: 24 hours before event
-    reminderSettings: {
-      pickupReminderHours: 24,
-      returnReminderHours: 24,
-    },
-  };
+  // Default reminder timing: 24 hours before event
+  reminderSettings: {
+    pickupReminderHours: 24,
+    returnReminderHours: 24,
+  },
+};

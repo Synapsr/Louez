@@ -1,247 +1,276 @@
-'use client';
+"use client";
 
-import { ChevronLeft, CreditCard, Send } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useStore } from "@tanstack/react-form";
+import { ChevronLeft, CreditCard, Send } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   Alert,
   AlertDescription,
   AlertTitle,
   Button,
-  Card,
-  CardContent,
   Checkbox,
   Label,
-} from '@louez/ui';
-import { formatCurrency } from '@louez/utils';
+  StepActions,
+} from "@louez/ui";
 
+import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
+import { withForm } from "@/hooks/form/form";
+import { getFieldError } from "@/hooks/form/form-context";
+import { useFormatMoney } from "@/hooks/use-format-money";
 
-import { getFieldError } from '@/hooks/form/form-context';
-
-import { CHECKOUT_SUBMIT_ID } from './checkout-advisor-verification-panel';
-import type { CheckoutFormComponentApi } from '../types';
+import type {
+  CheckoutBlockedReason,
+  CheckoutTulipInsurance,
+  ReservationMode,
+} from "../checkout.types";
+import type { AdvanceNoticeIssueDisplay } from "../hooks/use-checkout-advance-notice";
+import type { useCheckoutAdvisorGate } from "../hooks/use-checkout-advisor-gate";
+import type { useCheckoutPromo } from "../hooks/use-checkout-promo";
+import type { useCheckoutTulipQuote } from "../hooks/use-checkout-tulip-quote";
+import type { CheckoutSubmitLabel } from "../util.checkout-totals";
+import { STEP_ACTIONS_CLASS } from "../util.checkout-steps";
+import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
+import { CheckoutAdvisorGateCard } from "./checkout-advisor-gate";
+import {
+  CHECKOUT_SUBMIT_ID,
+  CheckoutAdvisorVerificationPanel,
+} from "./checkout-advisor-verification-panel";
+import { CheckoutDeposit } from "./checkout-deposit";
+import { CheckoutPromoCode } from "./checkout-promo-code";
+import { InsuranceOptionCard } from "./insurance-option-card";
 
 interface CheckoutConfirmStepProps {
-  form: CheckoutFormComponentApi;
-  cgv: string | null;
-  hasDeliveryLegs: boolean;
-  logisticsLabel?: string;
-  reservationMode: 'payment' | 'request';
-  depositPercentage: number;
-  subtotal: number;
-  totalWithDelivery: number;
-  currency: string;
-  tulipInsurance?: {
-    enabled: boolean;
-    mode: 'required' | 'optional' | 'no_public';
-  };
-  canSubmitCheckout: boolean;
-  /** Advisor required mode, not yet validated — show a hint under the submit. */
-  showVerificationHint?: boolean;
-  discountAmount?: number;
+  reservationMode: ReservationMode;
+  logisticsLabel: string;
+  tulipInsurance?: CheckoutTulipInsurance;
+  tulipQuote: ReturnType<typeof useCheckoutTulipQuote>;
+  advisorGate: ReturnType<typeof useCheckoutAdvisorGate>;
+  promo: ReturnType<typeof useCheckoutPromo>;
+  hasActivePromoCodes: boolean;
+  totalDeposit: number;
+  submitLabel: CheckoutSubmitLabel;
+  blockedReason: CheckoutBlockedReason | null;
+  advanceNoticeIssue: AdvanceNoticeIssueDisplay | null;
+  isSubmitting: boolean;
   onBack: () => void;
   onEditContact: () => void;
-  advanceNoticeIssue?: {
-    duration: string;
-    minimumStart: string;
-  };
   onEditDates: () => void;
 }
 
-export function CheckoutConfirmStep({
-  form,
-  cgv,
-  hasDeliveryLegs,
-  logisticsLabel,
-  reservationMode,
-  depositPercentage,
-  subtotal,
-  totalWithDelivery,
-  currency,
-  tulipInsurance,
-  canSubmitCheckout,
-  showVerificationHint = false,
-  discountAmount = 0,
-  onBack,
-  onEditContact,
-  advanceNoticeIssue,
-  onEditDates,
-}: CheckoutConfirmStepProps) {
-  const t = useTranslations('storefront.checkout');
-  const showInsuranceUi =
-    tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
+export const CheckoutConfirmStep = withForm({
+  ...checkoutFormOptions,
+  props: checkoutStepProps<CheckoutConfirmStepProps>(),
+  render: ({
+    form,
+    reservationMode,
+    logisticsLabel,
+    tulipInsurance,
+    tulipQuote,
+    advisorGate,
+    promo,
+    hasActivePromoCodes,
+    totalDeposit,
+    submitLabel,
+    blockedReason,
+    advanceNoticeIssue,
+    isSubmitting,
+    onBack,
+    onEditContact,
+    onEditDates,
+  }) => {
+    const t = useTranslations("storefront.checkout");
+    const formatMoney = useFormatMoney();
+    const values = useStore(form.store, (state) => state.values);
+    const submissionAttempts = useStore(form.store, (state) => state.submissionAttempts);
 
-  return (
-    <Card>
-      <CardContent className="space-y-6 pt-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">{t('steps.confirm')}</h2>
-          <p className="text-muted-foreground text-sm">{t('confirmDescription')}</p>
-        </div>
+    const insuranceMode = tulipInsurance?.enabled ? tulipInsurance.mode : "no_public";
+    const buttonLabel =
+      submitLabel.kind === "request"
+        ? t("submitRequest")
+        : submitLabel.kind === "payDeposit"
+          ? t("payDeposit", { amount: formatMoney(submitLabel.amount) })
+          : t("payAmount", { amount: formatMoney(submitLabel.amount) });
 
-        <div className="bg-muted/50 space-y-2 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{t('customerInfo')}</span>
-            <Button type="button" variant="ghost" onClick={onEditContact}>
-              {t('modify')}
+    const blockedMessage = (() => {
+      switch (blockedReason) {
+        case "resolving":
+        case "quoteLoading":
+          return t("blocked.resolving");
+        case "lineNeedsUpdate":
+          return t("lineNeedsUpdate");
+        case "advisorRequired":
+          return t("advisor.completeVerificationHint");
+        case "insuranceRequiredFailed":
+          return t("blocked.insuranceRequired");
+        case "advanceNotice":
+          return t("advanceNotice.title");
+        default:
+          return null;
+      }
+    })();
+
+    return (
+      <div className="flex flex-col gap-6">
+        <h2 className="text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
+          {t("steps.confirm")}
+        </h2>
+
+        <div className="flex flex-col gap-1 rounded-2xl bg-muted p-4 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-medium">{t("customerInfo")}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={onEditContact}
+            >
+              {t("modify")}
             </Button>
           </div>
-
-          {form.getFieldValue('isBusinessCustomer') &&
-            form.getFieldValue('companyName') && (
-              <p className="text-sm font-medium">{form.getFieldValue('companyName')}</p>
-            )}
-
-          <p className="text-sm">
-            {form.getFieldValue('firstName')} {form.getFieldValue('lastName')}
-            {form.getFieldValue('isBusinessCustomer') && (
-              <span className="text-muted-foreground"> ({t('contact')})</span>
-            )}
+          {values.isBusinessCustomer && values.companyName && (
+            <p className="font-medium">{values.companyName}</p>
+          )}
+          <p>
+            {values.firstName} {values.lastName}
           </p>
-          <p className="text-muted-foreground text-sm">{form.getFieldValue('email')}</p>
-          <p className="text-muted-foreground text-sm">{form.getFieldValue('phone')}</p>
-          {form.getFieldValue('address') && (
-            <p className="text-muted-foreground text-sm">
-              {form.getFieldValue('address')}, {form.getFieldValue('postalCode')}{' '}
-              {form.getFieldValue('city')}
+          <p className="text-muted-foreground">{values.email}</p>
+          <p className="text-muted-foreground">{values.phone}</p>
+          {values.address && (
+            <p className="text-muted-foreground">
+              {values.address}, {values.postalCode} {values.city}
             </p>
           )}
-          {logisticsLabel ? (
-            <p className="text-muted-foreground text-sm">{logisticsLabel}</p>
-          ) : hasDeliveryLegs && (
-            <p className="text-muted-foreground text-sm">{t('deliveryOption')}</p>
-          )}
+          {logisticsLabel && <p className="text-muted-foreground">{logisticsLabel}</p>}
         </div>
 
-        <div className="space-y-3">
-          {advanceNoticeIssue && (
-            <Alert variant="error">
-              <AlertTitle>{t('advanceNotice.title')}</AlertTitle>
-              <AlertDescription className="space-y-3">
-                <p>
-                  {t('advanceNotice.guidance', {
-                    duration: advanceNoticeIssue.duration,
-                    minimum: advanceNoticeIssue.minimumStart,
-                  })}
-                </p>
-                <p>{t('advanceNotice.preserved')}</p>
-                <Button type="button" size="sm" onClick={onEditDates}>
-                  {t('advanceNotice.editDates')}
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
+        {advanceNoticeIssue && (
+          <Alert variant="warning">
+            <AlertTitle>{t("advanceNotice.title")}</AlertTitle>
+            <AlertDescription className="flex flex-col gap-3">
+              <p>
+                {t("advanceNotice.guidance", {
+                  duration: advanceNoticeIssue.duration,
+                  minimum: advanceNoticeIssue.minimumStart,
+                })}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="w-fit"
+                onClick={onEditDates}
+              >
+                {t("advanceNotice.editDates")}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
-          {showInsuranceUi && tulipInsurance.mode === 'required' && (
-            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-              {t('insuranceRequiredNotice')}
-            </div>
-          )}
+        <CheckoutAdvisorGateCard gate={advisorGate} />
+        {advisorGate.isRequired && <CheckoutAdvisorVerificationPanel gate={advisorGate} />}
 
-          {showInsuranceUi && tulipInsurance.mode === 'optional' && (
-            <form.Field name="tulipInsuranceOptIn">
-              {(field) => (
-                <div className="flex flex-row items-start space-y-0 space-x-3 rounded-lg border p-4">
+        {insuranceMode !== "no_public" && (
+          <form.Field name="tulipInsuranceOptIn">
+            {(field) => (
+              <InsuranceOptionCard
+                mode={insuranceMode}
+                preview={tulipQuote.preview}
+                isLoading={tulipQuote.isLoading}
+                quotedAmount={tulipQuote.quotedAmount}
+                checked={insuranceMode === "required" ? true : field.state.value}
+                onCheckedChange={field.handleChange}
+                fieldId={field.name}
+              />
+            )}
+          </form.Field>
+        )}
+
+        {hasActivePromoCodes && (
+          <CheckoutPromoCode
+            promo={promo.promo}
+            discountAmount={promo.discountAmount}
+            isValidating={promo.isValidating}
+            validationError={promo.validationError}
+            onValidate={promo.validate}
+            onRemove={promo.remove}
+            onClearError={promo.clearError}
+          />
+        )}
+
+        {totalDeposit > 0 && (
+          <CheckoutDeposit amount={totalDeposit} reservationMode={reservationMode} />
+        )}
+
+        <form.Field name="acceptCgv">
+          {(field) => {
+            const showError = submissionAttempts > 0 && field.state.meta.errors.length > 0;
+            return (
+              <div className="flex flex-col gap-1">
+                <div className="flex min-h-11 items-center gap-3">
                   <Checkbox
                     id={field.name}
                     checked={field.state.value}
                     onCheckedChange={(checked) => field.handleChange(Boolean(checked))}
+                    aria-invalid={showError}
                   />
-                  <div className="space-y-1 leading-none">
-                    <Label htmlFor={field.name} className="cursor-pointer">
-                      {t('insuranceOptionalLabel')}
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      {t('insuranceOptionalHelp')}
-                    </p>
-                  </div>
+                  <Label htmlFor={field.name} className="text-sm font-normal">
+                    {t.rich("acceptCgvRich", {
+                      terms: (chunks) => (
+                        <StorefrontLink
+                          href="/terms"
+                          target="_blank"
+                          className="underline underline-offset-2"
+                        >
+                          {chunks}
+                        </StorefrontLink>
+                      ),
+                    })}
+                  </Label>
                 </div>
-              )}
-            </form.Field>
-          )}
-
-          {cgv && (
-            <div className="max-h-32 overflow-y-auto rounded-lg border p-3 text-xs">
-              <div
-                className="prose prose-xs dark:prose-invert prose-headings:text-sm prose-headings:font-semibold prose-headings:my-1 prose-p:my-1 prose-p:text-muted-foreground prose-a:text-primary max-w-none"
-                dangerouslySetInnerHTML={{ __html: cgv }}
-              />
-            </div>
-          )}
-
-          <form.Subscribe selector={(state) => state.submissionAttempts}>
-            {(submissionAttempts) => (
-              <form.Field name="acceptCgv">
-                {(field) => (
-                  <div className="flex flex-row items-start space-y-0 space-x-3 rounded-lg border p-4">
-                    <Checkbox
-                      id={field.name}
-                      checked={field.state.value}
-                      onCheckedChange={(checked) => field.handleChange(Boolean(checked))}
-                    />
-                    <div className="space-y-1 leading-none">
-                      <Label htmlFor={field.name} className="cursor-pointer">
-                        {t('acceptCgv')}
-                      </Label>
-                      {submissionAttempts > 0 && field.state.meta.errors.length > 0 && (
-                        <p className="text-destructive text-sm">
-                          {getFieldError(field.state.meta.errors[0])}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                {showError && (
+                  <p className="text-xs text-destructive">
+                    {getFieldError(field.state.meta.errors[0])}
+                  </p>
                 )}
-              </form.Field>
-            )}
-          </form.Subscribe>
-        </div>
+              </div>
+            );
+          }}
+        </form.Field>
 
-        <div className="flex gap-3 pt-2">
-          <Button type="button" variant="outline" onClick={onBack}>
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            {t('back')}
+        <StepActions className={STEP_ACTIONS_CLASS}>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={onBack}
+            className="h-12 lg:h-10"
+          >
+            <ChevronLeft data-slot="icon" />
+            {t("back")}
           </Button>
-
-          <form.Subscribe selector={(state) => state.isSubmitting}>
-            {(isSubmitting) => (
-              <Button
-                type="submit"
-                id={CHECKOUT_SUBMIT_ID}
-                size="lg"
-                className="flex-1"
-                isPending={isSubmitting}
-                pendingContent={t('processing')}
-                disabled={!canSubmitCheckout}
-              >
-                {reservationMode === 'payment' ? (
-                  <>
-                    <CreditCard data-slot="icon" />
-                    {depositPercentage < 100
-                      ? t('payDeposit', {
-                          amount: formatCurrency(
-                            Math.round((subtotal - discountAmount) * depositPercentage) / 100,
-                            currency,
-                          ),
-                        })
-                      : `${t('pay')} ${formatCurrency(totalWithDelivery, currency)}`}
-                  </>
-                ) : (
-                  <>
-                    <Send data-slot="icon" />
-                    {t('submitRequest')}
-                  </>
-                )}
-              </Button>
-            )}
-          </form.Subscribe>
-        </div>
-
-        {showVerificationHint && (
-          <p className="text-center text-xs text-muted-foreground">
-            {t('advisor.completeVerificationHint')}
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+          <div className="flex min-w-0 flex-1 flex-col items-stretch gap-1 lg:flex-none lg:items-end">
+            <Button
+              type="submit"
+              id={CHECKOUT_SUBMIT_ID}
+              size="lg"
+              isPending={isSubmitting}
+              pendingContent={t("processing")}
+              disabled={blockedReason !== null}
+              className="h-12 lg:h-10"
+            >
+              {submitLabel.kind === "request" ? (
+                <Send data-slot="icon" />
+              ) : (
+                <CreditCard data-slot="icon" />
+              )}
+              {buttonLabel}
+            </Button>
+            {blockedMessage && <p className="text-xs text-muted-foreground">{blockedMessage}</p>}
+          </div>
+        </StepActions>
+      </div>
+    );
+  },
+});

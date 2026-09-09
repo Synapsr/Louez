@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import {
   type ReactNode,
@@ -9,31 +9,31 @@ import {
   useMemo,
   useRef,
   useState,
-} from 'react';
+} from "react";
 
-import { useChat } from '@ai-sdk/react';
-import type { UIMessage } from '@ai-sdk/react';
+import { useChat } from "@ai-sdk/react";
+import type { UIMessage } from "@ai-sdk/react";
+import { useQuery } from "@tanstack/react-query";
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+
+import type { AdvisorCartSnapshot } from "@louez/validations";
+
+import { useCartActions, useCartState } from "@/contexts/cart-context";
+import { VERIFICATION_KICKOFF_PROMPT, isVerificationKickoff } from "@/lib/ai/advisor/kickoff";
 import {
-  DefaultChatTransport,
-  lastAssistantMessageIsCompleteWithToolCalls,
-} from 'ai';
-import { z } from 'zod';
-
-import type { AdvisorCartSnapshot } from '@louez/validations';
-
-import {
-  VERIFICATION_KICKOFF_PROMPT,
-  isVerificationKickoff,
-} from '@/lib/ai/advisor/kickoff';
-import { useCart } from '@/contexts/cart-context';
-import { orpcClient } from '@/lib/orpc';
-import type { RequiredAccessoryCartInput } from '@/lib/utils/cart-required-accessories';
+  findCartPeriodConflict,
+  parseAdvisorAddToCartInput,
+  toAdvisorCartLine,
+} from "@/lib/ai/advisor/util.add-to-cart";
+import { resolveRequiredAccessories } from "@/lib/ai/advisor/util.resolve-required-accessories";
+import { orpcClient } from "@/lib/orpc";
+import { storefrontQueries } from "@/lib/queries/storefront.queries";
 
 /**
  * Why the widget was opened. 'checkout' surfaces the reservation-validation
  * suggestion chip (required/recommended modes).
  */
-export type AdvisorIntent = 'checkout' | null;
+export type AdvisorIntent = "checkout" | null;
 
 /**
  * Stable controls + conversation identity. Its value only changes on genuine
@@ -45,7 +45,7 @@ interface AdvisorControlValue {
   /** Whether the advisor is enabled for this store (widget rendered). */
   enabled: boolean;
   isOpen: boolean;
-  open: (options?: { intent?: 'checkout' }) => void;
+  open: (options?: { intent?: "checkout" }) => void;
   close: () => void;
   intent: AdvisorIntent;
   clearIntent: () => void;
@@ -87,121 +87,69 @@ interface AdvisorRuntimeValue {
   welcomeMessage?: string;
 }
 
-const AdvisorControlContext = createContext<AdvisorControlValue | undefined>(
-  undefined,
-);
-const AdvisorRuntimeContext = createContext<AdvisorRuntimeValue | undefined>(
-  undefined,
-);
+const AdvisorControlContext = createContext<AdvisorControlValue | undefined>(undefined);
+const AdvisorRuntimeContext = createContext<AdvisorRuntimeValue | undefined>(undefined);
 
 const storageKey = (storeSlug: string) => `louez_advisor_${storeSlug}`;
 
-const addToCartInputSchema = z.object({
-  productId: z.string(),
-  quantity: z.number().int().min(1).max(999),
-  startDate: z.string(),
-  endDate: z.string(),
-});
-
 /** Strict ISO 8601 (with offset) or undefined — never an invalid string. */
-function toStrictIso(value: string | null): string | undefined {
+const toStrictIso = (value: string | null): string | undefined => {
   if (!value) return undefined;
   const time = Date.parse(value);
   return Number.isNaN(time) ? undefined : new Date(time).toISOString();
-}
+};
 
-/**
- * Resolves the required accessories of a product through the cart endpoint so
- * the advisor adds them with server-priced, server-checked lines. Accessories
- * that fail to resolve are dropped: the checkout validation then rejects the
- * incomplete cart rather than the advisor inventing a price.
- */
-async function resolveRequiredAccessories(params: {
-  requiredAccessories: Array<{ productId: string; quantity: number }>;
-  parentQuantity: number;
-  startDate: string;
-  endDate: string;
-}): Promise<RequiredAccessoryCartInput[]> {
-  const { requiredAccessories, parentQuantity, startDate, endDate } = params;
-  const requiredQuantityByProductId = new Map(
-    requiredAccessories.map((accessory) => [
-      accessory.productId,
-      Math.max(1, accessory.quantity),
-    ]),
+/** The `record_qualification` tool answered and validated the conversation. */
+const isValidatedQualification = (part: UIMessage["parts"][number]): boolean => {
+  if (part.type !== "tool-record_qualification" || part.state !== "output-available") {
+    return false;
+  }
+  const output: unknown = part.output;
+  return (
+    typeof output === "object" &&
+    output !== null &&
+    "validated" in output &&
+    output.validated === true
   );
+};
 
-  const resolved = await orpcClient.storefront.cart.resolve({
-    lines: requiredAccessories.map((accessory) => ({
-      lineId: `advisor-required-${accessory.productId}`,
-      productId: accessory.productId,
-      quantity: Math.max(1, accessory.quantity) * parentQuantity,
-      startDate,
-      endDate,
-    })),
-  });
-
-  return resolved.lines.flatMap((line) => {
-    const requiredQuantity = requiredQuantityByProductId.get(line.productId);
-    if (line.status !== 'resolved' || !requiredQuantity) {
-      return [];
-    }
-
-    return [
-      {
-        productId: line.productId,
-        productName: line.productName,
-        productImage: line.productImage,
-        price: line.price,
-        deposit: line.deposit,
-        maxQuantity: line.maxQuantity,
-        requiredQuantity,
-        pricingKind: line.pricingKind,
-        pricingMode: line.pricingMode,
-        productPricingMode: line.productPricingMode,
-        basePeriodMinutes: line.basePeriodMinutes,
-        pricingTiers: line.pricingTiers,
-      },
-    ];
-  });
-}
-
-export function AdvisorProvider({
-  children,
-  storeSlug,
-  enabled,
-  displayName,
-  welcomeMessage,
-}: {
+interface AdvisorProviderProps {
   children: ReactNode;
   storeSlug: string;
   enabled: boolean;
   displayName?: string;
   welcomeMessage?: string;
-}) {
+}
+
+export const AdvisorProvider = ({
+  children,
+  storeSlug,
+  enabled,
+  displayName,
+  welcomeMessage,
+}: AdvisorProviderProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [intent, setIntent] = useState<AdvisorIntent>(null);
-  const [conversationId, setConversationIdState] = useState<string | null>(
-    null,
-  );
+  const [conversationId, setConversationIdState] = useState<string | null>(null);
   const [validationVersion, setValidationVersion] = useState(0);
   const [inlineActive, setInlineActive] = useState(false);
-  // False until the initial conversation state is known (no stored id, or a
-  // rehydration attempt has finished) — gates the checkout auto-start so it
-  // never races the transcript fetch on reload.
-  const [hydrated, setHydrated] = useState(false);
+  // False until localStorage has been read: gates the hydration query and
+  // the checkout auto-start so neither races the stored conversation id.
+  const [storageRead, setStorageRead] = useState(false);
+  // Conversation whose transcript is already in `useChat` (fetched, or
+  // written locally), so the hydration query does not run for it.
+  const [hydratedConversationId, setHydratedConversationId] = useState<string | null>(null);
 
-  const cart = useCart();
+  const cartState = useCartState();
+  const { addItem } = useCartActions();
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(storageKey(storeSlug));
-      setConversationIdState(stored);
-      // No stored conversation → nothing to rehydrate; hydration is done.
-      if (!stored) setHydrated(true);
+      setConversationIdState(localStorage.getItem(storageKey(storeSlug)));
     } catch {
       // Storage unavailable — the conversation just won't persist
-      setHydrated(true);
     }
+    setStorageRead(true);
   }, [storeSlug]);
 
   const setConversationId = useCallback(
@@ -221,7 +169,7 @@ export function AdvisorProvider({
   );
 
   const open = useCallback(
-    (options?: { intent?: 'checkout' }) => {
+    (options?: { intent?: "checkout" }) => {
       if (!enabled) return;
       if (options?.intent) setIntent(options.intent);
       setIsOpen(true);
@@ -231,28 +179,22 @@ export function AdvisorProvider({
 
   const close = useCallback(() => setIsOpen(false), []);
   const clearIntent = useCallback(() => setIntent(null), []);
-  const notifyValidated = useCallback(
-    () => setValidationVersion((version) => version + 1),
-    [],
-  );
+  const notifyValidated = useCallback(() => setValidationVersion((version) => version + 1), []);
 
   // Latest state via refs: the transport body and tool handler run outside the
   // render cycle and must never see stale closures.
   const conversationIdRef = useRef<string | null>(conversationId);
   conversationIdRef.current = conversationId;
 
-  const cartRef = useRef(cart);
-  cartRef.current = cart;
+  const cartStateRef = useRef(cartState);
+  cartStateRef.current = cartState;
 
   // Capture the conversation id issued by the API on first message.
   const customFetch = useCallback(
     async (input: RequestInfo | URL, init?: RequestInit) => {
       const res = await fetch(input, init);
-      const newConversationId = res.headers.get('X-Conversation-Id');
-      if (
-        newConversationId &&
-        newConversationId !== conversationIdRef.current
-      ) {
+      const newConversationId = res.headers.get("X-Conversation-Id");
+      if (newConversationId && newConversationId !== conversationIdRef.current) {
         setConversationId(newConversationId);
       }
       return res;
@@ -263,13 +205,10 @@ export function AdvisorProvider({
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
-        api: '/api/storefront/chat',
-        headers: () => ({ 'x-store-slug': storeSlug }),
-        body: (): {
-          conversationId: string | undefined;
-          cart: AdvisorCartSnapshot;
-        } => {
-          const currentCart = cartRef.current;
+        api: "/api/storefront/chat",
+        headers: () => ({ "x-store-slug": storeSlug }),
+        body: (): { conversationId: string | undefined; cart: AdvisorCartSnapshot } => {
+          const currentCart = cartStateRef.current;
           return {
             conversationId: conversationIdRef.current ?? undefined,
             cart: {
@@ -296,54 +235,34 @@ export function AdvisorProvider({
    */
   const handleAddToCart = useCallback(
     async (rawInput: unknown) => {
-      const parsed = addToCartInputSchema.safeParse(rawInput);
-      if (!parsed.success) {
-        return { success: false as const, reason: 'invalid_input' };
+      const parsed = parseAdvisorAddToCartInput(rawInput);
+      if (!parsed.ok) {
+        return { success: false as const, reason: parsed.reason };
       }
-      const { productId, quantity } = parsed.data;
-      // Models sometimes emit datetimes without a timezone offset — normalize
-      // to strict ISO 8601, which the cart endpoints require.
-      const startMs = Date.parse(parsed.data.startDate);
-      const endMs = Date.parse(parsed.data.endDate);
-      if (Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs) {
-        return { success: false as const, reason: 'invalid_dates' };
-      }
-      const startDate = new Date(startMs).toISOString();
-      const endDate = new Date(endMs).toISOString();
-      const currentCart = cartRef.current;
+      const { request } = parsed;
+      const currentCart = cartStateRef.current;
 
-      // The cart has one global rental period: adding with different dates to a
-      // non-empty cart is a conflict the model must resolve with the customer,
-      // never a silent override.
-      if (
-        currentCart.items.length > 0 &&
-        currentCart.globalStartDate &&
-        currentCart.globalEndDate &&
-        (new Date(currentCart.globalStartDate).getTime() !==
-          new Date(startDate).getTime() ||
-          new Date(currentCart.globalEndDate).getTime() !==
-            new Date(endDate).getTime())
-      ) {
-        return {
-          success: false as const,
-          reason: 'date_conflict',
-          cartStartDate: currentCart.globalStartDate,
-          cartEndDate: currentCart.globalEndDate,
-        };
+      const conflict = findCartPeriodConflict(
+        {
+          hasItems: currentCart.items.length > 0,
+          startDate: currentCart.globalStartDate,
+          endDate: currentCart.globalEndDate,
+        },
+        request,
+      );
+      if (conflict) {
+        return { success: false as const, reason: "date_conflict", ...conflict };
       }
 
       try {
         const resolved = await orpcClient.storefront.cart.resolve({
-          lines: [
-            { lineId: 'advisor-add', productId, quantity, startDate, endDate },
-          ],
+          lines: [{ lineId: "advisor-add", ...request }],
         });
         const line = resolved.lines[0];
-        if (!line || line.status !== 'resolved') {
+        if (!line || line.status !== "resolved") {
           return {
             success: false as const,
-            reason:
-              line?.status === 'unavailable' ? line.reason : 'unavailable',
+            reason: line?.status === "unavailable" ? line.reason : "unavailable",
           };
         }
 
@@ -353,70 +272,39 @@ export function AdvisorProvider({
           line.requiredAccessories.length > 0
             ? await resolveRequiredAccessories({
                 requiredAccessories: line.requiredAccessories,
-                parentQuantity: quantity,
-                startDate,
-                endDate,
+                parentQuantity: request.quantity,
+                startDate: request.startDate,
+                endDate: request.endDate,
               })
             : [];
 
-        currentCart.addItem(
-          {
-            productId,
-            productName: line.productName,
-            productImage: line.productImage,
-            price: line.price,
-            deposit: line.deposit,
-            quantity,
-            maxQuantity: line.maxQuantity,
-            pricingKind: line.pricingKind,
-            pricingTiers: line.pricingTiers,
-            basePeriodMinutes: line.basePeriodMinutes,
-            enforceStrictTiers: line.enforceStrictTiers,
-            productPricingMode: line.productPricingMode,
-            seasonalPricings: line.seasonalPricings,
-            pricingMode: line.pricingMode,
-            requiredAccessories,
-          },
-          storeSlug,
-        );
-        // AFTER addItem: setGlobalDates remaps every line (the freshly added
-        // one included) through a state updater, overriding whatever period
-        // addItem inherited from a stale render closure.
-        if (currentCart.items.length === 0) {
-          currentCart.setGlobalDates(startDate, endDate);
-        }
+        // The period travels with the line: an empty cart adopts it, a cart
+        // with the same period keeps it (the conflict check ran above).
+        addItem(toAdvisorCartLine(line, request, requiredAccessories));
 
         return {
           success: true as const,
           productName: line.productName,
           // addItem merges same-product lines and caps at availability — tell
           // the model so it never overstates what is in the cart.
-          requestedQuantity: quantity,
+          requestedQuantity: request.quantity,
           maxAvailableQuantity: line.maxQuantity,
         };
       } catch {
-        return { success: false as const, reason: 'error' };
+        return { success: false as const, reason: "error" };
       }
     },
-    [storeSlug],
+    [addItem],
   );
 
-  const {
-    messages,
-    sendMessage,
-    status,
-    setMessages,
-    error,
-    clearError,
-    addToolResult,
-  } = useChat({
+  const { messages, sendMessage, status, setMessages, error, clearError, addToolResult } = useChat({
     transport,
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     async onToolCall({ toolCall }) {
-      if (toolCall.toolName === 'add_to_cart') {
+      if (toolCall.toolName === "add_to_cart") {
         const output = await handleAddToCart(toolCall.input);
         addToolResult({
-          tool: 'add_to_cart',
+          tool: "add_to_cart",
           toolCallId: toolCall.toolCallId,
           output,
         });
@@ -428,48 +316,55 @@ export function AdvisorProvider({
   messagesRef.current = messages;
 
   // Rehydrate the thread after a page reload: the conversation id survives in
-  // localStorage but useChat state does not. A stale/unknown id resets to a
-  // fresh conversation instead of erroring. Inert when the advisor is off so a
-  // disabled store fires no chat network calls.
-  const hydratedConversationRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!enabled) {
-      setHydrated(true);
-      return;
-    }
-    if (!conversationId || hydratedConversationRef.current === conversationId) {
-      return;
-    }
-    hydratedConversationRef.current = conversationId;
-    if (messagesRef.current.length > 0) {
-      setHydrated(true);
-      return;
-    }
+  // localStorage but useChat state does not. Inert when the advisor is off so
+  // a disabled store fires no chat network calls, and skipped when the thread
+  // already holds messages (an id issued mid-conversation).
+  const needsHydration =
+    enabled &&
+    storageRead &&
+    conversationId !== null &&
+    hydratedConversationId !== conversationId &&
+    messages.length === 0;
 
-    let cancelled = false;
-    orpcClient.storefront.aiAdvisor
-      .getMessages({ conversationId })
-      .then(({ messages: stored }) => {
-        if (cancelled || stored.length === 0) return;
-        if (messagesRef.current.length > 0) return;
+  const storedMessagesQuery = useQuery({
+    ...storefrontQueries.advisorMessages(conversationId ?? ""),
+    enabled: needsHydration,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!needsHydration || conversationId === null) return;
+
+    if (storedMessagesQuery.isSuccess) {
+      const stored = storedMessagesQuery.data.messages;
+      if (stored.length > 0 && messagesRef.current.length === 0) {
         setMessages(
           stored.map((message) => ({
             id: message.id,
             role: message.role,
-            parts: [{ type: 'text' as const, text: message.content }],
+            parts: [{ type: "text" as const, text: message.content }],
           })),
         );
-      })
-      .catch(() => {
-        if (!cancelled) setConversationId(null);
-      })
-      .finally(() => {
-        if (!cancelled) setHydrated(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, conversationId, setConversationId, setMessages]);
+      }
+      setHydratedConversationId(conversationId);
+      return;
+    }
+
+    // A stale/unknown id resets to a fresh conversation instead of erroring.
+    if (storedMessagesQuery.isError) {
+      setConversationId(null);
+    }
+  }, [
+    needsHydration,
+    conversationId,
+    storedMessagesQuery.isSuccess,
+    storedMessagesQuery.isError,
+    storedMessagesQuery.data,
+    setMessages,
+    setConversationId,
+  ]);
+
+  const isHydrating = !storageRead || (needsHydration && storedMessagesQuery.isPending);
 
   // Surface advisor validation to the checkout gate (record_qualification tool
   // output with validated=true). This is the trigger that flips the inline
@@ -479,9 +374,8 @@ export function AdvisorProvider({
     for (const message of messages) {
       for (const part of message.parts) {
         if (
-          part.type === 'tool-record_qualification' &&
-          part.state === 'output-available' &&
-          (part.output as { validated?: boolean } | undefined)?.validated &&
+          isValidatedQualification(part) &&
+          "toolCallId" in part &&
           !notifiedValidationsRef.current.has(part.toolCallId)
         ) {
           notifiedValidationsRef.current.add(part.toolCallId);
@@ -491,7 +385,7 @@ export function AdvisorProvider({
     }
   }, [messages, notifyValidated]);
 
-  const isLoading = status === 'submitted' || status === 'streaming';
+  const isLoading = status === "submitted" || status === "streaming";
 
   const send = useCallback(
     (text: string) => {
@@ -514,6 +408,7 @@ export function AdvisorProvider({
 
   const restart = useCallback(() => {
     setConversationId(null);
+    setHydratedConversationId(null);
     setMessages([]);
     clearError();
   }, [setConversationId, setMessages, clearError]);
@@ -552,9 +447,9 @@ export function AdvisorProvider({
     () => ({
       messages,
       isLoading,
-      isHydrating: !hydrated,
+      isHydrating,
       hasError: Boolean(error),
-      errorCode: error?.message?.trim() ?? '',
+      errorCode: error?.message?.trim() ?? "",
       send,
       startVerification,
       restart,
@@ -564,7 +459,7 @@ export function AdvisorProvider({
     [
       messages,
       isLoading,
-      hydrated,
+      isHydrating,
       error,
       send,
       startVerification,
@@ -576,25 +471,23 @@ export function AdvisorProvider({
 
   return (
     <AdvisorControlContext.Provider value={control}>
-      <AdvisorRuntimeContext.Provider value={runtime}>
-        {children}
-      </AdvisorRuntimeContext.Provider>
+      <AdvisorRuntimeContext.Provider value={runtime}>{children}</AdvisorRuntimeContext.Provider>
     </AdvisorControlContext.Provider>
   );
-}
+};
 
-export function useAdvisor() {
+export const useAdvisor = (): AdvisorControlValue => {
   const context = useContext(AdvisorControlContext);
   if (context === undefined) {
-    throw new Error('useAdvisor must be used within an AdvisorProvider');
+    throw new Error("useAdvisor must be used within an AdvisorProvider");
   }
   return context;
-}
+};
 
-export function useAdvisorRuntime() {
+export const useAdvisorRuntime = (): AdvisorRuntimeValue => {
   const context = useContext(AdvisorRuntimeContext);
   if (context === undefined) {
-    throw new Error('useAdvisorRuntime must be used within an AdvisorProvider');
+    throw new Error("useAdvisorRuntime must be used within an AdvisorProvider");
   }
   return context;
-}
+};

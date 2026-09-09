@@ -67,6 +67,8 @@ const createStoreSettingsSchema = (
     // Settings
     reservationMode: z.enum(["payment", "request"]),
     pendingBlocksAvailability: z.boolean(),
+    automaticExtensions: z.boolean(),
+    maxExtensionDays: z.number().int().min(1).max(365).nullable(),
     onlinePaymentDepositPercentage: z.number().int().min(10).max(100),
     minRentalMinutes: z.number().int().min(0),
     maxRentalMinutes: z.number().int().min(1).nullable(),
@@ -112,6 +114,8 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
   const settings: StoreSettings = {
     reservationMode: store.settings?.reservationMode ?? "payment",
     pendingBlocksAvailability: store.settings?.pendingBlocksAvailability ?? true,
+    automaticExtensions: store.settings?.automaticExtensions ?? true,
+    maxExtensionDays: store.settings?.maxExtensionDays ?? null,
     onlinePaymentDepositPercentage: store.settings?.onlinePaymentDepositPercentage ?? 100,
     minRentalMinutes: store.settings?.minRentalMinutes ?? 60,
     maxRentalMinutes: store.settings?.maxRentalMinutes ?? null,
@@ -155,6 +159,8 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
       billingCountry: billingAddress.country || defaultCountry,
       reservationMode: settings.reservationMode,
       pendingBlocksAvailability: settings.pendingBlocksAvailability ?? true,
+      automaticExtensions: settings.automaticExtensions ?? true,
+      maxExtensionDays: settings.maxExtensionDays ?? null,
       onlinePaymentDepositPercentage: settings.onlinePaymentDepositPercentage ?? 100,
       minRentalMinutes: getMinRentalMinutes(settings as StoreSettings),
       maxRentalMinutes: getMaxRentalMinutes(settings as StoreSettings),
@@ -212,6 +218,32 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
             onStripeRequired={() => setIsStripeRequiredDialogOpen(true)}
             units={units}
           />
+          <section className="space-y-4 rounded-xl border bg-card p-6">
+            <form.AppField name="automaticExtensions">
+              {(field) => (
+                <field.Switch
+                  label={t("extensions.title")}
+                  description={t("extensions.description")}
+                />
+              )}
+            </form.AppField>
+            <form.AppField name="maxExtensionDays">
+              {(field) => (
+                <field.Input
+                  type="number"
+                  min={1}
+                  max={365}
+                  value={field.state.value ?? ""}
+                  onChange={(event) =>
+                    field.handleChange(
+                      event.target.value === "" ? null : Number(event.target.value),
+                    )
+                  }
+                  label={t("extensions.maxDays")}
+                />
+              )}
+            </form.AppField>
+          </section>
 
           <StoreSettingsBillingSection
             form={form}

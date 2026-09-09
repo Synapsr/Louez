@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from "drizzle-orm";
 
 import {
   db,
@@ -6,14 +6,14 @@ import {
   productSeasonalPricingTiers,
   productAccessories,
   products,
-  stores,
-} from '@louez/db';
+} from "@louez/db";
 import type {
+  CombinationResolutionResult,
   PricingKind,
   PricingMode,
   StockKind,
   UnitAttributes,
-} from '@louez/types';
+} from "@louez/types";
 import {
   combineStockQuantityLimits,
   divideStockQuantityLimit,
@@ -21,14 +21,19 @@ import {
   type SeasonalPricingConfig,
   type StockQuantityLimit,
   matchesSelectedAttributes,
-} from '@louez/utils';
+} from "@louez/utils";
 
-import { getStorefrontAvailability } from './availability';
-import { getCartRequestedQuantity } from './cart-demand';
-import { ApiServiceError } from './errors';
+import {
+  type AvailabilityMemo,
+  type StorefrontStoreRef,
+  createAvailabilityMemo,
+  getStorefrontAvailability,
+  resolveStorefrontStore,
+} from "./availability";
+import { getCartRequestedQuantity } from "./cart-demand";
+import { resolveLineCombination } from "./combination-resolver";
 
-interface ResolveStorefrontCartParams {
-  storeSlug: string;
+type ResolveStorefrontCartParams = StorefrontStoreRef & {
   lines: Array<{
     lineId: string;
     parentLineId?: string;
@@ -38,11 +43,12 @@ interface ResolveStorefrontCartParams {
     endDate: string;
     selectedAttributes?: UnitAttributes;
   }>;
-}
+  memo?: AvailabilityMemo;
+};
 
 type CartLineResolution =
   | {
-      status: 'resolved';
+      status: "resolved";
       lineId: string;
       productId: string;
       productName: string;
@@ -73,15 +79,18 @@ type CartLineResolution =
         price: number | null;
       }>;
       seasonalPricings?: SeasonalPricingConfig[];
+      /**
+       * Unit combination the line books, resolved with the same rule as
+       * `resolveStorefrontCombination`; null when no single combination holds
+       * the whole quantity.
+       */
+      combination: CombinationResolutionResult | null;
     }
   | {
-      status: 'unavailable';
+      status: "unavailable";
       lineId: string;
       productId: string;
-      reason:
-        | 'product_unavailable'
-        | 'insufficient_stock'
-        | 'required_accessory_unavailable';
+      reason: "product_unavailable" | "insufficient_stock" | "required_accessory_unavailable";
       stockKind?: StockKind;
       maxQuantity?: number;
       parentLineId?: string;
@@ -93,7 +102,7 @@ function getPrimaryProductImage(images: unknown): string | null {
   }
 
   const image = images.find(
-    (value): value is string => typeof value === 'string' && value.length > 0,
+    (value): value is string => typeof value === "string" && value.length > 0,
   );
   return image || null;
 }
@@ -112,23 +121,13 @@ async function getSeasonalPricings(productIds: string[]) {
     return new Map<string, SeasonalPricingConfig[]>();
   }
 
-  const seasonalPricingIds = seasonalPricingsRaw.map(
-    (seasonalPricing) => seasonalPricing.id,
-  );
+  const seasonalPricingIds = seasonalPricingsRaw.map((seasonalPricing) => seasonalPricing.id);
   const seasonalPricingTiersRaw = await db
     .select()
     .from(productSeasonalPricingTiers)
-    .where(
-      inArray(
-        productSeasonalPricingTiers.seasonalPricingId,
-        seasonalPricingIds,
-      ),
-    );
+    .where(inArray(productSeasonalPricingTiers.seasonalPricingId, seasonalPricingIds));
 
-  const tiersBySeasonalPricingId = new Map<
-    string,
-    typeof seasonalPricingTiersRaw
-  >();
+  const tiersBySeasonalPricingId = new Map<string, typeof seasonalPricingTiersRaw>();
   for (const tier of seasonalPricingTiersRaw) {
     const tiers = tiersBySeasonalPricingId.get(tier.seasonalPricingId) || [];
     tiers.push(tier);
@@ -146,24 +145,30 @@ async function getSeasonalPricings(productIds: string[]) {
       startDate: seasonalPricing.startDate,
       endDate: seasonalPricing.endDate,
       basePrice: Number(seasonalPricing.price),
-      tiers: tiers
-        .filter(
-          (tier) => tier.minDuration !== null && tier.discountPercent !== null,
-        )
-        .map((tier) => ({
-          id: tier.id,
-          minDuration: tier.minDuration!,
-          discountPercent: Number(tier.discountPercent!),
-          displayOrder: tier.displayOrder ?? 0,
-        })),
-      rates: tiers
-        .filter((tier) => tier.period !== null && tier.price !== null)
-        .map((tier) => ({
-          id: tier.id,
-          period: tier.period!,
-          price: Number(tier.price!),
-          displayOrder: tier.displayOrder ?? 0,
-        })),
+      tiers: tiers.flatMap((tier) =>
+        tier.minDuration !== null && tier.discountPercent !== null
+          ? [
+              {
+                id: tier.id,
+                minDuration: tier.minDuration,
+                discountPercent: Number(tier.discountPercent),
+                displayOrder: tier.displayOrder ?? 0,
+              },
+            ]
+          : [],
+      ),
+      rates: tiers.flatMap((tier) =>
+        tier.period !== null && tier.price !== null
+          ? [
+              {
+                id: tier.id,
+                period: tier.period,
+                price: Number(tier.price),
+                displayOrder: tier.displayOrder ?? 0,
+              },
+            ]
+          : [],
+      ),
     });
 
     byProductId.set(seasonalPricing.productId, current);
@@ -175,26 +180,22 @@ async function getSeasonalPricings(productIds: string[]) {
 export async function resolveStorefrontCart(
   params: ResolveStorefrontCartParams,
 ): Promise<{ lines: CartLineResolution[] }> {
-  const { storeSlug, lines } = params;
+  const { lines } = params;
 
   if (lines.length === 0) {
     return { lines: [] };
   }
 
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, storeSlug),
-    columns: { id: true },
-  });
-
-  if (!store) {
-    throw new ApiServiceError('NOT_FOUND', 'errors.storeNotFound');
-  }
+  const store = await resolveStorefrontStore(params);
+  // Every period in the cart is computed once, and shared with the rest of
+  // the request when the caller hands its memo over.
+  const memo = params.memo ?? createAvailabilityMemo();
 
   const productIds = [...new Set(lines.map((line) => line.productId))];
   const storeProducts = await db.query.products.findMany({
     where: and(
       eq(products.storeId, store.id),
-      eq(products.status, 'active'),
+      eq(products.status, "active"),
       inArray(products.id, productIds),
     ),
     with: {
@@ -202,9 +203,7 @@ export async function resolveStorefrontCart(
     },
   });
 
-  const productsById = new Map(
-    storeProducts.map((product) => [product.id, product]),
-  );
+  const productsById = new Map(storeProducts.map((product) => [product.id, product]));
   const requiredAccessoryLinks = await db
     .select({
       parentProductId: productAccessories.productId,
@@ -220,10 +219,7 @@ export async function resolveStorefrontCart(
         inArray(productAccessories.productId, productIds),
       ),
     );
-  const requiredAccessoriesByParentId = new Map<
-    string,
-    typeof requiredAccessoryLinks
-  >();
+  const requiredAccessoriesByParentId = new Map<string, typeof requiredAccessoryLinks>();
   for (const link of requiredAccessoryLinks) {
     requiredAccessoriesByParentId.set(link.parentProductId, [
       ...(requiredAccessoriesByParentId.get(link.parentProductId) ?? []),
@@ -232,35 +228,20 @@ export async function resolveStorefrontCart(
   }
   const lineById = new Map(lines.map((line) => [line.lineId, line]));
   const availabilityProductIds = [
-    ...new Set([
-      ...productIds,
-      ...requiredAccessoryLinks.map((link) => link.accessoryProductId),
-    ]),
+    ...new Set([...productIds, ...requiredAccessoryLinks.map((link) => link.accessoryProductId)]),
   ];
   const seasonalPricingsByProductId = await getSeasonalPricings(
     storeProducts.map((product) => product.id),
   );
 
-  const availabilityByPeriod = new Map<
-    string,
-    Awaited<ReturnType<typeof getStorefrontAvailability>>
-  >();
-  const getAvailability = async (startDate: string, endDate: string) => {
-    const key = `${startDate}:${endDate}`;
-    const existing = availabilityByPeriod.get(key);
-    if (existing) {
-      return existing;
-    }
-
-    const availability = await getStorefrontAvailability({
-      storeSlug,
+  const getAvailability = (startDate: string, endDate: string) =>
+    getStorefrontAvailability({
+      store,
       startDate,
       endDate,
       productIds: availabilityProductIds,
+      memo,
     });
-    availabilityByPeriod.set(key, availability);
-    return availability;
-  };
 
   const resolvedLines: CartLineResolution[] = [];
 
@@ -268,11 +249,11 @@ export async function resolveStorefrontCart(
     const product = productsById.get(line.productId);
     if (!product) {
       resolvedLines.push({
-        status: 'unavailable',
+        status: "unavailable",
         lineId: line.lineId,
         parentLineId: line.parentLineId,
         productId: line.productId,
-        reason: 'product_unavailable',
+        reason: "product_unavailable",
       });
       continue;
     }
@@ -285,25 +266,14 @@ export async function resolveStorefrontCart(
       product.trackUnits && productAvailability?.combinations?.length
         ? productAvailability.combinations
             .filter((combination) =>
-              matchesSelectedAttributes(
-                line.selectedAttributes,
-                combination.selectedAttributes,
-              ),
+              matchesSelectedAttributes(line.selectedAttributes, combination.selectedAttributes),
             )
-            .reduce(
-              (sum, combination) => sum + combination.availableQuantity,
-              0,
-            )
+            .reduce((sum, combination) => sum + combination.availableQuantity, 0)
         : productAvailability
           ? productAvailability.availableQuantity
           : 0;
-    const requestedOwnQuantity = getCartRequestedQuantity(
-      lines,
-      line,
-      product.stockKind,
-    );
-    const requiredAccessories =
-      requiredAccessoriesByParentId.get(product.id) ?? [];
+    const requestedOwnQuantity = getCartRequestedQuantity(lines, line, product.stockKind);
+    const requiredAccessories = requiredAccessoriesByParentId.get(product.id) ?? [];
     const requiredAccessoryMaxQuantity = requiredAccessories.reduce<StockQuantityLimit>(
       (maximum, link) => {
         const accessoryAvailability = availability.products.find(
@@ -316,48 +286,31 @@ export async function resolveStorefrontCart(
             )
           : 0;
 
-        return combineStockQuantityLimits(
-          maximum,
-          accessoryLimit,
-        );
+        return combineStockQuantityLimits(maximum, accessoryLimit);
       },
       null,
     );
-    const maxQuantity = combineStockQuantityLimits(
-      ownMaxQuantity,
-      requiredAccessoryMaxQuantity,
-    );
-    const ownStockIsAvailable = isWithinStockQuantityLimit(
-      requestedOwnQuantity,
-      ownMaxQuantity,
-    );
+    const maxQuantity = combineStockQuantityLimits(ownMaxQuantity, requiredAccessoryMaxQuantity);
+    const ownStockIsAvailable = isWithinStockQuantityLimit(requestedOwnQuantity, ownMaxQuantity);
 
-    if (
-      !ownStockIsAvailable ||
-      !isWithinStockQuantityLimit(line.quantity, maxQuantity)
-    ) {
+    if (!ownStockIsAvailable || !isWithinStockQuantityLimit(line.quantity, maxQuantity)) {
       resolvedLines.push({
-        status: 'unavailable',
+        status: "unavailable",
         lineId: line.lineId,
         parentLineId: line.parentLineId,
         productId: line.productId,
         reason:
           ownStockIsAvailable &&
-          !isWithinStockQuantityLimit(
-            line.quantity,
-            requiredAccessoryMaxQuantity,
-          )
-            ? 'required_accessory_unavailable'
-            : 'insufficient_stock',
+          !isWithinStockQuantityLimit(line.quantity, requiredAccessoryMaxQuantity)
+            ? "required_accessory_unavailable"
+            : "insufficient_stock",
         stockKind: product.stockKind,
         ...(maxQuantity === null ? {} : { maxQuantity }),
       });
       continue;
     }
 
-    const parentLine = line.parentLineId
-      ? lineById.get(line.parentLineId)
-      : undefined;
+    const parentLine = line.parentLineId ? lineById.get(line.parentLineId) : undefined;
     const requiredLink = parentLine
       ? requiredAccessoryLinks.find(
           (link) =>
@@ -367,23 +320,20 @@ export async function resolveStorefrontCart(
       : undefined;
 
     resolvedLines.push({
-      status: 'resolved',
+      status: "resolved",
       lineId: line.lineId,
       productId: product.id,
       productName: product.name,
       productImage: getPrimaryProductImage(product.images),
       price: Number(product.price),
       deposit: Number(product.deposit || 0),
-      maxQuantity:
-        maxQuantity === null ? null : Math.max(1, maxQuantity),
+      maxQuantity: maxQuantity === null ? null : Math.max(1, maxQuantity),
       quantity: line.quantity,
       pricingKind: product.pricingKind,
       stockKind: product.stockKind,
       parentLineId: line.parentLineId,
       required: Boolean(requiredLink),
-      requiredQuantity: requiredLink
-        ? Math.max(1, requiredLink.quantity)
-        : null,
+      requiredQuantity: requiredLink ? Math.max(1, requiredLink.quantity) : null,
       requiredAccessories: requiredAccessories.map((link) => ({
         productId: link.accessoryProductId,
         required: true,
@@ -400,8 +350,15 @@ export async function resolveStorefrontCart(
         period: tier.period ?? null,
         price: tier.price !== null ? Number(tier.price) : null,
       })),
-      seasonalPricings:
-        seasonalPricingsByProductId.get(product.id) || undefined,
+      seasonalPricings: seasonalPricingsByProductId.get(product.id) || undefined,
+      combination: productAvailability
+        ? resolveLineCombination({
+            product,
+            availability: productAvailability,
+            quantity: line.quantity,
+            selectedAttributes: line.selectedAttributes,
+          })
+        : null,
     });
   }
 

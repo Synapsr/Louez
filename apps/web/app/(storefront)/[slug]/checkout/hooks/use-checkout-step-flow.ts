@@ -1,82 +1,81 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+"use client";
 
-import { getCheckoutStepIds } from '../utils';
-import type { CheckoutStep, StepId } from '../types';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 
-type StepDirection = 'forward' | 'backward';
+import type { StepId } from "../checkout.types";
+import { getCheckoutStepIds } from "../util.checkout-steps";
+
+type StepDirection = "forward" | "backward";
 
 interface UseCheckoutStepFlowParams {
   isDeliveryEnabled: boolean;
-  stepIcons: Record<StepId, CheckoutStep['icon']>;
   validateCurrentStep: (currentStep: StepId) => Promise<boolean>;
+  /** Element scrolled into view when the step changes. */
+  scrollTargetRef: RefObject<HTMLElement | null>;
 }
 
-export function useCheckoutStepFlow({
+export const useCheckoutStepFlow = ({
   isDeliveryEnabled,
-  stepIcons,
   validateCurrentStep,
-}: UseCheckoutStepFlowParams) {
-  const [currentStep, setCurrentStep] = useState<StepId>('contact');
-  const [stepDirection, setStepDirection] = useState<StepDirection>('forward');
+  scrollTargetRef,
+}: UseCheckoutStepFlowParams) => {
+  const [currentStep, setCurrentStep] = useState<StepId>("contact");
+  const [stepDirection, setStepDirection] = useState<StepDirection>("forward");
+  const previousStepRef = useRef<StepId>("contact");
 
-  const stepIds = useMemo(
-    () =>
-      getCheckoutStepIds({
-        isDeliveryEnabled,
-      }),
-    [isDeliveryEnabled],
-  );
+  const steps = useMemo(() => getCheckoutStepIds({ isDeliveryEnabled }), [isDeliveryEnabled]);
 
-  const steps = useMemo<CheckoutStep[]>(
-    () => stepIds.map((id) => ({ id, icon: stepIcons[id] })),
-    [stepIds, stepIcons],
-  );
+  const resolvedStep: StepId = steps.includes(currentStep) ? currentStep : steps[steps.length - 1];
+  const currentStepIndex = steps.indexOf(resolvedStep);
 
   useEffect(() => {
-    if (!steps.some((step) => step.id === currentStep)) {
-      setCurrentStep(steps[steps.length - 1].id);
-    }
-  }, [currentStep, steps]);
+    if (previousStepRef.current === resolvedStep) return;
+    previousStepRef.current = resolvedStep;
 
-  const currentStepIndex = steps.findIndex((step) => step.id === currentStep);
+    const target = scrollTargetRef.current;
+    if (!target) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target.scrollIntoView({ block: "start", behavior: reduceMotion ? "auto" : "smooth" });
+  }, [resolvedStep, scrollTargetRef]);
 
   const goToNextStep = useCallback(async () => {
-    const isValid = await validateCurrentStep(currentStep);
+    const isValid = await validateCurrentStep(resolvedStep);
     if (!isValid) return;
 
-    const nextIndex = currentStepIndex + 1;
-    if (nextIndex >= steps.length) return;
+    const next = steps[currentStepIndex + 1];
+    if (!next) return;
 
-    setStepDirection('forward');
-    setCurrentStep(steps[nextIndex].id);
-  }, [currentStep, currentStepIndex, steps, validateCurrentStep]);
+    setStepDirection("forward");
+    setCurrentStep(next);
+  }, [currentStepIndex, resolvedStep, steps, validateCurrentStep]);
 
   const goToPreviousStep = useCallback(() => {
-    const previousIndex = currentStepIndex - 1;
-    if (previousIndex < 0) return;
+    const previous = steps[currentStepIndex - 1];
+    if (!previous) return;
 
-    setStepDirection('backward');
-    setCurrentStep(steps[previousIndex].id);
+    setStepDirection("backward");
+    setCurrentStep(previous);
   }, [currentStepIndex, steps]);
 
   const goToStep = useCallback(
     (stepId: StepId) => {
-      const targetIndex = steps.findIndex((step) => step.id === stepId);
+      const targetIndex = steps.indexOf(stepId);
       if (targetIndex < 0 || targetIndex === currentStepIndex) return;
 
-      setStepDirection(targetIndex > currentStepIndex ? 'forward' : 'backward');
+      setStepDirection(targetIndex > currentStepIndex ? "forward" : "backward");
       setCurrentStep(stepId);
     },
     [currentStepIndex, steps],
   );
 
   return {
-    currentStep,
+    currentStep: resolvedStep,
     stepDirection,
     steps,
     currentStepIndex,
+    isLastStep: currentStepIndex === steps.length - 1,
     goToNextStep,
     goToPreviousStep,
     goToStep,
   };
-}
+};

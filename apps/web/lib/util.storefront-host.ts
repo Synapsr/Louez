@@ -1,13 +1,13 @@
-import { headers } from 'next/headers';
+import { headers } from "next/headers";
 
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from "drizzle-orm";
 
-import { db, stores } from '@louez/db';
+import { db, stores } from "@louez/db";
 
-import { isStandaloneMode } from '@/lib/deployment';
-import { getSubdomain, isLoopbackHost } from '@/lib/util.host';
+import { isStandaloneMode } from "@/lib/deployment";
+import { getStorefrontSlugFromHost, getSubdomain, isLoopbackHost } from "@/lib/util.host";
 
-import { env } from '@/env';
+import { env } from "@/env";
 
 /**
  * The host the visitor typed.
@@ -16,35 +16,24 @@ import { env } from '@/env';
  * rewrite to their upstream (`localhost:60441`, …); `x-forwarded-host` is the
  * original one and wins whenever it is present.
  */
-export async function getRequestHost(): Promise<string> {
+export const getRequestHost = async (): Promise<string> => {
   const headerStore = await headers();
 
   return (
-    headerStore.get('x-forwarded-host')?.split(',')[0]?.trim() ||
-    headerStore.get('host') ||
-    ''
+    headerStore.get("x-forwarded-host")?.split(",")[0]?.trim() || headerStore.get("host") || ""
   );
-}
+};
 
 /**
  * The store subdomain of the incoming host, or null when the host is not a
- * store subdomain (dashboard, www, apex, localhost). Single owner of the
- * "which hosts are storefronts" rule — robots.txt, the sitemap and link
- * prefixes must all agree on it.
+ * store subdomain (dashboard, www, apex, localhost). Delegates to the pure
+ * host rule shared with the proxy and the oRPC client.
  */
-async function getStorefrontSubdomain(): Promise<string | null> {
-  const subdomain = getSubdomain(await getRequestHost());
-
-  if (
-    !subdomain ||
-    subdomain === 'www' ||
-    subdomain === env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN
-  ) {
-    return null;
-  }
-
-  return subdomain;
-}
+const getStorefrontSubdomain = async (): Promise<string | null> =>
+  getStorefrontSlugFromHost(await getRequestHost(), {
+    appDomain: env.NEXT_PUBLIC_APP_DOMAIN,
+    dashboardSubdomain: env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN,
+  });
 
 /**
  * Whether the incoming host serves a storefront at its root.
@@ -57,13 +46,13 @@ async function getStorefrontSubdomain(): Promise<string | null> {
  * Cheap on purpose — no database round-trip, so robots.txt stays a pure
  * header read.
  */
-export async function isStorefrontHost(): Promise<boolean> {
+export const isStorefrontHost = async (): Promise<boolean> => {
   if (isStandaloneMode()) {
     return true;
   }
 
   return Boolean(await getStorefrontSubdomain());
-}
+};
 
 /**
  * Prefix for storefront links rendered on the current host.
@@ -75,35 +64,33 @@ export async function isStorefrontHost(): Promise<boolean> {
  * slugged link on a store subdomain 404s (`/ddm/ddm/catalog`), which is why
  * this cannot be hardcoded.
  *
- * Server-side twin of the `useStorefrontUrl().getUrl` client hook.
+ * Handed to `StoreProvider.basePath`; `useStorefrontUrl().getUrl` reads it
+ * from there on the client.
  */
-export async function getStorefrontPathPrefix(slug: string): Promise<string> {
+export const getStorefrontPathPrefix = async (slug: string): Promise<string> => {
   if (isStandaloneMode()) {
-    return '';
+    return "";
   }
 
   const host = await getRequestHost();
 
   // Local preview (PREVIEW_STORE_SLUG): the proxy serves this store slug-less
   // at the localhost root, mirroring a subdomain.
-  if (
-    env.PREVIEW_STORE_SLUG === slug &&
-    isLoopbackHost(host.split(':')[0].toLowerCase())
-  ) {
-    return '';
+  if (env.PREVIEW_STORE_SLUG === slug && isLoopbackHost(host.split(":")[0].toLowerCase())) {
+    return "";
   }
 
-  const subdomain = getSubdomain(host);
+  const subdomain = getSubdomain(host, env.NEXT_PUBLIC_APP_DOMAIN);
 
-  return subdomain?.toLowerCase() === slug.toLowerCase() ? '' : `/${slug}`;
-}
+  return subdomain?.toLowerCase() === slug.toLowerCase() ? "" : `/${slug}`;
+};
 
 /**
  * The onboarded store served at the root of the incoming host, or null when
  * the host is not a storefront. Standalone instances resolve the same store
  * the proxy serves at the root (the oldest onboarded one).
  */
-export async function resolveStoreFromHost() {
+export const resolveStoreFromHost = async () => {
   const columns = {
     id: true,
     slug: true,
@@ -130,10 +117,7 @@ export async function resolveStoreFromHost() {
   return (
     (await db.query.stores.findFirst({
       columns,
-      where: and(
-        eq(stores.slug, subdomain),
-        eq(stores.onboardingCompleted, true),
-      ),
+      where: and(eq(stores.slug, subdomain), eq(stores.onboardingCompleted, true)),
     })) ?? null
   );
-}
+};

@@ -10,6 +10,7 @@ import { captureProductServerEvent } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
 import { getConnectedAccountPayoutPage } from "@/lib/stripe/connected-account-finances";
 import { getCurrentStore } from "@/lib/store-context";
+import { invalidateStoreViewport } from "@/lib/storefront/get-store-viewport";
 
 import {
   assignUnitsToReservationItem,
@@ -87,6 +88,7 @@ async function handleRequest(request: Request) {
     context: {
       headers: request.headers,
       getCurrentStore,
+      invalidateStoreViewport,
       getCustomerSession,
       getConnectedAccountPayoutPage,
       dashboardReservationActions: {

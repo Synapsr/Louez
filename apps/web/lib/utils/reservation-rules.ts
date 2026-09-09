@@ -1,35 +1,41 @@
-import type { StoreSettings } from '@louez/types'
-import { validateRentalPeriod } from '@/lib/utils/business-hours'
-import { validateAdvanceNotice } from '@/lib/utils/duration'
+import type { StoreSettings } from "@louez/types";
+import { validateRentalPeriod } from "@/lib/utils/business-hours";
+import { validateAdvanceNotice } from "@/lib/utils/duration";
 import {
   formatDurationFromMinutes,
   getMaxRentalMinutes,
   getMinRentalMinutes,
   validateMaxRentalDurationMinutes,
   validateMinRentalDurationMinutes,
-} from '@/lib/utils/rental-duration'
+} from "@/lib/utils/rental-duration";
 
 export type ReservationValidationWarningCode =
-  | 'business_hours'
-  | 'advance_notice'
-  | 'min_duration'
-  | 'max_duration'
+  | "business_hours"
+  | "advance_notice"
+  | "min_duration"
+  | "max_duration";
 
 export interface ReservationValidationWarning {
-  code: ReservationValidationWarningCode
+  code: ReservationValidationWarningCode;
   key:
-    | 'errors.businessHoursViolation'
-    | 'errors.advanceNoticeViolation'
-    | 'errors.minRentalDurationViolation'
-    | 'errors.maxRentalDurationViolation'
-  params?: Record<string, string | number>
-  details?: string
+    | "errors.businessHoursViolation"
+    | "errors.advanceNoticeViolation"
+    | "errors.minRentalDurationViolation"
+    | "errors.maxRentalDurationViolation";
+  params?: Record<string, string | number>;
+  details?: string;
 }
 
+/** The settings the window rules read; the full `StoreSettings` still fits. */
+export type ReservationRuleSettings = Pick<
+  StoreSettings,
+  "businessHours" | "timezone" | "minRentalMinutes" | "maxRentalMinutes"
+> & { advanceNoticeMinutes?: number };
+
 interface EvaluateReservationRulesInput {
-  startDate: Date
-  endDate: Date
-  storeSettings?: StoreSettings | null
+  startDate: Date;
+  endDate: Date;
+  storeSettings?: ReservationRuleSettings | null;
 }
 
 export function evaluateReservationRules({
@@ -37,92 +43,79 @@ export function evaluateReservationRules({
   endDate,
   storeSettings,
 }: EvaluateReservationRulesInput): ReservationValidationWarning[] {
-  const warnings: ReservationValidationWarning[] = []
+  const warnings: ReservationValidationWarning[] = [];
 
   const businessHoursValidation = validateRentalPeriod(
     startDate,
     endDate,
     storeSettings?.businessHours,
-    storeSettings?.timezone
-  )
+    storeSettings?.timezone,
+  );
   if (!businessHoursValidation.valid) {
     warnings.push({
-      code: 'business_hours',
-      key: 'errors.businessHoursViolation',
-      params: { reasons: businessHoursValidation.errors.join(', ') },
-      details: businessHoursValidation.errors.join(', '),
-    })
+      code: "business_hours",
+      key: "errors.businessHoursViolation",
+      params: { reasons: businessHoursValidation.errors.join(", ") },
+      details: businessHoursValidation.errors.join(", "),
+    });
   }
 
-  const advanceNoticeMinutes = storeSettings?.advanceNoticeMinutes || 0
-  const advanceNoticeValidation = validateAdvanceNotice(
-    startDate,
-    advanceNoticeMinutes
-  )
+  const advanceNoticeMinutes = storeSettings?.advanceNoticeMinutes || 0;
+  const advanceNoticeValidation = validateAdvanceNotice(startDate, advanceNoticeMinutes);
   if (!advanceNoticeValidation.valid) {
     warnings.push({
-      code: 'advance_notice',
-      key: 'errors.advanceNoticeViolation',
+      code: "advance_notice",
+      key: "errors.advanceNoticeViolation",
       params: { duration: formatDurationFromMinutes(advanceNoticeMinutes) },
-    })
+    });
   }
 
-  const minRentalMinutes = getMinRentalMinutes(storeSettings)
+  const minRentalMinutes = getMinRentalMinutes(storeSettings);
   if (minRentalMinutes > 0) {
-    const minCheck = validateMinRentalDurationMinutes(
-      startDate,
-      endDate,
-      minRentalMinutes
-    )
+    const minCheck = validateMinRentalDurationMinutes(startDate, endDate, minRentalMinutes);
     if (!minCheck.valid) {
       warnings.push({
-        code: 'min_duration',
-        key: 'errors.minRentalDurationViolation',
+        code: "min_duration",
+        key: "errors.minRentalDurationViolation",
         params: { duration: formatDurationFromMinutes(minRentalMinutes) },
-      })
+      });
     }
   }
 
-  const maxRentalMinutes = getMaxRentalMinutes(storeSettings)
+  const maxRentalMinutes = getMaxRentalMinutes(storeSettings);
   if (maxRentalMinutes !== null) {
-    const maxCheck = validateMaxRentalDurationMinutes(
-      startDate,
-      endDate,
-      maxRentalMinutes
-    )
+    const maxCheck = validateMaxRentalDurationMinutes(startDate, endDate, maxRentalMinutes);
     if (!maxCheck.valid) {
       warnings.push({
-        code: 'max_duration',
-        key: 'errors.maxRentalDurationViolation',
+        code: "max_duration",
+        key: "errors.maxRentalDurationViolation",
         params: { duration: formatDurationFromMinutes(maxRentalMinutes) },
-      })
+      });
     }
   }
 
-  return warnings
+  return warnings;
 }
 
-export function formatReservationWarningsForLog(
-  warnings: ReservationValidationWarning[]
-): string {
-  if (warnings.length === 0) return ''
+export function formatReservationWarningsForLog(warnings: ReservationValidationWarning[]): string {
+  if (warnings.length === 0) return "";
 
   const parts = warnings.map((warning) => {
     switch (warning.code) {
-      case 'business_hours':
+      case "business_hours":
         return warning.details
           ? `outside business hours (${warning.details})`
-          : 'outside business hours'
-      case 'advance_notice':
-        return `advance notice not met (${warning.params?.duration ?? '?'})`
-      case 'min_duration':
-        return `minimum duration not met (${warning.params?.duration ?? '?'})`
-      case 'max_duration':
-        return `maximum duration exceeded (${warning.params?.duration ?? '?'})`
+          : "outside business hours";
+      case "advance_notice":
+        return `advance notice not met (${warning.params?.duration ?? "?"})`;
+      case "min_duration":
+        return `minimum duration not met (${warning.params?.duration ?? "?"})`;
+      case "max_duration":
+        return `maximum duration exceeded (${warning.params?.duration ?? "?"})`;
       default:
-        return warning.key
+        return warning.key;
     }
-  })
+  });
 
-  return `Validation warnings: ${parts.join('; ')}`
+  return `Validation warnings: ${parts.join("; ")}`;
 }

@@ -63,3 +63,19 @@ export function getDisplayableSavings(
     { savings: 0, originalSubtotal: 0 },
   );
 }
+
+/**
+ * Discount a product card may advertise: the highest tier percentage at or
+ * below the store cap, or the highest of all when the cap is disabled. Zero
+ * when every discount is hidden.
+ */
+export function getDisplayableMaxDiscount(
+  summary: { maxReductionPercent: number; allReductionPercents: number[] },
+  maxDiscountPercent: number | null | undefined,
+): number {
+  if (maxDiscountPercent == null) return summary.maxReductionPercent;
+  return Math.max(
+    ...summary.allReductionPercents.filter((percent) => percent <= maxDiscountPercent),
+    0,
+  );
+}

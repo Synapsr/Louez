@@ -1,39 +1,36 @@
-'use client'
+import { ExternalLinkIcon, StarIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { useTranslations } from 'next-intl'
-import { Star, ExternalLink } from 'lucide-react'
-import { Card, CardContent } from '@louez/ui'
-import { Button } from '@louez/ui'
+import { Button } from "@louez/ui";
 
 interface ReviewPromptCardProps {
-  storeName: string
-  reviewUrl: string
+  storeName: string;
+  reviewUrl: string;
 }
 
-export function ReviewPromptCard({ storeName, reviewUrl }: ReviewPromptCardProps) {
-  const t = useTranslations('storefront.account.reviewPrompt')
+/** After a completed rental: five stars, one line, one link to Google. */
+export const ReviewPromptCard = ({ storeName, reviewUrl }: ReviewPromptCardProps) => {
+  const t = useTranslations("storefront.account.reviewPrompt");
 
   return (
-    <Card className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/20 dark:to-yellow-950/20 border-amber-200 dark:border-amber-800">
-      <CardContent className="p-6">
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <div className="flex items-center gap-1 text-amber-500">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Star key={star} className="h-6 w-6 fill-current" />
-            ))}
-          </div>
-          <div className="flex-1 text-center sm:text-left">
-            <h3 className="font-semibold">{t('title')}</h3>
-            <p className="text-sm text-muted-foreground">
-              {t('description', { name: storeName })}
-            </p>
-          </div>
-          <Button render={<a href={reviewUrl} target="_blank" rel="noopener noreferrer" />}>
-              {t('leaveReview')}
-              <ExternalLink className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
+    <div className="flex flex-col gap-3 rounded-2xl bg-warning/12 p-4 sm:flex-row sm:items-center sm:gap-4 sm:p-6">
+      <div aria-hidden className="flex items-center gap-0.5 text-warning">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <StarIcon key={index} className="size-5 fill-current" />
+        ))}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-base font-medium leading-snug">{t("title")}</p>
+        <p className="text-sm text-muted-foreground">{t("description", { name: storeName })}</p>
+      </div>
+      <Button
+        size="lg"
+        className="h-11 w-full sm:w-auto lg:h-9"
+        render={<a href={reviewUrl} target="_blank" rel="noopener noreferrer" />}
+      >
+        {t("leaveReview")}
+        <ExternalLinkIcon data-slot="icon" />
+      </Button>
+    </div>
+  );
+};

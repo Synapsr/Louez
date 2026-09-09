@@ -1,194 +1,190 @@
-'use server'
+"use server";
 
-import { db } from '@louez/db'
-import { stores, reservations, paymentRequests, verificationCodes } from '@louez/db'
-import { eq, and, gt } from 'drizzle-orm'
-import { createPaymentRequestSession, toStripeCents } from '@/lib/stripe'
-import { getStorefrontUrl } from '@/lib/storefront-url'
-import {
-  buildFeeMetadata,
-  getStoreBilling,
-  planStripeFees,
-} from '@/lib/pay-as-you-go'
-import { nanoid } from 'nanoid'
-import type { StoreSettings } from '@louez/types'
+import { getLocale } from "next-intl/server";
 
-interface GetPaymentRequestDataParams {
-  slug: string
-  reservationId: string
-  token: string
-}
+import { and, eq, gt } from "drizzle-orm";
+import { z } from "zod";
 
-export async function getPaymentRequestData({
+import { db, paymentRequests, reservations } from "@louez/db";
+
+import { log } from "@/lib/evlog";
+import { buildFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
+import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
+import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { getStorefrontUrl } from "@/lib/storefront-url";
+import { createPaymentRequestSession, toStripeCents } from "@/lib/stripe";
+
+export type PaymentRequestError =
+  | "store_not_found"
+  | "reservation_not_found"
+  | "invalid_token"
+  | "already_paid"
+  | "cancelled"
+  | "stripe_not_configured"
+  | "session_creation_failed";
+
+export type PaymentRequestData =
+  | {
+      ok: true;
+      store: { name: string; slug: string };
+      reservation: { id: string; number: string };
+      paymentRequest: { id: string; amount: number; currency: string; description: string };
+      customer: { firstName: string };
+    }
+  | { ok: false; error: PaymentRequestError };
+
+export type InitiatePaymentResult =
+  | { ok: true; url: string }
+  | { ok: false; error: PaymentRequestError };
+
+// The Stripe session lives 30 minutes; the token that logs the customer in on
+// the way back is minted before it, outlives it by half an hour and is
+// consumed on first use (under the one-hour single-use threshold).
+const PAYMENT_RETURN_ACCESS_TTL_MS = 60 * 60 * 1000;
+
+const accessInputSchema = z.object({
+  slug: z.string().trim().min(1).max(100),
+  reservationId: z.string().trim().min(1).max(64),
+  token: z.string().trim().min(1).max(128).optional(),
+});
+
+const initiateInputSchema = accessInputSchema.extend({
+  token: z.string().trim().min(1).max(128),
+  paymentRequestId: z.string().trim().min(1).max(64),
+});
+
+const describeError = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+/** Store, live token, reservation and Stripe checks shared by both actions. */
+const loadPaymentRequestContext = async ({
   slug,
   reservationId,
   token,
-}: GetPaymentRequestDataParams) {
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, slug),
-  })
-
+}: z.infer<typeof accessInputSchema>) => {
+  const store = await getStoreBySlug(slug);
   if (!store) {
-    return { error: 'store_not_found' as const }
+    return { ok: false as const, error: "store_not_found" as const };
   }
 
+  if (!token) {
+    return { ok: false as const, error: "invalid_token" as const };
+  }
   const paymentRequest = await db.query.paymentRequests.findFirst({
     where: and(
       eq(paymentRequests.token, token),
       eq(paymentRequests.reservationId, reservationId),
       eq(paymentRequests.storeId, store.id),
-      gt(paymentRequests.expiresAt, new Date())
+      gt(paymentRequests.expiresAt, new Date()),
     ),
-  })
-
+  });
   if (!paymentRequest) {
-    return { error: 'invalid_token' as const, storeId: store.id }
+    return { ok: false as const, error: "invalid_token" as const };
   }
-
-  if (paymentRequest.status === 'completed') {
-    return { error: 'already_paid' as const, storeId: store.id }
+  if (paymentRequest.status === "completed") {
+    return { ok: false as const, error: "already_paid" as const };
   }
-
-  if (paymentRequest.status === 'cancelled') {
-    return { error: 'cancelled' as const, storeId: store.id }
+  if (paymentRequest.status === "cancelled") {
+    return { ok: false as const, error: "cancelled" as const };
   }
 
   const reservation = await db.query.reservations.findFirst({
-    where: and(
-      eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
-    ),
-    with: {
-      customer: true,
-    },
-  })
-
+    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
+    with: { customer: true },
+  });
   if (!reservation) {
-    return { error: 'reservation_not_found' as const, storeId: store.id }
+    return { ok: false as const, error: "reservation_not_found" as const };
   }
 
-  if (!store.stripeAccountId) {
-    return { error: 'stripe_not_configured' as const, storeId: store.id }
+  // Read once: a connected account that cannot charge yet is "not configured".
+  const isStripeChargeable = Boolean(store.stripeAccountId && store.stripeChargesEnabled);
+  if (!isStripeChargeable || !store.stripeAccountId) {
+    return { ok: false as const, error: "stripe_not_configured" as const };
   }
 
   return {
-    store: {
-      id: store.id,
-      name: store.name,
-      slug: store.slug,
-      stripeAccountId: store.stripeAccountId,
-      logoUrl: store.logoUrl,
-      theme: store.theme,
-    },
-    reservation: {
-      id: reservation.id,
-      number: reservation.number,
-    },
+    ok: true as const,
+    store: { ...store, stripeAccountId: store.stripeAccountId },
+    reservation,
+    paymentRequest,
+  };
+};
+
+export const getPaymentRequestData = async (
+  rawInput: z.input<typeof accessInputSchema>,
+): Promise<PaymentRequestData> => {
+  const parsed = accessInputSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { ok: false, error: "invalid_token" };
+  }
+
+  const context = await loadPaymentRequestContext(parsed.data);
+  if (!context.ok) {
+    return context;
+  }
+
+  const { store, reservation, paymentRequest } = context;
+  return {
+    ok: true,
+    store: { name: store.name, slug: store.slug },
+    reservation: { id: reservation.id, number: reservation.number },
     paymentRequest: {
       id: paymentRequest.id,
-      amount: parseFloat(paymentRequest.amount),
+      amount: Number.parseFloat(paymentRequest.amount),
       currency: paymentRequest.currency,
       description: paymentRequest.description,
-      type: paymentRequest.type,
     },
-    customer: {
-      email: reservation.customer.email,
-      firstName: reservation.customer.firstName,
-    },
-  }
-}
+    customer: { firstName: reservation.customer.firstName },
+  };
+};
 
-interface InitiatePaymentParams {
-  paymentRequestId: string
-  token: string
-}
-
-export async function initiatePayment({
-  paymentRequestId,
-  token,
-}: InitiatePaymentParams): Promise<{ url: string } | { error: string }> {
-  // Re-validate token
-  const paymentRequest = await db.query.paymentRequests.findFirst({
-    where: and(
-      eq(paymentRequests.id, paymentRequestId),
-      eq(paymentRequests.token, token),
-      gt(paymentRequests.expiresAt, new Date())
-    ),
-  })
-
-  if (!paymentRequest || paymentRequest.status !== 'pending') {
-    return { error: 'invalid_request' }
+/** Open the Stripe session for the request; the customer comes back logged in. */
+export const initiatePayment = async (
+  rawInput: z.input<typeof initiateInputSchema>,
+): Promise<InitiatePaymentResult> => {
+  const parsed = initiateInputSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { ok: false, error: "invalid_token" };
   }
 
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.id, paymentRequest.storeId),
-  })
-
-  if (!store?.stripeAccountId || !store.stripeChargesEnabled) {
-    return { error: 'stripe_not_configured' }
+  const context = await loadPaymentRequestContext(parsed.data);
+  if (!context.ok) {
+    return context;
   }
 
-  const reservation = await db.query.reservations.findFirst({
-    where: and(
-      eq(reservations.id, paymentRequest.reservationId),
-      eq(reservations.storeId, store.id)
-    ),
-    with: {
-      customer: true,
-    },
-  })
-
-  if (!reservation) {
-    return { error: 'reservation_not_found' }
+  const { store, reservation, paymentRequest } = context;
+  if (paymentRequest.id !== parsed.data.paymentRequestId || paymentRequest.status !== "pending") {
+    return { ok: false, error: "invalid_token" };
   }
 
-  const storeSettings = (store.settings as StoreSettings) || {}
-  const currency = paymentRequest.currency
-  const amount = parseFloat(paymentRequest.amount)
-
-  // Create instant access token for auto-login after payment
-  const accessToken = nanoid(64)
-  const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-
-  await db.insert(verificationCodes).values({
-    id: nanoid(),
-    email: reservation.customer.email,
-    storeId: store.id,
-    code: '',
-    type: 'instant_access',
-    token: accessToken,
-    reservationId: reservation.id,
-    expiresAt: tokenExpiresAt,
-    createdAt: new Date(),
-  })
-
-  const successUrl = getStorefrontUrl(
-    store.slug,
-    `/account/success?token=${accessToken}&type=payment&reservation=${reservation.id}`
-  )
-  const cancelUrl = getStorefrontUrl(
-    store.slug,
-    `/pay/${reservation.id}?token=${token}`
-  )
-
-  const locale = storeSettings.country
-    ? getStripeLocale(storeSettings.country)
-    : undefined
-
-  // Platform fees apply to rental payments only — not to custom charges
-  // (e.g. damage fees). The exact breakdown is recorded on success (webhook).
-  const chargeCents = toStripeCents(amount, currency)
-  const feePlan =
-    paymentRequest.type === 'rental'
-      ? await planStripeFees({
-          storeId: store.id,
-          reservationId: reservation.id,
-          chargeCents,
-          billing: await getStoreBilling(store.id),
-        })
-      : null
+  const currency = paymentRequest.currency;
+  const chargeCents = toStripeCents(Number.parseFloat(paymentRequest.amount), currency);
 
   try {
+    const [successUrl, locale] = await Promise.all([
+      createReservationInstantAccessUrl({
+        storeId: store.id,
+        storeSlug: store.slug,
+        customerEmail: reservation.customer.email,
+        reservationId: reservation.id,
+        redirectPath: `/account/reservations/${reservation.id}?event=payment_received`,
+        ttlMs: PAYMENT_RETURN_ACCESS_TTL_MS,
+      }),
+      getLocale(),
+    ]);
+
+    // Platform fees apply to rental payments only, never to custom charges
+    // (damage fees); the exact breakdown is recorded by the webhook.
+    const feePlan =
+      paymentRequest.type === "rental"
+        ? await planStripeFees({
+            storeId: store.id,
+            reservationId: reservation.id,
+            chargeCents,
+            billing: await getStoreBilling(store.id),
+          })
+        : null;
+
     const session = await createPaymentRequestSession({
       stripeAccountId: store.stripeAccountId,
       reservationId: reservation.id,
@@ -199,25 +195,19 @@ export async function initiatePayment({
       description: paymentRequest.description,
       currency,
       successUrl,
-      cancelUrl,
+      cancelUrl: getStorefrontUrl(
+        store.slug,
+        `/pay/${reservation.id}?token=${encodeURIComponent(parsed.data.token)}`,
+      ),
       paymentRequestId: paymentRequest.id,
       applicationFeeAmount: feePlan?.applicationFeeCents,
       feeMetadata: feePlan ? buildFeeMetadata(feePlan) : undefined,
       locale,
-    })
+    });
 
-    return { url: session.url }
+    return { ok: true, url: session.url };
   } catch (error) {
-    console.error('Failed to create payment session:', error)
-    return { error: 'session_creation_failed' }
+    log.error("pay", `payment session failed: ${describeError(error)}`);
+    return { ok: false, error: "session_creation_failed" };
   }
-}
-
-function getStripeLocale(country: string): string {
-  const countryLocaleMap: Record<string, string> = {
-    FR: 'fr', DE: 'de', ES: 'es', IT: 'it',
-    NL: 'nl', PL: 'pl', PT: 'pt', BE: 'fr',
-    CH: 'fr', AT: 'de', LU: 'fr',
-  }
-  return countryLocaleMap[country] || 'auto'
-}
+};

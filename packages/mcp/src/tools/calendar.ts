@@ -1,6 +1,6 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { and, eq, gte, inArray, lte } from 'drizzle-orm';
-import { z } from 'zod';
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { and, eq, gte, inArray, lte } from "drizzle-orm";
+import { z } from "zod";
 
 import {
   buildReservationOverlapPredicate,
@@ -14,36 +14,23 @@ import {
   reservationItems,
   reservations,
   stores,
-} from '@louez/db';
-import {
-  computeReservedNetOfExcludedUnits,
-  loadExcludedUnitInfo,
-} from '@louez/api/services';
+} from "@louez/db";
+import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
 
-import type { McpSessionContext } from '../auth/context';
-import { requirePermission } from '../auth/context';
-import { toolResult } from '../utils/errors';
-import {
-  formatCurrency,
-  formatDate,
-  formatDateTime,
-} from '../utils/formatting';
+import type { McpSessionContext } from "../auth/context";
+import { requirePermission } from "../auth/context";
+import { toolResult } from "../utils/errors";
+import { formatCurrency, formatDate, formatDateTime } from "../utils/formatting";
 
-export function registerCalendarTools(
-  server: McpServer,
-  ctx: McpSessionContext,
-) {
+export function registerCalendarTools(server: McpServer, ctx: McpSessionContext) {
   server.tool(
-    'calendar_upcoming',
-    'Get upcoming pickups and returns for the next N days',
+    "calendar_upcoming",
+    "Get upcoming pickups and returns for the next N days",
     {
-      days: z
-        .number()
-        .optional()
-        .describe('Number of days to look ahead (default 7)'),
+      days: z.number().optional().describe("Number of days to look ahead (default 7)"),
     },
     async ({ days }) => {
-      requirePermission(ctx, 'reservations', 'read');
+      requirePermission(ctx, "reservations", "read");
 
       const lookAhead = Math.min(days ?? 7, 90);
       const now = new Date();
@@ -64,7 +51,7 @@ export function registerCalendarTools(
         .where(
           and(
             eq(reservations.storeId, ctx.storeId),
-            eq(reservations.status, 'confirmed'),
+            eq(reservations.status, "confirmed"),
             gte(reservations.startDate, now),
             lte(reservations.startDate, future),
           ),
@@ -86,7 +73,7 @@ export function registerCalendarTools(
         .where(
           and(
             eq(reservations.storeId, ctx.storeId),
-            eq(reservations.status, 'ongoing'),
+            eq(reservations.status, "ongoing"),
             gte(reservations.endDate, now),
             lte(reservations.endDate, future),
           ),
@@ -98,7 +85,7 @@ export function registerCalendarTools(
 
       text += `### Upcoming pickups (${pickups.length})\n`;
       if (pickups.length === 0) {
-        text += 'No pickups scheduled.\n';
+        text += "No pickups scheduled.\n";
       } else {
         for (const p of pickups) {
           text += `- ${formatDateTime(p.startDate)} — #${p.number} — ${p.customerFirstName} ${p.customerLastName} — ${formatCurrency(p.totalAmount)}\n`;
@@ -107,7 +94,7 @@ export function registerCalendarTools(
 
       text += `\n### Upcoming returns (${returns.length})\n`;
       if (returns.length === 0) {
-        text += 'No returns scheduled.\n';
+        text += "No returns scheduled.\n";
       } else {
         for (const r of returns) {
           text += `- ${formatDateTime(r.endDate)} — #${r.number} — ${r.customerFirstName} ${r.customerLastName} — ${formatCurrency(r.totalAmount)}\n`;
@@ -119,11 +106,11 @@ export function registerCalendarTools(
   );
 
   server.tool(
-    'calendar_overdue',
-    'Get overdue returns (ongoing reservations past their end date)',
+    "calendar_overdue",
+    "Get overdue returns (ongoing reservations past their end date)",
     {},
     async () => {
-      requirePermission(ctx, 'reservations', 'read');
+      requirePermission(ctx, "reservations", "read");
 
       const now = new Date();
 
@@ -141,7 +128,7 @@ export function registerCalendarTools(
         .where(
           and(
             eq(reservations.storeId, ctx.storeId),
-            eq(reservations.status, 'ongoing'),
+            eq(reservations.status, "ongoing"),
             lte(reservations.endDate, now),
           ),
         )
@@ -149,41 +136,34 @@ export function registerCalendarTools(
         .limit(50);
 
       if (overdue.length === 0) {
-        return toolResult('No overdue returns.');
+        return toolResult("No overdue returns.");
       }
 
       const lines = overdue.map((r) => {
-        const daysLate = Math.ceil(
-          (now.getTime() - r.endDate!.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        return `- **#${r.number}** — ${r.customerFirstName} ${r.customerLastName}\n  Due: ${formatDate(r.endDate)} (${daysLate} day${daysLate !== 1 ? 's' : ''} late) — ${formatCurrency(r.totalAmount)}`;
+        const daysLate = Math.ceil((now.getTime() - r.endDate!.getTime()) / (1000 * 60 * 60 * 24));
+        return `- **#${r.number}** — ${r.customerFirstName} ${r.customerLastName}\n  Due: ${formatDate(r.endDate)} (${daysLate} day${daysLate !== 1 ? "s" : ""} late) — ${formatCurrency(r.totalAmount)}`;
       });
 
-      return toolResult(
-        `## Overdue returns (${overdue.length})\n\n${lines.join('\n\n')}`,
-      );
+      return toolResult(`## Overdue returns (${overdue.length})\n\n${lines.join("\n\n")}`);
     },
   );
 
   server.tool(
-    'check_availability',
-    'Check product availability for a date range',
+    "check_availability",
+    "Check product availability for a date range",
     {
-      productId: z.string().describe('The product ID'),
-      startDate: z.string().describe('Start date (YYYY-MM-DD)'),
-      endDate: z.string().describe('End date (YYYY-MM-DD)'),
+      productId: z.string().describe("The product ID"),
+      startDate: z.string().describe("Start date (YYYY-MM-DD)"),
+      endDate: z.string().describe("End date (YYYY-MM-DD)"),
     },
     async ({ productId, startDate, endDate }) => {
-      requirePermission(ctx, 'products', 'read');
+      requirePermission(ctx, "products", "read");
 
       const start = new Date(startDate);
       const end = new Date(endDate);
 
       const product = await db.query.products.findFirst({
-        where: and(
-          eq(products.storeId, ctx.storeId),
-          eq(products.id, productId),
-        ),
+        where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
         columns: {
           id: true,
           name: true,
@@ -193,7 +173,7 @@ export function registerCalendarTools(
         },
       });
 
-      if (!product) return toolResult('Product not found.');
+      if (!product) return toolResult("Product not found.");
 
       const store = await db.query.stores.findFirst({
         where: eq(stores.id, ctx.storeId),
@@ -215,6 +195,7 @@ export function registerCalendarTools(
           }),
         ),
         with: {
+          activity: { columns: { metadata: true } },
           items: {
             where: eq(reservationItems.productId, productId),
             columns: {
@@ -248,14 +229,9 @@ export function registerCalendarTools(
         : [];
       const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
       const excludedProductUnitIds = new Set(
-        trackedUnits
-          .filter((unit) => !rentableUnitIds.has(unit.id))
-          .map((unit) => unit.id),
+        trackedUnits.filter((unit) => !rentableUnitIds.has(unit.id)).map((unit) => unit.id),
       );
-      const excludedUnitInfo = await loadExcludedUnitInfo(
-        db,
-        excludedProductUnitIds,
-      );
+      const excludedUnitInfo = await loadExcludedUnitInfo(db, excludedProductUnitIds);
       const { reservedByProduct } = computeReservedNetOfExcludedUnits({
         reservations: overlappingReservations,
         startDate: start,
@@ -264,38 +240,31 @@ export function registerCalendarTools(
         excludedProductUnitIds,
         excludedUnitInfo,
         consumableProductIds:
-          product.stockKind === 'consumable'
-            ? new Set([product.id])
-            : undefined,
+          product.stockKind === "consumable" ? new Set([product.id]) : undefined,
       });
-      if (product.stockKind === 'consumable') {
-        const consumableReservedByProduct =
-          await loadConsumableReservedQuantities(db, {
-            storeId: ctx.storeId,
-            productIds: [product.id],
-            blockingStatuses,
-          });
-        reservedByProduct.set(
-          product.id,
-          consumableReservedByProduct.get(product.id) ?? 0,
-        );
+      if (product.stockKind === "consumable") {
+        const consumableReservedByProduct = await loadConsumableReservedQuantities(db, {
+          storeId: ctx.storeId,
+          productIds: [product.id],
+          blockingStatuses,
+        });
+        reservedByProduct.set(product.id, consumableReservedByProduct.get(product.id) ?? 0);
       }
       const reserved = reservedByProduct.get(productId) ?? 0;
       const capacity = product.trackUnits
         ? rentableUnits.length
-        : product.stockKind === 'untracked'
+        : product.stockKind === "untracked"
           ? null
           : product.quantity;
-      const available =
-        capacity === null ? null : Math.max(0, capacity - reserved);
+      const available = capacity === null ? null : Math.max(0, capacity - reserved);
 
       return toolResult(
         `## Availability — ${product.name}\n\n` +
           `- Period: ${formatDate(start)} → ${formatDate(end)}\n` +
-          `- Total stock: ${capacity === null ? 'not tracked' : capacity}\n` +
-          `- Reserved: ${capacity === null ? 'not applicable' : reserved}\n` +
+          `- Total stock: ${capacity === null ? "not tracked" : capacity}\n` +
+          `- Reserved: ${capacity === null ? "not applicable" : reserved}\n` +
           `- Buffer after return: ${turnoverBufferMinutes} min\n` +
-          `- **Available: ${available === null ? 'not quantity-limited' : available}**`,
+          `- **Available: ${available === null ? "not quantity-limited" : available}**`,
       );
     },
   );

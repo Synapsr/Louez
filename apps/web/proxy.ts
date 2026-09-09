@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { isStandaloneMode } from "@/lib/deployment";
+import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import { buildEmbedSecurityHeaders, buildSecurityHeaders } from "@/lib/util.security-headers";
 import { isValidReferralCode } from "@/lib/utils/referral";
 import {
@@ -83,27 +84,6 @@ const DASHBOARD_ROUTES = [
 ];
 
 /**
- * Extract the subdomain from the host header relative to APP_DOMAIN.
- */
-function getSubdomain(host: string, appDomain: string): string | null {
-  const hostname = host.split(":")[0];
-
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return null;
-  }
-
-  const hostParts = hostname.split(".");
-  const baseDomain = appDomain.split(":")[0];
-  const baseParts = baseDomain.split(".");
-
-  if (hostParts.length > baseParts.length) {
-    return hostParts.slice(0, hostParts.length - baseParts.length).join(".");
-  }
-
-  return null;
-}
-
-/**
  * Check if the pathname is a dashboard/auth route that should not be rewritten.
  */
 function isDashboardRoute(pathname: string): boolean {
@@ -115,15 +95,6 @@ function isDashboardRoute(pathname: string): boolean {
  */
 function isStaticAsset(pathname: string): boolean {
   return pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname.includes(".");
-}
-
-function isLoopbackHost(hostname: string): boolean {
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1" ||
-    hostname === "[::1]"
-  );
 }
 
 function createInternalRewriteUrl(request: NextRequest, pathname: string) {

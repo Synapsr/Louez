@@ -3,101 +3,52 @@ import { RPCLink } from "@orpc/client/fetch";
 import type { AppRouter } from "@louez/api";
 import type { RouterClient } from "@orpc/server";
 import { getPublicEnvSnapshot } from "@/components/shared/public-env-provider";
+import { getStorefrontSlugFromHost } from "@/lib/util.host";
 
 /**
- * Extract store slug from subdomain (preferred for production and local subdomain dev)
+ * Store slug set by the StoreProvider during render. It is the authority on
+ * which store the page belongs to: the server resolved it, whatever the host
+ * (subdomain, dashboard `/{slug}` path, PREVIEW_STORE_SLUG rewrite).
  */
-function getStoreSlugFromHost(): string | null {
+let storefrontSlug: string | null = null;
+
+export const setStorefrontSlug = (slug: string) => {
+  storefrontSlug = slug;
+};
+
+/**
+ * Store slug of the current host, for calls made before a StoreProvider
+ * rendered. Same host rule as the proxy and the server link prefix.
+ */
+const getStoreSlugFromHost = (): string | null => {
   if (typeof window === "undefined") return null;
 
-  const hostname = window.location.hostname;
-  const hostParts = hostname.split(".");
   const publicEnv = getPublicEnvSnapshot();
-  const appDomain = publicEnv.NEXT_PUBLIC_APP_DOMAIN.split(":")[0];
-  const domainParts = appDomain.split(".");
-
-  // If hostname has more parts than base domain, extract subdomain.
-  // Example: teo-org-2.localhost vs localhost -> teo-org-2
-  if (hostParts.length > domainParts.length) {
-    const candidate = hostParts.slice(0, hostParts.length - domainParts.length).join(".");
-    const excludedSubdomains = ["www", publicEnv.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN];
-    if (candidate && !excludedSubdomains.includes(candidate)) {
-      return candidate;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Extract store slug from pathname fallback (used for localhost path-based routing)
- */
-function getStoreSlugFromPath(): string | null {
-  if (typeof window === "undefined") return null;
-
-  const pathname = window.location.pathname;
-  const match = pathname.match(/^\/([a-zA-Z0-9-]+)/);
-  if (!match) return null;
-
-  const potentialSlug = match[1];
-  const excludedPaths = [
-    "dashboard",
-    "login",
-    "api",
-    "onboarding",
-    "invitation",
-    "multi-store",
-    "_next",
-    "rental",
-    "catalog",
-    "checkout",
-    "legal",
-    "product",
-    "terms",
-    "account",
-    "confirmation",
-    "authorize-deposit",
-    "review",
-    "r",
-  ];
-
-  if (!excludedPaths.includes(potentialSlug)) {
-    return potentialSlug;
-  }
-
-  return null;
-}
-
-/**
- * Store slug set by the StoreProvider during render.
- * Used as a fallback when URL-based detection fails (e.g. PREVIEW_STORE_SLUG mode
- * where the middleware rewrites URLs but the browser URL has no slug).
- */
-let _storefrontSlug: string | null = null;
-
-export function setStorefrontSlug(slug: string) {
-  _storefrontSlug = slug;
-}
+  return getStorefrontSlugFromHost(window.location.hostname, {
+    appDomain: publicEnv.NEXT_PUBLIC_APP_DOMAIN,
+    dashboardSubdomain: publicEnv.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN,
+  });
+};
 
 /**
  * RPC Link configuration for client-server communication
  */
-function getRpcUrl(): string {
+const getRpcUrl = (): string => {
   if (typeof window !== "undefined") {
     return new URL("/api/rpc", window.location.origin).toString();
   }
 
   return new URL("/api/rpc", getPublicEnvSnapshot().NEXT_PUBLIC_APP_URL).toString();
-}
+};
 
 const link = new RPCLink({
   // Resolve lazily: PublicEnvProvider installs the validated runtime config
   // before any child query can execute.
   url: getRpcUrl,
   headers: () => {
-    // Include store slug header for storefront routes.
-    // Prefer subdomain resolution, then path-based, then StoreProvider context fallback.
-    const storeSlug = getStoreSlugFromHost() || getStoreSlugFromPath() || _storefrontSlug;
+    // Store header for storefront procedures: the provider's slug first, the
+    // host as a fallback for calls issued outside a StoreProvider.
+    const storeSlug = storefrontSlug ?? getStoreSlugFromHost();
     return storeSlug ? { "x-store-slug": storeSlug } : {};
   },
   fetch: (input, init) => {

@@ -1,3 +1,8 @@
+import { DateChangeReview } from "@/components/reservations/date-change-review";
+import { getDateChangeRequests } from "@/lib/reservations/util.date-change-request";
+import { formatStoreDate } from "@/lib/utils/store-date";
+import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
+import { hasPermission } from "@/lib/store-context";
 import {
   db,
   inspections,
@@ -8,60 +13,58 @@ import {
   invoices,
   payments,
   reservations,
+  reservationActivity,
   storeLegalProfiles,
-} from '@louez/db'
-import { and, desc, eq, gt, inArray, isNull, ne, notInArray } from 'drizzle-orm'
-import { redirect, notFound } from 'next/navigation'
+} from "@louez/db";
+import { and, desc, eq, gt, inArray, isNull, ne, notInArray } from "drizzle-orm";
+import { redirect, notFound } from "next/navigation";
 
-import { getDashboardReservationById } from '@louez/api/services'
-import { DEFAULT_INSPECTION_SETTINGS } from '@louez/types'
+import { getDashboardReservationById } from "@louez/api/services";
+import { DEFAULT_INSPECTION_SETTINGS } from "@louez/types";
 
-import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-breadcrumbs-context'
+import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 
-import { isSmsConfigured } from '@/lib/sms'
-import { getCurrentStore } from '@/lib/store-context'
+import { isSmsConfigured } from "@/lib/sms";
+import { getCurrentStore } from "@/lib/store-context";
 
-import { ReservationDetailClient } from './reservation-detail-client'
+import { ReservationDetailClient } from "./reservation-detail-client";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
 export const instant = false;
 
 interface ReservationDetailPageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
-export default async function ReservationDetailPage({
-  params,
-}: ReservationDetailPageProps) {
-  const store = await getCurrentStore()
+export default async function ReservationDetailPage({ params }: ReservationDetailPageProps) {
+  const store = await getCurrentStore();
 
   if (!store) {
-    redirect('/onboarding')
+    redirect("/onboarding");
   }
 
-  const { id } = await params
+  const { id } = await params;
 
-  let reservation: any
+  let reservation: any;
   try {
     reservation = await getDashboardReservationById({
       reservationId: id,
       storeId: store.id,
-    })
+    });
   } catch {
-    notFound()
+    notFound();
   }
 
   if (!reservation) {
-    notFound()
+    notFound();
   }
 
-  const currency = store.settings?.currency || 'EUR'
-  const storeTimezone = store.settings?.timezone
-  const smsConfigured = isSmsConfigured()
-  const stripeConfigured = Boolean(store.stripeAccountId)
-  const inspectionSettings =
-    store.settings?.inspection || DEFAULT_INSPECTION_SETTINGS
+  const currency = store.settings?.currency || "EUR";
+  const storeTimezone = store.settings?.timezone;
+  const smsConfigured = isSmsConfigured();
+  const stripeConfigured = Boolean(store.stripeAccountId);
+  const inspectionSettings = store.settings?.inspection || DEFAULT_INSPECTION_SETTINGS;
 
   // Default the payment method select to the store's last manually recorded method
   const [lastManualPayment] = await db
@@ -71,17 +74,15 @@ export default async function ReservationDetailPage({
     .where(
       and(
         eq(reservations.storeId, store.id),
-        eq(payments.status, 'completed'),
-        ne(payments.method, 'stripe'),
+        eq(payments.status, "completed"),
+        ne(payments.method, "stripe"),
       ),
     )
     .orderBy(desc(payments.createdAt))
-    .limit(1)
+    .limit(1);
 
   const defaultPaymentMethod =
-    lastManualPayment && lastManualPayment.method !== 'stripe'
-      ? lastManualPayment.method
-      : 'cash'
+    lastManualPayment && lastManualPayment.method !== "stripe" ? lastManualPayment.method : "cash";
 
   const reservationInspections = await db
     .select({
@@ -93,41 +94,36 @@ export default async function ReservationDetailPage({
       signedAt: inspections.signedAt,
     })
     .from(inspections)
-    .where(eq(inspections.reservationId, id))
+    .where(eq(inspections.reservationId, id));
 
-  const departureInspection = reservationInspections.find(
-    (i) => i.type === 'departure',
-  )
-  const returnInspection = reservationInspections.find(
-    (i) => i.type === 'return',
-  )
+  const departureInspection = reservationInspections.find((i) => i.type === "departure");
+  const returnInspection = reservationInspections.find((i) => i.type === "return");
 
   const getInspectionData = async (inspectionId: string | undefined) => {
-    if (!inspectionId) return null
+    if (!inspectionId) return null;
 
     const items = await db
       .select({ id: inspectionItems.id })
       .from(inspectionItems)
-      .where(eq(inspectionItems.inspectionId, inspectionId))
+      .where(eq(inspectionItems.inspectionId, inspectionId));
 
     const photos = await db
       .select({ id: inspectionPhotos.id })
       .from(inspectionPhotos)
-      .innerJoin(
-        inspectionItems,
-        eq(inspectionItems.id, inspectionPhotos.inspectionItemId),
-      )
-      .where(eq(inspectionItems.inspectionId, inspectionId))
+      .innerJoin(inspectionItems, eq(inspectionItems.id, inspectionPhotos.inspectionItemId))
+      .where(eq(inspectionItems.inspectionId, inspectionId));
 
-    return { itemCount: items.length, photoCount: photos.length }
-  }
+    return { itemCount: items.length, photoCount: photos.length };
+  };
 
   const departureData = departureInspection
     ? await getInspectionData(departureInspection.id)
-    : null
-  const returnData = returnInspection ? await getInspectionData(returnInspection.id) : null
+    : null;
+  const returnData = returnInspection ? await getInspectionData(returnInspection.id) : null;
 
-  const linkedPaymentIds = db.select({ paymentId: invoicePayments.paymentId }).from(invoicePayments)
+  const linkedPaymentIds = db
+    .select({ paymentId: invoicePayments.paymentId })
+    .from(invoicePayments);
   const [reservationInvoices, legalProfile, uninvoicedPayment] = await Promise.all([
     db
       .select({
@@ -155,49 +151,72 @@ export default async function ReservationDetailPage({
       .where(
         and(
           eq(payments.reservationId, id),
-          eq(payments.status, 'completed'),
+          eq(payments.status, "completed"),
           isNull(payments.stripeRefundId),
           isNull(payments.refundOfPaymentId),
-          inArray(payments.type, ['rental', 'damage', 'adjustment', 'deposit_capture']),
-          gt(payments.amount, '0'),
+          inArray(payments.type, ["rental", "damage", "adjustment", "deposit_capture"]),
+          gt(payments.amount, "0"),
           notInArray(payments.id, linkedPaymentIds),
         ),
       )
       .limit(1)
       .then(([payment]) => payment ?? null),
-  ])
+  ]);
 
   const formattedDepartureInspection =
     departureInspection && departureData
       ? {
           id: departureInspection.id,
-          type: departureInspection.type as 'departure' | 'return',
-          status: departureInspection.status as 'draft' | 'completed' | 'signed',
+          type: departureInspection.type as "departure" | "return",
+          status: departureInspection.status as "draft" | "completed" | "signed",
           hasDamage: departureInspection.hasDamage,
           itemCount: departureData.itemCount,
           photoCount: departureData.photoCount,
           createdAt: departureInspection.createdAt,
           signedAt: departureInspection.signedAt,
         }
-      : null
+      : null;
 
   const formattedReturnInspection =
     returnInspection && returnData
       ? {
           id: returnInspection.id,
-          type: returnInspection.type as 'departure' | 'return',
-          status: returnInspection.status as 'draft' | 'completed' | 'signed',
+          type: returnInspection.type as "departure" | "return",
+          status: returnInspection.status as "draft" | "completed" | "signed",
           hasDamage: returnInspection.hasDamage,
           itemCount: returnData.itemCount,
           photoCount: returnData.photoCount,
           createdAt: returnInspection.createdAt,
           signedAt: returnInspection.signedAt,
         }
-      : null
+      : null;
+
+  const requestRows = await db
+    .select({ id: reservationActivity.id, metadata: reservationActivity.metadata })
+    .from(reservationActivity)
+    .where(eq(reservationActivity.reservationId, id))
+    .orderBy(desc(reservationActivity.createdAt));
+  const dateRequest = getDateChangeRequests(requestRows).find(
+    (request) => request.status === "pending",
+  );
+  const { intl: formatLocale } = await getRequestFormatLocale();
 
   return (
     <>
       <DashboardBreadcrumbLabel label={`#${reservation.number}`} />
+      {dateRequest ? (
+        <DateChangeReview
+          reservationId={id}
+          request={dateRequest}
+          dateLabel={formatStoreDate(
+            dateRequest.requestedEndDate,
+            storeTimezone,
+            "DATE_AT_TIME",
+            formatLocale,
+          )}
+          canWrite={hasPermission(store.role, "write")}
+        />
+      ) : null}
       <ReservationDetailClient
         reservationId={id}
         initialReservation={reservation}
@@ -215,5 +234,5 @@ export default async function ReservationDetailPage({
         canGenerateInvoice={Boolean(legalProfile?.invoicingEnabled && uninvoicedPayment)}
       />
     </>
-  )
+  );
 }

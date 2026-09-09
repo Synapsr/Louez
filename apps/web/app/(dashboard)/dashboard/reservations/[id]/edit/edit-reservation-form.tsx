@@ -1,35 +1,23 @@
-'use client'
+"use client";
 
-import { useState, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
-import { toastManager } from '@louez/ui'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import {
-  ArrowLeft,
-  Loader2,
-  Plus,
-  PenLine,
-  AlertTriangle,
-  Check,
-  Mail,
-} from 'lucide-react'
+import { DateChangeReview } from "@/components/reservations/date-change-review";
 
-import { Button } from '@louez/ui'
-import { Card, CardContent } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { Label } from '@louez/ui'
-import { Textarea } from '@louez/ui'
-import { Badge } from '@louez/ui'
-import { Checkbox } from '@louez/ui'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@louez/ui'
+import { useState, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { toastManager } from "@louez/ui";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Loader2, Plus, PenLine, AlertTriangle, Check, Mail } from "lucide-react";
+
+import { Button } from "@louez/ui";
+import { Card, CardContent } from "@louez/ui";
+import { Input } from "@louez/ui";
+import { Label } from "@louez/ui";
+import { Textarea } from "@louez/ui";
+import { Badge } from "@louez/ui";
+import { Checkbox } from "@louez/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@louez/ui";
 import {
   Dialog,
   DialogPopup,
@@ -38,42 +26,42 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@louez/ui'
-import { TooltipProvider } from '@louez/ui'
-import { Alert, AlertDescription } from '@louez/ui'
-import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-breadcrumbs-context'
-import { ReservationDatePickerControl } from '@/components/form/form-reservation-date-picker'
-import { cn, formatCurrency, getCurrencySymbol, minutesToPriceDuration } from '@louez/utils'
-import { useFormatLocale } from '@/hooks/use-format-locale'
-import { calculateDuration } from '@/lib/utils/duration'
-import { useStoreTimezone } from '@/contexts/store-context'
+} from "@louez/ui";
+import { TooltipProvider } from "@louez/ui";
+import { Alert, AlertDescription } from "@louez/ui";
+import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
+import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
+import { cn, formatCurrency, getCurrencySymbol, minutesToPriceDuration } from "@louez/utils";
+import { useFormatLocale } from "@/hooks/use-format-locale";
+import { calculateDuration } from "@/lib/utils/duration";
+import { useStoreTimezone } from "@/contexts/store-context";
 import {
   evaluateReservationRules,
   type ReservationValidationWarning,
-} from '@/lib/utils/reservation-rules'
-import { formatStoreDate } from '@/lib/utils/store-date'
-import { isLegacyTulipInsuranceItem } from '@/lib/integrations/tulip/contracts-insurance'
-import { orpc } from '@/lib/orpc/react'
-import { invalidateReservationAll } from '@/lib/orpc/invalidation'
-import { reservationAnalyticsActions } from '@/lib/product-analytics/analytics-events'
+} from "@/lib/utils/reservation-rules";
+import { formatStoreDate } from "@/lib/utils/store-date";
+import { isLegacyTulipInsuranceItem } from "@/lib/integrations/tulip/contracts-insurance";
+import { orpc } from "@/lib/orpc/react";
+import { invalidateReservationAll } from "@/lib/orpc/invalidation";
+import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
   captureReservationActionStarted,
-} from '@/lib/product-analytics/reservation-analytics-client'
-import type { PricingMode } from '@louez/types'
-import { EditReservationItemsSection } from './components/edit-reservation-items-section'
-import { EditReservationSummarySection } from './components/edit-reservation-summary-section'
-import { EditReservationDeliverySection } from './components/edit-reservation-delivery-section'
-import { useEditReservationAvailability } from './hooks/use-edit-reservation-availability'
+} from "@/lib/product-analytics/reservation-analytics-client";
+import type { PricingMode } from "@louez/types";
+import { EditReservationItemsSection } from "./components/edit-reservation-items-section";
+import { EditReservationSummarySection } from "./components/edit-reservation-summary-section";
+import { EditReservationDeliverySection } from "./components/edit-reservation-delivery-section";
+import { useEditReservationAvailability } from "./hooks/use-edit-reservation-availability";
 import {
   calculateUnitPriceFromTotal,
   useEditReservationPricing,
-} from './hooks/use-edit-reservation-pricing'
-import { useEditReservationDelivery } from './hooks/use-edit-reservation-delivery'
-import type { EditReservationFormProps, EditableItem, ReservationItem } from './types'
+} from "./hooks/use-edit-reservation-pricing";
+import { useEditReservationDelivery } from "./hooks/use-edit-reservation-delivery";
+import type { EditReservationFormProps, EditableItem, ReservationItem } from "./types";
 
 function parseCoordinate(value: string | null): number | null {
-  return value ? parseFloat(value) : null
+  return value ? parseFloat(value) : null;
 }
 
 function isSameStoreDay(
@@ -83,9 +71,9 @@ function isSameStoreDay(
   locale: string,
 ): boolean {
   return (
-    formatStoreDate(dateA, timezone, 'yyyy-MM-dd', locale) ===
-    formatStoreDate(dateB, timezone, 'yyyy-MM-dd', locale)
-  )
+    formatStoreDate(dateA, timezone, "yyyy-MM-dd", locale) ===
+    formatStoreDate(dateB, timezone, "yyyy-MM-dd", locale)
+  );
 }
 
 function resolvePricingModeFromMinutes(
@@ -93,110 +81,106 @@ function resolvePricingModeFromMinutes(
   fallback: PricingMode,
 ): PricingMode {
   if (!periodMinutes || periodMinutes <= 0) {
-    return fallback
+    return fallback;
   }
 
-  const period = minutesToPriceDuration(periodMinutes)
-  if (period.unit === 'week') return 'week'
-  if (period.unit === 'day') return 'day'
-  return 'hour'
+  const period = minutesToPriceDuration(periodMinutes);
+  if (period.unit === "week") return "week";
+  if (period.unit === "day") return "day";
+  return "hour";
 }
 
 function resolveInitialManualPricingMode(
-  product: EditableItem['product'],
+  product: EditableItem["product"],
   fallback: PricingMode,
   startDate: Date,
   endDate: Date,
 ): PricingMode {
   if (!product?.basePeriodMinutes || product.basePeriodMinutes <= 0) {
-    return fallback
+    return fallback;
   }
 
   const durationMinutes = Math.max(
     1,
     Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60)),
-  )
+  );
   const periods = [
     product.basePeriodMinutes,
     ...product.pricingTiers.map((tier) => tier.period ?? null),
   ]
-    .filter((period): period is number => typeof period === 'number' && period > 0)
-    .sort((a, b) => a - b)
+    .filter((period): period is number => typeof period === "number" && period > 0)
+    .sort((a, b) => a - b);
 
   if (periods.length === 0) {
-    return fallback
+    return fallback;
   }
 
   const applicablePeriod =
-    [...periods].reverse().find((period) => period <= durationMinutes) ?? periods[0]
+    [...periods].reverse().find((period) => period <= durationMinutes) ?? periods[0];
 
-  return resolvePricingModeFromMinutes(applicablePeriod, fallback)
+  return resolvePricingModeFromMinutes(applicablePeriod, fallback);
 }
 
 function isEmailNotificationResult(
   value: unknown,
-): value is { status: 'sent' | 'failed'; error?: string } {
+): value is { status: "sent" | "failed"; error?: string } {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    'status' in value &&
-    (value.status === 'sent' || value.status === 'failed')
-  )
+    "status" in value &&
+    (value.status === "sent" || value.status === "failed")
+  );
 }
 
 function getErrorTranslationKey(error: string): string {
-  return error.startsWith('errors.') ? error.replace('errors.', '') : error
+  return error.startsWith("errors.") ? error.replace("errors.", "") : error;
 }
 
 function isBufferConflictResult(
   value: unknown,
 ): value is { bufferConflict: true; failedUnitIds?: string[] } {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    'bufferConflict' in value &&
+    "bufferConflict" in value &&
     value.bufferConflict === true
-  )
+  );
 }
 
-function isTooManyAssignedUnitsResult(
-  value: unknown,
-): value is {
-  error: 'errors.tooManyAssignedUnits'
-  reservationItemId: string
-  assignedCount: number
+function isTooManyAssignedUnitsResult(value: unknown): value is {
+  error: "errors.tooManyAssignedUnits";
+  reservationItemId: string;
+  assignedCount: number;
 } {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    'error' in value &&
-    value.error === 'errors.tooManyAssignedUnits' &&
-    'reservationItemId' in value &&
-    typeof value.reservationItemId === 'string' &&
-    'assignedCount' in value &&
-    typeof value.assignedCount === 'number'
-  )
+    "error" in value &&
+    value.error === "errors.tooManyAssignedUnits" &&
+    "reservationItemId" in value &&
+    typeof value.reservationItemId === "string" &&
+    "assignedCount" in value &&
+    typeof value.assignedCount === "number"
+  );
 }
 
-function isAssignedUnitsConflictResult(
-  value: unknown,
-): value is {
-  error: 'errors.assignedUnitsConflict'
-  conflicts: Array<{ identifier: string }>
+function isAssignedUnitsConflictResult(value: unknown): value is {
+  error: "errors.assignedUnitsConflict";
+  conflicts: Array<{ identifier: string }>;
 } {
   return (
-    typeof value === 'object' &&
+    typeof value === "object" &&
     value !== null &&
-    'error' in value &&
-    value.error === 'errors.assignedUnitsConflict' &&
-    'conflicts' in value &&
+    "error" in value &&
+    value.error === "errors.assignedUnitsConflict" &&
+    "conflicts" in value &&
     Array.isArray(value.conflicts)
-  )
+  );
 }
 
 function toReservationItemPayload(item: EditableItem) {
   return {
-    id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
+    id: item.id.startsWith("new-") || item.id.startsWith("custom-") ? undefined : item.id,
     productId: item.productId,
     quantity: item.quantity,
     unitPrice: item.unitPrice,
@@ -207,27 +191,24 @@ function toReservationItemPayload(item: EditableItem) {
       name: item.productSnapshot.name,
       description: item.productSnapshot.description ?? null,
     },
-  }
+  };
 }
 
 function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): EditableItem {
   const isManualPrice =
-    (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.isManualOverride ===
-    true
-  const fallbackPricingMode = ((item.product?.pricingMode ??
+    (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.isManualOverride === true;
+  const fallbackPricingMode = (item.product?.pricingMode ??
     (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.pricingMode ??
-    'day') as PricingMode)
+    "day") as PricingMode;
   const pricingMode = isManualPrice
     ? resolveInitialManualPricingMode(item.product, fallbackPricingMode, startDate, endDate)
-    : fallbackPricingMode
+    : fallbackPricingMode;
   const duration =
-    item.product?.pricingKind === 'fixed'
-      ? 1
-      : calculateDuration(startDate, endDate, pricingMode)
+    item.product?.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, pricingMode);
   const preciseManualUnitPrice =
     isManualPrice && item.quantity > 0 && duration > 0
       ? Number(item.totalPrice) / (duration * item.quantity)
-      : Number(item.unitPrice)
+      : Number(item.unitPrice);
 
   return {
     id: item.id,
@@ -242,11 +223,11 @@ function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): 
     enforceStrictTiers: item.product?.enforceStrictTiers ?? false,
     productSnapshot: item.productSnapshot,
     product: item.product,
-  }
+  };
 }
 
 function roundComparableNumber(value: number): number {
-  return Math.round(value * 100) / 100
+  return Math.round(value * 100) / 100;
 }
 
 function buildItemsChangeSignature(items: EditableItem[]): string {
@@ -261,9 +242,9 @@ function buildItemsChangeSignature(items: EditableItem[]): string {
       productSnapshotName: item.productSnapshot.name.trim(),
       productSnapshotDescription: item.productSnapshot.description?.trim() ?? null,
     }))
-    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
 
-  return JSON.stringify(comparableItems)
+  return JSON.stringify(comparableItems);
 }
 
 export function EditReservationForm({
@@ -274,47 +255,48 @@ export function EditReservationForm({
   tulipInsuranceMode,
   storeSettings,
   storeDelivery,
+  dateChangeRequest,
 }: EditReservationFormProps) {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const t = useTranslations('dashboard.reservations')
-  const tBreadcrumbs = useTranslations('dashboard.breadcrumbs')
-  const tForm = useTranslations('dashboard.reservations.manualForm')
-  const tCommon = useTranslations('common')
-  const tErrors = useTranslations('errors')
-  const tValidation = useTranslations('validation')
-  const { intl: formatLocale } = useFormatLocale()
-  const timezone = useStoreTimezone()
-  const currencySymbol = getCurrencySymbol(currency)
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const t = useTranslations("dashboard.reservations");
+  const tBreadcrumbs = useTranslations("dashboard.breadcrumbs");
+  const tForm = useTranslations("dashboard.reservations.manualForm");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
+  const tValidation = useTranslations("validation");
+  const { intl: formatLocale } = useFormatLocale();
+  const timezone = useStoreTimezone();
+  const currencySymbol = getCurrencySymbol(currency);
 
   const updateReservationMutation = useMutation(
     orpc.dashboard.reservations.updateReservation.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationAll(queryClient, reservation.id)
+        await invalidateReservationAll(queryClient, reservation.id);
         await queryClient.fetchQuery(
           orpc.dashboard.reservations.getById.queryOptions({
             input: { reservationId: reservation.id },
           }),
-        )
+        );
       },
     }),
-  )
+  );
   const sendModificationEmailMutation = useMutation(
     orpc.dashboard.reservations.sendModificationEmail.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationAll(queryClient, reservation.id)
+        await invalidateReservationAll(queryClient, reservation.id);
       },
     }),
-  )
+  );
 
   // State
-  const [isLoading, setIsLoading] = useState(false)
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date(reservation.startDate))
-  const [endDate, setEndDate] = useState<Date | undefined>(new Date(reservation.endDate))
+  const [isLoading, setIsLoading] = useState(false);
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date(reservation.startDate));
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date(reservation.endDate));
   const endMinTime =
     startDate && endDate && isSameStoreDay(startDate, endDate, timezone, formatLocale)
-      ? formatStoreDate(startDate, timezone, 'TIME_ONLY', formatLocale)
-      : '00:00'
+      ? formatStoreDate(startDate, timezone, "TIME_ONLY", formatLocale)
+      : "00:00";
   const handleEndDateChange = useCallback(
     (date: Date | undefined) => {
       if (
@@ -323,32 +305,28 @@ export function EditReservationForm({
         isSameStoreDay(startDate, date, timezone, formatLocale) &&
         date < startDate
       ) {
-        setEndDate(startDate)
-        return
+        setEndDate(startDate);
+        return;
       }
 
-      setEndDate(date)
+      setEndDate(date);
     },
     [formatLocale, startDate, timezone],
-  )
+  );
   const editableReservationItems = reservation.items.filter(
     (item) =>
       !isLegacyTulipInsuranceItem({
         isCustomItem: item.isCustomItem,
         productSnapshot: item.productSnapshot,
-      })
-  )
+      }),
+  );
   const initialEditableItems = useMemo(
     () =>
       editableReservationItems.map((item) =>
-        toEditableItem(
-          item,
-          new Date(reservation.startDate),
-          new Date(reservation.endDate),
-        )
+        toEditableItem(item, new Date(reservation.startDate), new Date(reservation.endDate)),
       ),
     [editableReservationItems, reservation.startDate, reservation.endDate],
-  )
+  );
   const legacyInsuranceAmount = reservation.items.reduce((sum, item) => {
     if (
       !isLegacyTulipInsuranceItem({
@@ -356,66 +334,62 @@ export function EditReservationForm({
         productSnapshot: item.productSnapshot,
       })
     ) {
-      return sum
+      return sum;
     }
 
-    const parsed = Number(item.totalPrice)
+    const parsed = Number(item.totalPrice);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      return sum
+      return sum;
     }
 
-    return sum + parsed
-  }, 0)
+    return sum + parsed;
+  }, 0);
   const initialTulipInsuranceAmount = (() => {
-    const parsedInsuranceAmount = Number(reservation.tulipInsuranceAmount ?? '0')
+    const parsedInsuranceAmount = Number(reservation.tulipInsuranceAmount ?? "0");
     if (Number.isFinite(parsedInsuranceAmount) && parsedInsuranceAmount > 0) {
-      return parsedInsuranceAmount
+      return parsedInsuranceAmount;
     }
 
-    return legacyInsuranceAmount
-  })()
-  const [items, setItems] = useState<EditableItem[]>(
-    initialEditableItems
-  )
+    return legacyInsuranceAmount;
+  })();
+  const [items, setItems] = useState<EditableItem[]>(initialEditableItems);
   const [validationWarningsToConfirm, setValidationWarningsToConfirm] = useState<
     ReservationValidationWarning[]
-  >([])
-  const [showValidationConfirmDialog, setShowValidationConfirmDialog] = useState(false)
-  const [notifyCustomerByEmail, setNotifyCustomerByEmail] = useState(false)
-  const [emailRetryWarning, setEmailRetryWarning] = useState<string | null>(null)
+  >([]);
+  const [showValidationConfirmDialog, setShowValidationConfirmDialog] = useState(false);
+  const [notifyCustomerByEmail, setNotifyCustomerByEmail] = useState(false);
+  const [emailRetryWarning, setEmailRetryWarning] = useState<string | null>(null);
   const initialTulipInsuranceOptIn =
-    tulipInsuranceMode === 'required'
+    tulipInsuranceMode === "required"
       ? true
-      : tulipInsuranceMode === 'optional'
+      : tulipInsuranceMode === "optional"
         ? reservation.tulipInsuranceOptIn === true
-        : false
-  const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(initialTulipInsuranceOptIn)
+        : false;
+  const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(initialTulipInsuranceOptIn);
   const isTulipInsurancePastDateBlocked =
-    tulipInsuranceMode !== 'no_public' &&
+    tulipInsuranceMode !== "no_public" &&
     startDate !== undefined &&
-    startDate.getTime() < Date.now()
+    startDate.getTime() < Date.now();
   const effectiveTulipInsuranceOptIn =
     !isTulipInsurancePastDateBlocked &&
-    (tulipInsuranceMode === 'required'
+    (tulipInsuranceMode === "required"
       ? true
-      : tulipInsuranceMode === 'optional'
+      : tulipInsuranceMode === "optional"
         ? tulipInsuranceOptIn
-        : false)
+        : false);
   const tulipInsuranceQuoteItems = useMemo(
     () =>
       items
         .filter(
           (item): item is EditableItem & { productId: string } =>
-            typeof item.productId === 'string' &&
-            item.productId.length > 0 &&
-            item.quantity > 0,
+            typeof item.productId === "string" && item.productId.length > 0 && item.quantity > 0,
         )
         .map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
         })),
     [items],
-  )
+  );
   const tulipInsuranceQuoteRequest = useMemo(() => {
     if (
       !effectiveTulipInsuranceOptIn ||
@@ -425,7 +399,7 @@ export function EditReservationForm({
       endDate < startDate ||
       tulipInsuranceQuoteItems.length === 0
     ) {
-      return null
+      return null;
     }
 
     return {
@@ -433,14 +407,14 @@ export function EditReservationForm({
       endDate: endDate.toISOString(),
       tulipInsuranceOptIn: true,
       items: tulipInsuranceQuoteItems,
-    }
+    };
   }, [
     effectiveTulipInsuranceOptIn,
     endDate,
     isTulipInsurancePastDateBlocked,
     startDate,
     tulipInsuranceQuoteItems,
-  ])
+  ]);
   const tulipInsuranceQuoteInput = {
     reservationId: reservation.id,
     payload:
@@ -451,7 +425,7 @@ export function EditReservationForm({
         tulipInsuranceOptIn: false,
         items: [],
       } as const),
-  }
+  };
   const tulipInsuranceQuoteQuery = useQuery({
     ...orpc.dashboard.reservations.previewTulipQuote.queryOptions({
       input: tulipInsuranceQuoteInput,
@@ -460,27 +434,27 @@ export function EditReservationForm({
     staleTime: Infinity,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
-  })
+  });
   const isTulipInsuranceQuoteLoading =
     tulipInsuranceQuoteRequest !== null &&
     (tulipInsuranceQuoteQuery.isLoading ||
-      (tulipInsuranceQuoteQuery.isFetching && !tulipInsuranceQuoteQuery.data))
-  const tulipInsuranceQuotePreview = tulipInsuranceQuoteQuery.data
+      (tulipInsuranceQuoteQuery.isFetching && !tulipInsuranceQuoteQuery.data));
+  const tulipInsuranceQuotePreview = tulipInsuranceQuoteQuery.data;
   const quotedTulipInsuranceAmount =
     tulipInsuranceQuotePreview?.appliedOptIn && tulipInsuranceQuotePreview.amount > 0
       ? tulipInsuranceQuotePreview.amount
-      : 0
+      : 0;
   const quoteFallbackTulipInsuranceAmount =
     isTulipInsuranceQuoteLoading ||
     tulipInsuranceQuotePreview?.quoteUnavailable ||
     tulipInsuranceQuoteQuery.isError
       ? initialTulipInsuranceAmount
-      : 0
+      : 0;
   const originalPeriodMs =
-    new Date(reservation.endDate).getTime() - new Date(reservation.startDate).getTime()
+    new Date(reservation.endDate).getTime() - new Date(reservation.startDate).getTime();
   const currentPeriodMs =
-    startDate && endDate ? endDate.getTime() - startDate.getTime() : originalPeriodMs
-  const isPeriodReduced = currentPeriodMs < originalPeriodMs
+    startDate && endDate ? endDate.getTime() - startDate.getTime() : originalPeriodMs;
+  const isPeriodReduced = currentPeriodMs < originalPeriodMs;
   const fixedTulipInsuranceAmount = effectiveTulipInsuranceOptIn
     ? Math.max(
         quotedTulipInsuranceAmount > 0
@@ -488,35 +462,35 @@ export function EditReservationForm({
           : quoteFallbackTulipInsuranceAmount,
         isPeriodReduced ? initialTulipInsuranceAmount : 0,
       )
-    : 0
+    : 0;
   const tulipInsuranceQuoteErrorKey = tulipInsuranceQuoteQuery.isError
-    ? 'errors.tulipQuoteFailed'
-    : (tulipInsuranceQuotePreview?.quoteError ?? null)
+    ? "errors.tulipQuoteFailed"
+    : (tulipInsuranceQuotePreview?.quoteError ?? null);
   const tulipInsuranceQuoteErrorMessage = tulipInsuranceQuoteErrorKey
-    ? tErrors(tulipInsuranceQuoteErrorKey.replace('errors.', ''))
-    : null
+    ? tErrors(tulipInsuranceQuoteErrorKey.replace("errors.", ""))
+    : null;
 
   // Custom item dialog state
-  const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
+  const [showCustomItemDialog, setShowCustomItemDialog] = useState(false);
   const [customItemForm, setCustomItemForm] = useState({
-    name: '',
-    description: '',
-    unitPrice: '',
-    totalPrice: '',
-    deposit: '',
-    quantity: '1',
-    pricingMode: 'day' as PricingMode,
-  })
+    name: "",
+    description: "",
+    unitPrice: "",
+    totalPrice: "",
+    deposit: "",
+    quantity: "1",
+    pricingMode: "day" as PricingMode,
+  });
 
   // Original values for comparison
-  const originalSubtotal = parseFloat(reservation.subtotalAmount)
-  const originalDeposit = parseFloat(reservation.depositAmount)
-  const originalDeliveryFee = parseFloat(reservation.deliveryFee ?? '0')
+  const originalSubtotal = parseFloat(reservation.subtotalAmount);
+  const originalDeposit = parseFloat(reservation.depositAmount);
+  const originalDeliveryFee = parseFloat(reservation.deliveryFee ?? "0");
   const originalDuration = calculateDuration(
     new Date(reservation.startDate),
     new Date(reservation.endDate),
-    'day'
-  )
+    "day",
+  );
   const { getDurationForMode, getDurationUnit, newDuration, calculations } =
     useEditReservationPricing({
       startDate,
@@ -524,38 +498,33 @@ export function EditReservationForm({
       items,
       originalSubtotal,
       fixedChargesTotal: fixedTulipInsuranceAmount,
-    })
-  const { availabilityWarnings, availableQuantityByProduct } =
-    useEditReservationAvailability({
-      startDate,
-      endDate,
-      items,
-      products: availableProducts,
-      existingReservations,
-      turnoverBufferMinutes: storeSettings?.turnoverBufferMinutes ?? 0,
-    })
+    });
+  const { availabilityWarnings, availableQuantityByProduct } = useEditReservationAvailability({
+    startDate,
+    endDate,
+    items,
+    products: availableProducts,
+    existingReservations,
+    turnoverBufferMinutes: storeSettings?.turnoverBufferMinutes ?? 0,
+  });
 
   // Delivery state
   const delivery = useEditReservationDelivery({
     storeDelivery,
     initialDelivery: reservation.delivery,
     subtotal: calculations.subtotal,
-  })
+  });
 
   // Handlers
   const handleQuantityChange = (itemId: string, quantity: number) => {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, quantity: Math.max(1, quantity) } : item
-      )
-    )
-  }
+        item.id === itemId ? { ...item, quantity: Math.max(1, quantity) } : item,
+      ),
+    );
+  };
 
-  const handlePriceChange = (
-    itemId: string,
-    price: number,
-    pricingMode?: PricingMode,
-  ) => {
+  const handlePriceChange = (itemId: string, price: number, pricingMode?: PricingMode) => {
     setItems((prev) =>
       prev.map((item) =>
         item.id === itemId
@@ -565,10 +534,10 @@ export function EditReservationForm({
               isManualPrice: true,
               pricingMode: pricingMode ?? item.pricingMode,
             }
-          : item
-      )
-    )
-  }
+          : item,
+      ),
+    );
+  };
 
   const handleItemTotalPriceChange = (
     itemId: string,
@@ -577,38 +546,34 @@ export function EditReservationForm({
   ) => {
     setItems((prev) =>
       prev.map((item) => {
-        if (item.id !== itemId) return item
+        if (item.id !== itemId) return item;
 
-        const effectivePricingMode = pricingMode ?? item.pricingMode
-        const itemDuration = startDate && endDate
-          ? getDurationForMode(effectivePricingMode)
-          : 0
+        const effectivePricingMode = pricingMode ?? item.pricingMode;
+        const itemDuration = startDate && endDate ? getDurationForMode(effectivePricingMode) : 0;
         const unitPrice = calculateUnitPriceFromTotal({
           totalPrice,
           quantity: item.quantity,
           duration: itemDuration,
-          pricingKind: item.product?.pricingKind ?? 'duration',
-        })
+          pricingKind: item.product?.pricingKind ?? "duration",
+        });
 
         return {
           ...item,
           unitPrice,
           isManualPrice: true,
           pricingMode: effectivePricingMode,
-        }
-      })
-    )
-  }
+        };
+      }),
+    );
+  };
 
   const handleDepositChange = (itemId: string, depositPerUnit: number) => {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId
-          ? { ...item, depositPerUnit: Math.max(0, depositPerUnit) }
-          : item
-      )
-    )
-  }
+        item.id === itemId ? { ...item, depositPerUnit: Math.max(0, depositPerUnit) } : item,
+      ),
+    );
+  };
 
   const handleToggleManualPrice = (
     itemId: string,
@@ -617,36 +582,36 @@ export function EditReservationForm({
   ) => {
     setItems((prev) =>
       prev.map((item) => {
-        if (item.id !== itemId) return item
+        if (item.id !== itemId) return item;
         if (item.isManualPrice && item.product) {
-          return { ...item, isManualPrice: false, unitPrice: parseFloat(item.product.price) }
+          return { ...item, isManualPrice: false, unitPrice: parseFloat(item.product.price) };
         }
         return {
           ...item,
           isManualPrice: true,
           unitPrice: effectiveUnitPrice ?? item.unitPrice,
           pricingMode: pricingMode ?? item.pricingMode,
-        }
-      })
-    )
-  }
+        };
+      }),
+    );
+  };
 
   const handleRemoveItem = (itemId: string) => {
     if (items.length <= 1) {
-      toastManager.add({ title: t('edit.cannotRemoveLastItem'), type: 'error' })
-      return
+      toastManager.add({ title: t("edit.cannotRemoveLastItem"), type: "error" });
+      return;
     }
-    setItems((prev) => prev.filter((item) => item.id !== itemId))
-  }
+    setItems((prev) => prev.filter((item) => item.id !== itemId));
+  };
 
   const handleAddProduct = (productId: string) => {
-    const product = availableProducts.find((p) => p.id === productId)
-    if (!product) return
+    const product = availableProducts.find((p) => p.id === productId);
+    if (!product) return;
 
-    const existing = items.find((item) => item.productId === productId)
+    const existing = items.find((item) => item.productId === productId);
     if (existing) {
-      handleQuantityChange(existing.id, existing.quantity + 1)
-      return
+      handleQuantityChange(existing.id, existing.quantity + 1);
+      return;
     }
 
     const newItem: EditableItem = {
@@ -663,90 +628,87 @@ export function EditReservationForm({
         images: [],
       },
       product,
-      pricingMode: (product.pricingMode ?? 'day') as PricingMode,
+      pricingMode: (product.pricingMode ?? "day") as PricingMode,
       basePeriodMinutes: product.basePeriodMinutes ?? null,
       enforceStrictTiers: product.enforceStrictTiers ?? false,
-    }
+    };
 
-    setItems((prev) => [...prev, newItem])
-  }
+    setItems((prev) => [...prev, newItem]);
+  };
 
   // Custom item handlers
   const resetCustomItemForm = () => {
     setCustomItemForm({
-      name: '',
-      description: '',
-      unitPrice: '',
-      totalPrice: '',
-      deposit: '',
-      quantity: '1',
-      pricingMode: 'day',
-    })
-  }
+      name: "",
+      description: "",
+      unitPrice: "",
+      totalPrice: "",
+      deposit: "",
+      quantity: "1",
+      pricingMode: "day",
+    });
+  };
 
   const handleTotalPriceChange = (value: string) => {
-    const total = parseFloat(value) || 0
-    const qty = parseInt(customItemForm.quantity) || 1
-    const customDuration = getDurationForMode(customItemForm.pricingMode)
-    const unit = customDuration > 0 && qty > 0 ? total / (customDuration * qty) : 0
+    const total = parseFloat(value) || 0;
+    const qty = parseInt(customItemForm.quantity) || 1;
+    const customDuration = getDurationForMode(customItemForm.pricingMode);
+    const unit = customDuration > 0 && qty > 0 ? total / (customDuration * qty) : 0;
     setCustomItemForm((prev) => ({
       ...prev,
       totalPrice: value,
-      unitPrice: unit > 0 ? unit.toFixed(2) : '',
-    }))
-  }
+      unitPrice: unit > 0 ? unit.toFixed(2) : "",
+    }));
+  };
 
   const handleUnitPriceChange = (value: string) => {
-    const unit = parseFloat(value) || 0
-    const qty = parseInt(customItemForm.quantity) || 1
-    const customDuration = getDurationForMode(customItemForm.pricingMode)
-    const total = unit * customDuration * qty
+    const unit = parseFloat(value) || 0;
+    const qty = parseInt(customItemForm.quantity) || 1;
+    const customDuration = getDurationForMode(customItemForm.pricingMode);
+    const total = unit * customDuration * qty;
     setCustomItemForm((prev) => ({
       ...prev,
       unitPrice: value,
-      totalPrice: total > 0 ? total.toFixed(2) : '',
-    }))
-  }
+      totalPrice: total > 0 ? total.toFixed(2) : "",
+    }));
+  };
 
   const handleCustomItemQuantityChange = (value: string) => {
-    const qty = parseInt(value) || 1
-    const unit = parseFloat(customItemForm.unitPrice) || 0
-    const customDuration = getDurationForMode(customItemForm.pricingMode)
-    const total = unit * customDuration * qty
+    const qty = parseInt(value) || 1;
+    const unit = parseFloat(customItemForm.unitPrice) || 0;
+    const customDuration = getDurationForMode(customItemForm.pricingMode);
+    const total = unit * customDuration * qty;
     setCustomItemForm((prev) => ({
       ...prev,
       quantity: value,
       totalPrice: unit > 0 ? total.toFixed(2) : prev.totalPrice,
-    }))
-  }
+    }));
+  };
 
   const handleAddCustomItem = () => {
-    const name = customItemForm.name.trim()
+    const name = customItemForm.name.trim();
     if (!name) {
-      toastManager.add({ title: tForm('customItem.nameRequired'), type: 'error' })
-      return
+      toastManager.add({ title: tForm("customItem.nameRequired"), type: "error" });
+      return;
     }
 
-    const totalPrice = parseFloat(customItemForm.totalPrice) || 0
-    const unitPrice = parseFloat(customItemForm.unitPrice) || 0
-    const quantity = parseInt(customItemForm.quantity) || 1
-    const deposit = parseFloat(customItemForm.deposit) || 0
+    const totalPrice = parseFloat(customItemForm.totalPrice) || 0;
+    const unitPrice = parseFloat(customItemForm.unitPrice) || 0;
+    const quantity = parseInt(customItemForm.quantity) || 1;
+    const deposit = parseFloat(customItemForm.deposit) || 0;
 
     if (totalPrice <= 0 && unitPrice <= 0) {
-      toastManager.add({ title: tForm('customItem.priceRequired'), type: 'error' })
-      return
+      toastManager.add({ title: tForm("customItem.priceRequired"), type: "error" });
+      return;
     }
 
-    const customDuration = getDurationForMode(customItemForm.pricingMode)
+    const customDuration = getDurationForMode(customItemForm.pricingMode);
     if (customDuration <= 0) {
-      toastManager.add({ title: tForm('customItem.selectPeriodFirst'), type: 'error' })
-      return
+      toastManager.add({ title: tForm("customItem.selectPeriodFirst"), type: "error" });
+      return;
     }
 
-    const effectiveUnitPrice =
-      unitPrice > 0
-        ? unitPrice
-        : totalPrice / (customDuration * quantity)
+    const effectiveUnitPrice = unitPrice > 0 ? unitPrice : totalPrice / (customDuration * quantity);
 
     const newItem: EditableItem = {
       id: `custom-${Date.now()}`,
@@ -763,58 +725,58 @@ export function EditReservationForm({
       },
       product: null,
       pricingMode: customItemForm.pricingMode,
-    }
+    };
 
-    setItems((prev) => [...prev, newItem])
-    resetCustomItemForm()
-    setShowCustomItemDialog(false)
-    toastManager.add({ title: tForm('customItem.added'), type: 'success' })
-  }
+    setItems((prev) => [...prev, newItem]);
+    resetCustomItemForm();
+    setShowCustomItemDialog(false);
+    toastManager.add({ title: tForm("customItem.added"), type: "success" });
+  };
 
   const getRuleWarnings = useCallback((): ReservationValidationWarning[] => {
-    if (!startDate || !endDate) return []
+    if (!startDate || !endDate) return [];
 
     return evaluateReservationRules({
       startDate,
       endDate,
       storeSettings,
-    })
-  }, [startDate, endDate, storeSettings])
+    });
+  }, [startDate, endDate, storeSettings]);
 
   const getWarningLabel = useCallback(
     (warning: ReservationValidationWarning) => {
-      const key = warning.key.replace('errors.', '')
-      return tErrors(key, warning.params || {})
+      const key = warning.key.replace("errors.", "");
+      return tErrors(key, warning.params || {});
     },
-    [tErrors]
-  )
+    [tErrors],
+  );
 
   const saveReservation = async (overrideTurnoverBuffer = false) => {
-    if (!startDate || !endDate) return
+    if (!startDate || !endDate) return;
 
     if (items.length === 0) {
-      toastManager.add({ title: t('edit.noItems'), type: 'error' })
-      return
+      toastManager.add({ title: t("edit.noItems"), type: "error" });
+      return;
     }
     captureReservationActionStarted({
       reservationId: reservation.id,
       reservationStatus: reservation.status,
       action: reservationAnalyticsActions.editReservation,
-      source: 'reservation_edit',
+      source: "reservation_edit",
       properties: {
         item_count: items.length,
         notify_customer: notifyCustomerByEmail,
         override_turnover_buffer: overrideTurnoverBuffer,
       },
-    })
-    setIsLoading(true)
+    });
+    setIsLoading(true);
     try {
       // Build delivery payload when delivery is available
       const deliveryPayload = storeDelivery
         ? {
             outbound: {
-              method: delivery.outbound.method as 'store' | 'address',
-              ...(delivery.outbound.method === 'address'
+              method: delivery.outbound.method as "store" | "address",
+              ...(delivery.outbound.method === "address"
                 ? {
                     address: delivery.outbound.address.address,
                     city: delivery.outbound.address.city,
@@ -828,8 +790,8 @@ export function EditReservationForm({
                   }),
             },
             return: {
-              method: delivery.inbound.method as 'store' | 'address',
-              ...(delivery.inbound.method === 'address'
+              method: delivery.inbound.method as "store" | "address",
+              ...(delivery.inbound.method === "address"
                 ? {
                     address: delivery.inbound.address.address,
                     city: delivery.inbound.address.city,
@@ -843,7 +805,7 @@ export function EditReservationForm({
                   }),
             },
           }
-        : undefined
+        : undefined;
 
       const result = await updateReservationMutation.mutateAsync({
         reservationId: reservation.id,
@@ -856,159 +818,154 @@ export function EditReservationForm({
           delivery: deliveryPayload,
           items: items.map(toReservationItemPayload),
         },
-      })
+      });
 
       if (result.error) {
         captureReservationActionFailed({
           reservationId: reservation.id,
           reservationStatus: reservation.status,
           action: reservationAnalyticsActions.editReservation,
-          source: 'reservation_edit',
+          source: "reservation_edit",
           properties: { error_code: result.error },
-        })
+        });
         if (isBufferConflictResult(result)) {
-          const shouldOverride = window.confirm(
-            tErrors('turnoverBufferConflict'),
-          )
+          const shouldOverride = window.confirm(tErrors("turnoverBufferConflict"));
           if (shouldOverride) {
-            await saveReservation(true)
+            await saveReservation(true);
           }
-          return
+          return;
         }
 
         if (isTooManyAssignedUnitsResult(result)) {
           const itemName =
-            items.find((item) => item.id === result.reservationItemId)
-              ?.productSnapshot.name ?? result.reservationItemId
+            items.find((item) => item.id === result.reservationItemId)?.productSnapshot.name ??
+            result.reservationItemId;
           toastManager.add({
-            title: tErrors('tooManyAssignedUnits', {
+            title: tErrors("tooManyAssignedUnits", {
               item: itemName,
               assignedCount: result.assignedCount,
             }),
-            type: 'error',
-          })
-          return
+            type: "error",
+          });
+          return;
         }
 
         if (isAssignedUnitsConflictResult(result)) {
           const identifiers = result.conflicts
             .map((conflict) => conflict.identifier)
             .filter((identifier) => identifier.length > 0)
-            .join(', ')
+            .join(", ");
           toastManager.add({
-            title: tErrors('assignedUnitsConflict', { identifiers }),
-            type: 'error',
-          })
-          return
+            title: tErrors("assignedUnitsConflict", { identifiers }),
+            type: "error",
+          });
+          return;
         }
 
         toastManager.add({
           title: tErrors(getErrorTranslationKey(result.error)),
-          type: 'error',
-        })
+          type: "error",
+        });
       } else {
-        const warnings = result.warnings
+        const warnings = result.warnings;
         if (Array.isArray(warnings) && warnings.length > 0) {
           const toastableWarnings = warnings.filter(
             (warning: ReservationValidationWarning) =>
-              warning.code !== 'min_duration' &&
-              warning.key !== 'errors.minRentalDurationViolation'
-          )
+              warning.code !== "min_duration" &&
+              warning.key !== "errors.minRentalDurationViolation",
+          );
 
           const warningMessage = toastableWarnings
             .map((warning: ReservationValidationWarning) => getWarningLabel(warning))
-            .join(' • ')
+            .join(" • ");
 
           if (warningMessage) {
-            toastManager.add({ title: warningMessage, type: 'warning' })
+            toastManager.add({ title: warningMessage, type: "warning" });
           }
         }
 
         const emailNotification = isEmailNotificationResult(result.emailNotification)
           ? result.emailNotification
-          : null
-        if (emailNotification?.status === 'failed') {
-          setEmailRetryWarning(t('edit.emailNotificationFailed'))
-          toastManager.add({ title: t('edit.savedEmailFailed'), type: 'warning' })
-          return
+          : null;
+        if (emailNotification?.status === "failed") {
+          setEmailRetryWarning(t("edit.emailNotificationFailed"));
+          toastManager.add({ title: t("edit.savedEmailFailed"), type: "warning" });
+          return;
         }
 
-        setEmailRetryWarning(null)
+        setEmailRetryWarning(null);
         toastManager.add({
-          title:
-            emailNotification?.status === 'sent'
-              ? t('edit.savedEmailSent')
-              : t('edit.saved'),
-          type: 'success',
-        })
-        router.push(`/dashboard/reservations/${reservation.id}`)
-        router.refresh()
+          title: emailNotification?.status === "sent" ? t("edit.savedEmailSent") : t("edit.saved"),
+          type: "success",
+        });
+        router.push(`/dashboard/reservations/${reservation.id}`);
+        router.refresh();
       }
     } catch (error) {
       captureReservationActionFailed({
         reservationId: reservation.id,
         reservationStatus: reservation.status,
         action: reservationAnalyticsActions.editReservation,
-        source: 'reservation_edit',
+        source: "reservation_edit",
         properties: {
           error_code:
-            error instanceof Error && error.message.startsWith('errors.')
+            error instanceof Error && error.message.startsWith("errors.")
               ? error.message
-              : 'reservation_update_failed',
+              : "reservation_update_failed",
         },
-      })
-      if (error instanceof Error && error.message.startsWith('errors.')) {
+      });
+      if (error instanceof Error && error.message.startsWith("errors.")) {
         toastManager.add({
           title: tErrors(getErrorTranslationKey(error.message)),
-          type: 'error',
-        })
-        return
+          type: "error",
+        });
+        return;
       }
 
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors("generic"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleSave = async () => {
     if (!startDate || !endDate) {
-      toastManager.add({ title: t('edit.datesRequired'), type: 'error' })
-      return
+      toastManager.add({ title: t("edit.datesRequired"), type: "error" });
+      return;
     }
 
     if (endDate < startDate) {
-      toastManager.add({ title: tValidation('endDateBeforeStart'), type: 'error' })
-      return
+      toastManager.add({ title: tValidation("endDateBeforeStart"), type: "error" });
+      return;
     }
 
     if (delivery.isCalculating) {
-      toastManager.add({ title: tForm('loading'), type: 'error' })
-      return
+      toastManager.add({ title: tForm("loading"), type: "error" });
+      return;
     }
 
     // Check for delivery errors
     if (delivery.hasErrors) {
-      return
+      return;
     }
 
-    const warnings = getRuleWarnings()
+    const warnings = getRuleWarnings();
     if (warnings.length > 0) {
-      setValidationWarningsToConfirm(warnings)
-      setShowValidationConfirmDialog(true)
-      return
+      setValidationWarningsToConfirm(warnings);
+      setShowValidationConfirmDialog(true);
+      return;
     }
 
-    await saveReservation()
-  }
+    await saveReservation();
+  };
 
   const handleConfirmWarningSave = async () => {
-    setShowValidationConfirmDialog(false)
-    await saveReservation()
-  }
+    setShowValidationConfirmDialog(false);
+    await saveReservation();
+  };
 
   const handleRetryModificationEmail = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       await sendModificationEmailMutation.mutateAsync({
         reservationId: reservation.id,
@@ -1016,71 +973,56 @@ export function EditReservationForm({
           previousStartDate: reservation.startDate,
           previousEndDate: reservation.endDate,
         },
-      })
-      setEmailRetryWarning(null)
-      toastManager.add({ title: t('edit.emailNotificationSent'), type: 'success' })
-      router.push(`/dashboard/reservations/${reservation.id}`)
+      });
+      setEmailRetryWarning(null);
+      toastManager.add({ title: t("edit.emailNotificationSent"), type: "success" });
+      router.push(`/dashboard/reservations/${reservation.id}`);
     } catch {
-      setEmailRetryWarning(t('edit.emailNotificationFailed'))
-      toastManager.add({ title: t('edit.emailNotificationRetryFailed'), type: 'error' })
+      setEmailRetryWarning(t("edit.emailNotificationFailed"));
+      toastManager.add({ title: t("edit.emailNotificationRetryFailed"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const hasDeliveryAddressChanges =
-    (
-      (delivery.outbound.method === 'address' ||
-        reservation.delivery.outboundMethod === 'address') &&
-      (
-        delivery.outbound.address.address !== (reservation.delivery.deliveryAddress ?? '') ||
-        delivery.outbound.address.latitude !== parseCoordinate(reservation.delivery.deliveryLatitude) ||
-        delivery.outbound.address.longitude !== parseCoordinate(reservation.delivery.deliveryLongitude)
-      )
-    ) ||
-    (
-      (delivery.inbound.method === 'address' ||
-        reservation.delivery.returnMethod === 'address') &&
-      (
-        delivery.inbound.address.address !== (reservation.delivery.returnAddress ?? '') ||
-        delivery.inbound.address.latitude !== parseCoordinate(reservation.delivery.returnLatitude) ||
-        delivery.inbound.address.longitude !== parseCoordinate(reservation.delivery.returnLongitude)
-      )
-    )
+    ((delivery.outbound.method === "address" ||
+      reservation.delivery.outboundMethod === "address") &&
+      (delivery.outbound.address.address !== (reservation.delivery.deliveryAddress ?? "") ||
+        delivery.outbound.address.latitude !==
+          parseCoordinate(reservation.delivery.deliveryLatitude) ||
+        delivery.outbound.address.longitude !==
+          parseCoordinate(reservation.delivery.deliveryLongitude))) ||
+    ((delivery.inbound.method === "address" || reservation.delivery.returnMethod === "address") &&
+      (delivery.inbound.address.address !== (reservation.delivery.returnAddress ?? "") ||
+        delivery.inbound.address.latitude !==
+          parseCoordinate(reservation.delivery.returnLatitude) ||
+        delivery.inbound.address.longitude !==
+          parseCoordinate(reservation.delivery.returnLongitude)));
 
-  const deliveryMinimumAmount =
-    storeDelivery?.settings.minimumOrderAmountForDelivery ?? null
+  const deliveryMinimumAmount = storeDelivery?.settings.minimumOrderAmountForDelivery ?? null;
   const deliveryMinimumWarning =
-    storeDelivery?.settings.mode === 'optional' &&
+    storeDelivery?.settings.mode === "optional" &&
     deliveryMinimumAmount !== null &&
     calculations.subtotal < deliveryMinimumAmount &&
-    (delivery.outbound.method === 'address' || delivery.inbound.method === 'address')
-      ? tForm('deliveryMinimumOverrideWarning', {
+    (delivery.outbound.method === "address" || delivery.inbound.method === "address")
+      ? tForm("deliveryMinimumOverrideWarning", {
           amount: formatCurrency(deliveryMinimumAmount, currency),
         })
-      : null
+      : null;
 
   const hasDeliveryLocationChanges =
-    (
-      (delivery.outbound.method === 'store' ||
-        reservation.delivery.outboundMethod === 'store') &&
-      delivery.outbound.locationId !== reservation.delivery.pickupLocationId
-    ) ||
-    (
-      (delivery.inbound.method === 'store' ||
-        reservation.delivery.returnMethod === 'store') &&
-      delivery.inbound.locationId !== reservation.delivery.returnLocationId
-    )
+    ((delivery.outbound.method === "store" || reservation.delivery.outboundMethod === "store") &&
+      delivery.outbound.locationId !== reservation.delivery.pickupLocationId) ||
+    ((delivery.inbound.method === "store" || reservation.delivery.returnMethod === "store") &&
+      delivery.inbound.locationId !== reservation.delivery.returnLocationId);
 
   const originalItemsSignature = useMemo(
     () => buildItemsChangeSignature(initialEditableItems),
     [initialEditableItems],
-  )
-  const currentItemsSignature = useMemo(
-    () => buildItemsChangeSignature(items),
-    [items],
-  )
-  const hasItemChanges = currentItemsSignature !== originalItemsSignature
+  );
+  const currentItemsSignature = useMemo(() => buildItemsChangeSignature(items), [items]);
+  const hasItemChanges = currentItemsSignature !== originalItemsSignature;
 
   const hasChanges =
     (startDate?.getTime() ?? 0) !== new Date(reservation.startDate).getTime() ||
@@ -1092,35 +1034,58 @@ export function EditReservationForm({
     delivery.outbound.method !== reservation.delivery.outboundMethod ||
     delivery.inbound.method !== reservation.delivery.returnMethod ||
     hasDeliveryLocationChanges ||
-    hasDeliveryAddressChanges
+    hasDeliveryAddressChanges;
 
   const hasScheduleChanges =
     (startDate?.getTime() ?? 0) !== new Date(reservation.startDate).getTime() ||
-    (endDate?.getTime() ?? 0) !== new Date(reservation.endDate).getTime()
+    (endDate?.getTime() ?? 0) !== new Date(reservation.endDate).getTime();
 
   // The add handler increments quantity when the product is already present.
-  const availableToAdd = availableProducts
+  const availableToAdd = availableProducts;
 
   return (
     <TooltipProvider>
+      {dateChangeRequest ? (
+        <DateChangeReview
+          reservationId={reservation.id}
+          request={dateChangeRequest}
+          dateLabel={formatStoreDate(
+            dateChangeRequest.requestedEndDate,
+            timezone,
+            "DATE_AT_TIME",
+            formatLocale,
+          )}
+          canWrite
+          onApply={() => {
+            setEndDate(new Date(dateChangeRequest.requestedEndDate));
+            setNotifyCustomerByEmail(true);
+          }}
+        />
+      ) : null}
+
       <DashboardBreadcrumbLabel
         pathname={`/dashboard/reservations/${reservation.id}`}
         label={`#${reservation.number}`}
       />
-      <DashboardBreadcrumbLabel label={tBreadcrumbs('reservationsEdit')} />
+      <DashboardBreadcrumbLabel label={tBreadcrumbs("reservationsEdit")} />
       <div className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8 min-h-screen bg-muted/30">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background border-b">
           <div className="container max-w-5xl mx-auto px-3 py-3 sm:px-4 sm:py-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                <Button render={<Link href={`/dashboard/reservations/${reservation.id}`} />} variant="ghost" size="icon" className="shrink-0">
+                <Button
+                  render={<Link href={`/dashboard/reservations/${reservation.id}`} />}
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 min-w-0">
                     <h1 className="text-base sm:text-lg font-semibold truncate">
-                      {t('edit.title')}
+                      {t("edit.title")}
                     </h1>
                     <Badge variant="expired" className="font-mono shrink-0">
                       #{reservation.number}
@@ -1137,7 +1102,7 @@ export function EditReservationForm({
                   variant="outline"
                   size="icon"
                   className="sm:hidden"
-                  title={tCommon('cancel')}
+                  title={tCommon("cancel")}
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
@@ -1146,7 +1111,7 @@ export function EditReservationForm({
                   variant="outline"
                   className="hidden sm:inline-flex"
                 >
-                  {tCommon('cancel')}
+                  {tCommon("cancel")}
                 </Button>
                 <Button
                   onClick={handleSave}
@@ -1154,7 +1119,7 @@ export function EditReservationForm({
                   disabled={delivery.isCalculating || !hasChanges}
                   size="icon"
                   className="sm:hidden"
-                  title={t('edit.save')}
+                  title={t("edit.save")}
                 >
                   <Check data-slot="icon" />
                 </Button>
@@ -1165,7 +1130,7 @@ export function EditReservationForm({
                   className="hidden sm:inline-flex"
                 >
                   <Check data-slot="icon" />
-                  {t('edit.save')}
+                  {t("edit.save")}
                 </Button>
               </div>
             </div>
@@ -1188,7 +1153,7 @@ export function EditReservationForm({
                       size="sm"
                       onClick={() => router.push(`/dashboard/reservations/${reservation.id}`)}
                     >
-                      {t('edit.ignoreEmailFailure')}
+                      {t("edit.ignoreEmailFailure")}
                     </Button>
                     <Button
                       type="button"
@@ -1197,7 +1162,7 @@ export function EditReservationForm({
                       isPending={isLoading}
                     >
                       <Mail data-slot="icon" />
-                      {t('edit.retryEmailNotification')}
+                      {t("edit.retryEmailNotification")}
                     </Button>
                   </div>
                 </div>
@@ -1212,11 +1177,11 @@ export function EditReservationForm({
               <Card>
                 <CardContent className="p-4 sm:p-6">
                   <h2 className="text-sm font-medium text-muted-foreground mb-4">
-                    {t('edit.dates')}
+                    {t("edit.dates")}
                   </h2>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
-                      <Label className="text-xs">{t('edit.startDate')}</Label>
+                      <Label className="text-xs">{t("edit.startDate")}</Label>
                       <ReservationDatePickerControl
                         id="edit-reservation-start-date"
                         value={startDate}
@@ -1226,14 +1191,14 @@ export function EditReservationForm({
                         timeStep={30}
                         timezone={timezone}
                         range={{
-                          role: 'start',
+                          role: "start",
                           otherValue: endDate,
                           onOtherChange: handleEndDateChange,
                         }}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">{t('edit.endDate')}</Label>
+                      <Label className="text-xs">{t("edit.endDate")}</Label>
                       <ReservationDatePickerControl
                         id="edit-reservation-end-date"
                         value={endDate}
@@ -1244,7 +1209,7 @@ export function EditReservationForm({
                         referenceDate={startDate}
                         timezone={timezone}
                         range={{
-                          role: 'end',
+                          role: "end",
                           otherValue: startDate,
                           onOtherChange: setStartDate,
                         }}
@@ -1254,11 +1219,11 @@ export function EditReservationForm({
                   {newDuration > 0 && (
                     <div className="mt-4 flex items-center gap-2">
                       <Badge variant="expired" className="font-mono">
-                        {newDuration} {getDurationUnit('day')}
+                        {newDuration} {getDurationUnit("day")}
                       </Badge>
                       {newDuration !== originalDuration && (
                         <span className="text-xs text-muted-foreground">
-                          (avant: {originalDuration} {getDurationUnit('day')})
+                          (avant: {originalDuration} {getDurationUnit("day")})
                         </span>
                       )}
                     </div>
@@ -1308,35 +1273,35 @@ export function EditReservationForm({
 
             {/* Sidebar */}
             <div className="space-y-4 sm:space-y-6 min-w-0">
-              {tulipInsuranceMode !== 'no_public' && (
+              {tulipInsuranceMode !== "no_public" && (
                 <Card>
                   <CardContent className="p-4 sm:p-6 space-y-3">
-                    <h2 className="text-sm font-medium">{tForm('tulipInsurance.title')}</h2>
+                    <h2 className="text-sm font-medium">{tForm("tulipInsurance.title")}</h2>
                     <p className="text-xs text-muted-foreground">
-                      {tForm('tulipInsurance.appliesMappedProducts')}
+                      {tForm("tulipInsurance.appliesMappedProducts")}
                     </p>
 
                     {isTulipInsurancePastDateBlocked && (
                       <Alert variant="warning">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertDescription className="ml-2 text-xs">
-                          {tForm('tulipInsurance.pastStartWarning')}
+                          {tForm("tulipInsurance.pastStartWarning")}
                         </AlertDescription>
                       </Alert>
                     )}
 
-                    {tulipInsuranceMode === 'required' ? (
+                    {tulipInsuranceMode === "required" ? (
                       <p
                         className={cn(
-                          'text-sm font-medium',
+                          "text-sm font-medium",
                           isTulipInsurancePastDateBlocked
-                            ? 'text-amber-700 dark:text-amber-300'
-                            : 'text-emerald-700',
+                            ? "text-amber-700 dark:text-amber-300"
+                            : "text-emerald-700",
                         )}
                       >
                         {isTulipInsurancePastDateBlocked
-                          ? tForm('tulipInsurance.disabledPastStart')
-                          : tForm('tulipInsurance.required')}
+                          ? tForm("tulipInsurance.disabledPastStart")
+                          : tForm("tulipInsurance.required")}
                       </p>
                     ) : (
                       <div className="flex items-center space-x-2">
@@ -1345,20 +1310,20 @@ export function EditReservationForm({
                           checked={effectiveTulipInsuranceOptIn}
                           disabled={isTulipInsurancePastDateBlocked}
                           onCheckedChange={(checked) => {
-                            if (isTulipInsurancePastDateBlocked) return
-                            setTulipInsuranceOptIn(checked === true)
+                            if (isTulipInsurancePastDateBlocked) return;
+                            setTulipInsuranceOptIn(checked === true);
                           }}
                         />
                         <label
                           htmlFor="edit-form-tulip-insurance-opt-in"
                           className={cn(
-                            'text-sm',
+                            "text-sm",
                             isTulipInsurancePastDateBlocked
-                              ? 'cursor-not-allowed text-muted-foreground'
-                              : 'cursor-pointer',
+                              ? "cursor-not-allowed text-muted-foreground"
+                              : "cursor-pointer",
                           )}
                         >
-                          {tForm('tulipInsurance.optionalLabel')}
+                          {tForm("tulipInsurance.optionalLabel")}
                         </label>
                       </div>
                     )}
@@ -1368,11 +1333,11 @@ export function EditReservationForm({
                         {isTulipInsuranceQuoteLoading ? (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Loader2 className="h-3 w-3 animate-spin" />
-                            <span>{tForm('tulipInsurance.calculating')}</span>
+                            <span>{tForm("tulipInsurance.calculating")}</span>
                           </div>
                         ) : fixedTulipInsuranceAmount > 0 ? (
                           <p className="text-xs font-medium text-muted-foreground">
-                            {tForm('tulipInsurance.estimatedAmount', {
+                            {tForm("tulipInsurance.estimatedAmount", {
                               amount: formatCurrency(fixedTulipInsuranceAmount, currency),
                             })}
                           </p>
@@ -1382,7 +1347,7 @@ export function EditReservationForm({
                           <Alert variant="warning">
                             <AlertTriangle className="h-4 w-4" />
                             <AlertDescription className="ml-2 text-xs">
-                              {tForm('tulipInsurance.previewUnavailable')}{' '}
+                              {tForm("tulipInsurance.previewUnavailable")}{" "}
                               {tulipInsuranceQuoteErrorMessage}
                             </AlertDescription>
                           </Alert>
@@ -1421,158 +1386,168 @@ export function EditReservationForm({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PenLine className="h-5 w-5" />
-              {tForm('customItem.dialogTitle')}
+              {tForm("customItem.dialogTitle")}
             </DialogTitle>
-            <DialogDescription>
-              {tForm('customItem.dialogDescription')}
-            </DialogDescription>
+            <DialogDescription>{tForm("customItem.dialogDescription")}</DialogDescription>
           </DialogHeader>
 
           <DialogPanel>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="custom-name">{tForm('customItem.name')} *</Label>
-              <Input
-                id="custom-name"
-                placeholder={tForm('customItem.namePlaceholder')}
-                value={customItemForm.name}
-                onChange={(e) => setCustomItemForm({ ...customItemForm, name: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="custom-description">{tForm('customItem.description')}</Label>
-              <Textarea
-                id="custom-description"
-                placeholder={tForm('customItem.descriptionPlaceholder')}
-                value={customItemForm.description}
-                onChange={(e) =>
-                  setCustomItemForm({ ...customItemForm, description: e.target.value })
-                }
-                className="resize-none"
-                rows={2}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="custom-quantity">{tForm('customItem.quantity')}</Label>
+                <Label htmlFor="custom-name">{tForm("customItem.name")} *</Label>
                 <Input
-                  id="custom-quantity"
-                  type="number"
-                  min="1"
-                  value={customItemForm.quantity}
-                  onChange={(e) => handleCustomItemQuantityChange(e.target.value)}
+                  id="custom-name"
+                  placeholder={tForm("customItem.namePlaceholder")}
+                  value={customItemForm.name}
+                  onChange={(e) => setCustomItemForm({ ...customItemForm, name: e.target.value })}
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="custom-deposit">{tForm('customItem.deposit')}</Label>
-                <div className="relative">
-                  <Input
-                    id="custom-deposit"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={customItemForm.deposit}
-                    onChange={(e) =>
-                      setCustomItemForm({ ...customItemForm, deposit: e.target.value })
-                    }
-                    className="pr-8"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    {currencySymbol}
-                  </span>
-                </div>
+                <Label htmlFor="custom-description">{tForm("customItem.description")}</Label>
+                <Textarea
+                  id="custom-description"
+                  placeholder={tForm("customItem.descriptionPlaceholder")}
+                  value={customItemForm.description}
+                  onChange={(e) =>
+                    setCustomItemForm({ ...customItemForm, description: e.target.value })
+                  }
+                  className="resize-none"
+                  rows={2}
+                />
               </div>
-            </div>
 
-            {getDurationForMode(customItemForm.pricingMode) > 0 ? (
-              <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{tForm('customItem.pricingPeriod')}</span>
-                  <span className="font-medium">
-                    {getDurationForMode(customItemForm.pricingMode)}{' '}
-                    {getDurationUnit(customItemForm.pricingMode)} × {customItemForm.quantity || 1}{' '}
-                    {tForm('customItem.units')}
-                  </span>
-                </div>
-
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="custom-pricing-mode" className="text-xs">
-                    {tForm('pricingMode')}
-                  </Label>
-                  <Select
-                    value={customItemForm.pricingMode}
-                    onValueChange={(value) => {
-                      if (value === null) return
-                      const pricingMode = value as PricingMode
-                      setCustomItemForm((prev) => ({ ...prev, pricingMode }))
-                    }}
-                  >
-                    <SelectTrigger id="custom-pricing-mode" className="h-9">
-                      <SelectValue>
-                        {customItemForm.pricingMode === 'hour' ? tForm('perHour') : customItemForm.pricingMode === 'day' ? tForm('perDay') : tForm('perWeek')}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hour" label={tForm('perHour')}>{tForm('perHour')}</SelectItem>
-                      <SelectItem value="day" label={tForm('perDay')}>{tForm('perDay')}</SelectItem>
-                      <SelectItem value="week" label={tForm('perWeek')}>{tForm('perWeek')}</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="custom-quantity">{tForm("customItem.quantity")}</Label>
+                  <Input
+                    id="custom-quantity"
+                    type="number"
+                    min="1"
+                    value={customItemForm.quantity}
+                    onChange={(e) => handleCustomItemQuantityChange(e.target.value)}
+                  />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-total" className="text-xs">
-                      {tForm('customItem.totalPrice')} *
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="custom-total"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={customItemForm.totalPrice}
-                        onChange={(e) => handleTotalPriceChange(e.target.value)}
-                        className="pr-8"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        {currencySymbol}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="custom-unit" className="text-xs">
-                      {tForm('customItem.unitPrice')}
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="custom-unit"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={customItemForm.unitPrice}
-                        onChange={(e) => handleUnitPriceChange(e.target.value)}
-                        className="pr-12"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        {currencySymbol}/{getDurationUnit(customItemForm.pricingMode)}
-                      </span>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custom-deposit">{tForm("customItem.deposit")}</Label>
+                  <div className="relative">
+                    <Input
+                      id="custom-deposit"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={customItemForm.deposit}
+                      onChange={(e) =>
+                        setCustomItemForm({ ...customItemForm, deposit: e.target.value })
+                      }
+                      className="pr-8"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      {currencySymbol}
+                    </span>
                   </div>
                 </div>
               </div>
-            ) : (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>{tForm('customItem.selectPeriodFirst')}</AlertDescription>
-              </Alert>
-            )}
-          </div>
+
+              {getDurationForMode(customItemForm.pricingMode) > 0 ? (
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {tForm("customItem.pricingPeriod")}
+                    </span>
+                    <span className="font-medium">
+                      {getDurationForMode(customItemForm.pricingMode)}{" "}
+                      {getDurationUnit(customItemForm.pricingMode)} × {customItemForm.quantity || 1}{" "}
+                      {tForm("customItem.units")}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-pricing-mode" className="text-xs">
+                      {tForm("pricingMode")}
+                    </Label>
+                    <Select
+                      value={customItemForm.pricingMode}
+                      onValueChange={(value) => {
+                        if (value === null) return;
+                        const pricingMode = value as PricingMode;
+                        setCustomItemForm((prev) => ({ ...prev, pricingMode }));
+                      }}
+                    >
+                      <SelectTrigger id="custom-pricing-mode" className="h-9">
+                        <SelectValue>
+                          {customItemForm.pricingMode === "hour"
+                            ? tForm("perHour")
+                            : customItemForm.pricingMode === "day"
+                              ? tForm("perDay")
+                              : tForm("perWeek")}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hour" label={tForm("perHour")}>
+                          {tForm("perHour")}
+                        </SelectItem>
+                        <SelectItem value="day" label={tForm("perDay")}>
+                          {tForm("perDay")}
+                        </SelectItem>
+                        <SelectItem value="week" label={tForm("perWeek")}>
+                          {tForm("perWeek")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-total" className="text-xs">
+                        {tForm("customItem.totalPrice")} *
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="custom-total"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={customItemForm.totalPrice}
+                          onChange={(e) => handleTotalPriceChange(e.target.value)}
+                          className="pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          {currencySymbol}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-unit" className="text-xs">
+                        {tForm("customItem.unitPrice")}
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="custom-unit"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={customItemForm.unitPrice}
+                          onChange={(e) => handleUnitPriceChange(e.target.value)}
+                          className="pr-12"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          {currencySymbol}/{getDurationUnit(customItemForm.pricingMode)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{tForm("customItem.selectPeriodFirst")}</AlertDescription>
+                </Alert>
+              )}
+            </div>
           </DialogPanel>
 
           <DialogFooter>
@@ -1580,11 +1555,11 @@ export function EditReservationForm({
               type="button"
               variant="outline"
               onClick={() => {
-                resetCustomItemForm()
-                setShowCustomItemDialog(false)
+                resetCustomItemForm();
+                setShowCustomItemDialog(false);
               }}
             >
-              {tCommon('cancel')}
+              {tCommon("cancel")}
             </Button>
             <Button
               type="button"
@@ -1592,7 +1567,7 @@ export function EditReservationForm({
               disabled={getDurationForMode(customItemForm.pricingMode) === 0}
             >
               <Plus className="h-4 w-4 mr-2" />
-              {tForm('customItem.addButton')}
+              {tForm("customItem.addButton")}
             </Button>
           </DialogFooter>
         </DialogPopup>
@@ -1603,25 +1578,23 @@ export function EditReservationForm({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
-              {t('edit.warningDialogTitle')}
+              {t("edit.warningDialogTitle")}
             </DialogTitle>
-            <DialogDescription>
-              {t('edit.warningDialogDescription')}
-            </DialogDescription>
+            <DialogDescription>{t("edit.warningDialogDescription")}</DialogDescription>
           </DialogHeader>
 
           <DialogPanel>
-          <div className="space-y-2">
-            {validationWarningsToConfirm.map((warning, index) => (
-              <div
-                key={`${warning.code}-${index}`}
-                className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-              >
-                {getWarningLabel(warning)}
-              </div>
-            ))}
-            <p className="text-sm text-muted-foreground">{tForm('warnings.canContinue')}</p>
-          </div>
+            <div className="space-y-2">
+              {validationWarningsToConfirm.map((warning, index) => (
+                <div
+                  key={`${warning.code}-${index}`}
+                  className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                >
+                  {getWarningLabel(warning)}
+                </div>
+              ))}
+              <p className="text-sm text-muted-foreground">{tForm("warnings.canContinue")}</p>
+            </div>
           </DialogPanel>
 
           <DialogFooter>
@@ -1630,15 +1603,15 @@ export function EditReservationForm({
               onClick={() => setShowValidationConfirmDialog(false)}
               disabled={isLoading}
             >
-              {tCommon('cancel')}
+              {tCommon("cancel")}
             </Button>
             <Button onClick={handleConfirmWarningSave} isPending={isLoading}>
               <AlertTriangle data-slot="icon" />
-              {t('edit.confirmWithWarnings')}
+              {t("edit.confirmWithWarnings")}
             </Button>
           </DialogFooter>
         </DialogPopup>
       </Dialog>
     </TooltipProvider>
-  )
+  );
 }

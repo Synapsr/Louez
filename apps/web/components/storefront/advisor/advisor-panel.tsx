@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
-import type { UIMessage } from '@ai-sdk/react';
-import { RotateCcw, ShieldCheck, Sparkles, X } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import type { UIMessage } from "@ai-sdk/react";
+import { RotateCcwIcon, ShieldCheckIcon, SparklesIcon, XIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { Button } from '@louez/ui';
-import { cn } from '@louez/utils';
+import { Button, Sheet, SheetClose, SheetDescription, SheetPopup, SheetTitle } from "@louez/ui";
+import { cn } from "@louez/utils";
 
-import type { AdvisorIntent } from '@/contexts/advisor-context';
+import type { AdvisorIntent } from "@/contexts/advisor-context";
 
-import { AdvisorInput } from './advisor-input';
-import { AdvisorMessages } from './advisor-messages';
+import { AdvisorInput } from "./advisor-input";
+import { AdvisorMessages } from "./advisor-messages";
 
-type AdvisorPanelProps = {
+interface AdvisorPanelProps {
   isOpen: boolean;
   onClose: () => void;
   displayName?: string;
@@ -27,8 +27,16 @@ type AdvisorPanelProps = {
   errorCode: string;
   onSend: (text: string) => void;
   onRestart: () => void;
-};
+}
 
+const SUGGESTION_CLASS_NAME =
+  "min-h-11 rounded-full border px-4 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:min-h-9";
+
+/**
+ * The advisor conversation, on the shared Sheet: full screen on phones,
+ * a panel anchored bottom-right from `sm`. Focus, Escape and the backdrop
+ * are the primitive's.
+ */
 export const AdvisorPanel = ({
   isOpen,
   onClose,
@@ -43,171 +51,143 @@ export const AdvisorPanel = ({
   onSend,
   onRestart,
 }: AdvisorPanelProps) => {
-  const t = useTranslations('storefront.advisor');
+  const t = useTranslations("storefront.advisor");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll on new messages and while streaming
+  // Follow the conversation: the thread is an external, growing list.
   useEffect(() => {
-    const el = scrollRef.current;
-    if (el && isOpen) {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    const element = scrollRef.current;
+    if (element && isOpen) {
+      element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
     }
   }, [messages, isOpen]);
-
-  // Escape closes the panel
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isOpen, onClose]);
 
   const handleSuggestion = (text: string) => {
     onIntentConsumed();
     onSend(text);
   };
 
-  const isRateLimited = errorCode.startsWith('rate_limit');
-  const isUnavailable = errorCode === 'credits_exhausted';
+  const isRateLimited = errorCode.startsWith("rate_limit");
+  const isUnavailable = errorCode === "credits_exhausted";
   const errorMessage = hasError
     ? isRateLimited
-      ? t('errors.rateLimited')
+      ? t("errors.rateLimited")
       : isUnavailable
-        ? t('errors.unavailable')
-        : t('errors.generic')
+        ? t("errors.unavailable")
+        : t("errors.generic")
     : null;
 
   const suggestions = [
-    { key: 'recommend', prompt: t('suggestions.recommend') },
-    { key: 'question', prompt: t('suggestions.question') },
-    { key: 'practical', prompt: t('suggestions.practical') },
+    { key: "recommend", prompt: t("suggestions.recommend") },
+    { key: "question", prompt: t("suggestions.question") },
+    { key: "practical", prompt: t("suggestions.practical") },
   ] as const;
 
   return (
-    <>
-      {/* Mobile backdrop */}
-      <div
-        aria-hidden
-        onClick={onClose}
-        className={cn(
-          'fixed inset-0 z-50 bg-black/40 transition-opacity duration-200 lg:hidden',
-          isOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
-        )}
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={displayName || t('title')}
-        className={cn(
-          'fixed z-50 flex flex-col overflow-hidden border bg-background shadow-2xl',
-          // Mobile: bottom sheet
-          'inset-x-0 bottom-0 h-[85vh] rounded-t-2xl',
-          // Desktop: anchored panel
-          'lg:inset-x-auto lg:right-6 lg:bottom-6 lg:h-[min(640px,85vh)] lg:w-[400px] lg:rounded-2xl',
-          'transition-all duration-200',
-          isOpen
-            ? 'translate-y-0 opacity-100'
-            : 'pointer-events-none translate-y-4 opacity-0',
-        )}
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <SheetPopup
+        side="right"
+        variant="inset"
+        showCloseButton={false}
+        aria-label={displayName || t("title")}
+        className="max-sm:w-full max-sm:max-w-none sm:h-[min(640px,100%)] sm:w-100 sm:self-end sm:shadow-overlay"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-              <Sparkles className="h-4 w-4 text-primary" />
+        <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div
+              aria-hidden
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10"
+            >
+              <SparklesIcon className="size-4 text-primary" />
             </div>
-            <div>
-              <p className="text-sm font-medium leading-none">
-                {displayName || t('title')}
-              </p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {t('subtitle')}
-              </p>
+            <div className="min-w-0">
+              <SheetTitle className="truncate text-base leading-tight">
+                {displayName || t("title")}
+              </SheetTitle>
+              <SheetDescription className="text-xs">{t("subtitle")}</SheetDescription>
             </div>
           </div>
-          <div className="flex items-center gap-1">
-            {messages.length > 0 && (
+          <div className="flex shrink-0 items-center">
+            {messages.length > 0 ? (
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                size="icon-lg"
+                className="text-muted-foreground sm:size-9"
                 onClick={onRestart}
-                aria-label={t('restart')}
+                aria-label={t("restart")}
               >
-                <RotateCcw className="h-3.5 w-3.5" />
+                <RotateCcwIcon className="size-4" />
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              onClick={onClose}
-              aria-label={t('close')}
+            ) : null}
+            <SheetClose
+              aria-label={t("close")}
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-lg"
+                  className="text-muted-foreground sm:size-9"
+                />
+              }
             >
-              <X className="h-4 w-4" />
-            </Button>
+              <XIcon className="size-5" />
+            </SheetClose>
           </div>
         </div>
 
-        {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <AdvisorMessages
             messages={messages}
             isLoading={isLoading}
-            welcomeText={welcomeMessage || t('welcome')}
+            welcomeText={welcomeMessage || t("welcome")}
           />
 
-          {/* Suggestion chips before the first exchange */}
-          {messages.length === 0 && (
+          {messages.length === 0 ? (
             <div className="mt-4 flex flex-col items-start gap-2">
-              {intent === 'checkout' && (
+              {intent === "checkout" ? (
                 <button
                   type="button"
-                  onClick={() => handleSuggestion(t('validateChip'))}
+                  onClick={() => handleSuggestion(t("validateChip"))}
                   className={cn(
-                    'flex items-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-3.5 py-2',
-                    'text-left text-[13px] font-medium text-primary transition-colors',
-                    'hover:bg-primary/10',
+                    SUGGESTION_CLASS_NAME,
+                    "flex items-center gap-2 border-primary/40 bg-primary/5 font-medium text-primary hover:bg-primary/10 hover:text-primary",
                   )}
                 >
-                  <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                  {t('validateChip')}
+                  <ShieldCheckIcon aria-hidden className="size-4 shrink-0" />
+                  {t("validateChip")}
                 </button>
-              )}
+              ) : null}
               {suggestions.map((suggestion) => (
                 <button
                   key={suggestion.key}
                   type="button"
                   onClick={() => handleSuggestion(suggestion.prompt)}
-                  className={cn(
-                    'rounded-full border border-border/60 px-3.5 py-2 text-left text-[13px]',
-                    'text-muted-foreground transition-colors',
-                    'hover:border-primary/30 hover:text-foreground',
-                  )}
+                  className={SUGGESTION_CLASS_NAME}
                 >
                   {suggestion.prompt}
                 </button>
               ))}
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Error banner */}
-        {errorMessage && (
-          <div className="mx-3 mb-2 rounded-xl border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
-            {errorMessage}
-          </div>
-        )}
-
-        {/* Input + AI transparency note */}
-        <AdvisorInput onSend={onSend} isLoading={isLoading} />
-        <p className="pb-2 text-center text-[10px] text-muted-foreground/70">
-          {t('disclaimer')}
-        </p>
-      </div>
-    </>
+        <div className="flex flex-col gap-2 border-t px-3 pt-3 pb-[calc(env(safe-area-inset-bottom,0px)+--spacing(2))]">
+          {errorMessage ? (
+            <p
+              role="alert"
+              className="rounded-lg bg-destructive/8 px-3 py-2 text-xs text-destructive"
+            >
+              {errorMessage}
+            </p>
+          ) : null}
+          <AdvisorInput onSend={onSend} isLoading={isLoading} className="mx-0" />
+          <p className="text-center text-xs text-muted-foreground">{t("disclaimer")}</p>
+        </div>
+      </SheetPopup>
+    </Sheet>
   );
 };

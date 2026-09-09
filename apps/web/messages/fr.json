@@ -5478,6 +5478,11 @@
           "incentiveBadge": "Offre de lancement",
           "incentiveLine": "encore {remaining} places avec 0 € de commission reeent à vie"
         }
+      },
+      "extensions": {
+        "title": "Prolongations automatiques",
+        "description": "Les clients peuvent prolonger si le matériel est disponible et le supplément calculable. Les cas particuliers nécessitent votre accord.",
+        "maxDays": "Nombre de jours supplémentaires maximum (vide : sans limite)"
       }
     },
     "commandPalette": {
@@ -5986,6 +5991,7 @@
         "badgeShort": "-{percent}%",
         "from": "dès {duration}",
         "viewRates": "Voir les tarifs",
+        "viewAllRates": "Voir tous les tarifs ({count})",
         "ratesTitle": "Tarifs",
         "basePriceLabel": "Prix de base",
         "duration": "Durée",
@@ -6043,7 +6049,18 @@
       "requiredAccessoryOutOfStock": "Un accessoire requis est en rupture de stock",
       "requiredAccessoriesIncluded": "Ajouté automatiquement : {names}",
       "backToCatalog": "Voir le catalogue",
+      "rentalInformation": {
+        "pickup": "Retrait sur place",
+        "locations": "Point de retrait à choisir lors de la réservation",
+        "optional": "Livraison disponible",
+        "required": "Livraison obligatoire",
+        "included": "Livraison incluse",
+        "deliveryDetails": "Disponibilité et modalités selon votre adresse, précisées lors de la réservation.",
+        "payment": "Confirmation après paiement en ligne",
+        "request": "Demande soumise à la confirmation du loueur"
+      },
       "booking": {
+        "availableForDates": "{count, plural, one {# disponible pour vos dates} other {# disponibles pour vos dates}}",
         "dates": "Dates",
         "anyOption": "Indifférent",
         "checking": "Vérification…",
@@ -6053,6 +6070,16 @@
         "extras": "Options",
         "depositHold": "Caution",
         "depositNotCharged": "Empreinte bancaire, non débitée"
+      }
+    },
+    "quickAdd": {
+      "chooseDates": "Choisissez vos dates",
+      "chooseOptions": "Choisissez votre configuration",
+      "optionsIntro": "Ce produit existe en plusieurs configurations. Sélectionnez la vôtre, puis le nombre d'unités.",
+      "steps": {
+        "dates": "Dates",
+        "options": "Configuration",
+        "extras": "Accessoires"
       }
     },
     "accessories": {
@@ -6268,6 +6295,7 @@
         "confirm": "Confirmation"
       },
       "deliveryDescription": "Choisissez comment recevoir et retourner votre équipement",
+      "fulfillmentTitle": "Retrait et retour",
       "outboundTitle": "Réception de l'équipement",
       "returnTitle": "Retour de l'équipement",
       "storePickup": "Retrait en magasin",
@@ -6292,6 +6320,21 @@
       "deliveryOption": "Livraison à domicile",
       "deliveryOptionDescription": "À partir de {pricePerKm}/km",
       "deliveryAvailableFrom": "Livraison disponible dès {amount} de location",
+      "distanceKm": "{distance} km",
+      "pricePerKm": "{price}/km",
+      "deliveryAreaSummary": "Zone de livraison de {maxKm} km · {pricePerKm}/km",
+      "useMyLocation": "Utiliser ma position",
+      "sortByDistance": "Trier par distance",
+      "sortByDistanceHint": "Voyez quel point de retrait est le plus proche",
+      "locationLocating": "Localisation en cours…",
+      "locationBlocked": "La localisation est bloquée pour ce site. Autorisez-la depuis l'icône de la barre d'adresse pour trier par distance.",
+      "locationUnsupported": "Ce navigateur ne peut pas partager votre position : les points de retrait restent dans l'ordre de la boutique.",
+      "yourPosition": "Votre position",
+      "returnSamePlace": "Au même endroit",
+      "returnSomewhereElse": "Ailleurs",
+      "mapExpand": "Agrandir la carte",
+      "mapCollapse": "Fermer la carte",
+      "getDirections": "Itinéraire",
       "freeDeliveryAbove": "Livraison gratuite dès {amount}",
       "freeDeliveryApplied": "Livraison gratuite appliquée !",
       "deliveryAddress": "Adresse de livraison",
@@ -6473,6 +6516,7 @@
       },
       "acceptCgvRich": "J'accepte les <terms>conditions générales de location</terms>",
       "returningCustomer": {
+        "loginLink": "Déjà un compte ? <signin>Se connecter</signin>",
         "prompt": "Déjà client ?",
         "sendCode": "Recevoir un code",
         "codeSent": "Code envoyé à {email}",
@@ -6616,6 +6660,21 @@
       "backToStore": "Retour à la boutique"
     },
     "account": {
+      "communications": {
+        "title": "Communications",
+        "description": "Choisissez comment recevoir les rappels de retrait et de retour, lorsque le loueur les propose.",
+        "email": "Recevoir les rappels par email",
+        "sms": "Recevoir les rappels par SMS",
+        "essential": "Ces préférences concernent uniquement les rappels. Les messages de connexion et de suivi de réservation (confirmation, refus, paiement ou changement important) restent envoyés."
+      },
+      "profile": {
+        "title": "Mes informations",
+        "description": "Ces informations seront préremplies lors de vos prochaines réservations.",
+        "emailHelp": "Votre adresse email sert à vous connecter.",
+        "saved": "Informations enregistrées",
+        "saveError": "Impossible d’enregistrer vos informations. Réessayez.",
+        "invalidData": "Vérifiez les champs saisis, notamment le téléphone et le nom de l’entreprise."
+      },
       "title": "Mon compte",
       "accessAccount": "Accéder à mon compte",
       "accessDescription": "Entrez l'email utilisé lors de votre réservation pour recevoir un code de connexion.",
@@ -6768,7 +6827,12 @@
       "currentReservations": "Locations en cours",
       "pastReservations": "Locations passées",
       "timeline": {
-        "title": "Période de location"
+        "title": "Période de location",
+        "requested": "Demande envoyée",
+        "quoteSent": "Devis envoyé",
+        "confirmed": "Réservation confirmée",
+        "pickedUp": "Matériel récupéré",
+        "returned": "Matériel rendu"
       },
       "actions": {
         "title": "Actions",
@@ -6778,7 +6842,88 @@
       "total": "Total",
       "notes": "Vos notes",
       "signContractTitle": "Signer le contrat ?",
-      "confirmSign": "Signer le contrat"
+      "confirmSign": "Signer le contrat",
+      "dateChange": {
+        "title": "Modifier le retour",
+        "description": "Besoin de plus de temps ou de rendre le matériel plus tôt ? Demandez une nouvelle date. Le loueur doit la valider et peut ajuster le tarif.",
+        "open": "Demander un changement",
+        "newEnd": "Nouveau retour souhaité",
+        "timezone": "Horaires de la boutique : {timezone}",
+        "reason": "Motif (facultatif)",
+        "error": "La demande n’a pas pu être enregistrée. Vérifiez que la date est future, après le départ et différente du retour actuel, puis réessayez.",
+        "sending": "Envoi…",
+        "submit": "Envoyer la demande",
+        "close": "Fermer",
+        "pendingHelp": "La réservation et son tarif restent inchangés jusqu’à la validation du loueur.",
+        "reviewTitle": "Demande de changement de retour",
+        "reviewHelp": "Vérifiez les disponibilités et le tarif dans la modification. Enregistrer la date demandée valide la demande. Une autre période la remplace.",
+        "apply": "Appliquer la date demandée",
+        "review": "Examiner la demande",
+        "reject": "Refuser la demande",
+        "reviewError": "Impossible de traiter la demande. Actualisez la page et réessayez.",
+        "status": {
+          "pending": "En attente de validation",
+          "accepted": "Demande acceptée",
+          "rejected": "Demande refusée",
+          "cancelled": "Demande annulée",
+          "superseded": "Remplacée par une autre modification"
+        }
+      },
+      "actionRequired": {
+        "quote": "Répondre au devis",
+        "payment": "Régler la réservation",
+        "signature": "Signer le contrat"
+      },
+      "calendar": {
+        "add": "Ajouter à mon calendrier"
+      },
+      "extension": {
+        "title": "Prolonger ma location",
+        "description": "Choisissez une date de retour plus tardive. Vérifiez la disponibilité et le supplément avant de confirmer.",
+        "open": "Prolonger ma location",
+        "newEnd": "Nouvelle date de retour",
+        "supplement": "Supplément",
+        "newTotal": "Nouveau total de la location : {amount}",
+        "check": "Vérifier la disponibilité",
+        "pay": "Payer et prolonger",
+        "confirm": "Confirmer la prolongation",
+        "request": "Demander une prolongation",
+        "loading": "Veuillez patienter…",
+        "close": "Fermer",
+        "resume": "Reprendre le paiement",
+        "cancel": "Annuler la prolongation",
+        "checkoutPending": "Votre prolongation attend le paiement. Le matériel est réservé temporairement.",
+        "expired": "Le délai de paiement est dépassé. Vérifiez à nouveau la disponibilité.",
+        "confirmed": "Votre location a été prolongée.",
+        "refund_pending": "La prolongation n’a pas pu être confirmée. Votre paiement est en cours de remboursement.",
+        "refunded": "La prolongation n’a pas été appliquée. Votre paiement a été remboursé.",
+        "reasons": {
+          "disabled": "Ce loueur examine les demandes de prolongation.",
+          "insurance": "Le loueur doit confirmer votre couverture d’assurance pour la période supplémentaire.",
+          "manualPrice": "Votre location bénéficie d’un tarif ou de conditions spécifiques. Le loueur confirmera le supplément.",
+          "unpaid": "Le loueur doit vérifier le paiement avant de prolonger la location.",
+          "delivery": "Le loueur doit organiser le nouvel horaire de récupération.",
+          "deposit": "Le loueur doit vérifier la caution pour la période supplémentaire.",
+          "overdue": "La date de retour est dépassée. Contactez le loueur ou envoyez une demande.",
+          "location": "Le loueur doit confirmer la disponibilité au lieu de retour."
+        },
+        "errors": {
+          "invalidDate": "Choisissez une date après le retour actuellement prévu.",
+          "invalidStatus": "Cette location ne peut plus être prolongée.",
+          "pending": "Une prolongation est déjà en cours. Actualisez pour la reprendre.",
+          "tooLong": "Cette date dépasse la durée maximale de location ou de prolongation.",
+          "closed": "Le magasin est fermé à cet horaire. Choisissez un autre horaire de retour.",
+          "unavailable": "Une partie du matériel est indisponible sur cette période. Choisissez un retour plus tôt ou contactez le loueur.",
+          "manualRequired": "Le loueur doit examiner cette prolongation. Vérifiez à nouveau la date.",
+          "priceChanged": "Le supplément a changé. Vérifiez à nouveau la date avant de payer.",
+          "expired": "Le délai de paiement est dépassé. Vérifiez à nouveau la disponibilité.",
+          "paymentUnavailable": "Le paiement est indisponible. Réessayez ou contactez le loueur.",
+          "notFound": "Reconnectez-vous pour accéder à cette réservation.",
+          "unexpected": "Impossible de terminer cette action. Actualisez la page et réessayez.",
+          "paymentMismatch": "Ce paiement n’a pas pu être associé à la prolongation. Contactez le loueur.",
+          "tooManyAttempts": "Trop de tentatives de prolongation. Réessayez dans 15 minutes."
+        }
+      }
     },
     "marketplaceShell": {
       "marketplaceName": "Louez Marketplace"
@@ -7242,7 +7387,9 @@
       "landlordText": "Le loueur certifie l'exactitude des informations ci-dessus et la disponibilité du matériel pour la période indiquée.",
       "customerText": "Je reconnais avoir pris connaissance des conditions générales de location et les accepte sans réserve.",
       "dateLabel": "Date :",
-      "ipLabel": "IP :"
+      "ipLabel": "IP :",
+      "automatic": "Validé automatiquement",
+      "automaticText": "Contrat validé automatiquement lors de la confirmation ou du paiement de la réservation."
     },
     "conditions": {
       "condition1": "Le matériel est loué en bon état de fonctionnement",

@@ -1,34 +1,35 @@
-import type { Metadata } from 'next'
-import Link from 'next/link'
-import { db } from '@louez/db'
-import { stores } from '@louez/db'
-import { eq } from 'drizzle-orm'
-import { notFound } from 'next/navigation'
-import { ArrowLeft, FileText } from 'lucide-react'
-import { getTranslations } from 'next-intl/server'
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
-import { Button } from '@louez/ui'
-import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
-import { generateStoreMetadata } from '@/lib/seo'
-import type { StoreSettings, StoreTheme } from '@louez/types'
+import { FileTextIcon } from "lucide-react";
+import { getLocale, getTranslations } from "next-intl/server";
 
-interface CGVPageProps {
-  params: Promise<{ slug: string }>
+import { Button } from "@louez/ui";
+
+import { LegalPageShell } from "@/components/storefront/shell/legal-page-shell";
+import { LegalSection } from "@/components/storefront/shell/legal-section";
+import { EmptyState } from "@/components/storefront/ui/empty-state";
+import { RichText } from "@/components/storefront/ui/rich-text";
+import { generateStoreMetadata } from "@/lib/seo";
+import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { hasRichTextContent } from "@/lib/util.rich-text";
+
+interface TermsPageProps {
+  params: Promise<{ slug: string }>;
 }
 
-export const instant = false;
+export const unstable_dynamicStaleTime = 300;
 
-export async function generateMetadata({
-  params,
-}: CGVPageProps): Promise<Metadata> {
-  const { slug } = await params
-
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, slug),
-  })
+export const generateMetadata = async ({ params }: TermsPageProps): Promise<Metadata> => {
+  const { slug } = await params;
+  const [store, t, locale] = await Promise.all([
+    getStoreBySlug(slug),
+    getTranslations("storefront.legal"),
+    getLocale(),
+  ]);
 
   if (!store) {
-    return { title: 'Boutique introuvable' }
+    return {};
   }
 
   return generateStoreMetadata(
@@ -36,105 +37,82 @@ export async function generateMetadata({
       id: store.id,
       name: store.name,
       slug: store.slug,
-      settings: store.settings as StoreSettings,
-      theme: store.theme as StoreTheme,
+      settings: store.settings,
+      theme: store.theme,
     },
     {
-      title: `Conditions générales de vente - ${store.name}`,
-      description: `Consultez les conditions générales de vente et de location de ${store.name}.`,
-      path: '/terms',
-    }
-  )
-}
+      title: `${t("cgv.title")} - ${store.name}`,
+      description: t("cgv.metaDescription", { name: store.name }),
+      path: "/terms",
+      locale,
+    },
+  );
+};
 
-export default async function CGVPage({ params }: CGVPageProps) {
-  const t = await getTranslations('storefront.legal')
-  const { slug } = await params
-
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, slug),
-  })
+const TermsPage = async ({ params }: TermsPageProps) => {
+  const { slug } = await params;
+  const [store, t] = await Promise.all([getStoreBySlug(slug), getTranslations("storefront.legal")]);
 
   if (!store) {
-    notFound()
+    notFound();
   }
 
+  const hasContact = Boolean(store.email || store.phone || store.address);
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button variant="ghost" render={<Link href="/" />}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {t('back')}
-        </Button>
-      </div>
+    <LegalPageShell title={t("cgv.title")}>
+      {hasRichTextContent(store.cgv) ? (
+        <RichText html={store.cgv} />
+      ) : (
+        <EmptyState
+          tone="card"
+          icon={<FileTextIcon />}
+          title={t("cgv.noCgv")}
+          description={t("cgv.contactSeller")}
+          action={
+            store.email ? (
+              <Button variant="outline" render={<a href={`mailto:${store.email}`} />}>
+                {t("contact")}
+              </Button>
+            ) : undefined
+          }
+        />
+      )}
 
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <FileText className="h-8 w-8" />
-          <h1 className="text-3xl font-bold">{t('cgv.title')}</h1>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{store.name}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {store.cgv ? (
-              <div
-                className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-semibold prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg prose-p:text-muted-foreground prose-a:text-primary"
-                dangerouslySetInnerHTML={{ __html: store.cgv }}
-              />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>{t('cgv.noCgv')}</p>
-                <p className="text-sm mt-2">
-                  {t('cgv.contactSeller')}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Contact Info */}
-        {(store.email || store.phone) && (
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>{t('contact')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {store.email && (
-                <p>
-                  <span className="font-medium">{t('legalNotice.email')}:</span>{' '}
-                  <a
-                    href={`mailto:${store.email}`}
-                    className="text-primary hover:underline"
-                  >
+      {hasContact ? (
+        <LegalSection title={t("contact")}>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
+            {store.email ? (
+              <>
+                <dt className="font-medium text-foreground">{t("legalNotice.email")}</dt>
+                <dd>
+                  <a href={`mailto:${store.email}`} className="underline underline-offset-4">
                     {store.email}
                   </a>
-                </p>
-              )}
-              {store.phone && (
-                <p>
-                  <span className="font-medium">{t('legalNotice.phone')}:</span>{' '}
-                  <a
-                    href={`tel:${store.phone}`}
-                    className="text-primary hover:underline"
-                  >
+                </dd>
+              </>
+            ) : null}
+            {store.phone ? (
+              <>
+                <dt className="font-medium text-foreground">{t("legalNotice.phone")}</dt>
+                <dd>
+                  <a href={`tel:${store.phone}`} className="underline underline-offset-4">
                     {store.phone}
                   </a>
-                </p>
-              )}
-              {store.address && (
-                <p>
-                  <span className="font-medium">{t('legalNotice.address')}:</span> {store.address}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </div>
-  )
-}
+                </dd>
+              </>
+            ) : null}
+            {store.address ? (
+              <>
+                <dt className="font-medium text-foreground">{t("legalNotice.address")}</dt>
+                <dd className="whitespace-pre-line">{store.address}</dd>
+              </>
+            ) : null}
+          </dl>
+        </LegalSection>
+      ) : null}
+    </LegalPageShell>
+  );
+};
+
+export default TermsPage;

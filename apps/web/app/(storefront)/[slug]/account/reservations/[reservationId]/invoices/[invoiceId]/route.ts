@@ -1,12 +1,15 @@
+import { NextResponse } from "next/server";
+
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { db, documents, invoices, reservations, stores } from "@louez/db";
+import { db, documents, invoices, reservations } from "@louez/db";
 
+import { getCustomerSession } from "@/lib/customer-auth/session";
+import { buildLoginPath } from "@/lib/customer-auth/util.account-redirect";
 import { buildPdfResponse } from "@/lib/invoicing/util.pdf-response";
-import { storefrontRedirect } from "@/lib/storefront-url";
-
-import { getCustomerSession } from "../../../../actions";
+import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { getStorefrontUrl } from "@/lib/storefront-url";
 
 const invoiceRouteParamsSchema = z.object({
   slug: z.string().trim().min(1).max(255),
@@ -22,21 +25,13 @@ export async function GET(
   if (!parsed.success) return new Response("Invalid invoice route", { status: 400 });
   const { slug, reservationId, invoiceId } = parsed.data;
 
-  const [store] = await db
-    .select({ id: stores.id })
-    .from(stores)
-    .where(eq(stores.slug, slug))
-    .limit(1);
+  const store = await getStoreBySlug(slug);
   if (!store) return new Response("Store not found", { status: 404 });
 
-  const session = await getCustomerSession(slug);
+  const session = await getCustomerSession(store.id);
   if (!session) {
-    storefrontRedirect(
-      slug,
-      `/account/login?redirect=${encodeURIComponent(
-        `/account/reservations/${reservationId}/invoices/${invoiceId}`,
-      )}`,
-    );
+    const invoicePath = `/account/reservations/${reservationId}/invoices/${invoiceId}`;
+    return NextResponse.redirect(getStorefrontUrl(slug, buildLoginPath({ redirect: invoicePath })));
   }
 
   const [invoice] = await db

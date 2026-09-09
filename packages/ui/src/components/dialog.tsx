@@ -42,6 +42,10 @@ const getDialogPopupState = (state: DrawerPrimitive.Popup.State): DialogPrimitiv
 
 const DialogCreateHandle = DialogPrimitive.createHandle;
 
+// Width utilities a desktop dialog carries (`w-[95vw]`, `max-w-lg`, `min-w-*`)
+// mean nothing once the same component renders as a bottom sheet.
+const DRAWER_WIDTH_RESET = "max-sm:w-full max-sm:min-w-0 max-sm:max-w-none";
+
 const Dialog = <Payload,>({
   defaultOpen = false,
   mobileVariant = "drawer",
@@ -182,12 +186,15 @@ const DialogPopup = ({
     return (
       <DrawerPopup
         {...props}
-        // A bottom sheet always spans the full width: a `max-w-*` meant for the
-        // desktop dialog would otherwise leave it hanging off to one side.
+        // A bottom sheet always spans the full width: a `w-[95vw]` or
+        // `max-w-*` meant for the desktop dialog would otherwise leave it
+        // hanging off to one side. The `max-sm:` variants win over the
+        // consumer's unprefixed utilities by source order, whatever `cn()`
+        // keeps of them.
         className={
           typeof className === "function"
-            ? (state) => cn("max-sm:max-w-none", className(getDialogPopupState(state)))
-            : cn("max-sm:max-w-none", className)
+            ? (state) => cn(DRAWER_WIDTH_RESET, className(getDialogPopupState(state)))
+            : cn(DRAWER_WIDTH_RESET, className)
         }
         data-slot="dialog-popup"
         position="bottom"

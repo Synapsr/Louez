@@ -1,198 +1,187 @@
-'use client'
+"use client";
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
-  useCallback,
-  useRef,
+  useMemo,
+  useState,
   type ReactNode,
-} from 'react'
+} from "react";
 
-// Types for tracking
-type PageType = 'home' | 'catalog' | 'product' | 'cart' | 'checkout' | 'confirmation' | 'account' | 'rental'
-type DeviceType = 'mobile' | 'tablet' | 'desktop'
-type SalesChannel = 'marketplace'
-type EventType =
-  | 'product_view'
-  | 'add_to_cart'
-  | 'remove_from_cart'
-  | 'update_quantity'
-  | 'checkout_started'
-  | 'checkout_completed'
-  | 'checkout_abandoned'
-  | 'payment_initiated'
-  | 'payment_completed'
-  | 'payment_failed'
-  | 'login_requested'
-  | 'login_completed'
+/** Storefront pages the funnel distinguishes. */
+export type PageType =
+  | "home"
+  | "catalog"
+  | "product"
+  | "cart"
+  | "checkout"
+  | "confirmation"
+  | "account"
+  | "rental";
+type DeviceType = "mobile" | "tablet" | "desktop";
+type SalesChannel = "marketplace";
+export type AnalyticsEventType =
+  | "product_view"
+  | "add_to_cart"
+  | "remove_from_cart"
+  | "update_quantity"
+  | "checkout_started"
+  | "checkout_step_viewed"
+  | "checkout_submit_failed"
+  | "checkout_completed"
+  | "checkout_abandoned"
+  | "payment_initiated"
+  | "payment_completed"
+  | "payment_failed"
+  | "login_requested"
+  | "login_completed";
 
 interface PageViewData {
-  page: PageType
-  productId?: string
-  categoryId?: string
+  page: PageType;
+  productId?: string;
+  categoryId?: string;
 }
 
 interface EventData {
-  eventType: EventType
-  metadata?: Record<string, unknown>
-  customerId?: string
+  eventType: AnalyticsEventType;
+  metadata?: Record<string, unknown>;
+  customerId?: string;
 }
 
 interface AnalyticsContextValue {
-  trackPageView: (data: PageViewData) => void
-  trackEvent: (data: EventData) => void
-  sessionId: string | null
+  trackPageView: (data: PageViewData) => void;
+  trackEvent: (data: EventData) => void;
+  sessionId: string | null;
 }
 
-const AnalyticsContext = createContext<AnalyticsContextValue | undefined>(undefined)
+interface AnalyticsSession {
+  sessionId: string;
+  device: DeviceType;
+}
 
-const SESSION_STORAGE_KEY = 'louez_analytics_session'
+const AnalyticsContext = createContext<AnalyticsContextValue | undefined>(undefined);
 
-// Detect device type from user agent
-function getDeviceType(): DeviceType {
-  if (typeof window === 'undefined') return 'desktop'
+const SESSION_STORAGE_KEY = "louez_analytics_session";
+const TRACK_ENDPOINT = "/api/track";
 
-  const ua = navigator.userAgent.toLowerCase()
-  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
-    return 'tablet'
+const NOOP_ANALYTICS: AnalyticsContextValue = {
+  trackPageView: () => {},
+  trackEvent: () => {},
+  sessionId: null,
+};
+
+const getDeviceType = (): DeviceType => {
+  const userAgent = navigator.userAgent.toLowerCase();
+  if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(userAgent)) {
+    return "tablet";
   }
-  if (/mobile|android|iphone|ipod|blackberry|opera mini|iemobile/i.test(ua)) {
-    return 'mobile'
+  if (/mobile|android|iphone|ipod|blackberry|opera mini|iemobile/i.test(userAgent)) {
+    return "mobile";
   }
-  return 'desktop'
-}
+  return "desktop";
+};
 
-// Generate UUID v4
-function generateUUID(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === 'x' ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
-}
-
-// Get or create session ID
-function getSessionId(): string {
-  if (typeof window === 'undefined') return ''
-
-  let sessionId = sessionStorage.getItem(SESSION_STORAGE_KEY)
-  if (!sessionId) {
-    sessionId = generateUUID()
-    sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId)
+/** Per-tab session id, created once and kept in sessionStorage. */
+const getOrCreateSessionId = (): string => {
+  try {
+    const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    if (stored) {
+      return stored;
+    }
+    const sessionId = crypto.randomUUID();
+    sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+    return sessionId;
+  } catch {
+    return crypto.randomUUID();
   }
-  return sessionId
-}
+};
+
+/**
+ * Fire-and-forget delivery: `sendBeacon` survives navigation and unload;
+ * the fetch fallback keeps `keepalive` for the same reason. Analytics never
+ * throws into the page.
+ */
+const sendTrackingBeacon = (payload: Record<string, unknown>): void => {
+  const body = JSON.stringify(payload);
+
+  if (typeof navigator.sendBeacon === "function") {
+    navigator.sendBeacon(TRACK_ENDPOINT, new Blob([body], { type: "application/json" }));
+    return;
+  }
+
+  fetch(TRACK_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+    keepalive: true,
+  }).catch(() => {});
+};
 
 interface AnalyticsProviderProps {
-  children: ReactNode
-  storeSlug: string
-  channel?: SalesChannel
-  enabled?: boolean
+  children: ReactNode;
+  storeSlug: string;
+  channel?: SalesChannel;
+  enabled?: boolean;
 }
 
-export function AnalyticsProvider({
+export const AnalyticsProvider = ({
   children,
   storeSlug,
   channel,
-  enabled = true
-}: AnalyticsProviderProps) {
-  const sessionIdRef = useRef<string | null>(null)
-  const deviceRef = useRef<DeviceType>('desktop')
+  enabled = true,
+}: AnalyticsProviderProps) => {
+  // Known only in the browser: read once after mount so server and first
+  // client render agree on "no session yet".
+  const [session, setSession] = useState<AnalyticsSession | null>(null);
 
-  // Initialize session and device on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      sessionIdRef.current = getSessionId()
-      deviceRef.current = getDeviceType()
-    }
-  }, [])
+    setSession({ sessionId: getOrCreateSessionId(), device: getDeviceType() });
+  }, []);
 
-  // Track page view
-  const trackPageView = useCallback((data: PageViewData) => {
-    if (!enabled || !sessionIdRef.current) return
+  const trackPageView = useCallback(
+    (data: PageViewData) => {
+      if (!enabled || !session) return;
 
-    const payload = {
-      type: 'page_view' as const,
-      storeSlug,
-      sessionId: sessionIdRef.current,
-      page: data.page,
-      productId: data.productId,
-      categoryId: data.categoryId,
-      referrer: typeof document !== 'undefined' ? document.referrer?.slice(0, 500) : undefined,
-      device: deviceRef.current,
-    }
+      sendTrackingBeacon({
+        type: "page_view",
+        storeSlug,
+        sessionId: session.sessionId,
+        page: data.page,
+        productId: data.productId,
+        categoryId: data.categoryId,
+        referrer: document.referrer.slice(0, 500) || undefined,
+        device: session.device,
+      });
+    },
+    [enabled, session, storeSlug],
+  );
 
-    // Use sendBeacon for non-blocking requests (fire-and-forget)
-    // Must wrap in Blob with content-type for sendBeacon to send as JSON
-    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
-      navigator.sendBeacon('/api/track', blob)
-    } else {
-      // Fallback to fetch for older browsers
-      fetch('/api/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        keepalive: true,
-      }).catch(() => {
-        // Silently ignore errors - analytics should never break the app
-      })
-    }
-  }, [enabled, storeSlug])
+  const trackEvent = useCallback(
+    (data: EventData) => {
+      if (!enabled || !session) return;
 
-  // Track event
-  const trackEvent = useCallback((data: EventData) => {
-    if (!enabled || !sessionIdRef.current) return
+      sendTrackingBeacon({
+        type: "event",
+        storeSlug,
+        sessionId: session.sessionId,
+        customerId: data.customerId,
+        eventType: data.eventType,
+        metadata: channel ? { ...data.metadata, channel } : data.metadata,
+      });
+    },
+    [channel, enabled, session, storeSlug],
+  );
 
-    const payload = {
-      type: 'event' as const,
-      storeSlug,
-      sessionId: sessionIdRef.current,
-      customerId: data.customerId,
-      eventType: data.eventType,
-      metadata: channel ? { ...data.metadata, channel } : data.metadata,
-    }
+  const value = useMemo<AnalyticsContextValue>(
+    () => ({ trackPageView, trackEvent, sessionId: session?.sessionId ?? null }),
+    [trackPageView, trackEvent, session],
+  );
 
-    // Use sendBeacon for non-blocking requests
-    // Must wrap in Blob with content-type for sendBeacon to send as JSON
-    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
-      navigator.sendBeacon('/api/track', blob)
-    } else {
-      fetch('/api/track', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        keepalive: true,
-      }).catch(() => {
-        // Silently ignore errors
-      })
-    }
-  }, [channel, enabled, storeSlug])
+  return <AnalyticsContext.Provider value={value}>{children}</AnalyticsContext.Provider>;
+};
 
-  const value: AnalyticsContextValue = {
-    trackPageView,
-    trackEvent,
-    sessionId: sessionIdRef.current,
-  }
-
-  return (
-    <AnalyticsContext.Provider value={value}>
-      {children}
-    </AnalyticsContext.Provider>
-  )
-}
-
-export function useAnalytics() {
-  const context = useContext(AnalyticsContext)
-  if (context === undefined) {
-    // Return no-op functions if used outside provider (dashboard, etc.)
-    return {
-      trackPageView: () => {},
-      trackEvent: () => {},
-      sessionId: null,
-    }
-  }
-  return context
-}
+/** No-op outside the storefront tree (dashboard previews) rather than a throw. */
+export const useAnalytics = (): AnalyticsContextValue =>
+  useContext(AnalyticsContext) ?? NOOP_ANALYTICS;

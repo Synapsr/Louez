@@ -1,164 +1,168 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
+import { MailIcon, MapPinIcon, PhoneIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { Mail, MapPin, Phone } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { cn } from "@louez/utils";
 
-import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { useChromeVariant } from "@/components/storefront/shell/use-chrome-variant";
+import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
+import { LanguageSwitcher } from "@/components/ui/language-switcher";
 
 interface StoreFooterProps {
   storeName: string;
-  storeSlug: string;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  showAccount?: boolean;
 }
 
-export function StoreFooter({
+const LINK_CLASS_NAME =
+  "inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground sm:min-h-9";
+const HEADING_CLASS_NAME = "text-xs font-semibold tracking-wider text-foreground uppercase";
+
+/**
+ * Footer on the muted band: contact, navigation, legal, account. Two columns
+ * on phones, four from `sm`. Checkout gets the minimal variant
+ * (legal links and copyright only) so nothing competes with the form.
+ */
+export const StoreFooter = ({
   storeName,
   email,
   phone,
   address,
-}: StoreFooterProps) {
-  const t = useTranslations('storefront.footer');
-  const tHeader = useTranslations('storefront.header');
-  const tReviews = useTranslations('storefront.reviews');
+  showAccount = true,
+}: StoreFooterProps) => {
+  const t = useTranslations("storefront.footer");
+  const variant = useChromeVariant();
   const currentYear = new Date().getFullYear();
 
-  return (
-    <footer className="bg-zinc-950 px-6 py-12 text-zinc-400 md:px-16">
-      <div className="mx-auto w-full max-w-6xl">
-        <div className="flex flex-col gap-10 md:flex-row md:justify-between">
-          <div className="max-w-xs space-y-5">
-            <p className="text-base font-bold text-white">{storeName}</p>
+  const legalLinks = (
+    <nav aria-label={t("legalInfo")} className="flex flex-col">
+      <StorefrontLink href="/terms" className={LINK_CLASS_NAME}>
+        {t("cgv")}
+      </StorefrontLink>
+      <StorefrontLink href="/legal" className={LINK_CLASS_NAME}>
+        {t("legalNotice")}
+      </StorefrontLink>
+    </nav>
+  );
 
-            <div className="space-y-2.5 text-sm">
-              {email && (
-                <a
-                  href={`mailto:${email}`}
-                  className="flex items-center gap-2.5 transition-colors hover:text-white"
-                >
-                  <Mail className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
-                  {email}
+  const bottomRow = (
+    <div
+      className={cn(
+        "flex flex-col items-start gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between",
+        variant !== "compact" && "mt-8 border-t pt-6",
+      )}
+    >
+      <p>
+        &copy; {currentYear} {storeName}. {t("allRightsReserved")}
+      </p>
+      <div className="flex items-center gap-3">
+        <LanguageSwitcher
+          variant="compact"
+          className="text-muted-foreground hover:text-foreground"
+        />
+        <span aria-hidden>·</span>
+        <p>
+          {t("poweredBy")}{" "}
+          <a
+            href="https://louez.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-foreground hover:underline"
+          >
+            Louez.io
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+
+  if (variant === "compact") {
+    return (
+      <footer data-slot="store-footer" className="bg-muted py-6">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap gap-x-6">{legalLinks}</div>
+          {bottomRow}
+        </div>
+      </footer>
+    );
+  }
+
+  return (
+    <footer data-slot="store-footer" className="bg-muted py-8 sm:py-12">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+          <div className="col-span-2 flex flex-col gap-3 sm:col-span-1">
+            <p className="text-base font-semibold text-foreground">{storeName}</p>
+            <div className="flex flex-col text-sm">
+              {email ? (
+                <a href={`mailto:${email}`} className={cn(LINK_CLASS_NAME, "gap-2")}>
+                  <MailIcon aria-hidden className="size-4 shrink-0" />
+                  <span className="truncate">{email}</span>
                 </a>
-              )}
-              {phone && (
-                <a
-                  href={`tel:${phone}`}
-                  className="flex items-center gap-2.5 transition-colors hover:text-white"
-                >
-                  <Phone className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+              ) : null}
+              {phone ? (
+                <a href={`tel:${phone}`} className={cn(LINK_CLASS_NAME, "gap-2")}>
+                  <PhoneIcon aria-hidden className="size-4 shrink-0" />
                   {phone}
                 </a>
-              )}
-              {address && (
+              ) : null}
+              {address ? (
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-start gap-2.5 transition-colors hover:text-white"
+                  className={cn(LINK_CLASS_NAME, "items-start gap-2 py-2")}
                 >
-                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                  <MapPinIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
                   <span className="whitespace-pre-line">{address}</span>
                 </a>
-              )}
+              ) : null}
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-12 text-sm md:gap-16">
-            <div className="space-y-3">
-              <p className="text-xs font-semibold tracking-wider text-zinc-500 uppercase">
-                Navigation
-              </p>
-              <nav className="flex flex-col gap-2">
-                <Link
-                  href="/catalog"
-                  className="transition-colors hover:text-white"
-                >
-                  {tHeader('catalog')}
-                </Link>
-                <Link
-                  href="/#reviews"
-                  className="transition-colors hover:text-white"
-                >
-                  {tReviews('title')}
-                </Link>
-                <Link
-                  href="/#contact"
-                  className="transition-colors hover:text-white"
-                >
-                  {t('contact')}
-                </Link>
-              </nav>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-xs font-semibold tracking-wider text-zinc-500 uppercase">
-                {t('legalInfo')}
-              </p>
-              <nav className="flex flex-col gap-2">
-                <Link
-                  href="/terms"
-                  className="transition-colors hover:text-white"
-                >
-                  {t('cgv')}
-                </Link>
-                <Link
-                  href="/legal"
-                  className="transition-colors hover:text-white"
-                >
-                  {t('legalNotice')}
-                </Link>
-              </nav>
-            </div>
-
-            <div className="space-y-3">
-              <p className="text-xs font-semibold tracking-wider text-zinc-500 uppercase">
-                {tHeader('account')}
-              </p>
-              <nav className="flex flex-col gap-2">
-                <Link
-                  href="/account/login"
-                  className="transition-colors hover:text-white"
-                >
-                  {t('signIn')}
-                </Link>
-                <Link
-                  href="/account"
-                  className="transition-colors hover:text-white"
-                >
-                  {tHeader('myReservations')}
-                </Link>
-              </nav>
-            </div>
+          <div className="flex flex-col gap-2">
+            <p className={HEADING_CLASS_NAME}>{t("navigation")}</p>
+            <nav aria-label={t("navigation")} className="flex flex-col">
+              <StorefrontLink href="/catalog" className={LINK_CLASS_NAME}>
+                {t("catalog")}
+              </StorefrontLink>
+              <StorefrontLink href="/about" className={LINK_CLASS_NAME}>
+                {t("about")}
+              </StorefrontLink>
+              <StorefrontLink href="/#reviews" className={LINK_CLASS_NAME}>
+                {t("reviews")}
+              </StorefrontLink>
+              <StorefrontLink href="/#contact" className={LINK_CLASS_NAME}>
+                {t("contact")}
+              </StorefrontLink>
+            </nav>
           </div>
+
+          <div className="flex flex-col gap-2">
+            <p className={HEADING_CLASS_NAME}>{t("legalInfo")}</p>
+            {legalLinks}
+          </div>
+
+          {showAccount ? (
+            <div className="flex flex-col gap-2">
+              <p className={HEADING_CLASS_NAME}>{t("account")}</p>
+              <nav aria-label={t("account")} className="flex flex-col">
+                <StorefrontLink href="/account/login" className={LINK_CLASS_NAME}>
+                  {t("signIn")}
+                </StorefrontLink>
+                <StorefrontLink href="/account" className={LINK_CLASS_NAME}>
+                  {t("myReservations")}
+                </StorefrontLink>
+              </nav>
+            </div>
+          ) : null}
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-zinc-800 pt-6 text-xs md:flex-row">
-          <p>
-            &copy; {currentYear} {storeName}. {t('allRightsReserved')}
-          </p>
-          <div className="flex items-center gap-4">
-            <LanguageSwitcher
-              variant="compact"
-              className="text-zinc-400 hover:bg-zinc-900 hover:text-white"
-            />
-            <span className="text-zinc-700">·</span>
-            <p>
-              {t('poweredBy')}{' '}
-              <a
-                href="https://louez.io"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white hover:underline"
-              >
-                Louez.io
-              </a>
-            </p>
-          </div>
-        </div>
+        {bottomRow}
       </div>
     </footer>
   );
-}
+};

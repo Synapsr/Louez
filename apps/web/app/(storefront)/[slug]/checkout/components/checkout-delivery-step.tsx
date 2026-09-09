@@ -1,201 +1,323 @@
-'use client';
+"use client";
 
-import { ArrowRight, ChevronLeft } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { DeliverySettings, LegMethod } from '@louez/types';
-import {
-  Button,
-  Card,
-  CardContent,
-  Separator,
-} from '@louez/ui';
-import { formatCurrency } from '@louez/utils';
+import { ArrowRight, ChevronLeft } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import type { CheckoutLocationOption, DeliveryAddress } from '../types';
-import { DeliveryLegCard } from './delivery-leg-card';
+import type { DeliverySettings } from "@louez/types";
+import { Button, RadioGroup, RadioGroupItem, StepActions } from "@louez/ui";
+import { cn } from "@louez/utils";
+
+import { withForm } from "@/hooks/form/form";
+import { useFormatMoney } from "@/hooks/use-format-money";
+import { useMyLocation } from "@/hooks/use-my-location";
+import { isFreeDelivery } from "@/lib/utils/geo";
+
+import type { useCheckoutDelivery } from "../hooks/use-checkout-delivery";
+import { buildLegMapView } from "../util.checkout-fulfillment-map";
+import { buildCheckoutLocations, fromLocationKey } from "../util.checkout-locations";
+import { STEP_ACTIONS_CLASS } from "../util.checkout-steps";
+import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
+import { CheckoutFulfillmentLeg } from "./checkout-fulfillment-leg";
+import { CheckoutFulfillmentMapPanel } from "./checkout-fulfillment-map-panel";
+
+type CheckoutDeliveryState = ReturnType<typeof useCheckoutDelivery>;
+type Leg = "outbound" | "return";
 
 interface CheckoutDeliveryStepProps {
   deliverySettings: DeliverySettings;
+  delivery: CheckoutDeliveryState;
   subtotal: number;
-  currency: string;
   storeAddress?: string | null;
   storeName?: string;
-  isMultiLocationEnabled: boolean;
-  isAddressDeliveryEnabled: boolean;
-  locations: CheckoutLocationOption[];
-  isDeliveryForced: boolean;
-  isDeliveryIncluded: boolean;
-  isDeliveryAmountEligible: boolean;
-  // Outbound leg
-  outboundMethod: LegMethod;
-  pickupLocationId: string | null;
-  outboundAddress: DeliveryAddress;
-  outboundDistance: number | null;
-  outboundFee: number;
-  outboundError: string | null;
-  onOutboundMethodChange: (method: LegMethod) => void;
-  onPickupLocationChange: (locationId: string | null) => void;
-  onOutboundAddressChange: (
-    address: string,
-    latitude: number | null,
-    longitude: number | null,
-  ) => void;
-  // Return leg
-  returnMethod: LegMethod;
-  returnLocationId: string | null;
-  returnAddress: DeliveryAddress;
-  returnDistance: number | null;
-  returnFee: number;
-  returnError: string | null;
-  onReturnMethodChange: (method: LegMethod) => void;
-  onReturnLocationChange: (locationId: string | null) => void;
-  onReturnAddressChange: (
-    address: string,
-    latitude: number | null,
-    longitude: number | null,
-  ) => void;
-  // Totals & navigation
-  totalFee: number;
-  canContinue: boolean;
+  storeLatitude?: number | null;
+  storeLongitude?: number | null;
+  /** Called when a leg switches to an address so it can start from the customer's. */
+  onUseCustomerAddress: (leg: Leg) => void;
   onBack: () => void;
   onContinue: () => void;
 }
 
-export function CheckoutDeliveryStep({
-  deliverySettings,
-  subtotal,
-  currency,
-  storeAddress,
-  storeName,
-  isMultiLocationEnabled,
-  isAddressDeliveryEnabled,
-  locations,
-  isDeliveryForced,
-  isDeliveryIncluded,
-  isDeliveryAmountEligible,
-  outboundMethod,
-  pickupLocationId,
-  outboundAddress,
-  outboundDistance,
-  outboundFee,
-  outboundError,
-  onOutboundMethodChange,
-  onPickupLocationChange,
-  onOutboundAddressChange,
-  returnMethod,
-  returnLocationId,
-  returnAddress,
-  returnDistance,
-  returnFee,
-  returnError,
-  onReturnMethodChange,
-  onReturnLocationChange,
-  onReturnAddressChange,
-  totalFee,
-  canContinue,
-  onBack,
-  onContinue,
-}: CheckoutDeliveryStepProps) {
-  const t = useTranslations('storefront.checkout');
+export const CheckoutDeliveryStep = withForm({
+  ...checkoutFormOptions,
+  props: checkoutStepProps<CheckoutDeliveryStepProps>(),
+  render: ({
+    deliverySettings,
+    delivery,
+    subtotal,
+    storeAddress,
+    storeName,
+    storeLatitude,
+    storeLongitude,
+    onUseCustomerAddress,
+    onBack,
+    onContinue,
+  }) => {
+    const t = useTranslations("storefront.checkout");
+    const formatMoney = useFormatMoney();
+    const { position, isLocating, permission, locate } = useMyLocation();
 
-  const hasAnyDelivery =
-    outboundMethod === 'address' || returnMethod === 'address';
+    // The map belongs to whichever leg is being edited. Both panels stay
+    // mounted, so moving between legs hides one and reveals the other rather
+    // than tearing the map down and rebuilding it.
+    const [activeLeg, setActiveLeg] = useState<Leg>("outbound");
+    const [isMapExpanded, setIsMapExpanded] = useState(false);
 
-  return (
-    <Card>
-      <CardContent className="space-y-6 pt-6">
-        <div className="mb-2">
-          <h2 className="text-lg font-semibold">{t('steps.delivery')}</h2>
-          <p className="text-muted-foreground text-sm">
-            {t('deliveryDescription')}
-          </p>
-        </div>
+    // Asking on arrival costs one tap and lets the list open nearest-first.
+    const hasAskedForLocationRef = useRef(false);
+    useEffect(() => {
+      if (hasAskedForLocationRef.current) return;
+      hasAskedForLocationRef.current = true;
+      locate();
+    }, [locate]);
 
-        {/* Outbound leg */}
-        <DeliveryLegCard
-          leg="outbound"
-          method={outboundMethod}
-          onMethodChange={onOutboundMethodChange}
-          address={outboundAddress}
-          onAddressChange={onOutboundAddressChange}
-          distance={outboundDistance}
-          fee={outboundFee}
-          error={outboundError}
-          storeAddress={storeAddress}
-          storeName={storeName}
-          isMultiLocationEnabled={isMultiLocationEnabled}
-          isAddressDeliveryEnabled={isAddressDeliveryEnabled}
-          locations={locations}
-          selectedLocationId={pickupLocationId}
-          onLocationChange={onPickupLocationChange}
-          deliverySettings={deliverySettings}
-          subtotal={subtotal}
-          currency={currency}
-          isOutboundForced={isDeliveryForced}
-          isDeliveryIncluded={isDeliveryIncluded}
-          isDeliveryAmountEligible={isDeliveryAmountEligible}
+    const storeLabel = storeName ?? t("storeLocationFallback");
+
+    const locations = useMemo(
+      () =>
+        buildCheckoutLocations(
+          delivery.locations.length > 0
+            ? delivery.locations
+            : [
+                {
+                  id: null,
+                  name: storeLabel,
+                  address: storeAddress ?? null,
+                  city: null,
+                  postalCode: null,
+                  country: null,
+                  latitude: storeLatitude ?? null,
+                  longitude: storeLongitude ?? null,
+                },
+              ],
+          position,
+        ),
+      [delivery.locations, position, storeAddress, storeLabel, storeLatitude, storeLongitude],
+    );
+
+    const origin =
+      storeLatitude != null && storeLongitude != null
+        ? { latitude: storeLatitude, longitude: storeLongitude }
+        : null;
+
+    const isSplit = !delivery.isReturnSameAsPickup;
+    const hasAnyDelivery =
+      delivery.outboundMethod === "address" || delivery.returnMethod === "address";
+    const isDeliveryFree =
+      delivery.isDeliveryIncluded || isFreeDelivery(subtotal, deliverySettings);
+    const pricePerKm = formatMoney(deliverySettings.pricePerKm);
+    const deliveryPrice = delivery.isDeliveryIncluded
+      ? t("included")
+      : !delivery.isDeliveryAmountEligible && deliverySettings.minimumOrderAmountForDelivery != null
+        ? t("deliveryAvailableFrom", {
+            amount: formatMoney(deliverySettings.minimumOrderAmountForDelivery),
+          })
+        : isDeliveryFree
+          ? t("free")
+          : t("pricePerKm", { price: pricePerKm });
+
+    /** Distance and price for a delivery leg, once both are known. */
+    const legSummary = (leg: Leg) => {
+      const isOutbound = leg === "outbound";
+      const method = isOutbound ? delivery.outboundMethod : delivery.returnMethod;
+      const distance = isOutbound ? delivery.outboundDistance : delivery.returnDistance;
+      const fee = isOutbound ? delivery.outboundFee : delivery.returnFee;
+      const error = isOutbound ? delivery.outboundError : delivery.returnError;
+
+      if (method !== "address" || distance === null || error) return null;
+
+      const price = delivery.isDeliveryIncluded
+        ? t("included")
+        : fee === 0
+          ? t("free")
+          : formatMoney(fee);
+
+      return `${t("distanceKm", { distance: distance.toFixed(1) })} · ${price}`;
+    };
+
+    const renderMapPanel = (leg: Leg) => {
+      const isOutbound = leg === "outbound";
+      const onLocationChange = isOutbound
+        ? delivery.handlePickupLocationChange
+        : delivery.handleReturnLocationChange;
+
+      const view = buildLegMapView({
+        method: isOutbound ? delivery.outboundMethod : delivery.returnMethod,
+        locations,
+        selectedLocationId: isOutbound ? delivery.pickupLocationId : delivery.returnLocationId,
+        address: isOutbound ? delivery.outboundAddress : delivery.returnAddress,
+        origin,
+        originLabel: storeLabel,
+        customerPosition: position,
+        customerLabel: t("yourPosition"),
+        maximumDistance: deliverySettings.maximumDistance,
+      });
+
+      return (
+        <CheckoutFulfillmentMapPanel
+          pins={view.pins}
+          selectedId={view.selectedId}
+          onSelect={(id) => onLocationChange(fromLocationKey(id))}
+          radius={view.radius}
+          link={view.link}
+          directionsHref={view.directionsHref}
+          summary={legSummary(leg)}
+          isExpanded={isMapExpanded}
+          onExpandedChange={setIsMapExpanded}
+          isHidden={isSplit ? activeLeg !== leg : leg !== "outbound"}
         />
+      );
+    };
 
-        <Separator />
+    const sharedLegProps = {
+      locations,
+      permission,
+      isLocating,
+      isLocated: position !== null,
+      onLocate: locate,
+      isAddressDeliveryEnabled: delivery.isAddressDeliveryEnabled,
+      isAddressDeliveryAvailable: delivery.isDeliveryAmountEligible,
+      deliveryPrice,
+      isDeliveryFree,
+      maximumDistance: deliverySettings.maximumDistance,
+      pricePerKm,
+    };
 
-        {/* Return leg */}
-        <DeliveryLegCard
-          leg="return"
-          method={returnMethod}
-          onMethodChange={onReturnMethodChange}
-          address={returnAddress}
-          onAddressChange={onReturnAddressChange}
-          distance={returnDistance}
-          fee={returnFee}
-          error={returnError}
-          storeAddress={storeAddress}
-          storeName={storeName}
-          isMultiLocationEnabled={isMultiLocationEnabled}
-          isAddressDeliveryEnabled={isAddressDeliveryEnabled}
-          locations={locations}
-          selectedLocationId={returnLocationId}
-          onLocationChange={onReturnLocationChange}
-          deliverySettings={deliverySettings}
-          subtotal={subtotal}
-          currency={currency}
-          isOutboundForced={false}
-          isDeliveryIncluded={isDeliveryIncluded}
-          isDeliveryAmountEligible={isDeliveryAmountEligible}
-        />
+    return (
+      <div className="flex flex-col gap-6">
+        <h2 className="text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
+          {t("fulfillmentTitle")}
+        </h2>
 
-        {/* Total fee summary */}
-        {hasAnyDelivery && !isDeliveryIncluded && (
-          <>
-            <Separator />
-            <div className="flex justify-between text-base font-semibold">
-              <span>{t('totalDeliveryFee')}</span>
-              <span className={totalFee === 0 ? 'text-green-600' : 'text-primary'}>
-                {totalFee === 0
-                  ? t('free')
-                  : formatCurrency(totalFee, currency)}
-              </span>
-            </div>
-          </>
+        <section
+          className="flex flex-col gap-3"
+          onFocusCapture={() => setActiveLeg("outbound")}
+          onPointerDownCapture={() => setActiveLeg("outbound")}
+        >
+          <h3 className="text-sm font-semibold">{t("outboundTitle")}</h3>
+
+          <CheckoutFulfillmentLeg
+            {...sharedLegProps}
+            leg="outbound"
+            method={delivery.outboundMethod}
+            onMethodChange={(method) => {
+              delivery.handleOutboundMethodChange(method);
+              if (method === "address") onUseCustomerAddress("outbound");
+            }}
+            selectedLocationId={delivery.pickupLocationId}
+            onLocationChange={delivery.handlePickupLocationChange}
+            address={delivery.outboundAddress}
+            onAddressChange={delivery.handleOutboundAddressChange}
+            error={delivery.outboundError}
+          >
+            {renderMapPanel("outbound")}
+          </CheckoutFulfillmentLeg>
+        </section>
+
+        <section
+          className="flex flex-col gap-3 border-t pt-4"
+          onFocusCapture={() => setActiveLeg("return")}
+          onPointerDownCapture={() => setActiveLeg("return")}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold">{t("returnTitle")}</h3>
+
+            <RadioGroup
+              name="fulfillment-return-scope"
+              aria-label={t("returnTitle")}
+              value={delivery.isReturnSameAsPickup ? "same" : "different"}
+              onValueChange={(value) => {
+                const isSame = value === "same";
+                delivery.handleReturnSameAsPickupChange(isSame);
+                setActiveLeg(isSame ? "outbound" : "return");
+              }}
+              className="flex-row gap-1.5"
+            >
+              {(
+                [
+                  ["same", t("returnSamePlace")],
+                  ["different", t("returnSomewhereElse")],
+                ] as const
+              ).map(([value, label]) => (
+                <label
+                  key={value}
+                  className={cn(
+                    "cursor-pointer rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none",
+                    (value === "same") === delivery.isReturnSameAsPickup
+                      ? "bg-foreground text-background"
+                      : "bg-muted hover:bg-accent",
+                  )}
+                >
+                  <span className="sr-only">
+                    <RadioGroupItem value={value} />
+                  </span>
+                  {label}
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
+
+          {isSplit ? (
+            <CheckoutFulfillmentLeg
+              {...sharedLegProps}
+              leg="return"
+              method={delivery.returnMethod}
+              onMethodChange={(method) => {
+                delivery.handleReturnMethodChange(method);
+                if (method === "address") onUseCustomerAddress("return");
+              }}
+              selectedLocationId={delivery.returnLocationId}
+              onLocationChange={delivery.handleReturnLocationChange}
+              address={delivery.returnAddress}
+              onAddressChange={delivery.handleReturnAddressChange}
+              error={delivery.returnError}
+            >
+              {renderMapPanel("return")}
+            </CheckoutFulfillmentLeg>
+          ) : null}
+        </section>
+
+        {hasAnyDelivery && !delivery.isDeliveryIncluded && (
+          <div className="flex items-center justify-between border-t pt-4 text-base font-medium">
+            <span>{t("totalDeliveryFee")}</span>
+            <span
+              className={
+                delivery.canContinue && delivery.totalFee === 0 ? "text-success" : "tabular-nums"
+              }
+            >
+              {!delivery.canContinue
+                ? "—"
+                : delivery.totalFee === 0
+                  ? t("free")
+                  : formatMoney(delivery.totalFee)}
+            </span>
+          </div>
         )}
 
-        {/* Navigation */}
-        <div className="flex gap-3 pt-4">
-          <Button type="button" variant="outline" onClick={onBack}>
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            {t('back')}
+        <StepActions className={STEP_ACTIONS_CLASS}>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={onBack}
+            className="h-12 lg:h-10"
+          >
+            <ChevronLeft data-slot="icon" />
+            {t("back")}
           </Button>
           <Button
             type="button"
+            size="lg"
             onClick={onContinue}
-            className="flex-1"
-            disabled={!canContinue}
+            disabled={!delivery.canContinue}
+            className="h-12 flex-1 lg:h-10 lg:flex-none"
           >
-            {t('continue')}
-            <ArrowRight className="ml-2 h-4 w-4" />
+            {t("continue")}
+            <ArrowRight data-slot="icon" />
           </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+        </StepActions>
+      </div>
+    );
+  },
+});

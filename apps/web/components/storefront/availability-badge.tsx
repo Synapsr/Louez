@@ -1,15 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { cn } from "@louez/utils";
+
 import { Badge } from "@louez/ui";
 import type { StockQuantityLimit } from "@louez/utils";
-import {
-  CartSolidIcon,
-  ReviewSolidIcon,
-  SuccessSolidIcon,
-  XCircleSolidIcon,
-} from "@louez/ui/icons";
+import { cn } from "@louez/utils";
 
 export type AvailabilityStatus =
   | "available"
@@ -21,75 +16,57 @@ export type AvailabilityStatus =
 
 interface AvailabilityBadgeProps {
   status: AvailabilityStatus;
+  /** Units free for the period; shown for `available` and `limited`. */
   availableQuantity?: StockQuantityLimit;
-  totalQuantity?: StockQuantityLimit;
-  cartQuantity?: number;
   className?: string;
-  showIcon?: boolean;
-  size?: "sm" | "md";
 }
 
-export function AvailabilityBadge({
+const VARIANT_BY_STATUS = {
+  available: "success",
+  limited: "warning",
+  unavailable: "failed",
+  out_of_stock: "failed",
+  required_accessory_out_of_stock: "failed",
+  in_cart: "tertiary",
+} as const satisfies Record<AvailabilityStatus, string>;
+
+/**
+ * How many units a product has left, as a pill: the shared badge in the
+ * status colour, over the card image or next to a product title. Status
+ * tokens only, so it reads the same on every tenant theme.
+ */
+export const AvailabilityBadge = ({
   status,
-  availableQuantity = 0,
-  totalQuantity: _totalQuantity = 0,
-  cartQuantity = 0,
+  availableQuantity = null,
   className,
-  showIcon = true,
-  size = "md",
-}: AvailabilityBadgeProps) {
+}: AvailabilityBadgeProps) => {
   const t = useTranslations("storefront.availability.badge");
 
-  const config = {
-    available: {
-      icon: SuccessSolidIcon,
-      label:
-        availableQuantity !== null && availableQuantity > 1
-          ? t("availableCount", { count: availableQuantity })
-          : t("available"),
-      variant: "success" as const,
-    },
-    limited: {
-      icon: ReviewSolidIcon,
-      label: t("limited", { count: availableQuantity ?? 0 }),
-      variant: "review" as const,
-    },
-    unavailable: {
-      icon: XCircleSolidIcon,
-      label: t("unavailable"),
-      variant: "failed" as const,
-    },
-    out_of_stock: {
-      icon: XCircleSolidIcon,
-      label: t("outOfStock"),
-      variant: "failed" as const,
-    },
-    required_accessory_out_of_stock: {
-      icon: XCircleSolidIcon,
-      label: t("requiredAccessoryOutOfStock"),
-      variant: "failed" as const,
-    },
-    in_cart: {
-      icon: CartSolidIcon,
-      label: t("inCart"),
-      variant: "progress" as const,
-    },
-  };
-
-  const { icon: Icon, label, variant } = config[status];
+  const label =
+    status === "available"
+      ? availableQuantity === null
+        ? t("available")
+        : availableQuantity === 1
+          ? t("lastOne")
+          : t("availableCount", { count: availableQuantity })
+      : status === "limited"
+        ? t("limited", { count: availableQuantity ?? 0 })
+        : status === "out_of_stock"
+          ? t("outOfStock")
+          : status === "required_accessory_out_of_stock"
+            ? t("requiredAccessoryOutOfStock")
+            : status === "in_cart"
+              ? t("inCart")
+              : t("unavailable");
 
   return (
     <Badge
-      variant={variant}
-      className={cn(
-        "font-medium",
-        size === "sm" ? "text-xs px-2 py-0.5" : "text-xs px-2.5 py-1",
-        className,
-      )}
+      variant={VARIANT_BY_STATUS[status]}
+      className={cn("px-1.5", className)}
+      data-slot="availability-badge"
+      data-status={status}
     >
-      {showIcon && <Icon className={cn("mr-1", size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5")} />}
       {label}
-      {status === "in_cart" && cartQuantity > 0 && ` (${cartQuantity})`}
     </Badge>
   );
-}
+};

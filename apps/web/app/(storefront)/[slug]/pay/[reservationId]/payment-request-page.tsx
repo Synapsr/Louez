@@ -1,138 +1,109 @@
-'use client'
+"use client";
 
-import { useState, useTransition } from 'react'
-import Image from 'next/image'
-import { useTranslations } from 'next-intl'
-import { CreditCard, Shield } from 'lucide-react'
+import { useMutation } from "@tanstack/react-query";
+import { LockIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { Button } from '@louez/ui'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
-import { Alert, AlertDescription } from '@louez/ui'
-import { formatCurrency } from '@louez/utils'
-import { initiatePayment } from './actions'
+import { Alert, AlertDescription, Button } from "@louez/ui";
+
+import { Price } from "@/components/storefront/ui/price";
+import { SectionHeader } from "@/components/storefront/ui/section-header";
+import { useFormatMoney } from "@/hooks/use-format-money";
+
+import { initiatePayment, type PaymentRequestError } from "./actions";
 
 interface PaymentRequestPageProps {
-  store: {
-    name: string
-    slug: string
-    logoUrl: string | null
-    theme: { primaryColor: string } | null
-  }
-  reservation: {
-    number: string
-  }
-  paymentRequest: {
-    id: string
-    amount: number
-    currency: string
-    description: string
-  }
-  customerFirstName: string
-  token: string
+  slug: string;
+  storeName: string;
+  reservation: { id: string; number: string };
+  paymentRequest: { id: string; amount: number; currency: string; description: string };
+  customerFirstName: string;
+  token: string;
 }
 
-export function PaymentRequestPage({
-  store,
+const ERROR_KEYS: Record<PaymentRequestError, string> = {
+  store_not_found: "errors.errorDescription",
+  reservation_not_found: "errors.errorDescription",
+  invalid_token: "errors.expiredDescription",
+  already_paid: "errors.alreadyPaidDescription",
+  cancelled: "errors.cancelledDescription",
+  stripe_not_configured: "errors.unavailableDescription",
+  session_creation_failed: "errors.generic",
+};
+
+/** Amount, one line, one button: the payment request as the customer sees it. */
+export const PaymentRequestPage = ({
+  slug,
+  storeName,
   reservation,
   paymentRequest,
   customerFirstName,
   token,
-}: PaymentRequestPageProps) {
-  const t = useTranslations('storefront.pay')
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  const formattedAmount = formatCurrency(paymentRequest.amount, paymentRequest.currency)
-
-  function handlePay() {
-    setError(null)
-
-    startTransition(async () => {
-      const result = await initiatePayment({
+}: PaymentRequestPageProps) => {
+  const t = useTranslations("storefront.pay");
+  const formatMoney = useFormatMoney();
+  const pay = useMutation({
+    mutationFn: () =>
+      initiatePayment({
+        slug,
+        reservationId: reservation.id,
         paymentRequestId: paymentRequest.id,
         token,
-      })
-
-      if ('error' in result) {
-        setError(t('errors.generic'))
-        return
+      }),
+    onSuccess: (result) => {
+      if (result.ok) {
+        window.location.assign(result.url);
       }
+    },
+  });
 
-      window.location.href = result.url
-    })
-  }
+  const formattedAmount = formatMoney(paymentRequest.amount, { currency: paymentRequest.currency });
+  const failure = pay.isError
+    ? t("errors.generic")
+    : pay.data && !pay.data.ok
+      ? t(ERROR_KEYS[pay.data.error])
+      : null;
+  const isLeaving = pay.data?.ok === true;
 
   return (
     <>
-      {/* Store branding */}
-      <div className="text-center mb-8">
-        {store.logoUrl ? (
-          <Image
-            src={store.logoUrl}
-            alt={store.name}
-            width={120}
-            height={40}
-            className="h-10 w-auto mx-auto mb-4 object-contain"
-          />
-        ) : (
-          <h1 className="text-2xl font-bold mb-4">{store.name}</h1>
-        )}
+      <SectionHeader
+        level="h1"
+        align="center"
+        title={t("amountDue")}
+        description={t("subtitle", { number: reservation.number })}
+      />
+      <div className="flex flex-col gap-4 rounded-2xl bg-card p-4 shadow-card sm:p-6">
+        <div className="flex flex-col items-center gap-1 rounded-2xl bg-muted p-4 text-center">
+          {paymentRequest.description ? (
+            <span className="text-xs text-muted-foreground">{paymentRequest.description}</span>
+          ) : null}
+          <Price amount={paymentRequest.amount} size="xl" tone="primary" />
+        </div>
+
+        <p className="text-pretty text-sm text-muted-foreground">
+          {t("greeting", { name: customerFirstName, store: storeName })}
+        </p>
+
+        {failure ? (
+          <Alert variant="error">
+            <AlertDescription>{failure}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        <Button
+          size="xl"
+          className="h-12 w-full lg:h-10"
+          isPending={pay.isPending || isLeaving}
+          pendingContent={t("redirecting")}
+          onClick={() => pay.mutate()}
+        >
+          <LockIcon data-slot="icon" />
+          {t("payButton", { amount: formattedAmount })}
+        </Button>
+
+        <p className="text-center text-xs text-muted-foreground">{t("securePayment")}</p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            {t('amountDue')}
-          </CardTitle>
-          <CardDescription>
-            {t('subtitle', { number: reservation.number })}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Amount display */}
-          <div className="mb-6 p-4 rounded-lg bg-muted/50 text-center">
-            <p className="text-sm text-muted-foreground mb-1">
-              {paymentRequest.description}
-            </p>
-            <p className="text-3xl font-bold">
-              {formattedAmount}
-            </p>
-          </div>
-
-          {/* Greeting */}
-          <p className="text-sm text-muted-foreground mb-6">
-            {t('greeting', { name: customerFirstName, store: store.name })}
-          </p>
-
-          {/* Error message */}
-          {error && (
-            <Alert variant="error" className="mb-4">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Pay button */}
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={handlePay}
-            isPending={isPending}
-            pendingContent={t('redirecting')}
-            style={{
-              backgroundColor: store.theme?.primaryColor || undefined,
-            }}
-          >
-            <Shield data-slot="icon" />
-            {t('payButton', { amount: formattedAmount })}
-          </Button>
-
-          {/* Security note */}
-          <p className="text-xs text-center text-muted-foreground mt-4">
-            {t('securePayment')}
-          </p>
-        </CardContent>
-      </Card>
     </>
-  )
-}
+  );
+};

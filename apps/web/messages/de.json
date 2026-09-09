@@ -5478,6 +5478,11 @@
           "incentiveBadge": "Startangebot",
           "incentiveLine": "noch {remaining} Plätze mit 0 € reeent-Provision auf Lebenszeit"
         }
+      },
+      "extensions": {
+        "title": "Automatische Mietverlängerungen",
+        "description": "Kunden können bei Verfügbarkeit und berechenbarem Aufpreis verlängern. Sonderfälle erfordern Ihre Zustimmung.",
+        "maxDays": "Maximale zusätzliche Tage (leer: unbegrenzt)"
       }
     },
     "commandPalette": {
@@ -5982,6 +5987,7 @@
         "badgeShort": "-{percent}%",
         "from": "ab {duration}",
         "viewRates": "Preise ansehen",
+        "viewAllRates": "Alle Tarife ansehen ({count})",
         "ratesTitle": "Preise",
         "basePriceLabel": "Grundpreis",
         "duration": "Dauer",
@@ -6043,7 +6049,18 @@
       "requiredAccessoryOutOfStock": "Ein erforderliches Zubehör ist nicht vorrätig",
       "requiredAccessoriesIncluded": "Automatisch hinzugefügt: {names}",
       "backToCatalog": "Zum Katalog",
+      "rentalInformation": {
+        "pickup": "Abholung vor Ort",
+        "locations": "Abholort bei der Buchung auswählen",
+        "optional": "Lieferung verfügbar",
+        "required": "Lieferung erforderlich",
+        "included": "Lieferung inklusive",
+        "deliveryDetails": "Verfügbarkeit und Bedingungen hängen von Ihrer Adresse ab und werden bei der Buchung angezeigt.",
+        "payment": "Bestätigung nach Online-Zahlung",
+        "request": "Anfrage muss vom Vermieter bestätigt werden"
+      },
       "booking": {
+        "availableForDates": "{count} für Ihren Zeitraum verfügbar",
         "dates": "Zeitraum",
         "anyOption": "Egal",
         "checking": "Wird geprüft…",
@@ -6053,6 +6070,16 @@
         "extras": "Extras",
         "depositHold": "Kaution",
         "depositNotCharged": "Kartenreservierung, keine Belastung"
+      }
+    },
+    "quickAdd": {
+      "chooseDates": "Wählen Sie Ihre Daten",
+      "chooseOptions": "Wählen Sie Ihre Ausführung",
+      "optionsIntro": "Dieses Produkt gibt es in mehreren Ausführungen. Wählen Sie Ihre und dann die Anzahl.",
+      "steps": {
+        "dates": "Daten",
+        "options": "Ausführung",
+        "extras": "Zubehör"
       }
     },
     "accessories": {
@@ -6275,6 +6302,7 @@
       "deliveryRequiredNote": "Dieses Produkt erfordert eine Lieferung",
       "deliveryIncludedNote": "Lieferkosten sind im Preis enthalten",
       "included": "Inklusive",
+      "fulfillmentTitle": "Abholung und Rückgabe",
       "outboundTitle": "Ausrüstung erhalten",
       "returnTitle": "Ausrüstung zurückgeben",
       "storePickup": "Abholung im Geschäft",
@@ -6290,6 +6318,21 @@
       "deliveryOption": "Hauslieferung",
       "deliveryOptionDescription": "Ab {pricePerKm}/km",
       "deliveryAvailableFrom": "Lieferung ab einem Mietbetrag von {amount} verfügbar",
+      "distanceKm": "{distance} km",
+      "pricePerKm": "{price}/km",
+      "deliveryAreaSummary": "Liefergebiet {maxKm} km · {pricePerKm}/km",
+      "useMyLocation": "Meinen Standort verwenden",
+      "sortByDistance": "Nach Entfernung sortieren",
+      "sortByDistanceHint": "Sehen Sie, welcher Standort am nächsten liegt",
+      "locationLocating": "Standort wird ermittelt…",
+      "locationBlocked": "Die Standortfreigabe ist für diese Website blockiert. Erlauben Sie sie über das Symbol in der Adressleiste, um nach Entfernung zu sortieren.",
+      "locationUnsupported": "Dieser Browser kann Ihren Standort nicht teilen, daher bleibt die Reihenfolge der Standorte unverändert.",
+      "yourPosition": "Ihr Standort",
+      "returnSamePlace": "Am selben Ort",
+      "returnSomewhereElse": "Woanders",
+      "mapExpand": "Karte vergrößern",
+      "mapCollapse": "Karte schließen",
+      "getDirections": "Route",
       "freeDeliveryAbove": "Kostenlose Lieferung ab {amount}",
       "freeDeliveryApplied": "Kostenlose Lieferung angewendet!",
       "deliveryAddress": "Lieferadresse",
@@ -6473,6 +6516,7 @@
       },
       "acceptCgvRich": "Ich akzeptiere die <terms>Mietbedingungen</terms>",
       "returningCustomer": {
+        "loginLink": "Bereits ein Konto? <signin>Anmelden</signin>",
         "prompt": "Schon Kunde?",
         "sendCode": "Code zusenden",
         "codeSent": "Code an {email} gesendet",
@@ -6616,6 +6660,21 @@
       "backToStore": "Zurück zum Shop"
     },
     "account": {
+      "communications": {
+        "title": "Kommunikation",
+        "description": "Wählen Sie, wie Sie Erinnerungen an Abholung und Rückgabe erhalten, sofern der Vermieter diese anbietet.",
+        "email": "Erinnerungen per E-Mail erhalten",
+        "sms": "Erinnerungen per SMS erhalten",
+        "essential": "Diese Einstellungen gelten nur für Erinnerungen. Nachrichten zur Anmeldung und Buchung (Bestätigung, Ablehnung, Zahlung oder wichtige Änderungen) werden weiterhin gesendet."
+      },
+      "profile": {
+        "title": "Meine Daten",
+        "description": "Diese Angaben werden bei Ihren nächsten Buchungen automatisch ausgefüllt.",
+        "emailHelp": "Ihre E-Mail-Adresse wird zur Anmeldung verwendet.",
+        "saved": "Daten gespeichert",
+        "saveError": "Ihre Daten konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+        "invalidData": "Prüfen Sie Ihre Angaben, insbesondere Telefonnummer und Firmenname."
+      },
       "title": "Mein Konto",
       "accessAccount": "Auf mein Konto zugreifen",
       "accessDescription": "Geben Sie die E-Mail ein, die bei Ihrer Reservierung verwendet wurde, um einen Anmeldecode zu erhalten.",
@@ -6768,7 +6827,12 @@
       "currentReservations": "Laufende Mieten",
       "pastReservations": "Frühere Mieten",
       "timeline": {
-        "title": "Mietzeitraum"
+        "title": "Mietzeitraum",
+        "requested": "Anfrage gesendet",
+        "quoteSent": "Angebot gesendet",
+        "confirmed": "Reservierung bestätigt",
+        "pickedUp": "Ausrüstung abgeholt",
+        "returned": "Ausrüstung zurückgegeben"
       },
       "actions": {
         "title": "Aktionen",
@@ -6778,7 +6842,88 @@
       "total": "Gesamt",
       "notes": "Ihre Notizen",
       "signContractTitle": "Vertrag unterzeichnen?",
-      "confirmSign": "Vertrag unterzeichnen"
+      "confirmSign": "Vertrag unterzeichnen",
+      "dateChange": {
+        "title": "Rückgabe ändern",
+        "description": "Mehr Zeit nötig oder frühere Rückgabe? Beantragen Sie ein neues Datum. Der Vermieter muss zustimmen und kann den Preis anpassen.",
+        "open": "Änderung beantragen",
+        "newEnd": "Gewünschte Rückgabe",
+        "timezone": "Zeitzone des Vermieters: {timezone}",
+        "reason": "Grund (optional)",
+        "error": "Die Anfrage konnte nicht gespeichert werden. Wählen Sie ein zukünftiges Datum nach der Abholung, das vom aktuellen Rückgabedatum abweicht.",
+        "sending": "Wird gesendet…",
+        "submit": "Anfrage senden",
+        "close": "Schließen",
+        "pendingHelp": "Buchung und Preis bleiben bis zur Zustimmung des Vermieters unverändert.",
+        "reviewTitle": "Anfrage zur Rückgabeänderung",
+        "reviewHelp": "Prüfen Sie Verfügbarkeit und Preis im Bearbeitungsformular. Speichern des gewünschten Datums bestätigt die Anfrage. Ein anderer Zeitraum ersetzt sie.",
+        "apply": "Gewünschtes Datum übernehmen",
+        "review": "Anfrage prüfen",
+        "reject": "Anfrage ablehnen",
+        "reviewError": "Anfrage konnte nicht bearbeitet werden. Laden Sie die Seite neu.",
+        "status": {
+          "pending": "Wartet auf Zustimmung",
+          "accepted": "Anfrage bestätigt",
+          "rejected": "Anfrage abgelehnt",
+          "cancelled": "Anfrage storniert",
+          "superseded": "Durch eine andere Änderung ersetzt"
+        }
+      },
+      "actionRequired": {
+        "quote": "Angebot beantworten",
+        "payment": "Reservierung bezahlen",
+        "signature": "Vertrag unterschreiben"
+      },
+      "calendar": {
+        "add": "Zu meinem Kalender hinzufügen"
+      },
+      "extension": {
+        "title": "Miete verlängern",
+        "description": "Wählen Sie einen späteren Rückgabetermin. Prüfen Sie Verfügbarkeit und Aufpreis vor der Bestätigung.",
+        "newEnd": "Neuer Rückgabetermin",
+        "supplement": "Aufpreis",
+        "newTotal": "Neuer Gesamtbetrag: {amount}",
+        "check": "Verfügbarkeit prüfen",
+        "pay": "Bezahlen und verlängern",
+        "confirm": "Verlängerung bestätigen",
+        "request": "Verlängerung anfragen",
+        "loading": "Bitte warten…",
+        "close": "Schließen",
+        "resume": "Zahlung fortsetzen",
+        "cancel": "Verlängerung abbrechen",
+        "checkoutPending": "Die Verlängerung wartet auf Zahlung. Die Ausrüstung ist vorübergehend reserviert.",
+        "expired": "Die Zahlungsfrist ist abgelaufen. Prüfen Sie die Verfügbarkeit erneut.",
+        "confirmed": "Ihre Miete wurde verlängert.",
+        "refund_pending": "Die Verlängerung wurde nicht bestätigt. Ihre Zahlung wird erstattet.",
+        "refunded": "Die Verlängerung wurde nicht übernommen. Ihre Zahlung wurde erstattet.",
+        "open": "Miete verlängern",
+        "reasons": {
+          "disabled": "Der Vermieter muss diese Verlängerung prüfen: Versicherung, Preis, Zahlung, Kaution oder Rückgabebedingungen.",
+          "insurance": "Der Vermieter muss diese Verlängerung prüfen: Versicherung, Preis, Zahlung, Kaution oder Rückgabebedingungen.",
+          "manualPrice": "Der Vermieter muss diese Verlängerung prüfen: Versicherung, Preis, Zahlung, Kaution oder Rückgabebedingungen.",
+          "unpaid": "Der Vermieter muss diese Verlängerung prüfen: Versicherung, Preis, Zahlung, Kaution oder Rückgabebedingungen.",
+          "delivery": "Der Vermieter muss diese Verlängerung prüfen: Versicherung, Preis, Zahlung, Kaution oder Rückgabebedingungen.",
+          "deposit": "Der Vermieter muss diese Verlängerung prüfen: Versicherung, Preis, Zahlung, Kaution oder Rückgabebedingungen.",
+          "overdue": "Der Vermieter muss diese Verlängerung prüfen: Versicherung, Preis, Zahlung, Kaution oder Rückgabebedingungen.",
+          "location": "Der Vermieter muss diese Verlängerung prüfen: Versicherung, Preis, Zahlung, Kaution oder Rückgabebedingungen."
+        },
+        "errors": {
+          "invalidDate": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "invalidStatus": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "pending": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "tooLong": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "closed": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "unavailable": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "manualRequired": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "priceChanged": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "expired": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "paymentUnavailable": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "notFound": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "unexpected": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "paymentMismatch": "Dieser Termin kann nicht bestätigt werden. Prüfen Sie die Daten erneut oder kontaktieren Sie den Vermieter.",
+          "tooManyAttempts": "Zu viele Verlängerungsversuche. Versuchen Sie es in 15 Minuten erneut."
+        }
+      }
     },
     "marketplaceShell": {
       "marketplaceName": "Louez Marketplace"

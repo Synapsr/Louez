@@ -5478,6 +5478,11 @@
           "incentiveBadge": "Offerta di lancio",
           "incentiveLine": "ancora {remaining} posti con 0 € di commissione reeent a vita"
         }
+      },
+      "extensions": {
+        "title": "Prolungamenti automatici",
+        "description": "I clienti possono prolungare se il materiale è disponibile e il supplemento è calcolabile. I casi particolari richiedono la tua approvazione.",
+        "maxDays": "Giorni aggiuntivi massimi (vuoto: nessun limite)"
       }
     },
     "commandPalette": {
@@ -5982,6 +5987,7 @@
         "badgeShort": "-{percent}%",
         "from": "da {duration}",
         "viewRates": "Vedi tariffe",
+        "viewAllRates": "Vedi tutte le tariffe ({count})",
         "ratesTitle": "Tariffe",
         "basePriceLabel": "Prezzo base",
         "duration": "Durata",
@@ -6043,7 +6049,18 @@
       "requiredAccessoryOutOfStock": "Un accessorio obbligatorio è esaurito",
       "requiredAccessoriesIncluded": "Aggiunto automaticamente: {names}",
       "backToCatalog": "Vedi il catalogo",
+      "rentalInformation": {
+        "pickup": "Ritiro in sede",
+        "locations": "Scegli il punto di ritiro durante la prenotazione",
+        "optional": "Consegna disponibile",
+        "required": "Consegna obbligatoria",
+        "included": "Consegna inclusa",
+        "deliveryDetails": "Disponibilità e condizioni dipendono dal tuo indirizzo e vengono mostrate durante la prenotazione.",
+        "payment": "Conferma dopo il pagamento online",
+        "request": "Richiesta soggetta a conferma del noleggiatore"
+      },
       "booking": {
+        "availableForDates": "{count} disponibili per le tue date",
         "dates": "Date",
         "anyOption": "Indifferente",
         "checking": "Verifica in corso…",
@@ -6053,6 +6070,16 @@
         "extras": "Extra",
         "depositHold": "Cauzione",
         "depositNotCharged": "Preautorizzazione, non addebitata"
+      }
+    },
+    "quickAdd": {
+      "chooseDates": "Scegli le date",
+      "chooseOptions": "Scegli la configurazione",
+      "optionsIntro": "Questo prodotto esiste in più configurazioni. Scegli la tua, poi il numero di unità.",
+      "steps": {
+        "dates": "Date",
+        "options": "Configurazione",
+        "extras": "Accessori"
       }
     },
     "accessories": {
@@ -6275,6 +6302,7 @@
       "deliveryRequiredNote": "Questo prodotto richiede la consegna",
       "deliveryIncludedNote": "Le spese di consegna sono incluse nel prezzo",
       "included": "Incluso",
+      "fulfillmentTitle": "Ritiro e restituzione",
       "outboundTitle": "Ricevere attrezzatura",
       "returnTitle": "Restituire attrezzatura",
       "storePickup": "Ritiro in negozio",
@@ -6290,6 +6318,21 @@
       "deliveryOption": "Consegna a domicilio",
       "deliveryOptionDescription": "A partire da {pricePerKm}/km",
       "deliveryAvailableFrom": "Consegna disponibile da {amount} di noleggio",
+      "distanceKm": "{distance} km",
+      "pricePerKm": "{price}/km",
+      "deliveryAreaSummary": "Zona di consegna di {maxKm} km · {pricePerKm}/km",
+      "useMyLocation": "Usa la mia posizione",
+      "sortByDistance": "Ordina per distanza",
+      "sortByDistanceHint": "Scopri quale punto è più vicino",
+      "locationLocating": "Localizzazione in corso…",
+      "locationBlocked": "La posizione è bloccata per questo sito. Consentila dall'icona nella barra degli indirizzi per ordinare per distanza.",
+      "locationUnsupported": "Questo browser non può condividere la tua posizione, quindi i punti restano nell'ordine del negozio.",
+      "yourPosition": "La tua posizione",
+      "returnSamePlace": "Stesso posto",
+      "returnSomewhereElse": "Altrove",
+      "mapExpand": "Ingrandisci la mappa",
+      "mapCollapse": "Chiudi la mappa",
+      "getDirections": "Indicazioni",
       "freeDeliveryAbove": "Consegna gratuita sopra {amount}",
       "freeDeliveryApplied": "Consegna gratuita applicata!",
       "deliveryAddress": "Indirizzo di consegna",
@@ -6473,6 +6516,7 @@
       },
       "acceptCgvRich": "Accetto le <terms>condizioni generali di noleggio</terms>",
       "returningCustomer": {
+        "loginLink": "Hai già un account? <signin>Accedi</signin>",
         "prompt": "Sei già cliente?",
         "sendCode": "Ricevi un codice",
         "codeSent": "Codice inviato a {email}",
@@ -6616,6 +6660,21 @@
       "backToStore": "Torna al negozio"
     },
     "account": {
+      "communications": {
+        "title": "Comunicazioni",
+        "description": "Scegli come ricevere i promemoria di ritiro e restituzione, se offerti dal noleggiatore.",
+        "email": "Ricevere promemoria via email",
+        "sms": "Ricevere promemoria via SMS",
+        "essential": "Queste preferenze riguardano solo i promemoria. I messaggi di accesso e prenotazione (conferma, rifiuto, pagamento o modifiche importanti) continueranno a essere inviati."
+      },
+      "profile": {
+        "title": "I miei dati",
+        "description": "Questi dati saranno compilati automaticamente per le prossime prenotazioni.",
+        "emailHelp": "Il tuo indirizzo email viene utilizzato per accedere.",
+        "saved": "Dati salvati",
+        "saveError": "Impossibile salvare i dati. Riprova.",
+        "invalidData": "Controlla i dati, in particolare il telefono e il nome dell’azienda."
+      },
       "title": "Il mio account",
       "accessAccount": "Accedi al mio account",
       "accessDescription": "Inserisci l'email usata per la tua prenotazione per ricevere un codice di accesso.",
@@ -6768,7 +6827,12 @@
       "currentReservations": "Noleggi in corso",
       "pastReservations": "Noleggi passati",
       "timeline": {
-        "title": "Periodo di noleggio"
+        "title": "Periodo di noleggio",
+        "requested": "Richiesta inviata",
+        "quoteSent": "Preventivo inviato",
+        "confirmed": "Prenotazione confermata",
+        "pickedUp": "Attrezzatura ritirata",
+        "returned": "Attrezzatura restituita"
       },
       "actions": {
         "title": "Azioni",
@@ -6778,7 +6842,88 @@
       "total": "Totale",
       "notes": "Le tue note",
       "signContractTitle": "Firmare il contratto?",
-      "confirmSign": "Firma il contratto"
+      "confirmSign": "Firma il contratto",
+      "dateChange": {
+        "title": "Modifica la restituzione",
+        "description": "Serve più tempo o vuoi restituire prima? Richiedi una nuova data. Il noleggiatore deve approvarla e può adeguare il prezzo.",
+        "open": "Richiedi una modifica",
+        "newEnd": "Restituzione richiesta",
+        "timezone": "Fuso orario del negozio: {timezone}",
+        "reason": "Motivo (facoltativo)",
+        "error": "Impossibile salvare la richiesta. Scegli una data futura, successiva al ritiro e diversa dalla restituzione attuale.",
+        "sending": "Invio…",
+        "submit": "Invia richiesta",
+        "close": "Chiudi",
+        "pendingHelp": "Prenotazione e prezzo restano invariati fino all’approvazione del noleggiatore.",
+        "reviewTitle": "Richiesta di modifica della restituzione",
+        "reviewHelp": "Verifica disponibilità e prezzo nella modifica. Salvare la data richiesta approva la richiesta. Un periodo diverso la sostituisce.",
+        "apply": "Applica la data richiesta",
+        "review": "Esamina richiesta",
+        "reject": "Rifiuta richiesta",
+        "reviewError": "Impossibile elaborare la richiesta. Aggiorna la pagina e riprova.",
+        "status": {
+          "pending": "In attesa di approvazione",
+          "accepted": "Richiesta approvata",
+          "rejected": "Richiesta rifiutata",
+          "cancelled": "Richiesta annullata",
+          "superseded": "Sostituita da un’altra modifica"
+        }
+      },
+      "actionRequired": {
+        "quote": "Rispondi al preventivo",
+        "payment": "Paga la prenotazione",
+        "signature": "Firma il contratto"
+      },
+      "calendar": {
+        "add": "Aggiungi al mio calendario"
+      },
+      "extension": {
+        "title": "Prolunga il noleggio",
+        "description": "Scegli una riconsegna successiva. Verifica disponibilità e supplemento prima di confermare.",
+        "newEnd": "Nuova data di riconsegna",
+        "supplement": "Supplemento",
+        "newTotal": "Nuovo totale: {amount}",
+        "check": "Verifica disponibilità",
+        "pay": "Paga e prolunga",
+        "confirm": "Conferma prolungamento",
+        "request": "Richiedi prolungamento",
+        "loading": "Attendi…",
+        "close": "Chiudi",
+        "resume": "Riprendi il pagamento",
+        "cancel": "Annulla prolungamento",
+        "checkoutPending": "Il prolungamento attende il pagamento. Il materiale è riservato temporaneamente.",
+        "expired": "Il termine di pagamento è scaduto. Verifica nuovamente la disponibilità.",
+        "confirmed": "Il noleggio è stato prolungato.",
+        "refund_pending": "Il prolungamento non è stato confermato. Il pagamento è in fase di rimborso.",
+        "refunded": "Il prolungamento non è stato applicato. Il pagamento è stato rimborsato.",
+        "open": "Prolunga il noleggio",
+        "reasons": {
+          "disabled": "Il noleggiatore deve verificare questo prolungamento: assicurazione, prezzo, pagamento, cauzione o condizioni di riconsegna.",
+          "insurance": "Il noleggiatore deve verificare questo prolungamento: assicurazione, prezzo, pagamento, cauzione o condizioni di riconsegna.",
+          "manualPrice": "Il noleggiatore deve verificare questo prolungamento: assicurazione, prezzo, pagamento, cauzione o condizioni di riconsegna.",
+          "unpaid": "Il noleggiatore deve verificare questo prolungamento: assicurazione, prezzo, pagamento, cauzione o condizioni di riconsegna.",
+          "delivery": "Il noleggiatore deve verificare questo prolungamento: assicurazione, prezzo, pagamento, cauzione o condizioni di riconsegna.",
+          "deposit": "Il noleggiatore deve verificare questo prolungamento: assicurazione, prezzo, pagamento, cauzione o condizioni di riconsegna.",
+          "overdue": "Il noleggiatore deve verificare questo prolungamento: assicurazione, prezzo, pagamento, cauzione o condizioni di riconsegna.",
+          "location": "Il noleggiatore deve verificare questo prolungamento: assicurazione, prezzo, pagamento, cauzione o condizioni di riconsegna."
+        },
+        "errors": {
+          "invalidDate": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "invalidStatus": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "pending": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "tooLong": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "closed": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "unavailable": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "manualRequired": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "priceChanged": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "expired": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "paymentUnavailable": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "notFound": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "unexpected": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "paymentMismatch": "Questa data non può essere confermata. Verifica nuovamente i dati o contatta il noleggiatore.",
+          "tooManyAttempts": "Troppi tentativi. Riprova tra 15 minuti."
+        }
+      }
     },
     "marketplaceShell": {
       "marketplaceName": "Louez Marketplace"

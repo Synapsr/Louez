@@ -5478,6 +5478,11 @@
           "incentiveBadge": "Launch offer",
           "incentiveLine": "{remaining} spots left with 0 € reeent commission for life"
         }
+      },
+      "extensions": {
+        "title": "Automatic rental extensions",
+        "description": "Customers can extend when equipment is available and the extra cost can be calculated. Special cases require your approval.",
+        "maxDays": "Maximum extra days (leave empty for no limit)"
       }
     },
     "commandPalette": {
@@ -5986,6 +5991,7 @@
         "badgeShort": "-{percent}%",
         "from": "from {duration}",
         "viewRates": "View rates",
+        "viewAllRates": "View all rates ({count})",
         "ratesTitle": "Rates",
         "basePriceLabel": "Base price",
         "duration": "Duration",
@@ -6043,7 +6049,18 @@
       "requiredAccessoryOutOfStock": "A required accessory is out of stock",
       "requiredAccessoriesIncluded": "Automatically added: {names}",
       "backToCatalog": "View the catalog",
+      "rentalInformation": {
+        "pickup": "Local pickup",
+        "locations": "Choose your pickup location when booking",
+        "optional": "Delivery available",
+        "required": "Delivery required",
+        "included": "Delivery included",
+        "deliveryDetails": "Availability and terms depend on your address and are shown when booking.",
+        "payment": "Confirmation after online payment",
+        "request": "Request subject to confirmation by the rental provider"
+      },
       "booking": {
+        "availableForDates": "{count} available for your dates",
         "dates": "Dates",
         "anyOption": "No preference",
         "checking": "Checking…",
@@ -6053,6 +6070,16 @@
         "extras": "Extras",
         "depositHold": "Deposit",
         "depositNotCharged": "Card hold, not charged"
+      }
+    },
+    "quickAdd": {
+      "chooseDates": "Choose your dates",
+      "chooseOptions": "Choose your options",
+      "optionsIntro": "This product comes in several configurations. Pick yours, then how many units you need.",
+      "steps": {
+        "dates": "Dates",
+        "options": "Configuration",
+        "extras": "Accessories"
       }
     },
     "accessories": {
@@ -6275,6 +6302,7 @@
       "deliveryRequiredNote": "This product requires delivery",
       "deliveryIncludedNote": "Delivery fees are included in the price",
       "included": "Included",
+      "fulfillmentTitle": "Pickup and return",
       "outboundTitle": "Receive equipment",
       "returnTitle": "Return equipment",
       "storePickup": "Pick up at store",
@@ -6290,6 +6318,21 @@
       "deliveryOption": "Home delivery",
       "deliveryOptionDescription": "Starting at {pricePerKm}/km",
       "deliveryAvailableFrom": "Delivery available from {amount} of rental",
+      "distanceKm": "{distance} km",
+      "pricePerKm": "{price}/km",
+      "deliveryAreaSummary": "{maxKm} km delivery area · {pricePerKm}/km",
+      "useMyLocation": "Use my location",
+      "sortByDistance": "Sort by distance from me",
+      "sortByDistanceHint": "See which location is closest",
+      "locationLocating": "Finding you…",
+      "locationBlocked": "Location is blocked for this site. Allow it from the icon in the address bar to sort by distance.",
+      "locationUnsupported": "This browser cannot share your position, so locations stay in store order.",
+      "yourPosition": "Your position",
+      "returnSamePlace": "Same place",
+      "returnSomewhereElse": "Somewhere else",
+      "mapExpand": "Expand the map",
+      "mapCollapse": "Close the map",
+      "getDirections": "Directions",
       "freeDeliveryAbove": "Free delivery above {amount}",
       "freeDeliveryApplied": "Free delivery applied!",
       "deliveryAddress": "Delivery address",
@@ -6473,6 +6516,7 @@
       },
       "acceptCgvRich": "I accept the <terms>rental terms and conditions</terms>",
       "returningCustomer": {
+        "loginLink": "Already have an account? <signin>Sign in</signin>",
         "prompt": "Already a customer?",
         "sendCode": "Send me a code",
         "codeSent": "Code sent to {email}",
@@ -6616,6 +6660,21 @@
       "backToStore": "Back to store"
     },
     "account": {
+      "communications": {
+        "title": "Communications",
+        "description": "Choose how to receive pickup and return reminders, when offered by the rental company.",
+        "email": "Receive reminders by email",
+        "sms": "Receive reminders by SMS",
+        "essential": "These preferences only apply to reminders. Sign-in and booking updates (confirmation, rejection, payment or important changes) will still be sent."
+      },
+      "profile": {
+        "title": "My information",
+        "description": "These details will be filled in automatically for your next bookings.",
+        "emailHelp": "Your email address is used to sign in.",
+        "saved": "Information saved",
+        "saveError": "Unable to save your information. Please try again.",
+        "invalidData": "Check your details, especially your phone number and company name."
+      },
       "title": "My account",
       "accessAccount": "Access my account",
       "accessDescription": "Enter the email used for your reservation to receive a login code.",
@@ -6768,7 +6827,12 @@
       "currentReservations": "Current rentals",
       "pastReservations": "Past rentals",
       "timeline": {
-        "title": "Rental period"
+        "title": "Rental period",
+        "requested": "Request sent",
+        "quoteSent": "Quote sent",
+        "confirmed": "Booking confirmed",
+        "pickedUp": "Equipment collected",
+        "returned": "Equipment returned"
       },
       "actions": {
         "title": "Actions",
@@ -6778,7 +6842,88 @@
       "total": "Total",
       "notes": "Your notes",
       "signContractTitle": "Sign the contract?",
-      "confirmSign": "Sign the contract"
+      "confirmSign": "Sign the contract",
+      "dateChange": {
+        "title": "Change return date",
+        "description": "Need more time or want to return early? Request a new date. The rental provider must approve it and may adjust the price.",
+        "open": "Request a change",
+        "newEnd": "Requested return",
+        "timezone": "Store time zone: {timezone}",
+        "reason": "Reason (optional)",
+        "error": "Could not save the request. Choose a future date after pickup and different from the current return, then try again.",
+        "sending": "Sending…",
+        "submit": "Send request",
+        "close": "Close",
+        "pendingHelp": "Your booking and price remain unchanged until the rental provider approves.",
+        "reviewTitle": "Return date change request",
+        "reviewHelp": "Check availability and pricing in the editor. Saving the requested date approves the request. A different period supersedes it.",
+        "apply": "Apply requested date",
+        "review": "Review request",
+        "reject": "Decline request",
+        "reviewError": "Could not process the request. Refresh the page and try again.",
+        "status": {
+          "pending": "Awaiting approval",
+          "accepted": "Request approved",
+          "rejected": "Request declined",
+          "cancelled": "Request cancelled",
+          "superseded": "Superseded by another change"
+        }
+      },
+      "actionRequired": {
+        "quote": "Respond to quote",
+        "payment": "Pay for your reservation",
+        "signature": "Sign your contract"
+      },
+      "calendar": {
+        "add": "Add to my calendar"
+      },
+      "extension": {
+        "title": "Extend my rental",
+        "description": "Choose a later return date. Check availability and the extra cost before confirming.",
+        "open": "Extend my rental",
+        "newEnd": "New return date",
+        "supplement": "Extra cost",
+        "newTotal": "New rental total: {amount}",
+        "check": "Check availability",
+        "pay": "Pay and extend",
+        "confirm": "Confirm extension",
+        "request": "Request an extension",
+        "loading": "Please wait…",
+        "close": "Close",
+        "resume": "Continue payment",
+        "cancel": "Cancel extension",
+        "checkoutPending": "Your extension is awaiting payment. The equipment is held temporarily.",
+        "expired": "The payment window expired. Check availability again.",
+        "confirmed": "Your rental has been extended.",
+        "refund_pending": "The extension could not be confirmed. Your payment is being refunded.",
+        "refunded": "The extension was not applied. Your payment has been refunded.",
+        "reasons": {
+          "disabled": "This rental provider reviews extension requests.",
+          "insurance": "The rental provider needs to confirm your insurance coverage for the extra period.",
+          "manualPrice": "Your rental has a special price or conditions. The rental provider will confirm the extra cost.",
+          "unpaid": "The rental provider needs to review payment before extending.",
+          "delivery": "The rental provider needs to arrange the new collection time.",
+          "deposit": "The rental provider needs to check the deposit for the extra period.",
+          "overdue": "The return date has passed. Contact the rental provider or send a request.",
+          "location": "The rental provider needs to confirm availability at the return location."
+        },
+        "errors": {
+          "invalidDate": "Choose a date later than the current return date.",
+          "invalidStatus": "This rental can no longer be extended.",
+          "pending": "An extension is already in progress. Refresh to continue it.",
+          "tooLong": "This date exceeds the maximum rental or extension duration.",
+          "closed": "The store is closed at this time. Choose another return time.",
+          "unavailable": "Some equipment is unavailable for this period. Choose an earlier return or contact the rental provider.",
+          "manualRequired": "The rental provider must review this extension. Check the date again.",
+          "priceChanged": "The extra cost has changed. Check the date again before paying.",
+          "expired": "This payment window has expired. Check availability again.",
+          "paymentUnavailable": "Payment is unavailable. Try again or contact the rental provider.",
+          "notFound": "Please sign in again to access this reservation.",
+          "unexpected": "Unable to complete this action. Refresh the page and try again.",
+          "paymentMismatch": "This payment could not be matched. Contact the rental provider.",
+          "tooManyAttempts": "Too many extension attempts. Try again in 15 minutes."
+        }
+      }
     },
     "marketplaceShell": {
       "marketplaceName": "Louez Marketplace"
@@ -7242,7 +7387,9 @@
       "landlordText": "The landlord certifies the accuracy of the above information and the availability of the equipment for the indicated period.",
       "customerText": "I acknowledge that I have read and agree to the general rental terms and conditions without reservation.",
       "dateLabel": "Date:",
-      "ipLabel": "IP:"
+      "ipLabel": "IP:",
+      "automatic": "Automatically validated",
+      "automaticText": "Contract automatically validated when the reservation is confirmed or paid."
     },
     "conditions": {
       "condition1": "The equipment is rented in good working order",

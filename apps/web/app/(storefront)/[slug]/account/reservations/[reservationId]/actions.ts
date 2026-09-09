@@ -1,5 +1,12 @@
 "use server";
 
+import {
+  checkExistingReservationInventory,
+  ReservationInventoryError,
+} from "@/lib/reservations/reserve-inventory";
+
+import { validateReservationContract } from "@louez/api/services";
+
 import { revalidatePath } from "next/cache";
 
 import { and, eq } from "drizzle-orm";
@@ -26,40 +33,59 @@ import {
   toAnalyticsAmountCents,
 } from "@/lib/product-analytics/analytics";
 import { productAnalyticsEvents } from "@/lib/product-analytics/analytics-events";
-import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
+import { z } from "zod";
+
+import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
+import { getCustomerSession } from "@/lib/customer-auth/session";
 import { createReservationPaymentSessionForCustomer } from "@/lib/reservations/payment-session";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
+import { log } from "@/lib/evlog";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 
-import { getCustomerSession } from "../../actions";
+const describeError = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+const reservationActionInputSchema = z.object({
+  storeSlug: z.string().trim().min(1).max(255),
+  reservationId: z.string().length(21),
+});
+
+/**
+ * The full store row (owner notification channels included) and the
+ * customer session scoped to it. Error keys are bare (`tErrors(key)`).
+ */
+const resolveCustomerStore = async (storeSlug: string) => {
+  const store = await db.query.stores.findFirst({ where: eq(stores.slug, storeSlug) });
+  if (!store) return { error: "storeNotFound" as const };
+
+  const session = await getCustomerSession(store.id);
+  if (!session) return { error: "unauthorized" as const };
+
+  return { store, session };
+};
 
 export async function createReservationPaymentSession(storeSlug: string, reservationId: string) {
-  const session = await getCustomerSession(storeSlug);
-  if (!session) {
-    return { error: "errors.unauthorized" };
-  }
+  const parsed = reservationActionInputSchema.safeParse({ storeSlug, reservationId });
+  if (!parsed.success) return { error: "invalidData" };
+
+  const resolved = await resolveCustomerStore(parsed.data.storeSlug);
+  if ("error" in resolved) return { error: resolved.error };
 
   return createReservationPaymentSessionForCustomer(
-    storeSlug,
-    reservationId,
-    session.customerId,
+    parsed.data.storeSlug,
+    parsed.data.reservationId,
+    resolved.session.customerId,
     "account_page",
   );
 }
 
 export async function acceptQuote(storeSlug: string, reservationId: string) {
-  const session = await getCustomerSession(storeSlug);
-  if (!session) {
-    return { error: "errors.unauthorized" };
-  }
+  const parsed = reservationActionInputSchema.safeParse({ storeSlug, reservationId });
+  if (!parsed.success) return { error: "invalidData" };
 
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, storeSlug),
-  });
-
-  if (!store) {
-    return { error: "errors.storeNotFound" };
-  }
+  const resolved = await resolveCustomerStore(parsed.data.storeSlug);
+  if ("error" in resolved) return { error: resolved.error };
+  const { store, session } = resolved;
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
@@ -74,52 +100,57 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
   });
 
   if (!reservation) {
-    return { error: "errors.reservationNotFound" };
+    return { error: "reservationNotFound" };
   }
 
   if (reservation.status !== "quote") {
-    return { error: "errors.invalidStatus" };
+    return { error: "invalidStatus" };
   }
 
   let accepted = false;
   try {
-    accepted = await db.transaction(async (tx) => {
-      const result = await tx
-        .update(reservations)
-        .set({ status: "confirmed", updatedAt: new Date() })
-        .where(
-          and(
-            eq(reservations.id, reservationId),
-            eq(reservations.storeId, store.id),
-            eq(reservations.customerId, session.customerId),
-            eq(reservations.status, "quote"),
-          ),
-        );
+    accepted = await db.transaction(
+      async (tx) => {
+        const result = await tx
+          .update(reservations)
+          .set({ status: "confirmed", updatedAt: new Date() })
+          .where(
+            and(
+              eq(reservations.id, reservationId),
+              eq(reservations.storeId, store.id),
+              eq(reservations.customerId, session.customerId),
+              eq(reservations.status, "quote"),
+            ),
+          );
 
-      if ((result[0]?.affectedRows ?? 0) === 0) {
-        return false;
-      }
+        if ((result[0]?.affectedRows ?? 0) === 0) {
+          return false;
+        }
 
-      await consumeReservationStock(tx, reservationId, store.id);
-      await tx.insert(reservationActivity).values({
-        id: nanoid(),
-        reservationId,
-        activityType: "quote_accepted",
-        metadata: { source: "quote_acceptance", actor: "customer" },
-        createdAt: new Date(),
-      });
+        await checkExistingReservationInventory(tx, reservationId, store.id);
+        await consumeReservationStock(tx, reservationId, store.id);
+        await validateReservationContract(tx, reservationId, store.id, "quote_acceptance");
+        await tx.insert(reservationActivity).values({
+          id: nanoid(),
+          reservationId,
+          activityType: "quote_accepted",
+          metadata: { source: "quote_acceptance", actor: "customer" },
+          createdAt: new Date(),
+        });
 
-      return true;
-    });
+        return true;
+      },
+      { isolationLevel: "read committed" },
+    );
   } catch (error) {
-    if (error instanceof ConsumableStockError) {
+    if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
       return { error: error.message };
     }
     throw error;
   }
 
   if (!accepted) {
-    return { error: "errors.invalidStatus" };
+    return { error: "invalidStatus" };
   }
 
   await captureProductServerEvent({
@@ -151,10 +182,10 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
     if (paymentSession.success) {
       paymentUrl = paymentSession.paymentUrl;
     } else if (paymentSession.error !== "errors.alreadyPaid") {
-      console.error("Failed to create quote acceptance payment session:", {
-        reservationId,
-        error: paymentSession.error,
-      });
+      log.error(
+        "reservation",
+        `quote payment session failed (${reservationId}): ${paymentSession.error}`,
+      );
     }
   }
 
@@ -179,10 +210,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
         : []),
     ]);
   } catch (error) {
-    console.error("[payg] Failed to record accepted-quote location:", {
-      reservationId,
-      error,
-    });
+    log.error("payg", `accepted-quote fee failed (${reservationId}): ${describeError(error)}`);
   }
 
   // Notify the store owner
@@ -210,7 +238,7 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
       phone: reservation.customer.phone,
     },
   }).catch((error) => {
-    console.error("Failed to dispatch quote accepted notification:", error);
+    log.error("reservation", `quote accepted notification failed: ${describeError(error)}`);
   });
 
   // Notify the customer with confirmation email
@@ -269,29 +297,24 @@ export async function acceptQuote(storeSlug: string, reservationId: string) {
       termsUrl,
       paymentUrl,
     }).catch((error) => {
-      console.error("Failed to dispatch quote accepted customer notification:", error);
+      log.error("reservation", `quote accepted customer email failed: ${describeError(error)}`);
     });
   } catch (error) {
-    console.error("Failed to dispatch quote accepted customer notification:", error);
+    log.error("reservation", `quote accepted customer email failed: ${describeError(error)}`);
   }
 
+  revalidatePath(`/${storeSlug}/account`);
   revalidatePath(`/${storeSlug}/account/reservations/${reservationId}`);
   return { success: true, paymentUrl };
 }
 
 export async function declineQuote(storeSlug: string, reservationId: string) {
-  const session = await getCustomerSession(storeSlug);
-  if (!session) {
-    return { error: "errors.unauthorized" };
-  }
+  const parsed = reservationActionInputSchema.safeParse({ storeSlug, reservationId });
+  if (!parsed.success) return { error: "invalidData" };
 
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, storeSlug),
-  });
-
-  if (!store) {
-    return { error: "errors.storeNotFound" };
-  }
+  const resolved = await resolveCustomerStore(parsed.data.storeSlug);
+  if ("error" in resolved) return { error: resolved.error };
+  const { store, session } = resolved;
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
@@ -305,11 +328,11 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   });
 
   if (!reservation) {
-    return { error: "errors.reservationNotFound" };
+    return { error: "reservationNotFound" };
   }
 
   if (reservation.status !== "quote") {
-    return { error: "errors.invalidStatus" };
+    return { error: "invalidStatus" };
   }
 
   // Move to declined
@@ -323,10 +346,7 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
   try {
     await voidReservationFee(reservationId);
   } catch (error) {
-    console.error("[payg] Failed to void declined-quote reservation fee:", {
-      reservationId,
-      error,
-    });
+    log.error("payg", `declined-quote fee void failed (${reservationId}): ${describeError(error)}`);
   }
 
   // Log activity
@@ -378,9 +398,10 @@ export async function declineQuote(storeSlug: string, reservationId: string) {
       phone: reservation.customer.phone,
     },
   }).catch((error) => {
-    console.error("Failed to dispatch quote declined notification:", error);
+    log.error("reservation", `quote declined notification failed: ${describeError(error)}`);
   });
 
+  revalidatePath(`/${storeSlug}/account`);
   revalidatePath(`/${storeSlug}/account/reservations/${reservationId}`);
   return { success: true };
 }

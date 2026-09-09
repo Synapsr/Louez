@@ -1,5 +1,5 @@
 // Class name utility
-export { cn } from './cn'
+export { cn } from "./cn";
 
 // Formatting utilities
 export {
@@ -19,24 +19,23 @@ export {
   getCurrencySymbol,
   formatAmountWithSymbol,
   getLogoForLightBackground,
-} from './formatting'
+} from "./formatting";
 
 // Pricing utilities
-export * from './pricing'
-export * from './variants'
-export * from './availability'
-export * from './stock-capacity'
+export * from "./pricing";
+export * from "./variants";
+export * from "./availability";
+export * from "./stock-capacity";
 
 // Permissions
-export {
-  hasPermission,
-  type Permission,
-  type MemberRole,
-} from './permissions'
+export { hasPermission, type Permission, type MemberRole } from "./permissions";
 
 // Business hours
-export { normalizeDaySchedule } from './business-hours'
-export { toAbsoluteUrl } from './url'
+export { normalizeDaySchedule } from "./business-hours";
+export { toAbsoluteUrl } from "./url";
+
+// Rich-text HTML (dashboard editor) allow-list sanitiser
+export { sanitizeRichTextHtml } from "./html/sanitize-rich-text";
 
 // AI advisor
-export { advisorValidationCovers } from './ai-advisor'
+export { advisorValidationCovers } from "./ai-advisor";

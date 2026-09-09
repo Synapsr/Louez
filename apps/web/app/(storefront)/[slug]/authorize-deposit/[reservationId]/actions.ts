@@ -1,349 +1,316 @@
-'use server'
+"use server";
 
-import { db } from '@louez/db'
-import { stores, reservations, payments, reservationActivity, verificationCodes } from '@louez/db'
-import { eq, and, gt } from 'drizzle-orm'
-import { createDepositAuthorizationIntent, toStripeCents } from '@/lib/stripe'
-import { getStorefrontUrl } from '@/lib/storefront-url'
-import { nanoid } from 'nanoid'
-import type { StoreSettings } from '@louez/types'
+import { and, eq, gt } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { z } from "zod";
 
-interface GetDepositAuthorizationDataParams {
-  slug: string
-  reservationId: string
-  token?: string
-}
+import { db, payments, reservationActivity, reservations, verificationCodes } from "@louez/db";
+
+import { log } from "@/lib/evlog";
+import {
+  INSTANT_ACCESS_SHORT_TTL_MS,
+  createReservationInstantAccessUrl,
+} from "@/lib/customer-auth/instant-access";
+import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { createDepositAuthorizationIntent, toStripeCents } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe/client";
+
+import { verifyDepositHold } from "./util.deposit-hold";
+
+export type DepositAuthorizationError =
+  | "store_not_found"
+  | "reservation_not_found"
+  | "invalid_token"
+  | "stripe_not_configured"
+  | "deposit_already_authorized"
+  | "no_deposit_required"
+  | "payment_intent_creation_failed"
+  | "not_authorized"
+  | "confirmation_failed";
+
+export type DepositAuthorizationData =
+  | {
+      ok: true;
+      store: {
+        id: string;
+        name: string;
+        slug: string;
+        stripeAccountId: string;
+        theme: { primaryColor: string; mode: "light" | "dark" } | null;
+      };
+      reservation: { id: string; number: string; depositAmount: number };
+      customer: { firstName: string; email: string };
+      currency: string;
+    }
+  | { ok: false; error: DepositAuthorizationError };
+
+export type DepositPaymentIntentResult =
+  | { ok: true; clientSecret: string }
+  | { ok: false; error: DepositAuthorizationError };
+
+export type ConfirmDepositAuthorizationResult =
+  | { ok: true; redirectUrl: string }
+  | { ok: false; error: DepositAuthorizationError };
+
+const AUTHORIZATION_HOLD_DAYS = 7;
+
+const accessInputSchema = z.object({
+  slug: z.string().trim().min(1).max(100),
+  reservationId: z.string().trim().min(1).max(64),
+  token: z.string().trim().min(1).max(128).optional(),
+});
+
+const confirmInputSchema = accessInputSchema.extend({
+  token: z.string().trim().min(1).max(128),
+  paymentIntentId: z.string().trim().min(1).max(255),
+});
+
+const describeError = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 /**
- * Get deposit authorization data for the page
- * Validates access via token or customer session
+ * Store, reservation, token and deposit checks shared by the three actions.
+ * A missing token is an invalid token: the page is only reachable by link.
  */
-export async function getDepositAuthorizationData({
+const loadDepositContext = async ({
   slug,
   reservationId,
   token,
-}: GetDepositAuthorizationDataParams) {
-  // Get store
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, slug),
-  })
-
+}: z.infer<typeof accessInputSchema>) => {
+  const store = await getStoreBySlug(slug);
   if (!store) {
-    return { error: 'store_not_found' }
+    return { ok: false as const, error: "store_not_found" as const };
   }
 
-  // Get reservation with customer
   const reservation = await db.query.reservations.findFirst({
-    where: and(
-      eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
-    ),
-    with: {
-      customer: true,
-    },
-  })
-
+    where: and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)),
+    with: { customer: true },
+  });
   if (!reservation) {
-    return { error: 'reservation_not_found' }
+    return { ok: false as const, error: "reservation_not_found" as const };
   }
 
-  // Validate access via token (from verificationCodes table)
   if (!token) {
-    return { error: 'invalid_token' }
+    return { ok: false as const, error: "invalid_token" as const };
   }
-
-  const verificationCode = await db.query.verificationCodes.findFirst({
+  const verification = await db.query.verificationCodes.findFirst({
+    columns: { id: true },
     where: and(
       eq(verificationCodes.token, token),
       eq(verificationCodes.reservationId, reservationId),
       eq(verificationCodes.storeId, store.id),
-      gt(verificationCodes.expiresAt, new Date())
+      gt(verificationCodes.expiresAt, new Date()),
     ),
-  })
-
-  if (!verificationCode) {
-    return { error: 'invalid_token' }
+  });
+  if (!verification) {
+    return { ok: false as const, error: "invalid_token" as const };
   }
 
-  // Check if store can process Stripe payments
   if (!store.stripeAccountId || !store.stripeChargesEnabled) {
-    return { error: 'stripe_not_configured' }
+    return { ok: false as const, error: "stripe_not_configured" as const };
   }
 
-  // Check if deposit is already authorized
-  if (reservation.depositStatus === 'authorized' || reservation.depositStatus === 'captured') {
-    return { error: 'deposit_already_authorized' }
-  }
-
-  const storeSettings = (store.settings as StoreSettings) || {}
-  const currency = storeSettings.currency || 'EUR'
-  const depositAmount = parseFloat(reservation.depositAmount || '0')
-
-  if (depositAmount <= 0) {
-    return { error: 'no_deposit_required' }
+  const currency = store.settings?.currency || "EUR";
+  const depositAmount = Number.parseFloat(reservation.depositAmount || "0");
+  if (!(depositAmount > 0)) {
+    return { ok: false as const, error: "no_deposit_required" as const };
   }
 
   return {
+    ok: true as const,
+    store: { ...store, stripeAccountId: store.stripeAccountId },
+    reservation,
+    currency,
+    depositAmount,
+  };
+};
+
+const isDepositHeld = (status: string | null): boolean =>
+  status === "authorized" || status === "captured";
+
+export const getDepositAuthorizationData = async (
+  rawInput: z.input<typeof accessInputSchema>,
+): Promise<DepositAuthorizationData> => {
+  const parsed = accessInputSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { ok: false, error: "invalid_token" };
+  }
+
+  const context = await loadDepositContext(parsed.data);
+  if (!context.ok) {
+    return context;
+  }
+  if (isDepositHeld(context.reservation.depositStatus)) {
+    return { ok: false, error: "deposit_already_authorized" };
+  }
+
+  const { store, reservation, currency, depositAmount } = context;
+  return {
+    ok: true,
     store: {
       id: store.id,
       name: store.name,
       slug: store.slug,
       stripeAccountId: store.stripeAccountId,
-      logoUrl: store.logoUrl,
-      theme: store.theme,
-      country: storeSettings.country,
+      theme: store.theme
+        ? { primaryColor: store.theme.primaryColor, mode: store.theme.mode }
+        : null,
     },
-    reservation: {
-      id: reservation.id,
-      number: reservation.number,
-      depositAmount,
-    },
-    customer: {
-      id: reservation.customer.id,
-      firstName: reservation.customer.firstName,
-      email: reservation.customer.email,
-    },
+    reservation: { id: reservation.id, number: reservation.number, depositAmount },
+    customer: { firstName: reservation.customer.firstName, email: reservation.customer.email },
     currency,
-  }
-}
+  };
+};
 
-interface CreateDepositPaymentIntentParams {
-  reservationId: string
-  storeId: string
-  token: string
-}
-
-/**
- * Create a PaymentIntent for deposit authorization
- * Returns the client secret for Stripe Elements
- */
-export async function createDepositPaymentIntent({
-  reservationId,
-  storeId,
-  token,
-}: CreateDepositPaymentIntentParams) {
-  // Get store with Stripe account
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.id, storeId),
-  })
-
-  if (!store || !store.stripeAccountId) {
-    return { error: 'stripe_not_configured' }
+/** A manual-capture PaymentIntent for the hold; the client secret feeds Stripe Elements. */
+export const createDepositPaymentIntent = async (
+  rawInput: z.input<typeof accessInputSchema>,
+): Promise<DepositPaymentIntentResult> => {
+  const parsed = accessInputSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { ok: false, error: "invalid_token" };
   }
 
-  if (!store.stripeChargesEnabled) {
-    return { error: 'stripe_not_configured' }
+  const context = await loadDepositContext(parsed.data);
+  if (!context.ok) {
+    return context;
+  }
+  if (isDepositHeld(context.reservation.depositStatus)) {
+    return { ok: false, error: "deposit_already_authorized" };
   }
 
-  // Get reservation
-  const reservation = await db.query.reservations.findFirst({
-    where: and(
-      eq(reservations.id, reservationId),
-      eq(reservations.storeId, storeId)
-    ),
-    with: {
-      customer: true,
-    },
-  })
-
-  if (!reservation) {
-    return { error: 'reservation_not_found' }
-  }
-
-  const verificationCode = await db.query.verificationCodes.findFirst({
-    where: and(
-      eq(verificationCodes.token, token),
-      eq(verificationCodes.reservationId, reservationId),
-      eq(verificationCodes.storeId, storeId),
-      gt(verificationCodes.expiresAt, new Date())
-    ),
-  })
-
-  if (!verificationCode) {
-    return { error: 'invalid_token' }
-  }
-
-  // Check if deposit is already authorized
-  if (reservation.depositStatus === 'authorized' || reservation.depositStatus === 'captured') {
-    return { error: 'deposit_already_authorized' }
-  }
-
-  const storeSettings = (store.settings as StoreSettings) || {}
-  const currency = storeSettings.currency || 'EUR'
-  const depositAmount = parseFloat(reservation.depositAmount || '0')
-
-  if (depositAmount <= 0) {
-    return { error: 'no_deposit_required' }
-  }
-
+  const { store, reservation, currency, depositAmount } = context;
   try {
-    // Create PaymentIntent with capture_method='manual'
-    const result = await createDepositAuthorizationIntent({
+    const intent = await createDepositAuthorizationIntent({
       stripeAccountId: store.stripeAccountId,
       amount: toStripeCents(depositAmount, currency),
       currency,
       reservationId: reservation.id,
       reservationNumber: reservation.number,
       customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
-    })
-
-    return {
-      clientSecret: result.clientSecret,
-      paymentIntentId: result.paymentIntentId,
-    }
+    });
+    return { ok: true, clientSecret: intent.clientSecret };
   } catch (error) {
-    console.error('Error creating deposit PaymentIntent:', error)
-    return { error: 'payment_intent_creation_failed' }
+    log.error("authorize-deposit", `payment intent failed: ${describeError(error)}`);
+    return { ok: false, error: "payment_intent_creation_failed" };
   }
-}
-
-interface ConfirmDepositAuthorizationParams {
-  reservationId: string
-  storeId: string
-  paymentIntentId: string
-  paymentMethodId: string
-}
-
-interface ConfirmDepositAuthorizationResult {
-  success?: boolean
-  error?: string
-  redirectUrl?: string
-}
+};
 
 /**
- * Confirm the deposit authorization was successful
- * Updates the reservation with deposit status and generates an auto-login token
+ * Record the hold once Stripe confirms it. The PaymentIntent is re-read from
+ * Stripe: only a `requires_capture` intent of this reservation, for the
+ * deposit amount, marks the deposit authorised. Idempotent on the intent id.
  */
-export async function confirmDepositAuthorization({
-  reservationId,
-  storeId,
-  paymentIntentId,
-  paymentMethodId,
-}: ConfirmDepositAuthorizationParams): Promise<ConfirmDepositAuthorizationResult> {
-  // Get reservation with customer
-  const reservation = await db.query.reservations.findFirst({
-    where: and(
-      eq(reservations.id, reservationId),
-      eq(reservations.storeId, storeId)
-    ),
-    with: {
-      customer: true,
-    },
-  })
-
-  if (!reservation) {
-    return { error: 'reservation_not_found' }
+export const confirmDepositAuthorization = async (
+  rawInput: z.input<typeof confirmInputSchema>,
+): Promise<ConfirmDepositAuthorizationResult> => {
+  const parsed = confirmInputSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return { ok: false, error: "invalid_token" };
   }
 
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.id, storeId),
-  })
-
-  if (!store) {
-    return { error: 'store_not_found' }
+  const context = await loadDepositContext(parsed.data);
+  if (!context.ok) {
+    return context;
   }
 
-  const storeSettings = (store.settings as StoreSettings) || {}
-  const currency = storeSettings.currency || 'EUR'
-  const depositAmount = parseFloat(reservation.depositAmount || '0')
+  const { store, reservation, currency, depositAmount } = context;
+  const { paymentIntentId } = parsed.data;
+  const buildRedirectUrl = () =>
+    createReservationInstantAccessUrl({
+      storeId: store.id,
+      storeSlug: store.slug,
+      customerEmail: reservation.customer.email,
+      reservationId: reservation.id,
+      redirectPath: `/account/reservations/${reservation.id}?event=deposit_authorized`,
+      ttlMs: INSTANT_ACCESS_SHORT_TTL_MS,
+    });
 
   try {
-    const existingPayment = await db.query.payments.findFirst({
-      where: eq(payments.stripePaymentIntentId, paymentIntentId),
-    })
-
-    if (existingPayment) {
-      const accessToken = nanoid(64)
-      const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-
-      await db.insert(verificationCodes).values({
-        id: nanoid(),
-        email: reservation.customer.email,
-        storeId,
-        code: '',
-        type: 'instant_access',
-        token: accessToken,
-        reservationId,
-        expiresAt: tokenExpiresAt,
-        createdAt: new Date(),
-      })
-
-      return {
-        success: true,
-        redirectUrl: getStorefrontUrl(
-          store.slug,
-          `/account/success?token=${accessToken}&type=deposit&reservation=${reservationId}`
-        ),
-      }
+    const existingHold = await db.query.payments.findFirst({
+      columns: { id: true },
+      where: and(
+        eq(payments.reservationId, reservation.id),
+        eq(payments.stripePaymentIntentId, paymentIntentId),
+      ),
+    });
+    if (existingHold) {
+      return { ok: true, redirectUrl: await buildRedirectUrl() };
+    }
+    if (isDepositHeld(reservation.depositStatus)) {
+      return { ok: false, error: "deposit_already_authorized" };
     }
 
-    const authorizationExpiresAt = new Date()
-    authorizationExpiresAt.setDate(authorizationExpiresAt.getDate() + 7)
-
-    // Update reservation with deposit info
-    await db
-      .update(reservations)
-      .set({
-        depositStatus: 'authorized',
-        depositPaymentIntentId: paymentIntentId,
-        depositAuthorizationExpiresAt: authorizationExpiresAt,
-        stripePaymentMethodId: paymentMethodId,
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservationId))
-
-    // Create payment record for the hold
-    await db.insert(payments).values({
-      id: nanoid(),
-      reservationId,
-      amount: depositAmount.toFixed(2),
-      currency,
-      status: 'authorized',
-      type: 'deposit_hold',
-      method: 'stripe',
-      stripePaymentIntentId: paymentIntentId,
-      stripePaymentMethodId: paymentMethodId,
-      authorizationExpiresAt,
-      notes: 'Deposit authorization hold',
-    })
-
-    // Log activity
-    await db.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: 'deposit_authorized',
-      metadata: {
-        paymentIntentId,
-        amount: depositAmount,
+    const intent = await getStripe().paymentIntents.retrieve(paymentIntentId, {
+      stripeAccount: store.stripeAccountId,
+    });
+    const verdict = verifyDepositHold(
+      {
+        status: intent.status,
+        amount: intent.amount,
+        currency: intent.currency,
+        paymentMethodId:
+          typeof intent.payment_method === "string"
+            ? intent.payment_method
+            : intent.payment_method?.id,
+        metadataReservationId: intent.metadata?.reservationId,
+      },
+      {
+        reservationId: reservation.id,
+        amountCents: toStripeCents(depositAmount, currency),
         currency,
       },
-    })
+    );
+    if (!verdict.ok) {
+      log.warn("authorize-deposit", `hold rejected: ${verdict.reason} (${paymentIntentId})`);
+      return { ok: false, error: "not_authorized" };
+    }
+    const { paymentMethodId } = verdict;
 
-    // Generate instant access token for auto-login redirect
-    const accessToken = nanoid(64)
-    const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+    const now = new Date();
+    const authorizationExpiresAt = new Date(now);
+    authorizationExpiresAt.setDate(authorizationExpiresAt.getDate() + AUTHORIZATION_HOLD_DAYS);
 
-    await db.insert(verificationCodes).values({
-      id: nanoid(),
-      email: reservation.customer.email,
-      storeId,
-      code: '',
-      type: 'instant_access',
-      token: accessToken,
-      reservationId,
-      expiresAt: tokenExpiresAt,
-      createdAt: new Date(),
-    })
+    await db.transaction(async (tx) => {
+      await tx
+        .update(reservations)
+        .set({
+          depositStatus: "authorized",
+          depositPaymentIntentId: paymentIntentId,
+          depositAuthorizationExpiresAt: authorizationExpiresAt,
+          stripePaymentMethodId: paymentMethodId,
+          updatedAt: now,
+        })
+        .where(and(eq(reservations.id, reservation.id), eq(reservations.storeId, store.id)));
 
-    // Build redirect URL to account with auto-login
-    const redirectUrl = getStorefrontUrl(
-      store.slug,
-      `/account/success?token=${accessToken}&type=deposit&reservation=${reservationId}`
-    )
+      await tx.insert(payments).values({
+        id: nanoid(),
+        reservationId: reservation.id,
+        amount: depositAmount.toFixed(2),
+        currency,
+        status: "authorized",
+        type: "deposit_hold",
+        method: "stripe",
+        stripePaymentIntentId: paymentIntentId,
+        stripePaymentMethodId: paymentMethodId,
+        authorizationExpiresAt,
+        notes: "Deposit authorization hold",
+        createdAt: now,
+        updatedAt: now,
+      });
 
-    return { success: true, redirectUrl }
+      await tx.insert(reservationActivity).values({
+        id: nanoid(),
+        reservationId: reservation.id,
+        activityType: "deposit_authorized",
+        metadata: { paymentIntentId, amount: depositAmount, currency },
+        createdAt: now,
+      });
+    });
+
+    return { ok: true, redirectUrl: await buildRedirectUrl() };
   } catch (error) {
-    console.error('Error confirming deposit authorization:', error)
-    return { error: 'confirmation_failed' }
+    log.error("authorize-deposit", `confirmation failed: ${describeError(error)}`);
+    return { ok: false, error: "confirmation_failed" };
   }
-}
+};

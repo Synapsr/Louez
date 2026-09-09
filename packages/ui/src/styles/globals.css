@@ -30,8 +30,9 @@
   font-stretch: 100%;
   font-display: swap;
   src: url("/fonts/BricolageGrotesque-1.0/web/BricolageGrotesque-latin.woff2") format("woff2");
-  unicode-range: U+??, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+329,
-    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  unicode-range:
+    U+??, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+329, U+2000-206F,
+    U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
@@ -164,6 +165,12 @@
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
   --shadow-border: var(--shadow-border);
+  /* Elevation scale, three steps and no more (see "Elevation" below):
+     `shadow-card` for a resting surface, `shadow-raised` for hover and
+     popovers, `shadow-overlay` for sheets, dialogs and sticky bars. */
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+  --shadow-overlay: var(--shadow-overlay);
   --animate-skeleton: skeleton 2s -1s infinite linear;
 
   /* badges */
@@ -185,6 +192,10 @@
   --color-badge-warning-foreground: var(--badge-warning-foreground);
   --color-badge-gray-background: var(--badge-gray-background);
   --color-badge-gray-foreground: var(--badge-gray-foreground);
+  /* Promotion (discount, offer): a strong neutral pill that never fights a
+     tenant's primary colour, unlike the status hues above. */
+  --color-badge-promo-background: var(--badge-promo-background);
+  --color-badge-promo-foreground: var(--badge-promo-foreground);
 
   --thumb-size: var(--spacing) * 5;
 
@@ -195,6 +206,21 @@
   }
 }
 
+/* Type scale — four heading steps, one body, one caption. There is no
+   `--text-*` token for them on purpose: the steps are class recipes, so a
+   heading stays a plain `<h2 className="…">` and never a bespoke size.
+
+     h1  text-2xl sm:text-3xl  font-semibold tracking-tight  leading-tight
+     h2  text-xl  sm:text-2xl  font-semibold tracking-tight  leading-tight
+     h3  text-lg               font-semibold                 leading-snug
+     h4  text-base             font-medium                   leading-snug
+     body     text-base sm:text-sm (inputs stay text-base on phones: iOS zoom)
+     caption  text-xs text-muted-foreground
+
+   Elevation — three shadow tokens (`shadow-card`, `shadow-raised`,
+   `shadow-overlay`) and two radii (`rounded-lg` for controls, `rounded-2xl`
+   for surfaces). Anything else is a one-off and a review comment. */
+
 /* `.light` mirrors `.dark`: it re-declares the light palette on a subtree, so a
    surface can opt out of the ambient theme — a storefront preview showing both
    themes side by side, for instance. Note that Tailwind's `dark:` variant keys
@@ -204,6 +230,9 @@
 .light {
   --radius: 0.625rem;
   --shadow-border: 0px 0px 0px 1px rgba(0, 0, 0, 0.15);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 4%), 0 0 0 1px oklch(0 0 0 / 6%);
+  --shadow-raised: 0 4px 12px -2px oklch(0 0 0 / 8%), 0 0 0 1px oklch(0 0 0 / 6%);
+  --shadow-overlay: 0 8px 32px -8px oklch(0 0 0 / 16%), 0 0 0 1px oklch(0 0 0 / 6%);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -288,8 +317,8 @@
   --reservation-declined-text: oklch(0.462 0.168 346.003);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --ring: oklch(64.9% 0.193 252deg);
+  /* Focus ring follows the platform primary; a store overrides both together. */
+  --ring: oklch(0.649 0.193 252);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -297,8 +326,7 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary: oklch(48.9% 0.000000000000000238 0deg);
+  --sidebar-primary: oklch(0.489 0 0);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
@@ -312,30 +340,36 @@
   --sidebar-hover-glow: oklch(0 0 0 / 22%);
   --sidebar-hover-shadow: oklch(0 0 0 / 10%);
 
-  /* badges */
-  --badge-pending-background: rgb(255 244 238);
-  --badge-pending-foreground: rgb(247 158 87);
-  --badge-progress-background: rgb(229 243 254);
-  --badge-progress-foreground: rgb(0 140 255);
-  --badge-submitted-background: rgb(239 234 255);
-  --badge-submitted-foreground: rgb(103 54 254);
-  --badge-review-background: rgb(255 248 229);
-  --badge-review-foreground: rgb(245 184 59);
-  --badge-success-background: rgb(236 247 239);
-  --badge-success-foreground: rgb(78 191 110);
-  --badge-failed-background: rgb(253 239 238);
-  --badge-failed-foreground: rgb(231 102 80);
-  --badge-expired-background: rgb(241 241 241);
-  --badge-expired-foreground: rgb(120 120 120);
-  --badge-warning-background: rgb(255 245 231);
-  --badge-warning-foreground: rgb(235 148 44);
-  --badge-gray-background: rgb(241 241 241);
-  --badge-gray-foreground: rgb(120 120 120);
+  /* badges — the former rgb() values converted to OKLCH, same colours */
+  --badge-pending-background: oklch(0.974 0.014 50.6);
+  --badge-pending-foreground: oklch(0.776 0.137 57.4);
+  --badge-progress-background: oklch(0.957 0.021 241.4);
+  --badge-progress-foreground: oklch(0.641 0.197 253);
+  --badge-submitted-background: oklch(0.947 0.029 296.7);
+  --badge-submitted-foreground: oklch(0.533 0.269 283.7);
+  --badge-review-background: oklch(0.98 0.026 90.1);
+  --badge-review-foreground: oklch(0.818 0.151 81);
+  --badge-success-background: oklch(0.966 0.016 154.8);
+  --badge-success-foreground: oklch(0.72 0.156 150);
+  --badge-failed-background: oklch(0.963 0.015 22.1);
+  --badge-failed-foreground: oklch(0.665 0.165 31.6);
+  --badge-expired-background: oklch(0.958 0 0);
+  --badge-expired-foreground: oklch(0.573 0 0);
+  --badge-warning-background: oklch(0.974 0.021 76.5);
+  --badge-warning-foreground: oklch(0.74 0.152 65);
+  --badge-gray-background: oklch(0.958 0 0);
+  --badge-gray-foreground: oklch(0.573 0 0);
+  --badge-promo-background: oklch(0.205 0 0);
+  --badge-promo-foreground: oklch(0.985 0 0);
 }
 
 .dark {
   --reeent: #ff6b4a;
   --shadow-border: inset 0 0 0 1px rgb(255 255 255 / 15%), 0 0 0 1px rgb(255 255 255 / 10%);
+  /* Shadows vanish on a dark ground; the hairline ring carries the edge. */
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 24%), 0 0 0 1px oklch(1 0 0 / 8%);
+  --shadow-raised: 0 4px 12px -2px oklch(0 0 0 / 40%), 0 0 0 1px oklch(1 0 0 / 10%);
+  --shadow-overlay: 0 8px 32px -8px oklch(0 0 0 / 60%), 0 0 0 1px oklch(1 0 0 / 10%);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -426,24 +460,26 @@
   --sidebar-hover-ring: oklch(1 0 0 / 12%);
   --sidebar-hover-glow: oklch(1 0 0 / 30%);
   --sidebar-hover-shadow: oklch(0 0 0 / 40%);
-  --badge-pending-background: rgb(247 158 87 / 18%);
-  --badge-pending-foreground: rgb(253 186 116);
-  --badge-progress-background: rgb(0 140 255 / 18%);
-  --badge-progress-foreground: rgb(125 211 252);
-  --badge-submitted-background: rgb(103 54 254 / 18%);
-  --badge-submitted-foreground: rgb(196 181 253);
-  --badge-review-background: rgb(245 184 59 / 18%);
-  --badge-review-foreground: rgb(253 224 71);
-  --badge-success-background: rgb(78 191 110 / 18%);
-  --badge-success-foreground: rgb(134 239 172);
-  --badge-failed-background: rgb(231 102 80 / 18%);
-  --badge-failed-foreground: rgb(252 165 165);
-  --badge-expired-background: rgb(120 120 120 / 22%);
-  --badge-expired-foreground: rgb(212 212 216);
-  --badge-warning-background: rgb(235 148 44 / 18%);
-  --badge-warning-foreground: rgb(252 202 128);
-  --badge-gray-background: rgb(120 120 120 / 22%);
-  --badge-gray-foreground: rgb(212 212 216);
+  --badge-pending-background: oklch(0.776 0.137 57.4 / 18%);
+  --badge-pending-foreground: oklch(0.837 0.116 66.3);
+  --badge-progress-background: oklch(0.641 0.197 253 / 18%);
+  --badge-progress-foreground: oklch(0.828 0.101 230.3);
+  --badge-submitted-background: oklch(0.533 0.269 283.7 / 18%);
+  --badge-submitted-foreground: oklch(0.811 0.101 293.6);
+  --badge-review-background: oklch(0.818 0.151 81 / 18%);
+  --badge-review-foreground: oklch(0.905 0.166 98.1);
+  --badge-success-background: oklch(0.72 0.156 150 / 18%);
+  --badge-success-foreground: oklch(0.871 0.136 154.5);
+  --badge-failed-background: oklch(0.665 0.165 31.6 / 18%);
+  --badge-failed-foreground: oklch(0.808 0.103 19.5);
+  --badge-expired-background: oklch(0.573 0 0 / 22%);
+  --badge-expired-foreground: oklch(0.871 0.006 286);
+  --badge-warning-background: oklch(0.74 0.152 65 / 18%);
+  --badge-warning-foreground: oklch(0.867 0.108 76.3);
+  --badge-gray-background: oklch(0.573 0 0 / 22%);
+  --badge-gray-foreground: oklch(0.871 0.006 286);
+  --badge-promo-background: oklch(0.922 0 0);
+  --badge-promo-foreground: oklch(0.205 0 0);
 
   /* Nucleo Glass icons: the solid "origin" layer flips to light so it stays
      readable on the dark sidebar; the frosted pane keeps its translucent
@@ -468,6 +504,32 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Calendar cell size per density (`Calendar density` in @louez/ui). Kept in
+   the components layer on purpose: a consumer that still passes
+   `[--cell-size:*]` through `className` lands in the utilities layer and
+   wins, touch bump included. The 44 px bump on a coarse pointer is opt-in
+   (`touchTarget`), so pickers that size their own cells keep their layout;
+   a mobile sheet uses `density="comfortable"`. */
+@layer components {
+  [data-slot="calendar"] {
+    --cell-size: 2rem;
+  }
+
+  [data-slot="calendar"][data-density="compact"] {
+    --cell-size: 1.75rem;
+  }
+
+  [data-slot="calendar"][data-density="comfortable"] {
+    --cell-size: 2.75rem;
+  }
+
+  @media (pointer: coarse) {
+    [data-slot="calendar"][data-density="default"][data-touch-target="true"] {
+      --cell-size: 2.75rem;
+    }
   }
 }
 

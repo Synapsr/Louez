@@ -180,6 +180,7 @@ async function loadCalendarInventory(params: {
       endDate: true,
     },
     with: {
+      activity: { columns: { metadata: true } },
       items: {
         where: eq(reservationItems.productId, params.product.id),
         columns: {

@@ -1,224 +1,95 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
-import { format, addDays, isToday, isTomorrow } from 'date-fns'
-import type { Locale as DateFnsLocale } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
+import { useEffect, useState } from "react";
 
-import { cn } from '@louez/utils'
-import type { BusinessHours, TimeRange } from '@louez/types'
-import { isInClosurePeriod, getDaySchedule } from '@/lib/utils/business-hours'
-import { useFormatLocale } from '@/hooks/use-format-locale'
+import { useTranslations } from "next-intl";
+
+import type { BusinessHours } from "@louez/types";
+import { cn } from "@louez/utils";
+
+import { useFormatLocale } from "@/hooks/use-format-locale";
+import {
+  formatStoreClockTime,
+  formatStoreWeekday,
+  getStoreStatus,
+  type StoreStatus,
+} from "@/lib/utils/util.store-status";
+
+/** The clock only needs to move once a minute. */
+const REFRESH_INTERVAL_MS = 60_000;
 
 interface StoreStatusBadgeProps {
-  businessHours?: BusinessHours
-  timezone?: string
-  className?: string
+  businessHours?: BusinessHours;
+  timezone?: string;
+  /** Computed on the server for the first render; `null` when hours are not configured. */
+  initialStatus: StoreStatus | null;
+  className?: string;
 }
 
-interface StoreStatus {
-  isOpen: boolean
-  closesAt?: string
-  nextOpening?: {
-    day: Date
-    time: string
+const describeStatus = (
+  status: StoreStatus,
+  t: ReturnType<typeof useTranslations<"storefront.status">>,
+  locale: string,
+  timezone?: string,
+): string => {
+  if (status.isOpen) {
+    return status.closesAt
+      ? t("openUntil", { time: formatStoreClockTime(status.closesAt, locale) })
+      : t("open");
   }
-  reason?: 'closed_today' | 'closure_period' | 'outside_hours' | 'break' | 'not_configured'
-}
+
+  const next = status.nextOpening;
+  if (!next) return t("closed");
+
+  const time = formatStoreClockTime(next.time, locale);
+  if (next.dayOffset === 0) return t("closedOpensAt", { time });
+  if (next.dayOffset === 1) return t("closedOpensTomorrow", { time });
+
+  return t("closedOpensOn", { day: formatStoreWeekday(next.dayIso, locale, timezone), time });
+};
 
 /**
- * Find the time range that contains the given time, or null if none.
+ * "Ouvert · jusqu'à 18:00" / "Fermé · ouvre demain à 09:00". The server
+ * computes the first state; the client keeps it current every minute.
  */
-function findCurrentRange(time: string, ranges: TimeRange[]): TimeRange | null {
-  return ranges.find((r) => time >= r.openTime && time <= r.closeTime) ?? null
-}
-
-/**
- * Find the next range that starts after the given time, or null.
- */
-function findNextRangeToday(time: string, ranges: TimeRange[]): TimeRange | null {
-  return ranges.find((r) => r.openTime > time) ?? null
-}
-
-function getStoreStatus(businessHours: BusinessHours | undefined, timezone?: string): StoreStatus {
-  if (!businessHours?.enabled) {
-    return { isOpen: true, reason: 'not_configured' }
-  }
-
-  const now = new Date()
-
-  // Check closure periods
-  const closurePeriod = isInClosurePeriod(now, businessHours.closurePeriods, timezone)
-  if (closurePeriod) {
-    const nextOpening = closurePeriod.endTime
-      ? { day: now, time: closurePeriod.endTime }
-      : findNextOpening(now, businessHours, timezone)
-    return { isOpen: false, reason: 'closure_period', nextOpening }
-  }
-
-  // Get today's schedule (normalized with ranges)
-  const daySchedule = getDaySchedule(now, businessHours, timezone)
-  const currentTime = timezone
-    ? formatInTimeZone(now, timezone, 'HH:mm')
-    : format(now, 'HH:mm')
-
-  if (!daySchedule.isOpen || daySchedule.ranges.length === 0) {
-    const nextOpening = findNextOpening(now, businessHours, timezone)
-    return { isOpen: false, reason: 'closed_today', nextOpening }
-  }
-
-  const firstRange = daySchedule.ranges[0]
-  const lastRange = daySchedule.ranges[daySchedule.ranges.length - 1]
-
-  // Before today's first opening
-  if (currentTime < firstRange.openTime) {
-    return {
-      isOpen: false,
-      reason: 'outside_hours',
-      nextOpening: { day: now, time: firstRange.openTime },
-    }
-  }
-
-  // After today's last closing
-  if (currentTime > lastRange.closeTime) {
-    const nextOpening = findNextOpening(now, businessHours, timezone)
-    return { isOpen: false, reason: 'outside_hours', nextOpening }
-  }
-
-  // Check if currently in an open range
-  const currentRange = findCurrentRange(currentTime, daySchedule.ranges)
-  if (currentRange) {
-    return { isOpen: true, closesAt: currentRange.closeTime }
-  }
-
-  // Between two ranges (break / pause)
-  const nextRange = findNextRangeToday(currentTime, daySchedule.ranges)
-  if (nextRange) {
-    return {
-      isOpen: false,
-      reason: 'break',
-      nextOpening: { day: now, time: nextRange.openTime },
-    }
-  }
-
-  // Fallback
-  const nextOpening = findNextOpening(now, businessHours, timezone)
-  return { isOpen: false, reason: 'outside_hours', nextOpening }
-}
-
-function findNextOpening(
-  fromDate: Date,
-  businessHours: BusinessHours,
-  timezone?: string
-): { day: Date; time: string } | undefined {
-  for (let i = 0; i < 14; i++) {
-    const checkDate = i === 0 ? fromDate : addDays(fromDate, i)
-
-    const closurePeriod = isInClosurePeriod(checkDate, businessHours.closurePeriods, timezone)
-    if (closurePeriod && !closurePeriod.startTime && !closurePeriod.endTime) {
-      continue
-    }
-
-    const daySchedule = getDaySchedule(checkDate, businessHours, timezone)
-
-    if (daySchedule.isOpen && daySchedule.ranges.length > 0) {
-      const currentTime = timezone
-        ? formatInTimeZone(fromDate, timezone, 'HH:mm')
-        : format(fromDate, 'HH:mm')
-
-      if (i === 0) {
-        // Same day: find next range that hasn't closed yet
-        const nextRange = daySchedule.ranges.find((r) => r.openTime > currentTime)
-        if (nextRange) {
-          return { day: checkDate, time: nextRange.openTime }
-        }
-      } else {
-        // Future day: return first range
-        return { day: checkDate, time: daySchedule.ranges[0].openTime }
-      }
-    }
-  }
-
-  return undefined
-}
-
-function formatNextOpening(
-  nextOpening: { day: Date; time: string },
-  t: (key: string) => string,
-  locale: DateFnsLocale,
-): string {
-  const { day, time } = nextOpening
-
-  const [hours, minutes] = time.split(':')
-  const formattedTime = `${parseInt(hours)}h${minutes}`
-
-  if (isToday(day)) {
-    return `${t('opensAt')} ${formattedTime}`
-  }
-
-  if (isTomorrow(day)) {
-    return `${t('opensTomorrow')} ${formattedTime}`
-  }
-
-  const dayName = format(day, 'EEEE', { locale })
-  return `${t('opensOn')} ${dayName} ${formattedTime}`
-}
-
-export function StoreStatusBadge({ businessHours, timezone, className }: StoreStatusBadgeProps) {
-  const t = useTranslations('storefront.status')
-  const { dateFns: dateLocale } = useFormatLocale()
-  const [status, setStatus] = useState<StoreStatus>(() => getStoreStatus(businessHours, timezone))
+export const StoreStatusBadge = ({
+  businessHours,
+  timezone,
+  initialStatus,
+  className,
+}: StoreStatusBadgeProps) => {
+  const t = useTranslations("storefront.status");
+  const { intl: locale } = useFormatLocale();
+  const [status, setStatus] = useState<StoreStatus | null>(initialStatus);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setStatus(getStoreStatus(businessHours, timezone))
-    }, 60000)
+      setStatus(getStoreStatus(businessHours, timezone));
+    }, REFRESH_INTERVAL_MS);
 
-    return () => clearInterval(interval)
-  }, [businessHours, timezone])
+    return () => clearInterval(interval);
+  }, [businessHours, timezone]);
 
-  if (status.reason === 'not_configured') {
-    return null
-  }
+  if (!status) return null;
 
   return (
-    <div
+    <span
+      role="status"
       className={cn(
-        'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium',
-        status.isOpen
-          ? 'bg-green-500/20 text-green-700 dark:text-green-400'
-          : 'bg-red-500/20 text-red-700 dark:text-red-400',
-        className
+        "inline-flex h-8 items-center gap-2 rounded-full px-3 text-sm font-medium",
+        status.isOpen ? "bg-success/12 text-success" : "bg-destructive/12 text-destructive",
+        className,
       )}
+      data-slot="store-status-badge"
     >
       <span
+        aria-hidden
         className={cn(
-          'h-2 w-2 rounded-full',
-          status.isOpen ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+          "size-2 rounded-full",
+          status.isOpen ? "bg-success motion-safe:animate-pulse" : "bg-destructive",
         )}
       />
-      <span>
-        {status.isOpen ? (
-          <>
-            {t('open')}
-            {status.closesAt && (
-              <span className="opacity-75 ml-1">
-                · {t('until')} {parseInt(status.closesAt.split(':')[0])}h{status.closesAt.split(':')[1]}
-              </span>
-            )}
-          </>
-        ) : (
-          <>
-            {t('closed')}
-            {status.nextOpening && (
-              <span className="opacity-75 ml-1">
-                · {formatNextOpening(status.nextOpening, t, dateLocale)}
-              </span>
-            )}
-          </>
-        )}
-      </span>
-    </div>
-  )
-}
+      {describeStatus(status, t, locale, timezone)}
+    </span>
+  );
+};

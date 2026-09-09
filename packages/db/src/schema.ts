@@ -1178,6 +1178,25 @@ export const customers = mysqlTable(
   }),
 );
 
+export const customerCommunicationPreferences = mysqlTable(
+  "customer_communication_preferences",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    customerId: varchar("customer_id", { length: 21 }).notNull(),
+    emailReminders: boolean("email_reminders").default(true).notNull(),
+    smsReminders: boolean("sms_reminders").default(true).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    customerStoreUnique: unique("customer_communication_preferences_customer_store_unique").on(
+      table.customerId,
+      table.storeId,
+    ),
+  }),
+);
+
 export const customerSessions = mysqlTable("customer_sessions", {
   id: id(),
   customerId: varchar("customer_id", { length: 21 }).notNull(),

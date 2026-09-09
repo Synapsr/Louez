@@ -1,6 +1,6 @@
-import type { StoreSettings } from '@louez/types';
+import type { StoreSettings } from "@louez/types";
 
-import { getTimezoneForCountry } from '@/lib/utils/countries';
+import { getTimezoneForCountry } from "@/lib/utils/countries";
 
 export interface StoreSettingsInput {
   name: string;
@@ -17,8 +17,10 @@ export interface StoreSettingsInput {
   billingCity?: string;
   billingPostalCode?: string;
   billingCountry?: string;
-  reservationMode: 'payment' | 'request';
+  reservationMode: "payment" | "request";
   pendingBlocksAvailability: boolean;
+  automaticExtensions?: boolean;
+  maxExtensionDays?: number | null;
   onlinePaymentDepositPercentage: number;
   minRentalMinutes: number;
   maxRentalMinutes: number | null;
@@ -28,7 +30,7 @@ export interface StoreSettingsInput {
 }
 
 const DEFAULT_STORE_SETTINGS = {
-  reservationMode: 'payment',
+  reservationMode: "payment",
   minRentalMinutes: 60,
   maxRentalMinutes: null,
   advanceNoticeMinutes: 1440,
@@ -44,6 +46,11 @@ export function buildStoreSettingsUpdate(
     ...currentSettings,
     reservationMode: data.reservationMode,
     pendingBlocksAvailability: data.pendingBlocksAvailability,
+    automaticExtensions: data.automaticExtensions ?? currentSettings?.automaticExtensions ?? true,
+    maxExtensionDays:
+      data.maxExtensionDays === undefined
+        ? currentSettings?.maxExtensionDays
+        : data.maxExtensionDays,
     onlinePaymentDepositPercentage: data.onlinePaymentDepositPercentage,
     minRentalMinutes: data.minRentalMinutes,
     maxRentalMinutes: data.maxRentalMinutes,
@@ -57,9 +64,7 @@ export function buildStoreSettingsUpdate(
       useSameAsStore: data.billingAddressSameAsStore,
       address: data.billingAddressSameAsStore ? undefined : data.billingAddress,
       city: data.billingAddressSameAsStore ? undefined : data.billingCity,
-      postalCode: data.billingAddressSameAsStore
-        ? undefined
-        : data.billingPostalCode,
+      postalCode: data.billingAddressSameAsStore ? undefined : data.billingPostalCode,
       country: data.billingAddressSameAsStore ? undefined : data.billingCountry,
     },
   };

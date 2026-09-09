@@ -1,55 +1,52 @@
-import type { Metadata } from 'next'
-import type { PricingKind, StoreSettings, StoreTheme } from '@louez/types'
-import type { ReactElement } from 'react'
-import {
-  isFixedPriceProduct,
-  minutesToPriceDuration,
-  toAbsoluteUrl,
-} from '@louez/utils'
-import { type Locale, defaultLocale, locales } from '@/i18n/config'
-import { isStandaloneMode } from '@/lib/deployment'
-import { env } from '@/env'
-import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale'
+import type { Metadata } from "next";
+import type { PricingKind, StoreSettings, StoreTheme } from "@louez/types";
+import type { ReactElement } from "react";
+import { isFixedPriceProduct, minutesToPriceDuration, toAbsoluteUrl } from "@louez/utils";
+import { type Locale, defaultLocale, locales } from "@/i18n/config";
+import { isStandaloneMode } from "@/lib/deployment";
+import { env } from "@/env";
+import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
+import { buildStorefrontUrl } from "@/lib/util.storefront-url";
 
-const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
+const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
 
 // ============================================================================
 // URL Helpers
 // ============================================================================
 
 /**
- * Get the base URL for a store (subdomain-based routing)
+ * Canonical base URL of a store: the store subdomain on a platform, the app
+ * URL of a standalone instance. Same rule as `getStorefrontUrl`, with the
+ * protocol taken from NODE_ENV as crawlers only ever see production.
  */
 export function getStoreBaseUrl(slug: string): string {
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+  const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
+  const standalone = isStandaloneMode();
 
-  // Standalone: the storefront IS the origin — canonicals carry no slug.
-  if (isStandaloneMode()) {
-    return (env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
-  }
-
-  // Handle localhost development
-  if (APP_DOMAIN.includes('localhost')) {
-    return `${protocol}://localhost:3000/${slug}`
-  }
-
-  // Production: subdomain-based routing
-  return `${protocol}://${slug}.${APP_DOMAIN}`
+  return buildStorefrontUrl({
+    slug,
+    standalone,
+    appDomain: APP_DOMAIN,
+    origin: standalone
+      ? (env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/, "")
+      : `${protocol}://${APP_DOMAIN}`,
+    protocol,
+  });
 }
 
 // OG scrapers and crawlers need absolute image URLs; standalone deployments
 // store site-relative asset paths ("/files/…"). No-op for absolute URLs.
 function absoluteAssetUrl(url: string): string {
-  return toAbsoluteUrl(url, env.NEXT_PUBLIC_APP_URL)
+  return toAbsoluteUrl(url, env.NEXT_PUBLIC_APP_URL);
 }
 
 /**
  * Get canonical URL for a store page
  */
-export function getCanonicalUrl(slug: string, path: string = ''): string {
-  const baseUrl = getStoreBaseUrl(slug)
-  const cleanPath = path.startsWith('/') ? path : `/${path}`
-  return path ? `${baseUrl}${cleanPath}` : baseUrl
+export function getCanonicalUrl(slug: string, path: string = ""): string {
+  const baseUrl = getStoreBaseUrl(slug);
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return path ? `${baseUrl}${cleanPath}` : baseUrl;
 }
 
 // ============================================================================
@@ -57,41 +54,41 @@ export function getCanonicalUrl(slug: string, path: string = ''): string {
 // ============================================================================
 
 export interface StoreSeoData {
-  id: string
-  name: string
-  slug: string
-  description?: string | null
-  email?: string | null
-  phone?: string | null
-  address?: string | null
-  latitude?: string | null
-  longitude?: string | null
-  logoUrl?: string | null
-  settings?: StoreSettings | null
-  theme?: StoreTheme | null
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
+  logoUrl?: string | null;
+  settings?: StoreSettings | null;
+  theme?: StoreTheme | null;
 }
 
 export interface ProductSeoData {
-  id: string
-  name: string
-  description?: string | null
-  price: string
-  deposit?: string | null
-  images?: string[] | null
-  quantity: number
+  id: string;
+  name: string;
+  description?: string | null;
+  price: string;
+  deposit?: string | null;
+  images?: string[] | null;
+  quantity: number;
   /** A `fixed` product is priced per booking, so its Offer carries no period. */
-  pricingKind?: PricingKind | null
+  pricingKind?: PricingKind | null;
   /** Rental period the price applies to — surfaced in the Offer schema. */
-  pricingMode?: 'hour' | 'day' | 'week' | null
+  pricingMode?: "hour" | "day" | "week" | null;
   /**
    * Rate-based products price a custom period (e.g. 120 = per 2 hours);
    * takes precedence over pricingMode in the Offer schema.
    */
-  basePeriodMinutes?: number | null
+  basePeriodMinutes?: number | null;
   category?: {
-    id: string
-    name: string
-  } | null
+    id: string;
+    name: string;
+  } | null;
 }
 
 // Google reads og:locale as a full language_TERRITORY tag; next-intl only
@@ -99,33 +96,32 @@ export interface ProductSeoData {
 // typed against i18n/config so adding a locale without a mapping fails to
 // compile.
 const OPEN_GRAPH_LOCALES: Record<Locale, string> = {
-  de: 'de_DE',
-  en: 'en_US',
-  es: 'es_ES',
-  fr: 'fr_FR',
-  it: 'it_IT',
-  nl: 'nl_NL',
-  pl: 'pl_PL',
-  pt: 'pt_PT',
-}
+  de: "de_DE",
+  en: "en_US",
+  es: "es_ES",
+  fr: "fr_FR",
+  it: "it_IT",
+  nl: "nl_NL",
+  pl: "pl_PL",
+  pt: "pt_PT",
+};
 
-const isLocale = (value: string): value is Locale =>
-  (locales as readonly string[]).includes(value)
+const isLocale = (value: string): value is Locale => (locales as readonly string[]).includes(value);
 
 function toOpenGraphLocale(locale?: string): string {
   return locale && isLocale(locale)
     ? OPEN_GRAPH_LOCALES[locale]
-    : OPEN_GRAPH_LOCALES[defaultLocale]
+    : OPEN_GRAPH_LOCALES[defaultLocale];
 }
 
 // schema.org expects a duration the price applies to; the storefront speaks in
 // minutes, hours, days and weeks (UN/ECE Recommendation 20 unit codes).
 const PERIOD_UNIT_CODES: Record<string, string> = {
-  minute: 'MIN',
-  hour: 'HUR',
-  day: 'DAY',
-  week: 'WEE',
-}
+  minute: "MIN",
+  hour: "HUR",
+  day: "DAY",
+  week: "WEE",
+};
 
 /**
  * The rental period a product's price covers, as a schema.org quantity.
@@ -136,18 +132,16 @@ function getPriceReferenceQuantity(
   product: ProductSeoData,
 ): { value: number; unitCode: string } | null {
   // A forfait covers the whole booking — claiming a period would be a lie.
-  if (isFixedPriceProduct(product)) return null
+  if (isFixedPriceProduct(product)) return null;
 
   if (product.basePeriodMinutes && product.basePeriodMinutes > 0) {
-    const period = minutesToPriceDuration(product.basePeriodMinutes)
-    const unitCode = PERIOD_UNIT_CODES[period.unit]
-    return unitCode ? { value: period.duration, unitCode } : null
+    const period = minutesToPriceDuration(product.basePeriodMinutes);
+    const unitCode = PERIOD_UNIT_CODES[period.unit];
+    return unitCode ? { value: period.duration, unitCode } : null;
   }
 
-  const unitCode = product.pricingMode
-    ? PERIOD_UNIT_CODES[product.pricingMode]
-    : undefined
-  return unitCode ? { value: 1, unitCode } : null
+  const unitCode = product.pricingMode ? PERIOD_UNIT_CODES[product.pricingMode] : undefined;
+  return unitCode ? { value: 1, unitCode } : null;
 }
 
 // ============================================================================
@@ -160,18 +154,21 @@ function getPriceReferenceQuantity(
 export function generateStoreMetadata(
   store: StoreSeoData,
   options: {
-    title?: string
-    description?: string
-    path?: string
-    noIndex?: boolean
-    images?: string[]
-  } = {}
+    title?: string;
+    description?: string;
+    path?: string;
+    noIndex?: boolean;
+    images?: string[];
+    /** Request locale for og:locale — falls back to the default locale. */
+    locale?: string;
+  } = {},
 ): Metadata {
-  const { title, description, path = '', noIndex = false, images = [] } = options
+  const { title, description, path = "", noIndex = false, images = [], locale } = options;
 
-  const pageTitle = title || store.name
-  const pageDescription = description || stripHtml(store.description || '') || `Location de matériel chez ${store.name}`
-  const canonicalUrl = getCanonicalUrl(store.slug, path)
+  const pageTitle = title || store.name;
+  const pageDescription =
+    description || stripHtml(store.description || "") || `Location de matériel chez ${store.name}`;
+  const canonicalUrl = getCanonicalUrl(store.slug, path);
 
   // Determine OG image
   const ogImages = (
@@ -182,7 +179,7 @@ export function generateStoreMetadata(
         : store.logoUrl
           ? [store.logoUrl]
           : []
-  ).map(absoluteAssetUrl)
+  ).map(absoluteAssetUrl);
 
   const metadata: Metadata = {
     title: pageTitle,
@@ -199,8 +196,8 @@ export function generateStoreMetadata(
       },
     }),
     openGraph: {
-      type: 'website',
-      locale: 'fr_FR',
+      type: "website",
+      locale: toOpenGraphLocale(locale),
       url: canonicalUrl,
       siteName: store.name,
       title: pageTitle,
@@ -215,21 +212,21 @@ export function generateStoreMetadata(
       }),
     },
     twitter: {
-      card: ogImages.length > 0 ? 'summary_large_image' : 'summary',
+      card: ogImages.length > 0 ? "summary_large_image" : "summary",
       title: pageTitle,
       description: truncateText(pageDescription, 160),
       ...(ogImages.length > 0 && { images: ogImages }),
     },
-  }
+  };
 
   if (noIndex) {
     metadata.robots = {
       index: false,
       follow: false,
-    }
+    };
   }
 
-  return metadata
+  return metadata;
 }
 
 /**
@@ -239,27 +236,27 @@ export function generateProductMetadata(
   store: StoreSeoData,
   product: ProductSeoData,
   options: {
-    path?: string
+    path?: string;
     /** Localized title — falls back to the French default when omitted. */
-    title?: string
+    title?: string;
     /** Localized description — the product's own description wins over both. */
-    description?: string
-    locale?: string
-  } = {}
+    description?: string;
+    locale?: string;
+  } = {},
 ): Metadata {
-  const { path = '', locale } = options
+  const { path = "", locale } = options;
 
-  const currency = store.settings?.currency || 'EUR'
-  const priceFormatted = formatPrice(parseFloat(product.price), currency, locale)
+  const currency = store.settings?.currency || "EUR";
+  const priceFormatted = formatPrice(parseFloat(product.price), currency, locale);
 
-  const title = options.title || `${product.name} - Location ${priceFormatted}`
+  const title = options.title || `${product.name} - Location ${priceFormatted}`;
   const description = product.description
     ? truncateText(stripHtml(product.description), 160)
     : options.description ||
-      `Louez ${product.name} chez ${store.name} à partir de ${priceFormatted}`
+      `Louez ${product.name} chez ${store.name} à partir de ${priceFormatted}`;
 
-  const images = (product.images?.length ? product.images : []).map(absoluteAssetUrl)
-  const canonicalUrl = getCanonicalUrl(store.slug, path || `/product/${product.id}`)
+  const images = (product.images?.length ? product.images : []).map(absoluteAssetUrl);
+  const canonicalUrl = getCanonicalUrl(store.slug, path || `/product/${product.id}`);
 
   return {
     title,
@@ -272,11 +269,11 @@ export function generateProductMetadata(
     robots: {
       index: true,
       follow: true,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
     },
     openGraph: {
-      type: 'website',
+      type: "website",
       locale: toOpenGraphLocale(locale),
       url: canonicalUrl,
       siteName: store.name,
@@ -292,12 +289,12 @@ export function generateProductMetadata(
       }),
     },
     twitter: {
-      card: images.length > 0 ? 'summary_large_image' : 'summary',
+      card: images.length > 0 ? "summary_large_image" : "summary",
       title,
       description,
       ...(images.length > 0 && { images }),
     },
-  }
+  };
 }
 
 // ============================================================================
@@ -309,135 +306,131 @@ export function generateProductMetadata(
  */
 export function generateLocalBusinessSchema(store: StoreSeoData): object {
   const schema: Record<string, unknown> = {
-    '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
-    '@id': getCanonicalUrl(store.slug),
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "@id": getCanonicalUrl(store.slug),
     name: store.name,
     url: getCanonicalUrl(store.slug),
-  }
+  };
 
   if (store.description) {
-    schema.description = stripHtml(store.description)
+    schema.description = stripHtml(store.description);
   }
 
   if (store.logoUrl) {
-    schema.logo = absoluteAssetUrl(store.logoUrl)
-    schema.image = absoluteAssetUrl(store.logoUrl)
+    schema.logo = absoluteAssetUrl(store.logoUrl);
+    schema.image = absoluteAssetUrl(store.logoUrl);
   } else if (store.theme?.heroImages?.length) {
-    schema.image = absoluteAssetUrl(store.theme.heroImages[0])
+    schema.image = absoluteAssetUrl(store.theme.heroImages[0]);
   }
 
   if (store.email) {
-    schema.email = store.email
+    schema.email = store.email;
   }
 
   if (store.phone) {
-    schema.telephone = store.phone
+    schema.telephone = store.phone;
   }
 
   if (store.address) {
     schema.address = {
-      '@type': 'PostalAddress',
+      "@type": "PostalAddress",
       streetAddress: store.address,
-      addressCountry: store.settings?.country || 'FR',
-    }
+      addressCountry: store.settings?.country || "FR",
+    };
   }
 
   if (store.latitude && store.longitude) {
     schema.geo = {
-      '@type': 'GeoCoordinates',
+      "@type": "GeoCoordinates",
       latitude: parseFloat(store.latitude),
       longitude: parseFloat(store.longitude),
-    }
+    };
   }
 
   // Add price range indicator
-  schema.priceRange = '$$'
+  schema.priceRange = "$$";
 
-  return schema
+  return schema;
 }
 
 /**
  * Generate Product schema for product pages
  */
-export function generateProductSchema(
-  store: StoreSeoData,
-  product: ProductSeoData
-): object {
-  const currency = store.settings?.currency || 'EUR'
-  const canonicalUrl = getCanonicalUrl(store.slug, `/product/${product.id}`)
-  const price = parseFloat(product.price)
-  const referenceQuantity = getPriceReferenceQuantity(product)
+export function generateProductSchema(store: StoreSeoData, product: ProductSeoData): object {
+  const currency = store.settings?.currency || "EUR";
+  const canonicalUrl = getCanonicalUrl(store.slug, `/product/${product.id}`);
+  const price = parseFloat(product.price);
+  const referenceQuantity = getPriceReferenceQuantity(product);
 
   // Google drops offers whose price has silently expired. A rental rate is a
   // standing price, so keep the window rolling a year ahead of each render.
-  const priceValidUntil = new Date()
-  priceValidUntil.setFullYear(priceValidUntil.getFullYear() + 1)
+  const priceValidUntil = new Date();
+  priceValidUntil.setFullYear(priceValidUntil.getFullYear() + 1);
 
   const offer: Record<string, unknown> = {
-    '@type': 'Offer',
+    "@type": "Offer",
     url: canonicalUrl,
     price,
     priceCurrency: currency,
-    priceValidUntil: priceValidUntil.toISOString().split('T')[0],
+    priceValidUntil: priceValidUntil.toISOString().split("T")[0],
     // These items are rented out, not sold — the GoodRelations vocabulary is
     // what schema.org uses to say so.
-    businessFunction: 'http://purl.org/goodrelations/v1#LeaseOut',
-    availability: product.quantity > 0
-      ? 'https://schema.org/InStock'
-      : 'https://schema.org/OutOfStock',
+    businessFunction: "http://purl.org/goodrelations/v1#LeaseOut",
+    availability:
+      product.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
     seller: {
-      '@type': 'LocalBusiness',
+      "@type": "LocalBusiness",
       name: store.name,
       url: getCanonicalUrl(store.slug),
     },
-  }
+  };
 
   if (referenceQuantity) {
     // Without this the price reads as a sale price instead of a rate per
     // rental period (1 day, 2 hours, …).
     offer.priceSpecification = {
-      '@type': 'UnitPriceSpecification',
+      "@type": "UnitPriceSpecification",
       price,
       priceCurrency: currency,
       unitCode: referenceQuantity.unitCode,
       referenceQuantity: {
-        '@type': 'QuantitativeValue',
+        "@type": "QuantitativeValue",
         value: referenceQuantity.value,
         unitCode: referenceQuantity.unitCode,
       },
-    }
+    };
   }
 
   const schema: Record<string, unknown> = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    '@id': canonicalUrl,
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "@id": canonicalUrl,
     name: product.name,
     url: canonicalUrl,
     sku: product.id,
     brand: {
-      '@type': 'Brand',
+      "@type": "Brand",
       name: store.name,
     },
     offers: offer,
-  }
+  };
 
   if (product.description) {
-    schema.description = stripHtml(product.description)
+    schema.description = stripHtml(product.description);
   }
 
   // Crawlers resolve schema image URLs on their own — relative paths from a
   // standalone deployment would never be fetched.
   if (product.images?.length) {
-    schema.image = product.images.map(absoluteAssetUrl)
+    schema.image = product.images.map(absoluteAssetUrl);
   }
 
   if (product.category) {
-    schema.category = product.category.name
+    schema.category = product.category.name;
   }
 
-  return schema
+  return schema;
 }
 
 /**
@@ -445,43 +438,43 @@ export function generateProductSchema(
  */
 export function generateBreadcrumbSchema(
   store: StoreSeoData,
-  items: { name: string; url?: string }[]
+  items: { name: string; url?: string }[],
 ): object {
   const breadcrumbItems = items.map((item, index) => ({
-    '@type': 'ListItem',
+    "@type": "ListItem",
     position: index + 1,
     name: item.name,
     ...(item.url && { item: item.url }),
-  }))
+  }));
 
   return {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
     itemListElement: breadcrumbItems,
-  }
+  };
 }
 
 /**
  * Generate WebSite schema for homepage
  */
 export function generateWebSiteSchema(store: StoreSeoData): object {
-  const baseUrl = getCanonicalUrl(store.slug)
+  const baseUrl = getCanonicalUrl(store.slug);
 
   return {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    '@id': `${baseUrl}#website`,
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${baseUrl}#website`,
     name: store.name,
     url: baseUrl,
     potentialAction: {
-      '@type': 'SearchAction',
+      "@type": "SearchAction",
       target: {
-        '@type': 'EntryPoint',
+        "@type": "EntryPoint",
         urlTemplate: `${baseUrl}/catalog?search={search_term_string}`,
       },
-      'query-input': 'required name=search_term_string',
+      "query-input": "required name=search_term_string",
     },
-  }
+  };
 }
 
 /**
@@ -490,34 +483,33 @@ export function generateWebSiteSchema(store: StoreSeoData): object {
 export function generateItemListSchema(
   store: StoreSeoData,
   products: ProductSeoData[],
-  listName: string
+  listName: string,
 ): object {
   return {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
+    "@context": "https://schema.org",
+    "@type": "ItemList",
     name: listName,
     numberOfItems: products.length,
     itemListElement: products.map((product, index) => ({
-      '@type': 'ListItem',
+      "@type": "ListItem",
       position: index + 1,
       item: {
-        '@type': 'Product',
+        "@type": "Product",
         name: product.name,
         url: getCanonicalUrl(store.slug, `/product/${product.id}`),
         ...(product.images?.length && {
           image: absoluteAssetUrl(product.images[0]),
         }),
         offers: {
-          '@type': 'Offer',
+          "@type": "Offer",
           price: parseFloat(product.price),
-          priceCurrency: store.settings?.currency || 'EUR',
-          availability: product.quantity > 0
-            ? 'https://schema.org/InStock'
-            : 'https://schema.org/OutOfStock',
+          priceCurrency: store.settings?.currency || "EUR",
+          availability:
+            product.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
         },
       },
     })),
-  }
+  };
 }
 
 // ============================================================================
@@ -528,15 +520,15 @@ export function generateItemListSchema(
  * Strip HTML tags from text
  */
 export function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, '').trim()
+  return html.replace(/<[^>]*>/g, "").trim();
 }
 
 /**
  * Truncate text to a maximum length
  */
 export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
-  return text.substring(0, maxLength - 3).trim() + '...'
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength - 3).trim() + "...";
 }
 
 /**
@@ -544,18 +536,18 @@ export function truncateText(text: string, maxLength: number): string {
  */
 function formatPrice(price: number, currency: string, locale?: string): string {
   return new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
-    style: 'currency',
+    style: "currency",
     currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  }).format(price)
+  }).format(price);
 }
 
 /**
  * Component to render JSON-LD script tag
  */
 export function JsonLd({ data }: { data: object | object[] }): ReactElement {
-  const schemas = Array.isArray(data) ? data : [data]
+  const schemas = Array.isArray(data) ? data : [data];
 
   return (
     <>
@@ -567,5 +559,5 @@ export function JsonLd({ data }: { data: object | object[] }): ReactElement {
         />
       ))}
     </>
-  )
+  );
 }

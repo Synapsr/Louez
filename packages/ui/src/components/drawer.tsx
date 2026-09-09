@@ -242,7 +242,10 @@ function DrawerPopup({
                 position === "right" && "before:rounded-s-[calc(var(--radius-2xl)-1px)]",
               ),
             variant === "inset" &&
-              "before:hidden sm:rounded-2xl sm:border sm:after:bg-transparent sm:before:rounded-[calc(var(--radius-2xl)-1px)]",
+              // The viewport's gap has to travel with the exit transform, or
+              // the popup stops a gap's width short of the edge and the last
+              // sliver of it snaps away instead of sliding out.
+              "before:hidden sm:rounded-2xl sm:border sm:[--inset:--spacing(4)] sm:after:bg-transparent sm:before:rounded-[calc(var(--radius-2xl)-1px)]",
             className,
           )}
           data-slot="drawer-popup"
