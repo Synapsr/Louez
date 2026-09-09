@@ -197,6 +197,8 @@ const nextConfig: NextConfig = {
     "*.agent-redesign-product-creation-flow.louez.localify",
     "feat-marketplace-channel.louez.localify",
     "*.feat-marketplace-channel.louez.localify",
+    "feat-storefront-redesign.louez.localify",
+    "*.feat-storefront-redesign.louez.localify",
   ],
 };
 

@@ -1139,6 +1139,7 @@ export function createAITools(ctx: AIChatContext) {
             }),
           ),
           with: {
+            activity: { columns: { metadata: true } },
             items: {
               where: eq(reservationItems.productId, productId),
               columns: {

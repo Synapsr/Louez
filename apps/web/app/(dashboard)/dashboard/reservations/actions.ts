@@ -1,5 +1,15 @@
 "use server";
 
+import {
+  checkExistingReservationInventory,
+  ReservationInventoryError,
+  lockReservationProducts,
+  reserveInventory,
+} from "@/lib/reservations/reserve-inventory";
+
+import { validateReservationContract } from "@louez/api/services";
+
+import { resolveDateChangeRequests } from "@/lib/reservations/date-change-request.server";
 import { revalidatePath } from "next/cache";
 
 import { and, eq, inArray, not, sql } from "drizzle-orm";
@@ -454,54 +464,66 @@ export async function updateReservationStatus(
   }
 
   try {
-    const transitionResult = await db.transaction(async (tx) => {
-      const [lockedReservation] = await tx
-        .select({ status: reservations.status })
-        .from(reservations)
-        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
-        .for("update");
+    const transitionResult = await db.transaction(
+      async (tx) => {
+        const [lockedReservation] = await tx
+          .select({ status: reservations.status })
+          .from(reservations)
+          .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
+          .for("update");
 
-      if (!lockedReservation) {
-        throw new ConsumableStockError({
-          code: "RESERVATION_NOT_FOUND",
-          message: "errors.reservationNotFound",
-        });
-      }
+        if (!lockedReservation) {
+          throw new ConsumableStockError({
+            code: "RESERVATION_NOT_FOUND",
+            message: "errors.reservationNotFound",
+          });
+        }
 
-      if (lockedReservation.status !== reservation.status) {
-        return { ok: false as const, error: "errors.reservationStatusChanged" as const };
-      }
+        if (lockedReservation.status !== reservation.status) {
+          return { ok: false as const, error: "errors.reservationStatusChanged" as const };
+        }
 
-      if (!canTransitionReservationStatus(lockedReservation.status, status)) {
-        return { ok: false as const, error: "errors.reservationStatusChanged" as const };
-      }
+        if (!canTransitionReservationStatus(lockedReservation.status, status)) {
+          return { ok: false as const, error: "errors.reservationStatusChanged" as const };
+        }
 
-      if (
-        status === "confirmed" &&
-        (lockedReservation.status === "pending" || lockedReservation.status === "quote")
-      ) {
-        await consumeReservationStock(tx, reservationId, store.id);
-      } else if (
-        (status === "cancelled" || status === "rejected") &&
-        (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
-      ) {
-        await restoreReservationStock(tx, reservationId, store.id);
-      }
+        if (
+          status === "confirmed" &&
+          (lockedReservation.status === "pending" || lockedReservation.status === "quote")
+        ) {
+          await checkExistingReservationInventory(tx, reservationId, store.id);
+          await consumeReservationStock(tx, reservationId, store.id);
+        } else if (
+          (status === "cancelled" || status === "rejected") &&
+          (lockedReservation.status === "confirmed" || lockedReservation.status === "ongoing")
+        ) {
+          await restoreReservationStock(tx, reservationId, store.id);
+        }
 
-      await tx
-        .update(reservations)
-        .set(updateData)
-        .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
+        await tx
+          .update(reservations)
+          .set(updateData)
+          .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
 
-      return { ok: true as const, previousStatus: lockedReservation.status };
-    });
+        await validateReservationContract(tx, reservationId, store.id, "confirmation");
+        await resolveDateChangeRequests(
+          tx,
+          reservationId,
+          reservation.startDate,
+          reservation.endDate,
+          status,
+        );
+        return { ok: true as const, previousStatus: lockedReservation.status };
+      },
+      { isolationLevel: "read committed" },
+    );
 
     if (!transitionResult.ok) {
       return { error: transitionResult.error };
     }
     previousStatus = transitionResult.previousStatus;
   } catch (error) {
-    if (error instanceof ConsumableStockError) {
+    if (error instanceof ConsumableStockError || error instanceof ReservationInventoryError) {
       return { error: error.message };
     }
     throw error;
@@ -803,6 +825,13 @@ export async function cancelReservation(reservationId: string) {
         })
         .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
 
+      await resolveDateChangeRequests(
+        tx,
+        reservationId,
+        reservation.startDate,
+        reservation.endDate,
+        "cancelled",
+      );
       return {
         cancelled: true,
         previousStatus: lockedReservation.status,
@@ -1168,9 +1197,7 @@ export async function createManualReservation(data: CreateReservationData) {
       if (hasPriceOverride) {
         effectiveUnitPrice = item.priceOverride!.unitPrice;
         effectiveSubtotal =
-          effectiveUnitPrice *
-          (product.pricingKind === "fixed" ? 1 : duration) *
-          item.quantity;
+          effectiveUnitPrice * (product.pricingKind === "fixed" ? 1 : duration) * item.quantity;
 
         // Update pricing breakdown to reflect the override
         pricingBreakdown = {
@@ -1418,6 +1445,7 @@ export async function createManualReservation(data: CreateReservationData) {
         }),
       ),
       with: {
+        activity: { columns: { metadata: true } },
         items: {
           with: {
             assignedUnits: true,
@@ -1752,6 +1780,7 @@ export async function createManualReservation(data: CreateReservationData) {
 
     if (!data.sendAsQuote) {
       await consumeReservationStock(tx, reservationId, store.id);
+      await validateReservationContract(tx, reservationId, store.id, "confirmation");
     }
 
     return {
@@ -2605,10 +2634,7 @@ export async function updateReservation(
 
       if (item.isManualPrice && item.productId) {
         const manualPriceProduct = await db.query.products.findFirst({
-          where: and(
-            eq(products.id, item.productId),
-            eq(products.storeId, store.id),
-          ),
+          where: and(eq(products.id, item.productId), eq(products.storeId, store.id)),
           columns: { pricingKind: true },
         });
         // The product may have been deleted since the reservation was created;
@@ -2617,8 +2643,7 @@ export async function updateReservation(
           ? existingItemsById.get(item.id)?.pricingBreakdown
           : undefined;
         manualPricingKind =
-          manualPriceProduct?.pricingKind ??
-          toPricingKind(existingBreakdown?.pricingKind);
+          manualPriceProduct?.pricingKind ?? toPricingKind(existingBreakdown?.pricingKind);
         duration = manualPricingKind === "fixed" ? 1 : duration;
         totalPrice = item.unitPrice * duration * item.quantity;
       }
@@ -3215,306 +3240,365 @@ export async function updateReservation(
   const session = await auth();
   const actorUserId = session?.user?.id ?? null;
 
-  const transactionResult = await db.transaction(async (tx) => {
-    const [lockedReservation] = await tx
-      .select({ id: reservations.id, status: reservations.status })
-      .from(reservations)
-      .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
-      .for("update");
+  const transactionResult = await db
+    .transaction(
+      async (tx) => {
+        const [lockedReservation] = await tx
+          .select({ id: reservations.id, status: reservations.status })
+          .from(reservations)
+          .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)))
+          .for("update");
 
-    if (!lockedReservation) {
-      return { error: "errors.reservationNotFound" };
-    }
+        if (!lockedReservation) {
+          return { error: "errors.reservationNotFound" };
+        }
 
-    if (lockedReservation.status !== reservation.status) {
-      return { error: "errors.reservationStatusChanged" };
-    }
+        if (lockedReservation.status !== reservation.status) {
+          return { error: "errors.reservationStatusChanged" };
+        }
 
-    if (lockedReservation.status === "completed") {
-      return { error: "errors.cannotEditCompletedReservation" };
-    }
+        if (lockedReservation.status === "completed") {
+          return { error: "errors.cannotEditCompletedReservation" };
+        }
 
-    await tx
-      .select({ id: productUnits.id })
-      .from(productUnits)
-      .innerJoin(reservationItemUnits, eq(productUnits.id, reservationItemUnits.productUnitId))
-      .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))
-      .where(eq(reservationItems.reservationId, reservationId))
-      .orderBy(productUnits.id)
-      .for("update");
+        await tx
+          .select({ id: productUnits.id })
+          .from(productUnits)
+          .innerJoin(reservationItemUnits, eq(productUnits.id, reservationItemUnits.productUnitId))
+          .innerJoin(
+            reservationItems,
+            eq(reservationItemUnits.reservationItemId, reservationItems.id),
+          )
+          .where(eq(reservationItems.reservationId, reservationId))
+          .orderBy(productUnits.id)
+          .for("update");
 
-    const currentAssignments = await tx
-      .select({
-        reservationItemId: reservationItemUnits.reservationItemId,
-        productUnitId: reservationItemUnits.productUnitId,
-        identifierSnapshot: reservationItemUnits.identifierSnapshot,
-        unitId: productUnits.id,
-        identifier: productUnits.identifier,
-      })
-      .from(reservationItemUnits)
-      .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))
-      .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-      .leftJoin(productUnits, eq(reservationItemUnits.productUnitId, productUnits.id))
-      .where(
-        and(eq(reservationItems.reservationId, reservationId), eq(reservations.storeId, store.id)),
-      );
+        const currentAssignments = await tx
+          .select({
+            reservationItemId: reservationItemUnits.reservationItemId,
+            productUnitId: reservationItemUnits.productUnitId,
+            identifierSnapshot: reservationItemUnits.identifierSnapshot,
+            unitId: productUnits.id,
+            identifier: productUnits.identifier,
+          })
+          .from(reservationItemUnits)
+          .innerJoin(
+            reservationItems,
+            eq(reservationItemUnits.reservationItemId, reservationItems.id),
+          )
+          .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+          .leftJoin(productUnits, eq(reservationItemUnits.productUnitId, productUnits.id))
+          .where(
+            and(
+              eq(reservationItems.reservationId, reservationId),
+              eq(reservations.storeId, store.id),
+            ),
+          );
 
-    const assignedCountByItemId = new Map<string, number>();
-    for (const assignment of currentAssignments) {
-      assignedCountByItemId.set(
-        assignment.reservationItemId,
-        (assignedCountByItemId.get(assignment.reservationItemId) ?? 0) + 1,
-      );
-    }
+        const assignedCountByItemId = new Map<string, number>();
+        for (const assignment of currentAssignments) {
+          assignedCountByItemId.set(
+            assignment.reservationItemId,
+            (assignedCountByItemId.get(assignment.reservationItemId) ?? 0) + 1,
+          );
+        }
 
-    if (data.items && data.items.length > 0) {
-      for (const item of data.items) {
-        if (!item.id) continue;
+        if (data.items && data.items.length > 0) {
+          for (const item of data.items) {
+            if (!item.id) continue;
 
-        const assignedCount = assignedCountByItemId.get(item.id) ?? 0;
-        if (item.quantity < assignedCount) {
-          return {
-            error: "errors.tooManyAssignedUnits",
-            reservationItemId: item.id,
-            assignedCount,
+            const assignedCount = assignedCountByItemId.get(item.id) ?? 0;
+            if (item.quantity < assignedCount) {
+              return {
+                error: "errors.tooManyAssignedUnits",
+                reservationItemId: item.id,
+                assignedCount,
+              };
+            }
+          }
+        }
+
+        const itemIdsToDelete = [...removedReservationItemIds, ...extraInsuranceItemIdsToDelete];
+        const itemIdsToDeleteSet = new Set(itemIdsToDelete);
+        const assignmentsToRemove = currentAssignments.filter((assignment) =>
+          itemIdsToDeleteSet.has(assignment.reservationItemId),
+        );
+        const assignmentsToKeep = currentAssignments.filter(
+          (assignment) => !itemIdsToDeleteSet.has(assignment.reservationItemId),
+        );
+
+        if (dateChanged && assignmentsToKeep.some((assignment) => assignment.productUnitId)) {
+          const assignedUnitIds = [
+            ...new Set(
+              assignmentsToKeep.flatMap((assignment) =>
+                assignment.productUnitId ? [assignment.productUnitId] : [],
+              ),
+            ),
+          ].sort((a, b) => a.localeCompare(b, "en"));
+
+          const lockedUnits = await tx
+            .select({
+              id: productUnits.id,
+              identifier: productUnits.identifier,
+            })
+            .from(productUnits)
+            .where(inArray(productUnits.id, assignedUnitIds))
+            .orderBy(productUnits.id)
+            .for("update");
+          const unitIdentifierById = new Map(lockedUnits.map((unit) => [unit.id, unit.identifier]));
+          for (const assignment of assignmentsToKeep) {
+            if (!assignment.productUnitId) {
+              continue;
+            }
+
+            if (!unitIdentifierById.has(assignment.productUnitId)) {
+              unitIdentifierById.set(assignment.productUnitId, assignment.identifierSnapshot);
+            }
+          }
+
+          const rentableUnits = await tx
+            .select({ id: productUnits.id })
+            .from(productUnits)
+            .where(
+              and(
+                inArray(productUnits.id, assignedUnitIds),
+                buildUnitRentableDuringPredicate(tx, newStartDate, newEndDate),
+              ),
+            );
+          const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
+          const hardConflictKeys = new Set<string>();
+          const hardConflicts: UpdateReservationConflict[] = [];
+          const pushHardConflict = (assignment: (typeof assignmentsToKeep)[number]) => {
+            if (!assignment.productUnitId) {
+              return;
+            }
+
+            const key = `${assignment.reservationItemId}:${assignment.productUnitId}`;
+            if (hardConflictKeys.has(key)) return;
+            hardConflictKeys.add(key);
+            hardConflicts.push({
+              reservationItemId: assignment.reservationItemId,
+              unitId: assignment.productUnitId,
+              identifier:
+                unitIdentifierById.get(assignment.productUnitId) ||
+                assignment.identifierSnapshot ||
+                assignment.productUnitId,
+            });
           };
+
+          for (const assignment of assignmentsToKeep) {
+            if (!assignment.productUnitId) {
+              continue;
+            }
+
+            if (!rentableUnitIds.has(assignment.productUnitId)) {
+              pushHardConflict(assignment);
+            }
+          }
+
+          const assignmentsByItemId = new Map<string, typeof assignmentsToKeep>();
+          for (const assignment of assignmentsToKeep) {
+            assignmentsByItemId.set(assignment.reservationItemId, [
+              ...(assignmentsByItemId.get(assignment.reservationItemId) ?? []),
+              assignment,
+            ]);
+          }
+
+          const bufferUnitIds = new Set<string>();
+          for (const [reservationItemId, itemAssignments] of assignmentsByItemId) {
+            const busyUnitIds = await findBusyUnitIds(tx, {
+              unitIds: itemAssignments.flatMap((assignment) =>
+                assignment.productUnitId ? [assignment.productUnitId] : [],
+              ),
+              start: newStartDate,
+              end: newEndDate,
+              blockingStatuses,
+              turnoverBufferMinutes,
+              excludeReservationItemId: reservationItemId,
+            });
+
+            for (const assignment of itemAssignments) {
+              if (!assignment.productUnitId) {
+                continue;
+              }
+
+              const reason = busyUnitIds.get(assignment.productUnitId);
+              if (reason === "overlap") {
+                pushHardConflict(assignment);
+              } else if (reason === "buffer") {
+                bufferUnitIds.add(assignment.productUnitId);
+              }
+            }
+          }
+
+          if (hardConflicts.length > 0) {
+            return {
+              error: "errors.assignedUnitsConflict",
+              conflicts: hardConflicts,
+            };
+          }
+
+          if (!overrideTurnoverBuffer && bufferUnitIds.size > 0) {
+            return {
+              error: "errors.turnoverBufferConflict",
+              bufferConflict: true,
+              failedUnitIds: [...bufferUnitIds],
+            };
+          }
         }
-      }
-    }
 
-    const itemIdsToDelete = [...removedReservationItemIds, ...extraInsuranceItemIdsToDelete];
-    const itemIdsToDeleteSet = new Set(itemIdsToDelete);
-    const assignmentsToRemove = currentAssignments.filter((assignment) =>
-      itemIdsToDeleteSet.has(assignment.reservationItemId),
-    );
-    const assignmentsToKeep = currentAssignments.filter(
-      (assignment) => !itemIdsToDeleteSet.has(assignment.reservationItemId),
-    );
-
-    if (dateChanged && assignmentsToKeep.some((assignment) => assignment.productUnitId)) {
-      const assignedUnitIds = [
-        ...new Set(
-          assignmentsToKeep.flatMap((assignment) =>
-            assignment.productUnitId ? [assignment.productUnitId] : [],
-          ),
-        ),
-      ].sort((a, b) => a.localeCompare(b, "en"));
-
-      const lockedUnits = await tx
-        .select({
-          id: productUnits.id,
-          identifier: productUnits.identifier,
-        })
-        .from(productUnits)
-        .where(inArray(productUnits.id, assignedUnitIds))
-        .orderBy(productUnits.id)
-        .for("update");
-      const unitIdentifierById = new Map(lockedUnits.map((unit) => [unit.id, unit.identifier]));
-      for (const assignment of assignmentsToKeep) {
-        if (!assignment.productUnitId) {
-          continue;
-        }
-
-        if (!unitIdentifierById.has(assignment.productUnitId)) {
-          unitIdentifierById.set(assignment.productUnitId, assignment.identifierSnapshot);
-        }
-      }
-
-      const rentableUnits = await tx
-        .select({ id: productUnits.id })
-        .from(productUnits)
-        .where(
-          and(
-            inArray(productUnits.id, assignedUnitIds),
-            buildUnitRentableDuringPredicate(tx, newStartDate, newEndDate),
-          ),
+        const unitEvents: Array<typeof productUnitEvents.$inferInsert> = assignmentsToRemove.map(
+          (assignment) => ({
+            id: nanoid(),
+            productUnitId: assignment.productUnitId,
+            identifierSnapshot: assignment.identifier || assignment.identifierSnapshot,
+            storeId: store.id,
+            type: "unassigned",
+            actorUserId,
+            payload: {
+              reservationId,
+              reservationItemId: assignment.reservationItemId,
+              reason: "reservation_item_removed",
+            },
+          }),
         );
-      const rentableUnitIds = new Set(rentableUnits.map((unit) => unit.id));
-      const hardConflictKeys = new Set<string>();
-      const hardConflicts: UpdateReservationConflict[] = [];
-      const pushHardConflict = (assignment: (typeof assignmentsToKeep)[number]) => {
-        if (!assignment.productUnitId) {
-          return;
+
+        if (assignmentsToRemove.length > 0) {
+          await tx
+            .delete(reservationItemUnits)
+            .where(
+              inArray(reservationItemUnits.reservationItemId, [
+                ...new Set(assignmentsToRemove.map((item) => item.reservationItemId)),
+              ]),
+            );
         }
 
-        const key = `${assignment.reservationItemId}:${assignment.productUnitId}`;
-        if (hardConflictKeys.has(key)) return;
-        hardConflictKeys.add(key);
-        hardConflicts.push({
-          reservationItemId: assignment.reservationItemId,
-          unitId: assignment.productUnitId,
-          identifier:
-            unitIdentifierById.get(assignment.productUnitId) ||
-            assignment.identifierSnapshot ||
-            assignment.productUnitId,
-        });
-      };
-
-      for (const assignment of assignmentsToKeep) {
-        if (!assignment.productUnitId) {
-          continue;
+        if (unitEvents.length > 0) {
+          await tx.insert(productUnitEvents).values(unitEvents);
         }
 
-        if (!rentableUnitIds.has(assignment.productUnitId)) {
-          pushHardConflict(assignment);
-        }
-      }
-
-      const assignmentsByItemId = new Map<string, typeof assignmentsToKeep>();
-      for (const assignment of assignmentsToKeep) {
-        assignmentsByItemId.set(assignment.reservationItemId, [
-          ...(assignmentsByItemId.get(assignment.reservationItemId) ?? []),
-          assignment,
-        ]);
-      }
-
-      const bufferUnitIds = new Set<string>();
-      for (const [reservationItemId, itemAssignments] of assignmentsByItemId) {
-        const busyUnitIds = await findBusyUnitIds(tx, {
-          unitIds: itemAssignments.flatMap((assignment) =>
-            assignment.productUnitId ? [assignment.productUnitId] : [],
-          ),
-          start: newStartDate,
-          end: newEndDate,
-          blockingStatuses,
-          turnoverBufferMinutes,
-          excludeReservationItemId: reservationItemId,
-        });
-
-        for (const assignment of itemAssignments) {
-          if (!assignment.productUnitId) {
-            continue;
-          }
-
-          const reason = busyUnitIds.get(assignment.productUnitId);
-          if (reason === "overlap") {
-            pushHardConflict(assignment);
-          } else if (reason === "buffer") {
-            bufferUnitIds.add(assignment.productUnitId);
+        for (const itemWrite of itemWrites) {
+          if (itemWrite.type === "insert") {
+            await tx.insert(reservationItems).values(itemWrite.values);
+          } else {
+            await tx
+              .update(reservationItems)
+              .set(itemWrite.values)
+              .where(eq(reservationItems.id, itemWrite.id));
           }
         }
-      }
 
-      if (hardConflicts.length > 0) {
-        return {
-          error: "errors.assignedUnitsConflict",
-          conflicts: hardConflicts,
-        };
-      }
+        for (const insuranceItemWrite of insuranceItemWrites) {
+          if (insuranceItemWrite.type === "insert") {
+            await tx.insert(reservationItems).values(insuranceItemWrite.values);
+          } else {
+            await tx
+              .update(reservationItems)
+              .set(insuranceItemWrite.values)
+              .where(eq(reservationItems.id, insuranceItemWrite.id));
+          }
+        }
 
-      if (!overrideTurnoverBuffer && bufferUnitIds.size > 0) {
-        return {
-          error: "errors.turnoverBufferConflict",
-          bufferConflict: true,
-          failedUnitIds: [...bufferUnitIds],
-        };
-      }
-    }
+        if (itemIdsToDelete.length > 0) {
+          await tx
+            .update(reservationItems)
+            .set({ quantity: 0 })
+            .where(
+              and(
+                eq(reservationItems.reservationId, reservationId),
+                inArray(reservationItems.id, itemIdsToDelete),
+              ),
+            );
+        }
 
-    const unitEvents: Array<typeof productUnitEvents.$inferInsert> = assignmentsToRemove.map(
-      (assignment) => ({
-        id: nanoid(),
-        productUnitId: assignment.productUnitId,
-        identifierSnapshot: assignment.identifier || assignment.identifierSnapshot,
-        storeId: store.id,
-        type: "unassigned",
-        actorUserId,
-        payload: {
+        if (reservationStatusConsumesStock(lockedReservation.status)) {
+          await reconcileReservationStock(tx, reservationId, store.id);
+        }
+
+        if (itemIdsToDelete.length > 0) {
+          await tx
+            .delete(reservationItems)
+            .where(
+              and(
+                eq(reservationItems.reservationId, reservationId),
+                inArray(reservationItems.id, itemIdsToDelete),
+              ),
+            );
+        }
+
+        if (dateChanged && ["confirmed", "ongoing"].includes(lockedReservation.status)) {
+          const currentItems = await tx.query.reservationItems.findMany({
+            where: eq(reservationItems.reservationId, reservationId),
+          });
+          const lines = currentItems.flatMap((item) =>
+            item.productId
+              ? [
+                  {
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    selectedAttributes: item.selectedAttributes ?? undefined,
+                    combinationKey: item.combinationKey,
+                  },
+                ]
+              : [],
+          );
+          const lockedProductsById = await lockReservationProducts(
+            tx,
+            store.id,
+            lines.map((line) => line.productId),
+          );
+          const inventory = await reserveInventory({
+            tx,
+            storeId: store.id,
+            lockedProductsById,
+            lines,
+            window: { start: newStartDate, end: newEndDate },
+            blockingStatuses,
+            turnoverBufferMinutes: overrideTurnoverBuffer ? 0 : turnoverBufferMinutes,
+            excludeReservationId: reservationId,
+            skipConsumableCheck: true,
+          });
+          if (!inventory.ok) throw new Error("errors.productNoLongerAvailable");
+        }
+
+        await tx
+          .update(reservations)
+          .set({
+            startDate: newStartDate,
+            endDate: newEndDate,
+            subtotalAmount: newSubtotalAmount.toFixed(2),
+            depositAmount: newDepositAmount.toFixed(2),
+            totalAmount: newTotalAmount.toFixed(2),
+            tulipInsuranceOptIn: nextTulipInsuranceOptIn,
+            tulipInsuranceAmount:
+              nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
+                ? nextTulipInsuranceAmount.toFixed(2)
+                : null,
+            ...deliveryUpdateFields,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
+
+        await validateReservationContract(tx, reservationId, store.id, "confirmation");
+        await resolveDateChangeRequests(
+          tx,
           reservationId,
-          reservationItemId: assignment.reservationItemId,
-          reason: "reservation_item_removed",
-        },
-      }),
-    );
-
-    if (assignmentsToRemove.length > 0) {
-      await tx
-        .delete(reservationItemUnits)
-        .where(
-          inArray(reservationItemUnits.reservationItemId, [
-            ...new Set(assignmentsToRemove.map((item) => item.reservationItemId)),
-          ]),
+          newStartDate,
+          newEndDate,
+          lockedReservation.status,
         );
-    }
-
-    if (unitEvents.length > 0) {
-      await tx.insert(productUnitEvents).values(unitEvents);
-    }
-
-    for (const itemWrite of itemWrites) {
-      if (itemWrite.type === "insert") {
-        await tx.insert(reservationItems).values(itemWrite.values);
-      } else {
-        await tx
-          .update(reservationItems)
-          .set(itemWrite.values)
-          .where(eq(reservationItems.id, itemWrite.id));
+        return { success: true, reservationStatus: lockedReservation.status };
+      },
+      { isolationLevel: "read committed" },
+    )
+    .catch((error: unknown) => {
+      if (error instanceof Error && error.message === "errors.productNoLongerAvailable")
+        return { error: error.message };
+      if (error instanceof ConsumableStockError) {
+        return { error: error.message };
       }
-    }
-
-    for (const insuranceItemWrite of insuranceItemWrites) {
-      if (insuranceItemWrite.type === "insert") {
-        await tx.insert(reservationItems).values(insuranceItemWrite.values);
-      } else {
-        await tx
-          .update(reservationItems)
-          .set(insuranceItemWrite.values)
-          .where(eq(reservationItems.id, insuranceItemWrite.id));
-      }
-    }
-
-    if (itemIdsToDelete.length > 0) {
-      await tx
-        .update(reservationItems)
-        .set({ quantity: 0 })
-        .where(
-          and(
-            eq(reservationItems.reservationId, reservationId),
-            inArray(reservationItems.id, itemIdsToDelete),
-          ),
-        );
-    }
-
-    if (reservationStatusConsumesStock(lockedReservation.status)) {
-      await reconcileReservationStock(tx, reservationId, store.id);
-    }
-
-    if (itemIdsToDelete.length > 0) {
-      await tx
-        .delete(reservationItems)
-        .where(
-          and(
-            eq(reservationItems.reservationId, reservationId),
-            inArray(reservationItems.id, itemIdsToDelete),
-          ),
-        );
-    }
-
-    await tx
-      .update(reservations)
-      .set({
-        startDate: newStartDate,
-        endDate: newEndDate,
-        subtotalAmount: newSubtotalAmount.toFixed(2),
-        depositAmount: newDepositAmount.toFixed(2),
-        totalAmount: newTotalAmount.toFixed(2),
-        tulipInsuranceOptIn: nextTulipInsuranceOptIn,
-        tulipInsuranceAmount:
-          nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
-            ? nextTulipInsuranceAmount.toFixed(2)
-            : null,
-        ...deliveryUpdateFields,
-        updatedAt: new Date(),
-      })
-      .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, store.id)));
-
-    return { success: true, reservationStatus: lockedReservation.status };
-  }).catch((error: unknown) => {
-    if (error instanceof ConsumableStockError) {
-      return { error: error.message };
-    }
-    throw error;
-  });
+      throw error;
+    });
 
   if ("error" in transactionResult) {
     return transactionResult;
@@ -3559,6 +3643,7 @@ export async function updateReservation(
     }),
   });
 
+  revalidatePath(`/${store.slug}/account`);
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${reservationId}`);
 
@@ -3722,15 +3807,20 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   }
 
   const paymentId = nanoid();
-  await db.insert(payments).values({
-    id: paymentId,
-    reservationId,
-    amount: data.amount.toFixed(2),
-    type: data.type,
-    method: data.method,
-    status: "completed",
-    paidAt: data.paidAt || new Date(),
-    notes: data.notes || null,
+  await db.transaction(async (tx) => {
+    await tx.insert(payments).values({
+      id: paymentId,
+      reservationId,
+      amount: data.amount.toFixed(2),
+      type: data.type,
+      method: data.method,
+      status: "completed",
+      paidAt: data.paidAt || new Date(),
+      notes: data.notes || null,
+    });
+    if (data.type === "rental" && data.amount > 0) {
+      await validateReservationContract(tx, reservationId, store.id, "payment");
+    }
   });
 
   let invoiceNumber: string | undefined;
@@ -3779,10 +3869,7 @@ export async function recordPayment(reservationId: string, data: RecordPaymentDa
   return { success: true, paymentId, invoiceNumber };
 }
 
-export async function refundManualPayment(
-  reservationId: string,
-  data: RefundManualPaymentData,
-) {
+export async function refundManualPayment(reservationId: string, data: RefundManualPaymentData) {
   const store = await getStoreForUser();
   if (!store) {
     return { error: "errors.unauthorized" };
@@ -3821,9 +3908,7 @@ export async function refundManualPayment(
 
       if (
         originalPayment.status !== "completed" ||
-        !["rental", "damage", "adjustment", "deposit_capture"].includes(
-          originalPayment.type,
-        ) ||
+        !["rental", "damage", "adjustment", "deposit_capture"].includes(originalPayment.type) ||
         originalPayment.refundOfPaymentId !== null ||
         Number(originalPayment.amount) <= 0
       ) {
@@ -3836,10 +3921,7 @@ export async function refundManualPayment(
         })
         .from(payments)
         .where(
-          and(
-            eq(payments.refundOfPaymentId, originalPayment.id),
-            eq(payments.status, "completed"),
-          ),
+          and(eq(payments.refundOfPaymentId, originalPayment.id), eq(payments.status, "completed")),
         );
 
       const remainingAmount = roundMoney(
@@ -4857,10 +4939,7 @@ export async function generateAccessUrl(reservationId: string) {
   return { url };
 }
 
-export async function sendAccessLink(
-  reservationId: string,
-  data?: { customMessage?: string },
-) {
+export async function sendAccessLink(reservationId: string, data?: { customMessage?: string }) {
   if (!isEmailConfigured()) {
     return { error: "errors.accessLinkSendFailed" };
   }

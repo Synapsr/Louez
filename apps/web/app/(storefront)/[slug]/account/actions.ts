@@ -1,184 +1,147 @@
-'use server'
+"use server";
 
-import { cookies } from 'next/headers'
-import { db } from '@louez/db'
+import { randomInt } from "node:crypto";
+
+import { and, eq, gt, isNull } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { getLocale } from "next-intl/server";
+import { z } from "zod";
+
+import { customers, db, stores, verificationCodes } from "@louez/db";
+import { isEmailConfigured } from "@louez/email";
+import type { EmailLocale } from "@louez/email";
+
+import { buildRateLimitKey, checkRateLimit, resetRateLimit } from "@/lib/customer-auth/rate-limit";
 import {
-  customers,
-  verificationCodes,
-  customerSessions,
-  stores,
-} from '@louez/db'
-import { eq, and, gt } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
-import { isEmailConfigured } from '@louez/email'
-import { sendVerificationCodeEmail } from '@/lib/email/send'
+  createCustomerSession,
+  destroyCustomerSession,
+  getCustomerSessionBySlug,
+} from "@/lib/customer-auth/session";
+import { sendVerificationCodeEmail } from "@/lib/email/send";
+import { log } from "@/lib/evlog";
+import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 
-const CUSTOMER_SESSION_COOKIE = 'customer_session'
-const SESSION_DURATION_DAYS = 30
+const CODE_TTL_MS = 10 * 60 * 1000;
 
-// ===== RATE LIMITING =====
-// Prevents brute-force attacks on verification codes (6-digit = 1M combinations)
-// Uses in-memory store - for multi-instance deployments, consider Redis
+const emailSchema = z.email().trim().max(255);
+const slugSchema = z.string().trim().min(1).max(255);
 
-interface RateLimitEntry {
-  attempts: number
-  firstAttempt: number
-  blockedUntil?: number
-}
+const sendCodeInputSchema = z.object({ storeSlug: slugSchema, email: emailSchema });
+const verifyCodeInputSchema = z.object({
+  storeSlug: slugSchema,
+  email: emailSchema,
+  code: z.string().regex(/^\d{6}$/),
+});
 
-// Rate limit configuration
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
-const MAX_ATTEMPTS = 5 // Max attempts per window
-const BLOCK_DURATION_MS = 30 * 60 * 1000 // 30 minutes block after max attempts
+export type SendCodeError =
+  | "invalidData"
+  | "emailLoginUnavailable"
+  | "storeNotFound"
+  | "tooManyRequests"
+  | "noReservationForEmail"
+  | "sendCodeError";
 
-// In-memory rate limit store (use Redis in production for multi-instance)
-const verifyRateLimits = new Map<string, RateLimitEntry>()
-const sendCodeRateLimits = new Map<string, RateLimitEntry>()
+export type VerifyCodeError =
+  | "invalidData"
+  | "storeNotFound"
+  | "tooManyAttempts"
+  | "invalidOrExpiredCode"
+  | "customerNotFound"
+  | "verificationError";
 
-// Cleanup old entries periodically (every 5 minutes)
-let lastCleanup = Date.now()
-function cleanupRateLimits() {
-  const now = Date.now()
-  if (now - lastCleanup < 5 * 60 * 1000) return
+export type SendCodeResult =
+  | { ok: true }
+  | { ok: false; error: SendCodeError; retryAfterSeconds?: number };
 
-  lastCleanup = now
-  const cutoff = now - RATE_LIMIT_WINDOW_MS
+export type VerifyCodeResult =
+  | { ok: true }
+  | { ok: false; error: VerifyCodeError; retryAfterSeconds?: number };
 
-  for (const [key, entry] of verifyRateLimits) {
-    if (entry.firstAttempt < cutoff && (!entry.blockedUntil || entry.blockedUntil < now)) {
-      verifyRateLimits.delete(key)
-    }
-  }
-  for (const [key, entry] of sendCodeRateLimits) {
-    if (entry.firstAttempt < cutoff && (!entry.blockedUntil || entry.blockedUntil < now)) {
-      sendCodeRateLimits.delete(key)
-    }
-  }
-}
+const EMAIL_LOCALES = [
+  "fr",
+  "en",
+  "de",
+  "es",
+  "it",
+  "nl",
+  "pl",
+  "pt",
+] as const satisfies readonly EmailLocale[];
 
-function checkRateLimit(
-  map: Map<string, RateLimitEntry>,
-  key: string,
-  maxAttempts: number = MAX_ATTEMPTS
-): { allowed: boolean; retryAfter?: number } {
-  cleanupRateLimits()
+const isEmailLocale = (locale: string): locale is EmailLocale =>
+  EMAIL_LOCALES.some((candidate) => candidate === locale);
 
-  const now = Date.now()
-  const entry = map.get(key)
+const toEmailLocale = (locale: string): EmailLocale => (isEmailLocale(locale) ? locale : "fr");
 
-  if (!entry) {
-    map.set(key, { attempts: 1, firstAttempt: now })
-    return { allowed: true }
-  }
+const generateCode = (): string => randomInt(0, 1_000_000).toString().padStart(6, "0");
 
-  // Check if currently blocked
-  if (entry.blockedUntil && now < entry.blockedUntil) {
-    return {
-      allowed: false,
-      retryAfter: Math.ceil((entry.blockedUntil - now) / 1000),
-    }
-  }
+const maskEmail = (email: string): string => {
+  const [localPart, domainPart] = email.split("@");
+  if (!localPart || !domainPart) return "[invalid-email]";
+  return `${localPart.slice(0, 2)}***@${domainPart}`;
+};
 
-  // Reset if window has passed
-  if (now - entry.firstAttempt > RATE_LIMIT_WINDOW_MS) {
-    map.set(key, { attempts: 1, firstAttempt: now })
-    return { allowed: true }
-  }
+const describeError = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
-  // Increment and check
-  entry.attempts++
+export async function requestLoginCode(input: {
+  storeSlug: string;
+  email: string;
+}): Promise<SendCodeResult> {
+  const parsed = sendCodeInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "invalidData" };
+  const { storeSlug, email } = parsed.data;
 
-  if (entry.attempts > maxAttempts) {
-    entry.blockedUntil = now + BLOCK_DURATION_MS
-    return {
-      allowed: false,
-      retryAfter: Math.ceil(BLOCK_DURATION_MS / 1000),
-    }
-  }
-
-  return { allowed: true }
-}
-
-function resetRateLimit(map: Map<string, RateLimitEntry>, key: string) {
-  map.delete(key)
-}
-
-function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
-}
-
-function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return String(error)
-}
-
-function maskEmail(email: string): string {
-  const [localPart, domainPart] = email.split('@')
-  if (!localPart || !domainPart) return '[invalid-email]'
-
-  const visibleLocal = localPart.slice(0, 2)
-  return `${visibleLocal}***@${domainPart}`
-}
-
-export async function sendVerificationCode(storeId: string, email: string, locale?: 'fr' | 'en') {
   try {
     // Customer sign-in has no channel other than email: without a transport
     // the code can never arrive, so fail honestly instead of pretending.
     if (!isEmailConfigured()) {
-      return { error: 'errors.emailLoginUnavailable' }
+      return { ok: false, error: "emailLoginUnavailable" };
     }
 
-    // SECURITY: Validate storeId format (21-char nanoid)
-    if (!storeId || typeof storeId !== 'string' || storeId.length !== 21) {
-      return { error: 'errors.storeNotFound' }
+    const store = await getStoreBySlug(storeSlug);
+    if (!store) return { ok: false, error: "storeNotFound" };
+
+    const rateLimitKey = buildRateLimitKey(store.id, email);
+    const decision = checkRateLimit("send", rateLimitKey);
+    if (!decision.allowed) {
+      return { ok: false, error: "tooManyRequests", retryAfterSeconds: decision.retryAfterSeconds };
     }
 
-    // Rate limiting: max 3 code requests per 15 min per email+store
-    const rateLimitKey = `${storeId}:${email.toLowerCase()}`
-    const rateCheck = checkRateLimit(sendCodeRateLimits, rateLimitKey, 3)
-
-    if (!rateCheck.allowed) {
-      return {
-        error: 'errors.tooManyRequests',
-        retryAfter: rateCheck.retryAfter,
-      }
-    }
-
-    // Get the store
-    const store = await db.query.stores.findFirst({
-      where: eq(stores.id, storeId),
-    })
-
-    if (!store) {
-      return { error: 'errors.storeNotFound' }
-    }
-
-    // Check if customer exists for this store
-    // NOTE: Using same error message for security (prevent email enumeration)
+    // Login is reserved to emails that already have a customer in the store
+    // (decision 8: the honest message stays).
     const customer = await db.query.customers.findFirst({
-      where: and(eq(customers.storeId, storeId), eq(customers.email, email)),
-    })
+      columns: { id: true },
+      where: and(eq(customers.storeId, store.id), eq(customers.email, email)),
+    });
+    if (!customer) return { ok: false, error: "noReservationForEmail" };
 
-    if (!customer) {
-      return { error: 'errors.noReservationForEmail' }
-    }
+    const code = generateCode();
+    const verificationCodeId = nanoid();
 
-    // Generate verification code
-    const code = generateCode()
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+    // A new send invalidates every code still open for this email so only
+    // the latest one can sign in.
+    await db
+      .update(verificationCodes)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(verificationCodes.storeId, store.id),
+          eq(verificationCodes.email, email),
+          eq(verificationCodes.type, "code"),
+          isNull(verificationCodes.usedAt),
+        ),
+      );
 
-    // Store the code
-    const verificationCodeId = nanoid()
     await db.insert(verificationCodes).values({
       id: verificationCodeId,
       email,
-      storeId,
+      storeId: store.id,
       code,
-      type: 'code',
-      expiresAt,
-    })
+      type: "code",
+      expiresAt: new Date(Date.now() + CODE_TTL_MS),
+    });
 
-    // Send verification email
     try {
       await sendVerificationCodeEmail({
         to: email,
@@ -190,182 +153,141 @@ export async function sendVerificationCode(storeId: string, email: string, local
           theme: store.theme,
         },
         code,
-        locale: locale || 'fr',
-      })
+        locale: toEmailLocale(await getLocale()),
+      });
     } catch (emailError) {
-      console.error('Failed to send storefront verification email', {
-        storeId,
-        email: maskEmail(email),
-        reason: getErrorMessage(emailError),
-      })
-
-      try {
-        await db
-          .delete(verificationCodes)
-          .where(eq(verificationCodes.id, verificationCodeId))
-      } catch (cleanupError) {
-        console.error('Failed to cleanup verification code after email error', {
-          storeId,
-          email: maskEmail(email),
-          reason: getErrorMessage(cleanupError),
-        })
-      }
-
-      return { error: 'errors.sendCodeError' }
+      log.error(
+        "customer-auth",
+        `verification email failed for ${maskEmail(email)} (${store.id}): ${describeError(emailError)}`,
+      );
+      await db.delete(verificationCodes).where(eq(verificationCodes.id, verificationCodeId));
+      return { ok: false, error: "sendCodeError" };
     }
 
-    return { success: true }
+    return { ok: true };
   } catch (error) {
-    console.error('Error sending verification code:', error)
-    return { error: 'errors.sendCodeError' }
+    log.error("customer-auth", `send code failed: ${describeError(error)}`);
+    return { ok: false, error: "sendCodeError" };
   }
 }
 
-export async function verifyCode(storeId: string, email: string, code: string) {
+export async function verifyLoginCode(input: {
+  storeSlug: string;
+  email: string;
+  code: string;
+}): Promise<VerifyCodeResult> {
+  const parsed = verifyCodeInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "invalidOrExpiredCode" };
+  const { storeSlug, email, code } = parsed.data;
+
   try {
-    // SECURITY: Validate storeId format (21-char nanoid)
-    if (!storeId || typeof storeId !== 'string' || storeId.length !== 21) {
-      return { error: 'errors.storeNotFound' }
+    const store = await getStoreBySlug(storeSlug);
+    if (!store) return { ok: false, error: "storeNotFound" };
+
+    // 5 attempts / 15 min then a 30 min block: a 6-digit code has only a
+    // million combinations.
+    const rateLimitKey = buildRateLimitKey(store.id, email);
+    const decision = checkRateLimit("verify", rateLimitKey);
+    if (!decision.allowed) {
+      return { ok: false, error: "tooManyAttempts", retryAfterSeconds: decision.retryAfterSeconds };
     }
 
-    // Rate limiting: max 5 attempts per 15 min per email+store
-    // SECURITY: Prevents brute-force attacks on 6-digit codes (1M combinations)
-    const rateLimitKey = `${storeId}:${email.toLowerCase()}`
-    const rateCheck = checkRateLimit(verifyRateLimits, rateLimitKey, 5)
-
-    if (!rateCheck.allowed) {
-      return {
-        error: 'errors.tooManyAttempts',
-        retryAfter: rateCheck.retryAfter,
-      }
-    }
-
-    // Validate code format (6 digits only)
-    if (!/^\d{6}$/.test(code)) {
-      return { error: 'errors.invalidOrExpiredCode' }
-    }
-
-    // Find valid verification code
     const verification = await db.query.verificationCodes.findFirst({
+      columns: { id: true },
       where: and(
-        eq(verificationCodes.storeId, storeId),
+        eq(verificationCodes.storeId, store.id),
         eq(verificationCodes.email, email),
+        eq(verificationCodes.type, "code"),
         eq(verificationCodes.code, code),
-        gt(verificationCodes.expiresAt, new Date())
+        gt(verificationCodes.expiresAt, new Date()),
+        isNull(verificationCodes.usedAt),
       ),
-    })
+    });
+    if (!verification) return { ok: false, error: "invalidOrExpiredCode" };
 
-    if (!verification) {
-      return { error: 'errors.invalidOrExpiredCode' }
-    }
-
-    // Mark code as used
     await db
       .update(verificationCodes)
       .set({ usedAt: new Date() })
-      .where(eq(verificationCodes.id, verification.id))
+      .where(eq(verificationCodes.id, verification.id));
 
-    // Reset rate limit on successful verification
-    resetRateLimit(verifyRateLimits, rateLimitKey)
+    resetRateLimit("verify", rateLimitKey);
 
-    // Find customer
     const customer = await db.query.customers.findFirst({
-      where: and(eq(customers.storeId, storeId), eq(customers.email, email)),
-    })
+      columns: { id: true },
+      where: and(eq(customers.storeId, store.id), eq(customers.email, email)),
+    });
+    if (!customer) return { ok: false, error: "customerNotFound" };
 
-    if (!customer) {
-      return { error: 'errors.customerNotFound' }
-    }
+    await createCustomerSession(customer.id);
 
-    // Create session
-    const sessionToken = nanoid(32)
-    const expiresAt = new Date(
-      Date.now() + SESSION_DURATION_DAYS * 24 * 60 * 60 * 1000
-    )
-
-    await db.insert(customerSessions).values({
-      customerId: customer.id,
-      token: sessionToken,
-      expiresAt,
-    })
-
-    // Set cookie with secure settings
-    const cookieStore = await cookies()
-    cookieStore.set(CUSTOMER_SESSION_COOKIE, sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict', // More restrictive than 'lax'
-      expires: expiresAt,
-      path: '/',
-    })
-
-    return { success: true, customerId: customer.id }
+    return { ok: true };
   } catch (error) {
-    console.error('Error verifying code:', error)
-    return { error: 'errors.verificationError' }
+    log.error("customer-auth", `verify code failed: ${describeError(error)}`);
+    return { ok: false, error: "verificationError" };
   }
 }
 
+export async function logout(): Promise<{ ok: true } | { ok: false; error: "logoutError" }> {
+  try {
+    await destroyCustomerSession();
+    return { ok: true };
+  } catch (error) {
+    log.error("customer-auth", `logout failed: ${describeError(error)}`);
+    return { ok: false, error: "logoutError" };
+  }
+}
+
+/**
+ * Slug-based shim for the oRPC context and the advisor chat route. New code
+ * takes the id: `getCustomerSession(storeId)` in `lib/customer-auth/session`.
+ */
 export async function getCustomerSession(storeSlug: string) {
-  try {
-    const cookieStore = await cookies()
-    const sessionToken = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value
-
-    if (!sessionToken) {
-      return null
-    }
-
-    // Get store
-    const store = await db.query.stores.findFirst({
-      where: eq(stores.slug, storeSlug),
-    })
-
-    if (!store) {
-      return null
-    }
-
-    // Find valid session
-    const session = await db.query.customerSessions.findFirst({
-      where: and(
-        eq(customerSessions.token, sessionToken),
-        gt(customerSessions.expiresAt, new Date())
-      ),
-      with: {
-        customer: true,
-      },
-    })
-
-    if (!session || session.customer.storeId !== store.id) {
-      return null
-    }
-
-    return {
-      customerId: session.customer.id,
-      customer: session.customer,
-    }
-  } catch {
-    return null
-  }
+  return getCustomerSessionBySlug(storeSlug);
 }
 
-export async function logout() {
-  try {
-    const cookieStore = await cookies()
-    const sessionToken = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value
+/** Legacy result shape of the id-based actions, kept for the checkout "returning customer" step. */
+interface LegacyCodeResult {
+  success?: true;
+  error?: string;
+  retryAfter?: number;
+}
 
-    if (sessionToken) {
-      // Delete session from database
-      await db
-        .delete(customerSessions)
-        .where(eq(customerSessions.token, sessionToken))
+const toLegacyResult = (result: SendCodeResult | VerifyCodeResult): LegacyCodeResult =>
+  result.ok
+    ? { success: true }
+    : { error: `errors.${result.error}`, retryAfter: result.retryAfterSeconds };
 
-      // Clear cookie
-      cookieStore.delete(CUSTOMER_SESSION_COOKIE)
-    }
+const findStoreSlugById = async (storeId: string): Promise<string | null> => {
+  if (storeId.length !== 21) return null;
+  const store = await db.query.stores.findFirst({
+    columns: { slug: true },
+    where: eq(stores.id, storeId),
+  });
+  return store?.slug ?? null;
+};
 
-    return { success: true }
-  } catch (error) {
-    console.error('Error logging out:', error)
-    return { error: 'errors.logoutError' }
-  }
+/**
+ * @deprecated Shim over `requestLoginCode({ storeSlug, email })`: takes the
+ * store id, returns `errors.`-prefixed keys. The email locale now comes
+ * from the request (`getLocale()`), so the third argument is ignored.
+ */
+export async function sendVerificationCode(
+  storeId: string,
+  email: string,
+  _locale?: string,
+): Promise<LegacyCodeResult> {
+  const storeSlug = await findStoreSlugById(storeId);
+  if (!storeSlug) return { error: "errors.storeNotFound" };
+  return toLegacyResult(await requestLoginCode({ storeSlug, email }));
+}
+
+/** @deprecated Shim over `verifyLoginCode({ storeSlug, email, code })`. */
+export async function verifyCode(
+  storeId: string,
+  email: string,
+  code: string,
+): Promise<LegacyCodeResult> {
+  const storeSlug = await findStoreSlugById(storeId);
+  if (!storeSlug) return { error: "errors.storeNotFound" };
+  return toLegacyResult(await verifyLoginCode({ storeSlug, email, code }));
 }

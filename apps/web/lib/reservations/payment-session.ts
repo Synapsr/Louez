@@ -7,6 +7,7 @@ import { db, payments, reservationActivity, reservations, stores } from "@louez/
 
 import { env } from "@/env";
 import { timingSafeEqualStrings } from "@/lib/catalog-auth";
+import { log } from "@/lib/evlog";
 import { buildFeeMetadata, getStoreBilling, planStripeFees } from "@/lib/pay-as-you-go";
 import {
   captureProductServerEvent,
@@ -21,12 +22,14 @@ export async function createReservationPaymentSessionForCustomer(
   storeSlug: string,
   reservationId: string,
   customerId: string,
-  source: "account_page" | "quote_acceptance" | "marketplace",
+  source: "account_page" | "quote_acceptance" | "marketplace" | "checkout_resume",
   options?: {
     allowPendingReservation?: boolean;
     successUrl?: string;
     cancelUrl?: string;
     marketplaceSecret?: string;
+    /** Trusted callers only: charge this instead of the reservation total (partial deposits). */
+    chargeAmount?: number;
   },
 ) {
   try {
@@ -42,10 +45,12 @@ export async function createReservationPaymentSessionForCustomer(
       isVerifiedMarketplaceSource = true;
     }
 
-    const allowPendingReservation =
-      isVerifiedMarketplaceSource && options?.allowPendingReservation === true;
-    const successUrl = isVerifiedMarketplaceSource ? options?.successUrl : undefined;
-    const cancelUrl = isVerifiedMarketplaceSource ? options?.cancelUrl : undefined;
+    // The checkout cancelled page resumes a pending online checkout server-side;
+    // it is as trusted as the marketplace secret.
+    const isTrustedCaller = isVerifiedMarketplaceSource || source === "checkout_resume";
+    const allowPendingReservation = isTrustedCaller && options?.allowPendingReservation === true;
+    const successUrl = isTrustedCaller ? options?.successUrl : undefined;
+    const cancelUrl = isTrustedCaller ? options?.cancelUrl : undefined;
 
     const store = await db.query.stores.findFirst({
       where: eq(stores.slug, storeSlug),
@@ -92,7 +97,11 @@ export async function createReservationPaymentSessionForCustomer(
     }
 
     const currency = store.settings?.currency || "EUR";
-    const chargeCents = toStripeCents(Number.parseFloat(reservation.totalAmount), currency);
+    const chargeAmount =
+      isTrustedCaller && options?.chargeAmount !== undefined
+        ? options.chargeAmount
+        : Number.parseFloat(reservation.totalAmount);
+    const chargeCents = toStripeCents(chargeAmount, currency);
     if (chargeCents <= 0) {
       return { success: true, paymentUrl: null };
     }
@@ -152,25 +161,29 @@ export async function createReservationPaymentSessionForCustomer(
         getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=cancelled`),
     });
 
-    await db.insert(payments).values({
-      id: nanoid(),
-      reservationId,
-      amount: reservation.totalAmount,
-      type: "rental",
-      method: "stripe",
-      status: "pending",
-      stripeCheckoutSessionId: sessionId,
-      currency,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    // The pending payment and its activity land together or not at all.
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx.insert(payments).values({
+        id: nanoid(),
+        reservationId,
+        amount: chargeAmount.toFixed(2),
+        type: "rental",
+        method: "stripe",
+        status: "pending",
+        stripeCheckoutSessionId: sessionId,
+        currency,
+        createdAt: now,
+        updatedAt: now,
+      });
 
-    await db.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: "payment_initiated",
-      metadata: { checkoutSessionId: sessionId, source },
-      createdAt: new Date(),
+      await tx.insert(reservationActivity).values({
+        id: nanoid(),
+        reservationId,
+        activityType: "payment_initiated",
+        metadata: { checkoutSessionId: sessionId, source },
+        createdAt: now,
+      });
     });
 
     await captureProductServerEvent({
@@ -185,7 +198,7 @@ export async function createReservationPaymentSessionForCustomer(
         source,
         payment_provider: "stripe",
         payment_mode: "full",
-        amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
+        amount_cents: toAnalyticsAmountCents(chargeAmount),
         total_amount_cents: toAnalyticsAmountCents(reservation.totalAmount),
         deposit_amount_cents: toAnalyticsAmountCents(reservation.depositAmount),
         application_fee_cents: feePlan.applicationFeeCents,
@@ -197,7 +210,14 @@ export async function createReservationPaymentSessionForCustomer(
 
     return { success: true, paymentUrl: url, sessionId, expiresAt };
   } catch (error) {
-    console.error("Error creating payment session:", error);
+    log.error({
+      checkout: {
+        event: "payment_session_failed",
+        reservationId,
+        source,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
     return { error: "errors.paymentSessionError" };
   }
 }

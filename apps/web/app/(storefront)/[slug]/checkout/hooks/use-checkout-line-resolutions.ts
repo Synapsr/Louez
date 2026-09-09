@@ -1,135 +1,79 @@
-import { useEffect, useMemo, useState } from 'react';
+"use client";
 
-import type { CartItem } from '@/contexts/cart-context';
-import { orpcClient } from '@/lib/orpc/react';
+import { useMemo } from "react";
 
-import type { LineResolutionState } from '../types';
+import { useQueries } from "@tanstack/react-query";
+
+import type { CartItem } from "@/contexts/cart-context";
+import { storefrontQueries } from "@/lib/queries/storefront.queries";
+
+import type { LineResolutionState } from "../checkout.types";
 
 interface UseCheckoutLineResolutionsParams {
   items: CartItem[];
 }
 
-export function useCheckoutLineResolutions({
-  items,
-}: UseCheckoutLineResolutionsParams) {
-  const [lineResolutions, setLineResolutions] = useState<
-    Record<string, LineResolutionState>
-  >({});
+/**
+ * Resolves every cart line to a concrete attribute combination (the unit the
+ * server will reserve). One query per line, cached with the storefront
+ * availability queries so a line already resolved on the product page is
+ * free here.
+ */
+export const useCheckoutLineResolutions = ({ items }: UseCheckoutLineResolutionsParams) => {
+  const resolutions = useQueries({
+    queries: items.map((item) => ({
+      ...storefrontQueries.resolveCombination({
+        productId: item.productId,
+        quantity: item.quantity,
+        startDate: item.startDate,
+        endDate: item.endDate,
+        selectedAttributes: item.selectedAttributes,
+      }),
+      retry: false,
+    })),
+  });
 
-  useEffect(() => {
-    let cancelled = false;
+  return useMemo(() => {
+    const lineResolutions: Record<string, LineResolutionState> = {};
+    const itemsWithResolved: CartItem[] = [];
+    let hasInvalidLines = false;
+    let hasUnresolvedLines = false;
 
-    async function resolveCombinations() {
-      if (items.length === 0) {
-        setLineResolutions({});
+    items.forEach((item, index) => {
+      const query = resolutions[index];
+
+      if (!query || query.isPending) {
+        lineResolutions[item.lineId] = { status: "loading" };
+        hasUnresolvedLines = true;
+        itemsWithResolved.push(item);
         return;
       }
 
-      const loadingState = Object.fromEntries(
-        items.map((item) => [item.lineId, { status: 'loading' as const }]),
-      );
-      setLineResolutions(loadingState);
-
-      const nextResolved: Record<string, LineResolutionState> = {};
-
-      await Promise.all(
-        items.map(async (item) => {
-          try {
-            const result =
-              await orpcClient.storefront.availability.resolveCombination({
-                productId: item.productId,
-                quantity: item.quantity,
-                startDate: item.startDate,
-                endDate: item.endDate,
-                selectedAttributes: item.selectedAttributes,
-              });
-
-            nextResolved[item.lineId] = {
-              status: 'resolved',
-              combinationKey: result.combinationKey,
-              selectedAttributes: result.selectedAttributes,
-            };
-          } catch {
-            nextResolved[item.lineId] = { status: 'invalid' };
-          }
-        }),
-      );
-
-      if (!cancelled) {
-        setLineResolutions(nextResolved);
+      if (query.isError || !query.data) {
+        lineResolutions[item.lineId] = { status: "invalid" };
+        hasInvalidLines = true;
+        itemsWithResolved.push(item);
+        return;
       }
-    }
 
-    resolveCombinations();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [items]);
-
-  const {
-    itemsWithResolved,
-    hasInvalidLines,
-    hasUnresolvedLines,
-    canSubmitCheckout,
-  } = useMemo(() => {
-    const summary = items.reduce<{
-      itemsWithResolved: CartItem[];
-      hasInvalidLines: boolean;
-      hasUnresolvedLines: boolean;
-    }>(
-      (acc, item) => {
-        const resolved = lineResolutions[item.lineId];
-
-        if (!resolved || resolved.status === 'loading') {
-          return {
-            ...acc,
-            itemsWithResolved: [...acc.itemsWithResolved, item],
-            hasUnresolvedLines: true,
-          };
-        }
-
-        if (resolved.status === 'invalid') {
-          return {
-            ...acc,
-            itemsWithResolved: [...acc.itemsWithResolved, item],
-            hasInvalidLines: true,
-          };
-        }
-
-        return {
-          ...acc,
-          itemsWithResolved: [
-            ...acc.itemsWithResolved,
-            {
-              ...item,
-              resolvedCombinationKey: resolved.combinationKey,
-              resolvedAttributes: resolved.selectedAttributes,
-            },
-          ],
-        };
-      },
-      {
-        itemsWithResolved: [],
-        hasInvalidLines: false,
-        hasUnresolvedLines: false,
-      },
-    );
+      lineResolutions[item.lineId] = {
+        status: "resolved",
+        combinationKey: query.data.combinationKey,
+        selectedAttributes: query.data.selectedAttributes,
+      };
+      itemsWithResolved.push({
+        ...item,
+        resolvedCombinationKey: query.data.combinationKey,
+        resolvedAttributes: query.data.selectedAttributes,
+      });
+    });
 
     return {
-      itemsWithResolved: summary.itemsWithResolved,
-      hasInvalidLines: summary.hasInvalidLines,
-      hasUnresolvedLines: summary.hasUnresolvedLines,
-      canSubmitCheckout:
-        !summary.hasInvalidLines && !summary.hasUnresolvedLines,
+      lineResolutions,
+      itemsWithResolved,
+      hasInvalidLines,
+      hasUnresolvedLines,
+      canSubmitCheckout: !hasInvalidLines && !hasUnresolvedLines,
     };
-  }, [items, lineResolutions]);
-
-  return {
-    lineResolutions,
-    itemsWithResolved,
-    hasInvalidLines,
-    hasUnresolvedLines,
-    canSubmitCheckout,
-  };
-}
+  }, [items, resolutions]);
+};

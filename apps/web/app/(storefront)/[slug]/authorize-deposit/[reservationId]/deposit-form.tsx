@@ -1,377 +1,140 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { loadStripe } from '@stripe/stripe-js'
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from '@stripe/react-stripe-js'
-import { useTranslations } from 'next-intl'
-import { Button } from '@louez/ui'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
-import { Alert, AlertDescription } from '@louez/ui'
-import { Loader2, Shield, Info } from 'lucide-react'
-import { formatCurrency } from '@louez/utils'
-import { useFormatLocale } from '@/hooks/use-format-locale'
-import type { Locale } from '@/i18n/config'
-import {
-  createDepositPaymentIntent,
-  confirmDepositAuthorization,
-} from './actions'
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe, type Stripe, type StripeElementLocale } from "@stripe/stripe-js";
+import { useQuery } from "@tanstack/react-query";
+import { InfoIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import { Alert, AlertDescription, Skeleton } from "@louez/ui";
+
+import { Price } from "@/components/storefront/ui/price";
+
+import { createDepositPaymentIntent, type DepositAuthorizationError } from "./actions";
+import { DepositPaymentFields } from "./deposit-payment-fields";
 
 interface DepositFormProps {
-  store: {
-    id: string
-    name: string
-    slug: string
-    stripeAccountId: string
-    theme?: { primaryColor?: string } | null
-  }
-  reservation: {
-    id: string
-    number: string
-    depositAmount: number
-  }
-  customer: {
-    firstName: string
-    email: string
-  }
-  currency: string
-  locale: Locale
-  token: string
-  stripePublishableKey: string
+  slug: string;
+  reservationId: string;
+  token: string;
+  depositAmount: number;
+  currency: string;
+  stripeAccountId: string;
+  stripePublishableKey: string;
+  locale: StripeElementLocale;
+  theme: { primaryColor: string; mode: "light" | "dark" } | null;
 }
 
-function CheckoutForm({
-  store,
-  reservation,
+const INTENT_ERROR_KEYS: Record<DepositAuthorizationError, string> = {
+  store_not_found: "errors.generic",
+  reservation_not_found: "errors.notFound",
+  invalid_token: "errors.invalidToken",
+  stripe_not_configured: "errors.stripeNotConfigured",
+  deposit_already_authorized: "errors.alreadyAuthorized",
+  no_deposit_required: "errors.noDepositRequired",
+  payment_intent_creation_failed: "paymentInitError",
+  not_authorized: "errors.notAuthorized",
+  confirmation_failed: "confirmationError",
+};
+
+// One Stripe.js instance per connected account for the life of the page:
+// re-renders and re-mounts reuse it instead of loading the script again.
+const stripePromises = new Map<string, Promise<Stripe | null>>();
+
+const getStripePromise = (publishableKey: string, stripeAccountId: string) => {
+  const key = `${publishableKey}:${stripeAccountId}`;
+  const existing = stripePromises.get(key);
+  if (existing) {
+    return existing;
+  }
+  const created = loadStripe(publishableKey, { stripeAccount: stripeAccountId });
+  stripePromises.set(key, created);
+  return created;
+};
+
+/** Stripe Elements follows the store theme: primary colour, mode, control radius. */
+const buildAppearance = (theme: DepositFormProps["theme"]) => ({
+  theme: theme?.mode === "dark" ? ("night" as const) : ("stripe" as const),
+  variables: {
+    colorPrimary: theme?.primaryColor,
+    borderRadius: "8px",
+    fontFamily: "Inter, system-ui, sans-serif",
+    fontSizeBase: "16px",
+  },
+});
+
+/**
+ * Deposit hold form: amount, one info line, Stripe Elements. The intent is
+ * created once per page; the fields and the submit live in
+ * `DepositPaymentFields`.
+ */
+export const DepositForm = ({
+  slug,
+  reservationId,
+  token,
+  depositAmount,
   currency,
-  onSuccess,
-  t,
-}: Omit<DepositFormProps, 'customer' | 'token' | 'stripePublishableKey'> & {
-  onSuccess: (redirectUrl?: string) => void
-  t: ReturnType<typeof useTranslations<'storefront.authorizeDeposit'>>
-}) {
-  const { intl: formatLocale } = useFormatLocale()
-  const stripe = useStripe()
-  const elements = useElements()
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [isPaymentElementReady, setIsPaymentElementReady] = useState(false)
+  stripeAccountId,
+  stripePublishableKey,
+  locale,
+  theme,
+}: DepositFormProps) => {
+  const t = useTranslations("storefront.authorizeDeposit");
+  const intent = useQuery({
+    queryKey: ["storefront", "deposit-intent", slug, reservationId, token],
+    queryFn: () => createDepositPaymentIntent({ slug, reservationId, token }),
+    staleTime: Number.POSITIVE_INFINITY,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
 
-  const getStorefrontPath = (path: string) => {
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`
-    const hostnamePrefix = window.location.hostname.split('.')[0]
-    const isStoreSubdomain = hostnamePrefix === store.slug
-
-    return isStoreSubdomain
-      ? normalizedPath
-      : `/${store.slug}${normalizedPath}`
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!stripe || !elements) {
-      return
-    }
-
-    setIsProcessing(true)
-    setErrorMessage(null)
-
-    try {
-      // Confirm the payment (this creates the authorization hold)
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        confirmParams: {
-          return_url: `${window.location.origin}${getStorefrontPath(
-            `/authorize-deposit/${reservation.id}/success`
-          )}`,
-        },
-        redirect: 'if_required',
-      })
-
-      if (error) {
-        setErrorMessage(error.message || t('errors.generic'))
-        setIsProcessing(false)
-        return
-      }
-
-      if (paymentIntent && paymentIntent.status === 'requires_capture') {
-        // Authorization successful - update the database
-        const result = await confirmDepositAuthorization({
-          reservationId: reservation.id,
-          storeId: store.id,
-          paymentIntentId: paymentIntent.id,
-          paymentMethodId: paymentIntent.payment_method as string,
-        })
-
-        if (result.error) {
-          setErrorMessage(t('confirmationError'))
-          setIsProcessing(false)
-          return
-        }
-
-        onSuccess(result.redirectUrl)
-      } else {
-        setErrorMessage(t('unexpectedStatus'))
-        setIsProcessing(false)
-      }
-    } catch (err) {
-      console.error('Payment error:', err)
-      setErrorMessage(t('unexpectedError'))
-      setIsProcessing(false)
-    }
-  }
+  const intentError = intent.isError
+    ? t("paymentInitError")
+    : intent.data && !intent.data.ok
+      ? t(INTENT_ERROR_KEYS[intent.data.error])
+      : null;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Info box */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          {t('infoBox')}
-        </AlertDescription>
-      </Alert>
-
-      {/* Payment Element */}
-      <div className="border rounded-lg p-4 bg-background">
-        <PaymentElement
-          options={{
-            layout: 'tabs',
-          }}
-          onReady={() => {
-            setIsPaymentElementReady(true)
-          }}
-          onLoadError={(event) => {
-            console.error('Stripe PaymentElement failed to load:', event.error)
-            setErrorMessage(t('paymentInitError'))
-          }}
-        />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col items-center gap-1 rounded-2xl bg-muted p-4 text-center">
+        <span className="text-xs text-muted-foreground">{t("depositAmount")}</span>
+        <Price amount={depositAmount} size="xl" />
       </div>
 
-      {/* Error message */}
-      {errorMessage && (
-        <Alert variant="error">
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
-      )}
+      <Alert>
+        <InfoIcon className="size-4" />
+        <AlertDescription>{t("infoBox")}</AlertDescription>
+      </Alert>
 
-      {/* Submit button */}
-      <Button
-        type="submit"
-        size="lg"
-        className="w-full"
-        isPending={isProcessing}
-        pendingContent={t('processing')}
-        disabled={!stripe || !elements || !isPaymentElementReady}
-        style={{
-          backgroundColor: store.theme?.primaryColor || undefined,
-        }}
-      >
-        <Shield data-slot="icon" />
-        {t('authorizeButton', {
-          amount: formatCurrency(
-            reservation.depositAmount,
-            currency,
-            formatLocale,
-          ),
-        })}
-      </Button>
-
-      {/* Security note */}
-      <p className="text-xs text-center text-muted-foreground">
-        {t('securePayment')}
-      </p>
-    </form>
-  )
-}
-
-export function DepositForm(props: DepositFormProps) {
-  const { intl: formatLocale } = useFormatLocale()
-  const router = useRouter()
-  const t = useTranslations('storefront.authorizeDeposit')
-  const [stripePromise, setStripePromise] = useState<ReturnType<typeof loadStripe> | null>(null)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSuccess, setIsSuccess] = useState(false)
-
-  useEffect(() => {
-    let isCancelled = false
-
-    // Load Stripe with the connected account
-    const stripe = loadStripe(
-      props.stripePublishableKey,
-      {
-        stripeAccount: props.store.stripeAccountId,
-      }
-    )
-    setStripePromise(stripe)
-    stripe
-      .then((resolvedStripe) => {
-        if (!isCancelled && !resolvedStripe) {
-          setError('payment_init_failed')
-        }
-      })
-      .catch((loadError) => {
-        console.error('Stripe.js failed to initialize:', loadError)
-        if (!isCancelled) {
-          setError('payment_init_failed')
-        }
-      })
-
-    // Create PaymentIntent
-    createDepositPaymentIntent({
-      reservationId: props.reservation.id,
-      storeId: props.store.id,
-      token: props.token,
-    }).then((result) => {
-      if (isCancelled) return
-
-      if (result.error) {
-        setError(result.error)
-      } else if (result.clientSecret) {
-        setClientSecret(result.clientSecret)
-      }
-      setIsLoading(false)
-    })
-
-    return () => {
-      isCancelled = true
-    }
-  }, [
-    props.stripePublishableKey,
-    props.store.stripeAccountId,
-    props.store.id,
-    props.reservation.id,
-    props.token,
-  ])
-
-  const handleSuccess = (redirectUrl?: string) => {
-    setIsSuccess(true)
-    // Redirect to account with auto-login after a short delay
-    setTimeout(() => {
-      if (redirectUrl) {
-        router.push(redirectUrl)
-      } else {
-        // Fallback to success page if no redirect URL (shouldn't happen normally)
-        const hostnamePrefix = window.location.hostname.split('.')[0]
-        const isStoreSubdomain = hostnamePrefix === props.store.slug
-        const successPath = `/authorize-deposit/${props.reservation.id}/success`
-        router.push(
-          isStoreSubdomain ? successPath : `/${props.store.slug}${successPath}`
-        )
-      }
-    }, 1500)
-  }
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="py-8">
-          <Alert variant="error">
-            <AlertDescription>
-              {error === 'deposit_already_authorized'
-                ? t('errors.alreadyAuthorized')
-                : error === 'no_deposit_required'
-                  ? t('errors.noDepositRequired')
-                  : t('errors.generic')}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (isSuccess) {
-    return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
-            <Shield className="h-8 w-8 text-green-600 dark:text-green-400" />
-          </div>
-          <h3 className="text-xl font-semibold mb-2">{t('success.title')}</h3>
-          <p className="text-muted-foreground">{t('redirecting')}</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (!clientSecret || !stripePromise) {
-    return (
-      <Card>
-        <CardContent className="py-8">
-          <Alert variant="error">
-            <AlertDescription>
-              {t('paymentInitError')}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5" />
-          {t('title')}
-        </CardTitle>
-        <CardDescription>
-          {t('subtitle', { number: props.reservation.number })}
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {/* Amount display */}
-        <div className="mb-6 p-4 rounded-lg bg-muted/50 text-center">
-          <p className="text-sm text-muted-foreground mb-1">{t('depositAmount')}</p>
-          <p className="text-3xl font-bold">
-            {formatCurrency(
-              props.reservation.depositAmount,
-              props.currency,
-              formatLocale,
-            )}
-          </p>
+      {intent.isPending ? (
+        <div className="flex flex-col gap-3" aria-busy>
+          <Skeleton className="h-11 w-full rounded-lg" />
+          <Skeleton className="h-11 w-full rounded-lg" />
+          <Skeleton className="h-12 w-full rounded-lg" />
         </div>
-
+      ) : intentError ? (
+        <Alert variant="error">
+          <AlertDescription>{intentError}</AlertDescription>
+        </Alert>
+      ) : intent.data?.ok ? (
         <Elements
-          stripe={stripePromise}
+          stripe={getStripePromise(stripePublishableKey, stripeAccountId)}
           options={{
-            clientSecret,
-            appearance: {
-              theme: 'stripe',
-              variables: {
-                colorPrimary: props.store.theme?.primaryColor || '#0066FF',
-              },
-            },
-            locale: props.locale,
+            clientSecret: intent.data.clientSecret,
+            appearance: buildAppearance(theme),
+            locale,
           }}
         >
-          <CheckoutForm
-            store={props.store}
-            reservation={props.reservation}
-            currency={props.currency}
-            locale={props.locale}
-            onSuccess={handleSuccess}
-            t={t}
+          <DepositPaymentFields
+            slug={slug}
+            reservationId={reservationId}
+            token={token}
+            depositAmount={depositAmount}
+            currency={currency}
           />
         </Elements>
-      </CardContent>
-    </Card>
-  )
-}
+      ) : null}
+    </div>
+  );
+};

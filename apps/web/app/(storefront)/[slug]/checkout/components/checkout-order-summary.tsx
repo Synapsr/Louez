@@ -1,536 +1,327 @@
-'use client';
+"use client";
 
-import { format } from 'date-fns';
-import { CalendarDays, Shield, Tag, Truck } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { CalendarDays, ShieldCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import type { TaxSettings } from '@louez/types';
-import {
-  Alert,
-  AlertDescription,
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  Separator,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@louez/ui';
-import { cn, formatCurrency, isFixedPriceProduct } from '@louez/utils';
+import type { TaxSettings } from "@louez/types";
+import { Button, Separator, Tooltip, TooltipPopup, TooltipTrigger } from "@louez/ui";
+import { cn, isFixedPriceProduct } from "@louez/utils";
 
-import { ProductImage } from '@/components/product/product-image';
-import { useFormatLocale } from '@/hooks/use-format-locale';
+import { ProductImage } from "@/components/product/product-image";
+import { Price } from "@/components/storefront/ui/price";
+import type { CartItem } from "@/contexts/cart-context";
+import { useDiscountVisibility } from "@/contexts/store-context";
+import { useFormatLocale } from "@/hooks/use-format-locale";
+import { useFormatMoney } from "@/hooks/use-format-money";
+import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
+import { groupCartLinesByParent } from "@/lib/utils/cart-required-accessories";
+import { getDetailedDuration } from "@/lib/utils/duration";
+import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibility";
 
-import { getDetailedDuration } from '@/lib/utils/duration';
-import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
-import { getEffectiveDiscountPercent } from '@/lib/utils/util.discount-visibility';
-import { groupCartLinesByParent } from '@/lib/utils/cart-required-accessories';
-
-import type { CartItem } from '@/contexts/cart-context';
-import { useDiscountVisibility } from '@/contexts/store-context';
-
-import type { ValidatedPromo } from '../promo-actions';
-import type { LineResolutionState } from '../types';
-import { CheckoutPromoCode } from './checkout-promo-code';
+import type {
+  CheckoutTulipInsurance,
+  LineResolutionState,
+  ReservationMode,
+  TulipQuotePreview,
+  ValidatedPromo,
+} from "../checkout.types";
+import { CheckoutDeposit } from "./checkout-deposit";
+import type { CheckoutTotals } from "../util.checkout-totals";
 
 interface CheckoutOrderSummaryProps {
   items: CartItem[];
-  pricingMode: 'day' | 'hour' | 'week';
-  reservationMode: 'payment' | 'request';
-  depositPercentage: number;
+  reservationMode: ReservationMode;
   taxSettings?: TaxSettings;
-  currency: string;
   globalStartDate: string | null;
   globalEndDate: string | null;
   subtotal: number;
   originalSubtotal: number;
   totalSavings: number;
   totalDeposit: number;
-  totalWithDelivery: number;
+  totals: CheckoutTotals;
   hasDeliveryLegs: boolean;
   deliveryFee: number;
-  tulipInsurance?: {
-    enabled: boolean;
-    mode: 'required' | 'optional' | 'no_public';
+  deliveryFeeReady: boolean;
+  tulipInsurance?: CheckoutTulipInsurance;
+  tulipQuote: {
+    preview: TulipQuotePreview;
+    isLoading: boolean;
+    isFetched: boolean;
+    appliedAmount: number;
   };
   tulipInsuranceOptIn: boolean;
-  isTulipQuoteLoading: boolean;
-  isTulipQuoteFetched: boolean;
-  tulipQuotePreview?: {
-    mode: 'required' | 'optional' | 'no_public';
-    quoteUnavailable: boolean;
-    quoteError: string | null;
-    appliedOptIn: boolean;
-    amount: number;
-    insuredProductCount: number;
-    uninsuredProductCount: number;
-    insuredProductIds: string[];
-    error: string | null;
-  };
-  lineResolutions?: Record<string, LineResolutionState>;
-  hasActivePromoCodes?: boolean;
-  storeId?: string;
-  appliedPromo: ValidatedPromo | null;
+  lineResolutions: Record<string, LineResolutionState>;
+  promo: ValidatedPromo | null;
   discountAmount: number;
-  onApplyPromo: (promo: ValidatedPromo) => void;
-  onRemovePromo: () => void;
   onEditDates: () => void;
+  /** `card` = desktop sticky card; `bare` = inside the mobile disclosure. */
+  variant?: "card" | "bare";
+  className?: string;
 }
 
-export function CheckoutOrderSummary({
+const SummaryRow = ({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: React.ReactNode;
+  value: React.ReactNode;
+  tone?: "default" | "success" | "muted";
+}) => (
+  <div className="flex items-center justify-between gap-3 text-sm">
+    <span className="text-muted-foreground">{label}</span>
+    <span
+      className={cn(
+        "tabular-nums",
+        tone === "success" && "font-medium text-success",
+        tone === "muted" && "text-muted-foreground",
+      )}
+    >
+      {value}
+    </span>
+  </div>
+);
+
+export const CheckoutOrderSummary = ({
   items,
-  pricingMode,
   reservationMode,
-  depositPercentage,
   taxSettings,
-  currency,
   globalStartDate,
   globalEndDate,
   subtotal,
   originalSubtotal,
   totalSavings,
   totalDeposit,
-  totalWithDelivery,
+  totals,
   hasDeliveryLegs,
   deliveryFee,
+  deliveryFeeReady,
   tulipInsurance,
+  tulipQuote,
   tulipInsuranceOptIn,
-  isTulipQuoteLoading,
-  isTulipQuoteFetched,
-  tulipQuotePreview,
-  lineResolutions = {},
-  hasActivePromoCodes,
-  storeId,
-  appliedPromo,
+  lineResolutions,
+  promo,
   discountAmount,
-  onApplyPromo,
-  onRemovePromo,
   onEditDates,
-}: CheckoutOrderSummaryProps) {
-  const t = useTranslations('storefront.checkout');
-  const tCart = useTranslations('storefront.cart');
-  const tProduct = useTranslations('storefront.product');
-  const tErrors = useTranslations('errors');
-  const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
-  const formatMoney = (amount: number, currencyOverride = currency) =>
-    formatCurrency(amount, currencyOverride, formatLocale);
+  variant = "card",
+  className,
+}: CheckoutOrderSummaryProps) => {
+  const t = useTranslations("storefront.checkout");
+  const formatMoney = useFormatMoney();
+  const { intl: formatLocale } = useFormatLocale();
   const isDiscountVisible = useDiscountVisibility();
-  const showInsuranceUi =
-    tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
-  const showInsuranceSummary = showInsuranceUi && !isTulipQuoteLoading && isTulipQuoteFetched;
-  const insuredProductIdSet = new Set(
-    tulipQuotePreview?.insuredProductIds ?? [],
-  );
-  const estimatedInsuranceAmount =
-    tulipQuotePreview?.appliedOptIn && tulipQuotePreview.amount > 0
-      ? tulipQuotePreview.amount
-      : 0;
-  const totalWithEstimatedInsurance =
-    totalWithDelivery + estimatedInsuranceAmount;
-  const subtotalWithEstimatedInsurance = subtotal + estimatedInsuranceAmount;
-  const tulipQuoteErrorMessage =
-    tulipQuotePreview?.quoteError?.startsWith('errors.')
-      ? tErrors(tulipQuotePreview.quoteError.slice('errors.'.length) as never)
-      : null;
 
-  // Required accessories are listed right under the line they belong to.
-  const orderedLines: Array<{ item: CartItem; parentName?: string }> =
-    groupCartLinesByParent(items).flatMap((group) => [
-      { item: group.line },
-      ...group.children.map((child) => ({
-        item: child,
-        parentName: group.line.productName,
-      })),
-    ]);
+  const showInsurance = Boolean(tulipInsurance?.enabled) && tulipInsurance?.mode !== "no_public";
+  const showInsuranceLine = showInsurance && !tulipQuote.isLoading && tulipQuote.isFetched;
+  const isCoverApplied =
+    tulipQuote.preview.appliedOptIn &&
+    !tulipQuote.preview.quoteUnavailable &&
+    (tulipInsurance?.mode === "required" || tulipInsuranceOptIn);
+  const insuranceValue = (() => {
+    if (tulipQuote.appliedAmount > 0) return formatMoney(tulipQuote.appliedAmount);
+    if (tulipInsurance?.mode === "required") return t("insuranceRequiredBadge");
+    if (tulipQuote.preview.quoteUnavailable) return t("insuranceOptionalUnavailableShort");
+    return tulipInsuranceOptIn ? t("insuranceOptionalEnabled") : t("insuranceOptionalDisabled");
+  })();
 
-  const durationLabel = (() => {
-    if (!globalStartDate || !globalEndDate) return '';
+  const orderedLines = groupCartLinesByParent(items).flatMap((group) => [
+    { item: group.line, parentName: undefined },
+    ...group.children.map((child) => ({ item: child, parentName: group.line.productName })),
+  ]);
 
+  const periodLabel = (() => {
+    if (!globalStartDate || !globalEndDate) return null;
+    const dateFormat = new Intl.DateTimeFormat(formatLocale, { day: "numeric", month: "short" });
     const { days, hours } = getDetailedDuration(globalStartDate, globalEndDate);
-
-    if (pricingMode === 'hour') {
-      return `${days * 24 + hours}h`;
-    }
-
-    if (days === 0) return `${hours}h`;
-    if (hours === 0) return `${days}j`;
-    return `${days}j ${hours}h`;
+    const duration = days === 0 ? `${hours}h` : hours === 0 ? `${days}j` : `${days}j ${hours}h`;
+    return `${dateFormat.format(new Date(globalStartDate))} → ${dateFormat.format(new Date(globalEndDate))} · ${duration}`;
   })();
 
   return (
-    <div className="lg:col-span-2">
-      <Card className="sticky top-4">
-        <CardContent className="space-y-4 pt-6">
-          <h3 className="font-semibold">{t('summary')}</h3>
+    <div
+      className={cn(
+        "flex flex-col gap-4",
+        variant === "card" && "rounded-2xl bg-card p-4 shadow-card sm:p-6",
+        className,
+      )}
+    >
+      {variant === "card" && <h2 className="text-lg font-semibold leading-snug">{t("summary")}</h2>}
 
-          {globalStartDate && globalEndDate && (
-            <div className="bg-muted/50 flex items-center gap-2 rounded-lg px-3 py-2 text-sm">
-              <span className="text-muted-foreground">
-                {format(new Date(globalStartDate), 'dd MMM', {
-                  locale: dateLocale,
-                })}{' '}
-                {'\u2192'}{' '}
-                {format(new Date(globalEndDate), 'dd MMM', {
-                  locale: dateLocale,
-                })}
-              </span>
-              <Badge variant="expired" className="ml-auto">
-                {durationLabel}
-              </Badge>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={onEditDates}
-                aria-label={tCart('updateDates')}
-              >
-                <CalendarDays />
-              </Button>
-            </div>
-          )}
+      {periodLabel && (
+        <div className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2 text-sm">
+          <span className="truncate">{periodLabel}</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={onEditDates}
+            aria-label={t("advanceNotice.editDates")}
+            className="shrink-0"
+          >
+            <CalendarDays />
+          </Button>
+        </div>
+      )}
 
-          <div className="space-y-3">
-            <TooltipProvider>
-              {orderedLines.map(({ item, parentName }, index) => {
-                const priceResult = calculateCartItemPrice(
-                  item,
-                  globalStartDate,
-                  globalEndDate,
-                );
-                const itemTotal = priceResult.subtotal;
-                const discountPercent = priceResult.discountPercent;
-                const showItemDiscount = isDiscountVisible(
-                  getEffectiveDiscountPercent(priceResult),
-                );
-                const itemSavings = showItemDiscount ? priceResult.savings : 0;
-                const resolutionState = lineResolutions[item.lineId];
-                const requestedAttributes = item.selectedAttributes;
-                const resolvedAttributes =
-                  item.resolvedAttributes ||
-                  (resolutionState?.status === 'resolved'
-                    ? resolutionState.selectedAttributes
-                    : undefined);
-                const isInsuredProduct =
-                  showInsuranceSummary && insuredProductIdSet.has(item.productId);
+      <ul className="flex flex-col gap-3">
+        {orderedLines.map(({ item, parentName }) => {
+          const priceResult = calculateCartItemPrice(item, globalStartDate, globalEndDate);
+          const showItemDiscount = isDiscountVisible(getEffectiveDiscountPercent(priceResult));
+          const resolution = lineResolutions[item.lineId];
+          const attributes = item.resolvedAttributes ?? item.selectedAttributes;
 
-                return (
-                  <div
-                    key={item.lineId || `${item.productId}-${index}`}
-                    className={cn(
-                      'flex gap-3',
-                      parentName && 'border-border ml-4 border-l pl-3',
-                    )}
-                  >
-                    <ProductImage
-                      src={item.productImage}
-                      alt={item.productName}
-                      sizes="76px"
-                      containerClassName="h-14 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1">
-                        <p className="truncate text-sm font-medium">
-                          {item.productName}
-                        </p>
-                        {isInsuredProduct && (
-                          <Tooltip>
-                            <TooltipTrigger
-                              render={
-                                <span className="cursor-help">
-                                  <Shield className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                                </span>
-                              }
-                            />
-                            <TooltipContent side="top">
-                              <p>{t('insuranceEligibleProductTooltip')}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                      </div>
-                      {requestedAttributes &&
-                        Object.keys(requestedAttributes).length > 0 && (
-                          <p className="text-muted-foreground truncate text-[11px]">
-                            {t('requestedAttributesLabel')}:{' '}
-                            {Object.entries(requestedAttributes)
-                              .map(([key, value]) => `${key}: ${value}`)
-                              .join(' • ')}
-                          </p>
-                        )}
-                      {resolvedAttributes &&
-                        Object.keys(resolvedAttributes).length > 0 && (
-                          <p className="text-muted-foreground truncate text-[11px]">
-                            {t('resolvedAttributesLabel')}:{' '}
-                            {Object.entries(resolvedAttributes)
-                              .map(([key, value]) => `${key}: ${value}`)
-                              .join(' • ')}
-                          </p>
-                        )}
-                      {resolutionState?.status === 'loading' && (
-                        <p className="text-muted-foreground truncate text-[11px]">
-                          {t('lineCheckingAvailability')}
-                        </p>
-                      )}
-                      {resolutionState?.status === 'invalid' && (
-                        <p className="text-destructive truncate text-[11px]">
-                          {t('lineNeedsUpdateInline')}
-                        </p>
-                      )}
-                      {item.unavailableReason && (
-                        <p className="text-destructive truncate text-[11px]">
-                          {tCart(`unavailable.${item.unavailableReason}`)}
-                        </p>
-                      )}
-                      {parentName && (
-                        <p className="text-muted-foreground truncate text-[11px]">
-                          {tCart('requiredWith', { name: parentName })}
-                        </p>
-                      )}
-                      <p className="text-muted-foreground text-xs">
-                        {parentName && itemTotal === 0 ? (
-                          tCart('included')
-                        ) : (
-                          <>
-                            {item.quantity} {'\u00d7'}{' '}
-                            {formatMoney(
-                              itemTotal / Math.max(1, item.quantity),
-                              currency,
-                            )}
-                            {isFixedPriceProduct(item)
-                              ? ` \u00b7 ${tProduct('fixedPricingLabel')}`
-                              : null}
-                          </>
-                        )}
-                      </p>
-                      {showItemDiscount && discountPercent != null && (
-                        <Badge variant="success" className="mt-1 text-xs">
-                          -{Math.floor(discountPercent)}%
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium">
-                        {formatMoney(itemTotal, currency)}
-                      </p>
-                      {itemSavings > 0 && (
-                        <p className="text-xs text-green-600">
-                          -{formatMoney(itemSavings, currency)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </TooltipProvider>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            {totalSavings > 0 && (
-              <>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {tCart('subtotal')}
-                  </span>
-                  <span className="text-muted-foreground line-through">
-                    {formatMoney(originalSubtotal, currency)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>{t('pricing.discount')}</span>
-                  <span>-{formatMoney(totalSavings, currency)}</span>
-                </div>
-              </>
-            )}
-
-            {hasActivePromoCodes && storeId && (
-              <CheckoutPromoCode
-                storeId={storeId}
-                subtotal={subtotal}
-                currency={currency}
-                appliedPromo={appliedPromo}
-                onApply={onApplyPromo}
-                onRemove={onRemovePromo}
+          return (
+            <li key={item.lineId} className={cn("flex gap-3", parentName && "ml-4 border-l pl-3")}>
+              <ProductImage
+                src={item.productImage}
+                alt={item.productName}
+                sizes="56px"
+                containerClassName="h-12 shrink-0"
               />
-            )}
-
-            {discountAmount > 0 && appliedPromo && (
-              <div className="flex justify-between text-sm text-green-600">
-                <span className="flex items-center gap-1.5">
-                  <Tag className="h-3.5 w-3.5" />
-                  {t('promoCode.discount', { code: appliedPromo.code })}
-                </span>
-                <span>-{formatMoney(discountAmount, currency)}</span>
-              </div>
-            )}
-
-            {hasDeliveryLegs && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground flex items-center gap-1.5">
-                  <Truck className="h-3.5 w-3.5" />
-                  {t('deliveryFee')}
-                </span>
-                <span
-                  className={
-                    deliveryFee === 0 ? 'font-medium text-green-600' : ''
-                  }
-                >
-                  {deliveryFee === 0
-                    ? t('free')
-                    : formatMoney(deliveryFee, currency)}
-                </span>
-              </div>
-            )}
-
-            {showInsuranceSummary && tulipInsurance?.mode === 'required' && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {t('insuranceLineLabel')}
-                </span>
-                <span>
-                  {estimatedInsuranceAmount > 0
-                    ? formatMoney(estimatedInsuranceAmount, currency)
-                    : t('insuranceRequiredBadge')}
-                </span>
-              </div>
-            )}
-
-            {showInsuranceSummary && tulipInsurance?.mode === 'optional' && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {t('insuranceLineLabel')}
-                </span>
-                <span>
-                  {estimatedInsuranceAmount > 0
-                    ? formatMoney(estimatedInsuranceAmount, currency)
-                    : tulipQuotePreview?.quoteUnavailable
-                      ? t('insuranceOptionalUnavailableShort')
-                      : tulipInsuranceOptIn
-                        ? t('insuranceOptionalEnabled')
-                        : t('insuranceOptionalDisabled')}
-                </span>
-              </div>
-            )}
-
-            {showInsuranceSummary &&
-              (tulipQuotePreview?.insuredProductCount ?? 0) === 0 && (
-                <p className="text-muted-foreground text-xs">
-                  {t('insuranceNoInsurableProducts')}
-                </p>
-              )}
-
-            {showInsuranceSummary &&
-              (tulipQuotePreview?.insuredProductCount ?? 0) > 0 &&
-              (tulipQuotePreview?.uninsuredProductCount ?? 0) > 0 && (
-                <p className="text-muted-foreground text-xs">
-                  {t('insurancePartialCoverage', {
-                    insured: tulipQuotePreview?.insuredProductCount ?? 0,
-                    uninsured: tulipQuotePreview?.uninsuredProductCount ?? 0,
-                  })}
-                </p>
-              )}
-
-            {showInsuranceSummary &&
-              tulipQuotePreview?.quoteUnavailable &&
-              tulipQuoteErrorMessage && (
-                <Alert variant="warning">
-                  <AlertDescription>{tulipQuoteErrorMessage}</AlertDescription>
-                </Alert>
-              )}
-
-            {showInsuranceUi && isTulipQuoteLoading && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {t('insuranceLineLabel')}
-                </span>
-                <span className="text-muted-foreground animate-pulse">
-                  {t('insuranceEstimating')}
-                </span>
-              </div>
-            )}
-
-            <Separator />
-            <div className="flex justify-between text-lg font-semibold">
-              <span>{tCart('total')}</span>
-              <span className="text-primary">
-                {formatMoney(totalWithEstimatedInsurance, currency)}
-              </span>
-            </div>
-
-            {reservationMode === 'payment' && depositPercentage < 100 && (
-              <div className="space-y-1.5 pt-2">
-                <div className="flex justify-between text-base font-semibold">
-                  <span>{t('toPayNow')}</span>
-                  <span className="text-primary">
-                    {formatMoney(
-                      Math.round(
-                        (subtotalWithEstimatedInsurance - discountAmount) *
-                          depositPercentage,
-                      ) / 100,
-                      currency,
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <p className="truncate text-sm font-medium">{item.productName}</p>
+                  {showInsuranceLine &&
+                    tulipQuote.preview.insuredProductIds.includes(item.productId) && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          type="button"
+                          aria-label={t(
+                            isCoverApplied
+                              ? "insuranceCoveredProductTooltip"
+                              : "insuranceEligibleProductTooltip",
+                          )}
+                          className={cn(
+                            "inline-flex size-6 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            isCoverApplied ? "text-success" : "text-muted-foreground",
+                          )}
+                        >
+                          <ShieldCheck aria-hidden="true" className="size-3.5" />
+                        </TooltipTrigger>
+                        <TooltipPopup className="max-w-64">
+                          {t(
+                            isCoverApplied
+                              ? "insuranceCoveredProductTooltip"
+                              : "insuranceEligibleProductTooltip",
+                          )}
+                        </TooltipPopup>
+                      </Tooltip>
                     )}
-                  </span>
                 </div>
-                <p className="text-muted-foreground text-xs">
-                  {t('remainingAtPickup', {
-                    amount: formatMoney(
-                      Math.round(
-                        (subtotalWithEstimatedInsurance - discountAmount) *
-                          (100 - depositPercentage),
-                      ) / 100,
-                      currency,
-                    ),
-                  })}
+                {attributes && Object.keys(attributes).length > 0 && (
+                  <p className="truncate text-xs text-muted-foreground">
+                    {Object.values(attributes).join(" · ")}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {parentName && priceResult.subtotal === 0
+                    ? t("included")
+                    : `${item.quantity} × ${formatMoney(priceResult.subtotal / Math.max(1, item.quantity))}${
+                        isFixedPriceProduct(item) ? ` · ${t("fixedPrice")}` : ""
+                      }`}
                 </p>
+                {resolution?.status === "loading" && (
+                  <p className="text-xs text-muted-foreground">{t("lineCheckingAvailability")}</p>
+                )}
+                {(resolution?.status === "invalid" || item.unavailableReason) && (
+                  <p className="text-xs text-destructive">{t("lineNeedsUpdateInline")}</p>
+                )}
               </div>
-            )}
+              <div className="text-right">
+                <p className="text-sm font-medium tabular-nums">
+                  {formatMoney(priceResult.subtotal)}
+                </p>
+                {showItemDiscount && priceResult.discountPercent != null && (
+                  <p className="text-xs text-success">
+                    -{Math.floor(priceResult.discountPercent)}%
+                  </p>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
 
-            {taxSettings?.enabled && (
-              <p className="text-muted-foreground pt-2 text-center text-xs">
-                {taxSettings.displayMode === 'inclusive'
-                  ? tCart('pricesIncludeTax')
-                  : tCart('pricesExcludeTax')}
-              </p>
-            )}
+      <Separator />
+
+      <div className="flex flex-col gap-2">
+        {totalSavings > 0 ? (
+          <>
+            <SummaryRow
+              label={t("pricing.subtotal")}
+              value={<s>{formatMoney(originalSubtotal)}</s>}
+              tone="muted"
+            />
+            <SummaryRow
+              label={t("pricing.discount")}
+              value={`-${formatMoney(totalSavings)}`}
+              tone="success"
+            />
+          </>
+        ) : (
+          <SummaryRow label={t("pricing.subtotal")} value={formatMoney(subtotal)} />
+        )}
+
+        {promo && discountAmount > 0 && (
+          <SummaryRow
+            label={t("promoCode.discount", { code: promo.code })}
+            value={`-${formatMoney(discountAmount)}`}
+            tone="success"
+          />
+        )}
+
+        {hasDeliveryLegs && (
+          <SummaryRow
+            label={t("deliveryFee")}
+            value={
+              !deliveryFeeReady ? "—" : deliveryFee === 0 ? t("free") : formatMoney(deliveryFee)
+            }
+            tone={deliveryFeeReady && deliveryFee === 0 ? "success" : "default"}
+          />
+        )}
+
+        {showInsurance && tulipQuote.isLoading && (
+          <SummaryRow
+            label={t("insuranceLineLabel")}
+            value={t("insuranceEstimating")}
+            tone="muted"
+          />
+        )}
+        {showInsuranceLine && <SummaryRow label={t("insuranceLineLabel")} value={insuranceValue} />}
+
+        <Separator />
+
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-base font-medium">{t("pricing.total")}</span>
+          <Price amount={totals.total} size="lg" tone="primary" />
+        </div>
+
+        {totals.isPartialPayment && (
+          <>
+            <SummaryRow
+              label={t("toPayNow")}
+              value={<span className="font-semibold">{formatMoney(totals.amountDueNow)}</span>}
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("remainingAtPickup", { amount: formatMoney(totals.remainingAmount) })}
+            </p>
+          </>
+        )}
+
+        {totalDeposit > 0 && (
+          <div className="mt-1 flex flex-col gap-1 border-t pt-2">
+            <CheckoutDeposit amount={totalDeposit} reservationMode={reservationMode} />
           </div>
+        )}
 
-          {totalSavings > 0 && (
-            <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300">
-              {t('pricing.savingsBanner', {
-                amount: formatMoney(totalSavings, currency),
-              })}
-            </div>
-          )}
-
-          {totalDeposit > 0 && reservationMode === 'payment' && (
-            <div className="mt-2 space-y-2 border-t pt-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  {t('depositLabel')}
-                </span>
-                <span className="font-medium">
-                  {formatMoney(totalDeposit, currency)}
-                </span>
-              </div>
-              <p className="text-muted-foreground text-xs">
-                {t('depositAuthorizationInfo')}
-              </p>
-            </div>
-          )}
-
-          {totalDeposit > 0 && reservationMode !== 'payment' && (
-            <div className="text-muted-foreground mt-2 border-t pt-3 text-xs">
-              <p>
-                {t('depositInfo', {
-                  amount: formatMoney(totalDeposit, currency),
-                })}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {taxSettings?.enabled && (
+          <p className="text-xs text-muted-foreground">
+            {taxSettings.displayMode === "inclusive"
+              ? t("pricesIncludeTax")
+              : t("pricesExcludeTax")}
+          </p>
+        )}
+      </div>
     </div>
   );
-}
+};

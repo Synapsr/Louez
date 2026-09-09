@@ -19,6 +19,7 @@ mock.module("@louez/db", {
   namedExports: {
     buildReservationAvailabilityPredicate: () => undefined,
     buildReservationOverlapPredicate: () => undefined,
+    getReservationAvailabilityEnd: (reservation: { endDate: Date }) => reservation.endDate,
     buildUnitRentableDuringPredicate: () => undefined,
     db: {},
     getBlockingReservationStatuses: () => ["pending", "confirmed", "ongoing"],

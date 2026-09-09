@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 
-import type { AiAdvisorMode } from '@louez/types';
-import { advisorValidationCovers } from '@louez/utils';
+import type { AiAdvisorMode } from "@louez/types";
+import { advisorValidationCovers } from "@louez/utils";
 
-import { useAdvisor } from '@/contexts/advisor-context';
-import { useCart } from '@/contexts/cart-context';
-import { orpc } from '@/lib/orpc';
+import { useAdvisor } from "@/contexts/advisor-context";
+import { useCart } from "@/contexts/cart-context";
+import { orpc } from "@/lib/orpc";
 
 export interface CheckoutAdvisorGate {
   /** Advisor participates in this checkout (recommended or required mode). */
@@ -37,20 +37,16 @@ export interface CheckoutAdvisorGate {
  * Checkout-side view of the advisor validation state. The server re-enforces
  * everything in createReservation — this hook only drives the gate UI.
  */
-export function useCheckoutAdvisorGate(
-  advisorMode: AiAdvisorMode | null,
-): CheckoutAdvisorGate {
-  const { enabled, open, isOpen, conversationId, validationVersion } =
-    useAdvisor();
+export function useCheckoutAdvisorGate(advisorMode: AiAdvisorMode | null): CheckoutAdvisorGate {
+  const { enabled, open, isOpen, conversationId, validationVersion } = useAdvisor();
   const { items, globalStartDate, globalEndDate } = useCart();
 
-  const isActive =
-    enabled && (advisorMode === 'recommended' || advisorMode === 'required');
-  const isRequired = enabled && advisorMode === 'required';
+  const isActive = enabled && (advisorMode === "recommended" || advisorMode === "required");
+  const isRequired = enabled && advisorMode === "required";
 
   const statusQuery = useQuery({
     ...orpc.storefront.aiAdvisor.getConversationStatus.queryOptions({
-      input: { conversationId: conversationId ?? '' },
+      input: { conversationId: conversationId ?? "" },
     }),
     enabled: isRequired && conversationId !== null,
   });
@@ -62,8 +58,7 @@ export function useCheckoutAdvisorGate(
   useEffect(() => {
     const widgetJustClosed = wasOpenRef.current && !isOpen;
     wasOpenRef.current = isOpen;
-    const validationChanged =
-      validationVersion !== seenValidationVersionRef.current;
+    const validationChanged = validationVersion !== seenValidationVersionRef.current;
     seenValidationVersionRef.current = validationVersion;
     if (isRequired && conversationId && (widgetJustClosed || validationChanged)) {
       refetchStatus();
@@ -88,9 +83,8 @@ export function useCheckoutAdvisorGate(
     isValidated,
     serverValidated,
     validationStale: serverValidated && !isValidated,
-    isStatusLoading:
-      isRequired && conversationId !== null && statusQuery.isPending,
+    isStatusLoading: isRequired && conversationId !== null && statusQuery.isPending,
     conversationId,
-    openAdvisor: () => open({ intent: 'checkout' }),
+    openAdvisor: () => open({ intent: "checkout" }),
   };
 }

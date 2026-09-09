@@ -1,48 +1,17 @@
 /**
- * Centralized duration calculation utilities
- * Used consistently across the entire storefront
+ * Date and duration helpers for the storefront.
+ *
+ * The billed duration (`calculateDuration`, ceil semantics: any started
+ * period is billed in full) and `PricingMode` come from the shared packages
+ * so the client, the cart and the server round the same way.
  */
 
 import { resolveFormatLocale } from "@/lib/i18n/format-locale";
 
+export type { PricingMode } from "@louez/types";
+export { calculateDuration } from "@louez/utils";
+
 const DEFAULT_FORMAT_LOCALE = resolveFormatLocale(undefined).intl;
-
-export type PricingMode = 'day' | 'hour' | 'week'
-
-/**
- * Calculate the duration between two dates based on pricing mode
- * Uses Math.ceil (round up) - industry standard: any partial period = full period billed
- */
-export function calculateDuration(
-  startDate: Date | string,
-  endDate: Date | string,
-  pricingMode: PricingMode
-): number {
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
-  const end = typeof endDate === 'string' ? new Date(endDate) : endDate
-  const diffMs = end.getTime() - start.getTime()
-
-  switch (pricingMode) {
-    case 'hour':
-      return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)))
-    case 'week':
-      return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7)))
-    case 'day':
-    default:
-      return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
-  }
-}
-
-/**
- * Calculate the total price for a rental
- */
-export function calculateRentalPrice(
-  unitPrice: number,
-  quantity: number,
-  duration: number
-): number {
-  return unitPrice * quantity * duration
-}
 
 /**
  * Check if two date ranges overlap
@@ -52,41 +21,41 @@ export function dateRangesOverlap(
   range1Start: Date | string,
   range1End: Date | string,
   range2Start: Date | string,
-  range2End: Date | string
+  range2End: Date | string,
 ): boolean {
-  const start1 = typeof range1Start === 'string' ? new Date(range1Start) : range1Start
-  const end1 = typeof range1End === 'string' ? new Date(range1End) : range1End
-  const start2 = typeof range2Start === 'string' ? new Date(range2Start) : range2Start
-  const end2 = typeof range2End === 'string' ? new Date(range2End) : range2End
+  const start1 = typeof range1Start === "string" ? new Date(range1Start) : range1Start;
+  const end1 = typeof range1End === "string" ? new Date(range1End) : range1End;
+  const start2 = typeof range2Start === "string" ? new Date(range2Start) : range2Start;
+  const end2 = typeof range2End === "string" ? new Date(range2End) : range2End;
 
   // Ranges overlap if one starts before the other ends
-  return start1 < end2 && start2 < end1
+  return start1 < end2 && start2 < end1;
 }
 
 /**
  * Get default dates for rental (today + 1 day to today + 2 days)
  */
 export function getDefaultRentalDates(): { startDate: Date; endDate: Date } {
-  const startDate = new Date()
-  startDate.setHours(0, 0, 0, 0)
-  startDate.setDate(startDate.getDate() + 1) // Tomorrow
+  const startDate = new Date();
+  startDate.setHours(0, 0, 0, 0);
+  startDate.setDate(startDate.getDate() + 1); // Tomorrow
 
-  const endDate = new Date(startDate)
-  endDate.setDate(endDate.getDate() + 1) // Day after tomorrow
+  const endDate = new Date(startDate);
+  endDate.setDate(endDate.getDate() + 1); // Day after tomorrow
 
-  return { startDate, endDate }
+  return { startDate, endDate };
 }
 
 /**
  * Format a date for display
  */
 export function formatDate(date: Date | string, locale?: string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleDateString(locale ?? DEFAULT_FORMAT_LOCALE, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 /**
@@ -95,19 +64,19 @@ export function formatDate(date: Date | string, locale?: string): string {
 export function formatDateRange(
   startDate: Date | string,
   endDate: Date | string,
-  locale?: string
+  locale?: string,
 ): string {
-  return `${formatDate(startDate, locale)} - ${formatDate(endDate, locale)}`
+  return `${formatDate(startDate, locale)} - ${formatDate(endDate, locale)}`;
 }
 
 /**
  * Check if a date is in the past
  */
 export function isDateInPast(date: Date | string): boolean {
-  const d = typeof date === 'string' ? new Date(date) : date
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return d < today
+  const d = typeof date === "string" ? new Date(date) : date;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d < today;
 }
 
 /**
@@ -116,10 +85,10 @@ export function isDateInPast(date: Date | string): boolean {
  * Use getMinStartDateTime for the exact minimum time.
  */
 export function getMinStartDate(advanceNoticeMinutes: number = 0): Date {
-  const minDateTime = getMinStartDateTime(advanceNoticeMinutes)
-  const minDate = new Date(minDateTime)
-  minDate.setHours(0, 0, 0, 0)
-  return minDate
+  const minDateTime = getMinStartDateTime(advanceNoticeMinutes);
+  const minDate = new Date(minDateTime);
+  minDate.setHours(0, 0, 0, 0);
+  return minDate;
 }
 
 /**
@@ -128,14 +97,12 @@ export function getMinStartDate(advanceNoticeMinutes: number = 0): Date {
  */
 export function getMinStartDateTime(
   advanceNoticeMinutes: number = 0,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): Date {
-  return new Date(now.getTime() + advanceNoticeMinutes * 60 * 1000)
+  return new Date(now.getTime() + advanceNoticeMinutes * 60 * 1000);
 }
 
-export type AdvanceNoticeValidation =
-  | { valid: true }
-  | { valid: false; minimumStartTime: Date }
+export type AdvanceNoticeValidation = { valid: true } | { valid: false; minimumStartTime: Date };
 
 /**
  * Validate the exact start instant against the configured advance notice.
@@ -144,15 +111,13 @@ export type AdvanceNoticeValidation =
 export function validateAdvanceNotice(
   startDate: Date,
   advanceNoticeMinutes: number = 0,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): AdvanceNoticeValidation {
-  if (advanceNoticeMinutes <= 0) return { valid: true }
+  if (advanceNoticeMinutes <= 0) return { valid: true };
 
-  const minimumStartTime = getMinStartDateTime(advanceNoticeMinutes, now)
+  const minimumStartTime = getMinStartDateTime(advanceNoticeMinutes, now);
 
-  return startDate < minimumStartTime
-    ? { valid: false, minimumStartTime }
-    : { valid: true }
+  return startDate < minimumStartTime ? { valid: false, minimumStartTime } : { valid: true };
 }
 
 /**
@@ -162,14 +127,14 @@ export function validateAdvanceNotice(
 export function isTimeSlotAvailable(
   date: Date,
   timeSlot: string,
-  advanceNoticeMinutes: number = 0
+  advanceNoticeMinutes: number = 0,
 ): boolean {
-  const [hours, minutes] = timeSlot.split(':').map(Number)
-  const slotDateTime = new Date(date)
-  slotDateTime.setHours(hours, minutes, 0, 0)
+  const [hours, minutes] = timeSlot.split(":").map(Number);
+  const slotDateTime = new Date(date);
+  slotDateTime.setHours(hours, minutes, 0, 0);
 
-  const minDateTime = getMinStartDateTime(advanceNoticeMinutes)
-  return slotDateTime >= minDateTime
+  const minDateTime = getMinStartDateTime(advanceNoticeMinutes);
+  return slotDateTime >= minDateTime;
 }
 
 /**
@@ -177,19 +142,19 @@ export function isTimeSlotAvailable(
  */
 export function getDetailedDuration(
   startDate: Date | string,
-  endDate: Date | string
+  endDate: Date | string,
 ): { days: number; hours: number; minutes: number; totalHours: number; totalMinutes: number } {
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
-  const end = typeof endDate === 'string' ? new Date(endDate) : endDate
+  const start = typeof startDate === "string" ? new Date(startDate) : startDate;
+  const end = typeof endDate === "string" ? new Date(endDate) : endDate;
 
-  const diffMs = end.getTime() - start.getTime()
-  const totalMinutes = Math.floor(diffMs / (1000 * 60))
-  const totalHours = Math.floor(totalMinutes / 60)
-  const days = Math.floor(totalHours / 24)
-  const hours = totalHours % 24
-  const minutes = totalMinutes % 60
+  const diffMs = end.getTime() - start.getTime();
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const totalHours = Math.floor(totalMinutes / 60);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  const minutes = totalMinutes % 60;
 
-  return { days, hours, minutes, totalHours, totalMinutes }
+  return { days, hours, minutes, totalHours, totalMinutes };
 }
 
 /**
@@ -200,24 +165,24 @@ export function formatDetailedDuration(
   startDate: Date | string,
   endDate: Date | string,
   translations: {
-    day: string
-    days: string
-    and: string
-  }
+    day: string;
+    days: string;
+    and: string;
+  },
 ): string {
-  const { days, hours } = getDetailedDuration(startDate, endDate)
+  const { days, hours } = getDetailedDuration(startDate, endDate);
 
   if (days === 0) {
-    return `${hours}h`
+    return `${hours}h`;
   }
 
-  const dayLabel = days === 1 ? translations.day : translations.days
+  const dayLabel = days === 1 ? translations.day : translations.days;
 
   if (hours === 0) {
-    return `${days} ${dayLabel}`
+    return `${days} ${dayLabel}`;
   }
 
-  return `${days} ${dayLabel} ${translations.and} ${hours}h`
+  return `${days} ${dayLabel} ${translations.and} ${hours}h`;
 }
 
 /**
@@ -225,24 +190,24 @@ export function formatDetailedDuration(
  */
 export function formatDateTime(
   date: Date | string,
-  options?: { includeYear?: boolean; timezone?: string; locale?: string }
+  options?: { includeYear?: boolean; timezone?: string; locale?: string },
 ): { date: string; time: string } {
-  const d = typeof date === 'string' ? new Date(date) : date
-  const locale = options?.locale ?? DEFAULT_FORMAT_LOCALE
+  const d = typeof date === "string" ? new Date(date) : date;
+  const locale = options?.locale ?? DEFAULT_FORMAT_LOCALE;
 
   const dateStr = d.toLocaleDateString(locale, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    ...(options?.includeYear && { year: 'numeric' }),
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    ...(options?.includeYear && { year: "numeric" }),
     ...(options?.timezone && { timeZone: options.timezone }),
-  })
+  });
 
   const timeStr = d.toLocaleTimeString(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
+    hour: "2-digit",
+    minute: "2-digit",
     ...(options?.timezone && { timeZone: options.timezone }),
-  })
+  });
 
-  return { date: dateStr, time: timeStr }
+  return { date: dateStr, time: timeStr };
 }

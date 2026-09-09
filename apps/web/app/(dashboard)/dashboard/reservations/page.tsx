@@ -1,3 +1,4 @@
+import { PendingDateChangeRequests } from "@/components/reservations/pending-date-change-requests";
 import { Suspense } from "react";
 
 import { getDashboardReservationsList } from "@louez/api/services";
@@ -180,6 +181,7 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
 
   return (
     <Suspense fallback={<ReservationsTableSkeleton />}>
+      <PendingDateChangeRequests />
       <ReservationsPageContent
         view={view}
         restorePreferredView={!params.view && (!hasListParams || shouldRestorePreferredView)}

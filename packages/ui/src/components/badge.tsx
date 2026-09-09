@@ -28,6 +28,9 @@ const badgeVariants = cva(
           "border-input bg-background text-foreground dark:bg-input/32 [button,a&]:hover:bg-accent/50 dark:[button,a&]:hover:bg-input/48",
         pending: "bg-badge-pending-background text-badge-pending-foreground font-semibold",
         progress: "bg-badge-progress-background text-badge-progress-foreground font-semibold",
+        // Discounts and offers: a strong neutral pill, distinct from the
+        // status hues and safe on top of any tenant primary colour.
+        promo: "bg-badge-promo-background text-badge-promo-foreground font-semibold",
         secondary: "bg-secondary text-secondary-foreground [button,a&]:hover:bg-secondary/90",
         submitted: "bg-badge-submitted-background text-badge-submitted-foreground font-semibold",
         review: "bg-badge-review-background text-badge-review-foreground font-semibold",
@@ -46,7 +49,7 @@ interface BadgeProps extends useRender.ComponentProps<"span"> {
   size?: VariantProps<typeof badgeVariants>["size"];
 }
 
-function Badge({ className, variant, size, render, ...props }: BadgeProps) {
+const Badge = ({ className, variant, size, render, ...props }: BadgeProps) => {
   const defaultProps = {
     className: cn(badgeVariants({ className, size, variant })),
     "data-slot": "badge",
@@ -57,6 +60,6 @@ function Badge({ className, variant, size, render, ...props }: BadgeProps) {
     props: mergeProps<"span">(defaultProps, props),
     render,
   });
-}
+};
 
 export { Badge, badgeVariants };

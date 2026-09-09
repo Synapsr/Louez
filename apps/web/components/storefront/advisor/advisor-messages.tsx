@@ -1,15 +1,24 @@
-'use client';
+"use client";
 
-import type { UIMessage } from '@ai-sdk/react';
-import { useTranslations } from 'next-intl';
+import type { UIMessage } from "@ai-sdk/react";
+import { useTranslations } from "next-intl";
 
-import { cn } from '@louez/utils';
+import { cn } from "@louez/utils";
 
-import { isVerificationKickoff } from '@/lib/ai/advisor/kickoff';
+import { isVerificationKickoff } from "@/lib/ai/advisor/kickoff";
 
-import { AdvisorAssistantAvatar } from './advisor-assistant-avatar';
-import { AdvisorProductCards } from './advisor-product-cards';
-import type { AdvisorRecommendedProduct } from './advisor-product-cards';
+import { AdvisorAssistantAvatar } from "./advisor-assistant-avatar";
+import { AdvisorProductCards } from "./advisor-product-cards";
+import type { AdvisorRecommendedProduct } from "./advisor-product-cards";
+
+/** Products carried by a `recommend_products` tool result, or none. */
+const getRecommendedProducts = (output: unknown): AdvisorRecommendedProduct[] => {
+  if (typeof output !== "object" || output === null || !("products" in output)) {
+    return [];
+  }
+  const { products } = output;
+  return Array.isArray(products) ? products : [];
+};
 
 type AdvisorMessagesProps = {
   messages: UIMessage[];
@@ -26,13 +35,11 @@ export const AdvisorMessages = ({
   welcomeText,
   hideWelcome = false,
 }: AdvisorMessagesProps) => {
-  const t = useTranslations('storefront.advisor');
+  const t = useTranslations("storefront.advisor");
 
   // The hidden verification kickoff is a real user turn (persisted + sent to
   // the model) but must never render as a customer message on any surface.
-  const visibleMessages = messages.filter(
-    (message) => !isVerificationKickoff(message),
-  );
+  const visibleMessages = messages.filter((message) => !isVerificationKickoff(message));
 
   return (
     <div className="space-y-4 pb-2">
@@ -48,39 +55,30 @@ export const AdvisorMessages = ({
       {visibleMessages.map((message) => (
         <div
           key={message.id}
-          className={cn(
-            'flex',
-            message.role === 'user' ? 'justify-end' : 'justify-start',
-          )}
+          className={cn("flex", message.role === "user" ? "justify-end" : "justify-start")}
         >
-          {message.role === 'assistant' && <AdvisorAssistantAvatar />}
+          {message.role === "assistant" && <AdvisorAssistantAvatar />}
           <div
             className={cn(
-              'max-w-[85%] text-sm leading-relaxed',
-              message.role === 'user'
-                ? 'rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-primary-foreground'
-                : 'pt-0.5 text-foreground',
+              "max-w-[85%] text-sm leading-relaxed",
+              message.role === "user"
+                ? "rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-primary-foreground"
+                : "pt-0.5 text-foreground",
             )}
           >
             {message.parts.map((part, index) => {
-              if (part.type === 'text') {
+              if (part.type === "text") {
                 return (
-                  <p key={index} className="whitespace-pre-wrap">
+                  <p key={`${message.id}-${index}`} className="whitespace-pre-wrap">
                     {part.text}
                   </p>
                 );
               }
-              if (
-                part.type === 'tool-recommend_products' &&
-                part.state === 'output-available'
-              ) {
-                const output = part.output as {
-                  products?: AdvisorRecommendedProduct[];
-                };
+              if (part.type === "tool-recommend_products" && part.state === "output-available") {
                 return (
                   <AdvisorProductCards
-                    key={index}
-                    products={output.products ?? []}
+                    key={`${message.id}-${index}`}
+                    products={getRecommendedProducts(part.output)}
                   />
                 );
               }
@@ -90,7 +88,7 @@ export const AdvisorMessages = ({
         </div>
       ))}
 
-      {isLoading && messages[messages.length - 1]?.role === 'user' && (
+      {isLoading && messages[messages.length - 1]?.role === "user" && (
         <div className="flex items-start">
           <AdvisorAssistantAvatar />
           <span className="flex gap-1.5 pt-2.5" aria-hidden="true">
@@ -98,7 +96,7 @@ export const AdvisorMessages = ({
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/40 [animation-delay:150ms]" />
             <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/40 [animation-delay:300ms]" />
           </span>
-          <span className="sr-only">{t('typing')}</span>
+          <span className="sr-only">{t("typing")}</span>
         </div>
       )}
     </div>

@@ -1,36 +1,37 @@
-'use client';
+"use client";
 
-import { MessageCircleQuestion } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { MessageCircleQuestionIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-import { cn } from '@louez/utils';
+import { Button } from "@louez/ui";
+import { cn } from "@louez/utils";
 
-type AdvisorLauncherProps = {
+interface AdvisorLauncherProps {
   isOpen: boolean;
   onClick: () => void;
-};
+}
 
 /**
- * Floating advisor button. Sits above the mobile cart button (bottom-4) and
- * in the bottom-right corner on desktop where no cart button exists.
+ * The one floating element of the storefront: bottom-right, above the home
+ * indicator, lifted over a sticky action bar when a page has one.
  */
 export const AdvisorLauncher = ({ isOpen, onClick }: AdvisorLauncherProps) => {
-  const t = useTranslations('storefront.advisor');
+  const t = useTranslations("storefront.advisor");
 
   return (
-    <button
+    <Button
       type="button"
+      size="icon-xl"
       onClick={onClick}
-      aria-label={t('open')}
+      aria-label={t("open")}
       className={cn(
-        'fixed right-4 bottom-20 z-50 lg:right-6 lg:bottom-6',
-        'flex h-14 w-14 items-center justify-center rounded-full',
-        'bg-primary text-primary-foreground shadow-lg shadow-primary/25',
-        'transition-all duration-200 hover:scale-105 active:scale-95',
-        isOpen && 'pointer-events-none scale-90 opacity-0',
+        "fixed right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+--spacing(4))] z-40 size-14 rounded-full shadow-raised",
+        "[body:has([data-slot=sticky-action-bar])_&]:bottom-[calc(env(safe-area-inset-bottom,0px)+--spacing(24))] lg:[body:has([data-slot=sticky-action-bar])_&]:bottom-4",
+        "transition-[opacity,transform] duration-200 motion-safe:hover:scale-105 motion-safe:active:scale-95",
+        isOpen && "pointer-events-none scale-90 opacity-0",
       )}
     >
-      <MessageCircleQuestion className="h-6 w-6" />
-    </button>
+      <MessageCircleQuestionIcon className="size-6" />
+    </Button>
   );
 };

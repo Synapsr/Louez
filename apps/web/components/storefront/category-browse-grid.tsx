@@ -1,11 +1,13 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { useTranslations } from "next-intl";
 
-import { Card } from "@louez/ui";
 import { LayersIcon, ProductIcon, TagIcon } from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
+import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { SharedImage } from "@/components/ui/shared-image";
 
 /** Reserved `?category=` values, so "browse everything" and "no category" stay
@@ -24,6 +26,11 @@ export interface CategoryBrowseEntry {
   /** Products in this bucket, availability aside. Shown while availability loads. */
   totalCount: number;
   variant: "category" | "uncategorized" | "all";
+  /**
+   * Store-relative catalog link. When set the tile is a real link
+   * (crawlable, middle-clickable); otherwise it is a button firing `onSelect`.
+   */
+  href?: string;
 }
 
 interface CategoryBrowseGridProps {
@@ -37,7 +44,8 @@ interface CategoryBrowseGridProps {
   showTotalsOnly?: boolean;
   /** The grid owns its heading by default; pass false when the host section already has one. */
   showTitle?: boolean;
-  onSelect: (categoryId: string) => void;
+  /** Client-side selection, for entries without an `href`. */
+  onSelect?: (categoryId: string) => void;
   className?: string;
 }
 
@@ -47,98 +55,117 @@ const VARIANT_ICON = {
   all: ProductIcon,
 } as const;
 
-export function CategoryBrowseGrid({
+/** Same surface as a product card: inset image, hairline that darkens, image zoom. */
+const tileClassName =
+  "group flex h-full w-full flex-col gap-2 rounded-2xl bg-card text-left shadow-card outline-none transition-shadow duration-150 hover:ring-1 hover:ring-foreground/12 focus-visible:ring-2 focus-visible:ring-ring";
+
+interface CategoryTileProps {
+  entry: CategoryBrowseEntry;
+  onSelect?: (categoryId: string) => void;
+  children: ReactNode;
+}
+
+const CategoryTile = ({ entry, onSelect, children }: CategoryTileProps) =>
+  entry.href ? (
+    <StorefrontLink href={entry.href} className={tileClassName}>
+      {children}
+    </StorefrontLink>
+  ) : (
+    <button type="button" onClick={() => onSelect?.(entry.id)} className={tileClassName}>
+      {children}
+    </button>
+  );
+
+/**
+ * Category tiles: image or icon, name, product count. Each tile is a link
+ * when the entry carries an `href` (home page) or a button when the host
+ * filters in place (catalog).
+ */
+export const CategoryBrowseGrid = ({
   entries,
   isAvailabilityLoading,
   showTotalsOnly = false,
   showTitle = true,
   onSelect,
   className,
-}: CategoryBrowseGridProps) {
+}: CategoryBrowseGridProps) => {
   const t = useTranslations("storefront.availability");
-  const tBrowse = useTranslations("storefront.availability.categoryBrowse");
 
   if (entries.length === 0) return null;
 
   const showTotals = showTotalsOnly || isAvailabilityLoading;
 
   return (
-    <div className={cn("space-y-3", className)}>
-      {showTitle && <h2 className="text-base font-semibold">{tBrowse("title")}</h2>}
+    <div className={cn("flex flex-col gap-3", className)} data-slot="category-browse-grid">
+      {showTitle ? (
+        <h2 className="text-lg font-semibold leading-snug">{t("categoryBrowse.title")}</h2>
+      ) : null}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 xl:grid-cols-4">
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4">
         {entries.map((entry) => {
           const Icon = VARIANT_ICON[entry.variant];
           const isAll = entry.variant === "all";
           const countLabel = showTotals
             ? t("productCountPlural", { count: entry.totalCount })
-            : tBrowse("availableCount", { count: entry.availableCount });
+            : t("categoryBrowse.availableCount", { count: entry.availableCount });
 
           return (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => onSelect(entry.id)}
-              className="group focus-visible:ring-ring rounded-xl text-left focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
-              <Card
-                className={cn(
-                  "h-full cursor-pointer gap-0 overflow-hidden p-0 transition-all duration-200 motion-reduce:transition-none",
-                  isAll
-                    ? "border-primary/40 bg-primary/5 group-hover:border-primary/60 group-hover:shadow-md"
-                    : "group-hover:border-primary/30 group-hover:shadow-md",
-                )}
-              >
-                <div className="bg-muted relative aspect-[4/3] overflow-hidden">
-                  {entry.imageUrl ? (
-                    <SharedImage
-                      src={entry.imageUrl}
-                      alt={entry.name}
-                      fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                      fallbackIcon={Icon}
-                      containerClassName="absolute inset-0 rounded-none"
-                      className="transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-                    />
-                  ) : (
-                    <div
-                      aria-hidden="true"
-                      className={cn(
-                        "absolute inset-0 flex items-center justify-center",
-                        isAll ? "bg-primary/10" : "bg-muted",
-                      )}
-                    >
-                      <Icon
-                        className={cn(
-                          "size-8 transition-transform duration-300 group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100",
-                          isAll ? "text-primary" : "text-muted-foreground",
-                        )}
+            <li key={entry.id} className="flex">
+              <CategoryTile entry={entry} onSelect={onSelect}>
+                {/* Inset image, as on the product card: the frame's radius is
+                    concentric with the tile's (outer = inner + padding). */}
+                <div className="p-1 pb-0">
+                  <div className="relative aspect-4/3 overflow-hidden rounded-xl bg-muted shadow-[0_0_1px_0.75px_var(--color-border)]">
+                    {entry.imageUrl ? (
+                      <SharedImage
+                        src={entry.imageUrl}
+                        alt=""
+                        fill
+                        sizes="(max-width: 767px) 50vw, (max-width: 1023px) 33vw, 25vw"
+                        fallbackIcon={Icon}
+                        containerClassName="absolute inset-0 rounded-none"
+                        // `scale` is its own property in Tailwind v4, not part of `transform`.
+                        className="object-cover motion-safe:transition-[opacity,scale] motion-safe:duration-[400ms] motion-safe:ease-out motion-safe:group-hover:scale-[1.04]"
                       />
-                    </div>
-                  )}
+                    ) : (
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-0 flex items-center justify-center text-muted-foreground"
+                      >
+                        <Icon className="size-8" />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-1 p-3">
-                  <p className="line-clamp-1 text-sm font-medium">{entry.name}</p>
-                  {entry.description && (
-                    <p className="text-muted-foreground line-clamp-2 text-xs">
+                <div className="flex flex-col gap-1 px-2 pb-2">
+                  <h3
+                    className={cn(
+                      "line-clamp-1 text-sm font-medium sm:text-base",
+                      isAll && "font-semibold",
+                    )}
+                  >
+                    {entry.name}
+                  </h3>
+                  {entry.description ? (
+                    <p className="line-clamp-1 text-xs text-muted-foreground">
                       {entry.description}
                     </p>
-                  )}
+                  ) : null}
                   <p
                     className={cn(
-                      "text-xs font-medium",
-                      showTotals ? "text-muted-foreground" : "text-primary",
+                      "text-xs tabular-nums",
+                      showTotals ? "text-muted-foreground" : "font-medium text-success",
                     )}
                   >
                     {countLabel}
                   </p>
                 </div>
-              </Card>
-            </button>
+              </CategoryTile>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </div>
   );
-}
+};

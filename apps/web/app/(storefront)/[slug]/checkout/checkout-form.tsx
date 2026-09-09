@@ -1,150 +1,75 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useRouter } from 'next/navigation';
+import { useStore } from "@tanstack/react-form";
+import { AlertCircle } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { usePostHog } from "posthog-js/react";
 
-import { revalidateLogic, useStore } from '@tanstack/react-form';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Check, MapPin, Truck, User } from 'lucide-react';
-import { useLocale, useTranslations } from 'next-intl';
-import { usePostHog } from 'posthog-js/react';
+import { Alert, AlertDescription, AlertTitle, Button, StepContent } from "@louez/ui";
 
-import { StepContent, toastManager } from '@louez/ui';
+import { cn } from "@louez/utils";
 
-import { DatePickerModal } from '@/components/storefront/date-picker-modal';
-
+import { DatePickerModal } from "@/components/storefront/date-picker-modal";
+import { BackLink } from "@/components/storefront/ui/back-link";
+import { useAnalytics } from "@/contexts/analytics-context";
+import { useCart } from "@/contexts/cart-context";
+import { useAppForm } from "@/hooks/form/form";
+import { defaultLocale } from "@/i18n/config";
+import { isLocale } from "@/lib/i18n/format-locale";
 import {
   checkoutAnalyticsBaseProperties,
   productAnalyticsEvents,
-} from '@/lib/product-analytics/analytics-events';
+} from "@/lib/product-analytics/analytics-events";
 
-import { useAppForm } from '@/hooks/form/form';
-import { useFormatLocale } from '@/hooks/use-format-locale';
-import { useStorefrontUrl } from '@/hooks/use-storefront-url';
-
-import { useAnalytics } from '@/contexts/analytics-context';
-import { useCart } from '@/contexts/cart-context';
-import { useStoreCurrency } from '@/contexts/store-context';
-
-import {
-  getMinStartDateTime,
-  validateAdvanceNotice,
-} from '@/lib/utils/duration';
-import { formatDurationFromMinutes } from '@/lib/utils/rental-duration';
-
-import { createReservation, getTulipQuotePreview } from './actions';
-import { CheckoutAdvisorGateCard } from './components/checkout-advisor-gate';
-import { CheckoutAdvisorVerificationPanel } from './components/checkout-advisor-verification-panel';
-import { CheckoutConfirmStep } from './components/checkout-confirm-step';
-import { CheckoutContactStep } from './components/checkout-contact-step';
-import { CheckoutDeliveryStep } from './components/checkout-delivery-step';
-import { CheckoutEmptyCartState } from './components/checkout-empty-cart-state';
-import { CheckoutOrderSummary } from './components/checkout-order-summary';
-import { CheckoutWizardStepper } from './components/checkout-wizard-stepper';
-import { useCheckoutAdvisorGate } from './hooks/use-checkout-advisor-gate';
-import { useCheckoutDelivery } from './hooks/use-checkout-delivery';
-import { useCheckoutLineResolutions } from './hooks/use-checkout-line-resolutions';
-import { useCheckoutStepFlow } from './hooks/use-checkout-step-flow';
-import type { ValidatedPromo } from './promo-actions';
-import { buildReservationPayload } from './reservation-payload';
 import type {
+  CheckoutBlockedReason,
   CheckoutFormProps,
   CheckoutFormValues,
-  CheckoutStep,
+  CheckoutInitialCustomer,
+  DeliveryAddress,
   StepId,
-} from './types';
-import { sanitizeTranslationParams } from './utils';
-import { createCheckoutSchemaWithOptions } from './validation';
-import { defaultLocale } from '@/i18n/config';
-import { isLocale } from '@/lib/i18n/format-locale';
+} from "./checkout.types";
+import { CheckoutConfirmStep } from "./components/checkout-confirm-step";
+import { CheckoutContactStep } from "./components/checkout-contact-step";
+import { CheckoutDeliveryStep } from "./components/checkout-delivery-step";
+import { CheckoutEmptyCartState } from "./components/checkout-empty-cart-state";
+import { CheckoutOrderSummary } from "./components/checkout-order-summary";
+import { CheckoutSummaryBar } from "./components/checkout-summary-bar";
+import { useCheckoutAdvanceNotice } from "./hooks/use-checkout-advance-notice";
+import { useCheckoutAdvisorGate } from "./hooks/use-checkout-advisor-gate";
+import { useCheckoutDelivery } from "./hooks/use-checkout-delivery";
+import { useCheckoutLineResolutions } from "./hooks/use-checkout-line-resolutions";
+import { useCheckoutPromo } from "./hooks/use-checkout-promo";
+import { useCheckoutStepFlow } from "./hooks/use-checkout-step-flow";
+import { useCheckoutSubmit } from "./hooks/use-checkout-submit";
+import { useCheckoutTulipQuote } from "./hooks/use-checkout-tulip-quote";
+import { calculateCheckoutTotals, getCheckoutSubmitLabel } from "./util.checkout-totals";
+import {
+  checkoutFormOptions,
+  createCheckoutValidator,
+  getCheckoutDefaultValues,
+} from "./validator.checkout";
 
-const STEP_ICONS: Record<StepId, CheckoutStep['icon']> = {
-  contact: User,
-  delivery: Truck,
-  address: MapPin,
-  confirm: Check,
-};
+type Coordinates = Pick<DeliveryAddress, "latitude" | "longitude">;
 
-const DEFAULT_VALUES: CheckoutFormValues = {
-  email: '',
-  firstName: '',
-  lastName: '',
-  phone: '',
-  isBusinessCustomer: false,
-  companyName: '',
-  companyNumber: '',
-  vatNumber: '',
-  address: '',
-  city: '',
-  postalCode: '',
-  notes: '',
-  tulipInsuranceOptIn: true,
-  acceptCgv: false,
-};
+const NO_COORDINATES: Coordinates = { latitude: null, longitude: null };
 
-const TULIP_CUSTOMER_INCOMPLETE_ERROR = 'errors.tulipCustomerDataIncomplete';
-const ADVANCE_NOTICE_ERROR = 'errors.advanceNoticeViolation';
+const CONTACT_FIELDS: Array<keyof CheckoutFormValues> = ["email", "firstName", "lastName", "phone"];
+const ADDRESS_FIELDS: Array<keyof CheckoutFormValues> = ["address", "city", "postalCode"];
+const COMPANY_FIELDS: Array<keyof CheckoutFormValues> = [
+  "companyName",
+  "companyNumber",
+  "vatNumber",
+];
 
-type TulipQuotePreviewState = Awaited<ReturnType<typeof getTulipQuotePreview>>;
-type CheckoutSubmitErrorSource = 'client_validation' | 'server';
-
-interface AdvanceNoticeIssue {
-  source: CheckoutSubmitErrorSource;
-  advanceNoticeMinutes: number;
-  duration: string;
-  failedStartDate: string | null;
-  minimumStartTime: string;
-}
-
-function createEmptyTulipQuotePreview(
-  mode: 'required' | 'optional' | 'no_public',
-): TulipQuotePreviewState {
-  return {
-    mode,
-    connected: false,
-    inclusionEnabled: false,
-    quoteUnavailable: false,
-    quoteError: null,
-    requestedOptIn: false,
-    appliedOptIn: false,
-    amount: 0,
-    insuredProductCount: 0,
-    uninsuredProductCount: 0,
-    insuredProductIds: [],
-    error: null,
-  };
-}
-
-class CheckoutSubmitError extends Error {
-  readonly params?: Record<string, string | number>;
-  readonly source: CheckoutSubmitErrorSource;
-  readonly minimumStartTime?: string;
-  readonly advanceNoticeMinutes?: number;
-
-  constructor(
-    message: string,
-    source: CheckoutSubmitErrorSource,
-    params?: Record<string, string | number>,
-    minimumStartTime?: string,
-    advanceNoticeMinutes?: number,
-  ) {
-    super(message);
-    this.name = 'CheckoutSubmitError';
-    this.source = source;
-    this.params = params;
-    this.minimumStartTime = minimumStartTime;
-    this.advanceNoticeMinutes = advanceNoticeMinutes;
-  }
-}
-
-export function CheckoutForm({
+export const CheckoutForm = ({
   storeSlug,
   storeId,
   pricingMode,
   reservationMode,
   requireCustomerAddress,
-  cgv,
   taxSettings,
   depositPercentage = 100,
   deliverySettings,
@@ -155,30 +80,25 @@ export function CheckoutForm({
   storeCountry,
   locations,
   tulipInsurance,
-  hasActivePromoCodes,
+  hasActivePromoCodes = false,
   advisorMode,
   businessHours,
   advanceNoticeMinutes,
   minRentalMinutes,
   timezone,
-}: CheckoutFormProps) {
-  const router = useRouter();
+  initialCustomer,
+}: CheckoutFormProps) => {
+  const t = useTranslations("storefront.checkout");
+  const tErrors = useTranslations("errors");
   const activeLocale = useLocale();
   const locale = isLocale(activeLocale) ? activeLocale : defaultLocale;
-  const formatLocale = useFormatLocale();
-  const t = useTranslations('storefront.checkout');
-  const tErrors = useTranslations('errors');
-  const currency = useStoreCurrency();
-  const { getUrl } = useStorefrontUrl(storeSlug);
   const posthog = usePostHog();
   const { trackEvent } = useAnalytics();
   const {
     items,
-    isResolving: isCartResolving,
-    clearCart,
+    isResolving,
     getSubtotal,
     getTotalDeposit,
-    getTotal,
     globalStartDate,
     globalEndDate,
     getDisplayableSavings,
@@ -186,129 +106,34 @@ export function CheckoutForm({
 
   const subtotal = getSubtotal();
   const totalDeposit = getTotalDeposit();
-  const total = getTotal();
-  // Only the savings the store is willing to advertise reach the summary.
   const { savings: totalSavings, originalSubtotal } = getDisplayableSavings();
 
-  const advisorGate = useCheckoutAdvisorGate(advisorMode ?? null);
-
-  const [appliedPromo, setAppliedPromo] = useState<ValidatedPromo | null>(null);
+  const [sessionCustomer, setSessionCustomer] = useState<CheckoutInitialCustomer | null>(
+    initialCustomer,
+  );
+  const [coordinates, setCoordinates] = useState<Coordinates>(NO_COORDINATES);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  const [advanceNoticeIssue, setAdvanceNoticeIssue] =
-    useState<AdvanceNoticeIssue | null>(null);
+  const stepRef = useRef<HTMLDivElement>(null);
+  const submitRef = useRef<(values: CheckoutFormValues) => Promise<void>>(async () => undefined);
 
-  const discountAmount = useMemo(() => {
-    if (!appliedPromo) return 0;
-    if (appliedPromo.type === 'percentage') {
-      return (
-        Math.round(
-          Math.min((subtotal * appliedPromo.value) / 100, subtotal) * 100,
-        ) / 100
-      );
-    }
-    return Math.round(Math.min(appliedPromo.value, subtotal) * 100) / 100;
-  }, [appliedPromo, subtotal]);
-
-  // Track checkout_started event on mount
-  const checkoutStartedRef = useRef(false);
-  useEffect(() => {
-    if (items.length > 0 && !checkoutStartedRef.current) {
-      checkoutStartedRef.current = true;
-      trackEvent({
-        eventType: 'checkout_started',
-        metadata: {
-          itemCount: items.length,
-          subtotal,
-        },
-      });
-    }
-  }, [items.length, subtotal, trackEvent]);
-
-  // Auto-remove promo code if subtotal drops below minimum amount
-  useEffect(() => {
-    if (!appliedPromo) return;
-    if (
-      appliedPromo.minimumAmount > 0 &&
-      subtotal < appliedPromo.minimumAmount
-    ) {
-      setAppliedPromo(null);
-      toastManager.add({ title: t('promoCode.minimumNotMet'), type: 'error' });
-    }
-  }, [appliedPromo, subtotal, t]);
-
-  const handleApplyPromo = useCallback((promo: ValidatedPromo) => {
-    setAppliedPromo(promo);
-  }, []);
-
-  const handleRemovePromo = useCallback(() => {
-    setAppliedPromo(null);
-  }, []);
-
-  const {
-    isDeliveryEnabled,
-    isMultiLocationEnabled,
-    isAddressDeliveryEnabled,
-    locations: checkoutLocations,
-    isDeliveryForced,
-    isDeliveryIncluded,
-    outboundMethod,
-    pickupLocationId,
-    handlePickupLocationChange,
-    outboundAddress,
-    outboundDistance,
-    outboundFee,
-    outboundError,
-    handleOutboundMethodChange,
-    handleOutboundAddressChange,
-    returnMethod,
-    returnLocationId,
-    handleReturnLocationChange,
-    returnAddress,
-    returnDistance,
-    returnFee,
-    returnError,
-    handleReturnMethodChange,
-    handleReturnAddressChange,
-    totalFee: deliveryTotalFee,
-    canContinue: deliveryCanContinue,
-    isDeliveryAmountEligible,
-  } = useCheckoutDelivery({
+  const advisorGate = useCheckoutAdvisorGate(advisorMode ?? null);
+  const promo = useCheckoutPromo({ items, subtotal });
+  const delivery = useCheckoutDelivery({
     deliverySettings,
     storeLatitude,
     storeLongitude,
     subtotal,
-    deliveryEligibilitySubtotal: subtotal - discountAmount,
+    deliveryEligibilitySubtotal: subtotal - promo.discountAmount,
     locations,
   });
-
-  const totalWithDelivery = total - discountAmount + deliveryTotalFee;
-  const tulipInsuranceMode = tulipInsurance?.mode ?? 'no_public';
-  const selectedPickupLocation = checkoutLocations.find((location) => location.id === pickupLocationId)
-    ?? checkoutLocations[0]
-    ?? null;
-  const selectedReturnLocation = checkoutLocations.find((location) => location.id === returnLocationId)
-    ?? selectedPickupLocation;
-  const logisticsLabel = (() => {
-    const pickupLabel =
-      outboundMethod === 'address'
-        ? t('deliveryCompact')
-        : selectedPickupLocation?.name ?? t('storeLocationFallback');
-    const returnLabel =
-      returnMethod === 'address'
-        ? t('collectionCompact')
-        : selectedReturnLocation?.name ?? pickupLabel;
-
-    return pickupLabel === returnLabel ? pickupLabel : `${pickupLabel} -> ${returnLabel}`;
-  })();
-
-  const { lineResolutions, itemsWithResolved, canSubmitCheckout } =
+  const { lineResolutions, itemsWithResolved, hasInvalidLines, hasUnresolvedLines } =
     useCheckoutLineResolutions({
       items,
     });
 
-  const checkoutSchema = useMemo(
+  const validator = useMemo(
     () =>
-      createCheckoutSchemaWithOptions((key, params) => t(key, params), {
+      createCheckoutValidator((key, params) => t(key, params), {
         requireAddress: requireCustomerAddress,
         country: storeCountry,
       }),
@@ -316,692 +141,359 @@ export function CheckoutForm({
   );
 
   const form = useAppForm({
-    defaultValues: DEFAULT_VALUES,
-    validationLogic: revalidateLogic({
-      mode: 'submit',
-      modeAfterSubmission: 'change',
-    }),
-    validators: {
-      onSubmit: checkoutSchema,
-    },
-    onSubmit: async ({ value }) => {
-      try {
-        await createReservationMutation.mutateAsync(value);
-      } catch {
-        // Mutation errors are handled in onError callback.
+    ...checkoutFormOptions,
+    defaultValues: getCheckoutDefaultValues(initialCustomer),
+    validators: { onSubmit: validator },
+    onSubmit: async ({ value }) => submitRef.current(value),
+  });
+
+  const values = useStore(form.store, (state) => state.values);
+  const showAddressInContact = requireCustomerAddress;
+
+  const validateCurrentStep = useCallback(
+    async (step: StepId): Promise<boolean> => {
+      if (step === "confirm") return true;
+
+      const fields = [
+        ...(step === "contact" ? CONTACT_FIELDS : []),
+        ...(step === "contact" && showAddressInContact ? ADDRESS_FIELDS : []),
+        ...(step === "contact" && form.getFieldValue("isBusinessCustomer") ? COMPANY_FIELDS : []),
+      ];
+
+      await Promise.all(fields.map((field) => form.validateField(field, "submit")));
+      const failedFields = fields.filter(
+        (field) => (form.getFieldMeta(field)?.errors?.length ?? 0) > 0,
+      );
+
+      if (failedFields.length > 0) {
+        posthog.capture(productAnalyticsEvents.checkoutStepValidationFailed, {
+          ...checkoutAnalyticsBaseProperties,
+          store_id: storeId,
+          step,
+          failed_fields: failedFields,
+        });
+        return false;
       }
+      return true;
     },
+    [form, posthog, showAddressInContact, storeId],
+  );
+
+  const stepFlow = useCheckoutStepFlow({
+    isDeliveryEnabled: delivery.isDeliveryEnabled,
+    validateCurrentStep,
+    scrollTargetRef: stepRef,
   });
 
-  const formValues = useStore(form.store, (state) => state.values);
-
-  const tulipInsuranceOptIn = formValues.tulipInsuranceOptIn;
-
-  const {
-    currentStep,
-    stepDirection,
-    steps,
-    currentStepIndex,
-    goToNextStep,
-    goToPreviousStep,
-    goToStep,
-  } = useCheckoutStepFlow({
-    isDeliveryEnabled,
-    stepIcons: STEP_ICONS,
-    validateCurrentStep: useCallback(
-      async (step: StepId): Promise<boolean> => {
-        if (step === 'contact') {
-          const fieldsToValidate: Array<keyof CheckoutFormValues> = [
-            'firstName',
-            'lastName',
-            'email',
-            'phone',
-          ];
-
-          if (requireCustomerAddress) {
-            fieldsToValidate.push('address', 'city', 'postalCode');
-          }
-
-          if (form.getFieldValue('isBusinessCustomer')) {
-            fieldsToValidate.push('companyName', 'companyNumber', 'vatNumber');
-          }
-
-          await Promise.all(
-            fieldsToValidate.map((fieldName) =>
-              form.validateField(fieldName, 'submit'),
-            ),
-          );
-
-          const failedFields = fieldsToValidate.filter(
-            (fieldName) =>
-              (form.getFieldMeta(fieldName)?.errors?.length ?? 0) > 0,
-          );
-
-          if (failedFields.length > 0) {
-            posthog.capture(
-              productAnalyticsEvents.checkoutStepValidationFailed,
-              {
-                ...checkoutAnalyticsBaseProperties,
-                store_id: storeId,
-                step,
-                failed_fields: failedFields,
-              },
-            );
-            return false;
-          }
-
-          return true;
-        }
-
-        if (step === 'confirm') {
-          await form.validateField('acceptCgv', 'submit');
-          const isValid =
-            (form.getFieldMeta('acceptCgv')?.errors?.length ?? 0) === 0;
-
-          if (!isValid) {
-            posthog.capture(
-              productAnalyticsEvents.checkoutStepValidationFailed,
-              {
-                ...checkoutAnalyticsBaseProperties,
-                store_id: storeId,
-                step,
-                failed_fields: ['acceptCgv'],
-              },
-            );
-          }
-
-          return isValid;
-        }
-
-        return true;
-      },
-      [form, posthog, requireCustomerAddress, storeId],
-    ),
+  const tulipQuote = useCheckoutTulipQuote({
+    storeId,
+    tulipInsurance,
+    isActive: !isResolving && !hasUnresolvedLines && !hasInvalidLines,
+    items: itemsWithResolved,
+    startDate: globalStartDate,
+    endDate: globalEndDate,
+    values,
+    requireCustomerAddress,
   });
+
+  const advanceNotice = useCheckoutAdvanceNotice({
+    startDate: globalStartDate,
+    advanceNoticeMinutes,
+    timezone,
+  });
+
+  const totals = useMemo(
+    () =>
+      calculateCheckoutTotals({
+        subtotal,
+        discountAmount: promo.discountAmount,
+        deliveryFee: delivery.totalFee,
+        insuranceAmount: tulipQuote.appliedAmount,
+        depositPercentage,
+        reservationMode,
+      }),
+    [
+      delivery.totalFee,
+      depositPercentage,
+      promo.discountAmount,
+      reservationMode,
+      subtotal,
+      tulipQuote.appliedAmount,
+    ],
+  );
+  const submitLabel = getCheckoutSubmitLabel(totals, reservationMode);
+
+  const blockedReason: CheckoutBlockedReason | null = hasInvalidLines
+    ? "lineNeedsUpdate"
+    : hasUnresolvedLines || isResolving
+      ? "resolving"
+      : tulipQuote.isLoading
+        ? "quoteLoading"
+        : tulipQuote.isRequiredAndFailed
+          ? "insuranceRequiredFailed"
+          : advisorGate.isRequired && !advisorGate.isValidated
+            ? "advisorRequired"
+            : advanceNotice.issue
+              ? "advanceNotice"
+              : null;
+
+  const { submit, isSubmitting, serverError, clearServerError } = useCheckoutSubmit({
+    storeId,
+    storeSlug,
+    reservationMode,
+    locale,
+    items: itemsWithResolved,
+    subtotal,
+    totals,
+    totalDeposit,
+    delivery,
+    isDeliveryEnabled: delivery.isDeliveryEnabled,
+    tulipInsuranceMode: tulipQuote.mode,
+    promoCode: promo.promo?.code,
+    advisorConversationId: advisorGate.conversationId ?? undefined,
+    blockedReason,
+    onAdvanceNoticeRejected: advanceNotice.reportServerIssue,
+  });
+
+  useEffect(() => {
+    submitRef.current = submit;
+  }, [submit]);
+
+  const checkoutStartedRef = useRef(false);
+  useEffect(() => {
+    if (items.length === 0 || checkoutStartedRef.current) return;
+    checkoutStartedRef.current = true;
+    trackEvent({ eventType: "checkout_started", metadata: { itemCount: items.length, subtotal } });
+  }, [items.length, subtotal, trackEvent]);
 
   useEffect(() => {
     if (items.length === 0) return;
-
     posthog.capture(productAnalyticsEvents.checkoutStepViewed, {
       ...checkoutAnalyticsBaseProperties,
       store_id: storeId,
-      step: currentStep,
-      step_index: currentStepIndex,
-      steps_total: steps.length,
-      direction: stepDirection,
+      step: stepFlow.currentStep,
+      step_index: stepFlow.currentStepIndex,
+      steps_total: stepFlow.steps.length,
+      direction: stepFlow.stepDirection,
     });
     // Only re-fire when the visible step actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep, posthog, storeId]);
+  }, [stepFlow.currentStep, posthog, storeId]);
 
-  const tulipQuoteCustomer = useMemo(() => {
-    const customerType: 'business' | 'individual' =
-      formValues.isBusinessCustomer ? 'business' : 'individual';
+  const handleSessionCustomer = (customer: CheckoutInitialCustomer | null) => {
+    setSessionCustomer(customer);
+    setCoordinates(NO_COORDINATES);
+    form.reset(getCheckoutDefaultValues(customer));
+  };
 
-    return {
-      customerType,
-      companyName: formValues.isBusinessCustomer
-        ? formValues.companyName
-        : undefined,
-      firstName: formValues.firstName,
-      lastName: formValues.lastName,
-      email: formValues.email,
-      phone: formValues.phone,
-      address: requireCustomerAddress ? formValues.address : undefined,
-      city: requireCustomerAddress ? formValues.city : undefined,
-      postalCode: requireCustomerAddress ? formValues.postalCode : undefined,
-    };
-  }, [
-    formValues.address,
-    formValues.city,
-    formValues.companyName,
-    formValues.email,
-    formValues.firstName,
-    formValues.isBusinessCustomer,
-    formValues.lastName,
-    formValues.phone,
-    formValues.postalCode,
-    requireCustomerAddress,
-  ]);
-
-  const tulipQuoteItems = useMemo(
-    () =>
-      itemsWithResolved
-        .map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-        }))
-        .sort(
-          (left, right) =>
-            left.productId.localeCompare(right.productId) ||
-            left.quantity - right.quantity,
-        ),
-    [itemsWithResolved],
-  );
-
-  const tulipQuoteRequest = useMemo(() => {
+  const handleUseCustomerAddress = (leg: "outbound" | "return") => {
+    const legAddress = leg === "outbound" ? delivery.outboundAddress : delivery.returnAddress;
     if (
-      !tulipInsurance?.enabled ||
-      tulipInsuranceMode === 'no_public' ||
-      currentStep !== 'confirm' ||
-      !globalStartDate ||
-      !globalEndDate ||
-      tulipQuoteItems.length === 0
+      legAddress.address ||
+      !values.address ||
+      coordinates.latitude === null ||
+      coordinates.longitude === null
     ) {
-      return null;
+      return;
     }
+    const change =
+      leg === "outbound"
+        ? delivery.handleOutboundAddressChange
+        : delivery.handleReturnAddressChange;
+    change(values.address, coordinates.latitude, coordinates.longitude);
+  };
 
-    return {
-      storeId,
-      customer: tulipQuoteCustomer,
-      items: tulipQuoteItems,
-      startDate: globalStartDate,
-      endDate: globalEndDate,
-      tulipInsuranceOptIn,
-    };
-  }, [
-    currentStep,
-    globalEndDate,
-    globalStartDate,
-    storeId,
-    tulipInsurance?.enabled,
-    tulipInsuranceMode,
-    tulipInsuranceOptIn,
-    tulipQuoteCustomer,
-    tulipQuoteItems,
-  ]);
-
-  const tulipQuoteQuery = useQuery({
-    queryKey: ['checkout', 'tulip-quote-preview', tulipQuoteRequest],
-    enabled: tulipQuoteRequest !== null,
-    staleTime: Infinity,
-    gcTime: 30 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    queryFn: async () => {
-      if (!tulipQuoteRequest) {
-        return createEmptyTulipQuotePreview(tulipInsuranceMode);
-      }
-
-      return getTulipQuotePreview(tulipQuoteRequest);
-    },
-  });
-
-  const tulipQuotePreview = useMemo(() => {
-    if (!tulipQuoteRequest) {
-      return createEmptyTulipQuotePreview(tulipInsuranceMode);
-    }
-
-    if (tulipQuoteQuery.data) {
-      return tulipQuoteQuery.data;
-    }
-
-    if (tulipQuoteQuery.isError) {
-      return {
-        ...createEmptyTulipQuotePreview(tulipInsuranceMode),
-        mode: tulipInsuranceMode,
-        quoteUnavailable: true,
-        quoteError: 'errors.tulipQuoteFailed',
-        error: 'errors.tulipQuoteFailed',
-      };
-    }
-
-    return createEmptyTulipQuotePreview(tulipInsuranceMode);
-  }, [
-    tulipInsuranceMode,
-    tulipQuoteQuery.data,
-    tulipQuoteQuery.isError,
-    tulipQuoteRequest,
-  ]);
-
-  const isTulipQuoteLoading =
-    tulipQuoteRequest !== null &&
-    (tulipQuoteQuery.isLoading ||
-      (tulipQuoteQuery.isFetching && !tulipQuoteQuery.data));
-
-  const isTulipQuoteFetched =
-    tulipQuoteQuery.data !== undefined || tulipQuoteQuery.isError;
-
-  useEffect(() => {
-    if (
-      tulipQuotePreview.mode === 'optional' &&
-      tulipQuotePreview.quoteUnavailable &&
-      form.getFieldValue('tulipInsuranceOptIn') &&
-      tulipQuotePreview.quoteError !== TULIP_CUSTOMER_INCOMPLETE_ERROR
-    ) {
-      form.setFieldValue('tulipInsuranceOptIn', false);
-    }
-  }, [
-    form,
-    tulipQuotePreview.mode,
-    tulipQuotePreview.quoteError,
-    tulipQuotePreview.quoteUnavailable,
-  ]);
-
-  const estimatedTulipInsuranceAmount =
-    tulipQuotePreview.appliedOptIn && tulipQuotePreview.amount > 0
-      ? tulipQuotePreview.amount
-      : 0;
-
-  const subtotalWithEstimatedInsurance =
-    subtotal + estimatedTulipInsuranceAmount;
-  const totalWithEstimatedInsurance =
-    totalWithDelivery + estimatedTulipInsuranceAmount;
-
-  const canSubmitCheckoutWithTulip =
-    canSubmitCheckout &&
-    !isCartResolving &&
-    !isTulipQuoteLoading &&
-    !(
-      tulipInsurance?.enabled &&
-      tulipQuotePreview.mode === 'required' &&
-      Boolean(tulipQuotePreview.error)
-    );
-
-  useEffect(() => {
-    if (!advanceNoticeIssue || !globalStartDate) return;
-    if (globalStartDate === advanceNoticeIssue.failedStartDate) return;
-
-    const validation = validateAdvanceNotice(
-      new Date(globalStartDate),
-      advanceNoticeIssue.advanceNoticeMinutes,
-    );
-    if (!validation.valid) return;
-
-    posthog.capture(productAnalyticsEvents.checkoutValidationRecovered, {
-      ...checkoutAnalyticsBaseProperties,
-      store_id: storeId,
-      error_code: ADVANCE_NOTICE_ERROR,
-      original_failure_source: advanceNoticeIssue.source,
-      recovery_action: 'dates_changed',
-    });
-    setAdvanceNoticeIssue(null);
-  }, [
-    advanceNoticeIssue,
-    globalStartDate,
-    posthog,
-    storeId,
-  ]);
-
-  const createReservationMutation = useMutation({
-    mutationFn: async (value: CheckoutFormValues) => {
-      if (items.length === 0) {
-        throw new CheckoutSubmitError('emptyCart', 'client_validation');
-      }
-      if (!canSubmitCheckoutWithTulip) {
-        throw new CheckoutSubmitError('lineNeedsUpdate', 'client_validation');
-      }
-      // Client-side mirror of the server-enforced advisor gate
-      if (advisorGate.isRequired && !advisorGate.isValidated) {
-        throw new CheckoutSubmitError(
-          'errors.advisorValidationRequired',
-          'client_validation',
-        );
-      }
-
-      if (globalStartDate) {
-        const advanceNoticeValidation = validateAdvanceNotice(
-          new Date(globalStartDate),
-          advanceNoticeMinutes,
-        );
-        if (!advanceNoticeValidation.valid) {
-          throw new CheckoutSubmitError(
-            ADVANCE_NOTICE_ERROR,
-            'client_validation',
-            {
-              duration: formatDurationFromMinutes(advanceNoticeMinutes),
-            },
-            advanceNoticeValidation.minimumStartTime.toISOString(),
-            advanceNoticeMinutes,
-          );
-        }
-      }
-
-      const payload = buildReservationPayload({
-        storeId,
-        pricingMode,
-        locale,
-        values: value,
-        items: itemsWithResolved,
-        subtotalAmount: subtotalWithEstimatedInsurance,
-        depositAmount: totalDeposit,
-        totalAmount: totalWithEstimatedInsurance,
-        outboundMethod,
-        outboundAddress,
-        pickupLocationId,
-        returnMethod,
-        returnAddress,
-        returnLocationId,
-        tulipInsuranceMode,
-        promoCode: appliedPromo?.code,
-        advisorConversationId: advisorGate.conversationId ?? undefined,
-      });
-
-      const result = await createReservation(payload);
-
-      if (result.error) {
-        const errorParams = sanitizeTranslationParams(result.errorParams);
-        const serverAdvanceNoticeMinutes =
-          typeof errorParams.advanceNoticeMinutes === 'number'
-            ? errorParams.advanceNoticeMinutes
-            : advanceNoticeMinutes;
-        const serverMinimumStartTime =
-          typeof errorParams.minimumStartTime === 'string'
-            ? errorParams.minimumStartTime
-            : getMinStartDateTime(serverAdvanceNoticeMinutes).toISOString();
-
-        throw new CheckoutSubmitError(
-          result.error,
-          'server',
-          errorParams,
-          result.error === ADVANCE_NOTICE_ERROR
-            ? serverMinimumStartTime
-            : undefined,
-          result.error === ADVANCE_NOTICE_ERROR
-            ? serverAdvanceNoticeMinutes
-            : undefined,
-        );
-      }
-
-      return result;
-    },
-    onSuccess: (result) => {
-      setAdvanceNoticeIssue(null);
-
-      // Track checkout_completed event
-      trackEvent({
-        eventType: 'checkout_completed',
-        metadata: {
-          reservationId: result.reservationId,
-          itemCount: items.length,
-          subtotal,
-          total: totalWithEstimatedInsurance,
-          reservationMode,
-        },
-      });
-
-      // Captured client-side so the PostHog funnel keeps the browser's
-      // distinct_id; the server-side checkout_reservation_created event is
-      // attributed to the customer id and would break the funnel chain.
-      posthog.capture(productAnalyticsEvents.checkoutCompleted, {
-        ...checkoutAnalyticsBaseProperties,
-        store_id: storeId,
-        reservation_id: result.reservationId,
-        reservation_mode: reservationMode,
-        item_count: items.length,
-        subtotal_amount_cents: Math.round(subtotal * 100),
-        total_amount_cents: Math.round(totalWithEstimatedInsurance * 100),
-      });
-
-      clearCart();
-
-      if (reservationMode === 'payment' && result.paymentUrl) {
-        // Track payment_initiated for Stripe redirect
-        trackEvent({
-          eventType: 'payment_initiated',
-          metadata: {
-            reservationId: result.reservationId,
-            amount: totalWithEstimatedInsurance,
-          },
-        });
-        window.location.href = result.paymentUrl;
-        return;
-      }
-
-      toastManager.add({ title: t('requestSent'), type: 'success' });
-      router.push(getUrl(`/confirmation/${result.reservationId}`));
-    },
-    onError: (error) => {
-      if (
-        error instanceof CheckoutSubmitError &&
-        error.message === ADVANCE_NOTICE_ERROR
-      ) {
-        setAdvanceNoticeIssue({
-          source: error.source,
-          advanceNoticeMinutes:
-            error.advanceNoticeMinutes ?? advanceNoticeMinutes,
-          duration:
-            typeof error.params?.duration === 'string'
-              ? error.params.duration
-              : formatDurationFromMinutes(
-                  error.advanceNoticeMinutes ?? advanceNoticeMinutes,
-                ),
-          failedStartDate: globalStartDate,
-          minimumStartTime:
-            error.minimumStartTime ??
-            getMinStartDateTime(
-              error.advanceNoticeMinutes ?? advanceNoticeMinutes,
-            ).toISOString(),
-        });
-
-        if (error.source === 'client_validation') {
-          posthog.capture(
-            productAnalyticsEvents.checkoutStepValidationFailed,
-            {
-              ...checkoutAnalyticsBaseProperties,
-              store_id: storeId,
-              step: 'confirm',
-              failed_fields: ['rentalStartDate'],
-              error_code: ADVANCE_NOTICE_ERROR,
-              validation_type: 'advance_notice',
-            },
-          );
-        } else {
-          posthog.capture(productAnalyticsEvents.checkoutSubmitFailed, {
-            ...checkoutAnalyticsBaseProperties,
-            store_id: storeId,
-            error_code: ADVANCE_NOTICE_ERROR,
-            failure_source: 'server',
-          });
-        }
-        return;
-      }
-
-      posthog.capture(productAnalyticsEvents.checkoutSubmitFailed, {
-        ...checkoutAnalyticsBaseProperties,
-        store_id: storeId,
-        error_code:
-          error instanceof CheckoutSubmitError ? error.message : 'unknown',
-        failure_source:
-          error instanceof CheckoutSubmitError ? error.source : 'unknown',
-      });
-
-      if (error instanceof CheckoutSubmitError) {
-        if (error.message === 'emptyCart') {
-          toastManager.add({ title: t('emptyCart'), type: 'error' });
-          return;
-        }
-        if (error.message === 'lineNeedsUpdate') {
-          toastManager.add({ title: t('lineNeedsUpdate'), type: 'error' });
-          return;
-        }
-
-        if (error.message.startsWith('errors.')) {
-          const key = error.message.replace('errors.', '');
-          toastManager.add({
-            title: tErrors(key, error.params),
-            type: 'error',
-          });
-          return;
-        }
-
-        toastManager.add({ title: error.message, type: 'error' });
-        return;
-      }
-
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
-    },
-  });
-
-  const advanceNoticeDisplay = advanceNoticeIssue
-    ? {
-        duration: advanceNoticeIssue.duration,
-        minimumStart: new Intl.DateTimeFormat(formatLocale.intl, {
-          dateStyle: 'long',
-          timeStyle: 'short',
-          ...(timezone ? { timeZone: timezone } : {}),
-        }).format(new Date(advanceNoticeIssue.minimumStartTime)),
-      }
-    : undefined;
-
-  const isBusinessCustomer = formValues.isBusinessCustomer;
-
-  const handleBusinessCustomerUnchecked = useCallback(() => {
-    form.setFieldValue('companyName', '');
-    form.setFieldValue('companyNumber', '');
-    form.setFieldValue('vatNumber', '');
-  }, [form]);
+  const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== "Enter" || stepFlow.isLastStep) return;
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || target.getAttribute("role") === "combobox") return;
+    event.preventDefault();
+    void stepFlow.goToNextStep();
+  };
 
   if (items.length === 0) {
-    return <CheckoutEmptyCartState storeSlug={storeSlug} />;
+    return <CheckoutEmptyCartState />;
   }
 
-  return (
-    <div className="mx-auto max-w-4xl">
-      <CheckoutWizardStepper
-        steps={steps}
-        currentStep={currentStep}
-        onStepClick={goToStep}
-      />
+  const selectedPickupLocation =
+    delivery.locations.find((location) => location.id === delivery.pickupLocationId) ??
+    delivery.locations[0] ??
+    null;
+  const selectedReturnLocation =
+    delivery.locations.find((location) => location.id === delivery.returnLocationId) ??
+    selectedPickupLocation;
+  const pickupLabel =
+    delivery.outboundMethod === "address"
+      ? t("deliveryCompact")
+      : (selectedPickupLocation?.name ?? t("storeLocationFallback"));
+  const returnLabel =
+    delivery.returnMethod === "address"
+      ? t("collectionCompact")
+      : (selectedReturnLocation?.name ?? pickupLabel);
+  const logisticsLabel =
+    pickupLabel === returnLabel ? pickupLabel : `${pickupLabel} → ${returnLabel}`;
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-3">
+  const serverErrorMessage = serverError
+    ? serverError.message.startsWith("errors.")
+      ? tErrors(serverError.message.slice("errors.".length), serverError.params)
+      : serverError.message === "emptyCart"
+        ? t("emptyCart")
+        : serverError.message === "lineNeedsUpdate"
+          ? t("lineNeedsUpdate")
+          : tErrors("generic")
+    : null;
+
+  const summaryProps = {
+    items: itemsWithResolved,
+    reservationMode,
+    taxSettings,
+    globalStartDate,
+    globalEndDate,
+    subtotal,
+    originalSubtotal,
+    totalSavings,
+    totalDeposit,
+    totals,
+    hasDeliveryLegs: delivery.outboundMethod === "address" || delivery.returnMethod === "address",
+    deliveryFee: delivery.totalFee,
+    deliveryFeeReady: delivery.canContinue,
+    tulipInsurance,
+    tulipQuote,
+    tulipInsuranceOptIn: values.tulipInsuranceOptIn,
+    lineResolutions,
+    promo: promo.promo,
+    discountAmount: promo.discountAmount,
+    onEditDates: () => setIsDatePickerOpen(true),
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <BackLink href="/catalog" />
+        <h1 className="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
+          {t("title")}
+        </h1>
+      </div>
+
+      <CheckoutSummaryBar {...summaryProps} />
+
+      <div
+        role="progressbar"
+        aria-valuemin={1}
+        aria-valuemax={stepFlow.steps.length}
+        aria-valuenow={stepFlow.currentStepIndex + 1}
+        aria-label={t("title")}
+        aria-valuetext={
+          stepFlow.currentStep === "delivery"
+            ? t("fulfillmentTitle")
+            : t(`steps.${stepFlow.currentStep}`)
+        }
+        className="flex gap-1.5"
+      >
+        {stepFlow.steps.map((id, index) => (
+          <div
+            key={id}
+            className={cn(
+              "h-1 flex-1 rounded-full transition-colors duration-500 motion-reduce:transition-none",
+              index <= stepFlow.currentStepIndex ? "bg-foreground" : "bg-border",
+            )}
+          />
+        ))}
+      </div>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-8">
+        <div ref={stepRef} className="min-w-0 scroll-mt-4">
+          {serverError && serverErrorMessage && (
+            <Alert variant="error" className="mb-4">
+              <AlertCircle />
+              <AlertTitle>{t("submitError.title")}</AlertTitle>
+              <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+                <span>{serverErrorMessage}</span>
+                {serverError.step !== stepFlow.currentStep && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      stepFlow.goToStep(serverError.step);
+                      clearServerError();
+                    }}
+                  >
+                    {t("submitError.goToStep")}
+                  </Button>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form.AppForm>
-            <form.Form>
-              <StepContent direction={stepDirection}>
-                {currentStep === 'contact' && (
+            <form.Form formName="checkout" onKeyDown={handleFormKeyDown}>
+              <StepContent key={stepFlow.currentStep} direction={stepFlow.stepDirection}>
+                {stepFlow.currentStep === "contact" && (
                   <CheckoutContactStep
                     form={form}
                     storeId={storeId}
                     storeCountry={storeCountry}
-                    showAddressFields={requireCustomerAddress}
-                    isBusinessCustomer={isBusinessCustomer}
-                    onBusinessCustomerUnchecked={handleBusinessCustomerUnchecked}
-                    onContinue={goToNextStep}
+                    showAddressFields={showAddressInContact}
+                    sessionCustomer={sessionCustomer}
+                    onSessionCustomer={handleSessionCustomer}
+                    coordinates={coordinates}
+                    onCoordinatesChange={setCoordinates}
+                    onContinue={stepFlow.goToNextStep}
                   />
                 )}
 
-                {currentStep === 'delivery' &&
-                  isDeliveryEnabled &&
-                  deliverySettings && (
-                    <CheckoutDeliveryStep
-                      deliverySettings={deliverySettings}
-                      subtotal={subtotal}
-                      currency={currency}
-                      storeAddress={storeAddress}
-                      storeName={storeName}
-                      isMultiLocationEnabled={isMultiLocationEnabled}
-                      isAddressDeliveryEnabled={isAddressDeliveryEnabled}
-                      locations={checkoutLocations}
-                      isDeliveryForced={isDeliveryForced}
-                      isDeliveryIncluded={isDeliveryIncluded}
-                      isDeliveryAmountEligible={isDeliveryAmountEligible}
-                      outboundMethod={outboundMethod}
-                      pickupLocationId={pickupLocationId}
-                      outboundAddress={outboundAddress}
-                      outboundDistance={outboundDistance}
-                      outboundFee={outboundFee}
-                      outboundError={outboundError}
-                      onOutboundMethodChange={handleOutboundMethodChange}
-                      onPickupLocationChange={handlePickupLocationChange}
-                      onOutboundAddressChange={handleOutboundAddressChange}
-                      returnMethod={returnMethod}
-                      returnLocationId={returnLocationId}
-                      returnAddress={returnAddress}
-                      returnDistance={returnDistance}
-                      returnFee={returnFee}
-                      returnError={returnError}
-                      onReturnMethodChange={handleReturnMethodChange}
-                      onReturnLocationChange={handleReturnLocationChange}
-                      onReturnAddressChange={handleReturnAddressChange}
-                      totalFee={deliveryTotalFee}
-                      canContinue={deliveryCanContinue}
-                      onBack={goToPreviousStep}
-                      onContinue={goToNextStep}
-                    />
-                  )}
+                {stepFlow.currentStep === "delivery" && deliverySettings && (
+                  <CheckoutDeliveryStep
+                    form={form}
+                    deliverySettings={deliverySettings}
+                    delivery={delivery}
+                    subtotal={subtotal}
+                    storeAddress={storeAddress}
+                    storeName={storeName}
+                    storeLatitude={storeLatitude}
+                    storeLongitude={storeLongitude}
+                    onUseCustomerAddress={handleUseCustomerAddress}
+                    onBack={stepFlow.goToPreviousStep}
+                    onContinue={stepFlow.goToNextStep}
+                  />
+                )}
 
-                {currentStep === 'confirm' && (
-                  <>
-                    <CheckoutAdvisorGateCard gate={advisorGate} />
-                    {advisorGate.isRequired && (
-                      <CheckoutAdvisorVerificationPanel gate={advisorGate} />
-                    )}
-                    <CheckoutConfirmStep
-                      form={form}
-                      cgv={cgv}
-                      hasDeliveryLegs={
-                        outboundMethod === 'address' ||
-                        returnMethod === 'address'
-                      }
-                      logisticsLabel={logisticsLabel}
-                      reservationMode={reservationMode}
-                      depositPercentage={depositPercentage}
-                      subtotal={subtotalWithEstimatedInsurance}
-                      totalWithDelivery={totalWithEstimatedInsurance}
-                      currency={currency}
-                      tulipInsurance={tulipInsurance}
-                      canSubmitCheckout={
-                        canSubmitCheckoutWithTulip &&
-                        (!advisorGate.isRequired || advisorGate.isValidated) &&
-                        !advanceNoticeIssue
-                      }
-                      showVerificationHint={
-                        advisorGate.isRequired && !advisorGate.isValidated
-                      }
-                      discountAmount={discountAmount}
-                      onBack={goToPreviousStep}
-                      onEditContact={() => goToStep('contact')}
-                      advanceNoticeIssue={advanceNoticeDisplay}
-                      onEditDates={() => setIsDatePickerOpen(true)}
-                    />
-                  </>
+                {stepFlow.currentStep === "confirm" && (
+                  <CheckoutConfirmStep
+                    form={form}
+                    reservationMode={reservationMode}
+                    logisticsLabel={logisticsLabel}
+                    tulipInsurance={tulipInsurance}
+                    tulipQuote={tulipQuote}
+                    advisorGate={advisorGate}
+                    promo={promo}
+                    hasActivePromoCodes={hasActivePromoCodes}
+                    totalDeposit={totalDeposit}
+                    submitLabel={submitLabel}
+                    blockedReason={blockedReason}
+                    advanceNoticeIssue={advanceNotice.issue}
+                    isSubmitting={isSubmitting}
+                    onBack={stepFlow.goToPreviousStep}
+                    onEditContact={() => stepFlow.goToStep("contact")}
+                    onEditDates={() => setIsDatePickerOpen(true)}
+                  />
                 )}
               </StepContent>
             </form.Form>
           </form.AppForm>
         </div>
 
-        <CheckoutOrderSummary
-          items={itemsWithResolved}
-          pricingMode={pricingMode}
-          reservationMode={reservationMode}
-          depositPercentage={depositPercentage}
-          taxSettings={taxSettings}
-          currency={currency}
-          globalStartDate={globalStartDate}
-          globalEndDate={globalEndDate}
-          subtotal={subtotal}
-          originalSubtotal={originalSubtotal}
-          totalSavings={totalSavings}
-          totalDeposit={totalDeposit}
-          totalWithDelivery={totalWithDelivery}
-          hasDeliveryLegs={
-            outboundMethod === 'address' || returnMethod === 'address'
-          }
-          deliveryFee={deliveryTotalFee}
-          tulipInsurance={tulipInsurance}
-          tulipInsuranceOptIn={tulipInsuranceOptIn}
-          isTulipQuoteLoading={isTulipQuoteLoading}
-          isTulipQuoteFetched={isTulipQuoteFetched}
-          tulipQuotePreview={tulipQuotePreview}
-          lineResolutions={lineResolutions}
-          hasActivePromoCodes={hasActivePromoCodes}
-          storeId={storeId}
-          appliedPromo={appliedPromo}
-          discountAmount={discountAmount}
-          onApplyPromo={handleApplyPromo}
-          onRemovePromo={handleRemovePromo}
-          onEditDates={() => setIsDatePickerOpen(true)}
-        />
+        <aside className="hidden lg:sticky lg:top-4 lg:block">
+          <CheckoutOrderSummary {...summaryProps} />
+        </aside>
       </div>
 
       <DatePickerModal
         storeSlug={storeSlug}
         pricingMode={pricingMode}
         businessHours={businessHours}
-        advanceNotice={
-          advanceNoticeIssue?.advanceNoticeMinutes ?? advanceNoticeMinutes
-        }
+        advanceNotice={advanceNotice.issue?.advanceNoticeMinutes ?? advanceNoticeMinutes}
         minRentalMinutes={minRentalMinutes}
         timezone={timezone}
         isOpen={isDatePickerOpen}
@@ -1012,4 +504,4 @@ export function CheckoutForm({
       />
     </div>
   );
-}
+};

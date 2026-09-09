@@ -1,132 +1,112 @@
-'use client'
+"use client";
 
-import { useState, useCallback } from 'react'
-import { Tag, X } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { formatCurrency } from '@louez/utils'
-import { Badge, Button, Input } from '@louez/ui'
+import { useState } from "react";
 
-import { validatePromoCode, type ValidatedPromo } from '../promo-actions'
+import { Tag, X } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import { Badge, Button, Collapsible, CollapsiblePanel, CollapsibleTrigger, Input } from "@louez/ui";
+
+import { useFormatMoney } from "@/hooks/use-format-money";
+
+import type { ValidatedPromo } from "../checkout.types";
+import type { PromoValidationError } from "../hooks/use-checkout-promo";
 
 interface CheckoutPromoCodeProps {
-  storeId: string
-  subtotal: number
-  currency: string
-  appliedPromo: ValidatedPromo | null
-  onApply: (promo: ValidatedPromo) => void
-  onRemove: () => void
+  promo: ValidatedPromo | null;
+  discountAmount: number;
+  isValidating: boolean;
+  validationError: PromoValidationError | null;
+  onValidate: (code: string) => void;
+  onRemove: () => void;
+  onClearError: () => void;
 }
 
-export function CheckoutPromoCode({
-  storeId,
-  subtotal,
-  currency,
-  appliedPromo,
-  onApply,
+export const CheckoutPromoCode = ({
+  promo,
+  discountAmount,
+  isValidating,
+  validationError,
+  onValidate,
   onRemove,
-}: CheckoutPromoCodeProps) {
-  const t = useTranslations('storefront.checkout.promoCode')
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [code, setCode] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  onClearError,
+}: CheckoutPromoCodeProps) => {
+  const t = useTranslations("storefront.checkout.promoCode");
+  const formatMoney = useFormatMoney();
+  const [code, setCode] = useState("");
 
-  const handleApply = useCallback(async () => {
-    if (!code.trim()) return
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const result = await validatePromoCode(storeId, code.trim(), subtotal)
-
-      if (!result.success || !result.promo) {
-        const errorKey = result.error || 'invalidCode'
-        setError(t(errorKey, result.errorParams))
-        return
-      }
-
-      onApply(result.promo)
-      setCode('')
-      setIsExpanded(false)
-    } catch {
-      setError(t('invalidCode'))
-    } finally {
-      setIsLoading(false)
-    }
-  }, [code, storeId, subtotal, onApply, t])
-
-  // Applied state
-  if (appliedPromo) {
+  if (promo) {
     return (
-      <div className="flex items-center justify-between rounded-lg bg-green-50 p-2.5 dark:bg-green-900/20">
-        <div className="flex items-center gap-2 min-w-0">
-          <Tag className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" />
-          <Badge variant="success" className="">
-            {appliedPromo.code}
-          </Badge>
-          <span className="text-sm font-medium text-green-600 dark:text-green-400">
-            -{formatCurrency(appliedPromo.discountAmount, currency)}
-          </span>
+      <div className="flex items-center justify-between gap-3 rounded-lg bg-success/12 px-3 py-2 text-sm text-success">
+        <div className="flex min-w-0 items-center gap-2">
+          <Tag aria-hidden className="size-4 shrink-0" />
+          <Badge variant="promo">{promo.code}</Badge>
+          <span className="font-medium tabular-nums">-{formatMoney(discountAmount)}</span>
         </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="shrink-0 rounded-full p-1 text-green-600 transition-colors hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/50"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-    )
-  }
-
-  // Collapsed state
-  if (!isExpanded) {
-    return (
-      <button
-        type="button"
-        onClick={() => setIsExpanded(true)}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <Tag className="h-3 w-3" />
-        {t('haveCode')}
-      </button>
-    )
-  }
-
-  // Expanded input state
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <Input
-          placeholder={t('placeholder')}
-          value={code}
-          onChange={(e) => {
-            setCode(e.target.value.toUpperCase())
-            setError(null)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              handleApply()
-            }
-          }}
-          className="h-8 flex-1 font-mono text-xs uppercase"
-          disabled={isLoading}
-        />
         <Button
           type="button"
-          size="sm"
-          variant="outline"
-          onClick={handleApply}
-          isPending={isLoading}
-          disabled={!code.trim()}
-          className="h-8 shrink-0"
+          variant="ghost"
+          size="icon-sm"
+          onClick={onRemove}
+          aria-label={t("remove")}
+          className="text-success hover:text-success"
         >
-          {t('apply')}
+          <X />
         </Button>
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
-  )
-}
+    );
+  }
+
+  const submit = () => {
+    if (code.trim()) onValidate(code);
+  };
+
+  return (
+    <Collapsible>
+      <CollapsibleTrigger className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground">
+        <Tag aria-hidden className="size-4" />
+        {t("haveCode")}
+      </CollapsibleTrigger>
+      <CollapsiblePanel>
+        <div className="flex flex-col gap-2 pt-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder={t("placeholder")}
+              value={code}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              aria-label={t("placeholder")}
+              onChange={(event) => {
+                setCode(event.target.value.toUpperCase());
+                if (validationError) onClearError();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  submit();
+                }
+              }}
+              className="h-11 flex-1 font-mono text-base uppercase sm:h-9 sm:text-sm"
+              disabled={isValidating}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={submit}
+              isPending={isValidating}
+              disabled={!code.trim()}
+              className="h-11 shrink-0 sm:h-9"
+            >
+              {t("apply")}
+            </Button>
+          </div>
+          {validationError && (
+            <p className="text-xs text-destructive">
+              {t(validationError.key, validationError.params)}
+            </p>
+          )}
+        </div>
+      </CollapsiblePanel>
+    </Collapsible>
+  );
+};

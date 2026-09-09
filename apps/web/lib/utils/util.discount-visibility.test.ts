@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import {
+  getDisplayableMaxDiscount,
   getDisplayableSavings,
   getEffectiveDiscountPercent,
   isDiscountDisplayable,
@@ -65,5 +66,27 @@ describe("getDisplayableSavings", () => {
 
   test("reports no savings when every line is hidden", () => {
     assert.deepEqual(getDisplayableSavings([capped], 5), { savings: 0, originalSubtotal: 175 });
+  });
+});
+
+describe("getDisplayableMaxDiscount", () => {
+  const summary = { maxReductionPercent: 30, allReductionPercents: [10, 20, 30] };
+
+  test("shows the highest discount when the cap is disabled", () => {
+    assert.equal(getDisplayableMaxDiscount(summary, null), 30);
+    assert.equal(getDisplayableMaxDiscount(summary, undefined), 30);
+  });
+
+  test("shows the highest discount at or below the cap", () => {
+    assert.equal(getDisplayableMaxDiscount(summary, 20), 20);
+    assert.equal(getDisplayableMaxDiscount(summary, 15), 10);
+  });
+
+  test("shows nothing when every discount is above the cap or there is none", () => {
+    assert.equal(getDisplayableMaxDiscount(summary, 5), 0);
+    assert.equal(
+      getDisplayableMaxDiscount({ maxReductionPercent: 0, allReductionPercents: [] }, null),
+      0,
+    );
   });
 });

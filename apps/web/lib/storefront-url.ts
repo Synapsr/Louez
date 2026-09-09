@@ -1,28 +1,30 @@
-import { redirect } from 'next/navigation'
+import { redirect } from "next/navigation";
 
-import { isStandaloneMode } from '@/lib/deployment'
+import { isStandaloneMode } from "@/lib/deployment";
+import { buildStorefrontUrl } from "@/lib/util.storefront-url";
 
-import { env } from '@/env'
+import { env } from "@/env";
 
-const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
+const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
 
-function getStorefrontProtocol(): 'http' | 'https' {
-  if (env.NEXT_PUBLIC_APP_URL?.startsWith('https://')) {
-    return 'https'
+const getStorefrontProtocol = (): "http" | "https" => {
+  if (env.NEXT_PUBLIC_APP_URL?.startsWith("https://")) {
+    return "https";
   }
 
-  if (env.NEXT_PUBLIC_APP_URL?.startsWith('http://')) {
-    return 'http'
+  if (env.NEXT_PUBLIC_APP_URL?.startsWith("http://")) {
+    return "http";
   }
 
-  return process.env.NODE_ENV === 'production' ? 'https' : 'http'
-}
+  return process.env.NODE_ENV === "production" ? "https" : "http";
+};
 
 /**
- * Build an absolute storefront URL for server-side redirects.
+ * Build an absolute storefront URL for server-side redirects, emails, SMS,
+ * Stripe return URLs and webhooks.
  *
- * This is the server-side equivalent of the `useStorefrontUrl` client hook.
- * It generates the correct absolute URL based on the deployment environment:
+ * Server-side twin of the `useStorefrontUrl().getAbsoluteUrl` client hook;
+ * both delegate to `buildStorefrontUrl` so they can never drift apart.
  *
  * Production (subdomain routing):
  *   getStorefrontUrl('ddm', '/account') → 'https://ddm.louez.io/account'
@@ -30,37 +32,34 @@ function getStorefrontProtocol(): 'http' | 'https' {
  * Localhost (path-based routing):
  *   getStorefrontUrl('ddm', '/account') → 'http://localhost:3000/ddm/account'
  *
- * Using absolute URLs eliminates ambiguity with the proxy middleware rewrite,
- * which transforms subdomain requests into path-based routes internally.
- * Relative paths in redirect() can cause double-slug issues on subdomains
- * or routing mismatches on localhost.
+ * Standalone (single store on the app URL):
+ *   getStorefrontUrl('ddm', '/account') → 'https://location.example.com/account'
  *
- * @see src/hooks/use-storefront-url.ts for the client-side equivalent
- * @see src/proxy.ts for the subdomain → path rewrite logic
+ * Absolute URLs remove any ambiguity with the proxy rewrite, which turns
+ * subdomain requests into `/{slug}` routes internally: a relative path in
+ * `redirect()` can double the slug on a subdomain or miss it on localhost.
+ *
+ * @see hooks/use-storefront-url.ts for the client-side equivalent
+ * @see proxy.ts for the subdomain → path rewrite logic
  */
-export function getStorefrontUrl(slug: string, path: string = '/'): string {
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`
-  // A bare store root carries no path suffix, so the result has no trailing
-  // slash — callers can safely append (`${url}/foo`), and it matches the
-  // pre-standalone output byte-for-byte.
-  const suffix = normalizedPath === '/' ? '' : normalizedPath
-  const protocol = getStorefrontProtocol()
+export const getStorefrontUrl = (slug: string, path: string = "/"): string => {
+  const protocol = getStorefrontProtocol();
+  const standalone = isStandaloneMode();
 
-  // Standalone: one store on one origin — the storefront lives at the root of
-  // the app URL and the proxy injects the slug internally, so links never
-  // carry it. NEXT_PUBLIC_APP_URL is read server-side at runtime, which keeps
-  // this correct in the prebuilt Docker image on any domain.
-  if (isStandaloneMode()) {
-    const appUrl = (env.NEXT_PUBLIC_APP_URL || '').replace(/\/+$/, '')
-    return `${appUrl}${suffix}` || '/'
-  }
-
-  if (APP_DOMAIN.includes('localhost') || APP_DOMAIN.includes('127.0.0.1')) {
-    return `${protocol}://${APP_DOMAIN}/${slug}${suffix}`
-  }
-
-  return `${protocol}://${slug}.${APP_DOMAIN}${suffix}`
-}
+  return buildStorefrontUrl({
+    slug,
+    path,
+    standalone,
+    appDomain: APP_DOMAIN,
+    // Standalone reads NEXT_PUBLIC_APP_URL at runtime so the prebuilt Docker
+    // image stays correct on any domain; local platform routing builds on the
+    // app domain itself.
+    origin: standalone
+      ? (env.NEXT_PUBLIC_APP_URL || "").replace(/\/+$/, "")
+      : `${protocol}://${APP_DOMAIN}`,
+    protocol,
+  });
+};
 
 /**
  * Redirect to a storefront page with the correct absolute URL.
@@ -73,6 +72,9 @@ export function getStorefrontUrl(slug: string, path: string = '/'): string {
  *   storefrontRedirect(slug, '/account/login')
  *   storefrontRedirect(slug, '/') // redirect to store homepage
  */
-export function storefrontRedirect(slug: string, path: string = '/'): never {
-  redirect(getStorefrontUrl(slug, path))
+// A function declaration on purpose: TypeScript only narrows the callers'
+// control flow after a `never`-returning call when the callee is declared
+// with an explicit type, which an arrow bound to a const is not.
+export function storefrontRedirect(slug: string, path: string = "/"): never {
+  redirect(getStorefrontUrl(slug, path));
 }

@@ -40,7 +40,6 @@ function InputQuantity({
       min={min}
       max={max}
       disabled={disabled}
-      readOnly={!editable}
       className={className}
     >
       <NumberField.Group className="flex items-center h-9">
@@ -58,6 +57,7 @@ function InputQuantity({
           <Minus data-slot="icon" className="size-3" />
         </NumberField.Decrement>
         <NumberField.Input
+          readOnly={!editable}
           aria-label={ariaLabel}
           className={cn(
             "relative h-full text-center text-base tabular-nums outline-none sm:text-sm",
