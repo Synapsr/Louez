@@ -6758,15 +6758,18 @@
       "returnedAt": "Geretourneerd op",
       "rentedItems": "Gehuurde artikelen",
       "quantityLabel": "Aantal",
+      "insuredProductTooltip": "Gedekt door breuk-/diefstaldekking",
       "unitPrice": "/ eenheid",
       "subtotalRental": "Subtotaal verhuur",
       "yourNotes": "Uw notities",
       "needHelp": "Hulp nodig?",
       "contactStore": "Neem contact op met {name} voor vragen over uw reservering.",
+      "nothingChargedYet": "Er is nog niets afgeschreven.",
       "status": {
         "pending": "In behandeling",
         "pendingFull": "Wacht op bevestiging",
-        "pendingDescription": "Uw aanvraag wordt verwerkt",
+        "pendingDescription": "Je kunt je aanvraag annuleren totdat de winkel deze bevestigt.",
+        "pendingNextStep": "De winkel controleert de beschikbaarheid en antwoordt per e-mail op {email}.",
         "confirmed": "Bevestigd",
         "confirmedDescription": "Uw reservering is bevestigd",
         "allSet": "Alles in orde",
@@ -6863,8 +6866,19 @@
       "resendIn": "Nieuwe code over {seconds} s",
       "currentReservations": "Lopende huurorders",
       "pastReservations": "Eerdere huurorders",
+      "fulfillment": {
+        "pickupTitle": "Ophalen",
+        "returnTitle": "Retour",
+        "deliveredToYou": "Bezorging op je adres",
+        "collectedFromYou": "Ophaling op je adres",
+        "sameAsPickup": "Zelfde plek als het ophalen",
+        "storeFallback": "Winkel",
+        "directions": "Route",
+        "calendarPickup": "Ophalen: {when} — {place}",
+        "calendarReturn": "Retour: {when} — {place}"
+      },
       "timeline": {
-        "title": "Huurperiode",
+        "title": "Uw huur",
         "requested": "Aanvraag verstuurd",
         "quoteSent": "Offerte verstuurd",
         "confirmed": "Reservering bevestigd",
@@ -6982,6 +6996,19 @@
           "title": "Betaling wordt gecontroleerd",
           "description": "Je betaling wordt gecontroleerd. Vernieuw deze pagina over enkele ogenblikken."
         }
+      },
+      "requestNumber": "Reserveringsaanvraag #{number}",
+      "cancellation": {
+        "action": "Mijn aanvraag annuleren",
+        "title": "Deze aanvraag annuleren?",
+        "description": "De winkel wordt op de hoogte gebracht.",
+        "keep": "Mijn aanvraag behouden",
+        "confirm": "Aanvraag annuleren",
+        "cancelled": "Aanvraag geannuleerd",
+        "done": "Je hebt deze aanvraag geannuleerd.",
+        "paymentDescription": "De winkel wordt op de hoogte gebracht. Heb je al betaald of een borg verstrekt, neem dan contact op met de winkel voor terugbetaling of vrijgave. Deze actie leidt niet tot een automatische terugbetaling.",
+        "adminSubject": "Aanvraag #{number} geannuleerd door de klant",
+        "adminBody": "{name} heeft reserveringsaanvraag #{number} geannuleerd voordat je deze bevestigde. Je kunt de geschiedenis in je dashboard bekijken."
       }
     },
     "marketplaceShell": {
@@ -7745,7 +7772,10 @@
     "emailLoginUnavailable": "Inloggen via e-mail is momenteel niet beschikbaar",
     "stripeNotConfigured": "Online betalingen zijn niet beschikbaar: deze instantie heeft geen Stripe-sleutels geconfigureerd. Reserveringen verlopen in aanvraagmodus.",
     "emailSendFailed": "Verzenden van de e-mail is mislukt.",
-    "marketplaceChannelNotFound": "Marketplace-kanaal niet gevonden"
+    "marketplaceChannelNotFound": "Marketplace-kanaal niet gevonden",
+    "requestCancellationStatusChanged": "De status van deze aanvraag is gewijzigd. Je kunt deze hier niet meer annuleren. Neem contact op met de winkel.",
+    "requestCancellationPaymentPending": "Er loopt nog een betaling voor deze aanvraag. Probeer het na de update opnieuw of neem contact op met de winkel.",
+    "requestCancellationPaymentChanged": "De betalingsinformatie is gewijzigd. Controleer deze voordat je de annulering opnieuw bevestigt."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

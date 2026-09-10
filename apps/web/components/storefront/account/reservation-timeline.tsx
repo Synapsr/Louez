@@ -9,6 +9,8 @@ import {
 
 interface ReservationTimelineProps {
   status: ReservationStatus;
+  closedLabel?: string | null;
+  cancelledRequest?: boolean;
   /** Formatted in the store timezone. */
   createdLabel: string;
   pickedUpLabel: string | null;
@@ -39,6 +41,7 @@ const buildSteps = ({
   createdLabel,
   pickedUpLabel,
   returnedLabel,
+  closedLabel,
 }: ReservationTimelineProps): Step[] => {
   const rank = RANK[status];
   const closed = isClosedReservationStatus(status);
@@ -71,7 +74,7 @@ const buildSteps = ({
   return closed
     ? [
         ...steps.filter((step) => step.state === "done"),
-        { key: "closed", state: "closed", date: null },
+        { key: "closed", state: "closed", date: closedLabel ?? null },
       ]
     : steps;
 };
@@ -86,7 +89,11 @@ export const ReservationTimeline = (props: ReservationTimelineProps) => {
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
         const label =
-          step.key === "closed" ? t(`status.${props.status}`) : t(`timeline.${step.key}`);
+          step.key === "closed"
+            ? props.cancelledRequest
+              ? t("cancellation.cancelled")
+              : t(`status.${props.status}`)
+            : t(`timeline.${step.key}`);
 
         return (
           <li key={step.key} className="flex gap-3">

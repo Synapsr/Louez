@@ -6758,15 +6758,18 @@
       "returnedAt": "Zwrócono",
       "rentedItems": "Wynajęte przedmioty",
       "quantityLabel": "Ilość",
+      "insuredProductTooltip": "Objęte ochroną przed uszkodzeniem/kradzieżą",
       "unitPrice": "/ szt.",
       "subtotalRental": "Suma wynajmu",
       "yourNotes": "Twoje uwagi",
       "needHelp": "Potrzebujesz pomocy?",
       "contactStore": "Skontaktuj się z {name} w sprawie pytań o rezerwację.",
+      "nothingChargedYet": "Żadna kwota nie została jeszcze pobrana.",
       "status": {
         "pending": "Oczekująca",
         "pendingFull": "Oczekuje na potwierdzenie",
-        "pendingDescription": "Twoje żądanie jest przetwarzane",
+        "pendingDescription": "Możesz anulować prośbę, dopóki sklep jej nie potwierdzi.",
+        "pendingNextStep": "Sklep sprawdza dostępność i odpowie e-mailem na adres {email}.",
         "confirmed": "Potwierdzona",
         "confirmedDescription": "Twoja rezerwacja jest potwierdzona",
         "allSet": "Wszystko gotowe",
@@ -6863,8 +6866,19 @@
       "resendIn": "Nowy kod za {seconds} s",
       "currentReservations": "Bieżące wypożyczenia",
       "pastReservations": "Poprzednie wypożyczenia",
+      "fulfillment": {
+        "pickupTitle": "Odbiór",
+        "returnTitle": "Zwrot",
+        "deliveredToYou": "Dostawa pod Twój adres",
+        "collectedFromYou": "Odbiór spod Twojego adresu",
+        "sameAsPickup": "To samo miejsce co odbiór",
+        "storeFallback": "Sklep",
+        "directions": "Trasa",
+        "calendarPickup": "Odbiór: {when} — {place}",
+        "calendarReturn": "Zwrot: {when} — {place}"
+      },
       "timeline": {
-        "title": "Okres wypożyczenia",
+        "title": "Twój wynajem",
         "requested": "Prośba wysłana",
         "quoteSent": "Oferta wysłana",
         "confirmed": "Rezerwacja potwierdzona",
@@ -6982,6 +6996,19 @@
           "title": "Weryfikacja płatności",
           "description": "Płatność jest weryfikowana. Odśwież stronę za chwilę."
         }
+      },
+      "requestNumber": "Prośba o rezerwację #{number}",
+      "cancellation": {
+        "action": "Anuluj moją prośbę",
+        "title": "Anulować tę prośbę?",
+        "description": "Sklep zostanie powiadomiony.",
+        "keep": "Zachowaj moją prośbę",
+        "confirm": "Anuluj prośbę",
+        "cancelled": "Prośba anulowana",
+        "done": "Ta prośba została przez Ciebie anulowana.",
+        "paymentDescription": "Sklep zostanie powiadomiony. Jeśli dokonano płatności lub wpłacono kaucję, skontaktuj się ze sklepem w sprawie zwrotu lub zwolnienia środków. Ta czynność nie powoduje automatycznego zwrotu.",
+        "adminSubject": "Prośba #{number} anulowana przez klienta",
+        "adminBody": "{name} anulował(a) prośbę o rezerwację #{number} przed Twoim potwierdzeniem. Historię możesz sprawdzić w panelu."
       }
     },
     "marketplaceShell": {
@@ -7745,7 +7772,10 @@
     "emailLoginUnavailable": "Logowanie przez e-mail jest obecnie niedostępne",
     "stripeNotConfigured": "Płatności online są niedostępne: ta instancja nie ma skonfigurowanych kluczy Stripe. Rezerwacje działają w trybie zapytania.",
     "emailSendFailed": "Nie udało się wysłać wiadomości e-mail.",
-    "marketplaceChannelNotFound": "Nie znaleziono kanału marketplace"
+    "marketplaceChannelNotFound": "Nie znaleziono kanału marketplace",
+    "requestCancellationStatusChanged": "Status tej prośby się zmienił. Nie można jej już tutaj anulować. Skontaktuj się ze sklepem.",
+    "requestCancellationPaymentPending": "Płatność za tę prośbę jest jeszcze w toku. Spróbuj ponownie po aktualizacji lub skontaktuj się ze sklepem.",
+    "requestCancellationPaymentChanged": "Informacje o płatności uległy zmianie. Sprawdź je przed ponownym potwierdzeniem anulowania."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

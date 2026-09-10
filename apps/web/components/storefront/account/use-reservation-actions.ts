@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
 
 import {
   acceptQuote,
+  cancelReservationRequest,
   createReservationPaymentSession,
   declineQuote,
 } from "@/app/(storefront)/[slug]/account/reservations/[reservationId]/actions";
@@ -18,6 +19,7 @@ import { invalidateStorefrontReservationData } from "@/lib/queries/storefront.in
 interface UseReservationActionsInput {
   storeSlug: string;
   reservationId: string;
+  hasPayment?: boolean;
 }
 
 class ActionFailure extends Error {}
@@ -34,7 +36,11 @@ const toActionError = (result: { error?: string }): never => {
  * The customer mutations of a reservation. Each one refreshes the
  * server page on success; every error becomes one translated line.
  */
-export const useReservationActions = ({ storeSlug, reservationId }: UseReservationActionsInput) => {
+export const useReservationActions = ({
+  storeSlug,
+  reservationId,
+  hasPayment = false,
+}: UseReservationActionsInput) => {
   const router = useRouter();
   const queryClient = useQueryClient();
   const refreshReservation = () => {
@@ -87,5 +93,18 @@ export const useReservationActions = ({ storeSlug, reservationId }: UseReservati
     onError: (failure) => fail(failure, tErrors("generic")),
   });
 
-  return { pay, accept, decline, error };
+  const cancel = useMutation({
+    mutationFn: async () => {
+      const result = await cancelReservationRequest(storeSlug, reservationId, hasPayment);
+      if (!("success" in result)) toActionError(result);
+    },
+    onMutate: () => setError(null),
+    onSuccess: refreshReservation,
+    onError: (failure) => {
+      fail(failure, tErrors("generic"));
+      refreshReservation();
+    },
+  });
+
+  return { pay, accept, decline, cancel, error };
 };

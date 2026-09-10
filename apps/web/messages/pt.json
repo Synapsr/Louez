@@ -6758,15 +6758,18 @@
       "returnedAt": "Devolvido em",
       "rentedItems": "Itens alugados",
       "quantityLabel": "Quantidade",
+      "insuredProductTooltip": "Coberto pela cobertura contra quebra/roubo",
       "unitPrice": "/ unidade",
       "subtotalRental": "Subtotal do aluguel",
       "yourNotes": "Suas notas",
       "needHelp": "Precisa de ajuda?",
       "contactStore": "Entre em contato com {name} para qualquer duvida sobre sua reserva.",
+      "nothingChargedYet": "Ainda não foi cobrado qualquer valor.",
       "status": {
         "pending": "Pendente",
         "pendingFull": "Aguardando confirmacao",
-        "pendingDescription": "Sua solicitacao esta sendo processada",
+        "pendingDescription": "Pode cancelar o seu pedido enquanto a loja não o confirmar.",
+        "pendingNextStep": "A loja está a verificar a disponibilidade e responderá por email para {email}.",
         "confirmed": "Confirmada",
         "confirmedDescription": "Sua reserva esta confirmada",
         "allSet": "Tudo certo",
@@ -6863,8 +6866,19 @@
       "resendIn": "Novo código em {seconds} s",
       "currentReservations": "Alugueres em curso",
       "pastReservations": "Alugueres anteriores",
+      "fulfillment": {
+        "pickupTitle": "Levantamento",
+        "returnTitle": "Devolução",
+        "deliveredToYou": "Entrega na sua morada",
+        "collectedFromYou": "Recolha na sua morada",
+        "sameAsPickup": "Mesmo local do levantamento",
+        "storeFallback": "Loja",
+        "directions": "Como chegar",
+        "calendarPickup": "Levantamento: {when} — {place}",
+        "calendarReturn": "Devolução: {when} — {place}"
+      },
       "timeline": {
-        "title": "Período de aluguer",
+        "title": "O seu aluguer",
         "requested": "Pedido enviado",
         "quoteSent": "Orçamento enviado",
         "confirmed": "Reserva confirmada",
@@ -6982,6 +6996,19 @@
           "title": "A verificar o pagamento",
           "description": "O seu pagamento está a ser verificado. Atualize esta página dentro de instantes."
         }
+      },
+      "requestNumber": "Pedido de reserva #{number}",
+      "cancellation": {
+        "action": "Cancelar o meu pedido",
+        "title": "Cancelar este pedido?",
+        "description": "A loja será informada.",
+        "keep": "Manter o meu pedido",
+        "confirm": "Cancelar pedido",
+        "cancelled": "Pedido cancelado",
+        "done": "Cancelou este pedido.",
+        "paymentDescription": "A loja será informada. Se já pagou ou entregou uma caução, contacte a loja para obter o reembolso ou a libertação. Esta ação não inicia um reembolso automático.",
+        "adminSubject": "Pedido #{number} cancelado pelo cliente",
+        "adminBody": "{name} cancelou o pedido de reserva #{number} antes da sua confirmação. Pode consultar o histórico no seu painel."
       }
     },
     "marketplaceShell": {
@@ -7745,7 +7772,10 @@
     "emailLoginUnavailable": "O início de sessão por e-mail está indisponível de momento",
     "stripeNotConfigured": "Os pagamentos online não estão disponíveis: esta instância não tem chaves Stripe configuradas. As reservas funcionam em modo de pedido.",
     "emailSendFailed": "Falha ao enviar o e-mail.",
-    "marketplaceChannelNotFound": "Canal do marketplace não encontrado"
+    "marketplaceChannelNotFound": "Canal do marketplace não encontrado",
+    "requestCancellationStatusChanged": "O estado deste pedido mudou. Já não pode ser cancelado aqui. Contacte a loja.",
+    "requestCancellationPaymentPending": "Está em curso um pagamento para este pedido. Tente novamente após a atualização ou contacte a loja.",
+    "requestCancellationPaymentChanged": "As informações de pagamento mudaram. Verifique-as antes de voltar a confirmar o cancelamento."
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

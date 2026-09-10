@@ -13,6 +13,7 @@ export type ReservationRequiredAction = "quote" | "payment";
 export interface ReservationActions {
   /** The one thing to do next, in priority order: quote, then payment. */
   required: ReservationRequiredAction | null;
+  canCancelRequest: boolean;
   canAcceptQuote: boolean;
   canPay: boolean;
   canSign: boolean;
@@ -40,5 +41,12 @@ export const getReservationActions = ({
       ? "payment"
       : null;
 
-  return { required, canAcceptQuote, canPay, canSign, canDownloadContract };
+  return {
+    required,
+    canCancelRequest: status === "pending",
+    canAcceptQuote,
+    canPay,
+    canSign,
+    canDownloadContract,
+  };
 };

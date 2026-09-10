@@ -6758,15 +6758,18 @@
       "returnedAt": "Zurückgegeben am",
       "rentedItems": "Gemietete Artikel",
       "quantityLabel": "Menge",
+      "insuredProductTooltip": "Durch Bruch-/Diebstahlschutz abgedeckt",
       "unitPrice": "/ Einheit",
       "subtotalRental": "Miet-Zwischensumme",
       "yourNotes": "Ihre Notizen",
       "needHelp": "Brauchen Sie Hilfe?",
       "contactStore": "Kontaktieren Sie {name} bei Fragen zu Ihrer Reservierung.",
+      "nothingChargedYet": "Es wurde noch kein Betrag abgebucht.",
       "status": {
         "pending": "Ausstehend",
         "pendingFull": "Wartet auf Bestätigung",
-        "pendingDescription": "Ihre Anfrage wird bearbeitet",
+        "pendingDescription": "Sie können Ihre Anfrage stornieren, solange das Geschäft sie noch nicht bestätigt hat.",
+        "pendingNextStep": "Der Shop prüft die Verfügbarkeit und antwortet per E-Mail an {email}.",
         "confirmed": "Bestätigt",
         "confirmedDescription": "Ihre Reservierung ist bestätigt",
         "allSet": "Alles bereit",
@@ -6863,8 +6866,19 @@
       "resendIn": "Neuer Code in {seconds} s",
       "currentReservations": "Laufende Mieten",
       "pastReservations": "Frühere Mieten",
+      "fulfillment": {
+        "pickupTitle": "Abholung",
+        "returnTitle": "Rückgabe",
+        "deliveredToYou": "Lieferung an Ihre Adresse",
+        "collectedFromYou": "Abholung an Ihrer Adresse",
+        "sameAsPickup": "Gleicher Ort wie bei der Abholung",
+        "storeFallback": "Geschäft",
+        "directions": "Route",
+        "calendarPickup": "Abholung: {when} — {place}",
+        "calendarReturn": "Rückgabe: {when} — {place}"
+      },
       "timeline": {
-        "title": "Mietzeitraum",
+        "title": "Ihre Miete",
         "requested": "Anfrage gesendet",
         "quoteSent": "Angebot gesendet",
         "confirmed": "Reservierung bestätigt",
@@ -6982,6 +6996,19 @@
           "title": "Zahlung wird geprüft",
           "description": "Ihre Zahlung wird geprüft. Aktualisieren Sie diese Seite in Kürze."
         }
+      },
+      "requestNumber": "Buchungsanfrage #{number}",
+      "cancellation": {
+        "action": "Meine Anfrage stornieren",
+        "title": "Diese Anfrage stornieren?",
+        "description": "Das Geschäft wird benachrichtigt.",
+        "keep": "Meine Anfrage behalten",
+        "confirm": "Anfrage stornieren",
+        "cancelled": "Anfrage storniert",
+        "done": "Sie haben diese Anfrage storniert.",
+        "paymentDescription": "Das Geschäft wird benachrichtigt. Wenn Sie bereits bezahlt oder eine Kaution hinterlegt haben, wenden Sie sich wegen einer Erstattung oder Freigabe an das Geschäft. Es erfolgt keine automatische Erstattung.",
+        "adminSubject": "Anfrage #{number} vom Kunden storniert",
+        "adminBody": "{name} hat die Buchungsanfrage #{number} vor Ihrer Bestätigung storniert. Den Verlauf finden Sie in Ihrem Dashboard."
       }
     },
     "marketplaceShell": {
@@ -7745,7 +7772,10 @@
     "emailLoginUnavailable": "Die Anmeldung per E-Mail ist derzeit nicht verfügbar",
     "stripeNotConfigured": "Online-Zahlungen sind nicht verfügbar: Auf dieser Instanz sind keine Stripe-Schlüssel konfiguriert. Reservierungen laufen im Anfragemodus.",
     "emailSendFailed": "Die E-Mail konnte nicht gesendet werden.",
-    "marketplaceChannelNotFound": "Marketplace-Kanal nicht gefunden"
+    "marketplaceChannelNotFound": "Marketplace-Kanal nicht gefunden",
+    "requestCancellationStatusChanged": "Der Status dieser Anfrage hat sich geändert. Sie kann hier nicht mehr storniert werden. Kontaktieren Sie das Geschäft.",
+    "requestCancellationPaymentPending": "Für diese Anfrage läuft noch eine Zahlung. Versuchen Sie es nach der Aktualisierung erneut oder kontaktieren Sie das Geschäft.",
+    "requestCancellationPaymentChanged": "Die Zahlungsinformationen haben sich geändert. Prüfen Sie diese, bevor Sie die Stornierung erneut bestätigen."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

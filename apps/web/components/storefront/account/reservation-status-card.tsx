@@ -17,9 +17,12 @@ import {
 
 interface ReservationStatusCardProps {
   status: ReservationStatus;
+  cancelledRequest?: boolean;
   isRentalPaid: boolean;
   /** Payment is the next step (confirmed, unpaid, Stripe active). */
   paymentRequired: boolean;
+  /** Where the store's answer will land. Named in the pending copy. */
+  customerEmail: string;
 }
 
 const STATUS_ICON: Record<ReservationStatus, typeof ClockIcon> = {
@@ -33,11 +36,16 @@ const STATUS_ICON: Record<ReservationStatus, typeof ClockIcon> = {
   declined: XCircleIcon,
 };
 
-/** Status disc, one title, one line: where the reservation stands. Sits in the page's status bar, so it brings no card of its own. */
+/**
+ * Status disc, one title, one line: where the reservation stands and what
+ * happens next. Sits in the page's status bar, so it brings no card of its own.
+ */
 export const ReservationStatusCard = ({
   status,
+  cancelledRequest = false,
   isRentalPaid,
   paymentRequired,
+  customerEmail,
 }: ReservationStatusCardProps) => {
   const t = useTranslations("storefront.account");
   const allSet = status === "confirmed" && isRentalPaid;
@@ -55,13 +63,25 @@ export const ReservationStatusCard = ({
       ? t("status.allSet")
       : status === "pending"
         ? t("status.pendingFull")
-        : t(`status.${status}`);
+        : cancelledRequest
+          ? t("cancellation.cancelled")
+          : t(`status.${status}`);
 
   const description = paymentRequired
     ? t("confirmedAwaitingPayment")
     : allSet
       ? t("status.allSetDescription")
-      : t(`status.${status}Description`);
+      : cancelledRequest
+        ? t("cancellation.done")
+        : t(`status.${status}Description`);
+
+  // Waiting on the store is the one state where the customer has nothing to do
+  // and no date to look at, so the card leads with where the answer will land
+  // and leaves the fallback — cancelling — to the line under it.
+  const nextStep =
+    status === "pending" && !paymentRequired
+      ? t("status.pendingNextStep", { email: customerEmail })
+      : null;
 
   return (
     <div className="flex min-w-0 items-center gap-3">
@@ -76,6 +96,7 @@ export const ReservationStatusCard = ({
       </div>
       <div className="min-w-0">
         <p className="font-semibold leading-snug">{title}</p>
+        {nextStep ? <p className="text-pretty text-sm text-muted-foreground">{nextStep}</p> : null}
         <p className="text-pretty text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
