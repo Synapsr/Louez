@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
 
+import { useCatalogReturnHref } from "@/contexts/catalog-navigation-context";
+import { resolveCatalogNavigation } from "@/lib/utils/util.catalog-navigation";
+
 import { useStore } from "@/contexts/store-context";
 import { resolveStorefrontHref } from "@/lib/util.storefront-href";
 
@@ -28,7 +31,8 @@ export const StorefrontLink = ({
   const { basePath = "" } = useStore();
 
   const router = useRouter();
-  const resolvedHref = resolveStorefrontHref(basePath, href);
+  const catalogHref = useCatalogReturnHref();
+  const resolvedHref = resolveStorefrontHref(basePath, resolveCatalogNavigation(href, catalogHref));
   const pathname = href.split(/[?#]/, 1)[0];
   const isBrowsePage = ["/", "/catalog", "/about", "/terms", "/legal"].includes(pathname ?? "");
   const isAccountPage =

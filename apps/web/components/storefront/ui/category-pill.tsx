@@ -13,28 +13,34 @@ interface CategoryPillProps {
   href?: string;
   onClick?: () => void;
   count?: number;
+  /** `sm` for a category shown as a label; `default` for a filter row. */
+  size?: "default" | "sm";
   className?: string;
   children: ReactNode;
 }
 
-/**
- * Filter chip for a horizontal `snap-x` row: 36 px with a mouse, 44 px on a
- * coarse pointer. Selected = primary (one of the three uses primary keeps).
- */
+const sizeClasses = {
+  // Filter chip in a horizontal `snap-x` row: 36 px with a mouse, 44 px on a
+  // coarse pointer.
+  default: "h-9 px-4 text-sm pointer-coarse:h-11",
+  // A category that only labels the page it sits on: still tappable, but it
+  // stops eating the space above the title.
+  sm: "h-7 px-3 text-xs pointer-coarse:h-9",
+} as const;
+
+/** Category chip. Selected = primary (one of the three uses primary keeps). */
 export const CategoryPill = ({
   selected = false,
   href,
   onClick,
   count,
+  size = "default",
   className,
   children,
 }: CategoryPillProps) => (
   <Button
     variant={selected ? "default" : "outline"}
-    className={cn(
-      "h-9 shrink-0 snap-start rounded-full px-4 text-sm font-medium pointer-coarse:h-11",
-      className,
-    )}
+    className={cn("shrink-0 snap-start rounded-full font-medium", sizeClasses[size], className)}
     render={
       href ? <StorefrontLink href={href} aria-current={selected ? "page" : undefined} /> : undefined
     }

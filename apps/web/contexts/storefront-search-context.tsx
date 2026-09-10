@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { useDebouncedCallback } from "use-debounce";
 
+import { useCatalogReturnHref } from "@/contexts/catalog-navigation-context";
 import { useStorefrontBasePath } from "@/contexts/store-context";
 import { useStorePath } from "@/hooks/use-store-path";
 import { resolveStorefrontHref } from "@/lib/util.storefront-href";
@@ -25,10 +26,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 const CATALOG_PATH = "/catalog";
 
 interface StorefrontSearchValue {
-  /**
-   * What the field shows. The catalog filters its loaded grid on this at
-   * once, without waiting for the URL to come back with the server's answer.
-   */
+  /** Immediate field value; catalog results use the debounced URL query. */
   draft: string;
   /** Types into the field; on the catalog the URL follows after a pause. */
   setDraft: (value: string) => void;
@@ -56,6 +54,7 @@ export const StorefrontSearchProvider = ({ children }: { children: ReactNode }) 
   const router = useRouter();
   const searchParams = useSearchParams();
   const basePath = useStorefrontBasePath() ?? "";
+  const catalogHref = useCatalogReturnHref();
   const onCatalog = useStorePath() === CATALOG_PATH;
   const committed = searchParams.get("search")?.trim() ?? "";
 
@@ -93,6 +92,8 @@ export const StorefrontSearchProvider = ({ children }: { children: ReactNode }) 
 
   const debouncedWrite = useDebouncedCallback(write, SEARCH_DEBOUNCE_MS);
 
+  useEffect(() => () => debouncedWrite.cancel(), [debouncedWrite, onCatalog]);
+
   const setDraft = useCallback(
     (value: string) => {
       setDraftState(value);
@@ -122,13 +123,14 @@ export const StorefrontSearchProvider = ({ children }: { children: ReactNode }) 
       return;
     }
 
-    // Off the catalog the query is the whole request: start from a clean
-    // query string rather than dragging the current page's params along.
+    // Keep the catalog criteria when searching from another storefront page.
     written.current = trimmed;
-    const next = applyCatalogParams(new URLSearchParams(), { search: trimmed || null });
+    const next = applyCatalogParams(new URLSearchParams(catalogHref.split("?")[1] ?? ""), {
+      search: trimmed || null,
+    });
 
     router.push(resolveStorefrontHref(basePath, buildCatalogHref(next)));
-  }, [basePath, debouncedWrite, draft, onCatalog, router, write]);
+  }, [basePath, catalogHref, debouncedWrite, draft, onCatalog, router, write]);
 
   const value = useMemo(
     () => ({ draft, setDraft, clear, submit }),

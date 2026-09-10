@@ -59,12 +59,12 @@ export const CatalogActiveFilters = ({
     ...(categoryLabel
       ? [{ key: "category", label: categoryLabel, patch: { category: null } }]
       : []),
-    ...(filters.availableOnly
+    ...(!filters.availableOnly
       ? [
           {
             key: "availableOnly",
-            label: t("catalog.availableOnly"),
-            patch: { availableOnly: false },
+            label: t("catalog.showUnavailable"),
+            patch: { availableOnly: true },
           },
         ]
       : []),

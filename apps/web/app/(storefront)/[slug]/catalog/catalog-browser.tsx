@@ -29,11 +29,7 @@ import {
   type CatalogFilters,
   countActiveCatalogFilters,
   countAvailableByCategory,
-  filterBookableProducts,
-  filterCatalogProducts,
-  filterProductsByAvailableQuantity,
   getCatalogTitle,
-  sortCatalogProducts,
 } from "@/lib/utils/util.rental-browse";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 
@@ -88,10 +84,13 @@ export const CatalogBrowser = ({
   const t = useTranslations("storefront");
   const { filters, update } = useCatalogParams();
   const { storeSlug } = useStore();
-  const { period } = useCatalogPeriod({ filters, update, pricingMode: rules.pricingMode });
-  // The header owns the field; this is the same keystroke, so the loaded grid
-  // narrows without waiting for the URL to come back.
-  const { draft: search, clear: clearSearch } = useStorefrontSearch();
+  const {
+    period,
+    value: periodValue,
+    setPeriod,
+  } = useCatalogPeriod({ filters, update, pricingMode: rules.pricingMode });
+  const { clear: clearSearch } = useStorefrontSearch();
+  const search = filters.search;
   const options = catalogQueries.pages(storeSlug, filters);
   const isInitialQuery =
     hashKey(options.queryKey) === hashKey(catalogQueries.pages(storeSlug, serverFilters).queryKey);
@@ -149,42 +148,14 @@ export const CatalogBrowser = ({
     update({ ...CLEAR_CATALOG_FILTERS_PATCH, search: null });
   };
 
-  const hidesUnavailable = filters.availableOnly && period !== null;
-  const needsQuantity = filters.quantity !== null && period !== null;
-  const hasClientFilters = hidesUnavailable || needsQuantity;
-
-  const visibleProducts = useMemo(() => {
-    const matching = filterCatalogProducts(pages.products, { ...filters, search });
-    const bookable = hidesUnavailable
-      ? filterBookableProducts(matching, availabilityByProductId)
-      : matching;
-    const enough =
-      needsQuantity && filters.quantity !== null
-        ? filterProductsByAvailableQuantity(bookable, filters.quantity, availabilityByProductId)
-        : bookable;
-    return sortCatalogProducts(enough, {
-      categories,
-      availabilityByProductId,
-      sort: filters.sort,
-    });
-  }, [
-    pages.products,
-    filters,
-    search,
-    hidesUnavailable,
-    needsQuantity,
-    categories,
-    availabilityByProductId,
-  ]);
+  const hidesUnavailable = filters.availableOnly;
+  const visibleProducts = pages.products;
 
   const title = getCatalogTitle(filters.category, categories, {
     catalog: t("catalog.title"),
     others: t("availability.categoryBrowse.others"),
   });
-  // The server counts what its filters match; availability and the period's
-  // quantity are client filters, so once they hide products only the loaded
-  // ones can be counted.
-  const count = hasClientFilters ? visibleProducts.length : pages.totalCount;
+  const count = pages.totalCount;
   const trackedCategoryId =
     filters.category && !isReservedCategoryValue(filters.category) ? filters.category : undefined;
   const showCategories = categories.some(
@@ -268,7 +239,16 @@ export const CatalogBrowser = ({
                 isPending ? (
                   <ProductGridSkeleton />
                 ) : query.isError ? null : (
-                  <CatalogEmptyState search={search} onShowAll={handleShowAll} />
+                  <CatalogEmptyState
+                    search={search}
+                    onShowAll={handleShowAll}
+                    onShowUnavailable={
+                      hidesUnavailable ? () => update({ availableOnly: false }) : undefined
+                    }
+                    period={periodValue}
+                    onPeriodChange={setPeriod}
+                    rules={rules}
+                  />
                 )
               ) : (
                 <ProductGrid

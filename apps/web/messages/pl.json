@@ -5810,6 +5810,11 @@
     }
   },
   "storefront": {
+    "notFound": {
+      "title": "Ta strona jest niedostępna",
+      "description": "Produkt lub strona, której szukasz, już nie istnieje lub nie jest jeszcze dostępna online.",
+      "browseCatalog": "Zobacz katalog"
+    },
     "header": {
       "home": "Strona główna",
       "catalog": "Katalog",
@@ -5956,6 +5961,7 @@
       "price": "Cena",
       "priceRange": "{min} – {max}",
       "availability": "Dostępność",
+      "showUnavailable": "Pokaż również niedostępne produkty",
       "availableOnly": "Tylko dostępne",
       "availableOnlyHint": "Wybierz daty, aby filtrować",
       "showResults": "{count, plural, =0 {Brak produktów} one {Pokaż # produkt} few {Pokaż # produkty} many {Pokaż # produktów} other {Pokaż # produktów}}",
@@ -6061,6 +6067,11 @@
         "category": "Kategoria",
         "basePrice": "Stawka podstawowa",
         "availability": "Dostępność"
+      },
+      "unavailableReason": {
+        "unavailable": "Niedostępne",
+        "consumable_out_of_stock": "Brak w magazynie",
+        "required_accessory_out_of_stock": "Wymagane akcesorium jest niedostępne"
       },
       "unavailableHelp": "Ten produkt nie jest obecnie dostępny do wynajęcia. Zobacz resztę katalogu.",
       "requiredAccessoryOutOfStock": "Wymagane akcesorium jest niedostępne",

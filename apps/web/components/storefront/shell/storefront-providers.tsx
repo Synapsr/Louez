@@ -9,6 +9,7 @@ import { PostHogProvider } from "@/components/posthog-provider";
 import { QuickAddProvider } from "@/components/storefront/product/quick-add-provider";
 import { AdvisorProvider } from "@/contexts/advisor-context";
 import { AnalyticsProvider } from "@/contexts/analytics-context";
+import { CatalogNavigationProvider } from "@/contexts/catalog-navigation-context";
 import { CartProvider } from "@/contexts/cart-context";
 import { StoreProvider } from "@/contexts/store-context";
 import { StorefrontSearchProvider } from "@/contexts/storefront-search-context";
@@ -51,7 +52,7 @@ export const StorefrontProviders = ({
       basePath={basePath}
       periodRules={getStorePeriodRules(settings)}
     >
-      {content}
+      <CatalogNavigationProvider>{content}</CatalogNavigationProvider>
     </StoreProvider>
   );
 

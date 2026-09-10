@@ -45,10 +45,42 @@ describe("readCatalogFilters / applyCatalogParams", () => {
       sort: "recommended",
       minPrice: null,
       maxPrice: null,
-      availableOnly: false,
+      availableOnly: true,
       quantity: null,
       attributes: {},
     });
+  });
+
+  test("defaults dated browsing to available and preserves an explicit opt-out", () => {
+    const dates = new URLSearchParams({
+      startDate: "2026-09-17T07:00:00.000Z",
+      endDate: "2026-09-17T16:00:00.000Z",
+    });
+    assert.equal(readCatalogFilters(dates).availableOnly, true);
+    const unchecked = applyCatalogParams(dates, { availableOnly: false });
+    assert.equal(readCatalogFilters(unchecked).availableOnly, false);
+    assert.equal(
+      readCatalogFilters(
+        applyCatalogParams(unchecked, {
+          endDate: "2026-09-18T16:00:00.000Z",
+        }),
+      ).availableOnly,
+      false,
+    );
+    assert.equal(
+      readCatalogFilters(
+        applyCatalogParams(unchecked, {
+          availableOnly: null,
+        }),
+      ).availableOnly,
+      true,
+    );
+    dates.delete("endDate");
+    assert.equal(readCatalogFilters(dates).availableOnly, true);
+    dates.set("endDate", "invalid");
+    assert.equal(readCatalogFilters(dates).availableOnly, true);
+    dates.set("endDate", "2026-09-16T16:00:00.000Z");
+    assert.equal(readCatalogFilters(dates).availableOnly, true);
   });
 
   test("reads the quantity and the attribute entries, skipping what is malformed", () => {
@@ -108,7 +140,7 @@ describe("readCatalogFilters / applyCatalogParams", () => {
       maxPrice: null,
       availableOnly: false,
     });
-    assert.equal(cleared.toString(), "");
+    assert.equal(cleared.toString(), "availableOnly=0");
   });
 
   test("writes the quantity and one attr entry per value, and replaces them wholesale", () => {
@@ -304,6 +336,19 @@ describe("filterBookableProducts", () => {
     );
   });
 
+  test("uses known stock without dates and keeps untracked or unknown stock", () => {
+    const stock = [
+      { ...products[0], quantity: 0 },
+      { ...products[1], quantity: 2 },
+      { ...products[2], quantity: null },
+      products[3],
+    ];
+    assert.deepEqual(
+      filterBookableProducts(stock, new Map()).map((p) => p.id),
+      ["p2", "p3", "p4"],
+    );
+  });
+
   test("hides nothing while availability has not answered", () => {
     assert.equal(filterBookableProducts(products, new Map()).length, 4);
   });
@@ -315,7 +360,7 @@ describe("countActiveCatalogFilters", () => {
       category: null,
       minPrice: null,
       maxPrice: null,
-      availableOnly: false,
+      availableOnly: true,
       quantity: null,
       attributes: {},
     };
@@ -333,7 +378,7 @@ describe("countActiveCatalogFilters", () => {
         ...none,
         category: "cat-a",
         minPrice: 10,
-        availableOnly: true,
+        availableOnly: false,
       }),
       3,
     );
