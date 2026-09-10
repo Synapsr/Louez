@@ -179,7 +179,8 @@ const nextConfig: NextConfig = {
         hostname: "*.linodeobjects.com",
       },
       // MinIO (self-hosted) - Allow any hostname for flexibility
-      // Users can add their own custom domains if needed
+      // Users can add their own custom domains if needed,
+      { protocol: "https", hostname: "louez-storefront-redesign.localify", pathname: "/**" },
     ],
   },
   // Storefront tenant subdomains are <store-slug>.<env>.louez.localify (three
@@ -199,6 +200,7 @@ const nextConfig: NextConfig = {
     "*.feat-marketplace-channel.louez.localify",
     "feat-storefront-redesign.louez.localify",
     "*.feat-storefront-redesign.louez.localify",
+    "louez-storefront-redesign.localify",
   ],
 };
 
