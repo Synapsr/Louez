@@ -9,6 +9,7 @@ import {
   storeIntegrations,
   storeLegalProfiles,
 } from "@louez/db";
+import { resolveReservationBilling } from "@louez/utils";
 import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -110,6 +111,7 @@ export async function generateInvoiceForPayment(
             subtotalExclTax: true,
             taxAmount: true,
             tulipInsuranceAmount: true,
+            billingSnapshot: true,
           },
           with: {
             store: {
@@ -226,7 +228,12 @@ export async function generateInvoiceForPayment(
         items: payment.reservation.items,
         store: payment.reservation.store,
         legalProfile,
-        customer: payment.reservation.customer,
+        // Billed under the identity frozen at booking; contact and address
+        // stay those on file at issue time.
+        customer: {
+          ...payment.reservation.customer,
+          ...resolveReservationBilling(payment.reservation, payment.reservation.customer),
+        },
       },
       {
         number,
@@ -482,6 +489,7 @@ export async function generateCreditNoteForRefund(
             subtotalExclTax: true,
             taxAmount: true,
             tulipInsuranceAmount: true,
+            billingSnapshot: true,
           },
           with: {
             store: {
@@ -637,7 +645,13 @@ export async function generateCreditNoteForRefund(
         items: refundPayment.reservation.items,
         store: refundPayment.reservation.store,
         legalProfile,
-        customer: refundPayment.reservation.customer,
+        customer: {
+          ...refundPayment.reservation.customer,
+          ...resolveReservationBilling(
+            refundPayment.reservation,
+            refundPayment.reservation.customer,
+          ),
+        },
       },
       {
         number,

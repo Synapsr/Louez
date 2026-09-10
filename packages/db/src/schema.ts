@@ -37,6 +37,7 @@ import type {
   ProductSnapshot,
   ProductTaxSettings,
   PromoCodeSnapshot,
+  ReservationBillingSnapshot,
   ReservationLocationSnapshot,
   ReviewBoosterSettings,
   StoreSettings,
@@ -1326,6 +1327,11 @@ export const reservations = mysqlTable(
     returnLocationId: varchar("return_location_id", { length: 21 }),
     pickupLocationSnapshot: json("pickup_location_snapshot").$type<ReservationLocationSnapshot>(),
     returnLocationSnapshot: json("return_location_snapshot").$type<ReservationLocationSnapshot>(),
+
+    // Billing identity at booking time (individual or business + company
+    // identifiers). Null only on rows older than the column; readers fall back
+    // to the customer profile through resolveReservationBilling.
+    billingSnapshot: json("billing_snapshot").$type<ReservationBillingSnapshot>(),
 
     // Promo code
     promoCodeId: varchar("promo_code_id", { length: 21 }),

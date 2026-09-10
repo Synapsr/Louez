@@ -1904,6 +1904,22 @@
       "sendEmail": "Send email",
       "customerInfo": "Customer information",
       "viewCustomer": "View customer",
+      "billing": {
+        "title": "Billing",
+        "edit": "Edit billing",
+        "description": "Identity this reservation is invoiced under. The customer profile stays as it is.",
+        "business": "Bill a company",
+        "individual": "Individual",
+        "companyName": "Company name",
+        "companyNumber": "Company number (SIREN / BCE)",
+        "vatNumber": "VAT number",
+        "saved": "Billing updated",
+        "errors": {
+          "companyNameRequired": "Enter the company name",
+          "invalidCompanyNumber": "Invalid company number",
+          "invalidVatNumber": "Invalid VAT number"
+        }
+      },
       "invoiceDocuments": {
         "title": "Invoices and credit notes",
         "empty": "No invoice has been generated yet.",
@@ -2754,6 +2770,7 @@
         "add": "Add a note"
       },
       "reservationHistory": "Reservation history",
+      "billedAs": "Billing",
       "noReservationsForCustomer": "No reservations for this customer",
       "deletedProduct": "Deleted product",
       "amount": "Amount",

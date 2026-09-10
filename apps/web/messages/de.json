@@ -1904,6 +1904,22 @@
       "sendEmail": "E-Mail senden",
       "customerInfo": "Kundeninformationen",
       "viewCustomer": "Kunde ansehen",
+      "billing": {
+        "title": "Rechnungsstellung",
+        "edit": "Rechnungsstellung bearbeiten",
+        "description": "Identität, unter der diese Reservierung abgerechnet wird. Das Kundenprofil bleibt unverändert.",
+        "business": "An ein Unternehmen abrechnen",
+        "individual": "Privatperson",
+        "companyName": "Firmenname",
+        "companyNumber": "Unternehmensnummer (SIREN / BCE)",
+        "vatNumber": "USt-IdNr.",
+        "saved": "Rechnungsstellung aktualisiert",
+        "errors": {
+          "companyNameRequired": "Bitte den Firmennamen eingeben",
+          "invalidCompanyNumber": "Ungültige Unternehmensnummer",
+          "invalidVatNumber": "Ungültige USt-IdNr."
+        }
+      },
       "invoiceDocuments": {
         "title": "Rechnungen und Gutschriften",
         "empty": "Es wurde noch keine Rechnung erstellt.",
@@ -2754,6 +2770,7 @@
         "add": "Notiz hinzufügen"
       },
       "reservationHistory": "Reservierungsverlauf",
+      "billedAs": "Rechnungsstellung",
       "noReservationsForCustomer": "Keine Reservierungen für diesen Kunden",
       "deletedProduct": "Gelöschtes Produkt",
       "amount": "Betrag",

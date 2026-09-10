@@ -3,55 +3,12 @@ import { and, eq } from "drizzle-orm";
 import type { Transaction } from "@louez/db";
 import { customers } from "@louez/db";
 import {
-  digitsOnly,
-  isPlausibleVatNumber,
   isValidCompanyNumber,
   resolveCompanyNumberScheme,
   type CreateReservationCustomerInput,
 } from "@louez/validations";
 
-export interface CustomerCompanyIdentity {
-  companyNumber: string | null;
-  companyNumberScheme: "fr_siren" | "be_bce" | null;
-  vatNumber: string | null;
-}
-
-/**
- * Normalize and validate company identifiers before persisting invoice data.
- * Null means the business identity is invalid (missing company name, bad
- * SIREN/BCE, implausible VAT number).
- */
-export const resolveCustomerCompanyIdentity = (
-  customer: CreateReservationCustomerInput,
-  country: string,
-): CustomerCompanyIdentity | null => {
-  const empty: CustomerCompanyIdentity = {
-    companyNumber: null,
-    companyNumberScheme: null,
-    vatNumber: null,
-  };
-
-  if (customer.customerType !== "business") return empty;
-  if (!customer.companyName?.trim()) return null;
-
-  const scheme = resolveCompanyNumberScheme(country);
-  const rawCompanyNumber = customer.companyNumber?.trim() ?? "";
-  let companyNumber: string | null = null;
-
-  if (rawCompanyNumber) {
-    if (!isValidCompanyNumber(country, rawCompanyNumber)) return null;
-    companyNumber = scheme ? digitsOnly(rawCompanyNumber) : rawCompanyNumber;
-  }
-
-  const vatNumber = customer.vatNumber?.replace(/\s/g, "").toUpperCase() ?? "";
-  if (!isPlausibleVatNumber(country, vatNumber)) return null;
-
-  return {
-    companyNumber,
-    companyNumberScheme: companyNumber ? scheme : null,
-    vatNumber: vatNumber || null,
-  };
-};
+import type { CustomerCompanyIdentity } from "./billing-snapshot";
 
 export type UpsertedCustomer = typeof customers.$inferSelect;
 
@@ -59,6 +16,13 @@ export type UpsertedCustomer = typeof customers.$inferSelect;
  * Customer identity is `(storeId, email)`. A new customer takes the checkout
  * fields as is; an existing one is refreshed field by field, keeping what is
  * already on file when the checkout omits it.
+ *
+ * The profile's `customerType` is a default for prefilling the next checkout,
+ * not a record of how this reservation is billed: that lives on the
+ * reservation's billing snapshot. A checkout therefore never flips an existing
+ * profile between individual and business. A business checkout refreshes the
+ * saved company so the next checkout can offer it; an individual checkout
+ * leaves the saved company alone.
  */
 export const upsertCustomer = async ({
   tx,
@@ -105,7 +69,10 @@ export const upsertCustomer = async ({
 
   // Identifiers already on file survive a checkout that omits them; the
   // scheme is re-derived from the buyer's own country, never trusted.
-  const effectiveCompanyNumber = companyIdentity.companyNumber ?? existing.companyNumber;
+  const isBusinessCheckout = customer.customerType === "business";
+  const effectiveCompanyNumber = isBusinessCheckout
+    ? (companyIdentity.companyNumber ?? existing.companyNumber)
+    : existing.companyNumber;
   const buyerCountry = existing.country || storeCountry;
 
   await tx
@@ -113,14 +80,17 @@ export const upsertCustomer = async ({
     .set({
       firstName: customer.firstName,
       lastName: customer.lastName,
-      customerType: customer.customerType || existing.customerType,
-      companyName: customer.companyName ?? existing.companyName,
+      companyName: isBusinessCheckout
+        ? (customer.companyName ?? existing.companyName)
+        : existing.companyName,
       companyNumber: effectiveCompanyNumber,
       companyNumberScheme:
         effectiveCompanyNumber && isValidCompanyNumber(buyerCountry, effectiveCompanyNumber)
           ? resolveCompanyNumberScheme(buyerCountry)
           : null,
-      vatNumber: companyIdentity.vatNumber ?? existing.vatNumber,
+      vatNumber: isBusinessCheckout
+        ? (companyIdentity.vatNumber ?? existing.vatNumber)
+        : existing.vatNumber,
       phone: phone || existing.phone,
       address: customer.address || existing.address,
       city: customer.city || existing.city,

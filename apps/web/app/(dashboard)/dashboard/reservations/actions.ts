@@ -67,12 +67,14 @@ import type {
 import {
   DEFAULT_COMBINATION_KEY,
   buildCombinationKey,
+  billingFromCustomer,
   canonicalizeAttributes,
   getCurrencySymbol,
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
   hasCompleteAttributes,
   matchesSelectedAttributes,
+  resolveReservationBilling,
 } from "@louez/utils";
 import {
   type PricingTier,
@@ -1688,6 +1690,9 @@ export async function createManualReservation(data: CreateReservationData) {
       discountAmount: manualDiscountAmount.toFixed(2),
       internalNotes: data.internalNotes || null,
       source: "manual",
+      // Staff books on the customer's behalf: the profile's default identity
+      // is the one this reservation is billed under.
+      billingSnapshot: billingFromCustomer(customer),
       tulipInsuranceOptIn: appliedTulipInsuranceOptIn,
       tulipInsuranceAmount: tulipInsuranceAmount > 0 ? tulipInsuranceAmount.toFixed(2) : null,
       // Delivery fields — leg-based model
@@ -2474,7 +2479,10 @@ export async function previewReservationTulipQuote(
     storeId: store.id,
     mode,
     fallbackCountry: store.settings?.country || "FR",
-    customer: reservation.customer,
+    customer: {
+      ...reservation.customer,
+      ...resolveReservationBilling(reservation, reservation.customer),
+    },
     data,
     logMessage: "[tulip] Failed to preview reservation edit quote:",
     logContext: {
@@ -2964,8 +2972,7 @@ export async function updateReservation(
         const quote = await previewTulipQuoteForCheckout({
           storeId: store.id,
           customer: {
-            customerType: reservation.customer.customerType,
-            companyName: reservation.customer.companyName,
+            ...resolveReservationBilling(reservation, reservation.customer),
             firstName: reservation.customer.firstName,
             lastName: reservation.customer.lastName,
             email: reservation.customer.email,

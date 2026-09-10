@@ -6,7 +6,7 @@ import { documents, reservations, stores } from "@louez/db";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { convertImageForPdf } from "./image-utils";
-import { getLogoForLightBackground } from "@louez/utils";
+import { getLogoForLightBackground, resolveReservationBilling } from "@louez/utils";
 
 // Import translations
 import frMessages from "@/messages/fr.json";
@@ -181,7 +181,10 @@ export async function generateContract({
         automaticContractValidation,
         signatureIp: reservation.signatureIp,
         createdAt: reservation.createdAt,
-        customer: reservation.customer,
+        customer: {
+          ...reservation.customer,
+          ...resolveReservationBilling(reservation, reservation.customer),
+        },
         outboundMethod: reservation.outboundMethod,
         returnMethod: reservation.returnMethod,
         deliveryAddress: reservation.deliveryAddress,
