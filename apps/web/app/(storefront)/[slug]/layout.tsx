@@ -6,7 +6,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { generateStoreMetadata, stripHtml } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
-import { getStoreViewport } from "@/lib/storefront/get-store-viewport";
+import { STORE_THEME_VIEWPORT_COLORS } from "@/lib/theme/util.store-theme";
 
 import { StorefrontLayoutContent } from "./storefront-layout-content";
 
@@ -50,12 +50,9 @@ export const generateMetadata = async ({ params }: StorefrontLayoutParams): Prom
   );
 };
 
-// Viewport colour behind the page chrome (iOS status bar, Android toolbar):
-// follows the store's own mode, not the visitor's system preference, since
-// the storefront renders in the store mode whatever the device says.
-export const generateViewport = async ({ params }: StorefrontLayoutParams): Promise<Viewport> => {
-  const { slug } = await params;
-  return getStoreViewport(slug);
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 // Store existence, metadata, theme, and embed mode are resolved per request.
@@ -79,9 +76,16 @@ const StorefrontLayout = async ({
   }
 
   return (
-    <Suspense fallback={<div className="min-h-dvh bg-background" />}>
-      <StorefrontLayoutContent params={params}>{children}</StorefrontLayoutContent>
-    </Suspense>
+    <>
+      {/* React hoists this store-specific colour into the document head. */}
+      <meta
+        name="theme-color"
+        content={STORE_THEME_VIEWPORT_COLORS[store.theme?.mode === "dark" ? "dark" : "light"]}
+      />
+      <Suspense fallback={<div className="min-h-dvh bg-background" />}>
+        <StorefrontLayoutContent params={params}>{children}</StorefrontLayoutContent>
+      </Suspense>
+    </>
   );
 };
 
