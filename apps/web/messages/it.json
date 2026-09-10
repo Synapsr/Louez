@@ -1865,6 +1865,22 @@
       "sendEmail": "Invia email",
       "customerInfo": "Informazioni cliente",
       "viewCustomer": "Vedi cliente",
+      "billing": {
+        "title": "Fatturazione",
+        "edit": "Modifica fatturazione",
+        "description": "Identità con cui viene fatturata questa prenotazione. Il profilo del cliente non cambia.",
+        "business": "Fattura a un'azienda",
+        "individual": "Privato",
+        "companyName": "Ragione sociale",
+        "companyNumber": "Numero azienda (SIREN / BCE)",
+        "vatNumber": "Partita IVA",
+        "saved": "Fatturazione aggiornata",
+        "errors": {
+          "companyNameRequired": "Inserisci la ragione sociale",
+          "invalidCompanyNumber": "Numero azienda non valido",
+          "invalidVatNumber": "Partita IVA non valida"
+        }
+      },
       "invoiceDocuments": {
         "title": "Fatture e note di credito",
         "empty": "Non è stata ancora generata alcuna fattura.",
@@ -2715,6 +2731,7 @@
         "add": "Aggiungi una nota"
       },
       "reservationHistory": "Cronologia prenotazioni",
+      "billedAs": "Fatturazione",
       "noReservationsForCustomer": "Nessuna prenotazione per questo cliente",
       "deletedProduct": "Prodotto eliminato",
       "amount": "Importo",

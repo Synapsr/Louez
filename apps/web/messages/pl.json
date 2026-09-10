@@ -1865,6 +1865,22 @@
       "sendEmail": "Wyślij email",
       "customerInfo": "Informacje o kliencie",
       "viewCustomer": "Zobacz klienta",
+      "billing": {
+        "title": "Fakturowanie",
+        "edit": "Edytuj fakturowanie",
+        "description": "Tożsamość, na którą wystawiana jest faktura za tę rezerwację. Profil klienta pozostaje bez zmian.",
+        "business": "Fakturuj na firmę",
+        "individual": "Osoba prywatna",
+        "companyName": "Nazwa firmy",
+        "companyNumber": "Numer firmy (SIREN / BCE)",
+        "vatNumber": "Numer VAT",
+        "saved": "Fakturowanie zaktualizowane",
+        "errors": {
+          "companyNameRequired": "Wpisz nazwę firmy",
+          "invalidCompanyNumber": "Nieprawidłowy numer firmy",
+          "invalidVatNumber": "Nieprawidłowy numer VAT"
+        }
+      },
       "invoiceDocuments": {
         "title": "Faktury i noty kredytowe",
         "empty": "Nie wygenerowano jeszcze żadnej faktury.",
@@ -2715,6 +2731,7 @@
         "add": "Dodaj notatkę"
       },
       "reservationHistory": "Historia rezerwacji",
+      "billedAs": "Fakturowanie",
       "noReservationsForCustomer": "Brak rezerwacji tego klienta",
       "deletedProduct": "Usunięty produkt",
       "amount": "Kwota",

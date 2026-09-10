@@ -39,3 +39,12 @@ export { sanitizeRichTextHtml } from "./html/sanitize-rich-text";
 
 // AI advisor
 export { advisorValidationCovers } from "./ai-advisor";
+
+// Reservation billing identity (individual or business, frozen at booking)
+export {
+  INDIVIDUAL_BILLING,
+  billingFromCustomer,
+  isBusinessBilling,
+  resolveReservationBilling,
+  type BillingCustomerLike,
+} from "./reservation-billing";

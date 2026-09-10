@@ -2,6 +2,7 @@ import { and, eq, isNull, ne, or } from "drizzle-orm";
 
 import { db, reservations } from "@louez/db";
 import type { TulipPublicMode } from "@louez/types";
+import { resolveReservationBilling } from "@louez/utils";
 
 import {
   TulipApiError,
@@ -910,7 +911,10 @@ export async function createTulipContractForReservation(params: {
       contractType: resolvedContractType,
       startDate: reservation.startDate,
       endDate: reservation.endDate,
-      customer: toTulipCustomerInput(reservation.customer),
+      customer: toTulipCustomerInput({
+        ...reservation.customer,
+        ...resolveReservationBilling(reservation, reservation.customer),
+      }),
       insuredItems: insuredItemsWithMargins,
     });
 
@@ -1145,7 +1149,10 @@ export async function syncTulipContractForReservation(params: { reservationId: s
     contractType: resolvedContractType,
     startDate: reservation.startDate,
     endDate: reservation.endDate,
-    customer: toTulipCustomerInput(reservation.customer),
+    customer: toTulipCustomerInput({
+      ...reservation.customer,
+      ...resolveReservationBilling(reservation, reservation.customer),
+    }),
     insuredItems: insuredItemsWithMargins,
   });
   const currentContract = await tulipGetContract(apiKey, contractId);

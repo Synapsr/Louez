@@ -1,5 +1,5 @@
 import { tool } from "ai";
-import { and, desc, eq, gte, inArray, like, lte, sql, sum } from "drizzle-orm";
+import { and, desc, eq, exists, gte, inArray, like, lte, or, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -529,7 +529,26 @@ export function createAITools(ctx: AIChatContext) {
         requirePermission(ctx, "customers", "read");
 
         const conditions = [eq(customers.storeId, ctx.storeId)];
-        if (type) conditions.push(eq(customers.customerType, type));
+        if (type) {
+          // Business: default identity or at least one reservation billed to a company.
+          const isBusiness = or(
+            eq(customers.customerType, "business"),
+            exists(
+              db
+                .select({ id: reservations.id })
+                .from(reservations)
+                .where(
+                  and(
+                    eq(reservations.customerId, customers.id),
+                    sql`JSON_UNQUOTE(JSON_EXTRACT(${reservations.billingSnapshot}, '$.customerType')) = 'business'`,
+                  ),
+                ),
+            ),
+          );
+          if (isBusiness) {
+            conditions.push(type === "business" ? isBusiness : sql`NOT (${isBusiness})`);
+          }
+        }
         if (since) conditions.push(gte(customers.createdAt, new Date(since)));
         if (search) {
           const s = `%${search.toLowerCase()}%`;

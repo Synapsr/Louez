@@ -7,6 +7,7 @@ import {
   customers,
   effectiveProductQuantitySql,
 } from "@louez/db";
+import { resolveReservationBilling } from "@louez/utils";
 import { eq, and, between, asc, desc } from "drizzle-orm";
 import type { ExportParams } from "./types";
 
@@ -178,7 +179,7 @@ function reservationsToRows(data: Awaited<ReturnType<typeof queryReservationsDat
     [row.customer?.firstName, row.customer?.lastName].filter(Boolean).join(" "),
     str(row.customer?.email),
     str(row.customer?.phone),
-    str(row.customer?.companyName),
+    str(row.customer ? resolveReservationBilling(row, row.customer).companyName : null),
     formatIsoDate(row.startDate),
     formatIsoDate(row.endDate),
     formatItemsSummary(row.items),

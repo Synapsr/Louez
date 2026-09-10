@@ -1904,6 +1904,22 @@
       "sendEmail": "Enviar correo",
       "customerInfo": "Informacion del cliente",
       "viewCustomer": "Ver cliente",
+      "billing": {
+        "title": "Facturación",
+        "edit": "Editar facturación",
+        "description": "Identidad con la que se factura esta reserva. El perfil del cliente no cambia.",
+        "business": "Facturar a una empresa",
+        "individual": "Particular",
+        "companyName": "Razón social",
+        "companyNumber": "Número de empresa (SIREN / BCE)",
+        "vatNumber": "Número de IVA",
+        "saved": "Facturación actualizada",
+        "errors": {
+          "companyNameRequired": "Introduce la razón social",
+          "invalidCompanyNumber": "Número de empresa no válido",
+          "invalidVatNumber": "Número de IVA no válido"
+        }
+      },
       "invoiceDocuments": {
         "title": "Facturas y notas de crédito",
         "empty": "Todavía no se ha generado ninguna factura.",
@@ -2754,6 +2770,7 @@
         "add": "Agregar una nota"
       },
       "reservationHistory": "Historial de reservas",
+      "billedAs": "Facturación",
       "noReservationsForCustomer": "No hay reservas para este cliente",
       "deletedProduct": "Producto eliminado",
       "amount": "Monto",

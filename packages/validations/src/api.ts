@@ -310,6 +310,15 @@ export const dashboardReservationUpdateNotesInputSchema = z.object({
   notes: z.string().max(100000).default(""),
 });
 
+/** Billing identity a reservation is invoiced under; identifiers are checked against the buyer country server-side. */
+export const dashboardReservationUpdateBillingInputSchema = z.object({
+  reservationId: z.string().length(21),
+  customerType: z.enum(["individual", "business"]),
+  companyName: z.string().trim().max(255).default(""),
+  companyNumber: z.string().trim().max(64).default(""),
+  vatNumber: z.string().trim().max(64).default(""),
+});
+
 export const dashboardReservationUpdateStatusInputSchema = z.object({
   reservationId: z.string().length(21),
   status: reservationStatusSchema,
@@ -777,6 +786,9 @@ export type DashboardReservationGetByIdInput = z.infer<
 >;
 export type DashboardReservationUpdateNotesInput = z.infer<
   typeof dashboardReservationUpdateNotesInputSchema
+>;
+export type DashboardReservationUpdateBillingInput = z.infer<
+  typeof dashboardReservationUpdateBillingInputSchema
 >;
 export type DashboardReservationUpdateStatusInput = z.infer<
   typeof dashboardReservationUpdateStatusInputSchema

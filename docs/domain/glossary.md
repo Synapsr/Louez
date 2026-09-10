@@ -9,8 +9,12 @@ A rental business workspace that owns its catalog, reservations, customers, paym
 _Avoid_: account, shop, merchant account, tenant
 
 **Customer**:
-A person or organization renting equipment from a Store.
+A person or organization renting equipment from a Store. Identified by email within a Store; the profile's individual-or-business type is only a default offered at the next checkout.
 _Avoid_: client, buyer
+
+**Billing identity**:
+The individual-or-business identity a Reservation is invoiced under, with the company name and identifiers when it is a business. Captured on the reservation at booking (`billingSnapshot`) and edited only on that reservation, so a later checkout or profile change never rewrites who an existing reservation, its contract, or its invoice is billed to.
+_Avoid_: customer type (when talking about a reservation)
 
 **Reservation payment**:
 A payment made by a Customer for a Store reservation.

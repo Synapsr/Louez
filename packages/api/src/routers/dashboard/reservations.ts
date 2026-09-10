@@ -3,6 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { db, reservations } from "@louez/db";
+import type { ReservationBillingSnapshot } from "@louez/types";
+import { INDIVIDUAL_BILLING } from "@louez/utils";
 import {
   dashboardReservationAssignUnitsInputSchema,
   dashboardReservationCancelInputSchema,
@@ -30,11 +32,16 @@ import {
   dashboardReservationCalendarPeriodEntrySchema,
   dashboardReservationPlanningTimelineEntrySchema,
   dashboardReservationTimelinePeriodInputSchema,
+  dashboardReservationUpdateBillingInputSchema,
   dashboardReservationUpdateNotesInputSchema,
   dashboardReservationUpdateReservationInputSchema,
   dashboardReservationUpdateStatusInputSchema,
   dashboardReservationsListInputSchema,
   reservationSignInputSchema,
+  digitsOnly,
+  isPlausibleVatNumber,
+  isValidCompanyNumber,
+  resolveCompanyNumberScheme,
 } from "@louez/validations";
 
 import { dashboardProcedure, requirePermission } from "../../procedures";
@@ -318,6 +325,80 @@ const updateNotes = requirePermission("write")
       // Drizzle update() return type varies; existence is validated by follow-up read in UI invalidation.
       void result;
       return { success: true as const };
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+/**
+ * Rewrites who a reservation is billed to. Only the billing identity moves;
+ * the customer profile is untouched, as it is a default for the next
+ * checkout rather than a record of this reservation.
+ */
+const updateBilling = requirePermission("write")
+  .input(dashboardReservationUpdateBillingInputSchema)
+  .output(
+    z.object({
+      success: z.literal(true),
+      billingSnapshot: z.object({
+        customerType: z.enum(["individual", "business"]),
+        companyName: z.string().nullable(),
+        companyNumber: z.string().nullable(),
+        companyNumberScheme: z.enum(["fr_siren", "be_bce"]).nullable(),
+        vatNumber: z.string().nullable(),
+      }),
+    }),
+  )
+  .handler(async ({ context, input }) => {
+    try {
+      const reservation = await db.query.reservations.findFirst({
+        columns: { id: true },
+        where: and(
+          eq(reservations.id, input.reservationId),
+          eq(reservations.storeId, context.store.id),
+        ),
+        with: { customer: { columns: { country: true } } },
+      });
+      if (!reservation) {
+        throw new ORPCError("NOT_FOUND", { message: "errors.reservationNotFound" });
+      }
+
+      let billingSnapshot: ReservationBillingSnapshot = INDIVIDUAL_BILLING;
+      if (input.customerType === "business") {
+        if (!input.companyName) {
+          throw new ORPCError("BAD_REQUEST", { message: "errors.companyNameRequired" });
+        }
+        const country = reservation.customer.country || "FR";
+        if (input.companyNumber && !isValidCompanyNumber(country, input.companyNumber)) {
+          throw new ORPCError("BAD_REQUEST", { message: "errors.invalidCompanyNumber" });
+        }
+        const vatNumber = input.vatNumber.replace(/\s/g, "").toUpperCase();
+        if (!isPlausibleVatNumber(country, vatNumber)) {
+          throw new ORPCError("BAD_REQUEST", { message: "errors.invalidVatNumber" });
+        }
+        const scheme = resolveCompanyNumberScheme(country);
+        const companyNumber = input.companyNumber
+          ? scheme
+            ? digitsOnly(input.companyNumber)
+            : input.companyNumber
+          : null;
+        billingSnapshot = {
+          customerType: "business",
+          companyName: input.companyName,
+          companyNumber,
+          companyNumberScheme: companyNumber ? scheme : null,
+          vatNumber: vatNumber || null,
+        };
+      }
+
+      await db
+        .update(reservations)
+        .set({ billingSnapshot, updatedAt: new Date() })
+        .where(
+          and(eq(reservations.id, input.reservationId), eq(reservations.storeId, context.store.id)),
+        );
+
+      return { success: true as const, billingSnapshot };
     } catch (error) {
       throw toORPCError(error);
     }
@@ -773,6 +854,7 @@ export const dashboardReservationsRouter = {
   previewTulipQuote,
   previewManualTulipQuote,
   updateNotes,
+  updateBilling,
   updateStatus,
   cancel,
   recordPayment,

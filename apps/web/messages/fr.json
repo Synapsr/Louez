@@ -1904,6 +1904,22 @@
       "sendEmail": "Envoyer un email",
       "customerInfo": "Informations client",
       "viewCustomer": "Voir la fiche client",
+      "billing": {
+        "title": "Facturation",
+        "edit": "Modifier la facturation",
+        "description": "Identité sous laquelle cette réservation est facturée. Le profil du client reste inchangé.",
+        "business": "Facturer à une entreprise",
+        "individual": "Particulier",
+        "companyName": "Raison sociale",
+        "companyNumber": "SIREN / numéro d'entreprise",
+        "vatNumber": "Numéro de TVA",
+        "saved": "Facturation mise à jour",
+        "errors": {
+          "companyNameRequired": "Veuillez saisir la raison sociale",
+          "invalidCompanyNumber": "Numéro d'entreprise invalide",
+          "invalidVatNumber": "Numéro de TVA invalide"
+        }
+      },
       "invoiceDocuments": {
         "title": "Factures et avoirs",
         "empty": "Aucune facture n’a encore été générée.",
@@ -2754,6 +2770,7 @@
         "add": "Ajouter une note"
       },
       "reservationHistory": "Historique des réservations",
+      "billedAs": "Facturation",
       "noReservationsForCustomer": "Aucune réservation pour ce client",
       "deletedProduct": "Produit supprimé",
       "amount": "Montant",

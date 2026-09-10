@@ -22,7 +22,7 @@ import { Button } from "@louez/ui";
 import { Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
 import { Badge } from "@louez/ui";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@louez/ui";
-import { formatCurrency } from "@louez/utils";
+import { formatCurrency, isBusinessBilling, resolveReservationBilling } from "@louez/utils";
 import { DashboardBreadcrumbLabel } from "@/components/dashboard/dashboard-breadcrumbs-context";
 import { EmailContactPopover } from "@/components/dashboard/email-contact-popover";
 import { PhoneContactPopover } from "@/components/dashboard/phone-contact-popover";
@@ -266,49 +266,65 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
                   <TableHead>{tReservations("number")}</TableHead>
                   <TableHead>{tReservations("period")}</TableHead>
                   <TableHead>{t("products")}</TableHead>
+                  <TableHead>{t("billedAs")}</TableHead>
                   <TableHead>{tCommon("status")}</TableHead>
                   <TableHead className="text-right">{t("amount")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {customerReservations.map((reservation) => (
-                  <TableRow key={reservation.id}>
-                    <TableCell>
-                      <Link
-                        href={`/dashboard/reservations/${reservation.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        #{reservation.number}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {format(reservation.startDate, "dd/MM/yyyy", { locale: dateLocale })}
-                        {" - "}
-                        {format(reservation.endDate, "dd/MM/yyyy", { locale: dateLocale })}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        {reservation.items.map((item, idx) => (
-                          <span key={item.id}>
-                            {idx > 0 && ", "}
-                            {item.product?.name || t("deletedProduct")}
-                            {item.quantity > 1 && ` (x${item.quantity})`}
+                {customerReservations.map((reservation) => {
+                  const billing = resolveReservationBilling(reservation, customer);
+                  return (
+                    <TableRow key={reservation.id}>
+                      <TableCell>
+                        <Link
+                          href={`/dashboard/reservations/${reservation.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          #{reservation.number}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {format(reservation.startDate, "dd/MM/yyyy", { locale: dateLocale })}
+                          {" - "}
+                          {format(reservation.endDate, "dd/MM/yyyy", { locale: dateLocale })}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {reservation.items.map((item, idx) => (
+                            <span key={item.id}>
+                              {idx > 0 && ", "}
+                              {item.product?.name || t("deletedProduct")}
+                              {item.quantity > 1 && ` (x${item.quantity})`}
+                            </span>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {isBusinessBilling(billing) ? (
+                          <span className="flex items-center gap-1.5 text-sm">
+                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            {billing.companyName}
                           </span>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariants[reservation.status]}>
-                        {tReservations(`status.${reservation.status}`)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(parseFloat(reservation.totalAmount), "EUR", formatLocale)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {t("customerType.individual")}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariants[reservation.status]}>
+                          {tReservations(`status.${reservation.status}`)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(parseFloat(reservation.totalAmount), "EUR", formatLocale)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}

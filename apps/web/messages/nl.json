@@ -1865,6 +1865,22 @@
       "sendEmail": "E-mail verzenden",
       "customerInfo": "Klantinformatie",
       "viewCustomer": "Klant bekijken",
+      "billing": {
+        "title": "Facturatie",
+        "edit": "Facturatie bewerken",
+        "description": "Identiteit waaronder deze reservering wordt gefactureerd. Het klantprofiel blijft ongewijzigd.",
+        "business": "Factureren aan een bedrijf",
+        "individual": "Particulier",
+        "companyName": "Bedrijfsnaam",
+        "companyNumber": "Ondernemingsnummer (SIREN / KBO)",
+        "vatNumber": "Btw-nummer",
+        "saved": "Facturatie bijgewerkt",
+        "errors": {
+          "companyNameRequired": "Vul de bedrijfsnaam in",
+          "invalidCompanyNumber": "Ongeldig ondernemingsnummer",
+          "invalidVatNumber": "Ongeldig btw-nummer"
+        }
+      },
       "invoiceDocuments": {
         "title": "Facturen en creditnota’s",
         "empty": "Er is nog geen factuur aangemaakt.",
@@ -2715,6 +2731,7 @@
         "add": "Notitie toevoegen"
       },
       "reservationHistory": "Reserveringsgeschiedenis",
+      "billedAs": "Facturatie",
       "noReservationsForCustomer": "Geen reserveringen voor deze klant",
       "deletedProduct": "Verwijderd product",
       "amount": "Bedrag",

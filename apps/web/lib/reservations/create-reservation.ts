@@ -62,10 +62,11 @@ import {
 import { resolveTulipInsurance, type TulipInsuranceResolution } from "./resolve-tulip-insurance";
 import { startCheckoutPayment } from "./start-checkout-payment";
 import {
+  buildReservationBillingSnapshot,
   resolveCustomerCompanyIdentity,
-  upsertCustomer,
   type CustomerCompanyIdentity,
-} from "./upsert-customer";
+} from "./billing-snapshot";
+import { upsertCustomer } from "./upsert-customer";
 import {
   getRentalWindow,
   validateRentalDuration,
@@ -598,6 +599,7 @@ const writeReservation = async (
       taxRate: totals.taxRate?.toFixed(2) ?? null,
       customerNotes: request.customerNotes || null,
       source: request.source,
+      billingSnapshot: buildReservationBillingSnapshot(request.customer, prepared.companyIdentity),
       outboundMethod: outboundLeg?.method || "store",
       returnMethod: returnLeg?.method || "store",
       deliveryOption: delivery.hasAnyDelivery ? "delivery" : "pickup",

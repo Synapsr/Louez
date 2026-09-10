@@ -1,5 +1,5 @@
 import { db, customers, reservations } from "@louez/db";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, exists, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { dashboardProcedure } from "../../procedures";
@@ -26,8 +26,24 @@ const list = dashboardProcedure.input(listInputSchema).handler(async ({ context,
       )`);
   }
 
+  // A customer counts as business when that is their default identity or
+  // when at least one reservation was billed to a company.
   if (input.type === "individual" || input.type === "business") {
-    conditions.push(eq(customers.customerType, input.type));
+    const hasBusinessReservation = exists(
+      db
+        .select({ id: reservations.id })
+        .from(reservations)
+        .where(
+          and(
+            eq(reservations.customerId, customers.id),
+            sql`JSON_UNQUOTE(JSON_EXTRACT(${reservations.billingSnapshot}, '$.customerType')) = 'business'`,
+          ),
+        ),
+    );
+    const isBusiness = or(eq(customers.customerType, "business"), hasBusinessReservation);
+    if (isBusiness) {
+      conditions.push(input.type === "business" ? isBusiness : sql`NOT (${isBusiness})`);
+    }
   }
 
   const whereClause = and(...conditions)!;
