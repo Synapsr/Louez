@@ -247,12 +247,16 @@ async function main() {
                   : isComplex && n === 8
                     ? "untracked"
                     : "returnable",
-              quantity: isComplex && n === 6 ? 0 : isComplex && n === 5 ? 2 : 10,
+              quantity: n % productNames.length === 6 ? 0 : isComplex && n === 5 ? 2 : 10,
               trackUnits: isComplex && n === 5,
               bookingAttributeAxes:
                 isComplex && n === 5 ? [{ key: "size", label: "Taille", position: 0 }] : null,
               status:
-                isComplex && n === 9 ? "draft" : isComplex && n === 10 ? "archived" : "active",
+                n % productNames.length === 9
+                  ? "draft"
+                  : n % productNames.length === 10
+                    ? "archived"
+                    : "active",
               enforceStrictTiers: isPricing && n === 4,
               categoryId: store.count > 1 ? id(`${store.slug}:cat:${n % 3}`) : null,
               images:

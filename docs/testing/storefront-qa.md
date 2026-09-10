@@ -31,7 +31,7 @@ QA_DOCKER_CONTEXT=desktop-linux pnpm qa:storefront setup
 
 ## Tester
 
-1. Choisir une boutique ou rechercher un scénario dans l’index.
+1. Filtrer l’index par boutique, texte ou résultat : à tester, validé, anomalie, bloqué. Ces filtres se combinent ; un cas sans résultat enregistré est « À tester ».
 2. Ouvrir son lien. Pour un nouveau panier, choisir une période future disponible ; la période « stock » affichée dans l’index sert spécifiquement aux tests de disponibilité.
 3. Effectuer les étapes et comparer au résultat attendu, sur ordinateur puis sur mobile.
 4. Noter le résultat et les observations. Les résultats sont conservés dans le navigateur de l’index. Le bouton d’export télécharge un JSON daté ; exporter avant de réinitialiser les données.
@@ -39,6 +39,14 @@ QA_DOCKER_CONTEXT=desktop-linux pnpm qa:storefront setup
 Le compte client est `client@example.test`, le propriétaire `owner@example.test`. Les codes et liens de connexion arrivent dans Mailpit, accessible depuis l’index. Aucun compte de production n’est nécessaire. Utiliser uniquement des adresses `@example.test` ; l’envoi email de développement est limité à ce domaine et le serveur SMTP local ne relaie pas les messages.
 
 Les liens préparés pour le suivi client ouvrent de vraies sessions sur des réservations fictives. Ils expirent après 90 jours. Les dates de disponibilité, de fermeture et de saison sont calculées à la génération ; refaire un reset lorsque ces dates sont passées.
+
+## Modifier le code avec le hot reload
+
+`pnpm qa:storefront dev` actualise la copie au démarrage, puis suit les fichiers du checkout courant toutes les 750 ms. Modifier et sauvegarder les fichiers habituels dans l’IDE : les composants, styles et packages partagés sont recopiés automatiquement et Next applique Fast Refresh. Aucun `sync` ni reset de la base n’est nécessaire pour ces changements.
+
+Le terminal affiche `[QA sources]` à chaque copie. Les ajouts, suppressions et renommages sont suivis. Les fichiers ignorés par Git, les `.env`, les caches et les rapports générés ne sont pas synchronisés. Les substitutions vers les simulateurs sont réappliquées avant chaque écriture ; si un point de substitution a changé, le terminal signale une erreur et conserve la dernière version valide de ce fichier.
+
+Après un changement de dépendances, installer celles-ci dans le checkout avec `pnpm install`, puis relancer `dev`. Après une modification du lanceur ou des simulateurs dans `scripts/storefront-qa/`, relancer également `dev`. Pour le schéma et les données des scénarios, suivre la procédure ci-dessous.
 
 ## Recommencer ou actualiser les sources
 
@@ -60,10 +68,13 @@ Après un changement de schéma ou de définition des scénarios, faire `sync` p
 
 ```sh
 pnpm qa:storefront status
+pnpm qa:storefront check
 pnpm qa:storefront stop
 ```
 
 `stop` arrête les trois services Compose de recette sans effacer les volumes. Pour arrêter aussi la VM dédiée, une fois la recette terminée : `colima stop louez-storefront-qa`.
+
+Exécuter `check` pendant que `dev` tourne : il vérifie les réponses HTTP et le contenu attendu de l’index, des 21 boutiques, de Mailpit et des simulateurs. Le résultat daté est écrit dans `.agent-docs/storefront-qa/http-checks.json`. Ce contrôle ne valide pas les parcours métier.
 
 ## Services simulés et limites
 
@@ -79,7 +90,7 @@ Les substitutions de transport Stripe et Google sont appliquées **uniquement à
 
 Le simulateur Stripe affiche son propre écran, sans formulaire bancaire. Il ne prouve pas que Stripe acceptera une requête ou un paiement. Le statut des cautions est préparé en base pour vérifier l’affichage ; la capture réelle d’une empreinte n’est pas simulée. Aucun résultat de scénario n’est marqué « validé » par le simple fait d’avoir été généré.
 
-Les modifications restent figées à la dernière copie. Cette instance n’est pas un déploiement ni une preuve de compatibilité des migrations. Ne pas exposer cette copie publiquement : l’index comporte des accès aux clients fictifs et les simulateurs sont destinés à la machine locale.
+Pendant `dev`, les sources évoluent avec le checkout : les résultats d’une campagne manuelle peuvent donc concerner plusieurs versions du code. Cette instance n’est pas un déploiement ni une preuve de compatibilité des migrations. Ne pas exposer cette copie publiquement : l’index comporte des accès aux clients fictifs et les simulateurs sont destinés à la machine locale.
 
 ## Où se trouvent les fichiers
 
