@@ -29,6 +29,8 @@ interface BuildReservationPayloadInput {
   tulipInsuranceMode: TulipInsuranceMode;
   promoCode?: string;
   advisorConversationId?: string;
+  /** Pending reservation of an earlier attempt, reused or replaced server-side. */
+  resumeReservationId?: string;
 }
 
 type DeliveryLeg = CreateReservationInput["delivery"] extends { outbound: infer TLeg } | undefined
@@ -74,6 +76,7 @@ export const buildReservationPayload = ({
   tulipInsuranceMode,
   promoCode,
   advisorConversationId,
+  resumeReservationId,
 }: BuildReservationPayloadInput): CreateReservationInput => ({
   storeId,
   customer: {
@@ -125,6 +128,7 @@ export const buildReservationPayload = ({
   locale,
   promoCode,
   advisorConversationId,
+  resumeReservationId,
   delivery: {
     outbound: buildDeliveryLeg(outboundMethod, outboundAddress, pickupLocationId),
     return: buildDeliveryLeg(returnMethod, returnAddress, returnLocationId),

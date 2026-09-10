@@ -6565,6 +6565,8 @@
         "title": "Payment interrupted",
         "description": "Your booking {number} is waiting for payment. Resume whenever you like, nothing is lost.",
         "cartKept": "Your cart has been kept.",
+        "expiredTitle": "Booking expired",
+        "expiredDescription": "The payment window for booking {number} has closed and it was cancelled. Your cart has been kept: you can book it again in a few seconds.",
         "backToCart": "Back to the cart",
         "resume": "Resume payment",
         "redirecting": "Redirecting…",

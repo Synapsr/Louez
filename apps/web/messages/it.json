@@ -6565,6 +6565,8 @@
         "title": "Pagamento interrotto",
         "description": "La tua prenotazione {number} è in attesa di pagamento. Riprendi quando vuoi, non hai perso nulla.",
         "cartKept": "Il tuo carrello è stato conservato.",
+        "expiredTitle": "Prenotazione scaduta",
+        "expiredDescription": "Il termine di pagamento della prenotazione {number} è scaduto ed è stata annullata. Il tuo carrello è stato conservato: puoi rifarla in pochi secondi.",
         "backToCart": "Torna al carrello",
         "resume": "Riprendi il pagamento",
         "redirecting": "Reindirizzamento…",

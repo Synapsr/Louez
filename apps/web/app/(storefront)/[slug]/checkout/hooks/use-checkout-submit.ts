@@ -8,7 +8,6 @@ import { usePostHog } from "posthog-js/react";
 import type { LegMethod } from "@louez/types";
 
 import { useAnalytics } from "@/contexts/analytics-context";
-import { useCart } from "@/contexts/cart-context";
 import type { Locale } from "@/i18n/config";
 import { useStorefrontUrl } from "@/hooks/use-storefront-url";
 import {
@@ -29,6 +28,11 @@ import type { CheckoutTotals } from "../util.checkout-totals";
 import { getStepForErrorKey, sanitizeTranslationParams } from "../util.checkout-steps";
 import { buildReservationPayload } from "../util.reservation-payload";
 import type { CartItem } from "@/contexts/cart-context";
+import {
+  clearPendingCheckout,
+  readPendingCheckout,
+  writePendingCheckout,
+} from "@/lib/storefront/util.pending-checkout-storage";
 
 const ADVANCE_NOTICE_ERROR = "errors.advanceNoticeViolation";
 
@@ -73,9 +77,10 @@ class SubmitError extends Error {
 }
 
 /**
- * Sends the reservation and leaves the page. The cart survives the Stripe
- * redirect (the verified return page clears it); in request mode it is
- * cleared right after the navigation to the token URL is triggered.
+ * Keeps the checkout pending until navigation. The destination page clears
+ * the cart after a request or verified payment. A checkout sent to Stripe
+ * leaves its reservation id in the browser: a second submission after the
+ * customer backed out resumes that reservation instead of creating another.
  */
 export const useCheckoutSubmit = ({
   storeId,
@@ -96,9 +101,9 @@ export const useCheckoutSubmit = ({
 }: UseCheckoutSubmitParams) => {
   const posthog = usePostHog();
   const { trackEvent } = useAnalytics();
-  const { clearCart } = useCart();
   const { getUrl } = useStorefrontUrl(storeSlug);
   const [serverError, setServerError] = useState<CheckoutSubmitError | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const mutation = useMutation({
     mutationFn: async (values: CheckoutFormValues) => {
@@ -130,6 +135,7 @@ export const useCheckoutSubmit = ({
         tulipInsuranceMode,
         promoCode,
         advisorConversationId,
+        resumeReservationId: readPendingCheckout(storeId),
       });
 
       const result = await createReservation(payload);
@@ -140,6 +146,7 @@ export const useCheckoutSubmit = ({
     },
     onSuccess: (result) => {
       setServerError(null);
+      setIsRedirecting(true);
 
       trackEvent({
         eventType: "checkout_completed",
@@ -164,6 +171,7 @@ export const useCheckoutSubmit = ({
       });
 
       if (reservationMode === "payment" && result.paymentUrl) {
+        writePendingCheckout({ storeId, reservationId: result.reservationId });
         trackEvent({
           eventType: "payment_initiated",
           metadata: { reservationId: result.reservationId, amount: totals.amountDueNow },
@@ -172,13 +180,14 @@ export const useCheckoutSubmit = ({
         return;
       }
 
+      clearPendingCheckout();
       window.location.assign(
         result.instantAccessUrl ??
           getUrl(`/account/reservations/${result.reservationId}?event=requested`),
       );
-      clearCart();
     },
     onError: (error) => {
+      setIsRedirecting(false);
       const message = error instanceof SubmitError ? error.message : "errors.generic";
       const params = error instanceof SubmitError ? error.params : {};
 
@@ -213,16 +222,22 @@ export const useCheckoutSubmit = ({
 
   const submit = useCallback(
     async (values: CheckoutFormValues) => {
+      if (mutation.isPending || isRedirecting) return;
       try {
         await mutation.mutateAsync(values);
       } catch {
         // Surfaced through `serverError`.
       }
     },
-    [mutation],
+    [mutation, isRedirecting],
   );
 
   const clearServerError = useCallback(() => setServerError(null), []);
 
-  return { submit, isSubmitting: mutation.isPending, serverError, clearServerError };
+  return {
+    submit,
+    isSubmitting: mutation.isPending || isRedirecting,
+    serverError,
+    clearServerError,
+  };
 };

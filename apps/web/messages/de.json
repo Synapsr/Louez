@@ -6565,6 +6565,8 @@
         "title": "Zahlung abgebrochen",
         "description": "Ihre Buchung {number} wartet auf die Zahlung. Sie können jederzeit fortfahren, nichts geht verloren.",
         "cartKept": "Ihr Warenkorb wurde gespeichert.",
+        "expiredTitle": "Buchung abgelaufen",
+        "expiredDescription": "Die Zahlungsfrist für die Buchung {number} ist abgelaufen und sie wurde storniert. Ihr Warenkorb wurde gespeichert: Sie können sie in wenigen Sekunden erneut buchen.",
         "backToCart": "Zurück zum Warenkorb",
         "resume": "Zahlung fortsetzen",
         "redirecting": "Weiterleitung…",

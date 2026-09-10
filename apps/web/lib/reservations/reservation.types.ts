@@ -31,7 +31,10 @@ export type CreateReservationSuccess = {
    * (no Stripe step); null in payment mode and for trusted callers.
    */
   instantAccessUrl: string | null;
-  /** A marketplace replay of an already-written reservation. */
+  /**
+   * An already-written reservation answered this request: a marketplace
+   * replay, or a web checkout resumed on its earlier pending reservation.
+   */
   idempotentReplay: boolean;
 };
 

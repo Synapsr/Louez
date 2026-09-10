@@ -166,7 +166,15 @@ interface CreateCheckoutSessionParams {
   applicationFeeAmount?: number; // In cents (platform fee)
   feeMetadata?: Record<string, string>; // platform fee breakdown, merged into PI metadata
   locale?: string;
+  /**
+   * Stamped in the session metadata so the expiry webhook can tell a storefront
+   * checkout (whose pending reservation it may auto-cancel) from every other
+   * payment link of the same reservation.
+   */
+  checkoutFlow?: CheckoutSessionFlow;
 }
+
+export type CheckoutSessionFlow = "storefront_checkout";
 
 function normalizeStripeReferenceValue(value: string | null | undefined): string | undefined {
   const normalized = value?.trim().replace(/\s+/g, " ");
@@ -217,6 +225,7 @@ export async function createCheckoutSession({
   applicationFeeAmount,
   feeMetadata,
   locale,
+  checkoutFlow,
 }: CreateCheckoutSessionParams) {
   // Build Stripe line items (rental only, deposit is handled separately as authorization hold)
   const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = lineItems.map((item) => ({
@@ -258,6 +267,7 @@ export async function createCheckoutSession({
     metadata: {
       ...paymentReference.metadata,
       depositAmount: depositAmount.toString(),
+      ...(checkoutFlow ? { checkoutFlow } : {}),
     },
     payment_intent_data: {
       description: paymentReference.description,

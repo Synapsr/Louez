@@ -6565,6 +6565,8 @@
         "title": "Betaling onderbroken",
         "description": "Uw reservering {number} wacht op betaling. U kunt op elk moment verdergaan, er gaat niets verloren.",
         "cartKept": "Uw winkelwagen is bewaard.",
+        "expiredTitle": "Reservering verlopen",
+        "expiredDescription": "De betaaltermijn voor reservering {number} is verstreken en ze is geannuleerd. Uw winkelwagen is bewaard: u kunt ze in enkele seconden opnieuw boeken.",
         "backToCart": "Terug naar de winkelwagen",
         "resume": "Betaling hervatten",
         "redirecting": "Doorsturen…",

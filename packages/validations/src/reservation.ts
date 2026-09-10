@@ -166,6 +166,11 @@ export const createReservationInputSchema = z.object({
     .optional(),
   promoCode: optionalReservationText(50),
   advisorConversationId: z.string().regex(RESERVATION_ID_REGEX).optional(),
+  /**
+   * Pending online reservation of a previous attempt by the same customer.
+   * Reused as-is when the cart is unchanged, cancelled when it differs.
+   */
+  resumeReservationId: z.string().regex(RESERVATION_ID_REGEX).optional(),
 });
 
 /** `storefront.promo.validate`: the code plus the cart lines to price server-side. */

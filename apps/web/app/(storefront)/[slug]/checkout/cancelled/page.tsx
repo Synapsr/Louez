@@ -25,7 +25,9 @@ export const instant = false;
 /**
  * Stripe `cancel_url` of the storefront checkout. The cart is untouched (it
  * only empties on the verified return), the reservation stays pending: the
- * customer resumes the payment or goes back to the cart.
+ * customer resumes the payment or goes back to the cart. Once the payment
+ * window has closed the reservation is cancelled server-side, so the page
+ * only offers the cart, which rebooks the same thing in a few clicks.
  */
 const CheckoutCancelledPage = async ({ params, searchParams }: CheckoutCancelledPageProps) => {
   const [{ slug }, { reservation: reservationId }, t] = await Promise.all([
@@ -91,6 +93,13 @@ const CheckoutCancelledPage = async ({ params, searchParams }: CheckoutCancelled
           <ResumePaymentButton slug={store.slug} reservationId={reservation.id} />
           {backToCart}
         </OutcomeHeader>
+      ) : reservation.status === "cancelled" ? (
+        <EmptyState
+          icon={<ClockIcon />}
+          title={t("expiredTitle")}
+          description={t("expiredDescription", { number: reservation.number })}
+          action={backToCart}
+        />
       ) : (
         <EmptyState
           icon={<ShoppingCartIcon />}

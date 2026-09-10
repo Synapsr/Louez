@@ -6565,6 +6565,8 @@
         "title": "Pago interrumpido",
         "description": "Su reserva {number} está pendiente de pago. Puede continuar cuando quiera, no se ha perdido nada.",
         "cartKept": "Se ha conservado su carrito.",
+        "expiredTitle": "Reserva caducada",
+        "expiredDescription": "El plazo de pago de la reserva {number} ha vencido y se ha cancelado. Se ha conservado su carrito: puede volver a reservarla en unos segundos.",
         "backToCart": "Volver al carrito",
         "resume": "Reanudar el pago",
         "redirecting": "Redirigiendo…",
