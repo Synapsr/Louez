@@ -1,8 +1,9 @@
 "use client";
 
+import { CircleHelp } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Badge, Checkbox } from "@louez/ui";
+import { Badge, Checkbox, Tooltip, TooltipPopup, TooltipTrigger } from "@louez/ui";
 import { cn } from "@louez/utils";
 import { isFixedPriceProduct, pricingModeToMinutes } from "@louez/utils";
 
@@ -31,9 +32,10 @@ interface ExtrasListProps {
 }
 
 /**
- * Accessories inline, no modal: required ones are listed as included
- * (the cart adds them itself), optional ones are tickable rows with their
- * price. Nothing renders when the product has neither.
+ * Accessories inline, no modal: required ones are listed with their unit
+ * price and a hint that the cart adds them itself (a free one reads
+ * "included"), optional ones are tickable rows with their price. Nothing
+ * renders when the product has neither.
  */
 export const ExtrasList = ({
   accessories,
@@ -72,6 +74,7 @@ export const ExtrasList = ({
           {required.map((accessory) => {
             const units = getRequiredAccessoryUnitQuantity(accessory) * quantity;
             const isShort = accessory.quantity !== null && accessory.quantity < units;
+            const unitPrice = parseStorefrontDecimal(accessory.price) ?? 0;
             return (
               <li key={accessory.id} className="flex min-h-9 items-center gap-3 text-sm">
                 <ProductImage
@@ -80,13 +83,28 @@ export const ExtrasList = ({
                   sizes="40px"
                   containerClassName="size-10 shrink-0 rounded-lg"
                 />
-                <span className="min-w-0 flex-1 truncate">
-                  {accessory.name}
-                  {units > 1 ? <span className="text-muted-foreground"> ×{units}</span> : null}
+                <span className="flex min-w-0 flex-1 items-center gap-1">
+                  <span className="min-w-0 truncate">
+                    {accessory.name}
+                    {units > 1 ? <span className="text-muted-foreground"> ×{units}</span> : null}
+                  </span>
+                  <Tooltip>
+                    <TooltipTrigger
+                      aria-label={t("booking.requiredHelp")}
+                      className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <CircleHelp aria-hidden="true" className="size-3.5" />
+                    </TooltipTrigger>
+                    <TooltipPopup className="max-w-64">{t("booking.requiredHelp")}</TooltipPopup>
+                  </Tooltip>
                 </span>
-                <Badge variant={isShort ? "failed" : "tertiary"}>
-                  {isShort ? t("booking.shortage") : t("booking.included")}
-                </Badge>
+                {isShort ? (
+                  <Badge variant="failed">{t("booking.shortage")}</Badge>
+                ) : unitPrice > 0 ? (
+                  <Price amount={unitPrice} size="sm" {...priceSuffix(accessory)} />
+                ) : (
+                  <Badge variant="tertiary">{t("booking.included")}</Badge>
+                )}
               </li>
             );
           })}

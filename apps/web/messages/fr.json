@@ -6095,6 +6095,7 @@
         "reserve": "Réserver",
         "included": "Inclus",
         "shortage": "Stock insuffisant",
+        "requiredHelp": "Cet article est obligatoire avec ce produit et s'ajoute au panier avec lui.",
         "extras": "Options",
         "depositHold": "Caution",
         "depositNotCharged": "Empreinte bancaire, non débitée"

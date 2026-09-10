@@ -35,7 +35,7 @@ export const ProductSummary = ({ product, booking }: ProductSummaryProps) => {
     <div className="flex flex-col gap-3">
       {product.category ? (
         <div>
-          <CategoryPill href={`/catalog?category=${product.category.id}`}>
+          <CategoryPill size="sm" href={`/catalog?category=${product.category.id}`}>
             {product.category.name}
           </CategoryPill>
         </div>

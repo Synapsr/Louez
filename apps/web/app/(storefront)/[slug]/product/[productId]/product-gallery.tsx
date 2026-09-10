@@ -175,64 +175,43 @@ export const ProductGallery = ({
         ))}
       </ul>
 
+      {/* No dots on phones: the counter on the slide already says where we are,
+          and a 44 px tap row under the image bought nothing. Desktop padding —
+          pulled back by the negative margin — keeps the selected thumbnail's
+          ring offset inside the scroll box instead of clipped. */}
       {items.length > 1 ? (
-        <>
-          <div className="flex justify-center lg:hidden" role="tablist">
-            {items.map((item, index) => (
+        <ul className="-m-1.5 hidden gap-2 overflow-x-auto p-1.5 [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden">
+          {items.map((item, index) => (
+            <li key={`thumb-${item.src}-${index}`}>
               <button
-                key={`dot-${item.src}-${index}`}
                 type="button"
-                role="tab"
-                aria-selected={selectedIndex === index}
-                aria-current={selectedIndex === index ? "true" : undefined}
-                aria-label={t("gallery.goTo", { index: index + 1 })}
                 onClick={() => scrollToIndex(index)}
-                className="flex size-11 items-center justify-center"
+                onDoubleClick={() => openLightbox(index)}
+                aria-current={selectedIndex === index ? "true" : undefined}
+                aria-label={item.kind === "video" ? t("gallery.video") : itemAlt(index)}
+                className={cn(
+                  "block shrink-0 overflow-hidden rounded-lg transition-[opacity,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  selectedIndex === index
+                    ? "ring-2 ring-foreground ring-offset-2 ring-offset-background"
+                    : "opacity-70 hover:opacity-100",
+                )}
               >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "size-2 rounded-full transition-[background-color] duration-200",
-                    selectedIndex === index ? "bg-foreground" : "bg-muted-foreground/40",
-                  )}
-                />
+                {item.kind === "image" ? (
+                  <ProductImage
+                    src={item.src}
+                    alt=""
+                    sizes="80px"
+                    containerClassName="w-20 rounded-lg"
+                  />
+                ) : (
+                  <span className="flex aspect-4/3 w-20 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <PlayIcon aria-hidden className="size-5" />
+                  </span>
+                )}
               </button>
-            ))}
-          </div>
-
-          <ul className="hidden gap-2 overflow-x-auto pb-1 [scrollbar-width:none] lg:flex [&::-webkit-scrollbar]:hidden">
-            {items.map((item, index) => (
-              <li key={`thumb-${item.src}-${index}`}>
-                <button
-                  type="button"
-                  onClick={() => scrollToIndex(index)}
-                  onDoubleClick={() => openLightbox(index)}
-                  aria-current={selectedIndex === index ? "true" : undefined}
-                  aria-label={item.kind === "video" ? t("gallery.video") : itemAlt(index)}
-                  className={cn(
-                    "block shrink-0 overflow-hidden rounded-lg transition-[opacity,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    selectedIndex === index
-                      ? "ring-2 ring-foreground ring-offset-2 ring-offset-background"
-                      : "opacity-70 hover:opacity-100",
-                  )}
-                >
-                  {item.kind === "image" ? (
-                    <ProductImage
-                      src={item.src}
-                      alt=""
-                      sizes="80px"
-                      containerClassName="w-20 rounded-lg"
-                    />
-                  ) : (
-                    <span className="flex aspect-4/3 w-20 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                      <PlayIcon aria-hidden className="size-5" />
-                    </span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
+            </li>
+          ))}
+        </ul>
       ) : null}
 
       {lightboxIndex !== null ? (

@@ -37,8 +37,16 @@ export const RelatedProducts = ({ products, className }: RelatedProductsProps) =
 
   return (
     <section aria-labelledby="related-products" className={className}>
+      {/* Embla only takes over from `sm` up: phones get a plain two-column grid,
+          so nothing is cropped at the edge and the page never scrolls sideways. */}
       <Carousel
-        opts={{ align: "start", containScroll: "trimSnaps", slidesToScroll: "auto" }}
+        opts={{
+          align: "start",
+          containScroll: "trimSnaps",
+          slidesToScroll: "auto",
+          active: false,
+          breakpoints: { "(min-width: 640px)": { active: true } },
+        }}
         aria-labelledby="related-products"
       >
         <div className="mb-5 flex items-center justify-between gap-4">
@@ -48,7 +56,7 @@ export const RelatedProducts = ({ products, className }: RelatedProductsProps) =
             title={t("storefront.product.relatedProducts")}
             className="mb-0 sm:mb-0"
           />
-          <div className="flex shrink-0 gap-2">
+          <div className="hidden shrink-0 gap-2 sm:flex">
             <CarouselPrevious
               aria-label={t("common.previous")}
               className="static size-10 translate-y-0"
@@ -56,13 +64,15 @@ export const RelatedProducts = ({ products, className }: RelatedProductsProps) =
             <CarouselNext aria-label={t("common.next")} className="static size-10 translate-y-0" />
           </div>
         </div>
-        <CarouselContent className="-ml-4 py-1">
+        <CarouselContent className="-ml-4 py-1 max-sm:flex-wrap max-sm:gap-y-4">
           {products.map((product) => {
             const limit = getQuickAddLimit(product, null);
             return (
               <CarouselItem
                 key={product.id}
-                className="flex basis-4/5 pl-4 sm:basis-1/2 lg:basis-1/4"
+                // Past the fourth card the mobile grid would outgrow the page it
+                // belongs to; the carousel still holds them all from `sm` up.
+                className="flex basis-1/2 pl-4 max-sm:nth-[n+5]:hidden lg:basis-1/4"
               >
                 <ProductCard
                   product={product}

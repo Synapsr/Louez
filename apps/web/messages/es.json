@@ -6095,6 +6095,7 @@
         "reserve": "Reservar",
         "included": "Incluido",
         "shortage": "Stock insuficiente",
+        "requiredHelp": "Este artículo es obligatorio con este producto y se añade al carrito junto con él.",
         "extras": "Extras",
         "depositHold": "Fianza",
         "depositNotCharged": "Retención en la tarjeta, sin cargo"

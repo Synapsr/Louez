@@ -6095,6 +6095,7 @@
         "reserve": "Buchen",
         "included": "Inklusive",
         "shortage": "Nicht genug Bestand",
+        "requiredHelp": "Dieser Artikel ist bei diesem Produkt Pflicht und wird zusammen mit ihm in den Warenkorb gelegt.",
         "extras": "Extras",
         "depositHold": "Kaution",
         "depositNotCharged": "Kartenreservierung, keine Belastung"
