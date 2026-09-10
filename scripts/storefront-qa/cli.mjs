@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import net from "node:net";
 import { spawnSync } from "node:child_process";
@@ -13,6 +13,8 @@ import {
   sourceRoot,
   stateDir,
 } from "./runtime.mjs";
+
+import { syncSources } from "./sync.mjs";
 
 const command = process.argv[2] || "help";
 const marker = path.join(stateDir, "state.json");
@@ -55,101 +57,6 @@ async function freePort() {
   await new Promise((resolve) => server.close(resolve));
   return address.port;
 }
-function syncSources(state) {
-  if (existsSync(path.join(stateDir, "running.json")))
-    throw new Error("Stop qa:storefront dev before setup/sync/reset.");
-  mkdirSync(snapshotDir, { recursive: true });
-  run("rsync", [
-    "-a",
-    "--delete",
-    "--exclude=.git",
-    "--exclude=node_modules",
-    "--exclude=.next",
-    "--exclude=.turbo",
-    "--exclude=.agent-docs",
-    "--exclude=.env*",
-    "--exclude=*.tsbuildinfo",
-    "--exclude=.localify*",
-    `${sourceRoot}/`,
-    `${snapshotDir}/`,
-  ]);
-  const appPackagePath = path.join(snapshotDir, "apps/web/package.json");
-  const appPackage = JSON.parse(readFileSync(appPackagePath, "utf8"));
-  delete appPackage.scripts["dev-localify"];
-  writeFileSync(appPackagePath, JSON.stringify(appPackage, null, 2));
-  const nextConfigPath = path.join(snapshotDir, "apps/web/next.config.ts");
-  const nextConfig = readFileSync(nextConfigPath, "utf8");
-  if (!nextConfig.includes("allowedDevOrigins: ["))
-    throw new Error("Next dev origins configuration changed");
-  writeFileSync(
-    nextConfigPath,
-    nextConfig.replace(
-      "allowedDevOrigins: [",
-      `allowedDevOrigins: [\n    '${domain}', '*.${domain}',`,
-    ),
-  );
-  run("pnpm", ["install", "--frozen-lockfile", "--ignore-scripts", "--offline"], {
-    cwd: snapshotDir,
-    env: { ...cleanEnv(), CI: "true" },
-  });
-  // This transport override exists only in the disposable snapshot. No business rule is replaced.
-  const stripeClient = path.join(snapshotDir, "apps/web/lib/stripe/client.ts");
-  let client = readFileSync(stripeClient, "utf8");
-  const anchor = "typescript: true,";
-  if (!client.includes(anchor))
-    throw new Error("Stripe client changed: review the QA transport patch.");
-  client = client.replace(
-    anchor,
-    `${anchor}\n      host: '127.0.0.1', port: ${state.fixturePort}, protocol: 'http', maxNetworkRetries: 0,`,
-  );
-  writeFileSync(stripeClient, client);
-  for (const [file, replacements] of [
-    [
-      "packages/api/src/services/address.ts",
-      [
-        ["https://places.googleapis.com", `http://127.0.0.1:${state.fixturePort}/google`],
-        ["https://nominatim.openstreetmap.org", `http://127.0.0.1:${state.fixturePort}/nominatim`],
-      ],
-    ],
-    [
-      "packages/api/src/services/distance.ts",
-      [["https://routes.googleapis.com", `http://127.0.0.1:${state.fixturePort}/google`]],
-    ],
-    [
-      "apps/web/lib/google-places/index.ts",
-      [["https://maps.googleapis.com", `http://127.0.0.1:${state.fixturePort}/google`]],
-    ],
-  ]) {
-    const target = path.join(snapshotDir, file);
-    let source = readFileSync(target, "utf8");
-    for (const [from, to] of replacements) {
-      if (!source.includes(from)) throw new Error(`QA transport changed: ${file}`);
-      source = source.replaceAll(from, to);
-    }
-    writeFileSync(target, source);
-  }
-  if (existsSync(path.join(stateDir, "report.html"))) {
-    mkdirSync(path.join(snapshotDir, "apps/web/public/qa"), { recursive: true });
-    writeFileSync(
-      path.join(snapshotDir, "apps/web/public/qa/index.html"),
-      readFileSync(path.join(stateDir, "report.html")),
-    );
-    writeFileSync(
-      path.join(snapshotDir, "apps/web/public/qa/reset.html"),
-      '<!doctype html><meta charset="utf-8"><script>localStorage.clear();sessionStorage.clear();location.replace("/")</script>',
-    );
-  }
-  state.snapshotAt = new Date().toISOString();
-  state.revision = run("git", ["rev-parse", "HEAD"], { stdio: "pipe" });
-  state.dirtyFiles = run("git", ["status", "--porcelain"], { stdio: "pipe" }).split("\n").length;
-  persist(state);
-  if (existsSync(path.join(stateDir, "manifest.json"))) {
-    run("pnpm", ["exec", "tsx", "scripts/storefront-qa/refresh-report.ts", stateDir], {
-      cwd: path.join(snapshotDir, "apps/web"),
-      env: cleanEnv(),
-    });
-  }
-}
 function seed(state) {
   run("pnpm", ["exec", "drizzle-kit", "push", "--force"], {
     cwd: path.join(snapshotDir, "packages/db"),
@@ -158,6 +65,10 @@ function seed(state) {
   run("pnpm", ["exec", "tsx", "scripts/storefront-qa/seed.ts", stateDir], {
     cwd: path.join(snapshotDir, "apps/web"),
     env: appEnv(state),
+  });
+  run("pnpm", ["exec", "tsx", "scripts/storefront-qa/refresh-report.ts", stateDir], {
+    cwd: path.join(snapshotDir, "apps/web"),
+    env: cleanEnv(),
   });
 }
 
@@ -245,6 +156,8 @@ try {
     seed(state);
   } else if (command === "dev") {
     run("node", ["scripts/storefront-qa/dev.mjs"]);
+  } else if (command === "check") {
+    run("node", ["scripts/storefront-qa/check.mjs"]);
   } else if (command === "stop") {
     if (existsSync(path.join(stateDir, "running.json")))
       throw new Error("Use Ctrl+C in qa:storefront dev first.");
@@ -257,7 +170,7 @@ try {
     );
   } else {
     console.log(
-      "pnpm qa:storefront <setup|dev|sync|reset|status|stop>\nDocumentation: docs/testing/storefront-qa.md",
+      "pnpm qa:storefront <setup|dev|sync|reset|check|status|stop>\nDocumentation: docs/testing/storefront-qa.md",
     );
   }
 } catch (error) {
