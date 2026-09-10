@@ -258,12 +258,7 @@ export function ReservationDetailClient({
   });
 
   return (
-    <div
-      className={cn(
-        "space-y-4 sm:space-y-6",
-        showMobileQuickActions && "pb-28 md:pb-0",
-      )}
-    >
+    <div className={cn("space-y-4 sm:space-y-6", showMobileQuickActions && "pb-28 md:pb-0")}>
       <ReservationHeader
         reservationId={reservation.id}
         reservationNumber={reservation.number}
@@ -373,21 +368,11 @@ export function ReservationDetailClient({
                 <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
                   <span>
-                    {formatStoreDate(
-                      startDate,
-                      storeTimezone,
-                      "SHORT_DATETIME",
-                      formatLocale,
-                    )}
+                    {formatStoreDate(startDate, storeTimezone, "SHORT_DATETIME", formatLocale)}
                   </span>
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                   <span>
-                    {formatStoreDate(
-                      endDate,
-                      storeTimezone,
-                      "SHORT_DATETIME",
-                      formatLocale,
-                    )}
+                    {formatStoreDate(endDate, storeTimezone, "SHORT_DATETIME", formatLocale)}
                   </span>
                   <span className="text-muted-foreground">
                     ({durationDays > 0 && tCommon("days", { count: durationDays })}
@@ -490,19 +475,11 @@ export function ReservationDetailClient({
                             {item.quantity}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground align-top pt-4">
-                            {formatCurrency(
-                              parseFloat(item.unitPrice),
-                              currency,
-                              formatLocale,
-                            )}
+                            {formatCurrency(parseFloat(item.unitPrice), currency, formatLocale)}
                             /u
                           </TableCell>
                           <TableCell className="text-right font-medium align-top pt-4">
-                            {formatCurrency(
-                              parseFloat(item.totalPrice),
-                              currency,
-                              formatLocale,
-                            )}
+                            {formatCurrency(parseFloat(item.totalPrice), currency, formatLocale)}
                           </TableCell>
                         </TableRow>
                       );
@@ -520,9 +497,7 @@ export function ReservationDetailClient({
                         <span>{t("subtotalExclTax")}</span>
                         <span>
                           {formatCurrency(
-                            parseFloat(
-                              reservation.subtotalExclTax || reservation.subtotalAmount,
-                            ),
+                            parseFloat(reservation.subtotalExclTax || reservation.subtotalAmount),
                             currency,
                             formatLocale,
                           )}
@@ -582,7 +557,8 @@ export function ReservationDetailClient({
                         )}
                       </span>
                       <span>
-                        -{formatCurrency(
+                        -
+                        {formatCurrency(
                           parseFloat(reservation.discountAmount),
                           currency,
                           formatLocale,
@@ -609,9 +585,7 @@ export function ReservationDetailClient({
 
                   <div className="flex justify-between border-t pt-2 font-semibold">
                     <span>{t("totalAmount")}</span>
-                    <span>
-                      {formatCurrency(rental, currency, formatLocale)}
-                    </span>
+                    <span>{formatCurrency(rental, currency, formatLocale)}</span>
                   </div>
 
                   {parseFloat(reservation.depositAmount) > 0 && (
@@ -788,11 +762,7 @@ export function ReservationDetailClient({
                       </div>
                       {reservation.returnDistanceKm && (
                         <p className="text-xs text-muted-foreground ml-5.5">
-                          {formatNumber(
-                            parseFloat(reservation.returnDistanceKm),
-                            1,
-                            formatLocale,
-                          )}{" "}
+                          {formatNumber(parseFloat(reservation.returnDistanceKm), 1, formatLocale)}{" "}
                           km
                         </p>
                       )}
@@ -822,11 +792,7 @@ export function ReservationDetailClient({
                   <div className="flex justify-between items-center border-t pt-3 text-sm">
                     <span className="text-muted-foreground">{t("deliveryFeeLabel")}</span>
                     <span className="font-medium">
-                      {formatCurrency(
-                        parseFloat(reservation.deliveryFee),
-                        currency,
-                        formatLocale,
-                      )}
+                      {formatCurrency(parseFloat(reservation.deliveryFee), currency, formatLocale)}
                     </span>
                   </div>
                 )}

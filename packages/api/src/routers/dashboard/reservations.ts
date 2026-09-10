@@ -1,8 +1,8 @@
-import { ORPCError } from '@orpc/server';
-import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
+import { ORPCError } from "@orpc/server";
+import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 
-import { db, reservations } from '@louez/db';
+import { db, reservations } from "@louez/db";
 import {
   dashboardReservationAssignUnitsInputSchema,
   dashboardReservationCancelInputSchema,
@@ -35,9 +35,9 @@ import {
   dashboardReservationUpdateStatusInputSchema,
   dashboardReservationsListInputSchema,
   reservationSignInputSchema,
-} from '@louez/validations';
+} from "@louez/validations";
 
-import { dashboardProcedure, requirePermission } from '../../procedures';
+import { dashboardProcedure, requirePermission } from "../../procedures";
 import {
   getDashboardReservationById,
   getDashboardReservationsList,
@@ -45,8 +45,8 @@ import {
   getReservationPollData,
   getStorePlanningTimeline,
   signReservationAsAdmin,
-} from '../../services';
-import { toORPCError } from '../../utils/orpc-error';
+} from "../../services";
+import { toORPCError } from "../../utils/orpc-error";
 
 function toDate(value: string | Date | undefined): Date | undefined {
   if (!value) return undefined;
@@ -102,7 +102,7 @@ const calendarPeriod = dashboardProcedure
   .output(z.array(dashboardReservationCalendarPeriodEntrySchema))
   .handler(async ({ context, input }) => {
     if (input.storeId !== context.store.id) {
-      throw new ORPCError('FORBIDDEN', { message: 'errors.unauthorized' });
+      throw new ORPCError("FORBIDDEN", { message: "errors.unauthorized" });
     }
 
     try {
@@ -121,7 +121,7 @@ const planningTimeline = dashboardProcedure
   .output(z.array(dashboardReservationPlanningTimelineEntrySchema))
   .handler(async ({ context, input }) => {
     if (input.storeId !== context.store.id) {
-      throw new ORPCError('FORBIDDEN', { message: 'errors.unauthorized' });
+      throw new ORPCError("FORBIDDEN", { message: "errors.unauthorized" });
     }
 
     try {
@@ -152,12 +152,10 @@ const getPaymentMethod = dashboardProcedure
   .input(dashboardReservationGetPaymentMethodInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn =
-        context.dashboardReservationActions?.getReservationPaymentMethod;
+      const fn = context.dashboardReservationActions?.getReservationPaymentMethod;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.getReservationPaymentMethod not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.getReservationPaymentMethod not provided",
         });
       }
       return await fn(input.reservationId);
@@ -170,18 +168,15 @@ const getAvailableUnitsForItem = dashboardProcedure
   .input(dashboardReservationGetAvailableUnitsInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn =
-        context.dashboardReservationActions
-          ?.getAvailableUnitsForReservationItem;
+      const fn = context.dashboardReservationActions?.getAvailableUnitsForReservationItem;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.getAvailableUnitsForReservationItem not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.getAvailableUnitsForReservationItem not provided",
         });
       }
       const result = await fn(input.reservationItemId);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return { units: result.units || [], assigned: result.assigned || [] };
     } catch (error) {
@@ -189,15 +184,14 @@ const getAvailableUnitsForItem = dashboardProcedure
     }
   });
 
-const createManualReservation = requirePermission('write')
+const createManualReservation = requirePermission("write")
   .input(dashboardReservationCreateManualReservationInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.createManualReservation;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.createManualReservation not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.createManualReservation not provided",
         });
       }
 
@@ -207,14 +201,14 @@ const createManualReservation = requirePermission('write')
         startDate: toDate(payload.startDate)!,
         endDate: toDate(payload.endDate)!,
       });
-      if (result.error === 'errors.insufficientCapacity') {
+      if (result.error === "errors.insufficientCapacity") {
         return {
           error: result.error,
           shortfalls: result.shortfalls || [],
         };
       }
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return result;
     } catch (error) {
@@ -222,14 +216,14 @@ const createManualReservation = requirePermission('write')
     }
   });
 
-const updateReservation = requirePermission('write')
+const updateReservation = requirePermission("write")
   .input(dashboardReservationUpdateReservationInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.updateReservation;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.updateReservation not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.updateReservation not provided",
         });
       }
 
@@ -240,23 +234,21 @@ const updateReservation = requirePermission('write')
         endDate: toDate(payload.endDate),
       });
 
-      if ('error' in result && result.error) {
+      if ("error" in result && result.error) {
         return {
           success: false as const,
           error: result.error,
-          ...('bufferConflict' in result && result.bufferConflict
+          ...("bufferConflict" in result && result.bufferConflict
             ? { bufferConflict: result.bufferConflict }
             : {}),
-          ...('failedUnitIds' in result && result.failedUnitIds
+          ...("failedUnitIds" in result && result.failedUnitIds
             ? { failedUnitIds: result.failedUnitIds }
             : {}),
-          ...('conflicts' in result && result.conflicts
-            ? { conflicts: result.conflicts }
-            : {}),
-          ...('reservationItemId' in result && result.reservationItemId
+          ...("conflicts" in result && result.conflicts ? { conflicts: result.conflicts } : {}),
+          ...("reservationItemId" in result && result.reservationItemId
             ? { reservationItemId: result.reservationItemId }
             : {}),
-          ...('assignedCount' in result && result.assignedCount
+          ...("assignedCount" in result && result.assignedCount
             ? { assignedCount: result.assignedCount }
             : {}),
         };
@@ -267,16 +259,14 @@ const updateReservation = requirePermission('write')
     }
   });
 
-const previewTulipQuote = requirePermission('write')
+const previewTulipQuote = requirePermission("write")
   .input(dashboardReservationPreviewTulipQuoteInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn =
-        context.dashboardReservationActions?.previewReservationTulipQuote;
+      const fn = context.dashboardReservationActions?.previewReservationTulipQuote;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.previewReservationTulipQuote not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.previewReservationTulipQuote not provided",
         });
       }
 
@@ -291,15 +281,14 @@ const previewTulipQuote = requirePermission('write')
     }
   });
 
-const previewManualTulipQuote = requirePermission('write')
+const previewManualTulipQuote = requirePermission("write")
   .input(dashboardReservationPreviewManualTulipQuoteInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.previewManualTulipQuote;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.previewManualTulipQuote not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.previewManualTulipQuote not provided",
         });
       }
 
@@ -314,7 +303,7 @@ const previewManualTulipQuote = requirePermission('write')
     }
   });
 
-const updateNotes = requirePermission('write')
+const updateNotes = requirePermission("write")
   .input(dashboardReservationUpdateNotesInputSchema)
   .handler(async ({ context, input }) => {
     try {
@@ -323,10 +312,7 @@ const updateNotes = requirePermission('write')
         .update(reservations)
         .set({ internalNotes: input.notes, updatedAt })
         .where(
-          and(
-            eq(reservations.id, input.reservationId),
-            eq(reservations.storeId, context.store.id),
-          ),
+          and(eq(reservations.id, input.reservationId), eq(reservations.storeId, context.store.id)),
         );
 
       // Drizzle update() return type varies; existence is validated by follow-up read in UI invalidation.
@@ -337,24 +323,19 @@ const updateNotes = requirePermission('write')
     }
   });
 
-const updateStatus = requirePermission('write')
+const updateStatus = requirePermission("write")
   .input(dashboardReservationUpdateStatusInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.updateReservationStatus;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.updateReservationStatus not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.updateReservationStatus not provided",
         });
       }
-      const result = await fn(
-        input.reservationId,
-        input.status,
-        input.rejectionReason,
-      );
-      if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+      const result = await fn(input.reservationId, input.status, input.rejectionReason);
+      if ("error" in result && result.error) {
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return result;
     } catch (error) {
@@ -362,23 +343,21 @@ const updateStatus = requirePermission('write')
     }
   });
 
-const cancel = requirePermission('write')
+const cancel = requirePermission("write")
   .input(dashboardReservationCancelInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.cancelReservation;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.cancelReservation not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.cancelReservation not provided",
         });
       }
       const result = await fn(input.reservationId);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', {
+        throw new ORPCError("BAD_REQUEST", {
           message: result.error,
-          data: result.errorDetails
-            ? { details: result.errorDetails }
-            : undefined,
+          data: result.errorDetails ? { details: result.errorDetails } : undefined,
         });
       }
       return { success: true as const };
@@ -387,14 +366,14 @@ const cancel = requirePermission('write')
     }
   });
 
-const recordPayment = requirePermission('write')
+const recordPayment = requirePermission("write")
   .input(dashboardReservationRecordPaymentInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.recordPayment;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.recordPayment not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.recordPayment not provided",
         });
       }
       const result = await fn(input.reservationId, {
@@ -402,7 +381,7 @@ const recordPayment = requirePermission('write')
         paidAt: toDate(input.payload.paidAt),
       });
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return result;
     } catch (error) {
@@ -410,19 +389,19 @@ const recordPayment = requirePermission('write')
     }
   });
 
-const refundManualPayment = requirePermission('write')
+const refundManualPayment = requirePermission("write")
   .input(dashboardReservationRefundManualPaymentInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.refundManualPayment;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.refundManualPayment not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.refundManualPayment not provided",
         });
       }
       const result = await fn(input.reservationId, input.payload);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return result;
     } catch (error) {
@@ -430,19 +409,19 @@ const refundManualPayment = requirePermission('write')
     }
   });
 
-const deletePayment = requirePermission('write')
+const deletePayment = requirePermission("write")
   .input(dashboardReservationDeletePaymentInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.deletePayment;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.deletePayment not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.deletePayment not provided",
         });
       }
       const result = await fn(input.paymentId);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return { success: true as const };
     } catch (error) {
@@ -450,19 +429,19 @@ const deletePayment = requirePermission('write')
     }
   });
 
-const returnDeposit = requirePermission('write')
+const returnDeposit = requirePermission("write")
   .input(dashboardReservationReturnDepositInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.returnDeposit;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.returnDeposit not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.returnDeposit not provided",
         });
       }
       const result = await fn(input.reservationId, input.payload);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return result;
     } catch (error) {
@@ -470,19 +449,19 @@ const returnDeposit = requirePermission('write')
     }
   });
 
-const recordDamage = requirePermission('write')
+const recordDamage = requirePermission("write")
   .input(dashboardReservationRecordDamageInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.recordDamage;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.recordDamage not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.recordDamage not provided",
         });
       }
       const result = await fn(input.reservationId, input.payload);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return result;
     } catch (error) {
@@ -490,19 +469,19 @@ const recordDamage = requirePermission('write')
     }
   });
 
-const createDepositHold = requirePermission('write')
+const createDepositHold = requirePermission("write")
   .input(dashboardReservationCreateDepositHoldInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.createDepositHold;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.createDepositHold not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.createDepositHold not provided",
         });
       }
       const result = await fn(input.reservationId);
-      if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error as string });
+      if ("error" in result && result.error) {
+        throw new ORPCError("BAD_REQUEST", { message: result.error as string });
       }
       return result;
     } catch (error) {
@@ -510,20 +489,19 @@ const createDepositHold = requirePermission('write')
     }
   });
 
-const captureDepositHold = requirePermission('write')
+const captureDepositHold = requirePermission("write")
   .input(dashboardReservationCaptureDepositHoldInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.captureDepositHold;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.captureDepositHold not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.captureDepositHold not provided",
         });
       }
       const result = await fn(input.reservationId, input.payload);
-      if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error as string });
+      if ("error" in result && result.error) {
+        throw new ORPCError("BAD_REQUEST", { message: result.error as string });
       }
       return result;
     } catch (error) {
@@ -531,20 +509,19 @@ const captureDepositHold = requirePermission('write')
     }
   });
 
-const releaseDepositHold = requirePermission('write')
+const releaseDepositHold = requirePermission("write")
   .input(dashboardReservationReleaseDepositHoldInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.releaseDepositHold;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.releaseDepositHold not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.releaseDepositHold not provided",
         });
       }
       const result = await fn(input.reservationId);
-      if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error as string });
+      if ("error" in result && result.error) {
+        throw new ORPCError("BAD_REQUEST", { message: result.error as string });
       }
       return result;
     } catch (error) {
@@ -552,16 +529,14 @@ const releaseDepositHold = requirePermission('write')
     }
   });
 
-const assignUnitsToItem = requirePermission('write')
+const assignUnitsToItem = requirePermission("write")
   .input(dashboardReservationAssignUnitsInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn =
-        context.dashboardReservationActions?.assignUnitsToReservationItem;
+      const fn = context.dashboardReservationActions?.assignUnitsToReservationItem;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.assignUnitsToReservationItem not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.assignUnitsToReservationItem not provided",
         });
       }
       const result = await fn(input.reservationItemId, input.unitIds, {
@@ -571,12 +546,8 @@ const assignUnitsToItem = requirePermission('write')
         return {
           success: false as const,
           error: result.error,
-          ...(result.bufferConflict
-            ? { bufferConflict: result.bufferConflict }
-            : {}),
-          ...(result.failedUnitIds
-            ? { failedUnitIds: result.failedUnitIds }
-            : {}),
+          ...(result.bufferConflict ? { bufferConflict: result.bufferConflict } : {}),
+          ...(result.failedUnitIds ? { failedUnitIds: result.failedUnitIds } : {}),
         };
       }
       return {
@@ -588,20 +559,19 @@ const assignUnitsToItem = requirePermission('write')
     }
   });
 
-const sendReservationEmail = requirePermission('write')
+const sendReservationEmail = requirePermission("write")
   .input(dashboardReservationSendReservationEmailInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.sendReservationEmail;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.sendReservationEmail not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.sendReservationEmail not provided",
         });
       }
       const result = await fn(input.reservationId, input.payload);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return { success: true as const };
     } catch (error) {
@@ -629,7 +599,7 @@ const getEmailRenderContextOutputSchema = z.object({
     address: z.string().nullish(),
     theme: z
       .object({
-        mode: z.enum(['light', 'dark']).optional(),
+        mode: z.enum(["light", "dark"]).optional(),
         primaryColor: z.string().optional(),
       })
       .nullish(),
@@ -672,21 +642,20 @@ const getEmailRenderContextOutputSchema = z.object({
   showPaymentCta: z.boolean(),
 });
 
-const getEmailRenderContext = requirePermission('write')
+const getEmailRenderContext = requirePermission("write")
   .input(dashboardReservationGetEmailRenderContextInputSchema)
   .output(getEmailRenderContextOutputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.getManualEmailRenderContext;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.getManualEmailRenderContext not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.getManualEmailRenderContext not provided",
         });
       }
       const result = await fn(input.reservationId);
-      if ('error' in result) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+      if ("error" in result) {
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return result;
     } catch (error) {
@@ -694,23 +663,21 @@ const getEmailRenderContext = requirePermission('write')
     }
   });
 
-const sendModificationEmail = requirePermission('write')
+const sendModificationEmail = requirePermission("write")
   .input(dashboardReservationSendModificationEmailInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn =
-        context.dashboardReservationActions?.sendReservationModificationEmail;
+      const fn = context.dashboardReservationActions?.sendReservationModificationEmail;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.sendReservationModificationEmail not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.sendReservationModificationEmail not provided",
         });
       }
       const result = await fn(input.reservationId, {
         previousPeriod: toOptionalPeriod(input.payload),
       });
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return { success: true as const };
     } catch (error) {
@@ -718,19 +685,19 @@ const sendModificationEmail = requirePermission('write')
     }
   });
 
-const sendAccessLink = requirePermission('write')
+const sendAccessLink = requirePermission("write")
   .input(dashboardReservationSendAccessLinkInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.sendAccessLink;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.sendAccessLink not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.sendAccessLink not provided",
         });
       }
       const result = await fn(input.reservationId, input.payload);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return { success: true as const };
     } catch (error) {
@@ -738,20 +705,19 @@ const sendAccessLink = requirePermission('write')
     }
   });
 
-const sendAccessLinkBySms = requirePermission('write')
+const sendAccessLinkBySms = requirePermission("write")
   .input(dashboardReservationSendAccessLinkSmsInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.sendAccessLinkBySms;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message:
-            'dashboardReservationActions.sendAccessLinkBySms not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.sendAccessLinkBySms not provided",
         });
       }
       const result = await fn(input.reservationId);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return result;
     } catch (error) {
@@ -759,19 +725,19 @@ const sendAccessLinkBySms = requirePermission('write')
     }
   });
 
-const requestPayment = requirePermission('write')
+const requestPayment = requirePermission("write")
   .input(dashboardReservationRequestPaymentInputSchema)
   .handler(async ({ context, input }) => {
     try {
       const fn = context.dashboardReservationActions?.requestPayment;
       if (!fn) {
-        throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardReservationActions.requestPayment not provided',
+        throw new ORPCError("INTERNAL_SERVER_ERROR", {
+          message: "dashboardReservationActions.requestPayment not provided",
         });
       }
       const result = await fn(input.reservationId, input.payload);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throw new ORPCError("BAD_REQUEST", { message: result.error });
       }
       return { success: true as const, paymentUrl: result.paymentUrl || null };
     } catch (error) {

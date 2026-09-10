@@ -1,4 +1,4 @@
-import { ORPCError } from '@orpc/server';
+import { ORPCError } from "@orpc/server";
 import {
   and,
   asc,
@@ -13,7 +13,7 @@ import {
   not,
   or,
   sql,
-} from 'drizzle-orm';
+} from "drizzle-orm";
 
 import {
   customers,
@@ -22,28 +22,28 @@ import {
   productsTulip,
   reservationActivity,
   reservations,
-} from '@louez/db';
+} from "@louez/db";
 
 type ReservationStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'ongoing'
-  | 'completed'
-  | 'cancelled'
-  | 'rejected'
-  | 'quote'
-  | 'declined';
+  | "pending"
+  | "confirmed"
+  | "ongoing"
+  | "completed"
+  | "cancelled"
+  | "rejected"
+  | "quote"
+  | "declined";
 
 export async function getDashboardReservationsList(params: {
   storeId: string;
-  status?: 'all' | ReservationStatus;
-  period?: 'today' | 'week' | 'month';
-  operation?: 'departure' | 'return';
-  paymentMethod?: 'stripe' | 'cash' | 'card' | 'transfer' | 'check' | 'other';
+  status?: "all" | ReservationStatus;
+  period?: "today" | "week" | "month";
+  operation?: "departure" | "return";
+  paymentMethod?: "stripe" | "cash" | "card" | "transfer" | "check" | "other";
   limit: number;
   search?: string;
-  sort?: 'startDate' | 'amount' | 'status' | 'number';
-  sortDirection?: 'asc' | 'desc';
+  sort?: "startDate" | "amount" | "status" | "number";
+  sortDirection?: "asc" | "desc";
   page?: number;
   pageSize?: number;
 }) {
@@ -73,21 +73,21 @@ export async function getDashboardReservationsList(params: {
             and(
               eq(payments.reservationId, reservations.id),
               eq(payments.method, paymentMethod),
-              eq(payments.status, 'completed'),
+              eq(payments.status, "completed"),
             ),
           ),
       ),
     );
   }
 
-  if (status && status !== 'all') {
-    if (status === 'cancelled') {
+  if (status && status !== "all") {
+    if (status === "cancelled") {
       // "Cancelled" tab groups cancelled, rejected, and declined
       conditions.push(
         or(
-          eq(reservations.status, 'cancelled'),
-          eq(reservations.status, 'rejected'),
-          eq(reservations.status, 'declined'),
+          eq(reservations.status, "cancelled"),
+          eq(reservations.status, "rejected"),
+          eq(reservations.status, "declined"),
         )!,
       );
     } else {
@@ -97,23 +97,22 @@ export async function getDashboardReservationsList(params: {
     // Default "all" view focuses the active workflow. Global search must still
     // find closed reservations when the user does not already know their status.
     conditions.push(
-      not(eq(reservations.status, 'cancelled')),
-      not(eq(reservations.status, 'rejected')),
-      not(eq(reservations.status, 'declined')),
+      not(eq(reservations.status, "cancelled")),
+      not(eq(reservations.status, "rejected")),
+      not(eq(reservations.status, "declined")),
     );
   }
 
   const now = new Date();
-  const dateColumn =
-    operation === 'return' ? reservations.endDate : reservations.startDate;
-  if (period === 'today') {
+  const dateColumn = operation === "return" ? reservations.endDate : reservations.startDate;
+  if (period === "today") {
     const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(now);
     endOfDay.setHours(23, 59, 59, 999);
     conditions.push(gte(dateColumn, startOfDay));
     conditions.push(lte(dateColumn, endOfDay));
-  } else if (period === 'week') {
+  } else if (period === "week") {
     const startOfWeek = new Date(now);
     const daysSinceMonday = (now.getDay() + 6) % 7;
     startOfWeek.setDate(now.getDate() - daysSinceMonday);
@@ -123,7 +122,7 @@ export async function getDashboardReservationsList(params: {
     endOfWeek.setHours(23, 59, 59, 999);
     conditions.push(gte(dateColumn, startOfWeek));
     conditions.push(lte(dateColumn, endOfWeek));
-  } else if (period === 'month') {
+  } else if (period === "month") {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     endOfMonth.setHours(23, 59, 59, 999);
@@ -132,19 +131,19 @@ export async function getDashboardReservationsList(params: {
   }
 
   // Determine sort order
-  const sortDir = sortDirection === 'asc' ? asc : desc;
+  const sortDir = sortDirection === "asc" ? asc : desc;
   let orderByClause;
   switch (sort) {
-    case 'amount':
+    case "amount":
       orderByClause = [sortDir(reservations.totalAmount)];
       break;
-    case 'status':
+    case "status":
       orderByClause = [sortDir(reservations.status)];
       break;
-    case 'number':
+    case "number":
       orderByClause = [sortDir(reservations.number)];
       break;
-    case 'startDate':
+    case "startDate":
       orderByClause = [sortDir(reservations.startDate)];
       break;
     default:
@@ -252,26 +251,24 @@ export async function getDashboardReservationsList(params: {
   }
 
   const cancelledCount =
-    (counts['cancelled'] || 0) +
-    (counts['rejected'] || 0) +
-    (counts['declined'] || 0);
+    (counts["cancelled"] || 0) + (counts["rejected"] || 0) + (counts["declined"] || 0);
   const activeTotal =
-    (counts['pending'] || 0) +
-    (counts['confirmed'] || 0) +
-    (counts['ongoing'] || 0) +
-    (counts['completed'] || 0) +
-    (counts['quote'] || 0);
+    (counts["pending"] || 0) +
+    (counts["confirmed"] || 0) +
+    (counts["ongoing"] || 0) +
+    (counts["completed"] || 0) +
+    (counts["quote"] || 0);
 
   return {
     reservations: reservationsList,
     counts: {
       all: activeTotal,
-      pending: counts['pending'] || 0,
-      confirmed: counts['confirmed'] || 0,
-      ongoing: counts['ongoing'] || 0,
-      completed: counts['completed'] || 0,
+      pending: counts["pending"] || 0,
+      confirmed: counts["confirmed"] || 0,
+      ongoing: counts["ongoing"] || 0,
+      completed: counts["completed"] || 0,
       cancelled: cancelledCount,
-      quote: counts['quote'] || 0,
+      quote: counts["quote"] || 0,
     },
     totalCount: totalCountResult,
   };
@@ -282,10 +279,7 @@ export async function getDashboardReservationById(params: {
   reservationId: string;
 }) {
   const reservation = await db.query.reservations.findFirst({
-    where: and(
-      eq(reservations.id, params.reservationId),
-      eq(reservations.storeId, params.storeId),
-    ),
+    where: and(eq(reservations.id, params.reservationId), eq(reservations.storeId, params.storeId)),
     with: {
       customer: true,
       items: {
@@ -306,12 +300,12 @@ export async function getDashboardReservationById(params: {
   });
 
   if (!reservation) {
-    throw new ORPCError('NOT_FOUND', { message: 'errors.reservationNotFound' });
+    throw new ORPCError("NOT_FOUND", { message: "errors.reservationNotFound" });
   }
 
   const reservationProductIds = reservation.items
     .map((item) => item.productId)
-    .filter((productId): productId is string => typeof productId === 'string');
+    .filter((productId): productId is string => typeof productId === "string");
 
   if (reservationProductIds.length === 0) {
     return {
@@ -331,9 +325,7 @@ export async function getDashboardReservationById(params: {
     new Set(
       mappedProducts
         .map((mapping) => mapping.productId)
-        .filter(
-          (productId): productId is string => typeof productId === 'string',
-        ),
+        .filter((productId): productId is string => typeof productId === "string"),
     ),
   );
 

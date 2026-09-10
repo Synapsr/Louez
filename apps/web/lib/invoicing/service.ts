@@ -541,8 +541,7 @@ export async function generateCreditNoteForRefund(
       originalPayment.reservationId !== refundPayment.reservationId ||
       !["rental", "deposit_return"].includes(refundPayment.type) ||
       refundPayment.status !== "completed" ||
-      (!refundPayment.stripeRefundId &&
-        refundPayment.refundOfPaymentId !== originalPayment.id) ||
+      (!refundPayment.stripeRefundId && refundPayment.refundOfPaymentId !== originalPayment.id) ||
       Number(refundAmount) <= 0
     ) {
       return skipped("payment_not_eligible");
