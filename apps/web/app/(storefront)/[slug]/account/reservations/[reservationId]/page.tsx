@@ -14,6 +14,7 @@ import { getTranslations } from "next-intl/server";
 import { db, documents, invoices, reservations } from "@louez/db";
 
 import { AccountCard } from "@/components/storefront/account/account-card";
+import { ReservationCartReset } from "@/components/storefront/account/reservation-cart-reset";
 import { ReservationActions } from "@/components/storefront/account/reservation-actions";
 import { ReservationInvoicesCard } from "@/components/storefront/account/reservation-invoices-card";
 import { ReservationItemsCard } from "@/components/storefront/account/reservation-items-card";
@@ -150,6 +151,7 @@ export default async function ReservationDetailPage({
         </p>
       </div>
 
+      <ReservationCartReset event={event} />
       <ReservationOutcomeBanner event={event} paymentStatus={paymentStatus} />
 
       <div className="flex flex-col gap-3 rounded-2xl bg-card p-4 shadow-card sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6">

@@ -553,6 +553,11 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
     where: eq(payments.stripeCheckoutSessionId, session.id),
   });
 
+  // A row still pending here means nobody replaced this session: the
+  // customer simply never paid. A resumed or superseded checkout cancels its
+  // row before expiring the session, so those never reach the cancellation.
+  const abandoned = existingPayment?.status === "pending";
+
   if (existingPayment && existingPayment.status === "pending") {
     await db
       .update(payments)
@@ -580,8 +585,73 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
 
   await failMarketplaceBookingAttempt(reservationId);
 
+  const reservationCancelled =
+    abandoned && session.metadata?.checkoutFlow === "storefront_checkout"
+      ? await cancelAbandonedCheckout(reservationId, session.id)
+      : false;
+
   log.info({
-    stripeWebhook: { event: "checkout.session.expired", reservationId, sessionId: session.id },
+    stripeWebhook: {
+      event: "checkout.session.expired",
+      reservationId,
+      sessionId: session.id,
+      reservationCancelled,
+    },
+  });
+}
+
+/**
+ * A storefront checkout whose only payment window closed without a payment
+ * is not a booking: the pending reservation is cancelled so it stops holding
+ * stock and the owner does not keep a "payment in progress" that never ends.
+ * Anything already confirmed, paid, or paid through another open session is
+ * left alone.
+ */
+async function cancelAbandonedCheckout(
+  reservationId: string,
+  checkoutSessionId: string,
+): Promise<boolean> {
+  const reservation = await db.query.reservations.findFirst({
+    columns: { id: true, status: true, source: true },
+    where: eq(reservations.id, reservationId),
+    with: { payments: { columns: { type: true, status: true } } },
+  });
+  if (!reservation || reservation.status !== "pending" || reservation.source !== "online") {
+    return false;
+  }
+  const hasRentalPayment = reservation.payments.some(
+    (payment) =>
+      payment.type === "rental" && (payment.status === "completed" || payment.status === "pending"),
+  );
+  if (hasRentalPayment) return false;
+
+  const now = new Date();
+  return db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({ status: reservations.status })
+      .from(reservations)
+      .where(eq(reservations.id, reservationId))
+      .for("update");
+    if (locked?.status !== "pending") return false;
+
+    await tx
+      .update(reservations)
+      .set({ status: "cancelled", updatedAt: now })
+      .where(and(eq(reservations.id, reservationId), eq(reservations.status, "pending")));
+
+    await tx.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: "cancelled",
+      description: null,
+      metadata: {
+        previousStatus: "pending",
+        reason: "payment_expired",
+        checkoutSessionId,
+      },
+      createdAt: now,
+    });
+    return true;
   });
 }
 

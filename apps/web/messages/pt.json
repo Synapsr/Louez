@@ -6565,6 +6565,8 @@
         "title": "Pagamento interrompido",
         "description": "A sua reserva {number} aguarda pagamento. Retome quando quiser, não se perdeu nada.",
         "cartKept": "O seu carrinho foi guardado.",
+        "expiredTitle": "Reserva expirada",
+        "expiredDescription": "O prazo de pagamento da reserva {number} terminou e ela foi cancelada. O seu carrinho foi guardado: pode voltar a reservá-la em segundos.",
         "backToCart": "Voltar ao carrinho",
         "resume": "Retomar o pagamento",
         "redirecting": "A redirecionar…",

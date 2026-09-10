@@ -122,6 +122,7 @@ export const startCheckoutPayment = async ({
       locale,
       applicationFeeAmount: feePlan.applicationFeeCents,
       feeMetadata: buildFeeMetadata(feePlan),
+      checkoutFlow: "storefront_checkout",
     });
 
     const now = new Date();

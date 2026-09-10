@@ -6565,6 +6565,8 @@
         "title": "Płatność przerwana",
         "description": "Twoja rezerwacja {number} czeka na płatność. Możesz wrócić w dowolnym momencie, nic nie przepadło.",
         "cartKept": "Twój koszyk został zachowany.",
+        "expiredTitle": "Rezerwacja wygasła",
+        "expiredDescription": "Czas na opłacenie rezerwacji {number} minął i została ona anulowana. Twój koszyk został zachowany: możesz ją ponowić w kilka sekund.",
         "backToCart": "Wróć do koszyka",
         "resume": "Wznów płatność",
         "redirecting": "Przekierowanie…",

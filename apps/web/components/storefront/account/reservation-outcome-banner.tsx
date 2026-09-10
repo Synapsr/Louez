@@ -1,13 +1,8 @@
-"use client";
-
-import { useEffect, useRef } from "react";
-
-import { CheckCircle2Icon, ClockIcon, SendIcon, ShieldCheckIcon } from "lucide-react";
+import { CheckCircle2Icon, ClockIcon, ShieldCheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Alert, AlertDescription, AlertTitle } from "@louez/ui";
 
-import { useCart } from "@/contexts/cart-context";
 import type { ReservationOutcomeEvent } from "@/lib/customer-auth/util.account-redirect";
 import type { ReservationPaymentStatus } from "@/lib/reservations/util.payment-status";
 
@@ -17,49 +12,37 @@ interface ReservationOutcomeBannerProps {
   paymentStatus: ReservationPaymentStatus;
 }
 
-type OutcomeKey = ReservationOutcomeEvent | "processing";
+/** `requested` is left out: the pending status bar already says it, and better. */
+type BannerKey = Exclude<ReservationOutcomeEvent, "requested"> | "processing";
 
-const TONE: Record<OutcomeKey, "success" | "info"> = {
+const TONE: Record<BannerKey, "success" | "info"> = {
   paid: "success",
   payment_received: "success",
   deposit_authorized: "success",
-  requested: "info",
   processing: "info",
 };
 
-const ICON: Record<OutcomeKey, typeof CheckCircle2Icon> = {
+const ICON: Record<BannerKey, typeof CheckCircle2Icon> = {
   paid: CheckCircle2Icon,
   payment_received: CheckCircle2Icon,
   deposit_authorized: ShieldCheckIcon,
-  requested: SendIcon,
   processing: ClockIcon,
 };
 
 /**
- * The "moment" banner after a checkout, a payment request or a deposit
- * authorisation: what just happened and what comes next. `event=paid`
- * with no completed payment yet reads as "processing" (webhook lag).
- * A fresh checkout (`paid` or `requested`) also clears the cart, once.
+ * The "moment" banner after a payment or a deposit authorisation: what just
+ * happened, when the status bar below cannot say it. `event=paid` with no
+ * completed payment yet reads as "processing" (webhook lag).
  */
 export const ReservationOutcomeBanner = ({
   event,
   paymentStatus,
 }: ReservationOutcomeBannerProps) => {
   const t = useTranslations("storefront.account.outcome");
-  const { clearCart } = useCart();
-  const hasCleared = useRef(false);
 
-  useEffect(() => {
-    if (hasCleared.current) return;
-    if (event === "paid" || event === "requested") {
-      hasCleared.current = true;
-      clearCart();
-    }
-  }, [event, clearCart]);
+  if (!event || event === "requested") return null;
 
-  if (!event) return null;
-
-  const key: OutcomeKey = event === "paid" && paymentStatus !== "paid" ? "processing" : event;
+  const key: BannerKey = event === "paid" && paymentStatus !== "paid" ? "processing" : event;
   const Icon = ICON[key];
 
   return (

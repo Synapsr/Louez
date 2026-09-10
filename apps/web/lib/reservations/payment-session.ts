@@ -159,6 +159,7 @@ export async function createReservationPaymentSessionForCustomer(
       cancelUrl:
         cancelUrl ??
         getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=cancelled`),
+      ...(source === "checkout_resume" ? { checkoutFlow: "storefront_checkout" as const } : {}),
     });
 
     // The pending payment and its activity land together or not at all.

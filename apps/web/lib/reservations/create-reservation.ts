@@ -7,6 +7,7 @@ import {
   aiAdvisorConversations,
   db,
   getBlockingReservationStatuses,
+  payments,
   productAccessories,
   products,
   reservationActivity,
@@ -26,9 +27,14 @@ import { log } from "@/lib/evlog";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { createReservationInstantAccessUrl } from "@/lib/reservations/instant-access";
 import { normalizePhoneNumber } from "@/lib/sms/phone";
+import { getStripe } from "@/lib/stripe/client";
 
 import { applyPromoCode, consumePromoCode, type AppliedPromoCode } from "./apply-promo-code";
-import { notifyRequestReceived, runPostCreationEffects } from "./post-creation-effects";
+import {
+  notifyRequestReceived,
+  runAfterResponse,
+  runPostCreationEffects,
+} from "./post-creation-effects";
 import {
   computeReservationTotals,
   getReservationItemTaxFields,
@@ -60,6 +66,7 @@ import {
   type ResolvedDelivery,
 } from "./resolve-delivery";
 import { resolveTulipInsurance, type TulipInsuranceResolution } from "./resolve-tulip-insurance";
+import { resumeCheckoutPayment } from "./resume-checkout-payment";
 import { startCheckoutPayment } from "./start-checkout-payment";
 import {
   buildReservationBillingSnapshot,
@@ -67,6 +74,11 @@ import {
   type CustomerCompanyIdentity,
 } from "./billing-snapshot";
 import { upsertCustomer } from "./upsert-customer";
+import {
+  isSamePendingCheckout,
+  type PendingCheckoutItem,
+  type PendingCheckoutReservation,
+} from "./util.pending-checkout";
 import {
   getRentalWindow,
   validateRentalDuration,
@@ -463,6 +475,8 @@ type WriteResult =
   | {
       ok: true;
       replay: false;
+      /** The pending reservation of a previous attempt carries this checkout. */
+      reused: boolean;
       reservationId: string;
       reservationNumber: string;
       customerId: string;
@@ -477,6 +491,52 @@ type WriteResult =
       customerEmail: string;
     }
   | ReservationFailure;
+
+type ReservationValues = Omit<typeof reservations.$inferInsert, "id" | "number">;
+type ReservationItemValues = Omit<typeof reservationItems.$inferInsert, "reservationId">;
+
+/**
+ * The pending online reservation a web customer left behind when they backed
+ * out of Stripe, as long as it is still theirs to resume: same store, same
+ * email, still pending, nothing paid. A stranger's id (or a stale one) is
+ * simply ignored and the checkout runs as a fresh booking.
+ */
+interface ResumableCheckout {
+  id: string;
+  number: string;
+  reservation: PendingCheckoutReservation;
+  items: PendingCheckoutItem[];
+}
+
+const findResumableCheckout = async (
+  storeId: string,
+  reservationId: string,
+  customerEmail: string,
+): Promise<ResumableCheckout | null> => {
+  const existing = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, storeId),
+      eq(reservations.status, "pending"),
+      eq(reservations.source, "online"),
+    ),
+    with: {
+      customer: { columns: { email: true } },
+      items: true,
+      payments: { columns: { type: true, status: true } },
+    },
+  });
+  if (!existing) return null;
+  if (existing.customer.email.trim().toLowerCase() !== customerEmail.trim().toLowerCase()) {
+    return null;
+  }
+  if (
+    existing.payments.some((payment) => payment.type === "rental" && payment.status === "completed")
+  ) {
+    return null;
+  }
+  return { id: existing.id, number: existing.number, reservation: existing, items: existing.items };
+};
 
 /** Marketplace replay: the same id already written by a previous attempt. */
 const findMarketplaceReplay = async (
@@ -523,18 +583,215 @@ const buildProductSnapshot = (
   };
 };
 
+/** The `reservations` row for this checkout, id and number aside. */
+const buildReservationValues = (
+  request: CreateReservationRequest,
+  prepared: PreparedReservation,
+  customerId: string,
+): ReservationValues => {
+  const { store, delivery, insurance, promo, totals, window } = prepared;
+  const outboundLeg = delivery.outboundLeg;
+  const returnLeg = delivery.returnLeg;
+
+  return {
+    storeId: store.id,
+    customerId,
+    status: "pending",
+    startDate: window.start,
+    endDate: window.end,
+    subtotalAmount: totals.subtotal.toFixed(2),
+    depositAmount: totals.deposit.toFixed(2),
+    totalAmount: totals.total.toFixed(2),
+    subtotalExclTax: totals.subtotalExclTax?.toFixed(2) ?? null,
+    taxAmount: totals.taxAmount?.toFixed(2) ?? null,
+    taxRate: totals.taxRate?.toFixed(2) ?? null,
+    customerNotes: request.customerNotes || null,
+    source: request.source,
+    billingSnapshot: buildReservationBillingSnapshot(request.customer, prepared.companyIdentity),
+    outboundMethod: outboundLeg?.method || "store",
+    returnMethod: returnLeg?.method || "store",
+    deliveryOption: delivery.hasAnyDelivery ? "delivery" : "pickup",
+    deliveryAddress: delivery.hasOutboundDelivery ? (outboundLeg?.address ?? null) : null,
+    deliveryCity: delivery.hasOutboundDelivery ? (outboundLeg?.city ?? null) : null,
+    deliveryPostalCode: delivery.hasOutboundDelivery ? (outboundLeg?.postalCode ?? null) : null,
+    deliveryCountry: delivery.hasOutboundDelivery ? (outboundLeg?.country ?? null) : null,
+    deliveryLatitude: delivery.hasOutboundDelivery
+      ? (outboundLeg?.latitude?.toString() ?? null)
+      : null,
+    deliveryLongitude: delivery.hasOutboundDelivery
+      ? (outboundLeg?.longitude?.toString() ?? null)
+      : null,
+    deliveryDistanceKm: delivery.outboundDistanceKm?.toFixed(2) ?? null,
+    deliveryFee: totals.deliveryFee.toFixed(2),
+    tulipInsuranceOptIn: insurance.appliedOptIn,
+    tulipInsuranceAmount: insurance.amount > 0 ? insurance.amount.toFixed(2) : null,
+    promoCodeId: promo?.promoCodeId ?? null,
+    discountAmount: totals.discount.toFixed(2),
+    promoCodeSnapshot: promo?.snapshot ?? null,
+    returnAddress: delivery.hasReturnDelivery ? (returnLeg?.address ?? null) : null,
+    returnCity: delivery.hasReturnDelivery ? (returnLeg?.city ?? null) : null,
+    returnPostalCode: delivery.hasReturnDelivery ? (returnLeg?.postalCode ?? null) : null,
+    returnCountry: delivery.hasReturnDelivery ? (returnLeg?.country ?? null) : null,
+    returnLatitude:
+      delivery.hasReturnDelivery && returnLeg?.latitude != null
+        ? returnLeg.latitude.toString()
+        : null,
+    returnLongitude:
+      delivery.hasReturnDelivery && returnLeg?.longitude != null
+        ? returnLeg.longitude.toString()
+        : null,
+    returnDistanceKm: delivery.returnDistanceKm?.toFixed(2) ?? null,
+    pickupLocationId: delivery.pickupLocation?.locationId ?? null,
+    returnLocationId: delivery.returnLocation?.locationId ?? null,
+    pickupLocationSnapshot: delivery.pickupLocation?.snapshot ?? null,
+    returnLocationSnapshot: delivery.returnLocation?.snapshot ?? null,
+  };
+};
+
+/** The `reservation_items` rows: one per cart line, plus the insurance line. */
+const buildReservationItemValues = (
+  request: CreateReservationRequest,
+  prepared: PreparedReservation,
+  resolvedCombinationByLineKey: Map<string, ResolvedLineCombination>,
+): ReservationItemValues[] => {
+  const { cart, insurance, totals } = prepared;
+
+  const lines = request.items.map((item, index): ReservationItemValues => {
+    const line = cart.lines[index];
+    const resolved = resolvedCombinationByLineKey.get(getReservationLineKey(item, index));
+    const tax = getReservationItemTaxFields(totals, line, index);
+
+    return {
+      productId: item.productId,
+      isCustomItem: false,
+      quantity: item.quantity,
+      unitPrice: line.unitPrice.toFixed(2),
+      depositPerUnit: line.depositPerUnit.toFixed(2),
+      totalPrice: line.subtotal.toFixed(2),
+      productSnapshot: buildProductSnapshot(prepared.catalog, item, resolved),
+      combinationKey: resolved?.combinationKey || item.resolvedCombinationKey || null,
+      selectedAttributes:
+        resolved?.selectedAttributes || item.resolvedAttributes || item.selectedAttributes || null,
+      taxRate: tax.taxRate?.toFixed(2) ?? null,
+      taxAmount: tax.taxAmount?.toFixed(2) ?? null,
+      priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
+      totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
+    };
+  });
+
+  if (insurance.amount > 0) {
+    const insuranceTax = totals.taxEnabled
+      ? totals.taxByLineId.get(INSURANCE_TAX_LINE_ID)
+      : undefined;
+    lines.push({
+      productId: null,
+      isCustomItem: true,
+      quantity: 1,
+      unitPrice: insurance.amount.toFixed(2),
+      depositPerUnit: "0.00",
+      totalPrice: insurance.amount.toFixed(2),
+      taxRate: insuranceTax?.taxRate?.toFixed(2) ?? null,
+      taxAmount: insuranceTax?.taxAmount.toFixed(2) ?? null,
+      priceExclTax: insuranceTax?.amountExclTax.toFixed(2) ?? null,
+      totalExclTax: insuranceTax?.amountExclTax.toFixed(2) ?? null,
+      productSnapshot: {
+        name: INSURANCE_ITEM_NAME,
+        description: null,
+        images: [],
+      },
+    });
+  }
+
+  return lines;
+};
+
+/**
+ * The customer changed their cart after backing out of Stripe: the earlier
+ * pending reservation is replaced by the new one, in the same transaction,
+ * so it stops holding stock and the owner never sees two open bookings.
+ * Returns the Stripe sessions left open, to expire once the write is safe.
+ */
+const supersedePendingCheckout = async (
+  tx: Transaction,
+  superseded: ResumableCheckout,
+  replacementId: string,
+): Promise<string[]> => {
+  const now = new Date();
+  const openPayments = await tx
+    .select({ id: payments.id, stripeCheckoutSessionId: payments.stripeCheckoutSessionId })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.reservationId, superseded.id),
+        eq(payments.type, "rental"),
+        eq(payments.status, "pending"),
+      ),
+    );
+
+  await tx
+    .update(reservations)
+    .set({ status: "cancelled", updatedAt: now })
+    .where(and(eq(reservations.id, superseded.id), eq(reservations.status, "pending")));
+
+  if (openPayments.length > 0) {
+    await tx
+      .update(payments)
+      .set({ status: "cancelled", updatedAt: now })
+      .where(
+        inArray(
+          payments.id,
+          openPayments.map((payment) => payment.id),
+        ),
+      );
+  }
+
+  await tx.insert(reservationActivity).values({
+    id: nanoid(),
+    reservationId: superseded.id,
+    activityType: "cancelled",
+    description: null,
+    metadata: {
+      previousStatus: "pending",
+      reason: "superseded",
+      supersededBy: replacementId,
+      source: "online",
+    },
+    createdAt: now,
+  });
+
+  return openPayments.flatMap((payment) =>
+    payment.stripeCheckoutSessionId ? [payment.stripeCheckoutSessionId] : [],
+  );
+};
+
+/** Best effort: a superseded session the customer could still pay is closed. */
+const expireCheckoutSessions = (stripeAccountId: string | null, sessionIds: string[]): void => {
+  if (!stripeAccountId || sessionIds.length === 0) return;
+  runAfterResponse(async () => {
+    for (const sessionId of sessionIds) {
+      try {
+        await getStripe().checkout.sessions.expire(sessionId, { stripeAccount: stripeAccountId });
+      } catch {
+        // Already expired or completed: nothing left to close.
+      }
+    }
+  });
+};
+
 const writeReservation = async (
   request: CreateReservationRequest,
   prepared: PreparedReservation,
+  resumable: ResumableCheckout | null,
 ): Promise<WriteResult> => {
-  const { store, cart, delivery, insurance, promo, totals, window } = prepared;
+  const { store, promo, window } = prepared;
   const settings: StoreSettings | null = store.settings;
   const blockingStatuses = getBlockingReservationStatuses(
     settings?.pendingBlocksAvailability ?? true,
   );
   const turnoverBufferMinutes = settings?.turnoverBufferMinutes ?? 0;
+  const supersededSessions: string[] = [];
 
-  return db.transaction(async (tx): Promise<WriteResult> => {
+  const written = await db.transaction(async (tx): Promise<WriteResult> => {
     // Product locks first: a marketplace retry then waits for the attempt it
     // races with, and reads its reservation as a replay instead of colliding.
     const lockedProductsById = await lockReservationProducts(
@@ -548,6 +805,8 @@ const writeReservation = async (
       if (replay) return replay;
     }
 
+    // The resumable reservation is either reused or replaced below, so its
+    // own hold must not count against this checkout's stock.
     const inventoryResult = await reserveInventory({
       tx,
       storeId: store.id,
@@ -556,15 +815,10 @@ const writeReservation = async (
       window,
       turnoverBufferMinutes,
       blockingStatuses,
+      excludeReservationId: resumable?.id,
     });
     if (!inventoryResult.ok) return inventoryResult;
     const { resolvedCombinationByLineKey } = inventoryResult.inventory;
-
-    // Consume the promo under the write: a concurrent checkout that took the
-    // last use makes this one fail before anything is written.
-    if (promo && !(await consumePromoCode(tx, promo.promoCodeId))) {
-      return failReservation("errors.promoCodeExhausted");
-    }
 
     const customer = await upsertCustomer({
       tx,
@@ -578,115 +832,43 @@ const writeReservation = async (
       return failReservation("errors.createCustomerError");
     }
 
+    const reservationValues = buildReservationValues(request, prepared, customer.id);
+    const itemValues = buildReservationItemValues(request, prepared, resolvedCombinationByLineKey);
+
+    // Same cart, same customer, same options: the earlier reservation is the
+    // booking. Nothing is written; the caller sends the customer back to pay it.
+    if (
+      resumable &&
+      isSamePendingCheckout(resumable, { reservation: reservationValues, items: itemValues })
+    ) {
+      return {
+        ok: true,
+        replay: false,
+        reused: true,
+        reservationId: resumable.id,
+        reservationNumber: resumable.number,
+        customerId: customer.id,
+        customerEmail: customer.email,
+      };
+    }
+
+    // Consume the promo under the write: a concurrent checkout that took the
+    // last use makes this one fail before anything is written.
+    if (promo && !(await consumePromoCode(tx, promo.promoCodeId))) {
+      return failReservation("errors.promoCodeExhausted");
+    }
+
     const reservationId = request.reservationId ?? nanoid();
     const reservationNumber = await generateUniqueReservationNumber(store.id);
-    const outboundLeg = delivery.outboundLeg;
-    const returnLeg = delivery.returnLeg;
 
     await tx.insert(reservations).values({
       id: reservationId,
-      storeId: store.id,
-      customerId: customer.id,
       number: reservationNumber,
-      status: "pending",
-      startDate: window.start,
-      endDate: window.end,
-      subtotalAmount: totals.subtotal.toFixed(2),
-      depositAmount: totals.deposit.toFixed(2),
-      totalAmount: totals.total.toFixed(2),
-      subtotalExclTax: totals.subtotalExclTax?.toFixed(2) ?? null,
-      taxAmount: totals.taxAmount?.toFixed(2) ?? null,
-      taxRate: totals.taxRate?.toFixed(2) ?? null,
-      customerNotes: request.customerNotes || null,
-      source: request.source,
-      billingSnapshot: buildReservationBillingSnapshot(request.customer, prepared.companyIdentity),
-      outboundMethod: outboundLeg?.method || "store",
-      returnMethod: returnLeg?.method || "store",
-      deliveryOption: delivery.hasAnyDelivery ? "delivery" : "pickup",
-      deliveryAddress: delivery.hasOutboundDelivery ? (outboundLeg?.address ?? null) : null,
-      deliveryCity: delivery.hasOutboundDelivery ? (outboundLeg?.city ?? null) : null,
-      deliveryPostalCode: delivery.hasOutboundDelivery ? (outboundLeg?.postalCode ?? null) : null,
-      deliveryCountry: delivery.hasOutboundDelivery ? (outboundLeg?.country ?? null) : null,
-      deliveryLatitude: delivery.hasOutboundDelivery
-        ? (outboundLeg?.latitude?.toString() ?? null)
-        : null,
-      deliveryLongitude: delivery.hasOutboundDelivery
-        ? (outboundLeg?.longitude?.toString() ?? null)
-        : null,
-      deliveryDistanceKm: delivery.outboundDistanceKm?.toFixed(2) ?? null,
-      deliveryFee: totals.deliveryFee.toFixed(2),
-      tulipInsuranceOptIn: insurance.appliedOptIn,
-      tulipInsuranceAmount: insurance.amount > 0 ? insurance.amount.toFixed(2) : null,
-      promoCodeId: promo?.promoCodeId ?? null,
-      discountAmount: totals.discount.toFixed(2),
-      promoCodeSnapshot: promo?.snapshot ?? null,
-      returnAddress: delivery.hasReturnDelivery ? (returnLeg?.address ?? null) : null,
-      returnCity: delivery.hasReturnDelivery ? (returnLeg?.city ?? null) : null,
-      returnPostalCode: delivery.hasReturnDelivery ? (returnLeg?.postalCode ?? null) : null,
-      returnCountry: delivery.hasReturnDelivery ? (returnLeg?.country ?? null) : null,
-      returnLatitude:
-        delivery.hasReturnDelivery && returnLeg?.latitude != null
-          ? returnLeg.latitude.toString()
-          : null,
-      returnLongitude:
-        delivery.hasReturnDelivery && returnLeg?.longitude != null
-          ? returnLeg.longitude.toString()
-          : null,
-      returnDistanceKm: delivery.returnDistanceKm?.toFixed(2) ?? null,
-      pickupLocationId: delivery.pickupLocation?.locationId ?? null,
-      returnLocationId: delivery.returnLocation?.locationId ?? null,
-      pickupLocationSnapshot: delivery.pickupLocation?.snapshot ?? null,
-      returnLocationSnapshot: delivery.returnLocation?.snapshot ?? null,
+      ...reservationValues,
     });
 
-    for (let index = 0; index < request.items.length; index++) {
-      const item = request.items[index];
-      const line = cart.lines[index];
-      const resolved = resolvedCombinationByLineKey.get(getReservationLineKey(item, index));
-      const combinationKey = resolved?.combinationKey || item.resolvedCombinationKey || null;
-      const selectedAttributes =
-        resolved?.selectedAttributes || item.resolvedAttributes || item.selectedAttributes || null;
-      const tax = getReservationItemTaxFields(totals, line, index);
-
-      await tx.insert(reservationItems).values({
-        reservationId,
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice: line.unitPrice.toFixed(2),
-        depositPerUnit: line.depositPerUnit.toFixed(2),
-        totalPrice: line.subtotal.toFixed(2),
-        productSnapshot: buildProductSnapshot(prepared.catalog, item, resolved),
-        combinationKey,
-        selectedAttributes,
-        taxRate: tax.taxRate?.toFixed(2) ?? null,
-        taxAmount: tax.taxAmount?.toFixed(2) ?? null,
-        priceExclTax: tax.priceExclTax?.toFixed(2) ?? null,
-        totalExclTax: tax.totalExclTax?.toFixed(2) ?? null,
-      });
-    }
-
-    if (insurance.amount > 0) {
-      const insuranceTax = totals.taxEnabled
-        ? totals.taxByLineId.get(INSURANCE_TAX_LINE_ID)
-        : undefined;
-      await tx.insert(reservationItems).values({
-        reservationId,
-        productId: null,
-        isCustomItem: true,
-        quantity: 1,
-        unitPrice: insurance.amount.toFixed(2),
-        depositPerUnit: "0.00",
-        totalPrice: insurance.amount.toFixed(2),
-        taxRate: insuranceTax?.taxRate?.toFixed(2) ?? null,
-        taxAmount: insuranceTax?.taxAmount.toFixed(2) ?? null,
-        priceExclTax: insuranceTax?.amountExclTax.toFixed(2) ?? null,
-        totalExclTax: insuranceTax?.amountExclTax.toFixed(2) ?? null,
-        productSnapshot: {
-          name: INSURANCE_ITEM_NAME,
-          description: INSURANCE_ITEM_NAME,
-          images: [],
-        },
-      });
+    for (const item of itemValues) {
+      await tx.insert(reservationItems).values({ reservationId, ...item });
     }
 
     await tx.insert(reservationActivity).values({
@@ -699,18 +881,25 @@ const writeReservation = async (
         status: "pending",
         customerEmail: request.customer.email,
         customerName: `${request.customer.firstName} ${request.customer.lastName}`,
-        tulipInsuranceOptIn: insurance.appliedOptIn,
-        tulipInsuranceAmount: insurance.amount,
-        tulipInsuredProductCount: insurance.insuredProductCount,
-        tulipUninsuredProductCount: insurance.uninsuredProductCount,
-        ...(insurance.quoteUnavailable &&
-          insurance.quoteError && { tulipQuoteFallbackError: insurance.quoteError }),
+        tulipInsuranceOptIn: prepared.insurance.appliedOptIn,
+        tulipInsuranceAmount: prepared.insurance.amount,
+        tulipInsuredProductCount: prepared.insurance.insuredProductCount,
+        tulipUninsuredProductCount: prepared.insurance.uninsuredProductCount,
+        ...(prepared.insurance.quoteUnavailable &&
+          prepared.insurance.quoteError && {
+            tulipQuoteFallbackError: prepared.insurance.quoteError,
+          }),
         ...(prepared.advisorConversation && {
           advisorConversationId: prepared.advisorConversation.id,
         }),
+        ...(resumable && { supersedes: resumable.id }),
       },
       createdAt: new Date(),
     });
+
+    if (resumable) {
+      supersededSessions.push(...(await supersedePendingCheckout(tx, resumable, reservationId)));
+    }
 
     // Link the advisor conversation to its reservation (conversion). The
     // reservation_id filter keeps the first link authoritative.
@@ -729,12 +918,18 @@ const writeReservation = async (
     return {
       ok: true,
       replay: false,
+      reused: false,
       reservationId,
       reservationNumber,
       customerId: customer.id,
       customerEmail: customer.email,
     };
   });
+
+  if (written.ok) {
+    expireCheckoutSessions(store.stripeAccountId, supersededSessions);
+  }
+  return written;
 };
 
 /**
@@ -762,7 +957,14 @@ export const createReservation = async (
     const { prepared } = preparation;
     const { store, totals, insurance, promo, delivery, cart } = prepared;
 
-    const written = await writeReservation(request, prepared);
+    // Only the web checkout resumes: trusted callers never leave a pending
+    // reservation behind.
+    const resumable =
+      request.source === "online" && request.resumeReservationId
+        ? await findResumableCheckout(store.id, request.resumeReservationId, request.customer.email)
+        : null;
+
+    const written = await writeReservation(request, prepared, resumable);
     if (!written.ok) return written;
 
     const base = {
@@ -801,37 +1003,50 @@ export const createReservation = async (
       phone: prepared.customerPhone,
     };
 
-    await runPostCreationEffects({
-      store,
-      reservation: {
-        ...reservationSummary,
-        lineCount: request.items.length,
-        totalQuantity: request.items.reduce((sum, item) => sum + item.quantity, 0),
-      },
-      customer: customerSummary,
-      totals,
-      delivery,
-      insurance: { amount: insurance.amount, optIn: insurance.appliedOptIn },
-      promoCodeUsed: promo !== null,
-    });
+    // A resumed reservation already ran its creation effects the first time.
+    if (!written.reused) {
+      await runPostCreationEffects({
+        store,
+        reservation: {
+          ...reservationSummary,
+          lineCount: request.items.length,
+          totalQuantity: request.items.reduce((sum, item) => sum + item.quantity, 0),
+        },
+        customer: customerSummary,
+        totals,
+        delivery,
+        insurance: { amount: insurance.amount, optIn: insurance.appliedOptIn },
+        promoCodeUsed: promo !== null,
+      });
+    }
 
-    const paymentUrl =
-      effectiveReservationMode === "payment"
-        ? await startCheckoutPayment({
-            store,
-            reservation: {
-              id: written.reservationId,
-              number: written.reservationNumber,
-              customerId: written.customerId,
-              customerEmail: written.customerEmail,
-              customerName: `${request.customer.firstName} ${request.customer.lastName}`,
-            },
-            lines: cart.lines,
-            totals,
-            insuranceAmount: insurance.amount,
-            locale: request.locale,
-          })
-        : null;
+    let paymentUrl: string | null = null;
+    if (effectiveReservationMode === "payment") {
+      if (written.reused) {
+        // Back to the same Stripe session when it is still open, otherwise a
+        // fresh one for the same charge.
+        const resumed = await resumeCheckoutPayment({
+          store,
+          reservationId: written.reservationId,
+        });
+        paymentUrl = resumed.ok ? resumed.url : null;
+      } else {
+        paymentUrl = await startCheckoutPayment({
+          store,
+          reservation: {
+            id: written.reservationId,
+            number: written.reservationNumber,
+            customerId: written.customerId,
+            customerEmail: written.customerEmail,
+            customerName: `${request.customer.firstName} ${request.customer.lastName}`,
+          },
+          lines: cart.lines,
+          totals,
+          insuranceAmount: insurance.amount,
+          locale: request.locale,
+        });
+      }
+    }
 
     // Request-mode notifications. A payment-mode reservation whose Stripe
     // session could not start is a request the owner handles by hand, so it
@@ -866,7 +1081,7 @@ export const createReservation = async (
         })
       : null;
 
-    return { ...base, paymentUrl, instantAccessUrl, idempotentReplay: false };
+    return { ...base, paymentUrl, instantAccessUrl, idempotentReplay: written.reused };
   } catch (error) {
     log.error("reservation", `creation failed: ${describeError(error)}`);
     return failReservation("errors.createReservationError");

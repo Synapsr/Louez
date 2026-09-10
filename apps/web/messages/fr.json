@@ -6565,6 +6565,8 @@
         "title": "Paiement interrompu",
         "description": "Votre réservation {number} est en attente de paiement. Reprenez quand vous voulez, rien n'est perdu.",
         "cartKept": "Votre panier a été conservé.",
+        "expiredTitle": "Réservation expirée",
+        "expiredDescription": "Le délai de paiement de la réservation {number} est dépassé et elle a été annulée. Votre panier a été conservé : vous pouvez la refaire en quelques secondes.",
         "backToCart": "Retour au panier",
         "resume": "Reprendre le paiement",
         "redirecting": "Redirection…",
