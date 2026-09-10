@@ -1,4 +1,5 @@
 import { ORPCError } from "@orpc/server";
+import { hasReservationInsuranceCoverage } from "@louez/utils";
 import {
   and,
   asc,
@@ -304,10 +305,11 @@ export async function getDashboardReservationById(params: {
   }
 
   const reservationProductIds = reservation.items
+    .filter((item) => !item.isCustomItem)
     .map((item) => item.productId)
     .filter((productId): productId is string => typeof productId === "string");
 
-  if (reservationProductIds.length === 0) {
+  if (!hasReservationInsuranceCoverage(reservation) || reservationProductIds.length === 0) {
     return {
       ...reservation,
       insuredProductIds: [],
@@ -318,12 +320,14 @@ export async function getDashboardReservationById(params: {
     where: inArray(productsTulip.productId, reservationProductIds),
     columns: {
       productId: true,
+      tulipProductId: true,
     },
   });
 
   const insuredProductIds = Array.from(
     new Set(
       mappedProducts
+        .filter((mapping) => Boolean(mapping.tulipProductId))
         .map((mapping) => mapping.productId)
         .filter((productId): productId is string => typeof productId === "string"),
     ),

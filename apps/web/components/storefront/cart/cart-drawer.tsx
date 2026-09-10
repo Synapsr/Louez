@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+
 import { useTranslations } from "next-intl";
 
 import {
@@ -14,6 +16,9 @@ import {
 
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { type CartResolutionStatus, useCartDrawer, useCartState } from "@/contexts/cart-context";
+import { useStorePath } from "@/hooks/use-store-path";
+import { buildCheckoutHref } from "@/lib/utils/util.checkout-return";
+
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 import { CartEmptyState } from "./cart-empty-state";
@@ -47,6 +52,9 @@ export const CartDrawer = () => {
   const t = useTranslations("storefront.cart");
   const { isOpen, setOpen, close } = useCartDrawer();
   const { items, summary, resolutionStatus, hasUnavailableLines } = useCartState();
+  const storePath = useStorePath();
+  const searchParams = useSearchParams();
+  const checkoutHref = buildCheckoutHref(storePath, searchParams.toString());
   const isSidePanel = useMediaQuery(SIDE_PANEL_QUERY);
   const isEmpty = items.length === 0;
   const blockedReasonKey = getBlockedReasonKey(resolutionStatus, hasUnavailableLines);
@@ -68,7 +76,7 @@ export const CartDrawer = () => {
         {isEmpty ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain touch-pan-y p-6">
             <div className="my-auto w-full">
-              <CartEmptyState onNavigate={close} />
+              <CartEmptyState onNavigate={close} closeOnly={storePath === "/catalog"} />
             </div>
           </div>
         ) : (
@@ -96,17 +104,12 @@ export const CartDrawer = () => {
               <Button
                 size="xl"
                 className="w-full"
-                render={<StorefrontLink href="/checkout" onClick={close} />}
+                render={<StorefrontLink href={checkoutHref} onClick={close} />}
               >
                 {t("checkout")}
               </Button>
             )}
-            <Button
-              variant="tertiary"
-              size="xl"
-              className="w-full"
-              render={<StorefrontLink href="/catalog" onClick={close} />}
-            >
+            <Button variant="tertiary" size="xl" className="w-full" onClick={close}>
               {t("continueShopping")}
             </Button>
           </DrawerFooter>

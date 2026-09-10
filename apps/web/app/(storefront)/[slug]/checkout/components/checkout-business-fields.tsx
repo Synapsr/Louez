@@ -50,7 +50,6 @@ export const CheckoutBusinessFields = withForm({
               label={t("companyName")}
               placeholder={t("companyNamePlaceholder")}
               autoComplete="organization"
-              className="h-11 text-base sm:h-9 sm:text-sm"
             />
           )}
         </form.AppField>
@@ -63,7 +62,6 @@ export const CheckoutBusinessFields = withForm({
                 placeholder={t("companyNumberPlaceholder")}
                 inputMode="numeric"
                 autoComplete="off"
-                className="h-11 text-base sm:h-9 sm:text-sm"
               />
             )}
           </form.AppField>
@@ -73,7 +71,6 @@ export const CheckoutBusinessFields = withForm({
                 label={t("vatNumber")}
                 placeholder={t("vatNumberPlaceholder")}
                 autoComplete="off"
-                className="h-11 text-base sm:h-9 sm:text-sm"
               />
             )}
           </form.AppField>

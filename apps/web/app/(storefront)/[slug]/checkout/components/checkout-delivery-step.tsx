@@ -6,7 +6,7 @@ import { ArrowRight, ChevronLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { DeliverySettings } from "@louez/types";
-import { Button, StepActions } from "@louez/ui";
+import { Button, StepContent } from "@louez/ui";
 
 import { withForm } from "@/hooks/form/form";
 import { useFormatMoney } from "@/hooks/use-format-money";
@@ -16,11 +16,11 @@ import { isFreeDelivery } from "@/lib/utils/geo";
 import type { useCheckoutDelivery } from "../hooks/use-checkout-delivery";
 import { buildLegMapView } from "../util.checkout-fulfillment-map";
 import { buildCheckoutLocations, fromLocationKey, toLocationKey } from "../util.checkout-locations";
-import { STEP_ACTIONS_CLASS } from "../util.checkout-steps";
 import { checkoutFormOptions, checkoutStepProps } from "../validator.checkout";
 import { CheckoutFulfillmentLeg } from "./checkout-fulfillment-leg";
 import { CheckoutFulfillmentMapPanel } from "./checkout-fulfillment-map-panel";
 import { CheckoutReturnScope, type ReturnScope } from "./checkout-return-scope";
+import { CheckoutStepActions } from "./checkout-step-actions";
 
 type CheckoutDeliveryState = ReturnType<typeof useCheckoutDelivery>;
 type Leg = "outbound" | "return";
@@ -37,6 +37,8 @@ interface CheckoutDeliveryStepProps {
   onUseCustomerAddress: (leg: Leg) => void;
   onBack: () => void;
   onContinue: () => void;
+  /** Direction the step flow moved in, for the entrance animation. */
+  stepDirection: "forward" | "backward";
 }
 
 export const CheckoutDeliveryStep = withForm({
@@ -53,6 +55,7 @@ export const CheckoutDeliveryStep = withForm({
     onUseCustomerAddress,
     onBack,
     onContinue,
+    stepDirection,
   }) => {
     const t = useTranslations("storefront.checkout");
     const formatMoney = useFormatMoney();
@@ -217,90 +220,92 @@ export const CheckoutDeliveryStep = withForm({
     };
 
     return (
-      <div className="flex flex-col gap-6">
-        <h2 className="text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
-          {t("fulfillmentTitle")}
-        </h2>
+      <>
+        <StepContent className="flex flex-col gap-6" direction={stepDirection}>
+          <h2 className="text-xl font-semibold leading-tight tracking-tight sm:text-2xl">
+            {t("fulfillmentTitle")}
+          </h2>
 
-        <section
-          className="flex flex-col gap-3"
-          onFocusCapture={() => setActiveLeg("outbound")}
-          onPointerDownCapture={() => setActiveLeg("outbound")}
-        >
-          <h3 className="text-sm font-semibold">{t("outboundTitle")}</h3>
-
-          <CheckoutFulfillmentLeg
-            {...sharedLegProps}
-            leg="outbound"
-            method={delivery.outboundMethod}
-            onMethodChange={(method) => {
-              delivery.handleOutboundMethodChange(method);
-              if (method === "address") onUseCustomerAddress("outbound");
-            }}
-            selectedLocationId={delivery.pickupLocationId}
-            onLocationChange={delivery.handlePickupLocationChange}
-            address={delivery.outboundAddress}
-            onAddressChange={delivery.handleOutboundAddressChange}
-            error={delivery.outboundError}
+          <section
+            className="flex flex-col gap-3"
+            onFocusCapture={() => setActiveLeg("outbound")}
+            onPointerDownCapture={() => setActiveLeg("outbound")}
           >
-            {renderMapPanel("outbound")}
-          </CheckoutFulfillmentLeg>
-        </section>
+            <h3 className="text-sm font-semibold">{t("outboundTitle")}</h3>
 
-        <section
-          className="flex flex-col gap-3 border-t pt-4"
-          onFocusCapture={() => setActiveLeg("return")}
-          onPointerDownCapture={() => setActiveLeg("return")}
-        >
-          <h3 className="text-sm font-semibold">{t("returnTitle")}</h3>
-
-          <CheckoutReturnScope
-            scope={returnScope}
-            onScopeChange={handleReturnScopeChange}
-            isAddressDeliveryEnabled={delivery.isAddressDeliveryEnabled}
-            isAddressDeliveryAvailable={delivery.isDeliveryAmountEligible}
-            deliveryPrice={deliveryPrice}
-            isDeliveryFree={isDeliveryFree}
-            isPickupAtAddress={delivery.outboundMethod === "address"}
-            sameAsPickupSummary={sameAsPickupSummary}
-          />
-
-          {isSplit ? (
             <CheckoutFulfillmentLeg
               {...sharedLegProps}
-              leg="return"
-              showMethodChoice={false}
-              method={delivery.returnMethod}
-              onMethodChange={delivery.handleReturnMethodChange}
-              selectedLocationId={delivery.returnLocationId}
-              onLocationChange={delivery.handleReturnLocationChange}
-              address={delivery.returnAddress}
-              onAddressChange={delivery.handleReturnAddressChange}
-              error={delivery.returnError}
+              leg="outbound"
+              method={delivery.outboundMethod}
+              onMethodChange={(method) => {
+                delivery.handleOutboundMethodChange(method);
+                if (method === "address") onUseCustomerAddress("outbound");
+              }}
+              selectedLocationId={delivery.pickupLocationId}
+              onLocationChange={delivery.handlePickupLocationChange}
+              address={delivery.outboundAddress}
+              onAddressChange={delivery.handleOutboundAddressChange}
+              error={delivery.outboundError}
             >
-              {renderMapPanel("return")}
+              {renderMapPanel("outbound")}
             </CheckoutFulfillmentLeg>
-          ) : null}
-        </section>
+          </section>
 
-        {hasAnyDelivery && !delivery.isDeliveryIncluded && (
-          <div className="flex items-center justify-between border-t pt-4 text-base font-medium">
-            <span>{t("totalDeliveryFee")}</span>
-            <span
-              className={
-                delivery.canContinue && delivery.totalFee === 0 ? "text-success" : "tabular-nums"
-              }
-            >
-              {!delivery.canContinue
-                ? "—"
-                : delivery.totalFee === 0
-                  ? t("free")
-                  : formatMoney(delivery.totalFee)}
-            </span>
-          </div>
-        )}
+          <section
+            className="flex flex-col gap-3 border-t pt-4"
+            onFocusCapture={() => setActiveLeg("return")}
+            onPointerDownCapture={() => setActiveLeg("return")}
+          >
+            <h3 className="text-sm font-semibold">{t("returnTitle")}</h3>
 
-        <StepActions className={STEP_ACTIONS_CLASS}>
+            <CheckoutReturnScope
+              scope={returnScope}
+              onScopeChange={handleReturnScopeChange}
+              isAddressDeliveryEnabled={delivery.isAddressDeliveryEnabled}
+              isAddressDeliveryAvailable={delivery.isDeliveryAmountEligible}
+              deliveryPrice={deliveryPrice}
+              isDeliveryFree={isDeliveryFree}
+              isPickupAtAddress={delivery.outboundMethod === "address"}
+              sameAsPickupSummary={sameAsPickupSummary}
+            />
+
+            {isSplit ? (
+              <CheckoutFulfillmentLeg
+                {...sharedLegProps}
+                leg="return"
+                showMethodChoice={false}
+                method={delivery.returnMethod}
+                onMethodChange={delivery.handleReturnMethodChange}
+                selectedLocationId={delivery.returnLocationId}
+                onLocationChange={delivery.handleReturnLocationChange}
+                address={delivery.returnAddress}
+                onAddressChange={delivery.handleReturnAddressChange}
+                error={delivery.returnError}
+              >
+                {renderMapPanel("return")}
+              </CheckoutFulfillmentLeg>
+            ) : null}
+          </section>
+
+          {hasAnyDelivery && !delivery.isDeliveryIncluded && (
+            <div className="flex items-center justify-between border-t pt-4 text-base font-medium">
+              <span>{t("totalDeliveryFee")}</span>
+              <span
+                className={
+                  delivery.canContinue && delivery.totalFee === 0 ? "text-success" : "tabular-nums"
+                }
+              >
+                {!delivery.canContinue
+                  ? "—"
+                  : delivery.totalFee === 0
+                    ? t("free")
+                    : formatMoney(delivery.totalFee)}
+              </span>
+            </div>
+          )}
+        </StepContent>
+
+        <CheckoutStepActions>
           <Button
             type="button"
             variant="outline"
@@ -321,8 +326,8 @@ export const CheckoutDeliveryStep = withForm({
             {t("continue")}
             <ArrowRight data-slot="icon" />
           </Button>
-        </StepActions>
-      </div>
+        </CheckoutStepActions>
+      </>
     );
   },
 });

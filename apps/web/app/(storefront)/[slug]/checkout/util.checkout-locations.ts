@@ -22,9 +22,6 @@ export interface CheckoutLocation {
   distanceKm: number | null;
 }
 
-export const directionsUrl = (address: string) =>
-  `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`;
-
 /**
  * Turn the store's locations into rows ready to render: one address line, the
  * distance from the customer when known, nearest first, and a number that ties

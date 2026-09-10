@@ -1,47 +1,30 @@
-'use client';
+"use client";
 
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState } from "react";
 
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 
-import {
-  Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui';
-import { Label } from '@louez/ui';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@louez/ui';
-import { CogIcon } from '@louez/ui/icons';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
+import { Label } from "@louez/ui";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@louez/ui";
+import { CogIcon } from "@louez/ui/icons";
 
 interface TulipConfigurationSectionProps {
   disabled: boolean;
   settings: {
-    publicMode: 'required' | 'optional' | 'no_public';
+    publicMode: "required" | "optional" | "no_public";
   };
   isPending: boolean;
-  onSave: (input: {
-    publicMode: 'required' | 'optional' | 'no_public';
-  }) => Promise<void>;
+  onSave: (input: { publicMode: "required" | "optional" | "no_public" }) => Promise<void>;
 }
 
-export function TulipConfigurationSection({
+export const TulipConfigurationSection = ({
   disabled,
   settings,
   isPending,
   onSave,
-}: TulipConfigurationSectionProps) {
-  const t = useTranslations(
-    'dashboard.settings.integrationsPage.assurance.configuration',
-  );
+}: TulipConfigurationSectionProps) => {
+  const t = useTranslations("dashboard.settings.integrationsPage.assurance.configuration");
 
   const [publicMode, setPublicMode] = useState(settings.publicMode);
 
@@ -62,57 +45,62 @@ export function TulipConfigurationSection({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CogIcon className="h-5 w-5 shrink-0" />
-          {t('title')}
+          {t("title")}
         </CardTitle>
-        <CardDescription>{t('description')}</CardDescription>
+        <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {disabled && (
           <p className="text-muted-foreground rounded-md border border-dashed p-3 text-sm">
-            {t('disabledMessage')}
+            {t("disabledMessage")}
           </p>
         )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="grid gap-2">
-            <Label htmlFor="assurance-mode">{t('modeLabel')}</Label>
+            <Label htmlFor="assurance-mode">{t("modeLabel")}</Label>
             <Select
               value={publicMode}
               onValueChange={(value) => {
-                if (
-                  value === 'required' ||
-                  value === 'optional' ||
-                  value === 'no_public'
-                ) {
+                if (value === "required" || value === "optional" || value === "no_public") {
                   setPublicMode(value);
                 }
               }}
               disabled={disabled || isPending}
             >
-              <SelectTrigger id="assurance-mode">
+              <SelectTrigger id="assurance-mode" aria-describedby="assurance-mode-description">
                 <SelectValue>
-                  {publicMode === 'required'
-                    ? t('modeRequired')
-                    : publicMode === 'optional'
-                      ? t('modeOptional')
-                      : t('modeNoPublic')}
+                  {publicMode === "required"
+                    ? t("modeRequired")
+                    : publicMode === "optional"
+                      ? t("modeOptional")
+                      : t("modeNoPublic")}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="required">{t('modeRequired')}</SelectItem>
-                <SelectItem value="optional">{t('modeOptional')}</SelectItem>
-                <SelectItem value="no_public">{t('modeNoPublic')}</SelectItem>
+                <SelectItem value="required">{t("modeRequired")}</SelectItem>
+                <SelectItem value="optional">{t("modeOptional")}</SelectItem>
+                <SelectItem value="no_public">{t("modeNoPublic")}</SelectItem>
               </SelectContent>
             </Select>
+            <p id="assurance-mode-description" className="text-sm text-muted-foreground">
+              {t(
+                publicMode === "required"
+                  ? "modeRequiredHelp"
+                  : publicMode === "optional"
+                    ? "modeOptionalHelp"
+                    : "modeNoPublicHelp",
+              )}
+            </p>
           </div>
 
           <div className="flex justify-end">
             <Button type="submit" disabled={disabled || isPending}>
-              {isPending ? t('savingButton') : t('saveButton')}
+              {isPending ? t("savingButton") : t("saveButton")}
             </Button>
           </div>
         </form>
       </CardContent>
     </Card>
   );
-}
+};
