@@ -1,4 +1,4 @@
-import { BaseLayout } from './base-layout'
+import { BaseLayout } from "./base-layout";
 import {
   CtaButton,
   EmailHeading,
@@ -8,41 +8,41 @@ import {
   InfoCardItem,
   ItemsTable,
   resolveCustomContent,
-} from './components'
+} from "./components";
 import {
   getEmailTranslations,
   getDateFormatPatterns,
   getCurrencyFormatter,
   type EmailLocale,
-} from '../i18n'
-import type { EmailCustomContent } from '@louez/types'
-import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from '../date-time'
+} from "../i18n";
+import type { EmailCustomContent } from "@louez/types";
+import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
 
 interface ReservationItem {
-  name: string
-  quantity: number
-  totalPrice: number
+  name: string;
+  quantity: number;
+  totalPrice: number;
 }
 
 interface QuoteSentEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storeEmail?: string | null
-  storePhone?: string | null
-  storeTimezone?: string | null
-  storeCountry?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  startDate: Date
-  endDate: Date
-  items: ReservationItem[]
-  total: number
-  reservationUrl: string
-  customContent?: EmailCustomContent
-  locale?: EmailLocale
-  currency?: string
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  storeTimezone?: string | null;
+  storeCountry?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  startDate: Date;
+  endDate: Date;
+  items: ReservationItem[];
+  total: number;
+  reservationUrl: string;
+  customContent?: EmailCustomContent;
+  locale?: EmailLocale;
+  currency?: string;
 }
 
 export function QuoteSentEmail({
@@ -62,35 +62,35 @@ export function QuoteSentEmail({
   total,
   reservationUrl,
   customContent,
-  locale = 'fr',
-  currency = 'EUR',
+  locale = "fr",
+  currency = "EUR",
 }: QuoteSentEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.quoteSent
-  const tc = t.common
-  const datePatterns = getDateFormatPatterns(locale)
-  const formatCurrency = getCurrencyFormatter(locale, currency)
-  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const t = getEmailTranslations(locale);
+  const messages = t.quoteSent;
+  const tc = t.common;
+  const datePatterns = getDateFormatPatterns(locale);
+  const formatCurrency = getCurrencyFormatter(locale, currency);
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry);
   const timezoneLine =
-    typeof tc.timezone === 'string'
-      ? tc.timezone.replace('{timezone}', timezoneLabel)
-      : `Timezone: ${timezoneLabel}`
+    typeof tc.timezone === "string"
+      ? tc.timezone.replace("{timezone}", timezoneLabel)
+      : `Timezone: ${timezoneLabel}`;
 
   const formatDate = (date: Date) =>
-    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry)
+    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry);
 
   const { greeting } = resolveCustomContent(
     customContent,
     {
       greeting: tc.greeting,
-      signature: `${tc.regards}\n${tc.team.replace('{storeName}', storeName)}`,
+      signature: `${tc.regards}\n${tc.team.replace("{storeName}", storeName)}`,
     },
     { name: customerFirstName, number: reservationNumber },
-  )
+  );
 
   return (
     <BaseLayout
-      preview={messages.subject.replace('{number}', reservationNumber)}
+      preview={messages.subject.replace("{number}", reservationNumber)}
       storeName={storeName}
       logoUrl={logoUrl}
       primaryColor={primaryColor}
@@ -104,16 +104,16 @@ export function QuoteSentEmail({
       <EmailText>{greeting}</EmailText>
 
       <EmailText>
-        {messages.body.replace('{number}', reservationNumber).replace('{store}', storeName)}
+        {messages.body.replace("{number}", reservationNumber).replace("{store}", storeName)}
       </EmailText>
 
       <InfoCard
         label={messages.rentalPeriod}
         value={
           <>
-            {tc.periodFrom.replace('{startDate}', formatDate(startDate))}
+            {tc.periodFrom.replace("{startDate}", formatDate(startDate))}
             <br />
-            {tc.periodTo.replace('{endDate}', formatDate(endDate))}
+            {tc.periodTo.replace("{endDate}", formatDate(endDate))}
           </>
         }
         footnote={timezoneLine}
@@ -144,7 +144,7 @@ export function QuoteSentEmail({
 
       <FooterNote>{messages.expiry}</FooterNote>
     </BaseLayout>
-  )
+  );
 }
 
-export default QuoteSentEmail
+export default QuoteSentEmail;

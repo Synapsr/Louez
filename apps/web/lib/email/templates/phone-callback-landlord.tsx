@@ -1,6 +1,14 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
+import { Section, Text } from "@react-email/components";
 import { BaseLayout } from "./base-layout";
-import { getContrastColorHex } from "@/lib/utils/colors";
+import {
+  CtaButton,
+  DetailRow,
+  EmailHeading,
+  EmailText,
+  FooterNote,
+  stripLabelColon,
+  styles,
+} from "./components";
 import { getEmailTranslations, type EmailLocale } from "../i18n";
 
 interface PhoneCallbackLandlordEmailProps {
@@ -20,7 +28,7 @@ interface PhoneCallbackLandlordEmailProps {
  */
 export function PhoneCallbackLandlordEmail({
   storeName,
-  primaryColor = "#0066FF",
+  primaryColor,
   callerPhone,
   message,
   conversationUrl,
@@ -28,12 +36,6 @@ export function PhoneCallbackLandlordEmail({
 }: PhoneCallbackLandlordEmailProps) {
   const t = getEmailTranslations(locale);
   const messages = t.phoneCallbackLandlord;
-
-  const buttonStyle = {
-    ...button,
-    backgroundColor: primaryColor,
-    color: getContrastColorHex(primaryColor),
-  };
 
   return (
     <BaseLayout
@@ -43,81 +45,29 @@ export function PhoneCallbackLandlordEmail({
       primaryColor={primaryColor}
       locale={locale}
     >
-      <Heading style={heading}>{messages.title}</Heading>
+      <EmailHeading>{messages.title}</EmailHeading>
 
-      <Text style={paragraph}>
-        {messages.body.replace("{storeName}", storeName)}
-      </Text>
+      <EmailText>{messages.body.replace("{storeName}", storeName)}</EmailText>
 
-      <Section style={infoBox}>
-        <Text style={infoRow}>
-          <strong>{messages.phone}</strong> {callerPhone}
+      <Section style={styles.card}>
+        <DetailRow label={stripLabelColon(messages.phone)} value={callerPhone} />
+        <Text style={{ ...styles.label, margin: "12px 0 4px 0" }}>
+          {stripLabelColon(messages.message)}
         </Text>
-        <Text style={infoRow}>
-          <strong>{messages.message}</strong> {message}
-        </Text>
+        <Text style={messageText}>{message}</Text>
       </Section>
 
-      <Section style={ctaSection}>
-        <Button href={conversationUrl} style={buttonStyle}>
-          {messages.listen}
-        </Button>
-      </Section>
+      <CtaButton href={conversationUrl} label={messages.listen} primaryColor={primaryColor} />
 
-      <Text style={footerNote}>{messages.footer}</Text>
+      <FooterNote>{messages.footer}</FooterNote>
     </BaseLayout>
   );
 }
 
-const heading = {
-  fontSize: "24px",
-  fontWeight: "bold" as const,
-  color: "#1a1a1a",
-  marginBottom: "24px",
-};
-
-const paragraph = {
-  fontSize: "14px",
-  lineHeight: "24px",
-  color: "#525f7f",
-  margin: "0 0 16px 0",
-};
-
-const infoBox = {
-  backgroundColor: "#f4f4f5",
-  borderRadius: "8px",
-  padding: "20px",
-  margin: "24px 0",
-};
-
-const infoRow = {
-  fontSize: "14px",
-  color: "#1a1a1a",
-  margin: "0 0 8px 0",
-};
-
-const ctaSection = {
-  textAlign: "center" as const,
-  marginTop: "32px",
-  marginBottom: "32px",
-};
-
-const button = {
-  backgroundColor: "#0066FF",
-  borderRadius: "6px",
-  color: "#fff",
-  fontSize: "14px",
-  fontWeight: "bold" as const,
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "inline-block",
-  padding: "12px 24px",
-};
-
-const footerNote = {
-  fontSize: "13px",
-  color: "#8898aa",
-  textAlign: "center" as const,
+const messageText = {
+  ...styles.paragraph,
+  margin: "0",
+  whiteSpace: "pre-wrap" as const,
 };
 
 export default PhoneCallbackLandlordEmail;

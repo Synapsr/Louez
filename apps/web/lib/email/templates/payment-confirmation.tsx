@@ -1,40 +1,32 @@
-import { Column, Hr, Row, Section, Text } from '@react-email/components'
-import { BaseLayout } from './base-layout'
-import {
-  CtaButton,
-  EmailHeading,
-  EmailText,
-  styles,
-} from './components'
+import { Hr, Section, Text } from "@react-email/components";
+import { BaseLayout } from "./base-layout";
+import { CtaButton, DetailRow, EmailHeading, EmailText, styles } from "./components";
 import {
   getEmailTranslations,
   getDateFormatPatterns,
   getCurrencyFormatter,
   type EmailLocale,
-} from '../i18n'
-import {
-  formatEmailDateInStoreTimezone,
-  getStoreTimezoneLabel,
-} from '../date-time'
+} from "../i18n";
+import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
 
 interface PaymentConfirmationEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storeEmail?: string | null
-  storePhone?: string | null
-  storeTimezone?: string | null
-  storeCountry?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  paymentAmount: number
-  paymentDate: Date
-  paymentMethod?: string | null
-  reservationUrl?: string
-  contractSignatureUrl?: string
-  locale?: EmailLocale
-  currency?: string
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  storeTimezone?: string | null;
+  storeCountry?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  paymentAmount: number;
+  paymentDate: Date;
+  paymentMethod?: string | null;
+  reservationUrl?: string;
+  contractSignatureUrl?: string;
+  locale?: EmailLocale;
+  currency?: string;
 }
 
 export function PaymentConfirmationEmail({
@@ -53,31 +45,31 @@ export function PaymentConfirmationEmail({
   paymentMethod,
   reservationUrl,
   contractSignatureUrl,
-  locale = 'fr',
-  currency = 'EUR',
+  locale = "fr",
+  currency = "EUR",
 }: PaymentConfirmationEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.paymentConfirmation
-  const tc = t.common
-  const datePatterns = getDateFormatPatterns(locale)
-  const formatCurrency = getCurrencyFormatter(locale, currency)
-  const timezoneLabel = getStoreTimezoneLabel(paymentDate, storeTimezone, storeCountry)
+  const t = getEmailTranslations(locale);
+  const messages = t.paymentConfirmation;
+  const tc = t.common;
+  const datePatterns = getDateFormatPatterns(locale);
+  const formatCurrency = getCurrencyFormatter(locale, currency);
+  const timezoneLabel = getStoreTimezoneLabel(paymentDate, storeTimezone, storeCountry);
   const timezoneLine =
-    typeof tc.timezone === 'string'
-      ? tc.timezone.replace('{timezone}', timezoneLabel)
-      : `Timezone: ${timezoneLabel}`
+    typeof tc.timezone === "string"
+      ? tc.timezone.replace("{timezone}", timezoneLabel)
+      : `Timezone: ${timezoneLabel}`;
   const contractSignatureText =
-    typeof messages.contractSignature === 'string'
+    typeof messages.contractSignature === "string"
       ? messages.contractSignature
-      : t.requestAccepted.contractAvailable
+      : t.requestAccepted.contractAvailable;
   const contractSignatureLabel =
-    typeof messages.signContract === 'string'
+    typeof messages.signContract === "string"
       ? messages.signContract
-      : t.requestAccepted.viewContract
+      : t.requestAccepted.viewContract;
 
   return (
     <BaseLayout
-      preview={messages.subject.replace('{number}', reservationNumber)}
+      preview={messages.subject.replace("{number}", reservationNumber)}
       storeName={storeName}
       logoUrl={logoUrl}
       primaryColor={primaryColor}
@@ -88,67 +80,38 @@ export function PaymentConfirmationEmail({
     >
       <EmailHeading>{messages.title}</EmailHeading>
 
-      <EmailText>{tc.greeting.replace('{name}', customerFirstName)}</EmailText>
+      <EmailText>{tc.greeting.replace("{name}", customerFirstName)}</EmailText>
 
-      <EmailText>{messages.body.replace('{number}', reservationNumber)}</EmailText>
+      <EmailText>{messages.body.replace("{number}", reservationNumber)}</EmailText>
 
       {/* Payment details */}
       <Section style={styles.card}>
-        <Text style={{ ...styles.label, margin: '0 0 12px 0' }}>{messages.paymentDetails}</Text>
+        <Text style={{ ...styles.label, margin: "0 0 12px 0" }}>{messages.paymentDetails}</Text>
 
-        <Row style={detailRow}>
-          <Column>
-            <Text style={detailLabel}>{messages.reservation}</Text>
-          </Column>
-          <Column align="right">
-            <Text style={styles.value}>#{reservationNumber}</Text>
-          </Column>
-        </Row>
+        <DetailRow label={messages.reservation} value={<>#{reservationNumber}</>} />
 
-        <Row style={detailRow}>
-          <Column>
-            <Text style={detailLabel}>{messages.date}</Text>
-          </Column>
-          <Column align="right">
-            <Text style={styles.value}>
-              {formatEmailDateInStoreTimezone(
-                paymentDate,
-                locale,
-                datePatterns.dateTime,
-                storeTimezone,
-                storeCountry
-              )}
-            </Text>
-          </Column>
-        </Row>
+        <DetailRow
+          label={messages.date}
+          value={formatEmailDateInStoreTimezone(
+            paymentDate,
+            locale,
+            datePatterns.dateTime,
+            storeTimezone,
+            storeCountry,
+          )}
+        />
 
-        <Row style={detailRow}>
-          <Column>
-            <Text style={{ ...styles.small, margin: '0' }}>{timezoneLine}</Text>
-          </Column>
-        </Row>
+        <Text style={{ ...styles.small, margin: "0 0 4px 0" }}>{timezoneLine}</Text>
 
-        {paymentMethod && (
-          <Row style={detailRow}>
-            <Column>
-              <Text style={detailLabel}>{messages.method}</Text>
-            </Column>
-            <Column align="right">
-              <Text style={styles.value}>{paymentMethod}</Text>
-            </Column>
-          </Row>
-        )}
+        {paymentMethod && <DetailRow label={messages.method} value={paymentMethod} />}
 
         <Hr style={styles.hr} />
 
-        <Row style={detailRow}>
-          <Column>
-            <Text style={detailLabel}>{messages.amount}</Text>
-          </Column>
-          <Column align="right">
-            <Text style={styles.amount}>{formatCurrency(paymentAmount)}</Text>
-          </Column>
-        </Row>
+        <DetailRow
+          label={messages.amount}
+          value={formatCurrency(paymentAmount)}
+          emphasis="amount"
+        />
       </Section>
 
       <EmailText>{messages.confirmation}</EmailText>
@@ -169,18 +132,7 @@ export function PaymentConfirmationEmail({
         </>
       )}
     </BaseLayout>
-  )
+  );
 }
 
-const detailRow = {
-  marginBottom: '4px',
-}
-
-const detailLabel = {
-  fontSize: '14px',
-  lineHeight: '22px',
-  color: '#4b5563',
-  margin: '0',
-}
-
-export default PaymentConfirmationEmail
+export default PaymentConfirmationEmail;

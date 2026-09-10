@@ -1,4 +1,4 @@
-import { BaseLayout } from './base-layout'
+import { BaseLayout } from "./base-layout";
 import {
   CtaButton,
   EmailHeading,
@@ -8,28 +8,28 @@ import {
   Signature,
   StoreNote,
   resolveCustomContent,
-} from './components'
-import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from '../i18n'
-import type { EmailCustomContent } from '@louez/types'
-import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from '../date-time'
+} from "./components";
+import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from "../i18n";
+import type { EmailCustomContent } from "@louez/types";
+import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
 
 interface ReminderPickupEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storeEmail?: string | null
-  storePhone?: string | null
-  storeTimezone?: string | null
-  storeCountry?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  startDate: Date
-  reservationUrl: string
-  customContent?: EmailCustomContent
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  storeTimezone?: string | null;
+  storeCountry?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  startDate: Date;
+  reservationUrl: string;
+  customContent?: EmailCustomContent;
   /** Free text the store owner added when sending this reminder by hand. */
-  additionalMessage?: string | null
-  locale?: EmailLocale
+  additionalMessage?: string | null;
+  locale?: EmailLocale;
 }
 
 export function ReminderPickupEmail({
@@ -47,26 +47,26 @@ export function ReminderPickupEmail({
   reservationUrl,
   customContent,
   additionalMessage,
-  locale = 'fr',
+  locale = "fr",
 }: ReminderPickupEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.reminderPickup
-  const tc = t.common
-  const datePatterns = getDateFormatPatterns(locale)
-  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const t = getEmailTranslations(locale);
+  const messages = t.reminderPickup;
+  const tc = t.common;
+  const datePatterns = getDateFormatPatterns(locale);
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry);
   const timezoneLine =
-    typeof tc.timezone === 'string'
-      ? tc.timezone.replace('{timezone}', timezoneLabel)
-      : `Timezone: ${timezoneLabel}`
+    typeof tc.timezone === "string"
+      ? tc.timezone.replace("{timezone}", timezoneLabel)
+      : `Timezone: ${timezoneLabel}`;
 
   const { greeting, message, signature } = resolveCustomContent(
     customContent,
     {
       greeting: tc.greeting,
-      signature: `${messages.seeTomorrow}\n${tc.team.replace('{storeName}', storeName)}`,
+      signature: `${messages.seeTomorrow}\n${tc.team.replace("{storeName}", storeName)}`,
     },
     { name: customerFirstName, number: reservationNumber },
-  )
+  );
 
   return (
     <BaseLayout
@@ -83,7 +83,7 @@ export function ReminderPickupEmail({
 
       <EmailText>{greeting}</EmailText>
 
-      <EmailText>{messages.body.replace('{number}', reservationNumber)}</EmailText>
+      <EmailText>{messages.body.replace("{number}", reservationNumber)}</EmailText>
 
       {/* Custom message from store settings */}
       {message && <EmailText>{message}</EmailText>}
@@ -123,7 +123,7 @@ export function ReminderPickupEmail({
 
       <Signature text={signature} />
     </BaseLayout>
-  )
+  );
 }
 
-export default ReminderPickupEmail
+export default ReminderPickupEmail;
