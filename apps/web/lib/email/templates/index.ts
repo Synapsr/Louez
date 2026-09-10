@@ -1,35 +1,35 @@
-export { BaseLayout } from './base-layout'
-export { BaseLayoutSimple } from '@louez/email/templates'
-export { VerificationCodeEmail } from './verification-code'
-export { ReservationConfirmationEmail } from './reservation-confirmation'
+export { BaseLayout } from "./base-layout";
+export { BaseLayoutSimple } from "@louez/email/templates";
+export { VerificationCodeEmail } from "./verification-code";
+export { ReservationConfirmationEmail } from "./reservation-confirmation";
 export {
   ReservationModifiedEmail,
   getReservationModifiedEmailSubject,
-} from './reservation-modified'
-export { ReservationCancelledEmail } from './reservation-cancelled'
-export { ReservationCompletedEmail } from './reservation-completed'
-export { RequestReceivedEmail } from './request-received'
-export { RequestAcceptedEmail } from './request-accepted'
-export { RequestRejectedEmail } from './request-rejected'
-export { ReminderPickupEmail } from './reminder-pickup'
-export { ReminderReturnEmail } from './reminder-return'
-export { ReminderPickupAdminEmail } from './reminder-pickup-admin'
-export { ReminderReturnAdminEmail } from './reminder-return-admin'
-export { ReminderDigestAdminEmail, type DigestEntry } from './reminder-digest-admin'
-export { NewRequestLandlordEmail } from './new-request-landlord'
-export { PhoneCallbackLandlordEmail } from './phone-callback-landlord'
-export { VoiceNumberBillingEmail } from './voice-number-billing'
-export { TeamInvitationEmail } from './team-invitation'
-export { RewardUnlockedEmail } from './reward-unlocked'
-export { MagicLinkEmail } from '@louez/email/templates'
-export { OTPEmail } from '@louez/email/templates'
-export { InstantAccessEmail } from './instant-access'
-export { ContractEmail } from './contract'
-export { CustomMessageEmail } from './custom-message'
-export { ThankYouReviewEmail } from './thank-you-review'
-export { PaymentConfirmationEmail } from './payment-confirmation'
-export { PaymentFailedEmail } from './payment-failed'
-export { PaymentRequestEmail } from './payment-request'
-export { DepositAuthorizationRequestEmail } from './deposit-authorization-request'
-export { QuoteSentEmail } from './quote-sent'
-export { SupplierInvoiceReceivedEmail } from './supplier-invoice-received'
+} from "./reservation-modified";
+export { ReservationCancelledEmail } from "./reservation-cancelled";
+export { ReservationCompletedEmail } from "./reservation-completed";
+export { RequestReceivedEmail } from "./request-received";
+export { RequestAcceptedEmail } from "./request-accepted";
+export { RequestRejectedEmail } from "./request-rejected";
+export { ReminderPickupEmail } from "./reminder-pickup";
+export { ReminderReturnEmail } from "./reminder-return";
+export { ReminderPickupAdminEmail } from "./reminder-pickup-admin";
+export { ReminderReturnAdminEmail } from "./reminder-return-admin";
+export { ReminderDigestAdminEmail, type DigestEntry } from "./reminder-digest-admin";
+export { NewRequestLandlordEmail } from "./new-request-landlord";
+export { PhoneCallbackLandlordEmail } from "./phone-callback-landlord";
+export { VoiceNumberBillingEmail } from "./voice-number-billing";
+export { TeamInvitationEmail } from "./team-invitation";
+export { RewardUnlockedEmail } from "./reward-unlocked";
+export { MagicLinkEmail } from "@louez/email/templates";
+export { OTPEmail } from "@louez/email/templates";
+export { InstantAccessEmail } from "./instant-access";
+export { ContractEmail } from "./contract";
+export { CustomMessageEmail } from "./custom-message";
+export { ThankYouReviewEmail } from "./thank-you-review";
+export { PaymentConfirmationEmail } from "./payment-confirmation";
+export { PaymentFailedEmail } from "./payment-failed";
+export { PaymentRequestEmail } from "./payment-request";
+export { DepositAuthorizationRequestEmail } from "./deposit-authorization-request";
+export { QuoteSentEmail } from "./quote-sent";
+export { SupplierInvoiceReceivedEmail } from "./supplier-invoice-received";

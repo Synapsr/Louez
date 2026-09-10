@@ -1,5 +1,5 @@
-import { Link } from '@react-email/components'
-import { BaseLayout } from './base-layout'
+import { Link } from "@react-email/components";
+import { BaseLayout } from "./base-layout";
 import {
   EmailHeading,
   EmailText,
@@ -7,26 +7,26 @@ import {
   InfoCard,
   InfoCardItem,
   emailTheme,
-} from './components'
-import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from '../i18n'
-import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from '../date-time'
+} from "./components";
+import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from "../i18n";
+import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
 
 interface ReservationCancelledEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storeEmail?: string | null
-  storePhone?: string | null
-  storeTimezone?: string | null
-  storeCountry?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  startDate: Date
-  endDate: Date
-  reason?: string | null
-  storefrontUrl?: string
-  locale?: EmailLocale
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  storeTimezone?: string | null;
+  storeCountry?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  startDate: Date;
+  endDate: Date;
+  reason?: string | null;
+  storefrontUrl?: string;
+  locale?: EmailLocale;
 }
 
 export function ReservationCancelledEmail({
@@ -44,24 +44,24 @@ export function ReservationCancelledEmail({
   endDate,
   reason,
   storefrontUrl,
-  locale = 'fr',
+  locale = "fr",
 }: ReservationCancelledEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.reservationCancelled
-  const tc = t.common
-  const datePatterns = getDateFormatPatterns(locale)
-  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const t = getEmailTranslations(locale);
+  const messages = t.reservationCancelled;
+  const tc = t.common;
+  const datePatterns = getDateFormatPatterns(locale);
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry);
   const timezoneLine =
-    typeof tc.timezone === 'string'
-      ? tc.timezone.replace('{timezone}', timezoneLabel)
-      : `Timezone: ${timezoneLabel}`
+    typeof tc.timezone === "string"
+      ? tc.timezone.replace("{timezone}", timezoneLabel)
+      : `Timezone: ${timezoneLabel}`;
 
   const formatDate = (date: Date) =>
-    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry)
+    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry);
 
   return (
     <BaseLayout
-      preview={messages.subject.replace('{number}', reservationNumber)}
+      preview={messages.subject.replace("{number}", reservationNumber)}
       storeName={storeName}
       logoUrl={logoUrl}
       primaryColor={primaryColor}
@@ -72,17 +72,17 @@ export function ReservationCancelledEmail({
     >
       <EmailHeading>{messages.title}</EmailHeading>
 
-      <EmailText>{tc.greeting.replace('{name}', customerFirstName)}</EmailText>
+      <EmailText>{tc.greeting.replace("{name}", customerFirstName)}</EmailText>
 
-      <EmailText>{messages.body.replace('{number}', reservationNumber)}</EmailText>
+      <EmailText>{messages.body.replace("{number}", reservationNumber)}</EmailText>
 
       <InfoCard
         label={messages.cancelledPeriod}
         value={
           <>
-            {tc.periodFrom.replace('{startDate}', formatDate(startDate))}
+            {tc.periodFrom.replace("{startDate}", formatDate(startDate))}
             <br />
-            {tc.periodTo.replace('{endDate}', formatDate(endDate))}
+            {tc.periodTo.replace("{endDate}", formatDate(endDate))}
           </>
         }
         footnote={timezoneLine}
@@ -103,12 +103,12 @@ export function ReservationCancelledEmail({
 
       <FooterNote>{messages.thankYou}</FooterNote>
     </BaseLayout>
-  )
+  );
 }
 
 const quietLink = {
   color: emailTheme.colors.muted,
-  textDecoration: 'underline',
-}
+  textDecoration: "underline",
+};
 
-export default ReservationCancelledEmail
+export default ReservationCancelledEmail;

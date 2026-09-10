@@ -1,23 +1,23 @@
-import { BaseLayout } from './base-layout'
-import { CtaButton, EmailHeading, EmailText, FooterNote, InfoCard } from './components'
-import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from '../i18n'
-import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from '../date-time'
+import { BaseLayout } from "./base-layout";
+import { CtaButton, EmailHeading, EmailText, FooterNote, InfoCard } from "./components";
+import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from "../i18n";
+import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
 
 interface ThankYouReviewEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storeEmail?: string | null
-  storePhone?: string | null
-  storeTimezone?: string | null
-  storeCountry?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  startDate: Date
-  endDate: Date
-  reviewUrl: string
-  locale?: EmailLocale
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  storeTimezone?: string | null;
+  storeCountry?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  startDate: Date;
+  endDate: Date;
+  reviewUrl: string;
+  locale?: EmailLocale;
 }
 
 export function ThankYouReviewEmail({
@@ -34,19 +34,19 @@ export function ThankYouReviewEmail({
   startDate,
   endDate,
   reviewUrl,
-  locale = 'fr',
+  locale = "fr",
 }: ThankYouReviewEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.thankYouReview
-  const tc = t.common
-  const datePatterns = getDateFormatPatterns(locale)
-  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const t = getEmailTranslations(locale);
+  const messages = t.thankYouReview;
+  const tc = t.common;
+  const datePatterns = getDateFormatPatterns(locale);
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry);
   const timezoneLine =
-    typeof tc.timezone === 'string'
-      ? tc.timezone.replace('{timezone}', timezoneLabel)
-      : `Timezone: ${timezoneLabel}`
+    typeof tc.timezone === "string"
+      ? tc.timezone.replace("{timezone}", timezoneLabel)
+      : `Timezone: ${timezoneLabel}`;
 
-  const greeting = tc.greeting.replace('{name}', customerFirstName)
+  const greeting = tc.greeting.replace("{name}", customerFirstName);
 
   return (
     <BaseLayout
@@ -69,10 +69,10 @@ export function ThankYouReviewEmail({
         label={tc.summary}
         value={
           <>
-            {tc.reservationNumber.replace('{number}', reservationNumber)}
+            {tc.reservationNumber.replace("{number}", reservationNumber)}
             <br />
             {tc.periodFrom.replace(
-              '{startDate}',
+              "{startDate}",
               formatEmailDateInStoreTimezone(
                 startDate,
                 locale,
@@ -81,7 +81,7 @@ export function ThankYouReviewEmail({
                 storeCountry,
               ),
             )}
-            {' - '}
+            {" - "}
             {formatEmailDateInStoreTimezone(
               endDate,
               locale,
@@ -98,7 +98,7 @@ export function ThankYouReviewEmail({
 
       <FooterNote>{messages.disclaimer}</FooterNote>
     </BaseLayout>
-  )
+  );
 }
 
-export default ThankYouReviewEmail
+export default ThankYouReviewEmail;

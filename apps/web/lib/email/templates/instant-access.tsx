@@ -1,4 +1,4 @@
-import { BaseLayout } from './base-layout'
+import { BaseLayout } from "./base-layout";
 import {
   CtaButton,
   EmailHeading,
@@ -7,42 +7,42 @@ import {
   InfoCard,
   ItemsTable,
   StoreNote,
-} from './components'
+} from "./components";
 import {
   getEmailTranslations,
   getDateFormatPatterns,
   getCurrencyFormatter,
   type EmailLocale,
-} from '../i18n'
-import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from '../date-time'
+} from "../i18n";
+import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
 
 interface InstantAccessItem {
-  name: string
-  quantity: number
-  totalPrice: number
+  name: string;
+  quantity: number;
+  totalPrice: number;
 }
 
 interface InstantAccessEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storePhone?: string | null
-  storeEmail?: string | null
-  storeTimezone?: string | null
-  storeCountry?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  startDate: Date
-  endDate: Date
-  items: InstantAccessItem[]
-  totalAmount: number
-  accessUrl: string
-  showPaymentCta: boolean
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storePhone?: string | null;
+  storeEmail?: string | null;
+  storeTimezone?: string | null;
+  storeCountry?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  startDate: Date;
+  endDate: Date;
+  items: InstantAccessItem[];
+  totalAmount: number;
+  accessUrl: string;
+  showPaymentCta: boolean;
   /** Free text the store owner added when sending this link by hand. */
-  additionalMessage?: string | null
-  locale?: EmailLocale
-  currency?: string
+  additionalMessage?: string | null;
+  locale?: EmailLocale;
+  currency?: string;
 }
 
 export function InstantAccessEmail({
@@ -63,26 +63,26 @@ export function InstantAccessEmail({
   accessUrl,
   showPaymentCta,
   additionalMessage,
-  locale = 'fr',
-  currency = 'EUR',
+  locale = "fr",
+  currency = "EUR",
 }: InstantAccessEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.instantAccess
-  const tc = t.common
-  const datePatterns = getDateFormatPatterns(locale)
-  const formatCurrency = getCurrencyFormatter(locale, currency)
-  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const t = getEmailTranslations(locale);
+  const messages = t.instantAccess;
+  const tc = t.common;
+  const datePatterns = getDateFormatPatterns(locale);
+  const formatCurrency = getCurrencyFormatter(locale, currency);
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry);
   const timezoneLine =
-    typeof tc.timezone === 'string'
-      ? tc.timezone.replace('{timezone}', timezoneLabel)
-      : `Timezone: ${timezoneLabel}`
+    typeof tc.timezone === "string"
+      ? tc.timezone.replace("{timezone}", timezoneLabel)
+      : `Timezone: ${timezoneLabel}`;
 
   const formatDate = (date: Date) =>
-    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry)
+    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry);
 
   return (
     <BaseLayout
-      preview={messages.subject.replace('{number}', reservationNumber)}
+      preview={messages.subject.replace("{number}", reservationNumber)}
       storeName={storeName}
       logoUrl={logoUrl}
       primaryColor={primaryColor}
@@ -93,9 +93,9 @@ export function InstantAccessEmail({
     >
       <EmailHeading>{messages.title}</EmailHeading>
 
-      <EmailText>{tc.greeting.replace('{name}', customerFirstName)}</EmailText>
+      <EmailText>{tc.greeting.replace("{name}", customerFirstName)}</EmailText>
 
-      <EmailText>{messages.body.replace('{number}', reservationNumber)}</EmailText>
+      <EmailText>{messages.body.replace("{number}", reservationNumber)}</EmailText>
 
       <StoreNote message={additionalMessage} />
 
@@ -103,9 +103,9 @@ export function InstantAccessEmail({
         label={tc.period}
         value={
           <>
-            {tc.periodFrom.replace('{startDate}', formatDate(startDate))}
+            {tc.periodFrom.replace("{startDate}", formatDate(startDate))}
             <br />
-            {tc.periodTo.replace('{endDate}', formatDate(endDate))}
+            {tc.periodTo.replace("{endDate}", formatDate(endDate))}
           </>
         }
         footnote={timezoneLine}
@@ -132,7 +132,7 @@ export function InstantAccessEmail({
 
       <FooterNote>{messages.linkValid}</FooterNote>
     </BaseLayout>
-  )
+  );
 }
 
-export default InstantAccessEmail
+export default InstantAccessEmail;

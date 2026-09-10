@@ -1,1 +1,1 @@
-export { BaseLayoutSimple } from '@louez/email/templates'
+export { BaseLayoutSimple } from "@louez/email/templates";

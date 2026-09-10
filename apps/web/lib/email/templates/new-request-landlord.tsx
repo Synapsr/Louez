@@ -1,6 +1,14 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
+import { Section, Text } from "@react-email/components";
 import { BaseLayout } from "./base-layout";
-import { getContrastColorHex } from "@/lib/utils/colors";
+import {
+  CtaButton,
+  DetailRow,
+  EmailHeading,
+  EmailText,
+  FooterNote,
+  stripLabelColon,
+  styles,
+} from "./components";
 import {
   getEmailTranslations,
   getDateFormatPatterns,
@@ -31,7 +39,7 @@ interface NewRequestLandlordEmailProps {
 export function NewRequestLandlordEmail({
   storeName,
   logoUrl: _logoUrl,
-  primaryColor = "#0066FF",
+  primaryColor,
   customerFirstName,
   customerLastName,
   customerEmail,
@@ -51,12 +59,14 @@ export function NewRequestLandlordEmail({
   const datePatterns = getDateFormatPatterns(locale);
   const formatCurrency = getCurrencyFormatter(locale, currency);
   const trimmedNotes = customerNotes?.trim();
-
-  const buttonStyle = {
-    ...button,
-    backgroundColor: primaryColor,
-    color: getContrastColorHex(primaryColor),
-  };
+  const formatDate = (date: Date) =>
+    formatEmailDateInStoreTimezone(
+      date,
+      locale,
+      datePatterns.short,
+      storeTimezone,
+      storeCountryCode,
+    );
 
   return (
     <BaseLayout
@@ -66,132 +76,41 @@ export function NewRequestLandlordEmail({
       primaryColor={primaryColor}
       locale={locale}
     >
-      <Heading style={heading}>{messages.title}</Heading>
+      <EmailHeading>{messages.title}</EmailHeading>
 
-      <Text style={paragraph}>{messages.body.replace("{storeName}", storeName)}</Text>
+      <EmailText>{messages.body.replace("{storeName}", storeName)}</EmailText>
 
-      <Section style={infoBox}>
-        <Text style={infoRow}>
-          <strong>{messages.customer}</strong> {customerFirstName} {customerLastName}
-        </Text>
-        <Text style={infoRow}>
-          <strong>{messages.email}</strong> {customerEmail}
-        </Text>
-        <Text style={infoRow}>
-          <strong>{messages.period}</strong>{" "}
-          {formatEmailDateInStoreTimezone(
-            startDate,
-            locale,
-            datePatterns.short,
-            storeTimezone,
-            storeCountryCode,
-          )}{" "}
-          -{" "}
-          {formatEmailDateInStoreTimezone(
-            endDate,
-            locale,
-            datePatterns.short,
-            storeTimezone,
-            storeCountryCode,
-          )}
-        </Text>
-        <Text style={infoRow}>
-          <strong>{messages.amount}</strong> {formatCurrency(total)}
-        </Text>
+      <Section style={styles.card}>
+        <DetailRow
+          label={stripLabelColon(messages.customer)}
+          value={`${customerFirstName} ${customerLastName}`}
+        />
+        <DetailRow label={stripLabelColon(messages.email)} value={customerEmail} />
+        <DetailRow
+          label={stripLabelColon(messages.period)}
+          value={`${formatDate(startDate)} – ${formatDate(endDate)}`}
+        />
+        <DetailRow label={stripLabelColon(messages.amount)} value={formatCurrency(total)} />
       </Section>
 
       {trimmedNotes && (
-        <Section style={notesBox}>
-          <Text style={notesLabel}>{messages.notes}</Text>
+        <Section style={styles.card}>
+          <Text style={{ ...styles.label, margin: "0 0 8px 0" }}>{messages.notes}</Text>
           <Text style={notesText}>{trimmedNotes}</Text>
         </Section>
       )}
 
-      <Section style={ctaSection}>
-        <Button href={dashboardUrl} style={buttonStyle}>
-          {messages.viewRequest}
-        </Button>
-      </Section>
+      <CtaButton href={dashboardUrl} label={messages.viewRequest} primaryColor={primaryColor} />
 
-      <Text style={footerNote}>{messages.connectToManage}</Text>
+      <FooterNote>{messages.connectToManage}</FooterNote>
     </BaseLayout>
   );
 }
 
-const heading = {
-  fontSize: "24px",
-  fontWeight: "bold" as const,
-  color: "#1a1a1a",
-  marginBottom: "24px",
-};
-
-const paragraph = {
-  fontSize: "14px",
-  lineHeight: "24px",
-  color: "#525f7f",
-  margin: "0 0 16px 0",
-};
-
-const infoBox = {
-  backgroundColor: "#f4f4f5",
-  borderRadius: "8px",
-  padding: "20px",
-  margin: "24px 0",
-};
-
-const infoRow = {
-  fontSize: "14px",
-  color: "#1a1a1a",
-  margin: "0 0 8px 0",
-};
-
-const notesBox = {
-  backgroundColor: "#fffbeb",
-  border: "1px solid #fde68a",
-  borderRadius: "8px",
-  padding: "16px 20px",
-  margin: "0 0 24px 0",
-};
-
-const notesLabel = {
-  fontSize: "12px",
-  fontWeight: "bold" as const,
-  textTransform: "uppercase" as const,
-  letterSpacing: "0.04em",
-  color: "#92400e",
-  margin: "0 0 8px 0",
-};
-
 const notesText = {
-  fontSize: "14px",
-  lineHeight: "22px",
-  color: "#1a1a1a",
-  whiteSpace: "pre-wrap" as const,
+  ...styles.paragraph,
   margin: "0",
-};
-
-const ctaSection = {
-  textAlign: "center" as const,
-  marginTop: "32px",
-  marginBottom: "32px",
-};
-
-const button = {
-  backgroundColor: "#0066FF",
-  borderRadius: "6px",
-  color: "#fff",
-  fontSize: "14px",
-  fontWeight: "bold" as const,
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "inline-block",
-  padding: "12px 24px",
-};
-
-const footerNote = {
-  fontSize: "13px",
-  color: "#8898aa",
-  textAlign: "center" as const,
+  whiteSpace: "pre-wrap" as const,
 };
 
 export default NewRequestLandlordEmail;

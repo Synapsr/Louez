@@ -1,10 +1,12 @@
-export { CtaButton } from './cta-button'
-export { resolveCustomContent } from './custom-content'
-export { EmailHeading } from './email-heading'
-export { EmailText } from './email-text'
-export { FooterNote } from './footer-note'
-export { InfoCard, InfoCardItem } from './info-card'
-export { ItemsTable } from './items-table'
-export { Signature } from './signature'
-export { StoreNote } from './store-note'
-export { DEFAULT_PRIMARY_COLOR, emailTheme, styles } from './theme'
+export { CtaButton } from "./cta-button";
+export { DetailRow } from "./detail-row";
+export { stripLabelColon } from "./util.label";
+export { resolveCustomContent } from "./custom-content";
+export { EmailHeading } from "./email-heading";
+export { EmailText } from "./email-text";
+export { FooterNote } from "./footer-note";
+export { InfoCard, InfoCardItem } from "./info-card";
+export { ItemsTable } from "./items-table";
+export { Signature } from "./signature";
+export { StoreNote } from "./store-note";
+export { DEFAULT_PRIMARY_COLOR, emailTheme, styles } from "./theme";

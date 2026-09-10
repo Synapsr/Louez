@@ -1,5 +1,5 @@
-import { Link } from '@react-email/components'
-import { BaseLayout } from './base-layout'
+import { Link } from "@react-email/components";
+import { BaseLayout } from "./base-layout";
 import {
   CtaButton,
   EmailHeading,
@@ -10,45 +10,45 @@ import {
   ItemsTable,
   emailTheme,
   resolveCustomContent,
-} from './components'
+} from "./components";
 import {
   getEmailTranslations,
   getDateFormatPatterns,
   getCurrencyFormatter,
   type EmailLocale,
-} from '../i18n'
-import type { EmailCustomContent } from '@louez/types'
-import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from '../date-time'
+} from "../i18n";
+import type { EmailCustomContent } from "@louez/types";
+import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
 
 interface ReservationItem {
-  name: string
-  quantity: number
-  totalPrice: number
+  name: string;
+  quantity: number;
+  totalPrice: number;
 }
 
 interface RequestAcceptedEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storeEmail?: string | null
-  storePhone?: string | null
-  storeTimezone?: string | null
-  storeCountry?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  startDate: Date
-  endDate: Date
-  items: ReservationItem[]
-  total: number
-  deposit?: number
-  reservationUrl: string
-  contractUrl: string
-  termsUrl?: string | null
-  paymentUrl?: string | null
-  customContent?: EmailCustomContent
-  locale?: EmailLocale
-  currency?: string
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  storeTimezone?: string | null;
+  storeCountry?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  startDate: Date;
+  endDate: Date;
+  items: ReservationItem[];
+  total: number;
+  deposit?: number;
+  reservationUrl: string;
+  contractUrl: string;
+  termsUrl?: string | null;
+  paymentUrl?: string | null;
+  customContent?: EmailCustomContent;
+  locale?: EmailLocale;
+  currency?: string;
 }
 
 export function RequestAcceptedEmail({
@@ -72,42 +72,42 @@ export function RequestAcceptedEmail({
   termsUrl,
   paymentUrl,
   customContent,
-  locale = 'fr',
-  currency = 'EUR',
+  locale = "fr",
+  currency = "EUR",
 }: RequestAcceptedEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.requestAccepted
-  const tc = t.common
-  const datePatterns = getDateFormatPatterns(locale)
-  const formatCurrency = getCurrencyFormatter(locale, currency)
-  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const t = getEmailTranslations(locale);
+  const messages = t.requestAccepted;
+  const tc = t.common;
+  const datePatterns = getDateFormatPatterns(locale);
+  const formatCurrency = getCurrencyFormatter(locale, currency);
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry);
   const timezoneLine =
-    typeof tc.timezone === 'string'
-      ? tc.timezone.replace('{timezone}', timezoneLabel)
-      : `Timezone: ${timezoneLabel}`
+    typeof tc.timezone === "string"
+      ? tc.timezone.replace("{timezone}", timezoneLabel)
+      : `Timezone: ${timezoneLabel}`;
 
   const formatDate = (date: Date) =>
-    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry)
+    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry);
 
   const { greeting, message } = resolveCustomContent(
     customContent,
     {
       greeting: tc.greeting,
-      signature: `${tc.regards}\n${tc.team.replace('{storeName}', storeName)}`,
+      signature: `${tc.regards}\n${tc.team.replace("{storeName}", storeName)}`,
     },
     { name: customerFirstName, number: reservationNumber },
-  )
+  );
 
   const totals = [
     ...(deposit > 0 ? [{ label: tc.deposit, amount: deposit }] : []),
     { label: tc.totalToPay, amount: total, bold: true },
-  ]
+  ];
 
   return (
     <BaseLayout
       preview={
-        customContent?.subject?.replace('{number}', reservationNumber) ||
-        messages.subject.replace('{number}', reservationNumber)
+        customContent?.subject?.replace("{number}", reservationNumber) ||
+        messages.subject.replace("{number}", reservationNumber)
       }
       storeName={storeName}
       logoUrl={logoUrl}
@@ -121,7 +121,7 @@ export function RequestAcceptedEmail({
 
       <EmailText>{greeting}</EmailText>
 
-      <EmailText>{messages.body.replace('{number}', reservationNumber)}</EmailText>
+      <EmailText>{messages.body.replace("{number}", reservationNumber)}</EmailText>
 
       {/* Custom message from store settings */}
       {message && <EmailText>{message}</EmailText>}
@@ -130,9 +130,9 @@ export function RequestAcceptedEmail({
         label={messages.rentalPeriod}
         value={
           <>
-            {tc.periodFrom.replace('{startDate}', formatDate(startDate))}
+            {tc.periodFrom.replace("{startDate}", formatDate(startDate))}
             <br />
-            {tc.periodTo.replace('{endDate}', formatDate(endDate))}
+            {tc.periodTo.replace("{endDate}", formatDate(endDate))}
           </>
         }
         footnote={timezoneLine}
@@ -169,7 +169,7 @@ export function RequestAcceptedEmail({
         </Link>
         {termsUrl && (
           <>
-            {' · '}
+            {" · "}
             <Link href={termsUrl} style={legalLink}>
               {messages.viewTerms}
             </Link>
@@ -177,12 +177,12 @@ export function RequestAcceptedEmail({
         )}
       </FooterNote>
     </BaseLayout>
-  )
+  );
 }
 
 const legalLink = {
   color: emailTheme.colors.muted,
-  textDecoration: 'underline',
-}
+  textDecoration: "underline",
+};
 
-export default RequestAcceptedEmail
+export default RequestAcceptedEmail;

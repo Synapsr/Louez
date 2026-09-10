@@ -1,6 +1,14 @@
-import { Button, Heading, Section, Text } from "@react-email/components";
+import { Section } from "@react-email/components";
 import { BaseLayout } from "./base-layout";
-import { getContrastColorHex } from "@/lib/utils/colors";
+import {
+  CtaButton,
+  DetailRow,
+  EmailHeading,
+  EmailText,
+  FooterNote,
+  stripLabelColon,
+  styles,
+} from "./components";
 import { getEmailTranslations, type EmailLocale } from "../i18n";
 
 export type VoiceNumberBillingVariant = "warning" | "failed" | "released";
@@ -27,7 +35,7 @@ interface VoiceNumberBillingEmailProps {
 export function VoiceNumberBillingEmail({
   variant,
   storeName,
-  primaryColor = "#0066FF",
+  primaryColor,
   e164,
   credits,
   deadlineText,
@@ -44,12 +52,6 @@ export function VoiceNumberBillingEmail({
     .replace("{credits}", String(credits))
     .replace("{date}", deadlineText ?? "");
 
-  const buttonStyle = {
-    ...button,
-    backgroundColor: primaryColor,
-    color: getContrastColorHex(primaryColor),
-  };
-
   return (
     <BaseLayout
       preview={variantMessages.subject.replace("{number}", e164)}
@@ -58,85 +60,30 @@ export function VoiceNumberBillingEmail({
       primaryColor={primaryColor}
       locale={locale}
     >
-      <Heading style={heading}>{variantMessages.title}</Heading>
+      <EmailHeading>{variantMessages.title}</EmailHeading>
 
-      <Text style={paragraph}>{body}</Text>
+      <EmailText>{body}</EmailText>
 
-      <Section style={infoBox}>
-        <Text style={infoRow}>
-          <strong>{messages.numberLabel}</strong> {e164}
-        </Text>
-        <Text style={infoRow}>
-          <strong>{messages.rentalLabel}</strong>{" "}
-          {messages.rentalValue.replace("{credits}", String(credits))}
-        </Text>
+      <Section style={styles.card}>
+        <DetailRow label={stripLabelColon(messages.numberLabel)} value={e164} />
+        <DetailRow
+          label={stripLabelColon(messages.rentalLabel)}
+          value={messages.rentalValue.replace("{credits}", String(credits))}
+        />
         {deadlineText && variant !== "released" && (
-          <Text style={infoRow}>
-            <strong>{messages.deadlineLabel}</strong> {deadlineText}
-          </Text>
+          <DetailRow label={stripLabelColon(messages.deadlineLabel)} value={deadlineText} />
         )}
       </Section>
 
-      <Section style={ctaSection}>
-        <Button href={ctaUrl} style={buttonStyle}>
-          {variant === "released" ? messages.ctaOpen : messages.ctaRecharge}
-        </Button>
-      </Section>
+      <CtaButton
+        href={ctaUrl}
+        label={variant === "released" ? messages.ctaOpen : messages.ctaRecharge}
+        primaryColor={primaryColor}
+      />
 
-      <Text style={footerNote}>{messages.footer}</Text>
+      <FooterNote>{messages.footer}</FooterNote>
     </BaseLayout>
   );
 }
-
-const heading = {
-  fontSize: "24px",
-  fontWeight: "bold" as const,
-  color: "#1a1a1a",
-  marginBottom: "24px",
-};
-
-const paragraph = {
-  fontSize: "14px",
-  lineHeight: "24px",
-  color: "#525f7f",
-  margin: "0 0 16px 0",
-};
-
-const infoBox = {
-  backgroundColor: "#f4f4f5",
-  borderRadius: "8px",
-  padding: "20px",
-  margin: "24px 0",
-};
-
-const infoRow = {
-  fontSize: "14px",
-  color: "#1a1a1a",
-  margin: "0 0 8px 0",
-};
-
-const ctaSection = {
-  textAlign: "center" as const,
-  marginTop: "32px",
-  marginBottom: "32px",
-};
-
-const button = {
-  backgroundColor: "#0066FF",
-  borderRadius: "6px",
-  color: "#fff",
-  fontSize: "14px",
-  fontWeight: "bold" as const,
-  textDecoration: "none",
-  textAlign: "center" as const,
-  display: "inline-block",
-  padding: "12px 24px",
-};
-
-const footerNote = {
-  fontSize: "13px",
-  color: "#8898aa",
-  textAlign: "center" as const,
-};
 
 export default VoiceNumberBillingEmail;

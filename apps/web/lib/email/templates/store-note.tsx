@@ -1,1 +1,1 @@
-export { StoreNote } from './components/store-note'
+export { StoreNote } from "./components/store-note";
