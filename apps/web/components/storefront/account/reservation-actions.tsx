@@ -14,12 +14,13 @@ import type { ReservationActions as ReservationActionSet } from "@/lib/reservati
 interface ReservationActionsProps {
   storeSlug: string;
   reservationId: string;
+  hasPayment?: boolean;
   actions: ReservationActionSet;
   /** Absolute contract URL; a plain link so the browser handles the PDF. */
   contractHref: string;
 }
 
-type PendingDialog = "accept" | "decline" | null;
+type PendingDialog = "accept" | "decline" | "cancel" | null;
 
 /**
  * The single actions zone of a reservation: one primary button (accept
@@ -32,20 +33,40 @@ export const ReservationActions = ({
   reservationId,
   actions,
   contractHref,
+  hasPayment = false,
 }: ReservationActionsProps) => {
   const t = useTranslations("storefront.account");
   const [dialog, setDialog] = useState<PendingDialog>(null);
-  const { pay, accept, decline, error } = useReservationActions({ storeSlug, reservationId });
+  const { pay, accept, decline, cancel, error } = useReservationActions({
+    storeSlug,
+    reservationId,
+    hasPayment,
+  });
 
-  const hasAnything = actions.canAcceptQuote || actions.canPay || actions.canDownloadContract;
-  if (!hasAnything) return null;
+  const hasAnything =
+    actions.canCancelRequest ||
+    actions.canAcceptQuote ||
+    actions.canPay ||
+    actions.canDownloadContract;
+  if (!hasAnything && !error) return null;
 
-  const isBusy = pay.isPending || accept.isPending || decline.isPending;
+  const isBusy = pay.isPending || accept.isPending || decline.isPending || cancel.isPending;
   const closeDialog = () => setDialog(null);
 
   return (
     <div className="flex flex-col gap-2 sm:shrink-0 sm:items-end">
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        {actions.canCancelRequest ? (
+          <Button
+            size="xl"
+            variant="outline"
+            className="w-full sm:h-10 sm:w-auto"
+            disabled={isBusy}
+            onClick={() => setDialog("cancel")}
+          >
+            {t("cancellation.action")}
+          </Button>
+        ) : null}
         {actions.canAcceptQuote ? (
           <>
             <Button
@@ -94,8 +115,25 @@ export const ReservationActions = ({
         ) : null}
       </div>
 
-      {error ? <p className="text-xs text-destructive">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="max-w-sm text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
 
+      <ReservationConfirmDialog
+        open={dialog === "cancel"}
+        onOpenChange={(open) => {
+          if (!cancel.isPending) setDialog(open ? "cancel" : null);
+        }}
+        title={t("cancellation.title")}
+        description={t(hasPayment ? "cancellation.paymentDescription" : "cancellation.description")}
+        cancelLabel={t("cancellation.keep")}
+        confirmLabel={t("cancellation.confirm")}
+        destructive
+        isPending={cancel.isPending}
+        onConfirm={() => cancel.mutate(undefined, { onSettled: closeDialog })}
+      />
       <ReservationConfirmDialog
         open={dialog === "accept"}
         onOpenChange={(open) => (open ? setDialog("accept") : closeDialog())}

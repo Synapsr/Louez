@@ -20,9 +20,10 @@ describe("getReservationActions", () => {
     assert.equal(actions.canSign, false);
   });
 
-  test("pending: nothing to do yet", () => {
+  test("pending: cancellation is optional", () => {
     const actions = getReservationActions({ ...base, status: "pending" });
     assert.equal(actions.required, null);
+    assert.equal(actions.canCancelRequest, true);
     assert.deepEqual(
       [actions.canAcceptQuote, actions.canPay, actions.canSign, actions.canDownloadContract],
       [false, false, false, false],
@@ -36,7 +37,11 @@ describe("getReservationActions", () => {
     assert.equal(unpaid.canSign, false);
     assert.equal(unpaid.canDownloadContract, true);
 
-    const paid = getReservationActions({ ...base, status: "confirmed", isRentalPaid: true });
+    const paid = getReservationActions({
+      ...base,
+      status: "confirmed",
+      isRentalPaid: true,
+    });
     assert.equal(paid.required, null);
     assert.equal(paid.canPay, false);
 
@@ -52,11 +57,19 @@ describe("getReservationActions", () => {
 
   test("no Stripe: no payment action", () => {
     assert.equal(
-      getReservationActions({ ...base, status: "ongoing", stripeChargesEnabled: false }).canPay,
+      getReservationActions({
+        ...base,
+        status: "ongoing",
+        stripeChargesEnabled: false,
+      }).canPay,
       false,
     );
     assert.equal(
-      getReservationActions({ ...base, status: "ongoing", stripeAccountId: null }).canPay,
+      getReservationActions({
+        ...base,
+        status: "ongoing",
+        stripeAccountId: null,
+      }).canPay,
       false,
     );
   });
@@ -76,4 +89,19 @@ describe("getReservationActions", () => {
       assert.equal(actions.canDownloadContract, false);
     }
   });
+});
+
+test("only pending requests can be cancelled by customers", () => {
+  for (const status of [
+    "quote",
+    "confirmed",
+    "ongoing",
+    "completed",
+    "cancelled",
+    "rejected",
+    "declined",
+    "unknown",
+  ]) {
+    assert.equal(getReservationActions({ ...base, status }).canCancelRequest, false, status);
+  }
 });

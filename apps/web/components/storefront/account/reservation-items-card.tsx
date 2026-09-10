@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 
 import { ProductImage } from "@/components/product/product-image";
 import { AccountCard } from "@/components/storefront/account/account-card";
+import { InsuredProductShield } from "@/components/storefront/ui/insured-product-shield";
 import { Price } from "@/components/storefront/ui/price";
 
 export interface ReservationItemView {
@@ -11,6 +12,8 @@ export interface ReservationItemView {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  /** The breakage/theft coverage of this reservation applies to this product. */
+  insured: boolean;
 }
 
 interface ReservationItemsCardProps {
@@ -19,6 +22,11 @@ interface ReservationItemsCardProps {
   deposit: number;
   total: number;
   totalPaid: number;
+  /**
+   * Nothing has been charged and the reservation is still live, so the amounts
+   * below are what the rental will cost, not what the customer has paid.
+   */
+  isUnsettled: boolean;
   /** Customer notes typed at checkout, if any. */
   notes: string | null;
 }
@@ -30,6 +38,7 @@ export const ReservationItemsCard = ({
   deposit,
   total,
   totalPaid,
+  isUnsettled,
   notes,
 }: ReservationItemsCardProps) => {
   const t = useTranslations("storefront.account");
@@ -46,7 +55,10 @@ export const ReservationItemsCard = ({
               containerClassName="w-16 shrink-0 rounded-lg bg-muted"
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-base font-medium leading-snug">{item.name}</p>
+              <div className="flex items-center gap-1">
+                <p className="truncate text-base font-medium leading-snug">{item.name}</p>
+                {item.insured ? <InsuredProductShield label={t("insuredProductTooltip")} /> : null}
+              </div>
               <p className="text-xs text-muted-foreground">
                 {t("quantityLabel")}: {item.quantity}
               </p>
@@ -86,6 +98,10 @@ export const ReservationItemsCard = ({
           </div>
         ) : null}
       </dl>
+
+      {isUnsettled ? (
+        <p className="text-xs text-muted-foreground">{t("nothingChargedYet")}</p>
+      ) : null}
 
       {notes ? (
         <div className="rounded-lg bg-muted p-3">

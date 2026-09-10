@@ -14,15 +14,19 @@ import { getTranslations } from "next-intl/server";
 import { db, documents, invoices, reservations } from "@louez/db";
 
 import { AccountCard } from "@/components/storefront/account/account-card";
-import { ReservationCartReset } from "@/components/storefront/account/reservation-cart-reset";
 import { ReservationActions } from "@/components/storefront/account/reservation-actions";
+import { ReservationFulfillmentSummary } from "@/components/storefront/account/reservation-fulfillment-summary";
 import { ReservationInvoicesCard } from "@/components/storefront/account/reservation-invoices-card";
 import { ReservationItemsCard } from "@/components/storefront/account/reservation-items-card";
+import { ReservationCartReset } from "@/components/storefront/account/reservation-cart-reset";
 import { ReservationOutcomeBanner } from "@/components/storefront/account/reservation-outcome-banner";
 import { ReservationPaymentsCard } from "@/components/storefront/account/reservation-payments-card";
 import { ReservationStatusBadge } from "@/components/storefront/account/reservation-status-badge";
 import { ReservationStatusCard } from "@/components/storefront/account/reservation-status-card";
-import { toReservationStatus } from "@/components/storefront/account/reservation-status.constants";
+import {
+  isClosedReservationStatus,
+  toReservationStatus,
+} from "@/components/storefront/account/reservation-status.constants";
 import { ReservationTimeline } from "@/components/storefront/account/reservation-timeline";
 import { StoreContactCard } from "@/components/storefront/account/store-contact-card";
 import { ReviewPromptCard } from "@/components/storefront/review-prompt-card";
@@ -33,12 +37,20 @@ import { requireCustomerSession } from "@/lib/customer-auth/require-customer-ses
 import { parseReservationOutcomeEvent } from "@/lib/customer-auth/util.account-redirect";
 import { buildReviewUrl } from "@/lib/google-places";
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
+import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
 import {
   getReservationPaymentStatus,
   getTotalPaid,
   isRentalPaid,
 } from "@/lib/reservations/util.payment-status";
 import { getReservationActions } from "@/lib/reservations/util.reservation-actions";
+import {
+  formatFulfillmentPlaceLine,
+  getFulfillmentPlaceKey,
+  resolveReservationFulfillment,
+  type FulfillmentLeg,
+  type FulfillmentPlace,
+} from "@/lib/reservations/util.reservation-fulfillment";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { formatStoreDate, formatStoreDateRange } from "@/lib/utils/store-date";
@@ -81,7 +93,12 @@ export default async function ReservationDetailPage({
         items: true,
         payments: true,
         activity: {
-          columns: { id: true, metadata: true },
+          columns: {
+            id: true,
+            metadata: true,
+            activityType: true,
+            createdAt: true,
+          },
           orderBy: (activity, { desc }) => [desc(activity.createdAt)],
         },
       },
@@ -109,6 +126,11 @@ export default async function ReservationDetailPage({
 
   if (!reservation) notFound();
 
+  const insuredProductIds = await getReservationInsuredProductIds(reservation);
+  const cancellation = reservation.activity.find((row) => row.activityType === "cancelled");
+  const cancelledRequest =
+    reservation.status === "cancelled" &&
+    cancellation?.metadata?.source === "customer_request_cancellation";
   const dateRequest = getDateChangeRequests(reservation.activity)[0] ?? null;
   const timezone = store.settings?.timezone;
   const formatDate = (date: Date | string, preset: "SHORT_DATE" | "DATE_AT_TIME") =>
@@ -116,6 +138,7 @@ export default async function ReservationDetailPage({
 
   const status = toReservationStatus(reservation.status);
   const rentalPaid = isRentalPaid(reservation.payments);
+  const totalPaid = getTotalPaid(reservation.payments);
   const paymentStatus = getReservationPaymentStatus(reservation.payments);
   const actions = getReservationActions({
     status: reservation.status,
@@ -125,6 +148,22 @@ export default async function ReservationDetailPage({
     stripeChargesEnabled: store.stripeChargesEnabled,
   });
   const event = parseReservationOutcomeEvent(query.event);
+
+  const fulfillment = resolveReservationFulfillment({ reservation, store });
+  const pickupDateLabel = formatDate(reservation.startDate, "DATE_AT_TIME");
+  const returnDateLabel = formatDate(reservation.endDate, "DATE_AT_TIME");
+  const placeName = (place: FulfillmentPlace, leg: FulfillmentLeg) => {
+    const key = getFulfillmentPlaceKey(place, leg);
+    return key ? t(`fulfillment.${key}`) : (place.name ?? t("fulfillment.storeFallback"));
+  };
+  const pickupPlaceLine = formatFulfillmentPlaceLine(
+    fulfillment.pickup,
+    placeName(fulfillment.pickup, "pickup"),
+  );
+  const dropoffPlaceLine = formatFulfillmentPlaceLine(
+    fulfillment.dropoff,
+    placeName(fulfillment.dropoff, "dropoff"),
+  );
 
   const reviewSettings = store.reviewBoosterSettings;
   const reviewUrl =
@@ -142,7 +181,9 @@ export default async function ReservationDetailPage({
         <BackLink href="/account">{t("backToAccount")}</BackLink>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           <h1 className="text-balance text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
-            {t("reservationNumber", { number: reservation.number })}
+            {t(status === "pending" || cancelledRequest ? "requestNumber" : "reservationNumber", {
+              number: reservation.number,
+            })}
           </h1>
           <ReservationStatusBadge status={status} />
         </div>
@@ -152,19 +193,27 @@ export default async function ReservationDetailPage({
       </div>
 
       <ReservationCartReset event={event} />
-      <ReservationOutcomeBanner event={event} paymentStatus={paymentStatus} />
+      <ReservationOutcomeBanner
+        event={status === "pending" || status === "confirmed" ? event : null}
+        paymentStatus={paymentStatus}
+      />
 
       <div className="flex flex-col gap-3 rounded-2xl bg-card p-4 shadow-card sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-6">
         <ReservationStatusCard
           status={status}
+          cancelledRequest={cancelledRequest}
           isRentalPaid={rentalPaid}
           paymentRequired={status === "confirmed" && actions.canPay}
+          customerEmail={session.customer.email}
         />
 
         <ReservationActions
           storeSlug={slug}
           reservationId={reservationId}
           actions={actions}
+          hasPayment={reservation.payments.some((payment) =>
+            ["completed", "authorized"].includes(payment.status),
+          )}
           contractHref={getStorefrontUrl(slug, `${reservationPath}/contract`)}
         />
       </div>
@@ -180,47 +229,38 @@ export default async function ReservationDetailPage({
                 <AddToCalendarButton
                   links={buildCalendarLinks({
                     title: `${store.name} — ${t("reservationNumber", { number: reservation.number })}`,
-                    description: reservation.items
-                      .map((item) => `${item.quantity} × ${item.productSnapshot.name}`)
-                      .join("\n"),
+                    description: [
+                      ...reservation.items.map(
+                        (item) => `${item.quantity} × ${item.productSnapshot.name}`,
+                      ),
+                      "",
+                      t("fulfillment.calendarPickup", {
+                        when: pickupDateLabel,
+                        place: pickupPlaceLine,
+                      }),
+                      t("fulfillment.calendarReturn", {
+                        when: returnDateLabel,
+                        place: dropoffPlaceLine,
+                      }),
+                    ].join("\n"),
                     startDate: reservation.startDate.toISOString(),
                     endDate: reservation.endDate.toISOString(),
                     timezone: timezone ?? "UTC",
-                    location:
-                      reservation.outboundMethod === "address"
-                        ? [
-                            reservation.deliveryAddress,
-                            reservation.deliveryPostalCode,
-                            reservation.deliveryCity,
-                          ]
-                            .filter(Boolean)
-                            .join(", ")
-                        : reservation.pickupLocationSnapshot
-                          ? [
-                              reservation.pickupLocationSnapshot.address,
-                              reservation.pickupLocationSnapshot.postalCode,
-                              reservation.pickupLocationSnapshot.city,
-                            ]
-                              .filter(Boolean)
-                              .join(", ")
-                          : (store.address ?? ""),
+                    location: pickupPlaceLine,
                   })}
                 />
               ) : null
             }
           >
-            <dl className="grid grid-cols-2 gap-3 rounded-lg bg-muted p-3 text-sm">
-              <div>
-                <dt className="text-xs text-muted-foreground">{t("start")}</dt>
-                <dd className="font-medium">{formatDate(reservation.startDate, "DATE_AT_TIME")}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">{t("end")}</dt>
-                <dd className="font-medium">{formatDate(reservation.endDate, "DATE_AT_TIME")}</dd>
-              </div>
-            </dl>
+            <ReservationFulfillmentSummary
+              fulfillment={fulfillment}
+              pickupDateLabel={pickupDateLabel}
+              returnDateLabel={returnDateLabel}
+            />
             <ReservationTimeline
               status={status}
+              cancelledRequest={cancelledRequest}
+              closedLabel={cancellation ? formatDate(cancellation.createdAt, "DATE_AT_TIME") : null}
               createdLabel={formatDate(reservation.createdAt, "DATE_AT_TIME")}
               pickedUpLabel={
                 reservation.pickedUpAt ? formatDate(reservation.pickedUpAt, "DATE_AT_TIME") : null
@@ -239,11 +279,13 @@ export default async function ReservationDetailPage({
               quantity: item.quantity,
               unitPrice: Number.parseFloat(item.unitPrice),
               totalPrice: Number.parseFloat(item.totalPrice),
+              insured: item.productId !== null && insuredProductIds.has(item.productId),
             }))}
             subtotal={Number.parseFloat(reservation.subtotalAmount)}
             deposit={Number.parseFloat(reservation.depositAmount)}
             total={Number.parseFloat(reservation.totalAmount)}
-            totalPaid={getTotalPaid(reservation.payments)}
+            totalPaid={totalPaid}
+            isUnsettled={totalPaid === 0 && !isClosedReservationStatus(status)}
             notes={reservation.customerNotes}
           />
         </div>

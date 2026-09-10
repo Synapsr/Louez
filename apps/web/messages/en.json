@@ -6758,15 +6758,18 @@
       "returnedAt": "Returned on",
       "rentedItems": "Rented items",
       "quantityLabel": "Quantity",
+      "insuredProductTooltip": "Covered by breakage/theft coverage",
       "unitPrice": "/ unit",
       "subtotalRental": "Rental subtotal",
       "yourNotes": "Your notes",
       "needHelp": "Need help?",
       "contactStore": "Contact {name} for any questions about your reservation.",
+      "nothingChargedYet": "No payment has been taken yet.",
       "status": {
         "pending": "Pending",
         "pendingFull": "Pending confirmation",
-        "pendingDescription": "Your request is being processed",
+        "pendingDescription": "You can cancel your request until the store confirms it.",
+        "pendingNextStep": "The store is checking availability and will reply by email to {email}.",
         "confirmed": "Confirmed",
         "confirmedDescription": "Your reservation is confirmed",
         "allSet": "All set",
@@ -6863,8 +6866,19 @@
       "resendIn": "New code in {seconds}s",
       "currentReservations": "Current rentals",
       "pastReservations": "Past rentals",
+      "fulfillment": {
+        "pickupTitle": "Pickup",
+        "returnTitle": "Return",
+        "deliveredToYou": "Delivered to your address",
+        "collectedFromYou": "Picked up from your address",
+        "sameAsPickup": "Same place as the pickup",
+        "storeFallback": "Store",
+        "directions": "Directions",
+        "calendarPickup": "Pickup: {when} — {place}",
+        "calendarReturn": "Return: {when} — {place}"
+      },
       "timeline": {
-        "title": "Rental period",
+        "title": "Your rental",
         "requested": "Request sent",
         "quoteSent": "Quote sent",
         "confirmed": "Booking confirmed",
@@ -6982,6 +6996,19 @@
           "title": "Payment being verified",
           "description": "Your payment is being verified. Refresh this page in a moment."
         }
+      },
+      "requestNumber": "Booking request #{number}",
+      "cancellation": {
+        "action": "Cancel my request",
+        "title": "Cancel this request?",
+        "description": "The store will be notified.",
+        "keep": "Keep my request",
+        "confirm": "Cancel request",
+        "cancelled": "Request cancelled",
+        "done": "You cancelled this request.",
+        "paymentDescription": "The store will be notified. If you have already paid or provided a deposit, contact the store for a refund or release. This action does not issue an automatic refund.",
+        "adminSubject": "Request #{number} cancelled by the customer",
+        "adminBody": "{name} cancelled booking request #{number} before your confirmation. You can view its history in your dashboard."
       }
     },
     "marketplaceShell": {
@@ -7747,7 +7774,10 @@
     "emailLoginUnavailable": "Email sign-in is unavailable at the moment",
     "stripeNotConfigured": "Online payments are not available: this instance has no Stripe keys configured. Reservations run in request mode.",
     "emailSendFailed": "Failed to send the email.",
-    "marketplaceChannelNotFound": "Marketplace channel not found"
+    "marketplaceChannelNotFound": "Marketplace channel not found",
+    "requestCancellationStatusChanged": "The status of this request has changed. It can no longer be cancelled here. Contact the store.",
+    "requestCancellationPaymentPending": "A payment is still in progress for this request. Try again after it updates or contact the store.",
+    "requestCancellationPaymentChanged": "The payment information has changed. Review it before confirming cancellation again."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",
