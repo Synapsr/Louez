@@ -7439,7 +7439,8 @@
       "qty": "Qtd",
       "unitPrice": "Preco Unit.",
       "total": "Total",
-      "unitIdentifiers": "Identificadores: {identifiers}"
+      "unitIdentifiers": "Identificadores: {identifiers}",
+      "insured": "Coberto pela cobertura contra quebra/roubo"
     },
     "totals": {
       "subtotalHT": "Subtotal (sem IVA)",
