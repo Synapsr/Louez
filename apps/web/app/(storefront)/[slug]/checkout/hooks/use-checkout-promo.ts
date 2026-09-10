@@ -15,6 +15,7 @@ interface UseCheckoutPromoParams {
   subtotal: number;
 }
 
+/** Server error key (`errors.*`) plus its interpolation values. */
 export interface PromoValidationError {
   key: string;
   params?: Record<string, string>;
@@ -40,7 +41,7 @@ export const useCheckoutPromo = ({ items, subtotal }: UseCheckoutPromoParams) =>
       setAppliedPromo(result.promo);
     },
     onError: () => {
-      setValidationError({ key: "promoCodeInvalid" });
+      setValidationError({ key: "errors.promoCodeInvalid" });
     },
   });
 

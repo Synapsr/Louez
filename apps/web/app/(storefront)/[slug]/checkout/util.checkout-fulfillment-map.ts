@@ -1,13 +1,14 @@
 import type { LegMethod } from "@louez/types";
 
 import type { MyLocation } from "@/hooks/use-my-location";
+import { directionsUrl } from "@/lib/utils/maps-links";
 
 import type { DeliveryAddress } from "./checkout.types";
 import type {
   FulfillmentMapPin,
   FulfillmentMapRadius,
 } from "./components/checkout-fulfillment-map";
-import { directionsUrl, toLocationKey, type CheckoutLocation } from "./util.checkout-locations";
+import { toLocationKey, type CheckoutLocation } from "./util.checkout-locations";
 
 interface Coordinates {
   latitude: number;

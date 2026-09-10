@@ -64,6 +64,7 @@ export interface AddCartItemOptions {
 export type CartResolutionStatus = "idle" | "loading" | "ready" | "error";
 
 export interface CartState {
+  isHydrated: boolean;
   items: CartItem[];
   /** True while a resolution request is in flight (first or refresh). */
   isResolving: boolean;
@@ -278,6 +279,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const state = useMemo(
     (): CartState => ({
+      isHydrated,
       items,
       isResolving: isFetching,
       resolutionStatus,
@@ -289,7 +291,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       globalEndDate: period?.endDate ?? null,
       pricingMode,
     }),
-    [items, isFetching, resolutionStatus, summary, storeSlug, period, pricingMode],
+    [isHydrated, items, isFetching, resolutionStatus, summary, storeSlug, period, pricingMode],
   );
 
   const setPeriod = useCallback((startDate: string, endDate: string) => {

@@ -48,3 +48,5 @@ export {
   resolveReservationBilling,
   type BillingCustomerLike,
 } from "./reservation-billing";
+
+export { hasReservationInsuranceCoverage } from "./util.reservation-insurance";

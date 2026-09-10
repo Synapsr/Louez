@@ -11,9 +11,10 @@ import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 interface CartEmptyStateProps {
   /** Called when the visitor follows the catalogue link (closes the drawer). */
   onNavigate?: () => void;
+  closeOnly?: boolean;
 }
 
-export const CartEmptyState = ({ onNavigate }: CartEmptyStateProps) => {
+export const CartEmptyState = ({ onNavigate, closeOnly = false }: CartEmptyStateProps) => {
   const t = useTranslations("storefront.cart");
 
   return (
@@ -25,7 +26,8 @@ export const CartEmptyState = ({ onNavigate }: CartEmptyStateProps) => {
         <Button
           size="lg"
           className="h-12 lg:h-10"
-          render={<StorefrontLink href="/catalog" onClick={onNavigate} />}
+          onClick={onNavigate}
+          render={closeOnly ? undefined : <StorefrontLink href="/catalog" />}
         >
           {t("viewCatalog")}
         </Button>

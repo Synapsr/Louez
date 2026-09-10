@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useSearchParams } from "next/navigation";
+
 import { useStore } from "@tanstack/react-form";
+import { getCheckoutReturnHref } from "@/lib/utils/util.checkout-return";
 import { AlertCircle } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { usePostHog } from "posthog-js/react";
 
-import { Alert, AlertDescription, AlertTitle, Button, StepContent } from "@louez/ui";
+import { Alert, AlertDescription, AlertTitle, Button } from "@louez/ui";
 
 import { cn } from "@louez/utils";
 
@@ -36,6 +39,7 @@ import { CheckoutContactStep } from "./components/checkout-contact-step";
 import { CheckoutDeliveryStep } from "./components/checkout-delivery-step";
 import { CheckoutEmptyCartState } from "./components/checkout-empty-cart-state";
 import { CheckoutOrderSummary } from "./components/checkout-order-summary";
+import { CheckoutSkeleton } from "./components/checkout-skeleton";
 import { CheckoutSummaryBar } from "./components/checkout-summary-bar";
 import { useCheckoutAdvanceNotice } from "./hooks/use-checkout-advance-notice";
 import { useCheckoutAdvisorGate } from "./hooks/use-checkout-advisor-gate";
@@ -96,6 +100,8 @@ export const CheckoutForm = ({
   const { trackEvent } = useAnalytics();
   const {
     items,
+    isHydrated,
+    resolutionStatus,
     isResolving,
     getSubtotal,
     getTotalDeposit,
@@ -103,6 +109,8 @@ export const CheckoutForm = ({
     globalEndDate,
     getDisplayableSavings,
   } = useCart();
+  const searchParams = useSearchParams();
+  const returnHref = getCheckoutReturnHref(searchParams.get("returnTo"));
 
   const subtotal = getSubtotal();
   const totalDeposit = getTotalDeposit();
@@ -311,6 +319,10 @@ export const CheckoutForm = ({
     void stepFlow.goToNextStep();
   };
 
+  if (!isHydrated || resolutionStatus === "loading") {
+    return <CheckoutSkeleton />;
+  }
+
   if (items.length === 0) {
     return <CheckoutEmptyCartState />;
   }
@@ -369,7 +381,7 @@ export const CheckoutForm = ({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <BackLink href="/catalog" />
+        <BackLink href={returnHref} />
         <h1 className="text-2xl font-semibold leading-tight tracking-tight sm:text-3xl">
           {t("title")}
         </h1>
@@ -428,58 +440,59 @@ export const CheckoutForm = ({
 
           <form.AppForm>
             <form.Form formName="checkout" onKeyDown={handleFormKeyDown}>
-              <StepContent key={stepFlow.currentStep} direction={stepFlow.stepDirection}>
-                {stepFlow.currentStep === "contact" && (
-                  <CheckoutContactStep
-                    form={form}
-                    storeId={storeId}
-                    storeCountry={storeCountry}
-                    showAddressFields={showAddressInContact}
-                    sessionCustomer={sessionCustomer}
-                    onSessionCustomer={handleSessionCustomer}
-                    coordinates={coordinates}
-                    onCoordinatesChange={setCoordinates}
-                    onContinue={stepFlow.goToNextStep}
-                  />
-                )}
+              {stepFlow.currentStep === "contact" && (
+                <CheckoutContactStep
+                  form={form}
+                  storeId={storeId}
+                  storeCountry={storeCountry}
+                  showAddressFields={showAddressInContact}
+                  sessionCustomer={sessionCustomer}
+                  onSessionCustomer={handleSessionCustomer}
+                  coordinates={coordinates}
+                  onCoordinatesChange={setCoordinates}
+                  onContinue={stepFlow.goToNextStep}
+                  stepDirection={stepFlow.stepDirection}
+                />
+              )}
 
-                {stepFlow.currentStep === "delivery" && deliverySettings && (
-                  <CheckoutDeliveryStep
-                    form={form}
-                    deliverySettings={deliverySettings}
-                    delivery={delivery}
-                    subtotal={subtotal}
-                    storeAddress={storeAddress}
-                    storeName={storeName}
-                    storeLatitude={storeLatitude}
-                    storeLongitude={storeLongitude}
-                    onUseCustomerAddress={handleUseCustomerAddress}
-                    onBack={stepFlow.goToPreviousStep}
-                    onContinue={stepFlow.goToNextStep}
-                  />
-                )}
+              {stepFlow.currentStep === "delivery" && deliverySettings && (
+                <CheckoutDeliveryStep
+                  form={form}
+                  deliverySettings={deliverySettings}
+                  delivery={delivery}
+                  subtotal={subtotal}
+                  storeAddress={storeAddress}
+                  storeName={storeName}
+                  storeLatitude={storeLatitude}
+                  storeLongitude={storeLongitude}
+                  onUseCustomerAddress={handleUseCustomerAddress}
+                  onBack={stepFlow.goToPreviousStep}
+                  onContinue={stepFlow.goToNextStep}
+                  stepDirection={stepFlow.stepDirection}
+                />
+              )}
 
-                {stepFlow.currentStep === "confirm" && (
-                  <CheckoutConfirmStep
-                    form={form}
-                    reservationMode={reservationMode}
-                    logisticsLabel={logisticsLabel}
-                    tulipInsurance={tulipInsurance}
-                    tulipQuote={tulipQuote}
-                    advisorGate={advisorGate}
-                    promo={promo}
-                    hasActivePromoCodes={hasActivePromoCodes}
-                    totalDeposit={totalDeposit}
-                    submitLabel={submitLabel}
-                    blockedReason={blockedReason}
-                    advanceNoticeIssue={advanceNotice.issue}
-                    isSubmitting={isSubmitting}
-                    onBack={stepFlow.goToPreviousStep}
-                    onEditContact={() => stepFlow.goToStep("contact")}
-                    onEditDates={() => setIsDatePickerOpen(true)}
-                  />
-                )}
-              </StepContent>
+              {stepFlow.currentStep === "confirm" && (
+                <CheckoutConfirmStep
+                  form={form}
+                  reservationMode={reservationMode}
+                  logisticsLabel={logisticsLabel}
+                  tulipInsurance={tulipInsurance}
+                  tulipQuote={tulipQuote}
+                  advisorGate={advisorGate}
+                  promo={promo}
+                  hasActivePromoCodes={hasActivePromoCodes}
+                  totalDeposit={totalDeposit}
+                  submitLabel={submitLabel}
+                  blockedReason={blockedReason}
+                  advanceNoticeIssue={advanceNotice.issue}
+                  isSubmitting={isSubmitting}
+                  onBack={stepFlow.goToPreviousStep}
+                  onEditContact={() => stepFlow.goToStep("contact")}
+                  onEditDates={() => setIsDatePickerOpen(true)}
+                  stepDirection={stepFlow.stepDirection}
+                />
+              )}
             </form.Form>
           </form.AppForm>
         </div>

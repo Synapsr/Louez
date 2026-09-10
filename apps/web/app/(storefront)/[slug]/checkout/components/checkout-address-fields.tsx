@@ -79,7 +79,6 @@ export const CheckoutAddressFields = withForm({
                 placeholder={t("postalCodePlaceholder")}
                 inputMode="numeric"
                 autoComplete="postal-code"
-                className="h-11 text-base sm:h-9 sm:text-sm"
               />
             )}
           </form.AppField>
@@ -89,7 +88,6 @@ export const CheckoutAddressFields = withForm({
                 label={t("city")}
                 placeholder={t("cityPlaceholder")}
                 autoComplete="address-level2"
-                className="h-11 text-base sm:h-9 sm:text-sm"
               />
             )}
           </form.AppField>

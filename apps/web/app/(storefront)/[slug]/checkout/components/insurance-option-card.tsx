@@ -8,11 +8,13 @@ import { Label, Switch } from "@louez/ui";
 import { useFormatMoney } from "@/hooks/use-format-money";
 
 import type { TulipInsuranceMode, TulipQuotePreview } from "../checkout.types";
+import { getCheckoutInsuranceState } from "../util.checkout-insurance";
 
 interface InsuranceOptionCardProps {
   mode: Exclude<TulipInsuranceMode, "no_public">;
   preview: TulipQuotePreview;
   isLoading: boolean;
+  isFetched: boolean;
   /** Premium quoted for this cart, shown even while the switch is off. */
   quotedAmount: number;
   checked: boolean;
@@ -21,14 +23,14 @@ interface InsuranceOptionCardProps {
 }
 
 /**
- * Tulip cover as one row: title with the price, a Switch when optional,
- * "Incluse" when the store requires it. The optional opt-in defaults to
- * false (no pre-ticked paid extra); the premium stays visible in the label.
+ * Optional coverage keeps its switch. Included coverage is identified only
+ * after a successful quote confirms there is no extra charge.
  */
 export const InsuranceOptionCard = ({
   mode,
   preview,
   isLoading,
+  isFetched,
   quotedAmount,
   checked,
   onCheckedChange,
@@ -39,13 +41,23 @@ export const InsuranceOptionCard = ({
   const formatMoney = useFormatMoney();
 
   const isRequired = mode === "required";
-  const isUnavailable = preview.quoteUnavailable;
-  const priceLabel = isLoading
+  const insuranceState = getCheckoutInsuranceState({
+    mode,
+    preview,
+    isLoading,
+    isFetched,
+    checked,
+  });
+  const isPending = insuranceState === "loading";
+  const isUnavailable = insuranceState === "unavailable";
+  const isIncluded = insuranceState === "included";
+  const isCoverApplied = isIncluded || insuranceState === "selected";
+  const priceLabel = isPending
     ? t("insuranceEstimating")
-    : quotedAmount > 0
-      ? formatMoney(quotedAmount)
-      : isUnavailable
-        ? t("insuranceOptionalUnavailableShort")
+    : isUnavailable
+      ? t("insuranceOptionalUnavailableShort")
+      : quotedAmount > 0
+        ? formatMoney(quotedAmount)
         : null;
   const errorMessage =
     isUnavailable && preview.quoteError?.startsWith("errors.")
@@ -56,12 +68,17 @@ export const InsuranceOptionCard = ({
     <div className="flex items-start gap-3 rounded-2xl bg-muted p-4">
       <ShieldCheck aria-hidden className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <Label htmlFor={fieldId} className="text-base font-medium leading-snug">
-          {t("insuranceLineLabel")}
+        <Label
+          htmlFor={isRequired ? undefined : fieldId}
+          className="text-base font-medium leading-snug"
+        >
+          {t(isIncluded ? "insuranceIncludedLabel" : "insuranceLineLabel")}
           {priceLabel && <span className="text-muted-foreground"> · {priceLabel}</span>}
         </Label>
-        <p className="text-xs text-muted-foreground">{t("insuranceOptionalHelp")}</p>
-        {preview.insuredProductCount > 0 && preview.uninsuredProductCount > 0 && (
+        <p className="text-xs text-muted-foreground">
+          {t(isIncluded ? "insuranceIncludedHelp" : "insuranceOptionalHelp")}
+        </p>
+        {isCoverApplied && preview.uninsuredProductCount > 0 && (
           <p className="text-xs text-muted-foreground">
             {t("insurancePartialCoverage", {
               insured: preview.insuredProductCount,
@@ -72,15 +89,17 @@ export const InsuranceOptionCard = ({
         {errorMessage && <p className="text-xs text-warning">{errorMessage}</p>}
       </div>
       {isRequired ? (
-        <span className="shrink-0 rounded-full bg-success/12 px-2.5 py-1 text-xs font-medium text-success">
-          {t("insuranceIncluded")}
-        </span>
+        isCoverApplied && (
+          <span className="shrink-0 rounded-full bg-success/12 px-2.5 py-1 text-xs font-medium text-success">
+            {t(isIncluded ? "insuranceIncluded" : "insuranceRequiredBadge")}
+          </span>
+        )
       ) : (
         <Switch
           id={fieldId}
           checked={checked}
           onCheckedChange={onCheckedChange}
-          disabled={isLoading || isUnavailable}
+          disabled={isPending || isUnavailable}
           className="shrink-0"
         />
       )}

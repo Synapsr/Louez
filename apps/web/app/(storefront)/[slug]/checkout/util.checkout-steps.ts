@@ -45,7 +45,3 @@ export const getStepForErrorKey = (errorKey: string, isDeliveryEnabled: boolean)
   }
   return "confirm";
 };
-
-/** `StepActions`: sticky on phones, back in the flow at `lg` where the column has room. */
-export const STEP_ACTIONS_CLASS =
-  "mt-6 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none";

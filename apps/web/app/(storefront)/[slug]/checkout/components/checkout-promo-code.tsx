@@ -32,8 +32,17 @@ export const CheckoutPromoCode = ({
   onClearError,
 }: CheckoutPromoCodeProps) => {
   const t = useTranslations("storefront.checkout.promoCode");
+  const tErrors = useTranslations("errors");
   const formatMoney = useFormatMoney();
   const [code, setCode] = useState("");
+
+  // Validation keys come from the server as `errors.{errorType}`, so they
+  // resolve against the shared `errors` namespace, not this component's.
+  const errorMessage = validationError
+    ? validationError.key.startsWith("errors.")
+      ? tErrors(validationError.key.slice("errors.".length), validationError.params)
+      : tErrors("generic")
+    : null;
 
   if (promo) {
     return (
@@ -86,7 +95,7 @@ export const CheckoutPromoCode = ({
                   submit();
                 }
               }}
-              className="h-11 flex-1 font-mono text-base uppercase sm:h-9 sm:text-sm"
+              className="flex-1 font-mono uppercase"
               disabled={isValidating}
             />
             <Button
@@ -95,16 +104,12 @@ export const CheckoutPromoCode = ({
               onClick={submit}
               isPending={isValidating}
               disabled={!code.trim()}
-              className="h-11 shrink-0 sm:h-9"
+              className="shrink-0"
             >
               {t("apply")}
             </Button>
           </div>
-          {validationError && (
-            <p className="text-xs text-destructive">
-              {t(validationError.key, validationError.params)}
-            </p>
-          )}
+          {errorMessage && <p className="text-xs text-destructive">{errorMessage}</p>}
         </div>
       </CollapsiblePanel>
     </Collapsible>

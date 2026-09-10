@@ -1,13 +1,14 @@
 "use client";
 
-import { CalendarDays, ShieldCheck } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import type { TaxSettings } from "@louez/types";
-import { Button, Separator, Tooltip, TooltipPopup, TooltipTrigger } from "@louez/ui";
+import { Button, Separator } from "@louez/ui";
 import { cn, isFixedPriceProduct } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
+import { InsuredProductShield } from "@/components/storefront/ui/insured-product-shield";
 import { Price } from "@/components/storefront/ui/price";
 import type { CartItem } from "@/contexts/cart-context";
 import { useDiscountVisibility } from "@/contexts/store-context";
@@ -27,6 +28,7 @@ import type {
 } from "../checkout.types";
 import { CheckoutDeposit } from "./checkout-deposit";
 import type { CheckoutTotals } from "../util.checkout-totals";
+import { getCheckoutInsuranceState } from "../util.checkout-insurance";
 
 interface CheckoutOrderSummaryProps {
   items: CartItem[];
@@ -111,17 +113,21 @@ export const CheckoutOrderSummary = ({
   const { intl: formatLocale } = useFormatLocale();
   const isDiscountVisible = useDiscountVisibility();
 
-  const showInsurance = Boolean(tulipInsurance?.enabled) && tulipInsurance?.mode !== "no_public";
-  const showInsuranceLine = showInsurance && !tulipQuote.isLoading && tulipQuote.isFetched;
-  const isCoverApplied =
-    tulipQuote.preview.appliedOptIn &&
-    !tulipQuote.preview.quoteUnavailable &&
-    (tulipInsurance?.mode === "required" || tulipInsuranceOptIn);
+  const insuranceState = getCheckoutInsuranceState({
+    mode: tulipInsurance?.enabled ? tulipInsurance.mode : "no_public",
+    preview: tulipQuote.preview,
+    isLoading: tulipQuote.isLoading,
+    isFetched: tulipQuote.isFetched,
+    checked: tulipInsuranceOptIn,
+  });
+  const showInsurance = insuranceState !== "hidden";
+  const showInsuranceLine = showInsurance && insuranceState !== "loading";
+  const isCoverApplied = insuranceState === "included" || insuranceState === "selected";
   const insuranceValue = (() => {
+    if (insuranceState === "unavailable") return t("insuranceOptionalUnavailableShort");
+    if (insuranceState === "included") return t("insuranceIncluded");
     if (tulipQuote.appliedAmount > 0) return formatMoney(tulipQuote.appliedAmount);
-    if (tulipInsurance?.mode === "required") return t("insuranceRequiredBadge");
-    if (tulipQuote.preview.quoteUnavailable) return t("insuranceOptionalUnavailableShort");
-    return tulipInsuranceOptIn ? t("insuranceOptionalEnabled") : t("insuranceOptionalDisabled");
+    return isCoverApplied ? t("insuranceOptionalEnabled") : t("insuranceOptionalDisabled");
   })();
 
   const orderedLines = groupCartLinesByParent(items).flatMap((group) => [
@@ -181,31 +187,9 @@ export const CheckoutOrderSummary = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
                   <p className="truncate text-sm font-medium">{item.productName}</p>
-                  {showInsuranceLine &&
+                  {isCoverApplied &&
                     tulipQuote.preview.insuredProductIds.includes(item.productId) && (
-                      <Tooltip>
-                        <TooltipTrigger
-                          type="button"
-                          aria-label={t(
-                            isCoverApplied
-                              ? "insuranceCoveredProductTooltip"
-                              : "insuranceEligibleProductTooltip",
-                          )}
-                          className={cn(
-                            "inline-flex size-6 shrink-0 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                            isCoverApplied ? "text-success" : "text-muted-foreground",
-                          )}
-                        >
-                          <ShieldCheck aria-hidden="true" className="size-3.5" />
-                        </TooltipTrigger>
-                        <TooltipPopup className="max-w-64">
-                          {t(
-                            isCoverApplied
-                              ? "insuranceCoveredProductTooltip"
-                              : "insuranceEligibleProductTooltip",
-                          )}
-                        </TooltipPopup>
-                      </Tooltip>
+                      <InsuredProductShield label={t("insuranceCoveredProductTooltip")} />
                     )}
                 </div>
                 {attributes && Object.keys(attributes).length > 0 && (
@@ -280,7 +264,7 @@ export const CheckoutOrderSummary = ({
           />
         )}
 
-        {showInsurance && tulipQuote.isLoading && (
+        {insuranceState === "loading" && (
           <SummaryRow
             label={t("insuranceLineLabel")}
             value={t("insuranceEstimating")}
