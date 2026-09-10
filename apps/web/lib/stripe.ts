@@ -1,7 +1,7 @@
-import Stripe from 'stripe'
-import { stripe, getStripe } from './stripe/client'
+import Stripe from "stripe";
+import { stripe, getStripe } from "./stripe/client";
 
-export { stripe, getStripe }
+export { stripe, getStripe };
 
 // ============================================================================
 // Connect Account Management
@@ -11,7 +11,7 @@ export { stripe, getStripe }
 // the closest generic industry code for a rental business. Prefilled on the
 // connected account so the hosted KYC's Industry dropdown starts on it; the
 // merchant can still pick a more specific vertical in the Stripe form.
-export const RENTAL_MCC = '7394'
+export const RENTAL_MCC = "7394";
 
 /**
  * Normalize a store name into a valid Stripe statement descriptor: what the
@@ -21,37 +21,37 @@ export const RENTAL_MCC = '7394'
  */
 export function toStatementDescriptor(name: string): string | undefined {
   const normalized = name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // strip diacritics
-    .replace(/[<>\\'"*]/g, '')
-    .replace(/[^\x20-\x7e]/g, '') // Stripe only accepts printable ASCII
-    .replace(/\s+/g, ' ')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // strip diacritics
+    .replace(/[<>\\'"*]/g, "")
+    .replace(/[^\x20-\x7e]/g, "") // Stripe only accepts printable ASCII
+    .replace(/\s+/g, " ")
     .trim()
     .toUpperCase()
     .slice(0, 22)
-    .trim()
+    .trim();
 
   if (normalized.length < 5 || !/[a-zA-Z]/.test(normalized)) {
-    return undefined
+    return undefined;
   }
-  return normalized
+  return normalized;
 }
 
 interface CreateConnectAccountParams {
-  email: string
-  country: string
-  businessType?: 'individual' | 'company'
+  email: string;
+  country: string;
+  businessType?: "individual" | "company";
   businessProfile?: {
-    name?: string
-    url?: string
-    mcc?: string
-    productDescription?: string
-    supportEmail?: string
-    supportPhone?: string
-    supportUrl?: string
-  }
-  statementDescriptor?: string
-  metadata?: Record<string, string>
+    name?: string;
+    url?: string;
+    mcc?: string;
+    productDescription?: string;
+    supportEmail?: string;
+    supportPhone?: string;
+    supportUrl?: string;
+  };
+  statementDescriptor?: string;
+  metadata?: Record<string, string>;
 }
 
 export async function createConnectAccount({
@@ -68,7 +68,7 @@ export async function createConnectAccount({
     // are created as direct charges (see createCheckoutSession); the platform commission,
     // if any, is taken via application_fee_amount. Onboarding uses hosted Account Links
     // (see createAccountLink).
-    type: 'standard',
+    type: "standard",
     email,
     country,
     business_type: businessType,
@@ -93,44 +93,40 @@ export async function createConnectAccount({
       transfers: { requested: true },
     },
     metadata: {
-      platform: 'louez',
+      platform: "louez",
       ...metadata,
     },
-  })
+  });
 
-  return account
+  return account;
 }
 
-export async function createAccountLink(
-  accountId: string,
-  returnUrl: string,
-  refreshUrl: string
-) {
+export async function createAccountLink(accountId: string, returnUrl: string, refreshUrl: string) {
   const accountLink = await stripe.accountLinks.create({
     account: accountId,
     refresh_url: refreshUrl,
     return_url: returnUrl,
-    type: 'account_onboarding',
-    collect: 'eventually_due',
-  })
+    type: "account_onboarding",
+    collect: "eventually_due",
+  });
 
-  return accountLink.url
+  return accountLink.url;
 }
 
 export async function createAccountLoginLink(accountId: string) {
   // Standard accounts use the full Stripe Dashboard and sign in directly, so there is no
   // platform-generated login link — they go to the hosted dashboard. Only Express accounts
   // support a one-click login link, so we retrieve the account and special-case that type.
-  const account = await stripe.accounts.retrieve(accountId)
-  if (account.type === 'express') {
-    const loginLink = await stripe.accounts.createLoginLink(accountId)
-    return loginLink.url
+  const account = await stripe.accounts.retrieve(accountId);
+  if (account.type === "express") {
+    const loginLink = await stripe.accounts.createLoginLink(accountId);
+    return loginLink.url;
   }
-  return 'https://dashboard.stripe.com'
+  return "https://dashboard.stripe.com";
 }
 
 export async function getAccountStatus(accountId: string) {
-  const account = await stripe.accounts.retrieve(accountId)
+  const account = await stripe.accounts.retrieve(accountId);
 
   return {
     country: account.country ?? null,
@@ -142,7 +138,7 @@ export async function getAccountStatus(accountId: string) {
       eventuallyDue: account.requirements?.eventually_due ?? [],
       pastDue: account.requirements?.past_due ?? [],
     },
-  }
+  };
 }
 
 // ============================================================================
@@ -150,31 +146,31 @@ export async function getAccountStatus(accountId: string) {
 // ============================================================================
 
 interface CheckoutLineItem {
-  name: string
-  description?: string
-  quantity: number
-  unitAmount: number // In cents
+  name: string;
+  description?: string;
+  quantity: number;
+  unitAmount: number; // In cents
 }
 
 interface CreateCheckoutSessionParams {
-  stripeAccountId: string
-  reservationId: string
-  reservationNumber: string
-  customerEmail: string
-  customerName?: string | null
-  lineItems: CheckoutLineItem[]
-  depositAmount?: number // In cents - stored in metadata for later authorization hold
-  currency: string
-  successUrl: string
-  cancelUrl: string
-  applicationFeeAmount?: number // In cents (platform fee)
-  feeMetadata?: Record<string, string> // platform fee breakdown, merged into PI metadata
-  locale?: string
+  stripeAccountId: string;
+  reservationId: string;
+  reservationNumber: string;
+  customerEmail: string;
+  customerName?: string | null;
+  lineItems: CheckoutLineItem[];
+  depositAmount?: number; // In cents - stored in metadata for later authorization hold
+  currency: string;
+  successUrl: string;
+  cancelUrl: string;
+  applicationFeeAmount?: number; // In cents (platform fee)
+  feeMetadata?: Record<string, string>; // platform fee breakdown, merged into PI metadata
+  locale?: string;
 }
 
 function normalizeStripeReferenceValue(value: string | null | undefined): string | undefined {
-  const normalized = value?.trim().replace(/\s+/g, ' ')
-  return normalized || undefined
+  const normalized = value?.trim().replace(/\s+/g, " ");
+  return normalized || undefined;
 }
 
 function buildReservationPaymentReference({
@@ -183,16 +179,16 @@ function buildReservationPaymentReference({
   customerName,
   type,
 }: {
-  reservationId: string
-  reservationNumber: string
-  customerName?: string | null
-  type?: string
+  reservationId: string;
+  reservationNumber: string;
+  customerName?: string | null;
+  type?: string;
 }) {
-  const normalizedCustomerName = normalizeStripeReferenceValue(customerName)
-  const reservationReference = `Reservation #${reservationNumber}`
+  const normalizedCustomerName = normalizeStripeReferenceValue(customerName);
+  const reservationReference = `Reservation #${reservationNumber}`;
   const description = normalizedCustomerName
     ? `${reservationReference} - ${normalizedCustomerName}`
-    : reservationReference
+    : reservationReference;
 
   return {
     clientReferenceId: reservationNumber,
@@ -204,7 +200,7 @@ function buildReservationPaymentReference({
       ...(normalizedCustomerName ? { customerName: normalizedCustomerName } : {}),
       ...(type ? { type } : {}),
     },
-  }
+  };
 }
 
 export async function createCheckoutSession({
@@ -223,43 +219,42 @@ export async function createCheckoutSession({
   locale,
 }: CreateCheckoutSessionParams) {
   // Build Stripe line items (rental only, deposit is handled separately as authorization hold)
-  const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-    lineItems.map((item) => ({
-      price_data: {
-        currency: currency.toLowerCase(),
-        product_data: {
-          name: item.name,
-          description: item.description,
-        },
-        unit_amount: item.unitAmount,
+  const stripeLineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = lineItems.map((item) => ({
+    price_data: {
+      currency: currency.toLowerCase(),
+      product_data: {
+        name: item.name,
+        description: item.description,
       },
-      quantity: item.quantity,
-    }))
+      unit_amount: item.unitAmount,
+    },
+    quantity: item.quantity,
+  }));
 
   // Append session_id to success URL for payment verification
-  const successUrlWithSession = successUrl.includes('?')
+  const successUrlWithSession = successUrl.includes("?")
     ? `${successUrl}&session_id={CHECKOUT_SESSION_ID}`
-    : `${successUrl}?session_id={CHECKOUT_SESSION_ID}`
+    : `${successUrl}?session_id={CHECKOUT_SESSION_ID}`;
 
   const paymentReference = buildReservationPaymentReference({
     reservationId,
     reservationNumber,
     customerName,
-    type: 'reservation_payment',
-  })
+    type: "reservation_payment",
+  });
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
-    mode: 'payment',
-    payment_method_types: ['card'],
+    mode: "payment",
+    payment_method_types: ["card"],
     line_items: stripeLineItems,
     customer_email: customerEmail,
     client_reference_id: paymentReference.clientReferenceId,
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
-    locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || 'auto',
+    locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || "auto",
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
     // Create customer on connected account for future charges (deposit hold)
-    customer_creation: 'always',
+    customer_creation: "always",
     metadata: {
       ...paymentReference.metadata,
       depositAmount: depositAmount.toString(),
@@ -267,35 +262,32 @@ export async function createCheckoutSession({
     payment_intent_data: {
       description: paymentReference.description,
       // Save card for future use (deposit authorization hold)
-      setup_future_usage: 'off_session',
+      setup_future_usage: "off_session",
       metadata: { ...paymentReference.metadata, ...feeMetadata },
       ...(applicationFeeAmount && applicationFeeAmount > 0
         ? { application_fee_amount: applicationFeeAmount }
         : {}),
     },
-  }
+  };
 
   const session = await stripe.checkout.sessions.create(sessionParams, {
     stripeAccount: stripeAccountId,
-  })
+  });
 
   return {
     sessionId: session.id,
     url: session.url!,
     expiresAt: new Date(session.expires_at * 1000),
-  }
+  };
 }
 
 /**
  * Retrieves a checkout session and returns payment status
  */
-export async function getCheckoutSession(
-  stripeAccountId: string,
-  sessionId: string
-) {
+export async function getCheckoutSession(stripeAccountId: string, sessionId: string) {
   const session = await stripe.checkout.sessions.retrieve(sessionId, {
     stripeAccount: stripeAccountId,
-  })
+  });
 
   return {
     id: session.id,
@@ -304,11 +296,11 @@ export async function getCheckoutSession(
     paymentIntentId: session.payment_intent as string | null,
     customerId: session.customer as string | null,
     amountTotal: session.amount_total,
-    currency: session.currency?.toUpperCase() ?? 'EUR',
+    currency: session.currency?.toUpperCase() ?? "EUR",
     metadata: session.metadata,
     url: session.url,
     expiresAt: new Date(session.expires_at * 1000),
-  }
+  };
 }
 
 // ============================================================================
@@ -316,20 +308,20 @@ export async function getCheckoutSession(
 // ============================================================================
 
 interface CreatePaymentRequestSessionParams {
-  stripeAccountId: string
-  reservationId: string
-  reservationNumber: string
-  customerEmail: string
-  customerName?: string | null
-  amount: number // In cents
-  description: string
-  currency: string
-  successUrl: string
-  cancelUrl: string
-  paymentRequestId: string
-  applicationFeeAmount?: number // In cents (platform fee)
-  feeMetadata?: Record<string, string> // platform fee breakdown, merged into PI metadata
-  locale?: string
+  stripeAccountId: string;
+  reservationId: string;
+  reservationNumber: string;
+  customerEmail: string;
+  customerName?: string | null;
+  amount: number; // In cents
+  description: string;
+  currency: string;
+  successUrl: string;
+  cancelUrl: string;
+  paymentRequestId: string;
+  applicationFeeAmount?: number; // In cents (platform fee)
+  feeMetadata?: Record<string, string>; // platform fee breakdown, merged into PI metadata
+  locale?: string;
 }
 
 /**
@@ -354,20 +346,20 @@ export async function createPaymentRequestSession({
   locale,
 }: CreatePaymentRequestSessionParams) {
   // Append session_id to success URL for payment verification
-  const successUrlWithSession = successUrl.includes('?')
+  const successUrlWithSession = successUrl.includes("?")
     ? `${successUrl}&session_id={CHECKOUT_SESSION_ID}`
-    : `${successUrl}?session_id={CHECKOUT_SESSION_ID}`
+    : `${successUrl}?session_id={CHECKOUT_SESSION_ID}`;
 
   const paymentReference = buildReservationPaymentReference({
     reservationId,
     reservationNumber,
     customerName,
-    type: 'payment_request',
-  })
+    type: "payment_request",
+  });
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
-    mode: 'payment',
-    payment_method_types: ['card'],
+    mode: "payment",
+    payment_method_types: ["card"],
     line_items: [
       {
         price_data: {
@@ -384,7 +376,7 @@ export async function createPaymentRequestSession({
     client_reference_id: paymentReference.clientReferenceId,
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
-    locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || 'auto',
+    locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || "auto",
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
     metadata: {
       ...paymentReference.metadata,
@@ -401,16 +393,16 @@ export async function createPaymentRequestSession({
         ? { application_fee_amount: applicationFeeAmount }
         : {}),
     },
-  }
+  };
 
   const session = await stripe.checkout.sessions.create(sessionParams, {
     stripeAccount: stripeAccountId,
-  })
+  });
 
   return {
     sessionId: session.id,
     url: session.url!,
-  }
+  };
 }
 
 // ============================================================================
@@ -418,52 +410,49 @@ export async function createPaymentRequestSession({
 // ============================================================================
 
 interface CreateRefundParams {
-  stripeAccountId: string
-  chargeId: string
-  amount?: number // In cents, omit for full refund
-  reason?: 'requested_by_customer' | 'duplicate' | 'fraudulent'
+  stripeAccountId: string;
+  chargeId: string;
+  amount?: number; // In cents, omit for full refund
+  reason?: "requested_by_customer" | "duplicate" | "fraudulent";
 }
 
 export async function createRefund({
   stripeAccountId,
   chargeId,
   amount,
-  reason = 'requested_by_customer',
+  reason = "requested_by_customer",
 }: CreateRefundParams) {
   const refundParams: Stripe.RefundCreateParams = {
     charge: chargeId,
     reason,
-  }
+  };
 
   if (amount) {
-    refundParams.amount = amount
+    refundParams.amount = amount;
   }
 
   const refund = await stripe.refunds.create(refundParams, {
     stripeAccount: stripeAccountId,
-  })
+  });
 
   return {
     refundId: refund.id,
     amount: refund.amount,
     status: refund.status,
     currency: refund.currency.toUpperCase(),
-  }
+  };
 }
 
-export async function getChargeRefundableAmount(
-  stripeAccountId: string,
-  chargeId: string
-) {
+export async function getChargeRefundableAmount(stripeAccountId: string, chargeId: string) {
   const charge = await stripe.charges.retrieve(chargeId, {
     stripeAccount: stripeAccountId,
-  })
+  });
 
   return {
     refundable: !charge.refunded && charge.amount > charge.amount_refunded,
     amount: charge.amount - charge.amount_refunded,
     alreadyRefunded: charge.amount_refunded,
-  }
+  };
 }
 
 // ============================================================================
@@ -471,12 +460,12 @@ export async function getChargeRefundableAmount(
 // ============================================================================
 
 interface CreateDepositAuthorizationIntentParams {
-  stripeAccountId: string
-  amount: number // In cents
-  currency: string
-  reservationId: string
-  reservationNumber: string
-  customerName?: string | null
+  stripeAccountId: string;
+  amount: number; // In cents
+  currency: string;
+  reservationId: string;
+  reservationNumber: string;
+  customerName?: string | null;
 }
 
 /**
@@ -496,41 +485,41 @@ export async function createDepositAuthorizationIntent({
     reservationId,
     reservationNumber,
     customerName,
-    type: 'deposit_hold',
-  })
+    type: "deposit_hold",
+  });
 
   const paymentIntent = await stripe.paymentIntents.create(
     {
       amount,
       currency: currency.toLowerCase(),
       description: `Deposit hold - ${paymentReference.description}`,
-      capture_method: 'manual', // Authorization only, no immediate capture
+      capture_method: "manual", // Authorization only, no immediate capture
       // Deposit holds must be card authorizations. Dynamic methods can expose
       // redirect/deferred methods that cannot create a capturable card hold.
-      payment_method_types: ['card'],
+      payment_method_types: ["card"],
       metadata: paymentReference.metadata,
     },
     {
       stripeAccount: stripeAccountId,
-    }
-  )
+    },
+  );
 
   return {
     paymentIntentId: paymentIntent.id,
     clientSecret: paymentIntent.client_secret!,
     status: paymentIntent.status,
-  }
+  };
 }
 
 interface CreateDepositAuthorizationParams {
-  stripeAccountId: string
-  customerId: string
-  paymentMethodId: string
-  amount: number // In cents
-  currency: string
-  reservationId: string
-  reservationNumber: string
-  customerName?: string | null
+  stripeAccountId: string;
+  customerId: string;
+  paymentMethodId: string;
+  amount: number; // In cents
+  currency: string;
+  reservationId: string;
+  reservationNumber: string;
+  customerName?: string | null;
 }
 
 /**
@@ -552,8 +541,8 @@ export async function createDepositAuthorization({
     reservationId,
     reservationNumber,
     customerName,
-    type: 'deposit_hold',
-  })
+    type: "deposit_hold",
+  });
 
   const paymentIntent = await stripe.paymentIntents.create(
     {
@@ -562,31 +551,31 @@ export async function createDepositAuthorization({
       description: `Deposit hold - ${paymentReference.description}`,
       customer: customerId,
       payment_method: paymentMethodId,
-      capture_method: 'manual', // Authorization only, no immediate capture
+      capture_method: "manual", // Authorization only, no immediate capture
       confirm: true, // Confirm immediately to create the authorization
       off_session: true, // No customer interaction required
       metadata: paymentReference.metadata,
     },
     {
       stripeAccount: stripeAccountId,
-    }
-  )
+    },
+  );
 
   // Authorization expires after 7 days
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 7)
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7);
 
   return {
     paymentIntentId: paymentIntent.id,
     status: paymentIntent.status,
     expiresAt,
-  }
+  };
 }
 
 interface CaptureDepositParams {
-  stripeAccountId: string
-  paymentIntentId: string
-  amountToCapture?: number // In cents, if partial capture
+  stripeAccountId: string;
+  paymentIntentId: string;
+  amountToCapture?: number; // In cents, if partial capture
 }
 
 /**
@@ -598,49 +587,42 @@ export async function captureDeposit({
   paymentIntentId,
   amountToCapture,
 }: CaptureDepositParams) {
-  const captureParams: Stripe.PaymentIntentCaptureParams = {}
+  const captureParams: Stripe.PaymentIntentCaptureParams = {};
 
   if (amountToCapture !== undefined) {
-    captureParams.amount_to_capture = amountToCapture
+    captureParams.amount_to_capture = amountToCapture;
   }
 
-  const paymentIntent = await stripe.paymentIntents.capture(
-    paymentIntentId,
-    captureParams,
-    {
-      stripeAccount: stripeAccountId,
-    }
-  )
+  const paymentIntent = await stripe.paymentIntents.capture(paymentIntentId, captureParams, {
+    stripeAccount: stripeAccountId,
+  });
 
   return {
     paymentIntentId: paymentIntent.id,
     status: paymentIntent.status,
     amountCaptured: paymentIntent.amount_received,
     currency: paymentIntent.currency.toUpperCase(),
-  }
+  };
 }
 
 interface ReleaseDepositParams {
-  stripeAccountId: string
-  paymentIntentId: string
+  stripeAccountId: string;
+  paymentIntentId: string;
 }
 
 /**
  * Releases (cancels) an authorization hold without capturing any funds.
  * The blocked amount is immediately released back to the customer.
  */
-export async function releaseDeposit({
-  stripeAccountId,
-  paymentIntentId,
-}: ReleaseDepositParams) {
+export async function releaseDeposit({ stripeAccountId, paymentIntentId }: ReleaseDepositParams) {
   const paymentIntent = await stripe.paymentIntents.cancel(paymentIntentId, {
     stripeAccount: stripeAccountId,
-  })
+  });
 
   return {
     paymentIntentId: paymentIntent.id,
     status: paymentIntent.status,
-  }
+  };
 }
 
 /**
@@ -648,11 +630,11 @@ export async function releaseDeposit({
  */
 export async function getDepositAuthorizationStatus(
   stripeAccountId: string,
-  paymentIntentId: string
+  paymentIntentId: string,
 ) {
   const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
     stripeAccount: stripeAccountId,
-  })
+  });
 
   return {
     paymentIntentId: paymentIntent.id,
@@ -662,19 +644,16 @@ export async function getDepositAuthorizationStatus(
     amountReceived: paymentIntent.amount_received,
     currency: paymentIntent.currency.toUpperCase(),
     metadata: paymentIntent.metadata,
-  }
+  };
 }
 
 /**
  * Retrieves customer's saved payment method details (last 4 digits, brand, etc.)
  */
-export async function getPaymentMethodDetails(
-  stripeAccountId: string,
-  paymentMethodId: string
-) {
+export async function getPaymentMethodDetails(stripeAccountId: string, paymentMethodId: string) {
   const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId, {
     stripeAccount: stripeAccountId,
-  })
+  });
 
   return {
     id: paymentMethod.id,
@@ -682,7 +661,7 @@ export async function getPaymentMethodDetails(
     last4: paymentMethod.card?.last4 ?? null,
     expMonth: paymentMethod.card?.exp_month ?? null,
     expYear: paymentMethod.card?.exp_year ?? null,
-  }
+  };
 }
 
 // ============================================================================
@@ -691,36 +670,36 @@ export async function getPaymentMethodDetails(
 
 // Stripe zero-decimal currencies (amount in whole units, not cents)
 const ZERO_DECIMAL_CURRENCIES = new Set([
-  'BIF',
-  'CLP',
-  'DJF',
-  'GNF',
-  'JPY',
-  'KMF',
-  'KRW',
-  'MGA',
-  'PYG',
-  'RWF',
-  'UGX',
-  'VND',
-  'VUV',
-  'XAF',
-  'XOF',
-  'XPF',
-])
+  "BIF",
+  "CLP",
+  "DJF",
+  "GNF",
+  "JPY",
+  "KMF",
+  "KRW",
+  "MGA",
+  "PYG",
+  "RWF",
+  "UGX",
+  "VND",
+  "VUV",
+  "XAF",
+  "XOF",
+  "XPF",
+]);
 
 export function toStripeCents(amount: number, currency: string): number {
   if (ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase())) {
-    return Math.round(amount)
+    return Math.round(amount);
   }
-  return Math.round(amount * 100)
+  return Math.round(amount * 100);
 }
 
 export function fromStripeCents(cents: number, currency: string): number {
   if (ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase())) {
-    return cents
+    return cents;
   }
-  return cents / 100
+  return cents / 100;
 }
 
 // ============================================================================
@@ -730,7 +709,7 @@ export function fromStripeCents(cents: number, currency: string): number {
 export function constructWebhookEvent(
   payload: string | Buffer,
   signature: string,
-  webhookSecret: string
+  webhookSecret: string,
 ) {
-  return getStripe().webhooks.constructEvent(payload, signature, webhookSecret)
+  return getStripe().webhooks.constructEvent(payload, signature, webhookSecret);
 }
