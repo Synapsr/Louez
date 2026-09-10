@@ -57,7 +57,10 @@ export const PriceSummary = ({ price, durationLabel }: PriceSummaryProps) => {
       ) : null}
       {price.extras.map((extra) => (
         <div key={extra.id} className="flex items-baseline justify-between gap-4">
-          <dt className="min-w-0 truncate text-muted-foreground">{extra.name}</dt>
+          <dt className="min-w-0 truncate text-muted-foreground">
+            {extra.name}
+            {extra.quantity > 1 ? ` ×${extra.quantity}` : null}
+          </dt>
           <dd>
             <Price amount={extra.amount} size="sm" />
           </dd>

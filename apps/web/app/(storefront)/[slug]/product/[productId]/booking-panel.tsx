@@ -22,6 +22,7 @@ import type { ProductPageBooking, ProductPageProduct } from "@/lib/storefront/pr
 import type { AccessoryLink } from "@/lib/storefront/storefront.types";
 import {
   findBlockingRequiredAccessories,
+  getRequiredAccessoryUnitQuantity,
   selectRequiredAccessories,
 } from "@/lib/utils/cart-required-accessories";
 import {
@@ -78,7 +79,7 @@ export const BookingPanel = ({
   const [requestedQuantity, setRequestedQuantity] = useState(1);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const quickAdd = useQuickAdd();
-  const requiredAccessories = selectRequiredAccessories(accessories);
+  const requiredAccessories = useMemo(() => selectRequiredAccessories(accessories), [accessories]);
   const extraIds = useMemo<ReadonlySet<string>>(() => new Set(), []);
 
   // The cart's period is the default until the visitor edits the dates here.
@@ -120,7 +121,17 @@ export const BookingPanel = ({
     () => new Set(cartItems.map((item) => item.productId)),
     [cartItems],
   );
-  const price = useBookingPrice({ product, period, quantity, extras: [] });
+  // Required accessories ride along at their own price, so the panel's total
+  // must carry them at the quantity the cart will hold.
+  const requiredExtras = useMemo(
+    () =>
+      requiredAccessories.map((accessory) => ({
+        accessory,
+        quantity: getRequiredAccessoryUnitQuantity(accessory) * quantity,
+      })),
+    [quantity, requiredAccessories],
+  );
+  const price = useBookingPrice({ product, period, quantity, extras: requiredExtras });
   const addToCart = useAddToCart({
     product,
     accessories,

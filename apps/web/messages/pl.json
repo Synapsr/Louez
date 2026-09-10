@@ -6095,6 +6095,7 @@
         "reserve": "Zarezerwuj",
         "included": "W zestawie",
         "shortage": "Za mało w magazynie",
+        "requiredHelp": "Ten artykuł jest wymagany z tym produktem i jest dodawany do koszyka razem z nim.",
         "extras": "Dodatki",
         "depositHold": "Kaucja",
         "depositNotCharged": "Blokada na karcie, bez obciążenia"

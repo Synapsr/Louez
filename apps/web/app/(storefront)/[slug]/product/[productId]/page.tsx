@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { PackageIcon } from "lucide-react";
+import { ArrowLeftIcon, PackageIcon } from "lucide-react";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { Button } from "@louez/ui";
@@ -25,6 +25,7 @@ import { loadProductForMetadata, loadProductPage } from "@/lib/storefront/produc
 
 import { ProductRentalInformation } from "@/components/storefront/product/product-rental-information";
 import { BookingPanel } from "./booking-panel";
+
 import { ProductBreadcrumb } from "./product-breadcrumb";
 import { ProductDescription } from "./product-description";
 import { ProductGallery } from "./product-gallery";
@@ -143,11 +144,21 @@ export default async function ProductPage({ params }: ProductPageProps) {
       />
 
       <StorefrontSection spacing="tight" contentClassName="flex flex-col gap-6 sm:gap-8">
-        <ProductBreadcrumb
-          productName={product.name}
-          category={product.category}
-          className="col-span-full lg:row-start-1"
-        />
+        <div className="flex min-w-0 items-center gap-2">
+          <Button
+            variant="tertiary"
+            size="icon-sm"
+            aria-label={t("backToCatalog")}
+            render={<StorefrontLink href="/catalog" />}
+          >
+            <ArrowLeftIcon />
+          </Button>
+          <ProductBreadcrumb
+            productName={product.name}
+            category={product.category}
+            className="flex-1"
+          />
+        </div>
 
         <div className="grid min-w-0 gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:items-start lg:gap-x-12">
           <ProductGallery

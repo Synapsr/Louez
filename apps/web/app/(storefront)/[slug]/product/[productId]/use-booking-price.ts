@@ -16,9 +16,18 @@ import {
 
 import { useDiscountVisibility } from "@/contexts/store-context";
 
+/** An accessory line the cart will carry alongside the product. */
+export interface BookingExtra {
+  accessory: AccessoryLink;
+  /** Units of the accessory: `requiredQuantity × product quantity` for a required one. */
+  quantity: number;
+}
+
 export interface BookingExtraPrice {
   id: string;
   name: string;
+  quantity: number;
+  /** Line amount for all `quantity` units. */
   amount: number;
 }
 
@@ -34,7 +43,7 @@ export interface BookingPrice {
   extras: BookingExtraPrice[];
   /** Product + extras, deposit excluded. */
   total: number;
-  /** Hold on the card, never charged: `deposit × quantity`. */
+  /** Hold on the card, never charged: `deposit × quantity`, extras' deposits included. */
   deposit: number;
 }
 
@@ -42,7 +51,7 @@ interface UseBookingPriceOptions {
   product: ProductPageProduct;
   period: RentalPeriodValue | null;
   quantity: number;
-  extras: AccessoryLink[];
+  extras: BookingExtra[];
 }
 
 /**
@@ -61,7 +70,14 @@ export const useBookingPrice = ({
   return useMemo<BookingPrice>(() => {
     const isFixed = isFixedPriceProduct(product);
     const isPriced = isFixed || period !== null;
-    const unitDeposit = parseStorefrontDecimal(product.deposit) ?? 0;
+    // The cart holds every line's deposit, the required accessories' included.
+    const deposit =
+      (parseStorefrontDecimal(product.deposit) ?? 0) * quantity +
+      extras.reduce(
+        (sum, { accessory, quantity: extraQuantity }) =>
+          sum + (parseStorefrontDecimal(accessory.deposit) ?? 0) * extraQuantity,
+        0,
+      );
 
     if (!isPriced) {
       return {
@@ -71,7 +87,7 @@ export const useBookingPrice = ({
         discountPercent: null,
         extras: [],
         total: 0,
-        deposit: unitDeposit * quantity,
+        deposit,
       };
     }
 
@@ -83,14 +99,15 @@ export const useBookingPrice = ({
     });
     const showsDiscount =
       result.savings > 0 && isDiscountVisible(getEffectiveDiscountPercent(result));
-    const extraPrices = extras.map((extra) => ({
-      id: extra.id,
-      name: extra.name,
+    const extraPrices = extras.map(({ accessory, quantity: extraQuantity }) => ({
+      id: accessory.id,
+      name: accessory.name,
+      quantity: extraQuantity,
       amount: getStorefrontProductPrice({
-        product: extra,
+        product: accessory,
         startDate: period?.start,
         endDate: period?.end,
-        quantity: 1,
+        quantity: extraQuantity,
       }).subtotal,
     }));
     const extrasTotal = extraPrices.reduce((sum, extra) => sum + extra.amount, 0);
@@ -103,7 +120,7 @@ export const useBookingPrice = ({
         showsDiscount && result.discountPercent ? Math.floor(result.discountPercent) : null,
       extras: extraPrices,
       total: result.subtotal + extrasTotal,
-      deposit: unitDeposit * quantity,
+      deposit,
     };
   }, [extras, isDiscountVisible, period, product, quantity]);
 };

@@ -21,7 +21,7 @@ interface StorefrontSectionProps {
 }
 
 const SPACING_CLASS_NAMES: Record<StorefrontSectionSpacing, string> = {
-  default: "py-8 sm:py-12",
+  default: "py-4 sm:py-12",
   tight: "py-4 sm:py-6",
   none: "py-0",
 };

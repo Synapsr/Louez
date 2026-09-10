@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { cn } from "@louez/utils";
 import { Button } from "@louez/ui";
 
 import { Price } from "@/components/storefront/ui/price";
@@ -50,10 +49,7 @@ export const StickyBookingBar = ({
         aria-hidden="true"
         className="h-[calc(--spacing(24)+env(safe-area-inset-bottom,0px))] shrink-0 lg:hidden"
       />
-      <StickyActionBar
-        desktop="hidden"
-        className={cn("fixed inset-x-0 bottom-0 mx-0 mt-0 sm:mx-0", className)}
-      >
+      <StickyActionBar desktop="hidden" placement="fixed" className={className}>
         <div className="flex min-w-0 flex-1 flex-col">
           <Price amount={amount} per={per} label={label} size="lg" tone="primary" />
           {blockedReason ? (

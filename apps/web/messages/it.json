@@ -6095,6 +6095,7 @@
         "reserve": "Prenota",
         "included": "Incluso",
         "shortage": "Scorte insufficienti",
+        "requiredHelp": "Questo articolo è obbligatorio con questo prodotto e viene aggiunto al carrello insieme a esso.",
         "extras": "Extra",
         "depositHold": "Cauzione",
         "depositNotCharged": "Preautorizzazione, non addebitata"
