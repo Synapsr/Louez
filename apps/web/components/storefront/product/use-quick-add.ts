@@ -180,8 +180,7 @@ export const useQuickAddFlow = (): QuickAddFlow => {
         setState({ ...state, step: "variant", period: next });
         return;
       }
-      // The period's own availability is not known yet; the cart resolves
-      // the line against it and flags it if the dates fall through.
+      // The editor checks availability before committing; the cart resolves the stock again.
       addOneUnit(state, next, state.product.quantity);
     },
     [addOneUnit, rules.pricingMode, setPeriod, setPricingMode, state],

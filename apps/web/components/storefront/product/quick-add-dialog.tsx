@@ -134,6 +134,8 @@ export const QuickAddDialog = ({ flow }: QuickAddDialogProps) => {
               >
                 {state && step === "period" ? (
                   <PeriodEditor
+                    key={state.product.id}
+                    productId={state.product.id}
                     value={null}
                     rules={rules}
                     variant="sheet"

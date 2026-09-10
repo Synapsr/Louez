@@ -6115,6 +6115,9 @@
       "accessoriesAdded": "{count, plural, one {# accessoire toegevoegd aan winkelwagen} other {# accessoires toegevoegd aan winkelwagen}}"
     },
     "dateSelection": {
+      "availabilityChecking": "Beschikbaarheid controleren…",
+      "availabilityUnavailable": "Product niet beschikbaar voor deze periode. Kies andere datums of tijden.",
+      "availabilityRetry": "Beschikbaarheid kon niet worden gecontroleerd. Opnieuw proberen",
       "title": "Wanneer wilt u huren?",
       "subtitle": "Selecteer uw data om beschikbaarheid te zien",
       "startDate": "Ophalen",

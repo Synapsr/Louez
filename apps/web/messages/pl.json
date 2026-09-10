@@ -6115,6 +6115,9 @@
       "accessoriesAdded": "{count, plural, one {# akcesorium dodane do koszyka} few {# akcesoria dodane do koszyka} many {# akcesoriów dodanych do koszyka} other {# akcesoriów dodanych do koszyka}}"
     },
     "dateSelection": {
+      "availabilityChecking": "Sprawdzanie dostępności…",
+      "availabilityUnavailable": "Produkt niedostępny w tym okresie. Wybierz inne daty lub godziny.",
+      "availabilityRetry": "Nie udało się sprawdzić dostępności. Spróbuj ponownie",
       "title": "Kiedy chcesz wynająć?",
       "subtitle": "Wybierz daty, aby zobaczyć dostępność",
       "startDate": "Odbiór",

@@ -6115,6 +6115,9 @@
       "accessoriesAdded": "{count, plural, one {# accessoire ajouté au panier} other {# accessoires ajoutés au panier}}"
     },
     "dateSelection": {
+      "availabilityChecking": "Vérification des disponibilités…",
+      "availabilityUnavailable": "Produit indisponible sur cette période. Choisissez d’autres dates ou horaires.",
+      "availabilityRetry": "Impossible de vérifier les disponibilités. Réessayer",
       "title": "Quand souhaitez-vous louer ?",
       "subtitle": "Sélectionnez vos dates pour voir les disponibilités",
       "startDate": "Retrait",

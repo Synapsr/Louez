@@ -16,6 +16,29 @@ export const storefrontAvailabilityInputSchema = z.object({
   productIds: z.array(z.string().length(21)).optional(),
 });
 
+export const storefrontCalendarInputSchema = z.object({
+  productId: z.string().length(21),
+  periods: z
+    .array(
+      z
+        .object({
+          startDate: z.string().datetime({ offset: true }),
+          endDate: z.string().datetime({ offset: true }),
+        })
+        .refine((period) => {
+          const duration = Date.parse(period.endDate) - Date.parse(period.startDate);
+          return duration > 0 && duration <= 3 * 366 * 24 * 60 * 60 * 1000;
+        }),
+    )
+    .max(62),
+});
+
+export const storefrontCalendarOutputSchema = z.array(
+  z.object({
+    available: z.boolean(),
+  }),
+);
+
 export const storefrontResolveCombinationInputSchema = z.object({
   productId: z.string().length(21),
   quantity: z.number().int().min(1),

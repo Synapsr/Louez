@@ -217,7 +217,11 @@ const withStartTime = (
   return { ...draft, startTime: time, endTime };
 };
 
-const tapDay = (draft: RentalDateDraft, day: Date, ctx: DraftContext): RentalDateDraft => {
+export const getRentalDraftForDay = (
+  draft: RentalDateDraft,
+  day: Date,
+  ctx: DraftContext,
+): RentalDateDraft => {
   const { startDate, endIsAuto } = draft;
   if (!startDate || !endIsAuto) return beginRange(draft, day, ctx);
   if (day < startOfDay(startDate)) return beginRange(draft, day, ctx);
@@ -351,7 +355,7 @@ export const useRentalDateCore = (options: RentalDateCoreOptions): RentalDateCor
   }, []);
 
   const selectDay = useCallback(
-    (day: Date) => setDraft((prev) => tapDay(prev, startOfDay(day), ctx)),
+    (day: Date) => setDraft((prev) => getRentalDraftForDay(prev, startOfDay(day), ctx)),
     [ctx],
   );
 
