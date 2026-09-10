@@ -6115,6 +6115,9 @@
       "accessoriesAdded": "{count, plural, one {# accessory added to cart} other {# accessories added to cart}}"
     },
     "dateSelection": {
+      "availabilityChecking": "Checking availability…",
+      "availabilityUnavailable": "Product unavailable for this period. Choose different dates or times.",
+      "availabilityRetry": "Could not check availability. Retry",
       "title": "When would you like to rent?",
       "subtitle": "Select your dates to see availability",
       "startDate": "Pickup",

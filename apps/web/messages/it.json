@@ -6115,6 +6115,9 @@
       "accessoriesAdded": "{count, plural, one {# accessorio aggiunto al carrello} other {# accessori aggiunti al carrello}}"
     },
     "dateSelection": {
+      "availabilityChecking": "Verifica della disponibilità…",
+      "availabilityUnavailable": "Prodotto non disponibile in questo periodo. Scegli altre date o orari.",
+      "availabilityRetry": "Impossibile verificare la disponibilità. Riprova",
       "title": "Quando vuoi noleggiare?",
       "subtitle": "Seleziona le tue date per vedere la disponibilita",
       "startDate": "Ritiro",

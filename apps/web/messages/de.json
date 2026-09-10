@@ -6115,6 +6115,9 @@
       "accessoriesAdded": "{count, plural, one {# Zubehör zum Warenkorb hinzugefügt} other {# Zubehör zum Warenkorb hinzugefügt}}"
     },
     "dateSelection": {
+      "availabilityChecking": "Verfügbarkeit wird geprüft…",
+      "availabilityUnavailable": "Produkt in diesem Zeitraum nicht verfügbar. Wählen Sie andere Daten oder Uhrzeiten.",
+      "availabilityRetry": "Verfügbarkeit konnte nicht geprüft werden. Erneut versuchen",
       "title": "Wann möchten Sie mieten?",
       "subtitle": "Wählen Sie Ihre Daten, um Verfügbarkeit zu sehen",
       "startDate": "Abholung",

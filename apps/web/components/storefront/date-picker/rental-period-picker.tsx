@@ -179,6 +179,7 @@ export const RentalPeriodPicker = ({
           timezone={rules.timezone}
           className={className}
           render={<PopoverTrigger />}
+          nativeButton
         />
       </PeriodPopover>
     );
@@ -231,7 +232,7 @@ export const RentalPeriodPicker = ({
           minDate={minDate}
           onApply={onChange}
         >
-          <PopoverTrigger render={<div className={fieldsRowClassName} />}>{fields}</PopoverTrigger>
+          <PopoverTrigger className={fieldsRowClassName}>{fields}</PopoverTrigger>
         </PeriodPopover>
       )}
       {committedMessage ? (

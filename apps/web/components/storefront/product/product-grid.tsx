@@ -1,5 +1,16 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { startOfMonth } from "date-fns";
+
+import { useRentalDateCore } from "@/components/storefront/date-picker/core/use-rental-date-core";
+import { buildCalendarAvailabilityCandidates } from "@/components/storefront/date-picker/util.calendar-availability";
+import { useStorePeriodRules } from "@/contexts/store-context";
+import { useCartState } from "@/contexts/cart-context";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { storefrontQueries } from "@/lib/queries/storefront.queries";
+
 import { cn } from "@louez/utils";
 
 import type { StorefrontCatalogProduct } from "@/lib/storefront/storefront.types";
@@ -38,6 +49,41 @@ export const ProductGrid = ({
   className,
 }: ProductGridProps) => {
   const quickAdd = useQuickAdd();
+  const queryClient = useQueryClient();
+  const rules = useStorePeriodRules();
+  const { period: cartPeriod } = useCartState();
+  const isDesktop = useMediaQuery("(min-width: 640px)");
+  const core = useRentalDateCore({
+    ...rules,
+    minRentalMinutes: rules.minRentalMinutes ?? 60,
+  });
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPrefetch = () => {
+    if (hoverTimer.current !== null) clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+  };
+  useEffect(
+    () => () => {
+      if (hoverTimer.current !== null) clearTimeout(hoverTimer.current);
+    },
+    [],
+  );
+  const prefetchDates = (productId: string) => {
+    if (period || cartPeriod) return;
+    const candidates = buildCalendarAvailabilityCandidates({
+      core,
+      rules,
+      month: startOfMonth(core.minDate),
+      months: isDesktop ? 2 : 1,
+    });
+    if (candidates.length === 0) return;
+    void queryClient.prefetchQuery(
+      storefrontQueries.calendar({
+        productId,
+        periods: candidates.map(({ startDate, endDate }) => ({ startDate, endDate })),
+      }),
+    );
+  };
 
   return (
     <ul className={cn(productGridClassName, className)} data-slot="product-grid">
@@ -46,7 +92,21 @@ export const ProductGrid = ({
         const quickAddLimit = getQuickAddLimit(product, availability);
 
         return (
-          <li key={product.id} className="flex">
+          <li
+            key={product.id}
+            className="flex"
+            onMouseEnter={() => {
+              cancelPrefetch();
+              if (quickAddLimit !== undefined) {
+                hoverTimer.current = setTimeout(() => prefetchDates(product.id), 150);
+              }
+            }}
+            onMouseLeave={cancelPrefetch}
+            onFocus={() => {
+              cancelPrefetch();
+              if (quickAddLimit !== undefined) prefetchDates(product.id);
+            }}
+          >
             <ProductCard
               product={product}
               href={buildProductHref(product.id, period)}

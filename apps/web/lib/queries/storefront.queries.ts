@@ -27,6 +27,15 @@ const ADVISOR_MESSAGES_STALE_TIME = 5 * 60_000;
  * resolution lives in `cart.queries.ts`.
  */
 export const storefrontQueries = {
+  calendar: (input: {
+    productId: string;
+    periods: Array<{ startDate: string; endDate: string }>;
+  }) =>
+    orpc.storefront.availability.calendar.queryOptions({
+      input,
+      staleTime: AVAILABILITY_STALE_TIME,
+      refetchOnWindowFocus: true,
+    }),
   availability: (input: StorefrontAvailabilityInput) =>
     orpc.storefront.availability.get.queryOptions({
       input,
