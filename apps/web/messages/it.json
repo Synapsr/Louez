@@ -7439,7 +7439,8 @@
       "qty": "Qta",
       "unitPrice": "Prezzo Unit.",
       "total": "Totale",
-      "unitIdentifiers": "Identificatori: {identifiers}"
+      "unitIdentifiers": "Identificatori: {identifiers}",
+      "insured": "Coperto dalla copertura danni/furto"
     },
     "totals": {
       "subtotalHT": "Subtotale (IVA esclusa)",

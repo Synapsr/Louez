@@ -6,6 +6,7 @@ import { documents, reservations, stores } from "@louez/db";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { convertImageForPdf } from "./image-utils";
+import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
 import { getLogoForLightBackground, resolveReservationBilling } from "@louez/utils";
 
 // Import translations
@@ -163,6 +164,8 @@ export async function generateContract({
     fullCgvHtml = storeCgv;
   }
 
+  const insuredProductIds = await getReservationInsuredProductIds(reservation);
+
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(
     ContractDocument({
@@ -202,6 +205,7 @@ export async function generateContract({
           totalPrice: item.totalPrice,
           assignedUnitIdentifiers:
             item.assignedUnits?.map((au) => au.identifierSnapshot).filter(Boolean) || [],
+          insured: item.productId !== null && insuredProductIds.has(item.productId),
         })),
         payments: reservation.payments.map((payment) => ({
           id: payment.id,

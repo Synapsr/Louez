@@ -1,4 +1,5 @@
 import { StyleSheet } from "@react-pdf/renderer";
+import { emailTheme } from "@louez/email/templates";
 
 // Helper to convert hex to rgba for lighter tints
 export function hexToRgba(hex: string, alpha: number): string {
@@ -29,31 +30,41 @@ export function getContrastColor(hex: string): string {
   return luminance > 0.55 ? "#1a1a1a" : "#ffffff";
 }
 
+/** Green of the "covered by breakage/theft coverage" note under an insured line. */
+export const INSURED_COLOR = "#15803d";
+
+/**
+ * The PDFs share the emails' palette: neutral zinc greys, grey blocks with no
+ * border, the store colour kept out of the shell for now. Only status text
+ * (paid, pending, damaged) carries a semantic colour.
+ */
+export const pdfPalette = {
+  ink: emailTheme.colors.ink,
+  body: emailTheme.colors.body,
+  muted: emailTheme.colors.muted,
+  faint: emailTheme.colors.faint,
+  border: emailTheme.colors.border,
+  hairline: "#f0f0f2",
+  block: emailTheme.colors.bgSubtle,
+  success: INSURED_COLOR,
+  warning: "#b45309",
+  danger: "#dc2626",
+} as const;
+
 // Create dynamic styles based on primary color
-export function createContractStyles(primaryColor: string = "#0066FF") {
-  const lightBg = getLighterColor(primaryColor, 0.06);
-  const contrastColor = getContrastColor(primaryColor);
+export function createContractStyles(_primaryColor: string = "#0066FF") {
+  const c = pdfPalette;
 
   return StyleSheet.create({
     // Page
     page: {
-      paddingTop: 50,
-      paddingBottom: 70,
-      paddingHorizontal: 40,
+      paddingTop: 44,
+      paddingBottom: 64,
+      paddingHorizontal: 44,
       fontSize: 9,
       fontFamily: "Helvetica",
-      color: "#2d2d2d",
-      lineHeight: 1.5,
-    },
-
-    // Header accent bar
-    headerBar: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 6,
-      backgroundColor: primaryColor,
+      color: c.body,
+      lineHeight: 1.45,
     },
 
     // Header
@@ -61,112 +72,104 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
-      marginBottom: 25,
-      paddingBottom: 15,
+      marginBottom: 24,
+      paddingBottom: 16,
       borderBottomWidth: 1,
-      borderBottomColor: "#e5e5e5",
+      borderBottomColor: c.border,
     },
     logoContainer: {
       flexDirection: "column",
       justifyContent: "center",
       maxWidth: "50%",
-      minHeight: 70,
+      minHeight: 40,
     },
     logo: {
-      maxWidth: 180,
-      maxHeight: 70,
+      maxWidth: 160,
+      maxHeight: 40,
       objectFit: "contain",
     },
     storeName: {
-      fontSize: 20,
+      fontSize: 16,
       fontFamily: "Helvetica-Bold",
-      color: "#1a1a1a",
+      color: c.ink,
     },
     headerRight: {
       flexDirection: "column",
       alignItems: "flex-end",
     },
     documentTypeContainer: {
-      backgroundColor: primaryColor,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 4,
-      marginBottom: 8,
+      marginBottom: 4,
     },
     documentType: {
-      fontSize: 11,
+      fontSize: 14,
       fontFamily: "Helvetica-Bold",
-      color: contrastColor,
-      textTransform: "uppercase",
-      letterSpacing: 1,
+      color: c.ink,
+      textAlign: "right",
     },
     documentInfo: {
       textAlign: "right",
     },
     documentNumber: {
-      fontSize: 10,
+      fontSize: 9,
       fontFamily: "Helvetica-Bold",
-      color: "#1a1a1a",
-      marginBottom: 2,
+      color: c.ink,
+      marginBottom: 1,
+      textAlign: "right",
     },
     documentDate: {
-      fontSize: 9,
-      color: "#666666",
+      fontSize: 8.5,
+      color: c.muted,
+      textAlign: "right",
     },
 
     // Parties section
     partiesContainer: {
       flexDirection: "row",
-      marginBottom: 20,
-      gap: 15,
+      marginBottom: 22,
+      gap: 12,
     },
     partyCard: {
       flex: 1,
-      backgroundColor: "#fafafa",
-      borderRadius: 4,
-      padding: 12,
-      borderLeftWidth: 3,
-      borderLeftColor: primaryColor,
+      backgroundColor: c.block,
+      borderRadius: 8,
+      padding: 14,
     },
     partyLabel: {
-      fontSize: 8,
+      fontSize: 7,
       fontFamily: "Helvetica-Bold",
-      color: "#666666",
+      color: c.muted,
       textTransform: "uppercase",
-      letterSpacing: 0.5,
+      letterSpacing: 0.6,
       marginBottom: 6,
     },
     partyName: {
-      fontSize: 10,
+      fontSize: 10.5,
       fontFamily: "Helvetica-Bold",
-      color: "#1a1a1a",
+      color: c.ink,
       marginBottom: 3,
     },
     partyInfo: {
-      fontSize: 8,
-      color: "#444444",
+      fontSize: 8.5,
+      color: c.body,
       marginBottom: 1,
     },
     partyLegal: {
-      fontSize: 7,
-      color: "#888888",
+      fontSize: 7.5,
+      color: c.faint,
       marginTop: 4,
     },
 
     // Period section
     periodSection: {
-      marginBottom: 18,
+      marginBottom: 20,
     },
     sectionTitle: {
-      fontSize: 9,
+      fontSize: 7.5,
       fontFamily: "Helvetica-Bold",
-      color: "#1a1a1a",
+      color: c.muted,
       textTransform: "uppercase",
-      letterSpacing: 0.5,
+      letterSpacing: 0.6,
       marginBottom: 8,
-      paddingBottom: 4,
-      borderBottomWidth: 1,
-      borderBottomColor: "#eeeeee",
     },
     periodContainer: {
       flexDirection: "row",
@@ -174,92 +177,71 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
     },
     periodCard: {
       flex: 1,
-      backgroundColor: lightBg,
-      borderRadius: 4,
-      padding: 10,
+      backgroundColor: c.block,
+      borderRadius: 8,
+      padding: 12,
       flexDirection: "row",
       alignItems: "center",
-    },
-    periodIconCircle: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: primaryColor,
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: 10,
-    },
-    periodIconText: {
-      fontSize: 10,
-      fontFamily: "Helvetica-Bold",
-      color: contrastColor,
     },
     periodContent: {
       flex: 1,
     },
     periodLabel: {
       fontSize: 7,
-      color: "#666666",
+      fontFamily: "Helvetica-Bold",
+      color: c.muted,
       textTransform: "uppercase",
-      letterSpacing: 0.3,
-      marginBottom: 1,
+      letterSpacing: 0.6,
+      marginBottom: 2,
     },
     periodDate: {
-      fontSize: 9,
+      fontSize: 10,
       fontFamily: "Helvetica-Bold",
-      color: "#1a1a1a",
+      color: c.ink,
     },
     periodTime: {
-      fontSize: 8,
-      color: "#555555",
+      fontSize: 8.5,
+      color: c.body,
     },
     periodDeliveryInfo: {
-      fontSize: 7.5,
-      color: "#777777",
-      marginTop: 2,
-      fontStyle: "italic" as const,
+      fontSize: 8,
+      color: c.muted,
+      marginTop: 3,
     },
 
     // Table section
     tableSection: {
-      marginBottom: 15,
+      marginBottom: 18,
     },
-    table: {
-      borderWidth: 1,
-      borderColor: "#e0e0e0",
-      borderRadius: 4,
-    },
+    table: {},
     tableHeader: {
       flexDirection: "row",
-      backgroundColor: "#f5f5f5",
-      paddingVertical: 8,
-      paddingHorizontal: 10,
+      paddingVertical: 6,
+      paddingHorizontal: 2,
       borderBottomWidth: 1,
-      borderBottomColor: "#e0e0e0",
+      borderBottomColor: c.border,
     },
     tableHeaderCell: {
-      fontSize: 8,
+      fontSize: 7,
       fontFamily: "Helvetica-Bold",
-      color: "#444444",
+      color: c.muted,
       textTransform: "uppercase",
-      letterSpacing: 0.3,
+      letterSpacing: 0.6,
     },
     tableRow: {
       flexDirection: "row",
       paddingVertical: 8,
-      paddingHorizontal: 10,
+      paddingHorizontal: 2,
       borderBottomWidth: 1,
-      borderBottomColor: "#f0f0f0",
+      borderBottomColor: c.hairline,
     },
-    tableRowAlt: {
-      backgroundColor: "#fafafa",
-    },
+    tableRowAlt: {},
     tableRowLast: {
       borderBottomWidth: 0,
     },
     tableCell: {
       fontSize: 9,
-      color: "#333333",
+      color: c.ink,
     },
     tableCellName: {
       flex: 4,
@@ -278,9 +260,19 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
     },
     unitIdentifiers: {
       fontSize: 7.5,
-      color: "#666666",
-      fontStyle: "italic",
+      color: c.muted,
       marginTop: 2,
+    },
+    insuredRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      marginTop: 3,
+    },
+    insuredText: {
+      fontSize: 7.5,
+      lineHeight: 1,
+      color: INSURED_COLOR,
     },
 
     // Totals
@@ -289,79 +281,65 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
       alignItems: "flex-end",
     },
     totalsBox: {
-      width: 220,
-      borderWidth: 1,
-      borderColor: "#e0e0e0",
-      borderRadius: 4,
-      overflow: "hidden",
+      width: 230,
     },
     totalRow: {
       flexDirection: "row",
-      paddingVertical: 6,
-      paddingHorizontal: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: "#f0f0f0",
+      paddingVertical: 4,
+      paddingHorizontal: 2,
     },
-    totalRowLast: {
-      borderBottomWidth: 0,
-    },
+    totalRowLast: {},
     totalLabel: {
       flex: 1,
       fontSize: 9,
-      color: "#555555",
+      color: c.body,
     },
     totalValue: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
-      color: "#333333",
+      color: c.ink,
       textAlign: "right",
     },
     totalRowMain: {
-      backgroundColor: primaryColor,
-      borderBottomWidth: 0,
+      marginTop: 4,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: c.border,
     },
     totalLabelMain: {
       flex: 1,
       fontSize: 10,
       fontFamily: "Helvetica-Bold",
-      color: contrastColor,
+      color: c.ink,
     },
     totalValueMain: {
-      fontSize: 10,
+      fontSize: 11,
       fontFamily: "Helvetica-Bold",
-      color: contrastColor,
+      color: c.ink,
       textAlign: "right",
     },
-    depositRow: {
-      backgroundColor: "#fffbeb",
-    },
+    depositRow: {},
     depositLabel: {
       flex: 1,
       fontSize: 9,
-      color: "#92400e",
+      color: c.muted,
     },
     depositValue: {
       fontSize: 9,
-      fontFamily: "Helvetica-Bold",
-      color: "#92400e",
+      color: c.muted,
       textAlign: "right",
     },
 
     // Payments section
     paymentsSection: {
-      marginBottom: 15,
+      marginBottom: 18,
     },
-    paymentsList: {
-      borderWidth: 1,
-      borderColor: "#e0e0e0",
-      borderRadius: 4,
-    },
+    paymentsList: {},
     paymentRow: {
       flexDirection: "row",
-      paddingVertical: 8,
-      paddingHorizontal: 12,
+      paddingVertical: 7,
+      paddingHorizontal: 2,
       borderBottomWidth: 1,
-      borderBottomColor: "#f0f0f0",
+      borderBottomColor: c.hairline,
       alignItems: "center",
     },
     paymentRowLast: {
@@ -370,14 +348,15 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
     paymentStatus: {
       fontSize: 8,
       fontFamily: "Helvetica-Bold",
-      marginRight: 10,
-      width: 55,
+      marginRight: 12,
+      width: 60,
+      textAlign: "right",
     },
     paymentStatusCompleted: {
-      color: "#16a34a",
+      color: c.success,
     },
     paymentStatusPending: {
-      color: "#d97706",
+      color: c.warning,
     },
     paymentDetails: {
       flex: 1,
@@ -385,30 +364,31 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
     paymentType: {
       fontSize: 9,
       fontFamily: "Helvetica-Bold",
-      color: "#333333",
+      color: c.ink,
     },
     paymentMethod: {
       fontSize: 8,
-      color: "#666666",
+      color: c.muted,
     },
     paymentDate: {
       fontSize: 8,
-      color: "#888888",
-      marginRight: 10,
+      color: c.muted,
+      marginRight: 12,
     },
     paymentAmount: {
       fontSize: 9,
       fontFamily: "Helvetica-Bold",
-      color: "#16a34a",
+      color: c.ink,
+      width: 70,
+      textAlign: "right",
     },
     paymentAmountPending: {
-      color: "#d97706",
+      color: c.muted,
     },
     noPayments: {
       padding: 12,
       fontSize: 8,
-      color: "#888888",
-      fontStyle: "italic",
+      color: c.faint,
       textAlign: "center",
     },
     paymentSummary: {
@@ -417,34 +397,34 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
       paddingTop: 8,
       marginTop: 8,
       borderTopWidth: 1,
-      borderTopColor: "#e0e0e0",
+      borderTopColor: c.border,
     },
     paymentSummaryItem: {
       marginLeft: 20,
     },
     paymentSummaryLabel: {
       fontSize: 8,
-      color: "#666666",
+      color: c.muted,
     },
     paymentSummaryValue: {
       fontSize: 10,
       fontFamily: "Helvetica-Bold",
-      color: "#333333",
+      color: c.ink,
     },
     paymentSummaryValueSuccess: {
-      color: "#16a34a",
+      color: c.success,
     },
     paymentSummaryValueWarning: {
-      color: "#d97706",
+      color: c.warning,
     },
 
     // Conditions section
     conditionsSection: {
-      marginBottom: 15,
+      marginBottom: 18,
     },
     conditionsList: {
-      backgroundColor: "#fafafa",
-      borderRadius: 4,
+      backgroundColor: c.block,
+      borderRadius: 8,
       padding: 12,
     },
     conditionItem: {
@@ -452,36 +432,33 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
       marginBottom: 4,
     },
     conditionBullet: {
-      width: 4,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: primaryColor,
+      width: 3,
+      height: 3,
+      borderRadius: 1.5,
+      backgroundColor: c.faint,
       marginRight: 8,
-      marginTop: 4,
+      marginTop: 4.5,
     },
     conditionText: {
       flex: 1,
       fontSize: 8,
-      color: "#555555",
+      color: c.body,
       lineHeight: 1.4,
     },
 
     // Signatures section
     signaturesSection: {
-      marginTop: 15,
+      marginTop: 12,
     },
     signaturesContainer: {
       flexDirection: "row",
-      gap: 15,
+      gap: 12,
     },
     signatureBox: {
       flex: 1,
-      backgroundColor: lightBg,
-      borderRadius: 4,
+      backgroundColor: c.block,
+      borderRadius: 8,
       padding: 12,
-      borderWidth: 1,
-      borderColor: primaryColor,
-      borderLeftWidth: 3,
     },
     signatureHeader: {
       flexDirection: "row",
@@ -490,31 +467,31 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
       marginBottom: 8,
       paddingBottom: 8,
       borderBottomWidth: 1,
-      borderBottomColor: "#e5e5e5",
+      borderBottomColor: c.border,
     },
     signatureTitle: {
-      fontSize: 9,
+      fontSize: 7,
       fontFamily: "Helvetica-Bold",
-      color: "#333333",
+      color: c.muted,
       textTransform: "uppercase",
-      letterSpacing: 0.3,
+      letterSpacing: 0.6,
     },
     signatureStatusText: {
       fontSize: 8,
       fontFamily: "Helvetica-Bold",
-      color: "#16a34a",
+      color: c.success,
     },
     signatureStatusPendingText: {
       fontSize: 8,
       fontFamily: "Helvetica-Bold",
-      color: "#b45309",
+      color: c.warning,
     },
     signatureContent: {
-      marginTop: 6,
+      marginTop: 4,
     },
     signatureText: {
-      fontSize: 7,
-      color: "#666666",
+      fontSize: 7.5,
+      color: c.body,
       marginBottom: 8,
       lineHeight: 1.4,
     },
@@ -523,82 +500,80 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
       marginBottom: 2,
     },
     signatureDateLabel: {
-      fontSize: 7,
-      color: "#666666",
+      fontSize: 7.5,
+      color: c.muted,
       width: 45,
     },
     signatureDate: {
-      fontSize: 7,
+      fontSize: 7.5,
       fontFamily: "Helvetica-Bold",
-      color: "#333333",
+      color: c.ink,
       flex: 1,
     },
     signatureIp: {
       fontSize: 7,
-      color: "#999999",
+      color: c.faint,
       marginTop: 4,
     },
 
     // Legal mentions
     legalSection: {
-      marginTop: 15,
+      marginTop: 16,
       paddingTop: 10,
       borderTopWidth: 1,
-      borderTopColor: "#eeeeee",
+      borderTopColor: c.border,
     },
     legalText: {
       fontSize: 7,
-      color: "#888888",
+      color: c.faint,
       lineHeight: 1.4,
       marginBottom: 2,
     },
     legalTitle: {
       fontSize: 7,
       fontFamily: "Helvetica-Bold",
-      color: "#666666",
-      marginBottom: 3,
-      marginTop: 6,
+      color: c.muted,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+      marginBottom: 4,
+      marginTop: 4,
     },
 
     // Full CGV annex
     cgvAnnexSection: {
       marginTop: 8,
       paddingTop: 6,
-      borderTopWidth: 1,
-      borderTopColor: "#eeeeee",
     },
     cgvAnnexTitle: {
-      fontSize: 10,
+      fontSize: 12,
       fontFamily: "Helvetica-Bold",
-      color: "#1a1a1a",
-      textTransform: "uppercase",
-      letterSpacing: 0.4,
-      marginBottom: 10,
+      color: c.ink,
+      marginBottom: 12,
     },
     cgvAnnexHeading1: {
-      fontSize: 9,
+      fontSize: 9.5,
       fontFamily: "Helvetica-Bold",
-      color: "#222222",
-      marginTop: 8,
+      color: c.ink,
+      marginTop: 10,
       marginBottom: 4,
     },
     cgvAnnexHeading2: {
-      fontSize: 8.5,
+      fontSize: 9,
       fontFamily: "Helvetica-Bold",
-      color: "#333333",
-      marginTop: 7,
+      color: c.ink,
+      marginTop: 8,
       marginBottom: 3,
     },
     cgvAnnexHeading3: {
-      fontSize: 8,
+      fontSize: 8.5,
       fontFamily: "Helvetica-Bold",
-      color: "#444444",
+      color: c.body,
       marginTop: 6,
       marginBottom: 3,
     },
     cgvAnnexParagraph: {
       fontSize: 8,
-      color: "#444444",
+      color: c.body,
       lineHeight: 1.5,
       marginBottom: 4,
     },
@@ -612,25 +587,24 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
     cgvAnnexListMarker: {
       width: 14,
       fontSize: 8,
-      color: "#444444",
-      fontFamily: "Helvetica-Bold",
+      color: c.muted,
     },
     cgvAnnexListText: {
       flex: 1,
       fontSize: 8,
-      color: "#444444",
+      color: c.body,
       lineHeight: 1.45,
     },
 
     // Footer
     footer: {
       position: "absolute",
-      bottom: 15,
-      left: 40,
-      right: 40,
+      bottom: 20,
+      left: 44,
+      right: 44,
       paddingTop: 10,
       borderTopWidth: 1,
-      borderTopColor: "#eeeeee",
+      borderTopColor: c.border,
     },
     footerContent: {
       flexDirection: "row",
@@ -639,24 +613,24 @@ export function createContractStyles(primaryColor: string = "#0066FF") {
     },
     footerLeft: {
       fontSize: 7,
-      color: "#999999",
+      color: c.faint,
     },
     footerCenter: {
       fontSize: 7,
-      color: "#888888",
+      color: c.faint,
     },
     footerRight: {
       fontSize: 7,
-      color: "#999999",
+      color: c.faint,
     },
 
     // Page number
     pageNumber: {
       position: "absolute",
-      bottom: 25,
-      right: 40,
+      bottom: 8,
+      right: 44,
       fontSize: 7,
-      color: "#999999",
+      color: c.faint,
     },
   });
 }

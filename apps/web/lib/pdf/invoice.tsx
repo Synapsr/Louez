@@ -121,7 +121,6 @@ export const InvoiceDocument = (props: InvoiceDocumentProps) => {
   return (
     <Document>
       <Page size="A4" style={styles.page} wrap>
-        <View style={styles.headerBar} fixed />
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <Text style={styles.storeName}>{props.seller.legalName}</Text>

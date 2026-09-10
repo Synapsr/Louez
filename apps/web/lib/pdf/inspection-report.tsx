@@ -6,7 +6,7 @@ import {
   View as BaseView,
   Image as BaseImage,
 } from "@react-pdf/renderer";
-import { createInspectionStyles } from "./inspection-styles";
+import { CONDITION_COLORS, createInspectionStyles } from "./inspection-styles";
 import { formatStoreDate } from "@/lib/utils/store-date";
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
@@ -149,19 +149,9 @@ export function InspectionReportDocument({
   const totalItems = inspection.items.length;
   const totalPhotos = inspection.items.reduce((sum, item) => sum + item.photos.length, 0);
 
-  const conditionColors: Record<string, string> = {
-    excellent: "#059669",
-    good: "#2563eb",
-    fair: "#d97706",
-    damaged: "#dc2626",
-  };
-
   return (
     <Document>
       <Page size="A4" style={styles.page} wrap>
-        {/* Colored accent bar */}
-        <View style={styles.headerBar} fixed />
-
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -261,13 +251,10 @@ export function InspectionReportDocument({
             <View key={index} style={styles.itemCard} wrap={false}>
               <View style={styles.itemHeader}>
                 <Text style={styles.itemName}>{item.productName}</Text>
-                <View
-                  style={[
-                    styles.conditionBadge,
-                    { backgroundColor: conditionColors[item.condition] },
-                  ]}
-                >
-                  <Text style={styles.conditionText}>{t.condition[item.condition]}</Text>
+                <View style={styles.conditionBadge}>
+                  <Text style={[styles.conditionText, { color: CONDITION_COLORS[item.condition] }]}>
+                    {t.condition[item.condition]}
+                  </Text>
                 </View>
               </View>
 

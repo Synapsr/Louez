@@ -7439,7 +7439,8 @@
       "qty": "Ilość",
       "unitPrice": "Cena jedn.",
       "total": "Suma",
-      "unitIdentifiers": "Identyfikatory: {identifiers}"
+      "unitIdentifiers": "Identyfikatory: {identifiers}",
+      "insured": "Objęte ochroną przed uszkodzeniem/kradzieżą"
     },
     "totals": {
       "subtotalHT": "Suma netto",

@@ -7439,7 +7439,8 @@
       "qty": "Qté",
       "unitPrice": "Prix unit.",
       "total": "Total",
-      "unitIdentifiers": "Identifiants : {identifiers}"
+      "unitIdentifiers": "Identifiants : {identifiers}",
+      "insured": "Couvert par la garantie casse/vol"
     },
     "totals": {
       "subtotalHT": "Sous-total HT",

@@ -7439,7 +7439,8 @@
       "qty": "Aantal",
       "unitPrice": "Eenheidsprijs",
       "total": "Totaal",
-      "unitIdentifiers": "Identificatoren: {identifiers}"
+      "unitIdentifiers": "Identificatoren: {identifiers}",
+      "insured": "Gedekt door breuk-/diefstaldekking"
     },
     "totals": {
       "subtotalHT": "Subtotaal (excl. BTW)",

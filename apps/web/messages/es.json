@@ -7439,7 +7439,8 @@
       "qty": "Cant",
       "unitPrice": "Precio Unit.",
       "total": "Total",
-      "unitIdentifiers": "Identificadores: {identifiers}"
+      "unitIdentifiers": "Identificadores: {identifiers}",
+      "insured": "Cubierto por la cobertura contra rotura/robo"
     },
     "totals": {
       "subtotalHT": "Subtotal (sin IVA)",

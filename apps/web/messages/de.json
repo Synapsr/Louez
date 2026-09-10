@@ -7439,7 +7439,8 @@
       "qty": "Menge",
       "unitPrice": "Stückpreis",
       "total": "Gesamt",
-      "unitIdentifiers": "Kennzeichen: {identifiers}"
+      "unitIdentifiers": "Kennzeichen: {identifiers}",
+      "insured": "Durch Bruch-/Diebstahlschutz abgedeckt"
     },
     "totals": {
       "subtotalHT": "Zwischensumme (netto)",

@@ -7439,7 +7439,8 @@
       "qty": "Qty",
       "unitPrice": "Unit Price",
       "total": "Total",
-      "unitIdentifiers": "Identifiers: {identifiers}"
+      "unitIdentifiers": "Identifiers: {identifiers}",
+      "insured": "Covered by breakage/theft coverage"
     },
     "totals": {
       "subtotalHT": "Subtotal (excl. VAT)",
