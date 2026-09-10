@@ -35,7 +35,6 @@ interface CatalogSidebarProps {
   attributeAxes: readonly CatalogAttributeAxis[];
   /** The range the price filter spans, for the browsed period or the base rates. */
   priceBounds: CatalogPriceBounds;
-  /** Dates are known, so availability and the period prices have something to answer. */
   hasPeriod: boolean;
   filters: CatalogFilters;
   update: (patch: CatalogFiltersPatch) => void;
@@ -84,9 +83,8 @@ export const CatalogSidebar = ({
       <CatalogFilterSection title={t("availability")}>
         <div className="flex flex-col gap-3">
           <CatalogAvailabilityFilter
-            checked={filters.availableOnly}
-            hasPeriod={hasPeriod}
-            onChange={(availableOnly) => update({ availableOnly })}
+            checked={!filters.availableOnly}
+            onChange={(showUnavailable) => update({ availableOnly: !showUnavailable })}
           />
           <CatalogQuantityFilter
             value={filters.quantity}

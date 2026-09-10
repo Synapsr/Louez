@@ -23,6 +23,7 @@ export const catalogQueries = {
         minPrice: filters.minPrice ?? null,
         maxPrice: filters.maxPrice ?? null,
         quantity: filters.quantity ?? null,
+        availableOnly: filters.availableOnly ?? true,
         attributes: Object.fromEntries(
           Object.entries(filters.attributes ?? {}).map(([axis, values]) => [
             axis,

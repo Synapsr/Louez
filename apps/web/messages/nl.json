@@ -5810,6 +5810,11 @@
     }
   },
   "storefront": {
+    "notFound": {
+      "title": "Deze pagina is niet beschikbaar",
+      "description": "Het product of de pagina die je zoekt bestaat niet meer of staat nog niet online.",
+      "browseCatalog": "Bekijk de catalogus"
+    },
     "header": {
       "home": "Home",
       "catalog": "Catalogus",
@@ -5956,6 +5961,7 @@
       "price": "Prijs",
       "priceRange": "{min} – {max}",
       "availability": "Beschikbaarheid",
+      "showUnavailable": "Ook niet-beschikbare producten tonen",
       "availableOnly": "Alleen beschikbaar",
       "availableOnlyHint": "Kies uw datums om te filteren",
       "showResults": "{count, plural, =0 {Geen producten} one {Toon # product} other {Toon # producten}}",
@@ -6061,6 +6067,11 @@
         "category": "Categorie",
         "basePrice": "Basistarief",
         "availability": "Beschikbaarheid"
+      },
+      "unavailableReason": {
+        "unavailable": "Niet beschikbaar",
+        "consumable_out_of_stock": "Niet op voorraad",
+        "required_accessory_out_of_stock": "Een verplicht accessoire is niet op voorraad"
       },
       "unavailableHelp": "Dit product is momenteel niet te huur. Bekijk de rest van de catalogus.",
       "requiredAccessoryOutOfStock": "Een verplicht accessoire is niet op voorraad",

@@ -96,7 +96,7 @@ export async function generateMetadata({
         filters.search !== "" ||
         filters.minPrice !== null ||
         filters.maxPrice !== null ||
-        filters.availableOnly ||
+        !filters.availableOnly ||
         filters.quantity !== null ||
         Object.keys(filters.attributes).length > 0,
     },
@@ -125,6 +125,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
       minPrice: filters.minPrice,
       maxPrice: filters.maxPrice,
       quantity: filters.quantity,
+      availableOnly: filters.availableOnly,
       attributes: filters.attributes,
       startDate: filters.startDate,
       endDate: filters.endDate,

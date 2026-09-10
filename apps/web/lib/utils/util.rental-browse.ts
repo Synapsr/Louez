@@ -51,7 +51,7 @@ export interface CatalogFilters {
   /** Lower bound of the price filter, in the store currency; null = no bound. */
   minPrice: number | null;
   maxPrice: number | null;
-  /** Hides what the browsed period cannot book; means nothing without dates. */
+  /** Hides unavailable products, using stock when no period is selected. */
   availableOnly: boolean;
   /** Units the visitor needs at once; null (or one) means no filter. */
   quantity: number | null;
@@ -74,6 +74,8 @@ export type CatalogFiltersPatch = Partial<{
 
 /** The `availableOnly` flag as it appears in the URL. */
 const AVAILABLE_ONLY_PARAM_VALUE = "1";
+
+export const readCatalogAvailability = (value: string | null | undefined): boolean => value !== "0";
 
 /** One `attr=` entry per picked value: `attr=size:M&attr=size:L&attr=color:red`. */
 const ATTRIBUTE_PARAM = "attr";
@@ -124,7 +126,7 @@ export const readCatalogFilters = (params: URLSearchParams): CatalogFilters => {
     sort: isCatalogSort(sort) ? sort : DEFAULT_CATALOG_SORT,
     minPrice: isInverted ? null : minPrice,
     maxPrice: isInverted ? null : maxPrice,
-    availableOnly: params.get("availableOnly") === AVAILABLE_ONLY_PARAM_VALUE,
+    availableOnly: readCatalogAvailability(params.get("availableOnly")),
     quantity: readQuantityParam(params.get("quantity")),
     attributes: readAttributeParams(params.getAll(ATTRIBUTE_PARAM)),
   };
@@ -136,7 +138,7 @@ const serializeCatalogParam = (
   value: string | number | boolean,
 ): string | null => {
   if (key === "availableOnly") {
-    return value === true ? AVAILABLE_ONLY_PARAM_VALUE : null;
+    return value === true ? AVAILABLE_ONLY_PARAM_VALUE : "0";
   }
   if (key === "minPrice" || key === "maxPrice") {
     return typeof value === "number" && Number.isFinite(value) && value >= 0 ? String(value) : null;
@@ -301,10 +303,11 @@ export const filterBookableProducts = <T extends BrowsableCatalogProduct>(
   products: readonly T[],
   availabilityByProductId: ReadonlyMap<string, { status: AvailabilityStatus }>,
 ): T[] => {
-  if (availabilityByProductId.size === 0) return [...products];
   return products.filter((product) => {
     const status = availabilityByProductId.get(product.id)?.status;
-    return status === undefined || BOOKABLE_STATUSES.has(status);
+    return status === undefined
+      ? product.quantity === undefined || product.quantity === null || product.quantity > 0
+      : BOOKABLE_STATUSES.has(status);
   });
 };
 
@@ -318,7 +321,6 @@ export const filterProductsByAvailableQuantity = <T extends BrowsableCatalogProd
   quantity: number,
   availabilityByProductId: ReadonlyMap<string, { availableQuantity: number | null }>,
 ): T[] => {
-  if (availabilityByProductId.size === 0) return [...products];
   return products.filter((product) => {
     const available = availabilityByProductId.get(product.id)?.availableQuantity;
     return available === undefined || available === null || available >= quantity;
@@ -381,7 +383,7 @@ export const countActiveCatalogFilters = ({
   let count = 0;
   if (category !== null && category !== ALL_CATEGORIES_VALUE) count += 1;
   if (minPrice !== null || maxPrice !== null) count += 1;
-  if (availableOnly) count += 1;
+  if (!availableOnly) count += 1;
   if (quantity !== null) count += 1;
   count += Object.values(attributes).filter((values) => values.length > 0).length;
   return count;
@@ -392,7 +394,7 @@ export const CLEAR_CATALOG_FILTERS_PATCH: CatalogFiltersPatch = {
   category: null,
   minPrice: null,
   maxPrice: null,
-  availableOnly: false,
+  availableOnly: true,
   quantity: null,
   attributes: null,
 };

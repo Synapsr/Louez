@@ -5,6 +5,8 @@ import { cache } from "react";
 import { and, asc, eq, exists, gte, inArray, like, notExists, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { getStorefrontAvailability } from "@louez/api/services";
+
 import {
   categories,
   db,
@@ -16,6 +18,7 @@ import {
   productSeasonalPricingTiers,
   productUnits,
   products,
+  stores,
 } from "@louez/db";
 import type { BookingAttributeAxis } from "@louez/types";
 import type { SeasonalPricingConfig } from "@louez/utils";
@@ -41,6 +44,7 @@ import {
   type CatalogAttributeFilters,
   type CatalogFilters,
   readAttributeParams,
+  readCatalogAvailability,
 } from "@/lib/utils/util.rental-browse";
 import { getStorefrontPricingSummary } from "@/lib/utils/util.storefront-pricing";
 import { getStorefrontProductPrice } from "@/lib/utils/util.storefront-product-pricing";
@@ -64,7 +68,7 @@ const catalogSearchParamsSchema = z.object({
   sort: z.enum(CATALOG_SORT_VALUES).optional().catch(undefined),
   minPrice: priceBound.optional().catch(undefined),
   maxPrice: priceBound.optional().catch(undefined),
-  availableOnly: z.literal("1").optional().catch(undefined),
+  availableOnly: z.enum(["0", "1"]).optional().catch(undefined),
   quantity: z.coerce.number().int().min(2).max(999).optional().catch(undefined),
   attr: z.array(z.string().trim().min(3).max(120)).max(40).optional().catch(undefined),
 });
@@ -114,7 +118,7 @@ export const parseCatalogSearchParams = (raw: RawSearchParams): CatalogFilters =
     sort: parsed.sort ?? DEFAULT_CATALOG_SORT,
     minPrice: hasRange ? (parsed.minPrice ?? null) : null,
     maxPrice: hasRange ? (parsed.maxPrice ?? null) : null,
-    availableOnly: parsed.availableOnly === "1",
+    availableOnly: readCatalogAvailability(parsed.availableOnly),
     quantity: parsed.quantity ?? null,
     attributes: readAttributeParams(parsed.attr ?? []),
   };
@@ -189,12 +193,9 @@ export interface CatalogProductsPage {
   totalCount: number;
 }
 
-/**
- * The filters the server page answers. `availableOnly` is a client filter
- * and is not one of them; `quantity` is answered on the fleet here and on
- * the period's availability in the browser.
- */
+/** Filters applied before counting and paginating catalog results. */
 export interface CatalogProductFilters extends Partial<CatalogPeriodInput> {
+  availableOnly?: boolean;
   category: string | null;
   search: string;
   minPrice?: number | null;
@@ -468,9 +469,8 @@ const buildProductConditions = ({
     conditions.push(or(like(products.name, pattern), like(products.description, pattern)));
   }
 
-  // The fleet must hold that many; whether the period does is the browser's
-  // call, from the availability answer.
-  if (typeof quantity === "number" && quantity >= 2) {
+  // Narrow by fleet size first; dated availability is checked before pagination.
+  if (typeof quantity === "number" && quantity >= 1) {
     conditions.push(
       or(eq(products.stockKind, "untracked"), gte(effectiveProductQuantitySql(), quantity)),
     );
@@ -742,6 +742,7 @@ export const loadCatalogProducts = async ({
   search,
   quantity,
   attributes,
+  availableOnly = true,
   minPrice,
   maxPrice,
   startDate = null,
@@ -750,7 +751,13 @@ export const loadCatalogProducts = async ({
   cursor,
   limit = CATALOG_PAGE_SIZE,
 }: LoadCatalogProductsInput): Promise<CatalogProductsPage> => {
-  const where = buildProductConditions({ storeId, category, search, quantity, attributes });
+  const where = buildProductConditions({
+    storeId,
+    category,
+    search,
+    quantity: availableOnly ? Math.max(quantity ?? 1, 1) : quantity,
+    attributes,
+  });
   const offset = decodeCatalogCursor(cursor);
 
   const [candidates, { priceById }, variantActivity, { categories: storeCategories }] =
@@ -768,7 +775,31 @@ export const loadCatalogProducts = async ({
       loadCatalogCategories(storeId),
     ]);
 
+  let availabilityById: Map<string, number | null> | null = null;
+  if (startDate && endDate && candidates.length > 0 && (availableOnly || (quantity ?? 1) > 1)) {
+    const [store] = await db
+      .select({ id: stores.id, settings: stores.settings })
+      .from(stores)
+      .where(eq(stores.id, storeId));
+    if (!store) throw new Error("Store not found");
+    const availability = await getStorefrontAvailability({
+      store,
+      startDate,
+      endDate,
+      productIds: candidates.map((candidate) => candidate.id),
+    });
+    availabilityById = new Map(
+      availability.products.map((product) => [product.productId, product.availableQuantity]),
+    );
+  }
+
   const withinRange = candidates.filter((candidate) => {
+    if (availabilityById) {
+      const available = availabilityById.get(candidate.id);
+      if (available !== null && (available === undefined || available < (quantity ?? 1))) {
+        return false;
+      }
+    }
     const price = indexedPriceOf(priceById, candidate.id);
     return (
       (typeof minPrice !== "number" || price >= minPrice) &&
