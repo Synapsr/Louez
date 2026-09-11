@@ -7232,6 +7232,22 @@
     "embed": {
       "title": "Zarezerwuj online",
       "cta": "Sprawdź dostępność",
+      "dayPlaceholder": "Wybierz",
+      "chooseDates": "Wybierz daty",
+      "checkDates": "Sprawdź daty",
+      "previousMonth": "Poprzedni miesiąc",
+      "nextMonth": "Następny miesiąc",
+      "steps": {
+        "startDate": "Dzień odbioru",
+        "startTime": "Godzina odbioru",
+        "endDate": "Dzień zwrotu",
+        "endTime": "Godzina zwrotu"
+      },
+      "slotGroups": {
+        "morning": "Rano",
+        "afternoon": "Popołudnie",
+        "evening": "Wieczór"
+      },
       "errors": {
         "selectStartDate": "Wybierz datę odbioru",
         "selectEndDate": "Wybierz datę zwrotu",

@@ -7232,6 +7232,22 @@
     "embed": {
       "title": "Jetzt online buchen",
       "cta": "Verfügbarkeit prüfen",
+      "dayPlaceholder": "Wählen",
+      "chooseDates": "Wählen Sie Ihre Daten",
+      "checkDates": "Prüfen Sie Ihre Daten",
+      "previousMonth": "Vorheriger Monat",
+      "nextMonth": "Nächster Monat",
+      "steps": {
+        "startDate": "Abholtag",
+        "startTime": "Abholzeit",
+        "endDate": "Rückgabetag",
+        "endTime": "Rückgabezeit"
+      },
+      "slotGroups": {
+        "morning": "Vormittag",
+        "afternoon": "Nachmittag",
+        "evening": "Abend"
+      },
       "errors": {
         "selectStartDate": "Wählen Sie ein Abholdatum",
         "selectEndDate": "Wählen Sie ein Rückgabedatum",

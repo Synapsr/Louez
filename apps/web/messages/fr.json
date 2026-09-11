@@ -7232,6 +7232,22 @@
     "embed": {
       "title": "Réservez en ligne",
       "cta": "Voir les disponibilités",
+      "dayPlaceholder": "Choisir",
+      "chooseDates": "Choisissez vos dates",
+      "checkDates": "Vérifiez vos dates",
+      "previousMonth": "Mois précédent",
+      "nextMonth": "Mois suivant",
+      "steps": {
+        "startDate": "Jour de retrait",
+        "startTime": "Heure de retrait",
+        "endDate": "Jour de retour",
+        "endTime": "Heure de retour"
+      },
+      "slotGroups": {
+        "morning": "Matin",
+        "afternoon": "Après-midi",
+        "evening": "Soir"
+      },
       "errors": {
         "selectStartDate": "Sélectionnez une date de retrait",
         "selectEndDate": "Sélectionnez une date de retour",

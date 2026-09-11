@@ -7232,6 +7232,22 @@
     "embed": {
       "title": "Book online now",
       "cta": "Check availability",
+      "dayPlaceholder": "Choose",
+      "chooseDates": "Choose your dates",
+      "checkDates": "Check your dates",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "steps": {
+        "startDate": "Pickup day",
+        "startTime": "Pickup time",
+        "endDate": "Return day",
+        "endTime": "Return time"
+      },
+      "slotGroups": {
+        "morning": "Morning",
+        "afternoon": "Afternoon",
+        "evening": "Evening"
+      },
       "errors": {
         "selectStartDate": "Select a pickup date",
         "selectEndDate": "Select a return date",

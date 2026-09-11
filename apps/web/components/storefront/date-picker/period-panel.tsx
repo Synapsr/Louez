@@ -28,7 +28,7 @@ import type { RentalDateCoreState } from "./core/types";
 import { TimeSelectField } from "./time-select-field";
 import { usePeriodIssueMessage } from "./use-period-issue-message";
 
-export type PeriodPanelVariant = "sheet" | "popover" | "embed";
+export type PeriodPanelVariant = "sheet" | "popover";
 
 interface PeriodPanelProps {
   core: RentalDateCoreState;
@@ -47,8 +47,8 @@ interface PeriodPanelProps {
 /**
  * The editor body shared by every surface, laid out like the dashboard's
  * reservation picker: a range calendar with month and year
- * menus (two months side by side in the popover, one in the sheet and the
- * embed), the pickup and return times as two selects, one validation line.
+ * menus (two months side by side in the popover, one in the sheet), the
+ * pickup and return times as two selects, one validation line.
  */
 export const PeriodPanel = ({
   core,
@@ -71,7 +71,6 @@ export const PeriodPanel = ({
   const fieldId = useId();
 
   const isPopover = variant === "popover";
-  const isEmbed = variant === "embed";
   const message = core.hasDates ? issueMessage(core.validation) : null;
   const closedMessage = t("businessHours.storeClosed");
 
@@ -136,7 +135,7 @@ export const PeriodPanel = ({
         onMonthChange={onMonthChange}
         defaultMonth={core.startDate ?? core.minDate}
         locale={dateLocale}
-        density={variant === "sheet" ? "comfortable" : isEmbed ? "compact" : "default"}
+        density={variant === "sheet" ? "comfortable" : "default"}
         touchTarget={isPopover}
         autoFocus={isPopover}
         className={cn(!isPopover && "p-0")}
@@ -188,9 +187,7 @@ export const PeriodPanel = ({
   );
 
   return (
-    <div
-      className={cn("flex flex-col", isEmbed ? "gap-3" : isPopover ? "gap-3" : "gap-4", className)}
-    >
+    <div className={cn("flex flex-col", isPopover ? "gap-3" : "gap-4", className)}>
       {calendar}
       {visibleSeasonalPricing?.seasons.length ? (
         <SeasonalCalendarLegend pricing={visibleSeasonalPricing} />

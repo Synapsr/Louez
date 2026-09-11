@@ -7232,6 +7232,22 @@
     "embed": {
       "title": "Prenota online",
       "cta": "Verifica disponibilità",
+      "dayPlaceholder": "Scegli",
+      "chooseDates": "Scegli le date",
+      "checkDates": "Controlla le date",
+      "previousMonth": "Mese precedente",
+      "nextMonth": "Mese successivo",
+      "steps": {
+        "startDate": "Giorno di ritiro",
+        "startTime": "Ora di ritiro",
+        "endDate": "Giorno di restituzione",
+        "endTime": "Ora di restituzione"
+      },
+      "slotGroups": {
+        "morning": "Mattina",
+        "afternoon": "Pomeriggio",
+        "evening": "Sera"
+      },
       "errors": {
         "selectStartDate": "Seleziona una data di ritiro",
         "selectEndDate": "Seleziona una data di restituzione",

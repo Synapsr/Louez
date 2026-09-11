@@ -19,19 +19,17 @@ import {
 import type { RentalPeriodField, RentalPeriodValue } from "./core/types";
 import { DateTimeField } from "./date-time-field";
 import { PeriodChip } from "./period-chip";
-import { PeriodEditor } from "./period-editor";
 import { PeriodPopover } from "./period-popover";
 import { PeriodSheet } from "./period-sheet";
 import { usePeriodIssueMessage } from "./use-period-issue-message";
 
-export type RentalPeriodPickerLayout = "inline" | "compact" | "sheet" | "embed";
+export type RentalPeriodPickerLayout = "inline" | "compact" | "sheet";
 
 export interface RentalPeriodPickerProps {
   /**
    * `inline`: two fields and a CTA (hero, product page);
    * `compact`: a chip (catalog, header);
-   * `sheet`: a controlled modal with no trigger (checkout);
-   * `embed`: fields with an inline editor for the iframe widget.
+   * `sheet`: a controlled modal with no trigger (checkout).
    */
   layout: RentalPeriodPickerLayout;
   /** The committed period; the editor drafts from it. */
@@ -40,8 +38,8 @@ export interface RentalPeriodPickerProps {
   /** Called when the customer taps "Valider". */
   onChange: (period: RentalPeriodValue) => void;
   /**
-   * `inline` and `embed` only: the CTA under the fields. With a valid period
-   * it fires; without one it opens the picker, so it is never disabled.
+   * `inline` only: the CTA under the fields. With a valid period it fires;
+   * without one it opens the picker, so it is never disabled.
    */
   onSubmit?: (period: RentalPeriodValue) => void;
   submitLabel?: string;
@@ -134,10 +132,9 @@ export const RentalPeriodPicker = ({
         value={value?.[field]}
         placeholder={t(field === "start" ? "startDate" : "endDate")}
         timezone={rules.timezone}
-        size={layout === "embed" ? "compact" : "default"}
       />
     );
-    if (isPhone || layout === "embed") {
+    if (isPhone) {
       return (
         <button
           key={field}
@@ -145,7 +142,7 @@ export const RentalPeriodPicker = ({
           className={fieldTriggerClassName}
           onClick={() => {
             setInitialField(field);
-            setOpen(layout === "embed" && initialField === field ? !open : true);
+            setOpen(true);
           }}
         >
           {content}
@@ -209,35 +206,6 @@ export const RentalPeriodPicker = ({
           nativeButton
         />
       </PeriodPopover>
-    );
-  }
-
-  if (layout === "embed") {
-    return (
-      <div className={cn("flex flex-col gap-3", className)}>
-        <div className={fieldsRowClassName}>{fields}</div>
-        {open ? (
-          <PeriodEditor
-            seasonalPricing={seasonalPricing}
-            value={value}
-            initialField={initialField}
-            rules={rules}
-            minDate={minDate}
-            variant="embed"
-            onApply={(period) => {
-              onChange(period);
-              setOpen(false);
-            }}
-          />
-        ) : null}
-        {committedMessage && !open ? (
-          <p role="status" className="text-xs text-destructive">
-            {committedMessage}
-          </p>
-        ) : null}
-        {cta}
-        {timezoneNotice}
-      </div>
     );
   }
 
