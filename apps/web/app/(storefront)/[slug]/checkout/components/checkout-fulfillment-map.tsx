@@ -253,9 +253,9 @@ export const CheckoutFulfillmentMap = ({
       ref={containerRef}
       className={cn(
         "relative overflow-hidden",
-        "[&_.maplibregl-ctrl-attrib]:text-[10px] [&_.maplibregl-ctrl-attrib_a]:text-muted-foreground",
-        "[&_.maplibregl-ctrl-group]:overflow-hidden [&_.maplibregl-ctrl-group]:rounded-full! [&_.maplibregl-ctrl-group]:bg-background [&_.maplibregl-ctrl-group]:shadow-raised dark:[&_.maplibregl-ctrl-icon]:invert",
-        "[&_.maplibregl-cooperative-gesture-screen]:bg-foreground/60 [&_.maplibregl-cooperative-gesture-screen]:font-sans [&_.maplibregl-cooperative-gesture-screen]:text-background [&_.maplibregl-cooperative-gesture-screen]:text-sm",
+        "[&_.maplibregl-ctrl-attrib]:bg-background/70! [&_.maplibregl-ctrl-attrib]:text-[10px] [&_.maplibregl-ctrl-attrib]:text-muted-foreground! [&_.maplibregl-ctrl-attrib_a]:text-muted-foreground! dark:[&_.maplibregl-ctrl-attrib-button]:invert",
+        "[&_.maplibregl-ctrl-group]:overflow-hidden [&_.maplibregl-ctrl-group]:rounded-full! [&_.maplibregl-ctrl-group]:bg-background! [&_.maplibregl-ctrl-group]:shadow-raised! dark:[&_.maplibregl-ctrl-icon]:invert",
+        "[&_.maplibregl-cooperative-gesture-screen]:bg-foreground/60! [&_.maplibregl-cooperative-gesture-screen]:font-sans [&_.maplibregl-cooperative-gesture-screen]:text-background! [&_.maplibregl-cooperative-gesture-screen]:text-sm",
         className,
       )}
       data-slot="checkout-fulfillment-map"
@@ -276,8 +276,10 @@ export const CheckoutFulfillmentMap = ({
         onLoad={() => setIsReady(true)}
         style={{ width: "100%", height: "100%" }}
       >
+        {/* MapLibre prepends controls in the bottom corners, so the last one
+            added sits on top: attribution first puts the zoom above it. */}
+        <AttributionControl position="bottom-right" compact />
         <NavigationControl position="bottom-right" showCompass={false} />
-        <AttributionControl position="bottom-left" compact />
 
         {radius ? (
           <Source
