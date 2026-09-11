@@ -207,7 +207,7 @@ const buildGetters = (state: CartState): CartGetters => {
  * key is migrated once and removed.
  */
 export const CartProvider = ({ children }: { children: ReactNode }) => {
-  const { storeSlug } = useStore();
+  const { storeSlug, timezone } = useStore();
   const maxDiscountPercent = useStoreMaxDiscountPercent();
 
   const [lines, setLines] = useState<CartLineIntent[]>([]);
@@ -258,8 +258,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const items = useMemo(
-    () => deriveCartItems({ lines, resolution, period, pricingMode }),
-    [lines, resolution, period, pricingMode],
+    () => deriveCartItems({ lines, resolution, period, pricingMode, timezone }),
+    [lines, resolution, period, pricingMode, timezone],
   );
 
   const summary = useMemo(

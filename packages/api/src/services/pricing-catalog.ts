@@ -28,6 +28,7 @@ import {
  * and tax fields checkout needs next to the price.
  */
 export interface PricingCatalogProduct {
+  timezone?: string;
   id: string;
   name: string;
   description: string | null;
@@ -239,6 +240,7 @@ export const priceCatalogLine = (
 
   const seasonal = calculateSeasonalAwarePrice(
     {
+      timezone: product.timezone,
       basePrice: product.price,
       basePeriodMinutes: product.basePeriodMinutes,
       deposit: product.deposit,
@@ -275,7 +277,7 @@ export const priceCatalogLine = (
  */
 export const loadPricingCatalog = async (
   database: Pick<Database, "select">,
-  params: { storeId: string; productIds: string[] },
+  params: { storeId: string; productIds: string[]; timezone?: string },
 ): Promise<PricingCatalog> => {
   const productIds = [...new Set(params.productIds)];
   if (productIds.length === 0) {
@@ -331,11 +333,14 @@ export const loadPricingCatalog = async (
   return new Map(
     productRows.map((product) => [
       product.id,
-      toPricingCatalogProduct(
-        product,
-        tiersByProductId.get(product.id) || [],
-        seasonalByProductId.get(product.id) || [],
-      ),
+      {
+        ...(params.timezone ? { timezone: params.timezone } : {}),
+        ...toPricingCatalogProduct(
+          product,
+          tiersByProductId.get(product.id) || [],
+          seasonalByProductId.get(product.id) || [],
+        ),
+      },
     ]),
   );
 };

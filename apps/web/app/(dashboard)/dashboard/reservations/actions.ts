@@ -1157,6 +1157,7 @@ export async function createManualReservation(data: CreateReservationData) {
 
       const seasonalResult = calculateSeasonalAwarePrice(
         {
+          timezone: store.settings?.timezone,
           basePrice: parseFloat(product.price),
           basePeriodMinutes: product.basePeriodMinutes ?? null,
           deposit: parseFloat(product.deposit || "0"),
@@ -2693,6 +2694,7 @@ export async function updateReservation(
 
           const seasonalResultForItem = calculateSeasonalAwarePrice(
             {
+              timezone: store.settings?.timezone,
               basePrice: parseFloat(product.price),
               basePeriodMinutes: product.basePeriodMinutes ?? null,
               deposit: parseFloat(product.deposit || "0"),
@@ -2840,6 +2842,7 @@ export async function updateReservation(
 
           const seasonalResultForDate = calculateSeasonalAwarePrice(
             {
+              timezone: store.settings?.timezone,
               basePrice: parseFloat(product.price),
               basePeriodMinutes: product.basePeriodMinutes ?? null,
               deposit: parseFloat(product.deposit || "0"),

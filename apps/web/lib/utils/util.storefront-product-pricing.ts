@@ -1,4 +1,5 @@
 import type { PricingMode } from "@louez/types";
+import { calculateDurationMinutes, isFixedPriceProduct } from "@louez/utils";
 
 import type {
   StorefrontPricingTier,
@@ -54,6 +55,7 @@ const toIsoString = (value: Date | string | null | undefined): string =>
   value instanceof Date ? value.toISOString() : (value ?? "");
 
 export interface StorefrontProductPriceInput {
+  timezone?: string;
   product: StorefrontProductPricing;
   startDate?: Date | string | null;
   endDate?: Date | string | null;
@@ -61,16 +63,40 @@ export interface StorefrontProductPriceInput {
   quantity?: number;
 }
 
+/** Whether a single base rate is being extended by a partial period. */
+export const isStorefrontPriceProrated = ({
+  product,
+  startDate,
+  endDate,
+}: StorefrontProductPriceInput): boolean => {
+  const basePeriod = product.basePeriodMinutes;
+  if (
+    isFixedPriceProduct(product) ||
+    product.enforceStrictTiers ||
+    !basePeriod ||
+    !startDate ||
+    !endDate ||
+    product.pricingTiers?.length ||
+    product.seasonalPricings?.length
+  )
+    return false;
+
+  const duration = calculateDurationMinutes(startDate, endDate);
+  return duration > basePeriod && duration % basePeriod !== 0;
+};
+
 /** The cart line a product would become, for pricing only. */
 export const toCartItemForPricing = ({
   product,
   startDate,
   endDate,
   quantity = 1,
+  timezone,
 }: StorefrontProductPriceInput): CartItemForPricing => {
   const seasonalPricings = product.seasonalPricings ?? [];
 
   return {
+    ...(timezone ? { timezone } : {}),
     price: parseStorefrontDecimal(product.price) ?? 0,
     deposit: parseStorefrontDecimal(product.deposit) ?? 0,
     quantity,
@@ -89,7 +115,7 @@ export const toCartItemForPricing = ({
 /**
  * Display price of a product for a period and quantity, computed by the
  * same path as the cart (`calculateCartItemPrice`), so a card, the product
- * page, the cart and the server all bill a started period in full. Without
+ * page, the cart and the server use the same billing mode. Without
  * dates it is the base price times the quantity.
  */
 export const getStorefrontProductPrice = (

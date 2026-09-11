@@ -1,5 +1,7 @@
 "use client";
 
+import { useStoreTimezone } from "@/contexts/store-context";
+
 import { useTranslations } from "next-intl";
 
 import type { StorefrontCatalogProduct } from "@/lib/storefront/storefront.types";
@@ -40,6 +42,7 @@ export const useProductCardPricing = (
   period?: ProductCardPeriod | null,
 ): ProductCardPricing => {
   const t = useTranslations();
+  const timezone = useStoreTimezone();
   const formatPeriodLabel = usePeriodLabel();
   const isDiscountVisible = useDiscountVisibility();
   const maxDiscountPercent = useStoreMaxDiscountPercent();
@@ -62,6 +65,7 @@ export const useProductCardPricing = (
   }
 
   const result = getStorefrontProductPrice({
+    timezone,
     product,
     startDate: period.startDate,
     endDate: period.endDate,

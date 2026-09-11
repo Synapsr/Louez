@@ -7,6 +7,7 @@ import {
   calculateDurationMinutes,
   calculateSeasonalAwarePrice,
   type ProductPricing,
+  type PricingSegment,
   type SeasonalPricingConfig,
 } from "@louez/utils";
 
@@ -24,6 +25,7 @@ export interface CartPricingTier {
  * Compatible with CartItem from cart-context.
  */
 export interface CartItemForPricing {
+  timezone?: string;
   price: number;
   deposit: number;
   quantity: number;
@@ -39,6 +41,7 @@ export interface CartItemForPricing {
 }
 
 export interface CartItemPriceResult {
+  seasonalSegments?: PricingSegment[];
   subtotal: number;
   originalSubtotal: number;
   savings: number;
@@ -105,6 +108,7 @@ export function calculateCartItemPrice(
   if (item.seasonalPricings && item.seasonalPricings.length > 0 && start && end) {
     const result = calculateSeasonalAwarePrice(
       {
+        timezone: item.timezone,
         basePrice: item.price,
         basePeriodMinutes: item.basePeriodMinutes ?? null,
         deposit: item.deposit,
@@ -126,6 +130,7 @@ export function calculateCartItemPrice(
     );
 
     return {
+      seasonalSegments: result.isSeasonal ? result.segments : undefined,
       subtotal: result.subtotal,
       originalSubtotal: result.originalSubtotal,
       savings: result.savings,

@@ -297,7 +297,11 @@ export const quoteExtension = async (
   if (manualReason) return { preview: { mode: "manual", reason: manualReason } };
   const productIds = reservation.items.flatMap((item) => (item.productId ? [item.productId] : []));
   await lockReservationProducts(tx, reservation.storeId, productIds);
-  const catalog = await loadPricingCatalog(tx, { storeId: reservation.storeId, productIds });
+  const catalog = await loadPricingCatalog(tx, {
+    storeId: reservation.storeId,
+    productIds,
+    timezone: settings?.timezone,
+  });
   const price = (date: Date) =>
     priceCart({
       catalog,

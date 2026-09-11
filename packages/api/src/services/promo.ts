@@ -175,11 +175,18 @@ export const checkPromoValidationRateLimit = (
  */
 export const validateStorefrontPromoCode = async (
   database: Pick<Database, "select">,
-  params: { storeId: string; code: string; lines: PricingCatalogLineInput[]; now?: Date },
+  params: {
+    storeId: string;
+    code: string;
+    lines: PricingCatalogLineInput[];
+    now?: Date;
+    timezone?: string;
+  },
 ): Promise<StorefrontPromoValidateOutput> => {
   const catalog = await loadPricingCatalog(database, {
     storeId: params.storeId,
     productIds: params.lines.map((line) => line.productId),
+    timezone: params.timezone,
   });
 
   let subtotal = 0;

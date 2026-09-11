@@ -7,6 +7,79 @@ import {
 } from "@/lib/utils/util.storefront-pricing";
 
 describe("getStorefrontRateRows", () => {
+  test("shows a stored copy of the base rate only once", () => {
+    const rows = getStorefrontRateRows({
+      price: "25.00",
+      pricingMode: "day",
+      basePeriodMinutes: 1440,
+      pricingTiers: [
+        { id: "base-copy", period: 1440, price: "25,00", minDuration: null, discountPercent: null },
+        { id: "three-days", period: 4320, price: "60", minDuration: null, discountPercent: null },
+        { id: "week", period: 10080, price: "110", minDuration: null, discountPercent: null },
+        {
+          id: "week-copy",
+          period: 10080,
+          price: "110.000000",
+          minDuration: null,
+          discountPercent: null,
+        },
+      ],
+    });
+
+    assert.deepEqual(rows, [
+      { id: "__base__", periodMinutes: 1440, price: 25, reductionPercent: 0 },
+      { id: "three-days", periodMinutes: 4320, price: 60, reductionPercent: 20 },
+      { id: "week", periodMinutes: 10080, price: 110, reductionPercent: 37.14 },
+    ]);
+  });
+
+  test("a legacy zero-discount tier does not create a redundant rates card", () => {
+    assert.deepEqual(
+      getStorefrontRateRows({
+        price: "20",
+        pricingMode: "day",
+        pricingTiers: [{ id: "base-copy", minDuration: 1, discountPercent: "0" }],
+      }),
+      [{ id: "__base__", periodMinutes: 1440, price: 20, reductionPercent: 0 }],
+    );
+  });
+
+  test("deduplicates identical legacy discounts", () => {
+    const rows = getStorefrontRateRows({
+      price: "20",
+      pricingMode: "day",
+      pricingTiers: [
+        { id: "three-days", minDuration: 3, discountPercent: "20" },
+        { id: "three-days-copy", minDuration: 3, discountPercent: "20.00" },
+      ],
+    });
+    assert.deepEqual(
+      rows.map((row) => row.id),
+      ["__base__", "three-days"],
+    );
+  });
+
+  test("preserves different prices for the same duration and equal prices for different durations", () => {
+    const rows = getStorefrontRateRows({
+      price: "25",
+      basePeriodMinutes: 1440,
+      pricingTiers: [
+        {
+          id: "same-duration",
+          period: 1440,
+          price: "20",
+          minDuration: null,
+          discountPercent: null,
+        },
+        { id: "same-price", period: 2880, price: "25", minDuration: null, discountPercent: null },
+      ],
+    });
+    assert.deepEqual(
+      rows.map((row) => row.id),
+      ["same-duration", "__base__", "same-price"],
+    );
+  });
+
   test("turns duration tiers into rows priced for the whole tier period", () => {
     assert.deepEqual(
       getStorefrontRateRows({

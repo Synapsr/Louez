@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { useStoreTimezone } from "@/contexts/store-context";
 
 import {
   calculateFixedPrice,
@@ -29,6 +30,7 @@ export function useNewReservationPricing({
   customItems,
   products,
 }: UseNewReservationPricingParams) {
+  const timezone = useStoreTimezone();
   const calculateDurationForMode = useCallback(
     (reservationStartDate: Date, reservationEndDate: Date, mode: PricingMode): number => {
       const diffMs = reservationEndDate.getTime() - reservationStartDate.getTime();
@@ -135,6 +137,7 @@ export function useNewReservationPricing({
       if (hasSeasonalPricings && startDate && endDate) {
         const seasonalResult = calculateSeasonalAwarePrice(
           {
+            timezone,
             basePrice,
             basePeriodMinutes: product.basePeriodMinutes ?? null,
             deposit: parseFloat(product.deposit || "0"),
@@ -265,7 +268,7 @@ export function useNewReservationPricing({
         basePeriodMinutes: null,
       };
     },
-    [calculateDurationForMode, endDate, startDate],
+    [calculateDurationForMode, endDate, startDate, timezone],
   );
 
   const getCustomItemTotal = useCallback(
