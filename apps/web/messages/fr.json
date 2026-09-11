@@ -6127,6 +6127,9 @@
         "requiredHelp": "Cet article est obligatoire avec ce produit et s'ajoute au panier avec lui.",
         "extras": "Options",
         "depositHold": "Caution",
+        "packageApplied": "Forfait appliqué : {period}",
+        "packagesApplied": "{count} × forfait de {period}",
+        "rateApplied": "Tarif appliqué : {period}",
         "proratedPrice": "Tarif calculé au prorata",
         "depositNotCharged": "Empreinte bancaire, non débitée"
       }

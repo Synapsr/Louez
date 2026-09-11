@@ -45,6 +45,7 @@ export interface CartItemPriceResult {
   subtotal: number;
   originalSubtotal: number;
   savings: number;
+  /** Explicit duration discount only; a rate-grid comparison is not a promotion. */
   discountPercent: number | null;
 }
 
@@ -135,7 +136,9 @@ export function calculateCartItemPrice(
       originalSubtotal: result.originalSubtotal,
       savings: result.savings,
       discountPercent:
-        result.savings > 0 && result.originalSubtotal > 0
+        !(item.basePeriodMinutes && item.basePeriodMinutes > 0) &&
+        result.savings > 0 &&
+        result.originalSubtotal > 0
           ? Math.round((result.savings / result.originalSubtotal) * 100)
           : null,
     };
@@ -162,7 +165,7 @@ export function calculateCartItemPrice(
       subtotal: result.subtotal,
       originalSubtotal: result.originalSubtotal,
       savings: result.savings,
-      discountPercent: result.reductionPercent,
+      discountPercent: null,
     };
   }
 

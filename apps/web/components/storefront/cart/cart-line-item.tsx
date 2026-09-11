@@ -8,6 +8,8 @@ import { cn, isFixedPriceProduct, type StockQuantityLimit } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
 import { SeasonalPriceBreakdown } from "@/components/storefront/product/seasonal-price-breakdown";
+import { BillingDetail } from "@/components/storefront/product/billing-detail";
+import { getStorefrontBillingDetail } from "@/lib/utils/util.storefront-product-pricing";
 import { Price } from "@/components/storefront/ui/price";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { type CartItem, useCartDrawer } from "@/contexts/cart-context";
@@ -52,11 +54,8 @@ export const CartLineItem = ({
   const { close } = useCartDrawer();
   const productHref = `/product/${item.productId}`;
 
-  const { subtotal, seasonalSegments } = calculateCartItemPrice(
-    item,
-    globalStartDate,
-    globalEndDate,
-  );
+  const priceResult = calculateCartItemPrice(item, globalStartDate, globalEndDate);
+  const { subtotal, seasonalSegments } = priceResult;
   const unitPrice = subtotal / Math.max(1, item.quantity);
   const isRequiredLine = Boolean(parent);
   const minimumQuantity = parent
@@ -138,6 +137,9 @@ export const CartLineItem = ({
           ) : null}
         </div>
 
+        <BillingDetail
+          detail={getStorefrontBillingDetail(item, priceResult, globalStartDate, globalEndDate)}
+        />
         <SeasonalPriceBreakdown segments={seasonalSegments} seasons={item.seasonalPricings} />
 
         {item.unavailableReason ? (

@@ -34,10 +34,10 @@ describe("getEffectiveDiscountPercent", () => {
     );
   });
 
-  test("derives the ratio when no percentage is carried", () => {
+  test("does not turn an ordinary price comparison into a discount", () => {
     assert.equal(
       getEffectiveDiscountPercent({ discountPercent: null, savings: 105, originalSubtotal: 280 }),
-      37.5,
+      0,
     );
     assert.equal(
       getEffectiveDiscountPercent({ discountPercent: null, savings: 0, originalSubtotal: 280 }),

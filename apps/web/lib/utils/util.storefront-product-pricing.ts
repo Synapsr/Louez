@@ -1,5 +1,9 @@
 import type { PricingMode } from "@louez/types";
-import { calculateDurationMinutes, isFixedPriceProduct } from "@louez/utils";
+import {
+  calculateDurationMinutes,
+  calculateRateBasedPrice,
+  isFixedPriceProduct,
+} from "@louez/utils";
 
 import type {
   StorefrontPricingTier,
@@ -121,3 +125,63 @@ export const toCartItemForPricing = ({
 export const getStorefrontProductPrice = (
   input: StorefrontProductPriceInput,
 ): CartItemPriceResult => calculateCartItemPrice(toCartItemForPricing(input), null, null);
+
+export type StorefrontBillingDetail =
+  | { mode: "prorated" }
+  | { mode: "package"; periodMinutes: number; count: number }
+  | { mode: "rate"; periodMinutes: number };
+
+/** Explain the rate selected by the price engine, without turning it into a discount. */
+export const getStorefrontBillingDetail = (
+  item: CartItemForPricing,
+  priceResult: CartItemPriceResult,
+  globalStartDate?: string | null,
+  globalEndDate?: string | null,
+): StorefrontBillingDetail | null => {
+  const start = globalStartDate || item.startDate;
+  const end = globalEndDate || item.endDate;
+  const basePeriodMinutes = item.basePeriodMinutes;
+  if (
+    isFixedPriceProduct(item) ||
+    !basePeriodMinutes ||
+    basePeriodMinutes <= 0 ||
+    !start ||
+    !end ||
+    (priceResult.seasonalSegments?.length ?? 0) > 1
+  )
+    return null;
+
+  const durationMinutes = calculateDurationMinutes(start, end);
+  if (!Number.isFinite(durationMinutes)) return null;
+  const season = item.seasonalPricings?.find(
+    (season) => season.id === priceResult.seasonalSegments?.[0]?.seasonalPricingId,
+  );
+  const rates =
+    season?.rates ??
+    (item.pricingTiers ?? []).flatMap((tier, index) =>
+      typeof tier.period === "number" &&
+      tier.period > 0 &&
+      typeof tier.price === "number" &&
+      tier.price >= 0
+        ? [{ id: tier.id, period: tier.period, price: tier.price, displayOrder: index }]
+        : [],
+    );
+  const result = calculateRateBasedPrice(
+    {
+      basePrice: season?.basePrice ?? item.price,
+      basePeriodMinutes,
+      deposit: 0,
+      rates,
+      enforceStrictTiers: item.enforceStrictTiers ?? false,
+    },
+    durationMinutes,
+    1,
+  );
+  if (!result.appliedRate) return null;
+  if (item.enforceStrictTiers) {
+    return { mode: "package", periodMinutes: result.appliedRate.period, count: result.periodsUsed };
+  }
+  return durationMinutes <= result.appliedRate.period
+    ? { mode: "rate", periodMinutes: result.appliedRate.period }
+    : { mode: "prorated" };
+};

@@ -6127,6 +6127,9 @@
         "requiredHelp": "Ten artykuł jest wymagany z tym produktem i jest dodawany do koszyka razem z nim.",
         "extras": "Dodatki",
         "depositHold": "Kaucja",
+        "packageApplied": "Zastosowany pakiet: {period}",
+        "packagesApplied": "{count} × pakiet na {period}",
+        "rateApplied": "Zastosowana stawka: {period}",
         "proratedPrice": "Cena obliczona proporcjonalnie",
         "depositNotCharged": "Blokada na karcie, bez obciążenia"
       }

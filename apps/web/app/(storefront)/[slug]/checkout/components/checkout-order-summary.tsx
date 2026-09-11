@@ -10,6 +10,8 @@ import { cn, isFixedPriceProduct } from "@louez/utils";
 import { ProductImage } from "@/components/product/product-image";
 import { InsuredProductShield } from "@/components/storefront/ui/insured-product-shield";
 import { SeasonalPriceBreakdown } from "@/components/storefront/product/seasonal-price-breakdown";
+import { BillingDetail } from "@/components/storefront/product/billing-detail";
+import { getStorefrontBillingDetail } from "@/lib/utils/util.storefront-product-pricing";
 import { Price } from "@/components/storefront/ui/price";
 import type { CartItem } from "@/contexts/cart-context";
 import { useDiscountVisibility } from "@/contexts/store-context";
@@ -174,6 +176,12 @@ export const CheckoutOrderSummary = ({
         {orderedLines.map(({ item, parentName }) => {
           const priceResult = calculateCartItemPrice(item, globalStartDate, globalEndDate);
           const showItemDiscount = isDiscountVisible(getEffectiveDiscountPercent(priceResult));
+          const billingDetail = getStorefrontBillingDetail(
+            item,
+            priceResult,
+            globalStartDate,
+            globalEndDate,
+          );
           const resolution = lineResolutions[item.lineId];
           const attributes = item.resolvedAttributes ?? item.selectedAttributes;
 
@@ -225,8 +233,9 @@ export const CheckoutOrderSummary = ({
                   </p>
                 )}
               </div>
-              {priceResult.seasonalSegments?.length ? (
-                <div className="w-full">
+              {billingDetail || priceResult.seasonalSegments?.length ? (
+                <div className="flex w-full flex-col gap-2">
+                  <BillingDetail detail={billingDetail} />
                   <SeasonalPriceBreakdown
                     segments={priceResult.seasonalSegments}
                     seasons={item.seasonalPricings}

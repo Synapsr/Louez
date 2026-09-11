@@ -6127,6 +6127,9 @@
         "requiredHelp": "This item is required with this product and is added to the cart with it.",
         "extras": "Extras",
         "depositHold": "Deposit",
+        "packageApplied": "Package applied: {period}",
+        "packagesApplied": "{count} × {period} package",
+        "rateApplied": "Rate applied: {period}",
         "proratedPrice": "Prorated price",
         "depositNotCharged": "Card hold, not charged"
       }

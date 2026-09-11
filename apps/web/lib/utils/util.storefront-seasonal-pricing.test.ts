@@ -69,7 +69,7 @@ test("seasonal duration grids retain their own rates and remove base duplicates"
     rows[1].rows.map((rate) => rate.price),
     [40, 210],
   );
-  assert.equal(rows[1].rows[1].reductionPercent, 25);
+  assert.equal(rows[1].rows[1].reductionPercent, 0);
 });
 
 test("fixed pricing has no season grid or calendar legend", () => {

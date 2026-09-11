@@ -6,7 +6,13 @@ import { calculateDuration } from "@louez/utils";
 import type { StorefrontProductPricing } from "@/lib/storefront/storefront.types";
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import {
+  getDisplayableSavings,
+  getEffectiveDiscountPercent,
+} from "@/lib/utils/util.discount-visibility";
+import { getStorefrontPricingSummary } from "@/lib/utils/util.storefront-pricing";
+import {
   getStorefrontProductPrice,
+  getStorefrontBillingDetail,
   isStorefrontPriceProrated,
   normalizeStorefrontTiers,
   parseStorefrontDecimal,
@@ -40,6 +46,123 @@ describe("parseStorefrontDecimal", () => {
     assert.equal(parseStorefrontDecimal(null), null);
     assert.equal(parseStorefrontDecimal(undefined), null);
     assert.equal(parseStorefrontDecimal(Number.NaN), null);
+  });
+});
+
+describe("ordinary duration prices", () => {
+  const wingfoil: StorefrontProductPricing = {
+    price: 55,
+    deposit: 1200,
+    basePeriodMinutes: 240,
+    enforceStrictTiers: true,
+    pricingTiers: [
+      { id: "8h", period: 480, price: 88, minDuration: null, discountPercent: null },
+      { id: "day", period: 1440, price: 116, minDuration: null, discountPercent: null },
+      { id: "2days", period: 2880, price: 198, minDuration: null, discountPercent: null },
+      { id: "week", period: 10080, price: 550, minDuration: null, discountPercent: null },
+    ],
+  };
+  const startDate = "2026-09-15T07:00:00Z";
+  const endDate = "2026-09-17T16:00:00Z";
+  const quote = (product: StorefrontProductPricing, end = endDate) => {
+    const input = { product, startDate, endDate: end, timezone: "Europe/Paris" };
+    const result = getStorefrontProductPrice(input);
+    return { result, detail: getStorefrontBillingDetail(toCartItemForPricing(input), result) };
+  };
+
+  test("the wingfoil week costs 550 without an advertised 33 percent discount", () => {
+    const { result, detail } = quote(wingfoil);
+    assert.equal(result.subtotal, 550);
+    assert.equal(result.originalSubtotal, 825);
+    assert.equal(result.savings, 275);
+    assert.equal(getEffectiveDiscountPercent(result), 0);
+    assert.deepEqual(getDisplayableSavings([result], null), { originalSubtotal: 550, savings: 0 });
+    assert.equal(getStorefrontPricingSummary(wingfoil).maxReductionPercent, 0);
+    assert.deepEqual(detail, { mode: "package", periodMinutes: 10080, count: 1 });
+  });
+
+  test("both an inactive season and an active season keep their ordinary rates", () => {
+    for (const start of ["2026-07-01", "2026-09-01"]) {
+      const { result, detail } = quote({
+        ...wingfoil,
+        seasonalPricings: [
+          {
+            id: "summer",
+            name: "Summer",
+            startDate: start,
+            endDate: start === "2026-07-01" ? "2026-08-31" : "2026-09-30",
+            basePrice: 70,
+            tiers: [],
+            rates: [{ id: "week", period: 10080, price: 700, displayOrder: 0 }],
+          },
+        ],
+      });
+      assert.equal(result.subtotal, start === "2026-07-01" ? 550 : 700);
+      assert.equal(getEffectiveDiscountPercent(result), 0);
+      assert.deepEqual(detail, { mode: "package", periodMinutes: 10080, count: 1 });
+    }
+  });
+
+  test("progressive grids describe duration pricing and keep exact tier rates", () => {
+    const progressive = { ...wingfoil, enforceStrictTiers: false };
+    assert.deepEqual(quote(progressive).detail, { mode: "prorated" });
+    assert.equal(quote(progressive).result.discountPercent, null);
+    assert.deepEqual(quote(progressive, "2026-09-17T07:00:00Z").detail, {
+      mode: "rate",
+      periodMinutes: 2880,
+    });
+    assert.deepEqual(quote(progressive, "2026-09-15T08:00:00Z").detail, {
+      mode: "rate",
+      periodMinutes: 240,
+    });
+  });
+
+  test("repeated packages use the engine count and cart dates take precedence", () => {
+    const { detail } = quote(wingfoil, "2026-09-23T07:00:00Z");
+    assert.deepEqual(detail, { mode: "package", periodMinutes: 10080, count: 2 });
+    const input = { product: wingfoil, startDate, endDate };
+    const item = toCartItemForPricing(input);
+    const result = calculateCartItemPrice(item, startDate, "2026-09-16T07:00:00Z");
+    assert.deepEqual(getStorefrontBillingDetail(item, result, startDate, "2026-09-16T07:00:00Z"), {
+      mode: "package",
+      periodMinutes: 1440,
+      count: 1,
+    });
+  });
+
+  test("mixed seasons use their existing split instead of one misleading package label", () => {
+    const { result, detail } = quote({
+      ...wingfoil,
+      seasonalPricings: [
+        {
+          id: "autumn",
+          name: "Autumn",
+          startDate: "2026-09-16",
+          endDate: "2026-09-30",
+          basePrice: 70,
+          rates: [],
+          tiers: [],
+        },
+      ],
+    });
+    assert.equal(result.seasonalSegments?.length, 2);
+    assert.equal(result.discountPercent, null);
+    assert.equal(detail, null);
+  });
+
+  test("an explicit legacy discount still contributes to displayed savings", () => {
+    const { result, detail } = quote({
+      price: 100,
+      pricingMode: "day",
+      basePeriodMinutes: null,
+      pricingTiers: [{ id: "10off", minDuration: 2, discountPercent: 10 }],
+    });
+    assert.equal(getEffectiveDiscountPercent(result), 10);
+    assert.deepEqual(getDisplayableSavings([result, quote(wingfoil).result], null), {
+      originalSubtotal: 850,
+      savings: 30,
+    });
+    assert.equal(detail, null);
   });
 });
 
@@ -205,7 +328,7 @@ describe("getStorefrontProductPrice", () => {
       subtotal: 32,
       originalSubtotal: 60,
       savings: 28,
-      discountPercent: 46.67,
+      discountPercent: null,
     });
   });
 
@@ -229,7 +352,7 @@ describe("getStorefrontProductPrice", () => {
       subtotal: 50,
       originalSubtotal: 60,
       savings: 10,
-      discountPercent: 16.67,
+      discountPercent: null,
     });
   });
 

@@ -17,16 +17,13 @@ export function isDiscountDisplayable(
 }
 
 /**
- * Percentage actually applied to a priced line. Pricing paths that don't
- * carry a tier percentage (fixed price, rate grids) still expose savings, so
- * the ratio is derived from the amounts when the explicit value is missing.
+ * Only advertise an explicit discount. The engine also compares ordinary
+ * duration rates with repeated base periods; that difference is not a promotion.
  */
 export function getEffectiveDiscountPercent(
   priceResult: Pick<CartItemPriceResult, "savings" | "originalSubtotal" | "discountPercent">,
 ): number {
-  if (priceResult.discountPercent != null) return priceResult.discountPercent;
-  if (priceResult.savings <= 0 || priceResult.originalSubtotal <= 0) return 0;
-  return (priceResult.savings / priceResult.originalSubtotal) * 100;
+  return priceResult.discountPercent ?? 0;
 }
 
 export interface DisplayableSavings {
