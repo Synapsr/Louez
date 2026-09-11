@@ -29,7 +29,9 @@ const EmbedPage = async ({ params }: EmbedPageProps) => {
   const settings: Partial<StoreSettings> = store.settings ?? {};
 
   return (
-    <div className="p-2">
+    // Hosts often drop the iframe in a full-width container; the widget keeps
+    // its own width so the calendar never stretches across the page.
+    <div className="mx-auto w-full max-w-[35rem]">
       <Suspense fallback={<div className="h-36 animate-pulse rounded-2xl bg-muted" />}>
         <EmbedDatePicker
           rentalUrl={getStorefrontUrl(slug, "/catalog")}
