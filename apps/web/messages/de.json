@@ -6127,6 +6127,9 @@
         "requiredHelp": "Dieser Artikel ist bei diesem Produkt Pflicht und wird zusammen mit ihm in den Warenkorb gelegt.",
         "extras": "Extras",
         "depositHold": "Kaution",
+        "packageApplied": "Angewendete Pauschale: {period}",
+        "packagesApplied": "{count} × Pauschale für {period}",
+        "rateApplied": "Angewendeter Tarif: {period}",
         "proratedPrice": "Anteilig berechneter Preis",
         "depositNotCharged": "Kartenreservierung, keine Belastung"
       }

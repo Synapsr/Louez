@@ -6127,6 +6127,9 @@
         "requiredHelp": "Este artículo es obligatorio con este producto y se añade al carrito junto con él.",
         "extras": "Extras",
         "depositHold": "Fianza",
+        "packageApplied": "Paquete aplicado: {period}",
+        "packagesApplied": "{count} × paquete de {period}",
+        "rateApplied": "Tarifa aplicada: {period}",
         "proratedPrice": "Precio calculado proporcionalmente",
         "depositNotCharged": "Retención en la tarjeta, sin cargo"
       }

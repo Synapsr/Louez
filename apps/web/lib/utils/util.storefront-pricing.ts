@@ -1,5 +1,5 @@
 import type { PricingKind } from "@louez/types";
-import { computeReductionPercent, pricingModeToMinutes } from "@louez/utils";
+import { pricingModeToMinutes } from "@louez/utils";
 
 import type {
   StorefrontPricingTier,
@@ -36,24 +36,19 @@ export interface StorefrontPricingSummary {
 
 const BASE_RATE_ID = "__base__";
 
-const toRateBasedRow =
-  (basePrice: number, basePeriodMinutes: number) =>
-  (tier: StorefrontPricingTier): StorefrontRateRow | null => {
-    const periodMinutes = typeof tier.period === "number" && tier.period > 0 ? tier.period : null;
-    if (!periodMinutes) return null;
+const toRateBasedRow = (tier: StorefrontPricingTier): StorefrontRateRow | null => {
+  const periodMinutes = typeof tier.period === "number" && tier.period > 0 ? tier.period : null;
+  if (!periodMinutes) return null;
 
-    const price = parseStorefrontDecimal(tier.price) ?? 0;
+  const price = parseStorefrontDecimal(tier.price) ?? 0;
 
-    return {
-      id: tier.id,
-      periodMinutes,
-      price,
-      reductionPercent: Math.max(
-        0,
-        computeReductionPercent(basePrice, basePeriodMinutes, price, periodMinutes),
-      ),
-    };
+  return {
+    id: tier.id,
+    periodMinutes,
+    price,
+    reductionPercent: 0,
   };
+};
 
 const toDurationRow =
   (basePrice: number, basePeriodMinutes: number) =>
@@ -102,7 +97,7 @@ export const getStorefrontRateRows = (product: StorefrontPricingProduct): Storef
   const isRateBased =
     typeof product.basePeriodMinutes === "number" && product.basePeriodMinutes > 0;
   const toRow = isRateBased
-    ? toRateBasedRow(baseRate.price, baseRate.periodMinutes)
+    ? toRateBasedRow
     : toDurationRow(baseRate.price, baseRate.periodMinutes);
   const tierRows = (product.pricingTiers ?? []).map(toRow).filter(isRow);
   const seen = new Set<string>();

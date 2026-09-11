@@ -11,7 +11,9 @@ import type { AccessoryLink } from "@/lib/storefront/storefront.types";
 import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibility";
 import {
   getStorefrontProductPrice,
-  isStorefrontPriceProrated,
+  getStorefrontBillingDetail,
+  toCartItemForPricing,
+  type StorefrontBillingDetail,
   parseStorefrontDecimal,
 } from "@/lib/utils/util.storefront-product-pricing";
 
@@ -36,7 +38,7 @@ export interface BookingPrice {
   seasonalSegments?: PricingSegment[];
   /** True once the product can be priced: a forfait always, a rental once dates are set. */
   isPriced: boolean;
-  isProrated: boolean;
+  billingDetail: StorefrontBillingDetail | null;
   /** Product lines only, discount applied. */
   subtotal: number;
   /** Product lines before the discount; equals `subtotal` when none is shown. */
@@ -86,7 +88,7 @@ export const useBookingPrice = ({
     if (!isPriced) {
       return {
         isPriced,
-        isProrated: false,
+        billingDetail: null,
         subtotal: 0,
         originalSubtotal: 0,
         discountPercent: null,
@@ -121,11 +123,16 @@ export const useBookingPrice = ({
 
     return {
       isPriced,
-      isProrated: isStorefrontPriceProrated({
-        product,
-        startDate: period?.start,
-        endDate: period?.end,
-      }),
+      billingDetail: getStorefrontBillingDetail(
+        toCartItemForPricing({
+          timezone,
+          product,
+          startDate: period?.start,
+          endDate: period?.end,
+          quantity,
+        }),
+        result,
+      ),
       seasonalSegments: result.seasonalSegments,
       subtotal: result.subtotal,
       originalSubtotal: showsDiscount ? result.originalSubtotal : result.subtotal,

@@ -6127,6 +6127,9 @@
         "requiredHelp": "Dit artikel is verplicht bij dit product en wordt er samen mee aan de winkelwagen toegevoegd.",
         "extras": "Extra's",
         "depositHold": "Borg",
+        "packageApplied": "Toegepast pakket: {period}",
+        "packagesApplied": "{count} × pakket van {period}",
+        "rateApplied": "Toegepast tarief: {period}",
         "proratedPrice": "Prijs naar verhouding berekend",
         "depositNotCharged": "Reservering op de kaart, niet afgeschreven"
       }

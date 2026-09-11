@@ -28,8 +28,8 @@ describe("getStorefrontRateRows", () => {
 
     assert.deepEqual(rows, [
       { id: "__base__", periodMinutes: 1440, price: 25, reductionPercent: 0 },
-      { id: "three-days", periodMinutes: 4320, price: 60, reductionPercent: 20 },
-      { id: "week", periodMinutes: 10080, price: 110, reductionPercent: 37.14 },
+      { id: "three-days", periodMinutes: 4320, price: 60, reductionPercent: 0 },
+      { id: "week", periodMinutes: 10080, price: 110, reductionPercent: 0 },
     ]);
   });
 
@@ -99,7 +99,7 @@ describe("getStorefrontRateRows", () => {
     );
   });
 
-  test("turns rate-based tiers into rows with a per-minute reduction", () => {
+  test("shows ordinary duration rates without advertising a discount", () => {
     assert.deepEqual(
       getStorefrontRateRows({
         price: "20",
@@ -114,7 +114,7 @@ describe("getStorefrontRateRows", () => {
       [
         { id: "dearer", periodMinutes: 120, price: 15, reductionPercent: 0 },
         { id: "__base__", periodMinutes: 240, price: 20, reductionPercent: 0 },
-        { id: "day", periodMinutes: 1440, price: 60, reductionPercent: 50 },
+        { id: "day", periodMinutes: 1440, price: 60, reductionPercent: 0 },
       ],
     );
   });
