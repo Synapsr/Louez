@@ -6836,10 +6836,138 @@
       "paymentInProgress": "Payment processing",
       "paymentRequired": "Payment required",
       "confirmedAwaitingPayment": "Awaiting payment",
+      "damageFees": "Damage fees",
+      "remainingDue": "Remaining due",
+      "depositCard": {
+        "title": "Deposit",
+        "amount": "Deposit amount",
+        "capturedAmount": "Amount taken",
+        "returnedAmount": "Amount returned",
+        "reason": "Reason given by the store",
+        "heldUntil": "Held until {date}.",
+        "restReleased": "The rest ({amount}) has been released and is not charged.",
+        "authorize": "Authorise the deposit online",
+        "authorizeHelp": "Secured by Stripe. The amount is held on your card, not charged.",
+        "authorizeError": "The deposit authorisation could not be opened. Try again or contact the store.",
+        "states": {
+          "to_provide": {
+            "badge": "To provide",
+            "title": "Due at pickup",
+            "description": "The store will ask for a {amount} deposit when you collect the equipment. It is returned to you when the equipment comes back in good condition."
+          },
+          "to_provide_online": {
+            "badge": "To authorise",
+            "title": "Card hold to come",
+            "description": "A {amount} hold will be requested on your card before pickup. The amount is only held, never charged without a reason."
+          },
+          "card_saved": {
+            "badge": "Card saved",
+            "title": "Card saved",
+            "description": "Your card is saved for the {amount} deposit. The store will hold this amount shortly before pickup, without charging it."
+          },
+          "held": {
+            "badge": "Held",
+            "title": "Hold active",
+            "description": "{amount} is held on your card, not charged. The hold is released when the equipment comes back in good condition."
+          },
+          "hold_expired": {
+            "badge": "Expired",
+            "title": "Hold expired",
+            "description": "The {amount} hold has expired. The store may ask you for a new authorisation."
+          },
+          "released": {
+            "badge": "Released",
+            "title": "Deposit released",
+            "description": "The {amount} hold has been cancelled. Nothing was charged; the hold disappears from your statement within a few days."
+          },
+          "captured": {
+            "badge": "Charged",
+            "title": "Deposit charged",
+            "description": "The store charged {captured} of your {amount} deposit."
+          },
+          "failed": {
+            "badge": "Declined",
+            "title": "Authorisation declined",
+            "description": "The {amount} hold could not be placed on your card. Another card may be needed."
+          },
+          "collected": {
+            "badge": "Received",
+            "title": "Deposit received",
+            "description": "The store received your {amount} deposit ({method}) on {date}. It is returned to you when the equipment comes back."
+          },
+          "returned": {
+            "badge": "Returned",
+            "title": "Deposit returned",
+            "description": "Your {amount} deposit was returned to you on {date}."
+          },
+          "partially_returned": {
+            "badge": "Partly returned",
+            "title": "Deposit partly returned",
+            "description": "{returned} of your {amount} deposit was returned to you on {date}."
+          }
+        }
+      },
+      "updates": {
+        "title": "History",
+        "newPeriod": "New period: {period}",
+        "created": "Request sent",
+        "confirmed": "Reservation confirmed by the store",
+        "rejected": "Request declined by the store",
+        "cancelled": "Reservation cancelled",
+        "cancelled_by_you": "Request cancelled by you",
+        "picked_up": "Equipment collected",
+        "returned": "Equipment returned",
+        "quote_accepted": "Quote accepted",
+        "quote_declined": "Quote declined",
+        "payment_received": "Online payment received",
+        "payment_received_amount": "Online payment received ({amount})",
+        "payment_failed": "Online payment declined",
+        "refunded": "Refund issued",
+        "refunded_amount": "Refund of {amount}",
+        "payment_added_rental": "Rental payment recorded ({amount})",
+        "payment_added_deposit": "Deposit received ({amount})",
+        "payment_added_deposit_return": "Deposit returned ({amount})",
+        "payment_added_damage": "Damage fees recorded ({amount})",
+        "payment_added_adjustment": "Amount adjusted ({amount})",
+        "deposit_authorized": "Card hold placed",
+        "deposit_authorized_amount": "{amount} card hold placed",
+        "deposit_captured": "Deposit charged",
+        "deposit_captured_amount": "Deposit charged ({amount})",
+        "deposit_released": "Deposit released",
+        "deposit_failed": "Card hold declined",
+        "modified": "Reservation changed by the store",
+        "extension_confirmed": "Rental extended",
+        "return_date_requested": "Return date change requested",
+        "inspection_departure_completed": "Pickup condition report completed",
+        "inspection_return_completed": "Return condition report completed",
+        "inspection_damage_detected": "Damage noted in the condition report",
+        "inspection_signed": "Condition report signed"
+      },
+      "inspections": {
+        "title": "Condition reports",
+        "departure": "Pickup condition report",
+        "return": "Return condition report",
+        "completed": "Completed on {date}",
+        "signed": "Signed on {date}",
+        "photoCount": "{count, plural, one {# photo} other {# photos}}",
+        "damage": "Damage noted",
+        "noDamage": "No damage",
+        "estimatedCost": "Estimated damage:",
+        "download": "Download the PDF"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "Pending",
+          "authorized": "Held",
+          "completed": "Charged",
+          "failed": "Declined",
+          "cancelled": "Released",
+          "refunded": "Refunded"
+        },
         "title": "Payment history",
         "noPayments": "No payments recorded",
         "types": {
+          "refund": "Refund",
           "rental": "Rental",
           "deposit": "Deposit",
           "deposit_return": "Deposit refund",

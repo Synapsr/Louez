@@ -6836,10 +6836,138 @@
       "paymentInProgress": "Pagamento em processamento",
       "paymentRequired": "Pagamento necessario",
       "confirmedAwaitingPayment": "Aguardando pagamento",
+      "damageFees": "Custos de danos",
+      "remainingDue": "Falta pagar",
+      "depositCard": {
+        "title": "Caução",
+        "amount": "Valor da caução",
+        "capturedAmount": "Valor retido",
+        "returnedAmount": "Valor devolvido",
+        "reason": "Motivo indicado pelo locador",
+        "heldUntil": "Valor bloqueado até {date}.",
+        "restReleased": "O restante ({amount}) foi libertado e não é cobrado.",
+        "authorize": "Autorizar a caução online",
+        "authorizeHelp": "Protegido pela Stripe. O valor é bloqueado no seu cartão, não cobrado.",
+        "authorizeError": "Não foi possível abrir a autorização da caução. Tente novamente ou contacte o locador.",
+        "states": {
+          "to_provide": {
+            "badge": "A entregar",
+            "title": "A entregar no levantamento",
+            "description": "O locador pedirá uma caução de {amount} no levantamento do material. É devolvida na entrega se o material voltar em bom estado."
+          },
+          "to_provide_online": {
+            "badge": "A autorizar",
+            "title": "Bloqueio no cartão a seguir",
+            "description": "Antes do levantamento será pedido um bloqueio de {amount} no seu cartão. O valor é apenas bloqueado, nunca cobrado sem motivo."
+          },
+          "card_saved": {
+            "badge": "Cartão guardado",
+            "title": "Cartão guardado",
+            "description": "O seu cartão está guardado para a caução de {amount}. O locador bloqueará este valor pouco antes do levantamento, sem o cobrar."
+          },
+          "held": {
+            "badge": "Bloqueada",
+            "title": "Bloqueio ativo",
+            "description": "{amount} estão bloqueados no seu cartão, sem cobrança. O bloqueio é libertado na devolução do material em bom estado."
+          },
+          "hold_expired": {
+            "badge": "Expirado",
+            "title": "Bloqueio expirado",
+            "description": "O bloqueio de {amount} expirou. O locador pode pedir-lhe uma nova autorização."
+          },
+          "released": {
+            "badge": "Libertada",
+            "title": "Caução libertada",
+            "description": "O bloqueio de {amount} foi anulado. Nada foi cobrado; o bloqueio desaparece do seu extrato em poucos dias."
+          },
+          "captured": {
+            "badge": "Retida",
+            "title": "Caução retida",
+            "description": "O locador reteve {captured} da sua caução de {amount}."
+          },
+          "failed": {
+            "badge": "Recusada",
+            "title": "Autorização recusada",
+            "description": "Não foi possível criar o bloqueio de {amount} no seu cartão. Pode ser necessário outro cartão."
+          },
+          "collected": {
+            "badge": "Recebida",
+            "title": "Caução recebida",
+            "description": "O locador recebeu a sua caução de {amount} ({method}) em {date}. É devolvida na entrega do material."
+          },
+          "returned": {
+            "badge": "Devolvida",
+            "title": "Caução devolvida",
+            "description": "A sua caução de {amount} foi-lhe devolvida em {date}."
+          },
+          "partially_returned": {
+            "badge": "Devolvida em parte",
+            "title": "Caução devolvida em parte",
+            "description": "{returned} da sua caução de {amount} foram-lhe devolvidos em {date}."
+          }
+        }
+      },
+      "updates": {
+        "title": "Histórico",
+        "newPeriod": "Novo período: {period}",
+        "created": "Pedido enviado",
+        "confirmed": "Reserva confirmada pelo locador",
+        "rejected": "Pedido recusado pelo locador",
+        "cancelled": "Reserva cancelada",
+        "cancelled_by_you": "Pedido cancelado por si",
+        "picked_up": "Material levantado",
+        "returned": "Material devolvido",
+        "quote_accepted": "Orçamento aceite",
+        "quote_declined": "Orçamento recusado",
+        "payment_received": "Pagamento online recebido",
+        "payment_received_amount": "Pagamento online recebido ({amount})",
+        "payment_failed": "Pagamento online recusado",
+        "refunded": "Reembolso efetuado",
+        "refunded_amount": "Reembolso de {amount}",
+        "payment_added_rental": "Pagamento do aluguer registado ({amount})",
+        "payment_added_deposit": "Caução recebida ({amount})",
+        "payment_added_deposit_return": "Caução devolvida ({amount})",
+        "payment_added_damage": "Custos de danos registados ({amount})",
+        "payment_added_adjustment": "Valor ajustado ({amount})",
+        "deposit_authorized": "Bloqueio no cartão criado",
+        "deposit_authorized_amount": "Bloqueio no cartão de {amount} criado",
+        "deposit_captured": "Caução retida",
+        "deposit_captured_amount": "Caução retida ({amount})",
+        "deposit_released": "Caução libertada",
+        "deposit_failed": "Bloqueio no cartão recusado",
+        "modified": "Reserva alterada pelo locador",
+        "extension_confirmed": "Aluguer prolongado",
+        "return_date_requested": "Alteração da data de devolução pedida",
+        "inspection_departure_completed": "Auto de entrega realizado",
+        "inspection_return_completed": "Auto de devolução realizado",
+        "inspection_damage_detected": "Danos constatados no auto",
+        "inspection_signed": "Auto assinado"
+      },
+      "inspections": {
+        "title": "Autos de estado",
+        "departure": "Auto de entrega",
+        "return": "Auto de devolução",
+        "completed": "Realizado em {date}",
+        "signed": "Assinado em {date}",
+        "photoCount": "{count, plural, one {# foto} other {# fotos}}",
+        "damage": "Danos constatados",
+        "noDamage": "Sem danos",
+        "estimatedCost": "Danos estimados:",
+        "download": "Transferir o PDF"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "Pendente",
+          "authorized": "Bloqueada",
+          "completed": "Retida",
+          "failed": "Recusada",
+          "cancelled": "Libertada",
+          "refunded": "Reembolsada"
+        },
         "title": "Historico de pagamentos",
         "noPayments": "Nenhum pagamento registrado",
         "types": {
+          "refund": "Reembolso",
           "rental": "Aluguel",
           "deposit": "Deposito",
           "deposit_return": "Devolucao de deposito",

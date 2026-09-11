@@ -13,6 +13,10 @@ export interface ReservationPaymentView {
   amount: number;
   /** Formatted in the store timezone. */
   dateLabel: string;
+  /** A reason the store wrote for the customer (deposit capture, damage). */
+  note?: string | null;
+  /** Money given back: shown negative, labelled as a refund. */
+  isRefund: boolean;
 }
 
 interface ReservationPaymentsCardProps {
@@ -28,7 +32,11 @@ const STATUS_VARIANT: Record<string, "success" | "pending" | "failed" | "tertiar
   cancelled: "tertiary",
 };
 
-/** Payment history: type, method and date on the left, amount and state on the right. */
+/**
+ * Payment history: type, method and date on the left, amount and state on
+ * the right. A card hold is never "paid": its states read blocked, released
+ * or taken.
+ */
 export const ReservationPaymentsCard = ({ payments }: ReservationPaymentsCardProps) => {
   const t = useTranslations("storefront.account.paymentHistory");
 
@@ -38,7 +46,11 @@ export const ReservationPaymentsCard = ({ payments }: ReservationPaymentsCardPro
     <AccountCard title={t("title")}>
       <ul className="flex flex-col divide-y">
         {payments.map((payment) => {
-          const isRefund = payment.type === "deposit_return";
+          const isHold = payment.type === "deposit_hold";
+          const typeLabel =
+            payment.isRefund && payment.type !== "deposit_return"
+              ? t("types.refund")
+              : t(`types.${payment.type}`);
 
           return (
             <li
@@ -46,17 +58,22 @@ export const ReservationPaymentsCard = ({ payments }: ReservationPaymentsCardPro
               className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium">{t(`types.${payment.type}`)}</p>
+                <p className="text-sm font-medium">{typeLabel}</p>
                 <p className="text-xs text-muted-foreground">
                   {t(`methods.${payment.method}`)}
                   <span aria-hidden> · </span>
                   {payment.dateLabel}
                 </p>
+                {payment.note ? (
+                  <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">
+                    {payment.note}
+                  </p>
+                ) : null}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
-                <Price amount={isRefund ? -payment.amount : payment.amount} size="sm" />
+                <Price amount={payment.isRefund ? -payment.amount : payment.amount} size="sm" />
                 <Badge variant={STATUS_VARIANT[payment.status] ?? "tertiary"} size="sm">
-                  {t(`status.${payment.status}`)}
+                  {t(`${isHold ? "holdStatus" : "status"}.${payment.status}`)}
                 </Badge>
               </div>
             </li>

@@ -6836,10 +6836,138 @@
       "paymentInProgress": "Paiement en cours de traitement",
       "paymentRequired": "Paiement requis",
       "confirmedAwaitingPayment": "En attente de paiement",
+      "damageFees": "Frais de dommages",
+      "remainingDue": "Reste à payer",
+      "depositCard": {
+        "title": "Caution",
+        "amount": "Montant de la caution",
+        "capturedAmount": "Montant prélevé",
+        "returnedAmount": "Montant restitué",
+        "reason": "Motif indiqué par le loueur",
+        "heldUntil": "Montant bloqué jusqu’au {date}.",
+        "restReleased": "Le reste ({amount}) a été libéré et n’est pas prélevé.",
+        "authorize": "Autoriser la caution en ligne",
+        "authorizeHelp": "Sécurisé par Stripe. Le montant est bloqué sur votre carte, pas prélevé.",
+        "authorizeError": "Impossible d’ouvrir l’autorisation de caution. Réessayez ou contactez le loueur.",
+        "states": {
+          "to_provide": {
+            "badge": "À fournir",
+            "title": "À fournir au retrait",
+            "description": "Le loueur vous demandera une caution de {amount} au retrait du matériel. Elle vous est restituée au retour si le matériel est rendu en bon état."
+          },
+          "to_provide_online": {
+            "badge": "À autoriser",
+            "title": "Empreinte bancaire à venir",
+            "description": "Une empreinte bancaire de {amount} sera demandée sur votre carte avant le retrait. Le montant est seulement bloqué, jamais prélevé sans motif."
+          },
+          "card_saved": {
+            "badge": "Carte enregistrée",
+            "title": "Carte enregistrée",
+            "description": "Votre carte est enregistrée pour la caution de {amount}. Le loueur bloquera ce montant peu avant le retrait, sans le prélever."
+          },
+          "held": {
+            "badge": "Bloquée",
+            "title": "Empreinte active",
+            "description": "Un montant de {amount} est bloqué sur votre carte, sans prélèvement. L’empreinte est libérée au retour du matériel en bon état."
+          },
+          "hold_expired": {
+            "badge": "Expirée",
+            "title": "Empreinte expirée",
+            "description": "L’empreinte de {amount} a expiré. Le loueur peut vous demander une nouvelle autorisation."
+          },
+          "released": {
+            "badge": "Libérée",
+            "title": "Caution libérée",
+            "description": "L’empreinte de {amount} a été annulée. Rien n’a été prélevé ; le blocage disparaît de votre relevé sous quelques jours."
+          },
+          "captured": {
+            "badge": "Prélevée",
+            "title": "Caution prélevée",
+            "description": "Le loueur a prélevé {captured} sur votre caution de {amount}."
+          },
+          "failed": {
+            "badge": "Refusée",
+            "title": "Autorisation refusée",
+            "description": "L’empreinte de {amount} n’a pas pu être créée sur votre carte. Une autre carte peut être nécessaire."
+          },
+          "collected": {
+            "badge": "Reçue",
+            "title": "Caution reçue",
+            "description": "Le loueur a reçu votre caution de {amount} ({method}) le {date}. Elle vous est restituée au retour du matériel."
+          },
+          "returned": {
+            "badge": "Restituée",
+            "title": "Caution restituée",
+            "description": "Votre caution de {amount} vous a été restituée le {date}."
+          },
+          "partially_returned": {
+            "badge": "Restituée en partie",
+            "title": "Caution restituée en partie",
+            "description": "{returned} vous ont été restitués sur votre caution de {amount}, le {date}."
+          }
+        }
+      },
+      "updates": {
+        "title": "Historique",
+        "newPeriod": "Nouvelle période : {period}",
+        "created": "Demande envoyée",
+        "confirmed": "Réservation confirmée par le loueur",
+        "rejected": "Demande refusée par le loueur",
+        "cancelled": "Réservation annulée",
+        "cancelled_by_you": "Demande annulée à votre initiative",
+        "picked_up": "Matériel récupéré",
+        "returned": "Matériel rendu",
+        "quote_accepted": "Devis accepté",
+        "quote_declined": "Devis refusé",
+        "payment_received": "Paiement en ligne reçu",
+        "payment_received_amount": "Paiement en ligne reçu ({amount})",
+        "payment_failed": "Paiement en ligne refusé",
+        "refunded": "Remboursement effectué",
+        "refunded_amount": "Remboursement de {amount}",
+        "payment_added_rental": "Paiement de la location enregistré ({amount})",
+        "payment_added_deposit": "Caution reçue ({amount})",
+        "payment_added_deposit_return": "Caution restituée ({amount})",
+        "payment_added_damage": "Frais de dommages enregistrés ({amount})",
+        "payment_added_adjustment": "Ajustement du montant ({amount})",
+        "deposit_authorized": "Empreinte bancaire créée",
+        "deposit_authorized_amount": "Empreinte bancaire de {amount} créée",
+        "deposit_captured": "Caution prélevée",
+        "deposit_captured_amount": "Caution prélevée ({amount})",
+        "deposit_released": "Caution libérée",
+        "deposit_failed": "Empreinte bancaire refusée",
+        "modified": "Réservation modifiée par le loueur",
+        "extension_confirmed": "Location prolongée",
+        "return_date_requested": "Changement de retour demandé",
+        "inspection_departure_completed": "État des lieux de départ réalisé",
+        "inspection_return_completed": "État des lieux de retour réalisé",
+        "inspection_damage_detected": "Dommages constatés à l’état des lieux",
+        "inspection_signed": "État des lieux signé"
+      },
+      "inspections": {
+        "title": "États des lieux",
+        "departure": "État des lieux de départ",
+        "return": "État des lieux de retour",
+        "completed": "Réalisé le {date}",
+        "signed": "Signé le {date}",
+        "photoCount": "{count, plural, one {# photo} other {# photos}}",
+        "damage": "Dommages constatés",
+        "noDamage": "Aucun dommage",
+        "estimatedCost": "Estimation des dommages :",
+        "download": "Télécharger le PDF"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "En attente",
+          "authorized": "Bloquée",
+          "completed": "Prélevée",
+          "failed": "Refusée",
+          "cancelled": "Libérée",
+          "refunded": "Remboursée"
+        },
         "title": "Historique des paiements",
         "noPayments": "Aucun paiement enregistré",
         "types": {
+          "refund": "Remboursement",
           "rental": "Location",
           "deposit": "Caution",
           "deposit_return": "Remboursement caution",

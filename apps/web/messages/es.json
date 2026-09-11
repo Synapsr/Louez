@@ -6847,10 +6847,138 @@
       "paymentInProgress": "Pago en proceso",
       "paymentRequired": "Pago requerido",
       "confirmedAwaitingPayment": "Esperando pago",
+      "damageFees": "Gastos por daños",
+      "remainingDue": "Pendiente de pago",
+      "depositCard": {
+        "title": "Fianza",
+        "amount": "Importe de la fianza",
+        "capturedAmount": "Importe retenido",
+        "returnedAmount": "Importe devuelto",
+        "reason": "Motivo indicado por el arrendador",
+        "heldUntil": "Importe bloqueado hasta el {date}.",
+        "restReleased": "El resto ({amount}) se ha liberado y no se cobra.",
+        "authorize": "Autorizar la fianza en línea",
+        "authorizeHelp": "Protegido por Stripe. El importe se bloquea en su tarjeta, no se cobra.",
+        "authorizeError": "No se pudo abrir la autorización de la fianza. Inténtelo de nuevo o contacte con el arrendador.",
+        "states": {
+          "to_provide": {
+            "badge": "Por entregar",
+            "title": "A entregar en la recogida",
+            "description": "El arrendador le pedirá una fianza de {amount} al recoger el material. Se le devuelve a la entrega si el material vuelve en buen estado."
+          },
+          "to_provide_online": {
+            "badge": "Por autorizar",
+            "title": "Bloqueo en tarjeta pendiente",
+            "description": "Antes de la recogida se solicitará un bloqueo de {amount} en su tarjeta. El importe solo se bloquea, nunca se cobra sin motivo."
+          },
+          "card_saved": {
+            "badge": "Tarjeta guardada",
+            "title": "Tarjeta guardada",
+            "description": "Su tarjeta está guardada para la fianza de {amount}. El arrendador bloqueará este importe poco antes de la recogida, sin cobrarlo."
+          },
+          "held": {
+            "badge": "Bloqueada",
+            "title": "Bloqueo activo",
+            "description": "Hay {amount} bloqueados en su tarjeta, sin cobro. El bloqueo se libera al devolver el material en buen estado."
+          },
+          "hold_expired": {
+            "badge": "Caducado",
+            "title": "Bloqueo caducado",
+            "description": "El bloqueo de {amount} ha caducado. El arrendador puede pedirle una nueva autorización."
+          },
+          "released": {
+            "badge": "Liberada",
+            "title": "Fianza liberada",
+            "description": "El bloqueo de {amount} se ha anulado. No se ha cobrado nada; el bloqueo desaparece de su extracto en unos días."
+          },
+          "captured": {
+            "badge": "Retenida",
+            "title": "Fianza retenida",
+            "description": "El arrendador ha retenido {captured} de su fianza de {amount}."
+          },
+          "failed": {
+            "badge": "Rechazada",
+            "title": "Autorización rechazada",
+            "description": "No se pudo crear el bloqueo de {amount} en su tarjeta. Puede que necesite otra tarjeta."
+          },
+          "collected": {
+            "badge": "Recibida",
+            "title": "Fianza recibida",
+            "description": "El arrendador recibió su fianza de {amount} ({method}) el {date}. Se le devuelve al entregar el material."
+          },
+          "returned": {
+            "badge": "Devuelta",
+            "title": "Fianza devuelta",
+            "description": "Su fianza de {amount} se le devolvió el {date}."
+          },
+          "partially_returned": {
+            "badge": "Devuelta en parte",
+            "title": "Fianza devuelta en parte",
+            "description": "Se le devolvieron {returned} de su fianza de {amount} el {date}."
+          }
+        }
+      },
+      "updates": {
+        "title": "Historial",
+        "newPeriod": "Nuevo periodo: {period}",
+        "created": "Solicitud enviada",
+        "confirmed": "Reserva confirmada por el arrendador",
+        "rejected": "Solicitud rechazada por el arrendador",
+        "cancelled": "Reserva cancelada",
+        "cancelled_by_you": "Solicitud cancelada por usted",
+        "picked_up": "Material recogido",
+        "returned": "Material devuelto",
+        "quote_accepted": "Presupuesto aceptado",
+        "quote_declined": "Presupuesto rechazado",
+        "payment_received": "Pago en línea recibido",
+        "payment_received_amount": "Pago en línea recibido ({amount})",
+        "payment_failed": "Pago en línea rechazado",
+        "refunded": "Reembolso realizado",
+        "refunded_amount": "Reembolso de {amount}",
+        "payment_added_rental": "Pago del alquiler registrado ({amount})",
+        "payment_added_deposit": "Fianza recibida ({amount})",
+        "payment_added_deposit_return": "Fianza devuelta ({amount})",
+        "payment_added_damage": "Gastos por daños registrados ({amount})",
+        "payment_added_adjustment": "Importe ajustado ({amount})",
+        "deposit_authorized": "Bloqueo en tarjeta creado",
+        "deposit_authorized_amount": "Bloqueo en tarjeta de {amount} creado",
+        "deposit_captured": "Fianza retenida",
+        "deposit_captured_amount": "Fianza retenida ({amount})",
+        "deposit_released": "Fianza liberada",
+        "deposit_failed": "Bloqueo en tarjeta rechazado",
+        "modified": "Reserva modificada por el arrendador",
+        "extension_confirmed": "Alquiler prolongado",
+        "return_date_requested": "Cambio de fecha de devolución solicitado",
+        "inspection_departure_completed": "Inspección de salida realizada",
+        "inspection_return_completed": "Inspección de devolución realizada",
+        "inspection_damage_detected": "Daños constatados en la inspección",
+        "inspection_signed": "Inspección firmada"
+      },
+      "inspections": {
+        "title": "Inspecciones",
+        "departure": "Inspección de salida",
+        "return": "Inspección de devolución",
+        "completed": "Realizada el {date}",
+        "signed": "Firmada el {date}",
+        "photoCount": "{count, plural, one {# foto} other {# fotos}}",
+        "damage": "Daños constatados",
+        "noDamage": "Sin daños",
+        "estimatedCost": "Daños estimados:",
+        "download": "Descargar el PDF"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "Pendiente",
+          "authorized": "Bloqueada",
+          "completed": "Retenida",
+          "failed": "Rechazada",
+          "cancelled": "Liberada",
+          "refunded": "Reembolsada"
+        },
         "title": "Historial de pagos",
         "noPayments": "Sin pagos registrados",
         "types": {
+          "refund": "Reembolso",
           "rental": "Alquiler",
           "deposit": "Deposito",
           "deposit_return": "Devolucion de deposito",

@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import {
+  getCustomerPaymentRows,
+  getDamageFees,
+  getRentalPaid,
   getReservationPaymentStatus,
-  getTotalPaid,
   hasRentalPaymentInProgress,
+  isRefundRow,
   isRentalPaid,
 } from "./util.payment-status";
 
@@ -41,17 +44,59 @@ describe("getReservationPaymentStatus", () => {
   });
 });
 
-describe("getTotalPaid", () => {
-  test("sums completed payments and subtracts refunds", () => {
+describe("getRentalPaid", () => {
+  test("counts completed rental money only, refunds of it subtracted", () => {
     assert.equal(
-      getTotalPaid([
-        { type: "rental", status: "completed", amount: "100.50" },
-        { type: "deposit", status: "completed", amount: 200 },
-        { type: "deposit_return", status: "completed", amount: "200" },
-        { type: "rental", status: "pending", amount: "999" },
-        { type: "rental", status: "completed", amount: "abc" },
+      getRentalPaid([
+        { id: "a", type: "rental", status: "completed", amount: "100.50" },
+        { id: "b", type: "deposit", status: "completed", amount: 200 },
+        { id: "c", type: "deposit_return", status: "completed", amount: "200" },
+        { id: "d", type: "rental", status: "pending", amount: "999" },
+        { id: "e", type: "rental", status: "completed", amount: "abc" },
+        { id: "f", type: "rental", status: "completed", amount: "20", refundOfPaymentId: "a" },
+        { id: "g", type: "damage", status: "completed", amount: "30" },
+        {
+          id: "h",
+          type: "deposit_return",
+          status: "completed",
+          amount: "5",
+          refundOfPaymentId: "x",
+        },
       ]),
-      100.5,
+      80.5,
     );
+  });
+});
+
+describe("getDamageFees", () => {
+  test("sums damage fees and subtracts their refunds", () => {
+    assert.equal(
+      getDamageFees([
+        { id: "a", type: "damage", status: "completed", amount: "30" },
+        { id: "b", type: "rental", status: "completed", amount: "10", refundOfPaymentId: "a" },
+        { id: "c", type: "damage", status: "pending", amount: "99" },
+      ]),
+      20,
+    );
+  });
+});
+
+describe("getCustomerPaymentRows", () => {
+  test("drops a captured hold once the capture row exists", () => {
+    const hold = { id: "h", type: "deposit_hold", status: "completed", amount: "100" };
+    const capture = { id: "c", type: "deposit_capture", status: "completed", amount: "40" };
+    assert.deepEqual(getCustomerPaymentRows([hold, capture]), [capture]);
+    assert.deepEqual(getCustomerPaymentRows([hold]), [hold]);
+    const live = { id: "h", type: "deposit_hold", status: "authorized", amount: "100" };
+    assert.deepEqual(getCustomerPaymentRows([live]), [live]);
+  });
+
+  test("a refund is any row pointing at another, or a deposit return", () => {
+    assert.equal(
+      isRefundRow({ type: "rental", status: "completed", amount: 1, refundOfPaymentId: "a" }),
+      true,
+    );
+    assert.equal(isRefundRow({ type: "deposit_return", status: "completed", amount: 1 }), true);
+    assert.equal(isRefundRow({ type: "rental", status: "completed", amount: 1 }), false);
   });
 });

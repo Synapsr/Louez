@@ -6836,10 +6836,138 @@
       "paymentInProgress": "Płatność w trakcie realizacji",
       "paymentRequired": "Wymagana płatność",
       "confirmedAwaitingPayment": "Oczekiwanie na płatność",
+      "damageFees": "Koszty szkód",
+      "remainingDue": "Do zapłaty",
+      "depositCard": {
+        "title": "Kaucja",
+        "amount": "Kwota kaucji",
+        "capturedAmount": "Kwota potrącona",
+        "returnedAmount": "Kwota zwrócona",
+        "reason": "Powód podany przez wypożyczalnię",
+        "heldUntil": "Kwota zablokowana do {date}.",
+        "restReleased": "Reszta ({amount}) została zwolniona i nie jest pobierana.",
+        "authorize": "Autoryzuj kaucję online",
+        "authorizeHelp": "Zabezpieczone przez Stripe. Kwota jest blokowana na karcie, nie pobierana.",
+        "authorizeError": "Nie udało się otworzyć autoryzacji kaucji. Spróbuj ponownie lub skontaktuj się z wypożyczalnią.",
+        "states": {
+          "to_provide": {
+            "badge": "Do wpłaty",
+            "title": "Do wpłaty przy odbiorze",
+            "description": "Wypożyczalnia poprosi o kaucję w wysokości {amount} przy odbiorze sprzętu. Zostanie zwrócona przy oddaniu sprzętu w dobrym stanie."
+          },
+          "to_provide_online": {
+            "badge": "Do autoryzacji",
+            "title": "Blokada na karcie wkrótce",
+            "description": "Przed odbiorem zostanie poproszona blokada {amount} na Twojej karcie. Kwota jest tylko blokowana, nigdy nie jest pobierana bez powodu."
+          },
+          "card_saved": {
+            "badge": "Karta zapisana",
+            "title": "Karta zapisana",
+            "description": "Twoja karta jest zapisana na kaucję {amount}. Wypożyczalnia zablokuje tę kwotę krótko przed odbiorem, bez pobierania jej."
+          },
+          "held": {
+            "badge": "Zablokowana",
+            "title": "Blokada aktywna",
+            "description": "Na Twojej karcie zablokowano {amount}, bez pobrania. Blokada jest zwalniana po oddaniu sprzętu w dobrym stanie."
+          },
+          "hold_expired": {
+            "badge": "Wygasła",
+            "title": "Blokada wygasła",
+            "description": "Blokada {amount} wygasła. Wypożyczalnia może poprosić o nową autoryzację."
+          },
+          "released": {
+            "badge": "Zwolniona",
+            "title": "Kaucja zwolniona",
+            "description": "Blokada {amount} została anulowana. Nic nie pobrano; blokada zniknie z wyciągu w ciągu kilku dni."
+          },
+          "captured": {
+            "badge": "Potrącona",
+            "title": "Kaucja potrącona",
+            "description": "Wypożyczalnia potrąciła {captured} z Twojej kaucji {amount}."
+          },
+          "failed": {
+            "badge": "Odrzucona",
+            "title": "Autoryzacja odrzucona",
+            "description": "Nie udało się założyć blokady {amount} na Twojej karcie. Może być potrzebna inna karta."
+          },
+          "collected": {
+            "badge": "Otrzymana",
+            "title": "Kaucja otrzymana",
+            "description": "Wypożyczalnia otrzymała Twoją kaucję {amount} ({method}) dnia {date}. Zostanie zwrócona przy oddaniu sprzętu."
+          },
+          "returned": {
+            "badge": "Zwrócona",
+            "title": "Kaucja zwrócona",
+            "description": "Twoja kaucja {amount} została zwrócona dnia {date}."
+          },
+          "partially_returned": {
+            "badge": "Zwrócona częściowo",
+            "title": "Kaucja zwrócona częściowo",
+            "description": "Z Twojej kaucji {amount} zwrócono {returned} dnia {date}."
+          }
+        }
+      },
+      "updates": {
+        "title": "Historia",
+        "newPeriod": "Nowy okres: {period}",
+        "created": "Wysłano prośbę",
+        "confirmed": "Rezerwacja potwierdzona przez wypożyczalnię",
+        "rejected": "Prośba odrzucona przez wypożyczalnię",
+        "cancelled": "Rezerwacja anulowana",
+        "cancelled_by_you": "Prośba anulowana przez Ciebie",
+        "picked_up": "Sprzęt odebrany",
+        "returned": "Sprzęt oddany",
+        "quote_accepted": "Oferta zaakceptowana",
+        "quote_declined": "Oferta odrzucona",
+        "payment_received": "Otrzymano płatność online",
+        "payment_received_amount": "Otrzymano płatność online ({amount})",
+        "payment_failed": "Płatność online odrzucona",
+        "refunded": "Dokonano zwrotu",
+        "refunded_amount": "Zwrot {amount}",
+        "payment_added_rental": "Zarejestrowano płatność za wynajem ({amount})",
+        "payment_added_deposit": "Otrzymano kaucję ({amount})",
+        "payment_added_deposit_return": "Zwrócono kaucję ({amount})",
+        "payment_added_damage": "Zarejestrowano koszty szkód ({amount})",
+        "payment_added_adjustment": "Skorygowano kwotę ({amount})",
+        "deposit_authorized": "Założono blokadę na karcie",
+        "deposit_authorized_amount": "Założono blokadę {amount} na karcie",
+        "deposit_captured": "Kaucja potrącona",
+        "deposit_captured_amount": "Kaucja potrącona ({amount})",
+        "deposit_released": "Kaucja zwolniona",
+        "deposit_failed": "Blokada na karcie odrzucona",
+        "modified": "Rezerwacja zmieniona przez wypożyczalnię",
+        "extension_confirmed": "Wynajem przedłużony",
+        "return_date_requested": "Poproszono o zmianę daty zwrotu",
+        "inspection_departure_completed": "Sporządzono protokół wydania",
+        "inspection_return_completed": "Sporządzono protokół zwrotu",
+        "inspection_damage_detected": "W protokole stwierdzono szkody",
+        "inspection_signed": "Protokół podpisany"
+      },
+      "inspections": {
+        "title": "Protokoły stanu",
+        "departure": "Protokół wydania",
+        "return": "Protokół zwrotu",
+        "completed": "Sporządzono {date}",
+        "signed": "Podpisano {date}",
+        "photoCount": "{count, plural, one {# zdjęcie} few {# zdjęcia} many {# zdjęć} other {# zdjęcia}}",
+        "damage": "Stwierdzono szkody",
+        "noDamage": "Brak szkód",
+        "estimatedCost": "Szacowane szkody:",
+        "download": "Pobierz PDF"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "Oczekuje",
+          "authorized": "Zablokowana",
+          "completed": "Potrącona",
+          "failed": "Odrzucona",
+          "cancelled": "Zwolniona",
+          "refunded": "Zwrócona"
+        },
         "title": "Historia płatności",
         "noPayments": "Brak zarejestrowanych płatności",
         "types": {
+          "refund": "Zwrot",
           "rental": "Wynajem",
           "deposit": "Kaucja",
           "deposit_return": "Zwrot kaucji",
