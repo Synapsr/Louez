@@ -7,6 +7,7 @@ import type { BusinessHours } from "@louez/types";
 
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import { RentalPeriodPicker } from "@/components/storefront/date-picker/rental-period-picker";
+import { postEmbedHeight } from "@/lib/embed/util.embed-messaging";
 import type { PricingMode } from "@/lib/utils/duration";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 
@@ -39,13 +40,16 @@ export const EmbedDatePicker = ({
   const [value, setValue] = useState<RentalPeriodValue | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // The iframe is the viewport: the host script resizes it from this message.
+  // The host script sizes the iframe from this message. Measure the widget's
+  // own box, page padding included: inside an iframe `documentElement` is at
+  // least as tall as the frame, so it can only ever report growth.
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return;
     const observer = new ResizeObserver(() => {
-      const height = document.documentElement.scrollHeight;
-      window.parent.postMessage({ type: "louez-embed-resize", height }, "*");
+      const height = Math.ceil(element.getBoundingClientRect().height);
+      // A detached or still-collapsed widget would tell the host to hide it.
+      if (height > 0) postEmbedHeight(height);
     });
     observer.observe(element);
     return () => observer.disconnect();
@@ -72,7 +76,9 @@ export const EmbedDatePicker = ({
   };
 
   return (
-    <div ref={containerRef} className="w-full">
+    // The padding lives here, not on the page, so the observed box is the
+    // whole document and the reported height needs no correction.
+    <div ref={containerRef} className="w-full p-2">
       <div className="flex flex-col gap-3 rounded-2xl bg-card p-3 text-card-foreground shadow-card">
         <h2 className="text-center text-sm font-semibold tracking-tight">{tEmbed("title")}</h2>
         <RentalPeriodPicker
