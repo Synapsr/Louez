@@ -184,7 +184,7 @@ export const PeriodEditor = ({
   }
 
   return (
-    <div className={cn("flex flex-col", variant === "embed" ? "gap-3" : "gap-3 p-3", className)}>
+    <div className={cn("flex flex-col gap-3 p-3", className)}>
       {panel}
       {availabilityStatus}
       <div className="flex items-center justify-between gap-3 border-t pt-3">
@@ -193,11 +193,7 @@ export const PeriodEditor = ({
           timezone={rules.timezone}
           className="min-w-0 truncate"
         />
-        <Button
-          size={variant === "embed" ? "sm" : "default"}
-          onClick={handleApply}
-          disabled={!canSubmit}
-        >
+        <Button onClick={handleApply} disabled={!canSubmit}>
           {t("validate")}
         </Button>
       </div>

@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 
 import type { StoreSettings } from "@louez/types";
 
-import { EmbedDatePicker } from "@/components/storefront/embed-date-picker";
+import { EmbedPeriodWidget } from "@/components/storefront/embed/embed-period-widget";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getMinRentalMinutes } from "@/lib/utils/rental-duration";
+import { getStoreReassurance } from "@/lib/utils/util.store-reassurance";
 
 // Reuse the embed settings during a short browsing session.
 export const unstable_dynamicStaleTime = 300;
@@ -32,15 +33,19 @@ const EmbedPage = async ({ params }: EmbedPageProps) => {
     // Hosts often drop the iframe in a full-width container; the widget keeps
     // its own width so the calendar never stretches across the page.
     <div className="mx-auto w-full max-w-[35rem]">
-      <Suspense fallback={<div className="h-36 animate-pulse rounded-2xl bg-muted" />}>
-        <EmbedDatePicker
+      <Suspense fallback={<div className="h-52 animate-pulse rounded-2xl bg-muted" />}>
+        <EmbedPeriodWidget
           rentalUrl={getStorefrontUrl(slug, "/catalog")}
           pricingMode="day"
           businessHours={settings.businessHours}
           advanceNotice={settings.advanceNoticeMinutes ?? 0}
           minRentalMinutes={getMinRentalMinutes(settings)}
           timezone={settings.timezone}
-          deliveryEnabled={settings.delivery?.enabled ?? false}
+          reassurance={getStoreReassurance({
+            settings: store.settings,
+            stripeAccountId: store.stripeAccountId,
+            stripeChargesEnabled: store.stripeChargesEnabled,
+          })}
         />
       </Suspense>
     </div>

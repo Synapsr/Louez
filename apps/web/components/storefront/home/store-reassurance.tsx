@@ -1,17 +1,10 @@
-import type { ComponentType } from "react";
-
 import { getTranslations } from "next-intl/server";
 
-import {
-  DeliveryTruckIcon,
-  InstantConfirmationIcon,
-  LocalPickupIcon,
-  RequestConfirmationIcon,
-  SecurePaymentIcon,
-} from "@louez/ui/icons";
 import { cn } from "@louez/utils";
 
 import type { StoreReassuranceKey } from "@/lib/utils/util.store-reassurance";
+
+import { STORE_REASSURANCE_ICONS } from "./store-reassurance.constants";
 
 type StoreReassuranceTone = "onPhoto" | "onSurface";
 
@@ -21,14 +14,6 @@ interface StoreReassuranceProps {
   tone: StoreReassuranceTone;
   className?: string;
 }
-
-const ICONS: Record<StoreReassuranceKey, ComponentType<{ className?: string }>> = {
-  instantConfirmation: InstantConfirmationIcon,
-  requestConfirmation: RequestConfirmationIcon,
-  securePayment: SecurePaymentIcon,
-  localPickup: LocalPickupIcon,
-  localPickupOrDelivery: DeliveryTruckIcon,
-};
 
 const TONE_CLASS_NAMES: Record<StoreReassuranceTone, string> = {
   onPhoto: "text-white/80",
@@ -54,7 +39,7 @@ export const StoreReassurance = async ({ items, tone, className }: StoreReassura
       data-slot="store-reassurance"
     >
       {items.map((key) => {
-        const Icon = ICONS[key];
+        const Icon = STORE_REASSURANCE_ICONS[key];
         return (
           <li key={key} className="inline-flex items-center gap-1.5">
             <Icon aria-hidden className="size-4 shrink-0" />

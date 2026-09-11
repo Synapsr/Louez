@@ -7232,6 +7232,22 @@
     "embed": {
       "title": "Online reserveren",
       "cta": "Beschikbaarheid bekijken",
+      "dayPlaceholder": "Kiezen",
+      "chooseDates": "Kies uw data",
+      "checkDates": "Controleer uw data",
+      "previousMonth": "Vorige maand",
+      "nextMonth": "Volgende maand",
+      "steps": {
+        "startDate": "Ophaaldag",
+        "startTime": "Ophaaltijd",
+        "endDate": "Retourdag",
+        "endTime": "Retourtijd"
+      },
+      "slotGroups": {
+        "morning": "Ochtend",
+        "afternoon": "Middag",
+        "evening": "Avond"
+      },
       "errors": {
         "selectStartDate": "Selecteer een ophaaldatum",
         "selectEndDate": "Selecteer een retourdatum",

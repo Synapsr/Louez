@@ -7232,6 +7232,22 @@
     "embed": {
       "title": "Reserve online",
       "cta": "Ver disponibilidade",
+      "dayPlaceholder": "Escolher",
+      "chooseDates": "Escolha as suas datas",
+      "checkDates": "Verifique as suas datas",
+      "previousMonth": "Mês anterior",
+      "nextMonth": "Mês seguinte",
+      "steps": {
+        "startDate": "Dia de levantamento",
+        "startTime": "Hora de levantamento",
+        "endDate": "Dia de devolução",
+        "endTime": "Hora de devolução"
+      },
+      "slotGroups": {
+        "morning": "Manhã",
+        "afternoon": "Tarde",
+        "evening": "Noite"
+      },
       "errors": {
         "selectStartDate": "Selecione uma data de levantamento",
         "selectEndDate": "Selecione uma data de devolução",

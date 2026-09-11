@@ -7232,6 +7232,22 @@
     "embed": {
       "title": "Reserva en línea",
       "cta": "Ver disponibilidad",
+      "dayPlaceholder": "Elegir",
+      "chooseDates": "Elige tus fechas",
+      "checkDates": "Revisa tus fechas",
+      "previousMonth": "Mes anterior",
+      "nextMonth": "Mes siguiente",
+      "steps": {
+        "startDate": "Día de recogida",
+        "startTime": "Hora de recogida",
+        "endDate": "Día de devolución",
+        "endTime": "Hora de devolución"
+      },
+      "slotGroups": {
+        "morning": "Mañana",
+        "afternoon": "Tarde",
+        "evening": "Noche"
+      },
       "errors": {
         "selectStartDate": "Selecciona una fecha de recogida",
         "selectEndDate": "Selecciona una fecha de devolución",
