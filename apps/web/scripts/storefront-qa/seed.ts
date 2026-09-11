@@ -411,6 +411,25 @@ async function main() {
                 totalAmount: "50",
                 depositAmount: depositStatus === "none" ? "0" : "100",
                 depositStatus,
+                stripeCustomerId: ["card_saved", "authorized", "captured", "released"].includes(
+                  depositStatus,
+                )
+                  ? "cus_qa_suivi"
+                  : null,
+                stripePaymentMethodId: [
+                  "card_saved",
+                  "authorized",
+                  "captured",
+                  "released",
+                ].includes(depositStatus)
+                  ? "pm_qa_suivi"
+                  : null,
+                depositPaymentIntentId: ["authorized", "captured", "released"].includes(
+                  depositStatus,
+                )
+                  ? `pi_qa_${depositStatus}`
+                  : null,
+                depositAuthorizationExpiresAt: depositStatus === "authorized" ? day(5) : null,
                 signedAt: ["confirmed", "ongoing", "completed"].includes(status) ? now : null,
                 pickedUpAt: ["ongoing", "completed"].includes(status) ? resStart : null,
                 returnedAt: status === "completed" ? resEnd : null,
@@ -440,6 +459,170 @@ async function main() {
                   method: "cash",
                   status: "completed",
                 });
+              // The card-hold lifecycle as the dashboard and the Stripe webhook
+              // record it, so each deposit page reads differently.
+              if (["authorized", "captured", "released"].includes(depositStatus)) {
+                await tx.insert(schema.payments).values({
+                  id: id(`payment:${key}:hold`),
+                  reservationId: resId,
+                  amount: "100",
+                  type: "deposit_hold",
+                  method: "stripe",
+                  status:
+                    depositStatus === "authorized"
+                      ? "authorized"
+                      : depositStatus === "captured"
+                        ? "completed"
+                        : "cancelled",
+                  stripePaymentIntentId: `pi_qa_${depositStatus}`,
+                  authorizationExpiresAt: day(5),
+                  capturedAmount: depositStatus === "captured" ? "40.00" : null,
+                  notes: depositStatus === "captured" ? "Rayure profonde sur le cadre" : null,
+                  paidAt: depositStatus === "captured" ? day(-1) : null,
+                  createdAt: day(-2),
+                });
+                await tx.insert(schema.reservationActivity).values({
+                  id: id(`activity:${key}:hold`),
+                  reservationId: resId,
+                  activityType: "deposit_authorized",
+                  metadata: { amount: 100, expiresAt: day(5).toISOString() },
+                  createdAt: day(-2),
+                });
+              }
+              if (depositStatus === "captured") {
+                await tx.insert(schema.payments).values({
+                  id: id(`payment:${key}:capture`),
+                  reservationId: resId,
+                  amount: "40.00",
+                  type: "deposit_capture",
+                  method: "stripe",
+                  status: "completed",
+                  stripePaymentIntentId: "pi_qa_captured",
+                  notes: "Rayure profonde sur le cadre",
+                  paidAt: day(-1),
+                  createdAt: day(-1),
+                });
+                await tx.insert(schema.reservationActivity).values({
+                  id: id(`activity:${key}:capture`),
+                  reservationId: resId,
+                  activityType: "deposit_captured",
+                  metadata: { amount: 40, reason: "Rayure profonde sur le cadre" },
+                  createdAt: day(-1),
+                });
+              }
+              if (depositStatus === "released")
+                await tx.insert(schema.reservationActivity).values({
+                  id: id(`activity:${key}:release`),
+                  reservationId: resId,
+                  activityType: "deposit_released",
+                  metadata: { amount: 100 },
+                  createdAt: day(-1),
+                });
+              if (depositStatus === "failed")
+                await tx.insert(schema.reservationActivity).values({
+                  id: id(`activity:${key}:failed`),
+                  reservationId: resId,
+                  activityType: "deposit_failed",
+                  metadata: { amount: 100, error: "Your card was declined." },
+                  createdAt: day(-1),
+                });
+              // Condition reports with the PDF the customer can download:
+              // pickup signed on both live rentals, damage found at return.
+              if (["ongoing", "completed"].includes(status)) {
+                const departureId = id(`inspection:${key}:departure`);
+                await tx.insert(schema.inspections).values({
+                  id: departureId,
+                  storeId,
+                  reservationId: resId,
+                  type: "departure",
+                  status: "signed",
+                  notes: "Vélo révisé avant le départ.",
+                  performedAt: resStart,
+                  customerSignature: null,
+                  signedAt: resStart,
+                  hasDamage: false,
+                });
+                await tx.insert(schema.inspectionItems).values({
+                  id: id(`inspection-item:${key}:departure`),
+                  inspectionId: departureId,
+                  reservationItemId: id(`item:${key}`),
+                  productSnapshot: { name: "Vélo ville" },
+                  overallCondition: "excellent",
+                });
+                await tx.insert(schema.reservationActivity).values([
+                  {
+                    id: id(`activity:${key}:departure`),
+                    reservationId: resId,
+                    activityType: "inspection_departure_completed",
+                    createdAt: resStart,
+                  },
+                  {
+                    id: id(`activity:${key}:departure-signed`),
+                    reservationId: resId,
+                    activityType: "inspection_signed",
+                    createdAt: resStart,
+                  },
+                ]);
+              }
+              if (status === "completed") {
+                const returnId = id(`inspection:${key}:return`);
+                await tx.insert(schema.inspections).values({
+                  id: returnId,
+                  storeId,
+                  reservationId: resId,
+                  type: "return",
+                  status: "completed",
+                  performedAt: resEnd,
+                  hasDamage: true,
+                  damageDescription: "Garde-boue arrière tordu.",
+                  estimatedDamageCost: "25.00",
+                });
+                await tx.insert(schema.inspectionItems).values({
+                  id: id(`inspection-item:${key}:return`),
+                  inspectionId: returnId,
+                  reservationItemId: id(`item:${key}`),
+                  productSnapshot: { name: "Vélo ville" },
+                  overallCondition: "damaged",
+                  notes: "Garde-boue arrière tordu.",
+                });
+                await tx.insert(schema.payments).values({
+                  id: id(`payment:${key}:damage`),
+                  reservationId: resId,
+                  amount: "25.00",
+                  type: "damage",
+                  method: "cash",
+                  status: "completed",
+                  notes: "Garde-boue arrière tordu.",
+                  paidAt: resEnd,
+                  createdAt: resEnd,
+                });
+                await tx.insert(schema.reservationActivity).values([
+                  {
+                    id: id(`activity:${key}:return`),
+                    reservationId: resId,
+                    activityType: "inspection_return_completed",
+                    createdAt: resEnd,
+                  },
+                  {
+                    id: id(`activity:${key}:damage`),
+                    reservationId: resId,
+                    activityType: "inspection_damage_detected",
+                    metadata: {
+                      inspectionId: returnId,
+                      description: "Garde-boue arrière tordu.",
+                      estimatedCost: 25,
+                    },
+                    createdAt: resEnd,
+                  },
+                  {
+                    id: id(`activity:${key}:damage-fee`),
+                    reservationId: resId,
+                    activityType: "payment_added",
+                    metadata: { type: "damage", amount: 25, method: "cash" },
+                    createdAt: resEnd,
+                  },
+                ]);
+              }
               await tx.insert(schema.verificationCodes).values({
                 id: id(`access:${key}`),
                 storeId,

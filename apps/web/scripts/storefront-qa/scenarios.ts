@@ -486,11 +486,19 @@ for (const status of [
     "suivi",
     `Caution ${status}`,
     `deposit:${status}`,
-    "Ouvrir la réservation et examiner montant, texte et actions de caution.",
-    "Affichage adapté au statut ; montant distinct de la location. Les saisies Stripe Elements exigent une sandbox réelle.",
-    "apps/web/lib/reservations/util.payment-status.ts",
+    "Ouvrir la réservation et examiner la carte Caution, l’historique des paiements et l’historique.",
+    "Carte Caution absente pour none ; texte, badge et montants propres à chaque statut (prélevé 40 € et motif pour captured, libérée pour released, refusée pour failed, carte enregistrée pour card_saved, à fournir au retrait sans Stripe). Le bouton d’autorisation en ligne exige une boutique Stripe et une sandbox réelle.",
+    "apps/web/lib/reservations/util.customer-deposit.ts",
   );
 }
+add(
+  "suivi",
+  "États des lieux, dommages et historique",
+  "reservation:completed",
+  "Ouvrir la réservation terminée ; lire l’historique, la carte États des lieux et télécharger les deux PDF.",
+  "Historique daté (départ signé, retour avec dommages, frais de dommages 25 €) ; état des lieux de retour marqué « Dommages constatés » ; les deux PDF s’ouvrent depuis le compte client, pas depuis le lien d’une autre réservation.",
+  "apps/web/app/(storefront)/[slug]/account/reservations/[reservationId]/inspections/[inspectionId]/route.ts",
+);
 add(
   "suivi",
   "Connexion par code et profil",
