@@ -1,35 +1,27 @@
-import { useMemo } from 'react'
+import { useMemo } from "react";
 
-import type { PricingKind, PricingMode } from '@louez/types'
-import {
-  calculateDurationMinutes,
-  isRateBasedProduct,
-  minutesToPriceDuration,
-} from '@louez/utils'
+import type { PricingKind, PricingMode } from "@louez/types";
+import { calculateDurationMinutes, isRateBasedProduct, minutesToPriceDuration } from "@louez/utils";
 
-import { calculateCartItemPrice } from '@/lib/utils/cart-pricing'
-import { calculateDuration } from '@/lib/utils/duration'
+import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
+import { calculateDuration } from "@/lib/utils/duration";
 
-import type {
-  CalculatedEditableItem,
-  EditableItem,
-  ReservationCalculations,
-} from '../types'
+import type { CalculatedEditableItem, EditableItem, ReservationCalculations } from "../types";
 
 function roundCurrency(value: number): number {
-  return Math.round(value * 100) / 100
+  return Math.round(value * 100) / 100;
 }
 
 export function calculateUnitPriceFromTotal(params: {
-  totalPrice: number
-  quantity: number
-  duration: number
-  pricingKind: PricingKind
+  totalPrice: number;
+  quantity: number;
+  duration: number;
+  pricingKind: PricingKind;
 }): number {
-  const effectiveDuration = params.pricingKind === 'fixed' ? 1 : params.duration
+  const effectiveDuration = params.pricingKind === "fixed" ? 1 : params.duration;
   return effectiveDuration > 0 && params.quantity > 0
     ? params.totalPrice / (effectiveDuration * params.quantity)
-    : params.totalPrice
+    : params.totalPrice;
 }
 
 /**
@@ -43,30 +35,30 @@ function buildTierLabel(
   discountPercent: number | null,
   duration: number,
 ): string | null {
-  if (!discountPercent || discountPercent <= 0) return null
+  if (!discountPercent || discountPercent <= 0) return null;
 
   // Rate-based: just show the percentage
   if (isRateBasedProduct({ basePeriodMinutes: item.basePeriodMinutes })) {
-    return `-${Math.round(discountPercent)}%`
+    return `-${Math.round(discountPercent)}%`;
   }
 
   // Tier-based: find which tier was applied and show threshold
-  const tiers = item.product?.pricingTiers
-  if (!tiers?.length) return `-${Math.round(discountPercent)}%`
+  const tiers = item.product?.pricingTiers;
+  if (!tiers?.length) return `-${Math.round(discountPercent)}%`;
 
-  const mode = item.pricingMode
-  const unit = mode === 'hour' ? 'h' : mode === 'week' ? 'sem' : 'j'
+  const mode = item.pricingMode;
+  const unit = mode === "hour" ? "h" : mode === "week" ? "sem" : "j";
 
   // Find the highest tier that applies to this duration
   const applicableTier = [...tiers]
     .sort((a, b) => b.minDuration - a.minDuration)
-    .find((t) => duration >= t.minDuration)
+    .find((t) => duration >= t.minDuration);
 
   if (applicableTier && applicableTier.discountPercent > 0) {
-    return `-${Math.round(applicableTier.discountPercent)}% (${applicableTier.minDuration}+ ${unit})`
+    return `-${Math.round(applicableTier.discountPercent)}% (${applicableTier.minDuration}+ ${unit})`;
   }
 
-  return `-${Math.round(discountPercent)}%`
+  return `-${Math.round(discountPercent)}%`;
 }
 
 /**
@@ -80,29 +72,29 @@ export function calculateEditableItemPrice(
   startDate: Date,
   endDate: Date,
 ): {
-  totalPrice: number
-  effectiveUnitPrice: number
-  displayPricingMode: PricingMode
-  tierLabel: string | null
-  discount: number
-  originalSubtotal: number
-  savings: number
-  discountPercent: number | null
-  duration: number
+  totalPrice: number;
+  effectiveUnitPrice: number;
+  displayPricingMode: PricingMode;
+  tierLabel: string | null;
+  discount: number;
+  originalSubtotal: number;
+  savings: number;
+  discountPercent: number | null;
+  duration: number;
 } {
   const resolvePricingModeFromMinutes = (
     periodMinutes: number | null | undefined,
     fallback: PricingMode,
   ): PricingMode => {
     if (!periodMinutes || periodMinutes <= 0) {
-      return fallback
+      return fallback;
     }
 
-    const period = minutesToPriceDuration(periodMinutes)
-    if (period.unit === 'week') return 'week'
-    if (period.unit === 'day') return 'day'
-    return 'hour'
-  }
+    const period = minutesToPriceDuration(periodMinutes);
+    if (period.unit === "week") return "week";
+    if (period.unit === "day") return "day";
+    return "hour";
+  };
 
   const resolveRateDisplayPricingMode = (
     targetMinutes: number,
@@ -112,28 +104,26 @@ export function calculateEditableItemPrice(
       item.product?.basePeriodMinutes ?? null,
       ...(item.product?.pricingTiers ?? []).map((tier) => tier.period ?? null),
     ]
-      .filter((period): period is number => typeof period === 'number' && period > 0)
-      .sort((a, b) => a - b)
+      .filter((period): period is number => typeof period === "number" && period > 0)
+      .sort((a, b) => a - b);
 
     if (periods.length === 0) {
-      return fallback
+      return fallback;
     }
 
     const applicablePeriod =
-      [...periods].reverse().find((period) => period <= targetMinutes) ?? periods[0]
+      [...periods].reverse().find((period) => period <= targetMinutes) ?? periods[0];
 
-    return resolvePricingModeFromMinutes(applicablePeriod, fallback)
-  }
+    return resolvePricingModeFromMinutes(applicablePeriod, fallback);
+  };
 
-  const mode = item.pricingMode
+  const mode = item.pricingMode;
   const duration =
-    item.product?.pricingKind === 'fixed'
-      ? 1
-      : calculateDuration(startDate, endDate, mode)
+    item.product?.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, mode);
 
   // Manual price or custom item (no product): simple multiplication
   if (item.isManualPrice || !item.product) {
-    const totalPrice = roundCurrency(item.unitPrice * duration * item.quantity)
+    const totalPrice = roundCurrency(item.unitPrice * duration * item.quantity);
     return {
       totalPrice,
       effectiveUnitPrice: item.unitPrice,
@@ -144,13 +134,13 @@ export function calculateEditableItemPrice(
       savings: 0,
       discountPercent: null,
       duration,
-    }
+    };
   }
 
-  const product = item.product
-  const startIso = startDate.toISOString()
-  const endIso = endDate.toISOString()
-  const durationMinutes = calculateDurationMinutes(startDate, endDate)
+  const product = item.product;
+  const startIso = startDate.toISOString();
+  const endIso = endDate.toISOString();
+  const durationMinutes = calculateDurationMinutes(startDate, endDate);
 
   // Delegate to the shared pricing utility — same logic as the storefront
   const result = calculateCartItemPrice(
@@ -176,25 +166,23 @@ export function calculateEditableItemPrice(
     },
     null,
     null,
-  )
+  );
 
-  const tierLabel = buildTierLabel(item, result.discountPercent, duration)
+  const tierLabel = buildTierLabel(item, result.discountPercent, duration);
 
   const displayPricingMode = isRateBasedProduct({
     basePeriodMinutes: product.basePeriodMinutes,
   })
     ? resolveRateDisplayPricingMode(durationMinutes, mode)
-    : mode
+    : mode;
   const displayDuration =
-    product.pricingKind === 'fixed'
-      ? 1
-      : calculateDuration(startDate, endDate, displayPricingMode)
+    product.pricingKind === "fixed" ? 1 : calculateDuration(startDate, endDate, displayPricingMode);
 
   // Derive an effective unit price for display (total / duration / quantity)
   const effectiveUnitPrice =
     displayDuration > 0 && item.quantity > 0
       ? result.subtotal / displayDuration / item.quantity
-      : parseFloat(product.price)
+      : parseFloat(product.price);
 
   return {
     totalPrice: result.subtotal,
@@ -206,15 +194,15 @@ export function calculateEditableItemPrice(
     savings: result.savings,
     discountPercent: result.discountPercent,
     duration,
-  }
+  };
 }
 
 interface UseEditReservationPricingParams {
-  startDate: Date | undefined
-  endDate: Date | undefined
-  items: EditableItem[]
-  originalSubtotal: number
-  fixedChargesTotal?: number
+  startDate: Date | undefined;
+  endDate: Date | undefined;
+  items: EditableItem[];
+  originalSubtotal: number;
+  fixedChargesTotal?: number;
 }
 
 export function useEditReservationPricing({
@@ -225,16 +213,14 @@ export function useEditReservationPricing({
   fixedChargesTotal = 0,
 }: UseEditReservationPricingParams) {
   const getDurationForMode = (mode: PricingMode) => {
-    if (!startDate || !endDate) return 0
-    return calculateDuration(startDate, endDate, mode)
-  }
+    if (!startDate || !endDate) return 0;
+    return calculateDuration(startDate, endDate, mode);
+  };
 
   const getDurationUnit = (mode: PricingMode) =>
-    mode === 'hour' ? 'h' : mode === 'week' ? 'sem' : 'j'
+    mode === "hour" ? "h" : mode === "week" ? "sem" : "j";
 
-  const newDuration = startDate && endDate
-    ? calculateDuration(startDate, endDate, 'day')
-    : 0
+  const newDuration = startDate && endDate ? calculateDuration(startDate, endDate, "day") : 0;
 
   const calculations = useMemo<ReservationCalculations>(() => {
     if (!startDate || !endDate) {
@@ -255,16 +241,16 @@ export function useEditReservationPricing({
         deposit: 0,
         difference: -originalSubtotal,
         totalSavings: 0,
-      }
+      };
     }
 
-    const calculatedItems: CalculatedEditableItem[] = []
-    let subtotal = 0
-    let deposit = 0
-    let totalSavings = 0
+    const calculatedItems: CalculatedEditableItem[] = [];
+    let subtotal = 0;
+    let deposit = 0;
+    let totalSavings = 0;
 
     for (const item of items) {
-      const priceResult = calculateEditableItemPrice(item, startDate, endDate)
+      const priceResult = calculateEditableItemPrice(item, startDate, endDate);
 
       calculatedItems.push({
         ...item,
@@ -277,17 +263,15 @@ export function useEditReservationPricing({
         originalSubtotal: priceResult.originalSubtotal,
         savings: priceResult.savings,
         discountPercent: priceResult.discountPercent,
-      })
+      });
 
-      subtotal = roundCurrency(subtotal + priceResult.totalPrice)
-      deposit = roundCurrency(deposit + item.depositPerUnit * item.quantity)
-      totalSavings = roundCurrency(totalSavings + priceResult.savings)
+      subtotal = roundCurrency(subtotal + priceResult.totalPrice);
+      deposit = roundCurrency(deposit + item.depositPerUnit * item.quantity);
+      totalSavings = roundCurrency(totalSavings + priceResult.savings);
     }
 
-    const normalizedFixedCharges = Number.isFinite(fixedChargesTotal)
-      ? fixedChargesTotal
-      : 0
-    const subtotalWithFixedCharges = roundCurrency(subtotal + normalizedFixedCharges)
+    const normalizedFixedCharges = Number.isFinite(fixedChargesTotal) ? fixedChargesTotal : 0;
+    const subtotalWithFixedCharges = roundCurrency(subtotal + normalizedFixedCharges);
 
     return {
       items: calculatedItems,
@@ -295,13 +279,13 @@ export function useEditReservationPricing({
       deposit,
       difference: roundCurrency(subtotalWithFixedCharges - originalSubtotal),
       totalSavings,
-    }
-  }, [items, startDate, endDate, originalSubtotal, fixedChargesTotal])
+    };
+  }, [items, startDate, endDate, originalSubtotal, fixedChargesTotal]);
 
   return {
     getDurationForMode,
     getDurationUnit,
     newDuration,
     calculations,
-  }
+  };
 }
