@@ -1,5 +1,7 @@
 "use client";
 
+import type { SeasonalCalendarPricing } from "@/lib/utils/util.storefront-seasonal-pricing";
+
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, startOfMonth } from "date-fns";
@@ -12,7 +14,7 @@ import { cn } from "@louez/utils";
 import { type RentalPeriodRules } from "@/lib/utils/util.rental-period";
 import { storefrontQueries } from "@/lib/queries/storefront.queries";
 
-import type { RentalPeriodValue } from "./core/types";
+import type { RentalPeriodField, RentalPeriodValue } from "./core/types";
 import { useRentalDateCore } from "./core/use-rental-date-core";
 import { PeriodPanel, type PeriodPanelVariant } from "./period-panel";
 import { PeriodSummary } from "./period-summary";
@@ -21,6 +23,8 @@ import { buildCalendarAvailabilityCandidates } from "./util.calendar-availabilit
 interface PeriodEditorProps {
   /** The committed period the draft starts from. */
   value: RentalPeriodValue | null;
+  seasonalPricing?: SeasonalCalendarPricing;
+  initialField?: RentalPeriodField;
   rules: RentalPeriodRules;
   variant: PeriodPanelVariant;
   /** Months side by side; the panel's default per variant when absent. */
@@ -39,6 +43,8 @@ interface PeriodEditorProps {
  */
 export const PeriodEditor = ({
   value,
+  seasonalPricing,
+  initialField,
   rules,
   variant,
   months,
@@ -51,6 +57,7 @@ export const PeriodEditor = ({
   const core = useRentalDateCore({
     initialStart: value?.start,
     initialEnd: value?.end,
+    initialField,
     pricingMode: rules.pricingMode,
     minRentalMinutes: rules.minRentalMinutes ?? 60,
     maxRentalMinutes: rules.maxRentalMinutes,
@@ -60,7 +67,9 @@ export const PeriodEditor = ({
     timezone: rules.timezone,
   });
 
-  const [month, setMonth] = useState(() => startOfMonth(core.startDate ?? core.minDate));
+  const [month, setMonth] = useState(() =>
+    startOfMonth((initialField === "end" ? core.endDate : core.startDate) ?? core.minDate),
+  );
   const candidates = useMemo(
     () =>
       productId
@@ -140,6 +149,7 @@ export const PeriodEditor = ({
     ) : null;
   const panel = (
     <PeriodPanel
+      seasonalPricing={seasonalPricing}
       core={core}
       isCheckingAvailability={checking}
       variant={variant}

@@ -6127,6 +6127,7 @@
         "requiredHelp": "This item is required with this product and is added to the cart with it.",
         "extras": "Extras",
         "depositHold": "Deposit",
+        "proratedPrice": "Prorated price",
         "depositNotCharged": "Card hold, not charged"
       }
     },
@@ -7156,6 +7157,16 @@
       "catalog": "Browse the catalog",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
+    },
+    "seasonalPricing": {
+      "title": "Seasonal rates",
+      "description": "Each rate applies to the dates within its season.",
+      "baseSeason": "Standard rate",
+      "outsideSeasons": "Outside the seasons shown",
+      "durationRates": "View duration rates",
+      "breakdownTitle": "Price by season",
+      "from": "From",
+      "averageRate": "On average across your dates"
     }
   },
   "onboarding": {

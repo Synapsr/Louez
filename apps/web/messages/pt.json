@@ -6127,6 +6127,7 @@
         "requiredHelp": "Este artigo é obrigatório com este produto e é adicionado ao carrinho juntamente com ele.",
         "extras": "Extras",
         "depositHold": "Caução",
+        "proratedPrice": "Preço calculado proporcionalmente",
         "depositNotCharged": "Pré-autorização no cartão, sem débito"
       }
     },
@@ -7156,6 +7157,16 @@
       "catalog": "Browse the catalog",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
+    },
+    "seasonalPricing": {
+      "title": "Tarifas sazonais",
+      "description": "Cada tarifa aplica-se às datas da respetiva época.",
+      "baseSeason": "Tarifa habitual",
+      "outsideSeasons": "Fora das épocas indicadas",
+      "durationRates": "Ver tarifas por duração",
+      "breakdownTitle": "Preço por época",
+      "from": "A partir de",
+      "averageRate": "Em média nas suas datas"
     }
   },
   "onboarding": {

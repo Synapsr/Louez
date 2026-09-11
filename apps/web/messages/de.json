@@ -6127,6 +6127,7 @@
         "requiredHelp": "Dieser Artikel ist bei diesem Produkt Pflicht und wird zusammen mit ihm in den Warenkorb gelegt.",
         "extras": "Extras",
         "depositHold": "Kaution",
+        "proratedPrice": "Anteilig berechneter Preis",
         "depositNotCharged": "Kartenreservierung, keine Belastung"
       }
     },
@@ -7156,6 +7157,16 @@
       "catalog": "Browse the catalog",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
+    },
+    "seasonalPricing": {
+      "title": "Saisonpreise",
+      "description": "Jeder Tarif gilt für die Daten der jeweiligen Saison.",
+      "baseSeason": "Standardtarif",
+      "outsideSeasons": "Außerhalb der angegebenen Saisons",
+      "durationRates": "Tarife nach Mietdauer anzeigen",
+      "breakdownTitle": "Preis nach Saison",
+      "from": "Ab",
+      "averageRate": "Im Schnitt über Ihren Zeitraum"
     }
   },
   "onboarding": {

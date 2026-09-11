@@ -8,6 +8,7 @@ import { Button } from "@louez/ui";
 import { formatCurrency } from "@louez/utils";
 
 import { PageTracker } from "@/components/storefront/page-tracker";
+import { SeasonalRatesDisplay } from "@/components/storefront/product/seasonal-rates-display";
 import { PricingTiersDisplay } from "@/components/storefront/pricing-tiers-display";
 import { EmptyState } from "@/components/storefront/ui/empty-state";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
@@ -173,7 +174,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
               product={product}
               booking={booking}
               accessories={accessories}
-              summary={summary}
               information={<ProductRentalInformation store={store} />}
             />
           ) : (
@@ -195,7 +195,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           <div className="flex flex-col gap-6 sm:gap-8 lg:col-start-1 lg:row-start-2">
             <ProductDescription html={product.description} />
-            {product.pricingTiers.length > 0 ? (
+            {product.seasonalPricings.length > 0 ? (
+              <SeasonalRatesDisplay product={product} />
+            ) : product.pricingTiers.length > 0 ? (
               <PricingTiersDisplay
                 basePrice={parseFloat(product.price)}
                 pricingKind={product.pricingKind}

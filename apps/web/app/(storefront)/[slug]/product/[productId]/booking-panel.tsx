@@ -33,12 +33,16 @@ import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 import { parseStorefrontDecimal } from "@/lib/utils/util.storefront-product-pricing";
 import { deriveAttributeValues } from "@/lib/utils/util.variant-combinations";
 
-import { formatDetailedDuration } from "@/lib/utils/duration";
 import { usePeriodLabel } from "@/hooks/use-period-label";
 
 import { type CartPeriod, useCartState } from "@/contexts/cart-context";
 
+import {
+  getSeasonalCalendarPricing,
+  getSeasonalDurationParts,
+} from "@/lib/utils/util.storefront-seasonal-pricing";
 import { BookingPeriodField } from "./booking-period-field";
+import { ProductSummary } from "./product-summary";
 import { PriceSummary } from "./price-summary";
 import { StickyBookingBar } from "./sticky-booking-bar";
 import { useAddToCart } from "./use-add-to-cart";
@@ -49,7 +53,6 @@ interface BookingPanelProps {
   booking: ProductPageBooking;
   accessories: AccessoryLink[];
   /** Title, price and availability, rendered above the panel in its column. */
-  summary: ReactNode;
   information: ReactNode;
 }
 
@@ -62,13 +65,7 @@ const toPeriodValue = (period: CartPeriod | null): RentalPeriodValue | null =>
  * visitor who already chose dates never re-enters them. Renders the phone
  * sticky bar as a sibling so it can pin to the bottom of the whole page.
  */
-export const BookingPanel = ({
-  product,
-  booking,
-  accessories,
-  summary,
-  information,
-}: BookingPanelProps) => {
+export const BookingPanel = ({ product, booking, accessories, information }: BookingPanelProps) => {
   const t = useTranslations();
   const formatPeriodLabel = usePeriodLabel();
   const { period: cartPeriod, items: cartItems } = useCartState();
@@ -150,15 +147,9 @@ export const BookingPanel = ({
   const durationLabel = isFixed
     ? t("storefront.product.fixedPricingLabel")
     : period
-      ? calculateDurationMinutes(period.start, period.end) >= 1440
-        ? formatDetailedDuration(period.start, period.end, {
-            day: t("storefront.dateSelection.durationDay"),
-            days: t("storefront.dateSelection.durationDays"),
-            and: t("storefront.dateSelection.and"),
-          })
-        : formatPeriodLabel(calculateDurationMinutes(period.start, period.end), {
-            alwaysShowCount: true,
-          })
+      ? getSeasonalDurationParts(calculateDurationMinutes(period.start, period.end))
+          .map((part) => formatPeriodLabel(part, { alwaysShowCount: true }))
+          .join(" ")
       : null;
 
   const isFirstCheck =
@@ -232,9 +223,16 @@ export const BookingPanel = ({
   return (
     <>
       <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-24 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-        {summary}
+        <ProductSummary
+          product={product}
+          booking={booking}
+          seasonalSegments={price.seasonalSegments}
+          rentalPrice={price.isPriced ? price.subtotal / quantity : undefined}
+          rentalMinutes={period ? calculateDurationMinutes(period.start, period.end) : undefined}
+        />
         <div className="flex flex-col gap-5 rounded-2xl bg-card p-4 shadow-card sm:p-6">
           <BookingPeriodField
+            seasonalPricing={getSeasonalCalendarPricing(product)}
             ref={periodFieldRef}
             value={period}
             onChange={setPeriodOverride}
@@ -277,7 +275,11 @@ export const BookingPanel = ({
             cartProductIds={cartProductIds}
           />
 
-          <PriceSummary price={price} durationLabel={durationLabel} />
+          <PriceSummary
+            price={price}
+            seasons={product.seasonalPricings}
+            durationLabel={durationLabel}
+          />
 
           <div className="hidden flex-col gap-1.5 lg:flex">
             <Button size="lg" className="w-full" onClick={handleReserve} disabled={isCtaDisabled}>

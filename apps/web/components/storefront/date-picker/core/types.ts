@@ -14,6 +14,7 @@ export interface RentalDateCoreOptions {
   /** Instants (or ISO strings) the draft starts from; usually the committed period. */
   initialStart?: Date | string | null;
   initialEnd?: Date | string | null;
+  initialField?: RentalPeriodField;
   pricingMode: PricingMode;
   minRentalMinutes: number;
   maxRentalMinutes?: number | null;

@@ -1,13 +1,27 @@
 "use client";
 
+import {
+  getVisibleSeasonalPricing,
+  groupSeasonsByTone,
+  type SeasonalCalendarPricing,
+} from "@/lib/utils/util.storefront-seasonal-pricing";
+
 import { useId } from "react";
-import { addYears, startOfMonth } from "date-fns";
+import { addYears, startOfMonth, format } from "date-fns";
 import { useTranslations } from "next-intl";
 
 import { Calendar } from "@louez/ui";
 import { LoaderIcon } from "@louez/ui/icons";
-import { cn } from "@louez/utils";
+import { cn, findSeasonalPricingForDate } from "@louez/utils";
 
+import { labelDayButton } from "react-day-picker";
+import { useFormatMoney } from "@/hooks/use-format-money";
+import { usePeriodLabel } from "@/hooks/use-period-label";
+import {
+  SEASON_DAY_CLASSES,
+  SEASON_TONE_COUNT,
+} from "@/components/storefront/ui/season-tone.constants";
+import { SeasonalCalendarLegend } from "./seasonal-calendar-legend";
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import type { RentalDateCoreState } from "./core/types";
@@ -18,6 +32,7 @@ export type PeriodPanelVariant = "sheet" | "popover" | "embed";
 
 interface PeriodPanelProps {
   core: RentalDateCoreState;
+  seasonalPricing?: SeasonalCalendarPricing;
   variant: PeriodPanelVariant;
   /** Months side by side; by default two in the popover, one elsewhere. */
   months?: 1 | 2;
@@ -37,6 +52,7 @@ interface PeriodPanelProps {
  */
 export const PeriodPanel = ({
   core,
+  seasonalPricing,
   variant,
   months,
   className,
@@ -47,6 +63,9 @@ export const PeriodPanel = ({
   isCheckingAvailability = false,
 }: PeriodPanelProps) => {
   const t = useTranslations("storefront.dateSelection");
+  const ts = useTranslations("storefront.seasonalPricing");
+  const formatMoney = useFormatMoney();
+  const formatPeriod = usePeriodLabel();
   const { dateFns: dateLocale } = useFormatLocale();
   const issueMessage = usePeriodIssueMessage();
   const fieldId = useId();
@@ -55,6 +74,15 @@ export const PeriodPanel = ({
   const isEmbed = variant === "embed";
   const message = core.hasDates ? issueMessage(core.validation) : null;
   const closedMessage = t("businessHours.storeClosed");
+
+  const visibleSeasonalPricing = getVisibleSeasonalPricing(
+    seasonalPricing,
+    month ?? core.startDate ?? core.minDate,
+    months ?? (isPopover ? 2 : 1),
+  );
+  // One modifier per marker colour: a day carries its season's bar under the
+  // date, so the selected range keeps the cell background to itself.
+  const seasonTones = [...groupSeasonsByTone(seasonalPricing, SEASON_TONE_COUNT)];
 
   const calendar = (
     <div
@@ -75,8 +103,35 @@ export const PeriodPanel = ({
           if (!isCheckingAvailability) core.selectDay(day);
         }}
         disabled={(day) => core.isDateDisabled(day) || Boolean(isProductUnavailable?.(day))}
-        modifiers={{ unavailable: (day) => Boolean(isProductUnavailable?.(day)) }}
-        modifiersClassNames={{ unavailable: "line-through decoration-2" }}
+        modifiers={{
+          unavailable: (day) => Boolean(isProductUnavailable?.(day)),
+          ...Object.fromEntries(
+            seasonTones.map(([tone, seasons]) => [
+              `season${tone}`,
+              (day: Date) =>
+                Boolean(findSeasonalPricingForDate(seasons, format(day, "yyyy-MM-dd"))),
+            ]),
+          ),
+        }}
+        modifiersClassNames={{
+          unavailable: "line-through decoration-2",
+          ...Object.fromEntries(
+            seasonTones.map(([tone]) => [`season${tone}`, SEASON_DAY_CLASSES[tone]]),
+          ),
+        }}
+        labels={
+          seasonalPricing
+            ? {
+                labelDayButton: (day, modifiers, options) => {
+                  const season = findSeasonalPricingForDate(
+                    seasonalPricing.seasons,
+                    format(day, "yyyy-MM-dd"),
+                  );
+                  return `${labelDayButton(day, modifiers, options)}, ${season?.name ?? ts("baseSeason")}, ${formatMoney(season?.basePrice ?? seasonalPricing.basePrice)} / ${formatPeriod(seasonalPricing.periodMinutes)}`;
+                },
+              }
+            : undefined
+        }
         month={month}
         onMonthChange={onMonthChange}
         defaultMonth={core.startDate ?? core.minDate}
@@ -137,6 +192,9 @@ export const PeriodPanel = ({
       className={cn("flex flex-col", isEmbed ? "gap-3" : isPopover ? "gap-3" : "gap-4", className)}
     >
       {calendar}
+      {visibleSeasonalPricing?.seasons.length ? (
+        <SeasonalCalendarLegend pricing={visibleSeasonalPricing} />
+      ) : null}
       {times}
       {message ? (
         <p role="status" className="text-xs text-destructive">

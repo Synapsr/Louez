@@ -76,6 +76,10 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+  --color-season-1: var(--season-1);
+  --color-season-2: var(--season-2);
+  --color-season-3: var(--season-3);
+  --color-season-4: var(--season-4);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -324,6 +328,13 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+  /* Season markers: the rate that applies to a day, drawn as a bar under the
+     date. They stay off the neutral and primary ramps so a rental period
+     (background) and its season (marker) never read as the same signal. */
+  --season-1: oklch(0.75 0.155 62);
+  --season-2: oklch(0.66 0.15 305);
+  --season-3: oklch(0.72 0.115 195);
+  --season-4: oklch(0.68 0.16 12);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.489 0 0);
@@ -448,6 +459,10 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+  --season-1: oklch(0.8 0.145 62);
+  --season-2: oklch(0.74 0.14 305);
+  --season-3: oklch(0.78 0.105 195);
+  --season-4: oklch(0.75 0.145 12);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(68.9% 0.000000000000000238 0deg);

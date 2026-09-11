@@ -1,5 +1,7 @@
 "use client";
 
+import type { SeasonalCalendarPricing } from "@/lib/utils/util.storefront-seasonal-pricing";
+
 import type { Ref } from "react";
 
 import { useTranslations } from "next-intl";
@@ -18,6 +20,7 @@ interface BookingPeriodFieldProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   rules: RentalPeriodRules;
+  seasonalPricing?: SeasonalCalendarPricing;
   ref?: Ref<HTMLDivElement>;
 }
 
@@ -32,6 +35,7 @@ export const BookingPeriodField = ({
   open,
   onOpenChange,
   rules,
+  seasonalPricing,
   ref,
 }: BookingPeriodFieldProps) => {
   const t = useTranslations("storefront.product");
@@ -40,6 +44,7 @@ export const BookingPeriodField = ({
     <div ref={ref} className="flex scroll-mt-24 flex-col gap-1.5">
       <Label className="text-sm font-medium">{t("booking.dates")}</Label>
       <RentalPeriodPicker
+        seasonalPricing={seasonalPricing}
         layout="inline"
         value={value}
         onChange={onChange}

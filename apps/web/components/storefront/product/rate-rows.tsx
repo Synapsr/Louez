@@ -13,6 +13,7 @@ import { useDiscountVisibility } from "@/contexts/store-context";
 interface RateRowsProps {
   rows: StorefrontRateRow[];
   className?: string;
+  comparisonPeriodMinutes?: number;
 }
 
 /**
@@ -20,7 +21,7 @@ interface RateRowsProps {
  * advertises the discount, price and unit price. Shared by the product page
  * rates card and anything else that lists tiers.
  */
-export const RateRows = ({ rows, className }: RateRowsProps) => {
+export const RateRows = ({ rows, className, comparisonPeriodMinutes }: RateRowsProps) => {
   const formatMoney = useFormatMoney();
   const formatPeriodLabel = usePeriodLabel();
   const isDiscountVisible = useDiscountVisibility();
@@ -28,7 +29,8 @@ export const RateRows = ({ rows, className }: RateRowsProps) => {
   return (
     <ul className={cn("flex flex-col divide-y divide-border/60", className)} data-slot="rate-rows">
       {rows.map((row) => {
-        const comparisonPeriod = rows[0]?.periodMinutes ?? row.periodMinutes;
+        const comparisonPeriod =
+          comparisonPeriodMinutes ?? rows[0]?.periodMinutes ?? row.periodMinutes;
         const duration = row.periodMinutes / comparisonPeriod;
         const showsUnitPrice = duration > 1;
 
