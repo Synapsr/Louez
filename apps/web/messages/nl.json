@@ -6847,10 +6847,138 @@
       "paymentInProgress": "Betaling wordt verwerkt",
       "paymentRequired": "Betaling vereist",
       "confirmedAwaitingPayment": "Wachten op betaling",
+      "damageFees": "Schadekosten",
+      "remainingDue": "Nog te betalen",
+      "depositCard": {
+        "title": "Borg",
+        "amount": "Borgbedrag",
+        "capturedAmount": "Ingehouden bedrag",
+        "returnedAmount": "Terugbetaald bedrag",
+        "reason": "Reden opgegeven door de verhuurder",
+        "heldUntil": "Bedrag gereserveerd tot {date}.",
+        "restReleased": "De rest ({amount}) is vrijgegeven en wordt niet afgeschreven.",
+        "authorize": "Borg online autoriseren",
+        "authorizeHelp": "Beveiligd door Stripe. Het bedrag wordt op uw kaart gereserveerd, niet afgeschreven.",
+        "authorizeError": "De borgautorisatie kon niet worden geopend. Probeer het opnieuw of neem contact op met de verhuurder.",
+        "states": {
+          "to_provide": {
+            "badge": "Te betalen",
+            "title": "Bij ophalen te betalen",
+            "description": "De verhuurder vraagt bij het ophalen een borg van {amount}. U krijgt die terug bij het inleveren als het materiaal in goede staat is."
+          },
+          "to_provide_online": {
+            "badge": "Te autoriseren",
+            "title": "Kaartreservering volgt",
+            "description": "Vóór het ophalen wordt een reservering van {amount} op uw kaart gevraagd. Het bedrag wordt alleen gereserveerd, nooit zonder reden afgeschreven."
+          },
+          "card_saved": {
+            "badge": "Kaart opgeslagen",
+            "title": "Kaart opgeslagen",
+            "description": "Uw kaart is opgeslagen voor de borg van {amount}. De verhuurder reserveert dit bedrag kort voor het ophalen, zonder het af te schrijven."
+          },
+          "held": {
+            "badge": "Gereserveerd",
+            "title": "Reservering actief",
+            "description": "Er is {amount} op uw kaart gereserveerd, zonder afschrijving. De reservering wordt vrijgegeven bij het inleveren van het materiaal in goede staat."
+          },
+          "hold_expired": {
+            "badge": "Verlopen",
+            "title": "Reservering verlopen",
+            "description": "De reservering van {amount} is verlopen. De verhuurder kan u om een nieuwe autorisatie vragen."
+          },
+          "released": {
+            "badge": "Vrijgegeven",
+            "title": "Borg vrijgegeven",
+            "description": "De reservering van {amount} is geannuleerd. Er is niets afgeschreven; de reservering verdwijnt binnen enkele dagen van uw afschrift."
+          },
+          "captured": {
+            "badge": "Ingehouden",
+            "title": "Borg ingehouden",
+            "description": "De verhuurder heeft {captured} van uw borg van {amount} ingehouden."
+          },
+          "failed": {
+            "badge": "Geweigerd",
+            "title": "Autorisatie geweigerd",
+            "description": "De reservering van {amount} kon niet op uw kaart worden geplaatst. Mogelijk is een andere kaart nodig."
+          },
+          "collected": {
+            "badge": "Ontvangen",
+            "title": "Borg ontvangen",
+            "description": "De verhuurder heeft uw borg van {amount} ({method}) op {date} ontvangen. U krijgt die terug bij het inleveren van het materiaal."
+          },
+          "returned": {
+            "badge": "Terugbetaald",
+            "title": "Borg terugbetaald",
+            "description": "Uw borg van {amount} is op {date} aan u terugbetaald."
+          },
+          "partially_returned": {
+            "badge": "Deels terugbetaald",
+            "title": "Borg deels terugbetaald",
+            "description": "{returned} van uw borg van {amount} is op {date} aan u terugbetaald."
+          }
+        }
+      },
+      "updates": {
+        "title": "Geschiedenis",
+        "newPeriod": "Nieuwe periode: {period}",
+        "created": "Aanvraag verzonden",
+        "confirmed": "Reservering bevestigd door de verhuurder",
+        "rejected": "Aanvraag geweigerd door de verhuurder",
+        "cancelled": "Reservering geannuleerd",
+        "cancelled_by_you": "Aanvraag door u geannuleerd",
+        "picked_up": "Materiaal opgehaald",
+        "returned": "Materiaal ingeleverd",
+        "quote_accepted": "Offerte geaccepteerd",
+        "quote_declined": "Offerte geweigerd",
+        "payment_received": "Online betaling ontvangen",
+        "payment_received_amount": "Online betaling ontvangen ({amount})",
+        "payment_failed": "Online betaling geweigerd",
+        "refunded": "Terugbetaling uitgevoerd",
+        "refunded_amount": "Terugbetaling van {amount}",
+        "payment_added_rental": "Huurbetaling geregistreerd ({amount})",
+        "payment_added_deposit": "Borg ontvangen ({amount})",
+        "payment_added_deposit_return": "Borg terugbetaald ({amount})",
+        "payment_added_damage": "Schadekosten geregistreerd ({amount})",
+        "payment_added_adjustment": "Bedrag aangepast ({amount})",
+        "deposit_authorized": "Kaartreservering geplaatst",
+        "deposit_authorized_amount": "Kaartreservering van {amount} geplaatst",
+        "deposit_captured": "Borg ingehouden",
+        "deposit_captured_amount": "Borg ingehouden ({amount})",
+        "deposit_released": "Borg vrijgegeven",
+        "deposit_failed": "Kaartreservering geweigerd",
+        "modified": "Reservering gewijzigd door de verhuurder",
+        "extension_confirmed": "Huur verlengd",
+        "return_date_requested": "Wijziging van de inleverdatum aangevraagd",
+        "inspection_departure_completed": "Staat van oplevering bij ophalen opgemaakt",
+        "inspection_return_completed": "Staat van oplevering bij inleveren opgemaakt",
+        "inspection_damage_detected": "Schade vastgesteld bij de inspectie",
+        "inspection_signed": "Staat van oplevering ondertekend"
+      },
+      "inspections": {
+        "title": "Staten van oplevering",
+        "departure": "Staat van oplevering bij ophalen",
+        "return": "Staat van oplevering bij inleveren",
+        "completed": "Opgemaakt op {date}",
+        "signed": "Ondertekend op {date}",
+        "photoCount": "{count, plural, one {# foto} other {# foto’s}}",
+        "damage": "Schade vastgesteld",
+        "noDamage": "Geen schade",
+        "estimatedCost": "Geschatte schade:",
+        "download": "PDF downloaden"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "In behandeling",
+          "authorized": "Gereserveerd",
+          "completed": "Ingehouden",
+          "failed": "Geweigerd",
+          "cancelled": "Vrijgegeven",
+          "refunded": "Terugbetaald"
+        },
         "title": "Betalingsgeschiedenis",
         "noPayments": "Geen betalingen geregistreerd",
         "types": {
+          "refund": "Terugbetaling",
           "rental": "Huur",
           "deposit": "Borg",
           "deposit_return": "Borg terugbetaling",

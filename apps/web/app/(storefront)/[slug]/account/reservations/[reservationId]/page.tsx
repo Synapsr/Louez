@@ -8,10 +8,18 @@ import {
 } from "@/lib/reservations/util.date-change-request";
 import { notFound } from "next/navigation";
 
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { getTranslations } from "next-intl/server";
 
-import { db, documents, invoices, reservations } from "@louez/db";
+import {
+  db,
+  documents,
+  inspectionItems,
+  inspectionPhotos,
+  inspections,
+  invoices,
+  reservations,
+} from "@louez/db";
 
 import { AccountCard } from "@/components/storefront/account/account-card";
 import { ReservationActions } from "@/components/storefront/account/reservation-actions";
@@ -19,6 +27,14 @@ import { ReservationFulfillmentSummary } from "@/components/storefront/account/r
 import { ReservationInvoicesCard } from "@/components/storefront/account/reservation-invoices-card";
 import { ReservationItemsCard } from "@/components/storefront/account/reservation-items-card";
 import { ReservationCartReset } from "@/components/storefront/account/reservation-cart-reset";
+import {
+  ReservationDepositCard,
+  type ReservationDepositView,
+} from "@/components/storefront/account/reservation-deposit-card";
+import {
+  ReservationInspectionsCard,
+  type ReservationInspectionView,
+} from "@/components/storefront/account/reservation-inspections-card";
 import { ReservationOutcomeBanner } from "@/components/storefront/account/reservation-outcome-banner";
 import { ReservationPaymentsCard } from "@/components/storefront/account/reservation-payments-card";
 import { ReservationStatusBadge } from "@/components/storefront/account/reservation-status-badge";
@@ -28,6 +44,10 @@ import {
   toReservationStatus,
 } from "@/components/storefront/account/reservation-status.constants";
 import { ReservationTimeline } from "@/components/storefront/account/reservation-timeline";
+import {
+  ReservationUpdatesCard,
+  type ReservationUpdateView,
+} from "@/components/storefront/account/reservation-updates-card";
 import { StoreContactCard } from "@/components/storefront/account/store-contact-card";
 import { ReviewPromptCard } from "@/components/storefront/review-prompt-card";
 import { BackLink } from "@/components/storefront/ui/back-link";
@@ -39,11 +59,19 @@ import { buildReviewUrl } from "@/lib/google-places";
 import { getRequestFormatLocale } from "@/lib/i18n/format-locale.server";
 import { getReservationInsuredProductIds } from "@/lib/reservations/get-insured-product-ids";
 import {
+  canAuthorizeDepositOnline,
+  getCustomerDepositView,
+} from "@/lib/reservations/util.customer-deposit";
+import {
+  getCustomerPaymentRows,
+  getDamageFees,
+  getRentalPaid,
   getReservationPaymentStatus,
-  getTotalPaid,
+  isRefundRow,
   isRentalPaid,
 } from "@/lib/reservations/util.payment-status";
 import { getReservationActions } from "@/lib/reservations/util.reservation-actions";
+import { getReservationUpdates } from "@/lib/reservations/util.reservation-updates";
 import {
   formatFulfillmentPlaceLine,
   getFulfillmentPlaceKey,
@@ -65,7 +93,8 @@ interface ReservationDetailPageProps {
 
 /**
  * The one post-reservation destination: outcome banner (`?event=`), status,
- * actions, period and progress, items, payments, invoices, store contact.
+ * actions, period and progress, items, history, deposit, payments,
+ * condition reports, invoices, store contact.
  */
 export default async function ReservationDetailPage({
   params,
@@ -96,6 +125,7 @@ export default async function ReservationDetailPage({
           columns: {
             id: true,
             metadata: true,
+            description: true,
             activityType: true,
             createdAt: true,
           },
@@ -126,7 +156,44 @@ export default async function ReservationDetailPage({
 
   if (!reservation) notFound();
 
-  const insuredProductIds = await getReservationInsuredProductIds(reservation);
+  const [insuredProductIds, inspectionRows] = await Promise.all([
+    getReservationInsuredProductIds(reservation),
+    db
+      .select({
+        id: inspections.id,
+        type: inspections.type,
+        hasDamage: inspections.hasDamage,
+        estimatedDamageCost: inspections.estimatedDamageCost,
+        performedAt: inspections.performedAt,
+        signedAt: inspections.signedAt,
+        updatedAt: inspections.updatedAt,
+      })
+      .from(inspections)
+      .where(
+        and(
+          eq(inspections.reservationId, reservationId),
+          eq(inspections.storeId, store.id),
+          inArray(inspections.status, ["completed", "signed"]),
+        ),
+      ),
+  ]);
+  const photoCounts =
+    inspectionRows.length > 0
+      ? await db
+          .select({
+            inspectionId: inspectionItems.inspectionId,
+            photos: count(inspectionPhotos.id),
+          })
+          .from(inspectionPhotos)
+          .innerJoin(inspectionItems, eq(inspectionItems.id, inspectionPhotos.inspectionItemId))
+          .where(
+            inArray(
+              inspectionItems.inspectionId,
+              inspectionRows.map((row) => row.id),
+            ),
+          )
+          .groupBy(inspectionItems.inspectionId)
+      : [];
   const cancellation = reservation.activity.find((row) => row.activityType === "cancelled");
   const cancelledRequest =
     reservation.status === "cancelled" &&
@@ -138,7 +205,8 @@ export default async function ReservationDetailPage({
 
   const status = toReservationStatus(reservation.status);
   const rentalPaid = isRentalPaid(reservation.payments);
-  const totalPaid = getTotalPaid(reservation.payments);
+  const rentalPaidAmount = getRentalPaid(reservation.payments);
+  const damageFees = getDamageFees(reservation.payments);
   const paymentStatus = getReservationPaymentStatus(reservation.payments);
   const actions = getReservationActions({
     status: reservation.status,
@@ -148,6 +216,109 @@ export default async function ReservationDetailPage({
     stripeChargesEnabled: store.stripeChargesEnabled,
   });
   const event = parseReservationOutcomeEvent(query.event);
+  const stripeActive = Boolean(store.stripeAccountId) && store.stripeChargesEnabled === true;
+
+  const depositView = getCustomerDepositView(reservation);
+  const deposit: ReservationDepositView | null = (() => {
+    switch (depositView.kind) {
+      case "not_required":
+        return null;
+      case "to_provide":
+        return { kind: "to_provide", amount: depositView.amount, online: stripeActive };
+      case "held":
+        return {
+          kind: "held",
+          amount: depositView.amount,
+          expiresLabel: depositView.expiresAt
+            ? formatDate(depositView.expiresAt, "SHORT_DATE")
+            : null,
+        };
+      case "captured":
+        return {
+          kind: "captured",
+          amount: depositView.amount,
+          capturedAmount: depositView.capturedAmount,
+          releasedAmount: depositView.releasedAmount,
+          reason: depositView.reason,
+          capturedLabel: depositView.capturedAt
+            ? formatDate(depositView.capturedAt, "SHORT_DATE")
+            : null,
+        };
+      case "collected":
+        return {
+          kind: "collected",
+          amount: depositView.amount,
+          method: depositView.method,
+          receivedLabel: depositView.receivedAt
+            ? formatDate(depositView.receivedAt, "SHORT_DATE")
+            : null,
+        };
+      case "returned":
+        return {
+          kind: "returned",
+          amount: depositView.amount,
+          returnedAmount: depositView.returnedAmount,
+          method: depositView.method,
+          returnedLabel: depositView.returnedAt
+            ? formatDate(depositView.returnedAt, "SHORT_DATE")
+            : null,
+          partial: depositView.partial,
+        };
+      default:
+        return depositView;
+    }
+  })();
+  const depositStateKey =
+    depositView.kind === "to_provide" && stripeActive
+      ? "to_provide_online"
+      : depositView.kind === "returned" && depositView.partial
+        ? "partially_returned"
+        : depositView.kind;
+  const depositAuthorization = canAuthorizeDepositOnline({
+    view: depositView,
+    status: reservation.status,
+    startDate: reservation.startDate,
+    stripeActive,
+  })
+    ? { storeSlug: slug, reservationId }
+    : null;
+
+  const updates: ReservationUpdateView[] = getReservationUpdates(reservation.activity).map(
+    (update) => ({
+      id: update.id,
+      kind: update.kind,
+      dateLabel: formatDate(update.at, "DATE_AT_TIME"),
+      amount: "amount" in update ? update.amount : null,
+      paymentType: update.kind === "payment_added" ? update.paymentType : undefined,
+      byCustomer: update.kind === "cancelled" ? update.byCustomer : undefined,
+      note:
+        update.kind === "rejected" || update.kind === "deposit_captured"
+          ? update.reason
+          : update.kind === "inspection_damage_detected"
+            ? update.description
+            : null,
+      periodLabel:
+        update.kind === "modified" && update.startDate && update.endDate
+          ? formatStoreDateRange(update.startDate, update.endDate, timezone, formatLocale)
+          : update.kind === "extension_confirmed"
+            ? formatStoreDateRange(reservation.startDate, update.endDate, timezone, formatLocale)
+            : null,
+    }),
+  );
+
+  const inspectionViews: ReservationInspectionView[] = inspectionRows
+    .sort((a, b) => (a.type === b.type ? 0 : a.type === "departure" ? -1 : 1))
+    .map((row) => ({
+      id: row.id,
+      type: row.type,
+      dateLabel: formatDate(row.performedAt ?? row.updatedAt, "DATE_AT_TIME"),
+      signedLabel: row.signedAt ? formatDate(row.signedAt, "DATE_AT_TIME") : null,
+      hasDamage: row.hasDamage,
+      estimatedDamageCost:
+        row.estimatedDamageCost === null ? null : Number.parseFloat(row.estimatedDamageCost),
+      photoCount: photoCounts.find((entry) => entry.inspectionId === row.id)?.photos ?? 0,
+      href: getStorefrontUrl(slug, `${reservationPath}/inspections/${row.id}`),
+    }));
 
   const fulfillment = resolveReservationFulfillment({ reservation, store });
   const pickupDateLabel = formatDate(reservation.startDate, "DATE_AT_TIME");
@@ -283,13 +454,24 @@ export default async function ReservationDetailPage({
             }))}
             subtotal={Number.parseFloat(reservation.subtotalAmount)}
             deposit={Number.parseFloat(reservation.depositAmount)}
+            depositLabel={
+              depositStateKey === "not_required"
+                ? null
+                : t(`depositCard.states.${depositStateKey}.badge`)
+            }
+            damageFees={damageFees}
             total={Number.parseFloat(reservation.totalAmount)}
-            totalPaid={totalPaid}
-            isUnsettled={totalPaid === 0 && !isClosedReservationStatus(status)}
+            amountPaid={rentalPaidAmount}
+            isUnsettled={rentalPaidAmount === 0 && !isClosedReservationStatus(status)}
             notes={reservation.customerNotes}
           />
+
+          <ReservationUpdatesCard updates={updates} />
         </div>
         <aside className="flex min-w-0 flex-col gap-6">
+          {deposit ? (
+            <ReservationDepositCard deposit={deposit} authorize={depositAuthorization} />
+          ) : null}
           <ReturnDateRequestCard
             extension={
               reservation.activity.flatMap((row) => {
@@ -325,15 +507,19 @@ export default async function ReservationDetailPage({
             }
           />
           <ReservationPaymentsCard
-            payments={reservation.payments.map((payment) => ({
+            payments={getCustomerPaymentRows(reservation.payments).map((payment) => ({
               id: payment.id,
               type: payment.type,
               method: payment.method,
               status: payment.status,
               amount: Number.parseFloat(payment.amount),
               dateLabel: formatDate(payment.paidAt ?? payment.createdAt, "SHORT_DATE"),
+              note: ["deposit_capture", "damage"].includes(payment.type) ? payment.notes : null,
+              isRefund: isRefundRow(payment),
             }))}
           />
+
+          <ReservationInspectionsCard inspections={inspectionViews} />
 
           <ReservationInvoicesCard
             invoices={invoiceRows.map((invoice) => ({

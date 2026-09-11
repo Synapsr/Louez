@@ -20,8 +20,13 @@ interface ReservationItemsCardProps {
   items: ReservationItemView[];
   subtotal: number;
   deposit: number;
+  /** Where the deposit stands, in two words ("Held", "Charged"); null when unknown. */
+  depositLabel: string | null;
+  /** Damage fees charged on top of the rental, refunds subtracted. */
+  damageFees: number;
   total: number;
-  totalPaid: number;
+  /** Paid toward the rental itself; deposits and damage fees never count. */
+  amountPaid: number;
   /**
    * Nothing has been charged and the reservation is still live, so the amounts
    * below are what the rental will cost, not what the customer has paid.
@@ -31,13 +36,18 @@ interface ReservationItemsCardProps {
   notes: string | null;
 }
 
-/** Lines, then subtotal, deposit (separate: never in the total) and total. */
+/**
+ * Lines, then subtotal, deposit (separate: never in the total, but tagged
+ * with its state), damage fees, total, what was paid and what remains.
+ */
 export const ReservationItemsCard = ({
   items,
   subtotal,
   deposit,
+  depositLabel,
+  damageFees,
   total,
-  totalPaid,
+  amountPaid,
   isUnsettled,
   notes,
 }: ReservationItemsCardProps) => {
@@ -77,9 +87,25 @@ export const ReservationItemsCard = ({
         </div>
         {deposit > 0 ? (
           <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">{t("deposit")}</dt>
+            <dt className="text-muted-foreground">
+              {t("deposit")}
+              {depositLabel ? (
+                <>
+                  <span aria-hidden> · </span>
+                  {depositLabel}
+                </>
+              ) : null}
+            </dt>
             <dd>
               <Price amount={deposit} size="sm" />
+            </dd>
+          </div>
+        ) : null}
+        {damageFees > 0 ? (
+          <div className="flex justify-between gap-4 text-destructive">
+            <dt>{t("damageFees")}</dt>
+            <dd>
+              <Price amount={damageFees} size="sm" className="text-destructive" />
             </dd>
           </div>
         ) : null}
@@ -89,11 +115,19 @@ export const ReservationItemsCard = ({
             <Price amount={total} size="lg" tone="primary" />
           </dd>
         </div>
-        {totalPaid > 0 ? (
+        {amountPaid > 0 ? (
           <div className="flex justify-between gap-4 text-success">
             <dt>{t("amountPaid")}</dt>
             <dd>
-              <Price amount={totalPaid} size="sm" className="text-success" />
+              <Price amount={amountPaid} size="sm" className="text-success" />
+            </dd>
+          </div>
+        ) : null}
+        {amountPaid > 0 && amountPaid < total ? (
+          <div className="flex justify-between gap-4 text-warning">
+            <dt>{t("remainingDue")}</dt>
+            <dd>
+              <Price amount={total - amountPaid} size="sm" className="text-warning" />
             </dd>
           </div>
         ) : null}

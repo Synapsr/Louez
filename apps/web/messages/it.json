@@ -6836,10 +6836,138 @@
       "paymentInProgress": "Pagamento in corso",
       "paymentRequired": "Pagamento richiesto",
       "confirmedAwaitingPayment": "In attesa di pagamento",
+      "damageFees": "Spese per danni",
+      "remainingDue": "Resta da pagare",
+      "depositCard": {
+        "title": "Cauzione",
+        "amount": "Importo della cauzione",
+        "capturedAmount": "Importo trattenuto",
+        "returnedAmount": "Importo restituito",
+        "reason": "Motivo indicato dal noleggiatore",
+        "heldUntil": "Importo bloccato fino al {date}.",
+        "restReleased": "Il resto ({amount}) è stato sbloccato e non viene addebitato.",
+        "authorize": "Autorizza la cauzione online",
+        "authorizeHelp": "Protetto da Stripe. L’importo viene bloccato sulla carta, non addebitato.",
+        "authorizeError": "Impossibile aprire l’autorizzazione della cauzione. Riprova o contatta il noleggiatore.",
+        "states": {
+          "to_provide": {
+            "badge": "Da versare",
+            "title": "Da versare al ritiro",
+            "description": "Il noleggiatore ti chiederà una cauzione di {amount} al ritiro dell’attrezzatura. Ti viene restituita alla riconsegna se l’attrezzatura torna in buono stato."
+          },
+          "to_provide_online": {
+            "badge": "Da autorizzare",
+            "title": "Blocco sulla carta in arrivo",
+            "description": "Prima del ritiro verrà richiesto un blocco di {amount} sulla tua carta. L’importo viene solo bloccato, mai addebitato senza motivo."
+          },
+          "card_saved": {
+            "badge": "Carta salvata",
+            "title": "Carta salvata",
+            "description": "La tua carta è salvata per la cauzione di {amount}. Il noleggiatore bloccherà questo importo poco prima del ritiro, senza addebitarlo."
+          },
+          "held": {
+            "badge": "Bloccata",
+            "title": "Blocco attivo",
+            "description": "{amount} sono bloccati sulla tua carta, senza addebito. Il blocco viene rimosso alla riconsegna dell’attrezzatura in buono stato."
+          },
+          "hold_expired": {
+            "badge": "Scaduto",
+            "title": "Blocco scaduto",
+            "description": "Il blocco di {amount} è scaduto. Il noleggiatore può chiederti una nuova autorizzazione."
+          },
+          "released": {
+            "badge": "Sbloccata",
+            "title": "Cauzione sbloccata",
+            "description": "Il blocco di {amount} è stato annullato. Non è stato addebitato nulla; il blocco sparisce dall’estratto conto entro pochi giorni."
+          },
+          "captured": {
+            "badge": "Trattenuta",
+            "title": "Cauzione trattenuta",
+            "description": "Il noleggiatore ha trattenuto {captured} della tua cauzione di {amount}."
+          },
+          "failed": {
+            "badge": "Rifiutata",
+            "title": "Autorizzazione rifiutata",
+            "description": "Il blocco di {amount} non è stato creato sulla tua carta. Potrebbe servire un’altra carta."
+          },
+          "collected": {
+            "badge": "Ricevuta",
+            "title": "Cauzione ricevuta",
+            "description": "Il noleggiatore ha ricevuto la tua cauzione di {amount} ({method}) il {date}. Ti viene restituita alla riconsegna dell’attrezzatura."
+          },
+          "returned": {
+            "badge": "Restituita",
+            "title": "Cauzione restituita",
+            "description": "La tua cauzione di {amount} ti è stata restituita il {date}."
+          },
+          "partially_returned": {
+            "badge": "Restituita in parte",
+            "title": "Cauzione restituita in parte",
+            "description": "{returned} della tua cauzione di {amount} ti sono stati restituiti il {date}."
+          }
+        }
+      },
+      "updates": {
+        "title": "Cronologia",
+        "newPeriod": "Nuovo periodo: {period}",
+        "created": "Richiesta inviata",
+        "confirmed": "Prenotazione confermata dal noleggiatore",
+        "rejected": "Richiesta rifiutata dal noleggiatore",
+        "cancelled": "Prenotazione annullata",
+        "cancelled_by_you": "Richiesta annullata da te",
+        "picked_up": "Attrezzatura ritirata",
+        "returned": "Attrezzatura riconsegnata",
+        "quote_accepted": "Preventivo accettato",
+        "quote_declined": "Preventivo rifiutato",
+        "payment_received": "Pagamento online ricevuto",
+        "payment_received_amount": "Pagamento online ricevuto ({amount})",
+        "payment_failed": "Pagamento online rifiutato",
+        "refunded": "Rimborso effettuato",
+        "refunded_amount": "Rimborso di {amount}",
+        "payment_added_rental": "Pagamento del noleggio registrato ({amount})",
+        "payment_added_deposit": "Cauzione ricevuta ({amount})",
+        "payment_added_deposit_return": "Cauzione restituita ({amount})",
+        "payment_added_damage": "Spese per danni registrate ({amount})",
+        "payment_added_adjustment": "Importo rettificato ({amount})",
+        "deposit_authorized": "Blocco sulla carta creato",
+        "deposit_authorized_amount": "Blocco sulla carta di {amount} creato",
+        "deposit_captured": "Cauzione trattenuta",
+        "deposit_captured_amount": "Cauzione trattenuta ({amount})",
+        "deposit_released": "Cauzione sbloccata",
+        "deposit_failed": "Blocco sulla carta rifiutato",
+        "modified": "Prenotazione modificata dal noleggiatore",
+        "extension_confirmed": "Noleggio prolungato",
+        "return_date_requested": "Cambio della data di riconsegna richiesto",
+        "inspection_departure_completed": "Verbale di consegna compilato",
+        "inspection_return_completed": "Verbale di riconsegna compilato",
+        "inspection_damage_detected": "Danni rilevati nel verbale",
+        "inspection_signed": "Verbale firmato"
+      },
+      "inspections": {
+        "title": "Verbali di stato",
+        "departure": "Verbale di consegna",
+        "return": "Verbale di riconsegna",
+        "completed": "Compilato il {date}",
+        "signed": "Firmato il {date}",
+        "photoCount": "{count, plural, one {# foto} other {# foto}}",
+        "damage": "Danni rilevati",
+        "noDamage": "Nessun danno",
+        "estimatedCost": "Danni stimati:",
+        "download": "Scarica il PDF"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "In attesa",
+          "authorized": "Bloccata",
+          "completed": "Trattenuta",
+          "failed": "Rifiutata",
+          "cancelled": "Sbloccata",
+          "refunded": "Rimborsata"
+        },
         "title": "Storico pagamenti",
         "noPayments": "Nessun pagamento registrato",
         "types": {
+          "refund": "Rimborso",
           "rental": "Noleggio",
           "deposit": "Deposito",
           "deposit_return": "Rimborso deposito",

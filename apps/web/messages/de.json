@@ -6847,10 +6847,138 @@
         "acceptDescription": "Sie sind dabei, dieses Angebot anzunehmen. Der Vermieter wird informiert und Ihre Buchung bestätigt.",
         "confirmAccept": "Angebot annehmen"
       },
+      "damageFees": "Schadenskosten",
+      "remainingDue": "Noch zu zahlen",
+      "depositCard": {
+        "title": "Kaution",
+        "amount": "Kautionsbetrag",
+        "capturedAmount": "Einbehaltener Betrag",
+        "returnedAmount": "Zurückgezahlter Betrag",
+        "reason": "Vom Vermieter angegebener Grund",
+        "heldUntil": "Reserviert bis {date}.",
+        "restReleased": "Der Rest ({amount}) wurde freigegeben und wird nicht abgebucht.",
+        "authorize": "Kaution online autorisieren",
+        "authorizeHelp": "Gesichert durch Stripe. Der Betrag wird auf Ihrer Karte reserviert, nicht abgebucht.",
+        "authorizeError": "Die Kautionsautorisierung konnte nicht geöffnet werden. Versuchen Sie es erneut oder kontaktieren Sie den Vermieter.",
+        "states": {
+          "to_provide": {
+            "badge": "Zu hinterlegen",
+            "title": "Bei Abholung fällig",
+            "description": "Der Vermieter verlangt bei der Abholung eine Kaution von {amount}. Sie erhalten sie bei der Rückgabe zurück, wenn das Material in gutem Zustand ist."
+          },
+          "to_provide_online": {
+            "badge": "Zu autorisieren",
+            "title": "Kartenreservierung folgt",
+            "description": "Vor der Abholung wird eine Reservierung von {amount} auf Ihrer Karte angefordert. Der Betrag wird nur reserviert, nie ohne Grund abgebucht."
+          },
+          "card_saved": {
+            "badge": "Karte gespeichert",
+            "title": "Karte gespeichert",
+            "description": "Ihre Karte ist für die Kaution von {amount} gespeichert. Der Vermieter reserviert diesen Betrag kurz vor der Abholung, ohne ihn abzubuchen."
+          },
+          "held": {
+            "badge": "Reserviert",
+            "title": "Reservierung aktiv",
+            "description": "{amount} sind auf Ihrer Karte reserviert, nicht abgebucht. Die Reservierung wird bei Rückgabe des Materials in gutem Zustand aufgehoben."
+          },
+          "hold_expired": {
+            "badge": "Abgelaufen",
+            "title": "Reservierung abgelaufen",
+            "description": "Die Reservierung von {amount} ist abgelaufen. Der Vermieter kann eine neue Autorisierung anfordern."
+          },
+          "released": {
+            "badge": "Freigegeben",
+            "title": "Kaution freigegeben",
+            "description": "Die Reservierung von {amount} wurde aufgehoben. Es wurde nichts abgebucht; die Reservierung verschwindet innerhalb weniger Tage von Ihrem Kontoauszug."
+          },
+          "captured": {
+            "badge": "Einbehalten",
+            "title": "Kaution einbehalten",
+            "description": "Der Vermieter hat {captured} Ihrer Kaution von {amount} einbehalten."
+          },
+          "failed": {
+            "badge": "Abgelehnt",
+            "title": "Autorisierung abgelehnt",
+            "description": "Die Reservierung von {amount} konnte auf Ihrer Karte nicht angelegt werden. Möglicherweise ist eine andere Karte nötig."
+          },
+          "collected": {
+            "badge": "Erhalten",
+            "title": "Kaution erhalten",
+            "description": "Der Vermieter hat Ihre Kaution von {amount} ({method}) am {date} erhalten. Sie erhalten sie bei der Rückgabe des Materials zurück."
+          },
+          "returned": {
+            "badge": "Zurückgezahlt",
+            "title": "Kaution zurückgezahlt",
+            "description": "Ihre Kaution von {amount} wurde Ihnen am {date} zurückgezahlt."
+          },
+          "partially_returned": {
+            "badge": "Teilweise zurückgezahlt",
+            "title": "Kaution teilweise zurückgezahlt",
+            "description": "{returned} Ihrer Kaution von {amount} wurden Ihnen am {date} zurückgezahlt."
+          }
+        }
+      },
+      "updates": {
+        "title": "Verlauf",
+        "newPeriod": "Neuer Zeitraum: {period}",
+        "created": "Anfrage gesendet",
+        "confirmed": "Reservierung vom Vermieter bestätigt",
+        "rejected": "Anfrage vom Vermieter abgelehnt",
+        "cancelled": "Reservierung storniert",
+        "cancelled_by_you": "Anfrage von Ihnen storniert",
+        "picked_up": "Material abgeholt",
+        "returned": "Material zurückgegeben",
+        "quote_accepted": "Angebot angenommen",
+        "quote_declined": "Angebot abgelehnt",
+        "payment_received": "Online-Zahlung erhalten",
+        "payment_received_amount": "Online-Zahlung erhalten ({amount})",
+        "payment_failed": "Online-Zahlung abgelehnt",
+        "refunded": "Rückerstattung veranlasst",
+        "refunded_amount": "Rückerstattung von {amount}",
+        "payment_added_rental": "Mietzahlung erfasst ({amount})",
+        "payment_added_deposit": "Kaution erhalten ({amount})",
+        "payment_added_deposit_return": "Kaution zurückgezahlt ({amount})",
+        "payment_added_damage": "Schadenskosten erfasst ({amount})",
+        "payment_added_adjustment": "Betrag angepasst ({amount})",
+        "deposit_authorized": "Kartenreservierung angelegt",
+        "deposit_authorized_amount": "Kartenreservierung von {amount} angelegt",
+        "deposit_captured": "Kaution einbehalten",
+        "deposit_captured_amount": "Kaution einbehalten ({amount})",
+        "deposit_released": "Kaution freigegeben",
+        "deposit_failed": "Kartenreservierung abgelehnt",
+        "modified": "Reservierung vom Vermieter geändert",
+        "extension_confirmed": "Miete verlängert",
+        "return_date_requested": "Änderung des Rückgabedatums angefragt",
+        "inspection_departure_completed": "Übergabeprotokoll erstellt",
+        "inspection_return_completed": "Rücknahmeprotokoll erstellt",
+        "inspection_damage_detected": "Schäden im Protokoll festgestellt",
+        "inspection_signed": "Protokoll unterschrieben"
+      },
+      "inspections": {
+        "title": "Zustandsprotokolle",
+        "departure": "Übergabeprotokoll",
+        "return": "Rücknahmeprotokoll",
+        "completed": "Erstellt am {date}",
+        "signed": "Unterschrieben am {date}",
+        "photoCount": "{count, plural, one {# Foto} other {# Fotos}}",
+        "damage": "Schäden festgestellt",
+        "noDamage": "Keine Schäden",
+        "estimatedCost": "Geschätzter Schaden:",
+        "download": "PDF herunterladen"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "Ausstehend",
+          "authorized": "Reserviert",
+          "completed": "Einbehalten",
+          "failed": "Abgelehnt",
+          "cancelled": "Freigegeben",
+          "refunded": "Erstattet"
+        },
         "title": "Zahlungsverlauf",
         "noPayments": "Keine Zahlungen verzeichnet",
         "types": {
+          "refund": "Rückerstattung",
           "rental": "Miete",
           "deposit": "Kaution",
           "deposit_return": "Kautionsrückerstattung",

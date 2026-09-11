@@ -20,6 +20,7 @@ import {
   reservationActivity,
   reservations,
   stores,
+  verificationCodes,
 } from "@louez/db";
 
 import { dispatchCustomerNotification } from "@/lib/notifications/customer-dispatcher";
@@ -39,6 +40,10 @@ import { z } from "zod";
 import { createReservationInstantAccessUrl } from "@/lib/customer-auth/instant-access";
 import { getCustomerSession } from "@/lib/customer-auth/session";
 import { createReservationPaymentSessionForCustomer } from "@/lib/reservations/payment-session";
+import {
+  canAuthorizeDepositOnline,
+  getCustomerDepositView,
+} from "@/lib/reservations/util.customer-deposit";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import { log } from "@/lib/evlog";
 import { sendRequestCancelledEmail } from "@/lib/email/send-request-cancelled-email";
@@ -549,4 +554,84 @@ export async function cancelReservationRequest(
   revalidatePath("/dashboard/reservations");
   revalidatePath(`/dashboard/reservations/${reservation.id}`);
   return { success: true };
+}
+
+/** The authorisation link stays valid long enough for a 3DS round trip. */
+const DEPOSIT_AUTHORIZATION_LINK_TTL_MS = 60 * 60 * 1000;
+
+/**
+ * Mints a one-hour access token and returns the deposit authorisation page
+ * URL for the customer's own reservation, under the same window the page
+ * applies: card payments on, reservation confirmed or under way, no live
+ * hold, pickup within the hold's lifetime.
+ */
+export async function createDepositAuthorizationLink(
+  storeSlug: string,
+  reservationId: string,
+): Promise<{ url: string } | { error: string }> {
+  const parsed = reservationActionInputSchema.safeParse({ storeSlug, reservationId });
+  if (!parsed.success) return { error: "invalidData" as const };
+
+  const resolved = await resolveCustomerStore(parsed.data.storeSlug);
+  if (resolved.error !== undefined) return { error: resolved.error };
+  const { store, session } = resolved;
+
+  const reservation = await db.query.reservations.findFirst({
+    columns: {
+      id: true,
+      status: true,
+      startDate: true,
+      depositAmount: true,
+      depositStatus: true,
+      depositAuthorizationExpiresAt: true,
+    },
+    where: and(
+      eq(reservations.id, parsed.data.reservationId),
+      eq(reservations.storeId, store.id),
+      eq(reservations.customerId, session.customerId),
+    ),
+    with: {
+      payments: {
+        columns: {
+          type: true,
+          status: true,
+          method: true,
+          amount: true,
+          notes: true,
+          paidAt: true,
+          createdAt: true,
+        },
+      },
+    },
+  });
+  if (!reservation) return { error: "reservationNotFound" as const };
+
+  const allowed = canAuthorizeDepositOnline({
+    view: getCustomerDepositView(reservation),
+    status: reservation.status,
+    startDate: reservation.startDate,
+    stripeActive: Boolean(store.stripeAccountId) && store.stripeChargesEnabled === true,
+  });
+  if (!allowed) return { error: "depositAuthorizationUnavailable" as const };
+
+  const token = nanoid(64);
+  const now = new Date();
+  await db.insert(verificationCodes).values({
+    id: nanoid(),
+    email: session.customer.email,
+    storeId: store.id,
+    code: "",
+    type: "instant_access",
+    token,
+    reservationId: reservation.id,
+    expiresAt: new Date(now.getTime() + DEPOSIT_AUTHORIZATION_LINK_TTL_MS),
+    createdAt: now,
+  });
+
+  return {
+    url: getStorefrontUrl(
+      store.slug,
+      `/authorize-deposit/${reservation.id}?token=${encodeURIComponent(token)}`,
+    ),
+  };
 }
