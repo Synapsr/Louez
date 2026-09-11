@@ -67,6 +67,8 @@
     "dayUnit": "{count, plural, one {day} other {days}}",
     "hourUnit": "{count, plural, one {hour} other {hours}}",
     "weekUnit": "{count, plural, one {week} other {weeks}}",
+    "monthUnit": "{count, plural, one {month} other {months}}",
+    "yearUnit": "{count, plural, one {year} other {years}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
     "phoneInput": {
       "selectCountry": "Select a country",
@@ -1181,6 +1183,21 @@
           "day": "Per day",
           "week": "Per week"
         },
+        "calculationMode": {
+          "label": "Price calculation",
+          "whole": {
+            "label": "Whole periods",
+            "description": "Each started period is charged in full.",
+            "tiersDescription": "Durations between rates are charged at the next rate."
+          },
+          "prorated": {
+            "label": "Prorated",
+            "description": "After the first period, the price adjusts to the exact duration.",
+            "tiersDescription": "The price changes gradually between your rate durations."
+          },
+          "example": "Example for {duration}",
+          "minimum": "Minimum charge: {price} for {duration}."
+        },
         "pricingTiers": {
           "enableTiers": "Long-term discounts",
           "enableTiersDescription": "Offer automatic discounts for longer rentals",
@@ -1216,9 +1233,9 @@
             }
           },
           "chart": {
-            "strictLine": "Fixed tiers",
-            "progressiveLine": "Progressive",
-            "savings": "Customer savings",
+            "strictLine": "Whole periods",
+            "progressiveLine": "Prorated",
+            "savings": "Difference between modes",
             "basePricing": "Base pricing",
             "title": "Price simulation",
             "subtitle": "Total price charged by rental duration"
@@ -1500,6 +1517,15 @@
         "aiContextPlaceholder": "E.g. requires a B licence, not suitable for children under 12, always ask for the event date and group size…",
         "aiContextHint": "Extra details only the AI advisor can see — it uses them to advise customers and check requirements. Never shown on the storefront.",
         "createAndDuplicate": "Create and duplicate",
+        "minimumCharged": "minimum charged",
+        "seasonReplacesBase": "replaces the base rate",
+        "addSeasonRate": "Lower rate during this season",
+        "openSimulation": "Simulate",
+        "simulationHint": "Click the curve to add a rate there",
+        "horizonAuto": "Auto",
+        "depositAndVat": "Deposit and VAT",
+        "vatLabel": "VAT",
+        "seasonActions": "Season actions",
         "productCreatedCopyReady": "The pre-filled copy is ready to edit.",
         "copySuffix": "(copy)",
         "productSection": "Product",

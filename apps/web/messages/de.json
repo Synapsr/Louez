@@ -67,6 +67,8 @@
     "dayUnit": "{count, plural, one {Tag} other {Tage}}",
     "hourUnit": "{count, plural, one {Stunde} other {Stunden}}",
     "weekUnit": "{count, plural, one {Woche} other {Wochen}}",
+    "monthUnit": "{count, plural, one {Monat} other {Monate}}",
+    "yearUnit": "{count, plural, one {Jahr} other {Jahre}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
     "phoneInput": {
       "selectCountry": "Land auswählen",
@@ -1181,6 +1183,21 @@
           "day": "Pro Tag",
           "week": "Pro Woche"
         },
+        "calculationMode": {
+          "label": "Preisberechnung",
+          "whole": {
+            "label": "Ganze Zeiträume",
+            "description": "Jeder angefangene Zeitraum wird vollständig berechnet.",
+            "tiersDescription": "Zeiten zwischen Tarifstufen werden zum nächsthöheren Tarif berechnet."
+          },
+          "prorated": {
+            "label": "Anteilig",
+            "description": "Nach dem ersten Zeitraum richtet sich der Preis nach der genauen Dauer.",
+            "tiersDescription": "Der Preis passt sich zwischen den Tarifzeiträumen stufenlos an."
+          },
+          "example": "Beispiel für {duration}",
+          "minimum": "Mindestpreis: {price} für {duration}."
+        },
         "pricingTiers": {
           "enableTiers": "Langzeitrabatte",
           "enableTiersDescription": "Bieten Sie automatische Rabatte für längere Mieten an",
@@ -1216,9 +1233,9 @@
             }
           },
           "chart": {
-            "strictLine": "Feste Stufen",
-            "progressiveLine": "Progressiv",
-            "savings": "Kundenersparnis",
+            "strictLine": "Ganze Zeiträume",
+            "progressiveLine": "Anteilig",
+            "savings": "Unterschied zwischen den Modi",
             "basePricing": "Basistarife",
             "title": "Preissimulation",
             "subtitle": "Gesamtpreis nach Mietdauer"
@@ -1500,6 +1517,15 @@
         "aiContextPlaceholder": "z. B. Führerschein Klasse B erforderlich, nicht geeignet für Kinder unter 12 Jahren, fragen Sie immer nach Veranstaltungsdatum und Gruppengröße…",
         "aiContextHint": "Zusätzliche Angaben, die nur der KI-Berater sieht — er nutzt sie, um Kunden zu beraten und Voraussetzungen zu prüfen. Werden nie im Shop angezeigt.",
         "createAndDuplicate": "Erstellen und duplizieren",
+        "minimumCharged": "Mindestbetrag",
+        "seasonReplacesBase": "ersetzt den Grundpreis",
+        "addSeasonRate": "Günstigerer Preis in dieser Saison",
+        "openSimulation": "Simulieren",
+        "simulationHint": "Klicken Sie auf die Kurve, um dort einen Preis hinzuzufügen",
+        "horizonAuto": "Auto",
+        "depositAndVat": "Kaution und MwSt.",
+        "vatLabel": "MwSt.",
+        "seasonActions": "Saison-Aktionen",
         "productCreatedCopyReady": "Die vorausgefüllte Kopie kann jetzt bearbeitet werden.",
         "copySuffix": "(Kopie)",
         "productSection": "Produkt",

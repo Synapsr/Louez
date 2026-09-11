@@ -67,6 +67,8 @@
     "dayUnit": "{count, plural, one {dzień} few {dni} many {dni} other {dni}}",
     "hourUnit": "{count, plural, one {godzina} few {godziny} many {godzin} other {godzin}}",
     "weekUnit": "{count, plural, one {tydzień} few {tygodnie} many {tygodni} other {tygodni}}",
+    "monthUnit": "{count, plural, one {miesiąc} few {miesiące} many {miesięcy} other {miesiąca}}",
+    "yearUnit": "{count, plural, one {rok} few {lata} many {lat} other {roku}}",
     "minuteUnit": "{count, plural, one {minuta} few {minuty} many {minut} other {minut}}",
     "phoneInput": {
       "selectCountry": "Wybierz kraj",
@@ -1142,6 +1144,21 @@
           "day": "Za dzień",
           "week": "Za tydzień"
         },
+        "calculationMode": {
+          "label": "Obliczanie ceny",
+          "whole": {
+            "label": "Pełne okresy",
+            "description": "Każdy rozpoczęty okres jest naliczany w całości.",
+            "tiersDescription": "Czas pomiędzy progami jest rozliczany według stawki następnego progu."
+          },
+          "prorated": {
+            "label": "Proporcjonalnie",
+            "description": "Po pierwszym okresie cena dostosowuje się do dokładnego czasu wynajmu.",
+            "tiersDescription": "Cena zmienia się płynnie pomiędzy okresami określonymi w cenniku."
+          },
+          "example": "Przykład dla: {duration}",
+          "minimum": "Opłata minimalna: {price} za {duration}."
+        },
         "pricingTiers": {
           "enableTiers": "Zniżki długoterminowe",
           "enableTiersDescription": "Oferuj automatyczne zniżki przy dłuższym wynajmie",
@@ -1177,9 +1194,9 @@
             }
           },
           "chart": {
-            "strictLine": "Stałe progi",
-            "progressiveLine": "Progresywny",
-            "savings": "Oszczędność klienta",
+            "strictLine": "Pełne okresy",
+            "progressiveLine": "Proporcjonalnie",
+            "savings": "Różnica między trybami",
             "basePricing": "Cennik bazowy",
             "title": "Symulacja ceny",
             "subtitle": "Łączna cena według czasu wynajmu"
@@ -1461,6 +1478,15 @@
         "aiContextPlaceholder": "Np. wymagane prawo jazdy kat. B, nieodpowiednie dla dzieci poniżej 12 lat, zawsze pytaj o datę wydarzenia i liczebność grupy…",
         "aiContextHint": "Dodatkowe informacje widoczne tylko dla doradcy AI — używa ich, aby doradzać klientom i sprawdzać wymagania. Nigdy nie są wyświetlane w sklepie.",
         "createAndDuplicate": "Utwórz i zduplikuj",
+        "minimumCharged": "minimalna opłata",
+        "seasonReplacesBase": "zastępuje stawkę podstawową",
+        "addSeasonRate": "Niższa stawka w tym sezonie",
+        "openSimulation": "Symuluj",
+        "simulationHint": "Kliknij krzywą, aby dodać tam stawkę",
+        "horizonAuto": "Auto",
+        "depositAndVat": "Kaucja i VAT",
+        "vatLabel": "VAT",
+        "seasonActions": "Akcje sezonu",
         "productCreatedCopyReady": "Wstępnie wypełniona kopia jest gotowa do edycji.",
         "copySuffix": "(kopia)",
         "productSection": "Produkt",

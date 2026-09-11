@@ -67,6 +67,8 @@
     "dayUnit": "{count, plural, one {giorno} other {giorni}}",
     "hourUnit": "{count, plural, one {ora} other {ore}}",
     "weekUnit": "{count, plural, one {settimana} other {settimane}}",
+    "monthUnit": "{count, plural, one {mese} other {mesi}}",
+    "yearUnit": "{count, plural, one {anno} other {anni}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
     "phoneInput": {
       "selectCountry": "Seleziona un paese",
@@ -1142,6 +1144,21 @@
           "day": "Al giorno",
           "week": "A settimana"
         },
+        "calculationMode": {
+          "label": "Calcolo del prezzo",
+          "whole": {
+            "label": "Periodi interi",
+            "description": "Ogni periodo iniziato viene addebitato per intero.",
+            "tiersDescription": "Le durate intermedie vengono addebitate alla tariffa del periodo successivo."
+          },
+          "prorated": {
+            "label": "Proporzionale",
+            "description": "Dopo il primo periodo, il prezzo si adatta alla durata esatta.",
+            "tiersDescription": "Il prezzo varia gradualmente tra le durate delle tue tariffe."
+          },
+          "example": "Esempio per {duration}",
+          "minimum": "Importo minimo: {price} per {duration}."
+        },
         "pricingTiers": {
           "enableTiers": "Sconti a lungo termine",
           "enableTiersDescription": "Offri sconti automatici per noleggi piu lunghi",
@@ -1177,9 +1194,9 @@
             }
           },
           "chart": {
-            "strictLine": "Livelli fissi",
-            "progressiveLine": "Progressivo",
-            "savings": "Risparmio cliente",
+            "strictLine": "Periodi interi",
+            "progressiveLine": "Proporzionale",
+            "savings": "Differenza tra le modalità",
             "basePricing": "Tariffe base",
             "title": "Simulazione del prezzo",
             "subtitle": "Prezzo totale in base alla durata del noleggio"
@@ -1461,6 +1478,15 @@
         "aiContextPlaceholder": "Es: richiede patente B, non adatto ai bambini sotto i 12 anni, chiedi sempre la data dell'evento e la dimensione del gruppo…",
         "aiContextHint": "Informazioni aggiuntive visibili solo al consulente IA — le usa per consigliare i clienti e verificare i requisiti. Non vengono mai mostrate nel negozio.",
         "createAndDuplicate": "Crea e duplica",
+        "minimumCharged": "minimo fatturato",
+        "seasonReplacesBase": "sostituisce la tariffa base",
+        "addSeasonRate": "Tariffa ridotta in questa stagione",
+        "openSimulation": "Simula",
+        "simulationHint": "Clicca sulla curva per aggiungere una tariffa",
+        "horizonAuto": "Auto",
+        "depositAndVat": "Cauzione e IVA",
+        "vatLabel": "IVA",
+        "seasonActions": "Azioni sulla stagione",
         "productCreatedCopyReady": "La copia precompilata è pronta per essere modificata.",
         "copySuffix": "(copia)",
         "productSection": "Prodotto",
