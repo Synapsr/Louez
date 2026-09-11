@@ -67,6 +67,8 @@
     "dayUnit": "{count, plural, one {dag} other {dagen}}",
     "hourUnit": "{count, plural, one {uur} other {uren}}",
     "weekUnit": "{count, plural, one {week} other {weken}}",
+    "monthUnit": "{count, plural, one {maand} other {maanden}}",
+    "yearUnit": "{count, plural, one {jaar} other {jaar}}",
     "minuteUnit": "{count, plural, one {minuut} other {minuten}}",
     "phoneInput": {
       "selectCountry": "Selecteer een land",
@@ -1142,6 +1144,21 @@
           "day": "Per dag",
           "week": "Per week"
         },
+        "calculationMode": {
+          "label": "Prijsberekening",
+          "whole": {
+            "label": "Hele periodes",
+            "description": "Elke begonnen periode wordt volledig in rekening gebracht.",
+            "tiersDescription": "Tussenliggende looptijden worden tegen het eerstvolgende tarief berekend."
+          },
+          "prorated": {
+            "label": "Naar verhouding",
+            "description": "Na de eerste periode past de prijs zich aan de exacte duur aan.",
+            "tiersDescription": "De prijs verandert geleidelijk tussen de looptijden van je tarieven."
+          },
+          "example": "Voorbeeld voor {duration}",
+          "minimum": "Minimumbedrag: {price} voor {duration}."
+        },
         "pricingTiers": {
           "enableTiers": "Langdurige kortingen",
           "enableTiersDescription": "Bied automatische kortingen voor langere verhuur",
@@ -1177,9 +1194,9 @@
             }
           },
           "chart": {
-            "strictLine": "Vaste stappen",
-            "progressiveLine": "Progressief",
-            "savings": "Klantbesparing",
+            "strictLine": "Hele periodes",
+            "progressiveLine": "Naar verhouding",
+            "savings": "Verschil tussen de opties",
             "basePricing": "Basistarieven",
             "title": "Prijssimulatie",
             "subtitle": "Totale prijs per huurperiode"
@@ -1461,6 +1478,15 @@
         "aiContextPlaceholder": "Bijv. rijbewijs B vereist, niet geschikt voor kinderen onder de 12 jaar, vraag altijd naar de datum van het evenement en de groepsgrootte…",
         "aiContextHint": "Extra informatie die alleen de AI-adviseur ziet — hij gebruikt deze om klanten te adviseren en vereisten te controleren. Wordt nooit in uw winkel getoond.",
         "createAndDuplicate": "Aanmaken en dupliceren",
+        "minimumCharged": "minimaal in rekening gebracht",
+        "seasonReplacesBase": "vervangt het basistarief",
+        "addSeasonRate": "Lager tarief tijdens dit seizoen",
+        "openSimulation": "Simuleren",
+        "simulationHint": "Klik op de curve om daar een tarief toe te voegen",
+        "horizonAuto": "Auto",
+        "depositAndVat": "Borg en btw",
+        "vatLabel": "Btw",
+        "seasonActions": "Seizoensacties",
         "productCreatedCopyReady": "De vooraf ingevulde kopie kan worden bewerkt.",
         "copySuffix": "(kopie)",
         "productSection": "Product",

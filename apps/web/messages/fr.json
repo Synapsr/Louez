@@ -67,6 +67,8 @@
     "dayUnit": "{count, plural, one {jour} other {jours}}",
     "hourUnit": "{count, plural, one {heure} other {heures}}",
     "weekUnit": "{count, plural, one {semaine} other {semaines}}",
+    "monthUnit": "{count, plural, one {mois} other {mois}}",
+    "yearUnit": "{count, plural, one {an} other {ans}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
     "phoneInput": {
       "selectCountry": "Sélectionner un pays",
@@ -1181,6 +1183,21 @@
           "day": "À la journée",
           "week": "À la semaine"
         },
+        "calculationMode": {
+          "label": "Mode de calcul",
+          "whole": {
+            "label": "Par périodes entières",
+            "description": "Toute période commencée est facturée en entier.",
+            "tiersDescription": "Les durées intermédiaires sont facturées au palier supérieur."
+          },
+          "prorated": {
+            "label": "Au prorata",
+            "description": "Après la première période, le prix s’adapte à la durée exacte.",
+            "tiersDescription": "Le prix évolue progressivement entre les durées de vos tarifs."
+          },
+          "example": "Exemple pour {duration}",
+          "minimum": "Minimum facturé : {price} pour {duration}."
+        },
         "pricingTiers": {
           "enableTiers": "Réductions longue durée",
           "enableTiersDescription": "Proposez des réductions automatiques pour les locations plus longues",
@@ -1216,9 +1233,9 @@
             }
           },
           "chart": {
-            "strictLine": "Paliers fixes",
-            "progressiveLine": "Progressif",
-            "savings": "Économie client",
+            "strictLine": "Par périodes entières",
+            "progressiveLine": "Au prorata",
+            "savings": "Différence entre les modes",
             "basePricing": "Tarifs de base",
             "title": "Simulation du prix",
             "subtitle": "Prix total facturé selon la durée de location"
@@ -1500,6 +1517,15 @@
         "aiContextPlaceholder": "Ex. permis B requis, ne convient pas aux enfants de moins de 12 ans, demandez toujours la date de l'événement et la taille du groupe…",
         "aiContextHint": "Informations supplémentaires visibles uniquement par l'assistant IA — il les utilise pour conseiller les clients et vérifier les prérequis. Jamais affichées sur la boutique.",
         "createAndDuplicate": "Créer et dupliquer",
+        "minimumCharged": "minimum facturé",
+        "seasonReplacesBase": "remplace le tarif de base",
+        "addSeasonRate": "Tarif dégressif pendant cette saison",
+        "openSimulation": "Simuler",
+        "simulationHint": "Cliquez sur la courbe pour y ajouter un palier",
+        "horizonAuto": "Auto",
+        "depositAndVat": "Caution et TVA",
+        "vatLabel": "TVA",
+        "seasonActions": "Actions sur la saison",
         "productCreatedCopyReady": "La copie préremplie est prête à être modifiée.",
         "copySuffix": "(copie)",
         "productSection": "Produit",

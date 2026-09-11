@@ -26,7 +26,7 @@ The per-product boolean `enforceStrictTiers` (DB column `products.enforce_strict
 
 ### Mode 1: Strict (enforceStrictTiers = true) — DEFAULT for new products
 
-**UI toggle**: "Autoriser une remise progressive" = OFF (unchecked).
+**UI choice**: "Par périodes entières". The choice is visible with a single base rate.
 
 Only exact tier durations are valid rental periods. If the rental duration falls between tiers, snap UP to the next tier and charge that tier's price.
 
@@ -46,7 +46,7 @@ Only exact tier durations are valid rental periods. If the rental duration falls
 
 ### Mode 2: Progressive (enforceStrictTiers = false) — DEFAULT for legacy products
 
-**UI toggle**: "Autoriser une remise progressive" = ON (checked).
+**UI choice**: "Au prorata". The first base period remains the minimum charge.
 
 Linear interpolation between adjacent tiers. Each tier is an anchor point on a price/duration curve. Between two consecutive tiers, the price transitions in a straight line from one to the next.
 

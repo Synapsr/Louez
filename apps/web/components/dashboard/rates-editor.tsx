@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { ChartSpline, HelpCircle, Plus, Trash2 } from "lucide-react";
+import { ChartSpline, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   AreaChart,
@@ -20,15 +20,6 @@ import {
 import type { Rate } from "@louez/types";
 import {
   Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogPanel,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
-  DialogFooter,
   Input,
   Label,
   Select,
@@ -36,17 +27,23 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
 } from "@louez/ui";
 import {
   type DurationUnit,
-  calculateRateBasedPrice,
   computeReductionPercent,
   formatCurrency,
   priceDurationToMinutes,
 } from "@louez/utils";
 
 import { PriceDurationInput, type PriceDurationValue } from "@/components/ui/price-duration-input";
+import {
+  type ChartDataPoint,
+  ONE_WEEK_MINUTES,
+  buildChartData,
+  buildChartTicks,
+} from "@/lib/utils/util.pricing-chart";
+
+import { PricingCalculationMode } from "./pricing-calculation-mode";
 
 interface RateEditorRow {
   id?: string;
@@ -68,14 +65,6 @@ interface RatesEditorProps {
   currency: string;
   disabled?: boolean;
   hideProgressiveToggle?: boolean;
-}
-
-export interface ChartDataPoint {
-  durationMinutes: number;
-  durationLabel: string;
-  strictTotal: number;
-  progressiveTotal: number;
-  isTierAnchor: boolean;
 }
 
 /**
@@ -194,9 +183,6 @@ function nextTierDuration(params: {
   return Math.max(safeCurrent + 1, Math.ceil(safeCurrent * 1.5));
 }
 
-// Standard step sizes (minutes) for chart interpolation.
-const CLEAN_STEPS = [15, 30, 60, 120, 240, 360, 720, 1440, 2880, 4320, 10080];
-const ONE_WEEK_MINUTES = 10080;
 const THREE_MONTHS_MINUTES = 60 * 24 * 90;
 export const SHOW_DEV_CHART_RANGE_SELECTOR = process.env.NODE_ENV !== "production";
 
@@ -214,105 +200,8 @@ export const CHART_RANGE_PRESETS: Array<{
   { value: "3m", label: "3m", minutes: THREE_MONTHS_MINUTES },
 ];
 
-function pickStep(range: number): number {
-  for (const s of CLEAN_STEPS) {
-    const n = Math.floor(range / s) - 1;
-    if (n >= 2 && n <= 12) return s;
-  }
-  return CLEAN_STEPS[CLEAN_STEPS.length - 1];
-}
-
-export function buildChartData(
-  chartBasePrice: number,
-  basePeriod: number,
-  chartRates: Rate[],
-  tCommon: (key: string, opts: { count: number }) => string,
-  chartMaxMinutes?: number | null,
-): ChartDataPoint[] {
-  if (!chartBasePrice || !basePeriod) return [];
-
-  const anchors = [basePeriod, ...chartRates.map((r) => r.period)].sort((a, b) => a - b);
-  const anchorSet = new Set(anchors);
-  const hasAdditionalRates = chartRates.length > 0;
-
-  const sampleSet = new Set<number>();
-  for (const a of anchors) sampleSet.add(a);
-
-  for (let i = 0; i < anchors.length - 1; i++) {
-    const lo = anchors[i];
-    const hi = anchors[i + 1];
-    const step = pickStep(hi - lo);
-    const start = Math.ceil((lo + 1) / step) * step;
-    for (let v = start; v < hi; v += step) {
-      sampleSet.add(v);
-    }
-  }
-
-  const last = anchors[anchors.length - 1];
-  const prevAnchor = anchors.length > 1 ? anchors[anchors.length - 2] : 0;
-  const defaultChartMax = !hasAdditionalRates
-    ? Math.max(basePeriod * 2, ONE_WEEK_MINUTES)
-    : last + pickStep(last - prevAnchor || last) * 3;
-  const targetChartMax = Math.max(defaultChartMax, chartMaxMinutes ?? 0);
-  const extensionStep = pickStep(targetChartMax - last || last);
-  const extensionStart = Math.ceil((last + 1) / extensionStep) * extensionStep;
-
-  for (let v = extensionStart; v < targetChartMax; v += extensionStep) {
-    sampleSet.add(v);
-  }
-
-  sampleSet.add(targetChartMax);
-
-  const pricingBase = {
-    basePrice: chartBasePrice,
-    basePeriodMinutes: basePeriod,
-    deposit: 0,
-    rates: chartRates,
-  };
-
-  return [...sampleSet]
-    .sort((a, b) => a - b)
-    .map((mins) => ({
-      durationMinutes: mins,
-      durationLabel: formatDurationShort(mins, tCommon),
-      strictTotal: calculateRateBasedPrice({ ...pricingBase, enforceStrictTiers: true }, mins, 1)
-        .subtotal,
-      progressiveTotal: calculateRateBasedPrice(
-        { ...pricingBase, enforceStrictTiers: false },
-        mins,
-        1,
-      ).subtotal,
-      isTierAnchor: anchorSet.has(mins),
-    }));
-}
-
-export function buildChartTicks(data: ChartDataPoint[]): number[] {
-  if (data.length === 0) return [];
-
-  const ticks = data.filter((point) => point.isTierAnchor).map((point) => point.durationMinutes);
-  const lastTick = data[data.length - 1]?.durationMinutes;
-
-  if (lastTick && ticks[ticks.length - 1] !== lastTick) {
-    ticks.push(lastTick);
-  }
-
-  // With few anchors the axis is nearly empty: densify with evenly spaced
-  // sample points, keeping a minimum gap so labels never overlap.
-  if (ticks.length < 4 && data.length >= 3) {
-    const first = data[0].durationMinutes;
-    const minGap = ((lastTick ?? first) - first) * 0.15;
-    const step = Math.max(1, Math.floor(data.length / 5));
-    for (let i = step; i < data.length; i += step) {
-      const candidate = data[i].durationMinutes;
-      if (ticks.every((tick) => Math.abs(tick - candidate) >= minGap)) {
-        ticks.push(candidate);
-      }
-    }
-    ticks.sort((a, b) => a - b);
-  }
-
-  return ticks;
-}
+export type { ChartDataPoint };
+export { buildChartData, buildChartTicks };
 
 export function resolveChartMaxMinutes(preset: ChartRangePreset): number | null {
   return CHART_RANGE_PRESETS.find((option) => option.value === preset)?.minutes ?? null;
@@ -358,8 +247,8 @@ export function RatesEditor({
   );
 
   const chartData = useMemo(
-    () => buildChartData(basePrice, basePeriod, validRates, tCommon, chartMaxMinutes),
-    [basePeriod, basePrice, validRates, tCommon, chartMaxMinutes],
+    () => buildChartData(basePrice, basePeriod, validRates, chartMaxMinutes),
+    [basePeriod, basePrice, validRates, chartMaxMinutes],
   );
 
   const chartAnchorTicks = useMemo(() => buildChartTicks(chartData), [chartData]);
@@ -453,6 +342,17 @@ export function RatesEditor({
 
   return (
     <div className="space-y-3">
+      {hasBaseRate && !hideProgressiveToggle && (
+        <PricingCalculationMode
+          basePrice={basePrice}
+          basePeriodMinutes={basePeriod}
+          rates={validRates}
+          enforceStrictTiers={enforceStrictTiers}
+          onChange={onEnforceStrictTiersChange}
+          currency={currency}
+          disabled={disabled}
+        />
+      )}
       <Label helper={t("additionalRatesDescription")}>{t("additionalRates")}</Label>
       {rates.map((rate, index) => {
         const isInvalidRate = invalidIndexes.has(index);
@@ -580,77 +480,6 @@ export function RatesEditor({
           <Plus className="mr-2 h-4 w-4" />
           {t("addRate")}
         </Button>
-      )}
-
-      {hasBaseRate && !hideProgressiveToggle && validRates.length > 0 && (
-        <div className="border-muted bg-muted/30 rounded-lg border px-3.5 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0 space-y-0.5">
-              <div className="flex items-center gap-1.5">
-                <Label className="text-sm font-medium">{t("pricingTiers.progressive.label")}</Label>
-                <Dialog>
-                  <DialogTrigger
-                    render={
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-foreground inline-flex cursor-help transition-colors"
-                      />
-                    }
-                  >
-                    <HelpCircle className="h-4 w-4" />
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>{t("pricingTiers.progressive.modal.title")}</DialogTitle>
-                      <DialogDescription>
-                        {t("pricingTiers.progressive.modal.intro")}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogPanel>
-                      <div className="space-y-3">
-                        <div className="rounded-lg border p-3">
-                          <p className="text-sm font-medium">
-                            {t("pricingTiers.progressive.modal.withoutTitle")}
-                          </p>
-                          <p className="text-muted-foreground mt-1 text-sm">
-                            {t("pricingTiers.progressive.modal.withoutText")}
-                          </p>
-                          <div className="bg-muted/50 mt-2 rounded-md px-3 py-2 text-sm">
-                            {t("pricingTiers.progressive.modal.withoutExample")}
-                          </div>
-                        </div>
-                        <div className="border-success/25 bg-success/5 dark:bg-success/10 rounded-lg border p-3">
-                          <p className="text-success text-sm font-medium">
-                            {t("pricingTiers.progressive.modal.withTitle")}
-                          </p>
-                          <p className="text-muted-foreground mt-1 text-sm">
-                            {t("pricingTiers.progressive.modal.withText")}
-                          </p>
-                          <div className="bg-success/10 dark:bg-success/20 mt-2 rounded-md px-3 py-2 text-sm">
-                            {t("pricingTiers.progressive.modal.withExample")}
-                          </div>
-                        </div>
-                      </div>
-                    </DialogPanel>
-                    <DialogFooter>
-                      <DialogClose render={<Button type="button" variant="outline" size="sm" />}>
-                        {tCommon("close")}
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </div>
-              <p className="text-muted-foreground text-xs">
-                {t("pricingTiers.progressive.description")}
-              </p>
-            </div>
-            <Switch
-              checked={progressiveDiscountEnabled}
-              onCheckedChange={(checked) => onEnforceStrictTiersChange(!checked)}
-              disabled={disabled}
-            />
-          </div>
-        </div>
       )}
 
       {/* Base pricing chart */}
