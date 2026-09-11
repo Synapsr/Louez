@@ -206,6 +206,7 @@ export interface CatalogProductFilters extends Partial<CatalogPeriodInput> {
 }
 
 export interface LoadCatalogProductsInput extends CatalogProductFilters {
+  timezone?: string;
   storeId: string;
   cursor?: string | null;
   limit?: number;
@@ -306,6 +307,7 @@ export const loadCatalogPriceIndex = cache(
     storeId: string,
     startDate: string | null,
     endDate: string | null,
+    timezone?: string,
   ): Promise<CatalogPriceIndex> => {
     const rows = await db
       .select({
@@ -334,7 +336,8 @@ export const loadCatalogPriceIndex = cache(
       priceById.set(
         row.id,
         startDate && endDate
-          ? getStorefrontProductPrice({ product, startDate, endDate, quantity: 1 }).subtotal
+          ? getStorefrontProductPrice({ product, startDate, endDate, quantity: 1, timezone })
+              .subtotal
           : getStorefrontPricingSummary(product).displayPrice,
       );
     }
@@ -738,6 +741,7 @@ const loadCategoryLinks = async (productIds: string[]) => {
  */
 export const loadCatalogProducts = async ({
   storeId,
+  timezone,
   category,
   search,
   quantity,
@@ -770,7 +774,7 @@ export const loadCatalogProducts = async ({
         })
         .from(products)
         .where(where),
-      loadCatalogPriceIndex(storeId, startDate, endDate),
+      loadCatalogPriceIndex(storeId, startDate, endDate, timezone),
       getStoreVariantActivity(storeId),
       loadCatalogCategories(storeId),
     ]);

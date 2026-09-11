@@ -7,6 +7,7 @@ import type { StorefrontProductPricing } from "@/lib/storefront/storefront.types
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import {
   getStorefrontProductPrice,
+  isStorefrontPriceProrated,
   normalizeStorefrontTiers,
   parseStorefrontDecimal,
   toCartItemForPricing,
@@ -65,6 +66,45 @@ describe("normalizeStorefrontTiers", () => {
 });
 
 describe("getStorefrontProductPrice", () => {
+  test("weekly proration agrees with the cart without a fictitious discount", () => {
+    const product = { price: "15", basePeriodMinutes: 10080, enforceStrictTiers: false };
+    const startDate = "2026-09-11T14:30:00Z";
+    const endDate = "2026-09-25T16:30:00Z";
+    const result = assertParityWithCart(product, startDate, endDate, 1);
+    assert.deepEqual(result, {
+      subtotal: 30.18,
+      originalSubtotal: 30.18,
+      savings: 0,
+      discountPercent: null,
+    });
+    assert.equal(isStorefrontPriceProrated({ product, startDate, endDate }), true);
+    assert.equal(
+      isStorefrontPriceProrated({
+        product: { ...product, enforceStrictTiers: true },
+        startDate,
+        endDate,
+      }),
+      false,
+    );
+    assert.equal(
+      isStorefrontPriceProrated({ product, startDate, endDate: "2026-09-12T14:30:00Z" }),
+      false,
+    );
+    assert.equal(
+      isStorefrontPriceProrated({ product, startDate, endDate: "2026-09-25T14:30:00Z" }),
+      false,
+    );
+    assert.equal(
+      isStorefrontPriceProrated({
+        product: { ...product, pricingKind: "fixed" },
+        startDate,
+        endDate,
+      }),
+      false,
+    );
+    assert.equal(isStorefrontPriceProrated({ product }), false);
+  });
+
   test("fixed pricing: price times quantity, dates and tiers ignored, comma accepted", () => {
     const result = assertParityWithCart(
       {
@@ -219,10 +259,15 @@ describe("getStorefrontProductPrice", () => {
       1,
     );
 
-    // 30 June 10:00 -> 1 July 00:00 = 1 base day (10), 1 July -> 2 July 10:00 = 2 season days (30).
-    assert.deepEqual(result, {
-      subtotal: 40,
-      originalSubtotal: 40,
+    // Two days total: 14 hours at the base rate, 34 hours at the summer rate.
+    const { seasonalSegments, ...totals } = result;
+    assert.deepEqual(
+      seasonalSegments?.map((segment) => segment.subtotal),
+      [5.83, 21.25],
+    );
+    assert.deepEqual(totals, {
+      subtotal: 27.08,
+      originalSubtotal: 27.08,
       savings: 0,
       discountPercent: null,
     });

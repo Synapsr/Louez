@@ -10,6 +10,8 @@
   "dependencies": {
     "@louez/types": "workspace:*",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {

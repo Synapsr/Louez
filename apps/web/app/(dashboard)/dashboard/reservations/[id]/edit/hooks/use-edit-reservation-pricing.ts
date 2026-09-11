@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useStoreTimezone } from "@/contexts/store-context";
 
 import type { PricingKind, PricingMode } from "@louez/types";
 import { calculateDurationMinutes, isRateBasedProduct, minutesToPriceDuration } from "@louez/utils";
@@ -71,6 +72,7 @@ export function calculateEditableItemPrice(
   item: EditableItem,
   startDate: Date,
   endDate: Date,
+  timezone?: string,
 ): {
   totalPrice: number;
   effectiveUnitPrice: number;
@@ -145,6 +147,7 @@ export function calculateEditableItemPrice(
   // Delegate to the shared pricing utility — same logic as the storefront
   const result = calculateCartItemPrice(
     {
+      timezone,
       price: parseFloat(product.price),
       deposit: parseFloat(product.deposit),
       quantity: item.quantity,
@@ -212,6 +215,7 @@ export function useEditReservationPricing({
   originalSubtotal,
   fixedChargesTotal = 0,
 }: UseEditReservationPricingParams) {
+  const timezone = useStoreTimezone();
   const getDurationForMode = (mode: PricingMode) => {
     if (!startDate || !endDate) return 0;
     return calculateDuration(startDate, endDate, mode);
@@ -250,7 +254,7 @@ export function useEditReservationPricing({
     let totalSavings = 0;
 
     for (const item of items) {
-      const priceResult = calculateEditableItemPrice(item, startDate, endDate);
+      const priceResult = calculateEditableItemPrice(item, startDate, endDate, timezone);
 
       calculatedItems.push({
         ...item,
@@ -280,7 +284,7 @@ export function useEditReservationPricing({
       difference: roundCurrency(subtotalWithFixedCharges - originalSubtotal),
       totalSavings,
     };
-  }, [items, startDate, endDate, originalSubtotal, fixedChargesTotal]);
+  }, [items, startDate, endDate, originalSubtotal, fixedChargesTotal, timezone]);
 
   return {
     getDurationForMode,

@@ -92,9 +92,8 @@ const getBaseRate = (product: StorefrontPricingProduct): StorefrontRateRow => {
 };
 
 /**
- * Rate grid of a product, base rate first, one row per tier, sorted by
- * period. Period-based rates and duration discounts both become comparable
- * rows. A forfait has no grid: one price whatever the period.
+ * Unique rates sorted by period, including the base rate. Stored copies of
+ * a rate share one row. A forfait has no grid.
  */
 export const getStorefrontRateRows = (product: StorefrontPricingProduct): StorefrontRateRow[] => {
   if (product.pricingKind === "fixed") return [];
@@ -106,8 +105,14 @@ export const getStorefrontRateRows = (product: StorefrontPricingProduct): Storef
     ? toRateBasedRow(baseRate.price, baseRate.periodMinutes)
     : toDurationRow(baseRate.price, baseRate.periodMinutes);
   const tierRows = (product.pricingTiers ?? []).map(toRow).filter(isRow);
+  const seen = new Set<string>();
 
-  return [baseRate, ...tierRows].sort(compareRows);
+  return [baseRate, ...tierRows].sort(compareRows).filter((row) => {
+    const key = `${row.periodMinutes}:${row.price}:${row.reductionPercent}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 };
 
 /**

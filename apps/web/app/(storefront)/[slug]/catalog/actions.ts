@@ -43,6 +43,7 @@ export const loadMoreCatalogProducts = async (
   const [page, priceIndex] = await Promise.all([
     loadCatalogProducts({
       storeId: store.id,
+      timezone: store.settings?.timezone,
       category: input.category,
       search: input.search,
       minPrice: input.minPrice,
@@ -55,7 +56,7 @@ export const loadMoreCatalogProducts = async (
       sort: input.sort,
       cursor: input.cursor ?? undefined,
     }),
-    loadCatalogPriceIndex(store.id, input.startDate, input.endDate),
+    loadCatalogPriceIndex(store.id, input.startDate, input.endDate, store.settings?.timezone),
   ]);
   return { ...page, priceBounds: priceIndex.bounds };
 };

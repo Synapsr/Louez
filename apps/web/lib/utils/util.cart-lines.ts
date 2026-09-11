@@ -64,6 +64,7 @@ export interface CartLineIntent {
 
 /** A displayed cart line: the intent completed by the server resolution. */
 export interface CartItem extends CartLineIntent {
+  timezone?: string;
   unavailableReason?: CartLineUnavailableReason;
   startDate: string;
   endDate: string;
@@ -480,6 +481,7 @@ const applyResolvedLine = (
 };
 
 export interface DeriveCartItemsParams {
+  timezone?: string;
   lines: CartLineIntent[];
   resolution: StorefrontCartResolveOutput | undefined;
   period: CartPeriod | null;
@@ -496,12 +498,14 @@ export const deriveCartItems = ({
   resolution,
   period,
   pricingMode,
+  timezone,
 }: DeriveCartItemsParams): CartItem[] => {
   const resolvedByLineId = new Map((resolution?.lines ?? []).map((line) => [line.lineId, line]));
   const effectivePeriod = period ?? getDefaultCartPeriod();
 
   const items = lines.map(
     (line): CartItem => ({
+      ...(timezone ? { timezone } : {}),
       ...applyResolvedLine(line, resolvedByLineId.get(line.lineId), lines),
       startDate: effectivePeriod.startDate,
       endDate: effectivePeriod.endDate,

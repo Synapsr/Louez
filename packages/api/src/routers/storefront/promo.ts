@@ -43,6 +43,7 @@ const validate = storefrontProcedure
     try {
       return await validateStorefrontPromoCode(db, {
         storeId: context.store.id,
+        timezone: context.store.settings?.timezone,
         code: input.code,
         lines: input.lines,
       });

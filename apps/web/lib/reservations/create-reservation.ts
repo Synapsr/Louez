@@ -301,7 +301,11 @@ const prepareReservation = async (
   if (!windowCheck.ok) return windowCheck;
 
   const productIds = [...new Set(input.items.map((item) => item.productId))];
-  const catalog = await loadPricingCatalog(db, { storeId: store.id, productIds });
+  const catalog = await loadPricingCatalog(db, {
+    storeId: store.id,
+    productIds,
+    timezone: settings?.timezone,
+  });
   if (catalog.size !== productIds.length) {
     return failReservation("errors.productNotFound");
   }

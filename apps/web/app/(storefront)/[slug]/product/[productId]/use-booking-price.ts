@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-import { isFixedPriceProduct } from "@louez/utils";
+import { isFixedPriceProduct, type PricingSegment } from "@louez/utils";
 
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 
@@ -11,10 +11,11 @@ import type { AccessoryLink } from "@/lib/storefront/storefront.types";
 import { getEffectiveDiscountPercent } from "@/lib/utils/util.discount-visibility";
 import {
   getStorefrontProductPrice,
+  isStorefrontPriceProrated,
   parseStorefrontDecimal,
 } from "@/lib/utils/util.storefront-product-pricing";
 
-import { useDiscountVisibility } from "@/contexts/store-context";
+import { useDiscountVisibility, useStoreTimezone } from "@/contexts/store-context";
 
 /** An accessory line the cart will carry alongside the product. */
 export interface BookingExtra {
@@ -32,8 +33,10 @@ export interface BookingExtraPrice {
 }
 
 export interface BookingPrice {
+  seasonalSegments?: PricingSegment[];
   /** True once the product can be priced: a forfait always, a rental once dates are set. */
   isPriced: boolean;
+  isProrated: boolean;
   /** Product lines only, discount applied. */
   subtotal: number;
   /** Product lines before the discount; equals `subtotal` when none is shown. */
@@ -66,6 +69,7 @@ export const useBookingPrice = ({
   extras,
 }: UseBookingPriceOptions): BookingPrice => {
   const isDiscountVisible = useDiscountVisibility();
+  const timezone = useStoreTimezone();
 
   return useMemo<BookingPrice>(() => {
     const isFixed = isFixedPriceProduct(product);
@@ -82,6 +86,7 @@ export const useBookingPrice = ({
     if (!isPriced) {
       return {
         isPriced,
+        isProrated: false,
         subtotal: 0,
         originalSubtotal: 0,
         discountPercent: null,
@@ -92,6 +97,7 @@ export const useBookingPrice = ({
     }
 
     const result = getStorefrontProductPrice({
+      timezone,
       product,
       startDate: period?.start,
       endDate: period?.end,
@@ -104,6 +110,7 @@ export const useBookingPrice = ({
       name: accessory.name,
       quantity: extraQuantity,
       amount: getStorefrontProductPrice({
+        timezone,
         product: accessory,
         startDate: period?.start,
         endDate: period?.end,
@@ -114,6 +121,12 @@ export const useBookingPrice = ({
 
     return {
       isPriced,
+      isProrated: isStorefrontPriceProrated({
+        product,
+        startDate: period?.start,
+        endDate: period?.end,
+      }),
+      seasonalSegments: result.seasonalSegments,
       subtotal: result.subtotal,
       originalSubtotal: showsDiscount ? result.originalSubtotal : result.subtotal,
       discountPercent:
@@ -122,5 +135,5 @@ export const useBookingPrice = ({
       total: result.subtotal + extrasTotal,
       deposit,
     };
-  }, [extras, isDiscountVisible, period, product, quantity]);
+  }, [extras, isDiscountVisible, period, product, quantity, timezone]);
 };

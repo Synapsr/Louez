@@ -120,6 +120,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
     loadCatalogCategories(store.id),
     loadCatalogProducts({
       storeId: store.id,
+      timezone: store.settings?.timezone,
       category: filters.category,
       search: filters.search,
       minPrice: filters.minPrice,
@@ -131,7 +132,7 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
       endDate: filters.endDate,
       sort: filters.sort,
     }),
-    loadCatalogPriceIndex(store.id, filters.startDate, filters.endDate),
+    loadCatalogPriceIndex(store.id, filters.startDate, filters.endDate, store.settings?.timezone),
     loadCatalogAttributeAxes(store.id),
   ]);
 
