@@ -79,10 +79,10 @@ export const StoreMap = ({
       className={cn(
         "relative h-full min-h-full overflow-hidden [container-type:size]",
         "[&_.maplibregl-popup-content]:max-h-[calc(100cqh-7rem)] [&_.maplibregl-popup-content]:overflow-y-auto",
-        "[&_.maplibregl-ctrl-attrib]:text-xs [&_.maplibregl-ctrl-attrib_a]:text-muted-foreground",
-        "[&_.maplibregl-popup-content]:rounded-2xl! [&_.maplibregl-popup-content]:bg-popover [&_.maplibregl-popup-content]:p-5! [&_.maplibregl-popup-content]:font-sans! [&_.maplibregl-popup-content]:ring-1 [&_.maplibregl-popup-content]:ring-border/50 [&_.maplibregl-popup-content]:text-popover-foreground [&_.maplibregl-popup-content]:shadow-raised",
+        "[&_.maplibregl-ctrl-attrib]:bg-background/70! [&_.maplibregl-ctrl-attrib]:text-xs [&_.maplibregl-ctrl-attrib_a]:text-muted-foreground!",
+        "[&_.maplibregl-popup-content]:rounded-2xl! [&_.maplibregl-popup-content]:bg-popover! [&_.maplibregl-popup-content]:p-5! [&_.maplibregl-popup-content]:font-sans! [&_.maplibregl-popup-content]:ring-1 [&_.maplibregl-popup-content]:ring-border/50 [&_.maplibregl-popup-content]:text-popover-foreground [&_.maplibregl-popup-content]:shadow-raised!",
         "[&_.maplibregl-popup-tip]:hidden",
-        "[&_.maplibregl-ctrl-group]:overflow-hidden [&_.maplibregl-ctrl-group]:rounded-full! [&_.maplibregl-ctrl-group]:bg-background [&_.maplibregl-ctrl-group]:shadow-raised [&_.maplibregl-ctrl-group_button]:size-11! dark:[&_.maplibregl-ctrl-icon]:invert",
+        "[&_.maplibregl-ctrl-group]:overflow-hidden [&_.maplibregl-ctrl-group]:rounded-full! [&_.maplibregl-ctrl-group]:bg-background! [&_.maplibregl-ctrl-group]:shadow-raised! [&_.maplibregl-ctrl-group_button]:size-11! dark:[&_.maplibregl-ctrl-icon]:invert",
         className,
       )}
       data-slot="store-map"
