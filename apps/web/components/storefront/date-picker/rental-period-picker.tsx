@@ -1,5 +1,7 @@
 "use client";
 
+import type { SeasonalCalendarPricing } from "@/lib/utils/util.storefront-seasonal-pricing";
+
 import { useState } from "react";
 import { ArrowRightIcon, GlobeIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -14,7 +16,7 @@ import {
   type RentalPeriodRules,
 } from "@/lib/utils/util.rental-period";
 
-import type { RentalPeriodValue } from "./core/types";
+import type { RentalPeriodField, RentalPeriodValue } from "./core/types";
 import { DateTimeField } from "./date-time-field";
 import { PeriodChip } from "./period-chip";
 import { PeriodEditor } from "./period-editor";
@@ -34,6 +36,7 @@ export interface RentalPeriodPickerProps {
   layout: RentalPeriodPickerLayout;
   /** The committed period; the editor drafts from it. */
   value: RentalPeriodValue | null;
+  seasonalPricing?: SeasonalCalendarPricing;
   /** Called when the customer taps "Valider". */
   onChange: (period: RentalPeriodValue) => void;
   /**
@@ -53,8 +56,9 @@ export interface RentalPeriodPickerProps {
   className?: string;
 }
 
-const fieldsRowClassName =
-  "grid w-full grid-cols-2 gap-2 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3";
+const fieldsRowClassName = "grid w-full grid-cols-2 gap-2 sm:gap-3";
+const fieldTriggerClassName =
+  "min-w-0 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 /**
  * The one period picker of the storefront. A bottom sheet under `sm`, a
@@ -64,6 +68,7 @@ const fieldsRowClassName =
 export const RentalPeriodPicker = ({
   layout,
   value,
+  seasonalPricing,
   onChange,
   onSubmit,
   submitLabel,
@@ -80,6 +85,7 @@ export const RentalPeriodPicker = ({
   const issueMessage = usePeriodIssueMessage();
   const timezoneCity = useBrowserTimezoneCity(showTimezoneNotice ? rules.timezone : undefined);
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [initialField, setInitialField] = useState<RentalPeriodField>();
 
   const open = openProp ?? uncontrolledOpen;
   const setOpen = (next: boolean) => {
@@ -99,14 +105,17 @@ export const RentalPeriodPicker = ({
       onSubmit(value);
       return;
     }
+    setInitialField(undefined);
     setOpen(true);
   };
 
   const sheet = (
     <PeriodSheet
+      seasonalPricing={seasonalPricing}
       open={open}
       onOpenChange={setOpen}
       value={value}
+      initialField={initialField}
       rules={rules}
       minDate={minDate}
       title={title}
@@ -118,24 +127,41 @@ export const RentalPeriodPicker = ({
     return sheet;
   }
 
-  const fields = (
-    <>
+  const fields = (["start", "end"] satisfies RentalPeriodField[]).map((field) => {
+    const content = (
       <DateTimeField
-        label={t("startLabel")}
-        value={value?.start}
-        placeholder={t("startDate")}
+        label={t(field === "start" ? "startLabel" : "endLabel")}
+        value={value?.[field]}
+        placeholder={t(field === "start" ? "startDate" : "endDate")}
         timezone={rules.timezone}
         size={layout === "embed" ? "compact" : "default"}
       />
-      <DateTimeField
-        label={t("endLabel")}
-        value={value?.end}
-        placeholder={t("endDate")}
-        timezone={rules.timezone}
-        size={layout === "embed" ? "compact" : "default"}
-      />
-    </>
-  );
+    );
+    if (isPhone || layout === "embed") {
+      return (
+        <button
+          key={field}
+          type="button"
+          className={fieldTriggerClassName}
+          onClick={() => {
+            setInitialField(field);
+            setOpen(layout === "embed" && initialField === field ? !open : true);
+          }}
+        >
+          {content}
+        </button>
+      );
+    }
+    return (
+      <PopoverTrigger
+        key={field}
+        className={fieldTriggerClassName}
+        onClick={() => setInitialField(field)}
+      >
+        {content}
+      </PopoverTrigger>
+    );
+  });
 
   const cta = onSubmit ? (
     <Button size="xl" className="h-12 w-full lg:h-10" onClick={handleSubmit}>
@@ -167,6 +193,7 @@ export const RentalPeriodPicker = ({
     }
     return (
       <PeriodPopover
+        seasonalPricing={seasonalPricing}
         open={open}
         onOpenChange={setOpen}
         value={value}
@@ -188,12 +215,12 @@ export const RentalPeriodPicker = ({
   if (layout === "embed") {
     return (
       <div className={cn("flex flex-col gap-3", className)}>
-        <button type="button" className={fieldsRowClassName} onClick={() => setOpen(!open)}>
-          {fields}
-        </button>
+        <div className={fieldsRowClassName}>{fields}</div>
         {open ? (
           <PeriodEditor
+            seasonalPricing={seasonalPricing}
             value={value}
+            initialField={initialField}
             rules={rules}
             minDate={minDate}
             variant="embed"
@@ -218,21 +245,21 @@ export const RentalPeriodPicker = ({
     <div className={cn("flex flex-col gap-3", className)}>
       {isPhone ? (
         <>
-          <button type="button" className={fieldsRowClassName} onClick={() => setOpen(true)}>
-            {fields}
-          </button>
+          <div className={fieldsRowClassName}>{fields}</div>
           {sheet}
         </>
       ) : (
         <PeriodPopover
+          seasonalPricing={seasonalPricing}
           open={open}
           onOpenChange={setOpen}
           value={value}
+          initialField={initialField}
           rules={rules}
           minDate={minDate}
           onApply={onChange}
         >
-          <PopoverTrigger className={fieldsRowClassName}>{fields}</PopoverTrigger>
+          <div className={fieldsRowClassName}>{fields}</div>
         </PeriodPopover>
       )}
       {committedMessage ? (

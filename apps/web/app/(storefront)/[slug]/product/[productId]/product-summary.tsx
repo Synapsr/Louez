@@ -3,25 +3,42 @@
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@louez/ui";
-import { isFixedPriceProduct, pricingModeToMinutes } from "@louez/utils";
+import { isFixedPriceProduct, pricingModeToMinutes, type PricingSegment } from "@louez/utils";
 
 import { CategoryPill } from "@/components/storefront/ui/category-pill";
 import { Price } from "@/components/storefront/ui/price";
 
 import type { ProductPageBooking, ProductPageProduct } from "@/lib/storefront/product-page.loader";
-import { parseStorefrontDecimal } from "@/lib/utils/util.storefront-product-pricing";
+import { getSeasonalHeadline } from "@/lib/utils/util.storefront-seasonal-pricing";
+import { useStoreTimezone } from "@/contexts/store-context";
 
 import { usePeriodLabel } from "@/hooks/use-period-label";
 
 interface ProductSummaryProps {
   product: ProductPageProduct;
+  seasonalSegments?: PricingSegment[];
+  rentalPrice?: number;
+  /** Length of the selected period, to average a rate across seasons. */
+  rentalMinutes?: number;
   booking: Pick<ProductPageBooking, "isAvailable" | "unavailableReason" | "maxQuantity">;
 }
 
 /** Category, title, base rate, stock: what a visitor reads first. */
-export const ProductSummary = ({ product, booking }: ProductSummaryProps) => {
+export const ProductSummary = ({
+  product,
+  booking,
+  seasonalSegments,
+  rentalPrice,
+  rentalMinutes,
+}: ProductSummaryProps) => {
   const t = useTranslations("storefront.product");
   const formatPeriodLabel = usePeriodLabel();
+  const ts = useTranslations("storefront.seasonalPricing");
+  const timezone = useStoreTimezone();
+  const headline = getSeasonalHeadline(product, seasonalSegments, rentalPrice, {
+    timezone,
+    rentalMinutes,
+  });
   const isFixed = isFixedPriceProduct(product);
   const per = isFixed
     ? null
@@ -44,13 +61,21 @@ export const ProductSummary = ({ product, booking }: ProductSummaryProps) => {
         {product.name}
       </h1>
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        {headline.mode === "from" ? (
+          <span className="text-sm text-muted-foreground">{ts("from")}</span>
+        ) : null}
         <Price
-          amount={parseStorefrontDecimal(product.price) ?? 0}
+          amount={headline.amount}
           per={per}
           label={isFixed ? t("fixedPricingLabel") : null}
           size="xl"
         />
       </div>
+      {headline.mode === "season" ? (
+        <p className="text-sm text-muted-foreground">{headline.seasonName ?? ts("baseSeason")}</p>
+      ) : headline.mode === "period" ? (
+        <p className="text-sm text-muted-foreground">{ts("averageRate")}</p>
+      ) : null}
       {!booking.isAvailable ? (
         <div>
           <Badge variant="failed">

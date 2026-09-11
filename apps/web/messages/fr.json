@@ -6127,6 +6127,7 @@
         "requiredHelp": "Cet article est obligatoire avec ce produit et s'ajoute au panier avec lui.",
         "extras": "Options",
         "depositHold": "Caution",
+        "proratedPrice": "Tarif calculé au prorata",
         "depositNotCharged": "Empreinte bancaire, non débitée"
       }
     },
@@ -7156,6 +7157,16 @@
       "catalog": "Voir le catalogue",
       "terms": "Conditions générales",
       "legal": "Mentions légales"
+    },
+    "seasonalPricing": {
+      "title": "Tarifs selon la saison",
+      "description": "Chaque tarif s’applique aux dates de la saison correspondante.",
+      "baseSeason": "Tarif habituel",
+      "outsideSeasons": "En dehors des saisons indiquées",
+      "durationRates": "Voir les tarifs selon la durée",
+      "breakdownTitle": "Détail par saison",
+      "from": "À partir de",
+      "averageRate": "En moyenne sur vos dates"
     }
   },
   "onboarding": {

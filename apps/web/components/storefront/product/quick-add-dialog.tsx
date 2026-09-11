@@ -8,6 +8,7 @@ import { useTranslations } from "next-intl";
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from "@louez/ui";
 import { cn } from "@louez/utils";
 
+import { getSeasonalCalendarPricing } from "@/lib/utils/util.storefront-seasonal-pricing";
 import { PeriodEditor } from "@/components/storefront/date-picker/period-editor";
 
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -136,6 +137,7 @@ export const QuickAddDialog = ({ flow }: QuickAddDialogProps) => {
                   <PeriodEditor
                     key={state.product.id}
                     productId={state.product.id}
+                    seasonalPricing={getSeasonalCalendarPricing(state.product)}
                     value={null}
                     rules={rules}
                     variant="sheet"

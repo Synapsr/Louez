@@ -1,18 +1,22 @@
 "use client";
 
+import type { SeasonalCalendarPricing } from "@/lib/utils/util.storefront-seasonal-pricing";
+
 import { useTranslations } from "next-intl";
 
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from "@louez/ui";
 
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 
-import type { RentalPeriodValue } from "./core/types";
+import type { RentalPeriodField, RentalPeriodValue } from "./core/types";
 import { PeriodEditor } from "./period-editor";
 
 interface PeriodSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   value: RentalPeriodValue | null;
+  seasonalPricing?: SeasonalCalendarPricing;
+  initialField?: RentalPeriodField;
   rules: RentalPeriodRules;
   minDate?: Date;
   title?: string;
@@ -28,6 +32,8 @@ export const PeriodSheet = ({
   open,
   onOpenChange,
   value,
+  seasonalPricing,
+  initialField,
   rules,
   minDate,
   title,
@@ -42,7 +48,9 @@ export const PeriodSheet = ({
           <DialogTitle>{title ?? t("modifyDates")}</DialogTitle>
         </DialogHeader>
         <PeriodEditor
+          seasonalPricing={seasonalPricing}
           value={value}
+          initialField={initialField}
           rules={rules}
           minDate={minDate}
           variant="sheet"

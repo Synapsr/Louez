@@ -1,18 +1,22 @@
 "use client";
 
+import type { SeasonalCalendarPricing } from "@/lib/utils/util.storefront-seasonal-pricing";
+
 import type { ReactNode } from "react";
 
 import { Popover, PopoverPopup } from "@louez/ui";
 
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 
-import type { RentalPeriodValue } from "./core/types";
+import type { RentalPeriodField, RentalPeriodValue } from "./core/types";
 import { PeriodEditor } from "./period-editor";
 
 interface PeriodPopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   value: RentalPeriodValue | null;
+  seasonalPricing?: SeasonalCalendarPricing;
+  initialField?: RentalPeriodField;
   rules: RentalPeriodRules;
   minDate?: Date;
   onApply: (period: RentalPeriodValue) => void;
@@ -25,6 +29,8 @@ export const PeriodPopover = ({
   open,
   onOpenChange,
   value,
+  seasonalPricing,
+  initialField,
   rules,
   minDate,
   onApply,
@@ -32,9 +38,15 @@ export const PeriodPopover = ({
 }: PeriodPopoverProps) => (
   <Popover open={open} onOpenChange={onOpenChange}>
     {children}
-    <PopoverPopup align="start" className="w-auto max-w-[calc(100vw-2rem)] shadow-raised">
+    <PopoverPopup
+      align="start"
+      animateContent={false}
+      className="w-auto max-w-[calc(100vw-2rem)] shadow-raised"
+    >
       <PeriodEditor
+        seasonalPricing={seasonalPricing}
         value={value}
+        initialField={initialField}
         rules={rules}
         minDate={minDate}
         variant="popover"

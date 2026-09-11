@@ -9,6 +9,7 @@ import { cn, isFixedPriceProduct } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
 import { InsuredProductShield } from "@/components/storefront/ui/insured-product-shield";
+import { SeasonalPriceBreakdown } from "@/components/storefront/product/seasonal-price-breakdown";
 import { Price } from "@/components/storefront/ui/price";
 import type { CartItem } from "@/contexts/cart-context";
 import { useDiscountVisibility } from "@/contexts/store-context";
@@ -177,7 +178,10 @@ export const CheckoutOrderSummary = ({
           const attributes = item.resolvedAttributes ?? item.selectedAttributes;
 
           return (
-            <li key={item.lineId} className={cn("flex gap-3", parentName && "ml-4 border-l pl-3")}>
+            <li
+              key={item.lineId}
+              className={cn("flex flex-wrap gap-x-3 gap-y-2", parentName && "ml-4 border-l pl-3")}
+            >
               <ProductImage
                 src={item.productImage}
                 alt={item.productName}
@@ -221,6 +225,14 @@ export const CheckoutOrderSummary = ({
                   </p>
                 )}
               </div>
+              {priceResult.seasonalSegments?.length ? (
+                <div className="w-full">
+                  <SeasonalPriceBreakdown
+                    segments={priceResult.seasonalSegments}
+                    seasons={item.seasonalPricings}
+                  />
+                </div>
+              ) : null}
             </li>
           );
         })}

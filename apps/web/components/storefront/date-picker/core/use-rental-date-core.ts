@@ -222,7 +222,29 @@ export const getRentalDraftForDay = (
   day: Date,
   ctx: DraftContext,
 ): RentalDateDraft => {
-  const { startDate, endIsAuto } = draft;
+  const { startDate, endDate, endIsAuto, activeField } = draft;
+  if (activeField === "end" && startDate) {
+    if (day < startOfDay(startDate)) return draft;
+    if (
+      isSameCalendarDay(day, startDate) &&
+      !allowsSameDayRental(ctx.pricingMode, ctx.minRentalMinutes)
+    ) {
+      return draft;
+    }
+    return { ...endRange(draft, day, ctx), activeField: null };
+  }
+  if (activeField) {
+    const next = beginRange(draft, day, ctx);
+    const canKeepEnd =
+      endDate &&
+      (endDate > day ||
+        (isSameCalendarDay(endDate, day) &&
+          allowsSameDayRental(ctx.pricingMode, ctx.minRentalMinutes)));
+    return {
+      ...(canKeepEnd ? endRange({ ...next, endTime: draft.endTime }, endDate, ctx) : next),
+      activeField: "end",
+    };
+  }
   if (!startDate || !endIsAuto) return beginRange(draft, day, ctx);
   if (day < startOfDay(startDate)) return beginRange(draft, day, ctx);
   const sameDayTap = isSameCalendarDay(day, startDate);
@@ -241,7 +263,7 @@ const initialDraft = (options: RentalDateCoreOptions): RentalDateDraft => {
     startTime: start?.time ?? DEFAULT_START_TIME,
     endTime: end?.time ?? DEFAULT_END_TIME,
     endIsAuto: false,
-    activeField: null,
+    activeField: options.initialField ?? null,
   };
 };
 
@@ -265,6 +287,11 @@ export const useRentalDateCore = (options: RentalDateCoreOptions): RentalDateCor
   } = options;
 
   const [draft, setDraft] = useState<RentalDateDraft>(() => initialDraft(options));
+  const [previousInitialField, setPreviousInitialField] = useState(options.initialField);
+  if (options.initialField !== previousInitialField) {
+    setPreviousInitialField(options.initialField);
+    setDraft((prev) => ({ ...prev, activeField: options.initialField ?? null }));
+  }
 
   const ctx = useMemo<DraftContext>(
     () => ({
@@ -327,10 +354,19 @@ export const useRentalDateCore = (options: RentalDateCoreOptions): RentalDateCor
   const isDateDisabled = useCallback(
     (date: Date): boolean => {
       if (date < minDate) return true;
+      if (draft.activeField === "end" && startDate) {
+        if (date < startOfDay(startDate)) return true;
+        if (
+          isSameCalendarDay(date, startDate) &&
+          !allowsSameDayRental(pricingMode, minRentalMinutes)
+        ) {
+          return true;
+        }
+      }
       if (!businessHours?.enabled) return false;
       return !isDateAvailable(date, businessHours, timezone).available;
     },
-    [minDate, businessHours, timezone],
+    [minDate, businessHours, timezone, draft.activeField, startDate, pricingMode, minRentalMinutes],
   );
 
   const period = useMemo<RentalPeriodValue | null>(

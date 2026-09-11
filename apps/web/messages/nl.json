@@ -6127,6 +6127,7 @@
         "requiredHelp": "Dit artikel is verplicht bij dit product en wordt er samen mee aan de winkelwagen toegevoegd.",
         "extras": "Extra's",
         "depositHold": "Borg",
+        "proratedPrice": "Prijs naar verhouding berekend",
         "depositNotCharged": "Reservering op de kaart, niet afgeschreven"
       }
     },
@@ -7156,6 +7157,16 @@
       "catalog": "Browse the catalog",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
+    },
+    "seasonalPricing": {
+      "title": "Seizoenstarieven",
+      "description": "Elk tarief geldt voor de datums binnen het betreffende seizoen.",
+      "baseSeason": "Standaardtarief",
+      "outsideSeasons": "Buiten de vermelde seizoenen",
+      "durationRates": "Tarieven per huurduur bekijken",
+      "breakdownTitle": "Prijs per seizoen",
+      "from": "Vanaf",
+      "averageRate": "Gemiddeld over je periode"
     }
   },
   "onboarding": {

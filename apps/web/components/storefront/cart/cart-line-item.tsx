@@ -7,6 +7,7 @@ import { Button, InputQuantity } from "@louez/ui";
 import { cn, isFixedPriceProduct, type StockQuantityLimit } from "@louez/utils";
 
 import { ProductImage } from "@/components/product/product-image";
+import { SeasonalPriceBreakdown } from "@/components/storefront/product/seasonal-price-breakdown";
 import { Price } from "@/components/storefront/ui/price";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { type CartItem, useCartDrawer } from "@/contexts/cart-context";
@@ -51,7 +52,11 @@ export const CartLineItem = ({
   const { close } = useCartDrawer();
   const productHref = `/product/${item.productId}`;
 
-  const { subtotal } = calculateCartItemPrice(item, globalStartDate, globalEndDate);
+  const { subtotal, seasonalSegments } = calculateCartItemPrice(
+    item,
+    globalStartDate,
+    globalEndDate,
+  );
   const unitPrice = subtotal / Math.max(1, item.quantity);
   const isRequiredLine = Boolean(parent);
   const minimumQuantity = parent
@@ -132,6 +137,8 @@ export const CartLineItem = ({
             </Button>
           ) : null}
         </div>
+
+        <SeasonalPriceBreakdown segments={seasonalSegments} seasons={item.seasonalPricings} />
 
         {item.unavailableReason ? (
           <p className="text-xs text-destructive">{t(`unavailable.${item.unavailableReason}`)}</p>
