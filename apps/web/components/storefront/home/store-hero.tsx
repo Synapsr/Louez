@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { cn } from "@louez/utils";
 
 import { HeroImageSlider } from "@/components/storefront/home/hero-image-slider";
+import { RichText } from "@/components/storefront/ui/rich-text";
 import type {
   StoreHeroAlign,
   StoreHeroShape,
@@ -11,8 +12,8 @@ import type {
 
 interface StoreHeroProps {
   name: string;
-  /** One line under the name: the first sentence of the description. */
-  tagline: string | null;
+  /** The store description as written in the dashboard, editor HTML. */
+  description: string | null;
   /** Background or framed photos, depending on the shape. */
   backgroundImages?: string[];
   /** `cover` = text over the photos, `split` = text beside a framed photo, `band` = no photo. */
@@ -64,7 +65,15 @@ const ALIGN_JUSTIFY: Record<StoreHeroAlign, string> = {
 };
 
 /**
- * Home hero: the store's name, one line, the badges and the period search.
+ * The description keeps its paragraphs, lists and links; on a photo it
+ * goes white like the headline, elsewhere it stays muted under it.
+ */
+const DESCRIPTION_CLASS_NAME = "max-w-prose text-pretty";
+const DESCRIPTION_ON_PHOTO_CLASS_NAME =
+  "prose-invert prose-p:text-white/85 prose-li:text-white/85 prose-headings:text-white prose-strong:text-white prose-a:text-white prose-blockquote:text-white/85 prose-hr:border-white/30";
+
+/**
+ * Home hero: the store's name, its description, the badges and the period search.
  *
  * `cover`: on the store photos, `min-h-[70svh]` so the inventory starts
  * before the first scroll; pulled under the header (`-mt-14 md:-mt-16`, the
@@ -81,7 +90,7 @@ const ALIGN_JUSTIFY: Record<StoreHeroAlign, string> = {
  */
 export const StoreHero = ({
   name,
-  tagline,
+  description,
   backgroundImages = [],
   shape,
   align,
@@ -124,11 +133,7 @@ export const StoreHero = ({
           <div className="flex max-w-2xl flex-col gap-4">
             {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
             {heading}
-            {tagline ? (
-              <p className="max-w-prose text-pretty text-base text-muted-foreground sm:text-lg">
-                {tagline}
-              </p>
-            ) : null}
+            <RichText html={description} size="lg" className={DESCRIPTION_CLASS_NAME} />
             {children ? <div className="mt-2 flex w-full">{children}</div> : null}
             {footer}
           </div>
@@ -173,16 +178,11 @@ export const StoreHero = ({
         <div className={cn("flex max-w-3xl flex-col gap-3", ALIGN_ITEMS[align])}>
           {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
           {heading}
-          {tagline ? (
-            <p
-              className={cn(
-                "max-w-prose text-pretty text-base sm:text-lg",
-                cover ? "text-white/85" : "text-muted-foreground",
-              )}
-            >
-              {tagline}
-            </p>
-          ) : null}
+          <RichText
+            html={description}
+            size="lg"
+            className={cn(DESCRIPTION_CLASS_NAME, cover && DESCRIPTION_ON_PHOTO_CLASS_NAME)}
+          />
         </div>
 
         {children ? (
