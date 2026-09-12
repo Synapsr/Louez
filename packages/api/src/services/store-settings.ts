@@ -1,5 +1,9 @@
 import { db, stores } from "@louez/db";
-import type { UpdateStoreAppearanceInput, UpdateStoreLegalInput } from "@louez/validations";
+import type {
+  UpdateStoreAppearanceInput,
+  UpdateStoreContactInput,
+  UpdateStoreLegalInput,
+} from "@louez/validations";
 import { isOwnedImageUrl } from "@louez/validations";
 import { sanitizeRichTextHtml } from "@louez/utils";
 import { ApiServiceError } from "./errors";
@@ -13,6 +17,11 @@ interface UpdateStoreLegalParams {
 interface UpdateStoreAppearanceParams {
   storeId: string;
   input: UpdateStoreAppearanceInput;
+}
+
+interface UpdateStoreContactParams {
+  storeId: string;
+  input: UpdateStoreContactInput;
 }
 
 export async function updateStoreLegal(params: UpdateStoreLegalParams) {
@@ -145,6 +154,39 @@ export async function updateStoreAppearance(params: UpdateStoreAppearanceParams)
   }
 
   await db.update(stores).set(updateData).where(eq(stores.id, storeId));
+
+  return { success: true as const };
+}
+
+/**
+ * Replaces the contact page settings under `settings.contact`. The rest of
+ * the settings JSON is re-read and kept as is: the column holds many
+ * unrelated groups and a stale client copy must not overwrite them.
+ */
+export async function updateStoreContact(params: UpdateStoreContactParams) {
+  const { storeId, input } = params;
+
+  const currentStore = await db.query.stores.findFirst({
+    where: eq(stores.id, storeId),
+    columns: { settings: true },
+  });
+
+  if (!currentStore) {
+    throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
+  }
+
+  const settings = currentStore.settings ?? {
+    reservationMode: "payment" as const,
+    advanceNoticeMinutes: 1440,
+  };
+
+  await db
+    .update(stores)
+    .set({
+      settings: { ...settings, contact: input },
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, storeId));
 
   return { success: true as const };
 }

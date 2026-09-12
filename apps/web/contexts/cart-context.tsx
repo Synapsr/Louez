@@ -35,6 +35,8 @@ import {
   summarizeCart,
 } from "@/lib/utils/util.cart-lines";
 import { readCartFromStorage, writeCartToStorage } from "@/lib/utils/util.cart-storage";
+import { usePricingNow } from "@/hooks/use-pricing-now";
+
 import type { DisplayableSavings } from "@/lib/utils/util.discount-visibility";
 
 export type {
@@ -208,6 +210,7 @@ const buildGetters = (state: CartState): CartGetters => {
  */
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const { storeSlug, timezone } = useStore();
+  const now = usePricingNow();
   const maxDiscountPercent = useStoreMaxDiscountPercent();
 
   const [lines, setLines] = useState<CartLineIntent[]>([]);
@@ -263,8 +266,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const summary = useMemo(
-    () => (items.length === 0 ? EMPTY_SUMMARY : summarizeCart(items, period, maxDiscountPercent)),
-    [items, period, maxDiscountPercent],
+    () =>
+      items.length === 0 ? EMPTY_SUMMARY : summarizeCart(items, period, maxDiscountPercent, now),
+    [items, period, maxDiscountPercent, now],
   );
 
   const resolutionStatus = useMemo((): CartResolutionStatus => {

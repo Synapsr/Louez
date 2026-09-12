@@ -470,6 +470,7 @@ export async function createProduct(data: ProductInput) {
         imageHistory: validated.data.imageHistory || [],
         videoUrl: validated.data.videoUrl || null,
         taxSettings: validated.data.taxSettings || null,
+        promotion: validated.data.promotion,
         enforceStrictTiers:
           pricingKind === "fixed" ? false : validated.data.enforceStrictTiers || false,
         trackUnits: trackUnits,
@@ -842,6 +843,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
           imageHistory: validated.data.imageHistory || [],
           videoUrl: validated.data.videoUrl || null,
           taxSettings: validated.data.taxSettings || null,
+          promotion: validated.data.promotion,
           enforceStrictTiers:
             pricingKind === "fixed" ? false : validated.data.enforceStrictTiers || false,
           trackUnits: trackUnits,

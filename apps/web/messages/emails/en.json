@@ -160,6 +160,17 @@
     "cta": "View supplier invoices",
     "footer": "You can review and process this invoice from your dashboard."
   },
+  "contactMessage": {
+    "subject": "New message from {name} — {store}",
+    "title": "New message from your store",
+    "body": "A visitor wrote to you from the contact page of {storeName}.",
+    "name": "Name:",
+    "email": "Email:",
+    "phone": "Phone:",
+    "message": "Message:",
+    "reply": "Reply",
+    "footer": "Reply to this email directly: your answer goes to the visitor's address."
+  },
   "phoneCallbackLandlord": {
     "subject": "A caller to call back — {store}",
     "title": "A caller to call back",

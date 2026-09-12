@@ -148,6 +148,17 @@
     "viewRequest": "Aanvraag bekijken",
     "connectToManage": "Log in op uw dashboard om deze aanvraag te accepteren of af te wijzen."
   },
+  "contactMessage": {
+    "subject": "Nieuw bericht van {name} — {store}",
+    "title": "Nieuw bericht via uw winkel",
+    "body": "Een bezoeker heeft u geschreven via de contactpagina van {storeName}.",
+    "name": "Naam:",
+    "email": "E-mail:",
+    "phone": "Telefoon:",
+    "message": "Bericht:",
+    "reply": "Beantwoorden",
+    "footer": "Beantwoord deze e-mail rechtstreeks: uw antwoord gaat naar het adres van de bezoeker."
+  },
   "phoneCallbackLandlord": {
     "subject": "Een beller om terug te bellen — {store}",
     "title": "Een beller om terug te bellen",

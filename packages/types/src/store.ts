@@ -1,3 +1,4 @@
+import type { AppliedProductPromotion } from "./product-promotion";
 export interface TimeRange {
   openTime: string; // "HH:mm" e.g. "09:00"
   closeTime: string; // "HH:mm" e.g. "18:00"
@@ -201,6 +202,68 @@ export interface IntegrationData {
 }
 
 // ============================================================================
+// Contact Settings (storefront contact page)
+// ============================================================================
+
+/** Whether the storefront contact form asks the visitor for a phone number. */
+export type StoreContactPhoneField = "hidden" | "optional" | "required";
+
+/**
+ * Shape of the contact page. `full` lists every channel beside the form;
+ * `message` puts the form first with the email as a footnote; `single`
+ * makes one channel the page's one big action.
+ */
+export type StoreContactLayout = "full" | "message" | "single";
+
+/** The channel a `single` contact page is built around. */
+export type StoreContactPrimaryChannel = "phone" | "whatsapp" | "email";
+
+/**
+ * Which ways of reaching the store its contact page offers. Phone, SMS and
+ * email read the store's own contact fields; a channel stays hidden while
+ * the field it needs is empty, whatever its toggle says.
+ */
+export interface StoreContactSettings {
+  /** Page shape; the channel toggles below still decide what shows. */
+  layout: StoreContactLayout;
+  /** Channel the `single` layout is built around. */
+  primaryChannel: StoreContactPrimaryChannel;
+  /** Offer a call to the store phone. */
+  phone: boolean;
+  /** Offer an SMS to the store phone. */
+  sms: boolean;
+  /** Offer a WhatsApp conversation. */
+  whatsapp: boolean;
+  /** Number behind the WhatsApp link; the store phone when null. */
+  whatsappNumber: string | null;
+  /** Show the store email. */
+  email: boolean;
+  /** Show the contact form, whose messages are forwarded by email. */
+  form: boolean;
+  /** Where form messages go; the store email when null. */
+  formRecipientEmail: string | null;
+  /** Whether the form asks the visitor for a phone number. */
+  formPhoneField: StoreContactPhoneField;
+  /** Short text at the top of the contact page (plain text). */
+  intro: string | null;
+}
+
+/** What a store offers before it has visited the contact settings. */
+export const DEFAULT_STORE_CONTACT_SETTINGS: StoreContactSettings = {
+  layout: "full",
+  primaryChannel: "phone",
+  phone: true,
+  sms: false,
+  whatsapp: false,
+  whatsappNumber: null,
+  email: true,
+  form: true,
+  formRecipientEmail: null,
+  formPhoneField: "optional",
+  intro: null,
+};
+
+// ============================================================================
 // Store Settings
 // ============================================================================
 
@@ -240,6 +303,8 @@ export interface StoreSettings {
   delivery?: DeliverySettings; // Delivery configuration
   inspection?: InspectionSettings; // Inventory inspection (etat des lieux)
   integrationData?: IntegrationData;
+  /** Storefront contact page: channels offered and form forwarding. */
+  contact?: StoreContactSettings;
 }
 
 export interface StoreTheme {
@@ -367,6 +432,7 @@ export interface Rate {
 }
 
 export interface PricingBreakdown {
+  promotion?: AppliedProductPromotion | null;
   basePrice: number;
   effectivePrice: number;
   duration: number;

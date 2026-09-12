@@ -905,6 +905,9 @@
       "noProducts": "No hay productos",
       "noProductsDescription": "Comience agregando su primer producto",
       "searchProducts": "Buscar un producto...",
+      "clearSearch": "Borrar la búsqueda",
+      "noSearchResults": "No se encontraron productos",
+      "noSearchResultsDescription": "Ningún producto coincide con «{search}».",
       "allCategories": "Todas las categorias",
       "allStatuses": "Todos los estados",
       "name": "Nombre",
@@ -1559,7 +1562,28 @@
         "videoTileLabel": "Vídeo",
         "videoInvalid": "Enlace de YouTube no válido",
         "editVideo": "Editar el vídeo",
-        "removeVideo": "Quitar el vídeo"
+        "removeVideo": "Quitar el vídeo",
+        "promotion": {
+          "add": "Añadir una promoción",
+          "title": "Promoción",
+          "remove": "Quitar promoción",
+          "reduction": "Descuento",
+          "description": "Se aplica automáticamente a las reservas realizadas durante la oferta. No acumulable con un código promocional.",
+          "schedule": "Programar",
+          "from": "Desde el {date}",
+          "until": "Hasta el {date}",
+          "pickStart": "Elige el primer día de la oferta.",
+          "pickEnd": "Elige el último día o déjala sin fin.",
+          "clearDates": "Quitar fechas",
+          "immediately": "Inmediatamente",
+          "noEnd": "Sin fecha de fin",
+          "invalidPercentage": "Introduce un porcentaje entero entre 1 y 99.",
+          "invalidDates": "Elige una fecha de fin igual o posterior al inicio.",
+          "active": "Activa",
+          "scheduled": "Programada",
+          "expired": "Finalizada",
+          "none": "Sin configurar"
+        }
       },
       "deleteConfirm": {
         "title": "Eliminar este producto?",
@@ -3143,6 +3167,7 @@
       "appearance": "Apariencia",
       "reservations": "Reservas",
       "emails": "Correos",
+      "contact": "Contacto",
       "legal": "Paginas legales",
       "account": "Cuenta",
       "subscription": {
@@ -4213,6 +4238,87 @@
           "point2": "Sus clientes necesitaran usar la nueva direccion",
           "point3": "Los motores de busqueda necesitaran reindexar su tienda"
         }
+      },
+      "contactSettings": {
+        "description": "Elige cómo pueden contactarte los clientes desde tu tienda",
+        "channels": {
+          "title": "Medios de contacto",
+          "description": "Cada medio activado aparece en la página de contacto y en la página de inicio de tu tienda."
+        },
+        "missingPhone": "Indica el teléfono de la tienda en los ajustes generales para ofrecer llamada, SMS o WhatsApp.",
+        "missingEmail": "Indica el email de la tienda en los ajustes generales para mostrarlo o recibir los mensajes del formulario.",
+        "missingBoth": "Indica el teléfono y el email de la tienda en los ajustes generales para activar los medios de contacto.",
+        "phone": {
+          "label": "Teléfono",
+          "description": "Tus clientes pueden llamarte al {phone}.",
+          "empty": "No hay teléfono configurado para la tienda."
+        },
+        "sms": {
+          "label": "SMS",
+          "description": "Ofrece también enviar un SMS a ese número."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Abre una conversación de WhatsApp con tu tienda.",
+          "number": "Número de WhatsApp",
+          "numberDescription": "Déjalo vacío para usar el teléfono de la tienda."
+        },
+        "email": {
+          "label": "Email",
+          "description": "Muestra {email} con enlaces para escribir.",
+          "empty": "No hay email configurado para la tienda."
+        },
+        "form": {
+          "title": "Formulario de contacto",
+          "description": "Un formulario en tu tienda cuyos mensajes se te reenvían por email.",
+          "label": "Ofrecer un formulario de contacto",
+          "help": "El visitante indica su nombre, su email y su mensaje; tú respondes directamente desde tu correo.",
+          "recipient": "Dirección de recepción",
+          "recipientDescription": "Déjalo vacío para recibir los mensajes en {email}.",
+          "recipientEmpty": "Indica la dirección que recibirá los mensajes.",
+          "phoneField": "Teléfono del visitante",
+          "phoneFieldDescription": "¿Debe el formulario pedir un número de teléfono?",
+          "phoneFieldOptions": {
+            "hidden": "No pedir",
+            "optional": "Opcional",
+            "required": "Obligatorio"
+          }
+        },
+        "intro": {
+          "label": "Texto de introducción",
+          "description": "Se muestra en la parte superior de la página de contacto. Déjalo vacío para el texto por defecto.",
+          "placeholder": "¿Una pregunta sobre un alquiler? Escríbenos, respondemos en 24 h."
+        },
+        "presets": {
+          "title": "Plantilla de página",
+          "description": "Elige un punto de partida; los medios de contacto de abajo se ajustan y luego puedes modificarlos.",
+          "options": {
+            "full": {
+              "label": "Completa",
+              "description": "Todos los medios de contacto, el formulario, el mapa y los horarios."
+            },
+            "message": {
+              "label": "Mensaje",
+              "description": "Primero el formulario, tu email como nota. Para quienes prefieren escribir."
+            },
+            "single": {
+              "label": "Un solo medio",
+              "description": "Una gran acción única: llamada, WhatsApp o email."
+            }
+          },
+          "custom": "Ajustes personalizados, diseño «{layout}».",
+          "primaryChannel": "Medio destacado",
+          "primaryChannelHelp": "El botón principal de la página.",
+          "channels": {
+            "phone": "Llamada",
+            "whatsapp": "WhatsApp",
+            "email": "Email"
+          }
+        },
+        "preview": "Vista previa",
+        "previewHint": "La página de contacto tal como se mostrará, actualizada mientras cambias los ajustes.",
+        "viewOnStore": "Ver la página de contacto",
+        "updated": "Medios de contacto actualizados"
       },
       "legalSettings": {
         "title": "Paginas legales",
@@ -5936,6 +6042,9 @@
         "copySuccess": "Número copiado",
         "copyError": "No se pudo copiar el número"
       },
+      "whatsappContact": {
+        "open": "Abrir una conversación"
+      },
       "emailContact": {
         "default": "Escribir con la app de correo",
         "copy": "Copiar email",
@@ -7298,6 +7407,55 @@
       "homeTitle": "{store} · Alquiler de material",
       "description": "Alquile material en {store}. Reserve en línea."
     },
+    "contact": {
+      "title": "Contactar con {name}",
+      "metaTitle": "Contacto - {name}",
+      "metaDescription": "Contacta con {name}: teléfono, email y formulario de contacto.",
+      "intro": "¿Una pregunta sobre un alquiler, una disponibilidad o un presupuesto? Estamos aquí.",
+      "channelsTitle": "Cómo contactarnos",
+      "noChannels": "Los datos de contacto de la tienda aún no están configurados.",
+      "formTitle": "Enviar un mensaje",
+      "formDescription": "Te respondemos por email.",
+      "firstName": "Nombre",
+      "lastName": "Apellidos",
+      "email": "Email",
+      "phone": "Teléfono",
+      "message": "Mensaje",
+      "messagePlaceholder": "Describe tu solicitud: material, fechas, cantidades…",
+      "privacyNote": "{name} solo usará tus datos para responderte.",
+      "send": "Enviar el mensaje",
+      "sending": "Enviando…",
+      "sentTitle": "Mensaje enviado",
+      "sentDescription": "¡Gracias! {name} ha recibido tu mensaje y te responderá por email.",
+      "sendAnother": "Enviar otro mensaje",
+      "orEmail": "O por email:",
+      "primary": {
+        "phone": {
+          "title": "Llámanos",
+          "action": "Llamar"
+        },
+        "whatsapp": {
+          "title": "Escríbenos por WhatsApp",
+          "action": "Abrir WhatsApp"
+        },
+        "email": {
+          "title": "Escríbenos",
+          "action": "Enviar un email"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Indica tu nombre",
+        "lastNameRequired": "Indica tus apellidos",
+        "invalidEmail": "Indica una dirección de email válida",
+        "phoneRequired": "Indica tu número de teléfono",
+        "messageTooShort": "Tu mensaje es demasiado corto",
+        "tooLong": "Este campo es demasiado largo",
+        "invalidData": "Revisa los campos del formulario.",
+        "unavailable": "El formulario de contacto no está disponible en este momento.",
+        "rateLimited": "Demasiados mensajes enviados. Inténtalo de nuevo en unos minutos.",
+        "generic": "No se pudo enviar tu mensaje. Inténtalo de nuevo o usa otro medio de contacto."
+      }
+    },
     "about": {
       "title": "About {name}",
       "metaTitle": "About - {name}",
@@ -7318,6 +7476,7 @@
       "deliveryFrom": "from {amount} per trip",
       "moreTitle": "Learn more",
       "catalog": "Browse the catalog",
+      "contact": "Contactarnos",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
     },
@@ -7976,7 +8135,8 @@
     "marketplaceChannelNotFound": "Canal de marketplace no encontrado",
     "requestCancellationStatusChanged": "El estado de esta solicitud ha cambiado. Ya no se puede cancelar aquí. Contacta con la tienda.",
     "requestCancellationPaymentPending": "Hay un pago en curso para esta solicitud. Vuelve a intentarlo cuando se actualice o contacta con la tienda.",
-    "requestCancellationPaymentChanged": "La información del pago ha cambiado. Revísala antes de volver a confirmar la cancelación."
+    "requestCancellationPaymentChanged": "La información del pago ha cambiado. Revísala antes de volver a confirmar la cancelación.",
+    "promoCodeProductsAlreadyDiscounted": "Este código no se aplica a productos que ya están en promoción."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

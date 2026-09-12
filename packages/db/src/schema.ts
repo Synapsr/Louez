@@ -1,3 +1,4 @@
+import type { ProductPromotion } from "@louez/types";
 import { relations } from "drizzle-orm";
 import {
   bigint,
@@ -967,6 +968,8 @@ export const products = mysqlTable(
     price: decimal("price", { precision: 10, scale: 2 }).notNull(),
     deposit: decimal("deposit", { precision: 10, scale: 2 }).default("0"),
     basePeriodMinutes: int("base_period_minutes"),
+
+    promotion: json("promotion").$type<ProductPromotion>(),
 
     // Product pricing mode
     pricingMode: pricingModeEnum.notNull(),

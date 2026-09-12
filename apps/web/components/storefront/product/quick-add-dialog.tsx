@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useStoreTimezone as usePromotionTimezone } from "@/contexts/store-context";
+import { usePricingNow } from "@/hooks/use-pricing-now";
 import { useTranslations } from "next-intl";
 
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from "@louez/ui";
@@ -45,6 +47,8 @@ const DESKTOP_QUERY = "(min-width: 640px)";
  * the new height underneath.
  */
 export const QuickAddDialog = ({ flow }: QuickAddDialogProps) => {
+  const promotionTimezone = usePromotionTimezone();
+  const promotionNow = usePricingNow();
   const t = useTranslations("storefront");
   const rules = useStorePeriodRules();
   const isDesktop = useMediaQuery(DESKTOP_QUERY);
@@ -137,7 +141,10 @@ export const QuickAddDialog = ({ flow }: QuickAddDialogProps) => {
                   <PeriodEditor
                     key={state.product.id}
                     productId={state.product.id}
-                    seasonalPricing={getSeasonalCalendarPricing(state.product)}
+                    seasonalPricing={getSeasonalCalendarPricing(state.product, {
+                      timezone: promotionTimezone,
+                      now: promotionNow,
+                    })}
                     value={null}
                     rules={rules}
                     variant="sheet"

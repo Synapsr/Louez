@@ -39,7 +39,8 @@ export type PromoCodeEvaluation =
         | "errors.promoCodeNotStarted"
         | "errors.promoCodeExpired"
         | "errors.promoCodeExhausted"
-        | "errors.promoCodeMinimumNotMet";
+        | "errors.promoCodeMinimumNotMet"
+        | "errors.promoCodeProductsAlreadyDiscounted";
       params?: { amount: string };
     };
 
@@ -64,10 +65,12 @@ export const calculatePromoDiscount = (
 export const evaluatePromoCode = ({
   promo,
   subtotal,
+  discountableSubtotal = subtotal,
   now = new Date(),
 }: {
   promo: PromoCodeEvaluationRow | null | undefined;
   subtotal: number;
+  discountableSubtotal?: number;
   now?: Date;
 }): PromoCodeEvaluation => {
   if (!promo) {
@@ -92,11 +95,13 @@ export const evaluatePromoCode = ({
     };
   }
 
+  if (discountableSubtotal <= 0)
+    return { ok: false, error: "errors.promoCodeProductsAlreadyDiscounted" };
   const promoValue = parseFloat(promo.value);
   return {
     ok: true,
     promoCodeId: promo.id,
-    discountAmount: calculatePromoDiscount(promo, subtotal),
+    discountAmount: calculatePromoDiscount(promo, Math.min(subtotal, discountableSubtotal)),
     minimumAmount,
     snapshot: { code: promo.code, type: promo.type, value: promoValue },
   };
@@ -183,6 +188,7 @@ export const validateStorefrontPromoCode = async (
     timezone?: string;
   },
 ): Promise<StorefrontPromoValidateOutput> => {
+  const now = params.now ?? new Date();
   const catalog = await loadPricingCatalog(database, {
     storeId: params.storeId,
     productIds: params.lines.map((line) => line.productId),
@@ -190,19 +196,22 @@ export const validateStorefrontPromoCode = async (
   });
 
   let subtotal = 0;
+  let discountableSubtotal = 0;
   for (const line of params.lines) {
     const product = catalog.get(line.productId);
     if (!product) {
       return { ok: false, error: "errors.productNotFound" };
     }
-    subtotal += priceCatalogLine(product, line).subtotal;
+    const priced = priceCatalogLine(product, line, now);
+    subtotal += priced.subtotal;
+    if (!priced.promotion) discountableSubtotal += priced.subtotal;
   }
 
   const promo = await findStorefrontPromoCode(database, {
     storeId: params.storeId,
     code: params.code,
   });
-  const evaluation = evaluatePromoCode({ promo, subtotal, now: params.now });
+  const evaluation = evaluatePromoCode({ promo, subtotal, discountableSubtotal, now });
   if (!evaluation.ok) {
     return { ok: false, error: evaluation.error, errorParams: evaluation.params };
   }

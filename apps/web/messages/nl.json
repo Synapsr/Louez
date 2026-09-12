@@ -866,6 +866,9 @@
       "noProducts": "Geen producten",
       "noProductsDescription": "Begin met het toevoegen van uw eerste product",
       "searchProducts": "Zoek een product...",
+      "clearSearch": "Zoekopdracht wissen",
+      "noSearchResults": "Geen producten gevonden",
+      "noSearchResultsDescription": "Geen product komt overeen met ‘{search}’.",
       "allCategories": "Alle categorieën",
       "allStatuses": "Alle statussen",
       "name": "Naam",
@@ -1520,7 +1523,28 @@
         "videoTileLabel": "Video",
         "videoInvalid": "Ongeldige YouTube-link",
         "editVideo": "Video bewerken",
-        "removeVideo": "Video verwijderen"
+        "removeVideo": "Video verwijderen",
+        "promotion": {
+          "add": "Actie toevoegen",
+          "title": "Actie",
+          "remove": "Actie verwijderen",
+          "reduction": "Korting",
+          "description": "Automatisch toegepast op boekingen tijdens de actie. Niet te combineren met een kortingscode.",
+          "schedule": "Inplannen",
+          "from": "Vanaf {date}",
+          "until": "Tot en met {date}",
+          "pickStart": "Kies de eerste dag van de actie.",
+          "pickEnd": "Kies de laatste dag, of laat de actie doorlopen.",
+          "clearDates": "Datums verwijderen",
+          "immediately": "Meteen",
+          "noEnd": "Geen einddatum",
+          "invalidPercentage": "Voer een heel percentage tussen 1 en 99 in.",
+          "invalidDates": "Kies een einddatum op of na de begindatum.",
+          "active": "Actief",
+          "scheduled": "Gepland",
+          "expired": "Afgelopen",
+          "none": "Niet ingesteld"
+        }
       },
       "deleteConfirm": {
         "title": "Dit product verwijderen?",
@@ -3143,6 +3167,7 @@
       "appearance": "Uiterlijk",
       "reservations": "Reserveringen",
       "emails": "E-mails",
+      "contact": "Contact",
       "legal": "Juridische pagina's",
       "account": "Account",
       "subscription": {
@@ -4213,6 +4238,87 @@
           "point2": "Uw klanten moeten het nieuwe adres gebruiken",
           "point3": "Zoekmachines moeten uw winkel opnieuw indexeren"
         }
+      },
+      "contactSettings": {
+        "description": "Kies hoe klanten u via uw winkel kunnen bereiken",
+        "channels": {
+          "title": "Contactkanalen",
+          "description": "Elk ingeschakeld kanaal verschijnt op de contactpagina en op de startpagina van uw winkel."
+        },
+        "missingPhone": "Vul het telefoonnummer van de winkel in bij de algemene instellingen om bellen, sms of WhatsApp aan te bieden.",
+        "missingEmail": "Vul het e-mailadres van de winkel in bij de algemene instellingen om het te tonen of formulierberichten te ontvangen.",
+        "missingBoth": "Vul telefoonnummer en e-mailadres van de winkel in bij de algemene instellingen om contactkanalen in te schakelen.",
+        "phone": {
+          "label": "Telefoon",
+          "description": "Klanten kunnen u bellen op {phone}.",
+          "empty": "Geen telefoonnummer ingesteld voor de winkel."
+        },
+        "sms": {
+          "label": "Sms",
+          "description": "Biedt ook het versturen van een sms naar dit nummer aan."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Opent een WhatsApp-gesprek met uw winkel.",
+          "number": "WhatsApp-nummer",
+          "numberDescription": "Laat leeg om het telefoonnummer van de winkel te gebruiken."
+        },
+        "email": {
+          "label": "E-mail",
+          "description": "Toont {email} met links om te schrijven.",
+          "empty": "Geen e-mailadres ingesteld voor de winkel."
+        },
+        "form": {
+          "title": "Contactformulier",
+          "description": "Een formulier op uw winkel waarvan de berichten per e-mail naar u worden doorgestuurd.",
+          "label": "Een contactformulier aanbieden",
+          "help": "De bezoeker geeft naam, e-mailadres en bericht op; u antwoordt rechtstreeks vanuit uw mailbox.",
+          "recipient": "Ontvangstadres",
+          "recipientDescription": "Laat leeg om berichten te ontvangen op {email}.",
+          "recipientEmpty": "Geef het adres op dat de berichten ontvangt.",
+          "phoneField": "Telefoonnummer van de bezoeker",
+          "phoneFieldDescription": "Moet het formulier om een telefoonnummer vragen?",
+          "phoneFieldOptions": {
+            "hidden": "Niet vragen",
+            "optional": "Optioneel",
+            "required": "Verplicht"
+          }
+        },
+        "intro": {
+          "label": "Introductietekst",
+          "description": "Wordt bovenaan de contactpagina getoond. Laat leeg voor de standaardtekst.",
+          "placeholder": "Een vraag over een verhuur? Schrijf ons, wij antwoorden binnen 24 uur."
+        },
+        "presets": {
+          "title": "Paginasjabloon",
+          "description": "Kies een startpunt; de contactkanalen hieronder volgen en u kunt ze daarna aanpassen.",
+          "options": {
+            "full": {
+              "label": "Volledig",
+              "description": "Alle contactkanalen, het formulier, de kaart en de openingstijden."
+            },
+            "message": {
+              "label": "Bericht",
+              "description": "Eerst het formulier, uw e-mail als noot. Voor wie liever schrijft."
+            },
+            "single": {
+              "label": "Eén kanaal",
+              "description": "Eén grote actie: bellen, WhatsApp of e-mail."
+            }
+          },
+          "custom": "Aangepaste instellingen, lay-out “{layout}”.",
+          "primaryChannel": "Uitgelicht kanaal",
+          "primaryChannelHelp": "De hoofdknop van de pagina.",
+          "channels": {
+            "phone": "Bellen",
+            "whatsapp": "WhatsApp",
+            "email": "E-mail"
+          }
+        },
+        "preview": "Voorbeeld",
+        "previewHint": "De contactpagina zoals die wordt getoond, bijgewerkt terwijl u de instellingen wijzigt.",
+        "viewOnStore": "Contactpagina bekijken",
+        "updated": "Contactkanalen bijgewerkt"
       },
       "legalSettings": {
         "title": "Juridische pagina's",
@@ -5936,6 +6042,9 @@
         "copySuccess": "Telefoonnummer gekopieerd",
         "copyError": "Telefoonnummer kon niet worden gekopieerd"
       },
+      "whatsappContact": {
+        "open": "Gesprek openen"
+      },
       "emailContact": {
         "default": "Schrijven met mail-app",
         "copy": "Email kopiëren",
@@ -7298,6 +7407,55 @@
       "homeTitle": "{store} · Materiaalverhuur",
       "description": "Huur materiaal bij {store}. Boek online."
     },
+    "contact": {
+      "title": "Contact opnemen met {name}",
+      "metaTitle": "Contact - {name}",
+      "metaDescription": "Neem contact op met {name}: telefoon, e-mail en contactformulier.",
+      "intro": "Een vraag over een verhuur, een beschikbaarheid of een offerte? Wij zijn er voor u.",
+      "channelsTitle": "Zo bereikt u ons",
+      "noChannels": "De contactgegevens van de winkel zijn nog niet ingesteld.",
+      "formTitle": "Een bericht sturen",
+      "formDescription": "Wij antwoorden per e-mail.",
+      "firstName": "Voornaam",
+      "lastName": "Achternaam",
+      "email": "E-mail",
+      "phone": "Telefoon",
+      "message": "Bericht",
+      "messagePlaceholder": "Beschrijf uw aanvraag: materiaal, data, aantallen…",
+      "privacyNote": "Uw gegevens worden alleen door {name} gebruikt om u te antwoorden.",
+      "send": "Bericht versturen",
+      "sending": "Versturen…",
+      "sentTitle": "Bericht verstuurd",
+      "sentDescription": "Bedankt! {name} heeft uw bericht ontvangen en antwoordt per e-mail.",
+      "sendAnother": "Nog een bericht sturen",
+      "orEmail": "Of per e-mail:",
+      "primary": {
+        "phone": {
+          "title": "Bel ons",
+          "action": "Bellen"
+        },
+        "whatsapp": {
+          "title": "Schrijf ons op WhatsApp",
+          "action": "WhatsApp openen"
+        },
+        "email": {
+          "title": "Schrijf ons",
+          "action": "E-mail sturen"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Vul uw voornaam in",
+        "lastNameRequired": "Vul uw achternaam in",
+        "invalidEmail": "Vul een geldig e-mailadres in",
+        "phoneRequired": "Vul uw telefoonnummer in",
+        "messageTooShort": "Uw bericht is te kort",
+        "tooLong": "Dit veld is te lang",
+        "invalidData": "Controleer de velden van het formulier.",
+        "unavailable": "Het contactformulier is momenteel niet beschikbaar.",
+        "rateLimited": "Te veel berichten verstuurd. Probeer het over enkele minuten opnieuw.",
+        "generic": "Uw bericht kon niet worden verstuurd. Probeer het opnieuw of gebruik een ander contactkanaal."
+      }
+    },
     "about": {
       "title": "About {name}",
       "metaTitle": "About - {name}",
@@ -7318,6 +7476,7 @@
       "deliveryFrom": "from {amount} per trip",
       "moreTitle": "Learn more",
       "catalog": "Browse the catalog",
+      "contact": "Contact opnemen",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
     },
@@ -7976,7 +8135,8 @@
     "marketplaceChannelNotFound": "Marketplace-kanaal niet gevonden",
     "requestCancellationStatusChanged": "De status van deze aanvraag is gewijzigd. Je kunt deze hier niet meer annuleren. Neem contact op met de winkel.",
     "requestCancellationPaymentPending": "Er loopt nog een betaling voor deze aanvraag. Probeer het na de update opnieuw of neem contact op met de winkel.",
-    "requestCancellationPaymentChanged": "De betalingsinformatie is gewijzigd. Controleer deze voordat je de annulering opnieuw bevestigt."
+    "requestCancellationPaymentChanged": "De betalingsinformatie is gewijzigd. Controleer deze voordat je de annulering opnieuw bevestigt.",
+    "promoCodeProductsAlreadyDiscounted": "Deze code geldt niet voor producten die al in de aanbieding zijn."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

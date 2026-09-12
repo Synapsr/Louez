@@ -20,13 +20,24 @@ export type AppliedPromoCode = Extract<PromoCodeEvaluation, { ok: true }>;
  */
 export const applyPromoCode = async (
   database: Pick<Database, "select">,
-  params: { storeId: string; code: string; subtotal: number; now?: Date },
+  params: {
+    storeId: string;
+    code: string;
+    subtotal: number;
+    discountableSubtotal?: number;
+    now?: Date;
+  },
 ): Promise<PromoCodeEvaluation> => {
   const promo = await findStorefrontPromoCode(database, {
     storeId: params.storeId,
     code: params.code,
   });
-  return evaluatePromoCode({ promo, subtotal: params.subtotal, now: params.now });
+  return evaluatePromoCode({
+    promo,
+    subtotal: params.subtotal,
+    discountableSubtotal: params.discountableSubtotal,
+    now: params.now,
+  });
 };
 
 /** `id = ? AND is_active AND (max_usage_count IS NULL OR current_usage_count < max_usage_count)` */

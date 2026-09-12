@@ -313,6 +313,7 @@ export const loadCatalogPriceIndex = cache(
       .select({
         id: products.id,
         price: products.price,
+        promotion: products.promotion,
         pricingKind: products.pricingKind,
         pricingMode: products.pricingMode,
         basePeriodMinutes: products.basePeriodMinutes,
@@ -338,7 +339,7 @@ export const loadCatalogPriceIndex = cache(
         startDate && endDate
           ? getStorefrontProductPrice({ product, startDate, endDate, quantity: 1, timezone })
               .subtotal
-          : getStorefrontPricingSummary(product).displayPrice,
+          : getStorefrontPricingSummary(product, { timezone }).displayPrice,
       );
     }
 
@@ -671,6 +672,7 @@ const loadAccessoryLinks = async (productIds: string[]) => {
         id: products.id,
         name: products.name,
         price: products.price,
+        promotion: products.promotion,
         deposit: products.deposit,
         images: products.images,
         quantity: effectiveProductQuantitySql(),
@@ -697,6 +699,7 @@ const loadAccessoryLinks = async (productIds: string[]) => {
       id: accessory.id,
       name: accessory.name,
       price: accessory.price,
+      promotion: accessory.promotion,
       deposit: accessory.deposit ?? "0",
       images: accessory.images,
       quantity: accessory.stockKind === "untracked" ? null : accessory.quantity,
@@ -832,6 +835,7 @@ export const loadCatalogProducts = async ({
               name: products.name,
               images: products.images,
               price: products.price,
+              promotion: products.promotion,
               deposit: products.deposit,
               quantity: effectiveProductQuantitySql(),
               stockKind: products.stockKind,
@@ -876,6 +880,7 @@ export const loadCatalogProducts = async ({
       name: row.name,
       images: row.images,
       price: row.price,
+      promotion: row.promotion,
       deposit: row.deposit,
       quantity: row.stockKind === "untracked" ? null : row.quantity,
       stockKind: row.stockKind,

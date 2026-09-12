@@ -1,5 +1,7 @@
 "use client";
 
+import { useStoreTimezone } from "@/contexts/store-context";
+import { usePricingNow } from "@/hooks/use-pricing-now";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
 
@@ -10,7 +12,9 @@ import { SeasonalRateRow } from "./seasonal-rate-row";
 
 export const SeasonalRatesDisplay = ({ product }: { product: StorefrontProductPricing }) => {
   const t = useTranslations("storefront.seasonalPricing");
-  const rates = getStorefrontSeasonalRates(product);
+  const timezone = useStoreTimezone();
+  const now = usePricingNow();
+  const rates = getStorefrontSeasonalRates(product, { timezone, now });
   if (rates.length === 0) return null;
 
   return (

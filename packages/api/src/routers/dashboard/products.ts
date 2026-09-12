@@ -47,6 +47,7 @@ const list = dashboardProcedure
       status: z.enum(["all", ...DASHBOARD_PRODUCT_STATUSES]).optional(),
       /** Empty means "all categories"; a product matching any id is kept. */
       categoryIds: z.array(z.string().min(1)).optional(),
+      search: z.string().trim().max(100).optional(),
       limit: z.number().int().min(1).max(200).optional(),
     }),
   )
@@ -61,6 +62,7 @@ const list = dashboardProcedure
       storeId: context.store.id,
       status: input.status,
       categoryIds: input.categoryIds,
+      search: input.search,
       limit: input.limit,
     }),
   );

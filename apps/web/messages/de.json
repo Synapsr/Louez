@@ -905,6 +905,9 @@
       "noProducts": "Keine Produkte",
       "noProductsDescription": "Beginnen Sie mit dem Hinzufügen Ihres ersten Produkts",
       "searchProducts": "Produkt suchen...",
+      "clearSearch": "Suche löschen",
+      "noSearchResults": "Keine Produkte gefunden",
+      "noSearchResultsDescription": "Kein Produkt entspricht „{search}“.",
       "allCategories": "Alle Kategorien",
       "allStatuses": "Alle Status",
       "name": "Name",
@@ -1559,7 +1562,28 @@
         "videoTileLabel": "Video",
         "videoInvalid": "Ungültiger YouTube-Link",
         "editVideo": "Video bearbeiten",
-        "removeVideo": "Video entfernen"
+        "removeVideo": "Video entfernen",
+        "promotion": {
+          "add": "Aktion hinzufügen",
+          "title": "Aktion",
+          "remove": "Aktion entfernen",
+          "reduction": "Rabatt",
+          "description": "Gilt automatisch für Buchungen während der Aktion. Nicht mit einem Rabattcode kombinierbar.",
+          "schedule": "Planen",
+          "from": "Ab {date}",
+          "until": "Bis {date}",
+          "pickStart": "Wählen Sie den ersten Tag der Aktion.",
+          "pickEnd": "Wählen Sie den letzten Tag oder lassen Sie sie unbefristet.",
+          "clearDates": "Daten entfernen",
+          "immediately": "Sofort",
+          "noEnd": "Kein Enddatum",
+          "invalidPercentage": "Geben Sie eine ganze Prozentzahl zwischen 1 und 99 ein.",
+          "invalidDates": "Das Ende muss am oder nach dem Beginn liegen.",
+          "active": "Aktiv",
+          "scheduled": "Geplant",
+          "expired": "Abgelaufen",
+          "none": "Nicht eingerichtet"
+        }
       },
       "deleteConfirm": {
         "title": "Dieses Produkt löschen?",
@@ -3143,6 +3167,7 @@
       "appearance": "Erscheinungsbild",
       "reservations": "Reservierungen",
       "emails": "E-Mails",
+      "contact": "Kontakt",
       "legal": "Rechtliche Seiten",
       "account": "Konto",
       "subscription": {
@@ -4213,6 +4238,87 @@
           "point2": "Ihre Kunden müssen die neue Adresse verwenden",
           "point3": "Suchmaschinen müssen Ihren Shop neu indexieren"
         }
+      },
+      "contactSettings": {
+        "description": "Legen Sie fest, wie Kunden Sie über Ihren Shop erreichen können",
+        "channels": {
+          "title": "Kontaktwege",
+          "description": "Jeder aktivierte Kontaktweg erscheint auf der Kontaktseite und auf der Startseite Ihres Shops."
+        },
+        "missingPhone": "Hinterlegen Sie die Telefonnummer des Shops in den allgemeinen Einstellungen, um Anruf, SMS oder WhatsApp anzubieten.",
+        "missingEmail": "Hinterlegen Sie die E-Mail des Shops in den allgemeinen Einstellungen, um sie anzuzeigen oder Formularnachrichten zu erhalten.",
+        "missingBoth": "Hinterlegen Sie Telefon und E-Mail des Shops in den allgemeinen Einstellungen, um Kontaktwege zu aktivieren.",
+        "phone": {
+          "label": "Telefon",
+          "description": "Kunden können Sie unter {phone} anrufen.",
+          "empty": "Keine Telefonnummer für den Shop hinterlegt."
+        },
+        "sms": {
+          "label": "SMS",
+          "description": "Bietet zusätzlich eine SMS an diese Nummer an."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Öffnet eine WhatsApp-Unterhaltung mit Ihrem Shop.",
+          "number": "WhatsApp-Nummer",
+          "numberDescription": "Leer lassen, um die Telefonnummer des Shops zu verwenden."
+        },
+        "email": {
+          "label": "E-Mail",
+          "description": "Zeigt {email} mit Links zum Schreiben an.",
+          "empty": "Keine E-Mail für den Shop hinterlegt."
+        },
+        "form": {
+          "title": "Kontaktformular",
+          "description": "Ein Formular in Ihrem Shop, dessen Nachrichten Ihnen per E-Mail weitergeleitet werden.",
+          "label": "Kontaktformular anbieten",
+          "help": "Der Besucher gibt Name, E-Mail und Nachricht an; Sie antworten direkt aus Ihrem Postfach.",
+          "recipient": "Empfängeradresse",
+          "recipientDescription": "Leer lassen, um Nachrichten an {email} zu erhalten.",
+          "recipientEmpty": "Geben Sie die Adresse an, die die Nachrichten erhält.",
+          "phoneField": "Telefonnummer des Besuchers",
+          "phoneFieldDescription": "Soll das Formular nach einer Telefonnummer fragen?",
+          "phoneFieldOptions": {
+            "hidden": "Nicht abfragen",
+            "optional": "Optional",
+            "required": "Pflichtfeld"
+          }
+        },
+        "intro": {
+          "label": "Einleitungstext",
+          "description": "Wird oben auf der Kontaktseite angezeigt. Leer lassen für den Standardtext.",
+          "placeholder": "Eine Frage zu einer Miete? Schreiben Sie uns, wir antworten innerhalb von 24 Stunden."
+        },
+        "presets": {
+          "title": "Seitenvorlage",
+          "description": "Wählen Sie einen Ausgangspunkt; die Kontaktwege unten passen sich an und lassen sich danach anpassen.",
+          "options": {
+            "full": {
+              "label": "Vollständig",
+              "description": "Alle Kontaktwege, das Formular, die Karte und die Öffnungszeiten."
+            },
+            "message": {
+              "label": "Nachricht",
+              "description": "Zuerst das Formular, Ihre E-Mail als Hinweis. Für alle, die lieber schreiben."
+            },
+            "single": {
+              "label": "Ein Kontaktweg",
+              "description": "Eine große Aktion: Anruf, WhatsApp oder E-Mail."
+            }
+          },
+          "custom": "Eigene Einstellungen, Layout „{layout}“.",
+          "primaryChannel": "Hervorgehobener Kontaktweg",
+          "primaryChannelHelp": "Die Hauptschaltfläche der Seite.",
+          "channels": {
+            "phone": "Anruf",
+            "whatsapp": "WhatsApp",
+            "email": "E-Mail"
+          }
+        },
+        "preview": "Vorschau",
+        "previewHint": "Die Kontaktseite, wie sie angezeigt wird, aktualisiert während Sie die Einstellungen ändern.",
+        "viewOnStore": "Kontaktseite ansehen",
+        "updated": "Kontaktwege aktualisiert"
       },
       "legalSettings": {
         "title": "Rechtliche Seiten",
@@ -5936,6 +6042,9 @@
         "copySuccess": "Telefonnummer kopiert",
         "copyError": "Telefonnummer konnte nicht kopiert werden"
       },
+      "whatsappContact": {
+        "open": "Unterhaltung öffnen"
+      },
       "emailContact": {
         "default": "Mit Mail-App schreiben",
         "copy": "E-Mail kopieren",
@@ -7298,6 +7407,55 @@
       "homeTitle": "{store} · Ausrüstung mieten",
       "description": "Ausrüstung bei {store} mieten. Online buchen."
     },
+    "contact": {
+      "title": "{name} kontaktieren",
+      "metaTitle": "Kontakt - {name}",
+      "metaDescription": "Kontaktieren Sie {name}: Telefon, E-Mail und Kontaktformular.",
+      "intro": "Eine Frage zu einer Miete, einer Verfügbarkeit oder einem Angebot? Wir sind für Sie da.",
+      "channelsTitle": "So erreichen Sie uns",
+      "noChannels": "Die Kontaktdaten des Shops sind noch nicht hinterlegt.",
+      "formTitle": "Nachricht senden",
+      "formDescription": "Wir antworten per E-Mail.",
+      "firstName": "Vorname",
+      "lastName": "Nachname",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "message": "Nachricht",
+      "messagePlaceholder": "Beschreiben Sie Ihre Anfrage: Ausrüstung, Daten, Mengen…",
+      "privacyNote": "Ihre Angaben werden nur von {name} verwendet, um Ihnen zu antworten.",
+      "send": "Nachricht senden",
+      "sending": "Wird gesendet…",
+      "sentTitle": "Nachricht gesendet",
+      "sentDescription": "Vielen Dank! {name} hat Ihre Nachricht erhalten und antwortet per E-Mail.",
+      "sendAnother": "Weitere Nachricht senden",
+      "orEmail": "Oder per E-Mail:",
+      "primary": {
+        "phone": {
+          "title": "Rufen Sie uns an",
+          "action": "Anrufen"
+        },
+        "whatsapp": {
+          "title": "Schreiben Sie uns auf WhatsApp",
+          "action": "WhatsApp öffnen"
+        },
+        "email": {
+          "title": "Schreiben Sie uns",
+          "action": "E-Mail senden"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Geben Sie Ihren Vornamen an",
+        "lastNameRequired": "Geben Sie Ihren Nachnamen an",
+        "invalidEmail": "Geben Sie eine gültige E-Mail-Adresse an",
+        "phoneRequired": "Geben Sie Ihre Telefonnummer an",
+        "messageTooShort": "Ihre Nachricht ist zu kurz",
+        "tooLong": "Dieses Feld ist zu lang",
+        "invalidData": "Prüfen Sie die Formularfelder.",
+        "unavailable": "Das Kontaktformular ist derzeit nicht verfügbar.",
+        "rateLimited": "Zu viele Nachrichten gesendet. Versuchen Sie es in einigen Minuten erneut.",
+        "generic": "Ihre Nachricht konnte nicht gesendet werden. Versuchen Sie es erneut oder nutzen Sie einen anderen Kontaktweg."
+      }
+    },
     "about": {
       "title": "About {name}",
       "metaTitle": "About - {name}",
@@ -7318,6 +7476,7 @@
       "deliveryFrom": "from {amount} per trip",
       "moreTitle": "Learn more",
       "catalog": "Browse the catalog",
+      "contact": "Kontakt aufnehmen",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
     },
@@ -7976,7 +8135,8 @@
     "marketplaceChannelNotFound": "Marketplace-Kanal nicht gefunden",
     "requestCancellationStatusChanged": "Der Status dieser Anfrage hat sich geändert. Sie kann hier nicht mehr storniert werden. Kontaktieren Sie das Geschäft.",
     "requestCancellationPaymentPending": "Für diese Anfrage läuft noch eine Zahlung. Versuchen Sie es nach der Aktualisierung erneut oder kontaktieren Sie das Geschäft.",
-    "requestCancellationPaymentChanged": "Die Zahlungsinformationen haben sich geändert. Prüfen Sie diese, bevor Sie die Stornierung erneut bestätigen."
+    "requestCancellationPaymentChanged": "Die Zahlungsinformationen haben sich geändert. Prüfen Sie diese, bevor Sie die Stornierung erneut bestätigen.",
+    "promoCodeProductsAlreadyDiscounted": "Dieser Code gilt nicht für bereits reduzierte Produkte."
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

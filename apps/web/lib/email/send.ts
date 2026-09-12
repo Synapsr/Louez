@@ -28,6 +28,7 @@ import {
   type DigestEntry,
   NewRequestLandlordEmail,
   PhoneCallbackLandlordEmail,
+  ContactMessageEmail,
   VoiceNumberBillingEmail,
   TeamInvitationEmail,
   RewardUnlockedEmail,
@@ -1096,6 +1097,74 @@ export async function sendPhoneCallbackLandlordEmail({
       to,
       subject,
       templateType: 'phone_callback_landlord',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Storefront contact form: the visitor's message forwarded to the store
+export async function sendContactMessageEmail({
+  to,
+  storeId,
+  storeName,
+  primaryColor,
+  senderName,
+  senderEmail,
+  senderPhone,
+  message,
+  locale = 'fr',
+}: {
+  to: string
+  storeId: string
+  storeName: string
+  primaryColor?: string
+  senderName: string
+  senderEmail: string
+  senderPhone: string | null
+  message: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.contactMessage.subject
+    .replace('{name}', senderName)
+    .replace('{store}', storeName)
+  const html = await render(
+    ContactMessageEmail({
+      storeName,
+      primaryColor: primaryColor || '#0066FF',
+      senderName,
+      senderEmail,
+      senderPhone,
+      message,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({
+      to,
+      subject,
+      html,
+      fromName: storeName,
+      replyTo: senderEmail,
+    })
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: 'contact_message',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId,
+      to,
+      subject,
+      templateType: 'contact_message',
       status: 'failed',
       error: String(error),
     })

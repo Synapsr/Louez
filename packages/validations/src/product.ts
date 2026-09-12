@@ -1,3 +1,4 @@
+import { createProductPromotionSchema, productPromotionSchema } from './product-promotion';
 import { z } from 'zod';
 
 import { AI_ADVISOR_PRODUCT_CONTEXT_MAX_LENGTH } from './ai-advisor';
@@ -302,6 +303,7 @@ export const createProductSchema = (
         }),
       ),
       enforceStrictTiers: z.boolean(),
+      promotion: createProductPromotionSchema(t).nullable(),
       taxSettings: productTaxSettingsSchema,
       videoUrl: z
         .string()
@@ -570,6 +572,7 @@ export const productSchema = z
     pricingTiers: z.array(pricingTierSchema).optional(),
     rateTiers: z.array(rateTierSchema).optional(),
     enforceStrictTiers: z.boolean().optional(),
+    promotion: productPromotionSchema.nullable().optional(),
     taxSettings: productTaxSettingsSchema.optional(),
     videoUrl: z
       .string()

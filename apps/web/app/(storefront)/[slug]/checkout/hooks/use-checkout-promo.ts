@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useMutation } from "@tanstack/react-query";
 
+import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import type { CartItem } from "@/contexts/cart-context";
 import { checkoutMutations } from "@/lib/queries/checkout.queries";
 
@@ -27,6 +28,10 @@ export interface PromoValidationError {
  * when the subtotal moves, and drops a promo whose minimum is no longer met.
  */
 export const useCheckoutPromo = ({ items, subtotal }: UseCheckoutPromoParams) => {
+  const discountableSubtotal = items.reduce((sum, item) => {
+    const price = calculateCartItemPrice(item, null, null);
+    return sum + (price.promotion ? 0 : price.subtotal);
+  }, 0);
   const [appliedPromo, setAppliedPromo] = useState<ValidatedPromo | null>(null);
   const [validationError, setValidationError] = useState<PromoValidationError | null>(null);
 
@@ -73,21 +78,21 @@ export const useCheckoutPromo = ({ items, subtotal }: UseCheckoutPromoParams) =>
   // Derived, not synced: a promo whose minimum is no longer met simply stops
   // applying; the summary shows it as gone.
   const promo = useMemo(() => {
-    if (!appliedPromo) return null;
+    if (!appliedPromo || discountableSubtotal <= 0) return null;
     if (appliedPromo.minimumAmount > 0 && subtotal < appliedPromo.minimumAmount) {
       return null;
     }
     return appliedPromo;
-  }, [appliedPromo, subtotal]);
+  }, [appliedPromo, subtotal, discountableSubtotal]);
 
   const discountAmount = useMemo(() => {
     if (!promo) return 0;
     const raw =
       promo.type === "percentage"
-        ? Math.min((subtotal * promo.value) / 100, subtotal)
-        : Math.min(promo.value, subtotal);
+        ? Math.min((discountableSubtotal * promo.value) / 100, discountableSubtotal)
+        : Math.min(promo.value, discountableSubtotal);
     return Math.round(raw * 100) / 100;
-  }, [promo, subtotal]);
+  }, [promo, discountableSubtotal]);
 
   return {
     promo,

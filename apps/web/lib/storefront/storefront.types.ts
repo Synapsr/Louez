@@ -1,3 +1,4 @@
+import type { ProductPromotion } from "@louez/types";
 import type { BookingAttributeAxis, PricingKind, PricingMode, StockKind } from "@louez/types";
 import type { SeasonalPricingConfig } from "@louez/utils";
 
@@ -23,6 +24,7 @@ export interface StorefrontPricingTier {
 /** The slice of a product that pricing reads. Every storefront surface projects at least this. */
 export interface StorefrontProductPricing {
   price: string | number;
+  promotion?: ProductPromotion | null;
   deposit?: string | number | null;
   pricingKind?: PricingKind | null;
   pricingMode?: PricingMode | null;

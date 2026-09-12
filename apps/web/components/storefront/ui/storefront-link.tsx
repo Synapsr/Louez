@@ -34,7 +34,9 @@ export const StorefrontLink = ({
   const catalogHref = useCatalogReturnHref();
   const resolvedHref = resolveStorefrontHref(basePath, resolveCatalogNavigation(href, catalogHref));
   const pathname = href.split(/[?#]/, 1)[0];
-  const isBrowsePage = ["/", "/catalog", "/about", "/terms", "/legal"].includes(pathname ?? "");
+  const isBrowsePage = ["/", "/catalog", "/about", "/contact", "/terms", "/legal"].includes(
+    pathname ?? "",
+  );
   const isAccountPage =
     pathname === "/account" || /^\/account\/reservations\/[^/]+$/.test(pathname ?? "");
   const isCheckoutPage = pathname === "/checkout";

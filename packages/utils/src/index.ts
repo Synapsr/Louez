@@ -50,3 +50,5 @@ export {
 } from "./reservation-billing";
 
 export { hasReservationInsuranceCoverage } from "./util.reservation-insurance";
+
+export * from "./pricing/product-promotion";

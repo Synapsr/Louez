@@ -59,6 +59,7 @@ const toIsoString = (value: Date | string | null | undefined): string =>
   value instanceof Date ? value.toISOString() : (value ?? "");
 
 export interface StorefrontProductPriceInput {
+  now?: Date;
   timezone?: string;
   product: StorefrontProductPricing;
   startDate?: Date | string | null;
@@ -102,6 +103,7 @@ export const toCartItemForPricing = ({
   return {
     ...(timezone ? { timezone } : {}),
     price: parseStorefrontDecimal(product.price) ?? 0,
+    ...(product.promotion !== undefined ? { promotion: product.promotion } : {}),
     deposit: parseStorefrontDecimal(product.deposit) ?? 0,
     quantity,
     startDate: toIsoString(startDate),
@@ -124,7 +126,8 @@ export const toCartItemForPricing = ({
  */
 export const getStorefrontProductPrice = (
   input: StorefrontProductPriceInput,
-): CartItemPriceResult => calculateCartItemPrice(toCartItemForPricing(input), null, null);
+): CartItemPriceResult =>
+  calculateCartItemPrice(toCartItemForPricing(input), null, null, input.now);
 
 export type StorefrontBillingDetail =
   | { mode: "prorated" }

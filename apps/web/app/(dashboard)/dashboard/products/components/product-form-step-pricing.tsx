@@ -38,6 +38,7 @@ import type {
   ProductFormValues,
   SeasonalPricingData,
 } from "../types";
+import { ProductPromotionField } from "./product-promotion-field";
 import { PricingLadder } from "./pricing-ladder";
 import { PricingPeriodSelector } from "./pricing-period-selector";
 import { SeasonalActionsMenu, SeasonalSaveIndicator } from "./pricing-season-actions";
@@ -54,6 +55,7 @@ interface PricingStepProps {
   currencySymbol: string;
   isSaving: boolean;
   storeTaxSettings?: TaxSettings;
+  storeTimezone?: string;
   availableAccessories: AvailableAccessory[];
   showAccessories: boolean;
   showStock?: boolean;
@@ -123,6 +125,7 @@ function PricingCard(props: PricingStepProps) {
     currencySymbol,
     isSaving,
     storeTaxSettings,
+    storeTimezone,
     productId,
     seasonalPricings = [],
     selectedSeasonalPeriodId = null,
@@ -287,6 +290,21 @@ function PricingCard(props: PricingStepProps) {
             void selectPeriod(null);
           }}
         />
+        {/* Flush under the folded deposit and VAT row, so both read as one list. */}
+        <div className={isSeason ? "mt-3" : undefined}>
+          <form.Field name="promotion">
+            {() => (
+              <ProductPromotionField
+                form={form}
+                values={watchedValues}
+                timezone={storeTimezone}
+                currency={currency}
+                disabled={isSaving}
+                showValidationErrors={showValidationErrors}
+              />
+            )}
+          </form.Field>
+        </div>
       </CardPanel>
 
       {productId && (

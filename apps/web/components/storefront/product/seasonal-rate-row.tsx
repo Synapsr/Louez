@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@louez/ui";
 
+import { useDiscountVisibility } from "@/contexts/store-context";
 import { Price } from "@/components/storefront/ui/price";
 import { SeasonSwatch } from "@/components/storefront/ui/season-swatch";
 import { useFormatLocale } from "@/hooks/use-format-locale";
@@ -20,6 +21,7 @@ export const SeasonalRateRow = ({ rate }: { rate: StorefrontSeasonalRate }) => {
   const t = useTranslations("storefront.seasonalPricing");
   const { intl: locale } = useFormatLocale();
   const formatPeriod = usePeriodLabel();
+  const isDiscountVisible = useDiscountVisibility();
   const base = rate.rows.find((row) => row.id === "__base__");
   if (!base) return null;
 
@@ -38,6 +40,7 @@ export const SeasonalRateRow = ({ rate }: { rate: StorefrontSeasonalRate }) => {
       </span>
       <Price
         amount={base.price}
+        compareAt={isDiscountVisible(base.reductionPercent) ? base.compareAt : null}
         per={formatPeriod(base.periodMinutes)}
         size="md"
         className="shrink-0"

@@ -1,5 +1,7 @@
 "use client";
 
+import type { AppliedProductPromotion } from "@louez/types";
+import { usePricingNow } from "@/hooks/use-pricing-now";
 import { useMemo } from "react";
 
 import { isFixedPriceProduct, type PricingSegment } from "@louez/utils";
@@ -35,6 +37,7 @@ export interface BookingExtraPrice {
 }
 
 export interface BookingPrice {
+  promotion?: AppliedProductPromotion | null;
   seasonalSegments?: PricingSegment[];
   /** True once the product can be priced: a forfait always, a rental once dates are set. */
   isPriced: boolean;
@@ -72,6 +75,7 @@ export const useBookingPrice = ({
 }: UseBookingPriceOptions): BookingPrice => {
   const isDiscountVisible = useDiscountVisibility();
   const timezone = useStoreTimezone();
+  const now = usePricingNow();
 
   return useMemo<BookingPrice>(() => {
     const isFixed = isFixedPriceProduct(product);
@@ -100,6 +104,7 @@ export const useBookingPrice = ({
 
     const result = getStorefrontProductPrice({
       timezone,
+      now,
       product,
       startDate: period?.start,
       endDate: period?.end,
@@ -113,6 +118,7 @@ export const useBookingPrice = ({
       quantity: extraQuantity,
       amount: getStorefrontProductPrice({
         timezone,
+        now,
         product: accessory,
         startDate: period?.start,
         endDate: period?.end,
@@ -134,6 +140,7 @@ export const useBookingPrice = ({
         result,
       ),
       seasonalSegments: result.seasonalSegments,
+      promotion: result.promotion,
       subtotal: result.subtotal,
       originalSubtotal: showsDiscount ? result.originalSubtotal : result.subtotal,
       discountPercent:
@@ -142,5 +149,5 @@ export const useBookingPrice = ({
       total: result.subtotal + extrasTotal,
       deposit,
     };
-  }, [extras, isDiscountVisible, period, product, quantity, timezone]);
+  }, [extras, isDiscountVisible, period, product, quantity, timezone, now]);
 };

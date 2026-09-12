@@ -4,11 +4,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
-import { Plus, FolderOpen, Lock, ArrowUpDown } from 'lucide-react'
+import { Plus, FolderOpen, Lock, ArrowUpDown, SearchX } from 'lucide-react'
 
 import { Button } from '@louez/ui'
 import { CategoryManagerDrawer } from '@/components/categories/category-manager-drawer'
 import { NewFeatureBadge } from '@/components/dashboard/new-feature-badge'
+import { useDebounce } from '@/hooks/use-debounce'
 import { useWhatsNew } from '@/hooks/use-whats-new'
 import { invalidateProductsList } from '@/lib/orpc/invalidation'
 import { categoriesQueries } from '@/lib/queries/categories.queries'
@@ -32,6 +33,7 @@ interface ProductsPageContentProps {
   initialFilters: {
     status: ProductStatusFilter
     categoryIds: string[]
+    search: string
   }
   limits: LimitStatus
   planSlug: string
@@ -50,17 +52,21 @@ export function ProductsPageContent({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [showOrderDialog, setShowOrderDialog] = useState(false)
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
-  const { status, categoryIds, setCategoryIds } = useProductsFilters()
+  const { status, categoryIds, search, setCategoryIds, setSearch } = useProductsFilters()
+  // Fetch once typing pauses, but drop the search right away when it is cleared
+  const debouncedSearch = useDebounce(search.trim(), 300)
+  const querySearch = search.trim() ? debouncedSearch : ''
   const { dismissFeature } = useWhatsNew()
 
   // Filter changes are shallow, so the server props keep describing the
   // filters of the first render — only seed the cache while they still match.
   const matchesInitialFilters =
     status === initialFilters.status &&
-    categoryIds.join(',') === initialFilters.categoryIds.join(',')
+    categoryIds.join(',') === initialFilters.categoryIds.join(',') &&
+    querySearch === initialFilters.search
 
   const productsQuery = useQuery({
-    ...productsQueries.list({ status, categoryIds }),
+    ...productsQueries.list({ status, categoryIds, search: querySearch }),
     initialData: matchesInitialFilters ? initialData : undefined,
     // Keep the previous list on screen while the new filter loads
     placeholderData: (previousData) => previousData,
@@ -237,7 +243,20 @@ export function ProductsPageContent({
             : 'transition-opacity'
         }
       >
-        <ProductsTable products={visibleProducts} currency={currency} />
+        {querySearch && products.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12 text-center">
+            <SearchX className="h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">{t('noSearchResults')}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t('noSearchResultsDescription', { search: querySearch })}
+            </p>
+            <Button variant="outline" className="mt-4" onClick={() => setSearch('')}>
+              {t('clearSearch')}
+            </Button>
+          </div>
+        ) : (
+          <ProductsTable products={visibleProducts} currency={currency} />
+        )}
       </div>
 
       {/* Blurred Products Section */}

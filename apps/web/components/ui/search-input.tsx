@@ -88,7 +88,9 @@ function SearchInput(
         <Search className="h-4 w-4" />
       </InputGroupAddon>
       {hasValue && (
-        <InputGroupAddon align="inline-end">
+        // No vertical padding: the button is taller than the shortcut hint and
+        // would otherwise grow the field as soon as something is typed
+        <InputGroupAddon align="inline-end" className="py-0">
           <InputGroupButton
             size="icon-sm"
             className="text-muted-foreground hover:text-foreground"

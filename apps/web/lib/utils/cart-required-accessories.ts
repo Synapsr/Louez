@@ -1,3 +1,4 @@
+import type { ProductPromotion } from '@louez/types';
 import type { PricingKind, PricingMode, StockKind } from '@louez/types';
 import {
   combineStockQuantityLimits,
@@ -14,6 +15,7 @@ export interface AccessoryLink {
   id: string;
   name: string;
   price: string;
+  promotion?: ProductPromotion | null;
   deposit: string;
   images: string[] | null;
   /** Units of this accessory currently bookable (already effective stock). */
@@ -44,6 +46,7 @@ export interface RequiredAccessoryCartInput {
   productName: string;
   productImage: string | null;
   price: number;
+  promotion?: ProductPromotion | null;
   deposit: number;
   maxQuantity: StockQuantityLimit;
   /** Units required per unit of the parent line. */
@@ -352,6 +355,7 @@ export function buildRequiredAccessoryCartInputs(
       productName: accessory.name,
       productImage: accessory.images?.[0] || null,
       price: toNumber(accessory.price) ?? 0,
+      ...(accessory.promotion !== undefined ? { promotion: accessory.promotion } : {}),
       deposit: toNumber(accessory.deposit) ?? 0,
       maxQuantity:
         accessory.quantity === null

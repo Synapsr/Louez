@@ -1,3 +1,4 @@
+import type { ProductPromotion } from "@louez/types";
 import { getEffectiveReservationMode } from "@/lib/reservation-mode";
 import "server-only";
 
@@ -76,6 +77,7 @@ export interface ProductPageProduct {
   images: string[];
   videoUrl: string | null;
   price: string;
+  promotion?: ProductPromotion | null;
   deposit: string | null;
   pricingKind: PricingKind;
   pricingMode: PricingMode;
@@ -259,6 +261,7 @@ const loadRelatedProducts = async (
     name: row.name,
     images: row.images,
     price: row.price,
+    promotion: row.promotion,
     deposit: row.deposit,
     quantity:
       row.stockKind === "untracked"
@@ -366,6 +369,7 @@ export const loadProductPage = cache(
         id: link.accessory.id,
         name: link.accessory.name,
         price: link.accessory.price,
+        promotion: link.accessory.promotion,
         deposit: link.accessory.deposit ?? "0",
         images: link.accessory.images,
         quantity,
@@ -413,6 +417,7 @@ export const loadProductPage = cache(
         images: product.images ?? [],
         videoUrl: product.videoUrl ?? null,
         price: product.price,
+        promotion: product.promotion,
         deposit: product.deposit,
         pricingKind: product.pricingKind,
         pricingMode: product.pricingMode ?? "day",

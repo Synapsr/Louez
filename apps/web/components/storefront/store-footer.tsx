@@ -135,7 +135,7 @@ export const StoreFooter = ({
               <StorefrontLink href="/#reviews" className={LINK_CLASS_NAME}>
                 {t("reviews")}
               </StorefrontLink>
-              <StorefrontLink href="/#contact" className={LINK_CLASS_NAME}>
+              <StorefrontLink href="/contact" className={LINK_CLASS_NAME}>
                 {t("contact")}
               </StorefrontLink>
             </nav>

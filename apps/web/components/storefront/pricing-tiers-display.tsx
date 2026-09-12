@@ -5,7 +5,9 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { PricingKind, PricingMode } from "@louez/types";
+import { useStoreTimezone } from "@/contexts/store-context";
+import { usePricingNow } from "@/hooks/use-pricing-now";
+import type { ProductPromotion, PricingKind, PricingMode } from "@louez/types";
 import {
   Button,
   Card,
@@ -31,6 +33,7 @@ const MAX_VISIBLE_ROWS = 4;
 
 interface PricingTiersDisplayProps {
   basePrice: number;
+  promotion?: ProductPromotion | null;
   pricingKind?: PricingKind | null;
   pricingMode: PricingMode;
   basePeriodMinutes?: number | null;
@@ -41,6 +44,7 @@ interface PricingTiersDisplayProps {
 /** Rates card of the product page: the base rate and what longer rentals cost. */
 export const PricingTiersDisplay = ({
   basePrice,
+  promotion,
   pricingKind,
   pricingMode,
   basePeriodMinutes,
@@ -48,17 +52,23 @@ export const PricingTiersDisplay = ({
   className,
 }: PricingTiersDisplayProps) => {
   const t = useTranslations("storefront.product.tieredPricing");
+  const timezone = useStoreTimezone();
+  const now = usePricingNow();
   const [isOpen, setIsOpen] = useState(false);
   const isSidePanel = useMediaQuery("(min-width: 1024px)");
 
   // A forfait has no rate grid, so this yields no rows and the card is skipped.
-  const rateRows = getStorefrontRateRows({
-    price: basePrice,
-    pricingKind,
-    pricingMode,
-    basePeriodMinutes,
-    pricingTiers: tiers,
-  });
+  const rateRows = getStorefrontRateRows(
+    {
+      price: basePrice,
+      promotion,
+      pricingKind,
+      pricingMode,
+      basePeriodMinutes,
+      pricingTiers: tiers,
+    },
+    { timezone, now },
+  );
 
   if (rateRows.length <= 1) return null;
 
