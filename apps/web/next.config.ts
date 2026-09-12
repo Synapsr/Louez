@@ -201,6 +201,7 @@ const nextConfig: NextConfig = {
     "feat-storefront-redesign.louez.localify",
     "*.feat-storefront-redesign.louez.localify",
     "louez-storefront-redesign.localify",
+    "*.louez-storefront-redesign.localify",
   ],
 };
 
