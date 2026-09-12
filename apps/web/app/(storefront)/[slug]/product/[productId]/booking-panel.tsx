@@ -2,6 +2,8 @@
 
 import { type ReactNode, useMemo, useRef, useState } from "react";
 
+import { useStoreTimezone as usePromotionTimezone } from "@/contexts/store-context";
+import { usePricingNow } from "@/hooks/use-pricing-now";
 import { useTranslations } from "next-intl";
 
 import { Button, toastManager } from "@louez/ui";
@@ -66,6 +68,8 @@ const toPeriodValue = (period: CartPeriod | null): RentalPeriodValue | null =>
  * sticky bar as a sibling so it can pin to the bottom of the whole page.
  */
 export const BookingPanel = ({ product, booking, accessories, information }: BookingPanelProps) => {
+  const promotionTimezone = usePromotionTimezone();
+  const promotionNow = usePricingNow();
   const t = useTranslations();
   const formatPeriodLabel = usePeriodLabel();
   const { period: cartPeriod, items: cartItems } = useCartState();
@@ -227,12 +231,19 @@ export const BookingPanel = ({ product, booking, accessories, information }: Boo
           product={product}
           booking={booking}
           seasonalSegments={price.seasonalSegments}
-          rentalPrice={price.isPriced ? price.subtotal / quantity : undefined}
+          rentalPrice={
+            price.isPriced
+              ? (price.promotion?.originalSubtotal ?? price.subtotal) / quantity
+              : undefined
+          }
           rentalMinutes={period ? calculateDurationMinutes(period.start, period.end) : undefined}
         />
         <div className="flex flex-col gap-5 rounded-2xl bg-card p-4 shadow-card sm:p-6">
           <BookingPeriodField
-            seasonalPricing={getSeasonalCalendarPricing(product)}
+            seasonalPricing={getSeasonalCalendarPricing(product, {
+              timezone: promotionTimezone,
+              now: promotionNow,
+            })}
             ref={periodFieldRef}
             value={period}
             onChange={setPeriodOverride}

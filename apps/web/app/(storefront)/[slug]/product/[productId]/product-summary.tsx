@@ -3,14 +3,20 @@
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@louez/ui";
-import { isFixedPriceProduct, pricingModeToMinutes, type PricingSegment } from "@louez/utils";
+import {
+  applyProductPromotion,
+  isFixedPriceProduct,
+  pricingModeToMinutes,
+  type PricingSegment,
+} from "@louez/utils";
 
 import { CategoryPill } from "@/components/storefront/ui/category-pill";
 import { Price } from "@/components/storefront/ui/price";
 
 import type { ProductPageBooking, ProductPageProduct } from "@/lib/storefront/product-page.loader";
 import { getSeasonalHeadline } from "@/lib/utils/util.storefront-seasonal-pricing";
-import { useStoreTimezone } from "@/contexts/store-context";
+import { usePricingNow } from "@/hooks/use-pricing-now";
+import { useDiscountVisibility, useStoreTimezone } from "@/contexts/store-context";
 
 import { usePeriodLabel } from "@/hooks/use-period-label";
 
@@ -35,10 +41,14 @@ export const ProductSummary = ({
   const formatPeriodLabel = usePeriodLabel();
   const ts = useTranslations("storefront.seasonalPricing");
   const timezone = useStoreTimezone();
+  const now = usePricingNow();
+  const isDiscountVisible = useDiscountVisibility();
   const headline = getSeasonalHeadline(product, seasonalSegments, rentalPrice, {
     timezone,
     rentalMinutes,
   });
+  const offer = applyProductPromotion(headline.amount, product.promotion, timezone, now);
+  const showsOffer = offer.promotion && isDiscountVisible(offer.promotion.percentage);
   const isFixed = isFixedPriceProduct(product);
   const per = isFixed
     ? null
@@ -65,11 +75,13 @@ export const ProductSummary = ({
           <span className="text-sm text-muted-foreground">{ts("from")}</span>
         ) : null}
         <Price
-          amount={headline.amount}
+          amount={offer.subtotal}
+          compareAt={showsOffer ? headline.amount : null}
           per={per}
           label={isFixed ? t("fixedPricingLabel") : null}
           size="xl"
         />
+        {showsOffer && <Badge variant="promo">−{offer.promotion?.percentage}%</Badge>}
       </div>
       {headline.mode === "season" ? (
         <p className="text-sm text-muted-foreground">{headline.seasonName ?? ts("baseSeason")}</p>

@@ -4,6 +4,7 @@ import "server-only";
  * In-memory limiter for the OTP flow (decision 9: kept per process; move
  * to the database before a multi-replica deployment). Limits from audit §5:
  * 3 sends / 15 min and 5 attempts / 15 min, then a 30 min block.
+ * The storefront contact form shares it: 5 messages / 15 min per key.
  */
 
 interface RateLimitEntry {
@@ -12,7 +13,7 @@ interface RateLimitEntry {
   blockedUntil?: number;
 }
 
-export type RateLimitBucket = "send" | "verify";
+export type RateLimitBucket = "send" | "verify" | "contact";
 
 const WINDOW_MS = 15 * 60 * 1000;
 const BLOCK_MS = 30 * 60 * 1000;
@@ -21,11 +22,13 @@ const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_ATTEMPTS: Record<RateLimitBucket, number> = {
   send: 3,
   verify: 5,
+  contact: 5,
 };
 
 const buckets: Record<RateLimitBucket, Map<string, RateLimitEntry>> = {
   send: new Map(),
   verify: new Map(),
+  contact: new Map(),
 };
 
 let lastCleanup = Date.now();

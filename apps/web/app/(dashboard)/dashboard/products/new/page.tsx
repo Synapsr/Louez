@@ -44,6 +44,8 @@ export default async function NewProductPage() {
         categories={categoriesList}
         availableAccessories={availableAccessories}
         storeTaxSettings={store.settings?.tax}
+        currency={store.settings?.currency ?? "EUR"}
+        storeTimezone={store.settings?.timezone}
         showAiContext={showAiContext}
         imageEnhanceEnabled={isAiImageEnhanceEnabled()}
         imageBackgroundRemovalEnabled={isImageBackgroundRemovalEnabled()}

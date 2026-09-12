@@ -905,6 +905,9 @@
       "noProducts": "Aucun produit",
       "noProductsDescription": "Commencez par ajouter votre premier produit",
       "searchProducts": "Rechercher un produit...",
+      "clearSearch": "Effacer la recherche",
+      "noSearchResults": "Aucun produit trouvé",
+      "noSearchResultsDescription": "Aucun produit ne correspond à « {search} ».",
       "allCategories": "Toutes les catégories",
       "allStatuses": "Tous les statuts",
       "name": "Nom",
@@ -1559,7 +1562,28 @@
         "videoTileLabel": "Vidéo",
         "videoInvalid": "Lien YouTube invalide",
         "editVideo": "Modifier la vidéo",
-        "removeVideo": "Retirer la vidéo"
+        "removeVideo": "Retirer la vidéo",
+        "promotion": {
+          "add": "Ajouter une promotion",
+          "title": "Promotion",
+          "remove": "Retirer la promotion",
+          "reduction": "Réduction",
+          "description": "Appliquée automatiquement aux réservations effectuées pendant l’offre. Non cumulable avec un code promo.",
+          "schedule": "Programmer",
+          "from": "Dès le {date}",
+          "until": "Jusqu’au {date}",
+          "pickStart": "Choisissez le premier jour de l’offre.",
+          "pickEnd": "Choisissez le dernier jour, ou laissez-la sans fin.",
+          "clearDates": "Retirer les dates",
+          "immediately": "Immédiatement",
+          "noEnd": "Sans date de fin",
+          "invalidPercentage": "Saisissez un pourcentage entier entre 1 et 99.",
+          "invalidDates": "Choisissez une fin égale ou postérieure au début.",
+          "active": "Active",
+          "scheduled": "Programmée",
+          "expired": "Terminée",
+          "none": "Non configurée"
+        }
       },
       "deleteConfirm": {
         "title": "Supprimer ce produit ?",
@@ -3143,6 +3167,7 @@
       "appearance": "Apparence",
       "reservations": "Réservations",
       "emails": "Emails",
+      "contact": "Contact",
       "legal": "Pages légales",
       "account": "Compte",
       "integrations": "Intégrations",
@@ -4350,6 +4375,87 @@
           "point2": "Vos clients devront utiliser la nouvelle adresse",
           "point3": "Les moteurs de recherche devront réindexer votre boutique"
         }
+      },
+      "contactSettings": {
+        "description": "Choisissez comment vos clients peuvent vous joindre depuis votre boutique",
+        "channels": {
+          "title": "Moyens de contact",
+          "description": "Chaque moyen activé apparaît sur la page contact de votre boutique et sur la page d'accueil."
+        },
+        "missingPhone": "Renseignez le téléphone de la boutique dans les paramètres généraux pour proposer l'appel, le SMS ou WhatsApp.",
+        "missingEmail": "Renseignez l'email de la boutique dans les paramètres généraux pour l'afficher ou recevoir les messages du formulaire.",
+        "missingBoth": "Renseignez le téléphone et l'email de la boutique dans les paramètres généraux pour activer les moyens de contact.",
+        "phone": {
+          "label": "Téléphone",
+          "description": "Vos clients peuvent vous appeler au {phone}.",
+          "empty": "Aucun téléphone renseigné pour la boutique."
+        },
+        "sms": {
+          "label": "SMS",
+          "description": "Propose aussi l'envoi d'un SMS à ce numéro."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Ouvre une conversation WhatsApp avec votre boutique.",
+          "number": "Numéro WhatsApp",
+          "numberDescription": "Laissez vide pour utiliser le téléphone de la boutique."
+        },
+        "email": {
+          "label": "Email",
+          "description": "Affiche l'adresse {email} avec les liens pour écrire.",
+          "empty": "Aucun email renseigné pour la boutique."
+        },
+        "form": {
+          "title": "Formulaire de contact",
+          "description": "Un formulaire sur votre boutique, dont les messages vous sont transmis par email.",
+          "label": "Proposer un formulaire de contact",
+          "help": "Le visiteur indique son nom, son email et son message ; vous répondez directement depuis votre messagerie.",
+          "recipient": "Adresse de réception",
+          "recipientDescription": "Laissez vide pour recevoir les messages sur {email}.",
+          "recipientEmpty": "Indiquez l'adresse qui recevra les messages.",
+          "phoneField": "Numéro de téléphone du visiteur",
+          "phoneFieldDescription": "Faut-il demander un numéro de téléphone dans le formulaire ?",
+          "phoneFieldOptions": {
+            "hidden": "Ne pas demander",
+            "optional": "Facultatif",
+            "required": "Obligatoire"
+          }
+        },
+        "intro": {
+          "label": "Texte d'introduction",
+          "description": "Affiché en haut de la page contact. Laissez vide pour le texte par défaut.",
+          "placeholder": "Une question sur une location ? Écrivez-nous, nous répondons sous 24 h."
+        },
+        "presets": {
+          "title": "Modèle de page",
+          "description": "Choisissez un point de départ ; les moyens de contact ci-dessous s'ajustent, vous pouvez ensuite les modifier.",
+          "options": {
+            "full": {
+              "label": "Complet",
+              "description": "Tous vos moyens de contact, le formulaire, la carte et les horaires."
+            },
+            "message": {
+              "label": "Message",
+              "description": "Le formulaire d'abord, votre email en note. Pour ceux qui préfèrent l'écrit."
+            },
+            "single": {
+              "label": "Un seul moyen",
+              "description": "Une grande action unique : appel, WhatsApp ou email."
+            }
+          },
+          "custom": "Réglages personnalisés, mise en page « {layout} ».",
+          "primaryChannel": "Moyen mis en avant",
+          "primaryChannelHelp": "Le bouton principal de la page.",
+          "channels": {
+            "phone": "Appel",
+            "whatsapp": "WhatsApp",
+            "email": "Email"
+          }
+        },
+        "preview": "Aperçu",
+        "previewHint": "La page contact telle qu'elle s'affichera, mise à jour pendant que vous modifiez les réglages.",
+        "viewOnStore": "Voir la page contact",
+        "updated": "Moyens de contact mis à jour"
       },
       "legalSettings": {
         "title": "Pages légales",
@@ -5936,6 +6042,9 @@
         "copySuccess": "Numéro copié",
         "copyError": "Impossible de copier le numéro"
       },
+      "whatsappContact": {
+        "open": "Ouvrir une conversation"
+      },
       "emailContact": {
         "default": "Écrire avec l'app mail",
         "copy": "Copier l'email",
@@ -7298,6 +7407,55 @@
       "homeTitle": "{store} · Location de matériel",
       "description": "Location de matériel chez {store}. Réservez en ligne."
     },
+    "contact": {
+      "title": "Contacter {name}",
+      "metaTitle": "Contact - {name}",
+      "metaDescription": "Contactez {name} : téléphone, email et formulaire de contact.",
+      "intro": "Une question sur une location, une disponibilité ou un devis ? Nous sommes là.",
+      "channelsTitle": "Nous joindre",
+      "noChannels": "Les coordonnées de la boutique ne sont pas encore renseignées.",
+      "formTitle": "Envoyer un message",
+      "formDescription": "Nous vous répondons par email.",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "email": "Email",
+      "phone": "Téléphone",
+      "message": "Message",
+      "messagePlaceholder": "Décrivez votre demande : matériel, dates, quantités…",
+      "privacyNote": "Vos coordonnées servent uniquement à {name} pour vous répondre.",
+      "send": "Envoyer le message",
+      "sending": "Envoi…",
+      "sentTitle": "Message envoyé",
+      "sentDescription": "Merci ! {name} a bien reçu votre message et vous répondra par email.",
+      "sendAnother": "Envoyer un autre message",
+      "orEmail": "Ou par email :",
+      "primary": {
+        "phone": {
+          "title": "Appelez-nous",
+          "action": "Appeler"
+        },
+        "whatsapp": {
+          "title": "Écrivez-nous sur WhatsApp",
+          "action": "Ouvrir WhatsApp"
+        },
+        "email": {
+          "title": "Écrivez-nous",
+          "action": "Envoyer un email"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Indiquez votre prénom",
+        "lastNameRequired": "Indiquez votre nom",
+        "invalidEmail": "Indiquez une adresse email valide",
+        "phoneRequired": "Indiquez votre numéro de téléphone",
+        "messageTooShort": "Votre message est trop court",
+        "tooLong": "Ce champ est trop long",
+        "invalidData": "Vérifiez les champs du formulaire.",
+        "unavailable": "Le formulaire de contact n'est pas disponible pour le moment.",
+        "rateLimited": "Trop de messages envoyés. Réessayez dans quelques minutes.",
+        "generic": "Votre message n'a pas pu être envoyé. Réessayez ou utilisez un autre moyen de contact."
+      }
+    },
     "about": {
       "title": "À propos de {name}",
       "metaTitle": "À propos - {name}",
@@ -7318,6 +7476,7 @@
       "deliveryFrom": "à partir de {amount} par trajet",
       "moreTitle": "En savoir plus",
       "catalog": "Voir le catalogue",
+      "contact": "Nous contacter",
       "terms": "Conditions générales",
       "legal": "Mentions légales"
     },
@@ -7978,7 +8137,8 @@
     "marketplaceChannelNotFound": "Canal marketplace introuvable",
     "requestCancellationStatusChanged": "Le statut de cette demande a changé. Elle ne peut plus être annulée ici. Contactez le magasin.",
     "requestCancellationPaymentPending": "Un paiement est encore en cours pour cette demande. Réessayez après sa mise à jour ou contactez le magasin.",
-    "requestCancellationPaymentChanged": "Les informations de paiement ont changé. Vérifiez-les avant de confirmer à nouveau l’annulation."
+    "requestCancellationPaymentChanged": "Les informations de paiement ont changé. Vérifiez-les avant de confirmer à nouveau l’annulation.",
+    "promoCodeProductsAlreadyDiscounted": "Ce code ne s’applique pas aux produits déjà en promotion."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

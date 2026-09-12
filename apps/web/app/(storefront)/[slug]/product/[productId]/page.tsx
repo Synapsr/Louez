@@ -200,6 +200,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             ) : product.pricingTiers.length > 0 ? (
               <PricingTiersDisplay
                 basePrice={parseFloat(product.price)}
+                promotion={product.promotion}
                 pricingKind={product.pricingKind}
                 pricingMode={product.pricingMode}
                 basePeriodMinutes={product.basePeriodMinutes}

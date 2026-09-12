@@ -148,6 +148,17 @@
     "viewRequest": "Ver solicitud",
     "connectToManage": "Inicie sesion en su panel para aceptar o rechazar esta solicitud."
   },
+  "contactMessage": {
+    "subject": "Nuevo mensaje de {name} — {store}",
+    "title": "Nuevo mensaje desde tu tienda",
+    "body": "Un visitante te ha escrito desde la página de contacto de {storeName}.",
+    "name": "Nombre:",
+    "email": "Email:",
+    "phone": "Teléfono:",
+    "message": "Mensaje:",
+    "reply": "Responder",
+    "footer": "Responde directamente a este email: tu respuesta irá a la dirección del visitante."
+  },
   "phoneCallbackLandlord": {
     "subject": "Un cliente al que llamar — {store}",
     "title": "Un cliente al que llamar",

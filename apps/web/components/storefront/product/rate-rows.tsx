@@ -45,7 +45,12 @@ export const RateRows = ({ rows, className, comparisonPeriodMinutes }: RateRowsP
               ) : null}
             </span>
             <span className="flex shrink-0 flex-col items-end gap-0.5 tabular-nums">
-              <span className="font-semibold tracking-tight">{formatMoney(row.price)}</span>
+              <span className="flex items-baseline gap-2">
+                {row.compareAt && isDiscountVisible(row.reductionPercent) ? (
+                  <s className="text-xs text-muted-foreground">{formatMoney(row.compareAt)}</s>
+                ) : null}
+                <span className="font-semibold tracking-tight">{formatMoney(row.price)}</span>
+              </span>
               {showsUnitPrice ? (
                 <span className="text-xs text-muted-foreground">
                   {formatMoney(row.price / duration)} / {formatPeriodLabel(comparisonPeriod)}

@@ -153,6 +153,8 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
         }}
         categories={categoriesList}
         storeTaxSettings={store.settings?.tax}
+        currency={store.settings?.currency ?? "EUR"}
+        storeTimezone={store.settings?.timezone}
         availableAccessories={availableAccessories}
         showAiContext={showAiContext}
         imageEnhanceEnabled={isAiImageEnhanceEnabled()}

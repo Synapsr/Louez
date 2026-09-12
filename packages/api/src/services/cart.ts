@@ -1,3 +1,4 @@
+import type { ProductPromotion } from "@louez/types";
 import { and, eq, inArray } from "drizzle-orm";
 
 import {
@@ -54,6 +55,7 @@ type CartLineResolution =
       productName: string;
       productImage: string | null;
       price: number;
+      promotion?: ProductPromotion | null;
       deposit: number;
       maxQuantity: StockQuantityLimit;
       quantity: number;
@@ -326,6 +328,7 @@ export async function resolveStorefrontCart(
       productName: product.name,
       productImage: getPrimaryProductImage(product.images),
       price: Number(product.price),
+      promotion: product.promotion,
       deposit: Number(product.deposit || 0),
       maxQuantity: maxQuantity === null ? null : Math.max(1, maxQuantity),
       quantity: line.quantity,

@@ -198,7 +198,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
             quantity={product.quantity}
           />
 
-          <ProductInfoSection product={product} currency={currency} />
+          <ProductInfoSection
+            product={product}
+            currency={currency}
+            timezone={store.settings?.timezone}
+          />
         </div>
 
         <div className="min-w-0 space-y-4 sm:space-y-6">

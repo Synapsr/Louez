@@ -10,9 +10,12 @@ import { ArrowUpRightIcon, CheckIcon, CopyIcon, PhoneCallIcon } from "@louez/ui/
 
 export const StorePhoneContact = ({
   phone,
+  sms = true,
   iconClassName,
 }: {
   phone: string;
+  /** Whether the popover also offers an SMS to each number. */
+  sms?: boolean;
   /** Overrides the icon disc background when the surrounding surface is already muted. */
   iconClassName?: string;
 }) => {
@@ -28,11 +31,13 @@ export const StorePhoneContact = ({
   ];
   const providers = numbers.flatMap((number) => {
     const recipient = number.replace(/[^+\d]/g, "");
+    const call = {
+      name: numbers.length > 1 ? `${t("phoneContact.call")} · ${number}` : t("phoneContact.call"),
+      href: `tel:${recipient}`,
+    };
+    if (!sms) return [call];
     return [
-      {
-        name: numbers.length > 1 ? `${t("phoneContact.call")} · ${number}` : t("phoneContact.call"),
-        href: `tel:${recipient}`,
-      },
+      call,
       {
         name: numbers.length > 1 ? `${t("phoneContact.sms")} · ${number}` : t("phoneContact.sms"),
         href: `sms:${recipient}`,

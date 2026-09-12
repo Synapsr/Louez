@@ -16,3 +16,5 @@ export * from "./product";
 export * from "./promo-code";
 export * from "./reservation";
 export * from "./review-booster";
+
+export * from "./product-promotion";

@@ -866,6 +866,9 @@
       "noProducts": "Nenhum produto",
       "noProductsDescription": "Comece adicionando seu primeiro produto",
       "searchProducts": "Pesquisar um produto...",
+      "clearSearch": "Limpar a pesquisa",
+      "noSearchResults": "Nenhum produto encontrado",
+      "noSearchResultsDescription": "Nenhum produto corresponde a “{search}”.",
       "allCategories": "Todas as categorias",
       "allStatuses": "Todos os status",
       "name": "Nome",
@@ -1520,7 +1523,28 @@
         "videoTileLabel": "Vídeo",
         "videoInvalid": "Link do YouTube inválido",
         "editVideo": "Editar o vídeo",
-        "removeVideo": "Remover o vídeo"
+        "removeVideo": "Remover o vídeo",
+        "promotion": {
+          "add": "Adicionar uma promoção",
+          "title": "Promoção",
+          "remove": "Remover promoção",
+          "reduction": "Desconto",
+          "description": "Aplicada automaticamente às reservas efetuadas durante a oferta. Não acumulável com um código promocional.",
+          "schedule": "Agendar",
+          "from": "A partir de {date}",
+          "until": "Até {date}",
+          "pickStart": "Escolha o primeiro dia da oferta.",
+          "pickEnd": "Escolha o último dia ou deixe-a sem fim.",
+          "clearDates": "Remover datas",
+          "immediately": "Imediatamente",
+          "noEnd": "Sem data de fim",
+          "invalidPercentage": "Introduza uma percentagem inteira entre 1 e 99.",
+          "invalidDates": "Escolha uma data de fim igual ou posterior ao início.",
+          "active": "Ativa",
+          "scheduled": "Agendada",
+          "expired": "Terminada",
+          "none": "Não configurada"
+        }
       },
       "deleteConfirm": {
         "title": "Excluir este produto?",
@@ -3143,6 +3167,7 @@
       "appearance": "Aparencia",
       "reservations": "Reservas",
       "emails": "Emails",
+      "contact": "Contacto",
       "legal": "Paginas legais",
       "account": "Conta",
       "subscription": {
@@ -4213,6 +4238,87 @@
           "point2": "Seus clientes precisarao usar o novo endereco",
           "point3": "Os motores de busca precisarao reindexar sua loja"
         }
+      },
+      "contactSettings": {
+        "description": "Escolha como os clientes o podem contactar a partir da sua loja",
+        "channels": {
+          "title": "Meios de contacto",
+          "description": "Cada meio ativado aparece na página de contacto e na página inicial da sua loja."
+        },
+        "missingPhone": "Indique o telefone da loja nas definições gerais para oferecer chamada, SMS ou WhatsApp.",
+        "missingEmail": "Indique o email da loja nas definições gerais para o mostrar ou receber as mensagens do formulário.",
+        "missingBoth": "Indique o telefone e o email da loja nas definições gerais para ativar os meios de contacto.",
+        "phone": {
+          "label": "Telefone",
+          "description": "Os clientes podem ligar-lhe para {phone}.",
+          "empty": "Nenhum telefone definido para a loja."
+        },
+        "sms": {
+          "label": "SMS",
+          "description": "Oferece também o envio de um SMS para esse número."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Abre uma conversa de WhatsApp com a sua loja.",
+          "number": "Número de WhatsApp",
+          "numberDescription": "Deixe vazio para usar o telefone da loja."
+        },
+        "email": {
+          "label": "Email",
+          "description": "Mostra {email} com ligações para escrever.",
+          "empty": "Nenhum email definido para a loja."
+        },
+        "form": {
+          "title": "Formulário de contacto",
+          "description": "Um formulário na sua loja cujas mensagens lhe são reencaminhadas por email.",
+          "label": "Oferecer um formulário de contacto",
+          "help": "O visitante indica o nome, o email e a mensagem; responde diretamente a partir da sua caixa de correio.",
+          "recipient": "Endereço de receção",
+          "recipientDescription": "Deixe vazio para receber as mensagens em {email}.",
+          "recipientEmpty": "Indique o endereço que receberá as mensagens.",
+          "phoneField": "Telefone do visitante",
+          "phoneFieldDescription": "O formulário deve pedir um número de telefone?",
+          "phoneFieldOptions": {
+            "hidden": "Não pedir",
+            "optional": "Opcional",
+            "required": "Obrigatório"
+          }
+        },
+        "intro": {
+          "label": "Texto de introdução",
+          "description": "Mostrado no topo da página de contacto. Deixe vazio para o texto predefinido.",
+          "placeholder": "Uma dúvida sobre um aluguer? Escreva-nos, respondemos em 24 h."
+        },
+        "presets": {
+          "title": "Modelo de página",
+          "description": "Escolha um ponto de partida; os meios de contacto abaixo ajustam-se e pode depois alterá-los.",
+          "options": {
+            "full": {
+              "label": "Completa",
+              "description": "Todos os meios de contacto, o formulário, o mapa e os horários."
+            },
+            "message": {
+              "label": "Mensagem",
+              "description": "Primeiro o formulário, o seu email em nota. Para quem prefere escrever."
+            },
+            "single": {
+              "label": "Um só meio",
+              "description": "Uma grande ação única: chamada, WhatsApp ou email."
+            }
+          },
+          "custom": "Definições personalizadas, disposição «{layout}».",
+          "primaryChannel": "Meio em destaque",
+          "primaryChannelHelp": "O botão principal da página.",
+          "channels": {
+            "phone": "Chamada",
+            "whatsapp": "WhatsApp",
+            "email": "Email"
+          }
+        },
+        "preview": "Pré-visualização",
+        "previewHint": "A página de contacto tal como será mostrada, atualizada enquanto altera as definições.",
+        "viewOnStore": "Ver a página de contacto",
+        "updated": "Meios de contacto atualizados"
       },
       "legalSettings": {
         "title": "Paginas legais",
@@ -5936,6 +6042,9 @@
         "copySuccess": "Número de telefone copiado",
         "copyError": "Não foi possível copiar o número"
       },
+      "whatsappContact": {
+        "open": "Abrir uma conversa"
+      },
       "emailContact": {
         "default": "Escrever com o app de email",
         "copy": "Copiar email",
@@ -7298,6 +7407,55 @@
       "homeTitle": "{store} · Aluguer de equipamento",
       "description": "Alugue equipamento na {store}. Reserve online."
     },
+    "contact": {
+      "title": "Contactar {name}",
+      "metaTitle": "Contacto - {name}",
+      "metaDescription": "Contacte {name}: telefone, email e formulário de contacto.",
+      "intro": "Uma dúvida sobre um aluguer, uma disponibilidade ou um orçamento? Estamos aqui.",
+      "channelsTitle": "Como nos contactar",
+      "noChannels": "Os contactos da loja ainda não estão definidos.",
+      "formTitle": "Enviar uma mensagem",
+      "formDescription": "Respondemos por email.",
+      "firstName": "Nome",
+      "lastName": "Apelido",
+      "email": "Email",
+      "phone": "Telefone",
+      "message": "Mensagem",
+      "messagePlaceholder": "Descreva o seu pedido: material, datas, quantidades…",
+      "privacyNote": "Os seus dados são usados apenas por {name} para lhe responder.",
+      "send": "Enviar a mensagem",
+      "sending": "A enviar…",
+      "sentTitle": "Mensagem enviada",
+      "sentDescription": "Obrigado! {name} recebeu a sua mensagem e responderá por email.",
+      "sendAnother": "Enviar outra mensagem",
+      "orEmail": "Ou por email:",
+      "primary": {
+        "phone": {
+          "title": "Ligue-nos",
+          "action": "Ligar"
+        },
+        "whatsapp": {
+          "title": "Escreva-nos no WhatsApp",
+          "action": "Abrir WhatsApp"
+        },
+        "email": {
+          "title": "Escreva-nos",
+          "action": "Enviar um email"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Indique o seu nome",
+        "lastNameRequired": "Indique o seu apelido",
+        "invalidEmail": "Indique um endereço de email válido",
+        "phoneRequired": "Indique o seu número de telefone",
+        "messageTooShort": "A sua mensagem é demasiado curta",
+        "tooLong": "Este campo é demasiado longo",
+        "invalidData": "Verifique os campos do formulário.",
+        "unavailable": "O formulário de contacto não está disponível de momento.",
+        "rateLimited": "Demasiadas mensagens enviadas. Tente novamente dentro de alguns minutos.",
+        "generic": "Não foi possível enviar a sua mensagem. Tente novamente ou use outro meio de contacto."
+      }
+    },
     "about": {
       "title": "About {name}",
       "metaTitle": "About - {name}",
@@ -7318,6 +7476,7 @@
       "deliveryFrom": "from {amount} per trip",
       "moreTitle": "Learn more",
       "catalog": "Browse the catalog",
+      "contact": "Contacte-nos",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
     },
@@ -7976,7 +8135,8 @@
     "marketplaceChannelNotFound": "Canal do marketplace não encontrado",
     "requestCancellationStatusChanged": "O estado deste pedido mudou. Já não pode ser cancelado aqui. Contacte a loja.",
     "requestCancellationPaymentPending": "Está em curso um pagamento para este pedido. Tente novamente após a atualização ou contacte a loja.",
-    "requestCancellationPaymentChanged": "As informações de pagamento mudaram. Verifique-as antes de voltar a confirmar o cancelamento."
+    "requestCancellationPaymentChanged": "As informações de pagamento mudaram. Verifique-as antes de voltar a confirmar o cancelamento.",
+    "promoCodeProductsAlreadyDiscounted": "Este código não se aplica a produtos já em promoção."
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

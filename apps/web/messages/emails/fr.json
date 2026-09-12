@@ -160,6 +160,17 @@
     "cta": "Voir les factures fournisseurs",
     "footer": "Vous pouvez consulter et traiter cette facture depuis votre tableau de bord."
   },
+  "contactMessage": {
+    "subject": "Nouveau message de {name} — {store}",
+    "title": "Nouveau message depuis votre boutique",
+    "body": "Un visiteur vous a écrit depuis la page contact de {storeName}.",
+    "name": "Nom :",
+    "email": "Email :",
+    "phone": "Téléphone :",
+    "message": "Message :",
+    "reply": "Répondre",
+    "footer": "Répondez directement à cet email : votre réponse partira vers l'adresse du visiteur."
+  },
   "phoneCallbackLandlord": {
     "subject": "Un client à rappeler — {store}",
     "title": "Un client à rappeler",

@@ -400,6 +400,10 @@ const prepareReservation = async (
       storeId: store.id,
       code: input.promoCode,
       subtotal: cart.subtotal,
+      discountableSubtotal: cart.lines.reduce(
+        (sum, line) => sum + (line.promotion ? 0 : line.subtotal),
+        0,
+      ),
     });
     if (!evaluation.ok) {
       return failReservation(evaluation.error, evaluation.params);
@@ -672,6 +676,28 @@ const buildReservationItemValues = (
       unitPrice: line.unitPrice.toFixed(2),
       depositPerUnit: line.depositPerUnit.toFixed(2),
       totalPrice: line.subtotal.toFixed(2),
+      ...(line.promotion
+        ? {
+            pricingBreakdown: {
+              basePrice: prepared.catalog.get(line.productId)?.price ?? line.unitPrice,
+              effectivePrice: line.unitPrice,
+              duration: line.duration,
+              pricingMode: prepared.catalog.get(line.productId)?.pricingMode ?? "day",
+              pricingKind: line.pricingKind,
+              discountPercent: line.promotion.percentage,
+              discountAmount: line.promotion.discountAmount,
+              tierApplied: null,
+              promotion: line.promotion,
+              taxRate: tax.taxRate,
+              taxAmount: tax.taxAmount,
+              subtotalExclTax: tax.totalExclTax,
+              subtotalInclTax:
+                tax.totalExclTax !== null && tax.taxAmount !== null
+                  ? tax.totalExclTax + tax.taxAmount
+                  : line.subtotal,
+            },
+          }
+        : {}),
       productSnapshot: buildProductSnapshot(prepared.catalog, item, resolved),
       combinationKey: resolved?.combinationKey || item.resolvedCombinationKey || null,
       selectedAttributes:

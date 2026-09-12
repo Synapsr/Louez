@@ -1,3 +1,4 @@
+import { applyProductPromotion } from "@louez/utils";
 import { addMonths, endOfMonth, format, startOfMonth } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import {
@@ -44,7 +45,7 @@ export const getSeasonToneMap = (
 ): Map<string, number> =>
   new Map(rankSeasons(seasons ?? []).map((season) => [season.id, season.toneIndex]));
 
-export const getSeasonalCalendarPricing = (
+const getRegularSeasonalCalendarPricing = (
   product: StorefrontProductPricing,
 ): SeasonalCalendarPricing | undefined => {
   if (isFixedPriceProduct(product) || !product.seasonalPricings?.length) return undefined;
@@ -57,8 +58,9 @@ export const getSeasonalCalendarPricing = (
 
 export const getStorefrontSeasonalRates = (
   product: StorefrontProductPricing,
+  options: { timezone?: string; now?: Date } = {},
 ): StorefrontSeasonalRate[] => {
-  const pricing = getSeasonalCalendarPricing(product);
+  const pricing = getRegularSeasonalCalendarPricing(product);
   if (!pricing) return [];
   return [
     {
@@ -67,7 +69,7 @@ export const getStorefrontSeasonalRates = (
       startDate: null,
       endDate: null,
       toneIndex: null,
-      rows: getStorefrontRateRows(product),
+      rows: getStorefrontRateRows(product, options),
     },
     ...pricing.seasons.map((season) => ({
       id: season.id,
@@ -75,13 +77,16 @@ export const getStorefrontSeasonalRates = (
       startDate: season.startDate,
       endDate: season.endDate,
       toneIndex: season.toneIndex,
-      rows: getStorefrontRateRows({
-        ...product,
-        price: season.basePrice,
-        pricingTiers: product.basePeriodMinutes
-          ? season.rates.map((rate) => ({ ...rate, minDuration: null, discountPercent: null }))
-          : season.tiers,
-      }),
+      rows: getStorefrontRateRows(
+        {
+          ...product,
+          price: season.basePrice,
+          pricingTiers: product.basePeriodMinutes
+            ? season.rates.map((rate) => ({ ...rate, minDuration: null, discountPercent: null }))
+            : season.tiers,
+        },
+        options,
+      ),
     })),
   ];
 };
@@ -181,7 +186,7 @@ export const getSeasonalHeadline = (
 ): { amount: number; mode: "from" | "period" | "season" | "base"; seasonName?: string } => {
   const { timezone, rentalMinutes } = options;
   const basePrice = parseStorefrontDecimal(product.price) ?? 0;
-  const pricing = getSeasonalCalendarPricing(product);
+  const pricing = getRegularSeasonalCalendarPricing(product);
   if (!pricing) return { amount: basePrice, mode: "base" };
   if (rentalPrice === undefined) {
     const today = timezone
@@ -205,4 +210,19 @@ export const getSeasonalHeadline = (
   }
   const season = pricing.seasons.find((season) => season.id === segments?.[0]?.seasonalPricingId);
   return { amount: season?.basePrice ?? basePrice, mode: "season", seasonName: season?.name };
+};
+
+export const getSeasonalCalendarPricing = (
+  product: StorefrontProductPricing,
+  options: { timezone?: string; now?: Date } = {},
+): SeasonalCalendarPricing | undefined => {
+  const regular = getRegularSeasonalCalendarPricing(product);
+  if (!regular) return undefined;
+  const price = (amount: number) =>
+    applyProductPromotion(amount, product.promotion, options.timezone, options.now).subtotal;
+  return {
+    ...regular,
+    basePrice: price(regular.basePrice),
+    seasons: regular.seasons.map((season) => ({ ...season, basePrice: price(season.basePrice) })),
+  };
 };

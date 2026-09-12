@@ -13,6 +13,7 @@ import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
 import { generateLocalBusinessSchema, generateStoreMetadata, JsonLd, stripHtml } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { resolveStoreContactChannels } from "@/lib/storefront/util.store-contact";
 import { hasRichTextContent } from "@/lib/util.rich-text";
 import { buildOpeningHoursSpecification } from "@/lib/utils/util.opening-hours";
 
@@ -106,6 +107,9 @@ const AboutPage = async ({ params }: AboutPageProps) => {
           <StorefrontLink href="/catalog" className={LINK_CLASS_NAME}>
             {t("catalog")}
           </StorefrontLink>
+          <StorefrontLink href="/contact" className={LINK_CLASS_NAME}>
+            {t("contact")}
+          </StorefrontLink>
           <StorefrontLink href="/terms" className={LINK_CLASS_NAME}>
             {t("terms")}
           </StorefrontLink>
@@ -119,8 +123,7 @@ const AboutPage = async ({ params }: AboutPageProps) => {
         <StoreLocation
           name={store.name}
           address={store.address}
-          phone={store.phone}
-          email={store.email}
+          contact={resolveStoreContactChannels(store)}
           latitude={store.latitude}
           longitude={store.longitude}
         />

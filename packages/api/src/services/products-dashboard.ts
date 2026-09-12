@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, ne } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, like, ne } from 'drizzle-orm';
 
 import {
   categories,
@@ -24,6 +24,8 @@ export interface DashboardProductsListParams {
    * a product is kept when it belongs to *any* of the selected categories.
    */
   categoryIds?: string[];
+  /** Matched against the product name, anywhere in it. */
+  search?: string;
   limit?: number;
 }
 
@@ -31,11 +33,12 @@ export async function getDashboardProductsList({
   storeId,
   status,
   categoryIds,
+  search,
   limit = 100,
 }: DashboardProductsListParams) {
-  // Scope = store + categories. Status is applied on top of it for the table,
-  // but not for the counts, so the tabs keep showing how many products each
-  // status holds within the current category selection.
+  // Scope = store + categories + search. Status is applied on top of it for
+  // the table, but not for the counts, so the tabs keep showing how many
+  // products each status holds within the current selection.
   const scopeConditions = [eq(products.storeId, storeId)];
 
   const selectedCategoryIds = categoryIds?.filter(Boolean) ?? [];
@@ -49,6 +52,12 @@ export async function getDashboardProductsList({
           .where(inArray(productCategories.categoryId, selectedCategoryIds)),
       ),
     );
+  }
+
+  // The column collation already ignores case and accents.
+  const searchTerm = search?.trim();
+  if (searchTerm) {
+    scopeConditions.push(like(products.name, `%${searchTerm}%`));
   }
 
   const conditions = [...scopeConditions];

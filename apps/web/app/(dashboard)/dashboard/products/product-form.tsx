@@ -134,6 +134,7 @@ export function ProductForm({
   categories,
   currency = "EUR",
   storeTaxSettings,
+  storeTimezone,
   availableAccessories = [],
   showAiContext = false,
   imageEnhanceEnabled = false,
@@ -299,6 +300,7 @@ export function ProductForm({
         ["name", t("name")],
         // Only fixed pricing validates the flat `price` field on its own.
         ["price", t("fixedPrice")],
+        ["promotion", t("promotion.title")],
         ["quantity", t("stock")],
         ["rateTiers", t("additionalRates")],
         ["status", t("publication")],
@@ -368,6 +370,7 @@ export function ProductForm({
       rateTiers: initialRateTiers,
       enforceStrictTiers: product?.enforceStrictTiers ?? true,
       taxSettings: product?.taxSettings ?? { inheritFromStore: true },
+      promotion: product?.promotion ?? null,
       videoUrl: product?.videoUrl || "",
       accessories: product?.accessories ?? [],
       trackUnits: product?.trackUnits || false,
@@ -378,7 +381,7 @@ export function ProductForm({
       mode: "submit",
       modeAfterSubmission: "change",
     }),
-    validators: { onSubmit: productFormSchema },
+    validators: { onDynamic: productFormSchema },
     onSubmitInvalid: ({ value }) => {
       const validationResult = productFormSchema.safeParse(value);
       const validationDetails = validationResult.success
@@ -712,6 +715,7 @@ export function ProductForm({
                     duplicateRateTierIndexes={effectiveDuplicateRateTierIndexes}
                     onRateTiersEdit={clearDuplicateRateTierErrors}
                     storeTaxSettings={storeTaxSettings}
+                    storeTimezone={storeTimezone}
                     availableAccessories={availableAccessories}
                     showAccessories={false}
                     showStock={false}
@@ -844,6 +848,7 @@ export function ProductForm({
                   duplicateRateTierIndexes={effectiveDuplicateRateTierIndexes}
                   onRateTiersEdit={clearDuplicateRateTierErrors}
                   storeTaxSettings={storeTaxSettings}
+                  storeTimezone={storeTimezone}
                   availableAccessories={availableAccessories}
                   showAccessories={false}
                   showValidationErrors={submissionAttempts > 0}

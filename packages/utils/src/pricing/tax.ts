@@ -68,6 +68,7 @@ export interface CalculateTaxBreakdownInput {
   discountAmount?: number
   depositAmount?: number
   taxConfig: TaxConfig | undefined
+  discountableLineIds?: string[]
 }
 
 function roundMoney(amount: number): number {
@@ -86,10 +87,13 @@ function allocateDiscountInCents(
   lines: TaxableLine[],
   discountAmount: number,
   taxEnabled: boolean,
+  discountableLineIds?: string[],
 ): number[] {
   const lineAmounts = lines.map((line) => Math.max(0, toCents(line.amount)))
   const eligibleIndexes = lines.flatMap((line, index) =>
-    !taxEnabled || line.taxRate !== null ? [index] : [],
+    (discountableLineIds
+      ? discountableLineIds.includes(line.id)
+      : !taxEnabled || line.taxRate !== null) ? [index] : [],
   )
   const eligibleTotal = eligibleIndexes.reduce(
     (total, index) => total + lineAmounts[index],
@@ -195,6 +199,7 @@ export function calculateTaxBreakdown({
   discountAmount = 0,
   depositAmount = 0,
   taxConfig,
+  discountableLineIds,
 }: CalculateTaxBreakdownInput): TaxBreakdownCalculation {
   const sourceLines = [
     ...lines,
@@ -216,6 +221,7 @@ export function calculateTaxBreakdown({
     sourceLines,
     discountAmount,
     taxConfig?.enabled ?? false,
+    discountableLineIds,
   )
   const calculatedLines = sourceLines.map((line, index): TaxLineCalculation => {
     const allocatedDiscount = fromCents(discountAllocations[index])

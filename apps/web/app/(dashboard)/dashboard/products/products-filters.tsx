@@ -3,9 +3,17 @@
 import { useMemo } from "react";
 
 import { useTranslations } from "next-intl";
-import { parseAsArrayOf, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import {
+  debounce,
+  parseAsArrayOf,
+  parseAsString,
+  parseAsStringLiteral,
+  useQueryStates,
+} from "nuqs";
 
 import { Badge, Tabs, TabsList, TabsTab } from "@louez/ui";
+
+import { SearchInput } from "@/components/ui/search-input";
 
 import {
   CategoryFilterCombobox,
@@ -23,12 +31,16 @@ import {
  * `category` holds a comma-separated list of ids (nuqs' array format), which
  * keeps older single-category links (`?category=<id>`) working.
  * Navigation is shallow: the list itself is refetched by React Query.
+ *
+ * `search` updates the state on every keystroke so the input stays responsive,
+ * but only writes the URL once typing pauses. Callers debounce the fetch.
  */
 export function useProductsFilters() {
   const [state, setFilters] = useQueryStates(
     {
       status: parseAsStringLiteral(PRODUCT_STATUS_FILTERS).withDefault("all"),
       category: parseAsArrayOf(parseAsString).withDefault([]),
+      search: parseAsString.withDefault(""),
     },
     { history: "push", shallow: true, clearOnDefault: true },
   );
@@ -42,8 +54,15 @@ export function useProductsFilters() {
   return {
     status: state.status,
     categoryIds,
+    search: state.search,
     setStatus: (status: ProductStatusFilter) => void setFilters({ status }),
     setCategoryIds: (category: string[]) => void setFilters({ category }),
+    // Typing replaces the history entry instead of pushing one per word
+    setSearch: (search: string) =>
+      void setFilters(
+        { search },
+        search ? { history: "replace", limitUrlUpdates: debounce(300) } : { history: "replace" },
+      ),
   };
 }
 
@@ -59,7 +78,8 @@ export const ProductsFilters = ({
   isLoadingCategories = false,
 }: ProductsFiltersProps) => {
   const t = useTranslations("dashboard.products");
-  const { status, categoryIds, setStatus, setCategoryIds } = useProductsFilters();
+  const { status, categoryIds, search, setStatus, setCategoryIds, setSearch } =
+    useProductsFilters();
 
   const statusOptions = [
     { value: "all", label: t("filters.all") },
@@ -90,6 +110,16 @@ export const ProductsFilters = ({
           </TabsList>
         </Tabs>
       </div>
+
+      <SearchInput
+        groupClassName="w-full sm:w-64"
+        value={search}
+        maxLength={100}
+        onChange={(event) => setSearch(event.target.value)}
+        onClear={() => setSearch("")}
+        placeholder={t("searchProducts")}
+        clearLabel={t("clearSearch")}
+      />
 
       {(categories.length > 0 || categoryIds.length > 0) && (
         <CategoryFilterCombobox

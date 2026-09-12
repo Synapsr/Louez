@@ -1,3 +1,4 @@
+import type { ProductPromotion } from "@louez/types";
 import type { PricingKind, StockKind } from "@louez/types";
 import type { SeasonalPricingConfig, StockQuantityLimit } from "@louez/utils";
 import type { StorefrontCartResolveInput, StorefrontCartResolveOutput } from "@louez/validations";
@@ -43,6 +44,7 @@ export interface CartLineIntent {
   productName: string;
   productImage: string | null;
   price: number;
+  promotion?: ProductPromotion | null;
   deposit: number;
   quantity: number;
   maxQuantity: StockQuantityLimit;
@@ -195,6 +197,7 @@ const attachRequiredAccessoryLines = (
         productName: accessory.productName,
         productImage: accessory.productImage,
         price: accessory.price,
+        promotion: accessory.promotion,
         deposit: accessory.deposit,
         maxQuantity: accessory.maxQuantity,
         requiredQuantity: accessory.requiredQuantity,
@@ -216,6 +219,7 @@ const attachRequiredAccessoryLines = (
       productName: accessory.productName,
       productImage: accessory.productImage,
       price: accessory.price,
+      promotion: accessory.promotion,
       deposit: accessory.deposit,
       quantity: getRequiredAccessoryLineMinimumQuantity(accessory, parentQuantity),
       maxQuantity: accessory.maxQuantity,
@@ -446,6 +450,7 @@ const applyResolvedLine = (
     productName: resolved.productName,
     productImage: resolved.productImage,
     price: resolved.price,
+    promotion: resolved.promotion,
     deposit: resolved.deposit,
     maxQuantity: resolved.maxQuantity,
     pricingKind: resolved.pricingKind,
@@ -520,10 +525,11 @@ export const summarizeCart = (
   items: CartItem[],
   period: CartPeriod | null,
   maxDiscountPercent: number | null | undefined,
+  now?: Date,
 ): CartSummary => {
   const startDate = period?.startDate ?? null;
   const endDate = period?.endDate ?? null;
-  const prices = items.map((item) => calculateCartItemPrice(item, startDate, endDate));
+  const prices = items.map((item) => calculateCartItemPrice(item, startDate, endDate, now));
   const subtotal = prices.reduce((sum, price) => sum + price.subtotal, 0);
   const originalSubtotal = prices.reduce((sum, price) => sum + price.originalSubtotal, 0);
   const deposit = items.reduce((sum, item) => sum + item.deposit * item.quantity, 0);

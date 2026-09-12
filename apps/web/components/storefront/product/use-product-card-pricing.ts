@@ -1,5 +1,6 @@
 "use client";
 
+import { usePricingNow } from "@/hooks/use-pricing-now";
 import { useStoreTimezone } from "@/contexts/store-context";
 
 import { useTranslations } from "next-intl";
@@ -43,6 +44,7 @@ export const useProductCardPricing = (
 ): ProductCardPricing => {
   const t = useTranslations();
   const timezone = useStoreTimezone();
+  const now = usePricingNow();
   const formatPeriodLabel = usePeriodLabel();
   const isDiscountVisible = useDiscountVisibility();
   const maxDiscountPercent = useStoreMaxDiscountPercent();
@@ -50,11 +52,13 @@ export const useProductCardPricing = (
   const fixedLabel = isFixed ? t("storefront.product.fixedPricingLabel") : null;
 
   if (!period) {
-    const summary = getStorefrontPricingSummary(product);
+    const summary = getStorefrontPricingSummary(product, { timezone, now });
 
     return {
       amount: summary.displayPrice,
-      compareAt: null,
+      compareAt: isDiscountVisible(summary.maxReductionPercent)
+        ? (summary.compareAt ?? null)
+        : null,
       per:
         summary.displayPeriodMinutes == null
           ? null
@@ -66,6 +70,7 @@ export const useProductCardPricing = (
 
   const result = getStorefrontProductPrice({
     timezone,
+    now,
     product,
     startDate: period.startDate,
     endDate: period.endDate,

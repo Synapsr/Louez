@@ -866,6 +866,9 @@
       "noProducts": "Brak produktów",
       "noProductsDescription": "Zacznij od dodania pierwszego produktu",
       "searchProducts": "Szukaj produktu...",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "noSearchResults": "Nie znaleziono produktów",
+      "noSearchResultsDescription": "Żaden produkt nie pasuje do „{search}”.",
       "allCategories": "Wszystkie kategorie",
       "allStatuses": "Wszystkie statusy",
       "name": "Nazwa",
@@ -1520,7 +1523,28 @@
         "videoTileLabel": "Wideo",
         "videoInvalid": "Nieprawidłowy link YouTube",
         "editVideo": "Edytuj wideo",
-        "removeVideo": "Usuń wideo"
+        "removeVideo": "Usuń wideo",
+        "promotion": {
+          "add": "Dodaj promocję",
+          "title": "Promocja",
+          "remove": "Usuń promocję",
+          "reduction": "Rabat",
+          "description": "Naliczana automatycznie do rezerwacji dokonanych w trakcie promocji. Nie łączy się z kodem rabatowym.",
+          "schedule": "Zaplanuj",
+          "from": "Od {date}",
+          "until": "Do {date}",
+          "pickStart": "Wybierz pierwszy dzień promocji.",
+          "pickEnd": "Wybierz ostatni dzień lub zostaw ją bezterminową.",
+          "clearDates": "Usuń daty",
+          "immediately": "Natychmiast",
+          "noEnd": "Bez daty końcowej",
+          "invalidPercentage": "Wpisz całkowity procent od 1 do 99.",
+          "invalidDates": "Wybierz datę końca nie wcześniejszą niż data początku.",
+          "active": "Aktywna",
+          "scheduled": "Zaplanowana",
+          "expired": "Zakończona",
+          "none": "Nieskonfigurowana"
+        }
       },
       "deleteConfirm": {
         "title": "Usunąć ten produkt?",
@@ -3143,6 +3167,7 @@
       "appearance": "Wygląd",
       "reservations": "Rezerwacje",
       "emails": "Emaile",
+      "contact": "Kontakt",
       "legal": "Strony prawne",
       "account": "Konto",
       "subscription": {
@@ -4213,6 +4238,87 @@
           "point2": "Twoi klienci będą musieli użyć nowego adresu",
           "point3": "Wyszukiwarki będą musiały ponownie zindeksować Twój sklep"
         }
+      },
+      "contactSettings": {
+        "description": "Wybierz, jak klienci mogą się z Tobą skontaktować z poziomu sklepu",
+        "channels": {
+          "title": "Kanały kontaktu",
+          "description": "Każdy włączony kanał pojawia się na stronie kontaktowej i na stronie głównej sklepu."
+        },
+        "missingPhone": "Podaj telefon sklepu w ustawieniach ogólnych, aby oferować połączenie, SMS lub WhatsApp.",
+        "missingEmail": "Podaj e-mail sklepu w ustawieniach ogólnych, aby go wyświetlać lub odbierać wiadomości z formularza.",
+        "missingBoth": "Podaj telefon i e-mail sklepu w ustawieniach ogólnych, aby włączyć kanały kontaktu.",
+        "phone": {
+          "label": "Telefon",
+          "description": "Klienci mogą dzwonić pod numer {phone}.",
+          "empty": "Brak telefonu ustawionego dla sklepu."
+        },
+        "sms": {
+          "label": "SMS",
+          "description": "Oferuje również wysłanie SMS-a na ten numer."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Otwiera rozmowę WhatsApp z Twoim sklepem.",
+          "number": "Numer WhatsApp",
+          "numberDescription": "Pozostaw puste, aby użyć telefonu sklepu."
+        },
+        "email": {
+          "label": "E-mail",
+          "description": "Wyświetla {email} z linkami do napisania wiadomości.",
+          "empty": "Brak e-maila ustawionego dla sklepu."
+        },
+        "form": {
+          "title": "Formularz kontaktowy",
+          "description": "Formularz w Twoim sklepie, którego wiadomości są przekazywane do Ciebie e-mailem.",
+          "label": "Udostępnij formularz kontaktowy",
+          "help": "Odwiedzający podaje imię i nazwisko, e-mail oraz wiadomość; odpowiadasz bezpośrednio ze swojej skrzynki.",
+          "recipient": "Adres odbiorczy",
+          "recipientDescription": "Pozostaw puste, aby odbierać wiadomości na {email}.",
+          "recipientEmpty": "Podaj adres, który będzie odbierał wiadomości.",
+          "phoneField": "Numer telefonu odwiedzającego",
+          "phoneFieldDescription": "Czy formularz ma prosić o numer telefonu?",
+          "phoneFieldOptions": {
+            "hidden": "Nie pytać",
+            "optional": "Opcjonalnie",
+            "required": "Wymagany"
+          }
+        },
+        "intro": {
+          "label": "Tekst wprowadzający",
+          "description": "Wyświetlany na górze strony kontaktowej. Pozostaw puste, aby użyć tekstu domyślnego.",
+          "placeholder": "Pytanie o wynajem? Napisz do nas, odpowiadamy w ciągu 24 godzin."
+        },
+        "presets": {
+          "title": "Szablon strony",
+          "description": "Wybierz punkt wyjścia; kanały kontaktu poniżej dopasują się, a potem możesz je zmienić.",
+          "options": {
+            "full": {
+              "label": "Pełna",
+              "description": "Wszystkie kanały kontaktu, formularz, mapa i godziny otwarcia."
+            },
+            "message": {
+              "label": "Wiadomość",
+              "description": "Najpierw formularz, Twój e-mail jako dopisek. Dla tych, którzy wolą pisać."
+            },
+            "single": {
+              "label": "Jeden kanał",
+              "description": "Jedno duże działanie: połączenie, WhatsApp lub e-mail."
+            }
+          },
+          "custom": "Ustawienia własne, układ „{layout}”.",
+          "primaryChannel": "Wyróżniony kanał",
+          "primaryChannelHelp": "Główny przycisk strony.",
+          "channels": {
+            "phone": "Połączenie",
+            "whatsapp": "WhatsApp",
+            "email": "E-mail"
+          }
+        },
+        "preview": "Podgląd",
+        "previewHint": "Strona kontaktowa w takiej formie, w jakiej się wyświetli, aktualizowana podczas zmiany ustawień.",
+        "viewOnStore": "Zobacz stronę kontaktową",
+        "updated": "Kanały kontaktu zaktualizowane"
       },
       "legalSettings": {
         "title": "Strony prawne",
@@ -5936,6 +6042,9 @@
         "copySuccess": "Numer telefonu skopiowany",
         "copyError": "Nie można skopiować numeru"
       },
+      "whatsappContact": {
+        "open": "Otwórz rozmowę"
+      },
       "emailContact": {
         "default": "Napisz w aplikacji mailowej",
         "copy": "Kopiuj email",
@@ -7298,6 +7407,55 @@
       "homeTitle": "{store} · Wypożyczalnia sprzętu",
       "description": "Wypożycz sprzęt w {store}. Zarezerwuj online."
     },
+    "contact": {
+      "title": "Skontaktuj się z {name}",
+      "metaTitle": "Kontakt - {name}",
+      "metaDescription": "Skontaktuj się z {name}: telefon, e-mail i formularz kontaktowy.",
+      "intro": "Pytanie o wynajem, dostępność lub wycenę? Jesteśmy do dyspozycji.",
+      "channelsTitle": "Jak się z nami skontaktować",
+      "noChannels": "Dane kontaktowe sklepu nie zostały jeszcze ustawione.",
+      "formTitle": "Wyślij wiadomość",
+      "formDescription": "Odpowiadamy e-mailem.",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
+      "email": "E-mail",
+      "phone": "Telefon",
+      "message": "Wiadomość",
+      "messagePlaceholder": "Opisz swoją prośbę: sprzęt, terminy, ilości…",
+      "privacyNote": "Twoje dane są używane wyłącznie przez {name}, aby Ci odpowiedzieć.",
+      "send": "Wyślij wiadomość",
+      "sending": "Wysyłanie…",
+      "sentTitle": "Wiadomość wysłana",
+      "sentDescription": "Dziękujemy! {name} otrzymał Twoją wiadomość i odpowie e-mailem.",
+      "sendAnother": "Wyślij kolejną wiadomość",
+      "orEmail": "Lub e-mailem:",
+      "primary": {
+        "phone": {
+          "title": "Zadzwoń do nas",
+          "action": "Zadzwoń"
+        },
+        "whatsapp": {
+          "title": "Napisz do nas na WhatsApp",
+          "action": "Otwórz WhatsApp"
+        },
+        "email": {
+          "title": "Napisz do nas",
+          "action": "Wyślij e-mail"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Podaj swoje imię",
+        "lastNameRequired": "Podaj swoje nazwisko",
+        "invalidEmail": "Podaj prawidłowy adres e-mail",
+        "phoneRequired": "Podaj swój numer telefonu",
+        "messageTooShort": "Twoja wiadomość jest za krótka",
+        "tooLong": "To pole jest za długie",
+        "invalidData": "Sprawdź pola formularza.",
+        "unavailable": "Formularz kontaktowy jest obecnie niedostępny.",
+        "rateLimited": "Wysłano zbyt wiele wiadomości. Spróbuj ponownie za kilka minut.",
+        "generic": "Nie udało się wysłać wiadomości. Spróbuj ponownie lub użyj innego kanału kontaktu."
+      }
+    },
     "about": {
       "title": "About {name}",
       "metaTitle": "About - {name}",
@@ -7318,6 +7476,7 @@
       "deliveryFrom": "from {amount} per trip",
       "moreTitle": "Learn more",
       "catalog": "Browse the catalog",
+      "contact": "Skontaktuj się z nami",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
     },
@@ -7976,7 +8135,8 @@
     "marketplaceChannelNotFound": "Nie znaleziono kanału marketplace",
     "requestCancellationStatusChanged": "Status tej prośby się zmienił. Nie można jej już tutaj anulować. Skontaktuj się ze sklepem.",
     "requestCancellationPaymentPending": "Płatność za tę prośbę jest jeszcze w toku. Spróbuj ponownie po aktualizacji lub skontaktuj się ze sklepem.",
-    "requestCancellationPaymentChanged": "Informacje o płatności uległy zmianie. Sprawdź je przed ponownym potwierdzeniem anulowania."
+    "requestCancellationPaymentChanged": "Informacje o płatności uległy zmianie. Sprawdź je przed ponownym potwierdzeniem anulowania.",
+    "promoCodeProductsAlreadyDiscounted": "Ten kod nie dotyczy produktów już objętych promocją."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

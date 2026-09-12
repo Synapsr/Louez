@@ -35,9 +35,11 @@ export type PriceCartResult =
 export const priceCart = ({
   catalog,
   lines,
+  now = new Date(),
 }: {
   catalog: PricingCatalog;
   lines: PricingCatalogLineInput[];
+  now?: Date;
 }): PriceCartResult => {
   const pricedLines: PricedCartLine[] = [];
   let subtotal = 0;
@@ -49,7 +51,7 @@ export const priceCart = ({
       return { ok: false, missingProductId: line.productId };
     }
 
-    const priced = priceCatalogLine(product, line);
+    const priced = priceCatalogLine(product, line, now);
     pricedLines.push({ ...priced, productName: product.name, taxSettings: product.taxSettings });
     subtotal += priced.subtotal;
     totalDeposit += priced.totalDeposit;
@@ -121,6 +123,9 @@ export const computeReservationTotals = ({
     lines: taxableLines,
     deliveryFee,
     discountAmount,
+    discountableLineIds: lines.some((line) => line.promotion)
+      ? lines.flatMap((line, index) => (line.promotion ? [] : [getItemTaxLineId(index)]))
+      : undefined,
     depositAmount: totalDeposit,
     taxConfig,
   });

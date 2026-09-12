@@ -1,3 +1,5 @@
+import type { AppliedProductPromotion, ProductPromotion } from "@louez/types";
+import { applyProductPromotion } from "@louez/utils";
 import { and, eq, inArray } from "drizzle-orm";
 
 import type { Database } from "@louez/db";
@@ -29,6 +31,7 @@ import {
  */
 export interface PricingCatalogProduct {
   timezone?: string;
+  promotion?: ProductPromotion | null;
   id: string;
   name: string;
   description: string | null;
@@ -59,6 +62,7 @@ export interface PricingCatalogLineInput {
 }
 
 export interface PricedCatalogLine {
+  promotion?: AppliedProductPromotion | null;
   productId: string;
   quantity: number;
   pricingKind: PricingKind;
@@ -91,7 +95,7 @@ export type PricingProductRow = Pick<
   | "trackUnits"
   | "bookingAttributeAxes"
   | "taxSettings"
->;
+> & { promotion?: ProductPromotion | null };
 export type PricingTierRow = Pick<
   typeof productPricingTiers.$inferSelect,
   "id" | "minDuration" | "discountPercent" | "displayOrder" | "period" | "price"
@@ -187,6 +191,7 @@ export const toPricingCatalogProduct = (
   trackUnits: product.trackUnits,
   bookingAttributeAxes: product.bookingAttributeAxes ?? null,
   taxSettings: product.taxSettings ?? null,
+  promotion: product.promotion ?? null,
   tiers: tierRows.map((tier) => ({
     id: tier.id,
     minDuration: tier.minDuration ?? 1,
@@ -213,7 +218,7 @@ export const toPricingCatalogProduct = (
  * duration; everything else goes through the seasonal-aware engine (which
  * handles legacy tiers, rate-based and strict tiers).
  */
-export const priceCatalogLine = (
+const priceRegularCatalogLine = (
   product: PricingCatalogProduct,
   line: PricingCatalogLineInput,
 ): PricedCatalogLine => {
@@ -267,6 +272,29 @@ export const priceCatalogLine = (
     originalSubtotal: seasonal.originalSubtotal,
     savings: seasonal.savings,
     totalDeposit: seasonal.deposit,
+  };
+};
+
+export const priceCatalogLine = (
+  product: PricingCatalogProduct,
+  line: PricingCatalogLineInput,
+  now?: Date,
+): PricedCatalogLine => {
+  const regular = priceRegularCatalogLine(product, line);
+  const discounted = applyProductPromotion(
+    regular.subtotal,
+    product.promotion,
+    product.timezone,
+    now,
+  );
+  if (!discounted.promotion) return regular;
+  return {
+    ...regular,
+    subtotal: discounted.subtotal,
+    unitPrice: discounted.subtotal / Math.max(1, line.quantity),
+    originalSubtotal: discounted.promotion.originalSubtotal,
+    savings: discounted.promotion.discountAmount,
+    promotion: discounted.promotion,
   };
 };
 

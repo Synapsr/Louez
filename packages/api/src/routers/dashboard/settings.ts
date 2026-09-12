@@ -1,6 +1,10 @@
-import { updateStoreAppearanceInputSchema, updateStoreLegalInputSchema } from "@louez/validations";
+import {
+  updateStoreAppearanceInputSchema,
+  updateStoreContactInputSchema,
+  updateStoreLegalInputSchema,
+} from "@louez/validations";
 import { dashboardProcedure } from "../../procedures";
-import { updateStoreAppearance, updateStoreLegal } from "../../services";
+import { updateStoreAppearance, updateStoreContact, updateStoreLegal } from "../../services";
 import { toORPCError } from "../../utils/orpc-error";
 import { z } from "zod";
 
@@ -33,7 +37,22 @@ const updateAppearance = dashboardProcedure
     }
   });
 
+const updateContact = dashboardProcedure
+  .input(updateStoreContactInputSchema)
+  .output(z.object({ success: z.literal(true) }))
+  .handler(async ({ context, input }) => {
+    try {
+      return await updateStoreContact({
+        storeId: context.store.id,
+        input,
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
 export const dashboardSettingsRouter = {
   updateLegal,
   updateAppearance,
+  updateContact,
 };

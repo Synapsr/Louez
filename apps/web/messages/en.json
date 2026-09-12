@@ -905,6 +905,9 @@
       "noProducts": "No products",
       "noProductsDescription": "Start by adding your first product",
       "searchProducts": "Search for a product...",
+      "clearSearch": "Clear search",
+      "noSearchResults": "No products found",
+      "noSearchResultsDescription": "No product matches “{search}”.",
       "allCategories": "All categories",
       "allStatuses": "All statuses",
       "name": "Name",
@@ -1559,7 +1562,28 @@
         "videoTileLabel": "Video",
         "videoInvalid": "Invalid YouTube link",
         "editVideo": "Edit video",
-        "removeVideo": "Remove video"
+        "removeVideo": "Remove video",
+        "promotion": {
+          "add": "Add a promotion",
+          "title": "Promotion",
+          "remove": "Remove promotion",
+          "reduction": "Discount",
+          "description": "Applied automatically to bookings made during the offer. Cannot be combined with a promo code.",
+          "schedule": "Schedule",
+          "from": "From {date}",
+          "until": "Until {date}",
+          "pickStart": "Pick the first day of the offer.",
+          "pickEnd": "Pick the last day, or leave it open-ended.",
+          "clearDates": "Remove dates",
+          "immediately": "Immediately",
+          "noEnd": "No end date",
+          "invalidPercentage": "Enter a whole percentage from 1 to 99.",
+          "invalidDates": "Choose an end date on or after the start.",
+          "active": "Active",
+          "scheduled": "Scheduled",
+          "expired": "Expired",
+          "none": "Not configured"
+        }
       },
       "deleteConfirm": {
         "title": "Delete this product?",
@@ -3143,6 +3167,7 @@
       "appearance": "Appearance",
       "reservations": "Reservations",
       "emails": "Emails",
+      "contact": "Contact",
       "legal": "Legal pages",
       "account": "Account",
       "integrations": "Integrations",
@@ -4350,6 +4375,87 @@
           "point2": "Your customers will need to use the new address",
           "point3": "Search engines will need to re-index your store"
         }
+      },
+      "contactSettings": {
+        "description": "Choose how customers can reach you from your store",
+        "channels": {
+          "title": "Contact channels",
+          "description": "Every enabled channel shows on your store's contact page and on the home page."
+        },
+        "missingPhone": "Add the store phone in the general settings to offer calls, SMS or WhatsApp.",
+        "missingEmail": "Add the store email in the general settings to show it or receive form messages.",
+        "missingBoth": "Add the store phone and email in the general settings to enable contact channels.",
+        "phone": {
+          "label": "Phone",
+          "description": "Customers can call you on {phone}.",
+          "empty": "No phone set for the store."
+        },
+        "sms": {
+          "label": "SMS",
+          "description": "Also offers sending an SMS to that number."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Opens a WhatsApp conversation with your store.",
+          "number": "WhatsApp number",
+          "numberDescription": "Leave empty to use the store phone."
+        },
+        "email": {
+          "label": "Email",
+          "description": "Shows {email} with links to write.",
+          "empty": "No email set for the store."
+        },
+        "form": {
+          "title": "Contact form",
+          "description": "A form on your store whose messages are forwarded to you by email.",
+          "label": "Offer a contact form",
+          "help": "The visitor gives their name, email and message; you reply straight from your mailbox.",
+          "recipient": "Recipient address",
+          "recipientDescription": "Leave empty to receive messages at {email}.",
+          "recipientEmpty": "Enter the address that will receive the messages.",
+          "phoneField": "Visitor phone number",
+          "phoneFieldDescription": "Should the form ask for a phone number?",
+          "phoneFieldOptions": {
+            "hidden": "Do not ask",
+            "optional": "Optional",
+            "required": "Required"
+          }
+        },
+        "intro": {
+          "label": "Intro text",
+          "description": "Shown at the top of the contact page. Leave empty for the default text.",
+          "placeholder": "A question about a rental? Write to us, we answer within 24 hours."
+        },
+        "presets": {
+          "title": "Page template",
+          "description": "Pick a starting point; the contact channels below follow, and you can adjust them afterwards.",
+          "options": {
+            "full": {
+              "label": "Full",
+              "description": "Every contact channel, the form, the map and the opening hours."
+            },
+            "message": {
+              "label": "Message",
+              "description": "The form first, your email as a footnote. For those who prefer writing."
+            },
+            "single": {
+              "label": "One channel",
+              "description": "One big action: call, WhatsApp or email."
+            }
+          },
+          "custom": "Custom settings, “{layout}” layout.",
+          "primaryChannel": "Featured channel",
+          "primaryChannelHelp": "The page's main button.",
+          "channels": {
+            "phone": "Call",
+            "whatsapp": "WhatsApp",
+            "email": "Email"
+          }
+        },
+        "preview": "Preview",
+        "previewHint": "The contact page as it will show, updated as you change the settings.",
+        "viewOnStore": "View the contact page",
+        "updated": "Contact channels updated"
       },
       "legalSettings": {
         "title": "Legal pages",
@@ -5936,6 +6042,9 @@
         "copySuccess": "Phone number copied",
         "copyError": "Could not copy the phone number"
       },
+      "whatsappContact": {
+        "open": "Open a conversation"
+      },
       "emailContact": {
         "default": "Write with mail app",
         "copy": "Copy email",
@@ -7298,6 +7407,55 @@
       "homeTitle": "{store} · Equipment rental",
       "description": "Rent equipment from {store}. Book online."
     },
+    "contact": {
+      "title": "Contact {name}",
+      "metaTitle": "Contact - {name}",
+      "metaDescription": "Contact {name}: phone, email and contact form.",
+      "intro": "A question about a rental, an availability or a quote? We are here.",
+      "channelsTitle": "Reach us",
+      "noChannels": "The store's contact details are not set yet.",
+      "formTitle": "Send a message",
+      "formDescription": "We reply by email.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone",
+      "message": "Message",
+      "messagePlaceholder": "Describe your request: equipment, dates, quantities…",
+      "privacyNote": "Your details are only used by {name} to reply to you.",
+      "send": "Send message",
+      "sending": "Sending…",
+      "sentTitle": "Message sent",
+      "sentDescription": "Thank you! {name} has received your message and will reply by email.",
+      "sendAnother": "Send another message",
+      "orEmail": "Or by email:",
+      "primary": {
+        "phone": {
+          "title": "Call us",
+          "action": "Call"
+        },
+        "whatsapp": {
+          "title": "Write to us on WhatsApp",
+          "action": "Open WhatsApp"
+        },
+        "email": {
+          "title": "Write to us",
+          "action": "Send an email"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Enter your first name",
+        "lastNameRequired": "Enter your last name",
+        "invalidEmail": "Enter a valid email address",
+        "phoneRequired": "Enter your phone number",
+        "messageTooShort": "Your message is too short",
+        "tooLong": "This field is too long",
+        "invalidData": "Check the form fields.",
+        "unavailable": "The contact form is not available right now.",
+        "rateLimited": "Too many messages sent. Try again in a few minutes.",
+        "generic": "Your message could not be sent. Try again or use another contact channel."
+      }
+    },
     "about": {
       "title": "About {name}",
       "metaTitle": "About - {name}",
@@ -7318,6 +7476,7 @@
       "deliveryFrom": "from {amount} per trip",
       "moreTitle": "Learn more",
       "catalog": "Browse the catalog",
+      "contact": "Contact us",
       "terms": "Terms and conditions",
       "legal": "Legal notice"
     },
@@ -7978,7 +8137,8 @@
     "marketplaceChannelNotFound": "Marketplace channel not found",
     "requestCancellationStatusChanged": "The status of this request has changed. It can no longer be cancelled here. Contact the store.",
     "requestCancellationPaymentPending": "A payment is still in progress for this request. Try again after it updates or contact the store.",
-    "requestCancellationPaymentChanged": "The payment information has changed. Review it before confirming cancellation again."
+    "requestCancellationPaymentChanged": "The payment information has changed. Review it before confirming cancellation again.",
+    "promoCodeProductsAlreadyDiscounted": "This code does not apply to products already on promotion."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

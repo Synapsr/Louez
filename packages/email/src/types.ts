@@ -13,4 +13,6 @@ export interface SendEmailOptions {
   attachments?: EmailAttachment[]
   devPreviewUrl?: string
   fromName?: string
+  /** Address a reply goes to when it is not the sender (e.g. a visitor writing through a contact form). */
+  replyTo?: string
 }

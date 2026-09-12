@@ -1,3 +1,4 @@
+import { productPromotionSchema } from "./product-promotion";
 import { z } from "zod";
 
 import { isValidImageUrl } from "./image";
@@ -178,6 +179,7 @@ export const storefrontCartLineResolutionSchema = z.discriminatedUnion("status",
     productPricingMode: pricingModeSchema,
     basePeriodMinutes: z.number().nullable(),
     enforceStrictTiers: z.boolean(),
+    promotion: productPromotionSchema.nullable().optional(),
     pricingTiers: z.array(
       z.object({
         id: z.string(),
@@ -646,6 +648,38 @@ export const updateStoreLegalInputSchema = z.object({
   includeFullCgvInContract: z.boolean().optional(),
 });
 
+const optionalContactEmailSchema = z
+  .string()
+  .trim()
+  .max(255, "errors.invalidData")
+  .transform((value) => (value === "" ? null : value))
+  .pipe(z.email("errors.invalidData").nullable());
+
+const optionalContactPhoneSchema = z
+  .string()
+  .trim()
+  .max(50, "errors.invalidData")
+  .transform((value) => (value === "" ? null : value));
+
+/** The storefront contact page settings, saved whole under `settings.contact`. */
+export const updateStoreContactInputSchema = z.object({
+  layout: z.enum(["full", "message", "single"]),
+  primaryChannel: z.enum(["phone", "whatsapp", "email"]),
+  phone: z.boolean(),
+  sms: z.boolean(),
+  whatsapp: z.boolean(),
+  whatsappNumber: optionalContactPhoneSchema,
+  email: z.boolean(),
+  form: z.boolean(),
+  formRecipientEmail: optionalContactEmailSchema,
+  formPhoneField: z.enum(["hidden", "optional", "required"]),
+  intro: z
+    .string()
+    .trim()
+    .max(600, "errors.invalidData")
+    .transform((value) => (value === "" ? null : value)),
+});
+
 const s3UrlSchema = z
   .string()
   .refine(
@@ -875,6 +909,7 @@ export type DashboardReservationCreateManualReservationInput = z.infer<
   typeof dashboardReservationCreateManualReservationInputSchema
 >;
 export type UpdateStoreLegalInput = z.infer<typeof updateStoreLegalInputSchema>;
+export type UpdateStoreContactInput = z.infer<typeof updateStoreContactInputSchema>;
 export type UpdateStoreAppearanceInput = z.infer<typeof updateStoreAppearanceInputSchema>;
 export type DashboardIntegrationsGetTulipStateInput = z.infer<
   typeof dashboardIntegrationsGetTulipStateInputSchema

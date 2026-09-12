@@ -85,6 +85,7 @@ export async function sendEmail({
   attachments,
   devPreviewUrl,
   fromName,
+  replyTo,
 }: SendEmailOptions) {
   // No transport configured: log-and-skip with a synthetic success so callers
   // (auth flows, notification dispatchers) degrade instead of throwing.
@@ -130,6 +131,7 @@ export async function sendEmail({
     subject,
     html,
     attachments,
+    ...(replyTo ? { replyTo } : {}),
   });
 
   return {

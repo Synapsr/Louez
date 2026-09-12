@@ -112,11 +112,18 @@ export const buildStripeLineItems = ({
   }
 
   return [
-    ...items.map((item) => ({
-      name: item.name,
-      quantity: item.quantity,
-      unitAmount: toCents(item.subtotal / item.quantity),
-    })),
+    ...items.map((item) => {
+      const unitAmount = toCents(item.subtotal / item.quantity);
+      if (unitAmount * item.quantity !== toCents(item.subtotal)) {
+        return {
+          name: item.name,
+          description: `${item.quantity} × ${item.name}`,
+          quantity: 1,
+          unitAmount: toCents(item.subtotal),
+        };
+      }
+      return { name: item.name, quantity: item.quantity, unitAmount };
+    }),
     ...(insuranceAmount > 0
       ? [
           {

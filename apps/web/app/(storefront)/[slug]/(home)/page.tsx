@@ -21,6 +21,7 @@ import {
 } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { loadHomePage } from "@/lib/storefront/home.queries";
+import { resolveStoreContactChannels } from "@/lib/storefront/util.store-contact";
 import { resolveStoreHeroPresentation } from "@/lib/utils/util.store-hero";
 import { getStorePeriodRules } from "@/lib/utils/util.store-period-rules";
 
@@ -123,8 +124,7 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
         <StoreLocation
           name={store.name}
           address={store.address}
-          phone={store.phone}
-          email={store.email}
+          contact={resolveStoreContactChannels(store)}
           latitude={store.latitude}
           longitude={store.longitude}
         />

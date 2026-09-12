@@ -1,0 +1,1 @@
+ALTER TABLE `products` ADD `promotion` json;

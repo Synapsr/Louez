@@ -1,3 +1,5 @@
+import type { AppliedProductPromotion, ProductPromotion } from "@louez/types";
+import { applyProductPromotion } from "@louez/utils";
 import type { PricingKind, PricingMode, Rate } from "@louez/types";
 import {
   calculateDuration,
@@ -26,6 +28,7 @@ export interface CartPricingTier {
  */
 export interface CartItemForPricing {
   timezone?: string;
+  promotion?: ProductPromotion | null;
   price: number;
   deposit: number;
   quantity: number;
@@ -41,11 +44,12 @@ export interface CartItemForPricing {
 }
 
 export interface CartItemPriceResult {
+  promotion?: AppliedProductPromotion | null;
   seasonalSegments?: PricingSegment[];
   subtotal: number;
   originalSubtotal: number;
   savings: number;
-  /** Explicit duration discount only; a rate-grid comparison is not a promotion. */
+  /** Configured duration discount or product promotion; excludes rate-grid comparisons. */
   discountPercent: number | null;
 }
 
@@ -62,7 +66,7 @@ export interface CartItemPriceResult {
  * Used by cart-context, cart-sidebar, checkout-order-summary, reservation-payload
  * and the storefront display price (util.storefront-product-pricing).
  */
-export function calculateCartItemPrice(
+function calculateRegularCartItemPrice(
   item: CartItemForPricing,
   globalStartDate: string | null,
   globalEndDate: string | null,
@@ -201,5 +205,24 @@ export function calculateCartItemPrice(
     originalSubtotal: subtotal,
     savings: 0,
     discountPercent: null,
+  };
+}
+
+export function calculateCartItemPrice(
+  item: CartItemForPricing,
+  globalStartDate: string | null,
+  globalEndDate: string | null,
+  now?: Date,
+): CartItemPriceResult {
+  const regular = calculateRegularCartItemPrice(item, globalStartDate, globalEndDate);
+  const discounted = applyProductPromotion(regular.subtotal, item.promotion, item.timezone, now);
+  if (!discounted.promotion) return regular;
+  return {
+    ...regular,
+    subtotal: discounted.subtotal,
+    originalSubtotal: discounted.promotion.originalSubtotal,
+    savings: discounted.promotion.discountAmount,
+    discountPercent: discounted.promotion.percentage,
+    promotion: discounted.promotion,
   };
 }

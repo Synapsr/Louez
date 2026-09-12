@@ -139,6 +139,17 @@
     "viewRequest": "Anfrage ansehen",
     "connectToManage": "Melden Sie sich in Ihrem Dashboard an, um diese Anfrage anzunehmen oder abzulehnen."
   },
+  "contactMessage": {
+    "subject": "Neue Nachricht von {name} — {store}",
+    "title": "Neue Nachricht aus Ihrem Shop",
+    "body": "Ein Besucher hat Ihnen über die Kontaktseite von {storeName} geschrieben.",
+    "name": "Name:",
+    "email": "E-Mail:",
+    "phone": "Telefon:",
+    "message": "Nachricht:",
+    "reply": "Antworten",
+    "footer": "Antworten Sie direkt auf diese E-Mail: Ihre Antwort geht an die Adresse des Besuchers."
+  },
   "phoneCallbackLandlord": {
     "subject": "Ein Anrufer zum Zurückrufen — {store}",
     "title": "Ein Anrufer zum Zurückrufen",

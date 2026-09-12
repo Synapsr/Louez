@@ -1,3 +1,4 @@
+import { applyProductPromotion } from "@louez/utils";
 import type { PricingKind } from "@louez/types";
 import { pricingModeToMinutes } from "@louez/utils";
 
@@ -12,10 +13,11 @@ import {
 
 export type StorefrontPricingProduct = Pick<
   StorefrontProductPricing,
-  "price" | "pricingKind" | "pricingMode" | "basePeriodMinutes" | "pricingTiers"
+  "price" | "pricingKind" | "pricingMode" | "basePeriodMinutes" | "pricingTiers" | "promotion"
 >;
 
 export interface StorefrontRateRow {
+  compareAt?: number;
   id: string;
   periodMinutes: number;
   price: number;
@@ -23,6 +25,7 @@ export interface StorefrontRateRow {
 }
 
 export interface StorefrontPricingSummary {
+  compareAt?: number;
   pricingKind: PricingKind;
   displayPrice: number;
   /**
@@ -90,7 +93,7 @@ const getBaseRate = (product: StorefrontPricingProduct): StorefrontRateRow => {
  * Unique rates sorted by period, including the base rate. Stored copies of
  * a rate share one row. A forfait has no grid.
  */
-export const getStorefrontRateRows = (product: StorefrontPricingProduct): StorefrontRateRow[] => {
+const getRegularStorefrontRateRows = (product: StorefrontPricingProduct): StorefrontRateRow[] => {
   if (product.pricingKind === "fixed") return [];
 
   const baseRate = getBaseRate(product);
@@ -116,7 +119,7 @@ export const getStorefrontRateRows = (product: StorefrontPricingProduct): Storef
  * "from": normalising the cheapest per-minute rate to the base period gave
  * prices like "3.83 EUR / 4 h" when the real 4-hour price was 27 EUR.
  */
-export const getStorefrontPricingSummary = (
+const getRegularStorefrontPricingSummary = (
   product: StorefrontPricingProduct,
 ): StorefrontPricingSummary => {
   if (product.pricingKind === "fixed") {
@@ -130,7 +133,7 @@ export const getStorefrontPricingSummary = (
   }
 
   const baseRate = getBaseRate(product);
-  const allReductionPercents = getStorefrontRateRows(product)
+  const allReductionPercents = getRegularStorefrontRateRows(product)
     .map((row) => row.reductionPercent)
     .filter((percent) => percent > 0);
 
@@ -141,4 +144,47 @@ export const getStorefrontPricingSummary = (
     maxReductionPercent: Math.max(...allReductionPercents, 0),
     allReductionPercents,
   };
+};
+
+export const getStorefrontRateRows = (
+  product: StorefrontPricingProduct,
+  options: { timezone?: string; now?: Date } = {},
+): StorefrontRateRow[] =>
+  getRegularStorefrontRateRows(product).map((row) => {
+    const result = applyProductPromotion(
+      row.price,
+      product.promotion,
+      options.timezone,
+      options.now,
+    );
+    return result.promotion
+      ? {
+          ...row,
+          price: result.subtotal,
+          compareAt: row.price,
+          reductionPercent: result.promotion.percentage,
+        }
+      : row;
+  });
+
+export const getStorefrontPricingSummary = (
+  product: StorefrontPricingProduct,
+  options: { timezone?: string; now?: Date } = {},
+): StorefrontPricingSummary => {
+  const regular = getRegularStorefrontPricingSummary(product);
+  const result = applyProductPromotion(
+    regular.displayPrice,
+    product.promotion,
+    options.timezone,
+    options.now,
+  );
+  return result.promotion
+    ? {
+        ...regular,
+        displayPrice: result.subtotal,
+        compareAt: regular.displayPrice,
+        maxReductionPercent: result.promotion.percentage,
+        allReductionPercents: [result.promotion.percentage],
+      }
+    : regular;
 };
