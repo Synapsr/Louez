@@ -26,7 +26,6 @@ import {
 } from "@/lib/utils/util.category-browse-entries";
 import { getStoreReassurance, type StoreReassuranceKey } from "@/lib/utils/util.store-reassurance";
 import { getStoreStatus, type StoreStatus } from "@/lib/utils/util.store-status";
-import { getStoreTagline } from "@/lib/utils/util.store-tagline";
 
 /** Two rows of four on desktop, four rows of two on a phone. */
 const FEATURED_PRODUCTS_LIMIT = 8;
@@ -59,7 +58,8 @@ export interface HomePageData {
   settings: StoreSettings;
   theme: StoreTheme;
   heroImages: string[];
-  tagline: string | null;
+  /** Editor HTML from the dashboard, rendered as written under the hero title. */
+  description: string | null;
   status: StoreStatus | null;
   inventory: HomeInventory;
   reassurance: StoreReassuranceKey[];
@@ -273,7 +273,7 @@ export const loadHomePage = async (
     settings,
     theme,
     heroImages: theme.heroImages ?? [],
-    tagline: getStoreTagline(store.description),
+    description: store.description,
     status: getStoreStatus(settings.businessHours, settings.timezone),
     inventory,
     reassurance: getStoreReassurance({

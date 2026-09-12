@@ -2,12 +2,18 @@ import { cn } from "@louez/utils";
 
 import { hasRichTextContent, sanitizeRichTextHtml } from "@/lib/util.rich-text";
 
-type RichTextSize = "sm" | "base";
+type RichTextSize = "sm" | "base" | "lg";
+
+const SIZE_CLASS_NAME: Record<RichTextSize, string> = {
+  sm: "prose-sm",
+  base: "prose-sm sm:prose-base",
+  lg: "prose-base sm:prose-lg",
+};
 
 interface RichTextProps {
   /** Raw editor HTML straight from the store or product row. */
   html: string | null | undefined;
-  /** `sm` for a summary card or accordion body, `base` for a full page. */
+  /** `sm` for a summary card or accordion body, `base` for a full page, `lg` under a hero title. */
   size?: RichTextSize;
   className?: string;
 }
@@ -28,7 +34,7 @@ export const RichText = ({ html, size = "base", className }: RichTextProps) => {
         "prose max-w-none wrap-break-word dark:prose-invert",
         "prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-foreground prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg",
         "prose-p:text-muted-foreground prose-li:text-muted-foreground prose-a:text-foreground prose-a:underline prose-a:underline-offset-4 prose-strong:text-foreground",
-        size === "sm" ? "prose-sm" : "prose-sm sm:prose-base",
+        SIZE_CLASS_NAME[size],
         className,
       )}
       data-slot="rich-text"

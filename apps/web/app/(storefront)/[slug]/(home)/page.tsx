@@ -66,7 +66,7 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
     notFound();
   }
 
-  const { store, settings, theme, heroImages, tagline, status, inventory, reassurance, place } =
+  const { store, settings, theme, heroImages, description, status, inventory, reassurance, place } =
     data;
   const ratingHref = place.showReviews ? "#reviews" : (place.details?.mapsUrl ?? null);
   const hero = resolveStoreHeroPresentation({ theme, imageCount: heroImages.length });
@@ -78,7 +78,7 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
 
       <StoreHero
         name={store.name}
-        tagline={tagline}
+        description={description}
         backgroundImages={heroImages}
         shape={hero.shape}
         align={hero.align}

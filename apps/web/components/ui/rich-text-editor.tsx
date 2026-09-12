@@ -1,6 +1,7 @@
 "use client";
 
 import { useEditor, EditorContent } from "@tiptap/react";
+import type { EditorView } from "@tiptap/pm/view";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -10,7 +11,6 @@ import {
   List,
   ListOrdered,
   Link as LinkIcon,
-  Unlink,
   Undo,
   Redo,
   Heading1,
@@ -31,10 +31,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Input,
   ScrollArea,
 } from "@louez/ui";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+
+import {
+  LinkBubbleMenu,
+  LinkForm,
+  type LinkFormValue,
+} from "@/components/ui/rich-text-editor-link";
+import { normalizeLinkHref } from "@/lib/util.link-href";
 
 interface RichTextEditorProps {
   value?: string;
@@ -48,8 +54,42 @@ const toolbarSkeletonGroups = [
   { key: "formatting", buttons: ["bold", "italic"] },
   { key: "lists", buttons: ["bullet", "ordered"] },
   { key: "blocks", buttons: ["quote", "separator"] },
-  { key: "links", buttons: ["link", "unlink"] },
+  { key: "links", buttons: ["link"] },
 ] as const;
+
+/** An e-mail address is not a web link; the storefront would drop `mailto:`. */
+const shouldAutoLink = (value: string): boolean => !value.includes("@");
+
+/**
+ * Pasting one address turns it into a link on the spot: over a selection
+ * the selected words become the link, on an empty caret the address is
+ * inserted as its own text. Anything else pastes as usual.
+ */
+const pasteLink = (view: EditorView, event: ClipboardEvent): boolean => {
+  const pasted = event.clipboardData?.getData("text/plain") ?? "";
+  const href = normalizeLinkHref(pasted);
+  if (!href) return false;
+
+  const { state } = view;
+  const linkType = state.schema.marks.link;
+  if (!linkType) return false;
+
+  const mark = linkType.create({ href });
+  const tr = state.tr;
+  if (state.selection.empty) {
+    tr.replaceSelectionWith(state.schema.text(pasted.trim(), [mark]), false).removeStoredMark(
+      linkType,
+    );
+  } else {
+    tr.addMark(state.selection.from, state.selection.to, mark);
+  }
+  view.dispatch(tr.scrollIntoView());
+  return true;
+};
+
+/** The shortcut hint on the link button, on the viewer's keyboard. */
+const getModKeyLabel = (): string =>
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl+";
 
 export const RichTextEditor = ({
   value = "",
@@ -59,12 +99,14 @@ export const RichTextEditor = ({
   disabled = false,
 }: RichTextEditorProps) => {
   const t = useTranslations("common.richTextEditor");
-  const [linkUrl, setLinkUrl] = useState("");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [linkEditing, setLinkEditing] = useState(false);
+  /** Read by ProseMirror handlers created once, so they see the latest closure. */
+  const openLinkEditorRef = useRef<() => void>(() => {});
 
   const actualPlaceholder = placeholder || t("placeholder");
   const containerClassName = cn(
-    "border-input bg-background w-full min-w-0 max-w-full overflow-hidden rounded-md border",
+    "border-input bg-background relative w-full min-w-0 max-w-full overflow-x-clip rounded-md border",
     "focus-within:ring-ring focus-within:ring-2 focus-within:ring-offset-2",
     disabled && "opacity-50",
     className,
@@ -78,11 +120,17 @@ export const RichTextEditor = ({
         },
         codeBlock: false,
         code: false,
+        // Handled below: the built-in Link extension is configured on its own.
+        link: false,
       }),
       Link.configure({
         openOnClick: false,
+        autolink: true,
+        linkOnPaste: false,
+        defaultProtocol: "https",
+        shouldAutoLink,
         HTMLAttributes: {
-          class: "text-primary underline",
+          class: "text-primary underline underline-offset-2",
         },
       }),
       Placeholder.configure({
@@ -93,6 +141,8 @@ export const RichTextEditor = ({
     content: value,
     editable: !disabled,
     immediatelyRender: false,
+    // The toolbar and the link bubble read the selection on every render.
+    shouldRerenderOnTransaction: true,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       // Return empty string if only contains empty paragraph
@@ -116,6 +166,33 @@ export const RichTextEditor = ({
           disabled && "opacity-50 cursor-not-allowed",
         ),
       },
+      handleKeyDown: (_view, event) => {
+        // Mod+K opens the link editor, and must not reach the dashboard's
+        // command palette, which listens on the document for the same keys.
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          !event.shiftKey &&
+          !event.altKey &&
+          event.key.toLowerCase() === "k"
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          openLinkEditorRef.current();
+          return true;
+        }
+        return false;
+      },
+      handlePaste: (view, event) => (view.editable ? pasteLink(view, event) : false),
+      handleClick: (_view, _pos, event) => {
+        // Mod+click follows the link, as in most editors; a plain click
+        // places the caret and lets the bubble show the address.
+        if (!(event.metaKey || event.ctrlKey)) return false;
+        const target = event.target as HTMLElement | null;
+        const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+        if (!anchor) return false;
+        window.open(anchor.href, "_blank", "noopener,noreferrer");
+        return true;
+      },
     },
   });
 
@@ -126,18 +203,50 @@ export const RichTextEditor = ({
     }
   }, [value, editor]);
 
-  const setLink = useCallback(() => {
-    if (!linkUrl) {
-      editor?.chain().focus().unsetLink().run();
+  const openLinkEditor = useCallback(() => {
+    if (!editor || disabled) return;
+    if (editor.isActive("link")) {
+      // Already a link: edit it where it is, in the bubble under the text.
+      editor.chain().focus().extendMarkRange("link").run();
+      setLinkEditing(true);
       return;
     }
+    setLinkPopoverOpen(true);
+  }, [editor, disabled]);
 
-    // Add https if no protocol
-    const url = linkUrl.startsWith("http") ? linkUrl : `https://${linkUrl}`;
-    editor?.chain().focus().setLink({ href: url }).run();
-    setLinkUrl("");
+  useEffect(() => {
+    openLinkEditorRef.current = openLinkEditor;
+  }, [openLinkEditor]);
+
+  const closeLinkEditors = useCallback(() => {
     setLinkPopoverOpen(false);
-  }, [editor, linkUrl]);
+    setLinkEditing(false);
+    editor?.commands.focus();
+  }, [editor]);
+
+  const applyLink = useCallback(
+    ({ href, text }: LinkFormValue) => {
+      if (!editor) return;
+      const chain = editor.chain().focus();
+      if (text !== undefined) {
+        chain
+          .insertContent({ type: "text", text, marks: [{ type: "link", attrs: { href } }] })
+          .unsetMark("link")
+          .run();
+      } else {
+        chain.extendMarkRange("link").setLink({ href }).run();
+      }
+      setLinkPopoverOpen(false);
+      setLinkEditing(false);
+    },
+    [editor],
+  );
+
+  const removeLink = useCallback(() => {
+    editor?.chain().focus().extendMarkRange("link").unsetLink().run();
+    setLinkPopoverOpen(false);
+    setLinkEditing(false);
+  }, [editor]);
 
   if (!editor) {
     return (
@@ -171,6 +280,16 @@ export const RichTextEditor = ({
     );
   }
 
+  const isOnLink = editor.isActive("link");
+  const hasSelection = !editor.state.selection.empty;
+  const headingLabel = editor.isActive("heading", { level: 1 })
+    ? "H1"
+    : editor.isActive("heading", { level: 2 })
+      ? "H2"
+      : editor.isActive("heading", { level: 3 })
+        ? "H3"
+        : t("text");
+
   return (
     <div className={containerClassName}>
       {/* Toolbar */}
@@ -193,41 +312,35 @@ export const RichTextEditor = ({
                   />
                 }
               >
-                {editor.isActive("heading", { level: 1 })
-                  ? "H1"
-                  : editor.isActive("heading", { level: 2 })
-                    ? "H2"
-                    : editor.isActive("heading", { level: 3 })
-                      ? "H3"
-                      : "Texte"}
+                {headingLabel}
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem
                   onClick={() => editor.chain().focus().setParagraph().run()}
                   className={editor.isActive("paragraph") ? "bg-accent" : ""}
                 >
-                  Texte normal
+                  {t("normalText")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
                   className={editor.isActive("heading", { level: 1 }) ? "bg-accent" : ""}
                 >
                   <Heading1 className="mr-2 h-4 w-4" />
-                  Titre 1
+                  {t("heading1")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
                   className={editor.isActive("heading", { level: 2 }) ? "bg-accent" : ""}
                 >
                   <Heading2 className="mr-2 h-4 w-4" />
-                  Titre 2
+                  {t("heading2")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
                   className={editor.isActive("heading", { level: 3 }) ? "bg-accent" : ""}
                 >
                   <Heading3 className="mr-2 h-4 w-4" />
-                  Titre 3
+                  {t("heading3")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -297,42 +410,39 @@ export const RichTextEditor = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
-            <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
+            <Popover
+              open={linkPopoverOpen}
+              onOpenChange={(open) => {
+                if (open && editor.isActive("link")) {
+                  // The bubble under the link takes over for an existing link.
+                  openLinkEditor();
+                  return;
+                }
+                setLinkPopoverOpen(open);
+              }}
+            >
               <PopoverTrigger
                 render={
                   <Toggle
-                    pressed={editor.isActive("link")}
+                    pressed={isOnLink}
                     disabled={disabled}
-                    aria-label={t("addLink")}
+                    aria-label={isOnLink ? t("editLink") : t("addLink")}
+                    title={`${isOnLink ? t("editLink") : t("addLink")} (${getModKeyLabel()}K)`}
                   />
                 }
               >
                 <LinkIcon className="h-4 w-4" />
               </PopoverTrigger>
-              <PopoverContent className="w-[calc(100vw-2rem)] max-w-80" align="start">
-                <div className="flex gap-2">
-                  <Input
-                    aria-label={t("addLink")}
-                    placeholder="https://example.com"
-                    value={linkUrl}
-                    onChange={(e) => setLinkUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && setLink()}
+              <PopoverContent className="w-[calc(100vw-2rem)] max-w-80 p-3" align="start">
+                {linkPopoverOpen ? (
+                  <LinkForm
+                    withText={!hasSelection}
+                    onSubmit={applyLink}
+                    onCancel={closeLinkEditors}
                   />
-                  <Button type="button" onClick={setLink}>
-                    OK
-                  </Button>
-                </div>
+                ) : null}
               </PopoverContent>
             </Popover>
-
-            <Toggle
-              pressed={false}
-              onPressedChange={() => editor.chain().focus().unsetLink().run()}
-              disabled={disabled || !editor.isActive("link")}
-              aria-label={t("removeLink")}
-            >
-              <Unlink className="h-4 w-4" />
-            </Toggle>
           </div>
 
           <div className="border-border ml-auto flex shrink-0 items-center gap-1 border-l pl-2">
@@ -363,6 +473,15 @@ export const RichTextEditor = ({
 
       {/* Editor */}
       <EditorContent editor={editor} />
+
+      <LinkBubbleMenu
+        editor={editor}
+        editing={linkEditing}
+        onEdit={openLinkEditor}
+        onSubmit={applyLink}
+        onRemove={removeLink}
+        onCancel={closeLinkEditors}
+      />
 
       {/* Styles for placeholder */}
       <style>{`
