@@ -42,3 +42,7 @@ export const normalizeLinkHref = (input: string): string | null => {
  * else, so the editor can turn it straight into a link.
  */
 export const isSingleLinkText = (text: string): boolean => normalizeLinkHref(text) !== null;
+
+/** An address the way browsers show it: no scheme, no trailing slash. */
+export const displayLinkHref = (href: string): string =>
+  href.replace(/^https?:\/\//i, "").replace(/\/$/, "");
