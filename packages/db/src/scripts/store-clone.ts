@@ -1,3 +1,6 @@
+import { isDeepStrictEqual } from 'node:util'
+import { pathToFileURL } from 'node:url'
+import { z } from 'zod'
 import { config } from 'dotenv'
 
 config({ path: '.env.local', quiet: true })
@@ -10,6 +13,8 @@ type CloneScope = 'catalog' | 'full'
 
 type CliOptions = {
   apply: boolean
+  preserveIds: boolean
+  sourceUserEmail?: string
   scope: CloneScope
   sourceStoreId?: string
   sourceDbUrl?: string
@@ -21,6 +26,25 @@ type CliOptions = {
 }
 
 type CloneTable =
+  | 'ai_credits'
+  | 'ai_credit_transactions'
+  | 'ai_advisor_conversations'
+  | 'ai_advisor_messages'
+  | 'ai_credit_debits'
+  | 'users'
+  | 'accounts'
+  | 'store_legal_profiles'
+  | 'store_locations'
+  | 'variant_definitions'
+  | 'variant_values'
+  | 'promo_codes'
+  | 'product_unit_downtimes'
+  | 'product_unit_events'
+  | 'pay_as_you_go_invoices'
+  | 'platform_fee'
+  | 'invoice_sequences'
+  | 'invoices'
+  | 'invoice_payments'
   | 'stores'
   | 'subscriptions'
   | 'store_members'
@@ -84,6 +108,11 @@ const CATALOG_TABLE_ORDER: CloneTable[] = [
   'stores',
   'subscriptions',
   'store_members',
+  'store_legal_profiles',
+  'store_locations',
+  'variant_definitions',
+  'variant_values',
+  'promo_codes',
   'categories',
   'products',
   'product_categories',
@@ -92,6 +121,8 @@ const CATALOG_TABLE_ORDER: CloneTable[] = [
   'product_pricing_tiers',
   'product_units',
   'product_accessories',
+  'product_unit_downtimes',
+  'product_unit_events',
   'inspection_templates',
   'inspection_template_fields',
 ]
@@ -120,6 +151,16 @@ const FULL_TABLE_ORDER: CloneTable[] = [
   'inspection_items',
   'inspection_field_values',
   'inspection_photos',
+  'pay_as_you_go_invoices',
+  'platform_fee',
+  'invoice_sequences',
+  'invoices',
+  'invoice_payments',
+  'ai_credits',
+  'ai_credit_transactions',
+  'ai_advisor_conversations',
+  'ai_advisor_messages',
+  'ai_credit_debits',
 ]
 
 function printUsage(): void {
@@ -128,7 +169,9 @@ function printUsage(): void {
   pnpm store:clone -- --source-store-id <storeId> --source-db-url <url> --apply
 
 Options:
-  --source-store-id <id>     Source store ID from production (required)
+  --source-store-id <id>     Source store ID (or resolve the sole store accessible by email)
+  --source-user-email <email> Copy team profiles and the selected user sign-in identities
+  --preserve-ids             Keep row IDs, store slug and name when copying to a separate DB
   --source-db-url <url>      Source DB URL (or SOURCE_DATABASE_URL env)
   --target-db-url <url>      Target DB URL (or TARGET_DATABASE_URL / DATABASE_URL env)
   --target-store-id <id>     Target store ID (default: generated nanoid)
@@ -141,16 +184,19 @@ Options:
   --help, -h                 Show this message
 
 Notes:
-  - IDs are regenerated for cloned rows so reruns don't collide with prior clones.
+  - Live provider tokens, payment references and automated reminders are detached.
+  - With --source-user-email, team memberships keep their original roles.
+  - IDs are regenerated unless --preserve-ids is supplied; reruns never overwrite existing rows.
   - "full" scope intentionally skips auth/session token tables (customer_sessions, verification_codes).
   - Stripe and webhook integration fields are reset on the cloned store for safety.
   - Subscription plan state is copied, but Stripe subscription/customer ids are cleared.
 `)
 }
 
-function parseArgs(argv: string[]): CliOptions {
+export function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
     apply: false,
+    preserveIds: false,
     scope: 'catalog',
   }
 
@@ -173,6 +219,16 @@ function parseArgs(argv: string[]): CliOptions {
 
     if (arg === '--dry-run') {
       options.apply = false
+      continue
+    }
+
+    if (arg === '--preserve-ids') {
+      options.preserveIds = true
+      continue
+    }
+
+    if (arg === '--source-user-email') {
+      options.sourceUserEmail = z.email().parse(argv[++i])
       continue
     }
 
@@ -223,15 +279,24 @@ function parseArgs(argv: string[]): CliOptions {
       if (value === 'catalog' || value === 'full') {
         options.scope = value
       } else {
-        console.warn(`Unknown scope ignored: ${value}`)
+        throw new Error('Expected --scope catalog or full')
       }
       i += 1
       continue
     }
 
-    console.warn(`Unknown argument ignored: ${arg}`)
+    throw new Error(`Unknown argument: ${arg}`)
   }
 
+  for (const [key, value] of Object.entries(options)) {
+    if (value === undefined) throw new Error(`Missing value for ${key}`)
+    if (typeof value === 'string' && (!value.trim() || value.startsWith('--'))) {
+      throw new Error(`Missing value for ${key}`)
+    }
+  }
+  if (options.sourceUserEmail && options.ownerUserId) {
+    throw new Error('--source-user-email cannot be combined with --owner-user-id')
+  }
   return options
 }
 
@@ -361,6 +426,25 @@ async function collectDataset(
     [sourceStoreId],
   )
 
+  for (const table of [
+    'store_legal_profiles',
+    'store_locations',
+    'variant_definitions',
+    'promo_codes',
+    'product_unit_downtimes',
+    'product_unit_events',
+  ] as const) {
+    dataset[table] = await fetchByIds(sourceConnection, table, 'store_id', [
+      sourceStoreId,
+    ])
+  }
+  dataset.variant_values = await fetchByIds(
+    sourceConnection,
+    'variant_values',
+    'definition_id',
+    uniqueIds((dataset.variant_definitions ?? []).map((row) => asId(row.id))),
+  )
+
   dataset.categories = await fetchRows(
     sourceConnection,
     'SELECT * FROM categories WHERE store_id = ?',
@@ -380,7 +464,9 @@ async function collectDataset(
     'product_id',
     productIds,
   )
-  const seasonalPricingIds = uniqueIds(dataset.product_seasonal_pricing.map((row) => asId(row.id)))
+  const seasonalPricingIds = uniqueIds(
+    dataset.product_seasonal_pricing.map((row) => asId(row.id)),
+  )
   dataset.product_seasonal_pricing_tiers = await fetchByIds(
     sourceConnection,
     'product_seasonal_pricing_tiers',
@@ -427,7 +513,9 @@ async function collectDataset(
     'SELECT * FROM inspection_templates WHERE store_id = ?',
     [sourceStoreId],
   )
-  const inspectionTemplateIds = uniqueIds(dataset.inspection_templates.map((row) => asId(row.id)))
+  const inspectionTemplateIds = uniqueIds(
+    dataset.inspection_templates.map((row) => asId(row.id)),
+  )
   dataset.inspection_template_fields = await fetchByIds(
     sourceConnection,
     'inspection_template_fields',
@@ -438,6 +526,28 @@ async function collectDataset(
   if (scope === 'catalog') {
     return dataset
   }
+
+  for (const table of [
+    'pay_as_you_go_invoices',
+    'platform_fee',
+    'invoice_sequences',
+    'invoices',
+    'ai_credits',
+    'ai_credit_transactions',
+    'ai_advisor_conversations',
+    'ai_advisor_messages',
+    'ai_credit_debits',
+  ] as const) {
+    dataset[table] = await fetchByIds(sourceConnection, table, 'store_id', [
+      sourceStoreId,
+    ])
+  }
+  dataset.invoice_payments = await fetchByIds(
+    sourceConnection,
+    'invoice_payments',
+    'invoice_id',
+    uniqueIds((dataset.invoices ?? []).map((row) => asId(row.id))),
+  )
 
   dataset.customers = await fetchRows(
     sourceConnection,
@@ -458,7 +568,9 @@ async function collectDataset(
     'reservation_id',
     reservationIds,
   )
-  const reservationItemIds = uniqueIds(dataset.reservation_items.map((row) => asId(row.id)))
+  const reservationItemIds = uniqueIds(
+    dataset.reservation_items.map((row) => asId(row.id)),
+  )
 
   dataset.reservation_item_units = await fetchByIds(
     sourceConnection,
@@ -575,10 +687,11 @@ async function collectDataset(
   return dataset
 }
 
-function registerIdMap(
+export function registerIdMap(
   dataset: Dataset,
   sourceStoreId: string,
   targetStoreId: string,
+  preserveIds = false,
 ): Partial<Record<CloneTable, Map<string, string>>> {
   const idMaps: Partial<Record<CloneTable, Map<string, string>>> = {
     stores: new Map([[sourceStoreId, targetStoreId]]),
@@ -602,11 +715,18 @@ function registerIdMap(
       if (!rowId) {
         continue
       }
-      map.set(rowId, nanoid())
+      map.set(rowId, preserveIds ? rowId : nanoid())
     }
     idMaps[tableName] = map
   }
 
+  const productMap = idMaps.products ?? new Map<string, string>()
+  for (const row of dataset.product_stats ?? []) {
+    const productId = asId(row.product_id)
+    if (productId && !productMap.has(productId))
+      productMap.set(productId, preserveIds ? productId : nanoid())
+  }
+  idMaps.products = productMap
   return idMaps
 }
 
@@ -658,7 +778,10 @@ function addSkip(
   }
 }
 
-function transformDataset(dataset: Dataset, context: TransformContext): TransformResult {
+export function transformDataset(
+  dataset: Dataset,
+  context: TransformContext,
+): TransformResult {
   const output: Dataset = {}
   const skippedByTable: Partial<Record<CloneTable, number>> = {}
   const skippedDetails: string[] = []
@@ -701,7 +824,10 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
     return null
   }
 
-  const transformRows = (table: CloneTable, rows: SourceRow[] | undefined): SourceRow[] => {
+  const transformRows = (
+    table: CloneTable,
+    rows: SourceRow[] | undefined,
+  ): SourceRow[] => {
     if (!rows || rows.length === 0) {
       return []
     }
@@ -711,6 +837,14 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
     for (const sourceRow of rows) {
       const row = { ...sourceRow }
       const sourceRowId = asId(sourceRow.id)
+      for (const key of Object.keys(row)) {
+        if (
+          (key.startsWith('stripe_') && key.endsWith('_id')) ||
+          key === 'deposit_payment_intent_id' ||
+          key === 'tulip_contract_id'
+        )
+          row[key] = null
+      }
 
       if (table !== 'store_members') {
         const mappedId = mapId(table, sourceRow.id)
@@ -740,9 +874,88 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
         row.stripe_charges_enabled = false
         row.stripe_coupon_id = null
         row.discord_webhook_url = null
-        row.updated_at = new Date()
+        const emailSettings = parseJsonObject(row.email_settings) ?? {}
+        row.email_settings = {
+          ...emailSettings,
+          reminderPickupEnabled: false,
+          reminderReturnEnabled: false,
+        }
+        const reviewSettings = parseJsonObject(row.review_booster_settings)
+        if (reviewSettings)
+          row.review_booster_settings = {
+            ...reviewSettings,
+            autoSendThankYouEmail: false,
+            autoSendThankYouSms: false,
+          }
+        for (const field of ['notification_settings', 'customer_notification_settings']) {
+          const settings = parseJsonObject(row[field]) ?? {}
+          for (const event of field === 'notification_settings'
+            ? ['reservation_reminder_pickup', 'reservation_reminder_return']
+            : ['customer_reminder_pickup', 'customer_reminder_return']) {
+            settings[event] = {
+              ...parseJsonObject(settings[event]),
+              enabled: false,
+              email: false,
+              sms: false,
+              discord: false,
+              push: false,
+            }
+          }
+          row[field] = settings
+        }
         transformedRows.push(row)
         continue
+      }
+
+      const references: Partial<Record<CloneTable, Record<string, CloneTable>>> = {
+        ai_advisor_conversations: {
+          customer_id: 'customers',
+          reservation_id: 'reservations',
+        },
+        ai_advisor_messages: { conversation_id: 'ai_advisor_conversations' },
+        ai_credit_debits: { conversation_id: 'ai_advisor_conversations' },
+        variant_values: { definition_id: 'variant_definitions' },
+        product_unit_downtimes: { product_unit_id: 'product_units' },
+        product_unit_events: { product_unit_id: 'product_units' },
+        platform_fee: {
+          reservation_id: 'reservations',
+          payment_id: 'payments',
+          invoice_id: 'pay_as_you_go_invoices',
+        },
+        invoices: {
+          reservation_id: 'reservations',
+          customer_id: 'customers',
+          document_id: 'documents',
+          preceding_invoice_id: 'invoices',
+        },
+        invoice_payments: { invoice_id: 'invoices', payment_id: 'payments' },
+      }
+      for (const [field, refTable] of Object.entries(references[table] ?? {})) {
+        if (row[field] != null) {
+          const mapped = mapOptionalRef(refTable, row[field])
+          if (!mapped) throw new Error(`Unresolved ${table}.${field}`)
+          row[field] = mapped
+        }
+      }
+      for (const field of ['actor_user_id', 'created_by_user_id']) {
+        if (row[field] && !dataset.store_members) row[field] = context.ownerUserId
+      }
+      if (table === 'platform_fee' && row.id !== sourceRow.id)
+        row.dedup_key = `${context.targetStoreId}:${row.id}`
+      if (table === 'ai_credits') row.auto_topup_enabled = false
+      if (
+        (table === 'ai_credit_transactions' || table === 'ai_credit_debits') &&
+        row.id !== sourceRow.id
+      )
+        row.dedup_key = `${context.targetStoreId}:${row.id}`
+      if (table === 'ai_advisor_conversations') {
+        row.provider_call_id = null
+        row.recording_sid = null
+      }
+      if (table === 'invoices') {
+        row.super_pdp_invoice_id = null
+        row.next_attempt_at = null
+        row.transmission_status = 'not_applicable'
       }
 
       if (table === 'categories') {
@@ -916,6 +1129,9 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
           continue
         }
         row.customer_id = mappedCustomerId
+        row.pickup_location_id = mapOptionalRef('store_locations', row.pickup_location_id)
+        row.return_location_id = mapOptionalRef('store_locations', row.return_location_id)
+        row.promo_code_id = mapOptionalRef('promo_codes', row.promo_code_id)
         transformedRows.push(row)
         continue
       }
@@ -945,14 +1161,20 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
           'reservation_items',
           row.reservation_item_id,
         )
-        const mappedProductUnitId = mapRequiredRef(
-          table,
-          sourceRowId,
-          'product_unit_id',
-          'product_units',
-          row.product_unit_id,
-        )
-        if (!mappedReservationItemId || !mappedProductUnitId) {
+        const mappedProductUnitId =
+          row.product_unit_id == null
+            ? null
+            : mapRequiredRef(
+                table,
+                sourceRowId,
+                'product_unit_id',
+                'product_units',
+                row.product_unit_id,
+              )
+        if (
+          !mappedReservationItemId ||
+          (row.product_unit_id != null && !mappedProductUnitId)
+        ) {
           continue
         }
         row.reservation_item_id = mappedReservationItemId
@@ -962,6 +1184,7 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
       }
 
       if (table === 'payments') {
+        row.refund_of_payment_id = mapOptionalRef('payments', row.refund_of_payment_id)
         const mappedReservationId = mapRequiredRef(
           table,
           sourceRowId,
@@ -1005,7 +1228,11 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
           continue
         }
         row.reservation_id = mappedReservationId
-        row.user_id = row.user_id ? context.ownerUserId : null
+        row.user_id = row.user_id
+          ? dataset.store_members
+            ? row.user_id
+            : context.ownerUserId
+          : null
         transformedRows.push(row)
         continue
       }
@@ -1136,7 +1363,11 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
         row.reservation_id = mappedReservationId
         row.template_id = mapOptionalRef('inspection_templates', row.template_id)
         row.damage_payment_id = mapOptionalRef('payments', row.damage_payment_id)
-        row.performed_by_id = row.performed_by_id ? context.ownerUserId : null
+        row.performed_by_id = row.performed_by_id
+          ? dataset.store_members
+            ? row.performed_by_id
+            : context.ownerUserId
+          : null
         transformedRows.push(row)
         continue
       }
@@ -1215,14 +1446,21 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
 
   const tables = context.scope === 'full' ? FULL_TABLE_ORDER : CATALOG_TABLE_ORDER
   for (const table of tables) {
+    if (table === 'store_members' && dataset.store_members) {
+      output.store_members = dataset.store_members.map((row) => ({
+        ...row,
+        id: mapId('store_members', row.id),
+        store_id: context.targetStoreId,
+      }))
+      continue
+    }
     if (table === 'store_members') {
       output.store_members = [
         {
           id: nanoid(),
           store_id: context.targetStoreId,
           user_id: context.ownerUserId,
-          role: 'owner',
-          is_owner: true,
+          member_role: 'owner',
           added_by: context.ownerUserId,
           created_at: new Date(),
           updated_at: new Date(),
@@ -1305,15 +1543,22 @@ async function insertRows(
 
   const batches = chunk(rows, INSERT_BATCH_SIZE)
   for (const batch of batches) {
-    const columns = Object.keys(batch[0] ?? {}).filter((column) => tableColumns.has(column))
+    const columns = Object.keys(batch[0] ?? {})
+    const missingColumns = columns.filter((column) => !tableColumns.has(column))
+    if (missingColumns.length)
+      throw new Error(`Target ${table} is missing columns: ${missingColumns.join(', ')}`)
     if (columns.length === 0) {
       throw new Error(
         `No compatible columns found for table "${table}". Target schema may be incompatible.`,
       )
     }
 
-    const rowPlaceholders = batch.map(() => `(${columns.map(() => '?').join(', ')})`).join(', ')
-    const values = batch.flatMap((row) => columns.map((column) => normalizeSqlValue(row[column])))
+    const rowPlaceholders = batch
+      .map(() => `(${columns.map(() => '?').join(', ')})`)
+      .join(', ')
+    const values = batch.flatMap((row) =>
+      columns.map((column) => normalizeSqlValue(row[column])),
+    )
     const query = `
       INSERT INTO \`${table}\`
       (${columns.map((column) => `\`${column}\``).join(', ')})
@@ -1364,10 +1609,55 @@ async function assertOwnerUserExists(
   }
 }
 
+function comparableValue(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString()
+  if (Buffer.isBuffer(value)) return value.toString('hex')
+  if (typeof value === 'boolean') return Number(value)
+  if (Array.isArray(value)) return value.map(comparableValue)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, comparableValue(item)]),
+    )
+  }
+  return value ?? null
+}
+
+export function assertCopiedRows(
+  table: string,
+  expected: SourceRow[],
+  actual: SourceRow[],
+): void {
+  if (actual.length !== expected.length)
+    throw new Error(`Row count mismatch for ${table}`)
+  const byId = new Map(actual.map((row) => [row.id, row]))
+  for (const row of expected) {
+    const copied = byId.get(row.id)
+    if (!copied) throw new Error(`Missing copied row in ${table}`)
+    for (const [column, value] of Object.entries(row)) {
+      if (!isDeepStrictEqual(comparableValue(value), comparableValue(copied[column]))) {
+        throw new Error(`Copied value mismatch in ${table}.${column}`)
+      }
+    }
+  }
+}
+
+export function copySignInIdentity(row: SourceRow): SourceRow {
+  const result = { ...row }
+  for (const key of [
+    'access_token',
+    'refresh_token',
+    'id_token',
+    'access_token_expires_at',
+    'refresh_token_expires_at',
+  ])
+    result[key] = null
+  return result
+}
+
 async function main(): Promise<void> {
   const options = parseArgs(process.argv.slice(2))
 
-  if (!options.sourceStoreId) {
+  if (!options.sourceStoreId && !options.sourceUserEmail) {
     console.error('Missing required argument: --source-store-id')
     printUsage()
     process.exit(1)
@@ -1375,7 +1665,9 @@ async function main(): Promise<void> {
 
   const sourceDbUrl = options.sourceDbUrl ?? process.env.SOURCE_DATABASE_URL
   if (!sourceDbUrl) {
-    console.error('Missing source DB URL. Provide --source-db-url or SOURCE_DATABASE_URL.')
+    console.error(
+      'Missing source DB URL. Provide --source-db-url or SOURCE_DATABASE_URL.',
+    )
     process.exit(1)
   }
 
@@ -1385,11 +1677,80 @@ async function main(): Promise<void> {
     targetDbUrl = env.DATABASE_URL
   }
 
+  if (
+    new URL(targetDbUrl).port === '6053' ||
+    new URL(targetDbUrl).hostname === 'louez_database'
+  ) {
+    throw new Error('Refusing to clone into the known production database')
+  }
   const sourceConnection = await mysql.createConnection(sourceDbUrl)
   const targetConnection = await mysql.createConnection(targetDbUrl)
 
   try {
-    const dataset = await collectDataset(sourceConnection, options.sourceStoreId, options.scope)
+    const [sourceIdentity] = await fetchRows(
+      sourceConnection,
+      'SELECT @@server_uuid AS server, DATABASE() AS db',
+    )
+    const [targetIdentity] = await fetchRows(
+      targetConnection,
+      'SELECT @@server_uuid AS server, DATABASE() AS db',
+    )
+    if (
+      sourceIdentity?.server === targetIdentity?.server &&
+      sourceIdentity?.db === targetIdentity?.db
+    ) {
+      throw new Error('Source and target must be different databases')
+    }
+    await sourceConnection.query('SET SESSION TRANSACTION READ ONLY')
+    await sourceConnection.query('START TRANSACTION WITH CONSISTENT SNAPSHOT')
+    let ownerRows: SourceRow[] = []
+    let accountRows: SourceRow[] = []
+    if (options.sourceUserEmail) {
+      ownerRows = await fetchRows(
+        sourceConnection,
+        'SELECT * FROM users WHERE email = ?',
+        [options.sourceUserEmail],
+      )
+      const owner = ownerRows[0]
+      if (!owner || ownerRows.length !== 1) throw new Error('Source user not found')
+      if (
+        (
+          await fetchRows(
+            targetConnection,
+            'SELECT id FROM users WHERE id = ? OR email = ?',
+            [owner.id, owner.email],
+          )
+        ).length
+      ) {
+        throw new Error(
+          'Target user already exists; refusing to overwrite sign-in credentials',
+        )
+      }
+      if (!options.sourceStoreId) {
+        const ownedStores = await fetchRows(
+          sourceConnection,
+          'SELECT DISTINCT s.id FROM stores s LEFT JOIN store_members m ON m.store_id = s.id WHERE s.user_id = ? OR m.user_id = ?',
+          [owner.id, owner.id],
+        )
+        if (ownedStores.length !== 1)
+          throw new Error(
+            'Specify --source-store-id for a user with zero or multiple stores',
+          )
+        options.sourceStoreId = asId(ownedStores[0]?.id) ?? undefined
+      }
+      accountRows = await fetchRows(
+        sourceConnection,
+        'SELECT * FROM accounts WHERE user_id = ?',
+        [owner.id],
+      )
+      accountRows = accountRows.map(copySignInIdentity)
+    }
+    if (!options.sourceStoreId) throw new Error('Missing source store')
+    const dataset = await collectDataset(
+      sourceConnection,
+      options.sourceStoreId,
+      options.scope,
+    )
     const sourceStore = dataset.stores?.[0]
     if (!sourceStore) {
       throw new Error(`Store "${options.sourceStoreId}" not found in source database.`)
@@ -1403,21 +1764,71 @@ async function main(): Promise<void> {
       throw new Error('Source store has no user_id and --owner-user-id was not provided.')
     }
 
-    const targetStoreId = options.targetStoreId ?? nanoid()
+    if (options.sourceUserEmail) {
+      const selectedUserId = ownerRows[0]?.id
+      const members = await fetchByIds(sourceConnection, 'store_members', 'store_id', [
+        options.sourceStoreId,
+      ])
+      if (
+        sourceOwnerId !== selectedUserId &&
+        !members.some((row) => row.user_id === selectedUserId)
+      ) {
+        throw new Error('Email user is not a member of the selected store')
+      }
+      dataset.store_members = members
+      const teamIds = uniqueIds([
+        sourceOwnerId,
+        ...members.map((row) => asId(row.user_id)),
+      ])
+      const teamUsers = await fetchByIds(sourceConnection, 'users', 'id', teamIds)
+      if (teamUsers.length !== teamIds.length)
+        throw new Error('Source team has missing user profiles')
+      ownerRows = []
+      for (const user of teamUsers) {
+        const existing = await fetchRows(
+          targetConnection,
+          'SELECT id, email FROM users WHERE id = ? OR email = ?',
+          [user.id, user.email],
+        )
+        if (
+          existing.length &&
+          (existing.length !== 1 ||
+            existing[0]?.id !== user.id ||
+            existing[0]?.email !== user.email)
+        ) {
+          throw new Error('A team identity conflicts with an existing target user')
+        }
+        if (!existing.length) ownerRows.push(user)
+      }
+    }
+    const targetStoreId =
+      options.targetStoreId ?? (options.preserveIds ? options.sourceStoreId : nanoid())
     const targetStoreSlug = normalizeSlug(
-      options.targetStoreSlug ?? buildDefaultTargetSlug(sourceStoreSlug, targetStoreId),
+      options.targetStoreSlug ??
+        (options.preserveIds
+          ? sourceStoreSlug
+          : buildDefaultTargetSlug(sourceStoreSlug, targetStoreId)),
     )
-    const targetStoreName = options.targetStoreName ?? `${sourceStoreName} (Dev Clone)`
+    const targetStoreName =
+      options.targetStoreName ??
+      (options.preserveIds ? sourceStoreName : `${sourceStoreName} (Dev Clone)`)
     const ownerUserId = options.ownerUserId ?? sourceOwnerId ?? ''
 
     if (targetStoreSlug.length > 100) {
-      throw new Error('Target slug exceeds 100 chars. Provide a shorter --target-store-slug.')
+      throw new Error(
+        'Target slug exceeds 100 chars. Provide a shorter --target-store-slug.',
+      )
     }
 
-    await assertOwnerUserExists(targetConnection, ownerUserId)
+    if (!ownerRows.length) await assertOwnerUserExists(targetConnection, ownerUserId)
     await assertTargetStoreAvailable(targetConnection, targetStoreId, targetStoreSlug)
 
-    const idMaps = registerIdMap(dataset, options.sourceStoreId, targetStoreId)
+    const idMaps = registerIdMap(
+      dataset,
+      options.sourceStoreId,
+      targetStoreId,
+      options.preserveIds,
+    )
     const transformed = transformDataset(dataset, {
       scope: options.scope,
       sourceStoreId: options.sourceStoreId,
@@ -1428,7 +1839,15 @@ async function main(): Promise<void> {
       idMaps,
     })
 
-    const tables = options.scope === 'full' ? FULL_TABLE_ORDER : CATALOG_TABLE_ORDER
+    transformed.rows.users = ownerRows
+    transformed.rows.accounts = accountRows
+    dataset.users = ownerRows
+    dataset.accounts = accountRows
+    const tables: CloneTable[] = [
+      'users',
+      'accounts',
+      ...(options.scope === 'full' ? FULL_TABLE_ORDER : CATALOG_TABLE_ORDER),
+    ]
     const summary = tables.map((table) => ({
       table,
       sourceRows: dataset[table]?.length ?? (table === 'store_members' ? 1 : 0),
@@ -1436,32 +1855,95 @@ async function main(): Promise<void> {
       skippedRows: transformed.skippedByTable[table] ?? 0,
     }))
 
-    console.log(`[store-clone] mode=${options.apply ? 'apply' : 'dry-run'} scope=${options.scope}`)
+    console.log(
+      `[store-clone] mode=${options.apply ? 'apply' : 'dry-run'} scope=${options.scope}`,
+    )
     console.log(
       `[store-clone] sourceStore=${options.sourceStoreId} targetStore=${targetStoreId} owner=${ownerUserId}`,
     )
-    console.log(`[store-clone] targetSlug=${targetStoreSlug} targetName="${targetStoreName}"`)
+    console.log(
+      `[store-clone] targetSlug=${targetStoreSlug} targetName="${targetStoreName}"`,
+    )
     console.table(summary)
 
     if (transformed.skippedDetails.length > 0) {
-      console.warn('[store-clone] some rows were skipped due to missing references')
+      console.warn('[store-clone] unresolved references prevent applying this clone')
       for (const detail of transformed.skippedDetails) {
         console.warn(`  - ${detail}`)
       }
     }
 
+    if (transformed.skippedDetails.length)
+      throw new Error('Clone would skip rows; repair references before applying')
+    const tableColumnsCache = new Map<CloneTable, Set<string>>()
+    for (const table of tables) {
+      const rows = transformed.rows[table] ?? []
+      if (!rows.length) continue
+      const columns = await fetchRows(
+        targetConnection,
+        'SELECT COLUMN_NAME AS name, IS_NULLABLE AS nullable, COLUMN_DEFAULT AS defaultValue, EXTRA AS extra FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ?',
+        [table],
+      )
+      const columnNames = new Set(columns.map((row) => String(row.name)))
+      tableColumnsCache.set(table, columnNames)
+      for (const row of rows) {
+        for (const column of Object.keys(row)) {
+          if (!columnNames.has(column))
+            throw new Error(`Target schema lacks ${table}.${column}`)
+        }
+        for (const column of columns) {
+          if (
+            column.nullable === 'NO' &&
+            column.defaultValue == null &&
+            !String(column.extra).includes('auto_increment') &&
+            row[String(column.name)] == null
+          ) {
+            throw new Error(`Missing required value for ${table}.${String(column.name)}`)
+          }
+        }
+      }
+      const [engine] = await fetchRows(
+        targetConnection,
+        'SELECT ENGINE AS engine FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?',
+        [table],
+      )
+      if (engine?.engine !== 'InnoDB')
+        throw new Error(`Target ${table} must support transactional rollback`)
+
+      const ids = uniqueIds(rows.map((row) => asId(row.id)))
+      if ((await fetchByIds(targetConnection, table, 'id', ids)).length)
+        throw new Error(`Target ${table} contains colliding IDs`)
+    }
+
     if (!options.apply) {
       console.log('[store-clone] dry-run complete (no data written)')
-      process.exit(0)
+      return
     }
 
     await targetConnection.beginTransaction()
     try {
-      const tableColumnsCache = new Map<CloneTable, Set<string>>()
       for (const table of tables) {
-        await insertRows(targetConnection, table, transformed.rows[table] ?? [], tableColumnsCache)
+        await insertRows(
+          targetConnection,
+          table,
+          transformed.rows[table] ?? [],
+          tableColumnsCache,
+        )
+      }
+      let verifiedRows = 0
+      for (const table of tables) {
+        const rows = transformed.rows[table] ?? []
+        const copied = await fetchByIds(
+          targetConnection,
+          table,
+          'id',
+          uniqueIds(rows.map((row) => asId(row.id))),
+        )
+        assertCopiedRows(table, rows, copied)
+        verifiedRows += rows.length
       }
       await targetConnection.commit()
+      console.log(`[store-clone] verified ${verifiedRows} rows before commit`)
     } catch (error) {
       await targetConnection.rollback()
       throw error
@@ -1471,15 +1953,20 @@ async function main(): Promise<void> {
     console.log(
       `[store-clone] newStoreId=${targetStoreId} newSlug=${targetStoreSlug} scope=${options.scope}`,
     )
-    process.exit(0)
   } finally {
     await sourceConnection.end()
     await targetConnection.end()
   }
 }
 
-main().catch((error) => {
-  console.error('[store-clone] failed')
-  console.error(error)
-  process.exit(1)
-})
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error: unknown) => {
+    const code =
+      error && typeof error === 'object' && 'code' in error ? String(error.code) : null
+    console.error(
+      '[store-clone] failed:',
+      code ?? (error instanceof Error ? error.message : 'Unknown error'),
+    )
+    process.exitCode = 1
+  })
+}
