@@ -4,6 +4,7 @@ import { cn } from "@louez/utils";
 
 import { AdvisorWidget } from "@/components/storefront/advisor/advisor-widget";
 import { CartDrawer } from "@/components/storefront/cart/cart-drawer";
+import { AnnouncementBar } from "@/components/storefront/shell/announcement-bar";
 import type { StorefrontShellVariant } from "@/components/storefront/shell/storefront-providers";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
@@ -13,6 +14,7 @@ import {
   getStoreThemeClassName,
   type StoreThemeInput,
 } from "@/lib/theme/util.store-theme";
+import { resolveStoreAnnouncement } from "@/lib/utils/util.store-announcement";
 import { getStorePeriodRules } from "@/lib/utils/util.store-period-rules";
 
 interface StorefrontShellProps {
@@ -66,6 +68,10 @@ export const StorefrontShell = ({
   const isMarketplace = variant === "marketplace";
   const logoUrl = isDark && store.darkLogoUrl ? store.darkLogoUrl : store.logoUrl;
   const periodRules = getStorePeriodRules(store.settings);
+  const announcement = resolveStoreAnnouncement(store.theme);
+  const headerPhone = store.theme?.headerPhone ? store.phone : null;
+  // The store's own site, when the storefront is its booking module; the marketplace shell has no "back".
+  const websiteUrl = isMarketplace ? null : store.settings?.social?.website?.trim() || null;
 
   return (
     <div
@@ -75,9 +81,12 @@ export const StorefrontShell = ({
       )}
     >
       {themeHead}
+      {announcement ? <AnnouncementBar announcement={announcement} /> : null}
       <StoreHeader
         storeName={store.name}
         logoUrl={logoUrl}
+        phone={headerPhone}
+        websiteUrl={websiteUrl}
         customerInitials={customerInitials}
         customerIdentity={customerIdentity}
         homeHref={isMarketplace ? "/?channel=marketplace" : "/"}
@@ -91,6 +100,8 @@ export const StorefrontShell = ({
         email={store.email}
         phone={store.phone}
         address={store.address}
+        social={store.settings?.social}
+        footerNote={store.settings?.footerNote}
         showAccount={!isMarketplace}
       />
       <CartDrawer />

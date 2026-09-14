@@ -43,13 +43,17 @@ export const generateMetadata = async ({ params }: StorefrontLayoutParams): Prom
         latitude: store.latitude,
         longitude: store.longitude,
         logoUrl: store.logoUrl,
+        tagline: store.tagline,
+        faviconUrl: store.faviconUrl,
         settings: store.settings,
         theme: store.theme,
       },
       {
-        description: store.description
-          ? stripHtml(store.description)
-          : t("description", { store: store.name }),
+        description:
+          stripHtml(store.tagline || "") ||
+          (store.description
+            ? stripHtml(store.description)
+            : t("description", { store: store.name })),
         locale,
       },
     ),

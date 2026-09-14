@@ -561,6 +561,20 @@
       "when": 1789369647923,
       "tag": "0074_product_category_slugs",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "5",
+      "when": 1789372215449,
+      "tag": "0075_store_favicon_tagline",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "5",
+      "when": 1789380712502,
+      "tag": "0076_store_tagline_text",
+      "breakpoints": true
     }
   ]
 }

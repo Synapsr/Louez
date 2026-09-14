@@ -2,25 +2,21 @@ import type { StoreSettings } from "@louez/types";
 
 import { getTimezoneForCountry } from "@/lib/utils/countries";
 
-export interface StoreSettingsInput {
-  name: string;
-  description?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
+export interface CompanySettingsInput {
   country: string;
   currency: string;
-  latitude?: number | null;
-  longitude?: number | null;
   billingAddressSameAsStore: boolean;
   billingAddress?: string;
   billingCity?: string;
   billingPostalCode?: string;
   billingCountry?: string;
+}
+
+export interface ReservationRulesInput {
   reservationMode: "payment" | "request";
   pendingBlocksAvailability: boolean;
-  automaticExtensions?: boolean;
-  maxExtensionDays?: number | null;
+  automaticExtensions: boolean;
+  maxExtensionDays: number | null;
   onlinePaymentDepositPercentage: number;
   minRentalMinutes: number;
   maxRentalMinutes: number | null;
@@ -29,6 +25,7 @@ export interface StoreSettingsInput {
   requireCustomerAddress: boolean;
 }
 
+/** The required keys, for a store that was created before it had any settings. */
 const DEFAULT_STORE_SETTINGS = {
   reservationMode: "payment",
   minRentalMinutes: 60,
@@ -37,35 +34,50 @@ const DEFAULT_STORE_SETTINGS = {
   turnoverBufferMinutes: 0,
 } satisfies StoreSettings;
 
-export function buildStoreSettingsUpdate(
+/**
+ * Country, timezone, currency and billing address from the company page.
+ * Every other settings key is carried over untouched.
+ */
+export function buildCompanySettingsUpdate(
   currentSettings: StoreSettings | null | undefined,
-  data: StoreSettingsInput,
+  input: CompanySettingsInput,
 ): StoreSettings {
   return {
     ...DEFAULT_STORE_SETTINGS,
     ...currentSettings,
-    reservationMode: data.reservationMode,
-    pendingBlocksAvailability: data.pendingBlocksAvailability,
-    automaticExtensions: data.automaticExtensions ?? currentSettings?.automaticExtensions ?? true,
-    maxExtensionDays:
-      data.maxExtensionDays === undefined
-        ? currentSettings?.maxExtensionDays
-        : data.maxExtensionDays,
-    onlinePaymentDepositPercentage: data.onlinePaymentDepositPercentage,
-    minRentalMinutes: data.minRentalMinutes,
-    maxRentalMinutes: data.maxRentalMinutes,
-    advanceNoticeMinutes: data.advanceNoticeMinutes,
-    turnoverBufferMinutes: data.turnoverBufferMinutes,
-    requireCustomerAddress: data.requireCustomerAddress,
-    country: data.country,
-    timezone: getTimezoneForCountry(data.country),
-    currency: data.currency,
+    country: input.country,
+    timezone: getTimezoneForCountry(input.country),
+    currency: input.currency,
     billingAddress: {
-      useSameAsStore: data.billingAddressSameAsStore,
-      address: data.billingAddressSameAsStore ? undefined : data.billingAddress,
-      city: data.billingAddressSameAsStore ? undefined : data.billingCity,
-      postalCode: data.billingAddressSameAsStore ? undefined : data.billingPostalCode,
-      country: data.billingAddressSameAsStore ? undefined : data.billingCountry,
+      useSameAsStore: input.billingAddressSameAsStore,
+      address: input.billingAddressSameAsStore ? undefined : input.billingAddress,
+      city: input.billingAddressSameAsStore ? undefined : input.billingCity,
+      postalCode: input.billingAddressSameAsStore ? undefined : input.billingPostalCode,
+      country: input.billingAddressSameAsStore ? undefined : input.billingCountry,
     },
+  };
+}
+
+/**
+ * The booking rules from the reservations page. Every other settings key
+ * (company, delivery, tax, storefront content...) is carried over untouched.
+ */
+export function buildReservationRulesUpdate(
+  currentSettings: StoreSettings | null | undefined,
+  input: ReservationRulesInput,
+): StoreSettings {
+  return {
+    ...DEFAULT_STORE_SETTINGS,
+    ...currentSettings,
+    reservationMode: input.reservationMode,
+    pendingBlocksAvailability: input.pendingBlocksAvailability,
+    automaticExtensions: input.automaticExtensions,
+    maxExtensionDays: input.maxExtensionDays,
+    onlinePaymentDepositPercentage: input.onlinePaymentDepositPercentage,
+    minRentalMinutes: input.minRentalMinutes,
+    maxRentalMinutes: input.maxRentalMinutes,
+    advanceNoticeMinutes: input.advanceNoticeMinutes,
+    turnoverBufferMinutes: input.turnoverBufferMinutes,
+    requireCustomerAddress: input.requireCustomerAddress,
   };
 }

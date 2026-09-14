@@ -11,7 +11,12 @@ import {
   productCategories,
   products,
 } from "@louez/db";
-import type { ReviewBoosterSettings, StoreSettings, StoreTheme } from "@louez/types";
+import type {
+  ReviewBoosterSettings,
+  StoreHomeSections,
+  StoreSettings,
+  StoreTheme,
+} from "@louez/types";
 import type { StockQuantityLimit } from "@louez/utils";
 
 import type { CategoryBrowseEntry } from "@/components/storefront/category-browse-grid";
@@ -24,6 +29,8 @@ import {
   buildCategoryBrowseEntries,
   type CategoryBrowseLabels,
 } from "@/lib/utils/util.category-browse-entries";
+import { resolveStoreHomeSections } from "@/lib/utils/util.store-home-sections";
+import { hasRichTextContent } from "@/lib/util.rich-text";
 import { getStoreReassurance, type StoreReassuranceKey } from "@/lib/utils/util.store-reassurance";
 import { getStoreStatus, type StoreStatus } from "@/lib/utils/util.store-status";
 
@@ -58,12 +65,16 @@ export interface HomePageData {
   settings: StoreSettings;
   theme: StoreTheme;
   heroImages: string[];
+  /** One-line pitch under the hero title; the description takes its place when null. */
+  tagline: string | null;
   /** Editor HTML from the dashboard, rendered as written under the hero title. */
   description: string | null;
   status: StoreStatus | null;
   inventory: HomeInventory;
   reassurance: StoreReassuranceKey[];
   place: HomePlaceSummary;
+  /** The optional home blocks the store left on. */
+  sections: StoreHomeSections;
 }
 
 const toNumber = (value: unknown): number | null => {
@@ -276,6 +287,7 @@ export const loadHomePage = async (
     settings,
     theme,
     heroImages: theme.heroImages ?? [],
+    tagline: hasRichTextContent(store.tagline) ? store.tagline : null,
     description: store.description,
     status: getStoreStatus(settings.businessHours, settings.timezone),
     inventory,
@@ -285,5 +297,6 @@ export const loadHomePage = async (
       stripeChargesEnabled: store.stripeChargesEnabled,
     }),
     place,
+    sections: resolveStoreHomeSections(theme),
   };
 };

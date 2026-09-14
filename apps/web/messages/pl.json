@@ -690,7 +690,147 @@
         "totalSpent": "Łącznie wydane"
       }
     },
+    "onlineStore": {
+      "title": "Sklep internetowy",
+      "description": "Tożsamość, strona główna, kontakt, strony prawne i wyszukiwarki Twojej strony",
+      "backToDashboard": "Panel",
+      "preview": "Podgląd",
+      "viewStore": "Zobacz sklep",
+      "saved": "Sklep internetowy zaktualizowany",
+      "leaveConfirm": "Masz niezapisane zmiany. Wyjść bez zapisywania?",
+      "railLabel": "Sekcje sklepu internetowego",
+      "resizePanel": "Szerokość panelu",
+      "device": {
+        "label": "Format podglądu",
+        "desktop": "Komputer",
+        "phone": "Telefon"
+      },
+      "sections": {
+        "identity": {
+          "label": "Tożsamość",
+          "description": "Nazwa, slogan, logo, kolor i język"
+        },
+        "home": {
+          "label": "Strona główna",
+          "description": "Nagłówek, pasek ogłoszeń, katalog i sekcje"
+        },
+        "contact": {
+          "label": "Kontakt",
+          "description": "Dane kontaktowe, strona kontaktowa i media społecznościowe"
+        },
+        "legal": {
+          "label": "Strony prawne",
+          "description": "Regulamin, informacje prawne i stopka"
+        },
+        "seo": {
+          "label": "Wyszukiwarki",
+          "description": "Obraz udostępniania i Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Nazwa i prezentacja",
+          "description": "To, co Twoi klienci czytają jako pierwsze, na stronie i w wynikach wyszukiwania."
+        },
+        "nameDescription": "Wyświetlana Twoim klientom na stronie, w e-mailach i na umowach.",
+        "tagline": {
+          "label": "Slogan",
+          "description": "Jedno zdanie pod nazwą, na górze strony głównej. Maksymalnie {max} znaków.",
+          "placeholder": "Wypożyczalnia rowerów i desek SUP w Carnac od 2012 roku"
+        },
+        "descriptionHint": "Tekst strony O nas. Bez sloganu wyświetla się też na górze strony głównej.",
+        "logos": {
+          "description": "Logo w nagłówku, ikona na karcie przeglądarki."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "Ikona na karcie przeglądarki i na ekranie głównym telefonu. Bez favicony używane jest logo.",
+          "hint": "Obraz kwadratowy, zalecane 512 × 512 px. PNG lub JPG."
+        },
+        "website": {
+          "label": "Strona internetowa",
+          "description": "Jeśli sklep internetowy uzupełnia istniejącą stronę, podaj ją: klienci zobaczą przycisk powrotu na stronę, a jej adres pojawi się w stopce.",
+          "placeholder": "https://www.twoja-strona.pl"
+        },
+        "language": {
+          "title": "Język i adres",
+          "description": "Domyślny język strony i jej publiczny adres."
+        }
+      },
+      "home": {
+        "header": "Nagłówek",
+        "photos": "Zdjęcia",
+        "announcement": {
+          "title": "Pasek ogłoszeń",
+          "description": "Jedna linia nad nagłówkiem, na wszystkich stronach.",
+          "enabled": "Pokaż pasek",
+          "enabledDescription": "Zamknięcie, kod promocyjny, wydarzenie.",
+          "text": "Tekst",
+          "textPlaceholder": "Nieczynne od 1 do 15 sierpnia, do zobaczenia!",
+          "href": "Link",
+          "hrefDescription": "Opcjonalnie. Pasek staje się klikalny."
+        },
+        "sections": {
+          "title": "Sekcje strony",
+          "description": "Opcjonalne bloki strony głównej, po katalogu.",
+          "reassurance": "Linia zaufania",
+          "reassuranceDescription": "Potwierdzenie, bezpieczna płatność, odbiór lub dostawa, pod wyszukiwarką.",
+          "reviews": "Opinie Google",
+          "reviewsDescription": "Ocena w nagłówku i sekcja opinii, gdy Booster opinii jest skonfigurowany.",
+          "map": "Adres i mapa",
+          "mapDescription": "Gdzie odebrać sprzęt, wraz z Twoimi danymi kontaktowymi."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Dane kontaktowe",
+          "description": "Wyświetlane w stopce, na stronie kontaktowej i na mapie."
+        },
+        "headerPhone": {
+          "label": "Przycisk połączenia w nagłówku",
+          "description": "Przycisk telefonu obok koszyka, na wszystkich stronach.",
+          "empty": "Podaj numer telefonu powyżej, aby włączyć ten przycisk."
+        },
+        "hours": {
+          "description": "Godziny otwarcia ustawia się w Ustawieniach; sterują one również dostępnością.",
+          "link": "Edytuj godziny otwarcia"
+        },
+        "missingPhone": "Bez numeru telefonu powyżej połączenie i SMS pozostają ukryte.",
+        "missingEmail": "Bez adresu e-mail powyżej e-mail i formularz pozostają ukryte.",
+        "missingBoth": "Podaj numer telefonu i adres e-mail powyżej, aby udostępnić te formy kontaktu.",
+        "social": {
+          "title": "Media społecznościowe",
+          "description": "Ikony w stopce. Wklej pełny adres każdego profilu.",
+          "website": "Inna strona internetowa"
+        }
+      },
+      "legal": {
+        "texts": "Teksty prawne",
+        "footerNote": {
+          "label": "Notka w stopce",
+          "description": "Dowolny tekst na dole wszystkich stron: numer rejestrowy, zezwolenie, przynależność.",
+          "placeholder": "Nr rejestrowy 123 456 789 · Członek sieci …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Gdzie znajdę ten kod?",
+        "shareImage": {
+          "title": "Obraz udostępniania",
+          "description": "Obraz wyświetlany, gdy link do Twojego sklepu jest udostępniany w serwisach WhatsApp, Facebook lub LinkedIn.",
+          "label": "Obraz",
+          "fallback": "Bez dedykowanego obrazu używane jest pierwsze zdjęcie z nagłówka.",
+          "hint": "Zalecane 1200 × 630 px. JPG lub PNG, maks. 5 MB."
+        }
+      },
+      "sketch": {
+        "empty": "Na razie brak treści",
+        "googleResult": "Wynik Google",
+        "shareCard": "Podgląd udostępnienia",
+        "noShareImage": "Brak obrazu"
+      }
+    },
     "navigation": {
+      "onlineStore": "Sklep internetowy",
       "aiAssistant": "Asystent AI",
       "aiConversations": "Rozmowy z klientami",
       "aiAdvisor": "Doradca online",
@@ -3164,6 +3304,15 @@
     "settings": {
       "title": "Ustawienia",
       "store": "Sklep",
+      "company": "Firma",
+      "companySettings": {
+        "description": "Kraj, waluta i adres rozliczeniowy Twojej firmy",
+        "localization": {
+          "title": "Kraj i waluta",
+          "description": "Kraj ustala strefę czasową sklepu, a waluta dotyczy wszystkich cen."
+        }
+      },
+      "reservationRules": "Zasady rezerwacji",
       "appearance": "Wygląd",
       "reservations": "Rezerwacje",
       "emails": "Emaile",
@@ -4576,7 +4725,7 @@
         "modeIncludedDescription": "Dostawa jest obowiązkowa i bezpłatna",
         "noCoordinatesWarning": "Musisz ustawić adres sklepu z lokalizacją na mapie, aby włączyć dostawę.",
         "noCoordinatesError": "Najpierw skonfiguruj adres sklepu z lokalizacją GPS.",
-        "goToStoreSettings": "Ustawienia sklepu",
+        "goToStoreSettings": "Podaj adres",
         "customerAddressNoteOptional": "Gdy dostawa jest włączona, klienci mogą wybrać między odbiorem a dostawą.",
         "customerAddressNoteRequired": "Klienci muszą podać adres dostawy.",
         "pricingSection": "Cennik",
@@ -5764,6 +5913,7 @@
       "settingsInvoicing": "Faktury elektroniczne",
       "settingsLegal": "Strony prawne",
       "settingsNotifications": "Powiadomienia",
+      "settingsReservations": "Zasady rezerwacji",
       "settingsPayments": "Płatności",
       "settingsPromoCodes": "Kody promocyjne",
       "settingsReviewBooster": "Wzmacniacz opinii",
@@ -5985,6 +6135,8 @@
       "browseCatalog": "Zobacz katalog"
     },
     "header": {
+      "call": "Zadzwoń",
+      "backToWebsite": "Wróć na stronę",
       "home": "Strona główna",
       "catalog": "Katalog",
       "cart": "Koszyk",

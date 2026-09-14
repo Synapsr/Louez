@@ -690,7 +690,147 @@
         "totalSpent": "Total spent"
       }
     },
+    "onlineStore": {
+      "title": "Online store",
+      "description": "Identity, home page, contact, legal pages and search settings of your site",
+      "backToDashboard": "Dashboard",
+      "preview": "Preview",
+      "viewStore": "View store",
+      "saved": "Online store updated",
+      "leaveConfirm": "You have unsaved changes. Leave without saving?",
+      "railLabel": "Online store sections",
+      "resizePanel": "Panel width",
+      "device": {
+        "label": "Preview format",
+        "desktop": "Desktop",
+        "phone": "Phone"
+      },
+      "sections": {
+        "identity": {
+          "label": "Identity",
+          "description": "Name, tagline, logo, colour and language"
+        },
+        "home": {
+          "label": "Home page",
+          "description": "Header, announcement, catalog and sections"
+        },
+        "contact": {
+          "label": "Contact",
+          "description": "Details, contact page and social links"
+        },
+        "legal": {
+          "label": "Legal pages",
+          "description": "Terms, legal notice and footer"
+        },
+        "seo": {
+          "label": "Search",
+          "description": "Share image and Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Name and presentation",
+          "description": "What your customers read first, on the site and in search results."
+        },
+        "nameDescription": "Shown to your customers on the site, in emails and on contracts.",
+        "tagline": {
+          "label": "Tagline",
+          "description": "One line under the name, at the top of the home page. {max} characters at most.",
+          "placeholder": "Bike and paddle rental in Carnac since 2012"
+        },
+        "descriptionHint": "The text of the About page. Without a tagline, it also shows at the top of the home page.",
+        "logos": {
+          "description": "The logo in the header, the icon in the browser tab."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "The icon of the browser tab and of the phone home screen. Without a favicon, the logo is used.",
+          "hint": "Square image, 512 × 512 px recommended. PNG or JPG."
+        },
+        "website": {
+          "label": "Website",
+          "description": "If this online store complements an existing website, add it: your customers get a button to go back to it, and the site shows in the footer.",
+          "placeholder": "https://www.your-site.com"
+        },
+        "language": {
+          "title": "Language and address",
+          "description": "The site's default language and its public address."
+        }
+      },
+      "home": {
+        "header": "Header",
+        "photos": "Photos",
+        "announcement": {
+          "title": "Announcement bar",
+          "description": "One line above the header, on every page.",
+          "enabled": "Show the bar",
+          "enabledDescription": "A closure, a promo code, an event.",
+          "text": "Text",
+          "textPlaceholder": "Closed from 1 to 15 August, see you soon!",
+          "href": "Link",
+          "hrefDescription": "Optional. The bar becomes clickable."
+        },
+        "sections": {
+          "title": "Page sections",
+          "description": "The optional blocks of the home page, after the catalog.",
+          "reassurance": "Reassurance line",
+          "reassuranceDescription": "Confirmation, secure payment, pickup or delivery, under the search.",
+          "reviews": "Google reviews",
+          "reviewsDescription": "The rating in the header and the reviews section, once the Review booster is set up.",
+          "map": "Address and map",
+          "mapDescription": "Where to pick up the equipment, with your contact channels."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Contact details",
+          "description": "Shown in the footer, on the contact page and on the map."
+        },
+        "headerPhone": {
+          "label": "Call button in the header",
+          "description": "A phone button beside the cart, on every page.",
+          "empty": "Enter a phone number above to enable this button."
+        },
+        "hours": {
+          "description": "Opening hours are set in Settings; they also drive availability.",
+          "link": "Edit opening hours"
+        },
+        "missingPhone": "Without a phone number above, the call and SMS options stay hidden.",
+        "missingEmail": "Without an email above, the email and form options stay hidden.",
+        "missingBoth": "Enter a phone number and an email above to offer these contact options.",
+        "social": {
+          "title": "Social links",
+          "description": "Icons in the footer. Paste the full address of each profile.",
+          "website": "Other website"
+        }
+      },
+      "legal": {
+        "texts": "Legal texts",
+        "footerNote": {
+          "label": "Footer note",
+          "description": "Free text at the bottom of every page: registration number, accreditation, affiliation.",
+          "placeholder": "Company no. 123 456 789 · Member of …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Where do I find this code?",
+        "shareImage": {
+          "title": "Share image",
+          "description": "The image shown when a link to your store is shared on WhatsApp, Facebook or LinkedIn.",
+          "label": "Image",
+          "fallback": "Without a dedicated image, the first header photo is used.",
+          "hint": "1200 × 630 px recommended. JPG or PNG, 5 MB max."
+        }
+      },
+      "sketch": {
+        "empty": "Nothing here yet",
+        "googleResult": "Google result",
+        "shareCard": "Share preview",
+        "noShareImage": "No image"
+      }
+    },
     "navigation": {
+      "onlineStore": "Online store",
       "aiAssistant": "AI Assistant",
       "aiConversations": "Customer conversations",
       "aiAdvisor": "Online advisor",
@@ -3164,6 +3304,15 @@
     "settings": {
       "title": "Settings",
       "store": "Store",
+      "company": "Company",
+      "companySettings": {
+        "description": "Country, currency and billing address of your business",
+        "localization": {
+          "title": "Country and currency",
+          "description": "The country sets the store's time zone; the currency applies to every price."
+        }
+      },
+      "reservationRules": "Booking rules",
       "appearance": "Appearance",
       "reservations": "Reservations",
       "emails": "Emails",
@@ -4713,7 +4862,7 @@
         "modeIncludedDescription": "Delivery is mandatory and free",
         "noCoordinatesWarning": "You must set your store address with map location to enable delivery.",
         "noCoordinatesError": "Please first configure your store address with GPS location.",
-        "goToStoreSettings": "Store settings",
+        "goToStoreSettings": "Enter the address",
         "customerAddressNoteOptional": "When delivery is enabled, customers can choose between pickup and delivery.",
         "customerAddressNoteRequired": "Customers must provide a delivery address.",
         "pricingSection": "Pricing",
@@ -5764,6 +5913,7 @@
       "settingsInvoicing": "Electronic invoicing",
       "settingsLegal": "Legal pages",
       "settingsNotifications": "Notifications",
+      "settingsReservations": "Booking rules",
       "settingsPayments": "Payments",
       "settingsPromoCodes": "Promo codes",
       "settingsReviewBooster": "Review booster",
@@ -5985,6 +6135,8 @@
       "browseCatalog": "Browse the catalogue"
     },
     "header": {
+      "call": "Call",
+      "backToWebsite": "Back to the website",
       "home": "Home",
       "catalog": "Catalog",
       "cart": "Cart",

@@ -33,6 +33,8 @@ export type StoreWithFullData = {
   longitude: string | null
   logoUrl: string | null
   darkLogoUrl: string | null
+  faviconUrl: string | null
+  tagline: string | null
   settings: StoreSettings | null
   theme: StoreTheme | null
   cgv: string | null

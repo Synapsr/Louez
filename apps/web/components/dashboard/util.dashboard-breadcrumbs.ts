@@ -53,10 +53,6 @@ const staticBreadcrumbRoutes = [
     translationKey: "settingsAdmin",
   },
   {
-    href: "/dashboard/settings/appearance",
-    translationKey: "settingsAppearance",
-  },
-  {
     href: "/dashboard/settings/delivery",
     translationKey: "settingsDelivery",
   },
@@ -81,10 +77,6 @@ const staticBreadcrumbRoutes = [
     translationKey: "settingsInvoicing",
   },
   {
-    href: "/dashboard/settings/legal",
-    translationKey: "settingsLegal",
-  },
-  {
     href: "/dashboard/settings/notifications",
     translationKey: "settingsNotifications",
   },
@@ -99,6 +91,10 @@ const staticBreadcrumbRoutes = [
   {
     href: "/dashboard/settings/referrals",
     translationKey: "referrals",
+  },
+  {
+    href: "/dashboard/settings/reservations",
+    translationKey: "settingsReservations",
   },
   {
     href: "/dashboard/settings/review-booster",

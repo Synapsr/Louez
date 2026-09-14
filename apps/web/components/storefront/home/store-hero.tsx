@@ -12,6 +12,8 @@ import type {
 
 interface StoreHeroProps {
   name: string;
+  /** One-line pitch under the name; takes the place of the description when set. */
+  tagline?: string | null;
   /** The store description as written in the dashboard, editor HTML. */
   description: string | null;
   /** Background or framed photos, depending on the shape. */
@@ -90,6 +92,7 @@ const DESCRIPTION_ON_PHOTO_CLASS_NAME =
  */
 export const StoreHero = ({
   name,
+  tagline,
   description,
   backgroundImages = [],
   shape,
@@ -106,6 +109,16 @@ export const StoreHero = ({
     >
       {name}
     </h1>
+  );
+  const cover = shape === "cover";
+  // The tagline is editor HTML too (inline marks only) and reads like the
+  // description's first paragraph: same measure, same tones.
+  const lead = (
+    <RichText
+      html={tagline || description}
+      size="lg"
+      className={cn(DESCRIPTION_CLASS_NAME, cover && DESCRIPTION_ON_PHOTO_CLASS_NAME)}
+    />
   );
 
   if (shape === "split") {
@@ -133,7 +146,7 @@ export const StoreHero = ({
           <div className="flex max-w-2xl flex-col gap-4">
             {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
             {heading}
-            <RichText html={description} size="lg" className={DESCRIPTION_CLASS_NAME} />
+            {lead}
             {children ? <div className="mt-2 flex w-full">{children}</div> : null}
             {footer}
           </div>
@@ -141,8 +154,6 @@ export const StoreHero = ({
       </section>
     );
   }
-
-  const cover = shape === "cover";
 
   return (
     <section
@@ -178,11 +189,7 @@ export const StoreHero = ({
         <div className={cn("flex max-w-3xl flex-col gap-3", ALIGN_ITEMS[align])}>
           {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
           {heading}
-          <RichText
-            html={description}
-            size="lg"
-            className={cn(DESCRIPTION_CLASS_NAME, cover && DESCRIPTION_ON_PHOTO_CLASS_NAME)}
-          />
+          {lead}
         </div>
 
         {children ? (

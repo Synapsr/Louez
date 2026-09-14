@@ -690,7 +690,147 @@
         "totalSpent": "Total gastado"
       }
     },
+    "onlineStore": {
+      "title": "Tienda online",
+      "description": "Identidad, página de inicio, contacto, páginas legales y buscadores de su sitio",
+      "backToDashboard": "Panel de control",
+      "preview": "Vista previa",
+      "viewStore": "Ver la tienda",
+      "saved": "Tienda online actualizada",
+      "leaveConfirm": "Tiene cambios sin guardar. ¿Salir sin guardar?",
+      "railLabel": "Secciones de la tienda online",
+      "resizePanel": "Ancho del panel",
+      "device": {
+        "label": "Formato de la vista previa",
+        "desktop": "Ordenador",
+        "phone": "Móvil"
+      },
+      "sections": {
+        "identity": {
+          "label": "Identidad",
+          "description": "Nombre, eslogan, logo, color e idioma"
+        },
+        "home": {
+          "label": "Inicio",
+          "description": "Encabezado, barra de anuncios, catálogo y secciones"
+        },
+        "contact": {
+          "label": "Contacto",
+          "description": "Datos de contacto, página de contacto y redes sociales"
+        },
+        "legal": {
+          "label": "Páginas legales",
+          "description": "Términos de servicio, aviso legal y pie de página"
+        },
+        "seo": {
+          "label": "Buscadores",
+          "description": "Imagen para compartir y Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Nombre y presentación",
+          "description": "Lo primero que leen sus clientes, en el sitio y en los resultados de búsqueda."
+        },
+        "nameDescription": "Se muestra a sus clientes en el sitio, en los emails y en los contratos.",
+        "tagline": {
+          "label": "Eslogan",
+          "description": "Una frase bajo el nombre, en la parte superior de la página de inicio. {max} caracteres como máximo.",
+          "placeholder": "Alquiler de bicicletas y paddle surf en Carnac desde 2012"
+        },
+        "descriptionHint": "El texto de la página Acerca de. Sin eslogan, también se muestra en la parte superior del inicio.",
+        "logos": {
+          "description": "El logo en el encabezado, el icono en la pestaña del navegador."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "El icono de la pestaña y de la pantalla de inicio del móvil. Sin favicon, se usa el logo.",
+          "hint": "Imagen cuadrada, 512 × 512 px recomendado. PNG o JPG."
+        },
+        "website": {
+          "label": "Sitio web",
+          "description": "Si esta tienda online complementa un sitio web existente, indíquelo: sus clientes tendrán un botón para volver a él y el sitio aparece en el pie de página.",
+          "placeholder": "https://www.su-sitio.es"
+        },
+        "language": {
+          "title": "Idioma y dirección",
+          "description": "El idioma por defecto del sitio y su dirección pública."
+        }
+      },
+      "home": {
+        "header": "Cabecera",
+        "photos": "Fotos",
+        "announcement": {
+          "title": "Barra de anuncios",
+          "description": "Una línea sobre el encabezado, en todas las páginas.",
+          "enabled": "Mostrar la barra",
+          "enabledDescription": "Un cierre, un código promocional, un evento.",
+          "text": "Texto",
+          "textPlaceholder": "Cerrado del 1 al 15 de agosto, ¡hasta pronto!",
+          "href": "Enlace",
+          "hrefDescription": "Opcional. La barra pasa a ser clicable."
+        },
+        "sections": {
+          "title": "Secciones de la página",
+          "description": "Los bloques opcionales del inicio, después del catálogo.",
+          "reassurance": "Línea de confianza",
+          "reassuranceDescription": "Confirmación, pago seguro, recogida o entrega, bajo el buscador.",
+          "reviews": "Reseñas de Google",
+          "reviewsDescription": "La nota en el encabezado y la sección de reseñas, cuando el Impulsor de reseñas está configurado.",
+          "map": "Dirección y mapa",
+          "mapDescription": "Dónde recoger el material, con sus medios de contacto."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Datos de contacto",
+          "description": "Se muestran en el pie de página, en la página de contacto y en el mapa."
+        },
+        "headerPhone": {
+          "label": "Botón de llamada en el encabezado",
+          "description": "Un botón de teléfono junto al carrito, en todas las páginas.",
+          "empty": "Indique un teléfono arriba para activar este botón."
+        },
+        "hours": {
+          "description": "El horario de apertura se configura en Configuración; también determina la disponibilidad.",
+          "link": "Modificar el horario"
+        },
+        "missingPhone": "Sin un teléfono indicado arriba, la llamada y el SMS quedan ocultos.",
+        "missingEmail": "Sin un email indicado arriba, el email y el formulario quedan ocultos.",
+        "missingBoth": "Indique un teléfono y un email arriba para ofrecer estos medios de contacto.",
+        "social": {
+          "title": "Redes sociales",
+          "description": "Iconos en el pie de página. Pegue la dirección completa de cada perfil.",
+          "website": "Otro sitio web"
+        }
+      },
+      "legal": {
+        "texts": "Textos legales",
+        "footerNote": {
+          "label": "Nota del pie de página",
+          "description": "Un texto libre al final de todas las páginas: número de registro, acreditación, afiliación.",
+          "placeholder": "N.º de registro 123 456 789 · Miembro de la red …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "¿Dónde encuentro este código?",
+        "shareImage": {
+          "title": "Imagen para compartir",
+          "description": "La imagen que se muestra cuando se comparte un enlace a su tienda en WhatsApp, Facebook o LinkedIn.",
+          "label": "Imagen",
+          "fallback": "Sin una imagen específica, se usa la primera foto del encabezado.",
+          "hint": "1200 × 630 px recomendado. JPG o PNG, máx. 5 MB."
+        }
+      },
+      "sketch": {
+        "empty": "Aún no hay contenido",
+        "googleResult": "Resultado de Google",
+        "shareCard": "Vista previa al compartir",
+        "noShareImage": "Sin imagen"
+      }
+    },
     "navigation": {
+      "onlineStore": "Tienda online",
       "aiAssistant": "Asistente IA",
       "aiConversations": "Conversaciones de clientes",
       "aiAdvisor": "Asesor en línea",
@@ -3164,6 +3304,15 @@
     "settings": {
       "title": "Configuracion",
       "store": "Tienda",
+      "company": "Empresa",
+      "companySettings": {
+        "description": "País, moneda y dirección de facturación de su empresa",
+        "localization": {
+          "title": "País y moneda",
+          "description": "El país fija la zona horaria de la tienda; la moneda se aplica a todos tus precios."
+        }
+      },
+      "reservationRules": "Reglas de reserva",
       "appearance": "Apariencia",
       "reservations": "Reservas",
       "emails": "Correos",
@@ -4576,7 +4725,7 @@
         "modeIncludedDescription": "La entrega es obligatoria y gratuita",
         "noCoordinatesWarning": "Debe configurar la dirección de su tienda con ubicación en el mapa para activar la entrega.",
         "noCoordinatesError": "Por favor, primero configure la dirección de su tienda con ubicación GPS.",
-        "goToStoreSettings": "Configuración de tienda",
+        "goToStoreSettings": "Indicar la dirección",
         "customerAddressNoteOptional": "Cuando la entrega está activada, los clientes pueden elegir entre recogida y entrega.",
         "customerAddressNoteRequired": "Los clientes deben proporcionar una dirección de entrega.",
         "pricingSection": "Precios",
@@ -5764,6 +5913,7 @@
       "settingsInvoicing": "Facturación electrónica",
       "settingsLegal": "Páginas legales",
       "settingsNotifications": "Notificaciones",
+      "settingsReservations": "Reglas de reserva",
       "settingsPayments": "Pagos",
       "settingsPromoCodes": "Códigos promocionales",
       "settingsReviewBooster": "Impulso de reseñas",
@@ -5985,6 +6135,8 @@
       "browseCatalog": "Ver el catálogo"
     },
     "header": {
+      "call": "Llamar",
+      "backToWebsite": "Volver al sitio web",
       "home": "Inicio",
       "catalog": "Catalogo",
       "cart": "Carrito",

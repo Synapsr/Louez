@@ -1,13 +1,20 @@
 "use server";
 
-import { db } from "@louez/db";
-import { getCurrentStore } from "@/lib/store-context";
-import { stores } from "@louez/db";
-import { eq, and, ne } from "drizzle-orm";
+import { db, stores } from "@louez/db";
+import { and, eq, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { notifyStoreSettingsUpdated } from "@/lib/discord/platform-notifications";
 import { z } from "zod";
-import { buildStoreSettingsUpdate, type StoreSettingsInput } from "./util.store-settings";
+
+import { notifyStoreSettingsUpdated } from "@/lib/discord/platform-notifications";
+import { log } from "@/lib/evlog";
+import { getCurrentStore } from "@/lib/store-context";
+
+import {
+  buildCompanySettingsUpdate,
+  buildReservationRulesUpdate,
+  type CompanySettingsInput,
+  type ReservationRulesInput,
+} from "./util.store-settings";
 
 // Slug validation schema
 const slugSchema = z
@@ -18,15 +25,14 @@ const slugSchema = z
     message: "slug_format_invalid",
   });
 
-export async function updateStoreSettings(data: StoreSettingsInput) {
+const extensionRulesSchema = z.object({
+  automaticExtensions: z.boolean(),
+  maxExtensionDays: z.number().int().min(1).max(365).nullable(),
+});
+
+/** Country, currency and billing address (the "Entreprise" settings page). */
+export async function updateCompanySettings(data: CompanySettingsInput) {
   try {
-    const extensionSettings = z
-      .object({
-        automaticExtensions: z.boolean().optional(),
-        maxExtensionDays: z.number().int().min(1).max(365).nullable().optional(),
-      })
-      .safeParse(data);
-    if (!extensionSettings.success) return { error: "errors.invalidData" };
     const store = await getCurrentStore();
 
     if (!store) {
@@ -36,14 +42,7 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
     await db
       .update(stores)
       .set({
-        name: data.name,
-        description: data.description || null,
-        email: data.email || null,
-        phone: data.phone || null,
-        address: data.address || null,
-        latitude: data.latitude?.toString() || null,
-        longitude: data.longitude?.toString() || null,
-        settings: buildStoreSettingsUpdate(store.settings, data),
+        settings: buildCompanySettingsUpdate(store.settings, data),
         updatedAt: new Date(),
       })
       .where(eq(stores.id, store.id));
@@ -56,7 +55,43 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
     revalidatePath("/dashboard");
     return { success: true };
   } catch (error) {
-    console.error("Error updating store settings:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    log.error("settings", `Company settings update failed: ${message}`);
+    return { error: "errors.updateSettingsError" };
+  }
+}
+
+/** Booking mode, durations, buffers and extensions (the "Règles de réservation" page). */
+export async function updateReservationRules(data: ReservationRulesInput) {
+  try {
+    const extensionRules = extensionRulesSchema.safeParse(data);
+    if (!extensionRules.success) return { error: "errors.invalidData" };
+
+    const store = await getCurrentStore();
+
+    if (!store) {
+      return { error: "errors.storeNotFound" };
+    }
+
+    await db
+      .update(stores)
+      .set({
+        settings: buildReservationRulesUpdate(store.settings, data),
+        updatedAt: new Date(),
+      })
+      .where(eq(stores.id, store.id));
+
+    notifyStoreSettingsUpdated({ id: store.id, name: store.name, slug: store.slug }).catch(
+      () => {},
+    );
+
+    revalidatePath("/dashboard/settings/reservations");
+    revalidatePath("/dashboard/settings");
+    revalidatePath("/dashboard");
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    log.error("settings", `Reservation rules update failed: ${message}`);
     return { error: "errors.updateSettingsError" };
   }
 }
@@ -139,6 +174,7 @@ export async function updateStoreSlug(newSlug: string): Promise<{
     // Revalidate all relevant paths
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/settings");
+    revalidatePath("/online-store");
     revalidatePath(`/${oldSlug}`);
     revalidatePath(`/${newSlug}`);
 

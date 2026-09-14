@@ -690,7 +690,147 @@
         "totalSpent": "Insgesamt ausgegeben"
       }
     },
+    "onlineStore": {
+      "title": "Online-Shop",
+      "description": "Identität, Startseite, Kontakt, Rechtstexte und Suchmaschinen Ihrer Website",
+      "backToDashboard": "Dashboard",
+      "preview": "Vorschau",
+      "viewStore": "Shop ansehen",
+      "saved": "Online-Shop aktualisiert",
+      "leaveConfirm": "Sie haben ungespeicherte Änderungen. Ohne Speichern verlassen?",
+      "railLabel": "Bereiche des Online-Shops",
+      "resizePanel": "Breite des Bereichs",
+      "device": {
+        "label": "Vorschauformat",
+        "desktop": "Desktop",
+        "phone": "Smartphone"
+      },
+      "sections": {
+        "identity": {
+          "label": "Identität",
+          "description": "Name, Slogan, Logo, Farbe und Sprache"
+        },
+        "home": {
+          "label": "Startseite",
+          "description": "Header, Ankündigungsleiste, Katalog und Bereiche"
+        },
+        "contact": {
+          "label": "Kontakt",
+          "description": "Kontaktdaten, Kontaktseite und soziale Netzwerke"
+        },
+        "legal": {
+          "label": "Rechtliche Seiten",
+          "description": "AGB, Impressum und Fußzeile"
+        },
+        "seo": {
+          "label": "Suchmaschinen",
+          "description": "Vorschaubild und Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Name und Vorstellung",
+          "description": "Was Ihre Kunden zuerst lesen, auf der Website und in den Suchergebnissen."
+        },
+        "nameDescription": "Wird Ihren Kunden auf der Website, in E-Mails und auf Verträgen angezeigt.",
+        "tagline": {
+          "label": "Slogan",
+          "description": "Ein Satz unter dem Namen, oben auf der Startseite. Maximal {max} Zeichen.",
+          "placeholder": "Fahrrad- und SUP-Verleih in Carnac seit 2012"
+        },
+        "descriptionHint": "Der Text der Seite „Über uns“. Ohne Slogan erscheint er auch oben auf der Startseite.",
+        "logos": {
+          "description": "Das Logo im Header, das Icon im Browser-Tab."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "Das Icon im Browser-Tab und auf dem Startbildschirm des Smartphones. Ohne Favicon wird das Logo verwendet.",
+          "hint": "Quadratisches Bild, 512 × 512 px empfohlen. PNG oder JPG."
+        },
+        "website": {
+          "label": "Website",
+          "description": "Ergänzt der Online-Shop eine bestehende Website, tragen Sie sie hier ein: Ihre Kunden erhalten einen Button, um dorthin zurückzukehren, und die Website erscheint in der Fußzeile.",
+          "placeholder": "https://www.ihre-website.de"
+        },
+        "language": {
+          "title": "Sprache und Adresse",
+          "description": "Die Standardsprache der Website und ihre öffentliche Adresse."
+        }
+      },
+      "home": {
+        "header": "Kopfbereich",
+        "photos": "Fotos",
+        "announcement": {
+          "title": "Ankündigungsleiste",
+          "description": "Eine Zeile über dem Header, auf allen Seiten.",
+          "enabled": "Leiste anzeigen",
+          "enabledDescription": "Eine Schließung, ein Rabattcode, ein Event.",
+          "text": "Text",
+          "textPlaceholder": "Vom 1. bis 15. August geschlossen, bis bald!",
+          "href": "Link",
+          "hrefDescription": "Optional. Die Leiste wird anklickbar."
+        },
+        "sections": {
+          "title": "Bereiche der Seite",
+          "description": "Die optionalen Blöcke der Startseite, nach dem Katalog.",
+          "reassurance": "Vertrauenszeile",
+          "reassuranceDescription": "Bestätigung, sichere Zahlung, Abholung oder Lieferung, unter der Suche.",
+          "reviews": "Google-Bewertungen",
+          "reviewsDescription": "Die Bewertung im Header und der Bewertungsbereich, sobald der Bewertungs-Booster eingerichtet ist.",
+          "map": "Adresse und Karte",
+          "mapDescription": "Wo das Material abgeholt wird, mit Ihren Kontaktmöglichkeiten."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Kontaktdaten",
+          "description": "Angezeigt in der Fußzeile, auf der Kontaktseite und auf der Karte."
+        },
+        "headerPhone": {
+          "label": "Anruf-Button im Header",
+          "description": "Ein Telefon-Button neben dem Warenkorb, auf allen Seiten.",
+          "empty": "Geben Sie oben eine Telefonnummer ein, um diesen Button zu aktivieren."
+        },
+        "hours": {
+          "description": "Die Öffnungszeiten werden in den Einstellungen festgelegt und steuern auch die Verfügbarkeit.",
+          "link": "Öffnungszeiten bearbeiten"
+        },
+        "missingPhone": "Ohne Telefonnummer oben bleiben Anruf und SMS ausgeblendet.",
+        "missingEmail": "Ohne E-Mail-Adresse oben bleiben E-Mail und Formular ausgeblendet.",
+        "missingBoth": "Geben Sie oben eine Telefonnummer und eine E-Mail-Adresse ein, um diese Kontaktwege anzubieten.",
+        "social": {
+          "title": "Soziale Netzwerke",
+          "description": "Icons in der Fußzeile. Fügen Sie die vollständige Adresse jedes Profils ein.",
+          "website": "Weitere Website"
+        }
+      },
+      "legal": {
+        "texts": "Rechtstexte",
+        "footerNote": {
+          "label": "Hinweis in der Fußzeile",
+          "description": "Ein freier Text unten auf allen Seiten: Handelsregisternummer, Zulassung, Mitgliedschaft.",
+          "placeholder": "Handelsregister-Nr. 123 456 789 · Mitglied im Netzwerk …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Wo finde ich diesen Code?",
+        "shareImage": {
+          "title": "Vorschaubild",
+          "description": "Das Bild, das angezeigt wird, wenn ein Link zu Ihrem Shop auf WhatsApp, Facebook oder LinkedIn geteilt wird.",
+          "label": "Bild",
+          "fallback": "Ohne eigenes Bild wird das erste Foto des Headers verwendet.",
+          "hint": "1200 × 630 px empfohlen. JPG oder PNG, max. 5 MB."
+        }
+      },
+      "sketch": {
+        "empty": "Noch kein Inhalt",
+        "googleResult": "Google-Ergebnis",
+        "shareCard": "Vorschau beim Teilen",
+        "noShareImage": "Kein Bild"
+      }
+    },
     "navigation": {
+      "onlineStore": "Online-Shop",
       "aiAssistant": "KI-Assistent",
       "aiConversations": "Kundengespräche",
       "aiAdvisor": "Online-Berater",
@@ -3164,6 +3304,15 @@
     "settings": {
       "title": "Einstellungen",
       "store": "Shop",
+      "company": "Unternehmen",
+      "companySettings": {
+        "description": "Land, Währung und Rechnungsadresse Ihres Unternehmens",
+        "localization": {
+          "title": "Land und Währung",
+          "description": "Das Land legt die Zeitzone des Shops fest, die Währung gilt für alle Ihre Preise."
+        }
+      },
+      "reservationRules": "Reservierungsregeln",
       "appearance": "Erscheinungsbild",
       "reservations": "Reservierungen",
       "emails": "E-Mails",
@@ -4576,7 +4725,7 @@
         "modeIncludedDescription": "Lieferung ist Pflicht und kostenlos",
         "noCoordinatesWarning": "Sie müssen Ihre Geschäftsadresse mit Kartenstandort festlegen, um die Lieferung zu aktivieren.",
         "noCoordinatesError": "Bitte konfigurieren Sie zuerst Ihre Geschäftsadresse mit GPS-Standort.",
-        "goToStoreSettings": "Geschäftseinstellungen",
+        "goToStoreSettings": "Adresse eingeben",
         "customerAddressNoteOptional": "Wenn die Lieferung aktiviert ist, können Kunden zwischen Abholung und Lieferung wählen.",
         "customerAddressNoteRequired": "Kunden müssen eine Lieferadresse angeben.",
         "pricingSection": "Preisgestaltung",
@@ -5764,6 +5913,7 @@
       "settingsInvoicing": "Elektronische Rechnungsstellung",
       "settingsLegal": "Rechtliche Seiten",
       "settingsNotifications": "Benachrichtigungen",
+      "settingsReservations": "Reservierungsregeln",
       "settingsPayments": "Zahlungen",
       "settingsPromoCodes": "Promo-Codes",
       "settingsReviewBooster": "Bewertungs-Booster",
@@ -5985,6 +6135,8 @@
       "browseCatalog": "Zum Katalog"
     },
     "header": {
+      "call": "Anrufen",
+      "backToWebsite": "Zurück zur Website",
       "home": "Startseite",
       "catalog": "Katalog",
       "cart": "Warenkorb",

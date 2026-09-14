@@ -323,7 +323,54 @@ export interface StoreSettings {
   integrationData?: IntegrationData;
   /** Storefront contact page: channels offered and form forwarding. */
   contact?: StoreContactSettings;
+  /** Public profiles shown in the storefront footer. */
+  social?: StoreSocialLinks;
+  /** Free text at the bottom of the storefront footer (SIRET, accreditation, affiliation). */
+  footerNote?: string | null;
 }
+
+// ============================================================================
+// Online store (public site) content settings
+// ============================================================================
+
+export const STORE_SOCIAL_NETWORKS = [
+  "instagram",
+  "facebook",
+  "tiktok",
+  "youtube",
+  "linkedin",
+  "x",
+  "website",
+] as const;
+
+export type StoreSocialNetwork = (typeof STORE_SOCIAL_NETWORKS)[number];
+
+/** Public profiles linked from the storefront footer and the LocalBusiness `sameAs`. Full URLs. */
+export type StoreSocialLinks = Partial<Record<StoreSocialNetwork, string | null>>;
+
+/** One line above the storefront header: a closure, a promo code, an event. */
+export interface StoreAnnouncement {
+  enabled: boolean;
+  text: string;
+  /** Where the line links to; null for plain text. */
+  href: string | null;
+}
+
+/** Which optional blocks the home page shows; every block is on until the store turns it off. */
+export interface StoreHomeSections {
+  /** Address, contact rows and the map, under the inventory. */
+  map: boolean;
+  /** Google reviews section and the rating pill in the hero. */
+  reviews: boolean;
+  /** The reassurance line under the period search. */
+  reassurance: boolean;
+}
+
+export const DEFAULT_STORE_HOME_SECTIONS: StoreHomeSections = {
+  map: true,
+  reviews: true,
+  reassurance: true,
+};
 
 export interface StoreTheme {
   mode: "light" | "dark";
@@ -338,6 +385,14 @@ export interface StoreTheme {
   /** How the storefront catalog is browsed. 'products' (default) = flat product grid. 'categories' = category cards first, then products. */
   catalogBrowseMode?: "products" | "categories";
   maxDiscountPercent?: number | null;
+  /** The line above the header; absent or disabled means no bar. */
+  announcement?: StoreAnnouncement;
+  /** Optional home blocks; absent means every block shows. */
+  homeSections?: StoreHomeSections;
+  /** Dedicated social share image (og:image); the first hero photo when null. */
+  shareImageUrl?: string | null;
+  /** Show a call button in the storefront header (needs a store phone). */
+  headerPhone?: boolean;
 }
 
 /**

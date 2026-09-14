@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { LockIcon } from "lucide-react";
+import { ArrowLeftIcon, LockIcon, PhoneIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { cn } from "@louez/utils";
@@ -19,6 +19,13 @@ import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 interface StoreHeaderProps {
   storeName: string;
   logoUrl?: string | null;
+  /** Store phone behind a call button; null hides it. */
+  phone?: string | null;
+  /**
+   * The store's own website, when the storefront is the booking module of a
+   * larger site: shown as a "back to the website" link before the logo.
+   */
+  websiteUrl?: string | null;
   /** Initials of the signed-in customer, computed on the server. */
   customerInitials?: string | null;
   customerIdentity?: { firstName: string; lastName: string; email: string } | null;
@@ -36,6 +43,8 @@ interface StoreHeaderProps {
 export const StoreHeader = ({
   storeName,
   logoUrl,
+  phone,
+  websiteUrl,
   customerInitials,
   customerIdentity,
   homeHref = "/",
@@ -69,6 +78,17 @@ export const StoreHeader = ({
           )}
         >
           <div className="order-1 flex h-11 min-w-0 items-center gap-2 md:h-auto">
+            {websiteUrl ? (
+              <a
+                href={websiteUrl}
+                rel="noopener noreferrer"
+                aria-label={t("header.backToWebsite")}
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none max-md:w-9 max-md:justify-center md:px-3 md:text-sm md:font-medium"
+              >
+                <ArrowLeftIcon aria-hidden className="size-4" />
+                <span className="hidden md:inline">{t("header.backToWebsite")}</span>
+              </a>
+            ) : null}
             <StoreLogo
               storeName={storeName}
               logoUrl={logoUrl}
@@ -105,6 +125,15 @@ export const StoreHeader = ({
                 aria-label={t("header.menu")}
                 className="order-2 ml-auto flex items-center gap-1 md:order-3"
               >
+                {phone ? (
+                  <a
+                    href={`tel:${phone}`}
+                    aria-label={t("header.call")}
+                    className="flex size-12 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    <PhoneIcon aria-hidden className="size-5" />
+                  </a>
+                ) : null}
                 {showCart ? <CartTrigger /> : null}
                 {showAccount ? (
                   <HeaderAccountButton initials={customerInitials} customer={customerIdentity} />

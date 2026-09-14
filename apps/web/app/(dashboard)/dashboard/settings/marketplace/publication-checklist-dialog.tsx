@@ -32,10 +32,10 @@ interface PublicationChecklistDialogProps {
 
 /** Checklist rows whose remedy lives on another settings/dashboard page. */
 const CHECKLIST_ITEMS = [
-  { key: "addressAndGeolocation", href: "/dashboard/settings" },
+  { key: "addressAndGeolocation", href: "/online-store/contact" },
   { key: "activeProductWithImageAndPrice", href: "/dashboard/products" },
   { key: "stripeChargesEnabled", href: "/dashboard/settings/payments" },
-  { key: "cgvPresent", href: "/dashboard/settings/legal" },
+  { key: "cgvPresent", href: "/online-store/legal" },
 ] as const;
 
 /**

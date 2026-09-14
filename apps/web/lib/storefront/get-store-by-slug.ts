@@ -24,6 +24,8 @@ const storefrontStoreColumns = {
   longitude: true,
   logoUrl: true,
   darkLogoUrl: true,
+  faviconUrl: true,
+  tagline: true,
   settings: true,
   theme: true,
   cgv: true,

@@ -690,7 +690,147 @@
         "totalSpent": "Totale speso"
       }
     },
+    "onlineStore": {
+      "title": "Negozio online",
+      "description": "Identità, home page, contatti, pagine legali e motori di ricerca del tuo sito",
+      "backToDashboard": "Dashboard",
+      "preview": "Anteprima",
+      "viewStore": "Vedi il negozio",
+      "saved": "Negozio online aggiornato",
+      "leaveConfirm": "Hai modifiche non salvate. Uscire senza salvare?",
+      "railLabel": "Sezioni del negozio online",
+      "resizePanel": "Larghezza del pannello",
+      "device": {
+        "label": "Formato dell'anteprima",
+        "desktop": "Computer",
+        "phone": "Telefono"
+      },
+      "sections": {
+        "identity": {
+          "label": "Identità",
+          "description": "Nome, slogan, logo, colore e lingua"
+        },
+        "home": {
+          "label": "Home",
+          "description": "Header, barra annunci, catalogo e sezioni"
+        },
+        "contact": {
+          "label": "Contatti",
+          "description": "Recapiti, pagina contatti e social"
+        },
+        "legal": {
+          "label": "Pagine legali",
+          "description": "Termini di servizio, note legali e footer"
+        },
+        "seo": {
+          "label": "Motori di ricerca",
+          "description": "Immagine di condivisione e Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Nome e presentazione",
+          "description": "La prima cosa che leggono i tuoi clienti, sul sito e nei risultati di ricerca."
+        },
+        "nameDescription": "Mostrato ai tuoi clienti sul sito, nelle email e nei contratti.",
+        "tagline": {
+          "label": "Slogan",
+          "description": "Una frase sotto il nome, in cima alla home page. Massimo {max} caratteri.",
+          "placeholder": "Noleggio bici e SUP a Carnac dal 2012"
+        },
+        "descriptionHint": "Il testo della pagina Chi siamo. Senza slogan, compare anche in cima alla home.",
+        "logos": {
+          "description": "Il logo nell'header, l'icona nella scheda del browser."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "L'icona della scheda del browser e della schermata home del telefono. Senza favicon, viene usato il logo.",
+          "hint": "Immagine quadrata, 512 × 512 px consigliato. PNG o JPG."
+        },
+        "website": {
+          "label": "Sito web",
+          "description": "Se il negozio online completa un sito esistente, indicalo: i tuoi clienti avranno un pulsante per tornarci e il sito compare nel piè di pagina.",
+          "placeholder": "https://www.tuo-sito.it"
+        },
+        "language": {
+          "title": "Lingua e indirizzo",
+          "description": "La lingua predefinita del sito e il suo indirizzo pubblico."
+        }
+      },
+      "home": {
+        "header": "Intestazione",
+        "photos": "Foto",
+        "announcement": {
+          "title": "Barra annunci",
+          "description": "Una riga sopra l'header, su tutte le pagine.",
+          "enabled": "Mostra la barra",
+          "enabledDescription": "Una chiusura, un codice promozionale, un evento.",
+          "text": "Testo",
+          "textPlaceholder": "Chiuso dal 1° al 15 agosto, a presto!",
+          "href": "Link",
+          "hrefDescription": "Facoltativo. La barra diventa cliccabile."
+        },
+        "sections": {
+          "title": "Sezioni della pagina",
+          "description": "I blocchi facoltativi della home, dopo il catalogo.",
+          "reassurance": "Riga di rassicurazione",
+          "reassuranceDescription": "Conferma, pagamento sicuro, ritiro o consegna, sotto la ricerca.",
+          "reviews": "Recensioni Google",
+          "reviewsDescription": "La valutazione nell'header e la sezione recensioni, quando il Booster recensioni è configurato.",
+          "map": "Indirizzo e mappa",
+          "mapDescription": "Dove ritirare l'attrezzatura, con i tuoi contatti."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Recapiti",
+          "description": "Mostrati nel footer, nella pagina contatti e sulla mappa."
+        },
+        "headerPhone": {
+          "label": "Pulsante di chiamata nell'header",
+          "description": "Un pulsante telefono accanto al carrello, su tutte le pagine.",
+          "empty": "Inserisci un numero di telefono qui sopra per attivare questo pulsante."
+        },
+        "hours": {
+          "description": "Gli orari di apertura si impostano in Impostazioni e determinano anche le disponibilità.",
+          "link": "Modifica gli orari"
+        },
+        "missingPhone": "Senza un numero di telefono qui sopra, chiamata e SMS restano nascosti.",
+        "missingEmail": "Senza un'email qui sopra, email e modulo restano nascosti.",
+        "missingBoth": "Inserisci un numero di telefono e un'email qui sopra per proporre questi contatti.",
+        "social": {
+          "title": "Social network",
+          "description": "Icone nel footer. Incolla l'indirizzo completo di ogni profilo.",
+          "website": "Altro sito web"
+        }
+      },
+      "legal": {
+        "texts": "Testi legali",
+        "footerNote": {
+          "label": "Nota a piè di pagina",
+          "description": "Un testo libero in fondo a tutte le pagine: numero di registrazione, autorizzazione, affiliazione.",
+          "placeholder": "N. di registrazione 123 456 789 · Membro della rete …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Dove trovo questo codice?",
+        "shareImage": {
+          "title": "Immagine di condivisione",
+          "description": "L'immagine mostrata quando un link al tuo negozio viene condiviso su WhatsApp, Facebook o LinkedIn.",
+          "label": "Immagine",
+          "fallback": "Senza un'immagine dedicata, viene usata la prima foto dell'header.",
+          "hint": "1200 × 630 px consigliato. JPG o PNG, max 5 MB."
+        }
+      },
+      "sketch": {
+        "empty": "Ancora nessun contenuto",
+        "googleResult": "Risultato Google",
+        "shareCard": "Anteprima della condivisione",
+        "noShareImage": "Nessuna immagine"
+      }
+    },
     "navigation": {
+      "onlineStore": "Negozio online",
       "aiAssistant": "Assistente IA",
       "aiConversations": "Conversazioni clienti",
       "aiAdvisor": "Consulente online",
@@ -3164,6 +3304,15 @@
     "settings": {
       "title": "Impostazioni",
       "store": "Negozio",
+      "company": "Azienda",
+      "companySettings": {
+        "description": "Paese, valuta e indirizzo di fatturazione della tua azienda",
+        "localization": {
+          "title": "Paese e valuta",
+          "description": "Il paese determina il fuso orario del negozio; la valuta si applica a tutti i prezzi."
+        }
+      },
+      "reservationRules": "Regole di prenotazione",
       "appearance": "Aspetto",
       "reservations": "Prenotazioni",
       "emails": "Email",
@@ -4576,7 +4725,7 @@
         "modeIncludedDescription": "La consegna è obbligatoria e gratuita",
         "noCoordinatesWarning": "Devi impostare l'indirizzo del tuo negozio con la posizione sulla mappa per abilitare la consegna.",
         "noCoordinatesError": "Per favore, configura prima l'indirizzo del tuo negozio con la posizione GPS.",
-        "goToStoreSettings": "Impostazioni negozio",
+        "goToStoreSettings": "Inserire l'indirizzo",
         "customerAddressNoteOptional": "Quando la consegna è abilitata, i clienti possono scegliere tra ritiro e consegna.",
         "customerAddressNoteRequired": "I clienti devono fornire un indirizzo di consegna.",
         "pricingSection": "Prezzi",
@@ -5764,6 +5913,7 @@
       "settingsInvoicing": "Fatturazione elettronica",
       "settingsLegal": "Pagine legali",
       "settingsNotifications": "Notifiche",
+      "settingsReservations": "Regole di prenotazione",
       "settingsPayments": "Pagamenti",
       "settingsPromoCodes": "Codici promozionali",
       "settingsReviewBooster": "Booster recensioni",
@@ -5985,6 +6135,8 @@
       "browseCatalog": "Vedi il catalogo"
     },
     "header": {
+      "call": "Chiama",
+      "backToWebsite": "Torna al sito",
       "home": "Home",
       "catalog": "Catalogo",
       "cart": "Carrello",

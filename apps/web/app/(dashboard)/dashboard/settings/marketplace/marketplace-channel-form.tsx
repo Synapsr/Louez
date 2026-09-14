@@ -127,7 +127,7 @@ export const MarketplaceChannelForm = ({
                 size="sm"
                 variant="ghost"
                 className="max-sm:hidden"
-                render={<Link href="/dashboard/settings/appearance" />}
+                render={<Link href="/online-store/identity" />}
               >
                 {t("channels.storefront.customizeAction")}
                 <ArrowRightIcon className="size-4" />

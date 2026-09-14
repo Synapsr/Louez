@@ -690,7 +690,147 @@
         "totalSpent": "Totaal besteed"
       }
     },
+    "onlineStore": {
+      "title": "Online winkel",
+      "description": "Identiteit, startpagina, contact, juridische pagina's en zoekmachines van uw site",
+      "backToDashboard": "Dashboard",
+      "preview": "Voorbeeld",
+      "viewStore": "Winkel bekijken",
+      "saved": "Online winkel bijgewerkt",
+      "leaveConfirm": "U heeft niet-opgeslagen wijzigingen. Verlaten zonder op te slaan?",
+      "railLabel": "Secties van de online winkel",
+      "resizePanel": "Breedte van het paneel",
+      "device": {
+        "label": "Voorbeeldformaat",
+        "desktop": "Computer",
+        "phone": "Telefoon"
+      },
+      "sections": {
+        "identity": {
+          "label": "Identiteit",
+          "description": "Naam, slogan, logo, kleur en taal"
+        },
+        "home": {
+          "label": "Home",
+          "description": "Header, aankondigingsbalk, catalogus en secties"
+        },
+        "contact": {
+          "label": "Contact",
+          "description": "Contactgegevens, contactpagina en sociale media"
+        },
+        "legal": {
+          "label": "Juridische pagina's",
+          "description": "Algemene voorwaarden, juridische vermelding en footer"
+        },
+        "seo": {
+          "label": "Zoekmachines",
+          "description": "Deelafbeelding en Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Naam en presentatie",
+          "description": "Wat uw klanten als eerste lezen, op de site en in de zoekresultaten."
+        },
+        "nameDescription": "Weergegeven aan uw klanten op de site, in e-mails en op contracten.",
+        "tagline": {
+          "label": "Slogan",
+          "description": "Eén zin onder de naam, bovenaan de homepage. Maximaal {max} tekens.",
+          "placeholder": "Fiets- en supverhuur in Carnac sinds 2012"
+        },
+        "descriptionHint": "De tekst van de pagina Over ons. Zonder slogan verschijnt hij ook bovenaan de homepage.",
+        "logos": {
+          "description": "Het logo in de header, het icoon in het browsertabblad."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "Het icoon van het browsertabblad en van het startscherm op de telefoon. Zonder favicon wordt het logo gebruikt.",
+          "hint": "Vierkante afbeelding, 512 × 512 px aanbevolen. PNG of JPG."
+        },
+        "website": {
+          "label": "Website",
+          "description": "Vult deze webwinkel een bestaande website aan? Vul die hier in: uw klanten krijgen een knop om ernaar terug te keren en de website staat in de voettekst.",
+          "placeholder": "https://www.uw-site.nl"
+        },
+        "language": {
+          "title": "Taal en adres",
+          "description": "De standaardtaal van de site en het openbare adres."
+        }
+      },
+      "home": {
+        "header": "Kopgedeelte",
+        "photos": "Foto's",
+        "announcement": {
+          "title": "Aankondigingsbalk",
+          "description": "Eén regel boven de header, op alle pagina's.",
+          "enabled": "Balk weergeven",
+          "enabledDescription": "Een sluiting, een kortingscode, een evenement.",
+          "text": "Tekst",
+          "textPlaceholder": "Gesloten van 1 tot 15 augustus, tot snel!",
+          "href": "Link",
+          "hrefDescription": "Optioneel. De balk wordt klikbaar."
+        },
+        "sections": {
+          "title": "Secties van de pagina",
+          "description": "De optionele blokken van de homepage, na de catalogus.",
+          "reassurance": "Vertrouwensregel",
+          "reassuranceDescription": "Bevestiging, veilig betalen, ophalen of bezorging, onder de zoekbalk.",
+          "reviews": "Google-recensies",
+          "reviewsDescription": "De score in de header en de recensiesectie, zodra de Recensie booster is ingesteld.",
+          "map": "Adres en kaart",
+          "mapDescription": "Waar het materiaal opgehaald wordt, met uw contactmogelijkheden."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Contactgegevens",
+          "description": "Weergegeven in de footer, op de contactpagina en op de kaart."
+        },
+        "headerPhone": {
+          "label": "Belknop in de header",
+          "description": "Een telefoonknop naast de winkelwagen, op alle pagina's.",
+          "empty": "Vul hierboven een telefoonnummer in om deze knop te activeren."
+        },
+        "hours": {
+          "description": "De openingstijden stelt u in bij Instellingen; ze bepalen ook de beschikbaarheid.",
+          "link": "Openingstijden bewerken"
+        },
+        "missingPhone": "Zonder telefoonnummer hierboven blijven bellen en SMS verborgen.",
+        "missingEmail": "Zonder e-mailadres hierboven blijven e-mail en formulier verborgen.",
+        "missingBoth": "Vul hierboven een telefoonnummer en een e-mailadres in om deze contactmogelijkheden aan te bieden.",
+        "social": {
+          "title": "Sociale media",
+          "description": "Iconen in de footer. Plak het volledige adres van elk profiel.",
+          "website": "Andere website"
+        }
+      },
+      "legal": {
+        "texts": "Juridische teksten",
+        "footerNote": {
+          "label": "Notitie in de footer",
+          "description": "Vrije tekst onderaan alle pagina's: registratienummer, erkenning, lidmaatschap.",
+          "placeholder": "Registratienr. 123 456 789 · Lid van het netwerk …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Waar vind ik deze code?",
+        "shareImage": {
+          "title": "Deelafbeelding",
+          "description": "De afbeelding die wordt getoond wanneer een link naar uw winkel wordt gedeeld op WhatsApp, Facebook of LinkedIn.",
+          "label": "Afbeelding",
+          "fallback": "Zonder eigen afbeelding wordt de eerste foto van de header gebruikt.",
+          "hint": "1200 × 630 px aanbevolen. JPG of PNG, max. 5 MB."
+        }
+      },
+      "sketch": {
+        "empty": "Nog geen inhoud",
+        "googleResult": "Google-resultaat",
+        "shareCard": "Voorbeeld bij delen",
+        "noShareImage": "Geen afbeelding"
+      }
+    },
     "navigation": {
+      "onlineStore": "Online winkel",
       "aiAssistant": "AI-assistent",
       "aiConversations": "Klantgesprekken",
       "aiAdvisor": "Online adviseur",
@@ -3164,6 +3304,15 @@
     "settings": {
       "title": "Instellingen",
       "store": "Winkel",
+      "company": "Bedrijf",
+      "companySettings": {
+        "description": "Land, valuta en factuuradres van uw bedrijf",
+        "localization": {
+          "title": "Land en valuta",
+          "description": "Het land bepaalt de tijdzone van de winkel; de valuta geldt voor al je prijzen."
+        }
+      },
+      "reservationRules": "Reserveringsregels",
       "appearance": "Uiterlijk",
       "reservations": "Reserveringen",
       "emails": "E-mails",
@@ -4576,7 +4725,7 @@
         "modeIncludedDescription": "Bezorging is verplicht en gratis",
         "noCoordinatesWarning": "U moet uw winkeladres met kaartlocatie instellen om bezorging in te schakelen.",
         "noCoordinatesError": "Configureer eerst uw winkeladres met GPS-locatie.",
-        "goToStoreSettings": "Winkelinstellingen",
+        "goToStoreSettings": "Adres invullen",
         "customerAddressNoteOptional": "Wanneer bezorging is ingeschakeld, kunnen klanten kiezen tussen ophalen en bezorging.",
         "customerAddressNoteRequired": "Klanten moeten een bezorgadres opgeven.",
         "pricingSection": "Prijzen",
@@ -5764,6 +5913,7 @@
       "settingsInvoicing": "Elektronische facturatie",
       "settingsLegal": "Juridische pagina's",
       "settingsNotifications": "Meldingen",
+      "settingsReservations": "Reserveringsregels",
       "settingsPayments": "Betalingen",
       "settingsPromoCodes": "Promocodes",
       "settingsReviewBooster": "Reviewbooster",
@@ -5985,6 +6135,8 @@
       "browseCatalog": "Bekijk de catalogus"
     },
     "header": {
+      "call": "Bellen",
+      "backToWebsite": "Terug naar de website",
       "home": "Home",
       "catalog": "Catalogus",
       "cart": "Winkelwagen",

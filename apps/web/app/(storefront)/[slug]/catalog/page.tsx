@@ -89,6 +89,8 @@ export async function generateMetadata({
       slug: store.slug,
       description: store.description,
       logoUrl: store.logoUrl,
+      tagline: store.tagline,
+      faviconUrl: store.faviconUrl,
       settings: store.settings,
       theme: store.theme,
     },

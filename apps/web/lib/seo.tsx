@@ -8,6 +8,7 @@ import { env } from "@/env";
 import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
 import { stripHtml, truncateText } from "@/lib/util.seo-text";
 import { buildStorefrontUrl } from "@/lib/util.storefront-url";
+import { resolveStoreSocialLinks } from "@/lib/utils/util.store-social-links";
 
 const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
 
@@ -70,6 +71,10 @@ export interface StoreSeoData {
   latitude?: string | null;
   longitude?: string | null;
   logoUrl?: string | null;
+  /** One-line pitch; the default meta description before the store description. */
+  tagline?: string | null;
+  /** Dedicated favicon; the logo stands in when null. */
+  faviconUrl?: string | null;
   settings?: StoreSettings | null;
   theme?: StoreTheme | null;
 }
@@ -189,18 +194,24 @@ export function generateStoreMetadata(
 
   const pageTitle = title || store.name;
   const pageDescription =
-    description || stripHtml(store.description || "") || `Location de matériel chez ${store.name}`;
+    description ||
+    stripHtml(store.tagline || "") ||
+    stripHtml(store.description || "") ||
+    `Location de matériel chez ${store.name}`;
   const canonicalUrl = getCanonicalUrl(store.slug, path);
+  const iconUrl = store.faviconUrl || store.logoUrl;
 
-  // Determine OG image
+  // OG image: the page's own, else the share image, the first hero photo, the logo.
   const ogImages = (
     images.length > 0
       ? images
-      : store.theme?.heroImages?.length
-        ? [store.theme.heroImages[0]]
-        : store.logoUrl
-          ? [store.logoUrl]
-          : []
+      : store.theme?.shareImageUrl
+        ? [store.theme.shareImageUrl]
+        : store.theme?.heroImages?.length
+          ? [store.theme.heroImages[0]]
+          : store.logoUrl
+            ? [store.logoUrl]
+            : []
   ).map(absoluteAssetUrl);
 
   const metadata: Metadata = {
@@ -216,12 +227,12 @@ export function generateStoreMetadata(
         // products and to the catalog still count.
         { index: false, follow: true }
       : STORE_PAGE_ROBOTS,
-    // Use store logo as favicon if available
-    ...(store.logoUrl && {
+    // The store's favicon, or its logo when it has none
+    ...(iconUrl && {
       icons: {
-        icon: store.logoUrl,
-        shortcut: store.logoUrl,
-        apple: store.logoUrl,
+        icon: iconUrl,
+        shortcut: iconUrl,
+        apple: iconUrl,
       },
     }),
     openGraph: {
@@ -379,6 +390,12 @@ export function generateLocalBusinessSchema(
 
   if (options.mapUrl) {
     schema.hasMap = options.mapUrl;
+  }
+
+  const sameAs = resolveStoreSocialLinks(store.settings?.social).map((link) => link.url);
+
+  if (sameAs.length > 0) {
+    schema.sameAs = sameAs;
   }
 
   // Add price range indicator

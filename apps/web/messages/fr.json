@@ -690,7 +690,147 @@
         "totalSpent": "Total dépensé"
       }
     },
+    "onlineStore": {
+      "title": "Boutique en ligne",
+      "description": "Identité, page d'accueil, contact, pages légales et référencement de votre site",
+      "backToDashboard": "Tableau de bord",
+      "preview": "Aperçu",
+      "viewStore": "Voir la boutique",
+      "saved": "Boutique en ligne mise à jour",
+      "leaveConfirm": "Vous avez des modifications non enregistrées. Quitter sans enregistrer ?",
+      "railLabel": "Sections de la boutique en ligne",
+      "resizePanel": "Largeur du panneau",
+      "device": {
+        "label": "Format de l'aperçu",
+        "desktop": "Ordinateur",
+        "phone": "Téléphone"
+      },
+      "sections": {
+        "identity": {
+          "label": "Identité",
+          "description": "Nom, slogan, logo, couleur et langue"
+        },
+        "home": {
+          "label": "Accueil",
+          "description": "En-tête, bandeau, catalogue et sections"
+        },
+        "contact": {
+          "label": "Contact",
+          "description": "Coordonnées, page contact et réseaux"
+        },
+        "legal": {
+          "label": "Pages légales",
+          "description": "CGV, mentions légales et pied de page"
+        },
+        "seo": {
+          "label": "Référencement",
+          "description": "Image de partage et Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Nom et présentation",
+          "description": "Ce que vos clients lisent en premier, sur le site et dans les résultats de recherche."
+        },
+        "nameDescription": "Affiché à vos clients sur le site, dans les emails et sur les contrats.",
+        "tagline": {
+          "label": "Slogan",
+          "description": "Une phrase sous le nom, en haut de la page d'accueil. {max} caractères maximum.",
+          "placeholder": "Location de vélos et de paddles à Carnac depuis 2012"
+        },
+        "descriptionHint": "Le texte de la page À propos. Sans slogan, il s'affiche aussi en haut de l'accueil.",
+        "logos": {
+          "description": "Le logo dans l'en-tête, l'icône dans l'onglet du navigateur."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "L'icône de l'onglet et de l'écran d'accueil sur téléphone. Sans favicon, le logo est utilisé.",
+          "hint": "Image carrée, 512 × 512 px conseillé. PNG ou JPG."
+        },
+        "website": {
+          "label": "Site internet",
+          "description": "Si votre boutique en ligne complète un site existant, indiquez-le : vos clients auront un bouton pour y revenir, et le site figure dans le pied de page.",
+          "placeholder": "https://www.votre-site.fr"
+        },
+        "language": {
+          "title": "Langue et adresse",
+          "description": "La langue par défaut du site et son adresse publique."
+        }
+      },
+      "home": {
+        "header": "En-tête",
+        "photos": "Photos",
+        "announcement": {
+          "title": "Bandeau d'annonce",
+          "description": "Une ligne au-dessus de l'en-tête, sur toutes les pages.",
+          "enabled": "Afficher le bandeau",
+          "enabledDescription": "Une fermeture, un code promo, un événement.",
+          "text": "Texte",
+          "textPlaceholder": "Fermé du 1er au 15 août, à bientôt !",
+          "href": "Lien",
+          "hrefDescription": "Optionnel. Le bandeau devient cliquable."
+        },
+        "sections": {
+          "title": "Sections de la page",
+          "description": "Les blocs optionnels de l'accueil, après le catalogue.",
+          "reassurance": "Ligne de réassurance",
+          "reassuranceDescription": "Confirmation, paiement sécurisé, retrait ou livraison, sous la recherche.",
+          "reviews": "Avis Google",
+          "reviewsDescription": "La note dans l'en-tête et la section d'avis, quand le Booster d'avis est configuré.",
+          "map": "Adresse et carte",
+          "mapDescription": "Où venir chercher le matériel, avec vos moyens de contact."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Coordonnées",
+          "description": "Affichées dans le pied de page, sur la page contact et sur la carte."
+        },
+        "headerPhone": {
+          "label": "Bouton d'appel dans l'en-tête",
+          "description": "Un bouton téléphone à côté du panier, sur toutes les pages.",
+          "empty": "Renseignez un téléphone ci-dessus pour activer ce bouton."
+        },
+        "hours": {
+          "description": "Les horaires d'ouverture se règlent dans Paramètres, ils pilotent aussi les disponibilités.",
+          "link": "Modifier les horaires"
+        },
+        "missingPhone": "Sans téléphone renseigné ci-dessus, l'appel et le SMS restent masqués.",
+        "missingEmail": "Sans email renseigné ci-dessus, l'email et le formulaire restent masqués.",
+        "missingBoth": "Renseignez un téléphone et un email ci-dessus pour proposer ces moyens de contact.",
+        "social": {
+          "title": "Réseaux sociaux",
+          "description": "Des icônes dans le pied de page. Collez l'adresse complète de chaque profil.",
+          "website": "Autre site web"
+        }
+      },
+      "legal": {
+        "texts": "Textes légaux",
+        "footerNote": {
+          "label": "Note de pied de page",
+          "description": "Un texte libre en bas de toutes les pages : SIRET, agrément, affiliation.",
+          "placeholder": "SIRET 123 456 789 00012 · Membre du réseau …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Où trouver ce code ?",
+        "shareImage": {
+          "title": "Image de partage",
+          "description": "L'image affichée quand un lien vers votre boutique est partagé sur WhatsApp, Facebook ou LinkedIn.",
+          "label": "Image",
+          "fallback": "Sans image dédiée, la première photo de l'en-tête est utilisée.",
+          "hint": "1200 × 630 px conseillé. JPG ou PNG, max 5 Mo."
+        }
+      },
+      "sketch": {
+        "empty": "Aucun contenu pour le moment",
+        "googleResult": "Résultat Google",
+        "shareCard": "Aperçu du partage",
+        "noShareImage": "Aucune image"
+      }
+    },
     "navigation": {
+      "onlineStore": "Boutique en ligne",
       "aiAssistant": "Assistant IA",
       "aiConversations": "Conversations clients",
       "aiAdvisor": "Conseiller en ligne",
@@ -3164,6 +3304,15 @@
     "settings": {
       "title": "Paramètres",
       "store": "Boutique",
+      "company": "Entreprise",
+      "companySettings": {
+        "description": "Pays, devise et adresse de facturation de votre entreprise",
+        "localization": {
+          "title": "Pays et devise",
+          "description": "Le pays fixe le fuseau horaire de la boutique, la devise s'applique à tous vos tarifs."
+        }
+      },
+      "reservationRules": "Règles de réservation",
       "appearance": "Apparence",
       "reservations": "Réservations",
       "emails": "Emails",
@@ -4713,7 +4862,7 @@
         "modeIncludedDescription": "La livraison est obligatoire et gratuite",
         "noCoordinatesWarning": "Vous devez configurer l'adresse de votre boutique avec la localisation sur la carte pour activer la livraison.",
         "noCoordinatesError": "Veuillez d'abord configurer l'adresse de votre boutique avec la localisation GPS.",
-        "goToStoreSettings": "Paramètres boutique",
+        "goToStoreSettings": "Renseigner l'adresse",
         "customerAddressNoteOptional": "Quand la livraison est activée, les clients peuvent choisir entre retrait et livraison.",
         "customerAddressNoteRequired": "Les clients doivent obligatoirement saisir une adresse de livraison.",
         "pricingSection": "Tarification",
@@ -5764,6 +5913,7 @@
       "settingsInvoicing": "Facturation électronique",
       "settingsLegal": "Pages légales",
       "settingsNotifications": "Notifications",
+      "settingsReservations": "Règles de réservation",
       "settingsPayments": "Paiements",
       "settingsPromoCodes": "Codes promo",
       "settingsReviewBooster": "Booster d'avis",
@@ -5985,6 +6135,8 @@
       "browseCatalog": "Voir le catalogue"
     },
     "header": {
+      "call": "Appeler",
+      "backToWebsite": "Retour au site",
       "home": "Accueil",
       "catalog": "Catalogue",
       "cart": "Panier",

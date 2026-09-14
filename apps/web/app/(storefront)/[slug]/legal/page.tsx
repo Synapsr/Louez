@@ -34,6 +34,8 @@ export const generateMetadata = async ({ params }: LegalNoticePageProps): Promis
       id: store.id,
       name: store.name,
       slug: store.slug,
+      tagline: store.tagline,
+      faviconUrl: store.faviconUrl,
       settings: store.settings,
       theme: store.theme,
     },

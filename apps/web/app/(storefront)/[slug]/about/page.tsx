@@ -42,6 +42,8 @@ export const generateMetadata = async ({ params }: AboutPageProps): Promise<Meta
       id: store.id,
       name: store.name,
       slug: store.slug,
+      tagline: store.tagline,
+      faviconUrl: store.faviconUrl,
       settings: store.settings,
       theme: store.theme,
     },

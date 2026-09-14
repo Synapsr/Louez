@@ -3,23 +3,34 @@
 import { MailIcon, MapPinIcon, PhoneIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import type { StoreSocialLinks } from "@louez/types";
 import { cn } from "@louez/utils";
 
+import { SOCIAL_NETWORK_LABELS, SocialNetworkIcon } from "@/components/shared/social-network-icon";
 import { useChromeVariant } from "@/components/storefront/shell/use-chrome-variant";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { LanguageSwitcher } from "@/components/ui/language-switcher";
+import { resolveStoreSocialLinks } from "@/lib/utils/util.store-social-links";
 
 interface StoreFooterProps {
   storeName: string;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  /** Public profiles, shown as icon links under the contact rows. */
+  social?: StoreSocialLinks | null;
+  /** Free text before the copyright line (SIRET, accreditation, affiliation). */
+  footerNote?: string | null;
   showAccount?: boolean;
 }
 
 const LINK_CLASS_NAME =
   "inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors hover:text-foreground sm:min-h-9";
 const HEADING_CLASS_NAME = "text-xs font-semibold tracking-wider text-foreground uppercase";
+/** Pulled back by the icon's inset so the glyphs line up with the rows above. */
+const SOCIAL_LIST_CLASS_NAME = "-ms-3 flex flex-wrap items-center sm:-ms-2.5";
+const SOCIAL_LINK_CLASS_NAME =
+  "flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground sm:size-9";
 
 /**
  * Footer on the muted band: contact, navigation, legal, account. Two columns
@@ -31,11 +42,15 @@ export const StoreFooter = ({
   email,
   phone,
   address,
+  social,
+  footerNote,
   showAccount = true,
 }: StoreFooterProps) => {
   const t = useTranslations("storefront.footer");
   const variant = useChromeVariant();
   const currentYear = new Date().getFullYear();
+  const socialLinks = resolveStoreSocialLinks(social);
+  const note = footerNote?.trim();
 
   const legalLinks = (
     <nav aria-label={t("legalInfo")} className="flex flex-col">
@@ -55,9 +70,12 @@ export const StoreFooter = ({
         variant !== "compact" && "mt-8 border-t pt-6",
       )}
     >
-      <p>
-        &copy; {currentYear} {storeName}. {t("allRightsReserved")}
-      </p>
+      <div className="flex flex-col gap-1">
+        {note ? <p className="text-xs text-muted-foreground whitespace-pre-line">{note}</p> : null}
+        <p>
+          &copy; {currentYear} {storeName}. {t("allRightsReserved")}
+        </p>
+      </div>
       <div className="flex items-center gap-3">
         <LanguageSwitcher
           variant="compact"
@@ -121,6 +139,23 @@ export const StoreFooter = ({
                 </a>
               ) : null}
             </div>
+            {socialLinks.length > 0 ? (
+              <ul className={SOCIAL_LIST_CLASS_NAME}>
+                {socialLinks.map(({ network, url }) => (
+                  <li key={network}>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="me noopener noreferrer"
+                      aria-label={SOCIAL_NETWORK_LABELS[network]}
+                      className={SOCIAL_LINK_CLASS_NAME}
+                    >
+                      <SocialNetworkIcon network={network} className="size-5 sm:size-4" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-2">

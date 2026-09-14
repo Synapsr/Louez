@@ -47,10 +47,9 @@ export const generateMetadata = async ({ params }: StorefrontPageProps): Promise
 
   return generateStoreMetadata(store, {
     title: t("homeTitle", { store: store.name }),
-    description: store.description
-      ? stripHtml(store.description)
-      : t("description", { store: store.name }),
-    images: store.theme?.heroImages?.slice(0, 1),
+    description:
+      stripHtml(store.tagline || "") ||
+      (store.description ? stripHtml(store.description) : t("description", { store: store.name })),
     locale,
   });
 };
@@ -68,8 +67,19 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
     notFound();
   }
 
-  const { store, settings, theme, heroImages, description, status, inventory, reassurance, place } =
-    data;
+  const {
+    store,
+    settings,
+    theme,
+    heroImages,
+    tagline,
+    description,
+    status,
+    inventory,
+    reassurance,
+    place,
+    sections,
+  } = data;
   const ratingHref = place.showReviews ? "#reviews" : (place.details?.mapsUrl ?? null);
   const hero = resolveStoreHeroPresentation({ theme, imageCount: heroImages.length });
 
@@ -88,6 +98,7 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
 
       <StoreHero
         name={store.name}
+        tagline={tagline}
         description={description}
         backgroundImages={heroImages}
         shape={hero.shape}
@@ -101,7 +112,7 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
               initialStatus={status}
               className={hero.textOnPhoto ? "bg-background/90 backdrop-blur" : undefined}
             />
-            {place.rating !== null ? (
+            {sections.reviews && place.rating !== null ? (
               <GoogleRatingPill
                 rating={place.rating}
                 reviewCount={place.reviewCount}
@@ -112,11 +123,13 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
           </>
         }
         footer={
-          <StoreReassurance
-            items={reassurance}
-            tone={hero.textOnPhoto ? "onPhoto" : "onSurface"}
-            className={hero.align === "center" ? "justify-center" : undefined}
-          />
+          sections.reassurance ? (
+            <StoreReassurance
+              items={reassurance}
+              tone={hero.textOnPhoto ? "onPhoto" : "onSurface"}
+              className={hero.align === "center" ? "justify-center" : undefined}
+            />
+          ) : undefined
         }
       >
         <HomePeriodSearch
@@ -127,9 +140,11 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
 
       <HomeInventory inventory={inventory} />
 
-      {place.showReviews && place.details ? <GoogleReviewsSection details={place.details} /> : null}
+      {sections.reviews && place.showReviews && place.details ? (
+        <GoogleReviewsSection details={place.details} />
+      ) : null}
 
-      {store.address ? (
+      {sections.map && store.address ? (
         <StoreLocation
           name={store.name}
           address={store.address}

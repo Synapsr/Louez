@@ -38,12 +38,20 @@ import { LinkBubbleMenu } from "@/components/ui/rich-text-link-bubble-menu";
 import { LinkForm, type LinkFormValue } from "@/components/ui/rich-text-link-form";
 import { getModKeyLabel, pasteLink, shouldAutoLink } from "@/lib/util.rich-text-links";
 
+/**
+ * `full` is the document editor (headings, lists, quotes, rules). `inline`
+ * is for a line or two of text that only takes emphasis and links: a
+ * tagline, a short intro.
+ */
+type RichTextEditorVariant = "full" | "inline";
+
 interface RichTextEditorProps {
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  variant?: RichTextEditorVariant;
 }
 
 const toolbarSkeletonGroups = [
@@ -53,18 +61,30 @@ const toolbarSkeletonGroups = [
   { key: "links", buttons: ["link"] },
 ] as const;
 
+const INLINE_SKELETON_GROUPS = new Set<(typeof toolbarSkeletonGroups)[number]["key"]>([
+  "formatting",
+  "links",
+]);
+
+const CONTENT_MIN_HEIGHT: Record<RichTextEditorVariant, string> = {
+  full: "min-h-[120px]",
+  inline: "min-h-14",
+};
+
 export const RichTextEditor = ({
   value = "",
   onChange,
   placeholder,
   className,
   disabled = false,
+  variant = "full",
 }: RichTextEditorProps) => {
   const t = useTranslations("common.richTextEditor");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkEditing, setLinkEditing] = useState(false);
   /** Read by ProseMirror handlers created once, so they see the latest closure. */
   const openLinkEditorRef = useRef<() => void>(() => {});
+  const inline = variant === "inline";
 
   const actualPlaceholder = placeholder || t("placeholder");
   const containerClassName = cn(
@@ -77,9 +97,14 @@ export const RichTextEditor = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
+        // The inline variant keeps paragraphs and marks only: no block
+        // structure can be typed or pasted into a one-line field.
+        heading: inline ? false : { levels: [1, 2, 3] },
+        bulletList: inline ? false : undefined,
+        orderedList: inline ? false : undefined,
+        listItem: inline ? false : undefined,
+        blockquote: inline ? false : undefined,
+        horizontalRule: inline ? false : undefined,
         codeBlock: false,
         code: false,
         // Handled below: the built-in Link extension is configured on its own.
@@ -115,7 +140,8 @@ export const RichTextEditor = ({
       attributes: {
         class: cn(
           "prose prose-sm dark:prose-invert max-w-none",
-          "min-h-[120px] w-full rounded-md bg-transparent px-3 py-2",
+          CONTENT_MIN_HEIGHT[variant],
+          "w-full rounded-md bg-transparent px-3 py-2",
           "focus:outline-none",
           "[overflow-wrap:anywhere] [&_*]:min-w-0",
           "prose-p:my-2 prose-ul:my-2 prose-ol:my-2",
@@ -210,14 +236,20 @@ export const RichTextEditor = ({
   }, [editor]);
 
   if (!editor) {
+    const skeletonGroups = toolbarSkeletonGroups.filter(
+      (group) => !inline || INLINE_SKELETON_GROUPS.has(group.key),
+    );
+
     return (
       <div className={containerClassName} aria-hidden="true">
         <ScrollArea scrollFade className="h-auto w-full min-w-0 border-b">
           <div className="flex w-max min-w-full touch-pan-x flex-nowrap items-center gap-1 p-1">
-            <div className="border-border flex shrink-0 items-center border-r pr-2">
-              <div className="bg-muted h-9 w-14 rounded-lg sm:h-8" />
-            </div>
-            {toolbarSkeletonGroups.map(({ key, buttons }) => (
+            {inline ? null : (
+              <div className="border-border flex shrink-0 items-center border-r pr-2">
+                <div className="bg-muted h-9 w-14 rounded-lg sm:h-8" />
+              </div>
+            )}
+            {skeletonGroups.map(({ key, buttons }) => (
               <div
                 key={key}
                 className={cn(
@@ -236,7 +268,7 @@ export const RichTextEditor = ({
             </div>
           </div>
         </ScrollArea>
-        <div className="min-h-[120px]" />
+        <div className={CONTENT_MIN_HEIGHT[variant]} />
       </div>
     );
   }
@@ -259,53 +291,54 @@ export const RichTextEditor = ({
           className="flex w-max min-w-full touch-pan-x flex-nowrap items-center gap-1 p-1"
           role="toolbar"
         >
-          {/* Heading dropdown */}
-          <div className="border-border flex shrink-0 items-center border-r pr-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-9 min-w-14 px-2 text-xs sm:h-8"
-                    disabled={disabled}
-                    aria-label={t("heading")}
-                  />
-                }
-              >
-                {headingLabel}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onClick={() => editor.chain().focus().setParagraph().run()}
-                  className={editor.isActive("paragraph") ? "bg-accent" : ""}
+          {inline ? null : (
+            <div className="border-border flex shrink-0 items-center border-r pr-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-9 min-w-14 px-2 text-xs sm:h-8"
+                      disabled={disabled}
+                      aria-label={t("heading")}
+                    />
+                  }
                 >
-                  {t("normalText")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                  className={editor.isActive("heading", { level: 1 }) ? "bg-accent" : ""}
-                >
-                  <Heading1 className="mr-2 h-4 w-4" />
-                  {t("heading1")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                  className={editor.isActive("heading", { level: 2 }) ? "bg-accent" : ""}
-                >
-                  <Heading2 className="mr-2 h-4 w-4" />
-                  {t("heading2")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                  className={editor.isActive("heading", { level: 3 }) ? "bg-accent" : ""}
-                >
-                  <Heading3 className="mr-2 h-4 w-4" />
-                  {t("heading3")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                  {headingLabel}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onClick={() => editor.chain().focus().setParagraph().run()}
+                    className={editor.isActive("paragraph") ? "bg-accent" : ""}
+                  >
+                    {t("normalText")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                    className={editor.isActive("heading", { level: 1 }) ? "bg-accent" : ""}
+                  >
+                    <Heading1 className="mr-2 h-4 w-4" />
+                    {t("heading1")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                    className={editor.isActive("heading", { level: 2 }) ? "bg-accent" : ""}
+                  >
+                    <Heading2 className="mr-2 h-4 w-4" />
+                    {t("heading2")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                    className={editor.isActive("heading", { level: 3 }) ? "bg-accent" : ""}
+                  >
+                    <Heading3 className="mr-2 h-4 w-4" />
+                    {t("heading3")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
 
           <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
             <Toggle
@@ -327,48 +360,52 @@ export const RichTextEditor = ({
             </Toggle>
           </div>
 
-          <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
-            <Toggle
-              pressed={editor.isActive("bulletList")}
-              onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
-              disabled={disabled}
-              aria-label={t("bulletList")}
-            >
-              <List className="h-4 w-4" />
-            </Toggle>
+          {inline ? null : (
+            <>
+              <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
+                <Toggle
+                  pressed={editor.isActive("bulletList")}
+                  onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
+                  disabled={disabled}
+                  aria-label={t("bulletList")}
+                >
+                  <List className="h-4 w-4" />
+                </Toggle>
 
-            <Toggle
-              pressed={editor.isActive("orderedList")}
-              onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
-              disabled={disabled}
-              aria-label={t("orderedList")}
-            >
-              <ListOrdered className="h-4 w-4" />
-            </Toggle>
-          </div>
+                <Toggle
+                  pressed={editor.isActive("orderedList")}
+                  onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
+                  disabled={disabled}
+                  aria-label={t("orderedList")}
+                >
+                  <ListOrdered className="h-4 w-4" />
+                </Toggle>
+              </div>
 
-          <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
-            <Toggle
-              pressed={editor.isActive("blockquote")}
-              onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
-              disabled={disabled}
-              aria-label={t("quote")}
-            >
-              <Quote className="h-4 w-4" />
-            </Toggle>
+              <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
+                <Toggle
+                  pressed={editor.isActive("blockquote")}
+                  onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
+                  disabled={disabled}
+                  aria-label={t("quote")}
+                >
+                  <Quote className="h-4 w-4" />
+                </Toggle>
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => editor.chain().focus().setHorizontalRule().run()}
-              disabled={disabled}
-              aria-label={t("separator")}
-              title={t("separator")}
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-          </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => editor.chain().focus().setHorizontalRule().run()}
+                  disabled={disabled}
+                  aria-label={t("separator")}
+                  title={t("separator")}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
 
           <div className="flex shrink-0 items-center gap-1">
             <Popover

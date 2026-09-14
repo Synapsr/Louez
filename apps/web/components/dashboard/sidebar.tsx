@@ -213,6 +213,7 @@ const buildNavigationSections = (
 ): NavigationSection[] => [
   { items: [...mainNavigation, buildAiAssistantItem(aiCredits)] },
   { labelKey: "catalog", items: catalogNavigation },
+  // No label: the one row already names the section.
   // Purchase invoices (reception) are reachable from Settings → Facturation
   // électronique while e-invoicing adoption is low; promote back to a sidebar
   // group once merchants actually live in that inbox.

@@ -690,7 +690,147 @@
         "totalSpent": "Total gasto"
       }
     },
+    "onlineStore": {
+      "title": "Loja online",
+      "description": "Identidade, página inicial, contacto, páginas legais e motores de busca do seu site",
+      "backToDashboard": "Painel",
+      "preview": "Pré-visualização",
+      "viewStore": "Ver a loja",
+      "saved": "Loja online atualizada",
+      "leaveConfirm": "Tem alterações por guardar. Sair sem guardar?",
+      "railLabel": "Secções da loja online",
+      "resizePanel": "Largura do painel",
+      "device": {
+        "label": "Formato da pré-visualização",
+        "desktop": "Computador",
+        "phone": "Telemóvel"
+      },
+      "sections": {
+        "identity": {
+          "label": "Identidade",
+          "description": "Nome, slogan, logo, cor e idioma"
+        },
+        "home": {
+          "label": "Início",
+          "description": "Cabeçalho, barra de anúncios, catálogo e secções"
+        },
+        "contact": {
+          "label": "Contacto",
+          "description": "Dados de contacto, página de contacto e redes sociais"
+        },
+        "legal": {
+          "label": "Páginas legais",
+          "description": "Termos de serviço, aviso legal e rodapé"
+        },
+        "seo": {
+          "label": "Motores de busca",
+          "description": "Imagem de partilha e Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Nome e apresentação",
+          "description": "O que os seus clientes leem primeiro, no site e nos resultados de pesquisa."
+        },
+        "nameDescription": "Mostrado aos seus clientes no site, nos emails e nos contratos.",
+        "tagline": {
+          "label": "Slogan",
+          "description": "Uma frase sob o nome, no topo da página inicial. Máximo de {max} caracteres.",
+          "placeholder": "Aluguer de bicicletas e pranchas de SUP em Carnac desde 2012"
+        },
+        "descriptionHint": "O texto da página Sobre nós. Sem slogan, aparece também no topo da página inicial.",
+        "logos": {
+          "description": "O logo no cabeçalho, o ícone no separador do navegador."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "O ícone do separador do navegador e do ecrã inicial do telemóvel. Sem favicon, é usado o logo.",
+          "hint": "Imagem quadrada, 512 × 512 px recomendado. PNG ou JPG."
+        },
+        "website": {
+          "label": "Site",
+          "description": "Se a loja online complementa um site existente, indique-o: os seus clientes terão um botão para voltar a ele e o site aparece no rodapé.",
+          "placeholder": "https://www.o-seu-site.pt"
+        },
+        "language": {
+          "title": "Idioma e endereço",
+          "description": "O idioma predefinido do site e o seu endereço público."
+        }
+      },
+      "home": {
+        "header": "Cabeçalho",
+        "photos": "Fotos",
+        "announcement": {
+          "title": "Barra de anúncios",
+          "description": "Uma linha acima do cabeçalho, em todas as páginas.",
+          "enabled": "Mostrar a barra",
+          "enabledDescription": "Um encerramento, um código promocional, um evento.",
+          "text": "Texto",
+          "textPlaceholder": "Fechado de 1 a 15 de agosto, até breve!",
+          "href": "Ligação",
+          "hrefDescription": "Opcional. A barra passa a ser clicável."
+        },
+        "sections": {
+          "title": "Secções da página",
+          "description": "Os blocos opcionais da página inicial, depois do catálogo.",
+          "reassurance": "Linha de confiança",
+          "reassuranceDescription": "Confirmação, pagamento seguro, retirada ou entrega, sob a pesquisa.",
+          "reviews": "Avaliações Google",
+          "reviewsDescription": "A nota no cabeçalho e a secção de avaliações, quando o Impulsionador de avaliações está configurado.",
+          "map": "Endereço e mapa",
+          "mapDescription": "Onde levantar o material, com os seus meios de contacto."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Dados de contacto",
+          "description": "Mostrados no rodapé, na página de contacto e no mapa."
+        },
+        "headerPhone": {
+          "label": "Botão de chamada no cabeçalho",
+          "description": "Um botão de telefone ao lado do carrinho, em todas as páginas.",
+          "empty": "Indique um telefone acima para ativar este botão."
+        },
+        "hours": {
+          "description": "O horário de abertura define-se em Configurações e determina também a disponibilidade.",
+          "link": "Editar o horário"
+        },
+        "missingPhone": "Sem um telefone indicado acima, a chamada e o SMS ficam ocultos.",
+        "missingEmail": "Sem um email indicado acima, o email e o formulário ficam ocultos.",
+        "missingBoth": "Indique um telefone e um email acima para oferecer estes meios de contacto.",
+        "social": {
+          "title": "Redes sociais",
+          "description": "Ícones no rodapé. Cole o endereço completo de cada perfil.",
+          "website": "Outro site"
+        }
+      },
+      "legal": {
+        "texts": "Textos legais",
+        "footerNote": {
+          "label": "Nota de rodapé",
+          "description": "Um texto livre no fundo de todas as páginas: número de registo, credenciação, afiliação.",
+          "placeholder": "N.º de registo 123 456 789 · Membro da rede …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Onde encontro este código?",
+        "shareImage": {
+          "title": "Imagem de partilha",
+          "description": "A imagem mostrada quando uma ligação para a sua loja é partilhada no WhatsApp, Facebook ou LinkedIn.",
+          "label": "Imagem",
+          "fallback": "Sem imagem dedicada, é usada a primeira foto do cabeçalho.",
+          "hint": "1200 × 630 px recomendado. JPG ou PNG, máx. 5 MB."
+        }
+      },
+      "sketch": {
+        "empty": "Ainda sem conteúdo",
+        "googleResult": "Resultado Google",
+        "shareCard": "Pré-visualização da partilha",
+        "noShareImage": "Sem imagem"
+      }
+    },
     "navigation": {
+      "onlineStore": "Loja online",
       "aiAssistant": "Assistente IA",
       "aiConversations": "Conversas de clientes",
       "aiAdvisor": "Consultor online",
@@ -3164,6 +3304,15 @@
     "settings": {
       "title": "Configuracoes",
       "store": "Loja",
+      "company": "Empresa",
+      "companySettings": {
+        "description": "País, moeda e endereço de faturação da sua empresa",
+        "localization": {
+          "title": "País e moeda",
+          "description": "O país define o fuso horário da loja; a moeda aplica-se a todos os preços."
+        }
+      },
+      "reservationRules": "Regras de reserva",
       "appearance": "Aparencia",
       "reservations": "Reservas",
       "emails": "Emails",
@@ -4576,7 +4725,7 @@
         "modeIncludedDescription": "A entrega é obrigatória e gratuita",
         "noCoordinatesWarning": "Você deve definir o endereço da sua loja com localização no mapa para ativar a entrega.",
         "noCoordinatesError": "Por favor, primeiro configure o endereço da sua loja com localização GPS.",
-        "goToStoreSettings": "Configurações da loja",
+        "goToStoreSettings": "Indicar a morada",
         "customerAddressNoteOptional": "Quando a entrega está ativada, os clientes podem escolher entre retirada e entrega.",
         "customerAddressNoteRequired": "Os clientes devem fornecer um endereço de entrega.",
         "pricingSection": "Preços",
@@ -5764,6 +5913,7 @@
       "settingsInvoicing": "Faturação eletrónica",
       "settingsLegal": "Páginas legais",
       "settingsNotifications": "Notificações",
+      "settingsReservations": "Regras de reserva",
       "settingsPayments": "Pagamentos",
       "settingsPromoCodes": "Códigos promocionais",
       "settingsReviewBooster": "Impulso de avaliações",
@@ -5985,6 +6135,8 @@
       "browseCatalog": "Ver o catálogo"
     },
     "header": {
+      "call": "Ligar",
+      "backToWebsite": "Voltar ao site",
       "home": "Inicio",
       "catalog": "Catalogo",
       "cart": "Carrinho",

@@ -495,6 +495,9 @@ export const stores = mysqlTable(
     // Branding
     logoUrl: longtext("logo_url"),
     darkLogoUrl: longtext("dark_logo_url"),
+    faviconUrl: longtext("favicon_url"),
+    /** Editor HTML: a short lead under the store name in the home hero; stripped for the default meta description. */
+    tagline: text("tagline"),
 
     // Configuration
     settings: json("settings").$type<StoreSettings>().default({

@@ -729,6 +729,118 @@ export const updateStoreAppearanceInputSchema = z.object({
     .optional(),
 });
 
+// ---------------------------------------------------------------------------
+// Online store editor: one procedure, one optional slice per editor section.
+// A slice that is present replaces what it covers; an absent slice leaves
+// the row untouched, so the client only sends what changed.
+// ---------------------------------------------------------------------------
+
+const emptyToNull = (value: string): string | null => (value === "" ? null : value);
+
+/** The visible text of editor HTML, for length checks and emptiness. */
+const stripTags = (html: string): string =>
+  html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+    .trim();
+
+/** A full `http(s)` URL, or nothing. Blank inputs read as "no link". */
+const optionalHttpUrlSchema = z
+  .string()
+  .trim()
+  .max(500, "errors.invalidData")
+  .transform(emptyToNull)
+  .pipe(z.url({ protocol: /^https?$/, error: "errors.invalidData" }).nullable());
+
+const optionalOwnedImageSchema = z.union([s3UrlSchema, z.literal(""), z.null()]).optional();
+
+const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color");
+
+const onlineStoreIdentityInputSchema = z.object({
+  name: z.string().trim().min(2, "errors.invalidData").max(255, "errors.invalidData"),
+  /** Editor HTML; null once its text is blank. Sanitised on write. */
+  tagline: z
+    .string()
+    .max(4000, "errors.invalidData")
+    .refine((value) => stripTags(value).length <= 240, "errors.invalidData")
+    .transform((value) => (stripTags(value) === "" ? null : value)),
+  /** Editor HTML; sanitised on write. */
+  description: z.string().max(100000, "errors.invalidData"),
+  /** ISO 639-1 storefront language; null follows the visitor's browser. */
+  locale: z
+    .string()
+    .regex(/^[a-z]{2}$/, "errors.invalidData")
+    .nullable(),
+  logoUrl: optionalOwnedImageSchema,
+  darkLogoUrl: optionalOwnedImageSchema,
+  faviconUrl: optionalOwnedImageSchema,
+  theme: z.object({
+    mode: z.enum(["light", "dark"]),
+    primaryColor: hexColorSchema,
+  }),
+});
+
+const onlineStoreHomeInputSchema = z.object({
+  heroImages: z.array(s3UrlSchema).max(5).optional(),
+  heroLayout: z.enum(["cover", "split"]),
+  heroAlign: z.enum(["start", "center", "end"]),
+  heroVerticalAlign: z.enum(["start", "center", "end"]),
+  catalogBrowseMode: z.enum(["products", "categories"]),
+  maxDiscountPercent: z.number().int().min(0).max(100).nullable(),
+  announcement: z.object({
+    enabled: z.boolean(),
+    text: z.string().trim().max(200, "errors.invalidData"),
+    href: optionalHttpUrlSchema,
+  }),
+  homeSections: z.object({
+    map: z.boolean(),
+    reviews: z.boolean(),
+    reassurance: z.boolean(),
+  }),
+});
+
+const onlineStoreSocialLinksSchema = z.object({
+  instagram: optionalHttpUrlSchema,
+  facebook: optionalHttpUrlSchema,
+  tiktok: optionalHttpUrlSchema,
+  youtube: optionalHttpUrlSchema,
+  linkedin: optionalHttpUrlSchema,
+  x: optionalHttpUrlSchema,
+  website: optionalHttpUrlSchema,
+});
+
+const onlineStoreContactInputSchema = z.object({
+  email: optionalContactEmailSchema,
+  phone: optionalContactPhoneSchema,
+  address: z.string().trim().max(1000, "errors.invalidData").transform(emptyToNull),
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+  /** The contact page itself, saved whole under `settings.contact`. */
+  channels: updateStoreContactInputSchema,
+  social: onlineStoreSocialLinksSchema,
+  headerPhone: z.boolean(),
+});
+
+const onlineStoreLegalInputSchema = z.object({
+  cgv: z.string().max(100000, "errors.invalidData"),
+  legalNotice: z.string().max(100000, "errors.invalidData"),
+  includeFullCgvInContract: z.boolean(),
+  footerNote: z.string().trim().max(500, "errors.invalidData").transform(emptyToNull),
+});
+
+const onlineStoreSeoInputSchema = z.object({
+  googleSiteVerification: updateStoreSeoInputSchema.shape.googleSiteVerification,
+  shareImageUrl: optionalOwnedImageSchema,
+});
+
+export const updateOnlineStoreInputSchema = z.object({
+  identity: onlineStoreIdentityInputSchema.optional(),
+  home: onlineStoreHomeInputSchema.optional(),
+  contact: onlineStoreContactInputSchema.optional(),
+  legal: onlineStoreLegalInputSchema.optional(),
+  seo: onlineStoreSeoInputSchema.optional(),
+});
+
 export const dashboardIntegrationsGetTulipStateInputSchema = z.object({});
 
 export const dashboardIntegrationsGetTulipProductStateInputSchema = z.object({
@@ -936,6 +1048,9 @@ export type UpdateStoreLegalInput = z.infer<typeof updateStoreLegalInputSchema>;
 export type UpdateStoreContactInput = z.infer<typeof updateStoreContactInputSchema>;
 export type UpdateStoreSeoInput = z.infer<typeof updateStoreSeoInputSchema>;
 export type UpdateStoreAppearanceInput = z.infer<typeof updateStoreAppearanceInputSchema>;
+export type UpdateOnlineStoreInput = z.infer<typeof updateOnlineStoreInputSchema>;
+/** What the client sends: the same slices before the schema's transforms run. */
+export type UpdateOnlineStoreClientInput = z.input<typeof updateOnlineStoreInputSchema>;
 export type DashboardIntegrationsGetTulipStateInput = z.infer<
   typeof dashboardIntegrationsGetTulipStateInputSchema
 >;
