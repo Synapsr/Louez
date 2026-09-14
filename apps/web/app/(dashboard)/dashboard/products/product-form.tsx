@@ -714,6 +714,7 @@ export function ProductForm({
                     isSaving={isSaving}
                     duplicateRateTierIndexes={effectiveDuplicateRateTierIndexes}
                     onRateTiersEdit={clearDuplicateRateTierErrors}
+                    stockKindLocked={stockKindChangeBlockers.length > 0}
                     storeTaxSettings={storeTaxSettings}
                     storeTimezone={storeTimezone}
                     availableAccessories={availableAccessories}

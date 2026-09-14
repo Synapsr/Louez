@@ -144,9 +144,15 @@ export {
 export {
   IconBadgeCheckOutline18 as InstantConfirmationIcon,
   IconBagPlusOutline18 as BagPlusIcon,
+  IconBarcodeOutline18 as UnitTrackingStockIcon,
+  IconCalendarClockOutline18 as DurationPricingIcon,
   IconChatBubbleCheckOutline18 as RequestConfirmationIcon,
+  IconCubesOutline18 as QuantityStockIcon,
+  IconDropletOutline18 as ConsumableStockIcon,
+  IconInfinityOutline18 as UntrackedStockIcon,
   IconMapPinOutline18 as LocalPickupIcon,
   IconShieldCheckOutline18 as SecurePaymentIcon,
+  IconTagOutline18 as FlatRatePricingIcon,
   IconTruckFastOutline18 as DeliveryTruckIcon,
   IconTruckRefreshOutline18 as ReturnTruckIcon,
 } from "nucleo-ui-outline-18";

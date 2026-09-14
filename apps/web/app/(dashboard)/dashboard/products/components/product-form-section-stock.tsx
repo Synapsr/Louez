@@ -1,29 +1,31 @@
-'use client';
+"use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo } from "react";
 
-import Link from 'next/link';
+import Link from "next/link";
 
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 
-import type { StockKindChangeBlocker } from '@louez/db';
+import type { StockKindChangeBlocker } from "@louez/db";
 import {
   Button,
   Card,
+  CardAction,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@louez/ui';
-import { ArrowLeftIcon, DatabaseIcon } from '@louez/ui/icons';
+} from "@louez/ui";
+import { DatabaseIcon } from "@louez/ui/icons";
 
-import {
-  StockModeIndicator,
-  UnitTrackingEditor,
-} from '@/components/dashboard/unit-tracking-editor';
+import { UnitTrackingEditor } from "@/components/dashboard/unit-tracking-editor";
 
-import type { ProductFormComponentApi, ProductFormValues } from '../types';
-import { ProductFormStockKindField } from './product-form-stock-kind-field';
+import { useChoiceStep } from "../hooks/use-choice-step";
+import { useProductKindLabels } from "../hooks/use-product-kind-labels";
+import type { ProductFormComponentApi, ProductFormValues } from "../types";
+import { getStockOption } from "../utils/util.product-kind-choices";
+import { ProductFormChoiceHeaderAction } from "./product-form-choice-header-action";
+import { ProductFormStockChoice } from "./product-form-stock-choice";
 
 type QuantityFieldMeta = {
   errorMap?: Record<string, unknown>;
@@ -48,134 +50,109 @@ export function ProductFormSectionStock({
   disabled,
   showValidationErrors = false,
 }: ProductFormSectionStockProps) {
-  const t = useTranslations('dashboard.products.form');
-  const tInventory = useTranslations('dashboard.inventory.productScoped');
-  const tUnitTracking = useTranslations('dashboard.products.form.unitTracking');
+  const t = useTranslations("dashboard.products.form");
+  const tInventory = useTranslations("dashboard.inventory.productScoped");
 
-  // Stock mode stepper: editing an existing product always lands directly on
-  // the second step (mode already established).
-  const [modeChosen, setModeChosen] = useState(
-    () =>
-      Boolean(productId) ||
+  // A new product opens on the stock choice, unless the form already carries
+  // one; an existing product opens on its stock.
+  const step = useChoiceStep(
+    Boolean(productId) ||
+      (watchedValues.stockKind ?? "returnable") !== "returnable" ||
       Boolean(watchedValues.trackUnits) ||
       (watchedValues.units?.length ?? 0) > 0 ||
-      (parseInt(watchedValues.quantity || '1', 10) || 1) > 1,
+      (parseInt(watchedValues.quantity || "1", 10) || 1) > 1,
   );
 
-  // A consumable is never tracked unit by unit, so the returnable stepper
-  // (quantity vs tracked units) has nothing left to ask.
-  const isConsumable = watchedValues.stockKind === 'consumable';
-  const isUntracked = watchedValues.stockKind === 'untracked';
-  const hasManagedStock = !isUntracked;
+  const labels = useProductKindLabels();
+  const option = getStockOption(watchedValues);
 
   // "Vélo gravel VFD" → "VELO-" : accent-stripped first word, used as the
   // suggested reference prefix for generated units.
   const defaultPrefix = useMemo(() => {
-    const firstWord = (watchedValues.name || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+    const firstWord = (watchedValues.name || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .split(/\s+/)[0]
-      .replace(/[^a-zA-Z0-9]/g, '')
+      .replace(/[^a-zA-Z0-9]/g, "")
       .toUpperCase()
       .slice(0, 6);
-    return firstWord ? `${firstWord}-` : '';
+    return firstWord ? `${firstWord}-` : "";
   }, [watchedValues.name]);
+
+  const description = step.isChoosing
+    ? t("stockKindQuestion")
+    : option === "untracked"
+      ? t("untrackedStockHelp")
+      : option === "consumable"
+        ? t("consumableQuantityHelp")
+        : t("quantityHelp");
 
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            {modeChosen && !isConsumable && hasManagedStock ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground h-6 w-6"
-                onClick={() => setModeChosen(false)}
-                aria-label={tUnitTracking('changeMode')}
-              >
-                <ArrowLeftIcon data-slot="icon" />
-              </Button>
-            ) : null}
-            <CardTitle className="flex items-center gap-2">
-              {' '}
-              <DatabaseIcon className="text-primary h-5 w-5 shrink-0 stroke-2" />
-              {t('stock')}
-            </CardTitle>
-            {isConsumable || !hasManagedStock ? null : (
-              <StockModeIndicator
-                modeChosen={modeChosen}
-                trackUnits={watchedValues.trackUnits || false}
-                onBack={() => setModeChosen(false)}
-                disabled={disabled}
-              />
-            )}
-          </div>
-          <CardDescription>
-            {isUntracked
-              ? t('untrackedStockHelp')
-              : isConsumable
-                ? t('consumableQuantityHelp')
-                : t('quantityHelp')}
-          </CardDescription>
-        </div>
-        <div className="flex items-center gap-2">
-          <ProductFormStockKindField
-            form={form}
-            productId={productId}
-            watchedValues={watchedValues}
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <DatabaseIcon className="text-primary h-5 w-5 shrink-0 stroke-2" />
+          {t("stock")}
+        </CardTitle>
+        <CardDescription>{description}</CardDescription>
+        <CardAction className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+          <ProductFormChoiceHeaderAction
+            step={step}
+            choice={labels.stock[option]}
             disabled={disabled}
-            stockKindChangeBlockers={stockKindChangeBlockers}
           />
-          {productId && hasManagedStock ? (
+          {productId && option !== "untracked" && !step.isChoosing ? (
             <Button
               variant="outline"
               size="sm"
-              render={
-                <Link href={`/dashboard/products/${productId}`} />
-              }
+              render={<Link href={`/dashboard/products/${productId}`} />}
             >
               <DatabaseIcon className="h-4 w-4" />
-              {tInventory('openInventory')}
+              {tInventory("openInventory")}
             </Button>
           ) : null}
-        </div>
+        </CardAction>
       </CardHeader>
-      {hasManagedStock ? (
+
+      {step.isChoosing ? (
+        <CardContent>
+          <ProductFormStockChoice
+            form={form}
+            watchedValues={watchedValues}
+            productId={productId}
+            stockKindChangeBlockers={stockKindChangeBlockers}
+            showCurrent={step.isAnswered}
+            disabled={disabled}
+            invalid={showValidationErrors}
+            onChosen={step.answer}
+          />
+        </CardContent>
+      ) : option === "untracked" ? null : (
         <CardContent className="space-y-6">
           <UnitTrackingEditor
             currency={currency}
-            trackUnits={!isConsumable && (watchedValues.trackUnits || false)}
-            onTrackUnitsChange={(value) =>
-              form.setFieldValue('trackUnits', value)
-            }
+            trackUnits={option === "units"}
             bookingAttributeAxes={watchedValues.bookingAttributeAxes || []}
             onBookingAttributeAxesChange={(axes) =>
-              form.setFieldValue('bookingAttributeAxes', axes)
+              form.setFieldValue("bookingAttributeAxes", axes)
             }
             units={watchedValues.units || []}
-            onChange={(units) => form.setFieldValue('units', units)}
-            quantity={watchedValues.quantity || '1'}
+            onChange={(units) => form.setFieldValue("units", units)}
+            quantity={watchedValues.quantity || "1"}
             onQuantityChange={(value) => {
-              form.setFieldMeta(
-                'quantity',
-                (prev: QuantityFieldMeta | undefined) => ({
-                  ...prev,
-                  errorMap: { ...prev?.errorMap, onSubmit: undefined },
-                }),
-              );
-              form.setFieldValue('quantity', value);
+              form.setFieldMeta("quantity", (prev: QuantityFieldMeta | undefined) => ({
+                ...prev,
+                errorMap: { ...prev?.errorMap, onSubmit: undefined },
+              }));
+              form.setFieldValue("quantity", value);
             }}
-            modeChosen={isConsumable || modeChosen}
-            onModeChosenChange={setModeChosen}
             defaultPrefix={defaultPrefix}
             disabled={disabled}
             showValidationErrors={showValidationErrors}
             productId={productId}
           />
         </CardContent>
-      ) : null}
+      )}
     </Card>
   );
 }

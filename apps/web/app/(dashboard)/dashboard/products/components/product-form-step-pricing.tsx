@@ -19,18 +19,15 @@ import {
   CardHeader,
   CardPanel,
   CardTitle,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   toastManager,
 } from "@louez/ui";
 
-import type { PricingKind, TaxSettings } from "@louez/types";
+import type { TaxSettings } from "@louez/types";
 
 import { useFormatLocale } from "@/hooks/use-format-locale";
 
+import { useChoiceStep } from "../hooks/use-choice-step";
+import { useProductKindLabels } from "../hooks/use-product-kind-labels";
 import { updateSeasonalPricing } from "../seasonal-actions";
 import type {
   AvailableAccessory,
@@ -38,10 +35,12 @@ import type {
   ProductFormValues,
   SeasonalPricingData,
 } from "../types";
-import { ProductPromotionField } from "./product-promotion-field";
 import { PricingLadder } from "./pricing-ladder";
 import { PricingPeriodSelector } from "./pricing-period-selector";
 import { SeasonalActionsMenu, SeasonalSaveIndicator } from "./pricing-season-actions";
+import { ProductFormChoiceHeaderAction } from "./product-form-choice-header-action";
+import { ProductFormPricingKindChoice } from "./product-form-pricing-kind-choice";
+import { ProductPromotionField } from "./product-promotion-field";
 import { ProductFormSectionAccessories } from "./product-form-section-accessories";
 import { ProductFormSectionStock } from "./product-form-section-stock";
 import { SeasonalPeriodFormDialog } from "./seasonal-period-form-dialog";
@@ -65,6 +64,9 @@ interface PricingStepProps {
   duplicateRateTierIndexes?: number[];
   /** Lets the form clear those server-side errors as soon as rates are edited. */
   onRateTiersEdit?: () => void;
+  /** Confirmed or ongoing reservations forbid changing the stock kind, so a
+   *  consumable cannot leave the flat rate. */
+  stockKindLocked?: boolean;
   /** Seasonal props — only passed in edit mode, where a product id exists. */
   productId?: string;
   seasonalPricings?: SeasonalPricingData[];
@@ -135,12 +137,16 @@ function PricingCard(props: PricingStepProps) {
     showValidationErrors = false,
     duplicateRateTierIndexes,
     onRateTiersEdit,
+    stockKindLocked = false,
   } = props;
 
   const t = useTranslations("dashboard.products.form");
   const { dateFns: dateLocale } = useFormatLocale();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPeriod, setEditingPeriod] = useState<SeasonalPricingData | null>(null);
+  // A new product opens on the pricing choice; an existing one on its prices.
+  const step = useChoiceStep(Boolean(productId));
+  const labels = useProductKindLabels();
 
   const baseDraft = usePricingDraft(form, watchedValues, onRateTiersEdit);
   const selectedPeriod =
@@ -182,7 +188,9 @@ function PricingCard(props: PricingStepProps) {
         {/* The banner used to repeat the season name shown in the selector and
             spend a whole strip on three rare actions. The dates it alone carried
             are now the card's subtitle; the actions live in the header menu. */}
-        {selectedPeriod && (
+        {step.isChoosing ? (
+          <CardDescription>{t("pricingKindQuestion")}</CardDescription>
+        ) : selectedPeriod ? (
           <CardDescription className="tabular-nums">
             {format(new Date(`${selectedPeriod.startDate}T00:00:00`), "d MMM yyyy", {
               locale: dateLocale,
@@ -192,38 +200,16 @@ function PricingCard(props: PricingStepProps) {
               locale: dateLocale,
             })}
           </CardDescription>
-        )}
+        ) : null}
         <CardAction className="flex min-w-0 flex-wrap items-center gap-2">
           <SeasonalSaveIndicator status={seasonal.status} />
-          <Select
-            value={watchedValues.pricingKind ?? "duration"}
-            onValueChange={(value) => {
-              const nextKind: PricingKind = value === "fixed" ? "fixed" : "duration";
-              form.setFieldValue("pricingKind", nextKind);
-              if (nextKind !== "fixed" && watchedValues.stockKind === "consumable") {
-                form.setFieldValue("stockKind", "returnable");
-              }
-            }}
+          <ProductFormChoiceHeaderAction
+            step={step}
+            choice={labels.pricing[watchedValues.pricingKind ?? "duration"]}
             disabled={isSaving || isSeason}
-          >
-            <SelectTrigger className="w-auto min-w-32" aria-label={t("pricingKindLabel")}>
-              <SelectValue>
-                {watchedValues.pricingKind === "fixed"
-                  ? t("pricingKindFixed")
-                  : t("pricingKindDuration")}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent align="end">
-              <SelectItem value="duration" label={t("pricingKindDuration")}>
-                {t("pricingKindDuration")}
-              </SelectItem>
-              <SelectItem value="fixed" label={t("pricingKindFixed")}>
-                {t("pricingKindFixed")}
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          />
 
-          {productId && (
+          {productId && !step.isChoosing && (
             <div className="flex items-center gap-1.5">
               {/* `[&_button]:h-9` lifts the selector's size="sm" trigger onto the
                   Select's min-h-9, without editing the shipped component. */}
@@ -275,36 +261,50 @@ function PricingCard(props: PricingStepProps) {
       </CardHeader>
 
       <CardPanel>
-        <PricingLadder
-          draft={draft}
-          form={form}
-          watchedValues={watchedValues}
-          currency={currency}
-          currencySymbol={currencySymbol}
-          storeTaxSettings={storeTaxSettings}
-          disabled={isSaving}
-          scope={isSeason ? "season" : watchedValues.pricingKind === "fixed" ? "fixed" : "base"}
-          showValidationErrors={showValidationErrors}
-          duplicateRateTierIndexes={duplicateRateTierIndexes}
-          onSwitchToBase={() => {
-            void selectPeriod(null);
-          }}
-        />
-        {/* Flush under the folded deposit and VAT row, so both read as one list. */}
-        <div className={isSeason ? "mt-3" : undefined}>
-          <form.Field name="promotion">
-            {() => (
-              <ProductPromotionField
-                form={form}
-                values={watchedValues}
-                timezone={storeTimezone}
-                currency={currency}
-                disabled={isSaving}
-                showValidationErrors={showValidationErrors}
-              />
-            )}
-          </form.Field>
-        </div>
+        {step.isChoosing ? (
+          <ProductFormPricingKindChoice
+            form={form}
+            watchedValues={watchedValues}
+            showCurrent={step.isAnswered}
+            stockKindLocked={stockKindLocked}
+            disabled={isSaving}
+            invalid={showValidationErrors}
+            onChosen={step.answer}
+          />
+        ) : (
+          <>
+            <PricingLadder
+              draft={draft}
+              form={form}
+              watchedValues={watchedValues}
+              currency={currency}
+              currencySymbol={currencySymbol}
+              storeTaxSettings={storeTaxSettings}
+              disabled={isSaving}
+              scope={isSeason ? "season" : watchedValues.pricingKind === "fixed" ? "fixed" : "base"}
+              showValidationErrors={showValidationErrors}
+              duplicateRateTierIndexes={duplicateRateTierIndexes}
+              onSwitchToBase={() => {
+                void selectPeriod(null);
+              }}
+            />
+            {/* Flush under the folded deposit and VAT row, so both read as one list. */}
+            <div className={isSeason ? "mt-3" : undefined}>
+              <form.Field name="promotion">
+                {() => (
+                  <ProductPromotionField
+                    form={form}
+                    values={watchedValues}
+                    timezone={storeTimezone}
+                    currency={currency}
+                    disabled={isSaving}
+                    showValidationErrors={showValidationErrors}
+                  />
+                )}
+              </form.Field>
+            </div>
+          </>
+        )}
       </CardPanel>
 
       {productId && (
