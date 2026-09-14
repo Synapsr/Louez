@@ -86,6 +86,7 @@ SPECIFICATIONS*.md
 /scripts/*
 # ...except build-critical scripts referenced by package.json
 !/scripts/audit-duplicates.mjs
+!/scripts/storefront-qa/
 .playwright-cli
 .email-previews/
 .localify/project.json

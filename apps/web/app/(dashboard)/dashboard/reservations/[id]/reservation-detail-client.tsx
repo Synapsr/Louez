@@ -12,6 +12,7 @@ import {
   ExternalLink,
   MapPin,
   Package,
+  Pencil,
   Store,
   Tag,
   Truck,
@@ -32,7 +33,13 @@ import {
   TableHeader,
   TableRow,
 } from "@louez/ui";
-import { cn, formatCurrency, formatNumber } from "@louez/utils";
+import {
+  cn,
+  formatCurrency,
+  formatNumber,
+  isBusinessBilling,
+  resolveReservationBilling,
+} from "@louez/utils";
 
 import { useFormatLocale } from "@/hooks/use-format-locale";
 import { formatStoreDate } from "@/lib/utils/store-date";
@@ -44,6 +51,7 @@ import { AdvisorConversationCard } from "./advisor-conversation-card";
 import { EmailContactPopover } from "@/components/dashboard/email-contact-popover";
 import { PhoneContactPopover } from "@/components/dashboard/phone-contact-popover";
 import { ReservationHeader } from "./reservation-header";
+import { ReservationBillingDialog } from "./reservation-billing-dialog";
 import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes";
 import { SmartReservationActions } from "./smart-reservation-actions";
 import { UnifiedPaymentSection, type PaymentMethod } from "./unified-payment-section";
@@ -154,6 +162,7 @@ export function ReservationDetailClient({
   const tCommon = useTranslations("common");
   const { intl: formatLocale } = useFormatLocale();
   const hasCapturedReservationView = useRef(false);
+  const [isBillingDialogOpen, setIsBillingDialogOpen] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const reservationQuery = useQuery({
@@ -185,6 +194,8 @@ export function ReservationDetailClient({
   if (!reservation) return null;
 
   const status = (reservation.status || "pending") as ReservationStatus;
+  // Who this reservation is billed to: the booking snapshot, or the profile for older rows.
+  const billing = resolveReservationBilling(reservation, reservation.customer);
 
   const startDate = toDate(reservation.startDate) || new Date();
   const endDate = toDate(reservation.endDate) || new Date();
@@ -258,12 +269,7 @@ export function ReservationDetailClient({
   });
 
   return (
-    <div
-      className={cn(
-        "space-y-4 sm:space-y-6",
-        showMobileQuickActions && "pb-28 md:pb-0",
-      )}
-    >
+    <div className={cn("space-y-4 sm:space-y-6", showMobileQuickActions && "pb-28 md:pb-0")}>
       <ReservationHeader
         reservationId={reservation.id}
         reservationNumber={reservation.number}
@@ -293,7 +299,7 @@ export function ReservationDetailClient({
           <div className="flex items-start justify-between gap-2 p-3 sm:p-4 rounded-lg border bg-card">
             <div className="flex items-start gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                {reservation.customer.customerType === "business" ? (
+                {isBusinessBilling(billing) ? (
                   <Building2 className="h-5 w-5 text-primary" />
                 ) : (
                   <User className="h-5 w-5 text-primary" />
@@ -302,12 +308,9 @@ export function ReservationDetailClient({
               <div className="min-w-0 flex-1 space-y-1">
                 {/* Name(s) */}
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  {reservation.customer.customerType === "business" &&
-                  reservation.customer.companyName ? (
+                  {isBusinessBilling(billing) ? (
                     <>
-                      <span className="font-medium truncate">
-                        {reservation.customer.companyName}
-                      </span>
+                      <span className="font-medium truncate">{billing.companyName}</span>
                       <span className="text-sm text-muted-foreground truncate">
                         {reservation.customer.firstName} {reservation.customer.lastName}
                       </span>
@@ -317,7 +320,23 @@ export function ReservationDetailClient({
                       {reservation.customer.firstName} {reservation.customer.lastName}
                     </span>
                   )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 text-muted-foreground"
+                    title={t("billing.edit")}
+                    aria-label={t("billing.edit")}
+                    onClick={() => setIsBillingDialogOpen(true)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
+                {isBusinessBilling(billing) && (billing.companyNumber || billing.vatNumber) && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {[billing.companyNumber, billing.vatNumber].filter(Boolean).join(" · ")}
+                  </p>
+                )}
 
                 {/* Contact (email + phone) */}
                 <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0 text-sm text-muted-foreground">
@@ -360,6 +379,13 @@ export function ReservationDetailClient({
               <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
             </Button>
           </div>
+          {isBillingDialogOpen && (
+            <ReservationBillingDialog
+              reservationId={reservation.id}
+              billing={billing}
+              onClose={() => setIsBillingDialogOpen(false)}
+            />
+          )}
 
           <Card>
             <CardHeader className="pb-3">
@@ -373,21 +399,11 @@ export function ReservationDetailClient({
                 <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                 <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
                   <span>
-                    {formatStoreDate(
-                      startDate,
-                      storeTimezone,
-                      "SHORT_DATETIME",
-                      formatLocale,
-                    )}
+                    {formatStoreDate(startDate, storeTimezone, "SHORT_DATETIME", formatLocale)}
                   </span>
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                   <span>
-                    {formatStoreDate(
-                      endDate,
-                      storeTimezone,
-                      "SHORT_DATETIME",
-                      formatLocale,
-                    )}
+                    {formatStoreDate(endDate, storeTimezone, "SHORT_DATETIME", formatLocale)}
                   </span>
                   <span className="text-muted-foreground">
                     ({durationDays > 0 && tCommon("days", { count: durationDays })}
@@ -490,19 +506,11 @@ export function ReservationDetailClient({
                             {item.quantity}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground align-top pt-4">
-                            {formatCurrency(
-                              parseFloat(item.unitPrice),
-                              currency,
-                              formatLocale,
-                            )}
+                            {formatCurrency(parseFloat(item.unitPrice), currency, formatLocale)}
                             /u
                           </TableCell>
                           <TableCell className="text-right font-medium align-top pt-4">
-                            {formatCurrency(
-                              parseFloat(item.totalPrice),
-                              currency,
-                              formatLocale,
-                            )}
+                            {formatCurrency(parseFloat(item.totalPrice), currency, formatLocale)}
                           </TableCell>
                         </TableRow>
                       );
@@ -520,9 +528,7 @@ export function ReservationDetailClient({
                         <span>{t("subtotalExclTax")}</span>
                         <span>
                           {formatCurrency(
-                            parseFloat(
-                              reservation.subtotalExclTax || reservation.subtotalAmount,
-                            ),
+                            parseFloat(reservation.subtotalExclTax || reservation.subtotalAmount),
                             currency,
                             formatLocale,
                           )}
@@ -582,7 +588,8 @@ export function ReservationDetailClient({
                         )}
                       </span>
                       <span>
-                        -{formatCurrency(
+                        -
+                        {formatCurrency(
                           parseFloat(reservation.discountAmount),
                           currency,
                           formatLocale,
@@ -609,9 +616,7 @@ export function ReservationDetailClient({
 
                   <div className="flex justify-between border-t pt-2 font-semibold">
                     <span>{t("totalAmount")}</span>
-                    <span>
-                      {formatCurrency(rental, currency, formatLocale)}
-                    </span>
+                    <span>{formatCurrency(rental, currency, formatLocale)}</span>
                   </div>
 
                   {parseFloat(reservation.depositAmount) > 0 && (
@@ -788,11 +793,7 @@ export function ReservationDetailClient({
                       </div>
                       {reservation.returnDistanceKm && (
                         <p className="text-xs text-muted-foreground ml-5.5">
-                          {formatNumber(
-                            parseFloat(reservation.returnDistanceKm),
-                            1,
-                            formatLocale,
-                          )}{" "}
+                          {formatNumber(parseFloat(reservation.returnDistanceKm), 1, formatLocale)}{" "}
                           km
                         </p>
                       )}
@@ -822,11 +823,7 @@ export function ReservationDetailClient({
                   <div className="flex justify-between items-center border-t pt-3 text-sm">
                     <span className="text-muted-foreground">{t("deliveryFeeLabel")}</span>
                     <span className="font-medium">
-                      {formatCurrency(
-                        parseFloat(reservation.deliveryFee),
-                        currency,
-                        formatLocale,
-                      )}
+                      {formatCurrency(parseFloat(reservation.deliveryFee), currency, formatLocale)}
                     </span>
                   </div>
                 )}

@@ -1,4 +1,5 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { getReservationAvailabilityEnd } from "@louez/db";
+import { and, eq, inArray } from "drizzle-orm";
 
 import {
   buildReservationOverlapPredicate,
@@ -14,7 +15,7 @@ import {
   products,
   reservations,
   stores,
-} from '@louez/db';
+} from "@louez/db";
 import type {
   AvailabilityResponse,
   BookingAttributeAxis,
@@ -22,8 +23,9 @@ import type {
   CombinationAvailability,
   ProductAvailability,
   StockKind,
+  StoreSettings,
   UnitAttributes,
-} from '@louez/types';
+} from "@louez/types";
 import {
   DEFAULT_COMBINATION_KEY,
   calculatePeakReservedQuantities,
@@ -32,11 +34,12 @@ import {
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
   normalizeDaySchedule,
-} from '@louez/utils';
+} from "@louez/utils";
 
-import { ApiServiceError } from './errors';
+import { ApiServiceError } from "./errors";
 
 type ReservationWithAssignedUnits = {
+  activity?: Array<{ metadata: unknown }>;
   status: string;
   startDate: Date;
   endDate: Date;
@@ -49,7 +52,7 @@ type ReservationWithAssignedUnits = {
 };
 
 export type ExcludedUnitInfo = {
-  lifecycleStatus: 'active' | 'retired';
+  lifecycleStatus: "active" | "retired";
   downtimes: Array<{ startsAt: Date; endsAt: Date | null }>;
 };
 
@@ -58,35 +61,28 @@ function downtimeOverlaps(
   startDate: Date,
   endDate: Date,
 ) {
-  return (
-    downtime.startsAt < endDate &&
-    (!downtime.endsAt || downtime.endsAt > startDate)
-  );
+  return downtime.startsAt < endDate && (!downtime.endsAt || downtime.endsAt > startDate);
 }
 
 function excludedUnitAbsorbsReservation(params: {
   reservation: ReservationWithAssignedUnits;
   unitInfo: ExcludedUnitInfo | undefined;
 }) {
-  if (params.reservation.status === 'ongoing') {
+  if (params.reservation.status === "ongoing") {
     return true;
   }
 
-  if (!params.unitInfo || params.unitInfo.lifecycleStatus !== 'active') {
+  if (!params.unitInfo || params.unitInfo.lifecycleStatus !== "active") {
     return false;
   }
 
   return !params.unitInfo.downtimes.some((downtime) =>
-    downtimeOverlaps(
-      downtime,
-      params.reservation.startDate,
-      params.reservation.endDate,
-    ),
+    downtimeOverlaps(downtime, params.reservation.startDate, params.reservation.endDate),
   );
 }
 
 export async function loadExcludedUnitInfo(
-  database: Pick<Database, 'select'>,
+  database: Pick<Database, "select">,
   excludedProductUnitIds: ReadonlySet<string>,
 ): Promise<Map<string, ExcludedUnitInfo>> {
   if (excludedProductUnitIds.size === 0) {
@@ -147,14 +143,14 @@ export function computeReservedNetOfExcludedUnits(params: {
 } {
   const reservations = params.reservations.map((reservation) => ({
     startDate: reservation.startDate,
-    endDate: reservation.endDate,
+    endDate: getReservationAvailabilityEnd(reservation),
     items: reservation.items.flatMap((item) => {
       const excludedAssignedUnitCount = item.assignedUnits.filter(
         (unit) =>
           unit.productUnitId &&
           params.excludedProductUnitIds.has(unit.productUnitId) &&
           excludedUnitAbsorbsReservation({
-            reservation,
+            reservation: { ...reservation, endDate: getReservationAvailabilityEnd(reservation) },
             unitInfo: params.excludedUnitInfo.get(unit.productUnitId),
           }),
       ).length;
@@ -169,8 +165,8 @@ export function computeReservedNetOfExcludedUnits(params: {
 
       const stockKind: StockKind =
         item.productId && params.consumableProductIds?.has(item.productId)
-          ? 'consumable'
-          : 'returnable';
+          ? "consumable"
+          : "returnable";
 
       return [
         {
@@ -203,7 +199,7 @@ const WEEKDAY_INDEX: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
 };
 
 export function normalizeTimezone(timezone: unknown): string | undefined {
-  if (typeof timezone !== 'string') {
+  if (typeof timezone !== "string") {
     return undefined;
   }
 
@@ -213,9 +209,7 @@ export function normalizeTimezone(timezone: unknown): string | undefined {
   }
 
   try {
-    new Intl.DateTimeFormat('en-US', { timeZone: normalizedTimezone }).format(
-      new Date(),
-    );
+    new Intl.DateTimeFormat("en-US", { timeZone: normalizedTimezone }).format(new Date());
     return normalizedTimezone;
   } catch {
     return undefined;
@@ -227,11 +221,11 @@ function getMinStartDateTime(advanceNoticeMinutes: number = 0): Date {
 }
 
 function getDateKeyInTimezone(date: Date, timezone?: string): string {
-  return new Intl.DateTimeFormat('en-CA', {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(date);
 }
 
@@ -239,17 +233,17 @@ function getWeekdayAndTimeInTimezone(
   date: Date,
   timezone?: string,
 ): { weekday: 0 | 1 | 2 | 3 | 4 | 5 | 6; time: string } {
-  const parts = new Intl.DateTimeFormat('en-US', {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
   }).formatToParts(date);
 
-  const weekdayLabel = parts.find((p) => p.type === 'weekday')?.value ?? 'Sun';
-  const hour = parts.find((p) => p.type === 'hour')?.value ?? '00';
-  const minute = parts.find((p) => p.type === 'minute')?.value ?? '00';
+  const weekdayLabel = parts.find((p) => p.type === "weekday")?.value ?? "Sun";
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "00";
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
 
   return {
     weekday: WEEKDAY_INDEX[weekdayLabel] ?? 0,
@@ -261,7 +255,7 @@ function getClosureReason(
   date: Date,
   businessHours: BusinessHours,
   timezone?: string,
-): 'closure_period' | null {
+): "closure_period" | null {
   if (!businessHours.closurePeriods?.length) {
     return null;
   }
@@ -277,13 +271,13 @@ function getClosureReason(
     if (dayKey >= period.startDate && dayKey <= period.endDate) {
       if (period.startTime && period.endTime) {
         if (time >= period.startTime && time <= period.endTime) {
-          return 'closure_period';
+          return "closure_period";
         }
 
         continue;
       }
 
-      return 'closure_period';
+      return "closure_period";
     }
   }
 
@@ -296,7 +290,7 @@ function validateDateTimeInBusinessHours(
   timezone?: string,
 ): {
   valid: boolean;
-  reason?: 'closure_period' | 'day_closed' | 'outside_hours';
+  reason?: "closure_period" | "day_closed" | "outside_hours";
 } {
   if (!businessHours?.enabled) {
     return { valid: true };
@@ -313,15 +307,13 @@ function validateDateTimeInBusinessHours(
   );
 
   if (!schedule.isOpen) {
-    return { valid: false, reason: 'day_closed' };
+    return { valid: false, reason: "day_closed" };
   }
 
-  const inRange = schedule.ranges.some(
-    (r) => time >= r.openTime && time <= r.closeTime,
-  );
+  const inRange = schedule.ranges.some((r) => time >= r.openTime && time <= r.closeTime);
 
   if (!inRange) {
-    return { valid: false, reason: 'outside_hours' };
+    return { valid: false, reason: "outside_hours" };
   }
 
   return { valid: true };
@@ -339,20 +331,12 @@ function validateRentalPeriod(
 
   const errors: string[] = [];
 
-  const pickup = validateDateTimeInBusinessHours(
-    startDate,
-    businessHours,
-    timezone,
-  );
+  const pickup = validateDateTimeInBusinessHours(startDate, businessHours, timezone);
   if (!pickup.valid && pickup.reason) {
     errors.push(`pickup_${pickup.reason}`);
   }
 
-  const dropoff = validateDateTimeInBusinessHours(
-    endDate,
-    businessHours,
-    timezone,
-  );
+  const dropoff = validateDateTimeInBusinessHours(endDate, businessHours, timezone);
   if (!dropoff.valid && dropoff.reason) {
     errors.push(`return_${dropoff.reason}`);
   }
@@ -360,41 +344,125 @@ function validateRentalPeriod(
   return { valid: errors.length === 0, errors };
 }
 
-interface GetStorefrontAvailabilityParams {
-  storeSlug: string;
+/** The store columns availability depends on. */
+export interface AvailabilityStore {
+  id: string;
+  settings: StoreSettings | null;
+}
+
+/**
+ * Which store a storefront service works on: the row a procedure already
+ * loaded into its context, or a slug for callers outside oRPC (route
+ * handlers, marketplace, advisor tools) that still resolve it here.
+ */
+export type StorefrontStoreRef =
+  | { store: AvailabilityStore; storeSlug?: undefined }
+  | { storeSlug: string; store?: undefined };
+
+/**
+ * Per-request cache of availability computations keyed by store, period and
+ * product set. In-flight promises are shared, so two services asking for the
+ * same period in one request run the queries once.
+ */
+export type AvailabilityMemo = Map<string, Promise<AvailabilityResponse>>;
+
+export const createAvailabilityMemo = (): AvailabilityMemo => new Map();
+
+export async function loadAvailabilityStore(storeSlug: string): Promise<AvailabilityStore> {
+  const store = await db.query.stores.findFirst({
+    columns: { id: true, settings: true },
+    where: eq(stores.slug, storeSlug),
+  });
+
+  if (!store) {
+    throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
+  }
+
+  return store;
+}
+
+export async function resolveStorefrontStore(ref: StorefrontStoreRef): Promise<AvailabilityStore> {
+  return ref.store ?? loadAvailabilityStore(ref.storeSlug);
+}
+
+type GetStorefrontAvailabilityParams = StorefrontStoreRef & {
   startDate: string;
   endDate: string;
   productIds?: string[];
+  memo?: AvailabilityMemo;
+};
+
+function getAvailabilityMemoKey(params: {
+  storeId: string;
+  startDate: string;
+  endDate: string;
+  productIds?: string[];
+}): string {
+  const productKey = params.productIds ? [...params.productIds].sort().join(",") : "*";
+  return `${params.storeId}|${params.startDate}|${params.endDate}|${productKey}`;
 }
 
 export async function getStorefrontAvailability(
   params: GetStorefrontAvailabilityParams,
 ): Promise<AvailabilityResponse> {
-  const {
-    storeSlug,
-    startDate: startDateStr,
-    endDate: endDateStr,
-    productIds,
-  } = params;
+  const { startDate: startDateStr, endDate: endDateStr, productIds, memo } = params;
 
   const startDate = new Date(startDateStr);
   const endDate = new Date(endDateStr);
 
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    throw new ApiServiceError('BAD_REQUEST', 'errors.invalidData');
+    throw new ApiServiceError("BAD_REQUEST", "errors.invalidData");
   }
 
   if (endDate <= startDate) {
-    throw new ApiServiceError('BAD_REQUEST', 'errors.invalidData');
+    throw new ApiServiceError("BAD_REQUEST", "errors.invalidData");
   }
 
-  const store = await db.query.stores.findFirst({
-    where: eq(stores.slug, storeSlug),
+  const store = await resolveStorefrontStore(params);
+
+  if (!memo) {
+    return computeStorefrontAvailability({
+      store,
+      startDate,
+      endDate,
+      startDateStr,
+      endDateStr,
+      productIds,
+    });
+  }
+
+  const memoKey = getAvailabilityMemoKey({
+    storeId: store.id,
+    startDate: startDateStr,
+    endDate: endDateStr,
+    productIds,
   });
-
-  if (!store) {
-    throw new ApiServiceError('NOT_FOUND', 'errors.storeNotFound');
+  const pending = memo.get(memoKey);
+  if (pending) {
+    return pending;
   }
+
+  const computation = computeStorefrontAvailability({
+    store,
+    startDate,
+    endDate,
+    startDateStr,
+    endDateStr,
+    productIds,
+  });
+  memo.set(memoKey, computation);
+  return computation;
+}
+
+async function computeStorefrontAvailability(params: {
+  store: AvailabilityStore;
+  startDate: Date;
+  endDate: Date;
+  startDateStr: string;
+  endDateStr: string;
+  productIds?: string[];
+}): Promise<AvailabilityResponse> {
+  const { store, startDate, endDate, startDateStr, endDateStr, productIds } = params;
 
   const timezone = normalizeTimezone(store.settings?.timezone);
 
@@ -416,10 +484,10 @@ export async function getStorefrontAvailability(
   const productsWhere = productIds?.length
     ? and(
         eq(products.storeId, store.id),
-        eq(products.status, 'active'),
+        eq(products.status, "active"),
         inArray(products.id, productIds),
       )
-    : and(eq(products.storeId, store.id), eq(products.status, 'active'));
+    : and(eq(products.storeId, store.id), eq(products.status, "active"));
 
   const storeProducts = await db.query.products.findMany({
     where: productsWhere,
@@ -463,15 +531,12 @@ export async function getStorefrontAvailability(
       ? await db.query.products.findMany({
           where: and(
             eq(products.storeId, store.id),
-            eq(products.status, 'active'),
+            eq(products.status, "active"),
             inArray(products.id, additionalAccessoryIds),
           ),
         })
       : [];
-  const productsForAvailability = [
-    ...storeProducts,
-    ...additionalAccessoryProducts,
-  ];
+  const productsForAvailability = [...storeProducts, ...additionalAccessoryProducts];
 
   const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
   const blockingStatuses = getBlockingReservationStatuses(
@@ -490,6 +555,7 @@ export async function getStorefrontAvailability(
       }),
     ),
     with: {
+      activity: { columns: { metadata: true } },
       items: {
         with: {
           assignedUnits: true,
@@ -529,39 +595,30 @@ export async function getStorefrontAvailability(
       : [];
   const availableUnitIds = new Set(availableUnits.map((unit) => unit.id));
   const excludedProductUnitIds = new Set(
-    trackedUnits
-      .filter((unit) => !availableUnitIds.has(unit.id))
-      .map((unit) => unit.id),
+    trackedUnits.filter((unit) => !availableUnitIds.has(unit.id)).map((unit) => unit.id),
   );
-  const excludedUnitInfo = await loadExcludedUnitInfo(
-    db,
-    excludedProductUnitIds,
-  );
+  const excludedUnitInfo = await loadExcludedUnitInfo(db, excludedProductUnitIds);
 
-  const { reservedByProduct, reservedByProductCombination } =
-    computeReservedNetOfExcludedUnits({
-      reservations: overlappingReservations,
-      startDate,
-      endDate,
-      turnoverBufferMinutes,
-      excludedProductUnitIds,
-      excludedUnitInfo,
-      consumableProductIds: new Set(
-        productsForAvailability
-          .filter((product) => product.stockKind === 'consumable')
-          .map((product) => product.id),
-      ),
-    });
-  const consumableReservedByProduct = await loadConsumableReservedQuantities(
-    db,
-    {
-      storeId: store.id,
-      productIds: productsForAvailability
-        .filter((product) => product.stockKind === 'consumable')
+  const { reservedByProduct, reservedByProductCombination } = computeReservedNetOfExcludedUnits({
+    reservations: overlappingReservations,
+    startDate,
+    endDate,
+    turnoverBufferMinutes,
+    excludedProductUnitIds,
+    excludedUnitInfo,
+    consumableProductIds: new Set(
+      productsForAvailability
+        .filter((product) => product.stockKind === "consumable")
         .map((product) => product.id),
-      blockingStatuses,
-    },
-  );
+    ),
+  });
+  const consumableReservedByProduct = await loadConsumableReservedQuantities(db, {
+    storeId: store.id,
+    productIds: productsForAvailability
+      .filter((product) => product.stockKind === "consumable")
+      .map((product) => product.id),
+    blockingStatuses,
+  });
   for (const [productId, reservedQuantity] of consumableReservedByProduct) {
     reservedByProduct.set(productId, reservedQuantity);
   }
@@ -583,10 +640,7 @@ export async function getStorefrontAvailability(
       });
     } else {
       current.totalQuantity += 1;
-      if (
-        Object.keys(current.selectedAttributes).length === 0 &&
-        unit.attributes
-      ) {
+      if (Object.keys(current.selectedAttributes).length === 0 && unit.attributes) {
         current.selectedAttributes = unit.attributes as UnitAttributes;
       }
       productMap.set(combinationKey, current);
@@ -595,137 +649,108 @@ export async function getStorefrontAvailability(
     combinationsByProduct.set(unit.productId, productMap);
   }
 
-  const productAvailability: ProductAvailability[] =
-    productsForAvailability.map((product) => {
-      if (!product.trackUnits) {
-        const reservedQuantity = reservedByProduct.get(product.id) || 0;
-        const availableQuantity = getAvailableStockQuantity({
-          stockKind: product.stockKind,
-          totalQuantity: product.quantity,
-          reservedQuantity,
-        });
-
-        let status: ProductAvailability['status'] = 'available';
-        if (availableQuantity === 0) {
-          status = 'unavailable';
-        } else if (
-          availableQuantity !== null &&
-          availableQuantity < product.quantity
-        ) {
-          status = 'limited';
-        }
-
-        return {
-          productId: product.id,
-          totalQuantity:
-            product.stockKind === 'untracked' ? null : product.quantity,
-          reservedQuantity:
-            product.stockKind === 'untracked' ? 0 : reservedQuantity,
-          availableQuantity,
-          status,
-          ...(product.stockKind === 'consumable' && availableQuantity === 0
-            ? { reason: 'out_of_stock' }
-            : {}),
-        };
-      }
-
-      const productCombinations =
-        combinationsByProduct.get(product.id) || new Map();
-      const axes = Array.isArray(product.bookingAttributeAxes)
-        ? (product.bookingAttributeAxes as BookingAttributeAxis[])
-        : [];
-      const combinations: CombinationAvailability[] = [];
-
-      let totalQuantity = 0;
-      for (const [
-        combinationKey,
-        combinationData,
-      ] of productCombinations.entries()) {
-        const reservedQuantity =
-          reservedByProductCombination.get(
-            getProductCombinationAvailabilityKey(product.id, combinationKey),
-          ) || 0;
-        const availableQuantity = Math.max(
-          0,
-          combinationData.totalQuantity - reservedQuantity,
-        );
-
-        totalQuantity += combinationData.totalQuantity;
-
-        let status: CombinationAvailability['status'] = 'available';
-        if (availableQuantity === 0) {
-          status = 'unavailable';
-        } else if (availableQuantity < combinationData.totalQuantity) {
-          status = 'limited';
-        }
-
-        combinations.push({
-          combinationKey,
-          selectedAttributes: combinationData.selectedAttributes || {},
-          totalQuantity: combinationData.totalQuantity,
-          reservedQuantity,
-          availableQuantity,
-          status,
-        });
-      }
-
-      combinations.sort((a, b) => {
-        const sortA = getDeterministicCombinationSortValue(
-          axes,
-          a.selectedAttributes,
-        );
-        const sortB = getDeterministicCombinationSortValue(
-          axes,
-          b.selectedAttributes,
-        );
-        return sortA.localeCompare(sortB, 'en');
-      });
-      const combinationsByKey = Object.fromEntries(
-        combinations.map((combination) => [
-          combination.combinationKey,
-          combination,
-        ]),
-      );
-
+  const productAvailability: ProductAvailability[] = productsForAvailability.map((product) => {
+    if (!product.trackUnits) {
       const reservedQuantity = reservedByProduct.get(product.id) || 0;
-      const availableQuantity = Math.max(0, totalQuantity - reservedQuantity);
+      const availableQuantity = getAvailableStockQuantity({
+        stockKind: product.stockKind,
+        totalQuantity: product.quantity,
+        reservedQuantity,
+      });
 
-      let status: ProductAvailability['status'] = 'available';
+      let status: ProductAvailability["status"] = "available";
       if (availableQuantity === 0) {
-        status = 'unavailable';
-      } else if (availableQuantity < totalQuantity) {
-        status = 'limited';
+        status = "unavailable";
+      } else if (availableQuantity !== null && availableQuantity < product.quantity) {
+        status = "limited";
       }
 
       return {
         productId: product.id,
-        totalQuantity,
+        totalQuantity: product.stockKind === "untracked" ? null : product.quantity,
+        reservedQuantity: product.stockKind === "untracked" ? 0 : reservedQuantity,
+        availableQuantity,
+        status,
+        ...(product.stockKind === "consumable" && availableQuantity === 0
+          ? { reason: "out_of_stock" }
+          : {}),
+      };
+    }
+
+    const productCombinations = combinationsByProduct.get(product.id) || new Map();
+    const axes = Array.isArray(product.bookingAttributeAxes)
+      ? (product.bookingAttributeAxes as BookingAttributeAxis[])
+      : [];
+    const combinations: CombinationAvailability[] = [];
+
+    let totalQuantity = 0;
+    for (const [combinationKey, combinationData] of productCombinations.entries()) {
+      const reservedQuantity =
+        reservedByProductCombination.get(
+          getProductCombinationAvailabilityKey(product.id, combinationKey),
+        ) || 0;
+      const availableQuantity = Math.max(0, combinationData.totalQuantity - reservedQuantity);
+
+      totalQuantity += combinationData.totalQuantity;
+
+      let status: CombinationAvailability["status"] = "available";
+      if (availableQuantity === 0) {
+        status = "unavailable";
+      } else if (availableQuantity < combinationData.totalQuantity) {
+        status = "limited";
+      }
+
+      combinations.push({
+        combinationKey,
+        selectedAttributes: combinationData.selectedAttributes || {},
+        totalQuantity: combinationData.totalQuantity,
         reservedQuantity,
         availableQuantity,
         status,
-        combinations,
-        combinationsByKey,
-      };
+      });
+    }
+
+    combinations.sort((a, b) => {
+      const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes);
+      const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes);
+      return sortA.localeCompare(sortB, "en");
     });
+    const combinationsByKey = Object.fromEntries(
+      combinations.map((combination) => [combination.combinationKey, combination]),
+    );
+
+    const reservedQuantity = reservedByProduct.get(product.id) || 0;
+    const availableQuantity = Math.max(0, totalQuantity - reservedQuantity);
+
+    let status: ProductAvailability["status"] = "available";
+    if (availableQuantity === 0) {
+      status = "unavailable";
+    } else if (availableQuantity < totalQuantity) {
+      status = "limited";
+    }
+
+    return {
+      productId: product.id,
+      totalQuantity,
+      reservedQuantity,
+      availableQuantity,
+      status,
+      combinations,
+      combinationsByKey,
+    };
+  });
 
   const availabilityByProductId = new Map(
-    productAvailability.map((availability) => [
-      availability.productId,
-      availability,
-    ]),
+    productAvailability.map((availability) => [availability.productId, availability]),
   );
   for (const link of requiredAccessoryLinks) {
-    const parentAvailability = availabilityByProductId.get(
-      link.parentProductId,
-    );
-    const accessoryAvailability = availabilityByProductId.get(
-      link.accessoryProductId,
-    );
+    const parentAvailability = availabilityByProductId.get(link.parentProductId);
+    const accessoryAvailability = availabilityByProductId.get(link.accessoryProductId);
     if (!parentAvailability || !accessoryAvailability) {
       if (parentAvailability) {
         parentAvailability.availableQuantity = 0;
-        parentAvailability.status = 'unavailable';
-        parentAvailability.reason = 'required_accessory_out_of_stock';
+        parentAvailability.status = "unavailable";
+        parentAvailability.reason = "required_accessory_out_of_stock";
       }
       continue;
     }
@@ -744,10 +769,9 @@ export async function getStorefrontAvailability(
     }
 
     parentAvailability.availableQuantity = accessoryCapacity;
-    parentAvailability.status =
-      accessoryCapacity === 0 ? 'unavailable' : 'limited';
+    parentAvailability.status = accessoryCapacity === 0 ? "unavailable" : "limited";
     if (accessoryCapacity === 0) {
-      parentAvailability.reason = 'required_accessory_out_of_stock';
+      parentAvailability.reason = "required_accessory_out_of_stock";
     }
   }
 

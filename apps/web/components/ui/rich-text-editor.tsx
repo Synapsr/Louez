@@ -10,7 +10,6 @@ import {
   List,
   ListOrdered,
   Link as LinkIcon,
-  Unlink,
   Undo,
   Redo,
   Heading1,
@@ -31,10 +30,20 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Input,
   ScrollArea,
 } from "@louez/ui";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+
+import { LinkBubbleMenu } from "@/components/ui/rich-text-link-bubble-menu";
+import { LinkForm, type LinkFormValue } from "@/components/ui/rich-text-link-form";
+import { getModKeyLabel, pasteLink, shouldAutoLink } from "@/lib/util.rich-text-links";
+
+/**
+ * `full` is the document editor (headings, lists, quotes, rules). `inline`
+ * is for a line or two of text that only takes emphasis and links: a
+ * tagline, a short intro.
+ */
+type RichTextEditorVariant = "full" | "inline";
 
 interface RichTextEditorProps {
   value?: string;
@@ -42,14 +51,25 @@ interface RichTextEditorProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  variant?: RichTextEditorVariant;
 }
 
 const toolbarSkeletonGroups = [
   { key: "formatting", buttons: ["bold", "italic"] },
   { key: "lists", buttons: ["bullet", "ordered"] },
   { key: "blocks", buttons: ["quote", "separator"] },
-  { key: "links", buttons: ["link", "unlink"] },
+  { key: "links", buttons: ["link"] },
 ] as const;
+
+const INLINE_SKELETON_GROUPS = new Set<(typeof toolbarSkeletonGroups)[number]["key"]>([
+  "formatting",
+  "links",
+]);
+
+const CONTENT_MIN_HEIGHT: Record<RichTextEditorVariant, string> = {
+  full: "min-h-[120px]",
+  inline: "min-h-14",
+};
 
 export const RichTextEditor = ({
   value = "",
@@ -57,14 +77,18 @@ export const RichTextEditor = ({
   placeholder,
   className,
   disabled = false,
+  variant = "full",
 }: RichTextEditorProps) => {
   const t = useTranslations("common.richTextEditor");
-  const [linkUrl, setLinkUrl] = useState("");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [linkEditing, setLinkEditing] = useState(false);
+  /** Read by ProseMirror handlers created once, so they see the latest closure. */
+  const openLinkEditorRef = useRef<() => void>(() => {});
+  const inline = variant === "inline";
 
   const actualPlaceholder = placeholder || t("placeholder");
   const containerClassName = cn(
-    "border-input bg-background w-full min-w-0 max-w-full overflow-hidden rounded-md border",
+    "border-input bg-background relative w-full min-w-0 max-w-full overflow-x-clip rounded-md border",
     "focus-within:ring-ring focus-within:ring-2 focus-within:ring-offset-2",
     disabled && "opacity-50",
     className,
@@ -73,16 +97,27 @@ export const RichTextEditor = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
+        // The inline variant keeps paragraphs and marks only: no block
+        // structure can be typed or pasted into a one-line field.
+        heading: inline ? false : { levels: [1, 2, 3] },
+        bulletList: inline ? false : undefined,
+        orderedList: inline ? false : undefined,
+        listItem: inline ? false : undefined,
+        blockquote: inline ? false : undefined,
+        horizontalRule: inline ? false : undefined,
         codeBlock: false,
         code: false,
+        // Handled below: the built-in Link extension is configured on its own.
+        link: false,
       }),
       Link.configure({
         openOnClick: false,
+        autolink: true,
+        linkOnPaste: false,
+        defaultProtocol: "https",
+        shouldAutoLink,
         HTMLAttributes: {
-          class: "text-primary underline",
+          class: "text-primary underline underline-offset-2",
         },
       }),
       Placeholder.configure({
@@ -93,6 +128,8 @@ export const RichTextEditor = ({
     content: value,
     editable: !disabled,
     immediatelyRender: false,
+    // The toolbar and the link bubble read the selection on every render.
+    shouldRerenderOnTransaction: true,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       // Return empty string if only contains empty paragraph
@@ -103,7 +140,8 @@ export const RichTextEditor = ({
       attributes: {
         class: cn(
           "prose prose-sm dark:prose-invert max-w-none",
-          "min-h-[120px] w-full rounded-md bg-transparent px-3 py-2",
+          CONTENT_MIN_HEIGHT[variant],
+          "w-full rounded-md bg-transparent px-3 py-2",
           "focus:outline-none",
           "[overflow-wrap:anywhere] [&_*]:min-w-0",
           "prose-p:my-2 prose-ul:my-2 prose-ol:my-2",
@@ -116,6 +154,32 @@ export const RichTextEditor = ({
           disabled && "opacity-50 cursor-not-allowed",
         ),
       },
+      handleKeyDown: (_view, event) => {
+        // Mod+K opens the link editor, and must not reach the dashboard's
+        // command palette, which listens on the document for the same keys.
+        if (
+          (event.metaKey || event.ctrlKey) &&
+          !event.shiftKey &&
+          !event.altKey &&
+          event.key.toLowerCase() === "k"
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          openLinkEditorRef.current();
+          return true;
+        }
+        return false;
+      },
+      handlePaste: (view, event) => (view.editable ? pasteLink(view, event) : false),
+      handleClick: (_view, _pos, event) => {
+        // Mod+click follows the link, as in most editors; a plain click
+        // places the caret and lets the bubble show the address.
+        if (!(event.metaKey || event.ctrlKey)) return false;
+        const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
+        if (!(anchor instanceof HTMLAnchorElement)) return false;
+        window.open(anchor.href, "_blank", "noopener,noreferrer");
+        return true;
+      },
     },
   });
 
@@ -126,28 +190,66 @@ export const RichTextEditor = ({
     }
   }, [value, editor]);
 
-  const setLink = useCallback(() => {
-    if (!linkUrl) {
-      editor?.chain().focus().unsetLink().run();
+  const openLinkEditor = useCallback(() => {
+    if (!editor || disabled) return;
+    if (editor.isActive("link")) {
+      // Already a link: edit it where it is, in the bubble under the text.
+      editor.chain().focus().extendMarkRange("link").run();
+      setLinkEditing(true);
       return;
     }
+    setLinkPopoverOpen(true);
+  }, [editor, disabled]);
 
-    // Add https if no protocol
-    const url = linkUrl.startsWith("http") ? linkUrl : `https://${linkUrl}`;
-    editor?.chain().focus().setLink({ href: url }).run();
-    setLinkUrl("");
+  useEffect(() => {
+    openLinkEditorRef.current = openLinkEditor;
+  }, [openLinkEditor]);
+
+  const closeLinkEditors = useCallback(() => {
     setLinkPopoverOpen(false);
-  }, [editor, linkUrl]);
+    setLinkEditing(false);
+    editor?.commands.focus();
+  }, [editor]);
+
+  const applyLink = useCallback(
+    ({ href, text }: LinkFormValue) => {
+      if (!editor) return;
+      const chain = editor.chain().focus();
+      if (text !== undefined) {
+        chain
+          .insertContent({ type: "text", text, marks: [{ type: "link", attrs: { href } }] })
+          .unsetMark("link")
+          .run();
+      } else {
+        chain.extendMarkRange("link").setLink({ href }).run();
+      }
+      setLinkPopoverOpen(false);
+      setLinkEditing(false);
+    },
+    [editor],
+  );
+
+  const removeLink = useCallback(() => {
+    editor?.chain().focus().extendMarkRange("link").unsetLink().run();
+    setLinkPopoverOpen(false);
+    setLinkEditing(false);
+  }, [editor]);
 
   if (!editor) {
+    const skeletonGroups = toolbarSkeletonGroups.filter(
+      (group) => !inline || INLINE_SKELETON_GROUPS.has(group.key),
+    );
+
     return (
       <div className={containerClassName} aria-hidden="true">
         <ScrollArea scrollFade className="h-auto w-full min-w-0 border-b">
           <div className="flex w-max min-w-full touch-pan-x flex-nowrap items-center gap-1 p-1">
-            <div className="border-border flex shrink-0 items-center border-r pr-2">
-              <div className="bg-muted h-9 w-14 rounded-lg sm:h-8" />
-            </div>
-            {toolbarSkeletonGroups.map(({ key, buttons }) => (
+            {inline ? null : (
+              <div className="border-border flex shrink-0 items-center border-r pr-2">
+                <div className="bg-muted h-9 w-14 rounded-lg sm:h-8" />
+              </div>
+            )}
+            {skeletonGroups.map(({ key, buttons }) => (
               <div
                 key={key}
                 className={cn(
@@ -166,10 +268,20 @@ export const RichTextEditor = ({
             </div>
           </div>
         </ScrollArea>
-        <div className="min-h-[120px]" />
+        <div className={CONTENT_MIN_HEIGHT[variant]} />
       </div>
     );
   }
+
+  const isOnLink = editor.isActive("link");
+  const hasSelection = !editor.state.selection.empty;
+  const headingLabel = editor.isActive("heading", { level: 1 })
+    ? "H1"
+    : editor.isActive("heading", { level: 2 })
+      ? "H2"
+      : editor.isActive("heading", { level: 3 })
+        ? "H3"
+        : t("text");
 
   return (
     <div className={containerClassName}>
@@ -179,59 +291,54 @@ export const RichTextEditor = ({
           className="flex w-max min-w-full touch-pan-x flex-nowrap items-center gap-1 p-1"
           role="toolbar"
         >
-          {/* Heading dropdown */}
-          <div className="border-border flex shrink-0 items-center border-r pr-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-9 min-w-14 px-2 text-xs sm:h-8"
-                    disabled={disabled}
-                    aria-label={t("heading")}
-                  />
-                }
-              >
-                {editor.isActive("heading", { level: 1 })
-                  ? "H1"
-                  : editor.isActive("heading", { level: 2 })
-                    ? "H2"
-                    : editor.isActive("heading", { level: 3 })
-                      ? "H3"
-                      : "Texte"}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem
-                  onClick={() => editor.chain().focus().setParagraph().run()}
-                  className={editor.isActive("paragraph") ? "bg-accent" : ""}
+          {inline ? null : (
+            <div className="border-border flex shrink-0 items-center border-r pr-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-9 min-w-14 px-2 text-xs sm:h-8"
+                      disabled={disabled}
+                      aria-label={t("heading")}
+                    />
+                  }
                 >
-                  Texte normal
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                  className={editor.isActive("heading", { level: 1 }) ? "bg-accent" : ""}
-                >
-                  <Heading1 className="mr-2 h-4 w-4" />
-                  Titre 1
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                  className={editor.isActive("heading", { level: 2 }) ? "bg-accent" : ""}
-                >
-                  <Heading2 className="mr-2 h-4 w-4" />
-                  Titre 2
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-                  className={editor.isActive("heading", { level: 3 }) ? "bg-accent" : ""}
-                >
-                  <Heading3 className="mr-2 h-4 w-4" />
-                  Titre 3
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                  {headingLabel}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onClick={() => editor.chain().focus().setParagraph().run()}
+                    className={editor.isActive("paragraph") ? "bg-accent" : ""}
+                  >
+                    {t("normalText")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                    className={editor.isActive("heading", { level: 1 }) ? "bg-accent" : ""}
+                  >
+                    <Heading1 className="mr-2 h-4 w-4" />
+                    {t("heading1")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                    className={editor.isActive("heading", { level: 2 }) ? "bg-accent" : ""}
+                  >
+                    <Heading2 className="mr-2 h-4 w-4" />
+                    {t("heading2")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                    className={editor.isActive("heading", { level: 3 }) ? "bg-accent" : ""}
+                  >
+                    <Heading3 className="mr-2 h-4 w-4" />
+                    {t("heading3")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
 
           <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
             <Toggle
@@ -253,86 +360,87 @@ export const RichTextEditor = ({
             </Toggle>
           </div>
 
-          <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
-            <Toggle
-              pressed={editor.isActive("bulletList")}
-              onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
-              disabled={disabled}
-              aria-label={t("bulletList")}
-            >
-              <List className="h-4 w-4" />
-            </Toggle>
+          {inline ? null : (
+            <>
+              <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
+                <Toggle
+                  pressed={editor.isActive("bulletList")}
+                  onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
+                  disabled={disabled}
+                  aria-label={t("bulletList")}
+                >
+                  <List className="h-4 w-4" />
+                </Toggle>
 
-            <Toggle
-              pressed={editor.isActive("orderedList")}
-              onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
-              disabled={disabled}
-              aria-label={t("orderedList")}
-            >
-              <ListOrdered className="h-4 w-4" />
-            </Toggle>
-          </div>
+                <Toggle
+                  pressed={editor.isActive("orderedList")}
+                  onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
+                  disabled={disabled}
+                  aria-label={t("orderedList")}
+                >
+                  <ListOrdered className="h-4 w-4" />
+                </Toggle>
+              </div>
 
-          <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
-            <Toggle
-              pressed={editor.isActive("blockquote")}
-              onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
-              disabled={disabled}
-              aria-label={t("quote")}
-            >
-              <Quote className="h-4 w-4" />
-            </Toggle>
+              <div className="border-border flex shrink-0 items-center gap-1 border-r pr-2">
+                <Toggle
+                  pressed={editor.isActive("blockquote")}
+                  onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
+                  disabled={disabled}
+                  aria-label={t("quote")}
+                >
+                  <Quote className="h-4 w-4" />
+                </Toggle>
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => editor.chain().focus().setHorizontalRule().run()}
-              disabled={disabled}
-              aria-label={t("separator")}
-              title={t("separator")}
-            >
-              <Minus className="h-4 w-4" />
-            </Button>
-          </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => editor.chain().focus().setHorizontalRule().run()}
+                  disabled={disabled}
+                  aria-label={t("separator")}
+                  title={t("separator")}
+                >
+                  <Minus className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
 
           <div className="flex shrink-0 items-center gap-1">
-            <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
+            <Popover
+              open={linkPopoverOpen}
+              onOpenChange={(open) => {
+                if (open && editor.isActive("link")) {
+                  // The bubble under the link takes over for an existing link.
+                  openLinkEditor();
+                  return;
+                }
+                setLinkPopoverOpen(open);
+              }}
+            >
               <PopoverTrigger
                 render={
                   <Toggle
-                    pressed={editor.isActive("link")}
+                    pressed={isOnLink}
                     disabled={disabled}
-                    aria-label={t("addLink")}
+                    aria-label={isOnLink ? t("editLink") : t("addLink")}
+                    title={`${isOnLink ? t("editLink") : t("addLink")} (${getModKeyLabel()}K)`}
                   />
                 }
               >
                 <LinkIcon className="h-4 w-4" />
               </PopoverTrigger>
-              <PopoverContent className="w-[calc(100vw-2rem)] max-w-80" align="start">
-                <div className="flex gap-2">
-                  <Input
-                    aria-label={t("addLink")}
-                    placeholder="https://example.com"
-                    value={linkUrl}
-                    onChange={(e) => setLinkUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && setLink()}
+              <PopoverContent className="w-[calc(100vw-2rem)] max-w-80 p-3" align="start">
+                {linkPopoverOpen ? (
+                  <LinkForm
+                    withText={!hasSelection}
+                    onSubmit={applyLink}
+                    onCancel={closeLinkEditors}
                   />
-                  <Button type="button" onClick={setLink}>
-                    OK
-                  </Button>
-                </div>
+                ) : null}
               </PopoverContent>
             </Popover>
-
-            <Toggle
-              pressed={false}
-              onPressedChange={() => editor.chain().focus().unsetLink().run()}
-              disabled={disabled || !editor.isActive("link")}
-              aria-label={t("removeLink")}
-            >
-              <Unlink className="h-4 w-4" />
-            </Toggle>
           </div>
 
           <div className="border-border ml-auto flex shrink-0 items-center gap-1 border-l pl-2">
@@ -363,6 +471,15 @@ export const RichTextEditor = ({
 
       {/* Editor */}
       <EditorContent editor={editor} />
+
+      <LinkBubbleMenu
+        editor={editor}
+        editing={linkEditing}
+        onEdit={openLinkEditor}
+        onSubmit={applyLink}
+        onRemove={removeLink}
+        onCancel={closeLinkEditors}
+      />
 
       {/* Styles for placeholder */}
       <style>{`

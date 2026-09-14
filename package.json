@@ -33,6 +33,7 @@
     "packages/*"
   ],
   "scripts": {
+    "qa:storefront": "node scripts/storefront-qa/cli.mjs",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "dev:web": "turbo dev --filter=@louez/web",

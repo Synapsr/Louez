@@ -16,6 +16,7 @@ import {
   products,
   reservationItems,
   reservations,
+  nextProductSlug,
 } from "@louez/db";
 
 import type { McpSessionContext } from "../auth/context";
@@ -211,6 +212,7 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
         .values({
           storeId: ctx.storeId,
           name,
+          slug: await nextProductSlug(db, ctx.storeId, name),
           description: description ?? null,
           price,
           deposit: deposit ?? "0",

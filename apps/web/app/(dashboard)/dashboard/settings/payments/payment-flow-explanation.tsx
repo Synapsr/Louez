@@ -102,7 +102,7 @@ export const PaymentFlowExplanation = ({
               <AlertTitle>{t("suggestions.instantPayment.title")}</AlertTitle>
               <AlertDescription>{t("suggestions.instantPayment.description")}</AlertDescription>
               <AlertAction>
-                <Button variant="outline" render={<Link href="/dashboard/settings" />}>
+                <Button variant="outline" render={<Link href="/dashboard/settings/reservations" />}>
                   {t("suggestions.instantPayment.action")}
                 </Button>
               </AlertAction>

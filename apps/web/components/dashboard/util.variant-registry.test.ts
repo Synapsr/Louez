@@ -47,6 +47,7 @@ test("adding a second L preserves existing sizes, product axes and reservation c
     pricingTiers: [],
     rateTiers: [],
     enforceStrictTiers: true,
+    promotion: null,
     taxSettings: { inheritFromStore: true },
     videoUrl: "",
     accessories: [],

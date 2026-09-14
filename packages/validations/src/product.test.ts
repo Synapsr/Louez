@@ -44,6 +44,7 @@ const validProduct = {
   pricingTiers: [],
   rateTiers: [],
   enforceStrictTiers: true,
+  promotion: null,
   taxSettings: { inheritFromStore: true },
   videoUrl: "",
   accessories: [],

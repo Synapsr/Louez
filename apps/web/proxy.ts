@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { isStandaloneMode } from "@/lib/deployment";
+import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
 import { buildEmbedSecurityHeaders, buildSecurityHeaders } from "@/lib/util.security-headers";
 import { isValidReferralCode } from "@/lib/utils/referral";
 import {
@@ -77,31 +78,11 @@ const DASHBOARD_ROUTES = [
   "/register",
   "/dashboard",
   "/onboarding",
+  "/online-store",
   "/invitation",
   "/multi-store",
   "/admin", // platform-admin area (gated in its layout)
 ];
-
-/**
- * Extract the subdomain from the host header relative to APP_DOMAIN.
- */
-function getSubdomain(host: string, appDomain: string): string | null {
-  const hostname = host.split(":")[0];
-
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return null;
-  }
-
-  const hostParts = hostname.split(".");
-  const baseDomain = appDomain.split(":")[0];
-  const baseParts = baseDomain.split(".");
-
-  if (hostParts.length > baseParts.length) {
-    return hostParts.slice(0, hostParts.length - baseParts.length).join(".");
-  }
-
-  return null;
-}
 
 /**
  * Check if the pathname is a dashboard/auth route that should not be rewritten.
@@ -115,15 +96,6 @@ function isDashboardRoute(pathname: string): boolean {
  */
 function isStaticAsset(pathname: string): boolean {
   return pathname.startsWith("/_next") || pathname.startsWith("/favicon") || pathname.includes(".");
-}
-
-function isLoopbackHost(hostname: string): boolean {
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1" ||
-    hostname === "[::1]"
-  );
 }
 
 function createInternalRewriteUrl(request: NextRequest, pathname: string) {
@@ -167,6 +139,15 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
   // route, query, and cookie before forwarding the rewritten request upstream.
   requestHeaders.delete("x-embed-mode");
   requestHeaders.delete("x-sales-channel");
+  requestHeaders.delete("x-store-slug");
+  requestHeaders.delete("x-storefront-path");
+
+  // The i18n request config reads the store's fallback language from this
+  // before any page runs; it has no route params of its own.
+  requestHeaders.set("x-store-slug", slug);
+  // The store layout redirects products and categories still addressed by
+  // id from this, before its Suspense boundary streams the shell.
+  requestHeaders.set("x-storefront-path", `${pathname}${request.nextUrl.search}`);
 
   if (isMarketplaceChannel) {
     requestHeaders.set("x-sales-channel", MARKETPLACE_CHANNEL);

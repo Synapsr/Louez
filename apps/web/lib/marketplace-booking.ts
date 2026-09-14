@@ -7,10 +7,10 @@ import type {
 } from "@louez/api/services";
 import { db, payments } from "@louez/db";
 
-import { createReservation } from "@/app/(storefront)/[slug]/checkout/actions";
 import { env } from "@/env";
 import { cancelTulipContractForReservation } from "@/lib/integrations/tulip/contracts";
 import { voidReservationFee } from "@/lib/pay-as-you-go";
+import { createReservation } from "@/lib/reservations/create-reservation";
 import { createReservationPaymentSessionForCustomer } from "@/lib/reservations/payment-session";
 import { getCheckoutSession } from "@/lib/stripe";
 import { getStripe } from "@/lib/stripe/client";
@@ -41,11 +41,6 @@ export const marketplaceHoldAdapter: MarketplaceHoldAdapter = {
         endDate: input.endAt,
         unitPrice: item.unitPrice,
         depositPerUnit: item.depositPerUnit,
-        productSnapshot: {
-          name: item.name,
-          description: null,
-          images: item.imageUrl ? [item.imageUrl] : [],
-        },
       })),
       subtotalAmount: input.subtotal,
       depositAmount: input.deposit,
@@ -55,11 +50,8 @@ export const marketplaceHoldAdapter: MarketplaceHoldAdapter = {
       marketplaceSecret: env.MARKETPLACE_CATALOG_SECRET,
     });
 
-    if (!result.success) {
-      return {
-        success: false,
-        error: result.error ?? "errors.createReservationError",
-      };
+    if (!result.ok) {
+      return { success: false, error: result.error };
     }
 
     return {

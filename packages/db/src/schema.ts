@@ -1,3 +1,4 @@
+import type { ProductPromotion } from "@louez/types";
 import { relations } from "drizzle-orm";
 import {
   bigint,
@@ -37,6 +38,7 @@ import type {
   ProductSnapshot,
   ProductTaxSettings,
   PromoCodeSnapshot,
+  ReservationBillingSnapshot,
   ReservationLocationSnapshot,
   ReviewBoosterSettings,
   StoreSettings,
@@ -493,6 +495,9 @@ export const stores = mysqlTable(
     // Branding
     logoUrl: longtext("logo_url"),
     darkLogoUrl: longtext("dark_logo_url"),
+    faviconUrl: longtext("favicon_url"),
+    /** Editor HTML: a short lead under the store name in the home hero; stripped for the default meta description. */
+    tagline: text("tagline"),
 
     // Configuration
     settings: json("settings").$type<StoreSettings>().default({
@@ -882,6 +887,12 @@ export const categories = mysqlTable(
     id: id(),
     storeId: varchar("store_id", { length: 21 }).notNull(),
     name: varchar("name", { length: 255 }).notNull(),
+    /**
+     * URL segment of the storefront category page (`?category=velos`),
+     * unique per store. Null on rows created before slugs existed; the
+     * storefront then falls back to the id.
+     */
+    slug: varchar("slug", { length: 80 }),
     description: text("description"),
     imageUrl: text("image_url"),
     order: int("order").default(0),
@@ -890,6 +901,7 @@ export const categories = mysqlTable(
   },
   (table) => ({
     storeIdx: index("categories_store_idx").on(table.storeId),
+    storeSlugIdx: unique("categories_store_slug_idx").on(table.storeId, table.slug),
   }),
 );
 
@@ -951,6 +963,13 @@ export const products = mysqlTable(
 
     // Information
     name: varchar("name", { length: 255 }).notNull(),
+    /**
+     * URL segment of the storefront product page (`/product/vae-trekking`),
+     * unique per store. Null on rows created before slugs existed; the
+     * storefront then falls back to the id. Stable once set: a renamed
+     * product keeps its URL.
+     */
+    slug: varchar("slug", { length: 80 }),
     description: text("description"),
 
     // Free-text context read by the storefront AI advisor (constraints,
@@ -966,6 +985,8 @@ export const products = mysqlTable(
     price: decimal("price", { precision: 10, scale: 2 }).notNull(),
     deposit: decimal("deposit", { precision: 10, scale: 2 }).default("0"),
     basePeriodMinutes: int("base_period_minutes"),
+
+    promotion: json("promotion").$type<ProductPromotion>(),
 
     // Product pricing mode
     pricingMode: pricingModeEnum.notNull(),
@@ -1013,6 +1034,7 @@ export const products = mysqlTable(
       table.status,
       table.name,
     ),
+    storeSlugIdx: unique("products_store_slug_idx").on(table.storeId, table.slug),
   }),
 );
 
@@ -1178,6 +1200,25 @@ export const customers = mysqlTable(
   }),
 );
 
+export const customerCommunicationPreferences = mysqlTable(
+  "customer_communication_preferences",
+  {
+    id: id(),
+    storeId: varchar("store_id", { length: 21 }).notNull(),
+    customerId: varchar("customer_id", { length: 21 }).notNull(),
+    emailReminders: boolean("email_reminders").default(true).notNull(),
+    smsReminders: boolean("sms_reminders").default(true).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    customerStoreUnique: unique("customer_communication_preferences_customer_store_unique").on(
+      table.customerId,
+      table.storeId,
+    ),
+  }),
+);
+
 export const customerSessions = mysqlTable("customer_sessions", {
   id: id(),
   customerId: varchar("customer_id", { length: 21 }).notNull(),
@@ -1309,6 +1350,11 @@ export const reservations = mysqlTable(
     returnLocationId: varchar("return_location_id", { length: 21 }),
     pickupLocationSnapshot: json("pickup_location_snapshot").$type<ReservationLocationSnapshot>(),
     returnLocationSnapshot: json("return_location_snapshot").$type<ReservationLocationSnapshot>(),
+
+    // Billing identity at booking time (individual or business + company
+    // identifiers). Null only on rows older than the column; readers fall back
+    // to the customer profile through resolveReservationBilling.
+    billingSnapshot: json("billing_snapshot").$type<ReservationBillingSnapshot>(),
 
     // Promo code
     promoCodeId: varchar("promo_code_id", { length: 21 }),

@@ -8,9 +8,17 @@ Louez is a rental management platform where each store manages its own reservati
 A rental business workspace that owns its catalog, reservations, customers, payments, settings, and integrations.
 _Avoid_: account, shop, merchant account, tenant
 
+**Online Store**:
+The public site of a Store: its home page, catalog, contact and legal pages, as customers see them. Edited from the dashboard's full-screen "Boutique en ligne" editor (identity, home, contact, legal pages, search). Its identity fields (name, tagline, description, public contact details) are the ones customers see everywhere, emails and contracts included; the legal and billing identity lives in the Store settings and the legal profile. French UI: "Boutique en ligne".
+_Avoid_: storefront (code name only), site vitrine, shop, website
+
 **Customer**:
-A person or organization renting equipment from a Store.
+A person or organization renting equipment from a Store. Identified by email within a Store; the profile's individual-or-business type is only a default offered at the next checkout.
 _Avoid_: client, buyer
+
+**Billing identity**:
+The individual-or-business identity a Reservation is invoiced under, with the company name and identifiers when it is a business. Captured on the reservation at booking (`billingSnapshot`) and edited only on that reservation, so a later checkout or profile change never rewrites who an existing reservation, its contract, or its invoice is billed to.
+_Avoid_: customer type (when talking about a reservation)
 
 **Reservation payment**:
 A payment made by a Customer for a Store reservation.
@@ -195,6 +203,7 @@ _Avoid_: infinite stock, unlimited capacity, service product type
 ## Relationships
 
 - A **Store** receives **Reservation payments** from **Customers**.
+- A **Store** has exactly one **Online Store**; the dashboard edits it in one place, and only the Store settings keep what is not shown to customers (booking rules, company, hours, payments).
 - A **Reservation payment** can produce **Stripe fees**.
 - A **Stripe fee** is charged by Stripe, not by Louez.
 - A **Louez commission** is distinct from a **Stripe fee** and is currently not charged on Reservation payments.

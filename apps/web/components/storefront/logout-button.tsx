@@ -1,52 +1,61 @@
-'use client'
+"use client";
 
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { LogOut } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { toastManager } from '@louez/ui'
+import { useRouter } from "next/navigation";
 
-import { Button } from '@louez/ui'
-import { useStorefrontUrl } from '@/hooks/use-storefront-url'
-import { logout } from '@/app/(storefront)/[slug]/account/actions'
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { LogOutIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
-interface LogoutButtonProps {
-  storeSlug: string
-}
+import { Button, MenuItem, toastManager } from "@louez/ui";
 
-export function LogoutButton({ storeSlug }: LogoutButtonProps) {
-  const router = useRouter()
-  const t = useTranslations('storefront.account')
-  const tErrors = useTranslations('errors')
-  const { getUrl } = useStorefrontUrl(storeSlug)
-  const [isLoading, setIsLoading] = useState(false)
+import { logout } from "@/app/(storefront)/[slug]/account/actions";
+import { useStorefrontBasePath } from "@/contexts/store-context";
+import { resolveStorefrontHref } from "@/lib/util.storefront-href";
 
-  async function handleLogout() {
-    setIsLoading(true)
-    try {
-      const result = await logout()
-      if (result.error) {
-        toastManager.add({ title: tErrors('logoutError'), type: 'error' })
-        return
-      }
-      router.push(getUrl('/'))
-      router.refresh()
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+/** Ends the customer session and returns to the store home. */
+export const LogoutButton = ({ menuItem = false }: { menuItem?: boolean }) => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const t = useTranslations("storefront.account");
+  const tErrors = useTranslations("errors");
+  const basePath = useStorefrontBasePath() ?? "";
+
+  const signOut = useMutation({
+    mutationFn: async () => {
+      const result = await logout();
+      if (!result.ok) throw new Error(result.error);
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      router.push(resolveStorefrontHref(basePath, "/"));
+      router.refresh();
+    },
+    onError: () => {
+      toastManager.add({ title: tErrors("logoutError"), type: "error" });
+    },
+  });
+
+  if (menuItem)
+    return (
+      <MenuItem
+        className="min-h-11 px-3 sm:min-h-11 [&>svg]:mx-0"
+        disabled={signOut.isPending}
+        onClick={() => signOut.mutate()}
+      >
+        <LogOutIcon aria-hidden />
+        {t("logout")}
+      </MenuItem>
+    );
 
   return (
     <Button
-      variant="outline"
-      onClick={handleLogout}
-      isPending={isLoading}
-      className="gap-2 bg-background/80 backdrop-blur-sm"
+      variant="ghost"
+      className="min-h-11 text-muted-foreground lg:min-h-9"
+      isPending={signOut.isPending}
+      onClick={() => signOut.mutate()}
     >
-      <LogOut data-slot="icon" />
-      {t('logout')}
+      <LogOutIcon data-slot="icon" />
+      {t("logout")}
     </Button>
-  )
-}
+  );
+};

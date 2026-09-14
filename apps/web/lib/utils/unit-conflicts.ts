@@ -1,5 +1,6 @@
-import { and, eq, gt, inArray, lt, not, sql } from 'drizzle-orm';
-import 'server-only';
+import { reservationAvailabilityEndSql } from "@louez/db";
+import { and, eq, gt, inArray, lt, not, sql } from "drizzle-orm";
+import "server-only";
 
 import {
   buildReservationOverlapPredicate,
@@ -10,14 +11,14 @@ import {
   reservationItemUnits,
   reservationItems,
   reservations,
-} from '@louez/db';
+} from "@louez/db";
 
 import {
   type AvailableUnit,
   type BlockingReservationStatus,
   getAvailableUnitsForProduct,
   getBlockingReservationStatuses,
-} from './unit-availability';
+} from "./unit-availability";
 
 export type UnitConflictWindow = {
   start: Date;
@@ -59,9 +60,7 @@ export async function getUnitConflicts(
   window: UnitConflictWindow,
   options: GetUnitConflictsOptions,
 ): Promise<UnitConflict[]> {
-  const blockingStatuses = getBlockingStatuses(
-    options.pendingBlocksAvailability,
-  );
+  const blockingStatuses = getBlockingStatuses(options.pendingBlocksAvailability);
   const turnoverBufferMinutes = options.turnoverBufferMinutes ?? 0;
 
   const [unit] = await db
@@ -72,9 +71,7 @@ export async function getUnitConflicts(
     })
     .from(productUnits)
     .innerJoin(products, eq(productUnits.productId, products.id))
-    .where(
-      and(eq(productUnits.id, unitId), eq(products.storeId, options.storeId)),
-    )
+    .where(and(eq(productUnits.id, unitId), eq(products.storeId, options.storeId)))
     .limit(1);
 
   if (!unit) {
@@ -98,36 +95,23 @@ export async function getUnitConflicts(
   } else {
     conditions.push(
       gt(
-        reservations.endDate,
-        new Date(
-          window.start.getTime() - Math.max(0, turnoverBufferMinutes) * 60_000,
-        ),
+        reservationAvailabilityEndSql(),
+        new Date(window.start.getTime() - Math.max(0, turnoverBufferMinutes) * 60_000),
       ),
     );
   }
 
   const excludedReservationItemIds = [
-    ...(options.excludeReservationItemId
-      ? [options.excludeReservationItemId]
-      : []),
+    ...(options.excludeReservationItemId ? [options.excludeReservationItemId] : []),
     ...(options.excludeReservationItemIds ?? []),
   ];
-  const uniqueExcludedReservationItemIds = [
-    ...new Set(excludedReservationItemIds),
-  ];
+  const uniqueExcludedReservationItemIds = [...new Set(excludedReservationItemIds)];
 
   const [onlyExcludedReservationItemId] = uniqueExcludedReservationItemIds;
-  if (
-    uniqueExcludedReservationItemIds.length === 1 &&
-    onlyExcludedReservationItemId
-  ) {
-    conditions.push(
-      not(eq(reservationItems.id, onlyExcludedReservationItemId)),
-    );
+  if (uniqueExcludedReservationItemIds.length === 1 && onlyExcludedReservationItemId) {
+    conditions.push(not(eq(reservationItems.id, onlyExcludedReservationItemId)));
   } else if (uniqueExcludedReservationItemIds.length > 1) {
-    conditions.push(
-      not(inArray(reservationItems.id, uniqueExcludedReservationItemIds)),
-    );
+    conditions.push(not(inArray(reservationItems.id, uniqueExcludedReservationItemIds)));
   }
 
   const conflicts = await db
@@ -138,18 +122,12 @@ export async function getUnitConflicts(
         string | null
       >`NULLIF(TRIM(CONCAT(COALESCE(${customers.firstName}, ''), ' ', COALESCE(${customers.lastName}, ''))), '')`,
       startDate: reservations.startDate,
-      endDate: reservations.endDate,
+      endDate: reservationAvailabilityEndSql(),
       reservationItemId: reservationItems.id,
     })
     .from(reservationItemUnits)
-    .innerJoin(
-      reservationItems,
-      eq(reservationItemUnits.reservationItemId, reservationItems.id),
-    )
-    .innerJoin(
-      reservations,
-      eq(reservationItems.reservationId, reservations.id),
-    )
+    .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))
+    .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
     .leftJoin(customers, eq(reservations.customerId, customers.id))
     .where(and(...conditions));
 
@@ -169,9 +147,7 @@ export async function getUnitConflicts(
 
       return {
         ...conflict,
-        replacementCandidates: candidates.filter(
-          (candidate) => candidate.id !== unit.id,
-        ),
+        replacementCandidates: candidates.filter((candidate) => candidate.id !== unit.id),
       };
     }),
   );
@@ -186,9 +162,7 @@ export async function getUnitConflictFlags(
     return flags;
   }
 
-  const blockingStatuses = getBlockingStatuses(
-    options.pendingBlocksAvailability,
-  );
+  const blockingStatuses = getBlockingStatuses(options.pendingBlocksAvailability);
   const turnoverBufferMinutes = options.turnoverBufferMinutes ?? 0;
   const windowsByUnitId = new Map<string, UnitConflictWindow[]>();
 
@@ -212,9 +186,7 @@ export async function getUnitConflictFlags(
       ? new Date(Math.max(...finiteEnds.map((end) => end.getTime())))
       : null;
   const bufferedMaxFiniteEnd = maxFiniteEnd
-    ? new Date(
-        maxFiniteEnd.getTime() + Math.max(0, turnoverBufferMinutes) * 60_000,
-      )
+    ? new Date(maxFiniteEnd.getTime() + Math.max(0, turnoverBufferMinutes) * 60_000)
     : null;
 
   const conditions = [
@@ -232,17 +204,11 @@ export async function getUnitConflictFlags(
     .select({
       productUnitId: reservationItemUnits.productUnitId,
       startDate: reservations.startDate,
-      endDate: reservations.endDate,
+      endDate: reservationAvailabilityEndSql(),
     })
     .from(reservationItemUnits)
-    .innerJoin(
-      reservationItems,
-      eq(reservationItemUnits.reservationItemId, reservationItems.id),
-    )
-    .innerJoin(
-      reservations,
-      eq(reservationItems.reservationId, reservations.id),
-    )
+    .innerJoin(reservationItems, eq(reservationItemUnits.reservationItemId, reservationItems.id))
+    .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
     .where(and(...conditions));
 
   for (const assignment of assignments) {
@@ -258,10 +224,7 @@ export async function getUnitConflictFlags(
           window.start.getTime() - Math.max(0, turnoverBufferMinutes) * 60_000,
         );
         const bufferedEnd = window.end
-          ? new Date(
-              window.end.getTime() +
-                Math.max(0, turnoverBufferMinutes) * 60_000,
-            )
+          ? new Date(window.end.getTime() + Math.max(0, turnoverBufferMinutes) * 60_000)
           : null;
 
         return (

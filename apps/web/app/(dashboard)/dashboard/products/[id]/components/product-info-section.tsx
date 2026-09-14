@@ -4,7 +4,14 @@ import { getTranslations } from "next-intl/server";
 import { FileText, Package } from "lucide-react";
 
 import { Badge, Card, CardContent, CardHeader, CardTitle, Separator } from "@louez/ui";
-import { formatCurrency } from "@louez/utils";
+import {
+  applyProductPromotion,
+  formatCurrency,
+  getProductPromotionStatus,
+  pricingModeToMinutes,
+} from "@louez/utils";
+import type { PricingKind, ProductPromotion } from "@louez/types";
+import { formatPeriodDuration } from "./util.product-pricing";
 
 import { ProductImage } from "@/components/product/product-image";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -44,6 +51,9 @@ interface ProductInfoSectionAccessory {
 interface ProductInfoSectionProduct {
   description: string | null;
   price: string;
+  pricingKind?: PricingKind;
+  basePeriodMinutes?: number | null;
+  promotion?: ProductPromotion | null;
   pricingMode: "hour" | "day" | "week";
   images: string[] | null;
   pricingTiers: ProductInfoSectionPricingTier[];
@@ -54,12 +64,17 @@ interface ProductInfoSectionProduct {
 interface ProductInfoSectionProps {
   product: ProductInfoSectionProduct;
   currency: string;
+  timezone?: string;
 }
 
-export async function ProductInfoSection({ product, currency }: ProductInfoSectionProps) {
+export async function ProductInfoSection({ product, currency, timezone }: ProductInfoSectionProps) {
   const { intl: formatLocale } = await getRequestFormatLocale();
   const t = await getTranslations("dashboard.products.detail.info");
   const tForm = await getTranslations("dashboard.products.form");
+  const now = new Date();
+  const promotionStatus = getProductPromotionStatus(product.promotion, timezone, now);
+  const activePromotion = promotionStatus === "active" ? product.promotion : null;
+  const price = applyProductPromotion(parseFloat(product.price), activePromotion, timezone, now);
 
   return (
     <Card>
@@ -88,32 +103,89 @@ export async function ProductInfoSection({ product, currency }: ProductInfoSecti
 
         {/* Pricing */}
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-baseline gap-2 tabular-nums">
+            {price.promotion && (
+              <s className="text-sm text-muted-foreground">
+                {formatCurrency(price.promotion.originalSubtotal, currency, formatLocale)}
+              </s>
+            )}
             <p className="text-lg font-semibold">
-              {formatCurrency(parseFloat(product.price), currency, formatLocale)}
+              {formatCurrency(price.subtotal, currency, formatLocale)}
             </p>
-            <Badge variant="expired">{tForm(`pricingModes.${product.pricingMode}`)}</Badge>
+            <span className="text-sm text-muted-foreground">
+              {product.pricingKind === "fixed"
+                ? tForm("fixedPrice")
+                : `/ ${formatPeriodDuration(product.basePeriodMinutes ?? pricingModeToMinutes(product.pricingMode))}`}
+            </span>
+            {price.promotion && <Badge variant="promo">−{price.promotion.percentage}%</Badge>}
           </div>
+          {product.promotion && (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span>
+                {tForm("promotion.title")}
+                {!activePromotion && ` −${product.promotion.percentage}%`}
+              </span>
+              <Badge variant="secondary" size="sm">
+                {tForm(`promotion.${promotionStatus}`)}
+              </Badge>
+              {(product.promotion.startsOn || product.promotion.endsOn) && (
+                <span>
+                  {product.promotion.startsOn
+                    ? formatDate(product.promotion.startsOn, undefined, formatLocale)
+                    : tForm("promotion.immediately")}
+                  {" – "}
+                  {product.promotion.endsOn
+                    ? formatDate(product.promotion.endsOn, undefined, formatLocale)
+                    : tForm("promotion.noEnd")}
+                </span>
+              )}
+            </div>
+          )}
 
-          <ProductPricingTiersTable tiers={product.pricingTiers} currency={currency} />
+          <ProductPricingTiersTable
+            tiers={product.pricingTiers}
+            currency={currency}
+            promotion={activePromotion}
+            timezone={timezone}
+          />
 
           {product.seasonalPricings.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-muted-foreground">{t("seasonalPricing")}</p>
               <ul className="space-y-1 text-sm">
-                {product.seasonalPricings.map((season) => (
-                  <li
-                    key={season.id}
-                    className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5"
-                  >
-                    <span className="min-w-0">
-                      {season.name} · {formatDate(season.startDate, undefined, formatLocale)} – {formatDate(season.endDate, undefined, formatLocale)}
-                    </span>
-                    <span className="font-medium">
-                      {formatCurrency(parseFloat(season.price), currency, formatLocale)}
-                    </span>
-                  </li>
-                ))}
+                {product.seasonalPricings.map((season) => {
+                  const seasonalPrice = applyProductPromotion(
+                    parseFloat(season.price),
+                    activePromotion,
+                    timezone,
+                    now,
+                  );
+                  return (
+                    <li
+                      key={season.id}
+                      className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5"
+                    >
+                      <span className="min-w-0">
+                        {season.name} · {formatDate(season.startDate, undefined, formatLocale)} –{" "}
+                        {formatDate(season.endDate, undefined, formatLocale)}
+                      </span>
+                      <span className="flex items-baseline gap-2 tabular-nums">
+                        {seasonalPrice.promotion && (
+                          <s className="text-xs text-muted-foreground">
+                            {formatCurrency(
+                              seasonalPrice.promotion.originalSubtotal,
+                              currency,
+                              formatLocale,
+                            )}
+                          </s>
+                        )}
+                        <span className="font-medium">
+                          {formatCurrency(seasonalPrice.subtotal, currency, formatLocale)}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}

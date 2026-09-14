@@ -1,12 +1,12 @@
-import type { EmailCustomContent } from '@louez/types'
+import type { EmailCustomContent } from "@louez/types";
 
 interface CustomContentValues {
-  name: string
-  number: string
+  name: string;
+  number: string;
 }
 
 const interpolate = (text: string, values: CustomContentValues) =>
-  text.replaceAll('{name}', values.name).replaceAll('{number}', values.number)
+  text.replaceAll("{name}", values.name).replaceAll("{number}", values.number);
 
 /**
  * One implementation of the store-configurable email content contract:
@@ -22,5 +22,5 @@ export function resolveCustomContent(
     greeting: interpolate(customContent?.greeting || defaults.greeting, values),
     message: customContent?.message ? interpolate(customContent.message, values) : null,
     signature: customContent?.signature || defaults.signature,
-  }
+  };
 }

@@ -447,6 +447,7 @@ export async function quoteMarketplaceBooking(params: {
     );
     const priced = calculateSeasonalAwarePrice(
       {
+        timezone: store.settings?.timezone,
         basePrice: line.price,
         basePeriodMinutes: line.basePeriodMinutes,
         deposit: line.deposit,

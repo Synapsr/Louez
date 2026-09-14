@@ -9,7 +9,9 @@
     ".": "./src/index.ts",
     "./router": "./src/router.ts",
     "./services": "./src/services/index.ts",
-    "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts"
+    "./services/marketplace-default-publication": "./src/services/marketplace-default-publication.ts",
+    "./services/pricing-catalog": "./src/services/pricing-catalog.ts",
+    "./services/promo": "./src/services/promo.ts"
   },
   "dependencies": {
     "@louez/auth": "workspace:*",

@@ -67,6 +67,8 @@
     "dayUnit": "{count, plural, one {dag} other {dagen}}",
     "hourUnit": "{count, plural, one {uur} other {uren}}",
     "weekUnit": "{count, plural, one {week} other {weken}}",
+    "monthUnit": "{count, plural, one {maand} other {maanden}}",
+    "yearUnit": "{count, plural, one {jaar} other {jaar}}",
     "minuteUnit": "{count, plural, one {minuut} other {minuten}}",
     "phoneInput": {
       "selectCountry": "Selecteer een land",
@@ -116,7 +118,23 @@
       "removeLink": "Link verwijderen",
       "undo": "Ongedaan maken",
       "redo": "Opnieuw",
-      "heading": "Koptekst"
+      "heading": "Koptekst",
+      "text": "Tekst",
+      "normalText": "Normale tekst",
+      "heading1": "Kop 1",
+      "heading2": "Kop 2",
+      "heading3": "Kop 3",
+      "editLink": "Link bewerken",
+      "openLink": "Link openen",
+      "edit": "Bewerken",
+      "cancel": "Annuleren",
+      "apply": "Toepassen",
+      "linkUrl": "Linkadres",
+      "linkUrlPlaceholder": "voorbeeld.nl/pagina",
+      "linkText": "Linktekst",
+      "linkTextPlaceholder": "Getoonde tekst (anders het adres)",
+      "linkHint": "Een getypt of geplakt adres wordt vanzelf een link.",
+      "linkInvalid": "Voer een geldig webadres in, bijvoorbeeld voorbeeld.nl"
     },
     "dateTimePicker": {
       "select": "Selecteren",
@@ -672,7 +690,147 @@
         "totalSpent": "Totaal besteed"
       }
     },
+    "onlineStore": {
+      "title": "Online winkel",
+      "description": "Identiteit, startpagina, contact, juridische pagina's en zoekmachines van uw site",
+      "backToDashboard": "Dashboard",
+      "preview": "Voorbeeld",
+      "viewStore": "Winkel bekijken",
+      "saved": "Online winkel bijgewerkt",
+      "leaveConfirm": "U heeft niet-opgeslagen wijzigingen. Verlaten zonder op te slaan?",
+      "railLabel": "Secties van de online winkel",
+      "resizePanel": "Breedte van het paneel",
+      "device": {
+        "label": "Voorbeeldformaat",
+        "desktop": "Computer",
+        "phone": "Telefoon"
+      },
+      "sections": {
+        "identity": {
+          "label": "Identiteit",
+          "description": "Naam, slogan, logo, kleur en taal"
+        },
+        "home": {
+          "label": "Home",
+          "description": "Header, aankondigingsbalk, catalogus en secties"
+        },
+        "contact": {
+          "label": "Contact",
+          "description": "Contactgegevens, contactpagina en sociale media"
+        },
+        "legal": {
+          "label": "Juridische pagina's",
+          "description": "Algemene voorwaarden, juridische vermelding en footer"
+        },
+        "seo": {
+          "label": "Zoekmachines",
+          "description": "Deelafbeelding en Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Naam en presentatie",
+          "description": "Wat uw klanten als eerste lezen, op de site en in de zoekresultaten."
+        },
+        "nameDescription": "Weergegeven aan uw klanten op de site, in e-mails en op contracten.",
+        "tagline": {
+          "label": "Slogan",
+          "description": "Eén zin onder de naam, bovenaan de homepage. Maximaal {max} tekens.",
+          "placeholder": "Fiets- en supverhuur in Carnac sinds 2012"
+        },
+        "descriptionHint": "De tekst van de pagina Over ons. Zonder slogan verschijnt hij ook bovenaan de homepage.",
+        "logos": {
+          "description": "Het logo in de header, het icoon in het browsertabblad."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "Het icoon van het browsertabblad en van het startscherm op de telefoon. Zonder favicon wordt het logo gebruikt.",
+          "hint": "Vierkante afbeelding, 512 × 512 px aanbevolen. PNG of JPG."
+        },
+        "website": {
+          "label": "Website",
+          "description": "Vult deze webwinkel een bestaande website aan? Vul die hier in: uw klanten krijgen een knop om ernaar terug te keren en de website staat in de voettekst.",
+          "placeholder": "https://www.uw-site.nl"
+        },
+        "language": {
+          "title": "Taal en adres",
+          "description": "De standaardtaal van de site en het openbare adres."
+        }
+      },
+      "home": {
+        "header": "Kopgedeelte",
+        "photos": "Foto's",
+        "announcement": {
+          "title": "Aankondigingsbalk",
+          "description": "Eén regel boven de header, op alle pagina's.",
+          "enabled": "Balk weergeven",
+          "enabledDescription": "Een sluiting, een kortingscode, een evenement.",
+          "text": "Tekst",
+          "textPlaceholder": "Gesloten van 1 tot 15 augustus, tot snel!",
+          "href": "Link",
+          "hrefDescription": "Optioneel. De balk wordt klikbaar."
+        },
+        "sections": {
+          "title": "Secties van de pagina",
+          "description": "De optionele blokken van de homepage, na de catalogus.",
+          "reassurance": "Vertrouwensregel",
+          "reassuranceDescription": "Bevestiging, veilig betalen, ophalen of bezorging, onder de zoekbalk.",
+          "reviews": "Google-recensies",
+          "reviewsDescription": "De score in de header en de recensiesectie, zodra de Recensie booster is ingesteld.",
+          "map": "Adres en kaart",
+          "mapDescription": "Waar het materiaal opgehaald wordt, met uw contactmogelijkheden."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Contactgegevens",
+          "description": "Weergegeven in de footer, op de contactpagina en op de kaart."
+        },
+        "headerPhone": {
+          "label": "Belknop in de header",
+          "description": "Een telefoonknop naast de winkelwagen, op alle pagina's.",
+          "empty": "Vul hierboven een telefoonnummer in om deze knop te activeren."
+        },
+        "hours": {
+          "description": "De openingstijden stelt u in bij Instellingen; ze bepalen ook de beschikbaarheid.",
+          "link": "Openingstijden bewerken"
+        },
+        "missingPhone": "Zonder telefoonnummer hierboven blijven bellen en SMS verborgen.",
+        "missingEmail": "Zonder e-mailadres hierboven blijven e-mail en formulier verborgen.",
+        "missingBoth": "Vul hierboven een telefoonnummer en een e-mailadres in om deze contactmogelijkheden aan te bieden.",
+        "social": {
+          "title": "Sociale media",
+          "description": "Iconen in de footer. Plak het volledige adres van elk profiel.",
+          "website": "Andere website"
+        }
+      },
+      "legal": {
+        "texts": "Juridische teksten",
+        "footerNote": {
+          "label": "Notitie in de footer",
+          "description": "Vrije tekst onderaan alle pagina's: registratienummer, erkenning, lidmaatschap.",
+          "placeholder": "Registratienr. 123 456 789 · Lid van het netwerk …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Waar vind ik deze code?",
+        "shareImage": {
+          "title": "Deelafbeelding",
+          "description": "De afbeelding die wordt getoond wanneer een link naar uw winkel wordt gedeeld op WhatsApp, Facebook of LinkedIn.",
+          "label": "Afbeelding",
+          "fallback": "Zonder eigen afbeelding wordt de eerste foto van de header gebruikt.",
+          "hint": "1200 × 630 px aanbevolen. JPG of PNG, max. 5 MB."
+        }
+      },
+      "sketch": {
+        "empty": "Nog geen inhoud",
+        "googleResult": "Google-resultaat",
+        "shareCard": "Voorbeeld bij delen",
+        "noShareImage": "Geen afbeelding"
+      }
+    },
     "navigation": {
+      "onlineStore": "Online winkel",
       "aiAssistant": "AI-assistent",
       "aiConversations": "Klantgesprekken",
       "aiAdvisor": "Online adviseur",
@@ -848,6 +1006,9 @@
       "noProducts": "Geen producten",
       "noProductsDescription": "Begin met het toevoegen van uw eerste product",
       "searchProducts": "Zoek een product...",
+      "clearSearch": "Zoekopdracht wissen",
+      "noSearchResults": "Geen producten gevonden",
+      "noSearchResultsDescription": "Geen product komt overeen met ‘{search}’.",
       "allCategories": "Alle categorieën",
       "allStatuses": "Alle statussen",
       "name": "Naam",
@@ -1085,19 +1246,85 @@
         "quantity": "Beschikbare hoeveelheid",
         "quantityHelp": "Aantal beschikbare eenheden voor verhuur",
         "consumableQuantityHelp": "Voorraad in het schap: die daalt bij elke bevestigde reservering en stijgt wanneer u aanvult.",
-        "stockKindLabel": "Voorraadtype",
-        "stockKindReturnable": "Retourneerbare voorraad",
-        "stockKindReturnableDescription": "Het product komt na elke verhuur terug en wordt opnieuw beschikbaar.",
+        "stockKindQuestion": "Hoe wil je de voorraad van dit product volgen?",
+        "stockOptionBlocked": "Vergrendeld door lopende reserveringen.",
+        "stockOptionRemovesUnits": "{count, plural, one {De geregistreerde eenheid wordt verwijderd.} other {De # geregistreerde eenheden worden verwijderd.}}",
+        "choiceChange": "Keuze wijzigen: {choice}",
+        "kindExamples": {
+          "title": "Voorbeelden: {option}",
+          "description": "Producten die bij deze keuze passen, per branche.",
+          "product": "Product",
+          "pricing": "Prijs",
+          "stock": "Voorraad",
+          "bikes": {
+            "ebike": "Elektrische mountainbike",
+            "cargoBike": "Bakfiets",
+            "helmet": "Helm",
+            "bikeLock": "Fietsslot",
+            "innerTube": "Binnenband",
+            "energyBar": "Energiereep",
+            "guidedTour": "Begeleide fietstocht",
+            "bikeWash": "Fietsreiniging"
+          },
+          "sportsOutdoor": {
+            "wetsuit": "Wetsuit",
+            "skis": "Ski's",
+            "paddle": "Opblaasbaar SUP-board",
+            "lifeJacket": "Reddingsvest",
+            "gasCartridge": "Gasbusje",
+            "sunscreen": "Zonnebrandcrème",
+            "surfLesson": "Surfles",
+            "skiWaxing": "Ski's waxen"
+          },
+          "partyEvents": {
+            "marquee": "Partytent",
+            "speaker": "PA-speaker",
+            "chairs": "Klapstoelen",
+            "glasses": "Wijnglazen",
+            "tablecloths": "Wegwerptafelkleden",
+            "smokeFluid": "Rookvloeistof",
+            "setup": "Opbouw en afbouw",
+            "djService": "DJ-service"
+          },
+          "toolsDiy": {
+            "miniExcavator": "Minigraver",
+            "generator": "Aggregaat",
+            "drill": "Boorhamer",
+            "ladder": "Ladder",
+            "diamondBlade": "Diamantzaagblad",
+            "sandpaper": "Schuurpapier",
+            "siteDelivery": "Levering op de bouwplaats",
+            "operator": "Machinist"
+          },
+          "vehicles": {
+            "van": "Bestelbus 12 m³",
+            "camper": "Camper",
+            "childSeat": "Kinderzitje",
+            "roofBox": "Dakkoffer",
+            "fuel": "Volle tank",
+            "adblue": "AdBlue",
+            "driver": "Chauffeur",
+            "cleaning": "Interieurreiniging"
+          },
+          "electronics": {
+            "camera": "Systeemcamera",
+            "projector": "Beamer",
+            "battery": "Extra accu",
+            "tripod": "Statief",
+            "memoryCard": "Geheugenkaart",
+            "gaffer": "Gaffatape",
+            "installation": "Installatie ter plaatse",
+            "technician": "Technicus"
+          }
+        },
         "stockKindConsumable": "Verbruiksartikel",
-        "stockKindConsumableDescription": "Het product gaat mee met de klant: de voorraad daalt bij elke bevestigde reservering en het aantal is de voorraad in het schap.",
-        "stockKindConsumableRequiresFixed": "Een verbruiksartikel wordt tegen een vaste prijs verkocht: kies de tarifering \"Vaste prijs\" om het in te schakelen.",
-        "stockKindConsumableRequiresNoUnits": "Een verbruiksartikel wordt niet per eenheid gevolgd: schakel het volgen per eenheid uit om het in te schakelen.",
+        "stockKindConsumableDescription": "Gaat mee met de klant: voorraad daalt bij elke boeking.",
+        "stockKindConsumableSwitchesPricing": "De prijs wordt een vaste prijs.",
         "stockKindUntracked": "Voorraad niet volgen",
-        "stockKindUntrackedRequiresNoUnits": "Niet-gevolgde voorraad kan geen eenheidstracering gebruiken.",
+        "stockKindUntrackedDescription": "Geen hoeveelheid te beheren. Datums en regels blijven gelden.",
         "untrackedStockHelp": "Er wordt geen hoeveelheid bijgehouden of beperkt. Datums en boekingsregels blijven van toepassing.",
         "stockKindChangeBlockedTitle": "Voorraadtype vergrendeld",
         "stockKindChangeBlocked": "Dit product staat in de volgende reserveringen. Annuleer of voltooi ze voordat u het voorraadtype wijzigt.",
-        "stockKindChangeBlockedTrigger": "{kind}. Bekijk reserveringen die de wijziging blokkeren.",
         "stockKindBlockingReservation": "Reservering #{number}",
         "publication": "Publicatie",
         "statusActive": "Actief",
@@ -1118,11 +1345,13 @@
         "categoryOptional": "Optioneel - helpt klanten uw product te vinden",
         "noCategories": "Nog geen categorieën",
         "pricingDescription": "Stel de huurprijs en tarieven in",
-        "pricingKindLabel": "Prijsmodel",
-        "pricingKindDuration": "Prijs per duur",
-        "pricingKindDurationDescription": "De prijs hangt af van de huurduur.",
+        "pricingKindQuestion": "Hoe wordt de prijs berekend?",
+        "pricingKindDuration": "Per duur",
+        "pricingKindDurationDescription": "Prijs volgt de huurduur, met korting bij lange huur.",
+        "pricingKindDurationSwitchesStock": "De voorraad wordt een eenvoudige hoeveelheid.",
+        "pricingKindDurationBlocked": "Vergrendeld door lopende reserveringen.",
         "pricingKindFixed": "Vaste prijs",
-        "pricingKindFixedDescription": "Eén prijs, ongeacht de huurduur.",
+        "pricingKindFixedDescription": "Eén prijs per exemplaar, ongeacht de huurduur.",
         "fixedPrice": "Vaste prijs",
         "fixedPriceDescription": "Eenmaal per artikel in rekening gebracht, ongeacht de huurduur.",
         "fixedPriceLabel": "Vaste prijs",
@@ -1141,6 +1370,21 @@
           "hour": "Per uur",
           "day": "Per dag",
           "week": "Per week"
+        },
+        "calculationMode": {
+          "label": "Prijsberekening",
+          "whole": {
+            "label": "Hele periodes",
+            "description": "Elke begonnen periode wordt volledig in rekening gebracht.",
+            "tiersDescription": "Tussenliggende looptijden worden tegen het eerstvolgende tarief berekend."
+          },
+          "prorated": {
+            "label": "Naar verhouding",
+            "description": "Na de eerste periode past de prijs zich aan de exacte duur aan.",
+            "tiersDescription": "De prijs verandert geleidelijk tussen de looptijden van je tarieven."
+          },
+          "example": "Voorbeeld voor {duration}",
+          "minimum": "Minimumbedrag: {price} voor {duration}."
         },
         "pricingTiers": {
           "enableTiers": "Langdurige kortingen",
@@ -1177,9 +1421,9 @@
             }
           },
           "chart": {
-            "strictLine": "Vaste stappen",
-            "progressiveLine": "Progressief",
-            "savings": "Klantbesparing",
+            "strictLine": "Hele periodes",
+            "progressiveLine": "Naar verhouding",
+            "savings": "Verschil tussen de opties",
             "basePricing": "Basistarieven",
             "title": "Prijssimulatie",
             "subtitle": "Totale prijs per huurperiode"
@@ -1208,7 +1452,6 @@
           "deleteWarning": "Deze eenheid is momenteel toegewezen aan een actieve reservering en kan niet worden verwijderd.",
           "assignedUnit": "Toegewezen",
           "disableConfirm": "Eenheidtracking uitschakelen?",
-          "disableDescription": "Individuele eenheidtracking wordt uitgeschakeld. De hoeveelheid wordt ingesteld op {count}. Geregistreerde eenheden worden verwijderd.",
           "duplicateIdentifier": "Een of meer identificaties zijn gedupliceerd",
           "identifierRequired": "Identificatie is vereist",
           "noUnitsRegistered": "Geen eenheden geregistreerd",
@@ -1243,21 +1486,19 @@
           "benefitAvailability": "Volg de beschikbaarheid en verhuur van elk exemplaar",
           "benefitInventory": "Registreer aankoopprijs en -datum voor je inventaris",
           "modeQuantity": "Eenvoudige hoeveelheid",
-          "modeQuantityDescription": "Geef gewoon aan hoeveel exemplaren beschikbaar zijn voor verhuur.",
+          "modeQuantityDescription": "Komt na elke verhuur terug. Geef aan hoeveel je er hebt.",
           "modeUnits": "Per eenheid volgen",
-          "modeUnitsDescription": "Elk exemplaar krijgt een eigen kenmerk.",
+          "modeUnitsDescription": "Elk exemplaar heeft een eigen referentie, maat of kleur.",
           "variantsTitle": "Varianten",
           "variantsHelp": "Maximaal 3 varianten (maat, kleur…). Elke eenheid draagt haar waarde en de klant kiest bij het boeken.",
           "variantsEmptyHint": "Maak je per maat een apart product aan? Voeg liever een variant \"Maat\" toe: elke eenheid draagt de hare en de klant kiest bij het boeken.",
           "variantPlaceholder": "bijv. Maat",
           "addVariant": "Variant toevoegen",
           "variantsMaxReached": "Maximaal 3 varianten",
-          "defaultBadge": "Standaard",
           "advancedBadge": "Geavanceerd",
           "learnMore": "Meer informatie",
           "addRefPlaceholder": "Typ een referentie en druk op Enter",
           "generateSeries": "Reeks genereren",
-          "changeMode": "Modus wijzigen",
           "createVariantValue": "\"{value}\" aanmaken ({axis})",
           "chooseColor": "Kies een kleur",
           "colorPickerDescription": "Pas de kleur aan of voer een hexadecimale waarde in.",
@@ -1461,6 +1702,15 @@
         "aiContextPlaceholder": "Bijv. rijbewijs B vereist, niet geschikt voor kinderen onder de 12 jaar, vraag altijd naar de datum van het evenement en de groepsgrootte…",
         "aiContextHint": "Extra informatie die alleen de AI-adviseur ziet — hij gebruikt deze om klanten te adviseren en vereisten te controleren. Wordt nooit in uw winkel getoond.",
         "createAndDuplicate": "Aanmaken en dupliceren",
+        "minimumCharged": "minimaal in rekening gebracht",
+        "seasonReplacesBase": "vervangt het basistarief",
+        "addSeasonRate": "Lager tarief tijdens dit seizoen",
+        "openSimulation": "Simuleren",
+        "simulationHint": "Klik op de curve om daar een tarief toe te voegen",
+        "horizonAuto": "Auto",
+        "depositAndVat": "Borg en btw",
+        "vatLabel": "Btw",
+        "seasonActions": "Seizoensacties",
         "productCreatedCopyReady": "De vooraf ingevulde kopie kan worden bewerkt.",
         "copySuffix": "(kopie)",
         "productSection": "Product",
@@ -1478,7 +1728,28 @@
         "videoTileLabel": "Video",
         "videoInvalid": "Ongeldige YouTube-link",
         "editVideo": "Video bewerken",
-        "removeVideo": "Video verwijderen"
+        "removeVideo": "Video verwijderen",
+        "promotion": {
+          "add": "Actie toevoegen",
+          "title": "Actie",
+          "remove": "Actie verwijderen",
+          "reduction": "Korting",
+          "description": "Automatisch toegepast op boekingen tijdens de actie. Niet te combineren met een kortingscode.",
+          "schedule": "Inplannen",
+          "from": "Vanaf {date}",
+          "until": "Tot en met {date}",
+          "pickStart": "Kies de eerste dag van de actie.",
+          "pickEnd": "Kies de laatste dag, of laat de actie doorlopen.",
+          "clearDates": "Datums verwijderen",
+          "immediately": "Meteen",
+          "noEnd": "Geen einddatum",
+          "invalidPercentage": "Voer een heel percentage tussen 1 en 99 in.",
+          "invalidDates": "Kies een einddatum op of na de begindatum.",
+          "active": "Actief",
+          "scheduled": "Gepland",
+          "expired": "Afgelopen",
+          "none": "Niet ingesteld"
+        }
       },
       "deleteConfirm": {
         "title": "Dit product verwijderen?",
@@ -1865,6 +2136,22 @@
       "sendEmail": "E-mail verzenden",
       "customerInfo": "Klantinformatie",
       "viewCustomer": "Klant bekijken",
+      "billing": {
+        "title": "Facturatie",
+        "edit": "Facturatie bewerken",
+        "description": "Identiteit waaronder deze reservering wordt gefactureerd. Het klantprofiel blijft ongewijzigd.",
+        "business": "Factureren aan een bedrijf",
+        "individual": "Particulier",
+        "companyName": "Bedrijfsnaam",
+        "companyNumber": "Ondernemingsnummer (SIREN / KBO)",
+        "vatNumber": "Btw-nummer",
+        "saved": "Facturatie bijgewerkt",
+        "errors": {
+          "companyNameRequired": "Vul de bedrijfsnaam in",
+          "invalidCompanyNumber": "Ongeldig ondernemingsnummer",
+          "invalidVatNumber": "Ongeldig btw-nummer"
+        }
+      },
       "invoiceDocuments": {
         "title": "Facturen en creditnota’s",
         "empty": "Er is nog geen factuur aangemaakt.",
@@ -2715,6 +3002,7 @@
         "add": "Notitie toevoegen"
       },
       "reservationHistory": "Reserveringsgeschiedenis",
+      "billedAs": "Facturatie",
       "noReservationsForCustomer": "Geen reserveringen voor deze klant",
       "deletedProduct": "Verwijderd product",
       "amount": "Bedrag",
@@ -3081,9 +3369,20 @@
     "settings": {
       "title": "Instellingen",
       "store": "Winkel",
+      "company": "Bedrijf",
+      "companySettings": {
+        "description": "Land, valuta en factuuradres van uw bedrijf",
+        "localization": {
+          "title": "Land en valuta",
+          "description": "Het land bepaalt de tijdzone van de winkel; de valuta geldt voor al je prijzen."
+        }
+      },
+      "reservationRules": "Reserveringsregels",
       "appearance": "Uiterlijk",
       "reservations": "Reserveringen",
       "emails": "E-mails",
+      "contact": "Contact",
+      "seo": "Zoekmachines",
       "legal": "Juridische pagina's",
       "account": "Account",
       "subscription": {
@@ -3289,6 +3588,9 @@
         "countryTimezone": "Tijdzone",
         "currency": "Valuta",
         "currencyDescription": "De valuta die wordt gebruikt om prijzen weer te geven en uw klanten te factureren",
+        "locale": "Terugvaltaal",
+        "localeDescription": "Taal die wordt gebruikt als de browser van de bezoeker geen taal vraagt die de winkel aanbiedt, en waarin Google je winkel indexeert. Een bezoeker ziet altijd eerst zijn browsertaal.",
+        "localeAuto": "Platformtaal (Frans)",
         "descriptionLabel": "Beschrijving",
         "descriptionPlaceholder": "Beschrijf uw bedrijf...",
         "sector": "Bedrijfssector"
@@ -3338,7 +3640,38 @@
         "heroImagesDescription": "Afbeeldingen in de hero-sectie van uw winkel (optioneel)",
         "addHeroImages": "Afbeeldingen toevoegen",
         "heroImagesHint": "Tot 5 afbeeldingen in slider",
-        "heroImagesOptional": "Deze afbeeldingen verschijnen in een slider op de homepage van uw winkel. Optioneel.",
+        "heroImagesFirst": "1e",
+        "removeImage": "Afbeelding verwijderen",
+        "previewHint": "Een schets van uw startpagina, bij elke wijziging opnieuw getekend. Echte teksten en verhoudingen wijken af.",
+        "home": {
+          "title": "Startpagina",
+          "description": "De kop die uw klanten als eerste zien: foto's, indeling, tekstpositie."
+        },
+        "heroLayout": {
+          "title": "Indeling",
+          "description": "Hoe foto's en tekst de kop delen.",
+          "cover": "Foto op de achtergrond",
+          "coverDescription": "Naam en zoekbalk over foto's op volle breedte.",
+          "split": "Foto ernaast",
+          "splitDescription": "Tekst op een lichte achtergrond, de foto omkaderd ernaast."
+        },
+        "heroAlign": {
+          "title": "Tekstpositie",
+          "topStart": "Linksboven",
+          "topCenter": "Middenboven",
+          "topEnd": "Rechtsboven",
+          "middleStart": "Links midden",
+          "middleCenter": "Midden",
+          "middleEnd": "Rechts midden",
+          "bottomStart": "Linksonder",
+          "bottomCenter": "Middenonder",
+          "bottomEnd": "Rechtsonder",
+          "hint": "Zonder foto staat de tekst altijd in het midden."
+        },
+        "catalog": {
+          "title": "Catalogus",
+          "description": "Wat klanten na de kop zien."
+        },
         "catalogBrowseMode": {
           "title": "Catalogusweergave",
           "description": "Kies wat uw klanten als eerste zien nadat ze hun datums hebben gekozen.",
@@ -3353,34 +3686,7 @@
           "upTo": "Kortingen tonen tot",
           "hint": "Kortingen boven dit percentage worden verborgen in de winkel."
         },
-        "moreImages": "afbeelding(en)",
         "preview": "Live voorbeeld",
-        "previewDescription": "Voorbeeld van het uiterlijk van uw winkel",
-        "previewWelcome": "Welkom bij {name}",
-        "previewCatalogText": "Ontdek onze catalogus van verhuurproducten.",
-        "previewCatalogButton": "Bekijk catalogus",
-        "previewNav": {
-          "catalog": "Catalogus",
-          "contact": "Contact"
-        },
-        "previewStats": "{count}+ producten",
-        "previewDatePicker": {
-          "title": "Wanneer wilt u huren?",
-          "subtitle": "Selecteer uw data",
-          "startLabel": "Begin",
-          "endLabel": "Einde",
-          "startDateExample": "Za 15 jan",
-          "endDatePlaceholder": "Einddatum",
-          "submitButton": "Beschikbaarheid controleren",
-          "quickSelectTitle": "Snelle selectie",
-          "quickSelectWeekend": "Dit weekend",
-          "quickSelectNextWeek": "Volgende week",
-          "quickSelectTwoWeeks": "2 weken"
-        },
-        "previewProducts": {
-          "title": "Populaire producten",
-          "viewAll": "Alles bekijken"
-        },
         "updated": "Uiterlijk bijgewerkt",
         "colors": {
           "blue": "Blauw",
@@ -4151,6 +4457,101 @@
           "point3": "Zoekmachines moeten uw winkel opnieuw indexeren"
         }
       },
+      "contactSettings": {
+        "description": "Kies hoe klanten u via uw winkel kunnen bereiken",
+        "channels": {
+          "title": "Contactkanalen",
+          "description": "Elk ingeschakeld kanaal verschijnt op de contactpagina en op de startpagina van uw winkel."
+        },
+        "missingPhone": "Vul het telefoonnummer van de winkel in bij de algemene instellingen om bellen, sms of WhatsApp aan te bieden.",
+        "missingEmail": "Vul het e-mailadres van de winkel in bij de algemene instellingen om het te tonen of formulierberichten te ontvangen.",
+        "missingBoth": "Vul telefoonnummer en e-mailadres van de winkel in bij de algemene instellingen om contactkanalen in te schakelen.",
+        "phone": {
+          "label": "Telefoon",
+          "description": "Klanten kunnen u bellen op {phone}.",
+          "empty": "Geen telefoonnummer ingesteld voor de winkel."
+        },
+        "sms": {
+          "label": "Sms",
+          "description": "Biedt ook het versturen van een sms naar dit nummer aan."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Opent een WhatsApp-gesprek met uw winkel.",
+          "number": "WhatsApp-nummer",
+          "numberDescription": "Laat leeg om het telefoonnummer van de winkel te gebruiken."
+        },
+        "email": {
+          "label": "E-mail",
+          "description": "Toont {email} met links om te schrijven.",
+          "empty": "Geen e-mailadres ingesteld voor de winkel."
+        },
+        "form": {
+          "title": "Contactformulier",
+          "description": "Een formulier op uw winkel waarvan de berichten per e-mail naar u worden doorgestuurd.",
+          "label": "Een contactformulier aanbieden",
+          "help": "De bezoeker geeft naam, e-mailadres en bericht op; u antwoordt rechtstreeks vanuit uw mailbox.",
+          "recipient": "Ontvangstadres",
+          "recipientDescription": "Laat leeg om berichten te ontvangen op {email}.",
+          "recipientEmpty": "Geef het adres op dat de berichten ontvangt.",
+          "phoneField": "Telefoonnummer van de bezoeker",
+          "phoneFieldDescription": "Moet het formulier om een telefoonnummer vragen?",
+          "phoneFieldOptions": {
+            "hidden": "Niet vragen",
+            "optional": "Optioneel",
+            "required": "Verplicht"
+          }
+        },
+        "intro": {
+          "label": "Introductietekst",
+          "description": "Wordt bovenaan de contactpagina getoond. Laat leeg voor de standaardtekst.",
+          "placeholder": "Een vraag over een verhuur? Schrijf ons, wij antwoorden binnen 24 uur."
+        },
+        "presets": {
+          "title": "Paginasjabloon",
+          "description": "Kies een startpunt; de contactkanalen hieronder volgen en u kunt ze daarna aanpassen.",
+          "options": {
+            "full": {
+              "label": "Volledig",
+              "description": "Alle contactkanalen, het formulier, de kaart en de openingstijden."
+            },
+            "message": {
+              "label": "Bericht",
+              "description": "Eerst het formulier, uw e-mail als noot. Voor wie liever schrijft."
+            },
+            "single": {
+              "label": "Eén kanaal",
+              "description": "Eén grote actie: bellen, WhatsApp of e-mail."
+            }
+          },
+          "custom": "Aangepaste instellingen, lay-out “{layout}”.",
+          "primaryChannel": "Uitgelicht kanaal",
+          "primaryChannelHelp": "De hoofdknop van de pagina.",
+          "channels": {
+            "phone": "Bellen",
+            "whatsapp": "WhatsApp",
+            "email": "E-mail"
+          }
+        },
+        "preview": "Voorbeeld",
+        "previewHint": "De contactpagina zoals die wordt getoond, bijgewerkt terwijl u de instellingen wijzigt.",
+        "viewOnStore": "Contactpagina bekijken",
+        "updated": "Contactkanalen bijgewerkt"
+      },
+      "seoSettings": {
+        "description": "Laat je winkel herkennen door Google Search Console",
+        "updated": "Zoekmachine-instellingen bijgewerkt",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Bewijs aan Google dat deze winkel van jou is om de indexering en zoekprestaties te volgen.",
+          "step1": "Open <link>Google Search Console</link> en voeg een property van het type “URL-voorvoegsel” toe.",
+          "step2": "Vul het adres van je winkel in:",
+          "step3": "Kies de methode “HTML-tag”, plak de tag of de code hieronder en sla op voordat je in Search Console op “Verifiëren” klikt.",
+          "label": "Verificatiecode",
+          "help": "De hele tag of alleen de inhoud; de code blijft actief zolang hij hier is opgeslagen.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
+      },
       "legalSettings": {
         "title": "Juridische pagina's",
         "description": "Schrijf uw algemene voorwaarden en juridische vermeldingen",
@@ -4389,7 +4790,7 @@
         "modeIncludedDescription": "Bezorging is verplicht en gratis",
         "noCoordinatesWarning": "U moet uw winkeladres met kaartlocatie instellen om bezorging in te schakelen.",
         "noCoordinatesError": "Configureer eerst uw winkeladres met GPS-locatie.",
-        "goToStoreSettings": "Winkelinstellingen",
+        "goToStoreSettings": "Adres invullen",
         "customerAddressNoteOptional": "Wanneer bezorging is ingeschakeld, kunnen klanten kiezen tussen ophalen en bezorging.",
         "customerAddressNoteRequired": "Klanten moeten een bezorgadres opgeven.",
         "pricingSection": "Prijzen",
@@ -5043,7 +5444,10 @@
             "modeLabel": "Verzekeringmodus",
             "modeRequired": "Vereist voor alle producten",
             "modeOptional": "Optioneel bij afrekenen",
-            "modeNoPublic": "Geen publieke weergave",
+            "modeNoPublic": "Handmatige activering door de verhuurder",
+            "modeNoPublicHelp": "Bij het afrekenen wordt geen verzekering toegevoegd. U kunt deze vanuit een reservering activeren. Zodra het verzekeringscontract is aangemaakt, verschijnt de dekking op de huurovereenkomst en in het klantaccount.",
+            "modeOptionalHelp": "De klant kiest de dekking bij het afrekenen. Gedekte producten worden na de keuze gemarkeerd.",
+            "modeRequiredHelp": "De dekking wordt automatisch toegepast op producten die in aanmerking komen. Bij het afrekenen staat of deze inbegrepen is of apart wordt berekend.",
             "includePriceLabel": "Verzekering opnemen in de eindprijs",
             "includePriceHelp": "Indien ingeschakeld, wordt de verzekering verwerkt in de eindprijs die aan klanten wordt getoond.",
             "renterLabel": "Tulip verhuurder",
@@ -5474,6 +5878,11 @@
           "incentiveBadge": "Lanceeraanbieding",
           "incentiveLine": "nog {remaining} plaatsen met 0 € reeent-commissie voor het leven"
         }
+      },
+      "extensions": {
+        "title": "Automatische huurverlengingen",
+        "description": "Klanten kunnen verlengen bij beschikbaarheid en een berekenbare meerprijs. Bijzondere gevallen vereisen uw goedkeuring.",
+        "maxDays": "Maximum extra dagen (leeg: geen limiet)"
       }
     },
     "commandPalette": {
@@ -5569,6 +5978,7 @@
       "settingsInvoicing": "Elektronische facturatie",
       "settingsLegal": "Juridische pagina's",
       "settingsNotifications": "Meldingen",
+      "settingsReservations": "Reserveringsregels",
       "settingsPayments": "Betalingen",
       "settingsPromoCodes": "Promocodes",
       "settingsReviewBooster": "Reviewbooster",
@@ -5784,7 +6194,14 @@
     }
   },
   "storefront": {
+    "notFound": {
+      "title": "Deze pagina is niet beschikbaar",
+      "description": "Het product of de pagina die je zoekt bestaat niet meer of staat nog niet online.",
+      "browseCatalog": "Bekijk de catalogus"
+    },
     "header": {
+      "call": "Bellen",
+      "backToWebsite": "Terug naar de website",
       "home": "Home",
       "catalog": "Catalogus",
       "cart": "Winkelwagen",
@@ -5792,7 +6209,10 @@
       "myAccount": "Mijn account",
       "myReservations": "Mijn verhuur",
       "categories": "Categorieën",
-      "menu": "Menu"
+      "menu": "Menu",
+      "signIn": "Inloggen",
+      "secure": "Veilig betalen",
+      "about": "About"
     },
     "status": {
       "open": "Open",
@@ -5800,7 +6220,11 @@
       "until": "tot",
       "opensAt": "opent om",
       "opensTomorrow": "opent morgen om",
-      "opensOn": "opent"
+      "opensOn": "opent",
+      "openUntil": "Open · tot {time}",
+      "closedOpensAt": "Gesloten · opent om {time}",
+      "closedOpensTomorrow": "Gesloten · opent morgen om {time}",
+      "closedOpensOn": "Gesloten · opent {day} om {time}"
     },
     "datePicker": {
       "startDate": "Startdatum",
@@ -5817,11 +6241,17 @@
       "securePayment": "Veilige betaling",
       "localPickup": "Lokaal ophalen",
       "localPickupOrDelivery": "Ophalen of levering",
+      "requestConfirmation": "Bevestiging door de winkel",
       "simpleReservation": "Eenvoudige reservering",
       "simpleReservationDesc": "Boek in een paar klikken",
       "securePaymentDesc": "100% veilige transacties",
       "localPickupDesc": "Haal uw materiaal eenvoudig op",
-      "reviewsBadge": "beoordelingen"
+      "reviewsBadge": "beoordelingen",
+      "slides": "Foto's van de winkel",
+      "previousImage": "Vorige foto",
+      "nextImage": "Volgende foto",
+      "goToImage": "Foto {index} van {count}",
+      "seeReviews": "Google-reviews bekijken · {rating} van 5"
     },
     "home": {
       "ourCategories": "Onze categorieën",
@@ -5840,6 +6270,22 @@
       "contactLabel": "Vind ons",
       "contactTitle": "Locatie & contact",
       "findUs": "Vind ons",
+      "phoneContact": {
+        "call": "Bellen",
+        "sms": "SMS",
+        "copy": "Telefoonnummer kopiëren",
+        "copySuccess": "Telefoonnummer gekopieerd",
+        "copyError": "Telefoonnummer kon niet worden gekopieerd"
+      },
+      "whatsappContact": {
+        "open": "Gesprek openen"
+      },
+      "emailContact": {
+        "default": "Schrijven met mail-app",
+        "copy": "Email kopiëren",
+        "copySuccess": "Email gekopieerd",
+        "copyError": "Email kon niet worden gekopieerd"
+      },
       "findUsDesc": "Bezoek ons om uw materiaal op te halen",
       "address": "Adres",
       "phone": "Telefoon",
@@ -5848,7 +6294,8 @@
       "getDirections": "Route plannen",
       "alreadyReserved": "Al een reservering?",
       "alreadyReservedDesc": "Ga naar uw account om uw reserveringen te volgen en uw contracten te downloaden.",
-      "accessAccount": "Naar mijn account"
+      "accessAccount": "Naar mijn account",
+      "map": "Kaart van {store}"
     },
     "reviews": {
       "label": "Testimonials",
@@ -5858,7 +6305,11 @@
       "basedOn": "gebaseerd op {count} beoordelingen",
       "noReviewText": "Deze beoordeling heeft geen opmerking.",
       "seeAllOnGoogle": "Bekijk alle beoordelingen",
-      "verifiedByGoogle": "Door Google geverifieerde beoordelingen"
+      "verifiedByGoogle": "Door Google geverifieerde beoordelingen",
+      "previous": "Vorige review",
+      "next": "Volgende review",
+      "starRating": "Beoordeling: {rating} van 5",
+      "ratingLink": "{rating} van 5 · {count, plural, one {# review} other {# reviews}}"
     },
     "catalog": {
       "title": "Catalogus",
@@ -5880,7 +6331,35 @@
       "consumableOutOfStock": "Verbruiksartikel niet op voorraad",
       "lastOne": "Laatste!",
       "left": "over",
-      "clearFilters": "Filters wissen"
+      "clearFilters": "Filters wissen",
+      "clearSearch": "Zoekopdracht wissen",
+      "loadMore": "Meer laden",
+      "metaTitle": "Catalogus - {storeName}",
+      "metaDescription": "Materiaal te huur bij {storeName}. Online reserveren.",
+      "metaCategoryTitle": "{category} - {storeName}",
+      "metaCategoryDescription": "{category} te huur bij {storeName}. Online reserveren.",
+      "sort": {
+        "label": "Sorteren",
+        "recommended": "Aanbevolen",
+        "priceAsc": "Prijs oplopend",
+        "priceDesc": "Prijs aflopend"
+      },
+      "filters": "Filters",
+      "activeFilters": "Actieve filters",
+      "removeFilter": "Dit filter verwijderen",
+      "price": "Prijs",
+      "priceRange": "{min} – {max}",
+      "availability": "Beschikbaarheid",
+      "showUnavailable": "Ook niet-beschikbare producten tonen",
+      "availableOnly": "Alleen beschikbaar",
+      "availableOnlyHint": "Kies uw datums om te filteren",
+      "showResults": "{count, plural, =0 {Geen producten} one {Toon # product} other {Toon # producten}}",
+      "quantityLabel": "Aantal exemplaren",
+      "quantityChip": "Minstens {count} exemplaren",
+      "attributeChip": "{axis}: {value}",
+      "priceBaseHint": "Basistarieven, voordat u datums kiest",
+      "pricePeriodHint": "Totaal voor uw datums",
+      "availableOfTotal": "{available} van {total} beschikbaar"
     },
     "product": {
       "viewDetails": "Product bekijken",
@@ -5920,6 +6399,7 @@
         "badgeShort": "-{percent}%",
         "from": "vanaf {duration}",
         "viewRates": "Tarieven bekijken",
+        "viewAllRates": "Alle tarieven bekijken ({count})",
         "ratesTitle": "Tarieven",
         "basePriceLabel": "Basisprijs",
         "duration": "Duur",
@@ -5962,7 +6442,9 @@
         "label": "Foto's van {name}",
         "imageAlt": "{name} — foto {index}",
         "counter": "{current} / {total}",
-        "zoom": "Vergroten"
+        "zoom": "Vergroten",
+        "video": "Video afspelen",
+        "goTo": "Ga naar afbeelding {index}"
       },
       "meta": {
         "title": "{product} huren — {store}",
@@ -5975,14 +6457,57 @@
         "basePrice": "Basistarief",
         "availability": "Beschikbaarheid"
       },
+      "unavailableReason": {
+        "unavailable": "Niet beschikbaar",
+        "consumable_out_of_stock": "Niet op voorraad",
+        "required_accessory_out_of_stock": "Een verplicht accessoire is niet op voorraad"
+      },
       "unavailableHelp": "Dit product is momenteel niet te huur. Bekijk de rest van de catalogus.",
       "requiredAccessoryOutOfStock": "Een verplicht accessoire is niet op voorraad",
       "requiredAccessoriesIncluded": "Automatisch toegevoegd: {names}",
-      "backToCatalog": "Bekijk de catalogus"
+      "backToCatalog": "Bekijk de catalogus",
+      "rentalInformation": {
+        "pickup": "Ophalen op locatie",
+        "locations": "Kies je ophaallocatie bij het boeken",
+        "optional": "Bezorging beschikbaar",
+        "required": "Bezorging verplicht",
+        "included": "Bezorging inbegrepen",
+        "deliveryDetails": "Beschikbaarheid en voorwaarden hangen af van je adres en worden bij het boeken getoond.",
+        "payment": "Bevestiging na online betaling",
+        "request": "Aanvraag onder voorbehoud van bevestiging door de verhuurder"
+      },
+      "booking": {
+        "availableForDates": "{count} beschikbaar voor je datums",
+        "dates": "Datums",
+        "anyOption": "Geen voorkeur",
+        "checking": "Controleren…",
+        "reserve": "Reserveren",
+        "included": "Inbegrepen",
+        "shortage": "Onvoldoende voorraad",
+        "requiredHelp": "Dit artikel is verplicht bij dit product en wordt er samen mee aan de winkelwagen toegevoegd.",
+        "extras": "Extra's",
+        "depositHold": "Borg",
+        "packageApplied": "Toegepast pakket: {period}",
+        "packagesApplied": "{count} × pakket van {period}",
+        "rateApplied": "Toegepast tarief: {period}",
+        "proratedPrice": "Prijs naar verhouding berekend",
+        "depositNotCharged": "Reservering op de kaart, niet afgeschreven"
+      }
+    },
+    "quickAdd": {
+      "chooseDates": "Kies je data",
+      "chooseOptions": "Kies je uitvoering",
+      "optionsIntro": "Dit product bestaat in meerdere uitvoeringen. Kies de jouwe en daarna het aantal.",
+      "steps": {
+        "dates": "Data",
+        "options": "Uitvoering",
+        "extras": "Accessoires"
+      }
     },
     "accessories": {
       "productAdded": "Toegevoegd aan winkelwagen",
       "youMightAlsoLike": "Misschien vind je dit ook leuk",
+      "requiredIncluded": "De verplichte accessoires bij dit product zijn automatisch aan je winkelwagen toegevoegd.",
       "selectAccessories": "Selecteer accessoires om toe te voegen",
       "available": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
       "pricingUnit": {
@@ -5995,6 +6520,9 @@
       "accessoriesAdded": "{count, plural, one {# accessoire toegevoegd aan winkelwagen} other {# accessoires toegevoegd aan winkelwagen}}"
     },
     "dateSelection": {
+      "availabilityChecking": "Beschikbaarheid controleren…",
+      "availabilityUnavailable": "Product niet beschikbaar voor deze periode. Kies andere datums of tijden.",
+      "availabilityRetry": "Beschikbaarheid kon niet worden gecontroleerd. Opnieuw proberen",
       "title": "Wanneer wilt u huren?",
       "subtitle": "Selecteer uw data om beschikbaarheid te zien",
       "startDate": "Ophalen",
@@ -6036,7 +6564,12 @@
       "errors": {
         "required": "Selecteer data",
         "startInPast": "Startdatum moet in de toekomst zijn",
-        "endBeforeStart": "Einddatum moet na startdatum zijn"
+        "endBeforeStart": "Einddatum moet na startdatum zijn",
+        "sameDayNotAllowed": "Verhuur op één dag is bij deze winkel niet mogelijk.",
+        "businessHours": "Deze tijden vallen buiten de openingstijden van de winkel.",
+        "advanceNotice": "Deze winkel vraagt {duration} vooraf voor het ophalen.",
+        "minDuration": "De minimale huurduur is {duration}.",
+        "maxDuration": "De maximale huurduur is {duration}."
       },
       "businessHours": {
         "storeClosed": "Winkel is gesloten op deze dag",
@@ -6048,7 +6581,9 @@
       },
       "modifyDates": "Datum wijzigen",
       "applyDates": "Datum toepassen",
-      "timezoneNotice": "Tijden weergegeven in {city} tijd"
+      "timezoneNotice": "Tijden weergegeven in {city} tijd",
+      "chooseDates": "Kies uw datums",
+      "validate": "Bevestigen"
     },
     "availability": {
       "title": "Beschikbare producten",
@@ -6082,6 +6617,7 @@
       "badge": {
         "available": "Beschikbaar",
         "availableCount": "{count} beschikbaar",
+        "lastOne": "Laatste beschikbaar",
         "limited": "{count} over",
         "unavailable": "Niet beschikbaar",
         "outOfStock": "Niet op voorraad",
@@ -6157,7 +6693,21 @@
         "product_unavailable": "Dit product is niet meer beschikbaar",
         "insufficient_stock": "Onvoldoende voorraad voor dit aantal",
         "required_accessory_unavailable": "Een verplicht accessoire is niet op voorraad"
-      }
+      },
+      "open": "Winkelwagen openen",
+      "openWithCount": "Winkelwagen, {count, plural, one {# artikel} other {# artikelen}}",
+      "quantityOf": "Aantal van {name}",
+      "removeItem": "{name} uit de winkelwagen verwijderen",
+      "removed": "{name} uit de winkelwagen verwijderd",
+      "undo": "Ongedaan maken",
+      "resolveError": "De beschikbaarheid kon niet worden gecontroleerd. Probeer het zo meteen opnieuw.",
+      "unavailableTitle": "{count, plural, one {# artikel is niet meer beschikbaar} other {# artikelen zijn niet meer beschikbaar}}",
+      "adjustTo": "Verlagen naar {count}",
+      "maxReached": "Maximale hoeveelheid bereikt",
+      "fixedPrice": "Vast tarief",
+      "depositHold": "borg niet afgeschreven",
+      "checking": "Beschikbaarheid controleren…",
+      "checkoutBlocked": "Pas niet-beschikbare artikelen aan voordat je doorgaat."
     },
     "checkout": {
       "title": "Mijn reservering voltooien",
@@ -6180,6 +6730,7 @@
       "deliveryRequiredNote": "Dit product vereist bezorging",
       "deliveryIncludedNote": "Bezorgkosten zijn inbegrepen in de prijs",
       "included": "Inbegrepen",
+      "fulfillmentTitle": "Ophalen en terugbrengen",
       "outboundTitle": "Apparatuur ontvangen",
       "returnTitle": "Apparatuur retourneren",
       "storePickup": "Afhalen in winkel",
@@ -6195,6 +6746,24 @@
       "deliveryOption": "Thuisbezorging",
       "deliveryOptionDescription": "Vanaf {pricePerKm}/km",
       "deliveryAvailableFrom": "Bezorging beschikbaar vanaf {amount} aan huur",
+      "distanceKm": "{distance} km",
+      "pricePerKm": "{price}/km",
+      "deliveryAreaSummary": "Bezorggebied van {maxKm} km · {pricePerKm}/km",
+      "useMyLocation": "Mijn locatie gebruiken",
+      "sortByDistance": "Op afstand sorteren",
+      "sortByDistanceHint": "Zie welke locatie het dichtstbij is",
+      "locationLocating": "Locatie bepalen…",
+      "locationBlocked": "Locatie is geblokkeerd voor deze site. Sta het toe via het icoon in de adresbalk om op afstand te sorteren.",
+      "locationUnsupported": "Deze browser kan je locatie niet delen, dus de locaties blijven in de volgorde van de winkel staan.",
+      "yourPosition": "Jouw locatie",
+      "returnSamePlace": "Zelfde plek",
+      "returnAnotherLocation": "Andere locatie",
+      "returnMyAddress": "Mijn adres",
+      "returnSameLocationSummary": "Terug naar {place}",
+      "returnSameAddressSummary": "Opgehaald op {address}",
+      "mapExpand": "Kaart vergroten",
+      "mapCollapse": "Kaart sluiten",
+      "getDirections": "Route",
       "freeDeliveryAbove": "Gratis bezorging vanaf {amount}",
       "freeDeliveryApplied": "Gratis bezorging toegepast!",
       "deliveryAddress": "Bezorgadres",
@@ -6232,7 +6801,9 @@
       "insuranceOptionalUnavailableShort": "Niet beschikbaar",
       "insuranceNoInsurableProducts": "Geen verzekerbaar product in deze winkelwagen.",
       "insurancePartialCoverage": "{insured} gedekt(e) product(en), {uninsured} niet gedekt.",
-      "insuranceCoveredProductTooltip": "Dit product is gedekt door breuk-/diefstaldekking.",
+      "insuranceCoveredProductTooltip": "Dit product zal tijdens deze huur onder de breuk-/diefstaldekking vallen.",
+      "insuranceIncludedHelp": "De verhuurder betaalt de dekking voor de producten die als gedekt zijn gemarkeerd.",
+      "insuranceIncludedLabel": "Breuk-/diefstaldekking inbegrepen",
       "insuranceEligibleProductTooltip": "In aanmerking komend voor breuk-/diefstaldekking.",
       "insuranceEstimating": "Geschatte dekking berekenen...",
       "insuranceEstimatedAmount": "Geschat dekkingsbedrag: {amount}",
@@ -6337,14 +6908,8 @@
         "haveCode": "Heeft u een actiecode?",
         "placeholder": "Voer uw code in",
         "apply": "Toepassen",
-        "invalidCode": "Deze actiecode is ongeldig",
         "discount": "Korting ({code})",
-        "minimumNotMet": "Het minimumbedrag wordt niet meer bereikt voor deze code",
-        "promoCodeInvalid": "Deze actiecode is ongeldig",
-        "promoCodeExpired": "Deze actiecode is verlopen",
-        "promoCodeExhausted": "Deze actiecode is niet meer beschikbaar",
-        "promoCodeMinimumNotMet": "Minimumbedrag van {amount} vereist",
-        "promoCodeNotStarted": "Deze actiecode is nog niet actief"
+        "remove": "Kortingscode verwijderen"
       },
       "lineNeedsUpdate": "Sommige regels zijn niet meer beschikbaar. Pas uw winkelwagen aan voordat u verstuurt.",
       "advisor": {
@@ -6365,6 +6930,59 @@
         "statusChecking": "Verificatie controleren…",
         "transcriptLabel": "Verificatiegesprek",
         "completeVerificationHint": "Voltooi de verificatie hierboven om door te gaan."
+      },
+      "submitError": {
+        "title": "Uw bestelling kon niet worden verzonden",
+        "goToStep": "Corrigeren"
+      },
+      "payAmount": "{amount} betalen",
+      "blocked": {
+        "resolving": "Beschikbaarheid controleren…",
+        "insuranceRequired": "Kies een verzekeringsoptie"
+      },
+      "acceptCgvRich": "Ik accepteer de <terms>algemene huurvoorwaarden</terms>",
+      "returningCustomer": {
+        "loginLink": "Heb je al een account? <signin>Inloggen</signin>",
+        "prompt": "Al klant?",
+        "sendCode": "Stuur mij een code",
+        "codeSent": "Code verzonden naar {email}",
+        "codeLabel": "Verificatiecode",
+        "cancel": "Annuleren",
+        "resend": "Opnieuw versturen",
+        "verifying": "Verifiëren…",
+        "signedInAs": "Ingelogd als {name}",
+        "notYou": "Bent u dit niet?"
+      },
+      "notesDisclosure": "Een notitie voor de verhuurder toevoegen",
+      "yourAddress": "Uw adres",
+      "viewCatalog": "Catalogus bekijken",
+      "fixedPrice": "Vast tarief",
+      "pricesIncludeTax": "Prijzen incl. btw",
+      "pricesExcludeTax": "Prijzen excl. btw",
+      "summaryBar": {
+        "show": "Details tonen",
+        "hide": "Details verbergen"
+      },
+      "deliveryCalculating": "Bezorgkosten berekenen…",
+      "insuranceIncluded": "Verzekering inbegrepen",
+      "cancelled": {
+        "title": "Betaling onderbroken",
+        "description": "Uw reservering {number} wacht op betaling. U kunt op elk moment verdergaan, er gaat niets verloren.",
+        "cartKept": "Uw winkelwagen is bewaard.",
+        "expiredTitle": "Reservering verlopen",
+        "expiredDescription": "De betaaltermijn voor reservering {number} is verstreken en ze is geannuleerd. Uw winkelwagen is bewaard: u kunt ze in enkele seconden opnieuw boeken.",
+        "backToCart": "Terug naar de winkelwagen",
+        "resume": "Betaling hervatten",
+        "redirecting": "Doorsturen…",
+        "alreadyPaidTitle": "Reservering al betaald",
+        "alreadyPaidDescription": "Uw reservering {number} is bevestigd. Een verdere betaling is niet nodig.",
+        "viewReservation": "Mijn reservering bekijken",
+        "errors": {
+          "notFound": "Deze reservering is niet gevonden.",
+          "invalidStatus": "Deze reservering wacht niet meer op betaling.",
+          "unavailable": "Online betalen is niet beschikbaar voor deze winkel.",
+          "sessionFailed": "De betaling kon niet opnieuw worden gestart. Probeer het zo meteen opnieuw."
+        }
       }
     },
     "confirmation": {
@@ -6470,6 +7088,21 @@
       "backToStore": "Terug naar winkel"
     },
     "account": {
+      "communications": {
+        "title": "Communicatie",
+        "description": "Kies hoe je herinneringen voor ophalen en terugbrengen ontvangt, als de verhuurder deze aanbiedt.",
+        "email": "Herinneringen per e-mail ontvangen",
+        "sms": "Herinneringen per sms ontvangen",
+        "essential": "Deze voorkeuren gelden alleen voor herinneringen. Berichten over inloggen en boekingen (bevestiging, afwijzing, betaling of belangrijke wijzigingen) worden nog steeds verzonden."
+      },
+      "profile": {
+        "title": "Mijn gegevens",
+        "description": "Deze gegevens worden automatisch ingevuld bij je volgende boekingen.",
+        "emailHelp": "Je e-mailadres wordt gebruikt om in te loggen.",
+        "saved": "Gegevens opgeslagen",
+        "saveError": "Je gegevens konden niet worden opgeslagen. Probeer het opnieuw.",
+        "invalidData": "Controleer je gegevens, vooral je telefoonnummer en bedrijfsnaam."
+      },
       "title": "Mijn account",
       "accessAccount": "Naar mijn account",
       "accessDescription": "Voer het e-mailadres in dat u bij uw reservering heeft gebruikt om een inlogcode te ontvangen.",
@@ -6516,15 +7149,18 @@
       "returnedAt": "Geretourneerd op",
       "rentedItems": "Gehuurde artikelen",
       "quantityLabel": "Aantal",
+      "insuredProductTooltip": "Gedekt door breuk-/diefstaldekking",
       "unitPrice": "/ eenheid",
       "subtotalRental": "Subtotaal verhuur",
       "yourNotes": "Uw notities",
       "needHelp": "Hulp nodig?",
       "contactStore": "Neem contact op met {name} voor vragen over uw reservering.",
+      "nothingChargedYet": "Er is nog niets afgeschreven.",
       "status": {
         "pending": "In behandeling",
         "pendingFull": "Wacht op bevestiging",
-        "pendingDescription": "Uw aanvraag wordt verwerkt",
+        "pendingDescription": "Je kunt je aanvraag annuleren totdat de winkel deze bevestigt.",
+        "pendingNextStep": "De winkel controleert de beschikbaarheid en antwoordt per e-mail op {email}.",
         "confirmed": "Bevestigd",
         "confirmedDescription": "Uw reservering is bevestigd",
         "allSet": "Alles in orde",
@@ -6548,7 +7184,10 @@
         "declineTitle": "Deze offerte weigeren?",
         "declineDescription": "U staat op het punt deze offerte te weigeren. De verhuurder wordt op de hoogte gebracht.",
         "cancel": "Annuleren",
-        "confirmDecline": "Offerte weigeren"
+        "confirmDecline": "Offerte weigeren",
+        "acceptTitle": "Deze offerte accepteren?",
+        "acceptDescription": "U staat op het punt deze offerte te accepteren. De verhuurder wordt op de hoogte gebracht en uw reservering wordt bevestigd.",
+        "confirmAccept": "Offerte accepteren"
       },
       "signContract": "Contract ondertekenen",
       "contractSigned": "Contract ondertekend",
@@ -6572,10 +7211,138 @@
       "paymentInProgress": "Betaling wordt verwerkt",
       "paymentRequired": "Betaling vereist",
       "confirmedAwaitingPayment": "Wachten op betaling",
+      "damageFees": "Schadekosten",
+      "remainingDue": "Nog te betalen",
+      "depositCard": {
+        "title": "Borg",
+        "amount": "Borgbedrag",
+        "capturedAmount": "Ingehouden bedrag",
+        "returnedAmount": "Terugbetaald bedrag",
+        "reason": "Reden opgegeven door de verhuurder",
+        "heldUntil": "Bedrag gereserveerd tot {date}.",
+        "restReleased": "De rest ({amount}) is vrijgegeven en wordt niet afgeschreven.",
+        "authorize": "Borg online autoriseren",
+        "authorizeHelp": "Beveiligd door Stripe. Het bedrag wordt op uw kaart gereserveerd, niet afgeschreven.",
+        "authorizeError": "De borgautorisatie kon niet worden geopend. Probeer het opnieuw of neem contact op met de verhuurder.",
+        "states": {
+          "to_provide": {
+            "badge": "Te betalen",
+            "title": "Bij ophalen te betalen",
+            "description": "De verhuurder vraagt bij het ophalen een borg van {amount}. U krijgt die terug bij het inleveren als het materiaal in goede staat is."
+          },
+          "to_provide_online": {
+            "badge": "Te autoriseren",
+            "title": "Kaartreservering volgt",
+            "description": "Vóór het ophalen wordt een reservering van {amount} op uw kaart gevraagd. Het bedrag wordt alleen gereserveerd, nooit zonder reden afgeschreven."
+          },
+          "card_saved": {
+            "badge": "Kaart opgeslagen",
+            "title": "Kaart opgeslagen",
+            "description": "Uw kaart is opgeslagen voor de borg van {amount}. De verhuurder reserveert dit bedrag kort voor het ophalen, zonder het af te schrijven."
+          },
+          "held": {
+            "badge": "Gereserveerd",
+            "title": "Reservering actief",
+            "description": "Er is {amount} op uw kaart gereserveerd, zonder afschrijving. De reservering wordt vrijgegeven bij het inleveren van het materiaal in goede staat."
+          },
+          "hold_expired": {
+            "badge": "Verlopen",
+            "title": "Reservering verlopen",
+            "description": "De reservering van {amount} is verlopen. De verhuurder kan u om een nieuwe autorisatie vragen."
+          },
+          "released": {
+            "badge": "Vrijgegeven",
+            "title": "Borg vrijgegeven",
+            "description": "De reservering van {amount} is geannuleerd. Er is niets afgeschreven; de reservering verdwijnt binnen enkele dagen van uw afschrift."
+          },
+          "captured": {
+            "badge": "Ingehouden",
+            "title": "Borg ingehouden",
+            "description": "De verhuurder heeft {captured} van uw borg van {amount} ingehouden."
+          },
+          "failed": {
+            "badge": "Geweigerd",
+            "title": "Autorisatie geweigerd",
+            "description": "De reservering van {amount} kon niet op uw kaart worden geplaatst. Mogelijk is een andere kaart nodig."
+          },
+          "collected": {
+            "badge": "Ontvangen",
+            "title": "Borg ontvangen",
+            "description": "De verhuurder heeft uw borg van {amount} ({method}) op {date} ontvangen. U krijgt die terug bij het inleveren van het materiaal."
+          },
+          "returned": {
+            "badge": "Terugbetaald",
+            "title": "Borg terugbetaald",
+            "description": "Uw borg van {amount} is op {date} aan u terugbetaald."
+          },
+          "partially_returned": {
+            "badge": "Deels terugbetaald",
+            "title": "Borg deels terugbetaald",
+            "description": "{returned} van uw borg van {amount} is op {date} aan u terugbetaald."
+          }
+        }
+      },
+      "updates": {
+        "title": "Geschiedenis",
+        "newPeriod": "Nieuwe periode: {period}",
+        "created": "Aanvraag verzonden",
+        "confirmed": "Reservering bevestigd door de verhuurder",
+        "rejected": "Aanvraag geweigerd door de verhuurder",
+        "cancelled": "Reservering geannuleerd",
+        "cancelled_by_you": "Aanvraag door u geannuleerd",
+        "picked_up": "Materiaal opgehaald",
+        "returned": "Materiaal ingeleverd",
+        "quote_accepted": "Offerte geaccepteerd",
+        "quote_declined": "Offerte geweigerd",
+        "payment_received": "Online betaling ontvangen",
+        "payment_received_amount": "Online betaling ontvangen ({amount})",
+        "payment_failed": "Online betaling geweigerd",
+        "refunded": "Terugbetaling uitgevoerd",
+        "refunded_amount": "Terugbetaling van {amount}",
+        "payment_added_rental": "Huurbetaling geregistreerd ({amount})",
+        "payment_added_deposit": "Borg ontvangen ({amount})",
+        "payment_added_deposit_return": "Borg terugbetaald ({amount})",
+        "payment_added_damage": "Schadekosten geregistreerd ({amount})",
+        "payment_added_adjustment": "Bedrag aangepast ({amount})",
+        "deposit_authorized": "Kaartreservering geplaatst",
+        "deposit_authorized_amount": "Kaartreservering van {amount} geplaatst",
+        "deposit_captured": "Borg ingehouden",
+        "deposit_captured_amount": "Borg ingehouden ({amount})",
+        "deposit_released": "Borg vrijgegeven",
+        "deposit_failed": "Kaartreservering geweigerd",
+        "modified": "Reservering gewijzigd door de verhuurder",
+        "extension_confirmed": "Huur verlengd",
+        "return_date_requested": "Wijziging van de inleverdatum aangevraagd",
+        "inspection_departure_completed": "Staat van oplevering bij ophalen opgemaakt",
+        "inspection_return_completed": "Staat van oplevering bij inleveren opgemaakt",
+        "inspection_damage_detected": "Schade vastgesteld bij de inspectie",
+        "inspection_signed": "Staat van oplevering ondertekend"
+      },
+      "inspections": {
+        "title": "Staten van oplevering",
+        "departure": "Staat van oplevering bij ophalen",
+        "return": "Staat van oplevering bij inleveren",
+        "completed": "Opgemaakt op {date}",
+        "signed": "Ondertekend op {date}",
+        "photoCount": "{count, plural, one {# foto} other {# foto’s}}",
+        "damage": "Schade vastgesteld",
+        "noDamage": "Geen schade",
+        "estimatedCost": "Geschatte schade:",
+        "download": "PDF downloaden"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "In behandeling",
+          "authorized": "Gereserveerd",
+          "completed": "Ingehouden",
+          "failed": "Geweigerd",
+          "cancelled": "Vrijgegeven",
+          "refunded": "Terugbetaald"
+        },
         "title": "Betalingsgeschiedenis",
         "noPayments": "Geen betalingen geregistreerd",
         "types": {
+          "refund": "Terugbetaling",
           "rental": "Huur",
           "deposit": "Borg",
           "deposit_return": "Borg terugbetaling",
@@ -6611,6 +7378,156 @@
         "paymentDescription": "Uw betaling is geregistreerd.",
         "deposit": "Borg succesvol geautoriseerd",
         "depositDescription": "Het bedrag is tijdelijk geblokkeerd op uw kaart."
+      },
+      "loginTitle": "Naar mijn huurorders",
+      "loginLine": "Vul uw e-mailadres in: we sturen u een eenmalige code, zonder wachtwoord.",
+      "codeLine": "We hebben een code naar {email} gestuurd.",
+      "resendIn": "Nieuwe code over {seconds} s",
+      "currentReservations": "Lopende huurorders",
+      "pastReservations": "Eerdere huurorders",
+      "fulfillment": {
+        "pickupTitle": "Ophalen",
+        "returnTitle": "Retour",
+        "deliveredToYou": "Bezorging op je adres",
+        "collectedFromYou": "Ophaling op je adres",
+        "sameAsPickup": "Zelfde plek als het ophalen",
+        "storeFallback": "Winkel",
+        "directions": "Route",
+        "calendarPickup": "Ophalen: {when} — {place}",
+        "calendarReturn": "Retour: {when} — {place}"
+      },
+      "timeline": {
+        "title": "Uw huur",
+        "requested": "Aanvraag verstuurd",
+        "quoteSent": "Offerte verstuurd",
+        "confirmed": "Reservering bevestigd",
+        "pickedUp": "Materiaal opgehaald",
+        "returned": "Materiaal teruggebracht"
+      },
+      "actions": {
+        "title": "Acties",
+        "contractSigned": "Contract ondertekend op {date}"
+      },
+      "deposit": "Borg",
+      "total": "Totaal",
+      "notes": "Uw notities",
+      "signContractTitle": "Contract ondertekenen?",
+      "confirmSign": "Contract ondertekenen",
+      "dateChange": {
+        "title": "Retourdatum wijzigen",
+        "description": "Meer tijd nodig of eerder terugbrengen? Vraag een nieuwe datum aan. De verhuurder moet deze goedkeuren en kan de prijs aanpassen.",
+        "open": "Wijziging aanvragen",
+        "newEnd": "Gewenste retourdatum",
+        "timezone": "Tijdzone van de winkel: {timezone}",
+        "reason": "Reden (optioneel)",
+        "error": "De aanvraag kon niet worden opgeslagen. Kies een toekomstige datum na het ophalen, die afwijkt van de huidige retourdatum.",
+        "sending": "Verzenden…",
+        "submit": "Aanvraag versturen",
+        "close": "Sluiten",
+        "pendingHelp": "Reservering en prijs blijven ongewijzigd totdat de verhuurder akkoord gaat.",
+        "reviewTitle": "Aanvraag voor een andere retourdatum",
+        "reviewHelp": "Controleer beschikbaarheid en prijs in het bewerkscherm. Opslaan van de gevraagde datum keurt de aanvraag goed. Een andere periode vervangt deze.",
+        "apply": "Gevraagde datum toepassen",
+        "review": "Aanvraag bekijken",
+        "reject": "Aanvraag afwijzen",
+        "reviewError": "De aanvraag kon niet worden verwerkt. Vernieuw de pagina en probeer opnieuw.",
+        "status": {
+          "pending": "Wacht op goedkeuring",
+          "accepted": "Aanvraag goedgekeurd",
+          "rejected": "Aanvraag afgewezen",
+          "cancelled": "Aanvraag geannuleerd",
+          "superseded": "Vervangen door een andere wijziging"
+        }
+      },
+      "actionRequired": {
+        "quote": "Reageer op de offerte",
+        "payment": "Betaal de reservering",
+        "signature": "Onderteken het contract"
+      },
+      "calendar": {
+        "add": "Toevoegen aan mijn agenda"
+      },
+      "extension": {
+        "title": "Mijn huur verlengen",
+        "description": "Kies een latere retourdatum. Controleer de beschikbaarheid en meerprijs voordat u bevestigt.",
+        "newEnd": "Nieuwe retourdatum",
+        "supplement": "Meerprijs",
+        "newTotal": "Nieuw totaal: {amount}",
+        "check": "Beschikbaarheid controleren",
+        "pay": "Betalen en verlengen",
+        "confirm": "Verlenging bevestigen",
+        "request": "Verlenging aanvragen",
+        "loading": "Even geduld…",
+        "close": "Sluiten",
+        "resume": "Betaling hervatten",
+        "cancel": "Verlenging annuleren",
+        "checkoutPending": "De verlenging wacht op betaling. Het materiaal is tijdelijk gereserveerd.",
+        "expired": "De betaaltermijn is verstreken. Controleer opnieuw de beschikbaarheid.",
+        "confirmed": "Uw huur is verlengd.",
+        "refund_pending": "De verlenging kon niet worden bevestigd. Uw betaling wordt terugbetaald.",
+        "refunded": "De verlenging is niet toegepast. Uw betaling is terugbetaald.",
+        "open": "Mijn huur verlengen",
+        "reasons": {
+          "disabled": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "insurance": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "manualPrice": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "unpaid": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "delivery": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "deposit": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "overdue": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden.",
+          "location": "De verhuurder moet deze verlenging beoordelen: verzekering, prijs, betaling, borg of retourvoorwaarden."
+        },
+        "errors": {
+          "invalidDate": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "invalidStatus": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "pending": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "tooLong": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "closed": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "unavailable": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "manualRequired": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "priceChanged": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "expired": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "paymentUnavailable": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "notFound": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "unexpected": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "paymentMismatch": "Deze datum kan niet worden bevestigd. Controleer de gegevens opnieuw of neem contact op met de verhuurder.",
+          "tooManyAttempts": "Te veel pogingen. Probeer het over 15 minuten opnieuw."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Betaling bevestigd",
+          "description": "Je betaling is ontvangen. De details vind je hieronder."
+        },
+        "payment_received": {
+          "title": "Betaling ontvangen",
+          "description": "Je betaling is geregistreerd."
+        },
+        "deposit_authorized": {
+          "title": "Borg geautoriseerd",
+          "description": "De autorisatie van je borg is geregistreerd."
+        },
+        "requested": {
+          "title": "Aanvraag verstuurd",
+          "description": "De winkel beoordeelt je aanvraag en bevestigt de beschikbaarheid."
+        },
+        "processing": {
+          "title": "Betaling wordt gecontroleerd",
+          "description": "Je betaling wordt gecontroleerd. Vernieuw deze pagina over enkele ogenblikken."
+        }
+      },
+      "requestNumber": "Reserveringsaanvraag #{number}",
+      "cancellation": {
+        "action": "Mijn aanvraag annuleren",
+        "title": "Deze aanvraag annuleren?",
+        "description": "De winkel wordt op de hoogte gebracht.",
+        "keep": "Mijn aanvraag behouden",
+        "confirm": "Aanvraag annuleren",
+        "cancelled": "Aanvraag geannuleerd",
+        "done": "Je hebt deze aanvraag geannuleerd.",
+        "paymentDescription": "De winkel wordt op de hoogte gebracht. Heb je al betaald of een borg verstrekt, neem dan contact op met de winkel voor terugbetaling of vrijgave. Deze actie leidt niet tot een automatische terugbetaling.",
+        "adminSubject": "Aanvraag #{number} geannuleerd door de klant",
+        "adminBody": "{name} heeft reserveringsaanvraag #{number} geannuleerd voordat je deze bevestigde. Je kunt de geschiedenis in je dashboard bekijken."
       }
     },
     "marketplaceShell": {
@@ -6624,7 +7541,13 @@
       "legalNotice": "Juridische vermelding",
       "signIn": "Inloggen",
       "allRightsReserved": "Alle rechten voorbehouden.",
-      "poweredBy": "Mogelijk gemaakt door"
+      "poweredBy": "Mogelijk gemaakt door",
+      "navigation": "Navigatie",
+      "catalog": "Catalogus",
+      "reviews": "Reviews",
+      "account": "Account",
+      "myReservations": "Mijn huurorders",
+      "about": "About"
     },
     "error": {
       "title": "Oeps! Er is een fout opgetreden",
@@ -6637,7 +7560,8 @@
       "cgv": {
         "title": "Algemene voorwaarden",
         "noCgv": "Algemene voorwaarden zijn nog niet beschikbaar.",
-        "contactSeller": "Neem contact op met de verkoper voor meer informatie."
+        "contactSeller": "Neem contact op met de verkoper voor meer informatie.",
+        "metaDescription": "Algemene huurvoorwaarden van {name}: reservering, betaling, borg en annulering."
       },
       "legalNotice": {
         "title": "Juridische vermelding",
@@ -6646,7 +7570,8 @@
         "headquarters": "Hoofdkantoor",
         "email": "E-mail",
         "phone": "Telefoon",
-        "address": "Adres"
+        "address": "Adres",
+        "metaDescription": "Juridische informatie van {name}: uitgever van de site, host en contactgegevens."
       },
       "hosting": {
         "title": "Hosting",
@@ -6668,6 +7593,22 @@
     "embed": {
       "title": "Online reserveren",
       "cta": "Beschikbaarheid bekijken",
+      "dayPlaceholder": "Kiezen",
+      "chooseDates": "Kies uw data",
+      "checkDates": "Controleer uw data",
+      "previousMonth": "Vorige maand",
+      "nextMonth": "Volgende maand",
+      "steps": {
+        "startDate": "Ophaaldag",
+        "startTime": "Ophaaltijd",
+        "endDate": "Retourdag",
+        "endTime": "Retourtijd"
+      },
+      "slotGroups": {
+        "morning": "Ochtend",
+        "afternoon": "Middag",
+        "evening": "Avond"
+      },
       "errors": {
         "selectStartDate": "Selecteer een ophaaldatum",
         "selectEndDate": "Selecteer een retourdatum",
@@ -6696,6 +7637,94 @@
         "unavailable": "De adviseur is momenteel niet beschikbaar. Probeer het later opnieuw."
       },
       "typing": "De adviseur is aan het typen"
+    },
+    "meta": {
+      "storeNotFound": "Winkel niet gevonden",
+      "homeTitle": "{store} · Materiaalverhuur",
+      "description": "Huur materiaal bij {store}. Boek online."
+    },
+    "contact": {
+      "title": "Contact opnemen met {name}",
+      "metaTitle": "Contact - {name}",
+      "metaDescription": "Neem contact op met {name}: telefoon, e-mail en contactformulier.",
+      "intro": "Een vraag over een verhuur, een beschikbaarheid of een offerte? Wij zijn er voor u.",
+      "channelsTitle": "Zo bereikt u ons",
+      "noChannels": "De contactgegevens van de winkel zijn nog niet ingesteld.",
+      "formTitle": "Een bericht sturen",
+      "formDescription": "Wij antwoorden per e-mail.",
+      "firstName": "Voornaam",
+      "lastName": "Achternaam",
+      "email": "E-mail",
+      "phone": "Telefoon",
+      "message": "Bericht",
+      "messagePlaceholder": "Beschrijf uw aanvraag: materiaal, data, aantallen…",
+      "privacyNote": "Uw gegevens worden alleen door {name} gebruikt om u te antwoorden.",
+      "send": "Bericht versturen",
+      "sending": "Versturen…",
+      "sentTitle": "Bericht verstuurd",
+      "sentDescription": "Bedankt! {name} heeft uw bericht ontvangen en antwoordt per e-mail.",
+      "sendAnother": "Nog een bericht sturen",
+      "orEmail": "Of per e-mail:",
+      "primary": {
+        "phone": {
+          "title": "Bel ons",
+          "action": "Bellen"
+        },
+        "whatsapp": {
+          "title": "Schrijf ons op WhatsApp",
+          "action": "WhatsApp openen"
+        },
+        "email": {
+          "title": "Schrijf ons",
+          "action": "E-mail sturen"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Vul uw voornaam in",
+        "lastNameRequired": "Vul uw achternaam in",
+        "invalidEmail": "Vul een geldig e-mailadres in",
+        "phoneRequired": "Vul uw telefoonnummer in",
+        "messageTooShort": "Uw bericht is te kort",
+        "tooLong": "Dit veld is te lang",
+        "invalidData": "Controleer de velden van het formulier.",
+        "unavailable": "Het contactformulier is momenteel niet beschikbaar.",
+        "rateLimited": "Te veel berichten verstuurd. Probeer het over enkele minuten opnieuw.",
+        "generic": "Uw bericht kon niet worden verstuurd. Probeer het opnieuw of gebruik een ander contactkanaal."
+      }
+    },
+    "about": {
+      "title": "About {name}",
+      "metaTitle": "About - {name}",
+      "metaDescription": "{name}: opening hours, address, contact and how renting works.",
+      "hoursTitle": "Opening hours",
+      "noHours": "Hours on request",
+      "closed": "Closed",
+      "closuresTitle": "Exceptional closures",
+      "servicesTitle": "How it works",
+      "paymentMode": "Book and pay online, instant confirmation",
+      "requestMode": "Booking request online, confirmed by the store",
+      "pickup": "Pickup and return in store",
+      "deliveryOptional": "Delivery available",
+      "deliveryRequired": "Delivery to the address of your choice",
+      "deliveryIncluded": "Delivery included",
+      "deliveryRadius": "up to {km} km",
+      "deliveryFree": "free from {amount}",
+      "deliveryFrom": "from {amount} per trip",
+      "moreTitle": "Learn more",
+      "catalog": "Browse the catalog",
+      "contact": "Contact opnemen",
+      "terms": "Terms and conditions",
+      "legal": "Legal notice"
+    },
+    "seasonalPricing": {
+      "title": "Seizoenstarieven",
+      "description": "Elk tarief geldt voor de datums binnen het betreffende seizoen.",
+      "baseSeason": "Standaardtarief",
+      "outsideSeasons": "Buiten de vermelde seizoenen",
+      "durationRates": "Tarieven per huurduur bekijken",
+      "breakdownTitle": "Prijs per seizoen",
+      "from": "Vanaf",
+      "averageRate": "Gemiddeld over je periode"
     }
   },
   "onboarding": {
@@ -7005,7 +8034,8 @@
       "qty": "Aantal",
       "unitPrice": "Eenheidsprijs",
       "total": "Totaal",
-      "unitIdentifiers": "Identificatoren: {identifiers}"
+      "unitIdentifiers": "Identificatoren: {identifiers}",
+      "insured": "Gedekt door breuk-/diefstaldekking"
     },
     "totals": {
       "subtotalHT": "Subtotaal (excl. BTW)",
@@ -7039,7 +8069,9 @@
       "landlordText": "De verhuurder verklaart de juistheid van bovenstaande informatie en de beschikbaarheid van het materiaal voor de aangegeven periode.",
       "customerText": "Ik erken dat ik de algemene huurvoorwaarden heb gelezen en ga zonder voorbehoud akkoord.",
       "dateLabel": "Datum:",
-      "ipLabel": "IP:"
+      "ipLabel": "IP:",
+      "automatic": "Automatisch bevestigd",
+      "automaticText": "Deze overeenkomst is automatisch bevestigd volgens de huurvoorwaarden."
     },
     "conditions": {
       "condition1": "Het materiaal wordt in goede staat verhuurd",
@@ -7213,6 +8245,7 @@
     "createReservationError": "Fout bij aanmaken reservering",
     "businessHoursViolation": "Geselecteerde tijden vallen buiten de openingstijden van de winkel",
     "returnAddressInvalid": "Ongeldige coordinaten retouradres",
+    "returnAddressRequired": "Voer een geldig retouradres in",
     "returnAddressTooFar": "Retouradres is te ver weg ({maxKm} km maximum)",
     "advanceNoticeViolation": "Reserveringen moeten minimaal {duration} van tevoren worden gemaakt",
     "noReservationsWithEmail": "Geen reserveringen gevonden met dit e-mailadres",
@@ -7337,7 +8370,11 @@
     "emailLoginUnavailable": "Inloggen via e-mail is momenteel niet beschikbaar",
     "stripeNotConfigured": "Online betalingen zijn niet beschikbaar: deze instantie heeft geen Stripe-sleutels geconfigureerd. Reserveringen verlopen in aanvraagmodus.",
     "emailSendFailed": "Verzenden van de e-mail is mislukt.",
-    "marketplaceChannelNotFound": "Marketplace-kanaal niet gevonden"
+    "marketplaceChannelNotFound": "Marketplace-kanaal niet gevonden",
+    "requestCancellationStatusChanged": "De status van deze aanvraag is gewijzigd. Je kunt deze hier niet meer annuleren. Neem contact op met de winkel.",
+    "requestCancellationPaymentPending": "Er loopt nog een betaling voor deze aanvraag. Probeer het na de update opnieuw of neem contact op met de winkel.",
+    "requestCancellationPaymentChanged": "De betalingsinformatie is gewijzigd. Controleer deze voordat je de annulering opnieuw bevestigt.",
+    "promoCodeProductsAlreadyDiscounted": "Deze code geldt niet voor producten die al in de aanbieding zijn."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

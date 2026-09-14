@@ -1,21 +1,15 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
+import type { ReactNode } from "react";
+import { useState } from "react";
 
-import { format } from 'date-fns'
-import type { Locale as DateFnsLocale } from 'date-fns'
-import {
-  CalendarRange,
-  Check,
-  ChevronsUpDown,
-  Home,
-  Loader2,
-  Plus,
-} from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { useFormatLocale } from '@/hooks/use-format-locale'
+import { format } from "date-fns";
+import type { Locale as DateFnsLocale } from "date-fns";
+import { CalendarRange, Check, ChevronsUpDown, Home, Loader2, Plus } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
-import { cn } from '@louez/utils'
+import { cn } from "@louez/utils";
 import {
   Badge,
   Button,
@@ -24,34 +18,37 @@ import {
   PopoverContent,
   PopoverTrigger,
   Separator,
-} from '@louez/ui'
+} from "@louez/ui";
 
-import type { SeasonalPricingData } from '../types'
+import type { SeasonalPricingData } from "../types";
 
 interface PricingPeriodSelectorProps {
-  selectedPeriodId: string | null
-  seasonalPricings: SeasonalPricingData[]
-  basePriceValue: string | undefined
-  onSelectPeriod: (id: string | null) => void
-  onAddPeriod: () => void
-  isLoading: boolean
+  selectedPeriodId: string | null;
+  seasonalPricings: SeasonalPricingData[];
+  basePriceValue: string | undefined;
+  onSelectPeriod: (id: string | null) => void;
+  onAddPeriod: () => void;
+  isLoading: boolean;
+  /** Optional slot inside the trigger, before the chevron — e.g. a season count
+   *  badge. Left empty by default so existing callers are unchanged. */
+  trailing?: ReactNode;
 }
 
 function computePriceDiffPercent(
   basePrice: string | undefined,
-  seasonalPrice: string
+  seasonalPrice: string,
 ): { percent: number; isHigher: boolean } | null {
-  const base = parseFloat(basePrice || '0')
-  const seasonal = parseFloat(seasonalPrice || '0')
-  if (!base || !seasonal || base === seasonal) return null
-  const percent = Math.round(((seasonal - base) / base) * 100)
-  return { percent: Math.abs(percent), isHigher: seasonal > base }
+  const base = parseFloat(basePrice || "0");
+  const seasonal = parseFloat(seasonalPrice || "0");
+  if (!base || !seasonal || base === seasonal) return null;
+  const percent = Math.round(((seasonal - base) / base) * 100);
+  return { percent: Math.abs(percent), isHigher: seasonal > base };
 }
 
 function formatDateRange(startDate: string, endDate: string, locale: DateFnsLocale): string {
-  const start = new Date(startDate + 'T00:00:00')
-  const end = new Date(endDate + 'T00:00:00')
-  return `${format(start, 'd MMM yyyy', { locale })} → ${format(end, 'd MMM yyyy', { locale })}`
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T00:00:00");
+  return `${format(start, "d MMM yyyy", { locale })} → ${format(end, "d MMM yyyy", { locale })}`;
 }
 
 export function PricingPeriodSelector({
@@ -61,28 +58,22 @@ export function PricingPeriodSelector({
   onSelectPeriod,
   onAddPeriod,
   isLoading,
+  trailing,
 }: PricingPeriodSelectorProps) {
-  const t = useTranslations('dashboard.products.form')
-  const { dateFns: calendarLocale } = useFormatLocale()
-  const [open, setOpen] = useState(false)
+  const t = useTranslations("dashboard.products.form");
+  const { dateFns: calendarLocale } = useFormatLocale();
+  const [open, setOpen] = useState(false);
 
   const selectedPeriod = selectedPeriodId
     ? seasonalPricings.find((sp) => sp.id === selectedPeriodId)
-    : null
+    : null;
 
-  const triggerLabel = selectedPeriod ? selectedPeriod.name : t('basePricing')
+  const triggerLabel = selectedPeriod ? selectedPeriod.name : t("basePricing");
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        render={
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            disabled={isLoading}
-          />
-        }
+        render={<Button variant="outline" size="sm" className="gap-1.5" disabled={isLoading} />}
       >
         {isLoading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -92,6 +83,7 @@ export function PricingPeriodSelector({
           <Home className="h-3.5 w-3.5" />
         )}
         <span className="max-w-[160px] truncate">{triggerLabel}</span>
+        {trailing}
         <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72">
@@ -101,23 +93,19 @@ export function PricingPeriodSelector({
             render={
               <button
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent',
-                  !selectedPeriodId && 'bg-accent'
+                  "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent",
+                  !selectedPeriodId && "bg-accent",
                 )}
                 onClick={() => {
-                  onSelectPeriod(null)
-                  setOpen(false)
+                  onSelectPeriod(null);
+                  setOpen(false);
                 }}
               />
             }
           >
             <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="flex-1 text-left font-medium">
-              {t('basePricing')}
-            </span>
-            {!selectedPeriodId && (
-              <Check className="h-4 w-4 shrink-0 text-primary" />
-            )}
+            <span className="flex-1 text-left font-medium">{t("basePricing")}</span>
+            {!selectedPeriodId && <Check className="h-4 w-4 shrink-0 text-primary" />}
           </PopoverClose>
 
           {/* Seasonal periods */}
@@ -125,20 +113,20 @@ export function PricingPeriodSelector({
             <>
               <Separator className="my-1" />
               {seasonalPricings.map((sp) => {
-                const diff = computePriceDiffPercent(basePriceValue, sp.price)
-                const isSelected = selectedPeriodId === sp.id
+                const diff = computePriceDiffPercent(basePriceValue, sp.price);
+                const isSelected = selectedPeriodId === sp.id;
                 return (
                   <PopoverClose
                     key={sp.id}
                     render={
                       <button
                         className={cn(
-                          'flex w-full items-start gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent',
-                          isSelected && 'bg-accent'
+                          "flex w-full items-start gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent",
+                          isSelected && "bg-accent",
                         )}
                         onClick={() => {
-                          onSelectPeriod(sp.id)
-                          setOpen(false)
+                          onSelectPeriod(sp.id);
+                          setOpen(false);
                         }}
                       />
                     }
@@ -149,10 +137,10 @@ export function PricingPeriodSelector({
                         <span className="font-medium">{sp.name}</span>
                         {diff && (
                           <Badge
-                            variant={diff.isHigher ? 'failed' : 'success'}
+                            variant={diff.isHigher ? "failed" : "success"}
                             className="px-1.5 py-0 text-[10px]"
                           >
-                            {diff.isHigher ? '+' : '-'}
+                            {diff.isHigher ? "+" : "-"}
                             {diff.percent}%
                           </Badge>
                         )}
@@ -161,11 +149,9 @@ export function PricingPeriodSelector({
                         {formatDateRange(sp.startDate, sp.endDate, calendarLocale)}
                       </p>
                     </div>
-                    {isSelected && (
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    )}
+                    {isSelected && <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
                   </PopoverClose>
-                )
+                );
               })}
             </>
           )}
@@ -177,17 +163,17 @@ export function PricingPeriodSelector({
               <button
                 className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-primary transition-colors hover:bg-accent"
                 onClick={() => {
-                  onAddPeriod()
-                  setOpen(false)
+                  onAddPeriod();
+                  setOpen(false);
                 }}
               />
             }
           >
             <Plus className="h-4 w-4 shrink-0" />
-            <span className="font-medium">{t('addSeasonalPeriod')}</span>
+            <span className="font-medium">{t("addSeasonalPeriod")}</span>
           </PopoverClose>
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

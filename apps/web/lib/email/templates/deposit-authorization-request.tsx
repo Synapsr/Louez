@@ -1,29 +1,30 @@
-import { Column, Hr, Row, Section, Text } from '@react-email/components'
-import { BaseLayout } from './base-layout'
+import { Hr, Section, Text } from "@react-email/components";
+import { BaseLayout } from "./base-layout";
 import {
   CtaButton,
+  DetailRow,
   EmailHeading,
   EmailText,
   FooterNote,
   StoreNote,
   styles,
-} from './components'
-import { getEmailTranslations, getCurrencyFormatter, type EmailLocale } from '../i18n'
+} from "./components";
+import { getEmailTranslations, getCurrencyFormatter, type EmailLocale } from "../i18n";
 
 interface DepositAuthorizationRequestEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storeEmail?: string | null
-  storePhone?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  depositAmount: number
-  authorizationUrl: string
-  customMessage?: string
-  locale?: EmailLocale
-  currency?: string
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  depositAmount: number;
+  authorizationUrl: string;
+  customMessage?: string;
+  locale?: EmailLocale;
+  currency?: string;
 }
 
 export function DepositAuthorizationRequestEmail({
@@ -38,17 +39,17 @@ export function DepositAuthorizationRequestEmail({
   depositAmount,
   authorizationUrl,
   customMessage,
-  locale = 'fr',
-  currency = 'EUR',
+  locale = "fr",
+  currency = "EUR",
 }: DepositAuthorizationRequestEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.depositAuthorizationRequest
-  const tc = t.common
-  const formatCurrency = getCurrencyFormatter(locale, currency)
+  const t = getEmailTranslations(locale);
+  const messages = t.depositAuthorizationRequest;
+  const tc = t.common;
+  const formatCurrency = getCurrencyFormatter(locale, currency);
 
   return (
     <BaseLayout
-      preview={messages.subject.replace('{number}', reservationNumber)}
+      preview={messages.subject.replace("{number}", reservationNumber)}
       storeName={storeName}
       logoUrl={logoUrl}
       primaryColor={primaryColor}
@@ -59,13 +60,13 @@ export function DepositAuthorizationRequestEmail({
     >
       <EmailHeading>{messages.title}</EmailHeading>
 
-      <EmailText>{tc.greeting.replace('{name}', customerFirstName)}</EmailText>
+      <EmailText>{tc.greeting.replace("{name}", customerFirstName)}</EmailText>
 
       <EmailText>
         {messages.body
-          .replace('{storeName}', storeName)
-          .replace('{amount}', formatCurrency(depositAmount))
-          .replace('{number}', reservationNumber)}
+          .replace("{storeName}", storeName)
+          .replace("{amount}", formatCurrency(depositAmount))
+          .replace("{number}", reservationNumber)}
       </EmailText>
 
       {/* How it works, condensed */}
@@ -78,26 +79,13 @@ export function DepositAuthorizationRequestEmail({
 
       {/* Deposit details */}
       <Section style={styles.card}>
-        <Text style={{ ...styles.label, margin: '0 0 12px 0' }}>{tc.summary}</Text>
+        <Text style={{ ...styles.label, margin: "0 0 12px 0" }}>{tc.summary}</Text>
 
-        <Row style={detailRow}>
-          <Column>
-            <Text style={detailLabel}>
-              {tc.reservationNumber.replace('{number}', reservationNumber)}
-            </Text>
-          </Column>
-        </Row>
+        <DetailRow label={tc.reservationNumber.replace("{number}", reservationNumber)} />
 
         <Hr style={styles.hr} />
 
-        <Row style={detailRow}>
-          <Column>
-            <Text style={detailLabel}>{tc.deposit}</Text>
-          </Column>
-          <Column align="right">
-            <Text style={styles.amount}>{formatCurrency(depositAmount)}</Text>
-          </Column>
-        </Row>
+        <DetailRow label={tc.deposit} value={formatCurrency(depositAmount)} emphasis="amount" />
       </Section>
 
       {/* Custom message from store owner */}
@@ -113,24 +101,13 @@ export function DepositAuthorizationRequestEmail({
       <EmailText small center>
         {messages.linkFallback}
       </EmailText>
-      <EmailText small center style={{ wordBreak: 'break-all' }}>
+      <EmailText small center style={{ wordBreak: "break-all" }}>
         {authorizationUrl}
       </EmailText>
 
       <FooterNote>{messages.securePayment}</FooterNote>
     </BaseLayout>
-  )
+  );
 }
 
-const detailRow = {
-  marginBottom: '4px',
-}
-
-const detailLabel = {
-  fontSize: '14px',
-  lineHeight: '22px',
-  color: '#4b5563',
-  margin: '0',
-}
-
-export default DepositAuthorizationRequestEmail
+export default DepositAuthorizationRequestEmail;

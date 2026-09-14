@@ -139,6 +139,17 @@
     "viewRequest": "Zobacz żądanie",
     "connectToManage": "Zaloguj się do panelu, aby zaakceptować lub odrzucić to żądanie."
   },
+  "contactMessage": {
+    "subject": "Nowa wiadomość od {name} — {store}",
+    "title": "Nowa wiadomość z Twojego sklepu",
+    "body": "Odwiedzający napisał do Ciebie ze strony kontaktowej {storeName}.",
+    "name": "Imię i nazwisko:",
+    "email": "E-mail:",
+    "phone": "Telefon:",
+    "message": "Wiadomość:",
+    "reply": "Odpowiedz",
+    "footer": "Odpowiedz bezpośrednio na tę wiadomość: Twoja odpowiedź trafi na adres odwiedzającego."
+  },
   "phoneCallbackLandlord": {
     "subject": "Klient do oddzwonienia — {store}",
     "title": "Klient do oddzwonienia",

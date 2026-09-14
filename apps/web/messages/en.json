@@ -67,6 +67,8 @@
     "dayUnit": "{count, plural, one {day} other {days}}",
     "hourUnit": "{count, plural, one {hour} other {hours}}",
     "weekUnit": "{count, plural, one {week} other {weeks}}",
+    "monthUnit": "{count, plural, one {month} other {months}}",
+    "yearUnit": "{count, plural, one {year} other {years}}",
     "minuteUnit": "{count, plural, one {minute} other {minutes}}",
     "phoneInput": {
       "selectCountry": "Select a country",
@@ -116,7 +118,23 @@
       "removeLink": "Remove link",
       "undo": "Undo",
       "redo": "Redo",
-      "heading": "Heading"
+      "heading": "Heading",
+      "text": "Text",
+      "normalText": "Normal text",
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "editLink": "Edit link",
+      "openLink": "Open link",
+      "edit": "Edit",
+      "cancel": "Cancel",
+      "apply": "Apply",
+      "linkUrl": "Link address",
+      "linkUrlPlaceholder": "example.com/page",
+      "linkText": "Link text",
+      "linkTextPlaceholder": "Displayed text (defaults to the address)",
+      "linkHint": "A typed or pasted address becomes a link on its own.",
+      "linkInvalid": "Enter a valid web address, for example example.com"
     },
     "dateTimePicker": {
       "select": "Select",
@@ -672,7 +690,147 @@
         "totalSpent": "Total spent"
       }
     },
+    "onlineStore": {
+      "title": "Online store",
+      "description": "Identity, home page, contact, legal pages and search settings of your site",
+      "backToDashboard": "Dashboard",
+      "preview": "Preview",
+      "viewStore": "View store",
+      "saved": "Online store updated",
+      "leaveConfirm": "You have unsaved changes. Leave without saving?",
+      "railLabel": "Online store sections",
+      "resizePanel": "Panel width",
+      "device": {
+        "label": "Preview format",
+        "desktop": "Desktop",
+        "phone": "Phone"
+      },
+      "sections": {
+        "identity": {
+          "label": "Identity",
+          "description": "Name, tagline, logo, colour and language"
+        },
+        "home": {
+          "label": "Home page",
+          "description": "Header, announcement, catalog and sections"
+        },
+        "contact": {
+          "label": "Contact",
+          "description": "Details, contact page and social links"
+        },
+        "legal": {
+          "label": "Legal pages",
+          "description": "Terms, legal notice and footer"
+        },
+        "seo": {
+          "label": "Search",
+          "description": "Share image and Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Name and presentation",
+          "description": "What your customers read first, on the site and in search results."
+        },
+        "nameDescription": "Shown to your customers on the site, in emails and on contracts.",
+        "tagline": {
+          "label": "Tagline",
+          "description": "One line under the name, at the top of the home page. {max} characters at most.",
+          "placeholder": "Bike and paddle rental in Carnac since 2012"
+        },
+        "descriptionHint": "The text of the About page. Without a tagline, it also shows at the top of the home page.",
+        "logos": {
+          "description": "The logo in the header, the icon in the browser tab."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "The icon of the browser tab and of the phone home screen. Without a favicon, the logo is used.",
+          "hint": "Square image, 512 × 512 px recommended. PNG or JPG."
+        },
+        "website": {
+          "label": "Website",
+          "description": "If this online store complements an existing website, add it: your customers get a button to go back to it, and the site shows in the footer.",
+          "placeholder": "https://www.your-site.com"
+        },
+        "language": {
+          "title": "Language and address",
+          "description": "The site's default language and its public address."
+        }
+      },
+      "home": {
+        "header": "Header",
+        "photos": "Photos",
+        "announcement": {
+          "title": "Announcement bar",
+          "description": "One line above the header, on every page.",
+          "enabled": "Show the bar",
+          "enabledDescription": "A closure, a promo code, an event.",
+          "text": "Text",
+          "textPlaceholder": "Closed from 1 to 15 August, see you soon!",
+          "href": "Link",
+          "hrefDescription": "Optional. The bar becomes clickable."
+        },
+        "sections": {
+          "title": "Page sections",
+          "description": "The optional blocks of the home page, after the catalog.",
+          "reassurance": "Reassurance line",
+          "reassuranceDescription": "Confirmation, secure payment, pickup or delivery, under the search.",
+          "reviews": "Google reviews",
+          "reviewsDescription": "The rating in the header and the reviews section, once the Review booster is set up.",
+          "map": "Address and map",
+          "mapDescription": "Where to pick up the equipment, with your contact channels."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Contact details",
+          "description": "Shown in the footer, on the contact page and on the map."
+        },
+        "headerPhone": {
+          "label": "Call button in the header",
+          "description": "A phone button beside the cart, on every page.",
+          "empty": "Enter a phone number above to enable this button."
+        },
+        "hours": {
+          "description": "Opening hours are set in Settings; they also drive availability.",
+          "link": "Edit opening hours"
+        },
+        "missingPhone": "Without a phone number above, the call and SMS options stay hidden.",
+        "missingEmail": "Without an email above, the email and form options stay hidden.",
+        "missingBoth": "Enter a phone number and an email above to offer these contact options.",
+        "social": {
+          "title": "Social links",
+          "description": "Icons in the footer. Paste the full address of each profile.",
+          "website": "Other website"
+        }
+      },
+      "legal": {
+        "texts": "Legal texts",
+        "footerNote": {
+          "label": "Footer note",
+          "description": "Free text at the bottom of every page: registration number, accreditation, affiliation.",
+          "placeholder": "Company no. 123 456 789 · Member of …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Where do I find this code?",
+        "shareImage": {
+          "title": "Share image",
+          "description": "The image shown when a link to your store is shared on WhatsApp, Facebook or LinkedIn.",
+          "label": "Image",
+          "fallback": "Without a dedicated image, the first header photo is used.",
+          "hint": "1200 × 630 px recommended. JPG or PNG, 5 MB max."
+        }
+      },
+      "sketch": {
+        "empty": "Nothing here yet",
+        "googleResult": "Google result",
+        "shareCard": "Share preview",
+        "noShareImage": "No image"
+      }
+    },
     "navigation": {
+      "onlineStore": "Online store",
       "aiAssistant": "AI Assistant",
       "aiConversations": "Customer conversations",
       "aiAdvisor": "Online advisor",
@@ -887,6 +1045,9 @@
       "noProducts": "No products",
       "noProductsDescription": "Start by adding your first product",
       "searchProducts": "Search for a product...",
+      "clearSearch": "Clear search",
+      "noSearchResults": "No products found",
+      "noSearchResultsDescription": "No product matches “{search}”.",
       "allCategories": "All categories",
       "allStatuses": "All statuses",
       "name": "Name",
@@ -1124,19 +1285,85 @@
         "quantity": "Available quantity",
         "quantityHelp": "Number of units available for rent",
         "consumableQuantityHelp": "Stock on the shelf: it goes down on every confirmed booking and back up when you restock.",
-        "stockKindLabel": "Stock type",
-        "stockKindReturnable": "Returnable stock",
-        "stockKindReturnableDescription": "The item comes back after each rental and becomes available again.",
+        "stockKindQuestion": "How should this product's stock be tracked?",
+        "stockOptionBlocked": "Locked by active reservations.",
+        "stockOptionRemovesUnits": "{count, plural, one {The registered unit will be removed.} other {The # registered units will be removed.}}",
+        "choiceChange": "Change choice: {choice}",
+        "kindExamples": {
+          "title": "Examples: {option}",
+          "description": "Products that suit this choice, by trade.",
+          "product": "Product",
+          "pricing": "Pricing",
+          "stock": "Stock",
+          "bikes": {
+            "ebike": "Electric mountain bike",
+            "cargoBike": "Cargo bike",
+            "helmet": "Helmet",
+            "bikeLock": "Bike lock",
+            "innerTube": "Inner tube",
+            "energyBar": "Energy bar",
+            "guidedTour": "Guided ride",
+            "bikeWash": "Bike cleaning"
+          },
+          "sportsOutdoor": {
+            "wetsuit": "Wetsuit",
+            "skis": "Skis",
+            "paddle": "Inflatable paddleboard",
+            "lifeJacket": "Life jacket",
+            "gasCartridge": "Gas cartridge",
+            "sunscreen": "Sunscreen",
+            "surfLesson": "Surf lesson",
+            "skiWaxing": "Ski waxing"
+          },
+          "partyEvents": {
+            "marquee": "Marquee tent",
+            "speaker": "PA speaker",
+            "chairs": "Folding chairs",
+            "glasses": "Stemmed glasses",
+            "tablecloths": "Disposable tablecloths",
+            "smokeFluid": "Smoke fluid",
+            "setup": "Setup and teardown",
+            "djService": "DJ service"
+          },
+          "toolsDiy": {
+            "miniExcavator": "Mini excavator",
+            "generator": "Power generator",
+            "drill": "Hammer drill",
+            "ladder": "Ladder",
+            "diamondBlade": "Diamond blade",
+            "sandpaper": "Sandpaper",
+            "siteDelivery": "Site delivery",
+            "operator": "Machine operator"
+          },
+          "vehicles": {
+            "van": "12 m³ van",
+            "camper": "Camper van",
+            "childSeat": "Child seat",
+            "roofBox": "Roof box",
+            "fuel": "Fuel refill",
+            "adblue": "AdBlue",
+            "driver": "Driver",
+            "cleaning": "Interior cleaning"
+          },
+          "electronics": {
+            "camera": "Mirrorless camera",
+            "projector": "Projector",
+            "battery": "Spare battery",
+            "tripod": "Tripod",
+            "memoryCard": "Memory card",
+            "gaffer": "Gaffer tape",
+            "installation": "On-site installation",
+            "technician": "Technician"
+          }
+        },
         "stockKindConsumable": "Consumable",
-        "stockKindConsumableDescription": "The item leaves with the customer: stock goes down on every confirmed booking and the quantity is what sits on the shelf.",
-        "stockKindConsumableRequiresFixed": "A consumable is sold at a flat rate: switch pricing to \"Flat rate\" to enable it.",
-        "stockKindConsumableRequiresNoUnits": "A consumable is not tracked unit by unit: turn off unit tracking to enable it.",
+        "stockKindConsumableDescription": "Leaves with the customer: stock drops with each booking.",
+        "stockKindConsumableSwitchesPricing": "Pricing will switch to a flat rate.",
         "stockKindUntracked": "Untracked stock",
-        "stockKindUntrackedRequiresNoUnits": "Untracked stock cannot use individual unit tracking.",
+        "stockKindUntrackedDescription": "No quantity to manage. Dates and booking rules still apply.",
         "untrackedStockHelp": "No quantity is tracked or limited. Dates and booking rules still apply.",
         "stockKindChangeBlockedTitle": "Stock type locked",
         "stockKindChangeBlocked": "This product is used in the following reservations. Cancel or complete them before changing the stock type.",
-        "stockKindChangeBlockedTrigger": "{kind}. View blocking reservations.",
         "stockKindBlockingReservation": "Reservation #{number}",
         "publication": "Publication",
         "statusActive": "Active",
@@ -1157,11 +1384,13 @@
         "categoryOptional": "Optional - helps customers find your product",
         "noCategories": "No categories yet",
         "pricingDescription": "Set the rental price and rates",
-        "pricingKindLabel": "Pricing mode",
-        "pricingKindDuration": "Duration-based pricing",
-        "pricingKindDurationDescription": "The price depends on how long the item is rented.",
+        "pricingKindQuestion": "How is the price calculated?",
+        "pricingKindDuration": "By duration",
+        "pricingKindDurationDescription": "Price depends on rental length, with long-rental discounts.",
+        "pricingKindDurationSwitchesStock": "Stock will switch to simple quantity.",
+        "pricingKindDurationBlocked": "Locked by active reservations.",
         "pricingKindFixed": "Flat rate",
-        "pricingKindFixedDescription": "A single price, whatever the rental duration.",
+        "pricingKindFixedDescription": "One price per booked item, whatever the duration.",
         "fixedPrice": "Flat price",
         "fixedPriceDescription": "Charged once per item, whatever the rental duration.",
         "fixedPriceLabel": "Flat rate",
@@ -1180,6 +1409,21 @@
           "hour": "Per hour",
           "day": "Per day",
           "week": "Per week"
+        },
+        "calculationMode": {
+          "label": "Price calculation",
+          "whole": {
+            "label": "Whole periods",
+            "description": "Each started period is charged in full.",
+            "tiersDescription": "Durations between rates are charged at the next rate."
+          },
+          "prorated": {
+            "label": "Prorated",
+            "description": "After the first period, the price adjusts to the exact duration.",
+            "tiersDescription": "The price changes gradually between your rate durations."
+          },
+          "example": "Example for {duration}",
+          "minimum": "Minimum charge: {price} for {duration}."
         },
         "pricingTiers": {
           "enableTiers": "Long-term discounts",
@@ -1216,9 +1460,9 @@
             }
           },
           "chart": {
-            "strictLine": "Fixed tiers",
-            "progressiveLine": "Progressive",
-            "savings": "Customer savings",
+            "strictLine": "Whole periods",
+            "progressiveLine": "Prorated",
+            "savings": "Difference between modes",
             "basePricing": "Base pricing",
             "title": "Price simulation",
             "subtitle": "Total price charged by rental duration"
@@ -1260,7 +1504,6 @@
           "deleteWarning": "This unit is currently assigned to an active reservation and cannot be removed.",
           "assignedUnit": "Assigned",
           "disableConfirm": "Disable unit tracking?",
-          "disableDescription": "Individual unit tracking will be disabled. The quantity will be set to {count}. Registered units will be removed.",
           "duplicateIdentifier": "One or more identifiers are duplicated",
           "identifierRequired": "Identifier is required",
           "noUnitsRegistered": "No units registered",
@@ -1282,21 +1525,19 @@
           "benefitAvailability": "Track each item's availability and rentals",
           "benefitInventory": "Record purchase price and date for your inventory",
           "modeQuantity": "Simple quantity",
-          "modeQuantityDescription": "Just set how many items are available to rent.",
+          "modeQuantityDescription": "Comes back after each rental. Enter how many you have.",
           "modeUnits": "Per-unit tracking",
-          "modeUnitsDescription": "Each item gets its own identifier.",
+          "modeUnitsDescription": "Each item has its own reference, size or color.",
           "variantsTitle": "Variants",
           "variantsHelp": "Up to 3 variants (size, color…). Each unit sets its value and customers pick one when booking.",
           "variantsEmptyHint": "Creating one product per size? Add a \"Size\" variant instead: each unit carries its own and customers choose when booking.",
           "variantPlaceholder": "e.g. Size",
           "addVariant": "Add a variant",
           "variantsMaxReached": "Maximum 3 variants",
-          "defaultBadge": "Default",
           "advancedBadge": "Advanced",
           "learnMore": "Learn more",
           "addRefPlaceholder": "Type a reference and press Enter",
           "generateSeries": "Generate a series",
-          "changeMode": "Change mode",
           "createVariantValue": "Create \"{value}\" ({axis})",
           "chooseColor": "Choose a color",
           "colorPickerDescription": "Adjust the color or enter a hexadecimal value.",
@@ -1500,6 +1741,15 @@
         "aiContextPlaceholder": "E.g. requires a B licence, not suitable for children under 12, always ask for the event date and group size…",
         "aiContextHint": "Extra details only the AI advisor can see — it uses them to advise customers and check requirements. Never shown on the storefront.",
         "createAndDuplicate": "Create and duplicate",
+        "minimumCharged": "minimum charged",
+        "seasonReplacesBase": "replaces the base rate",
+        "addSeasonRate": "Lower rate during this season",
+        "openSimulation": "Simulate",
+        "simulationHint": "Click the curve to add a rate there",
+        "horizonAuto": "Auto",
+        "depositAndVat": "Deposit and VAT",
+        "vatLabel": "VAT",
+        "seasonActions": "Season actions",
         "productCreatedCopyReady": "The pre-filled copy is ready to edit.",
         "copySuffix": "(copy)",
         "productSection": "Product",
@@ -1517,7 +1767,28 @@
         "videoTileLabel": "Video",
         "videoInvalid": "Invalid YouTube link",
         "editVideo": "Edit video",
-        "removeVideo": "Remove video"
+        "removeVideo": "Remove video",
+        "promotion": {
+          "add": "Add a promotion",
+          "title": "Promotion",
+          "remove": "Remove promotion",
+          "reduction": "Discount",
+          "description": "Applied automatically to bookings made during the offer. Cannot be combined with a promo code.",
+          "schedule": "Schedule",
+          "from": "From {date}",
+          "until": "Until {date}",
+          "pickStart": "Pick the first day of the offer.",
+          "pickEnd": "Pick the last day, or leave it open-ended.",
+          "clearDates": "Remove dates",
+          "immediately": "Immediately",
+          "noEnd": "No end date",
+          "invalidPercentage": "Enter a whole percentage from 1 to 99.",
+          "invalidDates": "Choose an end date on or after the start.",
+          "active": "Active",
+          "scheduled": "Scheduled",
+          "expired": "Expired",
+          "none": "Not configured"
+        }
       },
       "deleteConfirm": {
         "title": "Delete this product?",
@@ -1904,6 +2175,22 @@
       "sendEmail": "Send email",
       "customerInfo": "Customer information",
       "viewCustomer": "View customer",
+      "billing": {
+        "title": "Billing",
+        "edit": "Edit billing",
+        "description": "Identity this reservation is invoiced under. The customer profile stays as it is.",
+        "business": "Bill a company",
+        "individual": "Individual",
+        "companyName": "Company name",
+        "companyNumber": "Company number (SIREN / BCE)",
+        "vatNumber": "VAT number",
+        "saved": "Billing updated",
+        "errors": {
+          "companyNameRequired": "Enter the company name",
+          "invalidCompanyNumber": "Invalid company number",
+          "invalidVatNumber": "Invalid VAT number"
+        }
+      },
       "invoiceDocuments": {
         "title": "Invoices and credit notes",
         "empty": "No invoice has been generated yet.",
@@ -2754,6 +3041,7 @@
         "add": "Add a note"
       },
       "reservationHistory": "Reservation history",
+      "billedAs": "Billing",
       "noReservationsForCustomer": "No reservations for this customer",
       "deletedProduct": "Deleted product",
       "amount": "Amount",
@@ -3081,9 +3369,20 @@
     "settings": {
       "title": "Settings",
       "store": "Store",
+      "company": "Company",
+      "companySettings": {
+        "description": "Country, currency and billing address of your business",
+        "localization": {
+          "title": "Country and currency",
+          "description": "The country sets the store's time zone; the currency applies to every price."
+        }
+      },
+      "reservationRules": "Booking rules",
       "appearance": "Appearance",
       "reservations": "Reservations",
       "emails": "Emails",
+      "contact": "Contact",
+      "seo": "Search engines",
       "legal": "Legal pages",
       "account": "Account",
       "integrations": "Integrations",
@@ -3135,7 +3434,10 @@
             "modeLabel": "Insurance mode",
             "modeRequired": "Included automatically",
             "modeOptional": "Optional at checkout",
-            "modeNoPublic": "No public display",
+            "modeNoPublic": "Manual activation by the rental company",
+            "modeNoPublicHelp": "No insurance is added at checkout. You can activate it from a reservation. Once the insurance contract is created, coverage appears on the rental agreement and in the customer account.",
+            "modeOptionalHelp": "The customer chooses coverage at checkout. Covered products are marked after they select it.",
+            "modeRequiredHelp": "Coverage is automatically applied to eligible products. Checkout shows whether it is included or charged separately.",
             "includePriceLabel": "Include insurance in final price",
             "includePriceHelp": "When enabled, insurance is absorbed into the final price shown to customers.",
             "renterLabel": "Tulip renter",
@@ -3589,6 +3891,9 @@
         "countryTimezone": "Timezone",
         "currency": "Currency",
         "currencyDescription": "The currency used to display prices and bill your customers",
+        "locale": "Fallback language",
+        "localeDescription": "Language used when the visitor's browser asks for none the store offers, and the language Google indexes your store in. A visitor always sees their browser language first.",
+        "localeAuto": "Platform language (French)",
         "descriptionLabel": "Description",
         "descriptionPlaceholder": "Describe your business...",
         "sector": "Industry sector"
@@ -3638,7 +3943,38 @@
         "heroImagesDescription": "Images displayed in your store's hero section (optional)",
         "addHeroImages": "Add images",
         "heroImagesHint": "Up to 5 images in slider",
-        "heroImagesOptional": "These images will appear in a slider on your store's homepage. Optional.",
+        "heroImagesFirst": "1st",
+        "removeImage": "Remove image",
+        "previewHint": "A sketch of your home page, redrawn on every change. Real copy and proportions vary.",
+        "home": {
+          "title": "Home page",
+          "description": "The header your customers land on: photos, layout, text position."
+        },
+        "heroLayout": {
+          "title": "Layout",
+          "description": "How photos and text share the header.",
+          "cover": "Photo behind",
+          "coverDescription": "Name and search over full-width photos.",
+          "split": "Photo beside",
+          "splitDescription": "Text on a plain background, the photo framed next to it."
+        },
+        "heroAlign": {
+          "title": "Text position",
+          "topStart": "Top left",
+          "topCenter": "Top centre",
+          "topEnd": "Top right",
+          "middleStart": "Middle left",
+          "middleCenter": "Centre",
+          "middleEnd": "Middle right",
+          "bottomStart": "Bottom left",
+          "bottomCenter": "Bottom centre",
+          "bottomEnd": "Bottom right",
+          "hint": "Without a photo, the text is always centred."
+        },
+        "catalog": {
+          "title": "Catalog",
+          "description": "What customers see after the header."
+        },
         "catalogBrowseMode": {
           "title": "Catalog display",
           "description": "Choose what customers see first after selecting their dates.",
@@ -3653,34 +3989,7 @@
           "upTo": "Show discounts up to",
           "hint": "Discounts exceeding this percentage will be hidden on the storefront."
         },
-        "moreImages": "image(s)",
         "preview": "Live preview",
-        "previewDescription": "Preview of your store's appearance",
-        "previewWelcome": "Welcome to {name}",
-        "previewCatalogText": "Discover our catalog of rental products.",
-        "previewCatalogButton": "View catalog",
-        "previewNav": {
-          "catalog": "Catalog",
-          "contact": "Contact"
-        },
-        "previewStats": "{count}+ products",
-        "previewDatePicker": {
-          "title": "When would you like to rent?",
-          "subtitle": "Select your dates",
-          "startLabel": "Start",
-          "endLabel": "End",
-          "startDateExample": "Sat Jan 15",
-          "endDatePlaceholder": "End date",
-          "submitButton": "Check availability",
-          "quickSelectTitle": "Quick select",
-          "quickSelectWeekend": "This weekend",
-          "quickSelectNextWeek": "Next week",
-          "quickSelectTwoWeeks": "2 weeks"
-        },
-        "previewProducts": {
-          "title": "Popular products",
-          "viewAll": "View all"
-        },
         "updated": "Appearance updated",
         "colors": {
           "blue": "Blue",
@@ -4285,6 +4594,101 @@
           "point3": "Search engines will need to re-index your store"
         }
       },
+      "contactSettings": {
+        "description": "Choose how customers can reach you from your store",
+        "channels": {
+          "title": "Contact channels",
+          "description": "Every enabled channel shows on your store's contact page and on the home page."
+        },
+        "missingPhone": "Add the store phone in the general settings to offer calls, SMS or WhatsApp.",
+        "missingEmail": "Add the store email in the general settings to show it or receive form messages.",
+        "missingBoth": "Add the store phone and email in the general settings to enable contact channels.",
+        "phone": {
+          "label": "Phone",
+          "description": "Customers can call you on {phone}.",
+          "empty": "No phone set for the store."
+        },
+        "sms": {
+          "label": "SMS",
+          "description": "Also offers sending an SMS to that number."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Opens a WhatsApp conversation with your store.",
+          "number": "WhatsApp number",
+          "numberDescription": "Leave empty to use the store phone."
+        },
+        "email": {
+          "label": "Email",
+          "description": "Shows {email} with links to write.",
+          "empty": "No email set for the store."
+        },
+        "form": {
+          "title": "Contact form",
+          "description": "A form on your store whose messages are forwarded to you by email.",
+          "label": "Offer a contact form",
+          "help": "The visitor gives their name, email and message; you reply straight from your mailbox.",
+          "recipient": "Recipient address",
+          "recipientDescription": "Leave empty to receive messages at {email}.",
+          "recipientEmpty": "Enter the address that will receive the messages.",
+          "phoneField": "Visitor phone number",
+          "phoneFieldDescription": "Should the form ask for a phone number?",
+          "phoneFieldOptions": {
+            "hidden": "Do not ask",
+            "optional": "Optional",
+            "required": "Required"
+          }
+        },
+        "intro": {
+          "label": "Intro text",
+          "description": "Shown at the top of the contact page. Leave empty for the default text.",
+          "placeholder": "A question about a rental? Write to us, we answer within 24 hours."
+        },
+        "presets": {
+          "title": "Page template",
+          "description": "Pick a starting point; the contact channels below follow, and you can adjust them afterwards.",
+          "options": {
+            "full": {
+              "label": "Full",
+              "description": "Every contact channel, the form, the map and the opening hours."
+            },
+            "message": {
+              "label": "Message",
+              "description": "The form first, your email as a footnote. For those who prefer writing."
+            },
+            "single": {
+              "label": "One channel",
+              "description": "One big action: call, WhatsApp or email."
+            }
+          },
+          "custom": "Custom settings, “{layout}” layout.",
+          "primaryChannel": "Featured channel",
+          "primaryChannelHelp": "The page's main button.",
+          "channels": {
+            "phone": "Call",
+            "whatsapp": "WhatsApp",
+            "email": "Email"
+          }
+        },
+        "preview": "Preview",
+        "previewHint": "The contact page as it will show, updated as you change the settings.",
+        "viewOnStore": "View the contact page",
+        "updated": "Contact channels updated"
+      },
+      "seoSettings": {
+        "description": "Get your store recognised by Google Search Console",
+        "updated": "Search engine settings updated",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Prove to Google that this store is yours to follow its indexing and search performance.",
+          "step1": "Open <link>Google Search Console</link> and add a property of type “URL prefix”.",
+          "step2": "Enter your store address:",
+          "step3": "Choose the “HTML tag” method, paste the tag or its code below and save before clicking “Verify” in Search Console.",
+          "label": "Verification code",
+          "help": "The whole tag or just its content; the code stays active as long as it is saved here.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
+      },
       "legalSettings": {
         "title": "Legal pages",
         "description": "Write your terms of service and legal notices",
@@ -4523,7 +4927,7 @@
         "modeIncludedDescription": "Delivery is mandatory and free",
         "noCoordinatesWarning": "You must set your store address with map location to enable delivery.",
         "noCoordinatesError": "Please first configure your store address with GPS location.",
-        "goToStoreSettings": "Store settings",
+        "goToStoreSettings": "Enter the address",
         "customerAddressNoteOptional": "When delivery is enabled, customers can choose between pickup and delivery.",
         "customerAddressNoteRequired": "Customers must provide a delivery address.",
         "pricingSection": "Pricing",
@@ -5474,6 +5878,11 @@
           "incentiveBadge": "Launch offer",
           "incentiveLine": "{remaining} spots left with 0 € reeent commission for life"
         }
+      },
+      "extensions": {
+        "title": "Automatic rental extensions",
+        "description": "Customers can extend when equipment is available and the extra cost can be calculated. Special cases require your approval.",
+        "maxDays": "Maximum extra days (leave empty for no limit)"
       }
     },
     "commandPalette": {
@@ -5569,6 +5978,7 @@
       "settingsInvoicing": "Electronic invoicing",
       "settingsLegal": "Legal pages",
       "settingsNotifications": "Notifications",
+      "settingsReservations": "Booking rules",
       "settingsPayments": "Payments",
       "settingsPromoCodes": "Promo codes",
       "settingsReviewBooster": "Review booster",
@@ -5784,7 +6194,14 @@
     }
   },
   "storefront": {
+    "notFound": {
+      "title": "This page isn't available",
+      "description": "The product or page you're looking for no longer exists or isn't online yet.",
+      "browseCatalog": "Browse the catalogue"
+    },
     "header": {
+      "call": "Call",
+      "backToWebsite": "Back to the website",
       "home": "Home",
       "catalog": "Catalog",
       "cart": "Cart",
@@ -5792,7 +6209,10 @@
       "myAccount": "My account",
       "myReservations": "My rentals",
       "categories": "Categories",
-      "menu": "Menu"
+      "menu": "Menu",
+      "signIn": "Sign in",
+      "secure": "Secure payment",
+      "about": "About"
     },
     "status": {
       "open": "Open",
@@ -5800,7 +6220,11 @@
       "until": "until",
       "opensAt": "opens at",
       "opensTomorrow": "opens tomorrow at",
-      "opensOn": "opens"
+      "opensOn": "opens",
+      "openUntil": "Open · until {time}",
+      "closedOpensAt": "Closed · opens at {time}",
+      "closedOpensTomorrow": "Closed · opens tomorrow at {time}",
+      "closedOpensOn": "Closed · opens {day} at {time}"
     },
     "datePicker": {
       "startDate": "Start date",
@@ -5817,11 +6241,17 @@
       "securePayment": "Secure payment",
       "localPickup": "Local pickup",
       "localPickupOrDelivery": "Pickup or delivery",
+      "requestConfirmation": "Confirmed by the store",
       "simpleReservation": "Simple reservation",
       "simpleReservationDesc": "Book in a few clicks",
       "securePaymentDesc": "100% secure transactions",
       "localPickupDesc": "Easily pick up your equipment",
-      "reviewsBadge": "reviews"
+      "reviewsBadge": "reviews",
+      "slides": "Store photos",
+      "previousImage": "Previous photo",
+      "nextImage": "Next photo",
+      "goToImage": "Photo {index} of {count}",
+      "seeReviews": "See Google reviews · {rating} out of 5"
     },
     "home": {
       "ourCategories": "Our categories",
@@ -5840,6 +6270,22 @@
       "contactLabel": "Find us",
       "contactTitle": "Location & contact",
       "findUs": "Find us",
+      "phoneContact": {
+        "call": "Call",
+        "sms": "SMS",
+        "copy": "Copy phone number",
+        "copySuccess": "Phone number copied",
+        "copyError": "Could not copy the phone number"
+      },
+      "whatsappContact": {
+        "open": "Open a conversation"
+      },
+      "emailContact": {
+        "default": "Write with mail app",
+        "copy": "Copy email",
+        "copySuccess": "Email copied",
+        "copyError": "Could not copy the email"
+      },
       "findUsDesc": "Visit us to pick up your equipment",
       "address": "Address",
       "phone": "Phone",
@@ -5848,7 +6294,8 @@
       "getDirections": "Get directions",
       "alreadyReserved": "Already have a reservation?",
       "alreadyReservedDesc": "Access your account to track your reservations and download your contracts.",
-      "accessAccount": "Access my account"
+      "accessAccount": "Access my account",
+      "map": "Map of {store}"
     },
     "reviews": {
       "label": "Testimonials",
@@ -5858,7 +6305,11 @@
       "basedOn": "based on {count} reviews",
       "noReviewText": "This review has no comment.",
       "seeAllOnGoogle": "See all reviews",
-      "verifiedByGoogle": "Reviews verified by Google"
+      "verifiedByGoogle": "Reviews verified by Google",
+      "previous": "Previous review",
+      "next": "Next review",
+      "starRating": "Rating: {rating} out of 5",
+      "ratingLink": "{rating} out of 5 · {count, plural, one {# review} other {# reviews}}"
     },
     "catalog": {
       "title": "Catalog",
@@ -5880,7 +6331,35 @@
       "consumableOutOfStock": "Consumable out of stock",
       "lastOne": "Last one!",
       "left": "left",
-      "clearFilters": "Clear filters"
+      "clearFilters": "Clear filters",
+      "clearSearch": "Clear search",
+      "loadMore": "Load more",
+      "metaTitle": "Catalog - {storeName}",
+      "metaDescription": "Equipment to rent from {storeName}. Book online.",
+      "metaCategoryTitle": "{category} - {storeName}",
+      "metaCategoryDescription": "{category} to rent from {storeName}. Book online.",
+      "sort": {
+        "label": "Sort",
+        "recommended": "Recommended",
+        "priceAsc": "Price: low to high",
+        "priceDesc": "Price: high to low"
+      },
+      "filters": "Filters",
+      "activeFilters": "Active filters",
+      "removeFilter": "Remove this filter",
+      "price": "Price",
+      "priceRange": "{min} – {max}",
+      "availability": "Availability",
+      "showUnavailable": "Show unavailable products too",
+      "availableOnly": "Available only",
+      "availableOnlyHint": "Pick your dates to filter",
+      "showResults": "{count, plural, =0 {No products} one {Show # product} other {Show # products}}",
+      "quantityLabel": "Number of units",
+      "quantityChip": "{count} or more units",
+      "attributeChip": "{axis}: {value}",
+      "priceBaseHint": "Base rates, before dates are picked",
+      "pricePeriodHint": "Total for your dates",
+      "availableOfTotal": "{available} of {total} available"
     },
     "product": {
       "viewDetails": "View product",
@@ -5924,6 +6403,7 @@
         "badgeShort": "-{percent}%",
         "from": "from {duration}",
         "viewRates": "View rates",
+        "viewAllRates": "View all rates ({count})",
         "ratesTitle": "Rates",
         "basePriceLabel": "Base price",
         "duration": "Duration",
@@ -5962,7 +6442,9 @@
         "label": "{name} photos",
         "imageAlt": "{name} — photo {index}",
         "counter": "{current} / {total}",
-        "zoom": "Enlarge"
+        "zoom": "Enlarge",
+        "video": "Play the video",
+        "goTo": "Go to image {index}"
       },
       "meta": {
         "title": "{product} for rent — {store}",
@@ -5975,14 +6457,57 @@
         "basePrice": "Base rate",
         "availability": "Availability"
       },
+      "unavailableReason": {
+        "unavailable": "Unavailable",
+        "consumable_out_of_stock": "Out of stock",
+        "required_accessory_out_of_stock": "A required accessory is out of stock"
+      },
       "unavailableHelp": "This product is not available for rent right now. Browse the rest of the catalog.",
       "requiredAccessoryOutOfStock": "A required accessory is out of stock",
       "requiredAccessoriesIncluded": "Automatically added: {names}",
-      "backToCatalog": "View the catalog"
+      "backToCatalog": "View the catalog",
+      "rentalInformation": {
+        "pickup": "Local pickup",
+        "locations": "Choose your pickup location when booking",
+        "optional": "Delivery available",
+        "required": "Delivery required",
+        "included": "Delivery included",
+        "deliveryDetails": "Availability and terms depend on your address and are shown when booking.",
+        "payment": "Confirmation after online payment",
+        "request": "Request subject to confirmation by the rental provider"
+      },
+      "booking": {
+        "availableForDates": "{count} available for your dates",
+        "dates": "Dates",
+        "anyOption": "No preference",
+        "checking": "Checking…",
+        "reserve": "Book",
+        "included": "Included",
+        "shortage": "Not enough stock",
+        "requiredHelp": "This item is required with this product and is added to the cart with it.",
+        "extras": "Extras",
+        "depositHold": "Deposit",
+        "packageApplied": "Package applied: {period}",
+        "packagesApplied": "{count} × {period} package",
+        "rateApplied": "Rate applied: {period}",
+        "proratedPrice": "Prorated price",
+        "depositNotCharged": "Card hold, not charged"
+      }
+    },
+    "quickAdd": {
+      "chooseDates": "Choose your dates",
+      "chooseOptions": "Choose your options",
+      "optionsIntro": "This product comes in several configurations. Pick yours, then how many units you need.",
+      "steps": {
+        "dates": "Dates",
+        "options": "Configuration",
+        "extras": "Accessories"
+      }
     },
     "accessories": {
       "productAdded": "Added to cart",
       "youMightAlsoLike": "You might also like",
+      "requiredIncluded": "The accessories this product requires were added to your cart automatically.",
       "selectAccessories": "Select accessories to add",
       "available": "{count, plural, one {# available} other {# available}}",
       "pricingUnit": {
@@ -5995,6 +6520,9 @@
       "accessoriesAdded": "{count, plural, one {# accessory added to cart} other {# accessories added to cart}}"
     },
     "dateSelection": {
+      "availabilityChecking": "Checking availability…",
+      "availabilityUnavailable": "Product unavailable for this period. Choose different dates or times.",
+      "availabilityRetry": "Could not check availability. Retry",
       "title": "When would you like to rent?",
       "subtitle": "Select your dates to see availability",
       "startDate": "Pickup",
@@ -6036,7 +6564,12 @@
       "errors": {
         "required": "Please select dates",
         "startInPast": "Start date must be in the future",
-        "endBeforeStart": "End date must be after start date"
+        "endBeforeStart": "End date must be after start date",
+        "sameDayNotAllowed": "Same-day rentals are not available at this store.",
+        "businessHours": "Those times fall outside the store's opening hours.",
+        "advanceNotice": "This store needs {duration} notice before pickup.",
+        "minDuration": "The minimum rental duration is {duration}.",
+        "maxDuration": "The maximum rental duration is {duration}."
       },
       "businessHours": {
         "storeClosed": "Store is closed on this day",
@@ -6048,7 +6581,9 @@
       },
       "modifyDates": "Change dates",
       "applyDates": "Apply dates",
-      "timezoneNotice": "Times shown in {city} time"
+      "timezoneNotice": "Times shown in {city} time",
+      "chooseDates": "Pick your dates",
+      "validate": "Confirm"
     },
     "availability": {
       "title": "Available products",
@@ -6082,6 +6617,7 @@
       "badge": {
         "available": "Available",
         "availableCount": "{count} available",
+        "lastOne": "Last one available",
         "limited": "{count} left",
         "unavailable": "Unavailable",
         "outOfStock": "Out of stock",
@@ -6157,7 +6693,21 @@
         "product_unavailable": "This product is no longer available",
         "insufficient_stock": "Not enough stock for this quantity",
         "required_accessory_unavailable": "A required accessory is out of stock"
-      }
+      },
+      "open": "Open cart",
+      "openWithCount": "Cart, {count, plural, one {# item} other {# items}}",
+      "quantityOf": "Quantity of {name}",
+      "removeItem": "Remove {name} from the cart",
+      "removed": "{name} removed from the cart",
+      "undo": "Undo",
+      "resolveError": "Availability could not be checked. Try again in a moment.",
+      "unavailableTitle": "{count, plural, one {# item is no longer available} other {# items are no longer available}}",
+      "adjustTo": "Reduce to {count}",
+      "maxReached": "Maximum quantity reached",
+      "fixedPrice": "Flat rate",
+      "depositHold": "deposit not charged",
+      "checking": "Checking availability…",
+      "checkoutBlocked": "Update unavailable items before continuing."
     },
     "checkout": {
       "title": "Complete my reservation",
@@ -6180,6 +6730,7 @@
       "deliveryRequiredNote": "This product requires delivery",
       "deliveryIncludedNote": "Delivery fees are included in the price",
       "included": "Included",
+      "fulfillmentTitle": "Pickup and return",
       "outboundTitle": "Receive equipment",
       "returnTitle": "Return equipment",
       "storePickup": "Pick up at store",
@@ -6195,6 +6746,24 @@
       "deliveryOption": "Home delivery",
       "deliveryOptionDescription": "Starting at {pricePerKm}/km",
       "deliveryAvailableFrom": "Delivery available from {amount} of rental",
+      "distanceKm": "{distance} km",
+      "pricePerKm": "{price}/km",
+      "deliveryAreaSummary": "{maxKm} km delivery area · {pricePerKm}/km",
+      "useMyLocation": "Use my location",
+      "sortByDistance": "Sort by distance from me",
+      "sortByDistanceHint": "See which location is closest",
+      "locationLocating": "Finding you…",
+      "locationBlocked": "Location is blocked for this site. Allow it from the icon in the address bar to sort by distance.",
+      "locationUnsupported": "This browser cannot share your position, so locations stay in store order.",
+      "yourPosition": "Your position",
+      "returnSamePlace": "Same place",
+      "returnAnotherLocation": "Another location",
+      "returnMyAddress": "My address",
+      "returnSameLocationSummary": "Back to {place}",
+      "returnSameAddressSummary": "Collected from {address}",
+      "mapExpand": "Expand the map",
+      "mapCollapse": "Close the map",
+      "getDirections": "Directions",
       "freeDeliveryAbove": "Free delivery above {amount}",
       "freeDeliveryApplied": "Free delivery applied!",
       "deliveryAddress": "Delivery address",
@@ -6225,14 +6794,16 @@
       "insuranceOptionalLabel": "Add breakage/theft coverage",
       "insuranceOptionalHelp": "Protect equipment against breakage and theft with Tulip coverage.",
       "insuranceLineLabel": "Breakage/theft coverage",
-      "insuranceRequiredBadge": "Included",
+      "insuranceRequiredBadge": "Required",
       "insuranceOptionalEnabled": "Selected",
       "insuranceOptionalDisabled": "Not selected",
       "insuranceOptionalUnavailable": "Coverage is temporarily unavailable. Your reservation will be sent without coverage.",
       "insuranceOptionalUnavailableShort": "Unavailable",
       "insuranceNoInsurableProducts": "No insurable product in this cart.",
       "insurancePartialCoverage": "{insured} covered product(s), {uninsured} not covered.",
-      "insuranceCoveredProductTooltip": "This product is covered by breakage/theft coverage.",
+      "insuranceCoveredProductTooltip": "This product will be covered by breakage/theft coverage for this rental.",
+      "insuranceIncludedHelp": "The rental company pays for coverage on the products marked as covered.",
+      "insuranceIncludedLabel": "Breakage/theft coverage included",
       "insuranceEligibleProductTooltip": "Eligible for breakage/theft coverage.",
       "insuranceEstimating": "Calculating estimated coverage...",
       "insuranceEstimatedAmount": "Estimated coverage amount: {amount}",
@@ -6337,14 +6908,8 @@
         "haveCode": "Have a promo code?",
         "placeholder": "Enter your code",
         "apply": "Apply",
-        "invalidCode": "This promo code is invalid",
         "discount": "Discount ({code})",
-        "minimumNotMet": "The minimum amount is no longer met for this code",
-        "promoCodeInvalid": "This promo code is invalid",
-        "promoCodeExpired": "This promo code has expired",
-        "promoCodeExhausted": "This promo code is no longer available",
-        "promoCodeMinimumNotMet": "Minimum amount of {amount} required",
-        "promoCodeNotStarted": "This promo code is not yet active"
+        "remove": "Remove the promo code"
       },
       "lineNeedsUpdate": "Some lines are no longer available. Update your cart before submitting.",
       "advisor": {
@@ -6365,6 +6930,59 @@
         "statusChecking": "Checking your verification…",
         "transcriptLabel": "Verification conversation",
         "completeVerificationHint": "Complete the verification above to continue."
+      },
+      "submitError": {
+        "title": "Your order could not be sent",
+        "goToStep": "Fix this"
+      },
+      "payAmount": "Pay {amount}",
+      "blocked": {
+        "resolving": "Checking availability…",
+        "insuranceRequired": "Choose an insurance option"
+      },
+      "acceptCgvRich": "I accept the <terms>rental terms and conditions</terms>",
+      "returningCustomer": {
+        "loginLink": "Already have an account? <signin>Sign in</signin>",
+        "prompt": "Already a customer?",
+        "sendCode": "Send me a code",
+        "codeSent": "Code sent to {email}",
+        "codeLabel": "Verification code",
+        "cancel": "Cancel",
+        "resend": "Resend",
+        "verifying": "Verifying…",
+        "signedInAs": "Signed in as {name}",
+        "notYou": "Not you?"
+      },
+      "notesDisclosure": "Add a note for the store",
+      "yourAddress": "Your address",
+      "viewCatalog": "View the catalog",
+      "fixedPrice": "Flat rate",
+      "pricesIncludeTax": "Prices include tax",
+      "pricesExcludeTax": "Prices exclude tax",
+      "summaryBar": {
+        "show": "Show details",
+        "hide": "Hide details"
+      },
+      "deliveryCalculating": "Calculating delivery fees…",
+      "insuranceIncluded": "Insurance included",
+      "cancelled": {
+        "title": "Payment interrupted",
+        "description": "Your booking {number} is waiting for payment. Resume whenever you like, nothing is lost.",
+        "cartKept": "Your cart has been kept.",
+        "expiredTitle": "Booking expired",
+        "expiredDescription": "The payment window for booking {number} has closed and it was cancelled. Your cart has been kept: you can book it again in a few seconds.",
+        "backToCart": "Back to the cart",
+        "resume": "Resume payment",
+        "redirecting": "Redirecting…",
+        "alreadyPaidTitle": "Booking already paid",
+        "alreadyPaidDescription": "Your booking {number} is confirmed. No further payment is needed.",
+        "viewReservation": "View my booking",
+        "errors": {
+          "notFound": "This booking could not be found.",
+          "invalidStatus": "This booking is no longer waiting for payment.",
+          "unavailable": "Online payment is unavailable for this store.",
+          "sessionFailed": "Payment could not be restarted. Try again in a moment."
+        }
       }
     },
     "confirmation": {
@@ -6470,6 +7088,21 @@
       "backToStore": "Back to store"
     },
     "account": {
+      "communications": {
+        "title": "Communications",
+        "description": "Choose how to receive pickup and return reminders, when offered by the rental company.",
+        "email": "Receive reminders by email",
+        "sms": "Receive reminders by SMS",
+        "essential": "These preferences only apply to reminders. Sign-in and booking updates (confirmation, rejection, payment or important changes) will still be sent."
+      },
+      "profile": {
+        "title": "My information",
+        "description": "These details will be filled in automatically for your next bookings.",
+        "emailHelp": "Your email address is used to sign in.",
+        "saved": "Information saved",
+        "saveError": "Unable to save your information. Please try again.",
+        "invalidData": "Check your details, especially your phone number and company name."
+      },
       "title": "My account",
       "accessAccount": "Access my account",
       "accessDescription": "Enter the email used for your reservation to receive a login code.",
@@ -6516,15 +7149,18 @@
       "returnedAt": "Returned on",
       "rentedItems": "Rented items",
       "quantityLabel": "Quantity",
+      "insuredProductTooltip": "Covered by breakage/theft coverage",
       "unitPrice": "/ unit",
       "subtotalRental": "Rental subtotal",
       "yourNotes": "Your notes",
       "needHelp": "Need help?",
       "contactStore": "Contact {name} for any questions about your reservation.",
+      "nothingChargedYet": "No payment has been taken yet.",
       "status": {
         "pending": "Pending",
         "pendingFull": "Pending confirmation",
-        "pendingDescription": "Your request is being processed",
+        "pendingDescription": "You can cancel your request until the store confirms it.",
+        "pendingNextStep": "The store is checking availability and will reply by email to {email}.",
         "confirmed": "Confirmed",
         "confirmedDescription": "Your reservation is confirmed",
         "allSet": "All set",
@@ -6564,10 +7200,138 @@
       "paymentInProgress": "Payment processing",
       "paymentRequired": "Payment required",
       "confirmedAwaitingPayment": "Awaiting payment",
+      "damageFees": "Damage fees",
+      "remainingDue": "Remaining due",
+      "depositCard": {
+        "title": "Deposit",
+        "amount": "Deposit amount",
+        "capturedAmount": "Amount taken",
+        "returnedAmount": "Amount returned",
+        "reason": "Reason given by the store",
+        "heldUntil": "Held until {date}.",
+        "restReleased": "The rest ({amount}) has been released and is not charged.",
+        "authorize": "Authorise the deposit online",
+        "authorizeHelp": "Secured by Stripe. The amount is held on your card, not charged.",
+        "authorizeError": "The deposit authorisation could not be opened. Try again or contact the store.",
+        "states": {
+          "to_provide": {
+            "badge": "To provide",
+            "title": "Due at pickup",
+            "description": "The store will ask for a {amount} deposit when you collect the equipment. It is returned to you when the equipment comes back in good condition."
+          },
+          "to_provide_online": {
+            "badge": "To authorise",
+            "title": "Card hold to come",
+            "description": "A {amount} hold will be requested on your card before pickup. The amount is only held, never charged without a reason."
+          },
+          "card_saved": {
+            "badge": "Card saved",
+            "title": "Card saved",
+            "description": "Your card is saved for the {amount} deposit. The store will hold this amount shortly before pickup, without charging it."
+          },
+          "held": {
+            "badge": "Held",
+            "title": "Hold active",
+            "description": "{amount} is held on your card, not charged. The hold is released when the equipment comes back in good condition."
+          },
+          "hold_expired": {
+            "badge": "Expired",
+            "title": "Hold expired",
+            "description": "The {amount} hold has expired. The store may ask you for a new authorisation."
+          },
+          "released": {
+            "badge": "Released",
+            "title": "Deposit released",
+            "description": "The {amount} hold has been cancelled. Nothing was charged; the hold disappears from your statement within a few days."
+          },
+          "captured": {
+            "badge": "Charged",
+            "title": "Deposit charged",
+            "description": "The store charged {captured} of your {amount} deposit."
+          },
+          "failed": {
+            "badge": "Declined",
+            "title": "Authorisation declined",
+            "description": "The {amount} hold could not be placed on your card. Another card may be needed."
+          },
+          "collected": {
+            "badge": "Received",
+            "title": "Deposit received",
+            "description": "The store received your {amount} deposit ({method}) on {date}. It is returned to you when the equipment comes back."
+          },
+          "returned": {
+            "badge": "Returned",
+            "title": "Deposit returned",
+            "description": "Your {amount} deposit was returned to you on {date}."
+          },
+          "partially_returned": {
+            "badge": "Partly returned",
+            "title": "Deposit partly returned",
+            "description": "{returned} of your {amount} deposit was returned to you on {date}."
+          }
+        }
+      },
+      "updates": {
+        "title": "History",
+        "newPeriod": "New period: {period}",
+        "created": "Request sent",
+        "confirmed": "Reservation confirmed by the store",
+        "rejected": "Request declined by the store",
+        "cancelled": "Reservation cancelled",
+        "cancelled_by_you": "Request cancelled by you",
+        "picked_up": "Equipment collected",
+        "returned": "Equipment returned",
+        "quote_accepted": "Quote accepted",
+        "quote_declined": "Quote declined",
+        "payment_received": "Online payment received",
+        "payment_received_amount": "Online payment received ({amount})",
+        "payment_failed": "Online payment declined",
+        "refunded": "Refund issued",
+        "refunded_amount": "Refund of {amount}",
+        "payment_added_rental": "Rental payment recorded ({amount})",
+        "payment_added_deposit": "Deposit received ({amount})",
+        "payment_added_deposit_return": "Deposit returned ({amount})",
+        "payment_added_damage": "Damage fees recorded ({amount})",
+        "payment_added_adjustment": "Amount adjusted ({amount})",
+        "deposit_authorized": "Card hold placed",
+        "deposit_authorized_amount": "{amount} card hold placed",
+        "deposit_captured": "Deposit charged",
+        "deposit_captured_amount": "Deposit charged ({amount})",
+        "deposit_released": "Deposit released",
+        "deposit_failed": "Card hold declined",
+        "modified": "Reservation changed by the store",
+        "extension_confirmed": "Rental extended",
+        "return_date_requested": "Return date change requested",
+        "inspection_departure_completed": "Pickup condition report completed",
+        "inspection_return_completed": "Return condition report completed",
+        "inspection_damage_detected": "Damage noted in the condition report",
+        "inspection_signed": "Condition report signed"
+      },
+      "inspections": {
+        "title": "Condition reports",
+        "departure": "Pickup condition report",
+        "return": "Return condition report",
+        "completed": "Completed on {date}",
+        "signed": "Signed on {date}",
+        "photoCount": "{count, plural, one {# photo} other {# photos}}",
+        "damage": "Damage noted",
+        "noDamage": "No damage",
+        "estimatedCost": "Estimated damage:",
+        "download": "Download the PDF"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "Pending",
+          "authorized": "Held",
+          "completed": "Charged",
+          "failed": "Declined",
+          "cancelled": "Released",
+          "refunded": "Refunded"
+        },
         "title": "Payment history",
         "noPayments": "No payments recorded",
         "types": {
+          "refund": "Refund",
           "rental": "Rental",
           "deposit": "Deposit",
           "deposit_return": "Deposit refund",
@@ -6610,7 +7374,160 @@
         "declineTitle": "Decline this quote?",
         "declineDescription": "You are about to decline this quote. The rental company will be notified.",
         "cancel": "Cancel",
-        "confirmDecline": "Decline quote"
+        "confirmDecline": "Decline quote",
+        "acceptTitle": "Accept this quote?",
+        "acceptDescription": "You are about to accept this quote. The store will be notified and your booking confirmed.",
+        "confirmAccept": "Accept the quote"
+      },
+      "loginTitle": "Access my rentals",
+      "loginLine": "Enter your email: we'll send you a one-time code, no password needed.",
+      "codeLine": "We sent a code to {email}.",
+      "resendIn": "New code in {seconds}s",
+      "currentReservations": "Current rentals",
+      "pastReservations": "Past rentals",
+      "fulfillment": {
+        "pickupTitle": "Pickup",
+        "returnTitle": "Return",
+        "deliveredToYou": "Delivered to your address",
+        "collectedFromYou": "Picked up from your address",
+        "sameAsPickup": "Same place as the pickup",
+        "storeFallback": "Store",
+        "directions": "Directions",
+        "calendarPickup": "Pickup: {when} — {place}",
+        "calendarReturn": "Return: {when} — {place}"
+      },
+      "timeline": {
+        "title": "Your rental",
+        "requested": "Request sent",
+        "quoteSent": "Quote sent",
+        "confirmed": "Booking confirmed",
+        "pickedUp": "Equipment collected",
+        "returned": "Equipment returned"
+      },
+      "actions": {
+        "title": "Actions",
+        "contractSigned": "Contract signed on {date}"
+      },
+      "deposit": "Deposit",
+      "total": "Total",
+      "notes": "Your notes",
+      "signContractTitle": "Sign the contract?",
+      "confirmSign": "Sign the contract",
+      "dateChange": {
+        "title": "Change return date",
+        "description": "Need more time or want to return early? Request a new date. The rental provider must approve it and may adjust the price.",
+        "open": "Request a change",
+        "newEnd": "Requested return",
+        "timezone": "Store time zone: {timezone}",
+        "reason": "Reason (optional)",
+        "error": "Could not save the request. Choose a future date after pickup and different from the current return, then try again.",
+        "sending": "Sending…",
+        "submit": "Send request",
+        "close": "Close",
+        "pendingHelp": "Your booking and price remain unchanged until the rental provider approves.",
+        "reviewTitle": "Return date change request",
+        "reviewHelp": "Check availability and pricing in the editor. Saving the requested date approves the request. A different period supersedes it.",
+        "apply": "Apply requested date",
+        "review": "Review request",
+        "reject": "Decline request",
+        "reviewError": "Could not process the request. Refresh the page and try again.",
+        "status": {
+          "pending": "Awaiting approval",
+          "accepted": "Request approved",
+          "rejected": "Request declined",
+          "cancelled": "Request cancelled",
+          "superseded": "Superseded by another change"
+        }
+      },
+      "actionRequired": {
+        "quote": "Respond to quote",
+        "payment": "Pay for your reservation",
+        "signature": "Sign your contract"
+      },
+      "calendar": {
+        "add": "Add to my calendar"
+      },
+      "extension": {
+        "title": "Extend my rental",
+        "description": "Choose a later return date. Check availability and the extra cost before confirming.",
+        "open": "Extend my rental",
+        "newEnd": "New return date",
+        "supplement": "Extra cost",
+        "newTotal": "New rental total: {amount}",
+        "check": "Check availability",
+        "pay": "Pay and extend",
+        "confirm": "Confirm extension",
+        "request": "Request an extension",
+        "loading": "Please wait…",
+        "close": "Close",
+        "resume": "Continue payment",
+        "cancel": "Cancel extension",
+        "checkoutPending": "Your extension is awaiting payment. The equipment is held temporarily.",
+        "expired": "The payment window expired. Check availability again.",
+        "confirmed": "Your rental has been extended.",
+        "refund_pending": "The extension could not be confirmed. Your payment is being refunded.",
+        "refunded": "The extension was not applied. Your payment has been refunded.",
+        "reasons": {
+          "disabled": "This rental provider reviews extension requests.",
+          "insurance": "The rental provider needs to confirm your insurance coverage for the extra period.",
+          "manualPrice": "Your rental has a special price or conditions. The rental provider will confirm the extra cost.",
+          "unpaid": "The rental provider needs to review payment before extending.",
+          "delivery": "The rental provider needs to arrange the new collection time.",
+          "deposit": "The rental provider needs to check the deposit for the extra period.",
+          "overdue": "The return date has passed. Contact the rental provider or send a request.",
+          "location": "The rental provider needs to confirm availability at the return location."
+        },
+        "errors": {
+          "invalidDate": "Choose a date later than the current return date.",
+          "invalidStatus": "This rental can no longer be extended.",
+          "pending": "An extension is already in progress. Refresh to continue it.",
+          "tooLong": "This date exceeds the maximum rental or extension duration.",
+          "closed": "The store is closed at this time. Choose another return time.",
+          "unavailable": "Some equipment is unavailable for this period. Choose an earlier return or contact the rental provider.",
+          "manualRequired": "The rental provider must review this extension. Check the date again.",
+          "priceChanged": "The extra cost has changed. Check the date again before paying.",
+          "expired": "This payment window has expired. Check availability again.",
+          "paymentUnavailable": "Payment is unavailable. Try again or contact the rental provider.",
+          "notFound": "Please sign in again to access this reservation.",
+          "unexpected": "Unable to complete this action. Refresh the page and try again.",
+          "paymentMismatch": "This payment could not be matched. Contact the rental provider.",
+          "tooManyAttempts": "Too many extension attempts. Try again in 15 minutes."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Payment confirmed",
+          "description": "Your payment has been received. You can find the details below."
+        },
+        "payment_received": {
+          "title": "Payment received",
+          "description": "Your payment has been recorded."
+        },
+        "deposit_authorized": {
+          "title": "Deposit authorized",
+          "description": "Your deposit authorization has been recorded."
+        },
+        "requested": {
+          "title": "Request sent",
+          "description": "The store will review your request and confirm availability."
+        },
+        "processing": {
+          "title": "Payment being verified",
+          "description": "Your payment is being verified. Refresh this page in a moment."
+        }
+      },
+      "requestNumber": "Booking request #{number}",
+      "cancellation": {
+        "action": "Cancel my request",
+        "title": "Cancel this request?",
+        "description": "The store will be notified.",
+        "keep": "Keep my request",
+        "confirm": "Cancel request",
+        "cancelled": "Request cancelled",
+        "done": "You cancelled this request.",
+        "paymentDescription": "The store will be notified. If you have already paid or provided a deposit, contact the store for a refund or release. This action does not issue an automatic refund.",
+        "adminSubject": "Request #{number} cancelled by the customer",
+        "adminBody": "{name} cancelled booking request #{number} before your confirmation. You can view its history in your dashboard."
       }
     },
     "marketplaceShell": {
@@ -6624,7 +7541,13 @@
       "legalNotice": "Legal Notice",
       "signIn": "Sign in",
       "allRightsReserved": "All rights reserved.",
-      "poweredBy": "Powered by"
+      "poweredBy": "Powered by",
+      "navigation": "Navigation",
+      "catalog": "Catalog",
+      "reviews": "Reviews",
+      "account": "Account",
+      "myReservations": "My rentals",
+      "about": "About"
     },
     "error": {
       "title": "Oops! An error occurred",
@@ -6637,7 +7560,8 @@
       "cgv": {
         "title": "Terms of Service",
         "noCgv": "Terms of service are not available yet.",
-        "contactSeller": "Please contact the seller for more information."
+        "contactSeller": "Please contact the seller for more information.",
+        "metaDescription": "Rental terms and conditions of {name}: booking, payment, deposit and cancellation."
       },
       "legalNotice": {
         "title": "Legal Notice",
@@ -6646,7 +7570,8 @@
         "headquarters": "Headquarters",
         "email": "Email",
         "phone": "Phone",
-        "address": "Address"
+        "address": "Address",
+        "metaDescription": "Legal notice for {name}: site publisher, host and contact details."
       },
       "hosting": {
         "title": "Hosting",
@@ -6668,6 +7593,22 @@
     "embed": {
       "title": "Book online now",
       "cta": "Check availability",
+      "dayPlaceholder": "Choose",
+      "chooseDates": "Choose your dates",
+      "checkDates": "Check your dates",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "steps": {
+        "startDate": "Pickup day",
+        "startTime": "Pickup time",
+        "endDate": "Return day",
+        "endTime": "Return time"
+      },
+      "slotGroups": {
+        "morning": "Morning",
+        "afternoon": "Afternoon",
+        "evening": "Evening"
+      },
       "errors": {
         "selectStartDate": "Select a pickup date",
         "selectEndDate": "Select a return date",
@@ -6696,6 +7637,94 @@
         "unavailable": "The advisor isn't available right now. Please try again later or contact the store."
       },
       "typing": "The advisor is typing"
+    },
+    "meta": {
+      "storeNotFound": "Store not found",
+      "homeTitle": "{store} · Equipment rental",
+      "description": "Rent equipment from {store}. Book online."
+    },
+    "contact": {
+      "title": "Contact {name}",
+      "metaTitle": "Contact - {name}",
+      "metaDescription": "Contact {name}: phone, email and contact form.",
+      "intro": "A question about a rental, an availability or a quote? We are here.",
+      "channelsTitle": "Reach us",
+      "noChannels": "The store's contact details are not set yet.",
+      "formTitle": "Send a message",
+      "formDescription": "We reply by email.",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone",
+      "message": "Message",
+      "messagePlaceholder": "Describe your request: equipment, dates, quantities…",
+      "privacyNote": "Your details are only used by {name} to reply to you.",
+      "send": "Send message",
+      "sending": "Sending…",
+      "sentTitle": "Message sent",
+      "sentDescription": "Thank you! {name} has received your message and will reply by email.",
+      "sendAnother": "Send another message",
+      "orEmail": "Or by email:",
+      "primary": {
+        "phone": {
+          "title": "Call us",
+          "action": "Call"
+        },
+        "whatsapp": {
+          "title": "Write to us on WhatsApp",
+          "action": "Open WhatsApp"
+        },
+        "email": {
+          "title": "Write to us",
+          "action": "Send an email"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Enter your first name",
+        "lastNameRequired": "Enter your last name",
+        "invalidEmail": "Enter a valid email address",
+        "phoneRequired": "Enter your phone number",
+        "messageTooShort": "Your message is too short",
+        "tooLong": "This field is too long",
+        "invalidData": "Check the form fields.",
+        "unavailable": "The contact form is not available right now.",
+        "rateLimited": "Too many messages sent. Try again in a few minutes.",
+        "generic": "Your message could not be sent. Try again or use another contact channel."
+      }
+    },
+    "about": {
+      "title": "About {name}",
+      "metaTitle": "About - {name}",
+      "metaDescription": "{name}: opening hours, address, contact and how renting works.",
+      "hoursTitle": "Opening hours",
+      "noHours": "Hours on request",
+      "closed": "Closed",
+      "closuresTitle": "Exceptional closures",
+      "servicesTitle": "How it works",
+      "paymentMode": "Book and pay online, instant confirmation",
+      "requestMode": "Booking request online, confirmed by the store",
+      "pickup": "Pickup and return in store",
+      "deliveryOptional": "Delivery available",
+      "deliveryRequired": "Delivery to the address of your choice",
+      "deliveryIncluded": "Delivery included",
+      "deliveryRadius": "up to {km} km",
+      "deliveryFree": "free from {amount}",
+      "deliveryFrom": "from {amount} per trip",
+      "moreTitle": "Learn more",
+      "catalog": "Browse the catalog",
+      "contact": "Contact us",
+      "terms": "Terms and conditions",
+      "legal": "Legal notice"
+    },
+    "seasonalPricing": {
+      "title": "Seasonal rates",
+      "description": "Each rate applies to the dates within its season.",
+      "baseSeason": "Standard rate",
+      "outsideSeasons": "Outside the seasons shown",
+      "durationRates": "View duration rates",
+      "breakdownTitle": "Price by season",
+      "from": "From",
+      "averageRate": "On average across your dates"
     }
   },
   "onboarding": {
@@ -7005,7 +8034,8 @@
       "qty": "Qty",
       "unitPrice": "Unit Price",
       "total": "Total",
-      "unitIdentifiers": "Identifiers: {identifiers}"
+      "unitIdentifiers": "Identifiers: {identifiers}",
+      "insured": "Covered by breakage/theft coverage"
     },
     "totals": {
       "subtotalHT": "Subtotal (excl. VAT)",
@@ -7039,7 +8069,9 @@
       "landlordText": "The landlord certifies the accuracy of the above information and the availability of the equipment for the indicated period.",
       "customerText": "I acknowledge that I have read and agree to the general rental terms and conditions without reservation.",
       "dateLabel": "Date:",
-      "ipLabel": "IP:"
+      "ipLabel": "IP:",
+      "automatic": "Automatically validated",
+      "automaticText": "Contract automatically validated when the reservation is confirmed or paid."
     },
     "conditions": {
       "condition1": "The equipment is rented in good working order",
@@ -7213,6 +8245,7 @@
     "createReservationError": "Error creating reservation",
     "businessHoursViolation": "Selected times are outside the store's business hours",
     "returnAddressInvalid": "Invalid return address coordinates",
+    "returnAddressRequired": "Please enter a valid return address",
     "returnAddressTooFar": "Return address is too far ({maxKm} km maximum)",
     "advanceNoticeViolation": "Reservations must be made at least {duration} in advance",
     "noReservationsWithEmail": "No reservations found with this email",
@@ -7337,7 +8370,11 @@
     "emailLoginUnavailable": "Email sign-in is unavailable at the moment",
     "stripeNotConfigured": "Online payments are not available: this instance has no Stripe keys configured. Reservations run in request mode.",
     "emailSendFailed": "Failed to send the email.",
-    "marketplaceChannelNotFound": "Marketplace channel not found"
+    "marketplaceChannelNotFound": "Marketplace channel not found",
+    "requestCancellationStatusChanged": "The status of this request has changed. It can no longer be cancelled here. Contact the store.",
+    "requestCancellationPaymentPending": "A payment is still in progress for this request. Try again after it updates or contact the store.",
+    "requestCancellationPaymentChanged": "The payment information has changed. Review it before confirming cancellation again.",
+    "promoCodeProductsAlreadyDiscounted": "This code does not apply to products already on promotion."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

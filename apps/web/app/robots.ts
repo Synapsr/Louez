@@ -1,8 +1,8 @@
-import type { MetadataRoute } from 'next';
-import { headers } from 'next/headers';
+import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 
-import { isLoopbackHost } from '@/lib/util.host';
-import { getRequestHost, isStorefrontHost } from '@/lib/util.storefront-host';
+import { isLoopbackHost } from "@/lib/util.host";
+import { getRequestHost, isStorefrontHost } from "@/lib/util.storefront-host";
 
 // Paths that hold nothing indexable. Storefront funnels (customer sessions,
 // checkout, one-shot links) leak funnel URLs into search results; the
@@ -10,24 +10,25 @@ import { getRequestHost, isStorefrontHost } from '@/lib/util.storefront-host';
 // listed here too — the platform dashboard host gets a disallow-all instead.
 // Product images (/files/…) stay crawlable on purpose.
 const PRIVATE_PATHS = [
-  '/api/',
-  // Storefront funnels
-  '/account',
-  '/checkout',
-  '/pay/',
-  '/authorize-deposit/',
-  '/confirmation/',
-  '/r/',
-  '/review',
-  '/embed',
+  "/api/",
+  // Storefront funnels (/checkout also covers /checkout/return and
+  // /checkout/cancelled; /confirmation/{id} is a redirect to /account)
+  "/account",
+  "/checkout",
+  "/pay/",
+  "/authorize-deposit/",
+  "/confirmation/",
+  "/r/",
+  "/review",
+  "/embed",
   // Dashboard/auth surface (path-routed in standalone mode)
-  '/dashboard',
-  '/login',
-  '/register',
-  '/onboarding',
-  '/invitation',
-  '/multi-store',
-  '/admin',
+  "/dashboard",
+  "/login",
+  "/register",
+  "/onboarding",
+  "/invitation",
+  "/multi-store",
+  "/admin",
 ];
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
@@ -36,23 +37,19 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   // /{slug}. Keep the whole host out of the index.
   if (!(await isStorefrontHost())) {
     return {
-      rules: { userAgent: '*', disallow: '/' },
+      rules: { userAgent: "*", disallow: "/" },
     };
   }
 
   const headerStore = await headers();
   const host = await getRequestHost();
-  const forwardedProtocol = headerStore
-    .get('x-forwarded-proto')
-    ?.split(',')[0]
-    ?.trim();
-  const protocol =
-    forwardedProtocol || (isLoopbackHost(host.split(':')[0]) ? 'http' : 'https');
+  const forwardedProtocol = headerStore.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProtocol || (isLoopbackHost(host.split(":")[0]) ? "http" : "https");
 
   return {
     rules: {
-      userAgent: '*',
-      allow: '/',
+      userAgent: "*",
+      allow: "/",
       disallow: PRIVATE_PATHS,
     },
     sitemap: `${protocol}://${host}/sitemap.xml`,

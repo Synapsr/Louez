@@ -26,15 +26,6 @@ import { Badge } from "@louez/ui";
 import { Textarea } from "@louez/ui";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@louez/ui";
 import {
-  AlertDialog,
-  AlertDialogClose,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@louez/ui";
-import {
   Combobox,
   ComboboxChip,
   ComboboxChips,
@@ -47,10 +38,8 @@ import {
   ComboboxPopup,
   ComboboxValue,
 } from "@louez/ui";
-import { Popover, PopoverContent, PopoverTrigger } from "@louez/ui";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@louez/ui";
 import { toastManager } from "@louez/ui";
-import { CalendarCheckIcon, PurchaseIcon, TagIcon } from "@louez/ui/icons";
 import {
   cn,
   canonicalizeAttributes,
@@ -67,7 +56,6 @@ import {
   type VariantRegistryEntry,
 } from "@/components/dashboard/util.variant-registry";
 import { VariantManagerDrawer } from "@/components/dashboard/variant-manager";
-import { WhatsNewLinkCard } from "@/components/dashboard/whats-new-link-card";
 import { ReservationDatePickerControl } from "@/components/form/form-reservation-date-picker";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { orpc } from "@/lib/orpc/react";
@@ -726,57 +714,17 @@ function UnitRow({
 
 interface UnitTrackingEditorProps {
   trackUnits: boolean;
-  onTrackUnitsChange: (value: boolean) => void;
   bookingAttributeAxes: BookingAttributeAxisInput[];
   onBookingAttributeAxesChange: (axes: BookingAttributeAxisInput[]) => void;
   units: ProductUnitInput[];
   onChange: (units: ProductUnitInput[]) => void;
   quantity: string;
   onQuantityChange: (value: string) => void;
-  modeChosen: boolean;
-  onModeChosenChange: (value: boolean) => void;
   currency: string;
   defaultPrefix?: string;
   disabled?: boolean;
   showValidationErrors?: boolean;
   productId?: string;
-}
-
-/**
- * Compact mode recap shown next to the "Stock" card title once a mode is
- * chosen — replaces the old full-width recap row inside the editor body.
- */
-export function StockModeIndicator({
-  modeChosen,
-  trackUnits,
-  onBack: _onBack,
-  disabled: _disabled = false,
-}: {
-  modeChosen: boolean;
-  trackUnits: boolean;
-  onBack: () => void;
-  disabled?: boolean;
-}) {
-  const t = useTranslations("dashboard.products.form.unitTracking");
-  if (!modeChosen) return null;
-  return (
-    <span className="flex items-center gap-1">
-      <Badge variant={trackUnits ? "success" : "expired"} className="">
-        {t(trackUnits ? "advancedBadge" : "defaultBadge")}
-      </Badge>
-      {/* <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="text-muted-foreground hover:text-foreground h-7 px-2 text-xs"
-        onClick={onBack}
-        disabled={disabled}
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        {t("changeMode")}
-      </Button> */}
-    </span>
-  );
 }
 
 const MAX_GENERATED_UNITS = 100;
@@ -796,15 +744,12 @@ function getNextSequenceNumber(units: ProductUnitInput[], prefix: string): numbe
 
 export function UnitTrackingEditor({
   trackUnits,
-  onTrackUnitsChange,
   bookingAttributeAxes,
   onBookingAttributeAxesChange,
   units,
   onChange,
   quantity,
   onQuantityChange,
-  modeChosen,
-  onModeChosenChange,
   currency,
   defaultPrefix = "",
   disabled = false,
@@ -813,15 +758,21 @@ export function UnitTrackingEditor({
 }: UnitTrackingEditorProps) {
   const t = useTranslations("dashboard.products.form.unitTracking");
   const tCommon = useTranslations("common");
-  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  // The editor mounts once the stock choice is made. Arriving on unit tracking
+  // with a declared quantity seeds the generator with it, instead of creating
+  // empty (and invalid) unit rows.
+  const declaredQuantity = parseInt(quantity, 10);
+  const seedsGenerator = trackUnits && units.length === 0 && declaredQuantity > 0;
   const [genPrefix, setGenPrefix] = useState("");
-  const [genCount, setGenCount] = useState("5");
+  const [genCount, setGenCount] = useState(() =>
+    seedsGenerator ? String(Math.min(declaredQuantity, MAX_GENERATED_UNITS)) : "5",
+  );
   const [touchedUnits, setTouchedUnits] = useState<Set<number>>(new Set());
   const [newRef, setNewRef] = useState("");
   const [newRefAttributes, setNewRefAttributes] = useState<Record<string, string>>({});
   const newRefInputRef = useRef<HTMLInputElement>(null);
   const newRefVariantsInputRef = useRef<HTMLInputElement>(null);
-  const [generatorOpen, setGeneratorOpen] = useState(false);
+  const [generatorOpen, setGeneratorOpen] = useState(seedsGenerator && declaredQuantity > 1);
 
   // Store-level shared variant catalog
   const queryClient = useQueryClient();
@@ -847,12 +798,6 @@ export function UnitTrackingEditor({
   );
 
   const [variantManagerOpen, setVariantManagerOpen] = useState(false);
-  // The "Learn more" popover is controlled for one reason: its changelog card
-  // can lift a demo into the media viewer, which is portalled to the body. Every
-  // press in there would read as an outside press and dismiss the popover — and
-  // the viewer with it — so closing is refused while the demo is up.
-  const [learnMoreOpen, setLearnMoreOpen] = useState(false);
-  const [isDemoViewerOpen, setIsDemoViewerOpen] = useState(false);
 
   // System presets resolved with the current locale's labels
   const resolvedPresets = useMemo(() => resolveVariantPresets((key) => String(t.raw(key))), [t]);
@@ -970,40 +915,6 @@ export function UnitTrackingEditor({
     return `${first} … ${last}`;
   }, [effectivePrefix, genCount, units]);
 
-  const handleToggle = (enabled: boolean) => {
-    if (!enabled && units.length > 0) {
-      setShowDisableConfirm(true);
-      return;
-    }
-    onTrackUnitsChange(enabled);
-    if (enabled && units.length === 0) {
-      // Seed the generator with the declared quantity instead of creating
-      // empty (and invalid) unit rows.
-      const qty = parseInt(quantity, 10);
-      if (!isNaN(qty) && qty > 0) {
-        setGenCount(String(Math.min(qty, MAX_GENERATED_UNITS)));
-        if (qty > 1) setGeneratorOpen(true);
-      }
-    }
-  };
-
-  const confirmDisable = () => {
-    onTrackUnitsChange(false);
-    onBookingAttributeAxesChange([]);
-    onChange([]);
-    setShowDisableConfirm(false);
-    onModeChosenChange(true);
-  };
-
-  // Step-1 card click: pick a mode and advance to step 2. Leaving tracking
-  // with registered units goes through the confirm dialog first.
-  const chooseMode = (track: boolean) => {
-    handleToggle(track);
-    if (!track && units.length > 0) return;
-    onModeChosenChange(true);
-  };
-
-  // Collect required values before adding a unit to the product form.
   const commitNewRef = () => {
     const identifier = newRef.trim();
     if (disabled || !identifier) return;
@@ -1148,93 +1059,8 @@ export function UnitTrackingEditor({
 
   return (
     <div className="space-y-2">
-      {/* Step 1 — pick a mode. Two plain rectangles, education in the popover. */}
-      {!modeChosen && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => chooseMode(false)}
-            disabled={disabled}
-            aria-invalid={showValidationErrors || undefined}
-            className={cn(
-              "bg-background hover:border-primary/48 hover:bg-accent/50 rounded-lg border p-4 text-left transition-colors disabled:pointer-events-none disabled:opacity-50",
-              showValidationErrors &&
-                "border-destructive/32 bg-destructive/4 hover:border-destructive/48 hover:bg-destructive/8",
-            )}
-          >
-            <p className="text-sm font-semibold">{t("modeQuantity")}</p>
-            <p className="text-muted-foreground mt-1 text-xs">{t("modeQuantityDescription")}</p>
-          </button>
-          <div
-            className={cn(
-              "bg-background hover:border-primary/48 hover:bg-accent/50 relative rounded-lg border p-4 transition-colors",
-              showValidationErrors &&
-                "border-destructive/32 bg-destructive/4 hover:border-destructive/48 hover:bg-destructive/8",
-            )}
-          >
-            <button
-              type="button"
-              onClick={() => chooseMode(true)}
-              disabled={disabled}
-              aria-label={t("modeUnits")}
-              aria-invalid={showValidationErrors || undefined}
-              className="absolute inset-0 rounded-lg disabled:pointer-events-none"
-            />
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold">{t("modeUnits")}</p>
-              <Badge variant="expired">{t("advancedBadge")}</Badge>
-            </div>
-            <p className="text-muted-foreground mt-1 text-xs">{t("modeUnitsDescription")}</p>
-            <Popover
-              open={learnMoreOpen}
-              onOpenChange={(open) => {
-                if (!open && isDemoViewerOpen) return;
-                setLearnMoreOpen(open);
-              }}
-            >
-              <PopoverTrigger
-                render={
-                  <button
-                    type="button"
-                    className="text-muted-foreground hover:text-foreground relative z-10 mt-2 text-xs underline underline-offset-2"
-                  />
-                }
-              >
-                {t("learnMore")}
-              </PopoverTrigger>
-              <PopoverContent className="w-80">
-                <div className="space-y-3">
-                  <p className="text-sm font-medium">{t("modeUnits")}</p>
-                  <p className="text-muted-foreground text-sm">{t("toggleDescription")}</p>
-                  <ul className="text-muted-foreground space-y-1.5 text-sm">
-                    <li className="flex items-start gap-2">
-                      <TagIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                      {t("benefitIdentify")}
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <CalendarCheckIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                      {t("benefitAvailability")}
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <PurchaseIcon className="mt-0.5 h-4 w-4 shrink-0" />
-                      {t("benefitInventory")}
-                    </li>
-                  </ul>
-                  {/* The popover sells the mode in three lines; the changelog
-                      entry is where the whole thing is explained. */}
-                  <WhatsNewLinkCard
-                    announcementId="product-variants"
-                    onMediaViewerOpenChange={setIsDemoViewerOpen}
-                  />
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-      )}
-
       {/* Quantity field (simple mode) */}
-      {modeChosen && !trackUnits && (
+      {!trackUnits && (
         <div className="grid gap-2">
           <Label>{t("quantityLabel")}</Label>
           <InputQuantity
@@ -1247,7 +1073,7 @@ export function UnitTrackingEditor({
         </div>
       )}
 
-      {modeChosen && trackUnits && (
+      {trackUnits && (
         <>
           {/* Units header: title + count, variant tools on the right */}
           <div className="flex flex-wrap items-center gap-2">
@@ -1466,24 +1292,6 @@ export function UnitTrackingEditor({
 
       {/* Shared variant catalog manager */}
       <VariantManagerDrawer open={variantManagerOpen} onOpenChange={setVariantManagerOpen} />
-
-      {/* Disable confirmation dialog */}
-      <AlertDialog open={showDisableConfirm} onOpenChange={setShowDisableConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("disableConfirm")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("disableDescription", { count: trackedUnitsCount })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>{t("cancel")}</AlertDialogClose>
-            <AlertDialogClose render={<Button />} onClick={confirmDisable}>
-              {t("confirm")}
-            </AlertDialogClose>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

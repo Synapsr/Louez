@@ -4,6 +4,8 @@ export interface ProductsListInput {
   status?: "all" | "active" | "draft" | "archived";
   /** Empty means "all categories"; a product in any of them is kept. */
   categoryIds?: string[];
+  /** Part of the product name; empty means no search. */
+  search?: string;
 }
 
 export const productsQueries = {

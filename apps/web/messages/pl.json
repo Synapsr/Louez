@@ -67,6 +67,8 @@
     "dayUnit": "{count, plural, one {dzień} few {dni} many {dni} other {dni}}",
     "hourUnit": "{count, plural, one {godzina} few {godziny} many {godzin} other {godzin}}",
     "weekUnit": "{count, plural, one {tydzień} few {tygodnie} many {tygodni} other {tygodni}}",
+    "monthUnit": "{count, plural, one {miesiąc} few {miesiące} many {miesięcy} other {miesiąca}}",
+    "yearUnit": "{count, plural, one {rok} few {lata} many {lat} other {roku}}",
     "minuteUnit": "{count, plural, one {minuta} few {minuty} many {minut} other {minut}}",
     "phoneInput": {
       "selectCountry": "Wybierz kraj",
@@ -116,7 +118,23 @@
       "removeLink": "Usuń link",
       "undo": "Cofnij",
       "redo": "Ponów",
-      "heading": "Nagłówek"
+      "heading": "Nagłówek",
+      "text": "Tekst",
+      "normalText": "Zwykły tekst",
+      "heading1": "Nagłówek 1",
+      "heading2": "Nagłówek 2",
+      "heading3": "Nagłówek 3",
+      "editLink": "Edytuj link",
+      "openLink": "Otwórz link",
+      "edit": "Edytuj",
+      "cancel": "Anuluj",
+      "apply": "Zastosuj",
+      "linkUrl": "Adres linku",
+      "linkUrlPlaceholder": "przyklad.pl/strona",
+      "linkText": "Tekst linku",
+      "linkTextPlaceholder": "Wyświetlany tekst (domyślnie adres)",
+      "linkHint": "Wpisany lub wklejony adres sam staje się linkiem.",
+      "linkInvalid": "Wpisz poprawny adres strony, np. przyklad.pl"
     },
     "dateTimePicker": {
       "select": "Wybierz",
@@ -672,7 +690,147 @@
         "totalSpent": "Łącznie wydane"
       }
     },
+    "onlineStore": {
+      "title": "Sklep internetowy",
+      "description": "Tożsamość, strona główna, kontakt, strony prawne i wyszukiwarki Twojej strony",
+      "backToDashboard": "Panel",
+      "preview": "Podgląd",
+      "viewStore": "Zobacz sklep",
+      "saved": "Sklep internetowy zaktualizowany",
+      "leaveConfirm": "Masz niezapisane zmiany. Wyjść bez zapisywania?",
+      "railLabel": "Sekcje sklepu internetowego",
+      "resizePanel": "Szerokość panelu",
+      "device": {
+        "label": "Format podglądu",
+        "desktop": "Komputer",
+        "phone": "Telefon"
+      },
+      "sections": {
+        "identity": {
+          "label": "Tożsamość",
+          "description": "Nazwa, slogan, logo, kolor i język"
+        },
+        "home": {
+          "label": "Strona główna",
+          "description": "Nagłówek, pasek ogłoszeń, katalog i sekcje"
+        },
+        "contact": {
+          "label": "Kontakt",
+          "description": "Dane kontaktowe, strona kontaktowa i media społecznościowe"
+        },
+        "legal": {
+          "label": "Strony prawne",
+          "description": "Regulamin, informacje prawne i stopka"
+        },
+        "seo": {
+          "label": "Wyszukiwarki",
+          "description": "Obraz udostępniania i Search Console"
+        }
+      },
+      "identity": {
+        "presentation": {
+          "title": "Nazwa i prezentacja",
+          "description": "To, co Twoi klienci czytają jako pierwsze, na stronie i w wynikach wyszukiwania."
+        },
+        "nameDescription": "Wyświetlana Twoim klientom na stronie, w e-mailach i na umowach.",
+        "tagline": {
+          "label": "Slogan",
+          "description": "Jedno zdanie pod nazwą, na górze strony głównej. Maksymalnie {max} znaków.",
+          "placeholder": "Wypożyczalnia rowerów i desek SUP w Carnac od 2012 roku"
+        },
+        "descriptionHint": "Tekst strony O nas. Bez sloganu wyświetla się też na górze strony głównej.",
+        "logos": {
+          "description": "Logo w nagłówku, ikona na karcie przeglądarki."
+        },
+        "favicon": {
+          "label": "Favicon",
+          "description": "Ikona na karcie przeglądarki i na ekranie głównym telefonu. Bez favicony używane jest logo.",
+          "hint": "Obraz kwadratowy, zalecane 512 × 512 px. PNG lub JPG."
+        },
+        "website": {
+          "label": "Strona internetowa",
+          "description": "Jeśli sklep internetowy uzupełnia istniejącą stronę, podaj ją: klienci zobaczą przycisk powrotu na stronę, a jej adres pojawi się w stopce.",
+          "placeholder": "https://www.twoja-strona.pl"
+        },
+        "language": {
+          "title": "Język i adres",
+          "description": "Domyślny język strony i jej publiczny adres."
+        }
+      },
+      "home": {
+        "header": "Nagłówek",
+        "photos": "Zdjęcia",
+        "announcement": {
+          "title": "Pasek ogłoszeń",
+          "description": "Jedna linia nad nagłówkiem, na wszystkich stronach.",
+          "enabled": "Pokaż pasek",
+          "enabledDescription": "Zamknięcie, kod promocyjny, wydarzenie.",
+          "text": "Tekst",
+          "textPlaceholder": "Nieczynne od 1 do 15 sierpnia, do zobaczenia!",
+          "href": "Link",
+          "hrefDescription": "Opcjonalnie. Pasek staje się klikalny."
+        },
+        "sections": {
+          "title": "Sekcje strony",
+          "description": "Opcjonalne bloki strony głównej, po katalogu.",
+          "reassurance": "Linia zaufania",
+          "reassuranceDescription": "Potwierdzenie, bezpieczna płatność, odbiór lub dostawa, pod wyszukiwarką.",
+          "reviews": "Opinie Google",
+          "reviewsDescription": "Ocena w nagłówku i sekcja opinii, gdy Booster opinii jest skonfigurowany.",
+          "map": "Adres i mapa",
+          "mapDescription": "Gdzie odebrać sprzęt, wraz z Twoimi danymi kontaktowymi."
+        }
+      },
+      "contact": {
+        "details": {
+          "title": "Dane kontaktowe",
+          "description": "Wyświetlane w stopce, na stronie kontaktowej i na mapie."
+        },
+        "headerPhone": {
+          "label": "Przycisk połączenia w nagłówku",
+          "description": "Przycisk telefonu obok koszyka, na wszystkich stronach.",
+          "empty": "Podaj numer telefonu powyżej, aby włączyć ten przycisk."
+        },
+        "hours": {
+          "description": "Godziny otwarcia ustawia się w Ustawieniach; sterują one również dostępnością.",
+          "link": "Edytuj godziny otwarcia"
+        },
+        "missingPhone": "Bez numeru telefonu powyżej połączenie i SMS pozostają ukryte.",
+        "missingEmail": "Bez adresu e-mail powyżej e-mail i formularz pozostają ukryte.",
+        "missingBoth": "Podaj numer telefonu i adres e-mail powyżej, aby udostępnić te formy kontaktu.",
+        "social": {
+          "title": "Media społecznościowe",
+          "description": "Ikony w stopce. Wklej pełny adres każdego profilu.",
+          "website": "Inna strona internetowa"
+        }
+      },
+      "legal": {
+        "texts": "Teksty prawne",
+        "footerNote": {
+          "label": "Notka w stopce",
+          "description": "Dowolny tekst na dole wszystkich stron: numer rejestrowy, zezwolenie, przynależność.",
+          "placeholder": "Nr rejestrowy 123 456 789 · Członek sieci …"
+        }
+      },
+      "seo": {
+        "verificationHowTo": "Gdzie znajdę ten kod?",
+        "shareImage": {
+          "title": "Obraz udostępniania",
+          "description": "Obraz wyświetlany, gdy link do Twojego sklepu jest udostępniany w serwisach WhatsApp, Facebook lub LinkedIn.",
+          "label": "Obraz",
+          "fallback": "Bez dedykowanego obrazu używane jest pierwsze zdjęcie z nagłówka.",
+          "hint": "Zalecane 1200 × 630 px. JPG lub PNG, maks. 5 MB."
+        }
+      },
+      "sketch": {
+        "empty": "Na razie brak treści",
+        "googleResult": "Wynik Google",
+        "shareCard": "Podgląd udostępnienia",
+        "noShareImage": "Brak obrazu"
+      }
+    },
     "navigation": {
+      "onlineStore": "Sklep internetowy",
       "aiAssistant": "Asystent AI",
       "aiConversations": "Rozmowy z klientami",
       "aiAdvisor": "Doradca online",
@@ -848,6 +1006,9 @@
       "noProducts": "Brak produktów",
       "noProductsDescription": "Zacznij od dodania pierwszego produktu",
       "searchProducts": "Szukaj produktu...",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "noSearchResults": "Nie znaleziono produktów",
+      "noSearchResultsDescription": "Żaden produkt nie pasuje do „{search}”.",
       "allCategories": "Wszystkie kategorie",
       "allStatuses": "Wszystkie statusy",
       "name": "Nazwa",
@@ -1085,19 +1246,85 @@
         "quantity": "Dostępna ilość",
         "quantityHelp": "Liczba jednostek dostępnych do wynajmu",
         "consumableQuantityHelp": "Stan na półce: spada przy każdej potwierdzonej rezerwacji i rośnie po uzupełnieniu.",
-        "stockKindLabel": "Rodzaj stanu",
-        "stockKindReturnable": "Stan zwrotny",
-        "stockKindReturnableDescription": "Produkt wraca po każdym wynajmie i znów jest dostępny.",
+        "stockKindQuestion": "Jak śledzić stan tego produktu?",
+        "stockOptionBlocked": "Zablokowane przez trwające rezerwacje.",
+        "stockOptionRemovesUnits": "{count, plural, one {Zarejestrowana jednostka zostanie usunięta.} few {# zarejestrowane jednostki zostaną usunięte.} many {# zarejestrowanych jednostek zostanie usuniętych.} other {# zarejestrowanych jednostek zostanie usuniętych.}}",
+        "choiceChange": "Zmień wybór: {choice}",
+        "kindExamples": {
+          "title": "Przykłady: {option}",
+          "description": "Produkty pasujące do tego wyboru, według branży.",
+          "product": "Produkt",
+          "pricing": "Cena",
+          "stock": "Stan",
+          "bikes": {
+            "ebike": "Elektryczny rower górski",
+            "cargoBike": "Rower cargo",
+            "helmet": "Kask",
+            "bikeLock": "Zapięcie rowerowe",
+            "innerTube": "Dętka",
+            "energyBar": "Baton energetyczny",
+            "guidedTour": "Wycieczka z przewodnikiem",
+            "bikeWash": "Mycie roweru"
+          },
+          "sportsOutdoor": {
+            "wetsuit": "Pianka neoprenowa",
+            "skis": "Narty",
+            "paddle": "Dmuchana deska SUP",
+            "lifeJacket": "Kamizelka ratunkowa",
+            "gasCartridge": "Kartusz gazowy",
+            "sunscreen": "Krem z filtrem",
+            "surfLesson": "Lekcja surfingu",
+            "skiWaxing": "Smarowanie nart"
+          },
+          "partyEvents": {
+            "marquee": "Namiot imprezowy",
+            "speaker": "Kolumna nagłośnieniowa",
+            "chairs": "Krzesła składane",
+            "glasses": "Kieliszki",
+            "tablecloths": "Obrusy jednorazowe",
+            "smokeFluid": "Płyn do wytwornicy dymu",
+            "setup": "Montaż i demontaż",
+            "djService": "Usługa DJ"
+          },
+          "toolsDiy": {
+            "miniExcavator": "Minikoparka",
+            "generator": "Agregat prądotwórczy",
+            "drill": "Młotowiertarka",
+            "ladder": "Drabina",
+            "diamondBlade": "Tarcza diamentowa",
+            "sandpaper": "Papier ścierny",
+            "siteDelivery": "Dostawa na budowę",
+            "operator": "Operator maszyny"
+          },
+          "vehicles": {
+            "van": "Bus 12 m³",
+            "camper": "Kamper",
+            "childSeat": "Fotelik dziecięcy",
+            "roofBox": "Box dachowy",
+            "fuel": "Pełny bak",
+            "adblue": "AdBlue",
+            "driver": "Kierowca",
+            "cleaning": "Sprzątanie wnętrza"
+          },
+          "electronics": {
+            "camera": "Aparat bezlusterkowy",
+            "projector": "Projektor",
+            "battery": "Zapasowy akumulator",
+            "tripod": "Statyw",
+            "memoryCard": "Karta pamięci",
+            "gaffer": "Taśma gaffer",
+            "installation": "Instalacja na miejscu",
+            "technician": "Technik"
+          }
+        },
         "stockKindConsumable": "Materiał zużywalny",
-        "stockKindConsumableDescription": "Produkt zostaje u klienta: stan spada przy każdej potwierdzonej rezerwacji, a ilość to stan na półce.",
-        "stockKindConsumableRequiresFixed": "Materiał zużywalny sprzedaje się w cenie ryczałtowej: wybierz cennik „Cena ryczałtowa”, aby go włączyć.",
-        "stockKindConsumableRequiresNoUnits": "Materiał zużywalny nie jest śledzony sztuka po sztuce: wyłącz śledzenie jednostek, aby go włączyć.",
+        "stockKindConsumableDescription": "Zostaje u klienta: stan spada z każdą rezerwacją.",
+        "stockKindConsumableSwitchesPricing": "Cena zmieni się na ryczałtową.",
         "stockKindUntracked": "Bez śledzenia stanu",
-        "stockKindUntrackedRequiresNoUnits": "Stan bez śledzenia nie może używać śledzenia jednostek.",
+        "stockKindUntrackedDescription": "Bez ilości do zarządzania. Daty i zasady nadal obowiązują.",
         "untrackedStockHelp": "Ilość nie jest śledzona ani ograniczana. Daty i zasady rezerwacji nadal obowiązują.",
         "stockKindChangeBlockedTitle": "Rodzaj zapasu zablokowany",
         "stockKindChangeBlocked": "Ten produkt znajduje się w poniższych rezerwacjach. Anuluj lub zakończ je przed zmianą rodzaju zapasu.",
-        "stockKindChangeBlockedTrigger": "{kind}. Wyświetl blokujące rezerwacje.",
         "stockKindBlockingReservation": "Rezerwacja #{number}",
         "publication": "Publikacja",
         "statusActive": "Aktywny",
@@ -1118,11 +1345,13 @@
         "categoryOptional": "Opcjonalne - pomaga klientom znaleźć produkt",
         "noCategories": "Brak kategorii",
         "pricingDescription": "Ustaw cenę wynajmu i stawki",
-        "pricingKindLabel": "Model cenowy",
-        "pricingKindDuration": "Cena zależna od czasu",
-        "pricingKindDurationDescription": "Cena zależy od długości wynajmu.",
+        "pricingKindQuestion": "Jak liczona jest cena?",
+        "pricingKindDuration": "Za czas wynajmu",
+        "pricingKindDurationDescription": "Cena zależy od czasu, z rabatem za dłuższy wynajem.",
+        "pricingKindDurationSwitchesStock": "Stan zmieni się na prostą ilość.",
+        "pricingKindDurationBlocked": "Zablokowane przez trwające rezerwacje.",
         "pricingKindFixed": "Cena ryczałtowa",
-        "pricingKindFixedDescription": "Jedna cena, niezależnie od długości wynajmu.",
+        "pricingKindFixedDescription": "Jedna cena za egzemplarz, niezależnie od czasu.",
         "fixedPrice": "Cena ryczałtowa",
         "fixedPriceDescription": "Naliczana raz za sztukę, niezależnie od długości wynajmu.",
         "fixedPriceLabel": "Ryczałt",
@@ -1141,6 +1370,21 @@
           "hour": "Za godzinę",
           "day": "Za dzień",
           "week": "Za tydzień"
+        },
+        "calculationMode": {
+          "label": "Obliczanie ceny",
+          "whole": {
+            "label": "Pełne okresy",
+            "description": "Każdy rozpoczęty okres jest naliczany w całości.",
+            "tiersDescription": "Czas pomiędzy progami jest rozliczany według stawki następnego progu."
+          },
+          "prorated": {
+            "label": "Proporcjonalnie",
+            "description": "Po pierwszym okresie cena dostosowuje się do dokładnego czasu wynajmu.",
+            "tiersDescription": "Cena zmienia się płynnie pomiędzy okresami określonymi w cenniku."
+          },
+          "example": "Przykład dla: {duration}",
+          "minimum": "Opłata minimalna: {price} za {duration}."
         },
         "pricingTiers": {
           "enableTiers": "Zniżki długoterminowe",
@@ -1177,9 +1421,9 @@
             }
           },
           "chart": {
-            "strictLine": "Stałe progi",
-            "progressiveLine": "Progresywny",
-            "savings": "Oszczędność klienta",
+            "strictLine": "Pełne okresy",
+            "progressiveLine": "Proporcjonalnie",
+            "savings": "Różnica między trybami",
             "basePricing": "Cennik bazowy",
             "title": "Symulacja ceny",
             "subtitle": "Łączna cena według czasu wynajmu"
@@ -1208,7 +1452,6 @@
           "deleteWarning": "Ta jednostka jest obecnie przypisana do aktywnej rezerwacji i nie może zostać usunięta.",
           "assignedUnit": "Przypisana",
           "disableConfirm": "Wyłączyć śledzenie jednostek?",
-          "disableDescription": "Indywidualne śledzenie jednostek zostanie wyłączone. Ilość zostanie ustawiona na {count}. Zarejestrowane jednostki zostaną usunięte.",
           "duplicateIdentifier": "Jeden lub więcej identyfikatorów jest zduplikowanych",
           "identifierRequired": "Identyfikator jest wymagany",
           "noUnitsRegistered": "Brak zarejestrowanych jednostek",
@@ -1243,21 +1486,19 @@
           "benefitAvailability": "Śledź dostępność i wynajmy każdego egzemplarza",
           "benefitInventory": "Zapisz cenę i datę zakupu do swojego inwentarza",
           "modeQuantity": "Prosta ilość",
-          "modeQuantityDescription": "Po prostu podaj, ile egzemplarzy jest dostępnych do wynajmu.",
+          "modeQuantityDescription": "Wraca po każdym wynajmie. Podaj, ile masz egzemplarzy.",
           "modeUnits": "Śledzenie egzemplarzy",
-          "modeUnitsDescription": "Każdy egzemplarz ma własny identyfikator.",
+          "modeUnitsDescription": "Każdy egzemplarz ma własny numer, rozmiar lub kolor.",
           "variantsTitle": "Warianty",
           "variantsHelp": "Do 3 wariantów (rozmiar, kolor…). Każdy egzemplarz ma swoją wartość, a klient wybiera przy rezerwacji.",
           "variantsEmptyHint": "Tworzysz osobny produkt dla każdego rozmiaru? Dodaj zamiast tego wariant „Rozmiar”: każdy egzemplarz ma swój, a klient wybiera przy rezerwacji.",
           "variantPlaceholder": "np. Rozmiar",
           "addVariant": "Dodaj wariant",
           "variantsMaxReached": "Maksymalnie 3 warianty",
-          "defaultBadge": "Domyślny",
           "advancedBadge": "Zaawansowane",
           "learnMore": "Dowiedz się więcej",
           "addRefPlaceholder": "Wpisz numer referencyjny i naciśnij Enter",
           "generateSeries": "Wygeneruj serię",
-          "changeMode": "Zmień tryb",
           "createVariantValue": "Utwórz „{value}” ({axis})",
           "chooseColor": "Wybierz kolor",
           "colorPickerDescription": "Dostosuj kolor lub wpisz wartość szesnastkową.",
@@ -1461,6 +1702,15 @@
         "aiContextPlaceholder": "Np. wymagane prawo jazdy kat. B, nieodpowiednie dla dzieci poniżej 12 lat, zawsze pytaj o datę wydarzenia i liczebność grupy…",
         "aiContextHint": "Dodatkowe informacje widoczne tylko dla doradcy AI — używa ich, aby doradzać klientom i sprawdzać wymagania. Nigdy nie są wyświetlane w sklepie.",
         "createAndDuplicate": "Utwórz i zduplikuj",
+        "minimumCharged": "minimalna opłata",
+        "seasonReplacesBase": "zastępuje stawkę podstawową",
+        "addSeasonRate": "Niższa stawka w tym sezonie",
+        "openSimulation": "Symuluj",
+        "simulationHint": "Kliknij krzywą, aby dodać tam stawkę",
+        "horizonAuto": "Auto",
+        "depositAndVat": "Kaucja i VAT",
+        "vatLabel": "VAT",
+        "seasonActions": "Akcje sezonu",
         "productCreatedCopyReady": "Wstępnie wypełniona kopia jest gotowa do edycji.",
         "copySuffix": "(kopia)",
         "productSection": "Produkt",
@@ -1478,7 +1728,28 @@
         "videoTileLabel": "Wideo",
         "videoInvalid": "Nieprawidłowy link YouTube",
         "editVideo": "Edytuj wideo",
-        "removeVideo": "Usuń wideo"
+        "removeVideo": "Usuń wideo",
+        "promotion": {
+          "add": "Dodaj promocję",
+          "title": "Promocja",
+          "remove": "Usuń promocję",
+          "reduction": "Rabat",
+          "description": "Naliczana automatycznie do rezerwacji dokonanych w trakcie promocji. Nie łączy się z kodem rabatowym.",
+          "schedule": "Zaplanuj",
+          "from": "Od {date}",
+          "until": "Do {date}",
+          "pickStart": "Wybierz pierwszy dzień promocji.",
+          "pickEnd": "Wybierz ostatni dzień lub zostaw ją bezterminową.",
+          "clearDates": "Usuń daty",
+          "immediately": "Natychmiast",
+          "noEnd": "Bez daty końcowej",
+          "invalidPercentage": "Wpisz całkowity procent od 1 do 99.",
+          "invalidDates": "Wybierz datę końca nie wcześniejszą niż data początku.",
+          "active": "Aktywna",
+          "scheduled": "Zaplanowana",
+          "expired": "Zakończona",
+          "none": "Nieskonfigurowana"
+        }
       },
       "deleteConfirm": {
         "title": "Usunąć ten produkt?",
@@ -1865,6 +2136,22 @@
       "sendEmail": "Wyślij email",
       "customerInfo": "Informacje o kliencie",
       "viewCustomer": "Zobacz klienta",
+      "billing": {
+        "title": "Fakturowanie",
+        "edit": "Edytuj fakturowanie",
+        "description": "Tożsamość, na którą wystawiana jest faktura za tę rezerwację. Profil klienta pozostaje bez zmian.",
+        "business": "Fakturuj na firmę",
+        "individual": "Osoba prywatna",
+        "companyName": "Nazwa firmy",
+        "companyNumber": "Numer firmy (SIREN / BCE)",
+        "vatNumber": "Numer VAT",
+        "saved": "Fakturowanie zaktualizowane",
+        "errors": {
+          "companyNameRequired": "Wpisz nazwę firmy",
+          "invalidCompanyNumber": "Nieprawidłowy numer firmy",
+          "invalidVatNumber": "Nieprawidłowy numer VAT"
+        }
+      },
       "invoiceDocuments": {
         "title": "Faktury i noty kredytowe",
         "empty": "Nie wygenerowano jeszcze żadnej faktury.",
@@ -2715,6 +3002,7 @@
         "add": "Dodaj notatkę"
       },
       "reservationHistory": "Historia rezerwacji",
+      "billedAs": "Fakturowanie",
       "noReservationsForCustomer": "Brak rezerwacji tego klienta",
       "deletedProduct": "Usunięty produkt",
       "amount": "Kwota",
@@ -3081,9 +3369,20 @@
     "settings": {
       "title": "Ustawienia",
       "store": "Sklep",
+      "company": "Firma",
+      "companySettings": {
+        "description": "Kraj, waluta i adres rozliczeniowy Twojej firmy",
+        "localization": {
+          "title": "Kraj i waluta",
+          "description": "Kraj ustala strefę czasową sklepu, a waluta dotyczy wszystkich cen."
+        }
+      },
+      "reservationRules": "Zasady rezerwacji",
       "appearance": "Wygląd",
       "reservations": "Rezerwacje",
       "emails": "Emaile",
+      "contact": "Kontakt",
+      "seo": "Wyszukiwarki",
       "legal": "Strony prawne",
       "account": "Konto",
       "subscription": {
@@ -3289,6 +3588,9 @@
         "countryTimezone": "Strefa czasowa",
         "currency": "Waluta",
         "currencyDescription": "Waluta używana do wyświetlania cen i rozliczania klientów",
+        "locale": "Język zapasowy",
+        "localeDescription": "Język używany, gdy przeglądarka odwiedzającego nie prosi o żaden z języków oferowanych przez sklep, oraz język, w którym Google indeksuje Twój sklep. Odwiedzający zawsze widzi najpierw język swojej przeglądarki.",
+        "localeAuto": "Język platformy (francuski)",
         "descriptionLabel": "Opis",
         "descriptionPlaceholder": "Opisz swoją działalność...",
         "sector": "Branża"
@@ -3338,7 +3640,38 @@
         "heroImagesDescription": "Zdjęcia wyświetlane w sekcji hero sklepu (opcjonalne)",
         "addHeroImages": "Dodaj zdjęcia",
         "heroImagesHint": "Do 5 zdjęć w sliderze",
-        "heroImagesOptional": "Te zdjęcia pojawią się w sliderze na stronie głównej sklepu. Opcjonalne.",
+        "heroImagesFirst": "1.",
+        "removeImage": "Usuń obraz",
+        "previewHint": "Szkic strony głównej, odświeżany przy każdej zmianie. Rzeczywiste teksty i proporcje się różnią.",
+        "home": {
+          "title": "Strona główna",
+          "description": "Nagłówek, który klienci widzą po wejściu: zdjęcia, układ, położenie tekstu."
+        },
+        "heroLayout": {
+          "title": "Układ",
+          "description": "Jak zdjęcia i tekst dzielą nagłówek.",
+          "cover": "Zdjęcie w tle",
+          "coverDescription": "Nazwa i wyszukiwarka na zdjęciach na całą szerokość.",
+          "split": "Zdjęcie obok",
+          "splitDescription": "Tekst na jasnym tle, zdjęcie w ramce obok."
+        },
+        "heroAlign": {
+          "title": "Położenie tekstu",
+          "topStart": "Lewy górny róg",
+          "topCenter": "Góra, środek",
+          "topEnd": "Prawy górny róg",
+          "middleStart": "Środek, lewo",
+          "middleCenter": "Środek",
+          "middleEnd": "Środek, prawo",
+          "bottomStart": "Lewy dolny róg",
+          "bottomCenter": "Dół, środek",
+          "bottomEnd": "Prawy dolny róg",
+          "hint": "Bez zdjęcia tekst jest zawsze wyśrodkowany."
+        },
+        "catalog": {
+          "title": "Katalog",
+          "description": "Co klienci widzą po nagłówku."
+        },
         "catalogBrowseMode": {
           "title": "Widok katalogu",
           "description": "Wybierz, co klienci zobaczą najpierw po wybraniu dat.",
@@ -3353,34 +3686,7 @@
           "upTo": "Pokaż rabaty do",
           "hint": "Rabaty przekraczające ten procent będą ukryte w sklepie."
         },
-        "moreImages": "zdjęć",
         "preview": "Podgląd na żywo",
-        "previewDescription": "Podgląd wyglądu Twojego sklepu",
-        "previewWelcome": "Witamy w {name}",
-        "previewCatalogText": "Odkryj nasz katalog produktów do wynajmu.",
-        "previewCatalogButton": "Zobacz katalog",
-        "previewNav": {
-          "catalog": "Katalog",
-          "contact": "Kontakt"
-        },
-        "previewStats": "{count}+ produktów",
-        "previewDatePicker": {
-          "title": "Kiedy chcesz wynająć?",
-          "subtitle": "Wybierz daty",
-          "startLabel": "Początek",
-          "endLabel": "Koniec",
-          "startDateExample": "Sob 15 Sty",
-          "endDatePlaceholder": "Data końcowa",
-          "submitButton": "Sprawdź dostępność",
-          "quickSelectTitle": "Szybki wybór",
-          "quickSelectWeekend": "Ten weekend",
-          "quickSelectNextWeek": "Przyszły tydzień",
-          "quickSelectTwoWeeks": "2 tygodnie"
-        },
-        "previewProducts": {
-          "title": "Popularne produkty",
-          "viewAll": "Zobacz wszystkie"
-        },
         "updated": "Wygląd zaktualizowany",
         "colors": {
           "blue": "Niebieski",
@@ -4151,6 +4457,101 @@
           "point3": "Wyszukiwarki będą musiały ponownie zindeksować Twój sklep"
         }
       },
+      "contactSettings": {
+        "description": "Wybierz, jak klienci mogą się z Tobą skontaktować z poziomu sklepu",
+        "channels": {
+          "title": "Kanały kontaktu",
+          "description": "Każdy włączony kanał pojawia się na stronie kontaktowej i na stronie głównej sklepu."
+        },
+        "missingPhone": "Podaj telefon sklepu w ustawieniach ogólnych, aby oferować połączenie, SMS lub WhatsApp.",
+        "missingEmail": "Podaj e-mail sklepu w ustawieniach ogólnych, aby go wyświetlać lub odbierać wiadomości z formularza.",
+        "missingBoth": "Podaj telefon i e-mail sklepu w ustawieniach ogólnych, aby włączyć kanały kontaktu.",
+        "phone": {
+          "label": "Telefon",
+          "description": "Klienci mogą dzwonić pod numer {phone}.",
+          "empty": "Brak telefonu ustawionego dla sklepu."
+        },
+        "sms": {
+          "label": "SMS",
+          "description": "Oferuje również wysłanie SMS-a na ten numer."
+        },
+        "whatsapp": {
+          "label": "WhatsApp",
+          "description": "Otwiera rozmowę WhatsApp z Twoim sklepem.",
+          "number": "Numer WhatsApp",
+          "numberDescription": "Pozostaw puste, aby użyć telefonu sklepu."
+        },
+        "email": {
+          "label": "E-mail",
+          "description": "Wyświetla {email} z linkami do napisania wiadomości.",
+          "empty": "Brak e-maila ustawionego dla sklepu."
+        },
+        "form": {
+          "title": "Formularz kontaktowy",
+          "description": "Formularz w Twoim sklepie, którego wiadomości są przekazywane do Ciebie e-mailem.",
+          "label": "Udostępnij formularz kontaktowy",
+          "help": "Odwiedzający podaje imię i nazwisko, e-mail oraz wiadomość; odpowiadasz bezpośrednio ze swojej skrzynki.",
+          "recipient": "Adres odbiorczy",
+          "recipientDescription": "Pozostaw puste, aby odbierać wiadomości na {email}.",
+          "recipientEmpty": "Podaj adres, który będzie odbierał wiadomości.",
+          "phoneField": "Numer telefonu odwiedzającego",
+          "phoneFieldDescription": "Czy formularz ma prosić o numer telefonu?",
+          "phoneFieldOptions": {
+            "hidden": "Nie pytać",
+            "optional": "Opcjonalnie",
+            "required": "Wymagany"
+          }
+        },
+        "intro": {
+          "label": "Tekst wprowadzający",
+          "description": "Wyświetlany na górze strony kontaktowej. Pozostaw puste, aby użyć tekstu domyślnego.",
+          "placeholder": "Pytanie o wynajem? Napisz do nas, odpowiadamy w ciągu 24 godzin."
+        },
+        "presets": {
+          "title": "Szablon strony",
+          "description": "Wybierz punkt wyjścia; kanały kontaktu poniżej dopasują się, a potem możesz je zmienić.",
+          "options": {
+            "full": {
+              "label": "Pełna",
+              "description": "Wszystkie kanały kontaktu, formularz, mapa i godziny otwarcia."
+            },
+            "message": {
+              "label": "Wiadomość",
+              "description": "Najpierw formularz, Twój e-mail jako dopisek. Dla tych, którzy wolą pisać."
+            },
+            "single": {
+              "label": "Jeden kanał",
+              "description": "Jedno duże działanie: połączenie, WhatsApp lub e-mail."
+            }
+          },
+          "custom": "Ustawienia własne, układ „{layout}”.",
+          "primaryChannel": "Wyróżniony kanał",
+          "primaryChannelHelp": "Główny przycisk strony.",
+          "channels": {
+            "phone": "Połączenie",
+            "whatsapp": "WhatsApp",
+            "email": "E-mail"
+          }
+        },
+        "preview": "Podgląd",
+        "previewHint": "Strona kontaktowa w takiej formie, w jakiej się wyświetli, aktualizowana podczas zmiany ustawień.",
+        "viewOnStore": "Zobacz stronę kontaktową",
+        "updated": "Kanały kontaktu zaktualizowane"
+      },
+      "seoSettings": {
+        "description": "Potwierdź swój sklep w Google Search Console",
+        "updated": "Ustawienia wyszukiwarek zaktualizowane",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Udowodnij Google, że ten sklep należy do Ciebie, aby śledzić jego indeksowanie i wyniki wyszukiwania.",
+          "step1": "Otwórz <link>Google Search Console</link> i dodaj usługę typu „Prefiks adresu URL”.",
+          "step2": "Podaj adres swojego sklepu:",
+          "step3": "Wybierz metodę „Tag HTML”, wklej tag lub jego kod poniżej i zapisz, zanim klikniesz „Zweryfikuj” w Search Console.",
+          "label": "Kod weryfikacyjny",
+          "help": "Cały tag lub sama jego zawartość; kod pozostaje aktywny, dopóki jest tu zapisany.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
+      },
       "legalSettings": {
         "title": "Strony prawne",
         "description": "Napisz regulamin i informacje prawne",
@@ -4389,7 +4790,7 @@
         "modeIncludedDescription": "Dostawa jest obowiązkowa i bezpłatna",
         "noCoordinatesWarning": "Musisz ustawić adres sklepu z lokalizacją na mapie, aby włączyć dostawę.",
         "noCoordinatesError": "Najpierw skonfiguruj adres sklepu z lokalizacją GPS.",
-        "goToStoreSettings": "Ustawienia sklepu",
+        "goToStoreSettings": "Podaj adres",
         "customerAddressNoteOptional": "Gdy dostawa jest włączona, klienci mogą wybrać między odbiorem a dostawą.",
         "customerAddressNoteRequired": "Klienci muszą podać adres dostawy.",
         "pricingSection": "Cennik",
@@ -5043,7 +5444,10 @@
             "modeLabel": "Tryb ubezpieczenia",
             "modeRequired": "Wymagane dla wszystkich produktów",
             "modeOptional": "Opcjonalne przy finalizacji",
-            "modeNoPublic": "Bez wyświetlania publicznego",
+            "modeNoPublic": "Ręczna aktywacja przez wypożyczalnię",
+            "modeNoPublicHelp": "Ubezpieczenie nie jest dodawane podczas finalizacji rezerwacji. Możesz je aktywować w rezerwacji. Po utworzeniu umowy ubezpieczenia ochrona pojawi się na umowie najmu i na koncie klienta.",
+            "modeOptionalHelp": "Klient wybiera ochronę podczas finalizacji rezerwacji. Produkty objęte ochroną są oznaczane po jej wybraniu.",
+            "modeRequiredHelp": "Ochrona jest automatycznie stosowana do kwalifikujących się produktów. Podczas finalizacji rezerwacji widać, czy jest w cenie, czy płatna dodatkowo.",
             "includePriceLabel": "Uwzględnij ubezpieczenie w cenie końcowej",
             "includePriceHelp": "Po włączeniu ubezpieczenie jest wliczane w cenę końcową wyświetlaną klientom.",
             "renterLabel": "Wynajmujący Tulip",
@@ -5474,6 +5878,11 @@
           "incentiveBadge": "Oferta startowa",
           "incentiveLine": "jeszcze {remaining} miejsc z 0 € prowizji reeent na zawsze"
         }
+      },
+      "extensions": {
+        "title": "Automatyczne przedłużenia",
+        "description": "Klienci mogą przedłużyć wynajem przy dostępności sprzętu i znanej dopłacie. Szczególne przypadki wymagają Twojej zgody.",
+        "maxDays": "Maksymalna liczba dodatkowych dni (puste: bez limitu)"
       }
     },
     "commandPalette": {
@@ -5569,6 +5978,7 @@
       "settingsInvoicing": "Faktury elektroniczne",
       "settingsLegal": "Strony prawne",
       "settingsNotifications": "Powiadomienia",
+      "settingsReservations": "Zasady rezerwacji",
       "settingsPayments": "Płatności",
       "settingsPromoCodes": "Kody promocyjne",
       "settingsReviewBooster": "Wzmacniacz opinii",
@@ -5784,7 +6194,14 @@
     }
   },
   "storefront": {
+    "notFound": {
+      "title": "Ta strona jest niedostępna",
+      "description": "Produkt lub strona, której szukasz, już nie istnieje lub nie jest jeszcze dostępna online.",
+      "browseCatalog": "Zobacz katalog"
+    },
     "header": {
+      "call": "Zadzwoń",
+      "backToWebsite": "Wróć na stronę",
       "home": "Strona główna",
       "catalog": "Katalog",
       "cart": "Koszyk",
@@ -5792,7 +6209,10 @@
       "myAccount": "Moje konto",
       "myReservations": "Moje wynajmy",
       "categories": "Kategorie",
-      "menu": "Menu"
+      "menu": "Menu",
+      "signIn": "Zaloguj się",
+      "secure": "Bezpieczna płatność",
+      "about": "About"
     },
     "status": {
       "open": "Otwarte",
@@ -5800,7 +6220,11 @@
       "until": "do",
       "opensAt": "otwiera o",
       "opensTomorrow": "otwiera jutro o",
-      "opensOn": "otwiera"
+      "opensOn": "otwiera",
+      "openUntil": "Otwarte · do {time}",
+      "closedOpensAt": "Zamknięte · otwarcie o {time}",
+      "closedOpensTomorrow": "Zamknięte · otwarcie jutro o {time}",
+      "closedOpensOn": "Zamknięte · otwarcie w {day} o {time}"
     },
     "datePicker": {
       "startDate": "Data rozpoczęcia",
@@ -5817,11 +6241,17 @@
       "securePayment": "Bezpieczna płatność",
       "localPickup": "Odbiór lokalny",
       "localPickupOrDelivery": "Odbiór lub dostawa",
+      "requestConfirmation": "Potwierdzenie przez sklep",
       "simpleReservation": "Prosta rezerwacja",
       "simpleReservationDesc": "Zarezerwuj w kilka kliknięć",
       "securePaymentDesc": "100% bezpieczne transakcje",
       "localPickupDesc": "Łatwy odbiór sprzętu",
-      "reviewsBadge": "opinie"
+      "reviewsBadge": "opinie",
+      "slides": "Zdjęcia sklepu",
+      "previousImage": "Poprzednie zdjęcie",
+      "nextImage": "Następne zdjęcie",
+      "goToImage": "Zdjęcie {index} z {count}",
+      "seeReviews": "Zobacz opinie Google · {rating} na 5"
     },
     "home": {
       "ourCategories": "Nasze kategorie",
@@ -5840,6 +6270,22 @@
       "contactLabel": "Znajdź nas",
       "contactTitle": "Lokalizacja i kontakt",
       "findUs": "Znajdź nas",
+      "phoneContact": {
+        "call": "Zadzwoń",
+        "sms": "SMS",
+        "copy": "Kopiuj numer telefonu",
+        "copySuccess": "Numer telefonu skopiowany",
+        "copyError": "Nie można skopiować numeru"
+      },
+      "whatsappContact": {
+        "open": "Otwórz rozmowę"
+      },
+      "emailContact": {
+        "default": "Napisz w aplikacji mailowej",
+        "copy": "Kopiuj email",
+        "copySuccess": "Email skopiowany",
+        "copyError": "Nie można skopiować emaila"
+      },
       "findUsDesc": "Odwiedź nas, aby odebrać sprzęt",
       "address": "Adres",
       "phone": "Telefon",
@@ -5848,7 +6294,8 @@
       "getDirections": "Jak dojechać",
       "alreadyReserved": "Masz już rezerwację?",
       "alreadyReservedDesc": "Wejdź na swoje konto, aby śledzić rezerwacje i pobrać umowy.",
-      "accessAccount": "Wejdź na moje konto"
+      "accessAccount": "Wejdź na moje konto",
+      "map": "Mapa: {store}"
     },
     "reviews": {
       "label": "Opinie",
@@ -5858,7 +6305,11 @@
       "basedOn": "na podstawie {count} opinii",
       "noReviewText": "Ta opinia nie ma komentarza.",
       "seeAllOnGoogle": "Zobacz wszystkie opinie",
-      "verifiedByGoogle": "Opinie zweryfikowane przez Google"
+      "verifiedByGoogle": "Opinie zweryfikowane przez Google",
+      "previous": "Poprzednia opinia",
+      "next": "Następna opinia",
+      "starRating": "Ocena: {rating} na 5",
+      "ratingLink": "{rating} na 5 · {count, plural, one {# opinia} few {# opinie} many {# opinii} other {# opinii}}"
     },
     "catalog": {
       "title": "Katalog",
@@ -5880,7 +6331,35 @@
       "consumableOutOfStock": "Brak materiału eksploatacyjnego",
       "lastOne": "Ostatni!",
       "left": "pozostało",
-      "clearFilters": "Wyczyść filtry"
+      "clearFilters": "Wyczyść filtry",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "loadMore": "Załaduj więcej",
+      "metaTitle": "Katalog - {storeName}",
+      "metaDescription": "Sprzęt do wypożyczenia w {storeName}. Rezerwacja online.",
+      "metaCategoryTitle": "{category} - {storeName}",
+      "metaCategoryDescription": "{category} do wypożyczenia w {storeName}. Rezerwacja online.",
+      "sort": {
+        "label": "Sortuj",
+        "recommended": "Polecane",
+        "priceAsc": "Cena rosnąco",
+        "priceDesc": "Cena malejąco"
+      },
+      "filters": "Filtry",
+      "activeFilters": "Aktywne filtry",
+      "removeFilter": "Usuń ten filtr",
+      "price": "Cena",
+      "priceRange": "{min} – {max}",
+      "availability": "Dostępność",
+      "showUnavailable": "Pokaż również niedostępne produkty",
+      "availableOnly": "Tylko dostępne",
+      "availableOnlyHint": "Wybierz daty, aby filtrować",
+      "showResults": "{count, plural, =0 {Brak produktów} one {Pokaż # produkt} few {Pokaż # produkty} many {Pokaż # produktów} other {Pokaż # produktów}}",
+      "quantityLabel": "Liczba sztuk",
+      "quantityChip": "Co najmniej {count} szt.",
+      "attributeChip": "{axis}: {value}",
+      "priceBaseHint": "Stawki podstawowe, przed wyborem dat",
+      "pricePeriodHint": "Łącznie za Twoje daty",
+      "availableOfTotal": "{available} z {total} dostępnych"
     },
     "product": {
       "viewDetails": "Zobacz produkt",
@@ -5920,6 +6399,7 @@
         "badgeShort": "-{percent}%",
         "from": "od {duration}",
         "viewRates": "Zobacz ceny",
+        "viewAllRates": "Zobacz wszystkie stawki ({count})",
         "ratesTitle": "Cennik",
         "basePriceLabel": "Cena bazowa",
         "duration": "Czas trwania",
@@ -5962,7 +6442,9 @@
         "label": "Zdjęcia produktu {name}",
         "imageAlt": "{name} — zdjęcie {index}",
         "counter": "{current} / {total}",
-        "zoom": "Powiększ"
+        "zoom": "Powiększ",
+        "video": "Odtwórz wideo",
+        "goTo": "Przejdź do zdjęcia {index}"
       },
       "meta": {
         "title": "{product} do wynajęcia — {store}",
@@ -5975,14 +6457,57 @@
         "basePrice": "Stawka podstawowa",
         "availability": "Dostępność"
       },
+      "unavailableReason": {
+        "unavailable": "Niedostępne",
+        "consumable_out_of_stock": "Brak w magazynie",
+        "required_accessory_out_of_stock": "Wymagane akcesorium jest niedostępne"
+      },
       "unavailableHelp": "Ten produkt nie jest obecnie dostępny do wynajęcia. Zobacz resztę katalogu.",
       "requiredAccessoryOutOfStock": "Wymagane akcesorium jest niedostępne",
       "requiredAccessoriesIncluded": "Dodawane automatycznie: {names}",
-      "backToCatalog": "Zobacz katalog"
+      "backToCatalog": "Zobacz katalog",
+      "rentalInformation": {
+        "pickup": "Odbiór na miejscu",
+        "locations": "Wybierz punkt odbioru podczas rezerwacji",
+        "optional": "Dostawa dostępna",
+        "required": "Dostawa wymagana",
+        "included": "Dostawa w cenie",
+        "deliveryDetails": "Dostępność i warunki zależą od adresu i są podane podczas rezerwacji.",
+        "payment": "Potwierdzenie po płatności online",
+        "request": "Zgłoszenie wymaga potwierdzenia przez wypożyczalnię"
+      },
+      "booking": {
+        "availableForDates": "{count} dostępnych w wybranym terminie",
+        "dates": "Daty",
+        "anyOption": "Bez znaczenia",
+        "checking": "Sprawdzanie…",
+        "reserve": "Zarezerwuj",
+        "included": "W zestawie",
+        "shortage": "Za mało w magazynie",
+        "requiredHelp": "Ten artykuł jest wymagany z tym produktem i jest dodawany do koszyka razem z nim.",
+        "extras": "Dodatki",
+        "depositHold": "Kaucja",
+        "packageApplied": "Zastosowany pakiet: {period}",
+        "packagesApplied": "{count} × pakiet na {period}",
+        "rateApplied": "Zastosowana stawka: {period}",
+        "proratedPrice": "Cena obliczona proporcjonalnie",
+        "depositNotCharged": "Blokada na karcie, bez obciążenia"
+      }
+    },
+    "quickAdd": {
+      "chooseDates": "Wybierz daty",
+      "chooseOptions": "Wybierz konfigurację",
+      "optionsIntro": "Ten produkt występuje w kilku konfiguracjach. Wybierz swoją, a potem liczbę sztuk.",
+      "steps": {
+        "dates": "Daty",
+        "options": "Konfiguracja",
+        "extras": "Akcesoria"
+      }
     },
     "accessories": {
       "productAdded": "Dodano do koszyka",
       "youMightAlsoLike": "Może Ci się również spodobać",
+      "requiredIncluded": "Akcesoria wymagane do tego produktu zostały automatycznie dodane do koszyka.",
       "selectAccessories": "Wybierz akcesoria do dodania",
       "available": "{count, plural, one {# dostępny} few {# dostępne} many {# dostępnych} other {# dostępnych}}",
       "pricingUnit": {
@@ -5995,6 +6520,9 @@
       "accessoriesAdded": "{count, plural, one {# akcesorium dodane do koszyka} few {# akcesoria dodane do koszyka} many {# akcesoriów dodanych do koszyka} other {# akcesoriów dodanych do koszyka}}"
     },
     "dateSelection": {
+      "availabilityChecking": "Sprawdzanie dostępności…",
+      "availabilityUnavailable": "Produkt niedostępny w tym okresie. Wybierz inne daty lub godziny.",
+      "availabilityRetry": "Nie udało się sprawdzić dostępności. Spróbuj ponownie",
       "title": "Kiedy chcesz wynająć?",
       "subtitle": "Wybierz daty, aby zobaczyć dostępność",
       "startDate": "Odbiór",
@@ -6036,7 +6564,12 @@
       "errors": {
         "required": "Proszę wybrać daty",
         "startInPast": "Data rozpoczęcia musi być w przyszłości",
-        "endBeforeStart": "Data zakończenia musi być po dacie rozpoczęcia"
+        "endBeforeStart": "Data zakończenia musi być po dacie rozpoczęcia",
+        "sameDayNotAllowed": "Ten sklep nie oferuje wypożyczeń jednodniowych.",
+        "businessHours": "Te godziny wykraczają poza godziny otwarcia sklepu.",
+        "advanceNotice": "Ten sklep wymaga {duration} wyprzedzenia przed odbiorem.",
+        "minDuration": "Minimalny czas wypożyczenia to {duration}.",
+        "maxDuration": "Maksymalny czas wypożyczenia to {duration}."
       },
       "businessHours": {
         "storeClosed": "Sklep jest zamknięty w tym dniu",
@@ -6048,7 +6581,9 @@
       },
       "modifyDates": "Zmień daty",
       "applyDates": "Zastosuj daty",
-      "timezoneNotice": "Godziny wyświetlane w czasie {city}"
+      "timezoneNotice": "Godziny wyświetlane w czasie {city}",
+      "chooseDates": "Wybierz daty",
+      "validate": "Zatwierdź"
     },
     "availability": {
       "title": "Dostępne produkty",
@@ -6082,6 +6617,7 @@
       "badge": {
         "available": "Dostępne",
         "availableCount": "{count} dostępnych",
+        "lastOne": "Ostatni dostępny",
         "limited": "{count} pozostało",
         "unavailable": "Niedostępne",
         "outOfStock": "Brak w magazynie",
@@ -6157,7 +6693,21 @@
         "product_unavailable": "Ten produkt nie jest już dostępny",
         "insufficient_stock": "Niewystarczający stan magazynowy dla tej ilości",
         "required_accessory_unavailable": "Wymagane akcesorium jest niedostępne"
-      }
+      },
+      "open": "Otwórz koszyk",
+      "openWithCount": "Koszyk, {count, plural, one {# produkt} few {# produkty} many {# produktów} other {# produktów}}",
+      "quantityOf": "Ilość: {name}",
+      "removeItem": "Usuń {name} z koszyka",
+      "removed": "Usunięto {name} z koszyka",
+      "undo": "Cofnij",
+      "resolveError": "Nie udało się sprawdzić dostępności. Spróbuj ponownie za chwilę.",
+      "unavailableTitle": "{count, plural, one {# produkt nie jest już dostępny} few {# produkty nie są już dostępne} many {# produktów nie jest już dostępnych} other {# produktów nie jest już dostępnych}}",
+      "adjustTo": "Zmniejsz do {count}",
+      "maxReached": "Osiągnięto maksymalną ilość",
+      "fixedPrice": "Ryczałt",
+      "depositHold": "kaucja bez obciążenia",
+      "checking": "Sprawdzanie dostępności…",
+      "checkoutBlocked": "Zmień niedostępne produkty przed kontynuowaniem."
     },
     "checkout": {
       "title": "Dokończ rezerwację",
@@ -6180,6 +6730,7 @@
       "deliveryRequiredNote": "Ten produkt wymaga dostawy",
       "deliveryIncludedNote": "Koszty dostawy są wliczone w cenę",
       "included": "Wliczone",
+      "fulfillmentTitle": "Odbiór i zwrot",
       "outboundTitle": "Odbiór sprzętu",
       "returnTitle": "Zwrot sprzętu",
       "storePickup": "Odbiór w sklepie",
@@ -6195,6 +6746,24 @@
       "deliveryOption": "Dostawa do domu",
       "deliveryOptionDescription": "Od {pricePerKm}/km",
       "deliveryAvailableFrom": "Dostawa dostępna od {amount} wartości wynajmu",
+      "distanceKm": "{distance} km",
+      "pricePerKm": "{price}/km",
+      "deliveryAreaSummary": "Obszar dostawy {maxKm} km · {pricePerKm}/km",
+      "useMyLocation": "Użyj mojej lokalizacji",
+      "sortByDistance": "Sortuj według odległości",
+      "sortByDistanceHint": "Zobacz, który punkt jest najbliżej",
+      "locationLocating": "Ustalanie lokalizacji…",
+      "locationBlocked": "Lokalizacja jest zablokowana dla tej witryny. Zezwól na nią z ikony na pasku adresu, aby sortować według odległości.",
+      "locationUnsupported": "Ta przeglądarka nie może udostępnić Twojej lokalizacji, więc punkty pozostają w kolejności sklepu.",
+      "yourPosition": "Twoja lokalizacja",
+      "returnSamePlace": "To samo miejsce",
+      "returnAnotherLocation": "Inny punkt",
+      "returnMyAddress": "Mój adres",
+      "returnSameLocationSummary": "Zwrot do {place}",
+      "returnSameAddressSummary": "Odbiór pod adresem {address}",
+      "mapExpand": "Powiększ mapę",
+      "mapCollapse": "Zamknij mapę",
+      "getDirections": "Wskazówki dojazdu",
       "freeDeliveryAbove": "Darmowa dostawa powyżej {amount}",
       "freeDeliveryApplied": "Darmowa dostawa zastosowana!",
       "deliveryAddress": "Adres dostawy",
@@ -6232,7 +6801,9 @@
       "insuranceOptionalUnavailableShort": "Niedostępna",
       "insuranceNoInsurableProducts": "Brak ubezpieczalnych produktów w tym koszyku.",
       "insurancePartialCoverage": "{insured} objęty(-e) ochroną, {uninsured} bez ochrony.",
-      "insuranceCoveredProductTooltip": "Ten produkt jest objęty ochroną przed uszkodzeniem/kradzieżą.",
+      "insuranceCoveredProductTooltip": "Ten produkt będzie objęty ochroną przed uszkodzeniem/kradzieżą podczas tego wynajmu.",
+      "insuranceIncludedHelp": "Wypożyczalnia pokrywa koszt ochrony produktów oznaczonych jako objęte ochroną.",
+      "insuranceIncludedLabel": "Ochrona przed uszkodzeniem/kradzieżą w cenie",
       "insuranceEligibleProductTooltip": "Kwalifikuje się do ochrony przed uszkodzeniem/kradzieżą.",
       "insuranceEstimating": "Obliczanie szacunkowej ochrony...",
       "insuranceEstimatedAmount": "Szacunkowa kwota ochrony: {amount}",
@@ -6337,14 +6908,8 @@
         "haveCode": "Masz kod promocyjny?",
         "placeholder": "Wprowadź swój kod",
         "apply": "Zastosuj",
-        "invalidCode": "Ten kod promocyjny jest nieprawidłowy",
         "discount": "Zniżka ({code})",
-        "minimumNotMet": "Minimalna kwota nie jest już spełniona dla tego kodu",
-        "promoCodeInvalid": "Ten kod promocyjny jest nieprawidłowy",
-        "promoCodeExpired": "Ten kod promocyjny wygasł",
-        "promoCodeExhausted": "Ten kod promocyjny nie jest już dostępny",
-        "promoCodeMinimumNotMet": "Wymagana minimalna kwota {amount}",
-        "promoCodeNotStarted": "Ten kod promocyjny nie jest jeszcze aktywny"
+        "remove": "Usuń kod promocyjny"
       },
       "lineNeedsUpdate": "Niektóre linie nie są już dostępne. Zaktualizuj koszyk przed wysłaniem.",
       "advisor": {
@@ -6365,6 +6930,59 @@
         "statusChecking": "Sprawdzanie weryfikacji…",
         "transcriptLabel": "Rozmowa weryfikacyjna",
         "completeVerificationHint": "Ukończ weryfikację powyżej, aby kontynuować."
+      },
+      "submitError": {
+        "title": "Nie udało się wysłać zamówienia",
+        "goToStep": "Popraw"
+      },
+      "payAmount": "Zapłać {amount}",
+      "blocked": {
+        "resolving": "Sprawdzanie dostępności…",
+        "insuranceRequired": "Wybierz opcję ubezpieczenia"
+      },
+      "acceptCgvRich": "Akceptuję <terms>regulamin wynajmu</terms>",
+      "returningCustomer": {
+        "loginLink": "Masz już konto? <signin>Zaloguj się</signin>",
+        "prompt": "Masz już konto?",
+        "sendCode": "Wyślij kod",
+        "codeSent": "Kod wysłany na {email}",
+        "codeLabel": "Kod weryfikacyjny",
+        "cancel": "Anuluj",
+        "resend": "Wyślij ponownie",
+        "verifying": "Weryfikacja…",
+        "signedInAs": "Zalogowano jako {name}",
+        "notYou": "To nie Ty?"
+      },
+      "notesDisclosure": "Dodaj notatkę dla wypożyczalni",
+      "yourAddress": "Twój adres",
+      "viewCatalog": "Zobacz katalog",
+      "fixedPrice": "Ryczałt",
+      "pricesIncludeTax": "Ceny z podatkiem",
+      "pricesExcludeTax": "Ceny bez podatku",
+      "summaryBar": {
+        "show": "Pokaż szczegóły",
+        "hide": "Ukryj szczegóły"
+      },
+      "deliveryCalculating": "Obliczanie kosztów dostawy…",
+      "insuranceIncluded": "Ubezpieczenie w cenie",
+      "cancelled": {
+        "title": "Płatność przerwana",
+        "description": "Twoja rezerwacja {number} czeka na płatność. Możesz wrócić w dowolnym momencie, nic nie przepadło.",
+        "cartKept": "Twój koszyk został zachowany.",
+        "expiredTitle": "Rezerwacja wygasła",
+        "expiredDescription": "Czas na opłacenie rezerwacji {number} minął i została ona anulowana. Twój koszyk został zachowany: możesz ją ponowić w kilka sekund.",
+        "backToCart": "Wróć do koszyka",
+        "resume": "Wznów płatność",
+        "redirecting": "Przekierowanie…",
+        "alreadyPaidTitle": "Rezerwacja już opłacona",
+        "alreadyPaidDescription": "Twoja rezerwacja {number} jest potwierdzona. Dalsza płatność nie jest potrzebna.",
+        "viewReservation": "Zobacz rezerwację",
+        "errors": {
+          "notFound": "Nie znaleziono tej rezerwacji.",
+          "invalidStatus": "Ta rezerwacja nie czeka już na płatność.",
+          "unavailable": "Płatność online jest niedostępna w tym sklepie.",
+          "sessionFailed": "Nie udało się wznowić płatności. Spróbuj ponownie za chwilę."
+        }
       }
     },
     "confirmation": {
@@ -6470,6 +7088,21 @@
       "backToStore": "Powrót do sklepu"
     },
     "account": {
+      "communications": {
+        "title": "Komunikacja",
+        "description": "Wybierz sposób otrzymywania przypomnień o odbiorze i zwrocie, jeśli wypożyczalnia je oferuje.",
+        "email": "Otrzymuj przypomnienia e-mailem",
+        "sms": "Otrzymuj przypomnienia SMS-em",
+        "essential": "Te preferencje dotyczą tylko przypomnień. Wiadomości dotyczące logowania i rezerwacji (potwierdzenie, odrzucenie, płatność lub ważne zmiany) nadal będą wysyłane."
+      },
+      "profile": {
+        "title": "Moje dane",
+        "description": "Te dane zostaną automatycznie uzupełnione przy kolejnych rezerwacjach.",
+        "emailHelp": "Twój adres e-mail służy do logowania.",
+        "saved": "Dane zapisane",
+        "saveError": "Nie udało się zapisać danych. Spróbuj ponownie.",
+        "invalidData": "Sprawdź dane, zwłaszcza numer telefonu i nazwę firmy."
+      },
       "title": "Moje konto",
       "accessAccount": "Wejdź na moje konto",
       "accessDescription": "Wpisz email użyty przy rezerwacji, aby otrzymać kod logowania.",
@@ -6516,15 +7149,18 @@
       "returnedAt": "Zwrócono",
       "rentedItems": "Wynajęte przedmioty",
       "quantityLabel": "Ilość",
+      "insuredProductTooltip": "Objęte ochroną przed uszkodzeniem/kradzieżą",
       "unitPrice": "/ szt.",
       "subtotalRental": "Suma wynajmu",
       "yourNotes": "Twoje uwagi",
       "needHelp": "Potrzebujesz pomocy?",
       "contactStore": "Skontaktuj się z {name} w sprawie pytań o rezerwację.",
+      "nothingChargedYet": "Żadna kwota nie została jeszcze pobrana.",
       "status": {
         "pending": "Oczekująca",
         "pendingFull": "Oczekuje na potwierdzenie",
-        "pendingDescription": "Twoje żądanie jest przetwarzane",
+        "pendingDescription": "Możesz anulować prośbę, dopóki sklep jej nie potwierdzi.",
+        "pendingNextStep": "Sklep sprawdza dostępność i odpowie e-mailem na adres {email}.",
         "confirmed": "Potwierdzona",
         "confirmedDescription": "Twoja rezerwacja jest potwierdzona",
         "allSet": "Wszystko gotowe",
@@ -6564,10 +7200,138 @@
       "paymentInProgress": "Płatność w trakcie realizacji",
       "paymentRequired": "Wymagana płatność",
       "confirmedAwaitingPayment": "Oczekiwanie na płatność",
+      "damageFees": "Koszty szkód",
+      "remainingDue": "Do zapłaty",
+      "depositCard": {
+        "title": "Kaucja",
+        "amount": "Kwota kaucji",
+        "capturedAmount": "Kwota potrącona",
+        "returnedAmount": "Kwota zwrócona",
+        "reason": "Powód podany przez wypożyczalnię",
+        "heldUntil": "Kwota zablokowana do {date}.",
+        "restReleased": "Reszta ({amount}) została zwolniona i nie jest pobierana.",
+        "authorize": "Autoryzuj kaucję online",
+        "authorizeHelp": "Zabezpieczone przez Stripe. Kwota jest blokowana na karcie, nie pobierana.",
+        "authorizeError": "Nie udało się otworzyć autoryzacji kaucji. Spróbuj ponownie lub skontaktuj się z wypożyczalnią.",
+        "states": {
+          "to_provide": {
+            "badge": "Do wpłaty",
+            "title": "Do wpłaty przy odbiorze",
+            "description": "Wypożyczalnia poprosi o kaucję w wysokości {amount} przy odbiorze sprzętu. Zostanie zwrócona przy oddaniu sprzętu w dobrym stanie."
+          },
+          "to_provide_online": {
+            "badge": "Do autoryzacji",
+            "title": "Blokada na karcie wkrótce",
+            "description": "Przed odbiorem zostanie poproszona blokada {amount} na Twojej karcie. Kwota jest tylko blokowana, nigdy nie jest pobierana bez powodu."
+          },
+          "card_saved": {
+            "badge": "Karta zapisana",
+            "title": "Karta zapisana",
+            "description": "Twoja karta jest zapisana na kaucję {amount}. Wypożyczalnia zablokuje tę kwotę krótko przed odbiorem, bez pobierania jej."
+          },
+          "held": {
+            "badge": "Zablokowana",
+            "title": "Blokada aktywna",
+            "description": "Na Twojej karcie zablokowano {amount}, bez pobrania. Blokada jest zwalniana po oddaniu sprzętu w dobrym stanie."
+          },
+          "hold_expired": {
+            "badge": "Wygasła",
+            "title": "Blokada wygasła",
+            "description": "Blokada {amount} wygasła. Wypożyczalnia może poprosić o nową autoryzację."
+          },
+          "released": {
+            "badge": "Zwolniona",
+            "title": "Kaucja zwolniona",
+            "description": "Blokada {amount} została anulowana. Nic nie pobrano; blokada zniknie z wyciągu w ciągu kilku dni."
+          },
+          "captured": {
+            "badge": "Potrącona",
+            "title": "Kaucja potrącona",
+            "description": "Wypożyczalnia potrąciła {captured} z Twojej kaucji {amount}."
+          },
+          "failed": {
+            "badge": "Odrzucona",
+            "title": "Autoryzacja odrzucona",
+            "description": "Nie udało się założyć blokady {amount} na Twojej karcie. Może być potrzebna inna karta."
+          },
+          "collected": {
+            "badge": "Otrzymana",
+            "title": "Kaucja otrzymana",
+            "description": "Wypożyczalnia otrzymała Twoją kaucję {amount} ({method}) dnia {date}. Zostanie zwrócona przy oddaniu sprzętu."
+          },
+          "returned": {
+            "badge": "Zwrócona",
+            "title": "Kaucja zwrócona",
+            "description": "Twoja kaucja {amount} została zwrócona dnia {date}."
+          },
+          "partially_returned": {
+            "badge": "Zwrócona częściowo",
+            "title": "Kaucja zwrócona częściowo",
+            "description": "Z Twojej kaucji {amount} zwrócono {returned} dnia {date}."
+          }
+        }
+      },
+      "updates": {
+        "title": "Historia",
+        "newPeriod": "Nowy okres: {period}",
+        "created": "Wysłano prośbę",
+        "confirmed": "Rezerwacja potwierdzona przez wypożyczalnię",
+        "rejected": "Prośba odrzucona przez wypożyczalnię",
+        "cancelled": "Rezerwacja anulowana",
+        "cancelled_by_you": "Prośba anulowana przez Ciebie",
+        "picked_up": "Sprzęt odebrany",
+        "returned": "Sprzęt oddany",
+        "quote_accepted": "Oferta zaakceptowana",
+        "quote_declined": "Oferta odrzucona",
+        "payment_received": "Otrzymano płatność online",
+        "payment_received_amount": "Otrzymano płatność online ({amount})",
+        "payment_failed": "Płatność online odrzucona",
+        "refunded": "Dokonano zwrotu",
+        "refunded_amount": "Zwrot {amount}",
+        "payment_added_rental": "Zarejestrowano płatność za wynajem ({amount})",
+        "payment_added_deposit": "Otrzymano kaucję ({amount})",
+        "payment_added_deposit_return": "Zwrócono kaucję ({amount})",
+        "payment_added_damage": "Zarejestrowano koszty szkód ({amount})",
+        "payment_added_adjustment": "Skorygowano kwotę ({amount})",
+        "deposit_authorized": "Założono blokadę na karcie",
+        "deposit_authorized_amount": "Założono blokadę {amount} na karcie",
+        "deposit_captured": "Kaucja potrącona",
+        "deposit_captured_amount": "Kaucja potrącona ({amount})",
+        "deposit_released": "Kaucja zwolniona",
+        "deposit_failed": "Blokada na karcie odrzucona",
+        "modified": "Rezerwacja zmieniona przez wypożyczalnię",
+        "extension_confirmed": "Wynajem przedłużony",
+        "return_date_requested": "Poproszono o zmianę daty zwrotu",
+        "inspection_departure_completed": "Sporządzono protokół wydania",
+        "inspection_return_completed": "Sporządzono protokół zwrotu",
+        "inspection_damage_detected": "W protokole stwierdzono szkody",
+        "inspection_signed": "Protokół podpisany"
+      },
+      "inspections": {
+        "title": "Protokoły stanu",
+        "departure": "Protokół wydania",
+        "return": "Protokół zwrotu",
+        "completed": "Sporządzono {date}",
+        "signed": "Podpisano {date}",
+        "photoCount": "{count, plural, one {# zdjęcie} few {# zdjęcia} many {# zdjęć} other {# zdjęcia}}",
+        "damage": "Stwierdzono szkody",
+        "noDamage": "Brak szkód",
+        "estimatedCost": "Szacowane szkody:",
+        "download": "Pobierz PDF"
+      },
       "paymentHistory": {
+        "holdStatus": {
+          "pending": "Oczekuje",
+          "authorized": "Zablokowana",
+          "completed": "Potrącona",
+          "failed": "Odrzucona",
+          "cancelled": "Zwolniona",
+          "refunded": "Zwrócona"
+        },
         "title": "Historia płatności",
         "noPayments": "Brak zarejestrowanych płatności",
         "types": {
+          "refund": "Zwrot",
           "rental": "Wynajem",
           "deposit": "Kaucja",
           "deposit_return": "Zwrot kaucji",
@@ -6604,13 +7368,166 @@
         "declineTitle": "Odrzucić tę wycenę?",
         "declineDescription": "Zamierzasz odrzucić tę wycenę. Wynajmujący zostanie o tym poinformowany.",
         "cancel": "Anuluj",
-        "confirmDecline": "Odrzuć wycenę"
+        "confirmDecline": "Odrzuć wycenę",
+        "acceptTitle": "Zaakceptować tę wycenę?",
+        "acceptDescription": "Zaraz zaakceptujesz tę wycenę. Wypożyczalnia zostanie powiadomiona, a Twoja rezerwacja potwierdzona.",
+        "confirmAccept": "Akceptuj wycenę"
       },
       "successToast": {
         "payment": "Płatność zakończona pomyślnie",
         "paymentDescription": "Twoja płatność została zarejestrowana.",
         "deposit": "Kaucja autoryzowana pomyślnie",
         "depositDescription": "Kwota została tymczasowo zablokowana na Twojej karcie."
+      },
+      "loginTitle": "Przejdź do moich wypożyczeń",
+      "loginLine": "Podaj swój e-mail: wyślemy Ci jednorazowy kod, bez hasła.",
+      "codeLine": "Wysłaliśmy kod na {email}.",
+      "resendIn": "Nowy kod za {seconds} s",
+      "currentReservations": "Bieżące wypożyczenia",
+      "pastReservations": "Poprzednie wypożyczenia",
+      "fulfillment": {
+        "pickupTitle": "Odbiór",
+        "returnTitle": "Zwrot",
+        "deliveredToYou": "Dostawa pod Twój adres",
+        "collectedFromYou": "Odbiór spod Twojego adresu",
+        "sameAsPickup": "To samo miejsce co odbiór",
+        "storeFallback": "Sklep",
+        "directions": "Trasa",
+        "calendarPickup": "Odbiór: {when} — {place}",
+        "calendarReturn": "Zwrot: {when} — {place}"
+      },
+      "timeline": {
+        "title": "Twój wynajem",
+        "requested": "Prośba wysłana",
+        "quoteSent": "Oferta wysłana",
+        "confirmed": "Rezerwacja potwierdzona",
+        "pickedUp": "Sprzęt odebrany",
+        "returned": "Sprzęt zwrócony"
+      },
+      "actions": {
+        "title": "Działania",
+        "contractSigned": "Umowa podpisana {date}"
+      },
+      "deposit": "Kaucja",
+      "total": "Razem",
+      "notes": "Twoje notatki",
+      "signContractTitle": "Podpisać umowę?",
+      "confirmSign": "Podpisz umowę",
+      "dateChange": {
+        "title": "Zmień termin zwrotu",
+        "description": "Potrzebujesz więcej czasu lub chcesz zwrócić wcześniej? Poproś o nowy termin. Wypożyczalnia musi go zatwierdzić i może zmienić cenę.",
+        "open": "Poproś o zmianę",
+        "newEnd": "Proponowany zwrot",
+        "timezone": "Strefa czasowa wypożyczalni: {timezone}",
+        "reason": "Powód (opcjonalnie)",
+        "error": "Nie udało się zapisać prośby. Wybierz przyszły termin po odbiorze, inny niż obecny termin zwrotu.",
+        "sending": "Wysyłanie…",
+        "submit": "Wyślij prośbę",
+        "close": "Zamknij",
+        "pendingHelp": "Rezerwacja i cena pozostają bez zmian do zatwierdzenia przez wypożyczalnię.",
+        "reviewTitle": "Prośba o zmianę terminu zwrotu",
+        "reviewHelp": "Sprawdź dostępność i cenę w edytorze. Zapisanie proponowanej daty zatwierdza prośbę. Inny okres ją zastępuje.",
+        "apply": "Zastosuj proponowaną datę",
+        "review": "Rozpatrz prośbę",
+        "reject": "Odrzuć prośbę",
+        "reviewError": "Nie udało się rozpatrzyć prośby. Odśwież stronę i spróbuj ponownie.",
+        "status": {
+          "pending": "Oczekuje na zatwierdzenie",
+          "accepted": "Prośba zatwierdzona",
+          "rejected": "Prośba odrzucona",
+          "cancelled": "Prośba anulowana",
+          "superseded": "Zastąpiona inną zmianą"
+        }
+      },
+      "actionRequired": {
+        "quote": "Odpowiedz na ofertę",
+        "payment": "Opłać rezerwację",
+        "signature": "Podpisz umowę"
+      },
+      "calendar": {
+        "add": "Dodaj do mojego kalendarza"
+      },
+      "extension": {
+        "title": "Przedłuż wynajem",
+        "description": "Wybierz późniejszy termin zwrotu. Sprawdź dostępność i dopłatę przed potwierdzeniem.",
+        "newEnd": "Nowy termin zwrotu",
+        "supplement": "Dopłata",
+        "newTotal": "Nowa suma: {amount}",
+        "check": "Sprawdź dostępność",
+        "pay": "Zapłać i przedłuż",
+        "confirm": "Potwierdź przedłużenie",
+        "request": "Poproś o przedłużenie",
+        "loading": "Proszę czekać…",
+        "close": "Zamknij",
+        "resume": "Wznów płatność",
+        "cancel": "Anuluj przedłużenie",
+        "checkoutPending": "Przedłużenie oczekuje na płatność. Sprzęt jest tymczasowo zarezerwowany.",
+        "expired": "Termin płatności minął. Sprawdź dostępność ponownie.",
+        "confirmed": "Wynajem został przedłużony.",
+        "refund_pending": "Nie udało się potwierdzić przedłużenia. Trwa zwrot płatności.",
+        "refunded": "Przedłużenie nie zostało zastosowane. Płatność została zwrócona.",
+        "open": "Przedłuż wynajem",
+        "reasons": {
+          "disabled": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "insurance": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "manualPrice": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "unpaid": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "delivery": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "deposit": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "overdue": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu.",
+          "location": "Wypożyczalnia musi sprawdzić przedłużenie: ubezpieczenie, cenę, płatność, kaucję lub warunki zwrotu."
+        },
+        "errors": {
+          "invalidDate": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "invalidStatus": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "pending": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "tooLong": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "closed": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "unavailable": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "manualRequired": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "priceChanged": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "expired": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "paymentUnavailable": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "notFound": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "unexpected": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "paymentMismatch": "Nie można potwierdzić tego terminu. Sprawdź dane ponownie lub skontaktuj się z wypożyczalnią.",
+          "tooManyAttempts": "Zbyt wiele prób. Spróbuj ponownie za 15 minut."
+        }
+      },
+      "outcome": {
+        "paid": {
+          "title": "Płatność potwierdzona",
+          "description": "Otrzymaliśmy płatność. Szczegóły znajdziesz poniżej."
+        },
+        "payment_received": {
+          "title": "Płatność otrzymana",
+          "description": "Płatność została zarejestrowana."
+        },
+        "deposit_authorized": {
+          "title": "Kaucja autoryzowana",
+          "description": "Autoryzacja kaucji została zarejestrowana."
+        },
+        "requested": {
+          "title": "Zapytanie wysłane",
+          "description": "Sklep sprawdzi zapytanie i potwierdzi dostępność."
+        },
+        "processing": {
+          "title": "Weryfikacja płatności",
+          "description": "Płatność jest weryfikowana. Odśwież stronę za chwilę."
+        }
+      },
+      "requestNumber": "Prośba o rezerwację #{number}",
+      "cancellation": {
+        "action": "Anuluj moją prośbę",
+        "title": "Anulować tę prośbę?",
+        "description": "Sklep zostanie powiadomiony.",
+        "keep": "Zachowaj moją prośbę",
+        "confirm": "Anuluj prośbę",
+        "cancelled": "Prośba anulowana",
+        "done": "Ta prośba została przez Ciebie anulowana.",
+        "paymentDescription": "Sklep zostanie powiadomiony. Jeśli dokonano płatności lub wpłacono kaucję, skontaktuj się ze sklepem w sprawie zwrotu lub zwolnienia środków. Ta czynność nie powoduje automatycznego zwrotu.",
+        "adminSubject": "Prośba #{number} anulowana przez klienta",
+        "adminBody": "{name} anulował(a) prośbę o rezerwację #{number} przed Twoim potwierdzeniem. Historię możesz sprawdzić w panelu."
       }
     },
     "marketplaceShell": {
@@ -6624,7 +7541,13 @@
       "legalNotice": "Nota prawna",
       "signIn": "Zaloguj sie",
       "allRightsReserved": "Wszelkie prawa zastrzeżone.",
-      "poweredBy": "Napędzane przez"
+      "poweredBy": "Napędzane przez",
+      "navigation": "Nawigacja",
+      "catalog": "Katalog",
+      "reviews": "Opinie",
+      "account": "Konto",
+      "myReservations": "Moje wypożyczenia",
+      "about": "About"
     },
     "error": {
       "title": "Ups! Wystąpił błąd",
@@ -6637,7 +7560,8 @@
       "cgv": {
         "title": "Regulamin",
         "noCgv": "Regulamin nie jest jeszcze dostępny.",
-        "contactSeller": "Skontaktuj się ze sprzedawcą, aby uzyskać więcej informacji."
+        "contactSeller": "Skontaktuj się ze sprzedawcą, aby uzyskać więcej informacji.",
+        "metaDescription": "Ogólne warunki wynajmu {name}: rezerwacja, płatność, kaucja i anulowanie."
       },
       "legalNotice": {
         "title": "Nota prawna",
@@ -6646,7 +7570,8 @@
         "headquarters": "Siedziba",
         "email": "Email",
         "phone": "Telefon",
-        "address": "Adres"
+        "address": "Adres",
+        "metaDescription": "Nota prawna {name}: wydawca strony, hosting i dane kontaktowe."
       },
       "hosting": {
         "title": "Hosting",
@@ -6668,6 +7593,22 @@
     "embed": {
       "title": "Zarezerwuj online",
       "cta": "Sprawdź dostępność",
+      "dayPlaceholder": "Wybierz",
+      "chooseDates": "Wybierz daty",
+      "checkDates": "Sprawdź daty",
+      "previousMonth": "Poprzedni miesiąc",
+      "nextMonth": "Następny miesiąc",
+      "steps": {
+        "startDate": "Dzień odbioru",
+        "startTime": "Godzina odbioru",
+        "endDate": "Dzień zwrotu",
+        "endTime": "Godzina zwrotu"
+      },
+      "slotGroups": {
+        "morning": "Rano",
+        "afternoon": "Popołudnie",
+        "evening": "Wieczór"
+      },
       "errors": {
         "selectStartDate": "Wybierz datę odbioru",
         "selectEndDate": "Wybierz datę zwrotu",
@@ -6696,6 +7637,94 @@
         "unavailable": "Doradca jest obecnie niedostępny. Spróbuj ponownie później."
       },
       "typing": "Doradca pisze"
+    },
+    "meta": {
+      "storeNotFound": "Nie znaleziono sklepu",
+      "homeTitle": "{store} · Wypożyczalnia sprzętu",
+      "description": "Wypożycz sprzęt w {store}. Zarezerwuj online."
+    },
+    "contact": {
+      "title": "Skontaktuj się z {name}",
+      "metaTitle": "Kontakt - {name}",
+      "metaDescription": "Skontaktuj się z {name}: telefon, e-mail i formularz kontaktowy.",
+      "intro": "Pytanie o wynajem, dostępność lub wycenę? Jesteśmy do dyspozycji.",
+      "channelsTitle": "Jak się z nami skontaktować",
+      "noChannels": "Dane kontaktowe sklepu nie zostały jeszcze ustawione.",
+      "formTitle": "Wyślij wiadomość",
+      "formDescription": "Odpowiadamy e-mailem.",
+      "firstName": "Imię",
+      "lastName": "Nazwisko",
+      "email": "E-mail",
+      "phone": "Telefon",
+      "message": "Wiadomość",
+      "messagePlaceholder": "Opisz swoją prośbę: sprzęt, terminy, ilości…",
+      "privacyNote": "Twoje dane są używane wyłącznie przez {name}, aby Ci odpowiedzieć.",
+      "send": "Wyślij wiadomość",
+      "sending": "Wysyłanie…",
+      "sentTitle": "Wiadomość wysłana",
+      "sentDescription": "Dziękujemy! {name} otrzymał Twoją wiadomość i odpowie e-mailem.",
+      "sendAnother": "Wyślij kolejną wiadomość",
+      "orEmail": "Lub e-mailem:",
+      "primary": {
+        "phone": {
+          "title": "Zadzwoń do nas",
+          "action": "Zadzwoń"
+        },
+        "whatsapp": {
+          "title": "Napisz do nas na WhatsApp",
+          "action": "Otwórz WhatsApp"
+        },
+        "email": {
+          "title": "Napisz do nas",
+          "action": "Wyślij e-mail"
+        }
+      },
+      "errors": {
+        "firstNameRequired": "Podaj swoje imię",
+        "lastNameRequired": "Podaj swoje nazwisko",
+        "invalidEmail": "Podaj prawidłowy adres e-mail",
+        "phoneRequired": "Podaj swój numer telefonu",
+        "messageTooShort": "Twoja wiadomość jest za krótka",
+        "tooLong": "To pole jest za długie",
+        "invalidData": "Sprawdź pola formularza.",
+        "unavailable": "Formularz kontaktowy jest obecnie niedostępny.",
+        "rateLimited": "Wysłano zbyt wiele wiadomości. Spróbuj ponownie za kilka minut.",
+        "generic": "Nie udało się wysłać wiadomości. Spróbuj ponownie lub użyj innego kanału kontaktu."
+      }
+    },
+    "about": {
+      "title": "About {name}",
+      "metaTitle": "About - {name}",
+      "metaDescription": "{name}: opening hours, address, contact and how renting works.",
+      "hoursTitle": "Opening hours",
+      "noHours": "Hours on request",
+      "closed": "Closed",
+      "closuresTitle": "Exceptional closures",
+      "servicesTitle": "How it works",
+      "paymentMode": "Book and pay online, instant confirmation",
+      "requestMode": "Booking request online, confirmed by the store",
+      "pickup": "Pickup and return in store",
+      "deliveryOptional": "Delivery available",
+      "deliveryRequired": "Delivery to the address of your choice",
+      "deliveryIncluded": "Delivery included",
+      "deliveryRadius": "up to {km} km",
+      "deliveryFree": "free from {amount}",
+      "deliveryFrom": "from {amount} per trip",
+      "moreTitle": "Learn more",
+      "catalog": "Browse the catalog",
+      "contact": "Skontaktuj się z nami",
+      "terms": "Terms and conditions",
+      "legal": "Legal notice"
+    },
+    "seasonalPricing": {
+      "title": "Ceny sezonowe",
+      "description": "Każda stawka obowiązuje w terminach danego sezonu.",
+      "baseSeason": "Stawka standardowa",
+      "outsideSeasons": "Poza wskazanymi sezonami",
+      "durationRates": "Zobacz ceny według czasu wynajmu",
+      "breakdownTitle": "Cena według sezonu",
+      "from": "Od",
+      "averageRate": "Średnio w wybranym okresie"
     }
   },
   "onboarding": {
@@ -7005,7 +8034,8 @@
       "qty": "Ilość",
       "unitPrice": "Cena jedn.",
       "total": "Suma",
-      "unitIdentifiers": "Identyfikatory: {identifiers}"
+      "unitIdentifiers": "Identyfikatory: {identifiers}",
+      "insured": "Objęte ochroną przed uszkodzeniem/kradzieżą"
     },
     "totals": {
       "subtotalHT": "Suma netto",
@@ -7039,7 +8069,9 @@
       "landlordText": "Wynajmujący potwierdza dokładność powyższych informacji i dostępność sprzętu w podanym okresie.",
       "customerText": "Potwierdzam, że zapoznałem się z ogólnymi warunkami najmu i akceptuję je bez zastrzeżeń.",
       "dateLabel": "Data:",
-      "ipLabel": "IP:"
+      "ipLabel": "IP:",
+      "automatic": "Zatwierdzono automatycznie",
+      "automaticText": "Ta umowa została automatycznie zatwierdzona zgodnie z warunkami wynajmu."
     },
     "conditions": {
       "condition1": "Sprzęt jest wynajmowany w dobrym stanie technicznym",
@@ -7213,6 +8245,7 @@
     "createReservationError": "Błąd tworzenia rezerwacji",
     "businessHoursViolation": "Wybrane godziny są poza godzinami otwarcia sklepu",
     "returnAddressInvalid": "Nieprawidłowe współrzędne adresu zwrotu",
+    "returnAddressRequired": "Proszę podać prawidłowy adres zwrotu",
     "returnAddressTooFar": "Adres zwrotu jest zbyt daleko ({maxKm} km maksymalnie)",
     "advanceNoticeViolation": "Rezerwacje muszą być dokonane z co najmniej {duration} wyprzedzeniem",
     "noReservationsWithEmail": "Nie znaleziono rezerwacji z tym emailem",
@@ -7337,7 +8370,11 @@
     "emailLoginUnavailable": "Logowanie przez e-mail jest obecnie niedostępne",
     "stripeNotConfigured": "Płatności online są niedostępne: ta instancja nie ma skonfigurowanych kluczy Stripe. Rezerwacje działają w trybie zapytania.",
     "emailSendFailed": "Nie udało się wysłać wiadomości e-mail.",
-    "marketplaceChannelNotFound": "Nie znaleziono kanału marketplace"
+    "marketplaceChannelNotFound": "Nie znaleziono kanału marketplace",
+    "requestCancellationStatusChanged": "Status tej prośby się zmienił. Nie można jej już tutaj anulować. Skontaktuj się ze sklepem.",
+    "requestCancellationPaymentPending": "Płatność za tę prośbę jest jeszcze w toku. Spróbuj ponownie po aktualizacji lub skontaktuj się ze sklepem.",
+    "requestCancellationPaymentChanged": "Informacje o płatności uległy zmianie. Sprawdź je przed ponownym potwierdzeniem anulowania.",
+    "promoCodeProductsAlreadyDiscounted": "Ten kod nie dotyczy produktów już objętych promocją."
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",

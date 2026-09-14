@@ -1,3 +1,4 @@
+import { productPromotionSchema } from "./product-promotion";
 import { z } from "zod";
 
 import { isValidImageUrl } from "./image";
@@ -15,6 +16,29 @@ export const storefrontAvailabilityInputSchema = z.object({
   endDate: dateTimeOrDateSchema,
   productIds: z.array(z.string().length(21)).optional(),
 });
+
+export const storefrontCalendarInputSchema = z.object({
+  productId: z.string().length(21),
+  periods: z
+    .array(
+      z
+        .object({
+          startDate: z.string().datetime({ offset: true }),
+          endDate: z.string().datetime({ offset: true }),
+        })
+        .refine((period) => {
+          const duration = Date.parse(period.endDate) - Date.parse(period.startDate);
+          return duration > 0 && duration <= 3 * 366 * 24 * 60 * 60 * 1000;
+        }),
+    )
+    .max(62),
+});
+
+export const storefrontCalendarOutputSchema = z.array(
+  z.object({
+    available: z.boolean(),
+  }),
+);
 
 export const storefrontResolveCombinationInputSchema = z.object({
   productId: z.string().length(21),
@@ -44,6 +68,154 @@ export const storefrontAvailabilityRouteQuerySchema = z.object({
   startDate: dateTimeOrDateSchema,
   endDate: dateTimeOrDateSchema,
   productIds: z.string().nullish(),
+});
+
+// ---------------------------------------------------------------------------
+// Storefront procedure outputs. They mirror the `AvailabilityResponse` and
+// `CombinationResolutionResult` shapes of @louez/types so the client keeps
+// the same inferred types once the procedures validate their output.
+// ---------------------------------------------------------------------------
+
+const stockStatusSchema = z.enum(["available", "limited", "unavailable"]);
+const unitAttributesSchema = z.record(z.string(), z.string());
+const pricingModeSchema = z.enum(["hour", "day", "week"]);
+const stockKindSchema = z.enum(["returnable", "consumable", "untracked"]);
+
+export const storefrontCombinationAvailabilitySchema = z.object({
+  combinationKey: z.string(),
+  selectedAttributes: unitAttributesSchema,
+  totalQuantity: z.number(),
+  reservedQuantity: z.number(),
+  availableQuantity: z.number(),
+  status: stockStatusSchema,
+});
+
+export const storefrontProductAvailabilitySchema = z.object({
+  productId: z.string(),
+  totalQuantity: z.number().nullable(),
+  reservedQuantity: z.number(),
+  availableQuantity: z.number().nullable(),
+  status: stockStatusSchema,
+  reason: z.enum(["out_of_stock", "required_accessory_out_of_stock"]).optional(),
+  combinations: z.array(storefrontCombinationAvailabilitySchema).optional(),
+  combinationsByKey: z.record(z.string(), storefrontCombinationAvailabilitySchema).optional(),
+});
+
+export const storefrontAvailabilityOutputSchema = z.object({
+  products: z.array(storefrontProductAvailabilitySchema),
+  period: z.object({
+    startDate: z.string(),
+    endDate: z.string(),
+  }),
+  businessHoursValidation: z
+    .object({
+      valid: z.boolean(),
+      errors: z.array(z.string()),
+    })
+    .optional(),
+  advanceNoticeValidation: z
+    .object({
+      valid: z.boolean(),
+      minimumStartTime: z.string().optional(),
+      advanceNoticeMinutes: z.number().optional(),
+    })
+    .optional(),
+});
+
+export const storefrontResolveCombinationOutputSchema = z.object({
+  combinationKey: z.string(),
+  selectedAttributes: unitAttributesSchema,
+  availableQuantity: z.number().nullable(),
+});
+
+const storefrontSeasonalPricingSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  startDate: z.string(),
+  endDate: z.string(),
+  basePrice: z.number(),
+  tiers: z.array(
+    z.object({
+      id: z.string(),
+      minDuration: z.number().nullable(),
+      discountPercent: z.number().nullable(),
+      displayOrder: z.number(),
+    }),
+  ),
+  rates: z.array(
+    z.object({
+      id: z.string(),
+      price: z.number(),
+      period: z.number(),
+      displayOrder: z.number(),
+    }),
+  ),
+});
+
+export const storefrontCartLineResolutionSchema = z.discriminatedUnion("status", [
+  z.object({
+    status: z.literal("resolved"),
+    lineId: z.string(),
+    parentLineId: z.string().optional(),
+    productId: z.string(),
+    productName: z.string(),
+    productImage: z.string().nullable(),
+    price: z.number(),
+    deposit: z.number(),
+    maxQuantity: z.number().nullable(),
+    quantity: z.number(),
+    pricingKind: z.enum(["duration", "fixed"]),
+    stockKind: stockKindSchema,
+    required: z.boolean(),
+    requiredQuantity: z.number().nullable(),
+    requiredAccessories: z.array(
+      z.object({
+        productId: z.string(),
+        required: z.literal(true),
+        quantity: z.number().int().min(1),
+      }),
+    ),
+    pricingMode: pricingModeSchema,
+    productPricingMode: pricingModeSchema,
+    basePeriodMinutes: z.number().nullable(),
+    enforceStrictTiers: z.boolean(),
+    promotion: productPromotionSchema.nullable().optional(),
+    pricingTiers: z.array(
+      z.object({
+        id: z.string(),
+        minDuration: z.number(),
+        discountPercent: z.number(),
+        period: z.number().nullable(),
+        price: z.number().nullable(),
+      }),
+    ),
+    seasonalPricings: z.array(storefrontSeasonalPricingSchema).optional(),
+    /**
+     * Deterministic unit combination the line books, resolved with the same
+     * rule as `availability.resolveCombination`. Null when no single
+     * combination holds the whole quantity (the line must be split).
+     */
+    combination: storefrontResolveCombinationOutputSchema.nullable(),
+  }),
+  z.object({
+    status: z.literal("unavailable"),
+    lineId: z.string(),
+    parentLineId: z.string().optional(),
+    productId: z.string(),
+    reason: z.enum(["product_unavailable", "insufficient_stock", "required_accessory_unavailable"]),
+    stockKind: stockKindSchema.optional(),
+    maxQuantity: z.number().optional(),
+  }),
+]);
+
+export const storefrontCartResolveOutputSchema = z.object({
+  lines: z.array(storefrontCartLineResolutionSchema),
+});
+
+export const reservationSignOutputSchema = z.object({
+  success: z.literal(true),
+  signedBy: z.enum(["customer", "admin"]),
+  signedAt: z.string(),
 });
 
 export const dashboardReservationPollInputSchema = z.object({});
@@ -161,6 +333,15 @@ export const dashboardReservationGetByIdInputSchema = z.object({
 export const dashboardReservationUpdateNotesInputSchema = z.object({
   reservationId: z.string().length(21),
   notes: z.string().max(100000).default(""),
+});
+
+/** Billing identity a reservation is invoiced under; identifiers are checked against the buyer country server-side. */
+export const dashboardReservationUpdateBillingInputSchema = z.object({
+  reservationId: z.string().length(21),
+  customerType: z.enum(["individual", "business"]),
+  companyName: z.string().trim().max(255).default(""),
+  companyNumber: z.string().trim().max(64).default(""),
+  vatNumber: z.string().trim().max(64).default(""),
 });
 
 export const dashboardReservationUpdateStatusInputSchema = z.object({
@@ -467,6 +648,62 @@ export const updateStoreLegalInputSchema = z.object({
   includeFullCgvInContract: z.boolean().optional(),
 });
 
+const optionalContactEmailSchema = z
+  .string()
+  .trim()
+  .max(255, "errors.invalidData")
+  .transform((value) => (value === "" ? null : value))
+  .pipe(z.email("errors.invalidData").nullable());
+
+const optionalContactPhoneSchema = z
+  .string()
+  .trim()
+  .max(50, "errors.invalidData")
+  .transform((value) => (value === "" ? null : value));
+
+/** The storefront contact page settings, saved whole under `settings.contact`. */
+export const updateStoreContactInputSchema = z.object({
+  layout: z.enum(["full", "message", "single"]),
+  primaryChannel: z.enum(["phone", "whatsapp", "email"]),
+  phone: z.boolean(),
+  sms: z.boolean(),
+  whatsapp: z.boolean(),
+  whatsappNumber: optionalContactPhoneSchema,
+  email: z.boolean(),
+  form: z.boolean(),
+  formRecipientEmail: optionalContactEmailSchema,
+  formPhoneField: z.enum(["hidden", "optional", "required"]),
+  intro: z
+    .string()
+    .trim()
+    .max(600, "errors.invalidData")
+    .transform((value) => (value === "" ? null : value)),
+});
+
+// Owners paste either the bare token or the whole
+// `<meta name="google-site-verification" content="…">` tag Search Console
+// shows; only the token is stored.
+const extractGoogleSiteVerificationToken = (value: string): string => {
+  const tag = value.match(/content\s*=\s*["']([^"']+)["']/i);
+  return (tag ? tag[1] : value).trim();
+};
+
+/** Search engine settings, saved whole under `settings.seo`. */
+export const updateStoreSeoInputSchema = z.object({
+  googleSiteVerification: z
+    .string()
+    .trim()
+    .max(500, "errors.invalidData")
+    .transform(extractGoogleSiteVerificationToken)
+    .pipe(
+      z
+        .string()
+        .max(200, "errors.invalidData")
+        .regex(/^[A-Za-z0-9_-]*$/, "errors.invalidData"),
+    )
+    .transform((value) => (value === "" ? null : value)),
+});
+
 const s3UrlSchema = z
   .string()
   .refine(
@@ -483,10 +720,125 @@ export const updateStoreAppearanceInputSchema = z.object({
       mode: z.enum(["light", "dark"]),
       primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color"),
       heroImages: z.array(s3UrlSchema).max(5).optional(),
+      heroLayout: z.enum(["cover", "split"]).optional(),
+      heroAlign: z.enum(["start", "center", "end"]).optional(),
+      heroVerticalAlign: z.enum(["start", "center", "end"]).optional(),
       catalogBrowseMode: z.enum(["products", "categories"]).optional(),
       maxDiscountPercent: z.number().int().min(0).max(100).nullish(),
     })
     .optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Online store editor: one procedure, one optional slice per editor section.
+// A slice that is present replaces what it covers; an absent slice leaves
+// the row untouched, so the client only sends what changed.
+// ---------------------------------------------------------------------------
+
+const emptyToNull = (value: string): string | null => (value === "" ? null : value);
+
+/** The visible text of editor HTML, for length checks and emptiness. */
+const stripTags = (html: string): string =>
+  html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+    .trim();
+
+/** A full `http(s)` URL, or nothing. Blank inputs read as "no link". */
+const optionalHttpUrlSchema = z
+  .string()
+  .trim()
+  .max(500, "errors.invalidData")
+  .transform(emptyToNull)
+  .pipe(z.url({ protocol: /^https?$/, error: "errors.invalidData" }).nullable());
+
+const optionalOwnedImageSchema = z.union([s3UrlSchema, z.literal(""), z.null()]).optional();
+
+const hexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid hex color");
+
+const onlineStoreIdentityInputSchema = z.object({
+  name: z.string().trim().min(2, "errors.invalidData").max(255, "errors.invalidData"),
+  /** Editor HTML; null once its text is blank. Sanitised on write. */
+  tagline: z
+    .string()
+    .max(4000, "errors.invalidData")
+    .refine((value) => stripTags(value).length <= 240, "errors.invalidData")
+    .transform((value) => (stripTags(value) === "" ? null : value)),
+  /** Editor HTML; sanitised on write. */
+  description: z.string().max(100000, "errors.invalidData"),
+  /** ISO 639-1 storefront language; null follows the visitor's browser. */
+  locale: z
+    .string()
+    .regex(/^[a-z]{2}$/, "errors.invalidData")
+    .nullable(),
+  logoUrl: optionalOwnedImageSchema,
+  darkLogoUrl: optionalOwnedImageSchema,
+  faviconUrl: optionalOwnedImageSchema,
+  theme: z.object({
+    mode: z.enum(["light", "dark"]),
+    primaryColor: hexColorSchema,
+  }),
+});
+
+const onlineStoreHomeInputSchema = z.object({
+  heroImages: z.array(s3UrlSchema).max(5).optional(),
+  heroLayout: z.enum(["cover", "split"]),
+  heroAlign: z.enum(["start", "center", "end"]),
+  heroVerticalAlign: z.enum(["start", "center", "end"]),
+  catalogBrowseMode: z.enum(["products", "categories"]),
+  maxDiscountPercent: z.number().int().min(0).max(100).nullable(),
+  announcement: z.object({
+    enabled: z.boolean(),
+    text: z.string().trim().max(200, "errors.invalidData"),
+    href: optionalHttpUrlSchema,
+  }),
+  homeSections: z.object({
+    map: z.boolean(),
+    reviews: z.boolean(),
+    reassurance: z.boolean(),
+  }),
+});
+
+const onlineStoreSocialLinksSchema = z.object({
+  instagram: optionalHttpUrlSchema,
+  facebook: optionalHttpUrlSchema,
+  tiktok: optionalHttpUrlSchema,
+  youtube: optionalHttpUrlSchema,
+  linkedin: optionalHttpUrlSchema,
+  x: optionalHttpUrlSchema,
+  website: optionalHttpUrlSchema,
+});
+
+const onlineStoreContactInputSchema = z.object({
+  email: optionalContactEmailSchema,
+  phone: optionalContactPhoneSchema,
+  address: z.string().trim().max(1000, "errors.invalidData").transform(emptyToNull),
+  latitude: z.number().min(-90).max(90).nullable(),
+  longitude: z.number().min(-180).max(180).nullable(),
+  /** The contact page itself, saved whole under `settings.contact`. */
+  channels: updateStoreContactInputSchema,
+  social: onlineStoreSocialLinksSchema,
+  headerPhone: z.boolean(),
+});
+
+const onlineStoreLegalInputSchema = z.object({
+  cgv: z.string().max(100000, "errors.invalidData"),
+  legalNotice: z.string().max(100000, "errors.invalidData"),
+  includeFullCgvInContract: z.boolean(),
+  footerNote: z.string().trim().max(500, "errors.invalidData").transform(emptyToNull),
+});
+
+const onlineStoreSeoInputSchema = z.object({
+  googleSiteVerification: updateStoreSeoInputSchema.shape.googleSiteVerification,
+  shareImageUrl: optionalOwnedImageSchema,
+});
+
+export const updateOnlineStoreInputSchema = z.object({
+  identity: onlineStoreIdentityInputSchema.optional(),
+  home: onlineStoreHomeInputSchema.optional(),
+  contact: onlineStoreContactInputSchema.optional(),
+  legal: onlineStoreLegalInputSchema.optional(),
+  seo: onlineStoreSeoInputSchema.optional(),
 });
 
 export const dashboardIntegrationsGetTulipStateInputSchema = z.object({});
@@ -603,6 +955,14 @@ export type StorefrontResolveCombinationInput = z.infer<
   typeof storefrontResolveCombinationInputSchema
 >;
 export type StorefrontCartResolveInput = z.infer<typeof storefrontCartResolveInputSchema>;
+export type StorefrontAvailabilityOutput = z.infer<typeof storefrontAvailabilityOutputSchema>;
+export type StorefrontProductAvailability = z.infer<typeof storefrontProductAvailabilitySchema>;
+export type StorefrontResolveCombinationOutput = z.infer<
+  typeof storefrontResolveCombinationOutputSchema
+>;
+export type StorefrontCartLineResolution = z.infer<typeof storefrontCartLineResolutionSchema>;
+export type StorefrontCartResolveOutput = z.infer<typeof storefrontCartResolveOutputSchema>;
+export type ReservationSignOutput = z.infer<typeof reservationSignOutputSchema>;
 export type DashboardReservationPollInput = z.infer<typeof dashboardReservationPollInputSchema>;
 export type DashboardReservationTimelinePeriodInput = z.infer<
   typeof dashboardReservationTimelinePeriodInputSchema
@@ -619,6 +979,9 @@ export type DashboardReservationGetByIdInput = z.infer<
 >;
 export type DashboardReservationUpdateNotesInput = z.infer<
   typeof dashboardReservationUpdateNotesInputSchema
+>;
+export type DashboardReservationUpdateBillingInput = z.infer<
+  typeof dashboardReservationUpdateBillingInputSchema
 >;
 export type DashboardReservationUpdateStatusInput = z.infer<
   typeof dashboardReservationUpdateStatusInputSchema
@@ -682,7 +1045,12 @@ export type DashboardReservationCreateManualReservationInput = z.infer<
   typeof dashboardReservationCreateManualReservationInputSchema
 >;
 export type UpdateStoreLegalInput = z.infer<typeof updateStoreLegalInputSchema>;
+export type UpdateStoreContactInput = z.infer<typeof updateStoreContactInputSchema>;
+export type UpdateStoreSeoInput = z.infer<typeof updateStoreSeoInputSchema>;
 export type UpdateStoreAppearanceInput = z.infer<typeof updateStoreAppearanceInputSchema>;
+export type UpdateOnlineStoreInput = z.infer<typeof updateOnlineStoreInputSchema>;
+/** What the client sends: the same slices before the schema's transforms run. */
+export type UpdateOnlineStoreClientInput = z.input<typeof updateOnlineStoreInputSchema>;
 export type DashboardIntegrationsGetTulipStateInput = z.infer<
   typeof dashboardIntegrationsGetTulipStateInputSchema
 >;

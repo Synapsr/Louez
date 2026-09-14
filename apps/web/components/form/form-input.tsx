@@ -6,12 +6,15 @@ import { getFieldError, useFieldContext } from "@/hooks/form/form-context";
 
 export function FormInput({
   label,
+  labelHelper,
   description,
   suffix,
   className,
   ...props
 }: {
   label?: string;
+  /** Extra detail shown in a tooltip beside the label. */
+  labelHelper?: string;
   description?: string;
   suffix?: React.ReactNode;
 } & InputProps) {
@@ -35,7 +38,7 @@ export function FormInput({
   return (
     <div className="flex flex-col gap-2 min-w-0">
       {label && (
-        <Label htmlFor={field.name} data-error={errors.length > 0}>
+        <Label htmlFor={field.name} helper={labelHelper} data-error={errors.length > 0}>
           {label}
         </Label>
       )}

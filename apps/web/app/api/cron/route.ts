@@ -1,3 +1,4 @@
+import { reconcileRentalExtensions } from "@/lib/reservations/extension-service";
 import { NextResponse } from "next/server";
 
 import { runMarketplaceDefaultPublication } from "@louez/api/services";
@@ -69,6 +70,9 @@ async function handleCron(request: Request) {
   });
 
   try {
+    tasks.push("rental-extensions");
+    results.rentalExtensions = await reconcileRentalExtensions();
+
     // Review requests: every minute
     tasks.push("review-requests");
     results.reviewRequests = await processReviewRequests();

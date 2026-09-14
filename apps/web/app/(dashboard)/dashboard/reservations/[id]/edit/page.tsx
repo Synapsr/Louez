@@ -1,33 +1,20 @@
-import { notFound, redirect } from 'next/navigation';
+import { getDateChangeRequests } from "@/lib/reservations/util.date-change-request";
+import { notFound, redirect } from "next/navigation";
 
-import { subDays } from 'date-fns';
-import { and, eq, exists, gte, inArray, ne, or } from 'drizzle-orm';
+import { subDays } from "date-fns";
+import { and, eq, exists, gte, inArray, ne, or } from "drizzle-orm";
 
-import {
-  db,
-  getBlockingReservationStatuses,
-  getEffectiveProductQuantities,
-} from '@louez/db';
-import {
-  products,
-  reservationItems,
-  reservations,
-  storeLocations,
-} from '@louez/db';
-import type { DeliverySettings, LegMethod, PricingKind, StockKind } from '@louez/types';
-import type { SeasonalPricingConfig } from '@louez/utils';
+import { db, getBlockingReservationStatuses, getEffectiveProductQuantities } from "@louez/db";
+import { products, reservationItems, reservations, storeLocations } from "@louez/db";
+import type { DeliverySettings, LegMethod, PricingKind, StockKind } from "@louez/types";
+import type { SeasonalPricingConfig } from "@louez/utils";
 
-import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
-import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
-import { getCurrentStore } from '@/lib/store-context';
+import { getDashboardTulipInsuranceModeFromSettings } from "@/lib/integrations/tulip/settings";
+import { resolveTulipIntegrationForStore } from "@/lib/integrations/tulip/state";
+import { getCurrentStore } from "@/lib/store-context";
 
-import { EditReservationForm } from './edit-reservation-form';
-import type {
-  PricingTier,
-  Product,
-  ReservationLocationOption,
-  StoreDeliveryInfo,
-} from './types';
+import { EditReservationForm } from "./edit-reservation-form";
+import type { PricingTier, Product, ReservationLocationOption, StoreDeliveryInfo } from "./types";
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -44,9 +31,7 @@ async function getActiveReservations(
   pendingBlocksAvailability: boolean,
 ) {
   const thirtyDaysAgo = subDays(new Date(), 30);
-  const blockingStatuses = getBlockingReservationStatuses(
-    pendingBlocksAvailability,
-  );
+  const blockingStatuses = getBlockingReservationStatuses(pendingBlocksAvailability);
 
   const activeReservations = await db.query.reservations.findMany({
     where: and(
@@ -64,7 +49,7 @@ async function getActiveReservations(
               and(
                 eq(reservationItems.reservationId, reservations.id),
                 eq(products.storeId, storeId),
-                eq(products.stockKind, 'consumable'),
+                eq(products.stockKind, "consumable"),
               ),
             ),
         ),
@@ -98,7 +83,7 @@ async function getActiveReservations(
       productId: item.productId,
       quantity: item.quantity,
       consumedQuantity: item.consumedQuantity,
-      stockKind: item.product?.stockKind ?? 'returnable',
+      stockKind: item.product?.stockKind ?? "returnable",
     })),
   }));
 }
@@ -121,7 +106,7 @@ function mapPricingTiers(
   return tiers.map((tier, index) => ({
     id: tier.id,
     minDuration: tier.minDuration ?? 1,
-    discountPercent: parseFloat(tier.discountPercent ?? '0'),
+    discountPercent: parseFloat(tier.discountPercent ?? "0"),
     period: tier.period ?? null,
     price: tier.price !== null ? parseFloat(tier.price) : null,
     displayOrder: tier.displayOrder ?? index,
@@ -160,15 +145,13 @@ function mapSeasonalPricings(
       .map((t, i) => ({
         id: t.id,
         minDuration: t.minDuration ?? 1,
-        discountPercent: parseFloat(t.discountPercent ?? '0'),
+        discountPercent: parseFloat(t.discountPercent ?? "0"),
         displayOrder: t.displayOrder ?? i,
       })),
     rates: sp.tiers
       .filter(
         (t): t is typeof t & { period: number; price: string } =>
-          typeof t.period === 'number' &&
-          t.period > 0 &&
-          typeof t.price === 'string',
+          typeof t.period === "number" && t.period > 0 && typeof t.price === "string",
       )
       .map((t, i) => ({
         id: t.id,
@@ -223,7 +206,7 @@ function mapProduct(p: {
     id: p.id,
     name: p.name,
     price: p.price,
-    deposit: p.deposit ?? '0',
+    deposit: p.deposit ?? "0",
     images: p.images ?? [],
     quantity: p.quantity,
     stockKind: p.stockKind,
@@ -237,13 +220,11 @@ function mapProduct(p: {
   };
 }
 
-export default async function EditReservationPage({
-  params,
-}: EditReservationPageProps) {
+export default async function EditReservationPage({ params }: EditReservationPageProps) {
   const store = await getCurrentStore();
 
   if (!store) {
-    redirect('/onboarding');
+    redirect("/onboarding");
   }
 
   const { id } = await params;
@@ -251,6 +232,10 @@ export default async function EditReservationPage({
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, id), eq(reservations.storeId, store.id)),
     with: {
+      activity: {
+        columns: { id: true, metadata: true },
+        orderBy: (activity, { desc }) => [desc(activity.createdAt)],
+      },
       customer: true,
       items: {
         with: {
@@ -277,80 +262,57 @@ export default async function EditReservationPage({
   }
 
   // Cannot edit completed, cancelled or rejected reservations
-  if (['completed', 'cancelled', 'rejected'].includes(reservation.status)) {
+  if (["completed", "cancelled", "rejected"].includes(reservation.status)) {
     redirect(`/dashboard/reservations/${id}`);
   }
 
   // Fetch products and existing reservations in parallel
-  const deliverySettings = (store.settings as Record<string, unknown> | null)
-    ?.delivery as DeliverySettings | undefined;
-  const [availableProducts, existingReservations, activeStoreLocations] =
-    await Promise.all([
-      db.query.products.findMany({
-        where: and(
-          eq(products.storeId, store.id),
-          eq(products.status, 'active'),
-        ),
-        with: {
-          pricingTiers: true,
-          seasonalPricings: {
-            with: { tiers: true },
-          },
-          tulipMapping: {
-            columns: {
-              productId: true,
-            },
+  const deliverySettings = (store.settings as Record<string, unknown> | null)?.delivery as
+    | DeliverySettings
+    | undefined;
+  const [availableProducts, existingReservations, activeStoreLocations] = await Promise.all([
+    db.query.products.findMany({
+      where: and(eq(products.storeId, store.id), eq(products.status, "active")),
+      with: {
+        pricingTiers: true,
+        seasonalPricings: {
+          with: { tiers: true },
+        },
+        tulipMapping: {
+          columns: {
+            productId: true,
           },
         },
-        // Storefront catalog order, with a predictable alphabetical fallback
-        // for stores that never configured displayOrder
-        orderBy: (products, { asc }) => [
-          asc(products.displayOrder),
-          asc(products.name),
-        ],
-      }),
-      getActiveReservations(
-        store.id,
-        id,
-        store.settings?.pendingBlocksAvailability ?? true,
-      ),
-      deliverySettings?.multiLocationEnabled
-        ? db.query.storeLocations.findMany({
-            where: and(
-              eq(storeLocations.storeId, store.id),
-              eq(storeLocations.isActive, true),
-            ),
-            orderBy: (storeLocations, { asc }) => [
-              asc(storeLocations.createdAt),
-            ],
-          })
-        : Promise.resolve([]),
-    ]);
+      },
+      // Storefront catalog order, with a predictable alphabetical fallback
+      // for stores that never configured displayOrder
+      orderBy: (products, { asc }) => [asc(products.displayOrder), asc(products.name)],
+    }),
+    getActiveReservations(store.id, id, store.settings?.pendingBlocksAvailability ?? true),
+    deliverySettings?.multiLocationEnabled
+      ? db.query.storeLocations.findMany({
+          where: and(eq(storeLocations.storeId, store.id), eq(storeLocations.isActive, true)),
+          orderBy: (storeLocations, { asc }) => [asc(storeLocations.createdAt)],
+        })
+      : Promise.resolve([]),
+  ]);
 
-  const currency = store.settings?.currency || 'EUR';
-  const tulipSettings = (await resolveTulipIntegrationForStore(store.id))
-    .settings;
-  const tulipInsuranceMode =
-    getDashboardTulipInsuranceModeFromSettings(tulipSettings);
+  const currency = store.settings?.currency || "EUR";
+  const tulipSettings = (await resolveTulipIntegrationForStore(store.id)).settings;
+  const tulipInsuranceMode = getDashboardTulipInsuranceModeFromSettings(tulipSettings);
   const effectiveQuantities = await getEffectiveProductQuantities(
     db,
     Array.from(
       new Set([
         ...availableProducts.map((product) => product.id),
-        ...reservation.items.flatMap((item) =>
-          item.product ? [item.product.id] : [],
-        ),
+        ...reservation.items.flatMap((item) => (item.product ? [item.product.id] : [])),
       ]),
     ),
   );
-  const availableProductsWithEffectiveQuantity = availableProducts.map(
-    (product) => ({
-      ...product,
-      quantity: product.trackUnits
-        ? effectiveQuantities.get(product.id) ?? 0
-        : product.quantity,
-    }),
-  );
+  const availableProductsWithEffectiveQuantity = availableProducts.map((product) => ({
+    ...product,
+    quantity: product.trackUnits ? (effectiveQuantities.get(product.id) ?? 0) : product.quantity,
+  }));
 
   const locationOptions: ReservationLocationOption[] = [
     {
@@ -359,7 +321,7 @@ export default async function EditReservationPage({
       address: store.address ?? null,
       city: null,
       postalCode: null,
-      country: store.settings?.country ?? 'FR',
+      country: store.settings?.country ?? "FR",
     },
     ...activeStoreLocations.map((location) => ({
       id: location.id,
@@ -385,6 +347,11 @@ export default async function EditReservationPage({
 
   return (
     <EditReservationForm
+      dateChangeRequest={
+        getDateChangeRequests(reservation.activity).find(
+          (request) => request.status === "pending",
+        ) ?? null
+      }
       reservation={{
         id: reservation.id,
         number: reservation.number,
@@ -399,8 +366,8 @@ export default async function EditReservationPage({
         tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
         tulipInsuranceAmount: reservation.tulipInsuranceAmount,
         delivery: {
-          outboundMethod: (reservation.outboundMethod as LegMethod) ?? 'store',
-          returnMethod: (reservation.returnMethod as LegMethod) ?? 'store',
+          outboundMethod: (reservation.outboundMethod as LegMethod) ?? "store",
+          returnMethod: (reservation.returnMethod as LegMethod) ?? "store",
           pickupLocationId: reservation.pickupLocationId,
           returnLocationId: reservation.returnLocationId,
           pickupLocationSnapshot: reservation.pickupLocationSnapshot,

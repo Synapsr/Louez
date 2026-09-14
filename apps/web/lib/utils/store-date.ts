@@ -12,11 +12,11 @@
  */
 
 // eslint-disable-next-line no-restricted-imports
-import { format } from 'date-fns'
-import { formatInTimeZone } from 'date-fns-tz'
-import { resolveFormatLocale } from '@/lib/i18n/format-locale'
+import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
+import { resolveFormatLocale } from "@/lib/i18n/format-locale";
 
-const DEFAULT_TIMEZONE = 'UTC'
+const DEFAULT_TIMEZONE = "UTC";
 
 /**
  * Named format presets covering every pattern used across the codebase.
@@ -30,10 +30,10 @@ export const DATE_FORMATS = {
   SHORT_DATETIME: "EEE d MMM 'à' HH:mm",
 
   /** "05 janv. 2026 14:00" — activity timeline, audit logs */
-  COMPACT_DATETIME: 'dd MMM yyyy HH:mm',
+  COMPACT_DATETIME: "dd MMM yyyy HH:mm",
 
   /** "05/01/26 14:00" — payment summary, compact timestamps */
-  TIMESTAMP: 'dd/MM/yy HH:mm',
+  TIMESTAMP: "dd/MM/yy HH:mm",
 
   /** "5 janv. 2026 à 14:00" — online payment status */
   DATE_AT_TIME: "d MMM yyyy 'à' HH:mm",
@@ -42,46 +42,45 @@ export const DATE_FORMATS = {
   SHORT_DATE_AT_TIME: "d MMM 'à' HH:mm",
 
   /** "5 janv. 14:00" — date range elements */
-  RANGE_ELEMENT: 'd MMM HH:mm',
+  RANGE_ELEMENT: "d MMM HH:mm",
 
   /** "14:00" — time only */
-  TIME_ONLY: 'HH:mm',
+  TIME_ONLY: "HH:mm",
 
   /** "lundi 5 janvier 2026" — PDF full date (no time) */
-  FULL_DATE: 'EEEE d MMMM yyyy',
+  FULL_DATE: "EEEE d MMMM yyyy",
 
   /** "5 janvier 2026" — PDF medium date */
-  MEDIUM_DATE: 'd MMMM yyyy',
+  MEDIUM_DATE: "d MMMM yyyy",
 
   /** "05 janv. 2026" — short date with year */
-  SHORT_DATE: 'dd MMM yyyy',
+  SHORT_DATE: "dd MMM yyyy",
 
   /** "5 janv." — shortest date, used in pickers and ranges */
-  SHORTEST_DATE: 'd MMM',
+  SHORTEST_DATE: "d MMM",
 
   /** "lundi 05 janvier" — day name + date */
-  DAY_AND_DATE: 'EEEE dd MMMM',
+  DAY_AND_DATE: "EEEE dd MMMM",
 
   /** "05/01" — compact date */
-  COMPACT_DATE: 'dd/MM',
+  COMPACT_DATE: "dd/MM",
 
   /** "5 janvier 2026 à 14:00:00" — PDF precise datetime */
   PRECISE_DATETIME: "d MMMM yyyy 'à' HH:mm:ss",
-} as const
+} as const;
 
-export type DateFormatPreset = keyof typeof DATE_FORMATS
+export type DateFormatPreset = keyof typeof DATE_FORMATS;
 
-const LOCALIZED_DATE_TIME_PARTS: Partial<
-  Record<DateFormatPreset, { date: string; time: string }>
-> = {
-  FULL_DATETIME: { date: 'EEEE d MMMM yyyy', time: 'HH:mm' },
-  SHORT_DATETIME: { date: 'EEE d MMM', time: 'HH:mm' },
-  DATE_AT_TIME: { date: 'd MMM yyyy', time: 'HH:mm' },
-  SHORT_DATE_AT_TIME: { date: 'd MMM', time: 'HH:mm' },
-  PRECISE_DATETIME: { date: 'd MMMM yyyy', time: 'HH:mm:ss' },
-}
+const LOCALIZED_DATE_TIME_PARTS: Partial<Record<DateFormatPreset, { date: string; time: string }>> =
+  {
+    FULL_DATETIME: { date: "EEEE d MMMM yyyy", time: "HH:mm" },
+    SHORT_DATETIME: { date: "EEE d MMM", time: "HH:mm" },
+    DATE_AT_TIME: { date: "d MMM yyyy", time: "HH:mm" },
+    SHORT_DATE_AT_TIME: { date: "d MMM", time: "HH:mm" },
+    PRECISE_DATETIME: { date: "d MMMM yyyy", time: "HH:mm:ss" },
+  };
 
-const isDateFormatPreset = (value: string): value is DateFormatPreset => value in DATE_FORMATS
+const isDateFormatPreset = (value: string): value is DateFormatPreset => value in DATE_FORMATS;
 
 /**
  * Format a date in the store's timezone.
@@ -98,39 +97,38 @@ export function formatStoreDate(
   date: Date | string,
   timezone: string | undefined | null,
   preset: DateFormatPreset | (string & {}),
-  locale: string
+  locale: string,
 ): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  const dateFnsLocale = resolveFormatLocale(locale).dateFns
-  const localizedParts = isDateFormatPreset(preset)
-    ? LOCALIZED_DATE_TIME_PARTS[preset]
-    : undefined
+  const d = typeof date === "string" ? new Date(date) : date;
+  const dateFnsLocale = resolveFormatLocale(locale).dateFns;
+  const localizedParts = isDateFormatPreset(preset) ? LOCALIZED_DATE_TIME_PARTS[preset] : undefined;
   const localizedDateTimePattern = localizedParts
-    ? dateFnsLocale.formatLong?.dateTime({ width: 'long' })
-    : undefined
-  const pattern = localizedParts && localizedDateTimePattern
-    ? localizedDateTimePattern
-        .replace('{{date}}', localizedParts.date)
-        .replace('{{time}}', localizedParts.time)
-    : isDateFormatPreset(preset)
-      ? DATE_FORMATS[preset]
-      : preset
+    ? dateFnsLocale.formatLong?.dateTime({ width: "long" })
+    : undefined;
+  const pattern =
+    localizedParts && localizedDateTimePattern
+      ? localizedDateTimePattern
+          .replace("{{date}}", localizedParts.date)
+          .replace("{{time}}", localizedParts.time)
+      : isDateFormatPreset(preset)
+        ? DATE_FORMATS[preset]
+        : preset;
 
-  const tz = timezone?.trim() || null
+  const tz = timezone?.trim() || null;
 
   if (tz) {
     try {
-      return formatInTimeZone(d, tz, pattern, { locale: dateFnsLocale })
+      return formatInTimeZone(d, tz, pattern, { locale: dateFnsLocale });
     } catch {
       // Invalid timezone string — fall back to UTC
       return formatInTimeZone(d, DEFAULT_TIMEZONE, pattern, {
         locale: dateFnsLocale,
-      })
+      });
     }
   }
 
   // No timezone provided — use local format (server or browser TZ)
-  return format(d, pattern, { locale: dateFnsLocale })
+  return format(d, pattern, { locale: dateFnsLocale });
 }
 
 /**
@@ -148,23 +146,23 @@ export function formatStoreDateRange(
   endDate: Date | string,
   timezone: string | undefined | null,
   locale: string,
-  options?: { compact?: boolean }
+  options?: { compact?: boolean },
 ): string {
-  const startShort = formatStoreDate(startDate, timezone, 'SHORTEST_DATE', locale)
-  const endShort = formatStoreDate(endDate, timezone, 'SHORTEST_DATE', locale)
+  const startShort = formatStoreDate(startDate, timezone, "SHORTEST_DATE", locale);
+  const endShort = formatStoreDate(endDate, timezone, "SHORTEST_DATE", locale);
 
   if (options?.compact) {
-    if (startShort === endShort) return startShort
-    return `${startShort} → ${endShort}`
+    if (startShort === endShort) return startShort;
+    return `${startShort} → ${endShort}`;
   }
 
   if (startShort === endShort) {
-    const startTime = formatStoreDate(startDate, timezone, 'TIME_ONLY', locale)
-    const endTime = formatStoreDate(endDate, timezone, 'TIME_ONLY', locale)
-    return `${startShort} • ${startTime} - ${endTime}`
+    const startTime = formatStoreDate(startDate, timezone, "TIME_ONLY", locale);
+    const endTime = formatStoreDate(endDate, timezone, "TIME_ONLY", locale);
+    return `${startShort} • ${startTime} - ${endTime}`;
   }
 
-  return `${formatStoreDate(startDate, timezone, 'RANGE_ELEMENT', locale)} → ${formatStoreDate(endDate, timezone, 'RANGE_ELEMENT', locale)}`
+  return `${formatStoreDate(startDate, timezone, "RANGE_ELEMENT", locale)} → ${formatStoreDate(endDate, timezone, "RANGE_ELEMENT", locale)}`;
 }
 
 /**
@@ -175,5 +173,56 @@ export function formatStoreTime(
   timezone: string | undefined | null,
   locale: string,
 ): string {
-  return formatStoreDate(date, timezone, 'TIME_ONLY', locale)
+  return formatStoreDate(date, timezone, "TIME_ONLY", locale);
+}
+
+interface FormatRentalPeriodOptions {
+  timezone: string | undefined | null;
+  locale: string;
+  /** `short` for chips ("3–5 mars"), `long` adds the pickup and return times. */
+  style?: "short" | "long";
+  /** Clock used to decide whether the year is worth showing. */
+  now?: Date;
+}
+
+/**
+ * One period label for chips, summaries and cart lines, in the store's
+ * timezone.
+ *
+ * Same day:     "5 janv. · 09:00–18:00"
+ * Same month:   "3–5 mars"                 (long: "3 mars 09:00 → 5 mars 18:00")
+ * Other month:  "28 févr. – 2 mars"
+ * The year only appears when the period leaves the current year.
+ */
+export function formatRentalPeriod(
+  startDate: Date | string,
+  endDate: Date | string,
+  { timezone, locale, style = "short", now = new Date() }: FormatRentalPeriodOptions,
+): string {
+  const start = typeof startDate === "string" ? new Date(startDate) : startDate;
+  const end = typeof endDate === "string" ? new Date(endDate) : endDate;
+  const part = (date: Date, pattern: string) => formatStoreDate(date, timezone, pattern, locale);
+
+  const currentYear = part(now, "yyyy");
+  const showYear = part(start, "yyyy") !== currentYear || part(end, "yyyy") !== currentYear;
+  const dayPattern = showYear ? "d MMM yyyy" : "d MMM";
+
+  const startTime = part(start, "HH:mm");
+  const endTime = part(end, "HH:mm");
+
+  if (style === "long") {
+    return `${part(start, dayPattern)} ${startTime} → ${part(end, dayPattern)} ${endTime}`;
+  }
+
+  const sameDay = part(start, "yyyy-MM-dd") === part(end, "yyyy-MM-dd");
+  if (sameDay) {
+    return `${part(start, dayPattern)} · ${startTime}–${endTime}`;
+  }
+
+  const sameMonth = part(start, "yyyy-MM") === part(end, "yyyy-MM");
+  if (sameMonth) {
+    return `${part(start, "d")}–${part(end, dayPattern)}`;
+  }
+
+  return `${part(start, dayPattern)} – ${part(end, dayPattern)}`;
 }

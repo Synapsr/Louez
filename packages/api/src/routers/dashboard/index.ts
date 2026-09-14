@@ -8,12 +8,12 @@ import { dashboardCustomersRouter } from "./customers";
 import { dashboardIntegrationsRouter } from "./integrations";
 import { dashboardNotificationsRouter } from "./notifications";
 import { dashboardOnboardingRouter } from "./onboarding";
+import { dashboardOnlineStoreRouter } from "./online-store";
 import { dashboardPaymentsRouter } from "./payments";
 import { dashboardProductsRouter } from "./products";
 import { dashboardReferralRouter } from "./referral";
 import { dashboardReservationsRouter } from "./reservations";
 import { dashboardSearchRouter } from "./search";
-import { dashboardSettingsRouter } from "./settings";
 import { dashboardVariantsRouter } from "./variants";
 
 /**
@@ -43,10 +43,10 @@ export const dashboardRouter = {
   categories: dashboardCategoriesRouter,
   customers: dashboardCustomersRouter,
   integrations: dashboardIntegrationsRouter,
-  settings: dashboardSettingsRouter,
   reservations: dashboardReservationsRouter,
   search: dashboardSearchRouter,
   onboarding: dashboardOnboardingRouter,
+  onlineStore: dashboardOnlineStoreRouter,
   payments: dashboardPaymentsRouter,
   products: dashboardProductsRouter,
   notifications: dashboardNotificationsRouter,

@@ -7,6 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@loue
 import { CodeIcon, ExternalLinkIcon, EyeIcon } from "@louez/ui/icons";
 
 import { CopyButton } from "@/components/ui/copy-button";
+import { EMBED_INITIAL_HEIGHT } from "@/lib/embed/embed-widget.constants";
+import { readEmbedResizeHeight } from "@/lib/embed/util.embed-messaging";
+import { buildEmbedSnippet } from "@/lib/embed/util.embed-snippet";
 
 interface EmbedCodeSectionProps {
   embedUrl: string;
@@ -20,33 +23,20 @@ export function EmbedCodeSection({ embedUrl, storeName }: EmbedCodeSectionProps)
   // Auto-resize preview iframe via postMessage from embed
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "louez-embed-resize" && previewIframeRef.current) {
-        previewIframeRef.current.style.height = `${event.data.height}px`;
+      const height = readEmbedResizeHeight(event.data);
+      if (height !== null && previewIframeRef.current) {
+        previewIframeRef.current.style.height = `${height}px`;
       }
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
-  const embedSnippet = `<div id="louez-embed">
-  <iframe
-    src="${embedUrl}"
-    width="100%"
-    height="210"
-    frameborder="0"
-    style="border: none; border-radius: 16px; transition: height 0.3s ease;"
-    title="${t("iframeTitle", { storeName })}"
-    allow="popups"
-  ></iframe>
-</div>
-<script>
-  window.addEventListener("message", function(e) {
-    if (e.data && e.data.type === "louez-embed-resize") {
-      var iframe = document.querySelector("#louez-embed iframe");
-      if (iframe) iframe.style.height = e.data.height + "px";
-    }
+  const embedSnippet = buildEmbedSnippet({
+    embedUrl,
+    iframeTitle: t("iframeTitle", { storeName }),
+    variant: "auto",
   });
-</script>`;
 
   return (
     <div className="space-y-6">
@@ -65,7 +55,7 @@ export function EmbedCodeSection({ embedUrl, storeName }: EmbedCodeSectionProps)
               ref={previewIframeRef}
               src={embedUrl}
               width="100%"
-              height="210"
+              height={EMBED_INITIAL_HEIGHT}
               style={{
                 border: "none",
                 borderRadius: "16px",

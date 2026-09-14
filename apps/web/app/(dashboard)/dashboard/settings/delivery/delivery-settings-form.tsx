@@ -339,7 +339,7 @@ export function DeliverySettingsForm({
                 <WarningIcon className="h-4 w-4" />
                 <AlertDescription className="flex items-center justify-between">
                   <span>{t("noCoordinatesWarning")}</span>
-                  <Button variant="outline" render={<Link href="/dashboard/settings" />}>
+                  <Button variant="outline" render={<Link href="/online-store/contact" />}>
                     <MapPinIcon className="mr-2 h-4 w-4" />
                     {t("goToStoreSettings")}
                   </Button>

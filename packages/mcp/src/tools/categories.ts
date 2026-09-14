@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { db, categories } from '@louez/db'
+import { categories, db, nextCategorySlug } from '@louez/db'
 import { and, eq } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
@@ -46,6 +46,7 @@ export function registerCategoryTools(server: McpServer, ctx: McpSessionContext)
         .values({
           storeId: ctx.storeId,
           name,
+          slug: await nextCategorySlug(db, ctx.storeId, name),
           description: description ?? null,
         })
         .$returningId()

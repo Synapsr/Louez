@@ -11,6 +11,7 @@ import {
 
 export function FormSelect({
   label,
+  labelHelper,
   description,
   placeholder,
   children,
@@ -18,6 +19,8 @@ export function FormSelect({
   items,
 }: {
   label?: string
+  /** Extra detail shown in a tooltip beside the label. */
+  labelHelper?: string
   description?: string
   placeholder?: string
   children: React.ReactNode
@@ -33,7 +36,7 @@ export function FormSelect({
   return (
     <div className="grid gap-2">
       {label && (
-        <Label htmlFor={field.name} data-error={errors.length > 0}>
+        <Label htmlFor={field.name} helper={labelHelper} data-error={errors.length > 0}>
           {label}
         </Label>
       )}

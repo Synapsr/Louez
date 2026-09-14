@@ -540,6 +540,48 @@
       "when": 1788809804934,
       "tag": "0071_huge_switch",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "5",
+      "when": 1788899054137,
+      "tag": "0072_kind_krista_starr",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "5",
+      "when": 1788967629981,
+      "tag": "0073_reservation_billing_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1789206052566,
+      "tag": "0074_cute_wendell_vaughn",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "5",
+      "when": 1789369647923,
+      "tag": "0075_product_category_slugs",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "5",
+      "when": 1789372215449,
+      "tag": "0076_store_favicon_tagline",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "5",
+      "when": 1789380712502,
+      "tag": "0077_store_tagline_text",
+      "breakpoints": true
     }
   ]
 }

@@ -466,9 +466,17 @@ export function calculateRateBasedPrice(
   const deposit = roundCurrency(pricing.deposit * quantity);
   const total = roundCurrency(subtotal + deposit);
 
-  // Original subtotal: base rate × base periods (what it would cost without discounts)
-  const basePeriods = Math.ceil(targetMinutes / pricing.basePeriodMinutes);
-  const originalSubtotal = roundCurrency(basePeriods * pricing.basePrice * quantity);
+  // Compare with the base rate under the same billing mode. Proration alone
+  // is not a discount. Round per item, as for the charged subtotal above.
+  const referencePerItem = enforceStrict
+    ? Math.ceil(targetMinutes / pricing.basePeriodMinutes) * pricing.basePrice
+    : roundCurrency(
+        Math.max(
+          pricing.basePrice,
+          (pricing.basePrice / pricing.basePeriodMinutes) * targetMinutes,
+        ),
+      );
+  const originalSubtotal = roundCurrency(referencePerItem * quantity);
   const savings = roundCurrency(Math.max(0, originalSubtotal - subtotal));
   const reductionPercent =
     originalSubtotal > 0 && savings > 0 ? roundCurrency((savings / originalSubtotal) * 100) : null;

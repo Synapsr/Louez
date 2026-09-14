@@ -1,3 +1,7 @@
+import type { StoreSettings } from "@louez/types";
+
+import type { AvailabilityMemo } from "./services/availability";
+
 /**
  * Store-configured overrides of an email's wording ({name}/{number}
  * placeholders). Structural subset of `EmailCustomContent` in @louez/types.
@@ -57,9 +61,17 @@ export type StoreData = BaseStoreData & {
 };
 
 /**
- * Public store data for storefront context (no role)
+ * Store data a storefront procedure may read: the columns `storefrontProcedure`
+ * selects once per request. Everything a service needs (identity, settings)
+ * travels through the context so no service re-reads the store row.
  */
-export type PublicStoreData = BaseStoreData;
+export type PublicStoreData = {
+  id: string;
+  slug: string;
+  name: string;
+  settings: StoreSettings | null;
+  onboardingCompleted: boolean | null;
+};
 
 /**
  * Customer session data for storefront
@@ -103,6 +115,7 @@ type CalendarIntegrationState = {
  */
 export interface BaseContext {
   headers: Headers;
+  invalidateStoreViewport?: (storeSlug: string) => void | Promise<void>;
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
   getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
@@ -640,4 +653,6 @@ export interface StorefrontContext extends BaseContext {
   storeSlug: string;
   store: PublicStoreData;
   customer: CustomerData | null;
+  /** Per-request cache of availability computations, shared by every service the call touches. */
+  availabilityMemo: AvailabilityMemo;
 }

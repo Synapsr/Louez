@@ -1,3 +1,4 @@
+import type { ProductPromotion } from "@louez/types";
 import type { ComponentType, ReactNode } from "react";
 
 import type { FormRadioGroupProps } from "@/components/form/form-radio-group";
@@ -123,6 +124,7 @@ export interface Product {
   imageHistory?: ProductImageHistory[] | null;
   videoUrl: string | null;
   taxSettings?: ProductTaxSettings | null;
+  promotion?: ProductPromotion | null;
   enforceStrictTiers?: boolean;
   accessories?: ProductAccessoryLinkInput[];
   trackUnits?: boolean;
@@ -143,6 +145,7 @@ export interface ProductFormProps {
   categories: Category[];
   currency?: string;
   storeTaxSettings?: TaxSettings;
+  storeTimezone?: string;
   availableAccessories?: AvailableAccessory[];
   showAiContext?: boolean;
   imageEnhanceEnabled?: boolean;

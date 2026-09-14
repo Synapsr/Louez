@@ -5,7 +5,9 @@ import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { formatCurrency } from "@louez/utils";
+import { applyProductPromotion, formatCurrency } from "@louez/utils";
+import type { ProductPromotion } from "@louez/types";
+import { useFormatLocale } from "@/hooks/use-format-locale";
 
 import { formatPeriodDuration } from "./util.product-pricing";
 
@@ -21,10 +23,19 @@ interface ProductPricingTiersTableTier {
 interface ProductPricingTiersTableProps {
   tiers: ProductPricingTiersTableTier[];
   currency: string;
+  promotion?: ProductPromotion | null;
+  timezone?: string;
 }
 
-export const ProductPricingTiersTable = ({ tiers, currency }: ProductPricingTiersTableProps) => {
+export const ProductPricingTiersTable = ({
+  tiers,
+  currency,
+  promotion,
+  timezone,
+}: ProductPricingTiersTableProps) => {
   const t = useTranslations("dashboard.products.detail.info");
+  const tCommon = useTranslations("common");
+  const { intl: formatLocale } = useFormatLocale();
   const tForm = useTranslations("dashboard.products.form");
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -43,18 +54,32 @@ export const ProductPricingTiersTable = ({ tiers, currency }: ProductPricingTier
             <th className="px-3 py-2 text-left font-medium">
               {tForm("pricingTiers.fromDuration")}
             </th>
-            <th className="px-3 py-2 text-right font-medium">{tForm("pricePerDay")}</th>
+            <th className="px-3 py-2 text-right font-medium">{tCommon("price")}</th>
           </tr>
         </thead>
         <tbody>
-          {visibleTiers.map((tier) => (
-            <tr key={tier.id} className="border-t">
-              <td className="px-3 py-2">{formatPeriodDuration(tier.period)}</td>
-              <td className="px-3 py-2 text-right">
-                {tier.price ? formatCurrency(parseFloat(tier.price), currency) : "—"}
-              </td>
-            </tr>
-          ))}
+          {visibleTiers.map((tier) => {
+            const price = tier.price
+              ? applyProductPromotion(parseFloat(tier.price), promotion, timezone)
+              : null;
+            return (
+              <tr key={tier.id} className="border-t">
+                <td className="px-3 py-2">{formatPeriodDuration(tier.period)}</td>
+                <td className="px-3 py-2 text-right">
+                  <span className="inline-flex flex-wrap items-baseline justify-end gap-2 tabular-nums">
+                    {price?.promotion && (
+                      <s className="text-xs text-muted-foreground">
+                        {formatCurrency(price.promotion.originalSubtotal, currency, formatLocale)}
+                      </s>
+                    )}
+                    <span>
+                      {price ? formatCurrency(price.subtotal, currency, formatLocale) : "—"}
+                    </span>
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 

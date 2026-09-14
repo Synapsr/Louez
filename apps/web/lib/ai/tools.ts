@@ -1,5 +1,5 @@
 import { tool } from "ai";
-import { and, desc, eq, gte, inArray, like, lte, sql, sum } from "drizzle-orm";
+import { and, desc, eq, exists, gte, inArray, like, lte, or, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -26,6 +26,8 @@ import {
   consumeReservationStock,
   restoreReservationStock,
   stores,
+  nextProductSlug,
+  nextCategorySlug,
 } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
@@ -167,6 +169,7 @@ export function createAITools(ctx: AIChatContext) {
           .values({
             storeId: ctx.storeId,
             name,
+            slug: await nextProductSlug(db, ctx.storeId, name),
             description: description ?? null,
             price,
             deposit: deposit ?? "0",
@@ -529,7 +532,26 @@ export function createAITools(ctx: AIChatContext) {
         requirePermission(ctx, "customers", "read");
 
         const conditions = [eq(customers.storeId, ctx.storeId)];
-        if (type) conditions.push(eq(customers.customerType, type));
+        if (type) {
+          // Business: default identity or at least one reservation billed to a company.
+          const isBusiness = or(
+            eq(customers.customerType, "business"),
+            exists(
+              db
+                .select({ id: reservations.id })
+                .from(reservations)
+                .where(
+                  and(
+                    eq(reservations.customerId, customers.id),
+                    sql`JSON_UNQUOTE(JSON_EXTRACT(${reservations.billingSnapshot}, '$.customerType')) = 'business'`,
+                  ),
+                ),
+            ),
+          );
+          if (isBusiness) {
+            conditions.push(type === "business" ? isBusiness : sql`NOT (${isBusiness})`);
+          }
+        }
         if (since) conditions.push(gte(customers.createdAt, new Date(since)));
         if (search) {
           const s = `%${search.toLowerCase()}%`;
@@ -1139,6 +1161,7 @@ export function createAITools(ctx: AIChatContext) {
             }),
           ),
           with: {
+            activity: { columns: { metadata: true } },
             items: {
               where: eq(reservationItems.productId, productId),
               columns: {
@@ -1252,6 +1275,7 @@ export function createAITools(ctx: AIChatContext) {
           .values({
             storeId: ctx.storeId,
             name,
+            slug: await nextCategorySlug(db, ctx.storeId, name),
             description: description ?? null,
           })
           .$returningId();

@@ -1,4 +1,4 @@
-import { BaseLayout } from './base-layout'
+import { BaseLayout } from "./base-layout";
 import {
   CtaButton,
   EmailHeading,
@@ -7,53 +7,53 @@ import {
   InfoCardItem,
   ItemsTable,
   resolveCustomContent,
-} from './components'
+} from "./components";
 import {
   getEmailTranslations,
   getDateFormatPatterns,
   getCurrencyFormatter,
   type EmailLocale,
-} from '../i18n'
-import type { EmailCustomContent } from '@louez/types'
-import type { ReservationLocationSnapshot } from '@louez/types'
-import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from '../date-time'
+} from "../i18n";
+import type { EmailCustomContent } from "@louez/types";
+import type { ReservationLocationSnapshot } from "@louez/types";
+import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
 
 interface ReservationItem {
-  name: string
-  quantity: number
-  unitPrice: number
-  totalPrice: number
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
 }
 
 interface ReservationConfirmationEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  pickupLocationSnapshot?: ReservationLocationSnapshot | null
-  returnLocationSnapshot?: ReservationLocationSnapshot | null
-  storePhone?: string | null
-  storeEmail?: string | null
-  storeTimezone?: string | null
-  storeCountry?: string | null
-  customerFirstName: string
-  reservationNumber: string
-  startDate: Date
-  endDate: Date
-  items: ReservationItem[]
-  subtotal: number
-  deposit: number
-  total: number
-  reservationUrl: string
-  contractSignatureUrl?: string
-  customContent?: EmailCustomContent
-  locale?: EmailLocale
-  currency?: string
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  pickupLocationSnapshot?: ReservationLocationSnapshot | null;
+  returnLocationSnapshot?: ReservationLocationSnapshot | null;
+  storePhone?: string | null;
+  storeEmail?: string | null;
+  storeTimezone?: string | null;
+  storeCountry?: string | null;
+  customerFirstName: string;
+  reservationNumber: string;
+  startDate: Date;
+  endDate: Date;
+  items: ReservationItem[];
+  subtotal: number;
+  deposit: number;
+  total: number;
+  reservationUrl: string;
+  contractSignatureUrl?: string;
+  customContent?: EmailCustomContent;
+  locale?: EmailLocale;
+  currency?: string;
   // Tax info
-  taxEnabled?: boolean
-  taxRate?: number | null
-  subtotalExclTax?: number | null
-  taxAmount?: number | null
+  taxEnabled?: boolean;
+  taxRate?: number | null;
+  subtotalExclTax?: number | null;
+  taxAmount?: number | null;
 }
 
 export function ReservationConfirmationEmail({
@@ -78,67 +78,67 @@ export function ReservationConfirmationEmail({
   reservationUrl,
   contractSignatureUrl,
   customContent,
-  locale = 'fr',
-  currency = 'EUR',
+  locale = "fr",
+  currency = "EUR",
   taxEnabled = false,
   taxRate,
   subtotalExclTax,
   taxAmount,
 }: ReservationConfirmationEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.confirmReservation
-  const tc = t.common
-  const datePatterns = getDateFormatPatterns(locale)
-  const formatCurrency = getCurrencyFormatter(locale, currency)
-  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const t = getEmailTranslations(locale);
+  const messages = t.confirmReservation;
+  const tc = t.common;
+  const datePatterns = getDateFormatPatterns(locale);
+  const formatCurrency = getCurrencyFormatter(locale, currency);
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry);
   const timezoneLine =
-    typeof tc.timezone === 'string'
-      ? tc.timezone.replace('{timezone}', timezoneLabel)
-      : `Timezone: ${timezoneLabel}`
+    typeof tc.timezone === "string"
+      ? tc.timezone.replace("{timezone}", timezoneLabel)
+      : `Timezone: ${timezoneLabel}`;
   const contractSignatureText =
-    typeof messages.contractSignature === 'string'
+    typeof messages.contractSignature === "string"
       ? messages.contractSignature
-      : t.requestAccepted.contractAvailable
+      : t.requestAccepted.contractAvailable;
   const contractSignatureLabel =
-    typeof messages.signContract === 'string'
+    typeof messages.signContract === "string"
       ? messages.signContract
-      : t.requestAccepted.viewContract
+      : t.requestAccepted.viewContract;
 
   const formatDate = (date: Date) =>
-    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry)
+    formatEmailDateInStoreTimezone(date, locale, datePatterns.full, storeTimezone, storeCountry);
   const isSameStoreLocation =
     Boolean(pickupLocationSnapshot) &&
     (!returnLocationSnapshot ||
       (returnLocationSnapshot.name === pickupLocationSnapshot?.name &&
-        returnLocationSnapshot.address === pickupLocationSnapshot?.address))
+        returnLocationSnapshot.address === pickupLocationSnapshot?.address));
 
   const { greeting, message } = resolveCustomContent(
     customContent,
     {
       greeting: tc.greeting,
-      signature: `${tc.regards}\n${tc.team.replace('{storeName}', storeName)}`,
+      signature: `${tc.regards}\n${tc.team.replace("{storeName}", storeName)}`,
     },
     { name: customerFirstName, number: reservationNumber },
-  )
+  );
 
-  const showTaxRows = taxEnabled && taxAmount != null && taxAmount > 0 && subtotalExclTax != null
+  const showTaxRows = taxEnabled && taxAmount != null && taxAmount > 0 && subtotalExclTax != null;
   const totals = [
     ...(showTaxRows
       ? [
           { label: tc.subtotalExclTax, amount: subtotalExclTax },
-          { label: tc.taxAmount.replace('{rate}', String(taxRate ?? 0)), amount: taxAmount },
+          { label: tc.taxAmount.replace("{rate}", String(taxRate ?? 0)), amount: taxAmount },
           { label: tc.subtotalInclTax, amount: subtotal },
         ]
       : [{ label: tc.subtotal, amount: subtotal }]),
     ...(deposit > 0 ? [{ label: tc.deposit, amount: deposit }] : []),
     { label: tc.totalToPay, amount: total, bold: true },
-  ]
+  ];
 
   return (
     <BaseLayout
       preview={
-        customContent?.subject?.replace('{number}', reservationNumber) ||
-        messages.subject.replace('{number}', reservationNumber)
+        customContent?.subject?.replace("{number}", reservationNumber) ||
+        messages.subject.replace("{number}", reservationNumber)
       }
       storeName={storeName}
       logoUrl={logoUrl}
@@ -152,7 +152,7 @@ export function ReservationConfirmationEmail({
 
       <EmailText>{greeting}</EmailText>
 
-      <EmailText>{messages.body.replace('{number}', reservationNumber)}</EmailText>
+      <EmailText>{messages.body.replace("{number}", reservationNumber)}</EmailText>
 
       {/* Custom message from store settings */}
       {message && <EmailText>{message}</EmailText>}
@@ -161,9 +161,9 @@ export function ReservationConfirmationEmail({
         label={tc.period}
         value={
           <>
-            {tc.periodFrom.replace('{startDate}', formatDate(startDate))}
+            {tc.periodFrom.replace("{startDate}", formatDate(startDate))}
             <br />
-            {tc.periodTo.replace('{endDate}', formatDate(endDate))}
+            {tc.periodTo.replace("{endDate}", formatDate(endDate))}
           </>
         }
         footnote={timezoneLine}
@@ -223,7 +223,7 @@ export function ReservationConfirmationEmail({
         </>
       )}
     </BaseLayout>
-  )
+  );
 }
 
-export default ReservationConfirmationEmail
+export default ReservationConfirmationEmail;

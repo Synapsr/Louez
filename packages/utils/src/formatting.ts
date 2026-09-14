@@ -1,56 +1,66 @@
-const DEFAULT_FORMAT_LOCALE = 'fr-FR'
+const DEFAULT_FORMAT_LOCALE = "fr-FR";
 
 // Currency formatting
+export interface FormatCurrencyOptions {
+  /** Digits after the decimal point; `0` prints whole amounts ("32 €"). */
+  fractionDigits?: number;
+}
+
 export function formatCurrency(
   amount: number,
-  currency: string = 'EUR',
+  currency: string = "EUR",
   locale?: string,
+  options?: FormatCurrencyOptions,
 ): string {
   // Determine the best locale for the currency
   const localeMap: Record<string, string> = {
-    EUR: 'fr-FR',
-    USD: 'en-US',
-    GBP: 'en-GB',
-    CHF: 'de-CH',
-    CAD: 'en-CA',
-    AUD: 'en-AU',
-    JPY: 'ja-JP',
-    CNY: 'zh-CN',
-    INR: 'en-IN',
-    BRL: 'pt-BR',
-    MXN: 'es-MX',
-    SEK: 'sv-SE',
-    NOK: 'nb-NO',
-    DKK: 'da-DK',
-    PLN: 'pl-PL',
-    CZK: 'cs-CZ',
-    HUF: 'hu-HU',
-    RON: 'ro-RO',
-    SGD: 'en-SG',
-    HKD: 'zh-HK',
-    KRW: 'ko-KR',
-    TWD: 'zh-TW',
-    THB: 'th-TH',
-    MYR: 'ms-MY',
-    PHP: 'fil-PH',
-    VND: 'vi-VN',
-    AED: 'ar-AE',
-    SAR: 'ar-SA',
-    ILS: 'he-IL',
-    ZAR: 'en-ZA',
-    MAD: 'ar-MA',
-    NZD: 'en-NZ',
-    ARS: 'es-AR',
-    CLP: 'es-CL',
-    COP: 'es-CO',
-  }
+    EUR: "fr-FR",
+    USD: "en-US",
+    GBP: "en-GB",
+    CHF: "de-CH",
+    CAD: "en-CA",
+    AUD: "en-AU",
+    JPY: "ja-JP",
+    CNY: "zh-CN",
+    INR: "en-IN",
+    BRL: "pt-BR",
+    MXN: "es-MX",
+    SEK: "sv-SE",
+    NOK: "nb-NO",
+    DKK: "da-DK",
+    PLN: "pl-PL",
+    CZK: "cs-CZ",
+    HUF: "hu-HU",
+    RON: "ro-RO",
+    SGD: "en-SG",
+    HKD: "zh-HK",
+    KRW: "ko-KR",
+    TWD: "zh-TW",
+    THB: "th-TH",
+    MYR: "ms-MY",
+    PHP: "fil-PH",
+    VND: "vi-VN",
+    AED: "ar-AE",
+    SAR: "ar-SA",
+    ILS: "he-IL",
+    ZAR: "en-ZA",
+    MAD: "ar-MA",
+    NZD: "en-NZ",
+    ARS: "es-AR",
+    CLP: "es-CL",
+    COP: "es-CO",
+  };
 
-  const formatLocale = locale || localeMap[currency] || DEFAULT_FORMAT_LOCALE
+  const formatLocale = locale || localeMap[currency] || DEFAULT_FORMAT_LOCALE;
 
   return new Intl.NumberFormat(formatLocale, {
-    style: 'currency',
+    style: "currency",
     currency: currency,
-  }).format(amount)
+    ...(options?.fractionDigits !== undefined && {
+      minimumFractionDigits: options.fractionDigits,
+      maximumFractionDigits: options.fractionDigits,
+    }),
+  }).format(amount);
 }
 
 /**
@@ -59,24 +69,24 @@ export function formatCurrency(
  */
 export function formatCurrencyForSms(
   amount: number,
-  currency: string = 'EUR',
+  currency: string = "EUR",
   locale: string = DEFAULT_FORMAT_LOCALE,
 ): string {
   const formatted = new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount)
+  }).format(amount);
 
   // Use readable currency names for common currencies
   const currencyNames: Record<string, string> = {
-    EUR: 'euros',
-    USD: 'dollars',
-    GBP: 'livres',
-    CHF: 'CHF',
-  }
+    EUR: "euros",
+    USD: "dollars",
+    GBP: "livres",
+    CHF: "CHF",
+  };
 
-  const currencyName = currencyNames[currency] || currency
-  return `${formatted} ${currencyName}`
+  const currencyName = currencyNames[currency] || currency;
+  return `${formatted} ${currencyName}`;
 }
 
 // Number formatting
@@ -88,16 +98,16 @@ export function formatNumber(
   return new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(value)
+  }).format(value);
 }
 
 // Percentage formatting
 export function formatPercent(value: number, locale: string = DEFAULT_FORMAT_LOCALE): string {
   return new Intl.NumberFormat(locale, {
-    style: 'percent',
+    style: "percent",
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
-  }).format(value / 100)
+  }).format(value / 100);
 }
 
 // Date formatting
@@ -106,28 +116,26 @@ export function formatDate(
   options?: Intl.DateTimeFormatOptions,
   locale: string = DEFAULT_FORMAT_LOCALE,
 ): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat(locale, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
+    day: "numeric",
+    month: "long",
+    year: "numeric",
     ...options,
-  }).format(d)
+  }).format(d);
 }
 
-export function toDatePickerValue(
-  value: Date | string | null | undefined,
-): Date | undefined {
+export function toDatePickerValue(value: Date | string | null | undefined): Date | undefined {
   if (!value) {
-    return undefined
+    return undefined;
   }
 
-  const date = typeof value === 'string' ? new Date(value) : value
+  const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) {
-    return undefined
+    return undefined;
   }
 
-  return date
+  return date;
 }
 
 // Short date formatting (e.g., "15 jan.")
@@ -135,11 +143,11 @@ export function formatDateShort(
   date: Date | string,
   locale: string = DEFAULT_FORMAT_LOCALE,
 ): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat(locale, {
-    day: 'numeric',
-    month: 'short',
-  }).format(d)
+    day: "numeric",
+    month: "short",
+  }).format(d);
 }
 
 // Date with time formatting
@@ -147,26 +155,23 @@ export function formatDateTime(
   date: Date | string,
   locale: string = DEFAULT_FORMAT_LOCALE,
 ): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat(locale, {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
 }
 
 // Time only formatting
-export function formatTime(
-  date: Date | string,
-  locale: string = DEFAULT_FORMAT_LOCALE,
-): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+export function formatTime(date: Date | string, locale: string = DEFAULT_FORMAT_LOCALE): string {
+  const d = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat(locale, {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(d)
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
 }
 
 // Date range formatting (e.g., "15 - 18 janvier 2025")
@@ -175,124 +180,124 @@ export function formatDateRange(
   endDate: Date | string,
   locale: string = DEFAULT_FORMAT_LOCALE,
 ): string {
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
-  const end = typeof endDate === 'string' ? new Date(endDate) : endDate
+  const start = typeof startDate === "string" ? new Date(startDate) : startDate;
+  const end = typeof endDate === "string" ? new Date(endDate) : endDate;
 
-  const sameMonth = start.getMonth() === end.getMonth()
-  const sameYear = start.getFullYear() === end.getFullYear()
+  const sameMonth = start.getMonth() === end.getMonth();
+  const sameYear = start.getFullYear() === end.getFullYear();
 
   if (sameMonth && sameYear) {
-    return `${start.getDate()} - ${formatDate(end, undefined, locale)}`
+    return `${start.getDate()} - ${formatDate(end, undefined, locale)}`;
   } else if (sameYear) {
-    return `${formatDateShort(start, locale)} - ${formatDate(end, undefined, locale)}`
+    return `${formatDateShort(start, locale)} - ${formatDate(end, undefined, locale)}`;
   } else {
-    return `${formatDate(start, undefined, locale)} - ${formatDate(end, undefined, locale)}`
+    return `${formatDate(start, undefined, locale)} - ${formatDate(end, undefined, locale)}`;
   }
 }
 
 // Relative time formatting (e.g., "il y a 2 jours", "dans 3 heures")
-export function formatRelativeTime(date: Date | string, locale: string = 'fr'): string {
-  const d = typeof date === 'string' ? new Date(date) : date
-  const now = new Date()
-  const diffMs = d.getTime() - now.getTime()
-  const diffSec = Math.round(diffMs / 1000)
-  const diffMin = Math.round(diffSec / 60)
-  const diffHours = Math.round(diffMin / 60)
-  const diffDays = Math.round(diffHours / 24)
-  const diffWeeks = Math.round(diffDays / 7)
-  const diffMonths = Math.round(diffDays / 30)
-  const diffYears = Math.round(diffDays / 365)
+export function formatRelativeTime(date: Date | string, locale: string = "fr"): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  const now = new Date();
+  const diffMs = d.getTime() - now.getTime();
+  const diffSec = Math.round(diffMs / 1000);
+  const diffMin = Math.round(diffSec / 60);
+  const diffHours = Math.round(diffMin / 60);
+  const diffDays = Math.round(diffHours / 24);
+  const diffWeeks = Math.round(diffDays / 7);
+  const diffMonths = Math.round(diffDays / 30);
+  const diffYears = Math.round(diffDays / 365);
 
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
 
   if (Math.abs(diffYears) >= 1) {
-    return rtf.format(diffYears, 'year')
+    return rtf.format(diffYears, "year");
   } else if (Math.abs(diffMonths) >= 1) {
-    return rtf.format(diffMonths, 'month')
+    return rtf.format(diffMonths, "month");
   } else if (Math.abs(diffWeeks) >= 1) {
-    return rtf.format(diffWeeks, 'week')
+    return rtf.format(diffWeeks, "week");
   } else if (Math.abs(diffDays) >= 1) {
-    return rtf.format(diffDays, 'day')
+    return rtf.format(diffDays, "day");
   } else if (Math.abs(diffHours) >= 1) {
-    return rtf.format(diffHours, 'hour')
+    return rtf.format(diffHours, "hour");
   } else if (Math.abs(diffMin) >= 1) {
-    return rtf.format(diffMin, 'minute')
+    return rtf.format(diffMin, "minute");
   } else {
-    return rtf.format(diffSec, 'second')
+    return rtf.format(diffSec, "second");
   }
 }
 
 // Duration in days - uses Math.ceil (round up): any partial day = full day billed
 export function calculateDurationDays(startDate: Date | string, endDate: Date | string): number {
-  const start = typeof startDate === 'string' ? new Date(startDate) : startDate
-  const end = typeof endDate === 'string' ? new Date(endDate) : endDate
-  const diffMs = end.getTime() - start.getTime()
-  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+  const start = typeof startDate === "string" ? new Date(startDate) : startDate;
+  const end = typeof endDate === "string" ? new Date(endDate) : endDate;
+  const diffMs = end.getTime() - start.getTime();
+  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
 // Format duration in human readable format
 export function formatDurationHuman(days: number): string {
-  if (days === 1) return '1 jour'
-  if (days < 7) return `${days} jours`
-  const weeks = Math.floor(days / 7)
-  const remainingDays = days % 7
+  if (days === 1) return "1 jour";
+  if (days < 7) return `${days} jours`;
+  const weeks = Math.floor(days / 7);
+  const remainingDays = days % 7;
   if (remainingDays === 0) {
-    return weeks === 1 ? '1 semaine' : `${weeks} semaines`
+    return weeks === 1 ? "1 semaine" : `${weeks} semaines`;
   }
-  return `${weeks === 1 ? '1 semaine' : `${weeks} semaines`} et ${remainingDays} jour${remainingDays > 1 ? 's' : ''}`
+  return `${weeks === 1 ? "1 semaine" : `${weeks} semaines`} et ${remainingDays} jour${remainingDays > 1 ? "s" : ""}`;
 }
 
 // Get currency symbol
-export function getCurrencySymbol(currency: string = 'EUR'): string {
+export function getCurrencySymbol(currency: string = "EUR"): string {
   const symbolMap: Record<string, string> = {
-    EUR: '€',
-    USD: '$',
-    GBP: '£',
-    CHF: 'CHF',
-    CAD: 'CA$',
-    AUD: 'A$',
-    JPY: '¥',
-    CNY: '¥',
-    INR: '₹',
-    BRL: 'R$',
-    MXN: 'MX$',
-    SEK: 'kr',
-    NOK: 'kr',
-    DKK: 'kr',
-    PLN: 'zł',
-    CZK: 'Kč',
-    HUF: 'Ft',
-    RON: 'lei',
-    SGD: 'S$',
-    HKD: 'HK$',
-    KRW: '₩',
-    TWD: 'NT$',
-    THB: '฿',
-    MYR: 'RM',
-    PHP: '₱',
-    VND: '₫',
-    AED: 'د.إ',
-    SAR: '﷼',
-    ILS: '₪',
-    ZAR: 'R',
-    MAD: 'د.م.',
-    NZD: 'NZ$',
-    ARS: 'AR$',
-    CLP: 'CL$',
-    COP: 'CO$',
-  }
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    CHF: "CHF",
+    CAD: "CA$",
+    AUD: "A$",
+    JPY: "¥",
+    CNY: "¥",
+    INR: "₹",
+    BRL: "R$",
+    MXN: "MX$",
+    SEK: "kr",
+    NOK: "kr",
+    DKK: "kr",
+    PLN: "zł",
+    CZK: "Kč",
+    HUF: "Ft",
+    RON: "lei",
+    SGD: "S$",
+    HKD: "HK$",
+    KRW: "₩",
+    TWD: "NT$",
+    THB: "฿",
+    MYR: "RM",
+    PHP: "₱",
+    VND: "₫",
+    AED: "د.إ",
+    SAR: "﷼",
+    ILS: "₪",
+    ZAR: "R",
+    MAD: "د.م.",
+    NZD: "NZ$",
+    ARS: "AR$",
+    CLP: "CL$",
+    COP: "CO$",
+  };
 
-  return symbolMap[currency] || currency
+  return symbolMap[currency] || currency;
 }
 
 // Format amount with symbol suffix (e.g., "10.50€")
 export function formatAmountWithSymbol(
   amount: number,
-  currency: string = 'EUR',
-  decimals: number = 2
+  currency: string = "EUR",
+  decimals: number = 2,
 ): string {
-  const symbol = getCurrencySymbol(currency)
-  return `${amount.toFixed(decimals)}${symbol}`
+  const symbol = getCurrencySymbol(currency);
+  return `${amount.toFixed(decimals)}${symbol}`;
 }
 
 /**
@@ -301,12 +306,12 @@ export function formatAmountWithSymbol(
  * Otherwise, fall back to the regular logo.
  */
 export function getLogoForLightBackground(store: {
-  logoUrl?: string | null
-  darkLogoUrl?: string | null
-  theme?: { mode?: 'light' | 'dark' } | null
+  logoUrl?: string | null;
+  darkLogoUrl?: string | null;
+  theme?: { mode?: "light" | "dark" } | null;
 }): string | null {
-  if (store.theme?.mode === 'dark' && store.darkLogoUrl) {
-    return store.darkLogoUrl
+  if (store.theme?.mode === "dark" && store.darkLogoUrl) {
+    return store.darkLogoUrl;
   }
-  return store.logoUrl ?? null
+  return store.logoUrl ?? null;
 }

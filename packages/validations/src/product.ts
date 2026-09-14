@@ -1,3 +1,4 @@
+import { createProductPromotionSchema, productPromotionSchema } from './product-promotion';
 import { z } from 'zod';
 
 import { getVariantAxisIdentity } from '@louez/utils';
@@ -304,6 +305,7 @@ export const createProductSchema = (
         }),
       ),
       enforceStrictTiers: z.boolean(),
+      promotion: createProductPromotionSchema(t).nullable(),
       taxSettings: productTaxSettingsSchema,
       videoUrl: z
         .string()
@@ -572,6 +574,7 @@ export const productSchema = z
     pricingTiers: z.array(pricingTierSchema).optional(),
     rateTiers: z.array(rateTierSchema).optional(),
     enforceStrictTiers: z.boolean().optional(),
+    promotion: productPromotionSchema.nullable().optional(),
     taxSettings: productTaxSettingsSchema.optional(),
     videoUrl: z
       .string()

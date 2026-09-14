@@ -1,37 +1,48 @@
-import { Button, Heading, Section, Text } from '@react-email/components'
-import { BaseLayout } from './base-layout'
-import { getContrastColorHex } from '@/lib/utils/colors'
-import { getEmailTranslations, getDateFormatPatterns, getCurrencyFormatter, type EmailLocale } from '../i18n'
+import { Section } from "@react-email/components";
+import { BaseLayout } from "./base-layout";
 import {
-  formatEmailDateInStoreTimezone,
-  getStoreTimezoneLabel,
-} from '../date-time'
+  CtaButton,
+  DetailRow,
+  EmailHeading,
+  EmailText,
+  FooterNote,
+  InfoCard,
+  stripLabelColon,
+  styles,
+} from "./components";
+import {
+  getEmailTranslations,
+  getDateFormatPatterns,
+  getCurrencyFormatter,
+  type EmailLocale,
+} from "../i18n";
+import { formatEmailDateInStoreTimezone, getStoreTimezoneLabel } from "../date-time";
 
 interface ReminderReturnAdminEmailProps {
-  storeName: string
-  logoUrl?: string | null
-  primaryColor?: string
-  storeAddress?: string | null
-  storeEmail?: string | null
-  storePhone?: string | null
-  storeTimezone?: string | null
-  storeCountry?: string | null
-  customerFirstName: string
-  customerLastName: string
-  customerEmail: string
-  customerPhone?: string | null
-  reservationNumber: string
-  endDate: Date
-  total: number
-  dashboardUrl: string
-  currency?: string
-  locale?: EmailLocale
+  storeName: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  storeAddress?: string | null;
+  storeEmail?: string | null;
+  storePhone?: string | null;
+  storeTimezone?: string | null;
+  storeCountry?: string | null;
+  customerFirstName: string;
+  customerLastName: string;
+  customerEmail: string;
+  customerPhone?: string | null;
+  reservationNumber: string;
+  endDate: Date;
+  total: number;
+  dashboardUrl: string;
+  currency?: string;
+  locale?: EmailLocale;
 }
 
 export function ReminderReturnAdminEmail({
   storeName,
   logoUrl,
-  primaryColor = '#0066FF',
+  primaryColor,
   storeAddress,
   storeEmail,
   storePhone,
@@ -45,28 +56,22 @@ export function ReminderReturnAdminEmail({
   endDate,
   total,
   dashboardUrl,
-  currency = 'EUR',
-  locale = 'fr',
+  currency = "EUR",
+  locale = "fr",
 }: ReminderReturnAdminEmailProps) {
-  const t = getEmailTranslations(locale)
-  const messages = t.reminderReturnAdmin
-  const datePatterns = getDateFormatPatterns(locale)
-  const formatCurrency = getCurrencyFormatter(locale, currency)
-  const timezoneLabel = getStoreTimezoneLabel(endDate, storeTimezone, storeCountry)
+  const t = getEmailTranslations(locale);
+  const messages = t.reminderReturnAdmin;
+  const datePatterns = getDateFormatPatterns(locale);
+  const formatCurrency = getCurrencyFormatter(locale, currency);
+  const timezoneLabel = getStoreTimezoneLabel(endDate, storeTimezone, storeCountry);
   const timezoneLine =
-    typeof t.common.timezone === 'string'
-      ? t.common.timezone.replace('{timezone}', timezoneLabel)
-      : `Timezone: ${timezoneLabel}`
-
-  const buttonStyle = {
-    ...button,
-    backgroundColor: primaryColor,
-    color: getContrastColorHex(primaryColor),
-  }
+    typeof t.common.timezone === "string"
+      ? t.common.timezone.replace("{timezone}", timezoneLabel)
+      : `Timezone: ${timezoneLabel}`;
 
   return (
     <BaseLayout
-      preview={messages.subject.replace('{number}', reservationNumber)}
+      preview={messages.subject.replace("{number}", reservationNumber)}
       storeName={storeName}
       logoUrl={logoUrl}
       primaryColor={primaryColor}
@@ -75,132 +80,39 @@ export function ReminderReturnAdminEmail({
       storeAddress={storeAddress}
       locale={locale}
     >
-      <Heading style={heading}>{messages.title}</Heading>
+      <EmailHeading>{messages.title}</EmailHeading>
 
-      <Text style={paragraph}>
-        {messages.body.replace('{number}', reservationNumber)}
-      </Text>
+      <EmailText>{messages.body.replace("{number}", reservationNumber)}</EmailText>
 
-      <Section style={infoBox}>
-        <Text style={infoTitle}>{messages.scheduledReturn}</Text>
-        <Text style={infoDate}>
-          {formatEmailDateInStoreTimezone(
-            endDate,
-            locale,
-            datePatterns.full,
-            storeTimezone,
-            storeCountry
-          )}
-        </Text>
-        <Text style={timezoneText}>{timezoneLine}</Text>
-      </Section>
-
-      <Section style={detailBox}>
-        <Text style={detailRow}>
-          <strong>{messages.customer}</strong> {customerFirstName} {customerLastName}
-        </Text>
-        <Text style={detailRow}>
-          <strong>{messages.email}</strong> {customerEmail}
-        </Text>
-        {customerPhone && (
-          <Text style={detailRow}>
-            <strong>{messages.phone}</strong> {customerPhone}
-          </Text>
+      <InfoCard
+        label={stripLabelColon(messages.scheduledReturn)}
+        value={formatEmailDateInStoreTimezone(
+          endDate,
+          locale,
+          datePatterns.full,
+          storeTimezone,
+          storeCountry,
         )}
-        <Text style={detailRow}>
-          <strong>{messages.amount}</strong> {formatCurrency(total)}
-        </Text>
+        footnote={timezoneLine}
+      />
+
+      <Section style={styles.card}>
+        <DetailRow
+          label={stripLabelColon(messages.customer)}
+          value={`${customerFirstName} ${customerLastName}`}
+        />
+        <DetailRow label={stripLabelColon(messages.email)} value={customerEmail} />
+        {customerPhone && (
+          <DetailRow label={stripLabelColon(messages.phone)} value={customerPhone} />
+        )}
+        <DetailRow label={stripLabelColon(messages.amount)} value={formatCurrency(total)} />
       </Section>
 
-      <Section style={ctaSection}>
-        <Button href={dashboardUrl} style={buttonStyle}>
-          {messages.viewReservation}
-        </Button>
-      </Section>
+      <CtaButton href={dashboardUrl} label={messages.viewReservation} primaryColor={primaryColor} />
 
-      <Text style={footerNote}>{messages.connectToManage}</Text>
+      <FooterNote>{messages.connectToManage}</FooterNote>
     </BaseLayout>
-  )
+  );
 }
 
-const heading = {
-  fontSize: '24px',
-  fontWeight: 'bold' as const,
-  color: '#1a1a1a',
-  marginBottom: '24px',
-}
-
-const paragraph = {
-  fontSize: '14px',
-  lineHeight: '24px',
-  color: '#525f7f',
-  margin: '0 0 16px 0',
-}
-
-const infoBox = {
-  backgroundColor: '#fef3c7',
-  borderRadius: '8px',
-  padding: '20px',
-  margin: '24px 0',
-}
-
-const infoTitle = {
-  fontSize: '12px',
-  fontWeight: 'bold' as const,
-  textTransform: 'uppercase' as const,
-  color: '#d97706',
-  marginBottom: '4px',
-  marginTop: '0',
-}
-
-const infoDate = {
-  fontSize: '18px',
-  fontWeight: 'bold' as const,
-  color: '#92400e',
-  margin: '0',
-}
-
-const timezoneText = {
-  fontSize: '12px',
-  color: '#d97706',
-  margin: '6px 0 0 0',
-}
-
-const detailBox = {
-  backgroundColor: '#f4f4f5',
-  borderRadius: '8px',
-  padding: '20px',
-  margin: '24px 0',
-}
-
-const detailRow = {
-  fontSize: '14px',
-  color: '#1a1a1a',
-  margin: '0 0 8px 0',
-}
-
-const ctaSection = {
-  textAlign: 'center' as const,
-  marginTop: '32px',
-  marginBottom: '32px',
-}
-
-const button = {
-  backgroundColor: '#0066FF',
-  borderRadius: '6px',
-  color: '#fff',
-  fontSize: '14px',
-  fontWeight: 'bold' as const,
-  textDecoration: 'none',
-  textAlign: 'center' as const,
-  display: 'inline-block',
-  padding: '12px 24px',
-}
-
-const footerNote = {
-  fontSize: '13px',
-  color: '#8898aa',
-  textAlign: 'center' as const,
-}
-
-export default ReminderReturnAdminEmail
+export default ReminderReturnAdminEmail;

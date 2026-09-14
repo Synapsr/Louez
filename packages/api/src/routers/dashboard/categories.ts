@@ -1,4 +1,4 @@
-import { categories, db, productCategories, products } from '@louez/db';
+import { categories, db, nextCategorySlug, productCategories, products } from '@louez/db';
 import { categorySchema, isOwnedImageUrl } from '@louez/validations';
 import { and, asc, count, eq, inArray, ne, sql } from 'drizzle-orm';
 import { ORPCError } from '@orpc/server';
@@ -86,6 +86,7 @@ const create = dashboardProcedure
       .values({
         storeId: context.store.id,
         name,
+        slug: await nextCategorySlug(db, context.store.id, name),
         description,
         imageUrl,
         order: maxOrder + 1,

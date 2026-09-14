@@ -26,7 +26,7 @@ The per-product boolean `enforceStrictTiers` (DB column `products.enforce_strict
 
 ### Mode 1: Strict (enforceStrictTiers = true) — DEFAULT for new products
 
-**UI toggle**: "Autoriser une remise progressive" = OFF (unchecked).
+**UI choice**: "Par périodes entières". The choice is visible with a single base rate.
 
 Only exact tier durations are valid rental periods. If the rental duration falls between tiers, snap UP to the next tier and charge that tier's price.
 
@@ -46,7 +46,7 @@ Only exact tier durations are valid rental periods. If the rental duration falls
 
 ### Mode 2: Progressive (enforceStrictTiers = false) — DEFAULT for legacy products
 
-**UI toggle**: "Autoriser une remise progressive" = ON (checked).
+**UI choice**: "Au prorata". The first base period remains the minimum charge.
 
 Linear interpolation between adjacent tiers. Each tier is an anchor point on a price/duration curve. Between two consecutive tiers, the price transitions in a straight line from one to the next.
 
@@ -88,11 +88,24 @@ If only the base rate is defined:
 
 ## Original Subtotal (reference price without discounts)
 
-For both modes: `originalSubtotal = ceil(durationMinutes / basePeriodMinutes) × basePrice × quantity`
+The reference uses the same billing mode as the charged price:
 
-This represents what the customer would pay at the base rate without any tier discounts.
+- Strict: round the duration up to whole base periods, then multiply by the base price and quantity.
+- Progressive: apply the base rate proportionally, with one base period as the minimum. Round the price per item before multiplying by quantity, as for the charged subtotal.
+
+This keeps proration out of advertised discounts. A single rate of 15 EUR per week over 14 days and 2 hours costs 30.18 EUR in progressive mode, with the same reference price and no savings. Additional discounted rates can still produce savings against this reference.
 
 ## Savings & Reduction Percent
 
 - `savings = max(0, originalSubtotal - subtotal)`
 - `reductionPercent = (savings / originalSubtotal) × 100` (only if savings > 0)
+
+## Seasonal pricing
+
+Season dates use the store timezone. A rental occupies `[start, end)`: returning exactly when a new season begins never incurs that season's price. Seasonal end dates are inclusive calendar dates.
+
+Evaluate each applicable seasonal grid for the **full rental duration**, using the product's strict or progressive mode. Allocate that result in proportion to the elapsed time covered by the season. The base grid applies outside configured seasons. This preserves the minimum and the duration tiers across season boundaries, instead of restarting them for every segment.
+
+For a 24-hour rental with 12 hours at 25 EUR/day and 12 hours at 40 EUR/day, the total is 32.50 EUR. For a shorter rental the single minimum is shared between the seasons. In strict mode, the full rental is rounded before its price is allocated. A seven-day rental remains eligible for each seasonal grid's seven-day rate even if the seasons change during the week.
+
+Amounts are allocated with cumulative cent rounding so the displayed seasonal amounts add up to the total. The deposit is applied once, after allocation. Proration creates no discount; discounted duration rates retain their savings against the corresponding seasonal base rates. The storefront, cart, checkout and reservation creation use the same shared engine.

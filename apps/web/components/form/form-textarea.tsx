@@ -5,16 +5,17 @@ import { Label, Textarea, type TextareaProps } from '@louez/ui'
 
 export function FormTextarea({
   label,
+  labelHelper,
   description,
   ...props
-}: { label?: string; description?: string } & TextareaProps) {
+}: { label?: string; labelHelper?: string; description?: string } & TextareaProps) {
   const field = useFieldContext<string>()
   const errors = field.state.meta.errors
 
   return (
     <div className="grid gap-2 min-w-0">
       {label && (
-        <Label htmlFor={field.name} data-error={errors.length > 0}>
+        <Label htmlFor={field.name} helper={labelHelper} data-error={errors.length > 0}>
           {label}
         </Label>
       )}

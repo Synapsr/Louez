@@ -9,6 +9,7 @@ import {
   db,
   getEffectiveProductQuantities,
   lockProductReservationsForStockKindChange,
+  nextProductSlug,
 } from "@louez/db";
 import {
   categories,
@@ -455,6 +456,7 @@ export async function createProduct(data: ProductInput) {
         id: productId,
         storeId: store.id,
         name: validated.data.name,
+        slug: await nextProductSlug(tx, store.id, validated.data.name),
         description: validated.data.description || null,
         aiContext: validated.data.aiContext?.trim() || null,
         categoryId: categoryIds[0] ?? null,
@@ -470,6 +472,7 @@ export async function createProduct(data: ProductInput) {
         imageHistory: validated.data.imageHistory || [],
         videoUrl: validated.data.videoUrl || null,
         taxSettings: validated.data.taxSettings || null,
+        promotion: validated.data.promotion,
         enforceStrictTiers:
           pricingKind === "fixed" ? false : validated.data.enforceStrictTiers || false,
         trackUnits: trackUnits,
@@ -842,6 +845,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
           imageHistory: validated.data.imageHistory || [],
           videoUrl: validated.data.videoUrl || null,
           taxSettings: validated.data.taxSettings || null,
+          promotion: validated.data.promotion,
           enforceStrictTiers:
             pricingKind === "fixed" ? false : validated.data.enforceStrictTiers || false,
           trackUnits: trackUnits,
@@ -1182,6 +1186,7 @@ export async function duplicateProduct(productId: string) {
     id: newProductId,
     storeId: store.id,
     name: `${product.name} (copy)`,
+    slug: await nextProductSlug(db, store.id, `${product.name} (copy)`),
     description: product.description,
     categoryId: product.categoryId,
     price: product.price,

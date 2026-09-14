@@ -28,17 +28,16 @@ test("covers every static dashboard breadcrumb route", () => {
     ["/dashboard/whats-new", ["whatsNew"]],
     ["/dashboard/settings", ["settings"]],
     ["/dashboard/settings/admin", ["settings", "settingsAdmin"]],
-    ["/dashboard/settings/appearance", ["settings", "settingsAppearance"]],
     ["/dashboard/settings/delivery", ["settings", "settingsDelivery"]],
     ["/dashboard/settings/export", ["settings", "settingsExport"]],
     ["/dashboard/settings/hours", ["settings", "settingsHours"]],
     ["/dashboard/settings/inspections", ["settings", "settingsInspections"]],
     ["/dashboard/settings/integrations", ["settings", "settingsIntegrations"]],
-    ["/dashboard/settings/legal", ["settings", "settingsLegal"]],
     ["/dashboard/settings/notifications", ["settings", "settingsNotifications"]],
     ["/dashboard/settings/payments", ["settings", "settingsPayments"]],
     ["/dashboard/settings/promo-codes", ["settings", "settingsPromoCodes"]],
     ["/dashboard/settings/referrals", ["settings", "referrals"]],
+    ["/dashboard/settings/reservations", ["settings", "settingsReservations"]],
     ["/dashboard/settings/review-booster", ["settings", "settingsReviewBooster"]],
     ["/dashboard/settings/subscription", ["settings", "subscription"]],
     ["/dashboard/settings/taxes", ["settings", "settingsTaxes"]],
@@ -50,6 +49,23 @@ test("covers every static dashboard breadcrumb route", () => {
     assert.deepEqual(
       items.map((item) => ("translationKey" in item ? item.translationKey : item.label)),
       translationKeys,
+      pathname,
+    );
+  }
+});
+
+test("leaves the storefront settings routes to the online store editor", () => {
+  // These routes only redirect into the editor now, so nothing may name them
+  // as a crumb: the settings crumb is all a visitor passing through sees.
+  for (const pathname of [
+    "/dashboard/settings/appearance",
+    "/dashboard/settings/contact",
+    "/dashboard/settings/legal",
+    "/dashboard/settings/seo",
+  ]) {
+    assert.deepEqual(
+      getDashboardBreadcrumbItems(pathname, {}),
+      [{ href: "/dashboard/settings", translationKey: "settings" }],
       pathname,
     );
   }

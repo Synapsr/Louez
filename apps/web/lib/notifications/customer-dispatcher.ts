@@ -1,3 +1,8 @@
+import { getCustomerReminderPreferences } from "./customer-reminder-preferences";
+import {
+  isCustomerReminder,
+  resolveCustomerReminderChannels,
+} from "./util.customer-reminder-preferences";
 /**
  * Customer Notification Dispatcher
  *
@@ -210,12 +215,17 @@ export async function dispatchCustomerNotification(
   });
   const locale = resolveReservationEmailLocale(reservation?.locale, ctx.store.settings?.country);
 
+  const customerPreferences = isCustomerReminder(eventType)
+    ? await getCustomerReminderPreferences(ctx.store.id, ctx.customer.id)
+    : null;
+  const channels = resolveCustomerReminderChannels(eventType, prefs, customerPreferences);
+
   // Get custom template if any, with backward compatibility
   const customTemplate = settings.templates?.[eventType];
   const mergedContent = mergeTemplateWithLegacy(eventType, customTemplate, ctx.store.emailSettings);
 
   // Send email if enabled
-  if (prefs.email && ctx.customer.email) {
+  if (channels.email && ctx.customer.email) {
     try {
       await sendCustomerEmail(eventType, ctx, locale, mergedContent);
       result.email.sent = true;
@@ -223,12 +233,12 @@ export async function dispatchCustomerNotification(
       result.email.error = error instanceof Error ? error.message : "Unknown error";
       console.error(`Failed to send customer email for ${eventType}:`, error);
     }
-  } else if (!prefs.email) {
+  } else if (!channels.email) {
     result.email.skipped = true;
   }
 
   // Send SMS if enabled
-  if (prefs.sms && ctx.customer.phone) {
+  if (channels.sms && ctx.customer.phone) {
     // Check quota first
     const quota = await getSmsQuotaStatus(ctx.store.id);
     if (!quota.allowed) {
@@ -243,7 +253,7 @@ export async function dispatchCustomerNotification(
         console.error(`Failed to send customer SMS for ${eventType}:`, error);
       }
     }
-  } else if (!prefs.sms) {
+  } else if (!channels.sms) {
     result.sms.skipped = true;
   }
 

@@ -22,7 +22,7 @@ function parseCategoryIds(value: string | undefined): string[] {
 }
 
 interface ProductsPageProps {
-  searchParams: Promise<{ status?: string; category?: string }>
+  searchParams: Promise<{ status?: string; category?: string; search?: string }>
 }
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
@@ -32,9 +32,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const params = await searchParams
   const status = parseStatus(params.status)
   const categoryIds = parseCategoryIds(params.category)
+  const search = params.search?.trim() ?? ''
 
   const [initialData, limits, plan] = await Promise.all([
-    getDashboardProductsList({ storeId: store.id, status, categoryIds }),
+    getDashboardProductsList({ storeId: store.id, status, categoryIds, search }),
     getStoreLimits(store.id),
     getStorePlan(store.id),
   ])
@@ -42,7 +43,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   return (
     <ProductsPageContent
       initialData={initialData}
-      initialFilters={{ status, categoryIds }}
+      initialFilters={{ status, categoryIds, search }}
       limits={limits.products}
       planSlug={plan.slug}
       currency={store.settings?.currency}

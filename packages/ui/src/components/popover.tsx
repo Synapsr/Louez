@@ -20,6 +20,7 @@ function PopoverPopup({
   sideOffset = 4,
   alignOffset = 0,
   tooltipStyle = false,
+  animateContent = true,
   ...props
 }: PopoverPrimitive.Popup.Props & {
   side?: PopoverPrimitive.Positioner.Props["side"];
@@ -27,7 +28,9 @@ function PopoverPopup({
   sideOffset?: PopoverPrimitive.Positioner.Props["sideOffset"];
   alignOffset?: PopoverPrimitive.Positioner.Props["alignOffset"];
   tooltipStyle?: boolean;
+  animateContent?: boolean;
 }) {
+  const Viewport = animateContent ? PopoverPrimitive.Viewport : "div";
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
@@ -48,7 +51,7 @@ function PopoverPopup({
           data-slot="popover-popup"
           {...props}
         >
-          <PopoverPrimitive.Viewport
+          <Viewport
             className={cn(
               "relative size-full max-h-(--available-height) overflow-clip p-(--viewport-inline-padding) outline-none [--viewport-inline-padding:calc(var(--spacing)*2)] data-instant:transition-none **:data-current:data-ending-style:opacity-0 **:data-current:data-starting-style:opacity-0 **:data-previous:data-ending-style:opacity-0 **:data-previous:data-starting-style:opacity-0 **:data-current:w-[calc(var(--popup-width)-2*var(--viewport-inline-padding)-2px)] **:data-previous:w-[calc(var(--popup-width)-2*var(--viewport-inline-padding)-2px)] **:data-current:opacity-100 **:data-previous:opacity-100 **:data-current:transition-opacity **:data-previous:transition-opacity",
               tooltipStyle
@@ -58,7 +61,7 @@ function PopoverPopup({
             data-slot="popover-viewport"
           >
             {children}
-          </PopoverPrimitive.Viewport>
+          </Viewport>
         </PopoverPrimitive.Popup>
       </PopoverPrimitive.Positioner>
     </PopoverPrimitive.Portal>
