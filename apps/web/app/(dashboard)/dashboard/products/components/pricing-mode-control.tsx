@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 
 import { useTranslations } from "next-intl";
 
-import { Separator } from "@louez/ui";
 import { formatCurrency } from "@louez/utils";
 
 import { ModeGlyph } from "./pricing-curve";
@@ -34,8 +33,8 @@ export function PricingModeControl({
   currency: string;
   disabled: boolean;
   className?: string;
-  /** Sits at the end of the same stretched row, behind a rule: it belongs to the
-   *  row, but it is a tool for reading the choice rather than a third option. */
+  /** Sits on its own full-width line under the options: it helps read the choice,
+   *  so it must not look like a third option. */
   trailing?: ReactNode;
   /** In a season the mode is the product's, so show which one applies and offer
    *  no choice — a disabled pair of options would only look broken. */
@@ -54,7 +53,7 @@ export function PricingModeControl({
       <p className="text-muted-foreground mb-1.5 text-xs">
         {t("calculationMode.example", { duration: short(draft.exampleMinutes) })}
       </p>
-      <div className="flex flex-wrap items-stretch gap-1.5">
+      <div className="grid grid-cols-2 gap-1.5">
         {options.map((option) => {
           const isActive = option.prorated === draft.isProrated;
           const label = t(option.key as never);
@@ -93,13 +92,8 @@ export function PricingModeControl({
             </button>
           );
         })}
-        {trailing && (
-          <div className="flex items-stretch gap-2 ps-0.5">
-            <Separator orientation="vertical" />
-            {trailing}
-          </div>
-        )}
       </div>
+      {trailing && <div className="mt-1.5">{trailing}</div>}
     </div>
   );
 }

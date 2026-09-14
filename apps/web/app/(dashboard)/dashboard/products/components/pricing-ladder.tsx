@@ -166,8 +166,7 @@ export function PricingLadder({
             draft={draft}
             currency={currency}
             disabled={disabled}
-            align="end"
-            className="self-stretch"
+            className="w-full"
           />
         }
       />
