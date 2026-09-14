@@ -242,6 +242,7 @@ export const loadCatalogCategories = cache(
         .select({
           id: categories.id,
           name: categories.name,
+          slug: categories.slug,
           description: categories.description,
           imageUrl: categories.imageUrl,
           order: categories.order,
@@ -278,6 +279,7 @@ export const loadCatalogCategories = cache(
         return {
           id: row.id,
           name: row.name,
+          slug: row.slug,
           description: row.description,
           imageUrl: row.imageUrl,
           order: row.order ?? index,
@@ -833,6 +835,7 @@ export const loadCatalogProducts = async ({
             .select({
               id: products.id,
               name: products.name,
+              slug: products.slug,
               images: products.images,
               price: products.price,
               promotion: products.promotion,
@@ -878,6 +881,7 @@ export const loadCatalogProducts = async ({
     return {
       id: row.id,
       name: row.name,
+      slug: row.slug,
       images: row.images,
       price: row.price,
       promotion: row.promotion,
@@ -899,7 +903,12 @@ export const loadCatalogProducts = async ({
       accessories: accessoriesByProductId.get(row.id) ?? [],
       categoryIds,
       category: firstCategory
-        ? { id: firstCategory.id, name: firstCategory.name, order: firstCategory.order }
+        ? {
+            id: firstCategory.id,
+            name: firstCategory.name,
+            slug: firstCategory.slug,
+            order: firstCategory.order,
+          }
         : null,
       displayPrice: indexedPriceOf(priceById, row.id),
       attributeValues: attributeValuesByProductId.get(row.id) ?? {},

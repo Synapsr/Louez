@@ -169,6 +169,7 @@ export const getFeaturedProducts = async (storeId: string): Promise<StorefrontCa
     return {
       id: row.id,
       name: row.name,
+      slug: row.slug,
       images: row.images,
       price: row.price,
       promotion: row.promotion,
@@ -198,7 +199,7 @@ export const getCategoryBrowseEntries = async (
 ): Promise<CategoryBrowseEntry[]> => {
   const [storeCategories, productLinks] = await Promise.all([
     db.query.categories.findMany({
-      columns: { id: true, name: true, description: true, imageUrl: true },
+      columns: { id: true, name: true, slug: true, description: true, imageUrl: true },
       where: eq(categories.storeId, storeId),
       orderBy: [categories.order],
     }),

@@ -61,6 +61,7 @@ describe("toCartLineInput", () => {
     assert.deepEqual(line, {
       productId: "bike",
       productName: "Vélo",
+      productSlug: null,
       productImage: "bike.jpg",
       price: 25.5,
       deposit: 150,
@@ -114,6 +115,7 @@ describe("toCartLineInput", () => {
     assert.deepEqual(line, {
       productId: "lock",
       productName: "Antivol",
+      productSlug: null,
       productImage: null,
       price: 2,
       deposit: 0,

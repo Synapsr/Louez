@@ -138,6 +138,15 @@ function createStorefrontRewrite(request: NextRequest, slug: string) {
   // route, query, and cookie before forwarding the rewritten request upstream.
   requestHeaders.delete("x-embed-mode");
   requestHeaders.delete("x-sales-channel");
+  requestHeaders.delete("x-store-slug");
+  requestHeaders.delete("x-storefront-path");
+
+  // The i18n request config reads the store's fallback language from this
+  // before any page runs; it has no route params of its own.
+  requestHeaders.set("x-store-slug", slug);
+  // The store layout redirects products and categories still addressed by
+  // id from this, before its Suspense boundary streams the shell.
+  requestHeaders.set("x-storefront-path", `${pathname}${request.nextUrl.search}`);
 
   if (isMarketplaceChannel) {
     requestHeaders.set("x-sales-channel", MARKETPLACE_CHANNEL);

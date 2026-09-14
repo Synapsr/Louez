@@ -3168,6 +3168,7 @@
       "reservations": "Reservierungen",
       "emails": "E-Mails",
       "contact": "Kontakt",
+      "seo": "Suchmaschinen",
       "legal": "Rechtliche Seiten",
       "account": "Konto",
       "subscription": {
@@ -3373,6 +3374,9 @@
         "countryTimezone": "Zeitzone",
         "currency": "Währung",
         "currencyDescription": "Die Währung für Preisanzeige und Kundenabrechnung",
+        "locale": "Ausweichsprache",
+        "localeDescription": "Sprache, wenn der Browser des Besuchers keine vom Shop angebotene Sprache anfordert, und in der Google Ihren Shop indexiert. Besucher sehen immer zuerst ihre Browsersprache.",
+        "localeAuto": "Plattformsprache (Französisch)",
         "descriptionLabel": "Beschreibung",
         "descriptionPlaceholder": "Beschreiben Sie Ihr Geschäft...",
         "sector": "Branche"
@@ -4319,6 +4323,20 @@
         "previewHint": "Die Kontaktseite, wie sie angezeigt wird, aktualisiert während Sie die Einstellungen ändern.",
         "viewOnStore": "Kontaktseite ansehen",
         "updated": "Kontaktwege aktualisiert"
+      },
+      "seoSettings": {
+        "description": "Lassen Sie Ihren Shop von der Google Search Console erkennen",
+        "updated": "Suchmaschinen-Einstellungen aktualisiert",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Weisen Sie Google nach, dass dieser Shop Ihnen gehört, um Indexierung und Suchleistung zu verfolgen.",
+          "step1": "Öffnen Sie die <link>Google Search Console</link> und fügen Sie eine Property vom Typ „URL-Präfix“ hinzu.",
+          "step2": "Geben Sie die Adresse Ihres Shops ein:",
+          "step3": "Wählen Sie die Methode „HTML-Tag“, fügen Sie das Tag oder seinen Code unten ein und speichern Sie, bevor Sie in der Search Console auf „Bestätigen“ klicken.",
+          "label": "Bestätigungscode",
+          "help": "Das ganze Tag oder nur sein Inhalt; der Code bleibt aktiv, solange er hier gespeichert ist.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
       },
       "legalSettings": {
         "title": "Rechtliche Seiten",

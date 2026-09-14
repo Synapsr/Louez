@@ -139,14 +139,22 @@ export const toProductCardAvailability = ({
   return { status: "available", availableQuantity };
 };
 
+/** The URL segment of a product page: its slug, or its id for rows predating slugs. */
+export const getProductRef = (product: { id: string; slug?: string | null }): string =>
+  product.slug ?? product.id;
+
 /** Product page link, carrying the period so the page opens on the same dates. */
-export const buildProductHref = (productId: string, period?: ProductCardPeriod | null): string => {
-  if (!period) return `/product/${productId}`;
+export const buildProductHref = (
+  product: { id: string; slug?: string | null },
+  period?: ProductCardPeriod | null,
+): string => {
+  const path = `/product/${getProductRef(product)}`;
+  if (!period) return path;
 
   const params = new URLSearchParams({
     startDate: period.startDate,
     endDate: period.endDate,
   });
 
-  return `/product/${productId}?${params.toString()}`;
+  return `${path}?${params.toString()}`;
 };

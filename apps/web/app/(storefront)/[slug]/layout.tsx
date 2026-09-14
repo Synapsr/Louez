@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -6,6 +7,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { generateStoreMetadata, stripHtml } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { redirectLegacyStorefrontUrl } from "@/lib/storefront/legacy-url-redirect";
 import { STORE_THEME_VIEWPORT_COLORS } from "@/lib/theme/util.store-theme";
 
 import { StorefrontLayoutContent } from "./storefront-layout-content";
@@ -26,28 +28,35 @@ export const generateMetadata = async ({ params }: StorefrontLayoutParams): Prom
     return { title: t("storeNotFound") };
   }
 
-  return generateStoreMetadata(
-    {
-      id: store.id,
-      name: store.name,
-      slug: store.slug,
-      description: store.description,
-      email: store.email,
-      phone: store.phone,
-      address: store.address,
-      latitude: store.latitude,
-      longitude: store.longitude,
-      logoUrl: store.logoUrl,
-      settings: store.settings,
-      theme: store.theme,
-    },
-    {
-      description: store.description
-        ? stripHtml(store.description)
-        : t("description", { store: store.name }),
-      locale,
-    },
-  );
+  const googleSiteVerification = store.settings?.seo?.googleSiteVerification;
+
+  return {
+    ...generateStoreMetadata(
+      {
+        id: store.id,
+        name: store.name,
+        slug: store.slug,
+        description: store.description,
+        email: store.email,
+        phone: store.phone,
+        address: store.address,
+        latitude: store.latitude,
+        longitude: store.longitude,
+        logoUrl: store.logoUrl,
+        settings: store.settings,
+        theme: store.theme,
+      },
+      {
+        description: store.description
+          ? stripHtml(store.description)
+          : t("description", { store: store.name }),
+        locale,
+      },
+    ),
+    // Search Console ownership proof; pages never override this key, so it
+    // reaches every storefront page from here.
+    ...(googleSiteVerification && { verification: { google: googleSiteVerification } }),
+  };
 };
 
 export const viewport: Viewport = {
@@ -74,6 +83,10 @@ const StorefrontLayout = async ({
   if (!store) {
     notFound();
   }
+
+  // Same reason: a product or category still addressed by id must answer a
+  // real 308 to its slug URL, which is only possible before the shell streams.
+  await redirectLegacyStorefrontUrl(store, (await headers()).get("x-storefront-path"));
 
   return (
     <>

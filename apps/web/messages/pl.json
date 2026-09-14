@@ -3168,6 +3168,7 @@
       "reservations": "Rezerwacje",
       "emails": "Emaile",
       "contact": "Kontakt",
+      "seo": "Wyszukiwarki",
       "legal": "Strony prawne",
       "account": "Konto",
       "subscription": {
@@ -3373,6 +3374,9 @@
         "countryTimezone": "Strefa czasowa",
         "currency": "Waluta",
         "currencyDescription": "Waluta używana do wyświetlania cen i rozliczania klientów",
+        "locale": "Język zapasowy",
+        "localeDescription": "Język używany, gdy przeglądarka odwiedzającego nie prosi o żaden z języków oferowanych przez sklep, oraz język, w którym Google indeksuje Twój sklep. Odwiedzający zawsze widzi najpierw język swojej przeglądarki.",
+        "localeAuto": "Język platformy (francuski)",
         "descriptionLabel": "Opis",
         "descriptionPlaceholder": "Opisz swoją działalność...",
         "sector": "Branża"
@@ -4319,6 +4323,20 @@
         "previewHint": "Strona kontaktowa w takiej formie, w jakiej się wyświetli, aktualizowana podczas zmiany ustawień.",
         "viewOnStore": "Zobacz stronę kontaktową",
         "updated": "Kanały kontaktu zaktualizowane"
+      },
+      "seoSettings": {
+        "description": "Potwierdź swój sklep w Google Search Console",
+        "updated": "Ustawienia wyszukiwarek zaktualizowane",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Udowodnij Google, że ten sklep należy do Ciebie, aby śledzić jego indeksowanie i wyniki wyszukiwania.",
+          "step1": "Otwórz <link>Google Search Console</link> i dodaj usługę typu „Prefiks adresu URL”.",
+          "step2": "Podaj adres swojego sklepu:",
+          "step3": "Wybierz metodę „Tag HTML”, wklej tag lub jego kod poniżej i zapisz, zanim klikniesz „Zweryfikuj” w Search Console.",
+          "label": "Kod weryfikacyjny",
+          "help": "Cały tag lub sama jego zawartość; kod pozostaje aktywny, dopóki jest tu zapisany.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
       },
       "legalSettings": {
         "title": "Strony prawne",

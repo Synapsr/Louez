@@ -3168,6 +3168,7 @@
       "reservations": "Prenotazioni",
       "emails": "Email",
       "contact": "Contatti",
+      "seo": "Motori di ricerca",
       "legal": "Pagine legali",
       "account": "Account",
       "subscription": {
@@ -3373,6 +3374,9 @@
         "countryTimezone": "Fuso orario",
         "currency": "Valuta",
         "currencyDescription": "La valuta usata per mostrare i prezzi e fatturare i tuoi clienti",
+        "locale": "Lingua di riserva",
+        "localeDescription": "Lingua usata quando il browser del visitatore non ne chiede nessuna tra quelle offerte dal negozio, e in cui Google indicizza il tuo negozio. Il visitatore vede sempre prima la lingua del suo browser.",
+        "localeAuto": "Lingua della piattaforma (francese)",
         "descriptionLabel": "Descrizione",
         "descriptionPlaceholder": "Descrivi la tua attivita...",
         "sector": "Settore"
@@ -4319,6 +4323,20 @@
         "previewHint": "La pagina contatti come verrà mostrata, aggiornata mentre modifichi le impostazioni.",
         "viewOnStore": "Vedi la pagina contatti",
         "updated": "Canali di contatto aggiornati"
+      },
+      "seoSettings": {
+        "description": "Fai riconoscere il tuo negozio da Google Search Console",
+        "updated": "Impostazioni dei motori di ricerca aggiornate",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Dimostra a Google che questo negozio è tuo per seguirne l'indicizzazione e le prestazioni nelle ricerche.",
+          "step1": "Apri <link>Google Search Console</link> e aggiungi una proprietà di tipo «Prefisso URL».",
+          "step2": "Inserisci l'indirizzo del tuo negozio:",
+          "step3": "Scegli il metodo «Tag HTML», incolla il tag o il suo codice qui sotto e salva prima di premere «Verifica» in Search Console.",
+          "label": "Codice di verifica",
+          "help": "Il tag completo o solo il suo contenuto; il codice resta attivo finché è salvato qui.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
       },
       "legalSettings": {
         "title": "Pagine legali",

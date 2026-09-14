@@ -74,14 +74,7 @@ const AboutPage = async ({ params }: AboutPageProps) => {
 
   return (
     <>
-      <JsonLd
-        data={[
-          {
-            ...generateLocalBusinessSchema(store),
-            ...(openingHoursSpecification.length > 0 ? { openingHoursSpecification } : {}),
-          },
-        ]}
-      />
+      <JsonLd data={generateLocalBusinessSchema(store, { openingHoursSpecification })} />
 
       <StorefrontSection width="narrow" contentClassName="flex flex-col gap-8 sm:gap-10">
         <div>

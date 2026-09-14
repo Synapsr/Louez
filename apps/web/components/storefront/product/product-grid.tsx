@@ -109,7 +109,7 @@ export const ProductGrid = ({
           >
             <ProductCard
               product={product}
-              href={buildProductHref(product.id, period)}
+              href={buildProductHref(product, period)}
               period={period}
               availability={availability}
               priority={index < PRODUCT_GRID_PRIORITY_COUNT}

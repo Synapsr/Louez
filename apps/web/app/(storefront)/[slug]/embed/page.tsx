@@ -1,5 +1,6 @@
-import { Suspense } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import type { StoreSettings } from "@louez/types";
 
@@ -15,6 +16,18 @@ export const unstable_dynamicStaleTime = 300;
 interface EmbedPageProps {
   params: Promise<{ slug: string }>;
 }
+
+// The widget is framed by the store's own website; the frame must never
+// surface as a page of its own in search results.
+export const generateMetadata = async ({ params }: EmbedPageProps): Promise<Metadata> => {
+  const { slug } = await params;
+  const store = await getStoreBySlug(slug);
+
+  return {
+    title: store ? { absolute: store.name } : undefined,
+    robots: { index: false, follow: false },
+  };
+};
 
 const EmbedPage = async ({ params }: EmbedPageProps) => {
   const { slug } = await params;

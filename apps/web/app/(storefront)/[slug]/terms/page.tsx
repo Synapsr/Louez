@@ -45,6 +45,9 @@ export const generateMetadata = async ({ params }: TermsPageProps): Promise<Meta
       description: t("cgv.metaDescription", { name: store.name }),
       path: "/terms",
       locale,
+      // Without written terms the page is a placeholder: thin content that
+      // would only dilute the store's crawl budget.
+      noIndex: !hasRichTextContent(store.cgv),
     },
   );
 };

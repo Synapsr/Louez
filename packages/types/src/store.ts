@@ -267,6 +267,15 @@ export const DEFAULT_STORE_CONTACT_SETTINGS: StoreContactSettings = {
 // Store Settings
 // ============================================================================
 
+/** What the store owner set up for search engines. */
+export interface StoreSeoSettings {
+  /**
+   * Token of the Google Search Console HTML-tag verification, rendered as
+   * `<meta name="google-site-verification">` on every storefront page.
+   */
+  googleSiteVerification?: string | null;
+}
+
 export interface StoreSettings {
   automaticExtensions?: boolean;
   maxExtensionDays?: number | null;
@@ -295,6 +304,15 @@ export interface StoreSettings {
    */
   onlinePaymentDepositPercentage?: number;
   businessHours?: BusinessHours;
+  /**
+   * Fallback language of the storefront (ISO 639-1, e.g. 'fr'): served
+   * when the visitor's browser asks for no supported language. Crawlers
+   * carry no preference, so this is the language search engines index the
+   * store in. Null or absent: the platform default.
+   */
+  locale?: string | null;
+  /** Search engine settings, see `StoreSeoSettings`. */
+  seo?: StoreSeoSettings;
   country?: string; // ISO 3166-1 alpha-2 (e.g., 'FR', 'BE', 'CH')
   timezone?: string; // IANA timezone (e.g., 'Europe/Paris')
   currency?: string; // ISO 4217 currency code (e.g., 'EUR', 'USD', 'GBP')

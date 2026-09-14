@@ -26,6 +26,8 @@ import {
   consumeReservationStock,
   restoreReservationStock,
   stores,
+  nextProductSlug,
+  nextCategorySlug,
 } from "@louez/db";
 import type { ApiKeyPermissions } from "@louez/db/schema";
 import { computeReservedNetOfExcludedUnits, loadExcludedUnitInfo } from "@louez/api/services";
@@ -167,6 +169,7 @@ export function createAITools(ctx: AIChatContext) {
           .values({
             storeId: ctx.storeId,
             name,
+            slug: await nextProductSlug(db, ctx.storeId, name),
             description: description ?? null,
             price,
             deposit: deposit ?? "0",
@@ -1272,6 +1275,7 @@ export function createAITools(ctx: AIChatContext) {
           .values({
             storeId: ctx.storeId,
             name,
+            slug: await nextCategorySlug(db, ctx.storeId, name),
             description: description ?? null,
           })
           .$returningId();

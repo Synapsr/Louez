@@ -3168,6 +3168,7 @@
       "reservations": "Reservations",
       "emails": "Emails",
       "contact": "Contact",
+      "seo": "Search engines",
       "legal": "Legal pages",
       "account": "Account",
       "integrations": "Integrations",
@@ -3676,6 +3677,9 @@
         "countryTimezone": "Timezone",
         "currency": "Currency",
         "currencyDescription": "The currency used to display prices and bill your customers",
+        "locale": "Fallback language",
+        "localeDescription": "Language used when the visitor's browser asks for none the store offers, and the language Google indexes your store in. A visitor always sees their browser language first.",
+        "localeAuto": "Platform language (French)",
         "descriptionLabel": "Description",
         "descriptionPlaceholder": "Describe your business...",
         "sector": "Industry sector"
@@ -4456,6 +4460,20 @@
         "previewHint": "The contact page as it will show, updated as you change the settings.",
         "viewOnStore": "View the contact page",
         "updated": "Contact channels updated"
+      },
+      "seoSettings": {
+        "description": "Get your store recognised by Google Search Console",
+        "updated": "Search engine settings updated",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Prove to Google that this store is yours to follow its indexing and search performance.",
+          "step1": "Open <link>Google Search Console</link> and add a property of type “URL prefix”.",
+          "step2": "Enter your store address:",
+          "step3": "Choose the “HTML tag” method, paste the tag or its code below and save before clicking “Verify” in Search Console.",
+          "label": "Verification code",
+          "help": "The whole tag or just its content; the code stays active as long as it is saved here.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
       },
       "legalSettings": {
         "title": "Legal pages",

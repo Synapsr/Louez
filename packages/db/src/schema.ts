@@ -884,6 +884,12 @@ export const categories = mysqlTable(
     id: id(),
     storeId: varchar("store_id", { length: 21 }).notNull(),
     name: varchar("name", { length: 255 }).notNull(),
+    /**
+     * URL segment of the storefront category page (`?category=velos`),
+     * unique per store. Null on rows created before slugs existed; the
+     * storefront then falls back to the id.
+     */
+    slug: varchar("slug", { length: 80 }),
     description: text("description"),
     imageUrl: text("image_url"),
     order: int("order").default(0),
@@ -892,6 +898,7 @@ export const categories = mysqlTable(
   },
   (table) => ({
     storeIdx: index("categories_store_idx").on(table.storeId),
+    storeSlugIdx: unique("categories_store_slug_idx").on(table.storeId, table.slug),
   }),
 );
 
@@ -953,6 +960,13 @@ export const products = mysqlTable(
 
     // Information
     name: varchar("name", { length: 255 }).notNull(),
+    /**
+     * URL segment of the storefront product page (`/product/vae-trekking`),
+     * unique per store. Null on rows created before slugs existed; the
+     * storefront then falls back to the id. Stable once set: a renamed
+     * product keeps its URL.
+     */
+    slug: varchar("slug", { length: 80 }),
     description: text("description"),
 
     // Free-text context read by the storefront AI advisor (constraints,
@@ -1017,6 +1031,7 @@ export const products = mysqlTable(
       table.status,
       table.name,
     ),
+    storeSlugIdx: unique("products_store_slug_idx").on(table.storeId, table.slug),
   }),
 );
 

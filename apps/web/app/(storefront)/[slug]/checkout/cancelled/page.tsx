@@ -1,5 +1,7 @@
-import { CheckIcon, ClockIcon, ShoppingCartIcon } from "lucide-react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+
+import { CheckIcon, ClockIcon, ShoppingCartIcon } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 import { and, eq } from "drizzle-orm";
@@ -11,6 +13,7 @@ import { EmptyState } from "@/components/storefront/ui/empty-state";
 import { OutcomeHeader } from "@/components/storefront/ui/outcome-header";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
 import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
+import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 
 import { ResumePaymentButton } from "./resume-payment-button";
@@ -21,6 +24,22 @@ interface CheckoutCancelledPageProps {
 }
 
 export const instant = false;
+
+export const generateMetadata = async ({
+  params,
+}: CheckoutCancelledPageProps): Promise<Metadata> => {
+  const { slug } = await params;
+  const [store, t] = await Promise.all([
+    getStoreBySlug(slug),
+    getTranslations("storefront.checkout.cancelled"),
+  ]);
+
+  if (!store) {
+    return { title: t("title") };
+  }
+
+  return generateStoreMetadata(store, { title: `${t("title")} - ${store.name}`, noIndex: true });
+};
 
 /**
  * Stripe `cancel_url` of the storefront checkout. The cart is untouched (it

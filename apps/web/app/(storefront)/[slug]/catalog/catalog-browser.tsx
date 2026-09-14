@@ -82,7 +82,7 @@ export const CatalogBrowser = ({
   initialDataUpdatedAt,
 }: CatalogBrowserProps) => {
   const t = useTranslations("storefront");
-  const { filters, update } = useCatalogParams();
+  const { filters, update } = useCatalogParams(categories);
   const { storeSlug } = useStore();
   const {
     period,

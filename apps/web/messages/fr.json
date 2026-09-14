@@ -3168,6 +3168,7 @@
       "reservations": "Réservations",
       "emails": "Emails",
       "contact": "Contact",
+      "seo": "Référencement",
       "legal": "Pages légales",
       "account": "Compte",
       "integrations": "Intégrations",
@@ -3676,6 +3677,9 @@
         "countryTimezone": "Fuseau horaire",
         "currency": "Devise",
         "currencyDescription": "La devise utilisée pour afficher les prix et facturer vos clients",
+        "locale": "Langue de repli",
+        "localeDescription": "Langue utilisée quand le navigateur du visiteur n'en demande aucune que la boutique propose, et dans laquelle Google indexe votre boutique. Un visiteur voit toujours d'abord la langue de son navigateur.",
+        "localeAuto": "Langue de la plateforme (français)",
         "descriptionLabel": "Description",
         "descriptionPlaceholder": "Décrivez votre activité...",
         "sector": "Secteur d'activité"
@@ -4456,6 +4460,20 @@
         "previewHint": "La page contact telle qu'elle s'affichera, mise à jour pendant que vous modifiez les réglages.",
         "viewOnStore": "Voir la page contact",
         "updated": "Moyens de contact mis à jour"
+      },
+      "seoSettings": {
+        "description": "Faites reconnaître votre boutique par Google Search Console",
+        "updated": "Réglages de référencement mis à jour",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Prouvez à Google que cette boutique vous appartient pour suivre son indexation et ses performances de recherche.",
+          "step1": "Ouvrez <link>Google Search Console</link> et ajoutez une propriété de type « Préfixe d'URL ».",
+          "step2": "Indiquez l'adresse de votre boutique :",
+          "step3": "Choisissez la méthode « Balise HTML », puis collez la balise ou son code ci-dessous et enregistrez avant de cliquer sur « Valider » dans Search Console.",
+          "label": "Code de vérification",
+          "help": "La balise complète ou seulement son contenu ; le code reste actif tant qu'il est enregistré ici.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
       },
       "legalSettings": {
         "title": "Pages légales",

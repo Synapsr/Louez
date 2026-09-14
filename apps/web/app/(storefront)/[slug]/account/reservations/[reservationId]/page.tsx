@@ -6,6 +6,7 @@ import {
   canRequestDateChange,
   getDateChangeRequests,
 } from "@/lib/reservations/util.date-change-request";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { and, count, desc, eq, inArray } from "drizzle-orm";
@@ -79,6 +80,7 @@ import {
   type FulfillmentLeg,
   type FulfillmentPlace,
 } from "@/lib/reservations/util.reservation-fulfillment";
+import { generateStoreMetadata } from "@/lib/seo";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { getStorefrontUrl } from "@/lib/storefront-url";
 import { formatStoreDate, formatStoreDateRange } from "@/lib/utils/store-date";
@@ -96,6 +98,28 @@ interface ReservationDetailPageProps {
  * actions, period and progress, items, history, deposit, payments,
  * condition reports, invoices, store contact.
  */
+// A customer's reservation: private, reached through a signed link. The
+// path is disallowed in robots.txt, but a shared link still lands it in the
+// index unless the page says no itself.
+export const generateMetadata = async ({
+  params,
+}: ReservationDetailPageProps): Promise<Metadata> => {
+  const { slug } = await params;
+  const [store, t] = await Promise.all([
+    getStoreBySlug(slug),
+    getTranslations("storefront.account"),
+  ]);
+
+  if (!store) {
+    return { title: t("reservationDetail") };
+  }
+
+  return generateStoreMetadata(store, {
+    title: `${t("reservationDetail")} - ${store.name}`,
+    noIndex: true,
+  });
+};
+
 export default async function ReservationDetailPage({
   params,
   searchParams,

@@ -19,6 +19,10 @@ import { usePricingNow } from "@/hooks/use-pricing-now";
 import { useDiscountVisibility, useStoreTimezone } from "@/contexts/store-context";
 
 import { usePeriodLabel } from "@/hooks/use-period-label";
+import {
+  buildCategoryBrowseHref,
+  getCategoryToken,
+} from "@/lib/utils/util.category-browse-entries";
 
 interface ProductSummaryProps {
   product: ProductPageProduct;
@@ -62,7 +66,10 @@ export const ProductSummary = ({
     <div className="flex flex-col gap-3">
       {product.category ? (
         <div>
-          <CategoryPill size="sm" href={`/catalog?category=${product.category.id}`}>
+          <CategoryPill
+            size="sm"
+            href={buildCategoryBrowseHref(getCategoryToken(product.category))}
+          >
             {product.category.name}
           </CategoryPill>
         </div>

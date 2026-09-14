@@ -3,6 +3,7 @@ import type {
   UpdateStoreAppearanceInput,
   UpdateStoreContactInput,
   UpdateStoreLegalInput,
+  UpdateStoreSeoInput,
 } from "@louez/validations";
 import { isOwnedImageUrl } from "@louez/validations";
 import { sanitizeRichTextHtml } from "@louez/utils";
@@ -22,6 +23,11 @@ interface UpdateStoreAppearanceParams {
 interface UpdateStoreContactParams {
   storeId: string;
   input: UpdateStoreContactInput;
+}
+
+interface UpdateStoreSeoParams {
+  storeId: string;
+  input: UpdateStoreSeoInput;
 }
 
 export async function updateStoreLegal(params: UpdateStoreLegalParams) {
@@ -184,6 +190,38 @@ export async function updateStoreContact(params: UpdateStoreContactParams) {
     .update(stores)
     .set({
       settings: { ...settings, contact: input },
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, storeId));
+
+  return { success: true as const };
+}
+
+/**
+ * Replaces the search engine settings under `settings.seo`, keeping every
+ * other group of the settings JSON as stored.
+ */
+export async function updateStoreSeo(params: UpdateStoreSeoParams) {
+  const { storeId, input } = params;
+
+  const currentStore = await db.query.stores.findFirst({
+    where: eq(stores.id, storeId),
+    columns: { settings: true },
+  });
+
+  if (!currentStore) {
+    throw new ApiServiceError("NOT_FOUND", "errors.storeNotFound");
+  }
+
+  const settings = currentStore.settings ?? {
+    reservationMode: "payment" as const,
+    advanceNoticeMinutes: 1440,
+  };
+
+  await db
+    .update(stores)
+    .set({
+      settings: { ...settings, seo: input },
       updatedAt: new Date(),
     })
     .where(eq(stores.id, storeId));

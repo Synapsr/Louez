@@ -20,6 +20,7 @@ export type CartLineProduct = Pick<
   StorefrontCatalogProduct,
   | "id"
   | "name"
+  | "slug"
   | "images"
   | "price"
   | "promotion"
@@ -79,6 +80,7 @@ export const toCartLineInput = (
 
   return {
     productId: product.id,
+    productSlug: product.slug ?? null,
     productName: product.name,
     productImage: productImage === undefined ? product.images?.[0] || null : productImage,
     price: parseStorefrontDecimal(product.price) ?? 0,

@@ -4,7 +4,7 @@ import "server-only";
 
 import { cache } from "react";
 
-import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, or } from "drizzle-orm";
 
 import {
   db,
@@ -73,6 +73,8 @@ export interface ProductPageStore {
 export interface ProductPageProduct {
   id: string;
   name: string;
+  /** URL segment of the page; null on a product predating slugs. */
+  slug: string | null;
   description: string | null;
   images: string[];
   videoUrl: string | null;
@@ -87,7 +89,7 @@ export interface ProductPageProduct {
   seasonalPricings: SeasonalPricingConfig[];
   stockKind: StockKind;
   trackUnits: boolean;
-  category: { id: string; name: string } | null;
+  category: { id: string; name: string; slug: string | null } | null;
 }
 
 export interface ProductPageBooking {
@@ -116,10 +118,14 @@ export interface ProductPageViewModel {
   basePath: string;
 }
 
-const readActiveProduct = cache((storeId: string, productId: string) =>
+/**
+ * The active product behind a URL segment: its slug, or its id for links
+ * written before slugs existed (the page then redirects to the slug).
+ */
+const readActiveProduct = cache((storeId: string, productRef: string) =>
   db.query.products.findFirst({
     where: and(
-      eq(products.id, productId),
+      or(eq(products.slug, productRef), eq(products.id, productRef)),
       eq(products.storeId, storeId),
       eq(products.status, "active"),
     ),
@@ -174,10 +180,10 @@ const toPageStore = (store: StorefrontStore): ProductPageStore => {
  * Product and store as `generateMetadata` needs them, sharing the page's
  * cached reads so each query runs once per request.
  */
-export const loadProductForMetadata = cache(async (slug: string, productId: string) => {
+export const loadProductForMetadata = cache(async (slug: string, productRef: string) => {
   const store = await getStoreBySlug(slug);
   if (!store) return { store: null, product: null };
-  const product = await readActiveProduct(store.id, productId);
+  const product = await readActiveProduct(store.id, productRef);
   return { store: toPageStore(store), product };
 });
 
@@ -259,6 +265,7 @@ const loadRelatedProducts = async (
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
+    slug: row.slug,
     images: row.images,
     price: row.price,
     promotion: row.promotion,
@@ -301,11 +308,11 @@ const toStorefrontUnits = (
  * the product is unknown so the page can answer 404.
  */
 export const loadProductPage = cache(
-  async (slug: string, productId: string): Promise<ProductPageViewModel | null> => {
+  async (slug: string, productRef: string): Promise<ProductPageViewModel | null> => {
     const store = await getStoreBySlug(slug);
     if (!store) return null;
 
-    const product = await readActiveProduct(store.id, productId);
+    const product = await readActiveProduct(store.id, productRef);
     if (!product) return null;
 
     const settings = toStoreSettings(store);
@@ -413,6 +420,7 @@ export const loadProductPage = cache(
       product: {
         id: product.id,
         name: product.name,
+        slug: product.slug,
         description: product.description,
         images: product.images ?? [],
         videoUrl: product.videoUrl ?? null,
@@ -428,7 +436,7 @@ export const loadProductPage = cache(
         stockKind: product.stockKind,
         trackUnits: Boolean(product.trackUnits),
         category: product.category
-          ? { id: product.category.id, name: product.category.name }
+          ? { id: product.category.id, name: product.category.name, slug: product.category.slug }
           : null,
       },
       booking: {

@@ -41,6 +41,8 @@ export interface CartLineIntent {
   lineId: string;
   selectionSignature: string;
   productId: string;
+  /** Product page segment; absent on lines added before slugs (the id is used). */
+  productSlug?: string | null;
   productName: string;
   productImage: string | null;
   price: number;

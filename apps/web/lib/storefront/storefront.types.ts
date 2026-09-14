@@ -50,6 +50,8 @@ export interface StorefrontProductUnit {
 export interface StorefrontCatalogProduct extends StorefrontProductPricing {
   id: string;
   name: string;
+  /** URL segment of the product page; null on rows predating slugs (the id is used). */
+  slug?: string | null;
   description?: string | null;
   images: string[] | null;
   price: string;
@@ -58,7 +60,7 @@ export interface StorefrontCatalogProduct extends StorefrontProductPricing {
   quantity: number | null;
   stockKind?: StockKind | null;
   displayQuantity?: number;
-  category?: { id?: string; name: string; order?: number | null } | null;
+  category?: { id?: string; name: string; slug?: string | null; order?: number | null } | null;
   videoUrl?: string | null;
   accessories?: AccessoryLink[];
   trackUnits?: boolean | null;

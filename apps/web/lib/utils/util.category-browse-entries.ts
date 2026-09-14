@@ -8,6 +8,7 @@ import {
 export interface BrowseCategoryRow {
   id: string;
   name: string;
+  slug?: string | null;
   description?: string | null;
   imageUrl?: string | null;
 }
@@ -37,11 +38,15 @@ export interface CategoryBuckets {
   productCount: number;
 }
 
+/** What `?category=` carries for a category: its slug, or its id for rows predating slugs. */
+export const getCategoryToken = (category: { id: string; slug?: string | null }): string =>
+  category.slug ?? category.id;
+
 /** The catalog link of a tile: the plain catalog for "all", a `?category=` filter otherwise. */
-export const buildCategoryBrowseHref = (categoryId: string): string =>
-  categoryId === ALL_CATEGORIES_VALUE
+export const buildCategoryBrowseHref = (categoryToken: string): string =>
+  categoryToken === ALL_CATEGORIES_VALUE
     ? "/catalog"
-    : `/catalog?category=${encodeURIComponent(categoryId)}`;
+    : `/catalog?category=${encodeURIComponent(categoryToken)}`;
 
 /** Sizes every bucket and remembers a visual for it. Rows must arrive in display order. */
 export const bucketProductLinks = (rows: readonly BrowseProductLinkRow[]): CategoryBuckets => {
@@ -102,7 +107,7 @@ export const buildCategoryBrowseEntries = ({
       availableCount: bucket.count,
       totalCount: bucket.count,
       variant: "category",
-      href: buildCategoryBrowseHref(category.id),
+      href: buildCategoryBrowseHref(getCategoryToken(category)),
     });
   }
 

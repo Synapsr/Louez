@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { getTranslations } from "next-intl/server";
 
@@ -15,6 +15,7 @@ import {
   parseCatalogSearchParams,
 } from "@/lib/storefront/catalog.queries";
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
+import { buildCategorySlugPath, toSearchParams } from "@/lib/storefront/util.legacy-storefront-url";
 import {
   JsonLd,
   generateBreadcrumbSchema,
@@ -22,8 +23,14 @@ import {
   generateStoreMetadata,
   getCanonicalUrl,
 } from "@/lib/seo";
+import { getStorefrontUrl } from "@/lib/storefront-url";
 import { getMaxRentalMinutes, getMinRentalMinutes } from "@/lib/utils/rental-duration";
+import {
+  buildCategoryBrowseHref,
+  getCategoryToken,
+} from "@/lib/utils/util.category-browse-entries";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
+import { getStorefrontPricingSummary } from "@/lib/utils/util.storefront-pricing";
 
 import { CatalogBrowser } from "./catalog-browser";
 
@@ -35,13 +42,16 @@ interface CatalogPageProps {
 // Keep public browse pages in the router cache for five minutes.
 export const unstable_dynamicStaleTime = 300;
 
-/** The category behind `?category=`, or null for the whole catalog and the reserved values. */
-const findRealCategory = <T extends { id: string }>(
+/**
+ * The category behind `?category=` — its slug, or its id on links written
+ * before slugs — or null for the whole catalog and the reserved values.
+ */
+const findRealCategory = <T extends { id: string; slug?: string | null }>(
   category: string | null,
   categories: readonly T[],
 ): T | null =>
   category && !isReservedCategoryValue(category)
-    ? (categories.find((entry) => entry.id === category) ?? null)
+    ? (categories.find((entry) => entry.slug === category || entry.id === category) ?? null)
     : null;
 
 export async function generateMetadata({
@@ -67,7 +77,7 @@ export async function generateMetadata({
     category?.name ??
     (filters.category === UNCATEGORIZED_CATEGORY_VALUE ? tBrowse("others") : null);
   const categoryPath = category
-    ? `/catalog?category=${encodeURIComponent(category.id)}`
+    ? buildCategoryBrowseHref(getCategoryToken(category))
     : filters.category === UNCATEGORIZED_CATEGORY_VALUE
       ? `/catalog?category=${UNCATEGORIZED_CATEGORY_VALUE}`
       : "/catalog";
@@ -105,7 +115,8 @@ export async function generateMetadata({
 
 export default async function CatalogPage({ params, searchParams }: CatalogPageProps) {
   const { slug } = await params;
-  const filters = parseCatalogSearchParams(await searchParams);
+  const rawSearchParams = await searchParams;
+  const urlFilters = parseCatalogSearchParams(rawSearchParams);
   const store = await getStoreBySlug(slug);
 
   if (!store) {
@@ -113,11 +124,23 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
   }
 
   const settings = store.settings ?? null;
+  const summary = await loadCatalogCategories(store.id);
+  const category = findRealCategory(urlFilters.category, summary.categories);
 
-  const [t, tBrowse, summary, page, priceIndex, attributeAxes] = await Promise.all([
+  // A category reached by id keeps its readable URL: one address per page.
+  // The layout already answered 308 on proxied hosts; this is the fallback.
+  if (category?.slug && urlFilters.category !== category.slug) {
+    permanentRedirect(
+      getStorefrontUrl(slug, buildCategorySlugPath(category, toSearchParams(rawSearchParams))),
+    );
+  }
+
+  // Downstream the category is always an id; only the URL speaks in slugs.
+  const filters = category ? { ...urlFilters, category: category.id } : urlFilters;
+
+  const [t, tBrowse, page, priceIndex, attributeAxes] = await Promise.all([
     getTranslations("storefront.catalog"),
     getTranslations("storefront.availability.categoryBrowse"),
-    loadCatalogCategories(store.id),
     loadCatalogProducts({
       storeId: store.id,
       timezone: store.settings?.timezone,
@@ -145,7 +168,6 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
     maxRentalMinutes: getMaxRentalMinutes(settings),
   };
 
-  const category = findRealCategory(filters.category, summary.categories);
   const listTitle =
     category?.name ??
     (filters.category === UNCATEGORIZED_CATEGORY_VALUE ? tBrowse("others") : t("title"));
@@ -158,15 +180,22 @@ export default async function CatalogPage({ params, searchParams }: CatalogPageP
   if (listTitle !== t("title")) {
     breadcrumbItems.push({
       name: listTitle,
-      url: getCanonicalUrl(slug, `/catalog?category=${encodeURIComponent(filters.category ?? "")}`),
+      url: getCanonicalUrl(
+        slug,
+        buildCategoryBrowseHref(category ? getCategoryToken(category) : (filters.category ?? "")),
+      ),
     });
   }
 
-  // Only the server-rendered first page is described; appended pages are not crawled.
+  // Only the server-rendered first page is described; appended pages are not
+  // crawled. The rate is the one the card prints, promotion included.
   const productsForSchema = page.products.map((product) => ({
     id: product.id,
     name: product.name,
-    price: product.price,
+    slug: product.slug,
+    price: String(
+      getStorefrontPricingSummary(product, { timezone: settings?.timezone }).displayPrice,
+    ),
     images: product.images,
     quantity: product.quantity ?? 1,
     pricingKind: product.pricingKind,

@@ -3168,6 +3168,7 @@
       "reservations": "Reserveringen",
       "emails": "E-mails",
       "contact": "Contact",
+      "seo": "Zoekmachines",
       "legal": "Juridische pagina's",
       "account": "Account",
       "subscription": {
@@ -3373,6 +3374,9 @@
         "countryTimezone": "Tijdzone",
         "currency": "Valuta",
         "currencyDescription": "De valuta die wordt gebruikt om prijzen weer te geven en uw klanten te factureren",
+        "locale": "Terugvaltaal",
+        "localeDescription": "Taal die wordt gebruikt als de browser van de bezoeker geen taal vraagt die de winkel aanbiedt, en waarin Google je winkel indexeert. Een bezoeker ziet altijd eerst zijn browsertaal.",
+        "localeAuto": "Platformtaal (Frans)",
         "descriptionLabel": "Beschrijving",
         "descriptionPlaceholder": "Beschrijf uw bedrijf...",
         "sector": "Bedrijfssector"
@@ -4319,6 +4323,20 @@
         "previewHint": "De contactpagina zoals die wordt getoond, bijgewerkt terwijl u de instellingen wijzigt.",
         "viewOnStore": "Contactpagina bekijken",
         "updated": "Contactkanalen bijgewerkt"
+      },
+      "seoSettings": {
+        "description": "Laat je winkel herkennen door Google Search Console",
+        "updated": "Zoekmachine-instellingen bijgewerkt",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Bewijs aan Google dat deze winkel van jou is om de indexering en zoekprestaties te volgen.",
+          "step1": "Open <link>Google Search Console</link> en voeg een property van het type “URL-voorvoegsel” toe.",
+          "step2": "Vul het adres van je winkel in:",
+          "step3": "Kies de methode “HTML-tag”, plak de tag of de code hieronder en sla op voordat je in Search Console op “Verifiëren” klikt.",
+          "label": "Verificatiecode",
+          "help": "De hele tag of alleen de inhoud; de code blijft actief zolang hij hier is opgeslagen.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
       },
       "legalSettings": {
         "title": "Juridische pagina's",

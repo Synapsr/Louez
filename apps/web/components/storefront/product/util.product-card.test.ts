@@ -200,15 +200,23 @@ describe("toProductCardAvailability", () => {
 
 describe("buildProductHref", () => {
   it("links to the product page without dates", () => {
-    assert.equal(buildProductHref("p1"), "/product/p1");
+    assert.equal(buildProductHref({ id: "p1" }), "/product/p1");
+  });
+
+  it("prefers the slug over the id", () => {
+    assert.equal(buildProductHref({ id: "p1", slug: "vae-trekking" }), "/product/vae-trekking");
+    assert.equal(buildProductHref({ id: "p1", slug: null }), "/product/p1");
   });
 
   it("carries the period as query params", () => {
     assert.equal(
-      buildProductHref("p1", {
-        startDate: "2026-09-10T07:00:00.000Z",
-        endDate: "2026-09-12T16:00:00.000Z",
-      }),
+      buildProductHref(
+        { id: "p1" },
+        {
+          startDate: "2026-09-10T07:00:00.000Z",
+          endDate: "2026-09-12T16:00:00.000Z",
+        },
+      ),
       "/product/p1?startDate=2026-09-10T07%3A00%3A00.000Z&endDate=2026-09-12T16%3A00%3A00.000Z",
     );
   });

@@ -6,6 +6,7 @@ import { type Locale, defaultLocale, locales } from "@/i18n/config";
 import { isStandaloneMode } from "@/lib/deployment";
 import { env } from "@/env";
 import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
+import { stripHtml, truncateText } from "@/lib/util.seo-text";
 import { buildStorefrontUrl } from "@/lib/util.storefront-url";
 
 const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN;
@@ -40,6 +41,11 @@ function absoluteAssetUrl(url: string): string {
   return toAbsoluteUrl(url, env.NEXT_PUBLIC_APP_URL);
 }
 
+/** Store-relative path of a product page: its slug, or its id for rows predating slugs. */
+export function getProductPath(product: { id: string; slug?: string | null }): string {
+  return `/product/${product.slug ?? product.id}`;
+}
+
 /**
  * Get canonical URL for a store page
  */
@@ -71,7 +77,14 @@ export interface StoreSeoData {
 export interface ProductSeoData {
   id: string;
   name: string;
+  /** URL segment of the product page; the id stands in when a product has none. */
+  slug?: string | null;
   description?: string | null;
+  /**
+   * The rate the page prints for the base period — after an active
+   * promotion, so the structured data never claims a price the visitor
+   * does not see. See `getStorefrontPricingSummary`.
+   */
   price: string;
   deposit?: string | null;
   images?: string[] | null;
@@ -144,6 +157,15 @@ function getPriceReferenceQuantity(
   return unitCode ? { value: 1, unitCode } : null;
 }
 
+// Rich thumbnails in search results — without this Google caps previews for
+// pages it has no explicit signal for.
+const STORE_PAGE_ROBOTS: NonNullable<Metadata["robots"]> = {
+  index: true,
+  follow: true,
+  "max-image-preview": "large",
+  "max-snippet": -1,
+};
+
 // ============================================================================
 // Metadata Generators
 // ============================================================================
@@ -182,11 +204,18 @@ export function generateStoreMetadata(
   ).map(absoluteAssetUrl);
 
   const metadata: Metadata = {
-    title: pageTitle,
+    // The root layout suffixes every title with the platform name; a store
+    // page carries the store's own name, never the platform's.
+    title: { absolute: pageTitle },
     description: truncateText(pageDescription, 160),
     alternates: {
       canonical: canonicalUrl,
     },
+    robots: noIndex
+      ? // Result pages and funnels stay out of the index, but their links to
+        // products and to the catalog still count.
+        { index: false, follow: true }
+      : STORE_PAGE_ROBOTS,
     // Use store logo as favicon if available
     ...(store.logoUrl && {
       icons: {
@@ -219,13 +248,6 @@ export function generateStoreMetadata(
     },
   };
 
-  if (noIndex) {
-    metadata.robots = {
-      index: false,
-      follow: false,
-    };
-  }
-
   return metadata;
 }
 
@@ -256,22 +278,15 @@ export function generateProductMetadata(
       `Louez ${product.name} chez ${store.name} à partir de ${priceFormatted}`;
 
   const images = (product.images?.length ? product.images : []).map(absoluteAssetUrl);
-  const canonicalUrl = getCanonicalUrl(store.slug, path || `/product/${product.id}`);
+  const canonicalUrl = getCanonicalUrl(store.slug, path || getProductPath(product));
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: {
       canonical: canonicalUrl,
     },
-    // Rich thumbnails in search results — without this Google caps previews
-    // for pages it has no explicit signal for.
-    robots: {
-      index: true,
-      follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
+    robots: STORE_PAGE_ROBOTS,
     openGraph: {
       type: "website",
       locale: toOpenGraphLocale(locale),
@@ -301,10 +316,20 @@ export function generateProductMetadata(
 // JSON-LD Schema.org Generators
 // ============================================================================
 
+export interface LocalBusinessSchemaOptions {
+  /** schema.org `openingHoursSpecification` entries, see `buildOpeningHoursSpecification`. */
+  openingHoursSpecification?: readonly object[];
+  /** Google Maps URL of the place, surfaced as `hasMap`. */
+  mapUrl?: string | null;
+}
+
 /**
  * Generate LocalBusiness schema for store homepage
  */
-export function generateLocalBusinessSchema(store: StoreSeoData): object {
+export function generateLocalBusinessSchema(
+  store: StoreSeoData,
+  options: LocalBusinessSchemaOptions = {},
+): object {
   const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "LocalBusiness",
@@ -348,6 +373,14 @@ export function generateLocalBusinessSchema(store: StoreSeoData): object {
     };
   }
 
+  if (options.openingHoursSpecification?.length) {
+    schema.openingHoursSpecification = options.openingHoursSpecification;
+  }
+
+  if (options.mapUrl) {
+    schema.hasMap = options.mapUrl;
+  }
+
   // Add price range indicator
   schema.priceRange = "$$";
 
@@ -359,7 +392,7 @@ export function generateLocalBusinessSchema(store: StoreSeoData): object {
  */
 export function generateProductSchema(store: StoreSeoData, product: ProductSeoData): object {
   const currency = store.settings?.currency || "EUR";
-  const canonicalUrl = getCanonicalUrl(store.slug, `/product/${product.id}`);
+  const canonicalUrl = getCanonicalUrl(store.slug, getProductPath(product));
   const price = parseFloat(product.price);
   const referenceQuantity = getPriceReferenceQuantity(product);
 
@@ -496,7 +529,7 @@ export function generateItemListSchema(
       item: {
         "@type": "Product",
         name: product.name,
-        url: getCanonicalUrl(store.slug, `/product/${product.id}`),
+        url: getCanonicalUrl(store.slug, getProductPath(product)),
         ...(product.images?.length && {
           image: absoluteAssetUrl(product.images[0]),
         }),
@@ -516,20 +549,7 @@ export function generateItemListSchema(
 // Helper Functions
 // ============================================================================
 
-/**
- * Strip HTML tags from text
- */
-export function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
-}
-
-/**
- * Truncate text to a maximum length
- */
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength - 3).trim() + "...";
-}
+export { stripHtml, truncateText };
 
 /**
  * Format price with currency

@@ -22,6 +22,7 @@ import {
 import { getStoreBySlug } from "@/lib/storefront/get-store-by-slug";
 import { loadHomePage } from "@/lib/storefront/home.queries";
 import { resolveStoreContactChannels } from "@/lib/storefront/util.store-contact";
+import { buildOpeningHoursSpecification } from "@/lib/utils/util.opening-hours";
 import { resolveStoreHeroPresentation } from "@/lib/utils/util.store-hero";
 import { getStorePeriodRules } from "@/lib/utils/util.store-period-rules";
 
@@ -75,7 +76,15 @@ const StorefrontPage = async ({ params }: StorefrontPageProps) => {
   return (
     <>
       <PageTracker page="home" />
-      <JsonLd data={[generateLocalBusinessSchema(store), generateWebSiteSchema(store)]} />
+      <JsonLd
+        data={[
+          generateLocalBusinessSchema(store, {
+            openingHoursSpecification: buildOpeningHoursSpecification(settings.businessHours),
+            mapUrl: place.details?.mapsUrl,
+          }),
+          generateWebSiteSchema(store),
+        ]}
+      />
 
       <StoreHero
         name={store.name}

@@ -76,7 +76,7 @@ export const RelatedProducts = ({ products, className }: RelatedProductsProps) =
               >
                 <ProductCard
                   product={product}
-                  href={buildProductHref(product.id, period)}
+                  href={buildProductHref(product, period)}
                   period={period}
                   onQuickAdd={
                     limit !== undefined ? () => quickAdd.start(product, limit, period) : undefined

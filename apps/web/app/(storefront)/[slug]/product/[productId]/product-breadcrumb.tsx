@@ -3,10 +3,14 @@ import { useTranslations } from "next-intl";
 import { cn } from "@louez/utils";
 
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
+import {
+  buildCategoryBrowseHref,
+  getCategoryToken,
+} from "@/lib/utils/util.category-browse-entries";
 
 interface ProductBreadcrumbProps {
   productName: string;
-  category: { id: string; name: string } | null;
+  category: { id: string; name: string; slug?: string | null } | null;
   className?: string;
 }
 
@@ -16,7 +20,9 @@ export const ProductBreadcrumb = ({ productName, category, className }: ProductB
   const links = [
     { href: "/", label: t("home") },
     { href: "/catalog", label: t("catalog") },
-    ...(category ? [{ href: `/catalog?category=${category.id}`, label: category.name }] : []),
+    ...(category
+      ? [{ href: buildCategoryBrowseHref(getCategoryToken(category)), label: category.name }]
+      : []),
   ];
 
   return (

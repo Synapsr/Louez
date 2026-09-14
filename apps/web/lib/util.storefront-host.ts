@@ -95,6 +95,7 @@ export const resolveStoreFromHost = async () => {
     id: true,
     slug: true,
     name: true,
+    cgv: true,
     updatedAt: true,
   } as const;
 

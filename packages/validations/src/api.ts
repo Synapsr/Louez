@@ -680,6 +680,30 @@ export const updateStoreContactInputSchema = z.object({
     .transform((value) => (value === "" ? null : value)),
 });
 
+// Owners paste either the bare token or the whole
+// `<meta name="google-site-verification" content="…">` tag Search Console
+// shows; only the token is stored.
+const extractGoogleSiteVerificationToken = (value: string): string => {
+  const tag = value.match(/content\s*=\s*["']([^"']+)["']/i);
+  return (tag ? tag[1] : value).trim();
+};
+
+/** Search engine settings, saved whole under `settings.seo`. */
+export const updateStoreSeoInputSchema = z.object({
+  googleSiteVerification: z
+    .string()
+    .trim()
+    .max(500, "errors.invalidData")
+    .transform(extractGoogleSiteVerificationToken)
+    .pipe(
+      z
+        .string()
+        .max(200, "errors.invalidData")
+        .regex(/^[A-Za-z0-9_-]*$/, "errors.invalidData"),
+    )
+    .transform((value) => (value === "" ? null : value)),
+});
+
 const s3UrlSchema = z
   .string()
   .refine(
@@ -910,6 +934,7 @@ export type DashboardReservationCreateManualReservationInput = z.infer<
 >;
 export type UpdateStoreLegalInput = z.infer<typeof updateStoreLegalInputSchema>;
 export type UpdateStoreContactInput = z.infer<typeof updateStoreContactInputSchema>;
+export type UpdateStoreSeoInput = z.infer<typeof updateStoreSeoInputSchema>;
 export type UpdateStoreAppearanceInput = z.infer<typeof updateStoreAppearanceInputSchema>;
 export type DashboardIntegrationsGetTulipStateInput = z.infer<
   typeof dashboardIntegrationsGetTulipStateInputSchema

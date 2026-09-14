@@ -52,7 +52,7 @@ export const CartLineItem = ({
   const t = useTranslations("storefront.cart");
   const formatMoney = useFormatMoney();
   const { close } = useCartDrawer();
-  const productHref = `/product/${item.productId}`;
+  const productHref = `/product/${item.productSlug ?? item.productId}`;
 
   const priceResult = calculateCartItemPrice(item, globalStartDate, globalEndDate);
   const { subtotal, seasonalSegments } = priceResult;

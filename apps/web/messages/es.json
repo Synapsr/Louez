@@ -3168,6 +3168,7 @@
       "reservations": "Reservas",
       "emails": "Correos",
       "contact": "Contacto",
+      "seo": "Buscadores",
       "legal": "Paginas legales",
       "account": "Cuenta",
       "subscription": {
@@ -3373,6 +3374,9 @@
         "countryTimezone": "Zona horaria",
         "currency": "Moneda",
         "currencyDescription": "La moneda usada para mostrar precios y facturar a sus clientes",
+        "locale": "Idioma de reserva",
+        "localeDescription": "Idioma usado cuando el navegador del visitante no pide ninguno de los que ofrece la tienda, y en el que Google indexa tu tienda. El visitante siempre ve primero el idioma de su navegador.",
+        "localeAuto": "Idioma de la plataforma (francés)",
         "descriptionLabel": "Descripcion",
         "descriptionPlaceholder": "Describa su negocio...",
         "sector": "Sector de actividad"
@@ -4319,6 +4323,20 @@
         "previewHint": "La página de contacto tal como se mostrará, actualizada mientras cambias los ajustes.",
         "viewOnStore": "Ver la página de contacto",
         "updated": "Medios de contacto actualizados"
+      },
+      "seoSettings": {
+        "description": "Haz que Google Search Console reconozca tu tienda",
+        "updated": "Ajustes de buscadores actualizados",
+        "verification": {
+          "title": "Google Search Console",
+          "description": "Demuestra a Google que esta tienda es tuya para seguir su indexación y su rendimiento en las búsquedas.",
+          "step1": "Abre <link>Google Search Console</link> y añade una propiedad de tipo «Prefijo de URL».",
+          "step2": "Indica la dirección de tu tienda:",
+          "step3": "Elige el método «Etiqueta HTML», pega la etiqueta o su código abajo y guarda antes de pulsar «Verificar» en Search Console.",
+          "label": "Código de verificación",
+          "help": "La etiqueta completa o solo su contenido; el código sigue activo mientras esté guardado aquí.",
+          "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
+        }
       },
       "legalSettings": {
         "title": "Paginas legales",

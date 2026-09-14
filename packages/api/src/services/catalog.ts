@@ -556,6 +556,7 @@ export async function listProductSnapshots(params: CatalogListParams): Promise<{
       storeSettings: stores.settings,
       legacyCategoryId: products.categoryId,
       name: products.name,
+      slug: products.slug,
       description: products.description,
       images: products.images,
       price: products.price,
@@ -900,7 +901,9 @@ export async function listProductSnapshots(params: CatalogListParams): Promise<{
       tiers: season.tiers.map((tier) => serializeTier(tier, row.pricingMode)),
     }));
     const updatedAt = toDate(row.updatedAt);
-    const bookingUrl = new URL(params.getCanonicalUrl(row.storeSlug, `/product/${row.id}`));
+    const bookingUrl = new URL(
+      params.getCanonicalUrl(row.storeSlug, `/product/${row.slug ?? row.id}`),
+    );
     bookingUrl.searchParams.set("channel", "marketplace");
 
     return {

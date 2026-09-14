@@ -554,6 +554,13 @@
       "when": 1789206052566,
       "tag": "0073_cute_wendell_vaughn",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1789369647923,
+      "tag": "0074_product_category_slugs",
+      "breakpoints": true
     }
   ]
 }

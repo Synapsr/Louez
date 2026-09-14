@@ -71,5 +71,8 @@ export type {
   StockKindChangeBlocker,
 } from "./consumable-stock";
 
+export { SLUG_MAX_LENGTH, isSlug, pickUniqueSlug, slugify } from "./slug";
+export { nextCategorySlug, nextProductSlug } from "./slugs";
+
 // Database setup utilities
 export { setupDatabase, CORE_TABLES } from "./setup";
