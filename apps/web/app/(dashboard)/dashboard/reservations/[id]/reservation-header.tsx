@@ -19,7 +19,6 @@ import { toastManager } from "@louez/ui";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@louez/ui";
-import { Badge } from "@louez/ui";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,9 +27,8 @@ import {
   DropdownMenuTrigger,
 } from "@louez/ui";
 
-import { PaymentStatusBadge } from "./payment-status-badge";
+import { ReservationIdentity } from "./reservation-identity";
 import { SendEmailModal } from "./send-email-modal";
-import { STATUS_CONFIG } from "../reservations-utils";
 import { generateAccessUrl } from "@/app/(dashboard)/dashboard/reservations/actions";
 import {
   getDashboardReservationBackHref,
@@ -253,22 +251,15 @@ export function ReservationHeader({
               <span className="sr-only">{tCommon("back")}</span>
             </Button>
 
-            <div className="space-y-1">
-              {/* Reservation number + Status badges */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl font-bold tracking-tight">#{reservationNumber}</h1>
-                <Badge variant={STATUS_CONFIG[status].badgeVariant} className="font-medium">
-                  {t(`status.${status}`)}
-                </Badge>
-                <PaymentStatusBadge
-                  rentalAmount={rentalAmount}
-                  rentalPaid={rentalPaid}
-                  depositAmount={depositAmount}
-                  depositCollected={depositCollected}
-                  depositReturned={depositReturned}
-                />
-              </div>
-            </div>
+            <ReservationIdentity
+              reservationNumber={reservationNumber}
+              status={status}
+              rentalAmount={rentalAmount}
+              rentalPaid={rentalPaid}
+              depositAmount={depositAmount}
+              depositCollected={depositCollected}
+              depositReturned={depositReturned}
+            />
           </div>
 
           {/* Action buttons */}

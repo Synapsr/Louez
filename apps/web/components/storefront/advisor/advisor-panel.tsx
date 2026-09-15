@@ -16,6 +16,8 @@ import { AdvisorMessages } from "./advisor-messages";
 
 interface AdvisorPanelProps {
   isOpen: boolean;
+  autoFocus?: boolean;
+  modal?: boolean;
   onClose: () => void;
   displayName?: string;
   welcomeMessage?: string;
@@ -39,6 +41,8 @@ const SUGGESTION_CLASS_NAME =
  */
 export const AdvisorPanel = ({
   isOpen,
+  autoFocus = true,
+  modal = true,
   onClose,
   displayName,
   welcomeMessage,
@@ -85,12 +89,15 @@ export const AdvisorPanel = ({
 
   return (
     <Sheet
+      modal={modal}
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
       <SheetPopup
+        initialFocus={autoFocus}
+        finalFocus={autoFocus}
         side="right"
         variant="inset"
         showCloseButton={false}
@@ -147,7 +154,7 @@ export const AdvisorPanel = ({
           />
 
           {messages.length === 0 ? (
-            <div className="mt-4 flex flex-col items-start gap-2">
+            <div data-slot="advisor-suggestions" className="mt-4 flex flex-col items-start gap-2">
               {intent === "checkout" ? (
                 <button
                   type="button"

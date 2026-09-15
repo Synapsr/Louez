@@ -1,9 +1,14 @@
+import { DEMO_ROUTE_HEADER, isDemoPath } from "@/lib/landing-demos/policy";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { isStandaloneMode } from "@/lib/deployment";
 import { getSubdomain, isLoopbackHost } from "@/lib/util.host";
-import { buildEmbedSecurityHeaders, buildSecurityHeaders } from "@/lib/util.security-headers";
+import {
+  buildDemoSecurityHeaders,
+  buildEmbedSecurityHeaders,
+  buildSecurityHeaders,
+} from "@/lib/util.security-headers";
 import { isValidReferralCode } from "@/lib/utils/referral";
 import {
   isKnownSignupOrigin,
@@ -54,13 +59,16 @@ function withRuntimeSecurityHeaders(
 ) {
   const options = {
     appDomain: publicEnv.NEXT_PUBLIC_APP_DOMAIN,
+    appUrl: publicEnv.NEXT_PUBLIC_APP_URL,
     fromHelloApiUrl: publicEnv.NEXT_PUBLIC_FROMHELLO_API_URL,
     isDevelopment: process.env.NODE_ENV === "development",
     openReplayIngestPoint: publicEnv.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
   };
-  const securityHeaders = isEmbedPath(pathname)
-    ? buildEmbedSecurityHeaders(options)
-    : buildSecurityHeaders(options);
+  const securityHeaders = isDemoPath(pathname)
+    ? buildDemoSecurityHeaders(options)
+    : isEmbedPath(pathname)
+      ? buildEmbedSecurityHeaders(options)
+      : buildSecurityHeaders(options);
 
   for (const { key, value } of securityHeaders) {
     response.headers.set(key, value);
@@ -338,6 +346,18 @@ function captureAcquisition(
 export async function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
   const { pathname } = request.nextUrl;
+  // This internal marker only comes from this proxy, never from a visitor.
+  if (request.headers.has(DEMO_ROUTE_HEADER)) return new NextResponse(null, { status: 400 });
+  if (isDemoPath(pathname)) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      return new NextResponse(null, { status: 405, headers: { Allow: "GET, HEAD" } });
+    }
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set(DEMO_ROUTE_HEADER, "1");
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return withRuntimeSecurityHeaders(response, pathname, getRuntimePublicEnv());
+  }
 
   // -----------------------------------------------------------------------------
   // 1. PASS THROUGH: API routes, PostHog ingest proxy, and static assets

@@ -1,5 +1,7 @@
+import { getDemoParentOrigins } from "./landing-demos/policy";
 export interface SecurityHeadersOptions {
   appDomain?: string;
+  appUrl?: string;
   fromHelloApiUrl?: string;
   isDevelopment: boolean;
   openReplayIngestPoint?: string;
@@ -161,3 +163,31 @@ export const buildEmbedSecurityHeaders = (options: SecurityHeadersOptions): Secu
           }
         : header,
     );
+
+/** Fixture-only frames can be embedded by the marketing site. Business routes keep SAMEORIGIN. */
+export const buildDemoSecurityHeaders = (options: SecurityHeadersOptions): SecurityHeader[] => {
+  const appOrigin = getOrigin(options.appUrl) ?? `https://app.${options.appDomain}`;
+  // Next streams/resumes the demo route over RSC. No business API is reachable from a scene.
+  const connections = [
+    `${appOrigin}/demos/landing/`,
+    ...(options.isDevelopment
+      ? [`${appOrigin}/_next/`, "ws://localhost:*", "ws://127.0.0.1:*", "wss://*.localify:*"]
+      : []),
+  ];
+  return buildSecurityHeaders(options)
+    .filter((header) => header.key !== "X-Frame-Options")
+    .map((header) =>
+      header.key === "Content-Security-Policy"
+        ? {
+            ...header,
+            value: header.value
+              .replace(
+                /frame-ancestors[^;]*/,
+                `frame-ancestors 'self' ${getDemoParentOrigins(options.appDomain, options.isDevelopment).join(" ")}`,
+              )
+              .replace(/form-action[^;]*/, "form-action 'none'")
+              .replace(/connect-src[^;]*/, `connect-src ${connections.join(" ")}`),
+          }
+        : header,
+    );
+};
