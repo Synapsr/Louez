@@ -1,114 +1,180 @@
 "use client";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Badge } from "@louez/ui";
-import { CheckIcon } from "@louez/ui/icons";
-import { ProductCard } from "@/components/storefront/product/product-card";
-import { QuickAddDialogView } from "@/components/storefront/product/quick-add-dialog-view";
-import { QuickAddVariantView } from "@/components/storefront/product/quick-add-variant-view";
-import { useProductCardPricing } from "@/components/storefront/product/use-product-card-pricing";
+import { CatalogLayout } from "@/app/(storefront)/[slug]/catalog/catalog-layout";
+import { CatalogSidebar } from "@/app/(storefront)/[slug]/catalog/catalog-sidebar";
+import { CatalogActiveFilters } from "@/app/(storefront)/[slug]/catalog/catalog-active-filters";
+import { CatalogEmptyState } from "@/app/(storefront)/[slug]/catalog/catalog-empty-state";
+import { ProductGridView } from "@/components/storefront/product/product-grid-view";
+import { CartDrawerView } from "@/components/storefront/cart/cart-drawer-view";
+import { CartPanelView } from "@/components/storefront/cart/cart-panel-view";
+import { CartTriggerView } from "@/components/storefront/cart/cart-trigger-view";
+import { CartEmptyState } from "@/components/storefront/cart/cart-empty-state";
 import { RentalPeriodPicker } from "@/components/storefront/date-picker/rental-period-picker";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
-import { DEMO_PRODUCTS, DEMO_RULES, type DemoBooking } from "@/lib/landing-demos/fixtures";
+import {
+  DEMO_PRODUCTS,
+  DEMO_CATEGORIES,
+  DEMO_RULES,
+  type DemoBooking,
+} from "@/lib/landing-demos/fixtures";
+import { getDemoCart } from "@/lib/landing-demos/cart";
+import { getStorefrontProductPrice } from "@/lib/utils/util.storefront-product-pricing";
+import {
+  applyCatalogParams,
+  readCatalogFilters,
+  filterCatalogProducts,
+  sortCatalogProducts,
+  getCatalogTitle,
+  countActiveCatalogFilters,
+  CLEAR_CATALOG_FILTERS_PATCH,
+  type CatalogFiltersPatch,
+} from "@/lib/utils/util.rental-browse";
 
 export const StorefrontScene = ({
   compact,
   period: initialPeriod,
-  onComplete,
+  onBookingChange,
 }: {
   compact: boolean;
   period: RentalPeriodValue;
-  onComplete: (booking: DemoBooking) => void;
+  onBookingChange: (booking: DemoBooking) => void;
 }) => {
   const t = useTranslations("storefront");
   const [period, setPeriod] = useState(initialPeriod);
-  const [productIndex, setProductIndex] = useState(0);
+  const [params, setParams] = useState(() => new URLSearchParams());
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
-  const [quantity, setQuantity] = useState(1);
-  const [selected, setSelected] = useState<Record<string, string>>({});
-  const [added, setAdded] = useState(false);
-  const product = DEMO_PRODUCTS[productIndex] ?? DEMO_PRODUCTS[0];
-  const cardPeriod = { startDate: period.start.toISOString(), endDate: period.end.toISOString() };
-  const pricing = useProductCardPricing(product, cardPeriod);
-  const choose = (index: number) => {
-    setProductIndex(index);
-    setQuantity(1);
-    setSelected({});
-    setAdded(false);
-    setOpen(true);
+  const filters = readCatalogFilters(params);
+  const update = (patch: CatalogFiltersPatch) =>
+    setParams((current) => applyCatalogParams(current, patch));
+  const cart = getDemoCart(quantities, period);
+  const changeCart = (next: Record<string, number>, nextPeriod = period) => {
+    setQuantities(next);
+    const nextCart = getDemoCart(next, nextPeriod);
+    if (nextCart.booking) onBookingChange(nextCart.booking);
   };
+  const changePeriod = (next: RentalPeriodValue) => {
+    setPeriod(next);
+    changeCart(quantities, next);
+  };
+  const products = DEMO_PRODUCTS.map((product) => ({
+    ...product,
+    displayPrice: getStorefrontProductPrice({
+      product,
+      timezone: "Europe/Paris",
+      startDate: cart.period.startDate,
+      endDate: cart.period.endDate,
+      quantity: 1,
+    }).subtotal,
+  }));
+  const visible = sortCatalogProducts(filterCatalogProducts(products, filters), {
+    categories: DEMO_CATEGORIES,
+    sort: filters.sort,
+  });
+  const priceBounds = {
+    min: Math.min(...products.map((product) => product.displayPrice)),
+    max: Math.max(...products.map((product) => product.displayPrice)),
+  };
+  const sidebar = (
+    <CatalogSidebar
+      showCategories
+      categories={DEMO_CATEGORIES}
+      totalCount={products.length}
+      uncategorizedCount={0}
+      availableCounts={null}
+      attributeAxes={[]}
+      priceBounds={priceBounds}
+      hasPeriod
+      filters={filters}
+      update={update}
+    />
+  );
   return (
-    <div className="flex flex-col gap-5" data-demo-scene="storefront">
-      <div className="flex items-center justify-between gap-3">
+    <div data-demo-scene="storefront" data-demo-catalog={compact ? "compact" : "full"}>
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-6 lg:px-8">
         <span className="font-semibold">Maison du Vélo</span>
-        <RentalPeriodPicker
-          layout="compact"
-          value={period}
-          onChange={setPeriod}
-          rules={DEMO_RULES}
-        />
-      </div>
-      <div
-        className={
-          compact ? "mx-auto w-full max-w-44" : "grid grid-cols-2 gap-4 min-[520px]:grid-cols-3"
+        <div className="flex items-center gap-1">
+          <RentalPeriodPicker
+            layout="compact"
+            value={period}
+            onChange={changePeriod}
+            rules={DEMO_RULES}
+          />
+          <CartTriggerView count={cart.summary.count} open={() => setOpen(true)} />
+        </div>
+      </header>
+      <CatalogLayout
+        title={getCatalogTitle(filters.category, DEMO_CATEGORIES, {
+          catalog: t("catalog.title"),
+          others: t("availability.categoryBrowse.others"),
+        })}
+        count={visible.length}
+        totalCount={products.length}
+        showSidebar
+        sidebar={sidebar}
+        activeCount={countActiveCatalogFilters(filters)}
+        sort={filters.sort}
+        onSortChange={(sort) => update({ sort })}
+        activeFilters={
+          <CatalogActiveFilters
+            filters={filters}
+            categories={DEMO_CATEGORIES}
+            attributeAxes={[]}
+            priceBounds={priceBounds}
+            update={update}
+          />
         }
       >
-        {(compact ? DEMO_PRODUCTS.slice(0, 1) : DEMO_PRODUCTS).map((item, index) => (
-          <div
-            key={item.id}
-            data-demo-target={`product-${index}`}
-            onClickCapture={(event) => {
-              if (event.target instanceof Element && event.target.closest("a")) {
-                event.preventDefault();
-                choose(index);
-              }
-            }}
-          >
-            <ProductCard
-              product={item}
-              href="/demos/landing/storefront"
-              period={cardPeriod}
-              onQuickAdd={() => choose(index)}
+        <div
+          onClickCapture={(event) => {
+            if (event.target instanceof Element && event.target.closest("a"))
+              event.preventDefault();
+          }}
+        >
+          {visible.length ? (
+            <ProductGridView
+              products={visible}
+              period={cart.period}
+              getProductHref={() => "/demos/landing/storefront"}
+              onQuickAdd={(product) => {
+                changeCart({ ...quantities, [product.id]: (quantities[product.id] ?? 0) + 1 });
+                setOpen(true);
+              }}
             />
-          </div>
-        ))}
-      </div>
-      {added && (
-        <Badge variant="success" className="self-center" role="status">
-          <CheckIcon />
-          {t("accessories.productAdded")}
-        </Badge>
-      )}
-      <QuickAddDialogView
+          ) : (
+            <CatalogEmptyState
+              search={filters.search}
+              onShowAll={() => update(CLEAR_CATALOG_FILTERS_PATCH)}
+              period={period}
+              onPeriodChange={changePeriod}
+              rules={DEMO_RULES}
+            />
+          )}
+        </div>
+      </CatalogLayout>
+      <CartDrawerView
+        isOpen={open}
+        setOpen={setOpen}
+        close={() => setOpen(false)}
+        summary={cart.summary}
+        isEmpty={!cart.items.length}
+        blockedReasonKey={null}
+        checkoutDisabled
         autoFocus={false}
         modal={false}
-        isOpen={open}
-        step="variant"
-        steps={["variant"]}
-        productName={product.name}
-        onDismiss={() => setOpen(false)}
+        emptyState={<CartEmptyState closeOnly onNavigate={() => setOpen(false)} />}
       >
-        <div data-demo-target="options">
-          <QuickAddVariantView
-            product={product}
-            pricing={pricing}
-            axes={product.bookingAttributeAxes ?? []}
-            values={{ size: ["S", "M", "L"] }}
-            selected={selected}
-            onSelectedChange={setSelected}
-            quantity={quantity}
-            maxQuantity={product.quantity}
-            onQuantityChange={setQuantity}
-            isChecking={false}
-            disabled={false}
-            onConfirm={() => {
-              setOpen(false);
-              setAdded(true);
-              onComplete({ productIndex, quantity, selected, period, unitPrice: pricing.amount });
-            }}
-          />
-        </div>
-      </QuickAddDialogView>
+        <CartPanelView
+          items={cart.items}
+          period={cart.period}
+          resolutionStatus="ready"
+          onRemove={(id) => changeCart({ ...quantities, [id]: 0 })}
+          onQuantityChange={(id, quantity) => changeCart({ ...quantities, [id]: quantity })}
+          onNavigate={(event) => event.preventDefault()}
+          getProductHref={() => "/demos/landing/storefront"}
+        />
+      </CartDrawerView>
     </div>
   );
 };

@@ -22,7 +22,7 @@
   font: 500 11px/1.4 var(--font-sans);
 }
 /* The scripted pointer reveals the same quick-add control as a real hover. */
-html[data-demo-running="true"] [data-demo-target="product-0"] [data-slot="product-quick-add"] {
+html[data-demo-running="true"] [data-product-id="demo-city-bike"] [data-product-quick-add] {
   translate: 0 0;
 }
 @media (prefers-reduced-motion: reduce) {

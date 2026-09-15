@@ -5,7 +5,7 @@ import { ActivityCardView } from "@/components/dashboard/home/activity-card-view
 import { DashboardStatCard } from "@/components/dashboard/shared/dashboard-stat-card";
 import {
   createDemoReservations,
-  DEMO_PRODUCTS,
+  getDemoReservationItems,
   type DemoBooking,
 } from "@/lib/landing-demos/fixtures";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
@@ -23,14 +23,16 @@ export const PlanningScene = ({
 }) => {
   const t = useTranslations("dashboard.home");
   const reservations = createDemoReservations(period.start, period.end);
-  const product = DEMO_PRODUCTS[booking.productIndex] ?? DEMO_PRODUCTS[0];
+  const items = getDemoReservationItems(booking);
   reservations[0] = {
     ...reservations[0],
-    totalAmount: String(booking.unitPrice * booking.quantity),
-    items: Array.from({ length: booking.quantity }, (_, index) => ({
-      id: `demo-item-${index}`,
-      product: { name: product.name },
-    })),
+    totalAmount: items.subtotalAmount,
+    items: (items.items ?? []).flatMap((item) =>
+      Array.from({ length: item.quantity }, (_, index) => ({
+        id: `${item.id}-${index}`,
+        product: { name: item.product?.name ?? "" },
+      })),
+    ),
   };
   const select = (reservation: (typeof reservations)[number]) =>
     onOpenReservation(reservations.findIndex((item) => item.id === reservation.id));

@@ -39,7 +39,7 @@ export const LandingDemo = ({
   const [booking, setBooking] = useState<DemoBooking>(() => ({
     productIndex: 0,
     quantity: 2,
-    selected: { size: "M" },
+    selected: {},
     period,
     unitPrice: 20,
   }));
@@ -184,7 +184,7 @@ export const LandingDemo = ({
           <main
             className={cn(
               "demo-canvas min-h-dvh bg-background text-foreground",
-              compact ? "p-4" : "p-5 sm:p-8",
+              currentScene === "storefront" ? "p-0" : compact ? "p-4" : "p-5 sm:p-8",
             )}
             data-demo-step={step}
             data-demo-running={running}
@@ -196,14 +196,10 @@ export const LandingDemo = ({
                 <StorefrontScene
                   compact={compact}
                   period={period}
-                  onComplete={(nextBooking) => {
+                  onBookingChange={(nextBooking) => {
                     setBooking(nextBooking);
                     setPeriod(nextBooking.period);
                     setReservationIndex(0);
-                    if (scene === "rental") {
-                      setStep(1);
-                      setCycle((value) => value + 1);
-                    }
                   }}
                 />
               )}

@@ -9,20 +9,15 @@ export interface DemoCue {
 export const DEMO_DURATION = 4600;
 export const DEMO_CUES = {
   storefront: [
-    { at: 200, selector: '[data-demo-target="product-0"] [data-slot="product-quick-add"]' },
+    { at: 200, selector: '[data-product-id="demo-city-bike"] [data-product-quick-add]' },
     {
       at: 1050,
-      selector: '[data-demo-target="product-0"] [data-slot="product-quick-add"]',
+      selector: '[data-product-id="demo-city-bike"] [data-product-quick-add]',
       click: true,
     },
-    { at: 1550, selector: '[data-demo-target="options"] button[aria-label$="+1"]' },
-    { at: 2300, selector: '[data-demo-target="options"] button[aria-label$="+1"]', click: true },
-    { at: 2700, selector: '[data-demo-target="options"] [data-slot="dialog-footer"] button' },
-    {
-      at: 3750,
-      selector: '[data-demo-target="options"] [data-slot="dialog-footer"] button',
-      click: true,
-    },
+    { at: 1650, selector: '[data-slot="cart-line-item"] button[aria-label*="+1"]' },
+    { at: 2350, selector: '[data-slot="cart-line-item"] button[aria-label*="+1"]', click: true },
+    { at: 3000, selector: '[data-slot="cart-totals"]' },
   ],
   planning: [
     { at: 450, selector: '[data-demo-target="departures"] button.group' },
@@ -69,7 +64,8 @@ export const useDemoPlayback = ({
   }, [scene, cycle]);
   useEffect(() => {
     const cursor = cursorRef.current;
-    const animations = cursor?.getAnimations() ?? [];
+    const animations =
+      cursor?.getAnimations().filter((animation) => animation.id === "demo-cursor-move") ?? [];
     for (const animation of animations) {
       if (running) animation.play();
       else animation.pause();
@@ -98,12 +94,15 @@ export const useDemoPlayback = ({
           const y = rect.top + rect.height * 0.6;
           const destination = `translate(${x}px, ${y}px)`;
           const current = getComputedStyle(cursor).transform;
-          for (const animation of cursor.getAnimations()) animation.cancel();
-          cursor.animate([{ transform: current }, { transform: destination }], {
+          for (const animation of cursor.getAnimations()) {
+            if (animation.id === "demo-cursor-move") animation.cancel();
+          }
+          const movement = cursor.animate([{ transform: current }, { transform: destination }], {
             duration: cue.click ? 0 : 560,
             easing: "cubic-bezier(.22,1,.36,1)",
             fill: "forwards",
           });
+          movement.id = "demo-cursor-move";
           if (cue.click) target.click();
         }
         clock.current.cue += 1;

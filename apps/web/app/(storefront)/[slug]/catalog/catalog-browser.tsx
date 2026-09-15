@@ -12,7 +12,6 @@ import { PageTracker } from "@/components/storefront/page-tracker";
 import { ProductGrid } from "@/components/storefront/product/product-grid";
 import { ProductGridSkeleton } from "@/components/storefront/product/product-grid-skeleton";
 import { useProductCardAvailability } from "@/components/storefront/product/use-product-card-availability";
-import { StorefrontSection } from "@/components/storefront/ui/storefront-section";
 import { useStore } from "@/contexts/store-context";
 import { catalogQueries } from "@/lib/queries/catalog.queries";
 import { useStorefrontSearch } from "@/contexts/storefront-search-context";
@@ -35,10 +34,8 @@ import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 
 import { CatalogActiveFilters } from "./catalog-active-filters";
 import { CatalogEmptyState } from "./catalog-empty-state";
-import { CatalogFiltersDrawer } from "./catalog-filters-drawer";
-import { CatalogHeader } from "./catalog-header";
+import { CatalogLayout } from "./catalog-layout";
 import { CatalogSidebar } from "./catalog-sidebar";
-import { CatalogSortSelect } from "./catalog-sort-select";
 import { useCatalogParams } from "./use-catalog-params";
 import { useCatalogPeriod } from "./use-catalog-period";
 
@@ -183,95 +180,80 @@ export const CatalogBrowser = ({
     <>
       <PageTracker page="catalog" categoryId={trackedCategoryId} />
 
-      <StorefrontSection spacing="tight" className="pb-8 sm:pb-12">
-        <div className="flex flex-col gap-6 lg:flex-row lg:gap-10">
-          {showSidebar ? (
-            <aside className="hidden w-60 shrink-0 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:self-start lg:overflow-y-auto">
-              {sidebar}
-            </aside>
+      <CatalogLayout
+        title={title}
+        count={count}
+        totalCount={totalCount}
+        showSidebar={showSidebar}
+        sidebar={sidebar}
+        activeCount={countActiveCatalogFilters(filters)}
+        sort={filters.sort}
+        onSortChange={(sort) => update({ sort })}
+        activeFilters={
+          <CatalogActiveFilters
+            filters={filters}
+            categories={categories}
+            attributeAxes={attributeAxes}
+            priceBounds={priceBounds}
+            update={update}
+          />
+        }
+      >
+        <div
+          className={cn(
+            "flex flex-col gap-6 motion-safe:transition-opacity motion-safe:duration-200",
+            isPending && "opacity-60",
+          )}
+          aria-busy={isPending || undefined}
+        >
+          {query.isError ? (
+            <div role="alert" className="flex items-center gap-3 rounded-xl border p-4">
+              <p className="text-sm text-muted-foreground">{t("error.title")}</p>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  void (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())
+                }
+              >
+                {t("error.retry")}
+              </Button>
+            </div>
           ) : null}
-
-          <div className="flex min-w-0 flex-1 flex-col gap-4 sm:gap-6">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <CatalogHeader title={title} count={count} />
-              <div className="flex shrink-0 items-center gap-2">
-                <CatalogFiltersDrawer
-                  activeCount={countActiveCatalogFilters(filters)}
-                  resultCount={count}
-                  className={cn("h-11 shrink-0 gap-1.5 px-3 sm:h-9", showSidebar && "lg:hidden")}
-                >
-                  {sidebar}
-                </CatalogFiltersDrawer>
-                {totalCount > 1 ? (
-                  <CatalogSortSelect value={filters.sort} onChange={(sort) => update({ sort })} />
-                ) : null}
-              </div>
-            </div>
-            <CatalogActiveFilters
-              filters={filters}
-              categories={categories}
-              attributeAxes={attributeAxes}
-              priceBounds={priceBounds}
-              update={update}
+          {visibleProducts.length === 0 ? (
+            isPending ? (
+              <ProductGridSkeleton />
+            ) : query.isError ? null : (
+              <CatalogEmptyState
+                search={search}
+                onShowAll={handleShowAll}
+                onShowUnavailable={
+                  hidesUnavailable ? () => update({ availableOnly: false }) : undefined
+                }
+                period={periodValue}
+                onPeriodChange={setPeriod}
+                rules={rules}
+              />
+            )
+          ) : (
+            <ProductGrid
+              products={visibleProducts}
+              period={period}
+              availabilityByProductId={availabilityByProductId}
             />
+          )}
 
-            <div
-              className={cn(
-                "flex flex-col gap-6 motion-safe:transition-opacity motion-safe:duration-200",
-                isPending && "opacity-60",
-              )}
-              aria-busy={isPending || undefined}
+          {pages.hasMore && !isPending ? (
+            <Button
+              variant="outline"
+              onClick={pages.loadMore}
+              disabled={pages.isLoadingMore}
+              className="h-12 w-full self-center lg:h-10 lg:w-auto lg:min-w-48"
             >
-              {query.isError ? (
-                <div role="alert" className="flex items-center gap-3 rounded-xl border p-4">
-                  <p className="text-sm text-muted-foreground">{t("error.title")}</p>
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      void (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())
-                    }
-                  >
-                    {t("error.retry")}
-                  </Button>
-                </div>
-              ) : null}
-              {visibleProducts.length === 0 ? (
-                isPending ? (
-                  <ProductGridSkeleton />
-                ) : query.isError ? null : (
-                  <CatalogEmptyState
-                    search={search}
-                    onShowAll={handleShowAll}
-                    onShowUnavailable={
-                      hidesUnavailable ? () => update({ availableOnly: false }) : undefined
-                    }
-                    period={periodValue}
-                    onPeriodChange={setPeriod}
-                    rules={rules}
-                  />
-                )
-              ) : (
-                <ProductGrid
-                  products={visibleProducts}
-                  period={period}
-                  availabilityByProductId={availabilityByProductId}
-                />
-              )}
-
-              {pages.hasMore && !isPending ? (
-                <Button
-                  variant="outline"
-                  onClick={pages.loadMore}
-                  disabled={pages.isLoadingMore}
-                  className="h-12 w-full self-center lg:h-10 lg:w-auto lg:min-w-48"
-                >
-                  {t("catalog.loadMore")}
-                </Button>
-              ) : null}
-            </div>
-          </div>
+              {t("catalog.loadMore")}
+            </Button>
+          ) : null}
         </div>
-      </StorefrontSection>
+      </CatalogLayout>
     </>
   );
 };

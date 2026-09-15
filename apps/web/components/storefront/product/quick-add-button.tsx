@@ -20,6 +20,7 @@ interface QuickAddButtonProps {
 export const QuickAddButton = ({ label, onClick, className }: QuickAddButtonProps) => (
   <Button
     data-slot="product-quick-add"
+    data-product-quick-add=""
     type="button"
     onClick={(event) => {
       // A mouse click leaves the button focused, and the cart drawer hands

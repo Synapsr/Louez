@@ -1,3 +1,4 @@
+import { IMG } from "@/scripts/seed/demo/catalog";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import type { ComponentProps } from "react";
 import type { UIMessage } from "@ai-sdk/react";
@@ -7,39 +8,127 @@ import type { ActivityTimelineV2 } from "@/app/(dashboard)/dashboard/reservation
 import type { ReservationItemsDisplay } from "@/app/(dashboard)/dashboard/reservations/[id]/reservation-items-card";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 
-export const DEMO_PRODUCTS = [
+// Photos already used by the application's demonstration catalogue.
+export const DEMO_PRODUCTS: (StorefrontCatalogProduct & { categoryIds: string[] })[] = [
   {
     id: "demo-city-bike",
     name: "Vélo de ville",
     price: "20",
     deposit: "150",
-    images: [],
+    images: [IMG.city],
     quantity: 8,
-    pricingMode: "day",
-    basePeriodMinutes: 1440,
-    bookingAttributeAxes: [{ key: "size", label: "Taille", position: 0 }],
+    categoryIds: ["bikes"],
   },
   {
     id: "demo-electric-bike",
     name: "Vélo électrique",
     price: "35",
     deposit: "300",
-    images: [],
+    images: [IMG.vaeCity],
     quantity: 5,
-    pricingMode: "day",
-    basePeriodMinutes: 1440,
+    categoryIds: ["electric"],
   },
   {
     id: "demo-child-bike",
     name: "Vélo enfant",
     price: "12",
     deposit: "75",
-    images: [],
+    images: [IMG.kid20],
     quantity: 4,
-    pricingMode: "day",
-    basePeriodMinutes: 1440,
+    categoryIds: ["family"],
   },
-] satisfies StorefrontCatalogProduct[];
+  {
+    id: "demo-gravel",
+    name: "Gravel",
+    price: "28",
+    deposit: "200",
+    images: [IMG.gravel],
+    quantity: 6,
+    categoryIds: ["bikes"],
+  },
+  {
+    id: "demo-mountain",
+    name: "VTT électrique",
+    price: "45",
+    deposit: "300",
+    images: [IMG.vttae],
+    quantity: 5,
+    categoryIds: ["electric"],
+  },
+  {
+    id: "demo-cargo",
+    name: "Vélo cargo",
+    price: "48",
+    deposit: "400",
+    images: [IMG.cargoE],
+    quantity: 3,
+    categoryIds: ["family"],
+  },
+  {
+    id: "demo-longtail",
+    name: "Vélo longtail",
+    price: "42",
+    deposit: "350",
+    images: [IMG.longtail],
+    quantity: 4,
+    categoryIds: ["family"],
+  },
+  {
+    id: "demo-road",
+    name: "Vélo de route",
+    price: "30",
+    deposit: "250",
+    images: [IMG.route],
+    quantity: 6,
+    categoryIds: ["bikes"],
+  },
+  {
+    id: "demo-trailer",
+    name: "Remorque enfant",
+    price: "15",
+    deposit: "100",
+    images: [IMG.trailerKid],
+    quantity: 5,
+    categoryIds: ["family"],
+  },
+  {
+    id: "demo-panniers",
+    name: "Sacoches de randonnée",
+    price: "7",
+    deposit: "50",
+    images: [IMG.panniers],
+    quantity: 10,
+    categoryIds: ["accessories"],
+  },
+  {
+    id: "demo-child-seat",
+    name: "Siège enfant",
+    price: "6",
+    deposit: "50",
+    images: [IMG.childSeat],
+    quantity: 8,
+    categoryIds: ["accessories"],
+  },
+  {
+    id: "demo-touring",
+    name: "Vélo de randonnée",
+    price: "25",
+    deposit: "200",
+    images: [IMG.rando],
+    quantity: 6,
+    categoryIds: ["bikes"],
+  },
+].map((product) => ({ ...product, pricingMode: "day", basePeriodMinutes: 1440 }));
+
+export const DEMO_CATEGORIES = [
+  { id: "bikes", name: "Vélos", order: 0 },
+  { id: "electric", name: "Vélos électriques", order: 1 },
+  { id: "family", name: "En famille", order: 2 },
+  { id: "accessories", name: "Accessoires", order: 3 },
+].map((category) => ({
+  ...category,
+  productCount: DEMO_PRODUCTS.filter((product) => product.categoryIds.includes(category.id)).length,
+}));
 
 export const DEMO_RULES = {
   pricingMode: "day",
@@ -142,29 +231,39 @@ export const demoAdvisorReply = (id: string): UIMessage => ({
   ],
 });
 
-export interface DemoBooking {
+export interface DemoBookingLine {
   productIndex: number;
   quantity: number;
   selected: Record<string, string>;
-  period: RentalPeriodValue;
   unitPrice: number;
 }
+export interface DemoBooking extends DemoBookingLine {
+  lines?: DemoBookingLine[];
+  period: RentalPeriodValue;
+}
 export const getDemoReservationItems = (booking: DemoBooking): ReservationItemsDisplay => {
-  const product = DEMO_PRODUCTS[booking.productIndex] ?? DEMO_PRODUCTS[0];
-  const total = booking.unitPrice * booking.quantity;
+  const lines = booking.lines ?? [booking];
   return {
-    items: [
-      {
-        id: "demo-line",
+    items: lines.map((line, index) => {
+      const product = DEMO_PRODUCTS[line.productIndex] ?? DEMO_PRODUCTS[0];
+      return {
+        id: `demo-line-${index}`,
         productId: null,
-        quantity: booking.quantity,
-        unitPrice: String(booking.unitPrice),
-        totalPrice: String(total),
+        quantity: line.quantity,
+        unitPrice: String(line.unitPrice),
+        totalPrice: String(line.unitPrice * line.quantity),
         product: { name: product.name, bookingAttributeAxes: product.bookingAttributeAxes },
-        selectedAttributes: booking.selected,
-      },
-    ],
-    subtotalAmount: String(total),
-    depositAmount: String(Number(product.deposit) * booking.quantity),
+        selectedAttributes: line.selected,
+      };
+    }),
+    subtotalAmount: String(
+      lines.reduce((total, line) => total + line.unitPrice * line.quantity, 0),
+    ),
+    depositAmount: String(
+      lines.reduce(
+        (total, line) => total + Number(DEMO_PRODUCTS[line.productIndex].deposit) * line.quantity,
+        0,
+      ),
+    ),
   };
 };
