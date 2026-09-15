@@ -5,6 +5,7 @@ export interface DemoCue {
   at: number;
   selector: string;
   click?: boolean;
+  scroll?: { x: number; y: number; duration: number };
 }
 export const DEMO_DURATION = 4600;
 export const DEMO_CUES = {
@@ -20,8 +21,16 @@ export const DEMO_CUES = {
     { at: 3000, selector: '[data-slot="cart-totals"]' },
   ],
   planning: [
-    { at: 450, selector: '[data-demo-target="departures"] button.group' },
-    { at: 3650, selector: '[data-demo-target="departures"] button.group', click: true },
+    { at: 1900, selector: '[data-demo-target="departures"] button' },
+    { at: 2800, selector: '[data-demo-target="departures"] button', click: true },
+    { at: 4900, selector: '[data-reservations-view="calendar"]' },
+    { at: 5800, selector: '[data-reservations-view="calendar"]', click: true },
+    { at: 6900, selector: "[data-reservations-calendar-scroll]" },
+    {
+      at: 7500,
+      selector: "[data-reservations-calendar-scroll]",
+      scroll: { x: 540, y: 80, duration: 1300 },
+    },
   ],
   reservation: [
     { at: 450, selector: '[data-demo-target="history"] button' },
@@ -33,6 +42,8 @@ export const DEMO_CUES = {
   ],
 } satisfies Record<string, DemoCue[]>;
 export type AnimatedScene = keyof typeof DEMO_CUES;
+export const getDemoDuration = (scene: AnimatedScene) =>
+  scene === "planning" ? 10200 : DEMO_DURATION;
 
 /** Advance only by active time, so a hover can pause in the middle of a gesture. */
 export const advanceDemoClock = (
@@ -53,6 +64,9 @@ export const useDemoPlayback = ({
   onFinish: () => void;
 }) => {
   const clock = useRef({ elapsed: 0, cue: 0 });
+  const scrollRef = useRef<{ element: HTMLElement; x: number; y: number; endAt: number } | null>(
+    null,
+  );
   const cursorRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState(0);
   const finishRef = useRef(onFinish);
@@ -60,6 +74,7 @@ export const useDemoPlayback = ({
   useEffect(() => {
     clock.current = { elapsed: 0, cue: 0 };
     setPhase(0);
+    scrollRef.current = null;
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [scene, cycle]);
   useEffect(() => {
@@ -75,17 +90,39 @@ export const useDemoPlayback = ({
     let previous = performance.now();
     const cues: DemoCue[] = DEMO_CUES[scene];
     const tick = (now: number) => {
-      clock.current.elapsed = advanceDemoClock(clock.current.elapsed, now - previous);
+      const previousElapsed = clock.current.elapsed;
+      clock.current.elapsed = advanceDemoClock(
+        clock.current.elapsed,
+        now - previous,
+        getDemoDuration(scene),
+      );
+      const scroll = scrollRef.current;
+      if (scroll) {
+        const fraction = Math.min(
+          1,
+          (clock.current.elapsed - previousElapsed) / Math.max(1, scroll.endAt - previousElapsed),
+        );
+        const x = scroll.x * fraction;
+        const y = scroll.y * fraction;
+        scroll.element.scrollBy({ left: x, top: y, behavior: "instant" });
+        scroll.x -= x;
+        scroll.y -= y;
+        if (fraction >= 1) scrollRef.current = null;
+      }
       previous = now;
       const cue = cues[clock.current.cue];
       if (cue && clock.current.elapsed >= cue.at) {
         const target = document.querySelector<HTMLElement>(cue.selector);
         if (target && cursor) {
           let rect = target.getBoundingClientRect();
-          if (rect.top < 0 || rect.bottom > window.innerHeight) {
-            // Scroll only this document, never the landing around the iframe.
-            window.scrollBy({
-              top: rect.top - Math.max(24, (window.innerHeight - rect.height) / 2),
+          const content = target.closest<HTMLElement>("[data-dashboard-content]");
+          const bounds = content?.getBoundingClientRect();
+          const top = bounds?.top ?? 0;
+          const bottom = bounds?.bottom ?? window.innerHeight;
+          if (rect.top < top || rect.bottom > bottom) {
+            // Keep scrolling inside the app, without moving the surrounding landing.
+            (content ?? window).scrollBy({
+              top: rect.top - top - Math.max(24, (bottom - top - rect.height) / 2),
               behavior: "instant",
             });
             rect = target.getBoundingClientRect();
@@ -104,11 +141,18 @@ export const useDemoPlayback = ({
           });
           movement.id = "demo-cursor-move";
           if (cue.click) target.click();
+          if (cue.scroll)
+            scrollRef.current = {
+              element: target,
+              x: cue.scroll.x,
+              y: cue.scroll.y,
+              endAt: clock.current.elapsed + cue.scroll.duration,
+            };
         }
         clock.current.cue += 1;
         setPhase(clock.current.cue);
       }
-      if (clock.current.elapsed >= DEMO_DURATION) {
+      if (clock.current.elapsed >= getDemoDuration(scene)) {
         finishRef.current();
         return;
       }

@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import {
   FailedSolidIcon,
@@ -27,13 +27,13 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@louez/ui'
-import { formatStoreDateRange } from '@/lib/utils/store-date'
-import { useFormatLocale } from '@/hooks/use-format-locale'
-import { getCurrencySymbol } from '@louez/utils'
-import { useTranslations } from 'next-intl'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+} from "@louez/ui";
+import { formatStoreDateRange } from "@/lib/utils/store-date";
+import { useFormatLocale } from "@/hooks/use-format-locale";
+import { getCurrencySymbol } from "@louez/utils";
+import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUpDown,
   ArrowUp,
@@ -43,18 +43,18 @@ import {
   XCircle,
   MoreHorizontal,
   Loader2,
-} from 'lucide-react'
+} from "lucide-react";
 import type {
   Reservation,
   ReservationStatus,
   SortField,
   SortDirection,
-} from './reservations-types'
-import { PAYMENT_STATUS_VARIANTS, STATUS_CONFIG, getPaymentStatus } from './reservations-utils'
+} from "./reservations-types";
+import { PAYMENT_STATUS_VARIANTS, STATUS_CONFIG, getPaymentStatus } from "./reservations-utils";
 import {
   getReservationDetailHref,
   isReservationAnalyticsSource,
-} from '@/lib/product-analytics/reservation-analytics'
+} from "@/lib/product-analytics/reservation-analytics";
 
 const STATUS_ICON_MAP: Record<ReservationStatus, typeof PendingSolidIcon> = {
   pending: PendingSolidIcon,
@@ -65,24 +65,27 @@ const STATUS_ICON_MAP: Record<ReservationStatus, typeof PendingSolidIcon> = {
   rejected: XCircleSolidIcon,
   quote: SubmittedSolidIcon,
   declined: FailedSolidIcon,
-}
+};
 
 interface ReservationsTableViewProps {
-  reservations: Reservation[]
-  currency?: string
-  timezone?: string
+  reservations: Reservation[];
+  readOnly?: boolean;
+  onOpenReservation?: (reservation: Reservation) => void;
+  getReservationHref?: (reservation: Reservation) => string;
+  currency?: string;
+  timezone?: string;
   /** Dashboard path the reservation detail page should send the user back to. */
-  returnTo?: string | null
-  currentSort?: SortField
-  currentSortDirection?: SortDirection
-  onSortChange: (field: SortField) => void
-  loadingAction: string | null
+  returnTo?: string | null;
+  currentSort?: SortField;
+  currentSortDirection?: SortDirection;
+  onSortChange: (field: SortField) => void;
+  loadingAction: string | null;
   handleStatusChange: (
     e: React.MouseEvent,
     reservation: Reservation,
-    newStatus: ReservationStatus
-  ) => Promise<void>
-  openRejectDialog: (e: React.MouseEvent, reservation: Reservation) => void
+    newStatus: ReservationStatus,
+  ) => Promise<void>;
+  openRejectDialog: (e: React.MouseEvent, reservation: Reservation) => void;
 }
 
 function SortableHead({
@@ -93,36 +96,30 @@ function SortableHead({
   children,
   className,
 }: {
-  field: SortField
-  currentSort?: SortField
-  currentSortDirection?: SortDirection
-  onSortChange: (field: SortField) => void
-  children: React.ReactNode
-  className?: string
+  field: SortField;
+  currentSort?: SortField;
+  currentSortDirection?: SortDirection;
+  onSortChange: (field: SortField) => void;
+  children: React.ReactNode;
+  className?: string;
 }) {
-  const isActive = currentSort === field
-  const Icon = isActive
-    ? currentSortDirection === 'asc' ? ArrowUp : ArrowDown
-    : ArrowUpDown
+  const isActive = currentSort === field;
+  const Icon = isActive ? (currentSortDirection === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
 
   return (
     <TableHead className={className}>
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-3 h-8"
-        onClick={() => onSortChange(field)}
-      >
+      <Button variant="ghost" size="sm" className="-ml-3 h-8" onClick={() => onSortChange(field)}>
         {children}
         <Icon className="ml-2 h-3.5 w-3.5" />
       </Button>
     </TableHead>
-  )
+  );
 }
 
 export function ReservationsTableView({
   reservations,
-  currency = 'EUR',
+  readOnly = false,
+  currency = "EUR",
   timezone,
   returnTo,
   currentSort,
@@ -131,16 +128,18 @@ export function ReservationsTableView({
   loadingAction,
   handleStatusChange,
   openRejectDialog,
+  onOpenReservation,
+  getReservationHref,
 }: ReservationsTableViewProps) {
-  const { intl: formatLocale } = useFormatLocale()
-  const t = useTranslations('dashboard.reservations')
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const sourceParam = searchParams.get('source')
+  const { intl: formatLocale } = useFormatLocale();
+  const t = useTranslations("dashboard.reservations");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const sourceParam = searchParams.get("source");
   const reservationSource = isReservationAnalyticsSource(sourceParam)
     ? sourceParam
-    : 'reservations_list'
-  const currencySymbol = getCurrencySymbol(currency)
+    : "reservations_list";
+  const currencySymbol = getCurrencySymbol(currency);
 
   return (
     <TooltipProvider>
@@ -148,16 +147,16 @@ export function ReservationsTableView({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">{t('number')}</TableHead>
-              <TableHead>{t('customer')}</TableHead>
-              <TableHead className="hidden md:table-cell">{t('items')}</TableHead>
+              <TableHead className="w-[100px]">{t("number")}</TableHead>
+              <TableHead>{t("customer")}</TableHead>
+              <TableHead className="hidden md:table-cell">{t("items")}</TableHead>
               <SortableHead
                 field="startDate"
                 currentSort={currentSort}
                 currentSortDirection={currentSortDirection}
                 onSortChange={onSortChange}
               >
-                {t('dates')}
+                {t("dates")}
               </SortableHead>
               <SortableHead
                 field="amount"
@@ -166,7 +165,7 @@ export function ReservationsTableView({
                 onSortChange={onSortChange}
                 className="text-right"
               >
-                {t('total')}
+                {t("total")}
               </SortableHead>
               <SortableHead
                 field="status"
@@ -174,9 +173,9 @@ export function ReservationsTableView({
                 currentSortDirection={currentSortDirection}
                 onSortChange={onSortChange}
               >
-                {t('paymentStatusLabel')}
+                {t("paymentStatusLabel")}
               </SortableHead>
-              <TableHead className="hidden lg:table-cell">{t('payments')}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t("payments")}</TableHead>
               <TableHead className="w-[50px]" />
             </TableRow>
           </TableHeader>
@@ -184,33 +183,37 @@ export function ReservationsTableView({
             {reservations.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  {t('noReservations')}
+                  {t("noReservations")}
                 </TableCell>
               </TableRow>
             ) : (
               reservations.map((reservation) => {
-                const status = (reservation.status ?? 'pending') as ReservationStatus
-                const statusConfig = STATUS_CONFIG[status]
-                const StatusIcon = STATUS_ICON_MAP[status]
-                const paymentInfo = getPaymentStatus(reservation)
-                const showPaymentStatus = !['cancelled', 'rejected', 'declined', 'quote'].includes(status)
+                const status = (reservation.status ?? "pending") as ReservationStatus;
+                const statusConfig = STATUS_CONFIG[status];
+                const StatusIcon = STATUS_ICON_MAP[status];
+                const paymentInfo = getPaymentStatus(reservation);
+                const showPaymentStatus = !["cancelled", "rejected", "declined", "quote"].includes(
+                  status,
+                );
                 const hasPendingOnlinePayment = reservation.payments.some(
-                  (p) => p.method === 'stripe' && p.status === 'pending' && p.type === 'rental'
-                )
-                const isLoading = loadingAction?.startsWith(reservation.id)
-                const isPending = status === 'pending'
-                const isConfirmed = status === 'confirmed'
-                const isOngoing = status === 'ongoing'
-                const reservationHref = getReservationDetailHref(
-                  reservation.id,
-                  reservationSource,
-                  returnTo
-                )
+                  (p) => p.method === "stripe" && p.status === "pending" && p.type === "rental",
+                );
+                const isLoading = loadingAction?.startsWith(reservation.id);
+                const isPending = status === "pending";
+                const isConfirmed = status === "confirmed";
+                const isOngoing = status === "ongoing";
+                const reservationHref =
+                  getReservationHref?.(reservation) ??
+                  getReservationDetailHref(reservation.id, reservationSource, returnTo);
                 return (
                   <TableRow
                     key={reservation.id}
                     className="cursor-pointer"
-                    onClick={() => router.push(reservationHref)}
+                    onClick={() =>
+                      onOpenReservation
+                        ? onOpenReservation(reservation)
+                        : router.push(reservationHref)
+                    }
                   >
                     {/* Number */}
                     <TableCell className="font-mono text-sm font-medium">
@@ -218,13 +221,20 @@ export function ReservationsTableView({
                         <Link
                           href={reservationHref}
                           className="hover:underline"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onOpenReservation) {
+                              e.preventDefault();
+                              onOpenReservation(reservation);
+                            }
+                          }}
+                          prefetch={onOpenReservation ? false : undefined}
                         >
                           #{reservation.number}
                         </Link>
-                        {reservation.source === 'marketplace' && (
+                        {reservation.source === "marketplace" && (
                           <Badge variant="submitted" className="font-sans text-[10px]">
-                            {t('sourceMarketplace')}
+                            {t("sourceMarketplace")}
                           </Badge>
                         )}
                       </div>
@@ -241,7 +251,9 @@ export function ReservationsTableView({
                         <TooltipTrigger render={<span className="cursor-help" />}>
                           <span className="text-muted-foreground">
                             {reservation.items[0].quantity > 1 && (
-                              <span className="font-medium text-foreground">{reservation.items[0].quantity}× </span>
+                              <span className="font-medium text-foreground">
+                                {reservation.items[0].quantity}×{" "}
+                              </span>
                             )}
                             {reservation.items[0].productSnapshot.name}
                             {reservation.items.length > 1 && (
@@ -254,13 +266,15 @@ export function ReservationsTableView({
                         <TooltipContent side="bottom" className="max-w-[300px]">
                           <ul className="space-y-2 text-xs">
                             {reservation.items.map((item) => {
-                              const attrs = item.selectedAttributes
-                              const hasAttrs = attrs && Object.keys(attrs).length > 0
+                              const attrs = item.selectedAttributes;
+                              const hasAttrs = attrs && Object.keys(attrs).length > 0;
                               return (
                                 <li key={item.id}>
                                   <div className="flex justify-between gap-4">
                                     <span className="font-medium">{item.productSnapshot.name}</span>
-                                    <span className="shrink-0 text-muted-foreground">×{item.quantity}</span>
+                                    <span className="shrink-0 text-muted-foreground">
+                                      ×{item.quantity}
+                                    </span>
                                   </div>
                                   {hasAttrs && (
                                     <div className="mt-0.5 flex flex-wrap gap-1">
@@ -275,7 +289,7 @@ export function ReservationsTableView({
                                     </div>
                                   )}
                                 </li>
-                              )
+                              );
                             })}
                           </ul>
                         </TooltipContent>
@@ -317,7 +331,7 @@ export function ReservationsTableView({
                               />
                             }
                           >
-                            {paymentInfo.status === 'paid' ? (
+                            {paymentInfo.status === "paid" ? (
                               <SuccessSolidIcon className="h-3 w-3" />
                             ) : (
                               <ReviewSolidIcon className="h-3 w-3" />
@@ -326,10 +340,13 @@ export function ReservationsTableView({
                           </TooltipTrigger>
                           <TooltipContent>
                             <div className="text-xs">
-                              <p>{paymentInfo.totalPaid.toFixed(2)} {currencySymbol} / {paymentInfo.totalDue.toFixed(2)} {currencySymbol}</p>
-                              {paymentInfo.status !== 'paid' && (
+                              <p>
+                                {paymentInfo.totalPaid.toFixed(2)} {currencySymbol} /{" "}
+                                {paymentInfo.totalDue.toFixed(2)} {currencySymbol}
+                              </p>
+                              {paymentInfo.status !== "paid" && (
                                 <p className="text-red-400">
-                                  {t('payment.unpaidWarning', {
+                                  {t("payment.unpaidWarning", {
                                     formattedAmount: `${(paymentInfo.totalDue - paymentInfo.totalPaid).toFixed(2)} ${currencySymbol}`,
                                   })}
                                 </p>
@@ -343,9 +360,16 @@ export function ReservationsTableView({
                     {/* Actions */}
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
-                        <DropdownMenuTrigger render={
-                          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!!isLoading} />
-                        }>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              disabled={readOnly || !!isLoading}
+                            />
+                          }
+                        >
                           {isLoading ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
@@ -354,8 +378,21 @@ export function ReservationsTableView({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           {/* View details — always available */}
-                          <DropdownMenuItem render={<Link href={reservationHref} />}>
-                            {t('viewDetails')}
+                          <DropdownMenuItem
+                            render={
+                              <Link
+                                href={reservationHref}
+                                prefetch={onOpenReservation ? false : undefined}
+                                onClick={(e) => {
+                                  if (onOpenReservation) {
+                                    e.preventDefault();
+                                    onOpenReservation(reservation);
+                                  }
+                                }}
+                              />
+                            }
+                          >
+                            {t("viewDetails")}
                           </DropdownMenuItem>
 
                           {/* Pending actions */}
@@ -363,17 +400,17 @@ export function ReservationsTableView({
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                onClick={(e) => handleStatusChange(e, reservation, 'confirmed')}
+                                onClick={(e) => handleStatusChange(e, reservation, "confirmed")}
                               >
                                 <CheckCircle className="mr-2 h-4 w-4" />
-                                {t('actions.accept')}
+                                {t("actions.accept")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={(e) => openRejectDialog(e, reservation)}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <XCircle className="mr-2 h-4 w-4" />
-                                {t('actions.reject')}
+                                {t("actions.reject")}
                               </DropdownMenuItem>
                             </>
                           )}
@@ -382,7 +419,7 @@ export function ReservationsTableView({
                             <>
                               <DropdownMenuSeparator />
                               <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                                {t('paymentInProgress')}
+                                {t("paymentInProgress")}
                               </div>
                             </>
                           )}
@@ -392,10 +429,10 @@ export function ReservationsTableView({
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                onClick={(e) => handleStatusChange(e, reservation, 'ongoing')}
+                                onClick={(e) => handleStatusChange(e, reservation, "ongoing")}
                               >
                                 <Package className="mr-2 h-4 w-4" />
-                                {t('actions.markPickedUp')}
+                                {t("actions.markPickedUp")}
                               </DropdownMenuItem>
                             </>
                           )}
@@ -405,10 +442,10 @@ export function ReservationsTableView({
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                onClick={(e) => handleStatusChange(e, reservation, 'completed')}
+                                onClick={(e) => handleStatusChange(e, reservation, "completed")}
                               >
                                 <CheckCircle className="mr-2 h-4 w-4" />
-                                {t('actions.markReturned')}
+                                {t("actions.markReturned")}
                               </DropdownMenuItem>
                             </>
                           )}
@@ -418,12 +455,12 @@ export function ReservationsTableView({
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                )
+                );
               })
             )}
           </TableBody>
         </Table>
       </div>
     </TooltipProvider>
-  )
+  );
 }

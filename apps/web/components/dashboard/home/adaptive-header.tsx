@@ -12,6 +12,8 @@ import type { StoreMetrics, StoreState } from "./home-types";
 
 interface AdaptiveHeaderProps {
   firstName: string;
+  onNavigate?: () => void;
+  actionHref?: string;
   timeOfDay: "morning" | "afternoon" | "evening";
   storeState: StoreState;
   metrics: StoreMetrics;
@@ -19,6 +21,8 @@ interface AdaptiveHeaderProps {
 
 export const AdaptiveHeader = ({
   firstName,
+  onNavigate,
+  actionHref,
   timeOfDay,
   storeState,
   metrics,
@@ -53,7 +57,22 @@ export const AdaptiveHeader = ({
   const getPrimaryCTA = () => {
     if (storeState === "virgin") {
       return (
-        <Button className="w-full sm:w-auto" render={<Link href="/dashboard/products/new" />}>
+        <Button
+          className="w-full sm:w-auto"
+          render={
+            <Link
+              href={actionHref ?? "/dashboard/products/new"}
+              onClick={
+                onNavigate
+                  ? (event) => {
+                      event.preventDefault();
+                      onNavigate();
+                    }
+                  : undefined
+              }
+            />
+          }
+        >
           <ProductSolidIcon />
           {t("header.cta.addFirstProduct")}
         </Button>
@@ -64,7 +83,19 @@ export const AdaptiveHeader = ({
       return (
         <Button
           className="w-full sm:w-auto"
-          render={<Link href="/dashboard/reservations?status=pending" />}
+          render={
+            <Link
+              href={actionHref ?? "/dashboard/reservations?status=pending"}
+              onClick={
+                onNavigate
+                  ? (event) => {
+                      event.preventDefault();
+                      onNavigate();
+                    }
+                  : undefined
+              }
+            />
+          }
         >
           {t("header.cta.handleRequests", { count: metrics.pendingReservations })}
           <ArrowRight />

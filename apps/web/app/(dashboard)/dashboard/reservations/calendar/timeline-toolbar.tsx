@@ -104,7 +104,11 @@ export interface TimelineFilters {
   resetFilters: () => void;
 }
 
-export function useTimelineFilters(products: Product[], storeId: string): TimelineFilters {
+export function useTimelineFilters(
+  products: Product[],
+  storeId: string,
+  persist = true,
+): TimelineFilters {
   const [state, setState] = useQueryStates(
     {
       range: parseAsStringLiteral(CALENDAR_RANGES).withDefault("week"),
@@ -157,7 +161,7 @@ export function useTimelineFilters(products: Product[], storeId: string): Timeli
   // URL values win so shared links stay deterministic. Missing filters are
   // restored from storage after hydration, scoped to the active store.
   useEffect(() => {
-    if (didAttemptRestoreRef.current) return;
+    if (!persist || didAttemptRestoreRef.current) return;
     didAttemptRestoreRef.current = true;
 
     const restoreFilters = async () => {
@@ -194,6 +198,7 @@ export function useTimelineFilters(products: Product[], storeId: string): Timeli
 
     void restoreFilters();
   }, [
+    persist,
     products,
     setState,
     state.operation,
@@ -206,7 +211,7 @@ export function useTimelineFilters(products: Product[], storeId: string): Timeli
   ]);
 
   useEffect(() => {
-    if (!hasRestoredFilters) return;
+    if (!persist || !hasRestoredFilters) return;
 
     const storedFilters = {
       range: state.range,
@@ -221,6 +226,7 @@ export function useTimelineFilters(products: Product[], storeId: string): Timeli
       // Persistence is best-effort when storage is disabled or full.
     }
   }, [
+    persist,
     hasRestoredFilters,
     selectedProductIds,
     state.operation,

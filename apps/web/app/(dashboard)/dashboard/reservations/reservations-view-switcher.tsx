@@ -17,6 +17,7 @@ interface ReservationsViewSwitcherProps {
   view: ReservationView;
   onViewChange: (view: ReservationView) => void;
   className?: string;
+  views?: readonly ReservationView[];
 }
 
 /**
@@ -31,6 +32,7 @@ export function ReservationsViewSwitcher({
   view,
   onViewChange,
   className,
+  views,
 }: ReservationsViewSwitcherProps) {
   const t = useTranslations("dashboard.reservations.views");
 
@@ -42,12 +44,14 @@ export function ReservationsViewSwitcher({
   return (
     <Tabs value={view} onValueChange={(value) => handleChange(value as ReservationView)}>
       <TabsList className={className} aria-label={t("label")}>
-        {VIEW_OPTIONS.map(({ value, icon: Icon }) => (
-          <TabsTab key={value} value={value}>
-            <Icon />
-            <span className="hidden sm:inline">{t(value)}</span>
-          </TabsTab>
-        ))}
+        {VIEW_OPTIONS.filter(({ value }) => !views || views.includes(value)).map(
+          ({ value, icon: Icon }) => (
+            <TabsTab key={value} value={value} aria-label={t(value)} data-reservations-view={value}>
+              <Icon />
+              <span className="hidden sm:inline">{t(value)}</span>
+            </TabsTab>
+          ),
+        )}
       </TabsList>
     </Tabs>
   );

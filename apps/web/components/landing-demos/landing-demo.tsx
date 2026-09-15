@@ -7,8 +7,10 @@ import { Button, TooltipProvider } from "@louez/ui";
 import { cn } from "@louez/utils";
 import { StoreProvider } from "@/contexts/store-context";
 import { usePublicEnv } from "@/components/shared/public-env-provider";
-import { DEMO_RULES, DEMO_PRODUCTS, type DemoBooking } from "@/lib/landing-demos/fixtures";
+import { DEMO_RULES, type DemoBooking } from "@/lib/landing-demos/fixtures";
 import { getDemoParentOrigins, type DemoScene } from "@/lib/landing-demos/policy";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+import type { ReservationStatus } from "@/app/(dashboard)/dashboard/reservations/reservations-types";
 import { AdvisorScene } from "./advisor-scene";
 import { PlanningScene } from "./planning-scene";
 import { ReservationScene } from "./reservation-scene";
@@ -44,6 +46,12 @@ export const LandingDemo = ({
     unitPrice: 20,
   }));
   const [reservationIndex, setReservationIndex] = useState(0);
+  const [detail, setDetail] = useState<{
+    booking: DemoBooking;
+    period: RentalPeriodValue;
+    status: ReservationStatus;
+  } | null>(null);
+  const [planningView, setPlanningView] = useState<"dashboard" | "list">("dashboard");
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -68,6 +76,7 @@ export const LandingDemo = ({
     setStep(scene === "planning" ? 1 : scene === "reservation" ? 2 : 0);
   }, [scene]);
   const finish = () => {
+    setPlanningView("dashboard");
     if (scene === "rental") setStep((value) => (value + 1) % 3);
     else setStep(scene === "planning" ? 1 : scene === "reservation" ? 2 : 0);
     setCycle((value) => value + 1);
@@ -100,7 +109,10 @@ export const LandingDemo = ({
       setParentOrigin(event.origin);
       window.parent.postMessage({ type: "louez:demo:ack" }, event.origin);
       if ("visible" in data && typeof data.visible === "boolean") setParentVisible(data.visible);
-      if ("hovered" in data && typeof data.hovered === "boolean") setHovered(data.hovered);
+      if ("hovered" in data && typeof data.hovered === "boolean") {
+        setHovered(data.hovered);
+        if (!data.hovered) setKeyboard(false);
+      }
       if ("paused" in data && typeof data.paused === "boolean") {
         setPaused(data.paused);
         setKeyboard(false);
@@ -170,125 +182,127 @@ export const LandingDemo = ({
   }, [step, running, paused, parentOrigin, reduced, phase]);
 
   return (
-    <StoreProvider
-      storeId="demo-store"
-      storeSlug="demo"
-      storeName="Maison du Vélo"
-      currency="EUR"
-      timezone="Europe/Paris"
-      basePath=""
-      periodRules={DEMO_RULES}
-    >
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <main
-            className={cn(
-              "demo-canvas min-h-dvh bg-background text-foreground",
-              currentScene === "storefront" ? "p-0" : compact ? "p-4" : "p-5 sm:p-8",
-            )}
-            data-demo-step={step}
-            data-demo-running={running}
-            data-demo-phase={phase}
-            data-demo-compact={compact}
-          >
-            <div key={`${currentScene}-${cycle}`}>
-              {currentScene === "storefront" && (
-                <StorefrontScene
-                  compact={compact}
-                  period={period}
-                  onBookingChange={(nextBooking) => {
-                    setBooking(nextBooking);
-                    setPeriod(nextBooking.period);
-                    setReservationIndex(0);
-                  }}
-                />
+    <NuqsAdapter>
+      <StoreProvider
+        storeId="demo-store"
+        storeSlug="demo"
+        storeName="Maison du Vélo"
+        currency="EUR"
+        timezone="Europe/Paris"
+        basePath=""
+        periodRules={DEMO_RULES}
+      >
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <main
+              className={cn(
+                "demo-canvas min-h-dvh bg-background text-foreground",
+                currentScene === "advisor" ? "p-5 sm:p-8" : "p-0",
               )}
-              {currentScene === "planning" && (
-                <PlanningScene
-                  compact={compact}
-                  period={period}
-                  booking={booking}
-                  onOpenReservation={(index) => {
-                    setReservationIndex(index);
-                    setStep(2);
-                    setCycle((value) => value + 1);
-                  }}
-                />
-              )}
-              {currentScene === "reservation" && (
-                <ReservationScene
-                  compact={compact}
-                  period={period}
-                  reservationIndex={reservationIndex}
-                  booking={
-                    reservationIndex === 0
-                      ? booking
-                      : {
-                          productIndex: reservationIndex,
-                          quantity: reservationIndex === 1 ? 1 : 2,
-                          selected: {},
-                          period,
-                          unitPrice: Number(DEMO_PRODUCTS[reservationIndex].price),
-                        }
-                  }
-                />
-              )}
-              {currentScene === "advisor" && <AdvisorScene visible={parentVisible} />}
-            </div>
-            {!embedded && (
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-                {scene === "rental" &&
-                  steps.map((label, index) => (
-                    <Button
-                      key={label}
-                      size="sm"
-                      variant={step === index ? "default" : "ghost"}
-                      onClick={() => {
-                        setStep(index);
-                        setCycle((value) => value + 1);
-                      }}
-                    >
-                      {label}
-                    </Button>
-                  ))}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={paused ? "Lancer la démo" : "Pause"}
-                  onClick={() => {
-                    setPaused((value) => !value);
-                    setKeyboard(false);
-                  }}
-                >
-                  {paused ? <Play /> : <Pause />}
-                </Button>
-                <Button variant="ghost" size="icon" aria-label="Recommencer" onClick={reset}>
-                  <RotateCcw />
-                </Button>
+              data-demo-step={step}
+              data-demo-running={running}
+              data-demo-visible={parentVisible && pageVisible}
+              data-demo-hovered={hovered}
+              data-demo-keyboard={keyboard}
+              data-demo-phase={phase}
+              data-demo-compact={compact}
+            >
+              <div key={`${currentScene}-${cycle}`}>
+                {currentScene === "storefront" && (
+                  <StorefrontScene
+                    compact={compact}
+                    period={period}
+                    onBookingChange={(nextBooking) => {
+                      setBooking(nextBooking);
+                      setPeriod(nextBooking.period);
+                      setReservationIndex(0);
+                      setDetail(null);
+                    }}
+                  />
+                )}
+                {currentScene === "planning" && (
+                  <PlanningScene
+                    initialView={planningView}
+                    period={period}
+                    booking={booking}
+                    onOpenReservation={(index, selectedBooking, selectedPeriod, status) => {
+                      setReservationIndex(index);
+                      setDetail({ booking: selectedBooking, period: selectedPeriod, status });
+                      setStep(2);
+                      setCycle((value) => value + 1);
+                    }}
+                  />
+                )}
+                {currentScene === "reservation" && (
+                  <ReservationScene
+                    period={detail?.period ?? period}
+                    reservationIndex={reservationIndex}
+                    booking={detail?.booking ?? booking}
+                    status={detail?.status ?? "confirmed"}
+                    onNavigate={(page) => {
+                      setPlanningView(page === "dashboard" ? "dashboard" : "list");
+                      setStep(1);
+                      setCycle((value) => value + 1);
+                    }}
+                  />
+                )}
+                {currentScene === "advisor" && <AdvisorScene visible={parentVisible} />}
               </div>
-            )}
-          </main>
-          <div
-            ref={cursorRef}
-            className="demo-cursor"
-            aria-hidden="true"
-            data-visible={running && phase > 0}
-          >
-            <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
-              <path
-                d="M3 2L24 18L14 19L10 28L3 2Z"
-                fill="#111"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span>
-              {currentScene === "storefront" || currentScene === "advisor" ? "Client" : "Loueur"}
-            </span>
-          </div>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </StoreProvider>
+              {!embedded && (
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                  {scene === "rental" &&
+                    steps.map((label, index) => (
+                      <Button
+                        key={label}
+                        size="sm"
+                        variant={step === index ? "default" : "ghost"}
+                        onClick={() => {
+                          setStep(index);
+                          setCycle((value) => value + 1);
+                        }}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={paused ? "Lancer la démo" : "Pause"}
+                    onClick={() => {
+                      setPaused((value) => !value);
+                      setKeyboard(false);
+                    }}
+                  >
+                    {paused ? <Play /> : <Pause />}
+                  </Button>
+                  <Button variant="ghost" size="icon" aria-label="Recommencer" onClick={reset}>
+                    <RotateCcw />
+                  </Button>
+                </div>
+              )}
+            </main>
+            <div
+              ref={cursorRef}
+              className="demo-cursor"
+              aria-hidden="true"
+              data-visible={running && phase > 0}
+            >
+              <svg width="28" height="32" viewBox="0 0 28 32" fill="none">
+                <path
+                  d="M3 2L24 18L14 19L10 28L3 2Z"
+                  fill="#111"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span>
+                {currentScene === "storefront" || currentScene === "advisor" ? "Client" : "Loueur"}
+              </span>
+            </div>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </StoreProvider>
+    </NuqsAdapter>
   );
 };

@@ -1,4 +1,6 @@
 "use client";
+import { DashboardSceneFrame } from "./dashboard-scene-frame";
+import type { ReservationStatus } from "@/app/(dashboard)/dashboard/reservations/reservations-types";
 import { ActivityTimelineV2 } from "@/app/(dashboard)/dashboard/reservations/[id]/activity-timeline-v2";
 import { ReservationIdentity } from "@/app/(dashboard)/dashboard/reservations/[id]/reservation-identity";
 import { ReservationItemsCard } from "@/app/(dashboard)/dashboard/reservations/[id]/reservation-items-card";
@@ -11,15 +13,17 @@ import {
 
 const insuredProducts = new Set<string>();
 export const ReservationScene = ({
-  compact,
   period,
   booking,
   reservationIndex,
+  onNavigate,
+  status = "confirmed",
 }: {
-  compact: boolean;
   period: RentalPeriodValue;
   booking: DemoBooking;
   reservationIndex: number;
+  status?: ReservationStatus;
+  onNavigate: (page: "dashboard" | "reservations") => void;
 }) => {
   const items = getDemoReservationItems(booking);
   const total = Number(items.subtotalAmount);
@@ -29,18 +33,18 @@ export const ReservationScene = ({
     Math.round((period.end.getTime() - period.start.getTime()) / 3600000),
   );
   return (
-    <div className="space-y-5" data-demo-scene="reservation">
-      <ReservationIdentity
-        reservationNumber={String(1042 + reservationIndex)}
-        status="confirmed"
-        rentalAmount={total}
-        rentalPaid={total}
-        depositAmount={deposit}
-        depositCollected={deposit}
-        depositReturned={0}
-      />
-      <div className={compact ? "space-y-4" : "grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]"}>
-        {!compact && (
+    <DashboardSceneFrame page="reservations" onNavigate={onNavigate}>
+      <div className="space-y-5" data-demo-scene="reservation">
+        <ReservationIdentity
+          reservationNumber={String(1042 + reservationIndex)}
+          status={status}
+          rentalAmount={total}
+          rentalPaid={status === "pending" ? 0 : total}
+          depositAmount={deposit}
+          depositCollected={status === "pending" ? 0 : deposit}
+          depositReturned={0}
+        />
+        <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
           <ReservationItemsCard
             reservation={items}
             startDate={period.start}
@@ -52,17 +56,21 @@ export const ReservationScene = ({
             rental={total}
             insuredProductIds={insuredProducts}
           />
-        )}
-        <div data-demo-target="history">
-          <ActivityTimelineV2
-            activities={createDemoActivities(period.start, total, deposit)}
-            reservationCreatedAt={period.start}
-            reservationSource="online"
-            currency="EUR"
-            initialVisibleCount={compact ? 1 : 2}
-          />
+          <div data-demo-target="history">
+            <ActivityTimelineV2
+              activities={
+                status === "pending"
+                  ? createDemoActivities(period.start, total, deposit).slice(-1)
+                  : createDemoActivities(period.start, total, deposit)
+              }
+              reservationCreatedAt={period.start}
+              reservationSource="online"
+              currency="EUR"
+              initialVisibleCount={2}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardSceneFrame>
   );
 };
