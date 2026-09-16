@@ -75,6 +75,7 @@ type ActionWarning = {
 };
 
 interface SmartReservationActionsProps {
+  readOnly?: boolean;
   reservationId: string;
   status: ReservationStatus;
   startDate: Date;
@@ -115,6 +116,7 @@ export function SmartReservationActions({
   hasDepartureInspection = false,
   hasReturnInspection = false,
   onRecordPayment,
+  readOnly = false,
 }: SmartReservationActionsProps) {
   const t = useTranslations("dashboard.reservations");
   const tInspection = useTranslations("dashboard.settings.inspection");
@@ -414,7 +416,7 @@ export function SmartReservationActions({
                   <button
                     className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors pt-1"
                     onClick={() => setCancelDialogOpen(true)}
-                    disabled={isLoading}
+                    disabled={readOnly || isLoading}
                   >
                     {t("cancelReservation")}
                   </button>
@@ -438,6 +440,7 @@ export function SmartReservationActions({
               <p className="text-xs text-muted-foreground">{t("pendingCard.description")}</p>
               <div className="space-y-2">
                 <Button
+                  disabled={readOnly}
                   variant="default"
                   className="w-full"
                   onClick={() => handleStatusChange("confirmed")}
@@ -450,7 +453,7 @@ export function SmartReservationActions({
                   variant="destructive"
                   className="w-full"
                   onClick={() => setRejectDialogOpen(true)}
-                  disabled={isLoading}
+                  disabled={readOnly || isLoading}
                 >
                   <XCircle className="mr-2 h-3.5 w-3.5" />
                   {t("rejectRequest")}
@@ -461,7 +464,7 @@ export function SmartReservationActions({
                   <button
                     className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors"
                     onClick={() => setCancelDialogOpen(true)}
-                    disabled={isLoading}
+                    disabled={readOnly || isLoading}
                   >
                     {t("cancelReservation")}
                   </button>
@@ -489,7 +492,12 @@ export function SmartReservationActions({
                 })}
               </p>
 
-              <Button className="w-full" onClick={handlePickupIntent} isPending={isLoading}>
+              <Button
+                disabled={readOnly}
+                className="w-full"
+                onClick={handlePickupIntent}
+                isPending={isLoading}
+              >
                 <ArrowUpRight data-slot="icon" />
                 {t("actions.markPickedUp")}
               </Button>
@@ -525,7 +533,7 @@ export function SmartReservationActions({
                   <button
                     className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors"
                     onClick={() => setCancelDialogOpen(true)}
-                    disabled={isLoading}
+                    disabled={readOnly || isLoading}
                   >
                     {t("cancelReservation")}
                   </button>
@@ -553,7 +561,12 @@ export function SmartReservationActions({
                 })}
               </p>
 
-              <Button className="w-full" onClick={handleReturnIntent} isPending={isLoading}>
+              <Button
+                disabled={readOnly}
+                className="w-full"
+                onClick={handleReturnIntent}
+                isPending={isLoading}
+              >
                 <ArrowDownRight data-slot="icon" />
                 {t("actions.markReturned")}
               </Button>
@@ -563,7 +576,7 @@ export function SmartReservationActions({
                   <button
                     className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors"
                     onClick={() => setCancelDialogOpen(true)}
-                    disabled={isLoading}
+                    disabled={readOnly || isLoading}
                   >
                     {t("cancelReservation")}
                   </button>
@@ -639,6 +652,7 @@ export function SmartReservationActions({
               <p className="text-xs text-muted-foreground">{t("quoteCard.description")}</p>
               <div className="space-y-2">
                 <Button
+                  disabled={readOnly}
                   variant="default"
                   className="w-full"
                   onClick={() => handleStatusChange("confirmed")}
@@ -653,7 +667,7 @@ export function SmartReservationActions({
                   <button
                     className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors"
                     onClick={() => setCancelDialogOpen(true)}
-                    disabled={isLoading}
+                    disabled={readOnly || isLoading}
                   >
                     {t("cancelReservation")}
                   </button>
@@ -695,7 +709,7 @@ export function SmartReservationActions({
         rentalRemaining={rentalRemaining}
         hasOnlinePaymentPending={hasOnlinePaymentPending}
         currency={currency}
-        disabled={isLoading}
+        disabled={readOnly || isLoading}
         onRecordPayment={onRecordPayment}
         onStatusAction={
           status === "confirmed"
@@ -727,10 +741,19 @@ export function SmartReservationActions({
             </div>
           </DialogPanel>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+            <Button
+              disabled={readOnly}
+              variant="outline"
+              onClick={() => setRejectDialogOpen(false)}
+            >
               {tCommon("cancel")}
             </Button>
-            <Button variant="destructive" onClick={handleReject} isPending={isLoading}>
+            <Button
+              disabled={readOnly}
+              variant="destructive"
+              onClick={handleReject}
+              isPending={isLoading}
+            >
               {t("rejectRequest")}
             </Button>
           </DialogFooter>
@@ -745,10 +768,13 @@ export function SmartReservationActions({
             <AlertDialogDescription>{t("cancelConfirmDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>
+            <AlertDialogClose render={<Button disabled={readOnly} variant="outline" />}>
               {tCommon("back")}
             </AlertDialogClose>
-            <AlertDialogClose render={<Button variant="destructive" />} onClick={handleCancel}>
+            <AlertDialogClose
+              render={<Button disabled={readOnly} variant="destructive" />}
+              onClick={handleCancel}
+            >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("cancelReservation")}
             </AlertDialogClose>
@@ -829,6 +855,7 @@ export function SmartReservationActions({
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
+              disabled={readOnly}
               variant="outline"
               onClick={() => setPickupConfirmOpen(false)}
               className="sm:flex-1"
@@ -838,7 +865,7 @@ export function SmartReservationActions({
             <Button
               onClick={handlePickup}
               isPending={isLoading}
-              disabled={!acknowledgeWarnings}
+              disabled={readOnly || !acknowledgeWarnings}
               className={cn(
                 "sm:flex-1",
                 acknowledgeWarnings ? "bg-amber-600 hover:bg-amber-700 text-white" : "",
@@ -919,13 +946,19 @@ export function SmartReservationActions({
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
+              disabled={readOnly}
               variant="outline"
               onClick={() => setReturnConfirmOpen(false)}
               className="sm:flex-1"
             >
               {tCommon("cancel")}
             </Button>
-            <Button onClick={handleReturn} isPending={isLoading} className="sm:flex-1">
+            <Button
+              disabled={readOnly}
+              onClick={handleReturn}
+              isPending={isLoading}
+              className="sm:flex-1"
+            >
               <CheckCircle data-slot="icon" />
               {t("smartActions.confirmReturn")}
             </Button>
@@ -973,6 +1006,7 @@ export function SmartReservationActions({
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {!inspectionRequired && (
               <Button
+                disabled={readOnly}
                 variant="outline"
                 onClick={() => {
                   setInspectionPromptOpen(null);
@@ -994,6 +1028,7 @@ export function SmartReservationActions({
               </Button>
             )}
             <Button
+              disabled={readOnly}
               render={
                 <Link
                   href={`/dashboard/reservations/${reservationId}/inspection/${inspectionPromptOpen}`}

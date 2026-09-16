@@ -16,6 +16,11 @@ const customers = [
   ["Morgan", "Dubois"],
 ];
 
+export const getDemoCustomer = (index: number) => {
+  const [firstName, lastName] = customers[index % customers.length];
+  return { id: `demo-customer-${index}`, firstName, lastName, email: `client${index}@example.com` };
+};
+
 export function createDemoReservationPages(period: RentalPeriodValue, booking: DemoBooking) {
   const bookings: DemoBooking[] = [];
   const rows: ListReservation[] = Array.from({ length: 24 }, (_, index) => {
@@ -38,7 +43,6 @@ export function createDemoReservationPages(period: RentalPeriodValue, booking: D
           });
     bookings.push(selectedBooking);
     const display = getDemoReservationItems(selectedBooking);
-    const [firstName, lastName] = customers[index % customers.length];
     return {
       id: `demo-reservation-${index}`,
       number: String(1042 + index),
@@ -49,7 +53,7 @@ export function createDemoReservationPages(period: RentalPeriodValue, booking: D
       subtotalAmount: display.subtotalAmount,
       depositAmount: display.depositAmount,
       totalAmount: display.subtotalAmount,
-      customer: { id: "", firstName, lastName, email: `client${index}@example.com` },
+      customer: getDemoCustomer(index),
       items: (display.items ?? []).map((item, lineIndex) => ({
         id: item.id,
         quantity: item.quantity,

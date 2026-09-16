@@ -8,10 +8,7 @@ import { Download, FileText, RefreshCw } from "lucide-react";
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
 import { cn, formatCurrency } from "@louez/utils";
 
-import {
-  generateInvoiceForReservation,
-  recheckInvoiceTransmission,
-} from "@/lib/invoicing/actions";
+import { generateInvoiceForReservation, recheckInvoiceTransmission } from "@/lib/invoicing/actions";
 
 type TransmissionStatus =
   | "not_applicable"
@@ -41,6 +38,7 @@ const TRANSMISSION_BADGE_VARIANTS = {
 } satisfies Record<TransmissionStatus, "expired" | "pending" | "progress" | "success" | "failed">;
 
 interface InvoiceDocumentsCardProps {
+  readOnly?: boolean;
   reservationId: string;
   invoices: ReservationInvoiceDocument[];
   canGenerate: boolean;
@@ -50,6 +48,7 @@ export const InvoiceDocumentsCard = ({
   reservationId,
   invoices,
   canGenerate,
+  readOnly = false,
 }: InvoiceDocumentsCardProps) => {
   const t = useTranslations("dashboard.reservations.invoiceDocuments");
   const locale = useLocale();
@@ -94,7 +93,7 @@ export const InvoiceDocumentsCard = ({
             {t("title")}
           </CardTitle>
           {canGenerate && (
-            <Button size="sm" onClick={handleGenerate} isPending={isPending}>
+            <Button disabled={readOnly} size="sm" onClick={handleGenerate} isPending={isPending}>
               {t("generate")}
             </Button>
           )}
@@ -146,7 +145,7 @@ export const InvoiceDocumentsCard = ({
                         variant="ghost"
                         aria-label={t("recheck")}
                         title={t("recheck")}
-                        disabled={recheckingId !== null}
+                        disabled={readOnly || recheckingId !== null}
                         onClick={() => handleRecheck(invoice.id)}
                         className={cn(
                           "opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100",
@@ -161,13 +160,16 @@ export const InvoiceDocumentsCard = ({
                     )}
                   </div>
                   <Button
+                    disabled={readOnly}
                     size="sm"
                     variant="outline"
                     render={
-                      <a
-                        href={`/api/reservations/${reservationId}/invoices/${invoice.id}`}
-                        aria-label={t("downloadNamed", { number: invoice.number })}
-                      />
+                      readOnly ? undefined : (
+                        <a
+                          href={`/api/reservations/${reservationId}/invoices/${invoice.id}`}
+                          aria-label={t("downloadNamed", { number: invoice.number })}
+                        />
+                      )
                     }
                   >
                     <Download data-slot="icon" />

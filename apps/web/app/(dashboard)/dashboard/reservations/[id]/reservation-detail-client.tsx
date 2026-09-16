@@ -91,6 +91,8 @@ interface ReservationDetailClientProps {
   defaultPaymentMethod?: PaymentMethod;
   invoices: ReservationInvoiceDocument[];
   canGenerateInvoice: boolean;
+  readOnly?: boolean;
+  onBack?: () => void;
 }
 
 function toDate(value: Date | string | null | undefined) {
@@ -130,6 +132,8 @@ export function ReservationDetailClient({
   defaultPaymentMethod,
   invoices,
   canGenerateInvoice,
+  readOnly = false,
+  onBack,
 }: ReservationDetailClientProps) {
   const t = useTranslations("dashboard.reservations");
   const { intl: formatLocale } = useFormatLocale();
@@ -141,14 +145,15 @@ export function ReservationDetailClient({
     ...orpc.dashboard.reservations.getById.queryOptions({
       input: { reservationId },
     }),
+    enabled: !readOnly,
     initialData: initialReservation,
     placeholderData: (prev) => prev,
   });
 
-  const reservation = reservationQuery.data;
+  const reservation = readOnly ? initialReservation : reservationQuery.data;
 
   useEffect(() => {
-    if (hasCapturedReservationView.current) return;
+    if (readOnly || hasCapturedReservationView.current) return;
     hasCapturedReservationView.current = true;
 
     captureReservationViewed({
@@ -161,7 +166,13 @@ export function ReservationDetailClient({
         inspection_mode: inspectionSettings.mode,
       },
     });
-  }, [initialReservation, inspectionSettings.enabled, inspectionSettings.mode, reservationId]);
+  }, [
+    readOnly,
+    initialReservation,
+    inspectionSettings.enabled,
+    inspectionSettings.mode,
+    reservationId,
+  ]);
 
   if (!reservation) return null;
 
@@ -243,6 +254,8 @@ export function ReservationDetailClient({
   return (
     <div className={cn("space-y-4 sm:space-y-6", showMobileQuickActions && "pb-28 md:pb-0")}>
       <ReservationHeader
+        readOnly={readOnly}
+        onBack={onBack}
         reservationId={reservation.id}
         reservationNumber={reservation.number}
         status={status}
@@ -299,6 +312,7 @@ export function ReservationDetailClient({
                     className="h-7 w-7 shrink-0 text-muted-foreground"
                     title={t("billing.edit")}
                     aria-label={t("billing.edit")}
+                    disabled={readOnly}
                     onClick={() => setIsBillingDialogOpen(true)}
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -313,11 +327,12 @@ export function ReservationDetailClient({
                 {/* Contact (email + phone) */}
                 <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0 text-sm text-muted-foreground">
                   <EmailContactPopover
+                    disabled={readOnly}
                     email={reservation.customer.email}
                     className="min-w-0 truncate"
                   />
                   {reservation.customer.phone && (
-                    <PhoneContactPopover phone={reservation.customer.phone} />
+                    <PhoneContactPopover disabled={readOnly} phone={reservation.customer.phone} />
                   )}
                 </div>
 
@@ -338,14 +353,24 @@ export function ReservationDetailClient({
               size="icon"
               className="shrink-0 sm:hidden"
               title={t("viewCustomer")}
-              render={<Link href={`/dashboard/customers/${reservation.customer.id}`} />}
+              disabled={readOnly}
+              render={
+                readOnly ? undefined : (
+                  <Link href={`/dashboard/customers/${reservation.customer.id}`} />
+                )
+              }
             >
               <ExternalLink className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               className="shrink-0 hidden sm:inline-flex"
-              render={<Link href={`/dashboard/customers/${reservation.customer.id}`} />}
+              disabled={readOnly}
+              render={
+                readOnly ? undefined : (
+                  <Link href={`/dashboard/customers/${reservation.customer.id}`} />
+                )
+              }
             >
               {t("viewCustomer")}
               <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
@@ -370,7 +395,7 @@ export function ReservationDetailClient({
             rental={rental}
             insuredProductIds={insuredProductIds}
             renderUnitAssignment={(item) =>
-              item.product?.trackUnits ? (
+              !readOnly && item.product?.trackUnits ? (
                 <UnitAssignmentSelector
                   reservationId={reservation.id}
                   reservationItemId={item.id}
@@ -394,18 +419,21 @@ export function ReservationDetailClient({
             }
           />
 
-          <ActivityTimelineV2
-            activities={reservation.activity}
-            payments={reservation.payments}
-            reservationCreatedAt={reservation.createdAt}
-            reservationSource={reservation.source}
-            currency={currency}
-            initialVisibleCount={3}
-          />
+          <div data-reservation-history>
+            <ActivityTimelineV2
+              activities={reservation.activity}
+              payments={reservation.payments}
+              reservationCreatedAt={reservation.createdAt}
+              reservationSource={reservation.source}
+              currency={currency}
+              initialVisibleCount={3}
+            />
+          </div>
         </div>
 
         <div className="space-y-4 min-w-0">
           <InvoiceDocumentsCard
+            readOnly={readOnly}
             reservationId={reservation.id}
             invoices={invoices}
             canGenerate={canGenerateInvoice}
@@ -437,6 +465,7 @@ export function ReservationDetailClient({
           )}
 
           <SmartReservationActions
+            readOnly={readOnly}
             reservationId={reservation.id}
             status={status}
             startDate={startDate}
@@ -599,6 +628,7 @@ export function ReservationDetailClient({
           />
 
           <UnifiedPaymentSection
+            readOnly={readOnly}
             reservationId={reservation.id}
             reservationNumber={reservation.number}
             subtotalAmount={reservation.subtotalAmount}
@@ -621,9 +651,10 @@ export function ReservationDetailClient({
             onPaymentModalOpenChange={setPaymentModalOpen}
           />
 
-          <AdvisorConversationCard reservationId={reservation.id} />
+          {!readOnly && <AdvisorConversationCard reservationId={reservation.id} />}
 
           <ReservationNotes
+            readOnly={readOnly}
             reservationId={reservation.id}
             initialNotes={reservation.internalNotes || ""}
           />

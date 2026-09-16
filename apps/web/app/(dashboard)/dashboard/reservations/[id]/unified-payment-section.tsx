@@ -120,6 +120,7 @@ type DepositStatus =
   | "failed";
 
 interface UnifiedPaymentSectionProps {
+  readOnly?: boolean;
   reservationId: string;
   reservationNumber: string;
   subtotalAmount: string;
@@ -203,6 +204,7 @@ export function UnifiedPaymentSection({
   defaultPaymentMethod = "cash",
   paymentModalOpen,
   onPaymentModalOpenChange: setPaymentModalOpen,
+  readOnly = false,
 }: UnifiedPaymentSectionProps) {
   const t = useTranslations("dashboard.reservations");
   const { intl: formatLocale, dateFns: dateLocale } = useFormatLocale();
@@ -317,7 +319,7 @@ export function UnifiedPaymentSection({
     ...orpc.dashboard.reservations.getPaymentMethod.queryOptions({
       input: { reservationId },
     }),
-    enabled: Boolean(stripePaymentMethodId && depositStatusVal !== "none"),
+    enabled: !readOnly && Boolean(stripePaymentMethodId && depositStatusVal !== "none"),
   });
 
   useEffect(() => {
@@ -713,7 +715,7 @@ export function UnifiedPaymentSection({
               <CreditCard className="h-4 w-4" />
               {t("payment.title")}
             </CardTitle>
-            {isFullyPaid && !hasDepositToReturn ? (
+            {!readOnly && isFullyPaid && !hasDepositToReturn ? (
               <Badge variant="success" className="">
                 <CheckSolidIcon className="h-3 w-3 mr-1" />
                 {t("payment.allPaidBadge")}
@@ -819,6 +821,7 @@ export function UnifiedPaymentSection({
                     <TooltipTrigger
                       render={
                         <Button
+                          disabled={readOnly}
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
@@ -869,6 +872,7 @@ export function UnifiedPaymentSection({
                     <TooltipTrigger
                       render={
                         <Button
+                          disabled={readOnly}
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
@@ -904,6 +908,7 @@ export function UnifiedPaymentSection({
                       <TooltipTrigger
                         render={
                           <Button
+                            disabled={readOnly}
                             size="icon"
                             variant="outline"
                             className="h-7 w-7"
@@ -987,7 +992,12 @@ export function UnifiedPaymentSection({
 
                   <div className="flex gap-2">
                     {depositStatusVal === "card_saved" && (
-                      <Button onClick={handleCreateHold} isPending={isLoading} className="flex-1">
+                      <Button
+                        disabled={readOnly}
+                        onClick={handleCreateHold}
+                        isPending={isLoading}
+                        className="flex-1"
+                      >
                         <ShieldCheck data-slot="icon" />
                         {t("deposit.createHold")}
                       </Button>
@@ -998,7 +1008,7 @@ export function UnifiedPaymentSection({
                         <Button
                           variant="outline"
                           onClick={() => setReleaseDialogOpen(true)}
-                          disabled={isLoading}
+                          disabled={readOnly || isLoading}
                           className="flex-1"
                         >
                           <Check className="mr-2 h-3.5 w-3.5" />
@@ -1010,7 +1020,7 @@ export function UnifiedPaymentSection({
                             setCaptureAmount(deposit.toFixed(2));
                             setCaptureModalOpen(true);
                           }}
-                          disabled={isLoading}
+                          disabled={readOnly || isLoading}
                           className="flex-1"
                         >
                           <Banknote className="mr-2 h-3.5 w-3.5" />
@@ -1062,6 +1072,7 @@ export function UnifiedPaymentSection({
           {/* Damage button for finished reservations */}
           {isReservationFinished && depositToReturn > 0 && (
             <Button
+              disabled={readOnly}
               variant="destructive"
               className="w-full text-xs"
               onClick={() => setDamageModalOpen(true)}
@@ -1078,6 +1089,7 @@ export function UnifiedPaymentSection({
                 depositStatusVal !== "authorized" &&
                 depositStatusVal !== "captured")) && (
               <Button
+                disabled={readOnly}
                 variant="outline"
                 className="w-full text-xs border-primary/50 text-primary hover:bg-primary/5"
                 onClick={() => setRequestPaymentModalOpen(true)}
@@ -1197,6 +1209,7 @@ export function UnifiedPaymentSection({
                         </span>
                         {isManualPaymentRefundEligible(payment, payments) && (
                           <Button
+                            disabled={readOnly}
                             size="sm"
                             variant="ghost"
                             className="h-6 px-2 text-xs"
@@ -1210,6 +1223,7 @@ export function UnifiedPaymentSection({
                             <TooltipTrigger
                               render={
                                 <Button
+                                  disabled={readOnly}
                                   size="icon"
                                   variant="ghost"
                                   className="h-6 w-6 text-muted-foreground hover:text-destructive"
@@ -1251,7 +1265,7 @@ export function UnifiedPaymentSection({
       </Card>
 
       {/* Niveau-B referral nudge at the satisfaction moment (reservation fully paid). */}
-      {isFullyPaid && !hasDepositToReturn ? <ReferralNudge className="mt-4" /> : null}
+      {!readOnly && isFullyPaid && !hasDepositToReturn ? <ReferralNudge className="mt-4" /> : null}
 
       {/* Record Payment Modal */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
@@ -1365,10 +1379,14 @@ export function UnifiedPaymentSection({
           </DialogPanel>
 
           <DialogFooter className="sm:justify-between">
-            <Button variant="outline" onClick={() => setPaymentModalOpen(false)}>
+            <Button
+              disabled={readOnly}
+              variant="outline"
+              onClick={() => setPaymentModalOpen(false)}
+            >
               {tCommon("cancel")}
             </Button>
-            <Button onClick={handleRecordPayment} isPending={isLoading}>
+            <Button disabled={readOnly} onClick={handleRecordPayment} isPending={isLoading}>
               {t("payment.record")}
             </Button>
           </DialogFooter>
@@ -1481,10 +1499,14 @@ export function UnifiedPaymentSection({
           </DialogPanel>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDepositReturnModalOpen(false)}>
+            <Button
+              disabled={readOnly}
+              variant="outline"
+              onClick={() => setDepositReturnModalOpen(false)}
+            >
               {tCommon("cancel")}
             </Button>
-            <Button onClick={handleReturnDeposit} isPending={isLoading}>
+            <Button disabled={readOnly} onClick={handleReturnDeposit} isPending={isLoading}>
               {t("payment.return")}
             </Button>
           </DialogFooter>
@@ -1559,10 +1581,15 @@ export function UnifiedPaymentSection({
           </DialogPanel>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDamageModalOpen(false)}>
+            <Button disabled={readOnly} variant="outline" onClick={() => setDamageModalOpen(false)}>
               {tCommon("cancel")}
             </Button>
-            <Button onClick={handleRecordDamage} isPending={isLoading} variant="destructive">
+            <Button
+              disabled={readOnly}
+              onClick={handleRecordDamage}
+              isPending={isLoading}
+              variant="destructive"
+            >
               {t("payment.recordDamage")}
             </Button>
           </DialogFooter>
@@ -1588,11 +1615,11 @@ export function UnifiedPaymentSection({
             <AlertDialogDescription>{t("payment.deleteConfirmDescription")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>
+            <AlertDialogClose render={<Button disabled={readOnly} variant="outline" />}>
               {tCommon("cancel")}
             </AlertDialogClose>
             <AlertDialogClose
-              render={<Button variant="destructive" />}
+              render={<Button disabled={readOnly} variant="destructive" />}
               onClick={handleDeletePayment}
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1666,11 +1693,16 @@ export function UnifiedPaymentSection({
             <Button
               variant="outline"
               onClick={() => setCaptureModalOpen(false)}
-              disabled={isLoading}
+              disabled={readOnly || isLoading}
             >
               {tCommon("cancel")}
             </Button>
-            <Button variant="destructive" onClick={handleCapture} isPending={isLoading}>
+            <Button
+              disabled={readOnly}
+              variant="destructive"
+              onClick={handleCapture}
+              isPending={isLoading}
+            >
               {t("deposit.confirmCapture")}
             </Button>
           </DialogFooter>
@@ -1692,11 +1724,19 @@ export function UnifiedPaymentSection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />} disabled={isLoading}>
+            <AlertDialogClose
+              render={<Button disabled={readOnly} variant="outline" />}
+              disabled={isLoading}
+            >
               {tCommon("cancel")}
             </AlertDialogClose>
             <AlertDialogClose
-              render={<Button className="bg-emerald-600 text-white hover:bg-emerald-700" />}
+              render={
+                <Button
+                  disabled={readOnly}
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                />
+              }
               onClick={handleRelease}
               disabled={isLoading}
             >

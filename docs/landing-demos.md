@@ -8,7 +8,7 @@ La variante C du site marketing charge les démonstrations depuis l’applicatio
 | ----------- | -------------------------------------------------------------------------------- |
 | Boutique    | `CatalogLayout`, `CatalogSidebar`, `ProductGridView`, `ProductCard`, `RentalPeriodPicker`, `CartDrawerView`, `CartPanelView`, `CartLineItem` |
 | Gestion     | `DashboardNavigation`, `DashboardContentFrame`, `AdaptiveHeader`, `DashboardStatCard`, `ActivityCardView`, `ReservationsTableView`, `ReservationsCalendarView`, `TimelineToolbar`, `TimelineReservationBar`                      |
-| Réservation | `ReservationIdentity`, `ReservationItemsCard`, `ActivityTimelineV2`              |
+| Réservation | `ReservationDetailClient` et sa composition complète              |
 | Conseiller  | `AdvisorPanel`, ses messages et son champ de saisie                              |
 
 Les vues extraites conservent leur rendu. Le produit garde ses requêtes, ses règles de disponibilité, ses mutations et ses contrôles d’accès dans les composants qui les appellent. Les scènes de démonstration fournissent des fixtures et des callbacks locaux. Elles ne testent pas un paiement, un contrat ou une réservation réelle.
@@ -57,3 +57,13 @@ La CSP des démonstrations autorise les requêtes de rendu Next.js sous `/demos/
 - Survol et sortie vérifiés dans le navigateur : pause puis reprise ; le message de sortie du cadre lève aussi la pause liée au clavier.
 
 Ces vérifications concernent le code et les serveurs locaux. Aucun déploiement n’a été effectué.
+
+## Agrandissement et détail de réservation — 16 septembre 2026
+
+Chaque carte propose « Agrandir ». Le dialogue du marketing charge la même scène à la largeur disponible ; la miniature correspondante suspend sa lecture pendant l’ouverture. La croix et Échap ferment le dialogue, puis le focus revient au bouton d’ouverture. Échap ferme d’abord un panier ou un menu ouvert dans la démo.
+
+La scène réservation rend maintenant `ReservationDetailClient`, le composant de la page `/dashboard/reservations/[id]`. Elle conserve sa composition complète : en-tête et actions, client, articles, historique, factures, suivi, notes, retrait et retour, paiements et caution. Les fixtures reprennent le client, les produits, les dates et les montants de la ligne sélectionnée. Une réservation en attente ne présente ni paiement reçu ni facture.
+
+L’option `readOnly`, désactivée par défaut dans l’application, coupe le rafraîchissement de la réservation, les requêtes de carte bancaire, les suggestions de parrainage et la conversation réelle du conseiller. Elle désactive les actions métier, les téléchargements et la modification des notes. Les historiques, la navigation locale et le défilement restent disponibles. Les protections du proxy et de la CSP restent en place.
+
+Validation locale : build de l’app et TypeScript réussis, lint ciblé réussi, seize tests passants. Dans le navigateur : trois dialogues ouverts, panier utilisable, historique dépliable, fermeture au clavier avec retour du focus, version mobile de 390 px sans débordement horizontal. Le chargement de la réservation ne déclenche aucun appel aux API métier. Aucun déploiement.

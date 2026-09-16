@@ -33,8 +33,8 @@ export const DEMO_CUES = {
     },
   ],
   reservation: [
-    { at: 450, selector: '[data-demo-target="history"] button' },
-    { at: 1900, selector: '[data-demo-target="history"] button', click: true },
+    { at: 450, selector: "[data-reservation-history] button" },
+    { at: 1900, selector: "[data-reservation-history] button", click: true },
   ],
   advisor: [
     { at: 500, selector: '[data-slot="advisor-suggestions"] button' },

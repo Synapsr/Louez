@@ -149,6 +149,19 @@ export const LandingDemo = ({
     };
     const key = (event: KeyboardEvent) => {
       if (event.isTrusted) setKeyboard(true);
+      if (event.key !== "Escape" || event.defaultPrevented || standalone) return;
+      // Let an app popover or cart consume Escape before closing the parent preview.
+      if (
+        document.querySelector(
+          '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [data-slot="popover-popup"]',
+        )
+      )
+        return;
+      if (document.referrer) {
+        const origin = new URL(document.referrer).origin;
+        if (allowed.includes(origin))
+          window.parent.postMessage({ type: "louez:demo:close" }, origin);
+      }
     };
     const blur = () => setKeyboard(false);
     const touch = (event: PointerEvent) => {
@@ -194,7 +207,7 @@ export const LandingDemo = ({
       >
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
-            <main
+            <div
               className={cn(
                 "demo-canvas min-h-dvh bg-background text-foreground",
                 currentScene === "advisor" ? "p-5 sm:p-8" : "p-0",
@@ -280,7 +293,7 @@ export const LandingDemo = ({
                   </Button>
                 </div>
               )}
-            </main>
+            </div>
             <div
               ref={cursorRef}
               className="demo-cursor"
