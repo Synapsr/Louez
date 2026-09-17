@@ -5,8 +5,10 @@ import { Button } from "@louez/ui";
 import { SparklesIcon } from "@louez/ui/icons";
 import { AdvisorPanel } from "@/components/storefront/advisor/advisor-panel";
 import { demoAdvisorReply } from "@/lib/landing-demos/fixtures";
+import { useDemoLocale } from "./use-demo-locale";
 
 export const AdvisorScene = ({ visible }: { visible: boolean }) => {
+  const locale = useDemoLocale();
   const [open, setOpen] = useState(true);
   const [messages, setMessages] = useState<UIMessage[]>([]);
   return (
@@ -38,7 +40,7 @@ export const AdvisorScene = ({ visible }: { visible: boolean }) => {
               role: "user",
               parts: [{ type: "text", text }],
             },
-            demoAdvisorReply(`demo-answer-${current.length}`),
+            demoAdvisorReply(`demo-answer-${current.length}`, locale),
           ])
         }
       />

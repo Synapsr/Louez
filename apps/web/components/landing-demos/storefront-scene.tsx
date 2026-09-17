@@ -14,12 +14,13 @@ import { StoreHeader } from "@/components/storefront/store-header";
 import { HeaderSearchCapsuleView } from "@/components/storefront/shell/header-search-capsule-view";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import {
-  DEMO_PRODUCTS,
-  DEMO_CATEGORIES,
   DEMO_RULES,
+  getDemoCategories,
+  getDemoProducts,
   type DemoBooking,
 } from "@/lib/landing-demos/fixtures";
 import { getDemoCart } from "@/lib/landing-demos/cart";
+import { useDemoLocale } from "./use-demo-locale";
 import { getStorefrontProductPrice } from "@/lib/utils/util.storefront-product-pricing";
 import {
   applyCatalogParams,
@@ -42,6 +43,9 @@ export const StorefrontScene = ({
   onBookingChange: (booking: DemoBooking) => void;
 }) => {
   const t = useTranslations("storefront");
+  const locale = useDemoLocale();
+  const DEMO_PRODUCTS = getDemoProducts(locale);
+  const DEMO_CATEGORIES = getDemoCategories(locale);
   const [period, setPeriod] = useState(initialPeriod);
   const [params, setParams] = useState(() => new URLSearchParams());
   const [search, setSearch] = useState("");
@@ -52,10 +56,10 @@ export const StorefrontScene = ({
     if (patch.search !== undefined) setSearch(patch.search ?? "");
     setParams((current) => applyCatalogParams(current, patch));
   };
-  const cart = getDemoCart(quantities, period);
+  const cart = getDemoCart(quantities, period, locale);
   const changeCart = (next: Record<string, number>, nextPeriod = period) => {
     setQuantities(next);
-    const nextCart = getDemoCart(next, nextPeriod);
+    const nextCart = getDemoCart(next, nextPeriod, locale);
     if (nextCart.booking) onBookingChange(nextCart.booking);
   };
   const changePeriod = (next: RentalPeriodValue) => {

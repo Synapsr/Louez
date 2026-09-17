@@ -4,8 +4,10 @@ import type { ReservationStatus } from "@/app/(dashboard)/dashboard/reservations
 import type { UnifiedPaymentSection } from "@/app/(dashboard)/dashboard/reservations/[id]/unified-payment-section";
 import type { ReservationInvoiceDocument } from "@/app/(dashboard)/dashboard/reservations/[id]/invoice-documents-card";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
+import type { Locale } from "@/i18n/config";
 import { createDemoActivities, getDemoReservationItems, type DemoBooking } from "./fixtures";
 import { getDemoCustomer } from "./reservations";
+import { getDemoText } from "./text";
 
 const location: ReservationLocationSnapshot = {
   type: "primary",
@@ -21,14 +23,17 @@ export const createDemoReservationDetail = (
   period: RentalPeriodValue,
   index: number,
   status: ReservationStatus,
+  locale?: Locale,
 ) => {
-  const items = getDemoReservationItems(booking);
+  const items = getDemoReservationItems(booking, locale);
+  const text = getDemoText(locale);
   const paid = status !== "pending";
   const date = new Date(Math.min(Date.now(), period.start.getTime()));
   const activity = createDemoActivities(
     date,
     Number(items.subtotalAmount),
     Number(items.depositAmount),
+    locale,
   );
   const payments: ComponentProps<typeof UnifiedPaymentSection>["payments"] = paid
     ? [
@@ -90,8 +95,8 @@ export const createDemoReservationDetail = (
       returnMethod: "pickup",
       pickupLocationSnapshot: location,
       returnLocationSnapshot: location,
-      customerNotes: "Nous passerons à l’ouverture pour profiter de la journée.",
-      internalNotes: "Préparer les vélos et vérifier la pression des pneus avant le départ.",
+      customerNotes: text.customerNotes,
+      internalNotes: text.internalNotes,
       insuredProductIds: [],
       sentEmails: paid ? ["confirmation"] : [],
     },

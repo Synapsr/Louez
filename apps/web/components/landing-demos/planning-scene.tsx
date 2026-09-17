@@ -19,6 +19,7 @@ import type { RentalPeriodValue } from "@/components/storefront/date-picker/core
 import type { DemoBooking } from "@/lib/landing-demos/fixtures";
 import { createDemoReservationPages } from "@/lib/landing-demos/reservations";
 import { DashboardSceneFrame } from "./dashboard-scene-frame";
+import { useDemoLocale } from "./use-demo-locale";
 
 type DemoView = "dashboard" | "list" | "calendar";
 const availableViews = ["list", "calendar"] as const;
@@ -43,7 +44,11 @@ export const PlanningScene = ({
   const [view, setView] = useState<DemoView>(initialView);
   const [sort, setSort] = useState<SortField>("number");
   const [direction, setDirection] = useState<SortDirection>("asc");
-  const data = useMemo(() => createDemoReservationPages(period, booking), [period, booking]);
+  const locale = useDemoLocale();
+  const data = useMemo(
+    () => createDemoReservationPages(period, booking, locale),
+    [period, booking, locale],
+  );
   const rows = data.rows;
   const sorted = [...rows].sort((a, b) => {
     const comparison =

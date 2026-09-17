@@ -9,6 +9,7 @@ import { StoreProvider } from "@/contexts/store-context";
 import { usePublicEnv } from "@/components/shared/public-env-provider";
 import { DEMO_RULES, type DemoBooking } from "@/lib/landing-demos/fixtures";
 import { getDemoParentOrigins, type DemoScene } from "@/lib/landing-demos/policy";
+import { getDemoText } from "@/lib/landing-demos/text";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { ReservationStatus } from "@/app/(dashboard)/dashboard/reservations/reservations-types";
 import {
@@ -21,11 +22,11 @@ import {
   loadStorefront,
 } from "./demo-scene-loaders";
 import { DemoSceneReady } from "./demo-scene-ready";
+import { useDemoLocale } from "./use-demo-locale";
 import { useParentScroll } from "./use-parent-scroll";
 import { getDemoDuration, useDemoPlayback, type AnimatedScene } from "./use-demo-playback";
 import "./landing-demo.css";
 
-const steps = ["Le client réserve", "Vous préparez", "Tout est suivi"];
 const scenes: AnimatedScene[] = ["storefront", "planning", "reservation"];
 const subscribeMotion = (notify: () => void) => {
   const query = matchMedia("(prefers-reduced-motion: reduce)");
@@ -46,6 +47,7 @@ export const LandingDemo = ({
   initialPeriod: RentalPeriodValue;
 }) => {
   const publicEnv = usePublicEnv();
+  const text = getDemoText(useDemoLocale());
   const [period, setPeriod] = useState(initialPeriod);
   const [booking, setBooking] = useState<DemoBooking>(() => ({
     productIndex: 0,
@@ -336,7 +338,7 @@ export const LandingDemo = ({
               {!embedded && !poster && (
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                   {scene === "rental" &&
-                    steps.map((label, index) => (
+                    text.steps.map((label, index) => (
                       <Button
                         key={label}
                         size="sm"
@@ -352,7 +354,7 @@ export const LandingDemo = ({
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={paused ? "Lancer la démo" : "Pause"}
+                    aria-label={paused ? text.play : text.pause}
                     onClick={() => {
                       setPaused((value) => !value);
                       setKeyboard(false);
@@ -360,7 +362,7 @@ export const LandingDemo = ({
                   >
                     {paused ? <Play /> : <Pause />}
                   </Button>
-                  <Button variant="ghost" size="icon" aria-label="Recommencer" onClick={reset}>
+                  <Button variant="ghost" size="icon" aria-label={text.restart} onClick={reset}>
                     <RotateCcw />
                   </Button>
                 </div>
@@ -382,7 +384,9 @@ export const LandingDemo = ({
                 />
               </svg>
               <span>
-                {currentScene === "storefront" || currentScene === "advisor" ? "Client" : "Loueur"}
+                {currentScene === "storefront" || currentScene === "advisor"
+                  ? text.customer
+                  : text.owner}
               </span>
             </div>
           </TooltipProvider>

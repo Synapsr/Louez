@@ -12,6 +12,8 @@ import {
 import { DashboardContentFrame } from "@/components/dashboard/dashboard-content-frame";
 import { DashboardNavigation } from "@/components/dashboard/dashboard-navigation";
 import { UserAvatar } from "@/components/dashboard/shared/user-avatar";
+import { getDemoText } from "@/lib/landing-demos/text";
+import { useDemoLocale } from "./use-demo-locale";
 
 export const DashboardSceneFrame = ({
   page,
@@ -24,6 +26,7 @@ export const DashboardSceneFrame = ({
 }) => {
   const [open, setOpen] = useState(true);
   const t = useTranslations("dashboard.navigation");
+  const text = getDemoText(useDemoLocale());
   return (
     <div className="dashboard relative h-svh overflow-hidden">
       <SidebarProvider
@@ -58,7 +61,7 @@ export const DashboardSceneFrame = ({
           </SidebarFooter>
         </Sidebar>
         <DashboardContentFrame
-          trigger={<SidebarTrigger aria-label="Afficher ou masquer le menu" />}
+          trigger={<SidebarTrigger aria-label={text.toggleMenu} />}
           breadcrumbs={
             <span className="text-sm font-medium">
               {t(page === "dashboard" ? "home" : "reservations")}

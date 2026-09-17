@@ -73,14 +73,20 @@ try {
   });
   await mkdir(output, { recursive: true });
   const sizes = {};
-  for (const scene of ["storefront", "planning", "reservation", "advisor"]) {
+  // One poster per scene and language: `<scene>.<locale>.webp`, plus `<scene>.webp` in
+  // French for landings that predate the language parameter.
+  const locales = ["fr", "en", "it", "nl", "pt", "de", "es", "pl"];
+  const captures = locales.flatMap((locale) =>
+    ["storefront", "planning", "reservation", "advisor"].map((scene) => ({ scene, locale })),
+  );
+  for (const { scene, locale } of captures) {
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(message.text());
     });
-    await page.goto(`${baseUrl}/demos/landing/${scene}?poster=1`, {
+    await page.goto(`${baseUrl}/demos/landing/${scene}?poster=1&locale=${locale}`, {
       waitUntil: "domcontentloaded",
     });
     await page.locator('[data-demo-ready="true"]').waitFor();
@@ -92,14 +98,15 @@ try {
           .map((image) => image.decode()),
       );
     });
-    if (errors.length) throw new Error(`${scene}: ${errors.join("\n")}`);
+    if (errors.length) throw new Error(`${scene} (${locale}): ${errors.join("\n")}`);
     const png = await page.screenshot({
       animations: "disabled",
       clip: { x: 0, y: 0, width: 1440, height: scene === "advisor" ? 570 : 1000 },
     });
     const webp = await sharp(png).webp({ quality: 80 }).toBuffer();
-    await writeFile(resolve(output, `${scene}.webp`), webp);
-    sizes[scene] = webp.length;
+    await writeFile(resolve(output, `${scene}.${locale}.webp`), webp);
+    if (locale === "fr") await writeFile(resolve(output, `${scene}.webp`), webp);
+    sizes[`${scene}.${locale}`] = webp.length;
     await page.close();
   }
   await writeFile(

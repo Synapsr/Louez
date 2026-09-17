@@ -5,6 +5,7 @@ import type { ReservationStatus } from "@/app/(dashboard)/dashboard/reservations
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import type { DemoBooking } from "@/lib/landing-demos/fixtures";
 import { createDemoReservationDetail } from "@/lib/landing-demos/reservation-detail";
+import { useDemoLocale } from "./use-demo-locale";
 
 export const ReservationScene = ({
   period,
@@ -19,11 +20,13 @@ export const ReservationScene = ({
   status?: ReservationStatus;
   onNavigate: (page: "dashboard" | "reservations") => void;
 }) => {
+  const locale = useDemoLocale();
   const { reservation, invoices } = createDemoReservationDetail(
     booking,
     period,
     reservationIndex,
     status,
+    locale,
   );
   return (
     <DashboardSceneFrame page="reservations" onNavigate={onNavigate}>

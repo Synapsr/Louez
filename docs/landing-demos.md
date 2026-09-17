@@ -127,6 +127,16 @@ de production. Sur la landing locale, la molette traverse les aperçus et le
 dialogue conserve son scroll. La génération Docker complète, le tactile sur
 appareil et PageSpeed en production restent à vérifier. Aucun déploiement.
 
+## Langues — 17 septembre 2026
+
+La landing existe en huit langues et passe la sienne à chaque iframe : `/demos/landing/<scène>?locale=en`. La page valide la valeur avec `getDemoLocale` (`lib/landing-demos/text.ts`) et retombe sur le français si elle manque ou n’est pas une langue de l’app. Le cookie `NEXT_LOCALE` et `Accept-Language` ne comptent pas ici : dans une iframe, c’est la page hôte qui décide.
+
+Deux sources de texte suivent cette langue. Les messages de l’app viennent de `messages/<locale>.json`, découpés par scène comme avant (`getDemoMessages(scene, messages)`). Ce que les messages ne couvrent pas est dans `getDemoText(locale)` : noms des produits et des catégories, libellés de l’historique, notes du dossier, réponse du conseiller, étapes et curseur de l’hôte. Les fixtures gardent leurs identifiants, prix et photos ; `getDemoProducts(locale)` et `getDemoCategories(locale)` ne changent que les noms. Côté client, les scènes lisent la langue avec `useDemoLocale`. Le nom de la boutique, les clients et l’adresse restent français : c’est une boutique de Nantes. Devise et fuseau ne changent pas non plus.
+
+`searchParams` n’est lu que dans `DemoContent`, sous `<Suspense>`. Le lire dans `generateMetadata` ou dans le composant de page bloque la route avec `cacheComponents` ; le titre de la page est donc neutre (« Louez ») et le repli du Suspense n’a pas de texte.
+
+Les captures existent par langue : `<scène>.<locale>.webp`, plus `<scène>.webp` en français pour une landing déployée avant ce changement. La landing demande la capture de sa langue et retombe sur la française si elle manque. Le script en produit 32 ; contre le serveur de dev, la première passe peut dépasser le délai d’attente pendant la compilation, la relancer suffit. Les traductions de `text.ts` n’ont pas été relues par des locuteurs natifs.
+
 ## Préchargement du compte dans la démo
 
 La scène boutique passe `accountPrefetch={false}` au header partagé. Cette

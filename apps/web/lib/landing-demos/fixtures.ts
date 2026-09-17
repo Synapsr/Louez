@@ -7,6 +7,8 @@ import type { HomeReservation } from "@/components/dashboard/home/home-types";
 import type { ActivityTimelineV2 } from "@/app/(dashboard)/dashboard/reservations/[id]/activity-timeline-v2";
 import type { ReservationItemsDisplay } from "@/app/(dashboard)/dashboard/reservations/[id]/reservation-items-card";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
+import type { Locale } from "@/i18n/config";
+import { getDemoText } from "./text";
 
 // Photos already used by the application's demonstration catalogue.
 export const DEMO_PRODUCTS: (StorefrontCatalogProduct & { categoryIds: string[] })[] = [
@@ -120,6 +122,12 @@ export const DEMO_PRODUCTS: (StorefrontCatalogProduct & { categoryIds: string[] 
   },
 ].map((product) => ({ ...product, pricingMode: "day", basePeriodMinutes: 1440 }));
 
+// The catalogue in the page's language: same ids, prices and photos, translated names.
+export const getDemoProducts = (locale?: Locale): typeof DEMO_PRODUCTS => {
+  const names = getDemoText(locale).products;
+  return DEMO_PRODUCTS.map((product) => ({ ...product, name: names[product.id] ?? product.name }));
+};
+
 export const DEMO_CATEGORIES = [
   { id: "bikes", name: "Vélos", order: 0 },
   { id: "electric", name: "Vélos électriques", order: 1 },
@@ -129,6 +137,14 @@ export const DEMO_CATEGORIES = [
   ...category,
   productCount: DEMO_PRODUCTS.filter((product) => product.categoryIds.includes(category.id)).length,
 }));
+
+export const getDemoCategories = (locale?: Locale): typeof DEMO_CATEGORIES => {
+  const names = getDemoText(locale).categories;
+  return DEMO_CATEGORIES.map((category) => ({
+    ...category,
+    name: names[category.id] ?? category.name,
+  }));
+};
 
 export const DEMO_RULES = {
   pricingMode: "day",
@@ -185,11 +201,12 @@ export const createDemoActivities = (
   date: Date,
   amount = 40,
   deposit = 300,
+  locale?: Locale,
 ): TimelineProps["activities"] => [
   {
     id: "demo-deposit",
     activityType: "deposit_authorized",
-    description: "Empreinte bancaire enregistrée",
+    description: getDemoText(locale).depositAuthorized,
     metadata: { amount: deposit, method: "stripe" },
     createdAt: new Date(date.getTime() - 60_000),
     user: null,
@@ -197,7 +214,7 @@ export const createDemoActivities = (
   {
     id: "demo-payment",
     activityType: "payment_received",
-    description: "Paiement reçu en ligne",
+    description: getDemoText(locale).paymentReceived,
     metadata: { amount, method: "stripe" },
     createdAt: new Date(date.getTime() - 120_000),
     user: null,
@@ -220,15 +237,10 @@ export const createDemoActivities = (
   },
 ];
 
-export const demoAdvisorReply = (id: string): UIMessage => ({
+export const demoAdvisorReply = (id: string, locale?: Locale): UIMessage => ({
   id,
   role: "assistant",
-  parts: [
-    {
-      type: "text",
-      text: "Pour une balade en ville, je vous conseille le vélo de ville : confortable et facile à prendre en main. Pour quelle date souhaitez-vous le louer ?",
-    },
-  ],
+  parts: [{ type: "text", text: getDemoText(locale).advisorReply }],
 });
 
 export interface DemoBookingLine {
@@ -241,11 +253,15 @@ export interface DemoBooking extends DemoBookingLine {
   lines?: DemoBookingLine[];
   period: RentalPeriodValue;
 }
-export const getDemoReservationItems = (booking: DemoBooking): ReservationItemsDisplay => {
+export const getDemoReservationItems = (
+  booking: DemoBooking,
+  locale?: Locale,
+): ReservationItemsDisplay => {
   const lines = booking.lines ?? [booking];
+  const products = getDemoProducts(locale);
   return {
     items: lines.map((line, index) => {
-      const product = DEMO_PRODUCTS[line.productIndex] ?? DEMO_PRODUCTS[0];
+      const product = products[line.productIndex] ?? products[0];
       return {
         id: `demo-line-${index}`,
         productId: null,

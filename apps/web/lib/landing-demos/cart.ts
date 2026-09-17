@@ -1,14 +1,17 @@
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import { summarizeCart, type CartItem } from "@/lib/utils/util.cart-lines";
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
-import { DEMO_PRODUCTS, type DemoBooking } from "./fixtures";
+import type { Locale } from "@/i18n/config";
+import { getDemoProducts, type DemoBooking } from "./fixtures";
 
 export const getDemoCart = (
   quantities: Readonly<Record<string, number>>,
   period: RentalPeriodValue,
+  locale?: Locale,
 ) => {
+  const products = getDemoProducts(locale);
   const cartPeriod = { startDate: period.start.toISOString(), endDate: period.end.toISOString() };
-  const items: CartItem[] = DEMO_PRODUCTS.flatMap((product) => {
+  const items: CartItem[] = products.flatMap((product) => {
     const requested = quantities[product.id] ?? 0;
     if (!Number.isFinite(requested) || requested < 1) return [];
     const quantity = Math.min(Math.floor(requested), product.quantity ?? requested);
@@ -33,7 +36,7 @@ export const getDemoCart = (
     ];
   });
   const lines = items.map((item) => ({
-    productIndex: DEMO_PRODUCTS.findIndex((product) => product.id === item.productId),
+    productIndex: products.findIndex((product) => product.id === item.productId),
     quantity: item.quantity,
     selected: {},
     unitPrice:

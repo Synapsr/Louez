@@ -4,8 +4,9 @@ import type {
   Product,
   Reservation as CalendarReservation,
 } from "@/app/(dashboard)/dashboard/reservations/calendar/types";
+import type { Locale } from "@/i18n/config";
 import { getDemoCart } from "./cart";
-import { DEMO_PRODUCTS, getDemoReservationItems, type DemoBooking } from "./fixtures";
+import { getDemoProducts, getDemoReservationItems, type DemoBooking } from "./fixtures";
 
 const customers = [
   ["Camille", "Martin"],
@@ -21,7 +22,12 @@ export const getDemoCustomer = (index: number) => {
   return { id: `demo-customer-${index}`, firstName, lastName, email: `client${index}@example.com` };
 };
 
-export function createDemoReservationPages(period: RentalPeriodValue, booking: DemoBooking) {
+export function createDemoReservationPages(
+  period: RentalPeriodValue,
+  booking: DemoBooking,
+  locale?: Locale,
+) {
+  const DEMO_PRODUCTS = getDemoProducts(locale);
   const bookings: DemoBooking[] = [];
   const rows: ListReservation[] = Array.from({ length: 24 }, (_, index) => {
     const productIndex = index % DEMO_PRODUCTS.length;
@@ -34,7 +40,7 @@ export function createDemoReservationPages(period: RentalPeriodValue, booking: D
     const selectedBooking =
       index === 0
         ? booking
-        : (getDemoCart({ [product.id]: index === 1 ? 1 : 2 }, { start, end }).booking ?? {
+        : (getDemoCart({ [product.id]: index === 1 ? 1 : 2 }, { start, end }, locale).booking ?? {
             productIndex,
             quantity: index === 1 ? 1 : 2,
             selected: {},
@@ -42,7 +48,7 @@ export function createDemoReservationPages(period: RentalPeriodValue, booking: D
             period: { start, end },
           });
     bookings.push(selectedBooking);
-    const display = getDemoReservationItems(selectedBooking);
+    const display = getDemoReservationItems(selectedBooking, locale);
     return {
       id: `demo-reservation-${index}`,
       number: String(1042 + index),
