@@ -1,3 +1,5 @@
+import { env as authEnv } from "@louez/auth/env";
+
 import { env } from "@/env";
 import { authInstance } from "@/lib/auth";
 import { log } from "@/lib/evlog";
@@ -6,7 +8,7 @@ import { marketingOrigins, marketingSessionResponse } from "@/lib/marketing-sess
 function handleSession(request: Request): Promise<Response> {
   return marketingSessionResponse(
     request,
-    marketingOrigins(env.AUTH_URL, env.MARKETING_WEBSITE_ORIGINS),
+    marketingOrigins(authEnv.AUTH_URL, env.MARKETING_WEBSITE_ORIGINS),
     async () => {
       const session = await authInstance.api.getSession({
         headers: request.headers,
