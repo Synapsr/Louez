@@ -31,3 +31,8 @@ html[data-demo-running="true"] [data-product-id="demo-city-bike"] [data-product-
     transition: none;
   }
 }
+
+/* Keep development chrome out of generated product previews. */
+html:has([data-demo-poster="true"]) nextjs-portal {
+  display: none;
+}

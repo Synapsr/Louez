@@ -7,7 +7,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { LandingDemo } from "@/components/landing-demos/landing-demo";
 import { createDemoPeriod } from "@/lib/landing-demos/fixtures";
 import { isDemoScene } from "@/lib/landing-demos/policy";
-import messages from "@/messages/fr.json";
+import { getDemoMessages } from "@/lib/landing-demos/messages";
 
 export const metadata: Metadata = {
   title: "Démonstration Louez",
@@ -19,15 +19,20 @@ const DemoContent = async ({
   searchParams,
 }: {
   params: Promise<{ scene: string }>;
-  searchParams: Promise<{ compact?: string }>;
+  searchParams: Promise<{ compact?: string; poster?: string }>;
 }) => {
   await connection();
   const { scene } = await params;
   if (!isDemoScene(scene)) notFound();
-  const { compact } = await searchParams;
+  const { compact, poster } = await searchParams;
   return (
-    <NextIntlClientProvider locale="fr" timeZone="Europe/Paris" messages={messages}>
-      <LandingDemo scene={scene} compact={compact === "1"} initialPeriod={createDemoPeriod()} />
+    <NextIntlClientProvider locale="fr" timeZone="Europe/Paris" messages={getDemoMessages(scene)}>
+      <LandingDemo
+        scene={scene}
+        compact={compact === "1"}
+        poster={poster === "1"}
+        initialPeriod={createDemoPeriod()}
+      />
     </NextIntlClientProvider>
   );
 };

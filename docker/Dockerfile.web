@@ -110,6 +110,11 @@ RUN corepack enable pnpm && \
     APP_VERSION="${NEXT_PUBLIC_APP_VERSION:-build-$(date -u +%Y%m%d%H%M%S)}" && \
     NEXT_PUBLIC_APP_VERSION="${APP_VERSION}" pnpm turbo run build --filter=@louez/web --env-mode=loose
 
+# Posters are captured from the built app. Chromium stays in this build stage.
+FROM builder AS demo-posters
+RUN apk add --no-cache chromium
+RUN pnpm --filter=@louez/web demo:posters --start --browser /usr/bin/chromium
+
 # -----------------------------------------------------------------------------
 # Stage 3: Migrator
 # One-off image used to run database migrations
@@ -157,7 +162,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/
 # Copy public assets (static files) - must match monorepo structure
 # --chown so the non-root nextjs user can read them regardless of the
 # permissions the files had on the build host
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+COPY --from=demo-posters --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
 # Changelog write-ups, read from disk at request time. next.config.ts also lists
 # them in outputFileTracingIncludes for non-Docker deployments; copying them here

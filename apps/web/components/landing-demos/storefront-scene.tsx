@@ -10,7 +10,8 @@ import { CartDrawerView } from "@/components/storefront/cart/cart-drawer-view";
 import { CartPanelView } from "@/components/storefront/cart/cart-panel-view";
 import { CartTriggerView } from "@/components/storefront/cart/cart-trigger-view";
 import { CartEmptyState } from "@/components/storefront/cart/cart-empty-state";
-import { RentalPeriodPicker } from "@/components/storefront/date-picker/rental-period-picker";
+import { StoreHeader } from "@/components/storefront/store-header";
+import { HeaderSearchCapsuleView } from "@/components/storefront/shell/header-search-capsule-view";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
 import {
   DEMO_PRODUCTS,
@@ -43,11 +44,14 @@ export const StorefrontScene = ({
   const t = useTranslations("storefront");
   const [period, setPeriod] = useState(initialPeriod);
   const [params, setParams] = useState(() => new URLSearchParams());
+  const [search, setSearch] = useState("");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
   const filters = readCatalogFilters(params);
-  const update = (patch: CatalogFiltersPatch) =>
+  const update = (patch: CatalogFiltersPatch) => {
+    if (patch.search !== undefined) setSearch(patch.search ?? "");
     setParams((current) => applyCatalogParams(current, patch));
+  };
   const cart = getDemoCart(quantities, period);
   const changeCart = (next: Record<string, number>, nextPeriod = period) => {
     setQuantities(next);
@@ -91,19 +95,32 @@ export const StorefrontScene = ({
     />
   );
   return (
-    <div data-demo-scene="storefront" data-demo-catalog={compact ? "compact" : "full"}>
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-6 lg:px-8">
-        <span className="font-semibold">Maison du Vélo</span>
-        <div className="flex items-center gap-1">
-          <RentalPeriodPicker
-            layout="compact"
-            value={period}
-            onChange={changePeriod}
+    <div
+      data-demo-scene="storefront"
+      data-demo-catalog={compact ? "compact" : "full"}
+      onClickCapture={(event) => {
+        if (event.target instanceof Element && event.target.closest('[data-slot="store-header"] a'))
+          event.preventDefault();
+      }}
+    >
+      <StoreHeader
+        storeName="Maison du Vélo"
+        homeHref="/demos/landing/storefront"
+        periodRules={DEMO_RULES}
+        searchControl={
+          <HeaderSearchCapsuleView
             rules={DEMO_RULES}
+            className="w-full"
+            query={search}
+            period={period}
+            onQueryChange={(value) => update({ search: value })}
+            onClear={() => update({ search: null })}
+            onSubmit={() => update({ search })}
+            onPeriodChange={changePeriod}
           />
-          <CartTriggerView count={cart.summary.count} open={() => setOpen(true)} />
-        </div>
-      </header>
+        }
+        cartControl={<CartTriggerView count={cart.summary.count} open={() => setOpen(true)} />}
+      />
       <CatalogLayout
         title={getCatalogTitle(filters.category, DEMO_CATEGORIES, {
           catalog: t("catalog.title"),

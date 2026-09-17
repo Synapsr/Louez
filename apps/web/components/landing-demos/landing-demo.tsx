@@ -1,6 +1,6 @@
 "use client";
 import type { RentalPeriodValue } from "@/components/storefront/date-picker/core/types";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { Button, TooltipProvider } from "@louez/ui";
@@ -11,11 +11,18 @@ import { DEMO_RULES, type DemoBooking } from "@/lib/landing-demos/fixtures";
 import { getDemoParentOrigins, type DemoScene } from "@/lib/landing-demos/policy";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { ReservationStatus } from "@/app/(dashboard)/dashboard/reservations/reservations-types";
-import { AdvisorScene } from "./advisor-scene";
-import { PlanningScene } from "./planning-scene";
-import { ReservationScene } from "./reservation-scene";
-import { StorefrontScene } from "./storefront-scene";
-import { useDemoPlayback, type AnimatedScene } from "./use-demo-playback";
+import {
+  AdvisorScene,
+  PlanningScene,
+  ReservationScene,
+  StorefrontScene,
+  loadPlanning,
+  loadReservation,
+  loadStorefront,
+} from "./demo-scene-loaders";
+import { DemoSceneReady } from "./demo-scene-ready";
+import { useParentScroll } from "./use-parent-scroll";
+import { getDemoDuration, useDemoPlayback, type AnimatedScene } from "./use-demo-playback";
 import "./landing-demo.css";
 
 const steps = ["Le client réserve", "Vous préparez", "Tout est suivi"];
@@ -31,9 +38,11 @@ export const LandingDemo = ({
   scene,
   compact,
   initialPeriod,
+  poster = false,
 }: {
   scene: DemoScene;
   compact: boolean;
+  poster?: boolean;
   initialPeriod: RentalPeriodValue;
 }) => {
   const publicEnv = usePublicEnv();
@@ -61,16 +70,28 @@ export const LandingDemo = ({
   const [step, setStep] = useState(scene === "planning" ? 1 : scene === "reservation" ? 2 : 0);
   const [cycle, setCycle] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [readyScene, setReadyScene] = useState<AnimatedScene | null>(null);
   const [hovered, setHovered] = useState(false);
   const [keyboard, setKeyboard] = useState(false);
   const [parentVisible, setParentVisible] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
   const [embedded, setEmbedded] = useState(true);
   const [parentOrigin, setParentOrigin] = useState<string | null>(null);
+  const [scrollPage, setScrollPage] = useState(false);
+  useParentScroll(scrollPage, parentOrigin);
   const reduced = useSyncExternalStore(subscribeMotion, reducedMotionSnapshot, () => true);
   const currentScene: AnimatedScene =
     scene === "advisor" ? "advisor" : (scenes[step] ?? "storefront");
-  const running = parentVisible && pageVisible && !hovered && !keyboard && !paused && !reduced;
+  const sceneReady = readyScene === currentScene;
+  const running =
+    !poster &&
+    sceneReady &&
+    parentVisible &&
+    pageVisible &&
+    !hovered &&
+    !keyboard &&
+    !paused &&
+    !reduced;
   const reset = useCallback(() => {
     setCycle((value) => value + 1);
     setStep(scene === "planning" ? 1 : scene === "reservation" ? 2 : 0);
@@ -81,12 +102,26 @@ export const LandingDemo = ({
     else setStep(scene === "planning" ? 1 : scene === "reservation" ? 2 : 0);
     setCycle((value) => value + 1);
   };
-  const { cursorRef, phase } = useDemoPlayback({
+  const { cursorRef, phase, readElapsed } = useDemoPlayback({
     scene: currentScene,
     cycle,
     running,
     onFinish: finish,
   });
+
+  useEffect(() => {
+    if (scene !== "rental" || !running) return;
+    const preload =
+      currentScene === "storefront"
+        ? loadPlanning
+        : currentScene === "planning"
+          ? loadReservation
+          : loadStorefront;
+    const timer = window.setTimeout(() => {
+      void preload().catch(() => undefined);
+    }, 1800);
+    return () => window.clearTimeout(timer);
+  }, [scene, currentScene, running]);
 
   useEffect(() => {
     const standalone = window.parent === window;
@@ -109,6 +144,8 @@ export const LandingDemo = ({
       setParentOrigin(event.origin);
       window.parent.postMessage({ type: "louez:demo:ack" }, event.origin);
       if ("visible" in data && typeof data.visible === "boolean") setParentVisible(data.visible);
+      if ("scrollPage" in data && typeof data.scrollPage === "boolean")
+        setScrollPage(data.scrollPage);
       if ("hovered" in data && typeof data.hovered === "boolean") {
         setHovered(data.hovered);
         if (!data.hovered) setKeyboard(false);
@@ -187,12 +224,34 @@ export const LandingDemo = ({
 
   useEffect(() => {
     document.documentElement.dataset.demoRunning = String(running);
+    // Elapsed time and duration let the landing draw a progress bar that stays in sync with the clock.
     if (parentOrigin)
       window.parent.postMessage(
-        { type: "louez:demo:state", step, running, paused, reduced, phase },
+        {
+          type: "louez:demo:state",
+          step,
+          running,
+          ready: sceneReady,
+          paused,
+          reduced,
+          phase,
+          elapsed: Math.round(readElapsed()),
+          duration: getDemoDuration(currentScene),
+        },
         parentOrigin,
       );
-  }, [step, running, paused, parentOrigin, reduced, phase]);
+  }, [
+    step,
+    running,
+    sceneReady,
+    paused,
+    parentOrigin,
+    reduced,
+    phase,
+    cycle,
+    currentScene,
+    readElapsed,
+  ]);
 
   return (
     <NuqsAdapter>
@@ -212,6 +271,9 @@ export const LandingDemo = ({
                 "demo-canvas min-h-dvh bg-background text-foreground",
                 currentScene === "advisor" ? "p-5 sm:p-8" : "p-0",
               )}
+              data-demo-poster={poster}
+              data-demo-scroll={scrollPage ? "page" : "internal"}
+              data-demo-ready={sceneReady}
               data-demo-step={step}
               data-demo-running={running}
               data-demo-visible={parentVisible && pageVisible}
@@ -220,48 +282,52 @@ export const LandingDemo = ({
               data-demo-phase={phase}
               data-demo-compact={compact}
             >
-              <div key={`${currentScene}-${cycle}`}>
-                {currentScene === "storefront" && (
-                  <StorefrontScene
-                    compact={compact}
-                    period={period}
-                    onBookingChange={(nextBooking) => {
-                      setBooking(nextBooking);
-                      setPeriod(nextBooking.period);
-                      setReservationIndex(0);
-                      setDetail(null);
-                    }}
-                  />
-                )}
-                {currentScene === "planning" && (
-                  <PlanningScene
-                    initialView={planningView}
-                    period={period}
-                    booking={booking}
-                    onOpenReservation={(index, selectedBooking, selectedPeriod, status) => {
-                      setReservationIndex(index);
-                      setDetail({ booking: selectedBooking, period: selectedPeriod, status });
-                      setStep(2);
-                      setCycle((value) => value + 1);
-                    }}
-                  />
-                )}
-                {currentScene === "reservation" && (
-                  <ReservationScene
-                    period={detail?.period ?? period}
-                    reservationIndex={reservationIndex}
-                    booking={detail?.booking ?? booking}
-                    status={detail?.status ?? "confirmed"}
-                    onNavigate={(page) => {
-                      setPlanningView(page === "dashboard" ? "dashboard" : "list");
-                      setStep(1);
-                      setCycle((value) => value + 1);
-                    }}
-                  />
-                )}
-                {currentScene === "advisor" && <AdvisorScene visible={parentVisible} />}
-              </div>
-              {!embedded && (
+              <Suspense fallback={<div className="min-h-dvh bg-background" aria-busy="true" />}>
+                <DemoSceneReady scene={currentScene} onReady={setReadyScene}>
+                  <div key={`${currentScene}-${cycle}`}>
+                    {currentScene === "storefront" && (
+                      <StorefrontScene
+                        compact={compact}
+                        period={period}
+                        onBookingChange={(nextBooking) => {
+                          setBooking(nextBooking);
+                          setPeriod(nextBooking.period);
+                          setReservationIndex(0);
+                          setDetail(null);
+                        }}
+                      />
+                    )}
+                    {currentScene === "planning" && (
+                      <PlanningScene
+                        initialView={planningView}
+                        period={period}
+                        booking={booking}
+                        onOpenReservation={(index, selectedBooking, selectedPeriod, status) => {
+                          setReservationIndex(index);
+                          setDetail({ booking: selectedBooking, period: selectedPeriod, status });
+                          setStep(2);
+                          setCycle((value) => value + 1);
+                        }}
+                      />
+                    )}
+                    {currentScene === "reservation" && (
+                      <ReservationScene
+                        period={detail?.period ?? period}
+                        reservationIndex={reservationIndex}
+                        booking={detail?.booking ?? booking}
+                        status={detail?.status ?? "confirmed"}
+                        onNavigate={(page) => {
+                          setPlanningView(page === "dashboard" ? "dashboard" : "list");
+                          setStep(1);
+                          setCycle((value) => value + 1);
+                        }}
+                      />
+                    )}
+                    {currentScene === "advisor" && <AdvisorScene visible={parentVisible} />}
+                  </div>
+                </DemoSceneReady>
+              </Suspense>
+              {!embedded && !poster && (
                 <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                   {scene === "rental" &&
                     steps.map((label, index) => (

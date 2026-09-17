@@ -1,15 +1,15 @@
 # Démonstrations de la landing
 
-La variante C du site marketing charge les démonstrations depuis l’application Louez, dans des iframes. Les écrans de démonstration et le produit importent les mêmes composants. Une mise à jour déployée de ces composants apparaît donc dans la landing au prochain chargement de la démo.
+La landing Aside du site marketing charge les démonstrations depuis l’application Louez, dans des iframes. Les écrans de démonstration et le produit importent les mêmes composants. Une mise à jour déployée de ces composants apparaît donc dans la landing au prochain chargement de la démo.
 
 ## Source partagée
 
-| Scène       | Composants utilisés dans Louez et dans la démo                                   |
-| ----------- | -------------------------------------------------------------------------------- |
-| Boutique    | `CatalogLayout`, `CatalogSidebar`, `ProductGridView`, `ProductCard`, `RentalPeriodPicker`, `CartDrawerView`, `CartPanelView`, `CartLineItem` |
-| Gestion     | `DashboardNavigation`, `DashboardContentFrame`, `AdaptiveHeader`, `DashboardStatCard`, `ActivityCardView`, `ReservationsTableView`, `ReservationsCalendarView`, `TimelineToolbar`, `TimelineReservationBar`                      |
-| Réservation | `ReservationDetailClient` et sa composition complète              |
-| Conseiller  | `AdvisorPanel`, ses messages et son champ de saisie                              |
+| Scène       | Composants utilisés dans Louez et dans la démo                                                                                                                                                              |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Boutique    | `CatalogLayout`, `CatalogSidebar`, `ProductGridView`, `ProductCard`, `StoreHeader`, `HeaderSearchCapsuleView`, `RentalPeriodPicker`, `CartDrawerView`, `CartPanelView`, `CartLineItem`                      |
+| Gestion     | `DashboardNavigation`, `DashboardContentFrame`, `AdaptiveHeader`, `DashboardStatCard`, `ActivityCardView`, `ReservationsTableView`, `ReservationsCalendarView`, `TimelineToolbar`, `TimelineReservationBar` |
+| Réservation | `ReservationDetailClient` et sa composition complète                                                                                                                                                        |
+| Conseiller  | `AdvisorPanel`, ses messages et son champ de saisie                                                                                                                                                         |
 
 Les vues extraites conservent leur rendu. Le produit garde ses requêtes, ses règles de disponibilité, ses mutations et ses contrôles d’accès dans les composants qui les appellent. Les scènes de démonstration fournissent des fixtures et des callbacks locaux. Elles ne testent pas un paiement, un contrat ou une réservation réelle.
 
@@ -35,7 +35,7 @@ Les scènes à une vue durent 4,6 secondes. « Vous préparez » dure 10,2 secon
 
 Le catalogue propose douze produits illustrés et les filtres du storefront. L’ajout ouvre directement son panier, sans configurateur. Le visiteur peut modifier les quantités, retirer un produit ou continuer ses achats. Le bouton de commande est désactivé dans la démo. Les produits, les quantités et les dates choisies suivent le parcours jusqu’au dossier de réservation. Chaque petite scène peut aussi être manipulée séparément. Aucune donnée métier n’est enregistrée.
 
-Les trois cartes affichent chacune un viewport de 1 440 × 1 000 px, réduit par le marketing à la largeur disponible. Le contenu reste celui de la page complète, avec son menu, plutôt qu’un extrait de widgets. La grande démonstration garde une hauteur de 700 px et les adaptations responsives de l’app.
+Les trois cartes affichent chacune un viewport de 1 440 × 1 000 px, réduit par le marketing à la largeur disponible. Le contenu reste celui de la page complète, avec son menu, plutôt qu’un extrait de widgets. La grande démonstration utilise aussi ce viewport desktop réduit. Les dialogues agrandis suivent la largeur disponible.
 
 La liste et le calendrier présentent 24 réservations fictives issues du même modèle. Le tri, les filtres du calendrier, le défilement et l’ouverture d’un dossier fonctionnent localement. La vue calendrier accepte des réservations fournies par son appelant : dans ce cas, elle ne lance aucune requête métier. La création par glisser-déposer et le bouton de création sont désactivés dans la démo. Le calendrier de l’application garde ses requêtes et ses actions habituelles par défaut.
 
@@ -60,10 +60,54 @@ Ces vérifications concernent le code et les serveurs locaux. Aucun déploiement
 
 ## Agrandissement et détail de réservation — 16 septembre 2026
 
-Chaque carte propose « Agrandir ». Le dialogue du marketing charge la même scène à la largeur disponible ; la miniature correspondante suspend sa lecture pendant l’ouverture. La croix et Échap ferment le dialogue, puis le focus revient au bouton d’ouverture. Échap ferme d’abord un panier ou un menu ouvert dans la démo.
+Chaque carte propose « Agrandir ». Le dialogue du marketing charge la même scène à la largeur disponible ; les miniatures sont déchargées pendant l’ouverture pour laisser les ressources au dialogue. La croix et Échap ferment le dialogue, puis le focus revient au bouton d’ouverture. Échap ferme d’abord un panier ou un menu ouvert dans la démo.
 
 La scène réservation rend maintenant `ReservationDetailClient`, le composant de la page `/dashboard/reservations/[id]`. Elle conserve sa composition complète : en-tête et actions, client, articles, historique, factures, suivi, notes, retrait et retour, paiements et caution. Les fixtures reprennent le client, les produits, les dates et les montants de la ligne sélectionnée. Une réservation en attente ne présente ni paiement reçu ni facture.
 
 L’option `readOnly`, désactivée par défaut dans l’application, coupe le rafraîchissement de la réservation, les requêtes de carte bancaire, les suggestions de parrainage et la conversation réelle du conseiller. Elle désactive les actions métier, les téléchargements et la modification des notes. Les historiques, la navigation locale et le défilement restent disponibles. Les protections du proxy et de la CSP restent en place.
 
 Validation locale : build de l’app et TypeScript réussis, lint ciblé réussi, seize tests passants. Dans le navigateur : trois dialogues ouverts, panier utilisable, historique dépliable, fermeture au clavier avec retour du focus, version mobile de 390 px sans débordement horizontal. Le chargement de la réservation ne déclenche aucun appel aux API métier. Aucun déploiement.
+
+## Chargement, captures et scroll — 17 septembre 2026
+
+Les scènes sont importées à la demande. Le parcours en trois étapes prépare la
+suivante pendant la lecture, et le curseur attend que la vue soit prête. Les
+traductions envoyées dépendent de la scène : 80 ko pour la boutique, 112 ko pour
+la gestion, 174 ko pour le parcours complet et 5,5 ko pour le conseiller,
+contre 359 ko pour le dictionnaire français entier, avant compression.
+
+Le marketing affiche une capture WebP avant de charger l’iframe près de l’écran.
+Il garde deux démos chargées au maximum, avec une seule en lecture. Le dialogue
+agrandi devient la seule iframe chargée. Une démo éloignée est retirée puis
+repart du début au retour ; le choix de pause manuelle reste conservé.
+
+Le message de contrôle `scrollPage` distingue aperçu et dialogue. Dans un
+aperçu, `useParentScroll` transmet le mouvement vertical à la landing avec
+`louez:demo:scroll`. Le parent vérifie l’origine et l’iframe émettrice. Les clics,
+le zoom et le défilement horizontal restent disponibles. En grand ou sur une
+route ouverte seule, le défilement reste interne à l’app.
+
+Les captures sont dans `apps/web/public/demo-posters`. Le stage `demo-posters`
+de `docker/Dockerfile.web` les régénère depuis le build de production. Son
+serveur utilise les fixtures, sans URL de base de données ; Chromium reste
+dans le stage de build. Pour les régénérer après un build local :
+
+```sh
+pnpm --filter @louez/web demo:posters --start --browser /chemin/vers/chromium
+```
+
+Le paramètre `?poster=1` immobilise les scènes. Le script attend les composants,
+les polices et les images visibles, et échoue si une page signale une erreur.
+Déployer les routes et les captures côté app avant la landing.
+
+Validation : build de production, TypeScript, lint et treize tests ciblés
+passants. Les quatre scènes ont été vérifiées dans le navigateur sur le build
+de production. Sur la landing locale, la molette traverse les aperçus et le
+dialogue conserve son scroll. La génération Docker complète, le tactile sur
+appareil et PageSpeed en production restent à vérifier. Aucun déploiement.
+
+## Related
+
+- [Architecture](ARCHITECTURE.md)
+- [Frontend](from-scratch/05-frontend.md)
+- [Contrôles avant commit](code-review/07-checklist.md)

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export interface DemoCue {
   at: number;
@@ -161,5 +161,6 @@ export const useDemoPlayback = ({
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [running, scene, cycle]);
-  return { cursorRef, phase };
+  const readElapsed = useCallback(() => clock.current.elapsed, []);
+  return { cursorRef, phase, readElapsed };
 };
