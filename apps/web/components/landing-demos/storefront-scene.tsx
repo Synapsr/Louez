@@ -106,6 +106,7 @@ export const StorefrontScene = ({
       <StoreHeader
         storeName="Maison du Vélo"
         homeHref="/demos/landing/storefront"
+        accountPrefetch={false}
         periodRules={DEMO_RULES}
         searchControl={
           <HeaderSearchCapsuleView

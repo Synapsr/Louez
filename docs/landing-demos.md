@@ -106,6 +106,22 @@ de production. Sur la landing locale, la molette traverse les aperçus et le
 dialogue conserve son scroll. La génération Docker complète, le tactile sur
 appareil et PageSpeed en production restent à vérifier. Aucun déploiement.
 
+## Préchargement du compte dans la démo
+
+La scène boutique passe `accountPrefetch={false}` au header partagé. Cette
+option atteint les liens de `HeaderAccountButton` et désactive leur
+préchargement automatique et au survol. La vraie boutique conserve le
+comportement Next.js par défaut. Les clics du header restent interceptés par
+la scène de démonstration.
+
+Sans cette option, le lien de connexion lançait une requête RSC vers
+`/account/login` dès son affichage dans le build de production. La CSP des
+démos la bloquait et le script de capture faisait échouer le build Docker.
+Le 17 septembre 2026, la commande `demo:posters --start --browser …` a reproduit
+cette erreur avant le correctif, puis généré les quatre captures sans erreur
+après reconstruction. La CSP n'a pas été élargie. Le parcours Docker complet
+reste à vérifier : le moteur Docker local n'était pas disponible.
+
 ## Related
 
 - [Architecture](ARCHITECTURE.md)

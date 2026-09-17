@@ -36,6 +36,8 @@ interface StoreHeaderProps {
   /** Store rules the period picker validates against. */
   periodRules: RentalPeriodRules;
   showAccount?: boolean;
+  /** Disable account prefetching in previews with no live customer routes. */
+  accountPrefetch?: boolean;
   showCart?: boolean;
   /** Controlled alternatives for previews that have no live cart or router state. */
   searchControl?: ReactNode;
@@ -54,6 +56,7 @@ export const StoreHeader = ({
   channelBadge,
   periodRules,
   showAccount = true,
+  accountPrefetch,
   showCart = true,
   searchControl,
   cartControl,
@@ -143,7 +146,11 @@ export const StoreHeader = ({
                 ) : null}
                 {showCart ? (cartControl ?? <CartTrigger />) : null}
                 {showAccount ? (
-                  <HeaderAccountButton initials={customerInitials} customer={customerIdentity} />
+                  <HeaderAccountButton
+                    initials={customerInitials}
+                    customer={customerIdentity}
+                    prefetch={accountPrefetch}
+                  />
                 ) : null}
               </nav>
             </>
