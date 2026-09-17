@@ -107,6 +107,12 @@ interface ReservationsCalendarViewProps {
   currency: string;
   storeHasReservations: boolean;
   storeId: string;
+  reservations?: Reservation[];
+  initialDate?: Date;
+  onOpenReservation?: (id: string) => void;
+  getReservationHref?: (id: string) => string;
+  readOnly?: boolean;
+  persistFilters?: boolean;
 }
 
 // =============================================================================
@@ -118,6 +124,12 @@ export function ReservationsCalendarView({
   currency,
   storeHasReservations,
   storeId,
+  reservations: suppliedReservations,
+  initialDate,
+  onOpenReservation,
+  getReservationHref,
+  readOnly = false,
+  persistFilters = true,
 }: ReservationsCalendarViewProps) {
   const tTimeline = useTranslations("dashboard.calendar.timeline");
   const locale = useLocale();
@@ -128,7 +140,7 @@ export function ReservationsCalendarView({
   // URL-persisted view state (zoom + status/product filters) — shareable links
   // ---------------------------------------------------------------------------
 
-  const filters = useTimelineFilters(products, storeId);
+  const filters = useTimelineFilters(products, storeId, persistFilters);
   const { hiddenStatuses, selectedProductIds, todayOperation } = filters;
 
   const zoom = filters.range;
@@ -139,7 +151,7 @@ export function ReservationsCalendarView({
   // ---------------------------------------------------------------------------
 
   // Anchor on the `date` param when present (deep links, `returnTo` round-trips)
-  const anchorDateRef = useRef(dateParam ?? new Date());
+  const anchorDateRef = useRef(dateParam ?? initialDate ?? new Date());
   const initialWindowRef = useRef(reservationCalendarQueries.initialWindow(anchorDateRef.current));
 
   const [windowStart, setWindowStart] = useState(initialWindowRef.current.start);
@@ -171,8 +183,13 @@ export function ReservationsCalendarView({
     [storeId, windowStart, daysCount],
   );
 
-  const { reservations, isFetching, hasError, retry } = useQueries({
-    queries: chunkQueries,
+  const {
+    reservations: queriedReservations,
+    isFetching,
+    hasError,
+    retry,
+  } = useQueries({
+    queries: suppliedReservations ? [] : chunkQueries,
     combine: (results) => {
       const byId = new Map<string, Reservation>();
       for (const result of results) {
@@ -188,6 +205,8 @@ export function ReservationsCalendarView({
       };
     },
   });
+
+  const reservations = suppliedReservations ?? queriedReservations;
 
   const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
 
@@ -719,6 +738,7 @@ export function ReservationsCalendarView({
       <div className="relative min-h-0 flex-1">
         <div
           ref={scrollerRef}
+          data-reservations-calendar-scroll
           onScroll={handleScroll}
           className="bg-card absolute inset-0 overflow-auto overscroll-x-contain overscroll-y-none rounded-lg border select-none"
         >
@@ -814,7 +834,7 @@ export function ReservationsCalendarView({
               {/* Lane area: drag-to-create + stacked reservation bars */}
               <div
                 className="absolute inset-0 cursor-crosshair"
-                onPointerDown={handleLanePointerDown}
+                onPointerDown={readOnly ? undefined : handleLanePointerDown}
                 onPointerMove={handleLanePointerMove}
                 onPointerUp={handleLanePointerUp}
                 onPointerCancel={handleLanePointerCancel}
@@ -841,7 +861,11 @@ export function ReservationsCalendarView({
                       key={item.reservation.id}
                       reservation={item.reservation}
                       currency={currency}
-                      onBeforeNavigate={persistVisibleDate}
+                      onBeforeNavigate={onOpenReservation ? undefined : persistVisibleDate}
+                      onOpen={
+                        onOpenReservation ? () => onOpenReservation(item.reservation.id) : undefined
+                      }
+                      href={getReservationHref?.(item.reservation.id)}
                       returnTo={returnTo}
                       isLabelSticky
                       continuesBeforeViewport={item.startIndex < visibleDayRange.startIndex}
@@ -930,7 +954,7 @@ export function ReservationsCalendarView({
                   storeHasReservations ? "emptyPeriodDescription" : "emptyStoreDescription",
                 )}
               </p>
-              {!storeHasReservations ? (
+              {!storeHasReservations && !readOnly ? (
                 <Button
                   render={<Link href="/dashboard/reservations/new?source=reservations_page" />}
                   variant="outline"
@@ -992,7 +1016,9 @@ export function ReservationsCalendarView({
         )}
       </div>
 
-      <p className="text-muted-foreground hidden text-xs sm:block">{tTimeline("dragHint")}</p>
+      {!readOnly && (
+        <p className="text-muted-foreground hidden text-xs sm:block">{tTimeline("dragHint")}</p>
+      )}
     </div>
   );
 }

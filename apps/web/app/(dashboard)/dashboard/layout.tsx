@@ -1,3 +1,4 @@
+import { DashboardContentFrame } from "@/components/dashboard/dashboard-content-frame";
 import { Suspense } from "react";
 
 import { eq } from "drizzle-orm";
@@ -6,7 +7,7 @@ import { redirect } from "next/navigation";
 import { getMarketplaceChannelState } from "@louez/api/services";
 import { db, users } from "@louez/db";
 import type { StoreSettings } from "@louez/types";
-import { Separator, SidebarInset, SidebarProvider } from "@louez/ui";
+import { SidebarProvider } from "@louez/ui";
 
 import { env } from "@/env";
 
@@ -171,13 +172,10 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                     marketplaceListingUrl={marketplaceListingUrl}
                     isFromReeent={store.signupOrigin === REEENT_SIGNUP_ORIGIN}
                   />
-                  <SidebarInset className="min-h-0 min-w-0 overflow-clip">
-                    <header className="bg-background/90 supports-backdrop-filter:bg-background/70 z-30 flex h-14 shrink-0 items-center gap-2 border-b px-2.5 backdrop-blur">
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <DashboardSidebarTrigger />
-                        <Separator orientation="vertical" className="h-4 shrink-0" />
-                        <DashboardBreadcrumbs />
-                      </div>
+                  <DashboardContentFrame
+                    trigger={<DashboardSidebarTrigger />}
+                    breadcrumbs={<DashboardBreadcrumbs />}
+                    actions={
                       <DashboardHeaderActions
                         showAIChat={showAIChat}
                         reservationLimits={limits.reservationsThisMonth}
@@ -185,14 +183,10 @@ export default async function DashboardMainLayout({ children }: { children: Reac
                         isPlatformAdmin={isPlatformAdmin}
                         electronicInvoicingEnabled={electronicInvoicingEnabled}
                       />
-                    </header>
-                    <div
-                      data-dashboard-content
-                      className="min-h-0 flex-1 overflow-x-clip overflow-y-auto overscroll-contain px-4 sm:px-6 lg:px-8"
-                    >
-                      <div className="min-h-full py-4 pb-2 md:py-6">{children}</div>
-                    </div>
-                  </SidebarInset>
+                    }
+                  >
+                    {children}
+                  </DashboardContentFrame>
                 </DashboardBreadcrumbsProvider>
               </SidebarProvider>
               <Suspense fallback={null}>

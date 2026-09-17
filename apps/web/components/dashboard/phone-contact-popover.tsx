@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { Copy, MessageCircle, MessageSquare, Phone } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { Copy, MessageCircle, MessageSquare, Phone } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import {
   Popover,
@@ -12,64 +12,70 @@ import {
   TooltipProvider,
   TooltipTrigger,
   toastManager,
-} from '@louez/ui'
-import { cn } from '@louez/utils'
+} from "@louez/ui";
+import { cn } from "@louez/utils";
 
 interface PhoneContactPopoverProps {
-  phone: string
-  className?: string
+  phone: string;
+  className?: string;
+  disabled?: boolean;
 }
 
 const normalizeForWhatsApp = (phone: string) => {
-  return phone.replace(/[^\d]/g, '')
-}
+  return phone.replace(/[^\d]/g, "");
+};
 
-export const PhoneContactPopover = ({ phone, className }: PhoneContactPopoverProps) => {
-  const t = useTranslations('dashboard.phoneContact')
-  const whatsappPhone = normalizeForWhatsApp(phone)
+export const PhoneContactPopover = ({
+  phone,
+  className,
+  disabled = false,
+}: PhoneContactPopoverProps) => {
+  const t = useTranslations("dashboard.phoneContact");
+  const whatsappPhone = normalizeForWhatsApp(phone);
 
   const handleCopyPhone = async () => {
     try {
-      await navigator.clipboard.writeText(phone)
-      toastManager.add({ title: t('copySuccess'), type: 'success' })
+      await navigator.clipboard.writeText(phone);
+      toastManager.add({ title: t("copySuccess"), type: "success" });
     } catch {
-      toastManager.add({ title: t('copyError'), type: 'error' })
+      toastManager.add({ title: t("copyError"), type: "error" });
     }
-  }
+  };
 
   const actions = [
     {
-      key: 'call',
+      key: "call",
       href: `tel:${phone}`,
       icon: Phone,
-      label: t('call'),
-      tooltip: t('callTooltip'),
+      label: t("call"),
+      tooltip: t("callTooltip"),
     },
     ...(whatsappPhone
       ? [
           {
-            key: 'whatsapp',
+            key: "whatsapp",
             href: `https://wa.me/${whatsappPhone}`,
             icon: MessageCircle,
-            label: t('whatsapp'),
-            tooltip: t('whatsappTooltip'),
+            label: t("whatsapp"),
+            tooltip: t("whatsappTooltip"),
           },
         ]
       : []),
     {
-      key: 'sms',
+      key: "sms",
       href: `sms:${phone}`,
       icon: MessageSquare,
-      label: t('sms'),
-      tooltip: t('smsTooltip'),
+      label: t("sms"),
+      tooltip: t("smsTooltip"),
     },
-  ]
+  ];
 
   return (
     <Popover>
       <PopoverTrigger
+        disabled={disabled}
         className={cn(
-          'cursor-pointer text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          "cursor-pointer text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           className,
         )}
       >
@@ -79,7 +85,7 @@ export const PhoneContactPopover = ({ phone, className }: PhoneContactPopoverPro
         <TooltipProvider>
           <div className="grid gap-1">
             {actions.map((action) => {
-              const Icon = action.icon
+              const Icon = action.icon;
 
               return (
                 <Tooltip key={action.key}>
@@ -88,8 +94,8 @@ export const PhoneContactPopover = ({ phone, className }: PhoneContactPopoverPro
                     render={
                       <a
                         href={action.href}
-                        target={action.key === 'whatsapp' ? '_blank' : undefined}
-                        rel={action.key === 'whatsapp' ? 'noreferrer' : undefined}
+                        target={action.key === "whatsapp" ? "_blank" : undefined}
+                        rel={action.key === "whatsapp" ? "noreferrer" : undefined}
                       />
                     }
                   >
@@ -100,7 +106,7 @@ export const PhoneContactPopover = ({ phone, className }: PhoneContactPopoverPro
                     {action.tooltip}
                   </TooltipContent>
                 </Tooltip>
-              )
+              );
             })}
             <Tooltip>
               <TooltipTrigger
@@ -108,15 +114,15 @@ export const PhoneContactPopover = ({ phone, className }: PhoneContactPopoverPro
                 render={<button type="button" onClick={handleCopyPhone} />}
               >
                 <Copy className="h-4 w-4 text-muted-foreground" />
-                <span>{t('copy')}</span>
+                <span>{t("copy")}</span>
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-64">
-                {t('copyTooltip')}
+                {t("copyTooltip")}
               </TooltipContent>
             </Tooltip>
           </div>
         </TooltipProvider>
       </PopoverContent>
     </Popover>
-  )
-}
+  );
+};

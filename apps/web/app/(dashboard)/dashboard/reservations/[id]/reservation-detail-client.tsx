@@ -1,38 +1,13 @@
 "use client";
 
-import { ShieldSolidIcon } from "@louez/ui/icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowRight,
-  Building2,
-  Calendar,
-  ExternalLink,
-  MapPin,
-  Package,
-  Pencil,
-  Store,
-  Tag,
-  Truck,
-  Shield,
-  User,
-} from "lucide-react";
+import { Building2, ExternalLink, MapPin, Pencil, Store, Truck, Shield, User } from "lucide-react";
 
-import { Badge, Button } from "@louez/ui";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@louez/ui";
+import { Button } from "@louez/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@louez/ui";
 import {
   cn,
   formatCurrency,
@@ -42,7 +17,6 @@ import {
 } from "@louez/utils";
 
 import { useFormatLocale } from "@/hooks/use-format-locale";
-import { formatStoreDate } from "@/lib/utils/store-date";
 import { orpc } from "@/lib/orpc/react";
 import { captureReservationViewed } from "@/lib/product-analytics/reservation-analytics-client";
 
@@ -50,6 +24,7 @@ import { ActivityTimelineV2 } from "./activity-timeline-v2";
 import { AdvisorConversationCard } from "./advisor-conversation-card";
 import { EmailContactPopover } from "@/components/dashboard/email-contact-popover";
 import { PhoneContactPopover } from "@/components/dashboard/phone-contact-popover";
+import { ReservationItemsCard } from "./reservation-items-card";
 import { ReservationHeader } from "./reservation-header";
 import { ReservationBillingDialog } from "./reservation-billing-dialog";
 import { ReservationCustomerNotes, ReservationNotes } from "./reservation-notes";
@@ -82,8 +57,6 @@ type DepositStatus =
   | "failed";
 
 type InspectionMode = "optional" | "recommended" | "required";
-
-type BookingAttributeAxis = { key: string; label: string; position?: number };
 
 type ReservationLike = any;
 
@@ -118,6 +91,8 @@ interface ReservationDetailClientProps {
   defaultPaymentMethod?: PaymentMethod;
   invoices: ReservationInvoiceDocument[];
   canGenerateInvoice: boolean;
+  readOnly?: boolean;
+  onBack?: () => void;
 }
 
 function toDate(value: Date | string | null | undefined) {
@@ -157,9 +132,10 @@ export function ReservationDetailClient({
   defaultPaymentMethod,
   invoices,
   canGenerateInvoice,
+  readOnly = false,
+  onBack,
 }: ReservationDetailClientProps) {
   const t = useTranslations("dashboard.reservations");
-  const tCommon = useTranslations("common");
   const { intl: formatLocale } = useFormatLocale();
   const hasCapturedReservationView = useRef(false);
   const [isBillingDialogOpen, setIsBillingDialogOpen] = useState(false);
@@ -169,14 +145,15 @@ export function ReservationDetailClient({
     ...orpc.dashboard.reservations.getById.queryOptions({
       input: { reservationId },
     }),
+    enabled: !readOnly,
     initialData: initialReservation,
     placeholderData: (prev) => prev,
   });
 
-  const reservation = reservationQuery.data;
+  const reservation = readOnly ? initialReservation : reservationQuery.data;
 
   useEffect(() => {
-    if (hasCapturedReservationView.current) return;
+    if (readOnly || hasCapturedReservationView.current) return;
     hasCapturedReservationView.current = true;
 
     captureReservationViewed({
@@ -189,7 +166,13 @@ export function ReservationDetailClient({
         inspection_mode: inspectionSettings.mode,
       },
     });
-  }, [initialReservation, inspectionSettings.enabled, inspectionSettings.mode, reservationId]);
+  }, [
+    readOnly,
+    initialReservation,
+    inspectionSettings.enabled,
+    inspectionSettings.mode,
+    reservationId,
+  ]);
 
   if (!reservation) return null;
 
@@ -271,6 +254,8 @@ export function ReservationDetailClient({
   return (
     <div className={cn("space-y-4 sm:space-y-6", showMobileQuickActions && "pb-28 md:pb-0")}>
       <ReservationHeader
+        readOnly={readOnly}
+        onBack={onBack}
         reservationId={reservation.id}
         reservationNumber={reservation.number}
         status={status}
@@ -327,6 +312,7 @@ export function ReservationDetailClient({
                     className="h-7 w-7 shrink-0 text-muted-foreground"
                     title={t("billing.edit")}
                     aria-label={t("billing.edit")}
+                    disabled={readOnly}
                     onClick={() => setIsBillingDialogOpen(true)}
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -341,11 +327,12 @@ export function ReservationDetailClient({
                 {/* Contact (email + phone) */}
                 <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0 text-sm text-muted-foreground">
                   <EmailContactPopover
+                    disabled={readOnly}
                     email={reservation.customer.email}
                     className="min-w-0 truncate"
                   />
                   {reservation.customer.phone && (
-                    <PhoneContactPopover phone={reservation.customer.phone} />
+                    <PhoneContactPopover disabled={readOnly} phone={reservation.customer.phone} />
                   )}
                 </div>
 
@@ -366,14 +353,24 @@ export function ReservationDetailClient({
               size="icon"
               className="shrink-0 sm:hidden"
               title={t("viewCustomer")}
-              render={<Link href={`/dashboard/customers/${reservation.customer.id}`} />}
+              disabled={readOnly}
+              render={
+                readOnly ? undefined : (
+                  <Link href={`/dashboard/customers/${reservation.customer.id}`} />
+                )
+              }
             >
               <ExternalLink className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               className="shrink-0 hidden sm:inline-flex"
-              render={<Link href={`/dashboard/customers/${reservation.customer.id}`} />}
+              disabled={readOnly}
+              render={
+                readOnly ? undefined : (
+                  <Link href={`/dashboard/customers/${reservation.customer.id}`} />
+                )
+              }
             >
               {t("viewCustomer")}
               <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
@@ -387,267 +384,56 @@ export function ReservationDetailClient({
             />
           )}
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Package className="h-4 w-4" />
-                {t("items")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 text-sm">
-                <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
-                  <span>
-                    {formatStoreDate(startDate, storeTimezone, "SHORT_DATETIME", formatLocale)}
-                  </span>
-                  <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>
-                    {formatStoreDate(endDate, storeTimezone, "SHORT_DATETIME", formatLocale)}
-                  </span>
-                  <span className="text-muted-foreground">
-                    ({durationDays > 0 && tCommon("days", { count: durationDays })}
-                    {durationDays > 0 && durationHours > 0 && ` ${tCommon("and")} `}
-                    {durationHours > 0 && tCommon("hours", { count: durationHours })})
-                  </span>
-                </div>
-              </div>
-
-              <div className="border rounded-lg overflow-x-auto">
-                <Table className="min-w-[520px]">
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead>{t("productName")}</TableHead>
-                      <TableHead className="text-center w-20">{t("productQty")}</TableHead>
-                      <TableHead className="text-right w-28">{t("productUnitPrice")}</TableHead>
-                      <TableHead className="text-right w-28">{t("productTotal")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(reservation.items || []).map((item: any) => {
-                      const itemProductId =
-                        typeof item.productId === "string" ? item.productId : null;
-                      const isTulipInsured =
-                        itemProductId !== null && insuredProductIds.has(itemProductId);
-                      const trackUnits = item.product?.trackUnits || false;
-                      const assignedUnitIds =
-                        item.assignedUnits?.map((au: any) => au.productUnitId) || [];
-                      const displayAttributes =
-                        item.selectedAttributes || item.productSnapshot?.selectedAttributes || null;
-                      const attributeLabelsByKey =
-                        item.product?.bookingAttributeAxes?.reduce(
-                          (acc: Record<string, string>, axis: BookingAttributeAxis) => {
-                            acc[axis.key] = axis.label;
-                            return acc;
-                          },
-                          {},
-                        ) || null;
-
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">
-                            <div>
-                              <div className="space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  {item.productId ? (
-                                    <Link
-                                      href={`/dashboard/products/${item.productId}`}
-                                      target="_blank"
-                                      className="hover:underline"
-                                    >
-                                      {item.productSnapshot?.name || item.product?.name}
-                                    </Link>
-                                  ) : (
-                                    <span>{item.productSnapshot?.name || item.product?.name}</span>
-                                  )}
-                                  {isTulipInsured && (
-                                    <Badge variant="success" className="">
-                                      <ShieldSolidIcon className="mr-1 h-3 w-3" />
-                                      {t("tulipInsuredBadge")}
-                                    </Badge>
-                                  )}
-                                </div>
-                                {displayAttributes && Object.keys(displayAttributes).length > 0 && (
-                                  <div className="flex flex-wrap gap-1">
-                                    {Object.entries(displayAttributes)
-                                      .filter(([, value]) => Boolean(value && String(value).trim()))
-                                      .sort(([a], [b]) => a.localeCompare(b, "en"))
-                                      .map(([key, value]) => (
-                                        <Badge
-                                          key={`${item.id}-${key}`}
-                                          variant="expired"
-                                          className="text-xs"
-                                        >
-                                          {attributeLabelsByKey?.[key] || key}:{" "}
-                                          {String(value).trim()}
-                                        </Badge>
-                                      ))}
-                                  </div>
-                                )}
-                              </div>
-
-                              {trackUnits && (
-                                <UnitAssignmentSelector
-                                  reservationId={reservation.id}
-                                  reservationItemId={item.id}
-                                  productName={
-                                    item.productSnapshot?.name || item.product?.name || ""
-                                  }
-                                  quantity={item.quantity}
-                                  trackUnits={trackUnits}
-                                  initialAssignedUnitIds={assignedUnitIds}
-                                  selectedAttributes={displayAttributes}
-                                  attributeLabelsByKey={attributeLabelsByKey}
-                                />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center align-top pt-4">
-                            {item.quantity}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground align-top pt-4">
-                            {formatCurrency(parseFloat(item.unitPrice), currency, formatLocale)}
-                            /u
-                          </TableCell>
-                          <TableCell className="text-right font-medium align-top pt-4">
-                            {formatCurrency(parseFloat(item.totalPrice), currency, formatLocale)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Pricing summary */}
-              <div className="flex justify-end pt-4">
-                <div className="w-full sm:w-64 space-y-2 text-sm">
-                  {reservation.taxAmount && parseFloat(reservation.taxAmount) > 0 ? (
-                    <>
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>{t("subtotalExclTax")}</span>
-                        <span>
-                          {formatCurrency(
-                            parseFloat(reservation.subtotalExclTax || reservation.subtotalAmount),
-                            currency,
-                            formatLocale,
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>
-                          {t("taxLine", {
-                            rate: formatNumber(
-                              parseFloat(reservation.taxRate || "0"),
-                              2,
-                              formatLocale,
-                            ),
-                          })}
-                        </span>
-                        <span>
-                          {formatCurrency(
-                            parseFloat(reservation.taxAmount),
-                            currency,
-                            formatLocale,
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>{t("subtotalInclTax")}</span>
-                        <span className="font-medium">
-                          {formatCurrency(
-                            parseFloat(reservation.subtotalAmount),
-                            currency,
-                            formatLocale,
-                          )}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("subtotalRental")}</span>
-                      <span className="font-medium">
-                        {formatCurrency(
-                          parseFloat(reservation.subtotalAmount),
-                          currency,
-                          formatLocale,
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {reservation.discountAmount && parseFloat(reservation.discountAmount) > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span className="flex items-center gap-1.5">
-                        <Tag className="h-3.5 w-3.5" />
-                        {t("promoDiscount")}
-                        {reservation.promoCodeSnapshot && (
-                          <Badge variant="success" className="ml-1 text-xs">
-                            {(reservation.promoCodeSnapshot as { code: string }).code}
-                          </Badge>
-                        )}
-                      </span>
-                      <span>
-                        -
-                        {formatCurrency(
-                          parseFloat(reservation.discountAmount),
-                          currency,
-                          formatLocale,
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {reservation.deliveryFee && parseFloat(reservation.deliveryFee) > 0 && (
-                    <div className="flex justify-between text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <Truck className="h-3.5 w-3.5" />
-                        {t("deliveryFeeLabel")}
-                      </span>
-                      <span>
-                        {formatCurrency(
-                          parseFloat(reservation.deliveryFee),
-                          currency,
-                          formatLocale,
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between border-t pt-2 font-semibold">
-                    <span>{t("totalAmount")}</span>
-                    <span>{formatCurrency(rental, currency, formatLocale)}</span>
-                  </div>
-
-                  {parseFloat(reservation.depositAmount) > 0 && (
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>{t("totalDeposit")}</span>
-                      <span>
-                        {formatCurrency(
-                          parseFloat(reservation.depositAmount),
-                          currency,
-                          formatLocale,
-                        )}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <ActivityTimelineV2
-            activities={reservation.activity}
-            payments={reservation.payments}
-            reservationCreatedAt={reservation.createdAt}
-            reservationSource={reservation.source}
+          <ReservationItemsCard
+            reservation={reservation}
+            startDate={startDate}
+            endDate={endDate}
+            storeTimezone={storeTimezone}
+            durationDays={durationDays}
+            durationHours={durationHours}
             currency={currency}
-            initialVisibleCount={3}
+            rental={rental}
+            insuredProductIds={insuredProductIds}
+            renderUnitAssignment={(item) =>
+              !readOnly && item.product?.trackUnits ? (
+                <UnitAssignmentSelector
+                  reservationId={reservation.id}
+                  reservationItemId={item.id}
+                  productName={item.productSnapshot?.name || item.product?.name || ""}
+                  quantity={item.quantity}
+                  trackUnits={item.product.trackUnits}
+                  initialAssignedUnitIds={
+                    item.assignedUnits?.map((unit) => unit.productUnitId) || []
+                  }
+                  selectedAttributes={
+                    item.selectedAttributes || item.productSnapshot?.selectedAttributes || null
+                  }
+                  attributeLabelsByKey={
+                    item.product.bookingAttributeAxes?.reduce<Record<string, string>>(
+                      (labels, axis) => ({ ...labels, [axis.key]: axis.label }),
+                      {},
+                    ) || null
+                  }
+                />
+              ) : null
+            }
           />
+
+          <div data-reservation-history>
+            <ActivityTimelineV2
+              activities={reservation.activity}
+              payments={reservation.payments}
+              reservationCreatedAt={reservation.createdAt}
+              reservationSource={reservation.source}
+              currency={currency}
+              initialVisibleCount={3}
+            />
+          </div>
         </div>
 
         <div className="space-y-4 min-w-0">
           <InvoiceDocumentsCard
+            readOnly={readOnly}
             reservationId={reservation.id}
             invoices={invoices}
             canGenerate={canGenerateInvoice}
@@ -679,6 +465,7 @@ export function ReservationDetailClient({
           )}
 
           <SmartReservationActions
+            readOnly={readOnly}
             reservationId={reservation.id}
             status={status}
             startDate={startDate}
@@ -841,6 +628,7 @@ export function ReservationDetailClient({
           />
 
           <UnifiedPaymentSection
+            readOnly={readOnly}
             reservationId={reservation.id}
             reservationNumber={reservation.number}
             subtotalAmount={reservation.subtotalAmount}
@@ -863,9 +651,10 @@ export function ReservationDetailClient({
             onPaymentModalOpenChange={setPaymentModalOpen}
           />
 
-          <AdvisorConversationCard reservationId={reservation.id} />
+          {!readOnly && <AdvisorConversationCard reservationId={reservation.id} />}
 
           <ReservationNotes
+            readOnly={readOnly}
             reservationId={reservation.id}
             initialNotes={reservation.internalNotes || ""}
           />

@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import { DEMO_ROUTE_HEADER } from "@/lib/landing-demos/policy";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import Script from "next/script";
@@ -53,19 +55,20 @@ export default async function RootLayout({
   // build host's default LOUEZ_MODE into the static shell and hydrate the
   // client with the wrong deployment mode.
   await connection();
+  const isPublicDemo = (await headers()).get(DEMO_ROUTE_HEADER) === "1";
   const instanceConfig = getInstanceConfig();
   const publicEnv = getPublicEnv();
   // Drives the document language for screen readers and translation tools.
-  const locale = await getLocale();
+  const locale = isPublicDemo ? "fr" : await getLocale();
 
   return (
     <>
       {/* {process.env.NODE_ENV === 'development' && <Agentation />} */}
 
       <html lang={locale} suppressHydrationWarning className="overscroll-none">
-        <UmamiAnalytics />
+        {!isPublicDemo && <UmamiAnalytics />}
 
-        {env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
+        {!isPublicDemo && env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
           <Script
             src={`${env.NEXT_PUBLIC_FROMHELLO_API_URL.replace(/\/$/, "")}/api/t.js`}
             data-key={env.NEXT_PUBLIC_FROMHELLO_KEY}
@@ -85,18 +88,24 @@ export default async function RootLayout({
         </head>
         <body className="font-sans antialiased">
           <PublicEnvProvider config={publicEnv}>
-            <PostHogBootstrap />
-            <InstanceProvider config={instanceConfig}>
-              <NuqsAdapter>
-                <EvlogProvider>
-                  <ORPCProvider>
-                    <ToastProvider position="top-center">
-                      <AnchoredToastProvider>{children}</AnchoredToastProvider>
-                    </ToastProvider>
-                  </ORPCProvider>
-                </EvlogProvider>
-              </NuqsAdapter>
-            </InstanceProvider>
+            {isPublicDemo ? (
+              children
+            ) : (
+              <>
+                <PostHogBootstrap />
+                <InstanceProvider config={instanceConfig}>
+                  <NuqsAdapter>
+                    <EvlogProvider>
+                      <ORPCProvider>
+                        <ToastProvider position="top-center">
+                          <AnchoredToastProvider>{children}</AnchoredToastProvider>
+                        </ToastProvider>
+                      </ORPCProvider>
+                    </EvlogProvider>
+                  </NuqsAdapter>
+                </InstanceProvider>
+              </>
+            )}
           </PublicEnvProvider>
         </body>
       </html>

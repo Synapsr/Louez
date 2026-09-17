@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseDemoParentOrigins } from "../landing-demos/policy";
 
 const isRegionalLocale = (value: string): boolean => {
   try {
@@ -13,6 +14,17 @@ export const publicEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.url("NEXT_PUBLIC_APP_URL must be a valid URL"),
   NEXT_PUBLIC_APP_DOMAIN: z.string().min(1, "NEXT_PUBLIC_APP_DOMAIN is required"),
   NEXT_PUBLIC_DASHBOARD_SUBDOMAIN: z.string().default("app"),
+  NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS: z
+    .string()
+    .refine((value) => {
+      try {
+        parseDemoParentOrigins(value);
+        return true;
+      } catch {
+        return false;
+      }
+    }, "NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS must contain comma-separated HTTPS origins without paths, credentials or wildcards")
+    .optional(),
   NEXT_PUBLIC_FORMAT_LOCALE: z
     .string()
     .trim()
@@ -68,6 +80,7 @@ export const getPublicEnvRuntimeValues = (
     NEXT_PUBLIC_APP_URL: appUrl,
     NEXT_PUBLIC_APP_DOMAIN: appDomain,
     NEXT_PUBLIC_DASHBOARD_SUBDOMAIN: source.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN,
+    NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS: source.NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS,
     NEXT_PUBLIC_FORMAT_LOCALE: source.NEXT_PUBLIC_FORMAT_LOCALE,
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: source.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_VAPID_PUBLIC_KEY: source.NEXT_PUBLIC_VAPID_PUBLIC_KEY,

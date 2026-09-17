@@ -37,6 +37,7 @@ import { ReservationsCardView } from "./reservations-card-view";
 import { ReservationsFilters } from "./reservations-filters";
 import { ReservationsPagination } from "./reservations-pagination";
 import { ReservationsTableView } from "./reservations-table-view";
+import { ReservationsPageHeading } from "./reservations-page-heading";
 import { ReservationsViewSwitcher } from "./reservations-view-switcher";
 import type {
   Reservation,
@@ -340,43 +341,40 @@ export function ReservationsPageContent({
     >
       {/* Header — the title block is dropped on mobile, where the topbar
           breadcrumb already names the page and vertical space is scarce. */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="hidden sm:block">
-          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
-          <p className="text-muted-foreground">{t("description")}</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-          <ReservationsViewSwitcher view={activeView} onViewChange={handleViewChange} />
-          {/* Pushes the actions to the far edge once the title is gone */}
-          <div className="flex-1 sm:hidden" />
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setExportModalOpen(true)}
-                    aria-label={tCalendar("export.button")}
-                  />
-                }
-              >
-                <CalendarSyncIcon className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent side="bottom">{tCalendar("export.button")}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <Button
-            render={<Link href="/dashboard/reservations/new?source=reservations_page" />}
-            aria-label={t("createReservation")}
-            className="max-xl:size-9 max-xl:px-0"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="max-xl:hidden">{t("createReservation")}</span>
-          </Button>
-        </div>
-      </div>
+      <ReservationsPageHeading
+        actions={
+          <>
+            <ReservationsViewSwitcher view={activeView} onViewChange={handleViewChange} />
+            {/* Pushes the actions to the far edge once the title is gone */}
+            <div className="flex-1 sm:hidden" />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setExportModalOpen(true)}
+                      aria-label={tCalendar("export.button")}
+                    />
+                  }
+                >
+                  <CalendarSyncIcon className="h-4 w-4" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{tCalendar("export.button")}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button
+              render={<Link href="/dashboard/reservations/new?source=reservations_page" />}
+              aria-label={t("createReservation")}
+              className="max-xl:size-9 max-xl:px-0"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="max-xl:hidden">{t("createReservation")}</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* Limit Banner */}
       {hasLimit && (

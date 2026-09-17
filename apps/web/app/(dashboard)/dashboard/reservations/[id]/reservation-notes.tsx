@@ -1,79 +1,71 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { toastManager } from '@louez/ui'
-import { useTranslations } from 'next-intl'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from "react";
+import { toastManager } from "@louez/ui";
+import { useTranslations } from "next-intl";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Button } from '@louez/ui'
-import { Textarea } from '@louez/ui'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui'
+import { Button } from "@louez/ui";
+import { Textarea } from "@louez/ui";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
 
-import { orpc } from '@/lib/orpc/react'
-import { invalidateReservationAll } from '@/lib/orpc/invalidation'
-import { reservationAnalyticsActions } from '@/lib/product-analytics/analytics-events'
+import { orpc } from "@/lib/orpc/react";
+import { invalidateReservationAll } from "@/lib/orpc/invalidation";
+import { reservationAnalyticsActions } from "@/lib/product-analytics/analytics-events";
 import {
   captureReservationActionFailed,
   captureReservationActionStarted,
   captureReservationActionSucceeded,
-} from '@/lib/product-analytics/reservation-analytics-client'
+} from "@/lib/product-analytics/reservation-analytics-client";
 
 interface ReservationNotesProps {
-  reservationId: string
-  initialNotes: string
+  readOnly?: boolean;
+  reservationId: string;
+  initialNotes: string;
 }
 
 interface ReservationCustomerNotesProps {
-  notes: string
+  notes: string;
 }
 
-export function ReservationCustomerNotes({
-  notes,
-}: ReservationCustomerNotesProps) {
-  const t = useTranslations('dashboard.reservations')
-  const trimmedNotes = notes.trim()
+export function ReservationCustomerNotes({ notes }: ReservationCustomerNotesProps) {
+  const t = useTranslations("dashboard.reservations");
+  const trimmedNotes = notes.trim();
 
   if (!trimmedNotes) {
-    return null
+    return null;
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">{t('customerNotes')}</CardTitle>
+        <CardTitle className="text-lg">{t("customerNotes")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="whitespace-pre-wrap text-sm leading-6">
-          {trimmedNotes}
-        </p>
+        <p className="whitespace-pre-wrap text-sm leading-6">{trimmedNotes}</p>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 export function ReservationNotes({
   reservationId,
   initialNotes,
+  readOnly = false,
 }: ReservationNotesProps) {
-  const t = useTranslations('dashboard.reservations')
-  const tCommon = useTranslations('common')
-  const [notes, setNotes] = useState(initialNotes)
-  const [isLoading, setIsLoading] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
-  const queryClient = useQueryClient()
+  const t = useTranslations("dashboard.reservations");
+  const tCommon = useTranslations("common");
+  const [notes, setNotes] = useState(initialNotes);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // Keep in sync with server updates unless the user has unsaved edits.
     if (!hasChanges) {
-      setNotes(initialNotes)
+      setNotes(initialNotes);
     }
-  }, [initialNotes, hasChanges])
+  }, [initialNotes, hasChanges]);
 
   const updateNotesMutation = useMutation(
     orpc.dashboard.reservations.updateNotes.mutationOptions({
@@ -82,23 +74,22 @@ export function ReservationNotes({
           queryKey: orpc.dashboard.reservations.getById.key({
             input: { reservationId: input.reservationId },
           }),
-        })
+        });
 
         const previous = queryClient.getQueryData(
           orpc.dashboard.reservations.getById.key({
             input: { reservationId: input.reservationId },
           }),
-        )
+        );
 
         queryClient.setQueryData(
           orpc.dashboard.reservations.getById.key({
             input: { reservationId: input.reservationId },
           }),
-          (current: any) =>
-            current ? { ...current, internalNotes: input.notes } : current,
-        )
+          (current: any) => (current ? { ...current, internalNotes: input.notes } : current),
+        );
 
-        return { previous }
+        return { previous };
       },
       onError: (_error, input, ctx) => {
         if (ctx?.previous) {
@@ -107,73 +98,68 @@ export function ReservationNotes({
               input: { reservationId: input.reservationId },
             }),
             ctx.previous,
-          )
+          );
         }
       },
       onSuccess: async (_result, input) => {
-        setHasChanges(false)
-        await invalidateReservationAll(queryClient, input.reservationId)
+        setHasChanges(false);
+        await invalidateReservationAll(queryClient, input.reservationId);
       },
     }),
-  )
+  );
 
   const handleChange = (value: string) => {
-    setNotes(value)
-    setHasChanges(value !== initialNotes)
-  }
+    setNotes(value);
+    setHasChanges(value !== initialNotes);
+  };
 
   const handleSave = async () => {
     captureReservationActionStarted({
       reservationId,
       action: reservationAnalyticsActions.updateNotes,
       properties: { has_notes: notes.trim().length > 0 },
-    })
-    setIsLoading(true)
+    });
+    setIsLoading(true);
     try {
-      await updateNotesMutation.mutateAsync({ reservationId, notes })
+      await updateNotesMutation.mutateAsync({ reservationId, notes });
       captureReservationActionSucceeded({
         reservationId,
         action: reservationAnalyticsActions.updateNotes,
         properties: { has_notes: notes.trim().length > 0 },
-      })
-      toastManager.add({ title: t('notes.saved'), type: 'success' })
+      });
+      toastManager.add({ title: t("notes.saved"), type: "success" });
     } catch {
       captureReservationActionFailed({
         reservationId,
         action: reservationAnalyticsActions.updateNotes,
-        properties: { error_code: 'notes_update_failed' },
-      })
-      toastManager.add({ title: t('notes.error'), type: 'error' })
+        properties: { error_code: "notes_update_failed" },
+      });
+      toastManager.add({ title: t("notes.error"), type: "error" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">{t('notes.title')}</CardTitle>
-        <CardDescription>
-          {t('notes.description')}
-        </CardDescription>
+        <CardTitle className="text-lg">{t("notes.title")}</CardTitle>
+        <CardDescription>{t("notes.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <Textarea
+          readOnly={readOnly}
           value={notes}
           onChange={(e) => handleChange(e.target.value)}
-          placeholder={t('notes.placeholder')}
+          placeholder={t("notes.placeholder")}
           className="min-h-[100px] resize-none"
         />
         {hasChanges && (
-          <Button
-            onClick={handleSave}
-            isPending={isLoading}
-            className="w-full"
-          >
-            {tCommon('save')}
+          <Button disabled={readOnly} onClick={handleSave} isPending={isLoading} className="w-full">
+            {tCommon("save")}
           </Button>
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

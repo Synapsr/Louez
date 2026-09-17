@@ -27,6 +27,7 @@ interface ActivityListItemProps {
   showPeriod?: boolean;
   showAmount?: boolean;
   source: ReservationAnalyticsSource;
+  onSelect?: () => void;
 }
 
 export const ActivityListItem = ({
@@ -35,6 +36,7 @@ export const ActivityListItem = ({
   showPeriod = false,
   showAmount = false,
   source,
+  onSelect,
 }: ActivityListItemProps) => {
   const t = useTranslations("dashboard.home");
   const { names, remainingCount } = summarizeProducts(reservation);
@@ -42,6 +44,7 @@ export const ActivityListItem = ({
   return (
     <DashboardListRow
       href={getReservationDetailHref(reservation.id, source)}
+      onSelect={onSelect}
       leading={
         <span
           aria-hidden="true"

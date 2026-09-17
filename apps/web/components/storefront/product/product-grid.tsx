@@ -11,22 +11,12 @@ import { useCartState } from "@/contexts/cart-context";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { storefrontQueries } from "@/lib/queries/storefront.queries";
 
-import { cn } from "@louez/utils";
-
 import type { StorefrontCatalogProduct } from "@/lib/storefront/storefront.types";
 
-import { ProductCard } from "./product-card";
-import { productGridClassName } from "./product-grid.constants";
+import { ProductGridView } from "./product-grid-view";
+export { PRODUCT_GRID_PRIORITY_COUNT } from "./product-grid-view";
 import { useQuickAdd } from "./quick-add-provider";
-import {
-  type ProductCardAvailability,
-  type ProductCardPeriod,
-  buildProductHref,
-  getQuickAddLimit,
-} from "./util.product-card";
-
-/** Cards that get `priority`: the first row or two, above the fold. */
-export const PRODUCT_GRID_PRIORITY_COUNT = 4;
+import { type ProductCardAvailability, type ProductCardPeriod } from "./util.product-card";
 
 interface ProductGridProps {
   products: StorefrontCatalogProduct[];
@@ -86,43 +76,24 @@ export const ProductGrid = ({
   };
 
   return (
-    <ul className={cn(productGridClassName, className)} data-slot="product-grid">
-      {products.map((product, index) => {
-        const availability = availabilityByProductId?.get(product.id) ?? null;
-        const quickAddLimit = getQuickAddLimit(product, availability);
-
-        return (
-          <li
-            key={product.id}
-            className="flex"
-            onMouseEnter={() => {
-              cancelPrefetch();
-              if (quickAddLimit !== undefined) {
-                hoverTimer.current = setTimeout(() => prefetchDates(product.id), 150);
-              }
-            }}
-            onMouseLeave={cancelPrefetch}
-            onFocus={() => {
-              cancelPrefetch();
-              if (quickAddLimit !== undefined) prefetchDates(product.id);
-            }}
-          >
-            <ProductCard
-              product={product}
-              href={buildProductHref(product, period)}
-              period={period}
-              availability={availability}
-              priority={index < PRODUCT_GRID_PRIORITY_COUNT}
-              onQuickAdd={
-                quickAddLimit !== undefined
-                  ? () => quickAdd.start(product, quickAddLimit, period ?? null)
-                  : undefined
-              }
-              className="w-full"
-            />
-          </li>
-        );
-      })}
-    </ul>
+    <ProductGridView
+      products={products}
+      period={period}
+      availabilityByProductId={availabilityByProductId}
+      className={className}
+      onQuickAdd={(product, limit, selectedPeriod) =>
+        quickAdd.start(product, limit, selectedPeriod)
+      }
+      onProductHover={(product, limit) => {
+        cancelPrefetch();
+        if (limit !== undefined)
+          hoverTimer.current = setTimeout(() => prefetchDates(product.id), 150);
+      }}
+      onProductLeave={cancelPrefetch}
+      onProductFocus={(product, limit) => {
+        cancelPrefetch();
+        if (limit !== undefined) prefetchDates(product.id);
+      }}
+    />
   );
 };

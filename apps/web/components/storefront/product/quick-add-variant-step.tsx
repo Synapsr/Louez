@@ -4,11 +4,8 @@ import { useMemo, useState } from "react";
 
 import { useTranslations } from "next-intl";
 
-import { Button, DialogFooter, DialogPanel, toastManager } from "@louez/ui";
+import { toastManager } from "@louez/ui";
 import { allocateAcrossCombinations } from "@louez/utils";
-
-import { ProductImage } from "@/components/product/product-image";
-import { Price } from "@/components/storefront/ui/price";
 
 import type { StorefrontCatalogProduct } from "@/lib/storefront/storefront.types";
 import { pickActiveVariantAttributes } from "@/lib/util.variant-visibility";
@@ -16,8 +13,7 @@ import { type CartLineInput, toCartLineInput } from "@/lib/utils/util.cart-line-
 import { parseRentalPeriod } from "@/lib/utils/util.rental-period";
 import { deriveAttributeValues } from "@/lib/utils/util.variant-combinations";
 
-import { BookingAttributeSelects } from "./booking-attribute-selects";
-import { QuantityStepper } from "./quantity-stepper";
+import { QuickAddVariantView } from "./quick-add-variant-view";
 import { useProductAvailability } from "./use-product-availability";
 import { useProductCardPricing } from "./use-product-card-pricing";
 import { clampBookingQuantity, resolveBookingCapacity } from "./util.booking-capacity";
@@ -98,57 +94,19 @@ export const QuickAddVariantStep = ({ product, period, onConfirm }: QuickAddVari
   };
 
   return (
-    <>
-      <DialogPanel className="flex flex-col gap-5">
-        <div className="flex items-center gap-3">
-          <ProductImage
-            src={product.images?.[0]}
-            alt=""
-            sizes="64px"
-            containerClassName="w-16 shrink-0 rounded-lg"
-          />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="truncate font-medium text-sm">{product.name}</p>
-            <Price
-              amount={pricing.amount}
-              compareAt={pricing.compareAt}
-              per={pricing.per}
-              label={pricing.label}
-              size="sm"
-            />
-          </div>
-        </div>
-
-        <p className="text-muted-foreground text-sm">{t("quickAdd.optionsIntro")}</p>
-
-        <BookingAttributeSelects
-          axes={axes}
-          values={values}
-          selected={selected}
-          onChange={setSelected}
-          hint={
-            isChecking
-              ? t("product.booking.checking")
-              : t("product.availableForSelection", { count: capacity.maxQuantity ?? 0 })
-          }
-        />
-
-        <QuantityStepper
-          value={quantity}
-          max={capacity.maxQuantity}
-          onChange={setRequestedQuantity}
-          disabled={isChecking || capacity.isSelectionUnavailable}
-        />
-      </DialogPanel>
-      <DialogFooter variant="bare">
-        <Button
-          className="w-full sm:w-auto"
-          onClick={confirm}
-          disabled={isChecking || capacity.isSelectionUnavailable}
-        >
-          {t("product.addToCart")}
-        </Button>
-      </DialogFooter>
-    </>
+    <QuickAddVariantView
+      product={product}
+      pricing={pricing}
+      axes={axes}
+      values={values}
+      selected={selected}
+      onSelectedChange={setSelected}
+      quantity={quantity}
+      maxQuantity={capacity.maxQuantity}
+      onQuantityChange={setRequestedQuantity}
+      isChecking={isChecking}
+      disabled={isChecking || capacity.isSelectionUnavailable}
+      onConfirm={confirm}
+    />
   );
 };

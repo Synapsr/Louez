@@ -36,7 +36,12 @@ interface StoreHeaderProps {
   /** Store rules the period picker validates against. */
   periodRules: RentalPeriodRules;
   showAccount?: boolean;
+  /** Disable account prefetching in previews with no live customer routes. */
+  accountPrefetch?: boolean;
   showCart?: boolean;
+  /** Controlled alternatives for previews that have no live cart or router state. */
+  searchControl?: ReactNode;
+  cartControl?: ReactNode;
 }
 
 /** Shared store navigation. */
@@ -51,7 +56,10 @@ export const StoreHeader = ({
   channelBadge,
   periodRules,
   showAccount = true,
+  accountPrefetch,
   showCart = true,
+  searchControl,
+  cartControl,
 }: StoreHeaderProps) => {
   const t = useTranslations("storefront");
   const variant = useChromeVariant();
@@ -116,7 +124,9 @@ export const StoreHeader = ({
                 >
                   <div className="min-h-0 overflow-hidden md:overflow-visible">
                     <div className="pt-2 md:pt-0">
-                      <HeaderSearchCapsule rules={periodRules} className="w-full" />
+                      {searchControl ?? (
+                        <HeaderSearchCapsule rules={periodRules} className="w-full" />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -134,9 +144,13 @@ export const StoreHeader = ({
                     <PhoneIcon aria-hidden className="size-5" />
                   </a>
                 ) : null}
-                {showCart ? <CartTrigger /> : null}
+                {showCart ? (cartControl ?? <CartTrigger />) : null}
                 {showAccount ? (
-                  <HeaderAccountButton initials={customerInitials} customer={customerIdentity} />
+                  <HeaderAccountButton
+                    initials={customerInitials}
+                    customer={customerIdentity}
+                    prefetch={accountPrefetch}
+                  />
                 ) : null}
               </nav>
             </>

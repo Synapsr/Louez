@@ -98,6 +98,8 @@ export function getStatusDotClass(status: string | null): string {
 interface TimelineReservationBarProps {
   reservation: TimelineReservation;
   currency: string;
+  href?: string;
+  onOpen?: () => void;
   /** Persists the timeline viewport before navigating to reservation details. */
   onBeforeNavigate?: () => void;
   /** Dashboard path the reservation detail page should send the user back to. */
@@ -120,6 +122,8 @@ interface TimelineReservationBarProps {
 export function TimelineReservationBar({
   reservation,
   currency,
+  href,
+  onOpen,
   onBeforeNavigate,
   returnTo,
   isConflict = false,
@@ -132,16 +136,16 @@ export function TimelineReservationBar({
   const { intl: formatLocale } = useFormatLocale();
   const status = getTimelineStatus(reservation.status);
   const colorClass = BAR_COLORS[status] ?? BAR_COLORS.pending;
-  const reservationHref = getReservationDetailHref(
-    reservation.id,
-    "reservations_timeline",
-    returnTo,
-  );
-  const rentalPrice = formatCurrency(
-    getTimelineRentalAmount(reservation),
-    currency,
-    formatLocale,
-  );
+  const reservationHref =
+    href ?? getReservationDetailHref(reservation.id, "reservations_timeline", returnTo);
+  const handleOpen = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    onBeforeNavigate?.();
+    if (onOpen) {
+      event.preventDefault();
+      onOpen();
+    }
+  };
+  const rentalPrice = formatCurrency(getTimelineRentalAmount(reservation), currency, formatLocale);
 
   const hasOutboundDelivery = Boolean(reservation.outboundDeliveryAddress);
   const hasReturnDelivery = Boolean(reservation.returnDeliveryAddress);
@@ -197,7 +201,8 @@ export function TimelineReservationBar({
           render={
             <Link
               href={reservationHref}
-              onClick={onBeforeNavigate}
+              onClick={handleOpen}
+              prefetch={onOpen ? false : undefined}
               className={cn(barClassName, "hidden md:block")}
               style={style}
             />
@@ -282,7 +287,13 @@ export function TimelineReservationBar({
           <DrawerFooter>
             <Button
               className="w-full"
-              render={<Link href={reservationHref} onClick={onBeforeNavigate} />}
+              render={
+                <Link
+                  href={reservationHref}
+                  onClick={handleOpen}
+                  prefetch={onOpen ? false : undefined}
+                />
+              }
             >
               {t("viewReservation")}
             </Button>

@@ -1,0 +1,38 @@
+/* Only the demo player draws a pointer; all product styles come from the app. */
+.demo-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(40px, 40px);
+  transition: opacity 120ms;
+}
+.demo-cursor[data-visible="true"] {
+  opacity: 1;
+}
+.demo-cursor span {
+  display: block;
+  margin: -5px 0 0 20px;
+  border-radius: 6px;
+  padding: 3px 7px;
+  background: #111;
+  color: white;
+  font: 500 11px/1.4 var(--font-sans);
+}
+/* The scripted pointer reveals the same quick-add control as a real hover. */
+html[data-demo-running="true"] [data-product-id="demo-city-bike"] [data-product-quick-add] {
+  translate: 0 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-cursor {
+    display: none;
+    transition: none;
+  }
+}
+
+/* Keep development chrome out of generated product previews. */
+html:has([data-demo-poster="true"]) nextjs-portal {
+  display: none;
+}

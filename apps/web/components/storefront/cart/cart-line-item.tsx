@@ -1,5 +1,6 @@
 "use client";
 
+import type { MouseEventHandler } from "react";
 import { Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -12,13 +13,15 @@ import { BillingDetail } from "@/components/storefront/product/billing-detail";
 import { getStorefrontBillingDetail } from "@/lib/utils/util.storefront-product-pricing";
 import { Price } from "@/components/storefront/ui/price";
 import { StorefrontLink } from "@/components/storefront/ui/storefront-link";
-import { type CartItem, useCartDrawer } from "@/contexts/cart-context";
+import { type CartItem } from "@/contexts/cart-context";
 import { useFormatMoney } from "@/hooks/use-format-money";
 import { calculateCartItemPrice } from "@/lib/utils/cart-pricing";
 import { getRequiredAccessoryLineMinimumQuantity } from "@/lib/utils/cart-required-accessories";
 
 interface CartLineItemProps {
   item: CartItem;
+  productHref?: string;
+  onNavigate?: MouseEventHandler<HTMLAnchorElement>;
   /** What the line can reach once sibling lines took their share of stock. */
   maximumQuantity: StockQuantityLimit;
   /** Set when the line is a required accessory owned by a parent line. */
@@ -42,6 +45,8 @@ const formatAttributes = (attributes: Record<string, string> | undefined): strin
  */
 export const CartLineItem = ({
   item,
+  productHref = `/product/${item.productSlug ?? item.productId}`,
+  onNavigate,
   maximumQuantity,
   parent,
   onQuantityChange,
@@ -51,8 +56,6 @@ export const CartLineItem = ({
 }: CartLineItemProps) => {
   const t = useTranslations("storefront.cart");
   const formatMoney = useFormatMoney();
-  const { close } = useCartDrawer();
-  const productHref = `/product/${item.productSlug ?? item.productId}`;
 
   const priceResult = calculateCartItemPrice(item, globalStartDate, globalEndDate);
   const { subtotal, seasonalSegments } = priceResult;
@@ -74,7 +77,7 @@ export const CartLineItem = ({
     >
       <StorefrontLink
         href={productHref}
-        onClick={close}
+        onClick={onNavigate}
         className="shrink-0 self-start rounded-lg focus-visible:outline-ring focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         <ProductImage
@@ -90,7 +93,7 @@ export const CartLineItem = ({
           <div className="min-w-0">
             <StorefrontLink
               href={productHref}
-              onClick={close}
+              onClick={onNavigate}
               className="line-clamp-2 text-sm font-medium leading-snug hover:underline focus-visible:underline sm:text-base"
             >
               {item.productName}
