@@ -9,12 +9,39 @@ export const isDemoPath = (pathname: string): boolean =>
 export const isDemoScene = (value: string): value is DemoScene =>
   DEMO_SCENES.some((scene) => scene === value);
 
+export const parseDemoParentOrigins = (value = ""): string[] =>
+  value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const url = new URL(entry);
+      if (
+        url.protocol !== "https:" ||
+        url.username ||
+        url.password ||
+        url.pathname !== "/" ||
+        url.search ||
+        url.hash ||
+        !/^https:\/\/[a-z\d.:-]+\/?$/i.test(entry)
+      ) {
+        throw new Error(
+          "Demo parent origins must be explicit HTTPS origins without paths or credentials",
+        );
+      }
+      return url.origin;
+    });
+
 export const getDemoParentOrigins = (
   appDomain: string | undefined,
   isDevelopment: boolean,
+  additionalOrigins?: string,
 ): string[] => [
-  ...(appDomain ? [`https://${appDomain}`, `https://www.${appDomain}`] : []),
-  ...(isDevelopment
-    ? ["https://landing.louez-website.localify", "https://louez-website.localify"]
-    : []),
+  ...new Set([
+    ...(appDomain ? [`https://${appDomain}`, `https://www.${appDomain}`] : []),
+    ...parseDemoParentOrigins(additionalOrigins),
+    ...(isDevelopment
+      ? ["https://landing.louez-website.localify", "https://louez-website.localify"]
+      : []),
+  ]),
 ];

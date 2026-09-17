@@ -23,6 +23,27 @@ Le site marketing conserve uniquement le cadre, les contrôles et le lecteur `po
 
 Le marketing utilise `NEXT_PUBLIC_LOUEZ_DEMO_URL`, avec `https://app.louez.io` par défaut en production. Cette variable est résolue au build du marketing et doit aussi être autorisée par son `frame-src`. Le build de l’app qui contient les routes doit être déployé avant la landing qui les intègre.
 
+### Autoriser une landing sur un autre domaine
+
+L’app autorise par défaut `https://{NEXT_PUBLIC_APP_DOMAIN}` et sa version `www`.
+Pour intégrer les démos dans une landing de préproduction, ajouter dans
+l’environnement de **l’app Louez** :
+
+```dotenv
+NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS=https://louez.d5.lumy.cloud
+```
+
+Plusieurs origines HTTPS peuvent être séparées par des virgules. Indiquer
+l’origine seule, sans chemin comme `/fr`. La même liste sert à la CSP
+`frame-ancestors` et aux commandes `postMessage` du lecteur. Les domaines
+supplémentaires ne donnent aucun droit d’intégration aux pages métier.
+
+Cette valeur passe par la configuration publique fournie par le serveur au
+navigateur. Elle est lue au démarrage du conteneur : après le premier déploiement
+du code qui la prend en charge, un redémarrage avec la nouvelle valeur suffit.
+La landing conserve `NEXT_PUBLIC_LOUEZ_DEMO_URL=https://app.louez.app` lorsqu’elle
+charge les démos depuis cette app ; sa variable reste résolue au build.
+
 En local, l’origine est `https://landing-demos.louez.localify`. Le serveur de démo appartient au worktree `louez-landing-demos`, branche `feat/synchronized-landing-demos`. Depuis `apps/web`, avec une configuration locale sans données réelles :
 
 ```sh

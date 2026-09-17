@@ -130,6 +130,7 @@ export const LandingDemo = ({
     const allowed = getDemoParentOrigins(
       publicEnv.NEXT_PUBLIC_APP_DOMAIN,
       process.env.NODE_ENV === "development",
+      publicEnv.NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS,
     );
     const receive = (event: MessageEvent<unknown>) => {
       if (event.source !== window.parent || !allowed.includes(event.origin)) return;
@@ -220,7 +221,12 @@ export const LandingDemo = ({
       window.removeEventListener("keydown", key);
       window.removeEventListener("blur", blur);
     };
-  }, [publicEnv.NEXT_PUBLIC_APP_DOMAIN, scene, reset]);
+  }, [
+    publicEnv.NEXT_PUBLIC_APP_DOMAIN,
+    publicEnv.NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS,
+    scene,
+    reset,
+  ]);
 
   useEffect(() => {
     document.documentElement.dataset.demoRunning = String(running);

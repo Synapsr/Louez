@@ -2,6 +2,7 @@ import { getDemoParentOrigins } from "./landing-demos/policy";
 export interface SecurityHeadersOptions {
   appDomain?: string;
   appUrl?: string;
+  demoParentOrigins?: string;
   fromHelloApiUrl?: string;
   isDevelopment: boolean;
   openReplayIngestPoint?: string;
@@ -183,7 +184,7 @@ export const buildDemoSecurityHeaders = (options: SecurityHeadersOptions): Secur
             value: header.value
               .replace(
                 /frame-ancestors[^;]*/,
-                `frame-ancestors 'self' ${getDemoParentOrigins(options.appDomain, options.isDevelopment).join(" ")}`,
+                `frame-ancestors 'self' ${getDemoParentOrigins(options.appDomain, options.isDevelopment, options.demoParentOrigins).join(" ")}`,
               )
               .replace(/form-action[^;]*/, "form-action 'none'")
               .replace(/connect-src[^;]*/, `connect-src ${connections.join(" ")}`),

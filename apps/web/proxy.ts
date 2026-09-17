@@ -60,6 +60,7 @@ function withRuntimeSecurityHeaders(
   const options = {
     appDomain: publicEnv.NEXT_PUBLIC_APP_DOMAIN,
     appUrl: publicEnv.NEXT_PUBLIC_APP_URL,
+    demoParentOrigins: publicEnv.NEXT_PUBLIC_LOUEZ_DEMO_PARENT_ORIGINS,
     fromHelloApiUrl: publicEnv.NEXT_PUBLIC_FROMHELLO_API_URL,
     isDevelopment: process.env.NODE_ENV === "development",
     openReplayIngestPoint: publicEnv.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
