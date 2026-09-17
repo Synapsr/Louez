@@ -35,6 +35,11 @@ export const env = createEnv({
 
   server: {
     // ===== Authentication =====
+    MARKETING_WEBSITE_ORIGINS: z
+      .string()
+      .default("")
+      .transform((value) => value.split(",").map((origin) => origin.trim()).filter(Boolean))
+      .pipe(z.array(z.url({ protocol: /^https?$/ }).pipe(z.string().refine((origin) => new URL(origin).origin === origin)))),
     AUTH_TRUST_HOST: z
       .string()
       .default("false")
@@ -402,6 +407,7 @@ export const env = createEnv({
   runtimeEnv: {
     // Server
     AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
+    MARKETING_WEBSITE_ORIGINS: process.env.MARKETING_WEBSITE_ORIGINS,
     S3_ENDPOINT: process.env.S3_ENDPOINT,
     S3_REGION: process.env.S3_REGION,
     S3_BUCKET: process.env.S3_BUCKET,
