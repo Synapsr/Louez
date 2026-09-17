@@ -91,12 +91,31 @@ try {
     });
     await page.locator('[data-demo-ready="true"]').waitFor();
     await page.evaluate(async () => {
-      await document.fonts.ready;
-      await Promise.all(
-        Array.from(document.images)
-          .filter((image) => image.getBoundingClientRect().top < innerHeight)
-          .map((image) => image.decode()),
-      );
+      const images = Array.from(document.images).filter((image) => {
+        const rect = image.getBoundingClientRect();
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.bottom > 0 &&
+          rect.top < innerHeight &&
+          rect.right > 0 &&
+          rect.left < innerWidth
+        );
+      });
+      let timeout;
+      try {
+        await Promise.race([
+          Promise.all([document.fonts.ready, ...images.map((image) => image.decode())]),
+          new Promise((_, reject) => {
+            timeout = setTimeout(
+              () => reject(new Error("Timed out waiting for visible demo assets")),
+              30_000,
+            );
+          }),
+        ]);
+      } finally {
+        clearTimeout(timeout);
+      }
     });
     if (errors.length) throw new Error(`${scene} (${locale}): ${errors.join("\n")}`);
     const png = await page.screenshot({
