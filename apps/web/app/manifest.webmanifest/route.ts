@@ -10,6 +10,11 @@ import { getLocale, getTranslations } from 'next-intl/server';
 // theme-color is handled responsively by the dashboard layout's viewport).
 const BRAND_COLOR = '#1f54dd';
 
+// Bumped whenever the mark changes. An installed PWA snapshots its icon at
+// install time and will not re-fetch an unchanged URL, so without this the new
+// symbol only reaches fresh installs.
+const ICON_VERSION = '2';
+
 export async function GET() {
   const locale = await getLocale();
   const t = await getTranslations({
@@ -32,25 +37,25 @@ export async function GET() {
     categories: ['business', 'productivity'],
     icons: [
       {
-        src: '/icons/icon-192.png',
+        src: `/icons/icon-192.png?v=${ICON_VERSION}`,
         sizes: '192x192',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/icon-512.png',
+        src: `/icons/icon-512.png?v=${ICON_VERSION}`,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
       },
       {
-        src: '/icons/maskable-192.png',
+        src: `/icons/maskable-192.png?v=${ICON_VERSION}`,
         sizes: '192x192',
         type: 'image/png',
         purpose: 'maskable',
       },
       {
-        src: '/icons/maskable-512.png',
+        src: `/icons/maskable-512.png?v=${ICON_VERSION}`,
         sizes: '512x512',
         type: 'image/png',
         purpose: 'maskable',
