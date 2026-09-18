@@ -6021,6 +6021,10 @@
         "fix": "Correctif"
       },
       "announcements": {
+        "storefront-redesign": {
+          "title": "Une nouvelle boutique en ligne, un nouvel éditeur",
+          "description": "Un nouveau parcours pour vos clients, du catalogue à la réservation. De votre côté, personnalisez votre boutique dans un éditeur dédié, avec un aperçu qui suit vos modifications sur ordinateur et téléphone."
+        },
         "fixed-pricing": {
           "title": "Un prix qui ne dépend plus de la durée",
           "description": "Un nettoyage, une livraison, une prestation : tout ne se facture pas à l'heure. Passez la tarification en « Forfait » et le prix ne bouge plus, que la location dure deux heures ou deux semaines. Les paliers, les saisons et le graphique s'effacent ; il ne reste qu'un montant, sa TVA et sa caution."

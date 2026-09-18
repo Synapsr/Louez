@@ -6021,6 +6021,10 @@
         "fix": "Correção"
       },
       "announcements": {
+        "storefront-redesign": {
+          "title": "Uma nova loja online e um novo editor",
+          "description": "Uma experiência renovada para os seus clientes, do catálogo à reserva. Personalize a sua loja num editor dedicado, com uma pré-visualização que acompanha as alterações nos formatos de computador e telemóvel."
+        },
         "fixed-pricing": {
           "title": "Um preço que já não depende da duração",
           "description": "Uma limpeza, uma entrega, um serviço: nem tudo se cobra à hora. Mude a tarifação para «Preço fixo» e o preço deixa de mexer, dure o aluguer duas horas ou duas semanas. Escalões, épocas e o gráfico desaparecem; fica um montante, o seu imposto e a sua caução."

@@ -6021,6 +6021,10 @@
         "fix": "Fixed"
       },
       "announcements": {
+        "storefront-redesign": {
+          "title": "A new online store and a new editor",
+          "description": "A redesigned customer journey, from browsing to booking. Customize your store in a dedicated editor, with a preview that follows your changes in desktop and phone formats."
+        },
         "fixed-pricing": {
           "title": "A price that no longer depends on duration",
           "description": "A cleaning, a delivery, a service: not everything is billed by the hour. Switch the pricing to \"Flat rate\" and the price stops moving, whether the rental runs two hours or two weeks. Tiers, seasons and the chart step aside; one amount is left, with its tax and its deposit."

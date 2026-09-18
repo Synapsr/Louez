@@ -6021,6 +6021,10 @@
         "fix": "Poprawka"
       },
       "announcements": {
+        "storefront-redesign": {
+          "title": "Nowy sklep internetowy i nowy edytor",
+          "description": "Odświeżona ścieżka klienta, od katalogu po rezerwację. Dostosuj swój sklep w osobnym edytorze z podglądem, który pokazuje zmiany w widoku komputera i telefonu."
+        },
         "fixed-pricing": {
           "title": "Cena, która nie zależy już od czasu",
           "description": "Czyszczenie, dostawa, usługa: nie wszystko rozlicza się na godziny. Przełącz model cenowy na „Cenę ryczałtową”, a cena przestanie się zmieniać, czy wynajem potrwa dwie godziny, czy dwa tygodnie. Progi, sezony i wykres znikają; zostaje jedna kwota, jej podatek i kaucja."

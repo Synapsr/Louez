@@ -6021,6 +6021,10 @@
         "fix": "Correzione"
       },
       "announcements": {
+        "storefront-redesign": {
+          "title": "Un nuovo negozio online e un nuovo editor",
+          "description": "Un percorso rinnovato per i tuoi clienti, dal catalogo alla prenotazione. Personalizza il tuo negozio in un editor dedicato, con un’anteprima che segue le modifiche nei formati desktop e telefono."
+        },
         "fixed-pricing": {
           "title": "Un prezzo che non dipende più dalla durata",
           "description": "Una pulizia, una consegna, una prestazione: non tutto si fattura a ore. Portate la tariffazione su «Prezzo forfettario» e il prezzo non si muove più, che il noleggio duri due ore o due settimane. Scaglioni, stagioni e grafico spariscono; restano un importo, la sua imposta e la sua cauzione."

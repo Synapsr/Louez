@@ -6021,6 +6021,10 @@
         "fix": "Opgelost"
       },
       "announcements": {
+        "storefront-redesign": {
+          "title": "Een nieuwe online winkel en een nieuwe editor",
+          "description": "Een vernieuwd traject voor uw klanten, van catalogus tot reservering. Pas uw winkel aan in een eigen editor, met een voorbeeld dat uw wijzigingen op computer- en telefoonformaat toont."
+        },
         "fixed-pricing": {
           "title": "Een prijs die niet meer van de duur afhangt",
           "description": "Een reiniging, een levering, een dienst: niet alles wordt per uur gefactureerd. Zet de tarifering op \"Vaste prijs\" en de prijs beweegt niet meer, of de verhuur nu twee uur of twee weken duurt. Staffels, seizoenen en de grafiek verdwijnen; wat blijft is één bedrag, met btw en waarborg."

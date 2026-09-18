@@ -110,6 +110,20 @@ export const parseWhatsNewDate = (date: string) => {
  */
 export const WHATS_NEW_ANNOUNCEMENTS: WhatsNewAnnouncement[] = [
   {
+    id: "storefront-redesign",
+    category: "feature",
+    date: "2026-09-15",
+    titleKey: "announcements.storefront-redesign.title",
+    descriptionKey: "announcements.storefront-redesign.description",
+    href: "/online-store",
+    media: {
+      type: "video",
+      src: "/videos/whats-new/storefront-redesign.mp4",
+      posterSrc: "/images/whats-new/storefront-redesign.webp",
+    },
+    icon: LayoutIcon,
+  },
+  {
     id: "fixed-pricing",
     category: "feature",
     date: "2026-08-27",

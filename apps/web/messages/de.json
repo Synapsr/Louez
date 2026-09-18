@@ -6021,6 +6021,10 @@
         "fix": "Behoben"
       },
       "announcements": {
+        "storefront-redesign": {
+          "title": "Ein neuer Onlineshop und ein neuer Editor",
+          "description": "Ein überarbeiteter Ablauf für Ihre Kunden, vom Katalog bis zur Buchung. Gestalten Sie Ihren Shop in einem eigenen Editor mit einer Vorschau, die Ihre Änderungen im Desktop- und Smartphone-Format zeigt."
+        },
         "fixed-pricing": {
           "title": "Ein Preis, der nicht mehr von der Dauer abhängt",
           "description": "Eine Reinigung, eine Lieferung, eine Dienstleistung: Nicht alles wird nach Stunden abgerechnet. Stellen Sie das Preismodell auf „Pauschalpreis“ um, und der Preis bleibt gleich, ob die Miete zwei Stunden oder zwei Wochen läuft. Staffeln, Saisonpreise und die Kurve verschwinden; es bleiben ein Betrag, seine Steuer und seine Kaution."

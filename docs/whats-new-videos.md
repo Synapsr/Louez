@@ -38,6 +38,7 @@ Sans `media`, l'entrée s'affiche en texte seul — aucun placeholder, rien à c
 - [x] `reservations-unified-views` — Vos réservations s'ouvrent sur le calendrier · 50 s · en ligne
 - [ ] `product-creation-flow-redesign` — Une seule page et votre produit est en ligne (~35 s)
 - [x] `reservation-creation-simplified` — Une réservation, une seule page · 53 s · en ligne
+- [x] `storefront-redesign` — Une nouvelle boutique en ligne, un nouvel éditeur · 91 s · en ligne
 
 ### Traitement appliqué
 
@@ -244,6 +245,25 @@ Le message est « c'est court » : la vidéo doit l'être.
 - [x] **49–55 s** — Valider. Fin sur la réservation créée.
 
 **À préparer** — [ ] deux produits **disponibles** sur la période choisie (sinon la modale de surbooking s'ouvre et casse le rythme).
+
+---
+
+## 12. `storefront-redesign` — 91 s
+
+**Deux mouvements : la boutique côté client, puis l'éditeur côté loueur.**
+
+- [x] **0–12 s** — Accueil de la boutique : couverture, catégories, catalogue. Ouverture du sélecteur de dates et choix d'une période.
+- [x] **12–20 s** — Filtre sur la catégorie Vélos & VAE, ouverture d'une fiche produit.
+- [x] **20–28 s** — Configuration du produit et ajout au panier. La modale d'accessoires suggérés s'ouvre.
+- [x] **28–38 s** — Retour au catalogue, deuxième ajout, ouverture du panier : la sélection et le total y sont.
+- [x] **38–44 s** — Tableau de bord → **Boutique en ligne**. L'éditeur s'ouvre, aperçu à droite.
+- [x] **44–58 s** — **Identité** : description, couleur principale, langue, URL de la boutique.
+- [x] **58–78 s** — **Accueil** : photos de couverture, disposition, position du texte, bandeau, catalogue, sections de page.
+- [x] **78–91 s** — **Contact** : coordonnées, gabarit de page, canaux, formulaire, réseaux sociaux.
+
+**Hors montage** — [ ] les rubriques **Pages légales** et **Référencement**, [ ] la bascule d'aperçu **Téléphone**, [ ] l'enregistrement et le retour sur la boutique publiée. La vidéo se termine dans l'éditeur plutôt que sur le résultat.
+
+**Encodage** — la plus longue de la série, d'où le CRF 26 prévu plus haut : 4,7 Mo. Poster pris à 0,4 s, sur le héro de la boutique. Le plan de l'éditeur vers 64 s racontait mieux les deux moitiés de l'annonce, mais son aperçu est encore rempli de placeholders gris.
 
 ---
 
