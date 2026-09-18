@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -17,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Logo,
+  LogoIcon,
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
@@ -113,13 +113,7 @@ const StoreHeader = ({
         <div className="flex items-center gap-2">
           <SidebarLink href="/dashboard" className="flex min-w-0 items-center gap-2">
             <Logo className="h-5 w-auto shrink-0 group-data-[collapsible=icon]:hidden" />
-            <Image
-              src={"/icons/maskable-512.png"}
-              width={32}
-              height={32}
-              alt="Logo"
-              className="hidden size-8 shrink-0 group-data-[collapsible=icon]:block rounded-md"
-            />
+            <LogoIcon className="hidden size-8 shrink-0 group-data-[collapsible=icon]:block" />
           </SidebarLink>
           <PlanBadge planSlug={planSlug} />
         </div>

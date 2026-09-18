@@ -1,69 +1,141 @@
 /**
- * Generates the PWA icon set, mirroring the brand mark from `public/favicon.svg`.
- * The brand color and "L" path are duplicated below (BRAND / L_PATH) rather than
- * parsed from the SVG — keep them in sync if favicon.svg ever changes.
+ * Generates every Louez icon from a single source: `public/favicon.svg`.
  *
- *   public/icons/icon-192.png       192x192  purpose "any"      (circular mark)
- *   public/icons/icon-512.png       512x512  purpose "any"
- *   public/icons/maskable-192.png   192x192  purpose "maskable" (full-bleed)
- *   public/icons/maskable-512.png   512x512  purpose "maskable"
- *   public/apple-touch-icon.png     180x180  opaque (iOS flattens alpha)
+ * The mark's artwork is read out of that file at run time, so there is nothing
+ * to keep in sync by hand — change favicon.svg, re-run this script, done.
+ *
+ *   app/icon.png                    32x32    transparent  (Next file convention)
+ *   app/favicon.ico                 16+32    transparent  (/favicon.ico)
+ *   app/apple-icon.png              180x180  white ground (Next file convention)
+ *   public/favicon-16x16.png        16x16    transparent  (metadata.icons)
+ *   public/favicon-32x32.png        32x32    transparent
+ *   public/apple-touch-icon.png     180x180  white ground (iOS flattens alpha)
+ *   public/icons/icon-192.png       192x192  white ground, purpose "any"
+ *   public/icons/icon-512.png       512x512  white ground, purpose "any"
+ *   public/icons/maskable-192.png   192x192  white ground, purpose "maskable"
+ *   public/icons/maskable-512.png   512x512  white ground, purpose "maskable"
+ *   ../../.github/assets/logo.png   160x160  transparent  (README header)
  *
  * Run with:  pnpm pwa:icons   (from apps/web)
  *
- * The "L" path is centred within the 32x32 view-box, so the maskable variant —
- * a full brand-blue square plus the L — keeps the mark well inside the inner
- * 80% safe zone that Android masks clip to.
+ * Android masks clip a maskable icon to its inner 80%, so the mark is drawn at
+ * 58% of the canvas there — well inside the safe zone whatever shape the
+ * launcher applies. The other grounded sizes give it 72%, and the bare favicons
+ * let it run to 92% so it still reads at 16px.
  */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import sharp from 'sharp';
 
-const BRAND = '#1f54dd';
-const L_PATH = 'M10 7V25H22V21H14V7H10Z';
+/** Ground for the icons that cannot be transparent (iOS, Android maskable). */
+const GROUND = '#FFFFFF';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const publicDir = path.resolve(scriptDir, '..', 'public');
+const webDir = path.resolve(scriptDir, '..');
+const publicDir = path.join(webDir, 'public');
+const appDir = path.join(webDir, 'app');
 const iconsDir = path.join(publicDir, 'icons');
+const githubAssetsDir = path.resolve(webDir, '..', '..', '.github', 'assets');
 
-/** Brand circle + L, transparent corners — used for purpose "any". */
-const anySvg = `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="16" fill="${BRAND}"/><path d="${L_PATH}" fill="white"/></svg>`;
-
-/** Full-bleed brand square + centred L — used for purpose "maskable" and iOS. */
-const fullBleedSvg = `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" fill="${BRAND}"/><path d="${L_PATH}" fill="white"/></svg>`;
-
-async function renderPng(
-  svg: string,
-  size: number,
-  { opaque = false }: { opaque?: boolean } = {},
-): Promise<Buffer> {
-  const pipeline = sharp(Buffer.from(svg), { density: 384 }).resize(size, size);
-  if (opaque) pipeline.flatten({ background: BRAND });
-  return pipeline.png().toBuffer();
+/** The mark, straight out of favicon.svg: its view-box and everything inside it. */
+async function readMark(): Promise<{ viewBox: string; body: string }> {
+  const svg = await readFile(path.join(publicDir, 'favicon.svg'), 'utf8');
+  const viewBox = /viewBox="([^"]+)"/.exec(svg)?.[1];
+  const body = /<svg[^>]*>([\s\S]*)<\/svg>/.exec(svg)?.[1];
+  if (!viewBox || !body) throw new Error('public/favicon.svg: no viewBox or no body to read.');
+  return { viewBox, body: body.trim() };
 }
 
+type Variant = { ground?: string; coverage: number };
+
+/** Composes the mark at `size` px, centred, optionally on a solid ground. */
+function compose(mark: { viewBox: string; body: string }, size: number, variant: Variant): string {
+  const inner = Math.round(size * variant.coverage);
+  const offset = (size - inner) / 2;
+  const ground = variant.ground
+    ? `<rect width="${size}" height="${size}" fill="${variant.ground}"/>`
+    : '';
+  return [
+    `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"`,
+    ` xmlns="http://www.w3.org/2000/svg">${ground}`,
+    `<svg x="${offset}" y="${offset}" width="${inner}" height="${inner}"`,
+    ` viewBox="${mark.viewBox}">${mark.body}</svg></svg>`,
+  ].join('');
+}
+
+async function renderPng(svg: string, size: number): Promise<Buffer> {
+  return sharp(Buffer.from(svg)).resize(size, size).png({ compressionLevel: 9 }).toBuffer();
+}
+
+/**
+ * Packs PNGs into an .ico. Every browser that still asks for /favicon.ico reads
+ * PNG-in-ICO, and sharp has no .ico encoder of its own.
+ */
+function packIco(images: Array<{ size: number; png: Buffer }>): Buffer {
+  const header = Buffer.alloc(6);
+  header.writeUInt16LE(0, 0); // reserved
+  header.writeUInt16LE(1, 2); // 1 = icon
+  header.writeUInt16LE(images.length, 4);
+
+  let offset = 6 + images.length * 16;
+  const entries: Buffer[] = [];
+  for (const { size, png } of images) {
+    const entry = Buffer.alloc(16);
+    entry.writeUInt8(size >= 256 ? 0 : size, 0);
+    entry.writeUInt8(size >= 256 ? 0 : size, 1);
+    entry.writeUInt8(0, 2); // palette
+    entry.writeUInt8(0, 3); // reserved
+    entry.writeUInt16LE(1, 4); // colour planes
+    entry.writeUInt16LE(32, 6); // bits per pixel
+    entry.writeUInt32LE(png.length, 8);
+    entry.writeUInt32LE(offset, 12);
+    entries.push(entry);
+    offset += png.length;
+  }
+
+  return Buffer.concat([header, ...entries, ...images.map((image) => image.png)]);
+}
+
+const BARE: Variant = { coverage: 0.92 };
+const GROUNDED: Variant = { ground: GROUND, coverage: 0.72 };
+const MASKABLE: Variant = { ground: GROUND, coverage: 0.58 };
+
 async function main() {
+  const mark = await readMark();
   await mkdir(iconsDir, { recursive: true });
+  await mkdir(githubAssetsDir, { recursive: true });
+
+  const png = (size: number, variant: Variant) => renderPng(compose(mark, size, variant), size);
+
+  const favicon16 = await png(16, BARE);
+  const favicon32 = await png(32, BARE);
+  const apple = await png(180, GROUNDED);
 
   const outputs: Array<[string, Buffer]> = [
-    [path.join(iconsDir, 'icon-192.png'), await renderPng(anySvg, 192)],
-    [path.join(iconsDir, 'icon-512.png'), await renderPng(anySvg, 512)],
-    [path.join(iconsDir, 'maskable-192.png'), await renderPng(fullBleedSvg, 192)],
-    [path.join(iconsDir, 'maskable-512.png'), await renderPng(fullBleedSvg, 512)],
-    [
-      path.join(publicDir, 'apple-touch-icon.png'),
-      await renderPng(fullBleedSvg, 180, { opaque: true }),
-    ],
+    [path.join(appDir, 'icon.png'), favicon32],
+    [path.join(appDir, 'favicon.ico'), packIco([
+      { size: 16, png: favicon16 },
+      { size: 32, png: favicon32 },
+    ])],
+    [path.join(appDir, 'apple-icon.png'), apple],
+    [path.join(publicDir, 'favicon-16x16.png'), favicon16],
+    [path.join(publicDir, 'favicon-32x32.png'), favicon32],
+    [path.join(publicDir, 'apple-touch-icon.png'), apple],
+    [path.join(iconsDir, 'icon-192.png'), await png(192, GROUNDED)],
+    [path.join(iconsDir, 'icon-512.png'), await png(512, GROUNDED)],
+    [path.join(iconsDir, 'maskable-192.png'), await png(192, MASKABLE)],
+    [path.join(iconsDir, 'maskable-512.png'), await png(512, MASKABLE)],
+    [path.join(githubAssetsDir, 'logo.png'), await png(160, BARE)],
   ];
 
   for (const [file, buffer] of outputs) {
     await writeFile(file, buffer);
-    console.log(`✓ ${path.relative(publicDir, file)} (${buffer.length} bytes)`);
+    console.log(`✓ ${path.relative(webDir, file)} (${buffer.length} bytes)`);
   }
 
-  console.log(`\nDone — ${outputs.length} icons written to public/.`);
+  console.log(`\nDone — ${outputs.length} icons written from public/favicon.svg.`);
 }
 
 main().catch((error) => {
