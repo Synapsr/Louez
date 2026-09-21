@@ -2,7 +2,7 @@
 
 import { db } from '@louez/db'
 import { stores } from '@louez/db'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { inspectionSettingsSchema } from '@louez/validations'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -23,6 +23,10 @@ export async function updateInspectionSettings(
 
   if (!store) {
     return { error: 'errors.unauthorized' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
   }
 
   const validated = inspectionSettingsSchema.safeParse(data)

@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 
 import { db } from '@louez/db'
 import { stores } from '@louez/db'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { getStorePlan } from '@/lib/plan-limits'
 import { searchPlaces, getPlaceDetails } from '@/lib/google-places'
 import {
@@ -18,6 +18,10 @@ export async function updateReviewBoosterSettings(data: ReviewBoosterSettingsInp
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'errors.unauthorized' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
   }
 
   // Check plan access
@@ -91,6 +95,10 @@ export async function updateReviewBoosterTemplate(template: {
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'errors.unauthorized' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
   }
 
   // Check plan access

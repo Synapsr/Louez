@@ -2,7 +2,7 @@
 
 import { db, stores } from "@louez/db";
 import { getGoogleCalendarIntegrationForStore } from "@/lib/integrations/calendar/state";
-import { getCurrentStore } from "@/lib/store-context";
+import { getCurrentStore, hasPermission } from "@/lib/store-context";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -11,6 +11,10 @@ export async function generateIcsToken() {
 
   if (!store) {
     return { error: "errors.unauthorized" };
+  }
+
+  if (!hasPermission(store.role, "manage_settings")) {
+    return { error: "errors.permissionDenied" };
   }
 
   // Generate a new 32-character token

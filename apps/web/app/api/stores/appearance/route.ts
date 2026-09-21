@@ -1,13 +1,17 @@
 import { updateStoreAppearance } from '@louez/api/services'
 import { updateStoreAppearanceInputSchema } from '@louez/validations'
 import { NextResponse } from 'next/server'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 
 export async function PATCH(request: Request) {
   try {
     const store = await getCurrentStore()
     if (!store) {
       return NextResponse.json({ error: 'errors.unauthenticated' }, { status: 401 })
+    }
+
+    if (!hasPermission(store.role, 'manage_settings')) {
+      return NextResponse.json({ error: 'errors.permissionDenied' }, { status: 403 })
     }
 
     const body = await request.json()

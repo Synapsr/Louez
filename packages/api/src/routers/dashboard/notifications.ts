@@ -12,7 +12,7 @@ import {
 } from "@louez/validations";
 import { z } from "zod";
 
-import { dashboardProcedure } from "../../procedures";
+import { dashboardProcedure, requirePermission } from "../../procedures";
 import {
   ApiServiceError,
   getCustomerNotificationTemplate,
@@ -85,7 +85,7 @@ const list = dashboardProcedure.handler(async ({ context }) => {
   }
 });
 
-const updateSinglePreference = dashboardProcedure
+const updateSinglePreference = requirePermission("manage_settings")
   .input(updateSinglePreferenceSchema)
   .output(successOutputSchema)
   .handler(async ({ context, input }) => {
@@ -99,7 +99,7 @@ const updateSinglePreference = dashboardProcedure
     }
   });
 
-const updateCustomerPreference = dashboardProcedure
+const updateCustomerPreference = requirePermission("manage_settings")
   .input(updateCustomerPreferenceInputSchema)
   .output(successOutputSchema)
   .handler(async ({ context, input }) => {
@@ -127,7 +127,7 @@ const getCustomerTemplate = dashboardProcedure
     }
   });
 
-const updateCustomerTemplate = dashboardProcedure
+const updateCustomerTemplate = requirePermission("manage_settings")
   .input(updateCustomerTemplateInputSchema)
   .output(successOutputSchema)
   .handler(async ({ context, input }) => {
@@ -141,7 +141,7 @@ const updateCustomerTemplate = dashboardProcedure
     }
   });
 
-const updateReminderSettings = dashboardProcedure
+const updateReminderSettings = requirePermission("manage_settings")
   .input(updateReminderSettingsInputSchema)
   .output(successOutputSchema)
   .handler(async ({ context, input }) => {
@@ -155,7 +155,7 @@ const updateReminderSettings = dashboardProcedure
     }
   });
 
-const updateAdminReminderSettings = dashboardProcedure
+const updateAdminReminderSettings = requirePermission("manage_settings")
   .input(updateAdminReminderSettingsInputSchema)
   .output(successOutputSchema)
   .handler(async ({ context, input }) => {

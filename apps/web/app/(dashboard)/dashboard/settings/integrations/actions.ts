@@ -1849,6 +1849,10 @@ export async function upsertTulipProductMappingAction(
 
     const { store } = storeResult;
 
+    if (!userCanManageIntegrations(store)) {
+      return { error: 'errors.permissionDenied' };
+    }
+
     const product = await db.query.products.findFirst({
       where: and(
         eq(products.id, validated.productId),
@@ -2001,6 +2005,11 @@ export async function pushTulipProductUpdateAction(
     }
 
     const { store } = storeResult;
+
+    if (!userCanManageIntegrations(store)) {
+      return { error: 'errors.permissionDenied' };
+    }
+
     const tulipIntegration = await resolveTulipIntegrationForStore(store.id);
     const apiKey = getTulipApiKey();
     if (!apiKey) {
@@ -2235,6 +2244,11 @@ export async function createTulipProductAction(
     }
 
     const { store } = storeResult;
+
+    if (!userCanManageIntegrations(store)) {
+      return { error: 'errors.permissionDenied' };
+    }
+
     const tulipSettings = (await resolveTulipIntegrationForStore(store.id))
       .settings;
     console.info('[tulip][create-product] start', {

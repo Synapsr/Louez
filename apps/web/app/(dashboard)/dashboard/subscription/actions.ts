@@ -1,6 +1,6 @@
 'use server'
 
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import {
   createSubscriptionCheckoutSession,
   createCustomerPortalSession,
@@ -25,6 +25,10 @@ export async function createCheckoutSession({
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'not_authenticated', url: null }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied', url: null }
   }
 
   try {
@@ -52,6 +56,10 @@ export async function openCustomerPortal() {
   const store = await getCurrentStore()
   if (!store) throw new Error('Unauthorized')
 
+  if (!hasPermission(store.role, 'manage_settings')) {
+    throw new Error('errors.permissionDenied')
+  }
+
   return createCustomerPortalSession(store.id)
 }
 
@@ -65,6 +73,10 @@ export async function openBillingPortal() {
   const store = await getCurrentStore()
   if (!store) throw new Error('Unauthorized')
 
+  if (!hasPermission(store.role, 'manage_settings')) {
+    throw new Error('errors.permissionDenied')
+  }
+
   await getOrCreateStripeCustomer(store.id)
   return createCustomerPortalSession(store.id)
 }
@@ -72,6 +84,10 @@ export async function openBillingPortal() {
 export async function cancelSubscription() {
   const store = await getCurrentStore()
   if (!store) throw new Error('Unauthorized')
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    throw new Error('errors.permissionDenied')
+  }
 
   const result = await cancelSub(store.id)
   revalidatePath('/dashboard/settings/subscription')
@@ -87,6 +103,10 @@ export async function switchToPayAsYouGo() {
   const store = await getCurrentStore()
   if (!store) return { error: 'errors.unauthorized' as const }
 
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' as const }
+  }
+
   try {
     const result = await switchToPayg(store.id)
     revalidatePath('/dashboard/settings/subscription')
@@ -100,6 +120,10 @@ export async function switchToPayAsYouGo() {
 export async function reactivateSubscription() {
   const store = await getCurrentStore()
   if (!store) throw new Error('Unauthorized')
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    throw new Error('errors.permissionDenied')
+  }
 
   const result = await reactivateSub(store.id)
   revalidatePath('/dashboard/settings/subscription')

@@ -7,7 +7,7 @@ import { nanoid } from 'nanoid'
 
 import { db } from '@louez/db'
 import { storeLocations, stores } from '@louez/db'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import type { DeliverySettings } from '@louez/types'
 
 const DELIVERY_MODES = ['optional', 'required', 'included'] as const
@@ -29,6 +29,10 @@ export async function updateDeliverySettings(data: DeliverySettingsInput) {
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'errors.unauthorized' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
   }
 
   const validated = deliverySettingsSchema.safeParse(data)
@@ -93,6 +97,10 @@ export async function upsertStoreLocation(data: z.infer<typeof locationSchema>) 
     return { error: 'errors.unauthorized' }
   }
 
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
+  }
+
   const validated = locationSchema.safeParse(data)
   if (!validated.success) {
     return { error: 'errors.invalidData' }
@@ -133,6 +141,10 @@ export async function setStoreLocationActive(id: string, isActive: boolean) {
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'errors.unauthorized' }
+  }
+
+  if (!hasPermission(store.role, 'manage_settings')) {
+    return { error: 'errors.permissionDenied' }
   }
 
   await db

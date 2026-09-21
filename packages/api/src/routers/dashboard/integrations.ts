@@ -127,7 +127,7 @@ const getDetail = dashboardProcedure
     }
   });
 
-const setEnabled = requirePermission('write')
+const setEnabled = requirePermission('manage_settings')
   .input(dashboardIntegrationsSetEnabledInputSchema)
   .handler(async ({ context, input }) => {
     try {
@@ -199,7 +199,7 @@ const getTulipProductState = dashboardProcedure
     }
   });
 
-const connectTulip = requirePermission('write')
+const connectTulip = requirePermission('manage_settings')
   .input(dashboardIntegrationsConnectTulipInputSchema)
   .handler(async ({ context, input }) => {
     try {
@@ -223,7 +223,7 @@ const connectTulip = requirePermission('write')
     }
   });
 
-const updateTulipConfiguration = requirePermission('write')
+const updateTulipConfiguration = requirePermission('manage_settings')
   .input(dashboardIntegrationsUpdateTulipConfigurationInputSchema)
   .handler(async ({ context, input }) => {
     try {
@@ -247,7 +247,7 @@ const updateTulipConfiguration = requirePermission('write')
     }
   });
 
-const upsertTulipProductMapping = requirePermission('write')
+const upsertTulipProductMapping = requirePermission('manage_settings')
   .input(dashboardIntegrationsUpsertTulipProductMappingInputSchema)
   .handler(async ({ context, input }) => {
     try {
@@ -271,7 +271,7 @@ const upsertTulipProductMapping = requirePermission('write')
     }
   });
 
-const pushTulipProductUpdate = requirePermission('write')
+const pushTulipProductUpdate = requirePermission('manage_settings')
   .input(dashboardIntegrationsPushTulipProductUpdateInputSchema)
   .handler(async ({ context, input }) => {
     try {
@@ -304,7 +304,7 @@ const pushTulipProductUpdate = requirePermission('write')
     }
   });
 
-const createTulipProduct = requirePermission('write')
+const createTulipProduct = requirePermission('manage_settings')
   .input(dashboardIntegrationsCreateTulipProductInputSchema)
   .handler(async ({ context, input }) => {
     try {
@@ -337,7 +337,7 @@ const createTulipProduct = requirePermission('write')
     }
   });
 
-const disconnectTulip = requirePermission('write')
+const disconnectTulip = requirePermission('manage_settings')
   .input(dashboardIntegrationsDisconnectTulipInputSchema)
   .handler(async ({ context }) => {
     try {
@@ -385,7 +385,7 @@ const getCalendarState = dashboardProcedure
     }
   });
 
-const updateGoogleCalendarSettings = requirePermission('write')
+const updateGoogleCalendarSettings = requirePermission('manage_settings')
   .input(dashboardIntegrationsUpdateGoogleCalendarSettingsInputSchema)
   .handler(async ({ context, input }) => {
     try {
@@ -410,7 +410,7 @@ const updateGoogleCalendarSettings = requirePermission('write')
     }
   });
 
-const resyncGoogleCalendar = requirePermission('write')
+const resyncGoogleCalendar = requirePermission('manage_settings')
   .input(dashboardIntegrationsResyncGoogleCalendarInputSchema)
   .handler(async ({ context }) => {
     try {
@@ -434,7 +434,7 @@ const resyncGoogleCalendar = requirePermission('write')
     }
   });
 
-const disconnectGoogleCalendar = requirePermission('write')
+const disconnectGoogleCalendar = requirePermission('manage_settings')
   .input(dashboardIntegrationsDisconnectGoogleCalendarInputSchema)
   .handler(async ({ context, input }) => {
     try {

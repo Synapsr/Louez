@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@louez/db'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, hasPermission } from '@/lib/store-context'
 import { stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -13,6 +13,10 @@ export async function updateBusinessHours(data: BusinessHoursInput) {
 
     if (!store) {
       return { error: 'errors.storeNotFound' }
+    }
+
+    if (!hasPermission(store.role, 'manage_settings')) {
+      return { error: 'errors.permissionDenied' }
     }
 
     // Validate input
