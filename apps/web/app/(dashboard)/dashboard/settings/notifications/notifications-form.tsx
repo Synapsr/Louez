@@ -1,5 +1,7 @@
 "use client";
 
+import { DisabledControlsProvider } from "@louez/ui";
+
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -407,7 +409,9 @@ export const NotificationsForm = ({
           </div>
 
           {/* Push notifications for this device */}
-          <PushManageCard />
+          <DisabledControlsProvider disabled={false}>
+            <PushManageCard />
+          </DisabledControlsProvider>
 
           {/* Phone & Discord Cards - Side by side on large screens */}
           <div className="grid gap-6 lg:grid-cols-2">

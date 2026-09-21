@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "./disabled-controls-provider";
+
 import { Children, Fragment, type ReactElement, type ReactNode, isValidElement } from "react";
 
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
@@ -152,6 +154,7 @@ function Button({
   render,
   ...props
 }: ButtonProps) {
+  const controlsDisabled = useControlsDisabled();
   const shouldReduceMotion = useReducedMotion();
   const usesNativeButton = nativeButton ?? render === undefined;
 
@@ -198,7 +201,7 @@ function Button({
       data-icon-start={startSlot ? true : undefined}
       data-icon-end={endSlot ? true : undefined}
       aria-busy={isPending || undefined}
-      disabled={disabled || (isPending && pendingDisables)}
+      disabled={controlsDisabled || disabled || (isPending && pendingDisables)}
       className={cn(buttonVariants({ variant, size, className }))}
       nativeButton={usesNativeButton}
       render={render}

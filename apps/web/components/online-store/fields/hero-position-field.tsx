@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "@louez/ui";
+
 import { useTranslations } from "next-intl";
 
 import { cn } from "@louez/utils";
@@ -42,6 +44,7 @@ export const HeroPositionField = ({
   layout,
   onChange,
 }: HeroPositionFieldProps) => {
+  const controlsDisabled = useControlsDisabled();
   const t = useTranslations("dashboard.settings.appearanceSettings.heroAlign");
 
   return (
@@ -62,7 +65,7 @@ export const HeroPositionField = ({
                 role="radio"
                 aria-checked={selected}
                 aria-label={t(LABEL_KEYS[row][column])}
-                disabled={disabled}
+                disabled={controlsDisabled || disabled}
                 onClick={() => onChange({ align: column, verticalAlign: row })}
                 className={cn(
                   "group flex size-7 items-center justify-center rounded-md transition-colors hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-30",

@@ -38,8 +38,7 @@ type AvailabilityStatus = "idle" | "checking" | "available" | "unavailable" | "i
 
 export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: SlugChangeModalProps) {
   const router = useRouter();
-  const t = useTranslations("dashboard.settings.slugChange");
-  const tCommon = useTranslations("common");
+  const t = useTranslations();
   const [isPending, startTransition] = useTransition();
 
   const [slug, setSlug] = useState(currentSlug);
@@ -125,7 +124,7 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
       const result = await updateStoreSlug(slug);
 
       if (result.error) {
-        setError(result.error);
+        setError(t.has(result.error) ? t(result.error) : t("errors.generic"));
         setShowConfirmation(false);
         return;
       }
@@ -155,15 +154,15 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
   const getStatusMessage = () => {
     switch (status) {
       case "checking":
-        return t("checking");
+        return t("dashboard.settings.slugChange.checking");
       case "available":
-        return t("available");
+        return t("dashboard.settings.slugChange.available");
       case "unavailable":
-        return t("unavailable");
+        return t("dashboard.settings.slugChange.unavailable");
       case "invalid":
-        return t("invalid");
+        return t("dashboard.settings.slugChange.invalid");
       case "same":
-        return t("same");
+        return t("dashboard.settings.slugChange.same");
       default:
         return null;
     }
@@ -177,23 +176,23 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <LinkIcon className="h-5 w-5" />
-            {t("title")}
+            {t("dashboard.settings.slugChange.title")}
           </DialogTitle>
-          <DialogDescription>{t("description")}</DialogDescription>
+          <DialogDescription>{t("dashboard.settings.slugChange.description")}</DialogDescription>
         </DialogHeader>
 
         <DialogPanel>
           {!showConfirmation ? (
             <>
               <div className="space-y-2">
-                <Label htmlFor="slug">{t("label")}</Label>
+                <Label htmlFor="slug">{t("dashboard.settings.slugChange.label")}</Label>
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
                     <Input
                       id="slug"
                       value={slug}
                       onChange={(e) => handleSlugChange(e.target.value)}
-                      placeholder={t("placeholder")}
+                      placeholder={t("dashboard.settings.slugChange.placeholder")}
                       className="pr-10"
                       autoComplete="off"
                     />
@@ -221,7 +220,9 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
               </div>
 
               <div className="rounded-lg border border-muted bg-muted/30 p-3">
-                <p className="text-sm text-muted-foreground">{t("formatHelp")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("dashboard.settings.slugChange.formatHelp")}
+                </p>
               </div>
 
               {error && (
@@ -235,24 +236,28 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
               <Alert variant="warning">
                 <WarningIcon className="h-4 w-4" />
                 <AlertDescription className="ml-2">
-                  <p className="font-medium">{t("warning.title")}</p>
+                  <p className="font-medium">{t("dashboard.settings.slugChange.warning.title")}</p>
                   <ul className="mt-2 list-disc pl-4 space-y-1 text-sm">
-                    <li>{t("warning.point1")}</li>
-                    <li>{t("warning.point2")}</li>
-                    <li>{t("warning.point3")}</li>
+                    <li>{t("dashboard.settings.slugChange.warning.point1")}</li>
+                    <li>{t("dashboard.settings.slugChange.warning.point2")}</li>
+                    <li>{t("dashboard.settings.slugChange.warning.point3")}</li>
                   </ul>
                 </AlertDescription>
               </Alert>
 
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{t("currentUrl")}</span>
+                  <span className="text-muted-foreground">
+                    {t("dashboard.settings.slugChange.currentUrl")}
+                  </span>
                   <span className="font-mono line-through text-muted-foreground">
                     {currentSlug}.{domain}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{t("newUrl")}</span>
+                  <span className="text-muted-foreground">
+                    {t("dashboard.settings.slugChange.newUrl")}
+                  </span>
                   <span className="font-mono font-medium text-foreground">
                     {slug}.{domain}
                   </span>
@@ -266,10 +271,10 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
           {!showConfirmation ? (
             <>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                {tCommon("cancel")}
+                {t("common.cancel")}
               </Button>
               <Button type="button" onClick={handleSubmit} disabled={!canSubmit}>
-                {t("continue")}
+                {t("dashboard.settings.slugChange.continue")}
               </Button>
             </>
           ) : (
@@ -280,7 +285,7 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
                 onClick={() => setShowConfirmation(false)}
                 disabled={isPending}
               >
-                {tCommon("back")}
+                {t("common.back")}
               </Button>
               <Button
                 type="button"
@@ -289,7 +294,7 @@ export function SlugChangeModal({ open, onOpenChange, currentSlug, domain }: Slu
                 disabled={isPending}
                 isPending={isPending}
               >
-                {t("confirmChange")}
+                {t("dashboard.settings.slugChange.confirmChange")}
               </Button>
             </>
           )}

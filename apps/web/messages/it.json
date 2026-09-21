@@ -3367,6 +3367,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Sola lettura: solo il proprietario e gli amministratori possono modificare le impostazioni di questo negozio.",
       "title": "Impostazioni",
       "store": "Negozio",
       "company": "Azienda",

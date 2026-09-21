@@ -1,5 +1,7 @@
 'use client';
 
+import { useControlsDisabled } from "./disabled-controls-provider";
+
 import type * as React from 'react';
 
 import { Input as InputPrimitive } from '@base-ui/react/input';
@@ -23,6 +25,7 @@ function Input({
   style,
   ...props
 }: InputProps) {
+  const controlsDisabled = useControlsDisabled();
   const inputClassName = cn(
     'placeholder:text-muted-foreground/72 h-8.5 w-full min-w-0 rounded-[inherit] px-[calc(--spacing(3)-1px)] leading-8.5 outline-none [transition:background-color_5000000s_ease-in-out_0s]',
     size === 'sm' &&
@@ -53,6 +56,7 @@ function Input({
           size={typeof size === 'number' ? size : undefined}
           style={typeof style === 'function' ? undefined : style}
           {...props}
+          disabled={controlsDisabled || props.disabled}
         />
       ) : (
         <InputPrimitive
@@ -61,6 +65,7 @@ function Input({
           size={typeof size === 'number' ? size : undefined}
           style={style}
           {...props}
+          disabled={controlsDisabled || props.disabled}
         />
       )}
     </span>

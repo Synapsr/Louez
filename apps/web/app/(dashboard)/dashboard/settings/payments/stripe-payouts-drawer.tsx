@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 
 import {
   Button,
+  DisabledControlsProvider,
   Drawer,
   DrawerDescription,
   DrawerHeader,
@@ -70,47 +71,49 @@ export const StripePayoutsDrawer = ({ initialPage }: StripePayoutsDrawerProps) =
   ]);
 
   return (
-    <Drawer position={isMobile ? "bottom" : "right"} open={open} onOpenChange={setOpen}>
-      <DrawerTrigger render={<Button size="sm" variant="ghost" />}>
-        {t("viewMore")}
-        <ArrowRightIcon />
-      </DrawerTrigger>
+    <DisabledControlsProvider disabled={false}>
+      <Drawer position={isMobile ? "bottom" : "right"} open={open} onOpenChange={setOpen}>
+        <DrawerTrigger render={<Button size="sm" variant="ghost" />}>
+          {t("viewMore")}
+          <ArrowRightIcon />
+        </DrawerTrigger>
 
-      <DrawerPopup
-        className={isMobile ? "max-h-[85dvh]" : "max-w-xl"}
-        showCloseButton
-        variant={isMobile ? "default" : "inset"}
-      >
-        <DrawerHeader>
-          <DrawerTitle>{t("drawerTitle")}</DrawerTitle>
-          <DrawerDescription>{t("drawerDescription")}</DrawerDescription>
-        </DrawerHeader>
-        <DrawerPanel>
-          <div className="space-y-3">
-            <StripePayoutList payouts={payouts} />
+        <DrawerPopup
+          className={isMobile ? "max-h-[85dvh]" : "max-w-xl"}
+          showCloseButton
+          variant={isMobile ? "default" : "inset"}
+        >
+          <DrawerHeader>
+            <DrawerTitle>{t("drawerTitle")}</DrawerTitle>
+            <DrawerDescription>{t("drawerDescription")}</DrawerDescription>
+          </DrawerHeader>
+          <DrawerPanel>
+            <div className="space-y-3">
+              <StripePayoutList payouts={payouts} />
 
-            {query.hasNextPage ? (
-              <div ref={loadMoreRef} aria-live="polite" className="flex min-h-10 justify-center">
-                {query.isFetchNextPageError ? (
-                  <Button onClick={() => void query.fetchNextPage()} size="sm" variant="ghost">
-                    <RepeatSolidIcon />
-                    {t("retry")}
-                  </Button>
-                ) : query.isFetchingNextPage ? (
-                  <span
-                    aria-label={t("loadingMore")}
-                    className="text-muted-foreground inline-flex items-center gap-2 text-sm"
-                    role="status"
-                  >
-                    <SpinnerSolidIcon aria-hidden="true" className="size-4 animate-spin" />
-                    {t("loadingMore")}
-                  </span>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </DrawerPanel>
-      </DrawerPopup>
-    </Drawer>
+              {query.hasNextPage ? (
+                <div ref={loadMoreRef} aria-live="polite" className="flex min-h-10 justify-center">
+                  {query.isFetchNextPageError ? (
+                    <Button onClick={() => void query.fetchNextPage()} size="sm" variant="ghost">
+                      <RepeatSolidIcon />
+                      {t("retry")}
+                    </Button>
+                  ) : query.isFetchingNextPage ? (
+                    <span
+                      aria-label={t("loadingMore")}
+                      className="text-muted-foreground inline-flex items-center gap-2 text-sm"
+                      role="status"
+                    >
+                      <SpinnerSolidIcon aria-hidden="true" className="size-4 animate-spin" />
+                      {t("loadingMore")}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </DrawerPanel>
+        </DrawerPopup>
+      </Drawer>
+    </DisabledControlsProvider>
   );
 };

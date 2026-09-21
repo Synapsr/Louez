@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { isAIChatConfigured } from "@/lib/ai/provider";
 import { getStorePlan } from "@/lib/plan-limits";
 import { getCurrentStore } from "@/lib/store-context";
+import { StoreSettingsAccess } from "@/components/dashboard/store-settings-access";
 
 import { AiAdvisorForm } from "../ai-advisor-form";
 import { AiAssistantSettingsChrome } from "../settings-chrome";
@@ -41,11 +42,13 @@ export default async function AiAdvisorPage({
       title={t("advisor.title")}
       description={t("advisor.description")}
     >
-      <AiAdvisorForm
-        store={{ id: store.id, aiAdvisorSettings: store.aiAdvisorSettings }}
-        hasFeatureAccess={plan.features.aiAdvisor}
-        aiConfigured={isAIChatConfigured()}
-      />
+      <StoreSettingsAccess>
+        <AiAdvisorForm
+          store={{ id: store.id, aiAdvisorSettings: store.aiAdvisorSettings }}
+          hasFeatureAccess={plan.features.aiAdvisor}
+          aiConfigured={isAIChatConfigured()}
+        />
+      </StoreSettingsAccess>
     </AiAssistantSettingsChrome>
   );
 }

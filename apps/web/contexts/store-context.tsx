@@ -1,12 +1,14 @@
 "use client";
 
 import { createContext, useCallback, useContext, type ReactNode } from "react";
+import { hasPermission, type MemberRole, type Permission } from "@louez/utils";
 
 import { setStorefrontSlug } from "@/lib/orpc/client";
 import { isDiscountDisplayable } from "@/lib/utils/util.discount-visibility";
 import type { RentalPeriodRules } from "@/lib/utils/util.rental-period";
 
 interface StoreContextValue {
+  role?: MemberRole;
   storeId: string;
   currency: string;
   storeSlug: string;
@@ -27,6 +29,7 @@ interface StoreContextValue {
 const StoreContext = createContext<StoreContextValue | undefined>(undefined);
 
 interface StoreProviderProps {
+  role?: MemberRole;
   children: ReactNode;
   storeId: string;
   currency: string;
@@ -39,6 +42,7 @@ interface StoreProviderProps {
 }
 
 export const StoreProvider = ({
+  role,
   children,
   storeId,
   currency,
@@ -56,6 +60,7 @@ export const StoreProvider = ({
   return (
     <StoreContext.Provider
       value={{
+        role,
         storeId,
         currency,
         storeSlug,
@@ -77,6 +82,12 @@ export const useStore = (): StoreContextValue => {
     throw new Error("useStore must be used within a StoreProvider");
   }
   return context;
+};
+
+/** Dashboard permissions come from the server-resolved active membership. */
+export const useStoreHasPermission = (permission: Permission): boolean => {
+  const context = useContext(StoreContext);
+  return context?.role ? hasPermission(context.role, permission) : false;
 };
 
 // Hook pour obtenir la devise avec fallback

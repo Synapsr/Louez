@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "@louez/ui";
+
 import { useState } from "react";
 
 import { useTranslations } from "next-intl";
@@ -30,6 +32,7 @@ const toHexDigits = (color: string): string => color.replace("#", "").toUpperCas
 
 /** The hex value on the label's line (with the native picker), eight presets under it. */
 export const PrimaryColorField = ({ value, onChange }: PrimaryColorFieldProps) => {
+  const controlsDisabled = useControlsDisabled();
   const t = useTranslations("dashboard.settings.appearanceSettings");
   const [hexInput, setHexInput] = useState(() => toHexDigits(value));
   const [lastValue, setLastValue] = useState(value);
@@ -55,6 +58,7 @@ export const PrimaryColorField = ({ value, onChange }: PrimaryColorFieldProps) =
         </Label>
         <div className="flex h-8 w-28 shrink-0 items-center gap-1.5 rounded-lg border bg-background pr-2 pl-1">
           <input
+            disabled={controlsDisabled}
             type="color"
             value={value}
             onChange={(event) => onChange(event.target.value)}
@@ -65,6 +69,7 @@ export const PrimaryColorField = ({ value, onChange }: PrimaryColorFieldProps) =
             #
           </span>
           <input
+            disabled={controlsDisabled}
             id="primary-color-hex"
             type="text"
             value={hexInput}
@@ -85,6 +90,7 @@ export const PrimaryColorField = ({ value, onChange }: PrimaryColorFieldProps) =
           const selected = value === color.value;
           return (
             <button
+              disabled={controlsDisabled}
               key={color.value}
               type="button"
               onClick={() => onChange(color.value)}

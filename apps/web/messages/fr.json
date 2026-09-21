@@ -3367,6 +3367,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Lecture seule : seuls le propriétaire et les administrateurs peuvent modifier les réglages de cette boutique.",
       "title": "Paramètres",
       "store": "Boutique",
       "company": "Entreprise",

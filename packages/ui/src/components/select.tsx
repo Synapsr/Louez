@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "./disabled-controls-provider";
+
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { ChevronDownIcon, ChevronUpIcon, ChevronsUpDownIcon } from "lucide-react";
 
@@ -15,6 +17,7 @@ function SelectTrigger({
 }: SelectPrimitive.Trigger.Props & {
   size?: "sm" | "default" | "lg";
 }) {
+  const controlsDisabled = useControlsDisabled();
   return (
     <SelectPrimitive.Trigger
       className={cn(
@@ -25,6 +28,7 @@ function SelectTrigger({
       )}
       data-slot="select-trigger"
       {...props}
+      disabled={controlsDisabled || props.disabled}
     >
       {children}
       <SelectPrimitive.Icon data-slot="select-icon">

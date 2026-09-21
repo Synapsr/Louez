@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "./disabled-controls-provider";
+
 import * as React from "react";
 
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
@@ -20,10 +22,11 @@ const ComboboxContext = React.createContext<{
 function Combobox<Value, Multiple extends boolean | undefined = false>(
   props: ComboboxPrimitive.Root.Props<Value, Multiple>,
 ) {
+  const controlsDisabled = useControlsDisabled();
   const chipsRef = React.useRef<Element | null>(null);
   return (
     <ComboboxContext.Provider value={{ chipsRef, multiple: !!props.multiple }}>
-      <ComboboxPrimitive.Root {...props} />
+      <ComboboxPrimitive.Root {...props} disabled={controlsDisabled || props.disabled} />
     </ComboboxContext.Provider>
   );
 }

@@ -3367,6 +3367,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Solo lectura: solo el propietario y los administradores pueden cambiar la configuración de esta tienda.",
       "title": "Configuracion",
       "store": "Tienda",
       "company": "Empresa",

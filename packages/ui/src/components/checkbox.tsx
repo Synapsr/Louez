@@ -1,10 +1,13 @@
 "use client";
 
+import { useControlsDisabled } from "./disabled-controls-provider";
+
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
 
 import { cn } from "@louez/utils";
 
 function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
+  const controlsDisabled = useControlsDisabled();
   return (
     <CheckboxPrimitive.Root
       className={cn(
@@ -13,6 +16,7 @@ function Checkbox({ className, ...props }: CheckboxPrimitive.Root.Props) {
       )}
       data-slot="checkbox"
       {...props}
+      disabled={controlsDisabled || props.disabled}
     >
       <CheckboxPrimitive.Indicator
         className="-inset-px absolute flex items-center justify-center rounded-[4px] text-primary-foreground data-unchecked:hidden data-checked:bg-primary data-indeterminate:text-foreground"

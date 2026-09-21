@@ -3367,6 +3367,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Tylko do odczytu: tylko właściciel i administratorzy mogą zmieniać ustawienia tego sklepu.",
       "title": "Ustawienia",
       "store": "Sklep",
       "company": "Firma",

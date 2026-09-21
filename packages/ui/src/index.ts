@@ -12,6 +12,7 @@ export * from './components/badge'
 export * from './components/button'
 export * from './components/animated-icon-swap'
 export * from './components/spinner'
+export * from './components/disabled-controls-provider'
 
 // Calendar
 export * from './components/calendar'

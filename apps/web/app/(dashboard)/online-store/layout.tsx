@@ -67,6 +67,7 @@ export default async function OnlineStoreLayout({ children }: { children: React.
     >
       <DashboardSaveShortcut />
       <StoreProvider
+        role={store.role}
         storeId={store.id}
         currency={settings?.currency || "EUR"}
         storeSlug={store.slug}

@@ -3367,6 +3367,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Read-only: only the owner and administrators can change this store’s settings.",
       "title": "Settings",
       "store": "Store",
       "company": "Company",

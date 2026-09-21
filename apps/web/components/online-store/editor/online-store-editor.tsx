@@ -12,6 +12,8 @@ import { Sheet, SheetHeader, SheetPopup, SheetTitle, toastManager } from "@louez
 import { cn } from "@louez/utils";
 
 import { orpc } from "@/lib/orpc/react";
+import { StoreSettingsAccess } from "@/components/dashboard/store-settings-access";
+import { useStoreHasPermission } from "@/contexts/store-context";
 
 import { OnlineStoreEditorProvider, useOnlineStoreForm } from "../online-store-editor-context";
 import { ONLINE_STORE_DEFAULT_SECTION, type OnlineStoreDevice } from "../online-store.constants";
@@ -54,6 +56,7 @@ interface OnlineStoreEditorProps {
  * the URL.
  */
 export const OnlineStoreEditor = ({ store, children }: OnlineStoreEditorProps) => {
+  const canManage = useStoreHasPermission("manage_settings");
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations("dashboard.onlineStore");
@@ -89,6 +92,7 @@ export const OnlineStoreEditor = ({ store, children }: OnlineStoreEditorProps) =
   const form = useOnlineStoreForm({
     defaultValues: savedValues,
     onSubmit: async ({ value }) => {
+      if (!canManage) return;
       try {
         await update.mutateAsync(value);
         toastManager.add({ title: t("saved"), type: "success" });
@@ -153,7 +157,9 @@ export const OnlineStoreEditor = ({ store, children }: OnlineStoreEditorProps) =
               style={{ "--panel-width": `${panel.width}px` } as CSSProperties}
               className="min-h-0 flex-1 overflow-y-auto lg:w-(--panel-width) lg:flex-none"
             >
-              <div className="mx-auto w-full max-w-2xl p-4 sm:p-6 lg:max-w-none">{children}</div>
+              <div className="mx-auto w-full max-w-2xl p-4 sm:p-6 lg:max-w-none">
+                <StoreSettingsAccess>{children}</StoreSettingsAccess>
+              </div>
             </div>
 
             <OnlineStoreResizeHandle panel={panel} className="hidden lg:block" />

@@ -3367,6 +3367,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Nur Lesezugriff: Nur der Inhaber und Administratoren können die Einstellungen dieses Shops ändern.",
       "title": "Einstellungen",
       "store": "Shop",
       "company": "Unternehmen",

@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "@louez/ui";
+
 import { useEffect, useRef, useState } from "react";
 
 import { useTranslations } from "next-intl";
@@ -23,7 +25,9 @@ type CompanySearchFieldProps = {
  * SIREN / SIRET / company-name lookup against the French public registry.
  * Selecting a result prefills the legal identity; every field stays editable.
  */
-export const CompanySearchField = ({ disabled = false, onSelect }: CompanySearchFieldProps) => {
+export const CompanySearchField = ({ disabled: disabledProp = false, onSelect }: CompanySearchFieldProps) => {
+  const controlsDisabled = useControlsDisabled();
+  const disabled = disabledProp || controlsDisabled;
   const t = useTranslations("dashboard.settings.invoicing.identity.search");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CompanySearchResult[]>([]);
@@ -89,7 +93,7 @@ export const CompanySearchField = ({ disabled = false, onSelect }: CompanySearch
         <ul className="divide-border divide-y rounded-lg border">
           {results.map((company) => (
             <li key={company.siren}>
-              <button
+              <button disabled={disabled}
                 type="button"
                 onClick={() => handleSelect(company)}
                 className="hover:bg-muted/50 w-full px-4 py-3 text-left transition-colors"

@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "@louez/ui";
+
 import { useTranslations } from "next-intl";
 
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText, Label } from "@louez/ui";
@@ -28,6 +30,7 @@ export function StoreSettingsRentalRulesSection({
   onStripeRequired,
   units,
 }: StoreSettingsRentalRulesSectionProps) {
+  const controlsDisabled = useControlsDisabled();
   const t = useTranslations("dashboard.settings");
   const tCommon = useTranslations("common");
 
@@ -176,7 +179,7 @@ export function StoreSettingsRentalRulesSection({
                     </TooltipProvider>
                   </div>
                   <div className="border-input dark:bg-input/30 has-[:focus]:border-ring has-[:focus]:ring-ring/50 flex h-9 rounded-md border bg-transparent shadow-xs has-[:focus]:ring-[3px]">
-                    <input
+                    <input disabled={controlsDisabled}
                       type="number"
                       min={0}
                       step={1}
@@ -190,7 +193,7 @@ export function StoreSettingsRentalRulesSection({
                         )
                       }
                     />
-                    <select
+                    <select disabled={controlsDisabled}
                       className="border-input bg-muted/50 text-muted-foreground h-full cursor-pointer rounded-r-md border-l px-2.5 text-sm outline-none"
                       value={units.minDurationUnit}
                       onChange={(event) => {
@@ -240,7 +243,7 @@ export function StoreSettingsRentalRulesSection({
                     </TooltipProvider>
                   </div>
                   <div className="border-input dark:bg-input/30 has-[:focus]:border-ring has-[:focus]:ring-ring/50 flex h-9 rounded-md border bg-transparent shadow-xs has-[:focus]:ring-[3px]">
-                    <input
+                    <input disabled={controlsDisabled}
                       type="number"
                       min={0}
                       step={1}
@@ -254,7 +257,7 @@ export function StoreSettingsRentalRulesSection({
                         )
                       }
                     />
-                    <select
+                    <select disabled={controlsDisabled}
                       className="border-input bg-muted/50 text-muted-foreground h-full cursor-pointer rounded-r-md border-l px-2.5 text-sm outline-none"
                       value={units.advanceNoticeUnit}
                       onChange={(event) => {

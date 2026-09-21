@@ -3367,6 +3367,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Alleen-lezen: alleen de eigenaar en beheerders kunnen de instellingen van deze winkel wijzigen.",
       "title": "Instellingen",
       "store": "Winkel",
       "company": "Bedrijf",

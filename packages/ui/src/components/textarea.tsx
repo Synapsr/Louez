@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "./disabled-controls-provider";
+
 import { Field as FieldPrimitive } from "@base-ui/react/field";
 import { mergeProps } from "@base-ui/react/merge-props";
 import type * as React from "react";
@@ -11,7 +13,8 @@ type TextareaProps = React.ComponentProps<"textarea"> & {
   unstyled?: boolean;
 };
 
-function Textarea({ className, size = "default", unstyled = false, ...props }: TextareaProps) {
+function Textarea({ className, size = "default", unstyled = false, disabled, ...props }: TextareaProps) {
+  const controlsDisabled = useControlsDisabled();
   return (
     <span
       className={
@@ -25,6 +28,7 @@ function Textarea({ className, size = "default", unstyled = false, ...props }: T
       data-slot="textarea-control"
     >
       <FieldPrimitive.Control
+        disabled={controlsDisabled || disabled}
         render={(defaultProps) => (
           <textarea
             className={cn(

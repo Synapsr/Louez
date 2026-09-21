@@ -149,6 +149,7 @@ export function SubscriptionManagement({
   const t = useTranslations('dashboard.settings.subscription');
   const { dateFns: dateLocale } = useFormatLocale();
   const tCommon = useTranslations('common');
+  const tErrors = useTranslations('errors');
 
   const hasDiscount = discountPercent > 0;
 
@@ -210,6 +211,7 @@ export function SubscriptionManagement({
       setShowCancelModal(false);
       router.refresh();
     } catch (err) {
+      setShowCancelModal(false);
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setLoading(null);
@@ -366,7 +368,7 @@ export function SubscriptionManagement({
         <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{tCommon('error')}</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{tErrors.has(error.replace(/^errors\./, '')) ? tErrors(error.replace(/^errors\./, '')) : tErrors('generic')}</AlertDescription>
         </Alert>
       )}
 

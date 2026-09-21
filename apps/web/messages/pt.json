@@ -3367,6 +3367,7 @@
       }
     },
     "settings": {
+      "readOnlyNotice": "Apenas leitura: só o proprietário e os administradores podem alterar as definições desta loja.",
       "title": "Configuracoes",
       "store": "Loja",
       "company": "Empresa",

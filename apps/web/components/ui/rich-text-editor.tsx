@@ -1,5 +1,7 @@
 "use client";
 
+import { useControlsDisabled } from "@louez/ui";
+
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -76,9 +78,11 @@ export const RichTextEditor = ({
   onChange,
   placeholder,
   className,
-  disabled = false,
+  disabled: disabledProp = false,
   variant = "full",
 }: RichTextEditorProps) => {
+  const controlsDisabled = useControlsDisabled();
+  const disabled = controlsDisabled || disabledProp;
   const t = useTranslations("common.richTextEditor");
   const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
   const [linkEditing, setLinkEditing] = useState(false);
@@ -184,6 +188,10 @@ export const RichTextEditor = ({
   });
 
   // Sync external value changes
+  useEffect(() => {
+    editor?.setEditable(!disabled);
+  }, [editor, disabled]);
+
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
       editor.commands.setContent(value);
