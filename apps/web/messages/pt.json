@@ -486,6 +486,8 @@
       "removeMember": "Remover da equipe",
       "memberAdded": "Membro da equipe adicionado com sucesso",
       "memberRemoved": "Membro da equipe removido",
+      "googleAccessReminder": "Quando um membro sair, verifique também o seu acesso ao Google Search Console. Removê-lo da Louez não revoga o seu acesso ao Google.",
+      "reviewGoogleAccess": "Verificar acessos ao Google",
       "pendingInvitations": "Convites pendentes",
       "pendingInvitationsDescription": "Estas pessoas ainda nao aceitaram seus convites",
       "invitationSent": "Convite enviado por email",
@@ -4550,6 +4552,11 @@
           "step3": "Escolha o método «Etiqueta HTML», cole a etiqueta ou o seu código abaixo e guarde antes de clicar em «Validar» no Search Console.",
           "label": "Código de verificação",
           "help": "A etiqueta completa ou apenas o seu conteúdo; o código fica ativo enquanto estiver guardado aqui.",
+          "accessDescription": "Este código dá à conta Google associada direitos de proprietário no Search Console para a sua loja: consultar estatísticas, gerir utilizadores e pedir a remoção dos resultados do Google.",
+          "ownerOnly": "Apenas o proprietário da loja e os administradores da Louez podem alterar este código.",
+          "removeCode": "Remover código",
+          "revokeHelp": "Para revogar o acesso, remova o utilizador no Search Console e todas as suas provas de propriedade. Se o código estiver neste campo, limpe-o e guarde. Remover um membro da Louez não revoga o seu acesso ao Google.",
+          "manageAccess": "Como revogar o acesso ao Google",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },

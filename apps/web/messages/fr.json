@@ -486,6 +486,8 @@
       "removeMember": "Retirer de l'équipe",
       "memberAdded": "Collaborateur ajouté avec succès",
       "memberRemoved": "Collaborateur retiré de l'équipe",
+      "googleAccessReminder": "Après le départ d’un membre, vérifiez aussi ses accès à Google Search Console. Retirer ce membre de Louez ne supprime pas ses droits Google.",
+      "reviewGoogleAccess": "Vérifier les accès Google",
       "pendingInvitations": "Invitations en attente",
       "pendingInvitationsDescription": "Ces personnes n'ont pas encore accepté leur invitation",
       "invitationSent": "Invitation envoyée par email",
@@ -4687,6 +4689,11 @@
           "step3": "Choisissez la méthode « Balise HTML », puis collez la balise ou son code ci-dessous et enregistrez avant de cliquer sur « Valider » dans Search Console.",
           "label": "Code de vérification",
           "help": "La balise complète ou seulement son contenu ; le code reste actif tant qu'il est enregistré ici.",
+          "accessDescription": "Ce code donne au compte Google associé les droits de propriétaire Search Console sur votre boutique : statistiques, gestion des utilisateurs et demandes de retrait des résultats Google.",
+          "ownerOnly": "Seuls le propriétaire de la boutique et les administrateurs Louez peuvent modifier ce code.",
+          "removeCode": "Retirer le code",
+          "revokeHelp": "Pour retirer un accès, supprimez l’utilisateur dans Search Console et toutes ses preuves de propriété. Si ce champ contient son code, videz-le puis enregistrez. Retirer un membre de Louez ne supprime pas ses droits Google.",
+          "manageAccess": "Comment révoquer un accès Google",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },

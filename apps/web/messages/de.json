@@ -486,6 +486,8 @@
       "removeMember": "Aus Team entfernen",
       "memberAdded": "Teammitglied erfolgreich hinzugefügt",
       "memberRemoved": "Teammitglied entfernt",
+      "googleAccessReminder": "Prüfe beim Ausscheiden eines Mitglieds auch dessen Google-Search-Console-Zugriff. Das Entfernen aus Louez widerruft den Google-Zugriff nicht.",
+      "reviewGoogleAccess": "Google-Zugriff prüfen",
       "pendingInvitations": "Ausstehende Einladungen",
       "pendingInvitationsDescription": "Diese Personen haben ihre Einladung noch nicht angenommen",
       "invitationSent": "Einladung per E-Mail gesendet",
@@ -4550,6 +4552,11 @@
           "step3": "Wählen Sie die Methode „HTML-Tag“, fügen Sie das Tag oder seinen Code unten ein und speichern Sie, bevor Sie in der Search Console auf „Bestätigen“ klicken.",
           "label": "Bestätigungscode",
           "help": "Das ganze Tag oder nur sein Inhalt; der Code bleibt aktiv, solange er hier gespeichert ist.",
+          "accessDescription": "Dieser Code gibt dem zugehörigen Google-Konto Inhaberrechte für deinen Shop in Search Console: Statistiken einsehen, Nutzer verwalten und die Entfernung aus Google-Suchergebnissen beantragen.",
+          "ownerOnly": "Nur der Shop-Inhaber und Louez-Administratoren können diesen Code ändern.",
+          "removeCode": "Code entfernen",
+          "revokeHelp": "Um den Zugriff zu widerrufen, entferne den Nutzer in Search Console und alle seine Eigentumsnachweise. Steht sein Code in diesem Feld, leere es und speichere. Das Entfernen eines Mitglieds aus Louez widerruft dessen Google-Zugriff nicht.",
+          "manageAccess": "Google-Zugriff widerrufen",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },

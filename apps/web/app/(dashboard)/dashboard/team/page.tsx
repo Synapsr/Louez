@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
 import { getCurrentStore, currentUserHasPermission } from "@/lib/store-context";
@@ -34,6 +35,14 @@ export default async function TeamPage() {
       <TeamInvitationsCard invitations={invitations} canManageMembers={canManageMembers} />
 
       <TeamMembersCard members={members} canManageMembers={canManageMembers} />
+      {canManageMembers && (
+        <p className="text-muted-foreground text-sm">
+          {t("googleAccessReminder")}{" "}
+          <Link href="/online-store/seo" className="underline underline-offset-4">
+            {t("reviewGoogleAccess")}
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

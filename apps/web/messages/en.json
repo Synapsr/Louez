@@ -486,6 +486,8 @@
       "removeMember": "Remove from team",
       "memberAdded": "Team member added successfully",
       "memberRemoved": "Team member removed",
+      "googleAccessReminder": "When a member leaves, also review their Google Search Console access. Removing them from Louez does not revoke their Google access.",
+      "reviewGoogleAccess": "Review Google access",
       "pendingInvitations": "Pending invitations",
       "pendingInvitationsDescription": "These people have not yet accepted their invitation",
       "invitationSent": "Invitation sent by email",
@@ -4687,6 +4689,11 @@
           "step3": "Choose the “HTML tag” method, paste the tag or its code below and save before clicking “Verify” in Search Console.",
           "label": "Verification code",
           "help": "The whole tag or just its content; the code stays active as long as it is saved here.",
+          "accessDescription": "This code gives the associated Google account Search Console owner rights for your store: viewing statistics, managing users and requesting removal from Google search results.",
+          "ownerOnly": "Only the store owner and Louez platform administrators can change this code.",
+          "removeCode": "Remove code",
+          "revokeHelp": "To revoke access, remove the user in Search Console and all their ownership verification tokens. If their code is in this field, clear it and save. Removing a member from Louez does not revoke their Google access.",
+          "manageAccess": "How to revoke Google access",
           "placeholder": "<meta name=\"google-site-verification\" content=\"…\" />"
         }
       },
