@@ -324,7 +324,11 @@ jobs:
 
       - name: Dump stack logs
         if: always()
-        run: docker compose logs --no-color || true
+        run: |
+          docker compose logs --no-color || true
+          for c in $(docker compose ps -aq); do
+            docker inspect --format '{{.Name}} {{json .State.Health}}' "$c" || true
+          done
 
       - name: Tear down
         if: always()
