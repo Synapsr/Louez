@@ -4,15 +4,22 @@
 # Louez image store — MinIO with the product bucket pre-created
 # =============================================================================
 # A bucket is a top-level directory of MinIO's data drive, so creating it at
-# startup replaces the one-shot `mc` job the Compose stack uses. This exists
+# startup needs no `mc` job (the Compose stack does the same). This image exists
 # for platforms that run long-lived services only and cannot override a
-# container's entrypoint (Render), where the upstream image would otherwise
-# prepend `minio` to the shell command and refuse to start.
+# container's entrypoint (Render), where the image's `minio` entrypoint would
+# otherwise receive the shell command as arguments and refuse to start.
+#
+# MinIO no longer publishes images, so this builds on Chainguard's rebuild
+# (same binary and on-disk format as the former minio/minio image).
 #
 # Build: docker build -f docker/Dockerfile.minio -t louez-minio docker
 # =============================================================================
 
-FROM minio/minio:RELEASE.2025-09-07T16-13-09Z
+FROM cgr.dev/chainguard/minio:latest
+
+# Disks written by the former upstream image are root-owned; the Chainguard
+# default user (uid 65532) could not write to them.
+USER root
 
 EXPOSE 9000
 
