@@ -8103,7 +8103,11 @@
       "dateLabel": "Fecha:",
       "ipLabel": "IP:",
       "automatic": "Validado automáticamente",
-      "automaticText": "Este contrato se ha validado automáticamente conforme a las condiciones de alquiler."
+      "automaticText": "Este contrato se ha validado automáticamente conforme a las condiciones de alquiler.",
+      "atBooking": "Firmado al reservar",
+      "atBookingText": "Condiciones generales de alquiler aceptadas al reservar en línea, lo que equivale a la firma del presente contrato.",
+      "signedOnLabel": "Firmado el:",
+      "validatedOnLabel": "Validado el:"
     },
     "conditions": {
       "condition1": "El equipo se alquila en buen estado de funcionamiento",

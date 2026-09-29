@@ -8103,7 +8103,11 @@
       "dateLabel": "Date:",
       "ipLabel": "IP:",
       "automatic": "Automatically validated",
-      "automaticText": "Contract automatically validated when the reservation is confirmed or paid."
+      "automaticText": "Contract automatically validated when the reservation is confirmed or paid.",
+      "atBooking": "Signed at booking",
+      "atBookingText": "Rental terms accepted when booking online, which counts as signing this contract.",
+      "signedOnLabel": "Signed on:",
+      "validatedOnLabel": "Validated on:"
     },
     "conditions": {
       "condition1": "The equipment is rented in good working order",

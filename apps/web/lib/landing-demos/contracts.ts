@@ -69,6 +69,8 @@ export const createDemoContractProps = (
     reservation: {
       ...reservation,
       automaticContractValidation: true,
+      // The demo reservation was booked on the storefront.
+      signedAtBooking: true,
       signedAt: validation?.createdAt ?? reservation.createdAt,
       signatureIp: null,
       items: (reservation.items ?? []).map((item) => ({
