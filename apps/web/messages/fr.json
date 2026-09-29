@@ -8103,7 +8103,11 @@
       "dateLabel": "Date :",
       "ipLabel": "IP :",
       "automatic": "Validé automatiquement",
-      "automaticText": "Contrat validé automatiquement lors de la confirmation ou du paiement de la réservation."
+      "automaticText": "Contrat validé automatiquement lors de la confirmation ou du paiement de la réservation.",
+      "atBooking": "Signé à la réservation",
+      "atBookingText": "Conditions générales de location acceptées lors de la réservation en ligne, ce qui vaut signature du présent contrat.",
+      "signedOnLabel": "Signé le :",
+      "validatedOnLabel": "Validé le :"
     },
     "conditions": {
       "condition1": "Le matériel est loué en bon état de fonctionnement",

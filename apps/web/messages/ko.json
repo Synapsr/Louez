@@ -1026,7 +1026,7 @@
         "email": "이메일",
         "emailDescription": "이메일로 보내기",
         "emailSubject": "렌탈 매장을 찾아보세요",
-        "emailBody": "안녕하세요, \n\nI 렌탈 매장을 발견하도록 초대합니다:\n{url}\n\n곧 뵙겠습니다!",
+        "emailBody": "안녕하세요,\n\n저희 대여 매장을 소개합니다:\n{url}\n\n방문을 기다리겠습니다!",
         "smsDescription": "SMS로 보내기",
         "smsMessage": "렌탈 매장을 확인해 보세요: {url}",
         "showQR": "QR 코드 표시",
@@ -8103,7 +8103,11 @@
       "dateLabel": "날짜:",
       "ipLabel": "IP:",
       "automatic": "자동으로 검증됨",
-      "automaticText": "예약이 확정되거나 결제되면 계약이 자동으로 유효해집니다."
+      "automaticText": "예약이 확정되거나 결제되면 계약이 자동으로 유효해집니다.",
+      "atBooking": "예약 시 서명 완료",
+      "atBookingText": "온라인 예약 시 대여 약관에 동의하면 이 계약에 서명한 것으로 간주됩니다.",
+      "signedOnLabel": "서명 일시:",
+      "validatedOnLabel": "승인 일시:"
     },
     "conditions": {
       "condition1": "장비가 제대로 작동하는 상태로 임대되었습니다.",

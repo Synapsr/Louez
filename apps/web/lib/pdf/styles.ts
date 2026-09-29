@@ -523,7 +523,8 @@ export function createContractStyles(_primaryColor: string = "#0066FF", locale: 
     signatureDateLabel: {
       fontSize: 7.5,
       color: c.muted,
-      width: 45,
+      // Wide enough for "Unterschrieben:", "Convalidato il:" and the like on one line.
+      width: 70,
     },
     signatureDate: {
       fontSize: 7.5,

@@ -189,6 +189,18 @@ L’app n’a pas de lecteur PDF : « Télécharger le contrat » ouvre un ongle
 
 Le Dockerfile lance ce script dans l’étape `builder`, avant `next build`, après avoir installé `poppler-utils` : les images et le bundle portent la date du build, et les dates restent actuelles à chaque déploiement. Les images commitées ne servent qu’au développement local.
 
+Le build ne connaît pas `NEXT_PUBLIC_APP_DOMAIN`, lue à l’exécution : le script la fixe à `louez.io`, sinon le lien des conditions s’imprimait `maison-du-velo.undefined/terms`.
+
+### Signature du client sur le contrat
+
+Le bloc « Client » du contrat distingue trois cas :
+
+- une réservation faite sur la boutique (`source: "online"`), dont le paiement exige d’accepter les conditions (`acceptCgv`), est « Signé à la réservation » : l’acceptation vaut signature. Le bloc imprime « Signé le » (création de la réservation) et, une fois le contrat validé, « Validé le » ;
+- un client qui a réellement signé (hors validation automatique) garde « Signé », avec la date et l’IP ;
+- les autres validations automatiques (réservation créée par le loueur, marketplace) restent « Validé automatiquement ».
+
+Le dossier de démonstration est une réservation en ligne. L’aperçu `contract-at-booking` montre ce cas.
+
 ### Police des PDF
 
 Contrats, factures et rapports d’état des lieux embarquent Inter 4.1 (`public/fonts/pdf/`, licence SIL OFL dans `OFL.txt`), enregistrée par `lib/pdf/fonts.ts`. Helvetica, la police intégrée de react-pdf, n’a pas les lettres ą, ę, ł ou ś : les documents polonais et les noms comme « Łukasz » s’imprimaient cassés (« wrze[nia » pour « września »). Le fichier est cherché sous `public/` depuis `apps/web` (développement, scripts) et depuis la racine du monorepo (image standalone). `lib/pdf/fonts.test.ts` rend chaque PDF d’aperçu et vérifie qu’il embarque Inter et plus Helvetica.

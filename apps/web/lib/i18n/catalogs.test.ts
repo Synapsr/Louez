@@ -146,3 +146,11 @@ test("every demo scene and contract page ships an asset for every supported loca
     }
   }
 });
+
+
+test("translated contract links preserve the storefront terms route", () => {
+  for (const locale of locales) {
+    const copy = flatten(readCatalog("", locale));
+    assert.ok(copy["contract.conditions.termsLink"].includes("{slug}.{domain}/terms"), locale);
+  }
+});

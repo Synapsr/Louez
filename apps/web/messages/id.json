@@ -8103,13 +8103,17 @@
       "dateLabel": "Tanggal:",
       "ipLabel": "IP:",
       "automatic": "Divalidasi secara otomatis",
-      "automaticText": "Kontrak secara otomatis divalidasi ketika reservasi dikonfirmasi atau dibayar."
+      "automaticText": "Kontrak secara otomatis divalidasi ketika reservasi dikonfirmasi atau dibayar.",
+      "atBooking": "Ditandatangani saat pemesanan",
+      "atBookingText": "Persetujuan atas ketentuan sewa saat memesan secara online dianggap sebagai penandatanganan kontrak ini.",
+      "signedOnLabel": "Ditandatangani pada:",
+      "validatedOnLabel": "Divalidasi pada:"
     },
     "conditions": {
       "condition1": "Peralatan yang disewa dalam keadaan baik",
       "condition2": "Penyewa setuju untuk mengembalikan peralatan dalam kondisi seperti saat diterima",
       "condition3": "Jika terjadi kerusakan atau kehilangan, uang jaminan dapat ditahan seluruhnya atau sebagian",
-      "termsLink": "Syarat dan ketentuan: {slug}.{domain}/ketentuan"
+      "termsLink": "Syarat dan ketentuan: {slug}.{domain}/terms"
     },
     "legal": {
       "text1": "Dokumen ini berfungsi sebagai kontrak sewa dan faktur. Ini membuktikan kesepakatan antara para pihak untuk penyewaan peralatan yang dijelaskan di atas dengan syarat-syarat yang disebutkan.",

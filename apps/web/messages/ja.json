@@ -8103,13 +8103,17 @@
       "dateLabel": "日付:",
       "ipLabel": "IP:",
       "automatic": "自動的に検証される",
-      "automaticText": "予約が確認または支払われると、契約は自動的に有効になります。"
+      "automaticText": "予約が確認または支払われると、契約は自動的に有効になります。",
+      "atBooking": "予約時に署名済み",
+      "atBookingText": "オンライン予約時にレンタル規約に同意することで、本契約への署名とみなされます。",
+      "signedOnLabel": "署名日時：",
+      "validatedOnLabel": "承認日時："
     },
     "conditions": {
       "condition1": "機器は正常に動作する状態でレンタルされています",
       "condition2": "テナントは機器を受け取ったときの状態で返却することに同意します",
       "condition3": "破損または紛失の場合、保証金の全部または一部が保留される場合があります",
-      "termsLink": "利用規約: {slug}.{domain}/規約"
+      "termsLink": "利用規約: {slug}.{domain}/terms"
     },
     "legal": {
       "text1": "この書類はレンタル契約書兼請求書となります。これは、上記の条件の下で上記の機器をレンタルすることについての当事者間の合意を証明します。",

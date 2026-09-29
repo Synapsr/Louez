@@ -39,7 +39,7 @@ const textOf = (node: ReactNode): string => {
   return "";
 };
 
-const renderText = async (automatic: boolean) => {
+const renderText = async (automatic: boolean, signedAtBooking = false) => {
   const { ContractDocument } = await import("./contract");
   return textOf(
     ContractDocument({
@@ -60,6 +60,7 @@ const renderText = async (automatic: boolean) => {
         createdAt: new Date("2026-09-08T09:00:00Z"),
         signedAt: new Date("2026-09-08T09:00:00Z"),
         automaticContractValidation: automatic,
+        signedAtBooking,
         subtotalAmount: "20",
         totalAmount: "20",
         depositAmount: "0",
@@ -86,6 +87,22 @@ test("automatic validation uses factual wording instead of a customer signature 
   assert.ok(text.includes(fr.contract.signature.automatic));
   assert.ok(text.includes(fr.contract.signature.automaticText));
   assert.ok(!text.includes(fr.contract.signature.customerText));
+});
+
+test("a storefront booking reads as signed at booking, with its booking and validation dates", async () => {
+  const text = await renderText(true, true);
+  assert.ok(text.includes(fr.contract.signature.atBooking));
+  assert.ok(text.includes(fr.contract.signature.atBookingText));
+  assert.ok(text.includes(fr.contract.signature.signedOnLabel));
+  assert.ok(text.includes(fr.contract.signature.validatedOnLabel));
+  assert.ok(!text.includes(fr.contract.signature.automaticText));
+  assert.ok(!text.includes(fr.contract.signature.customerText));
+});
+
+test("a drawn customer signature outranks the booking acceptance", async () => {
+  const text = await renderText(false, true);
+  assert.ok(text.includes(fr.contract.signature.customerText));
+  assert.ok(!text.includes(fr.contract.signature.atBookingText));
 });
 
 test("existing customer signatures retain their original wording", async () => {

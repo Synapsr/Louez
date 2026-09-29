@@ -8103,7 +8103,11 @@
       "dateLabel": "Datum:",
       "ipLabel": "IP:",
       "automatic": "Automatisch bestätigt",
-      "automaticText": "Dieser Vertrag wurde gemäß den Mietbedingungen automatisch bestätigt."
+      "automaticText": "Dieser Vertrag wurde gemäß den Mietbedingungen automatisch bestätigt.",
+      "atBooking": "Bei der Buchung unterschrieben",
+      "atBookingText": "Allgemeine Mietbedingungen bei der Online-Buchung akzeptiert, was als Unterzeichnung dieses Vertrags gilt.",
+      "signedOnLabel": "Unterschrieben:",
+      "validatedOnLabel": "Bestätigt:"
     },
     "conditions": {
       "condition1": "Die Ausrüstung wird in einwandfreiem Zustand vermietet",

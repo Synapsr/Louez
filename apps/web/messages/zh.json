@@ -8103,13 +8103,17 @@
       "dateLabel": "日期：",
       "ipLabel": "IP:",
       "automatic": "自动验证",
-      "automaticText": "预订确认或付款后，合同将自动生效。"
+      "automaticText": "预订确认或付款后，合同将自动生效。",
+      "atBooking": "预订时已签署",
+      "atBookingText": "在线预订时接受租赁条款，即视为签署本合同。",
+      "signedOnLabel": "签署时间：",
+      "validatedOnLabel": "确认时间："
     },
     "conditions": {
       "condition1": "租用的设备运转良好",
       "condition2": "租户同意按收到时的状态归还设备",
       "condition3": "如果发生损坏或丢失，押金可能会被保留全部或部分",
-      "termsLink": "条款和条件：{slug}.{domain}/条款"
+      "termsLink": "条款和条件：{slug}.{domain}/terms"
     },
     "legal": {
       "text1": "该文件作为租赁合同和发票。它证明双方就在上述条件下租赁上述设备达成一致。",
