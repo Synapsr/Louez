@@ -1,5 +1,36 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "node:test";
+import { Font } from "@react-pdf/renderer";
+import { getPdfFonts } from "./fonts";
+
+const samples = {
+  zh: "设备租赁合同 北京市朝阳区 押金 € ¥",
+  ja: "機材レンタル契約書 東京都渋谷区 保証金 € ¥",
+  pl: "Zażółć gęślą jaźń Łukasz ąęłńóśźż €",
+  ru: "Договор аренды Москва Залог ₽ €",
+  ko: "장비 대여 계약서 서울특별시 종로구 보증금 ₩ €",
+} as const;
+
+for (const locale of ["zh", "ja", "ru", "ko", "pl"] as const) {
+  test(`${locale}: bundled PDF fonts cover labels and customer-entered names`, async () => {
+    const fonts = getPdfFonts(locale);
+    for (const descriptor of [
+      { fontFamily: fonts.regular, fontWeight: 400 },
+      { fontFamily: fonts.bold, fontWeight: 700 },
+    ]) {
+      await Font.load(descriptor);
+      const font = Font.getFont(descriptor).data;
+      assert.ok(font);
+      for (const character of samples[locale]) {
+        const codePoint = character.codePointAt(0);
+        assert.ok(codePoint !== undefined);
+        assert.ok(font.hasGlyphForCodePoint(codePoint), `${locale}: missing ${character}`);
+      }
+    }
+  });
+}
+
+
 import * as nodeModule from "node:module";
 
 // The document fixtures need no credentials; the app env module recognizes "true".
@@ -23,7 +54,7 @@ registerHooks({
   },
 });
 
-test("every PDF embeds Inter instead of Helvetica, which cannot print ą, ł or ś", async () => {
+test("every PDF embeds a local font with Latin or CJK coverage instead of Helvetica", async () => {
   // Through the app's own renderer: the fonts are registered on the react-pdf it loads.
   const { renderDocumentPreview } =
     await import("@/lib/document-previews/util.render-document-preview");
@@ -38,7 +69,7 @@ test("every PDF embeds Inter instead of Helvetica, which cannot print ą, ł or 
       });
       assert.equal(rendered.kind, "pdf");
       const source = Buffer.from(rendered.body).toString("latin1");
-      assert.match(source, /\/BaseFont \/[A-Z]{6}\+Inter/, `${document.id} (${locale})`);
+      assert.match(source, /\/BaseFont \/[A-Z]{6}\+(Inter|NotoSansCJK)/, `${document.id} (${locale})`);
       assert.doesNotMatch(source, /\/BaseFont \/Helvetica/, `${document.id} (${locale})`);
     }
   }

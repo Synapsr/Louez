@@ -1,0 +1,321 @@
+{
+  "common": {
+    "greeting": "您好{name}，",
+    "regards": "最好的问候，",
+    "team": "{storeName}团队",
+    "viewReservation": "查看我的预订",
+    "contactUs": "联系我们",
+    "reservationNumber": "预订#{number}",
+    "period": "时期",
+    "periodFrom": "来自 {startDate}",
+    "periodTo": "至 {endDate}",
+    "timezone": "时区：{timezone}",
+    "address": "地址",
+    "pickupAddress": "取货地址",
+    "returnAddress": "退货地址",
+    "pickupAndReturnAddress": "取货和退货地址",
+    "subtotal": "小计",
+    "subtotalExclTax": "不包括小计税",
+    "taxAmount": "增值税 ({rate}%)",
+    "subtotalInclTax": "小计包括税",
+    "deposit": "押金",
+    "total": "总计",
+    "totalToPay": "总共支付",
+    "question": "有问题吗？联系我们：",
+    "summary": "总结",
+    "seeYouSoon": "很快再见，\n{storeName}"
+  },
+  "payAsYouGoInvoice": {
+    "usageLine": "出租 {billingMonth} — {count,plural,one{# 出租} other{# 租金}}",
+    "marketplaceLine": "最近的预订 {billingMonth} — {count,plural,one{# 预订} other{# 预订}}"
+  },
+  "verificationCode": {
+    "subject": "您的登录码：{code}",
+    "title": "登录码",
+    "body": "这是您在 {storeName} 上访问帐户的登录代码：",
+    "expiry": "此代码将在 10 分钟后过期。如果您没有请求此代码，您可以安全地忽略此电子邮件。"
+  },
+  "confirmReservation": {
+    "subject": "您的预订#{number} 已确认",
+    "title": "预订已确认！",
+    "body": "您的预订#{number} 已确认。总结如下：",
+    "summary": "总结",
+    "contractSignature": "您的合同已附上并准备在线签署。",
+    "signContract": "签订合同"
+  },
+  "requestReceived": {
+    "subject": "收到预订请求#{number}",
+    "title": "收到请求",
+    "body": "我们已收到您的预订请求。",
+    "review": "我们的团队正在审核您的请求，并将很快回复您。",
+    "confirmation": "一旦您的预订得到验证，您将收到一封确认电子邮件。",
+    "seeYouSoon": "很快再见，"
+  },
+  "requestAccepted": {
+    "subject": "您的请求#{number} 已被接受！",
+    "title": "请求已接受！",
+    "body": "好消息！您的预订请求#{number} 已被接受。",
+    "rentalPeriod": "租赁期限",
+    "yourReservation": "您的预订",
+    "proceedPayment": "继续付款",
+    "legalAcceptance": "您的预订验证即表示您接受租赁合同以及条款和条件。",
+    "contractAvailable": "查看与您的预订相关的租赁合同。",
+    "viewContract": "查看合同",
+    "viewTerms": "查看条款和条件"
+  },
+  "requestRejected": {
+    "subject": "预订请求#{number}",
+    "title": "请求未被接受",
+    "body": "很抱歉，您的预订请求#{number} 无法被接受。",
+    "contactForAlternative": "请联系我们了解更多信息或寻找可能适合您的替代方案。"
+  },
+  "quoteSent": {
+    "subject": "报价#{number}",
+    "title": "您已收到报价",
+    "body": "{store} 已向您发送了预订#{number} 的报价。",
+    "rentalPeriod": "租赁期限",
+    "yourQuote": "您的报价",
+    "viewQuote": "查看报价",
+    "expiry": "您可以从您的帐户接受或拒绝此报价。"
+  },
+  "reminderPickup": {
+    "subject": "提醒：您的租赁明天开始！",
+    "title": "您的租赁明天开始！",
+    "body": "这是您的预订提醒#{number}。",
+    "scheduledPickup": "预约取件",
+    "dontForget": "不要忘记：",
+    "bringId": "有效身份证件",
+    "bringConfirmation": "您的预订确认",
+    "seeTomorrow": "明天见！"
+  },
+  "reminderReturn": {
+    "subject": "提醒：{date} 上的设备归还",
+    "title": "记得归还你的装备",
+    "body": "这是您的预订提醒#{number}。设备返还计划为{date}。",
+    "scheduledReturn": "预定返回",
+    "returnInfo": "请完好无损地退回设备。押金经核实后将退还。",
+    "thanks": "感谢您的信任！"
+  },
+  "reminderPickupAdmin": {
+    "subject": "即将取货：预订#{number}",
+    "title": "即将进行的设备拾取",
+    "body": "即将有接送服务供预订#{number}。以下是详细信息，以便您准备好设备。",
+    "scheduledPickup": "预约取件",
+    "customer": "客户：",
+    "email": "电子邮件：",
+    "phone": "电话：",
+    "amount": "金额：",
+    "viewReservation": "查看预订",
+    "connectToManage": "登录您的仪表板来管理此预订。"
+  },
+  "reminderReturnAdmin": {
+    "subject": "即将返回：预订#{number}",
+    "title": "即将返还的设备",
+    "body": "预订#{number} 即将退货。以下是详细信息，以便您准备接收设备。",
+    "scheduledReturn": "预定返回",
+    "customer": "客户：",
+    "email": "电子邮件：",
+    "phone": "电话：",
+    "amount": "金额：",
+    "viewReservation": "查看预订",
+    "connectToManage": "登录您的仪表板来管理此预订。"
+  },
+  "reminderDigestAdmin": {
+    "subject": "您的 {date} 日程安排",
+    "title": "今天的日程",
+    "body": "这是今天 {storeName} 发生的事情。",
+    "pickupsTitle": "拾音器 ({count})",
+    "returnsTitle": "返回 ({count})",
+    "viewCalendar": "查看日历",
+    "connectToManage": "登录您的仪表板来管理您的一天。"
+  },
+  "thankYouReview": {
+    "subject": "感谢您的出租！",
+    "title": "感谢您的信任！",
+    "body": "我们希望您的租赁一切顺利。您的评论有助于我们改进并帮助其他客户做出选择。",
+    "cta": "发表评论",
+    "disclaimer": "只需一分钟，这将是一个很大的帮助！",
+    "smsThankYou": "感谢您的出租！",
+    "smsReview": "您的评论很重要："
+  },
+  "newRequestLandlord": {
+    "subject": "新的预订请求#{number}",
+    "title": "新的预订请求",
+    "body": "您收到了关于 {storeName} 的新请求。",
+    "customer": "客户：",
+    "email": "电子邮件：",
+    "period": "期间：",
+    "amount": "金额：",
+    "notes": "客户留言",
+    "viewRequest": "查看请求",
+    "connectToManage": "登录到您的仪表板以接受或拒绝此请求。"
+  },
+  "supplierInvoiceReceived": {
+    "subject": "新供应商发票",
+    "title": "新供应商发票",
+    "body": "已收到 {storeName} 的新供应商发票。",
+    "seller": "供应商：",
+    "number": "数量：",
+    "total": "总计包括税：",
+    "cta": "查看供应商发票",
+    "footer": "您可以从仪表板查看和处理此发票。"
+  },
+  "contactMessage": {
+    "subject": "来自 {name} 的新消息 — {store}",
+    "title": "来自您商店的新消息",
+    "body": "一位访客通过 {storeName} 的联系页面给您写信。",
+    "name": "姓名：",
+    "email": "电子邮件：",
+    "phone": "电话：",
+    "message": "留言：",
+    "reply": "回复",
+    "footer": "直接回复此电子邮件：您的回复将发送到访问者的地址。"
+  },
+  "phoneCallbackLandlord": {
+    "subject": "来电者回电 — {store}",
+    "title": "来电者回电",
+    "body": "您的语音助手无法完成 {storeName} 上的请求，正在将此消息传递给您。",
+    "phone": "回拨号码：",
+    "message": "留言：",
+    "listen": "打开通话",
+    "footer": "打开对话以阅读交换内容并重播通话录音。"
+  },
+  "voiceNumberBilling": {
+    "numberLabel": "数量：",
+    "rentalLabel": "月租：",
+    "rentalValue": "{credits} AI 积分/月",
+    "deadlineLabel": "截止日期：",
+    "ctaRecharge": "充值我的积分",
+    "ctaOpen": "打开我的AI助手",
+    "footer": "号码租金每月自动以 AI 积分支付。",
+    "warning": {
+      "subject": "充电时间到了——{number}的更新",
+      "title": "您的余额无法支付下次续订的费用",
+      "body": "{storeName} 的号码 {number} 在 {date} 上续订 {credits} AI 积分，但您当前的余额不够。在该日期之前充值以保留您的号码。"
+    },
+    "failed": {
+      "subject": "需要采取行动 - {number} 面临被分离的风险",
+      "title": "续订失败",
+      "body": "{number}（{credits} AI积分）续订无法完成：余额不足。请在{date}之前充值，否则号码将自动脱落。每天您充电后，我们都会重新尝试充电。"
+    },
+    "released": {
+      "subject": "编号{number}已被分离",
+      "title": "独立数量",
+      "body": "{storeName} 的号码 {number} 已被分离并且不再有效。您可以随时从 AI 助手中选择新号码。"
+    }
+  },
+  "teamInvitation": {
+    "subject": "{inviterName}诚邀您加入 {storeName}",
+    "title": "团队邀请",
+    "greeting": "你好，",
+    "body": "{inviterName} 邀请您加入 Louez.io 上的 {storeName} 团队。",
+    "accessDescription": "接受此邀请后，您将可以访问商店仪表板来管理预订、产品和客户。",
+    "acceptButton": "接受邀请",
+    "expiry": "此邀请将在 7 天后过期。如果您没有请求加入该团队，您可以安全地忽略这封电子邮件。"
+  },
+  "baseLayout": {
+    "sentBy": "此电子邮件由 {storeName} 发送",
+    "ignoreIfNotYou": "如果您没有发起此操作，请忽略此电子邮件。",
+    "poweredBy": "技术支持："
+  },
+  "instantAccess": {
+    "subject": "访问您的预订#{number}",
+    "title": "访问您的预订",
+    "body": "点击查看您的预订#{number}。",
+    "paymentPending": "该预订正在等待付款。",
+    "viewAndPay": "查看并付款",
+    "linkValid": "此链接的有效期为 30 天。"
+  },
+  "reservationCancelled": {
+    "subject": "预订#{number} 已取消",
+    "title": "预订已取消",
+    "body": "您的预订#{number} 已被取消。",
+    "cancelledPeriod": "取消期间",
+    "reasonLabel": "原因",
+    "contactForQuestions": "如果您有任何疑问，请随时与我们联系。",
+    "browseEquipment": "浏览我们的目录",
+    "thankYou": "感谢您的理解。"
+  },
+  "reservationCompleted": {
+    "subject": "预订#{number} 已完成",
+    "title": "出租完毕！",
+    "body": "您的预订#{number} 现已完成。",
+    "rentalPeriod": "租赁期限",
+    "depositReturned": "您的押金{amount}将被退还。",
+    "depositPending": "您的 {amount} 押金将很快得到验证并退还。",
+    "thankYouMessage": "感谢您选择我们的服务！",
+    "rentAgain": "再次出租",
+    "seeYouSoon": "很快再见！"
+  },
+  "paymentConfirmation": {
+    "subject": "付款已确认 - 预订#{number}",
+    "title": "付款已收到！",
+    "body": "我们已收到您的预订付款#{number}。",
+    "paymentDetails": "付款详情",
+    "amount": "金额",
+    "date": "日期",
+    "method": "方法",
+    "reservation": "预约",
+    "confirmation": "您的付款已成功处理。",
+    "keepEmail": "保留此电子邮件作为付款证明。",
+    "contractSignature": "您的合同已附上并准备在线签署。",
+    "signContract": "签订合同"
+  },
+  "paymentFailed": {
+    "subject": "付款失败 - 预订#{number}",
+    "title": "付款失败",
+    "body": "无法处理您的预订 #{number} 的 {amount} 付款。",
+    "whatToDo": "该怎么办？",
+    "tip1": "检查您的卡是否有效并且有足够的资金",
+    "tip2": "尝试使用不同的卡",
+    "tip3": "如果问题仍然存在，请联系您的银行",
+    "retryPayment": "重试付款",
+    "contactSupport": "需要帮助吗？联系我们。"
+  },
+  "paymentRequest": {
+    "subject": "要求预订付款#{number}",
+    "title": "付款请求",
+    "body": "{storeName} 要求为您的预订 #{number} 支付 {amount}。",
+    "paymentDetails": "付款详情",
+    "reservation": "预约",
+    "description": "描述",
+    "amountDue": "应付金额",
+    "payNow": "支付{amount}",
+    "linkFallback": "或者将此链接复制到您的浏览器中：",
+    "securePayment": "该付款由 Stripe 担保。您的付款信息绝不会与租赁提供商共享。",
+    "manualBody": "我们正在就您的预订 #{number} 的付款事宜与您联系。",
+    "payPromptly": "请在您方便的时候尽早进行付款。"
+  },
+  "depositAuthorizationRequest": {
+    "subject": "预订存款授权#{number}",
+    "title": "需要存款授权",
+    "body": "{storeName} 正在请求为您的预订 #{number} 提供 {amount} 存款授权。",
+    "howItWorks": "它是如何运作的",
+    "step1": "您授权您卡上的存款金额",
+    "step2": "金额暂时保留（不收取费用）",
+    "step3": "租赁结束，授权自动解除",
+    "step4": "如有损坏，可能会收取部分或全部费用",
+    "authorizeNow": "授权存款",
+    "linkFallback": "或者将此链接复制到您的浏览器中：",
+    "securePayment": "此授权由 Stripe 保护。该金额不会立即收取。"
+  },
+  "rewardUnlocked": {
+    "subject": "您已获得免费预订机会 🎉",
+    "title": "您的推荐得到了回报！",
+    "greeting": "你好，",
+    "body": "{referredStoreName} 刚刚进行了首次在线销售。您获得 {freeReservations} 免费预订，价值 ≈ {rewardValue}。",
+    "cta": "查看我的奖励",
+    "footer": "感谢您发展 Louez 社区。",
+    "subjectCredit": "您已获得 Louez 积分 🎉",
+    "bodyCredit": "{referredStoreName} 刚刚进行了首次在线销售。您可以在下一张 Louez 发票上获得 {rewardValue} 积分。"
+  },
+  "contract": {
+    "subject": "您的租赁合同#{number}",
+    "title": "您的租赁合同",
+    "body": "这是您预订的租赁合同#{number}。",
+    "downloadContract": "下载合同"
+  },
+  "customMessage": {
+    "subject": "关于您的预订#{number}"
+  }
+}

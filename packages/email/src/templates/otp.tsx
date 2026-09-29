@@ -1,3 +1,4 @@
+import { supplementalMessages } from "../messages";
 import { Heading, Section, Text } from "@react-email/components";
 import { BaseLayoutSimple } from "./base-layout-simple";
 import { styles } from "./theme";
@@ -54,8 +55,7 @@ const translations: Record<
       subject: "Ihr Louez-Anmeldecode",
       title: "Ihr Anmeldecode",
       body: "Hier ist Ihr Code für die Anmeldung bei Louez. Er ist 5 Minuten gültig.",
-      expiry:
-        "Wenn Sie diesen Code nicht angefordert haben, können Sie diese E-Mail ignorieren.",
+      expiry: "Wenn Sie diesen Code nicht angefordert haben, können Sie diese E-Mail ignorieren.",
     },
     "forget-password": {
       subject: "Ihr Code zum Zurücksetzen Ihres Louez-Passworts",
@@ -142,6 +142,82 @@ const translations: Record<
       body: "Aqui está o seu código para escolher uma nova palavra-passe Louez. É válido durante 5 minutos.",
       expiry:
         "Se não pediu este código, ignore este email: a sua palavra-passe permanece inalterada.",
+    },
+  },
+
+  zh: {
+    greeting: supplementalMessages.zh.otp_translations_greeting,
+    "sign-in": {
+      subject: supplementalMessages.zh.otp_translations_subject,
+      title: supplementalMessages.zh.otp_translations_title,
+      body: supplementalMessages.zh.otp_translations_body,
+      expiry: supplementalMessages.zh.otp_translations_expiry,
+    },
+    "forget-password": {
+      subject: supplementalMessages.zh.otp_reset_translations_subject,
+      title: supplementalMessages.zh.otp_reset_translations_title,
+      body: supplementalMessages.zh.otp_reset_translations_body,
+      expiry: supplementalMessages.zh.otp_reset_translations_expiry,
+    },
+  },
+  ja: {
+    greeting: supplementalMessages.ja.otp_translations_greeting,
+    "sign-in": {
+      subject: supplementalMessages.ja.otp_translations_subject,
+      title: supplementalMessages.ja.otp_translations_title,
+      body: supplementalMessages.ja.otp_translations_body,
+      expiry: supplementalMessages.ja.otp_translations_expiry,
+    },
+    "forget-password": {
+      subject: supplementalMessages.ja.otp_reset_translations_subject,
+      title: supplementalMessages.ja.otp_reset_translations_title,
+      body: supplementalMessages.ja.otp_reset_translations_body,
+      expiry: supplementalMessages.ja.otp_reset_translations_expiry,
+    },
+  },
+  ru: {
+    greeting: supplementalMessages.ru.otp_translations_greeting,
+    "sign-in": {
+      subject: supplementalMessages.ru.otp_translations_subject,
+      title: supplementalMessages.ru.otp_translations_title,
+      body: supplementalMessages.ru.otp_translations_body,
+      expiry: supplementalMessages.ru.otp_translations_expiry,
+    },
+    "forget-password": {
+      subject: supplementalMessages.ru.otp_reset_translations_subject,
+      title: supplementalMessages.ru.otp_reset_translations_title,
+      body: supplementalMessages.ru.otp_reset_translations_body,
+      expiry: supplementalMessages.ru.otp_reset_translations_expiry,
+    },
+  },
+  id: {
+    greeting: supplementalMessages.id.otp_translations_greeting,
+    "sign-in": {
+      subject: supplementalMessages.id.otp_translations_subject,
+      title: supplementalMessages.id.otp_translations_title,
+      body: supplementalMessages.id.otp_translations_body,
+      expiry: supplementalMessages.id.otp_translations_expiry,
+    },
+    "forget-password": {
+      subject: supplementalMessages.id.otp_reset_translations_subject,
+      title: supplementalMessages.id.otp_reset_translations_title,
+      body: supplementalMessages.id.otp_reset_translations_body,
+      expiry: supplementalMessages.id.otp_reset_translations_expiry,
+    },
+  },
+  ko: {
+    greeting: supplementalMessages.ko.otp_translations_greeting,
+    "sign-in": {
+      subject: supplementalMessages.ko.otp_translations_subject,
+      title: supplementalMessages.ko.otp_translations_title,
+      body: supplementalMessages.ko.otp_translations_body,
+      expiry: supplementalMessages.ko.otp_translations_expiry,
+    },
+    "forget-password": {
+      subject: supplementalMessages.ko.otp_reset_translations_subject,
+      title: supplementalMessages.ko.otp_reset_translations_title,
+      body: supplementalMessages.ko.otp_reset_translations_body,
+      expiry: supplementalMessages.ko.otp_reset_translations_expiry,
     },
   },
 };

@@ -1,3 +1,4 @@
+import { supplementalMessages } from "../messages";
 import { Button, Heading, Section, Text } from "@react-email/components";
 import { BaseLayoutSimple } from "./base-layout-simple";
 import { LOUEZ_BRAND_COLOR, emailTheme, styles } from "./theme";
@@ -87,6 +88,52 @@ const translations: Record<
     button: "Entrar",
     expiry: "Se voce nao solicitou este login, pode ignorar este email.",
     alternative: "Ou copie e cole este link no seu navegador:",
+  },
+
+  zh: {
+    subject: supplementalMessages.zh.magic_link_translations_subject,
+    title: supplementalMessages.zh.magic_link_translations_title,
+    greeting: supplementalMessages.zh.magic_link_translations_greeting,
+    body: supplementalMessages.zh.magic_link_translations_body,
+    button: supplementalMessages.zh.magic_link_translations_button,
+    expiry: supplementalMessages.zh.magic_link_translations_expiry,
+    alternative: supplementalMessages.zh.magic_link_translations_alternative,
+  },
+  ja: {
+    subject: supplementalMessages.ja.magic_link_translations_subject,
+    title: supplementalMessages.ja.magic_link_translations_title,
+    greeting: supplementalMessages.ja.magic_link_translations_greeting,
+    body: supplementalMessages.ja.magic_link_translations_body,
+    button: supplementalMessages.ja.magic_link_translations_button,
+    expiry: supplementalMessages.ja.magic_link_translations_expiry,
+    alternative: supplementalMessages.ja.magic_link_translations_alternative,
+  },
+  ru: {
+    subject: supplementalMessages.ru.magic_link_translations_subject,
+    title: supplementalMessages.ru.magic_link_translations_title,
+    greeting: supplementalMessages.ru.magic_link_translations_greeting,
+    body: supplementalMessages.ru.magic_link_translations_body,
+    button: supplementalMessages.ru.magic_link_translations_button,
+    expiry: supplementalMessages.ru.magic_link_translations_expiry,
+    alternative: supplementalMessages.ru.magic_link_translations_alternative,
+  },
+  id: {
+    subject: supplementalMessages.id.magic_link_translations_subject,
+    title: supplementalMessages.id.magic_link_translations_title,
+    greeting: supplementalMessages.id.magic_link_translations_greeting,
+    body: supplementalMessages.id.magic_link_translations_body,
+    button: supplementalMessages.id.magic_link_translations_button,
+    expiry: supplementalMessages.id.magic_link_translations_expiry,
+    alternative: supplementalMessages.id.magic_link_translations_alternative,
+  },
+  ko: {
+    subject: supplementalMessages.ko.magic_link_translations_subject,
+    title: supplementalMessages.ko.magic_link_translations_title,
+    greeting: supplementalMessages.ko.magic_link_translations_greeting,
+    body: supplementalMessages.ko.magic_link_translations_body,
+    button: supplementalMessages.ko.magic_link_translations_button,
+    expiry: supplementalMessages.ko.magic_link_translations_expiry,
+    alternative: supplementalMessages.ko.magic_link_translations_alternative,
   },
 };
 

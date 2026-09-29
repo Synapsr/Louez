@@ -265,7 +265,7 @@ export async function generateInvoiceForPayment(
       .limit(1);
     const transmissionStatus =
       activeSuperPdp && ["FR", "BE"].includes(legalProfile.country) ? "pending" : "not_applicable";
-    const locale = getLocaleFromCountry(legalProfile.country) === "fr" ? "fr" : "en";
+    const locale = getLocaleFromCountry(legalProfile.country);
     const pdfBuffer = await renderToBuffer(
       InvoiceDocument({
         type: "invoice",
@@ -681,7 +681,7 @@ export async function generateCreditNoteForRefund(
       .limit(1);
     const transmissionStatus =
       activeSuperPdp && ["FR", "BE"].includes(legalProfile.country) ? "pending" : "not_applicable";
-    const locale = getLocaleFromCountry(legalProfile.country) === "fr" ? "fr" : "en";
+    const locale = getLocaleFromCountry(legalProfile.country);
     const pdfBuffer = await renderToBuffer(
       InvoiceDocument({
         type: "credit_note",

@@ -1,3 +1,4 @@
+import { supplementalMessages } from "../messages";
 import { Button, Heading, Section, Text } from "@react-email/components";
 
 import type { EmailLocale } from "../types";
@@ -268,6 +269,151 @@ const translations: Record<EmailLocale, PasswordChangedTranslation> = {
     button: "Não fui eu",
     signInNote:
       "Para confirmar, ser-lhe-á pedido que inicie sessão com um código recebido por email.",
+  },
+  zh: {
+    greeting: supplementalMessages.zh.password_changed_translations_greeting,
+    events: {
+      added: {
+        subject: supplementalMessages.zh.password_changed_translations_events_added_subject,
+        title: supplementalMessages.zh.password_changed_translations_events_added_title,
+        body: supplementalMessages.zh.password_changed_translations_events_added_body,
+      },
+      changed: {
+        subject: supplementalMessages.zh.password_changed_translations_events_changed_subject,
+        title: supplementalMessages.zh.password_changed_translations_events_changed_title,
+        body: supplementalMessages.zh.password_changed_translations_events_changed_body,
+      },
+      reset: {
+        subject: supplementalMessages.zh.password_changed_translations_events_reset_subject,
+        title: supplementalMessages.zh.password_changed_translations_events_reset_title,
+        body: supplementalMessages.zh.password_changed_translations_events_reset_body,
+      },
+      removed: {
+        subject: supplementalMessages.zh.password_changed_translations_events_removed_subject,
+        title: supplementalMessages.zh.password_changed_translations_events_removed_title,
+        body: supplementalMessages.zh.password_changed_translations_events_removed_body,
+      },
+    },
+    ownAction: supplementalMessages.zh.password_changed_translations_ownAction,
+    notYou: supplementalMessages.zh.password_changed_translations_notYou,
+    button: supplementalMessages.zh.password_changed_translations_button,
+    signInNote: supplementalMessages.zh.password_changed_translations_signInNote,
+  },
+  ja: {
+    greeting: supplementalMessages.ja.password_changed_translations_greeting,
+    events: {
+      added: {
+        subject: supplementalMessages.ja.password_changed_translations_events_added_subject,
+        title: supplementalMessages.ja.password_changed_translations_events_added_title,
+        body: supplementalMessages.ja.password_changed_translations_events_added_body,
+      },
+      changed: {
+        subject: supplementalMessages.ja.password_changed_translations_events_changed_subject,
+        title: supplementalMessages.ja.password_changed_translations_events_changed_title,
+        body: supplementalMessages.ja.password_changed_translations_events_changed_body,
+      },
+      reset: {
+        subject: supplementalMessages.ja.password_changed_translations_events_reset_subject,
+        title: supplementalMessages.ja.password_changed_translations_events_reset_title,
+        body: supplementalMessages.ja.password_changed_translations_events_reset_body,
+      },
+      removed: {
+        subject: supplementalMessages.ja.password_changed_translations_events_removed_subject,
+        title: supplementalMessages.ja.password_changed_translations_events_removed_title,
+        body: supplementalMessages.ja.password_changed_translations_events_removed_body,
+      },
+    },
+    ownAction: supplementalMessages.ja.password_changed_translations_ownAction,
+    notYou: supplementalMessages.ja.password_changed_translations_notYou,
+    button: supplementalMessages.ja.password_changed_translations_button,
+    signInNote: supplementalMessages.ja.password_changed_translations_signInNote,
+  },
+  ru: {
+    greeting: supplementalMessages.ru.password_changed_translations_greeting,
+    events: {
+      added: {
+        subject: supplementalMessages.ru.password_changed_translations_events_added_subject,
+        title: supplementalMessages.ru.password_changed_translations_events_added_title,
+        body: supplementalMessages.ru.password_changed_translations_events_added_body,
+      },
+      changed: {
+        subject: supplementalMessages.ru.password_changed_translations_events_changed_subject,
+        title: supplementalMessages.ru.password_changed_translations_events_changed_title,
+        body: supplementalMessages.ru.password_changed_translations_events_changed_body,
+      },
+      reset: {
+        subject: supplementalMessages.ru.password_changed_translations_events_reset_subject,
+        title: supplementalMessages.ru.password_changed_translations_events_reset_title,
+        body: supplementalMessages.ru.password_changed_translations_events_reset_body,
+      },
+      removed: {
+        subject: supplementalMessages.ru.password_changed_translations_events_removed_subject,
+        title: supplementalMessages.ru.password_changed_translations_events_removed_title,
+        body: supplementalMessages.ru.password_changed_translations_events_removed_body,
+      },
+    },
+    ownAction: supplementalMessages.ru.password_changed_translations_ownAction,
+    notYou: supplementalMessages.ru.password_changed_translations_notYou,
+    button: supplementalMessages.ru.password_changed_translations_button,
+    signInNote: supplementalMessages.ru.password_changed_translations_signInNote,
+  },
+  id: {
+    greeting: supplementalMessages.id.password_changed_translations_greeting,
+    events: {
+      added: {
+        subject: supplementalMessages.id.password_changed_translations_events_added_subject,
+        title: supplementalMessages.id.password_changed_translations_events_added_title,
+        body: supplementalMessages.id.password_changed_translations_events_added_body,
+      },
+      changed: {
+        subject: supplementalMessages.id.password_changed_translations_events_changed_subject,
+        title: supplementalMessages.id.password_changed_translations_events_changed_title,
+        body: supplementalMessages.id.password_changed_translations_events_changed_body,
+      },
+      reset: {
+        subject: supplementalMessages.id.password_changed_translations_events_reset_subject,
+        title: supplementalMessages.id.password_changed_translations_events_reset_title,
+        body: supplementalMessages.id.password_changed_translations_events_reset_body,
+      },
+      removed: {
+        subject: supplementalMessages.id.password_changed_translations_events_removed_subject,
+        title: supplementalMessages.id.password_changed_translations_events_removed_title,
+        body: supplementalMessages.id.password_changed_translations_events_removed_body,
+      },
+    },
+    ownAction: supplementalMessages.id.password_changed_translations_ownAction,
+    notYou: supplementalMessages.id.password_changed_translations_notYou,
+    button: supplementalMessages.id.password_changed_translations_button,
+    signInNote: supplementalMessages.id.password_changed_translations_signInNote,
+  },
+  ko: {
+    greeting: supplementalMessages.ko.password_changed_translations_greeting,
+    events: {
+      added: {
+        subject: supplementalMessages.ko.password_changed_translations_events_added_subject,
+        title: supplementalMessages.ko.password_changed_translations_events_added_title,
+        body: supplementalMessages.ko.password_changed_translations_events_added_body,
+      },
+      changed: {
+        subject: supplementalMessages.ko.password_changed_translations_events_changed_subject,
+        title: supplementalMessages.ko.password_changed_translations_events_changed_title,
+        body: supplementalMessages.ko.password_changed_translations_events_changed_body,
+      },
+      reset: {
+        subject: supplementalMessages.ko.password_changed_translations_events_reset_subject,
+        title: supplementalMessages.ko.password_changed_translations_events_reset_title,
+        body: supplementalMessages.ko.password_changed_translations_events_reset_body,
+      },
+      removed: {
+        subject: supplementalMessages.ko.password_changed_translations_events_removed_subject,
+        title: supplementalMessages.ko.password_changed_translations_events_removed_title,
+        body: supplementalMessages.ko.password_changed_translations_events_removed_body,
+      },
+    },
+    ownAction: supplementalMessages.ko.password_changed_translations_ownAction,
+    notYou: supplementalMessages.ko.password_changed_translations_notYou,
+    button: supplementalMessages.ko.password_changed_translations_button,
+    signInNote: supplementalMessages.ko.password_changed_translations_signInNote,
   },
 };
 

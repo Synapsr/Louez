@@ -1,3 +1,4 @@
+import { supplementalMessages } from "@/lib/i18n/supplemental-messages";
 import { defaultLocale, isLocale, type Locale } from "@/i18n/config";
 
 interface StorefrontHomeDemoText {
@@ -38,6 +39,16 @@ const text: Record<Locale, StorefrontHomeDemoText> = {
     announcement: "Twoja kolejna przygoda zaczyna się w Nantes — zarezerwuj rower online",
     tagline: "Rowery do odkrywania Nantes i brzegów Loary we własnym tempie.",
   },
+  zh: {announcement: supplementalMessages.zh.demo_storefront_home_announcement,
+tagline: supplementalMessages.zh.demo_storefront_home_tagline,},
+  ja: {announcement: supplementalMessages.ja.demo_storefront_home_announcement,
+tagline: supplementalMessages.ja.demo_storefront_home_tagline,},
+  ru: {announcement: supplementalMessages.ru.demo_storefront_home_announcement,
+tagline: supplementalMessages.ru.demo_storefront_home_tagline,},
+  id: {announcement: supplementalMessages.id.demo_storefront_home_announcement,
+tagline: supplementalMessages.id.demo_storefront_home_tagline,},
+  ko: {announcement: supplementalMessages.ko.demo_storefront_home_announcement,
+tagline: supplementalMessages.ko.demo_storefront_home_tagline,},
 };
 
 export const getStorefrontHomeDemoText = (locale?: string): StorefrontHomeDemoText =>

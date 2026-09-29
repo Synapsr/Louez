@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "Sepeda kota",
+    "demo-electric-bike": "Sepeda listrik",
+    "demo-child-bike": "Sepeda anak-anak",
+    "demo-gravel": "Sepeda kerikil",
+    "demo-mountain": "Sepeda gunung listrik",
+    "demo-cargo": "Sepeda kargo",
+    "demo-longtail": "Sepeda ekor panjang",
+    "demo-road": "Sepeda jalan raya",
+    "demo-trailer": "Trailer anak",
+    "demo-panniers": "Keranjang beban tur",
+    "demo-child-seat": "Kursi anak",
+    "demo-touring": "Sepeda touring"
+  },
+  "categories": {
+    "bikes": "Sepeda",
+    "electric": "Sepeda listrik",
+    "family": "Keluarga",
+    "accessories": "Aksesoris"
+  },
+  "depositAuthorized": "Penahanan kartu dicatat",
+  "paymentReceived": "Pembayaran diterima secara online",
+  "advisorReply": "Untuk berkeliling kota, saya menyarankan sepeda kota: nyaman dan mudah dikendalikan. Tanggal berapa Anda ingin menyewanya?",
+  "customerNotes": "Kami akan datang pada jam buka untuk memanfaatkan hari sebaik-baiknya.",
+  "internalNotes": "Siapkan sepeda dan periksa tekanan ban sebelum pengambilan.",
+  "steps": ["Buku pelanggan", "Anda bersiap", "Semuanya dilacak"],
+  "customer": "Pelanggan",
+  "owner": "Pemilik",
+  "play": "Mainkan demonya",
+  "pause": "Jeda",
+  "restart": "Mulai dari awal",
+  "toggleMenu": "Menampilkan atau menyembunyikan menu"
+}

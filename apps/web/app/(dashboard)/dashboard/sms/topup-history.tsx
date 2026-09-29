@@ -1,98 +1,80 @@
-'use client'
+"use client";
 
 import {
   ClockSolidIcon,
   RepeatSolidIcon,
   SuccessSolidIcon,
   XCircleSolidIcon,
-} from '@louez/ui/icons'
-import { useTranslations, useLocale } from 'next-intl'
-import { format, type Locale } from 'date-fns'
-import { fr, enUS, de, es, it, nl, pl, pt } from 'date-fns/locale'
-import { History } from 'lucide-react'
-import { formatStoreDate } from '@/lib/utils/store-date'
-import { useFormatLocale } from '@/hooks/use-format-locale'
-import { useStoreTimezone } from '@/contexts/store-context'
+} from "@louez/ui/icons";
+import { useTranslations, useLocale } from "next-intl";
+import { format } from "date-fns";
+import { resolveFormatLocale } from "@/lib/i18n/format-locale";
+import { History } from "lucide-react";
+import { formatStoreDate } from "@/lib/utils/store-date";
+import { useFormatLocale } from "@/hooks/use-format-locale";
+import { useStoreTimezone } from "@/contexts/store-context";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
-import { Badge } from '@louez/ui'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@louez/ui'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@louez/ui";
+import { Badge } from "@louez/ui";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@louez/ui";
 
-import type { TopupTransaction } from './actions'
-
-const localeMap: Record<string, Locale> = {
-  fr,
-  en: enUS,
-  de,
-  es,
-  it,
-  nl,
-  pl,
-  pt,
-}
+import type { TopupTransaction } from "./actions";
 
 interface TopupHistoryProps {
-  transactions: TopupTransaction[]
+  transactions: TopupTransaction[];
 }
 
 export function TopupHistory({ transactions }: TopupHistoryProps) {
-  const t = useTranslations('dashboard.sms.topupHistory')
-  const locale = useLocale()
-  const { intl: formatLocale } = useFormatLocale()
-  const timezone = useStoreTimezone()
-  const dateLocale = localeMap[locale] || fr
+  const t = useTranslations("dashboard.sms.topupHistory");
+  const locale = useLocale();
+  const { intl: formatLocale } = useFormatLocale();
+  const timezone = useStoreTimezone();
+  const dateLocale = resolveFormatLocale(locale).dateFns;
 
   const formatPrice = (cents: number) => {
-    return (cents / 100).toFixed(2).replace('.', ',') + '€'
-  }
+    return (cents / 100).toFixed(2).replace(".", ",") + "€";
+  };
 
-  const getStatusBadge = (status: TopupTransaction['status']) => {
+  const getStatusBadge = (status: TopupTransaction["status"]) => {
     switch (status) {
-      case 'completed':
+      case "completed":
         return (
           <Badge variant="success">
             <SuccessSolidIcon className="mr-1 h-3 w-3" />
-            {t('status.completed')}
+            {t("status.completed")}
           </Badge>
-        )
-      case 'pending':
+        );
+      case "pending":
         return (
           <Badge variant="pending">
             <ClockSolidIcon className="mr-1 h-3 w-3" />
-            {t('status.pending')}
+            {t("status.pending")}
           </Badge>
-        )
-      case 'failed':
+        );
+      case "failed":
         return (
           <Badge variant="failed">
             <XCircleSolidIcon className="mr-1 h-3 w-3" />
-            {t('status.failed')}
+            {t("status.failed")}
           </Badge>
-        )
-      case 'refunded':
+        );
+      case "refunded":
         return (
           <Badge variant="expired">
             <RepeatSolidIcon className="mr-1 h-3 w-3" />
-            {t('status.refunded')}
+            {t("status.refunded")}
           </Badge>
-        )
+        );
     }
-  }
+  };
 
   // Calculate totals for completed transactions
-  const completedTransactions = transactions.filter((t) => t.status === 'completed')
-  const totalSms = completedTransactions.reduce((sum, t) => sum + t.quantity, 0)
-  const totalSpent = completedTransactions.reduce((sum, t) => sum + t.totalAmountCents, 0)
+  const completedTransactions = transactions.filter((t) => t.status === "completed");
+  const totalSms = completedTransactions.reduce((sum, t) => sum + t.quantity, 0);
+  const totalSpent = completedTransactions.reduce((sum, t) => sum + t.totalAmountCents, 0);
 
   if (transactions.length === 0) {
-    return null
+    return null;
   }
 
   return (
@@ -103,8 +85,8 @@ export function TopupHistory({ transactions }: TopupHistoryProps) {
             <History className="h-5 w-5 text-muted-foreground" />
           </div>
           <div>
-            <CardTitle className="text-lg">{t('title')}</CardTitle>
-            <CardDescription>{t('description')}</CardDescription>
+            <CardTitle className="text-lg">{t("title")}</CardTitle>
+            <CardDescription>{t("description")}</CardDescription>
           </div>
         </div>
       </CardHeader>
@@ -113,11 +95,11 @@ export function TopupHistory({ transactions }: TopupHistoryProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{t('date')}</TableHead>
-                <TableHead className="text-right">{t('quantity')}</TableHead>
-                <TableHead className="text-right">{t('unitPrice')}</TableHead>
-                <TableHead className="text-right">{t('total')}</TableHead>
-                <TableHead className="text-center">{t('statusColumn')}</TableHead>
+                <TableHead>{t("date")}</TableHead>
+                <TableHead className="text-right">{t("quantity")}</TableHead>
+                <TableHead className="text-right">{t("unitPrice")}</TableHead>
+                <TableHead className="text-right">{t("total")}</TableHead>
+                <TableHead className="text-center">{t("statusColumn")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -125,7 +107,7 @@ export function TopupHistory({ transactions }: TopupHistoryProps) {
                 <TableRow key={transaction.id}>
                   <TableCell>
                     <div className="text-sm">
-                      {format(new Date(transaction.createdAt), 'dd MMM yyyy', {
+                      {format(new Date(transaction.createdAt), "dd MMM yyyy", {
                         locale: dateLocale,
                       })}
                     </div>
@@ -133,7 +115,7 @@ export function TopupHistory({ transactions }: TopupHistoryProps) {
                       {formatStoreDate(
                         new Date(transaction.createdAt),
                         timezone,
-                        'TIME_ONLY',
+                        "TIME_ONLY",
                         formatLocale,
                       )}
                     </div>
@@ -160,14 +142,16 @@ export function TopupHistory({ transactions }: TopupHistoryProps) {
         {completedTransactions.length > 0 && (
           <div className="mt-4 flex items-center justify-end gap-6 text-sm">
             <div className="text-muted-foreground">
-              {t('totalPurchased')}: <span className="font-medium text-foreground">{totalSms} SMS</span>
+              {t("totalPurchased")}:{" "}
+              <span className="font-medium text-foreground">{totalSms} SMS</span>
             </div>
             <div className="text-muted-foreground">
-              {t('totalSpent')}: <span className="font-medium text-foreground">{formatPrice(totalSpent)}</span>
+              {t("totalSpent")}:{" "}
+              <span className="font-medium text-foreground">{formatPrice(totalSpent)}</span>
             </div>
           </div>
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

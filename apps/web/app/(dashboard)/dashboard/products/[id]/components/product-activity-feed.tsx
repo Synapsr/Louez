@@ -6,7 +6,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 // eslint-disable-next-line no-restricted-imports
 import { formatDistance } from "date-fns";
-import { enUS, fr, type Locale } from "date-fns/locale";
+import { resolveFormatLocale } from "@/lib/i18n/format-locale";
 import { Activity } from "lucide-react";
 
 import type { ProductUnitActivityCursor, ProductUnitActivityPage } from "@louez/api/services";
@@ -19,10 +19,6 @@ import { orpc } from "@/lib/orpc/react";
 
 import { UNIT_EVENT_CONFIG, type UnitEventType } from "./product-unit-activity.constants";
 import { groupReservationActivity } from "./util.product-activity";
-
-// Mirrors `apps/web/lib/utils/store-date.ts`'s LOCALE_MAP convention, scoped
-// to the two locales this app actually ships (see apps/web/messages/).
-const LOCALE_MAP: Record<string, Locale> = { fr, en: enUS };
 
 interface ProductActivityFeedProps {
   initialPage: ProductUnitActivityPage;
@@ -42,7 +38,7 @@ export const ProductActivityFeed = ({
   const t = useTranslations();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const dateFnsLocale = LOCALE_MAP[locale] ?? fr;
+  const dateFnsLocale = resolveFormatLocale(locale).dateFns;
   const referenceNow = new Date(referenceDate);
 
   const query = useInfiniteQuery(

@@ -1,3 +1,4 @@
+import { supplementalMessages, formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
 import type { Locale } from "@/i18n/config";
 
 type MessageDemoText = {
@@ -65,6 +66,31 @@ const messages = {
     characters: "znaków",
     segments: (count: number) => `Zostanie wysłanych ${count} SMS-ów`,
   },
+  zh: {sender: supplementalMessages.zh.demo_messages_sender,
+now: supplementalMessages.zh.demo_messages_now,
+message: supplementalMessages.zh.demo_messages_message,
+characters: supplementalMessages.zh.demo_messages_characters,
+segments: (count: number) => formatSupplementalMessage("zh", "demo_messages_segments", { count }),},
+  ja: {sender: supplementalMessages.ja.demo_messages_sender,
+now: supplementalMessages.ja.demo_messages_now,
+message: supplementalMessages.ja.demo_messages_message,
+characters: supplementalMessages.ja.demo_messages_characters,
+segments: (count: number) => formatSupplementalMessage("ja", "demo_messages_segments", { count }),},
+  ru: {sender: supplementalMessages.ru.demo_messages_sender,
+now: supplementalMessages.ru.demo_messages_now,
+message: supplementalMessages.ru.demo_messages_message,
+characters: supplementalMessages.ru.demo_messages_characters,
+segments: (count: number) => formatSupplementalMessage("ru", "demo_messages_segments", { count }),},
+  id: {sender: supplementalMessages.id.demo_messages_sender,
+now: supplementalMessages.id.demo_messages_now,
+message: supplementalMessages.id.demo_messages_message,
+characters: supplementalMessages.id.demo_messages_characters,
+segments: (count: number) => formatSupplementalMessage("id", "demo_messages_segments", { count }),},
+  ko: {sender: supplementalMessages.ko.demo_messages_sender,
+now: supplementalMessages.ko.demo_messages_now,
+message: supplementalMessages.ko.demo_messages_message,
+characters: supplementalMessages.ko.demo_messages_characters,
+segments: (count: number) => formatSupplementalMessage("ko", "demo_messages_segments", { count }),},
 } satisfies Record<Locale, MessageDemoText>;
 
 export const getMessageDemoText = (locale: Locale = "fr"): MessageDemoText => messages[locale];

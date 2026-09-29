@@ -1,11 +1,9 @@
 import type { CustomerNotificationEventType } from "@louez/types";
 import type { EmailLocale } from "@/lib/email/i18n";
+import { supplementalMessages } from "@/lib/i18n/supplemental-messages";
 
 // Default subjects per event type and locale
-export const DEFAULT_SUBJECTS: Record<
-  EmailLocale,
-  Record<CustomerNotificationEventType, string>
-> = {
+export const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEventType, string>> = {
   fr: {
     customer_request_received: "Demande de réservation reçue",
     customer_request_accepted: "Votre demande de réservation a été acceptée",
@@ -104,13 +102,131 @@ export const DEFAULT_SUBJECTS: Record<
     customer_quote_sent: "Orçamento para a reserva #{number}",
     customer_quote_accepted: "Seu orçamento #{number} foi aceito",
   },
+
+  zh: {
+    customer_request_received:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SUBJECTS_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SUBJECTS_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SUBJECTS_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SUBJECTS_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_accepted,
+  },
+  ja: {
+    customer_request_received:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SUBJECTS_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SUBJECTS_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SUBJECTS_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SUBJECTS_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_accepted,
+  },
+  ru: {
+    customer_request_received:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SUBJECTS_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SUBJECTS_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SUBJECTS_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SUBJECTS_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_accepted,
+  },
+  id: {
+    customer_request_received:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SUBJECTS_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SUBJECTS_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SUBJECTS_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SUBJECTS_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_accepted,
+  },
+  ko: {
+    customer_request_received:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SUBJECTS_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SUBJECTS_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SUBJECTS_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SUBJECTS_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SUBJECTS_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SUBJECTS_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SUBJECTS_customer_quote_accepted,
+  },
 };
 
 // SMS templates per locale
-export const DEFAULT_SMS_TEMPLATES: Record<
-  EmailLocale,
-  Record<CustomerNotificationEventType, string>
-> = {
+export const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEventType, string>> = {
   fr: {
     customer_request_received:
       "{storeName}\nDemande reçue #{number}\nNous reviendrons vers vous rapidement.",
@@ -250,6 +366,155 @@ export const DEFAULT_SMS_TEMPLATES: Record<
     customer_quote_sent: "{storeName}\nOrçamento #{number} recebido\nConsulte-o na sua conta.",
     customer_quote_accepted: "{storeName}\nOrçamento #{number} aceito!\nRetirada em {startDate}",
   },
-};
 
-// Export defaults for use in other files
+  zh: {
+    customer_request_received:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.zh
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.zh.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_accepted,
+  },
+  ja: {
+    customer_request_received:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.ja
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.ja.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_accepted,
+  },
+  ru: {
+    customer_request_received:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.ru
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.ru.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_accepted,
+  },
+  id: {
+    customer_request_received:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.id
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.id.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_accepted,
+  },
+  ko: {
+    customer_request_received:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_received,
+    customer_request_accepted:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_accepted,
+    customer_request_rejected:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_request_rejected,
+    customer_reservation_confirmed:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reservation_confirmed,
+    customer_reminder_pickup:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_pickup,
+    customer_reminder_return:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_reminder_return,
+    customer_payment_requested:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_payment_requested,
+    customer_deposit_authorization_requested:
+      supplementalMessages.ko
+        .customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_deposit_authorization_requested,
+    customer_quote_sent:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_sent,
+    customer_quote_accepted:
+      supplementalMessages.ko.customer_template_modal_DEFAULT_SMS_TEMPLATES_customer_quote_accepted,
+  },
+};

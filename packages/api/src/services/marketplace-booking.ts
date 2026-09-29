@@ -1,3 +1,4 @@
+import { supportedLocales } from "@louez/types";
 import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
@@ -33,7 +34,7 @@ const quoteTokenPayloadSchema = z.object({
   storeId: z.string().length(21),
   startAt: z.iso.datetime({ offset: true }),
   endAt: z.iso.datetime({ offset: true }),
-  locale: z.enum(["fr", "en", "de", "es", "it", "nl", "pl", "pt"]),
+  locale: z.enum(supportedLocales),
   expiresAt: z.iso.datetime({ offset: true }),
   currency: z.string().length(3),
   lines: z.array(

@@ -7,7 +7,6 @@ import { createRequire } from "node:module";
 import * as nodeModule from "node:module";
 
 import type { Locale } from "@/i18n/config";
-import type { ContractTranslations } from "@/lib/pdf/contract";
 
 // The app's TypeScript modules are CommonJS under tsx; this .mts entrypoint is ESM.
 // Fixture generation must never require production credentials. The app env
@@ -40,24 +39,13 @@ const {
 const { ContractDocument }: typeof import("@/lib/pdf/contract") = require("@/lib/pdf/contract");
 // The same react-pdf instance as the app modules: the fonts they register live in it.
 const { renderToBuffer }: typeof import("@react-pdf/renderer") = require("@react-pdf/renderer");
-const de: typeof import("@/messages/de.json") = require("@/messages/de.json");
-const en: typeof import("@/messages/en.json") = require("@/messages/en.json");
-const es: typeof import("@/messages/es.json") = require("@/messages/es.json");
-const fr: typeof import("@/messages/fr.json") = require("@/messages/fr.json");
-const it: typeof import("@/messages/it.json") = require("@/messages/it.json");
-const nl: typeof import("@/messages/nl.json") = require("@/messages/nl.json");
-const pl: typeof import("@/messages/pl.json") = require("@/messages/pl.json");
-const pt: typeof import("@/messages/pt.json") = require("@/messages/pt.json");
+const { getContractTranslations }: typeof import("@/lib/pdf/contract-i18n") = require("@/lib/pdf/contract-i18n");
 const sharp: typeof import("sharp") = require("sharp");
 
 // `pnpm --filter @louez/web demo:documents`. The Docker build runs it before `next build`: the
 // scenes import the date snapshot, so the images and the bundle carry the same dates.
 // Do not import generate.ts: its production path uses the database and validates reservations.
 // ContractDocument embeds Inter (lib/pdf/fonts.ts) and no remote logo here.
-const translations = { fr, en, it, nl, pt, de, es, pl } satisfies Record<
-  Locale,
-  { contract: ContractTranslations }
->;
 const pdfDirectory = new URL("../.demo-documents/", import.meta.url);
 const assetDirectory = new URL("../public/demo-documents/", import.meta.url);
 await mkdir(pdfDirectory, { recursive: true });
@@ -102,7 +90,7 @@ const snapshot = createDemoContractSnapshot();
 const counts: Partial<Record<Locale, number>> = {};
 for (const locale of locales) {
   const buffer = await renderToBuffer(
-    ContractDocument(createDemoContractProps(locale, snapshot, translations[locale].contract)),
+    ContractDocument(createDemoContractProps(locale, snapshot, getContractTranslations(locale))),
   );
   // PDFKit writes page dictionaries outside compressed content streams. Count
   // actual /Page objects, excluding the /Pages tree, instead of assuming a layout.

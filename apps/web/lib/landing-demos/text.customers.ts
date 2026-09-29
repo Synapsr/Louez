@@ -1,3 +1,4 @@
+import { supplementalMessages } from "@/lib/i18n/supplemental-messages";
 import type { Locale } from "@/i18n/config";
 
 const customerText = {
@@ -47,6 +48,16 @@ const customerText = {
     businessNotes:
       "Wynajem rowerów na przejazdy zespołu po Nantes. Przygotować wszystkie rowery razem do odbioru.",
   },
+  zh: {notes: supplementalMessages.zh.demo_customers_notes,
+businessNotes: supplementalMessages.zh.demo_customers_businessNotes,},
+  ja: {notes: supplementalMessages.ja.demo_customers_notes,
+businessNotes: supplementalMessages.ja.demo_customers_businessNotes,},
+  ru: {notes: supplementalMessages.ru.demo_customers_notes,
+businessNotes: supplementalMessages.ru.demo_customers_businessNotes,},
+  id: {notes: supplementalMessages.id.demo_customers_notes,
+businessNotes: supplementalMessages.id.demo_customers_businessNotes,},
+  ko: {notes: supplementalMessages.ko.demo_customers_notes,
+businessNotes: supplementalMessages.ko.demo_customers_businessNotes,},
 } satisfies Record<Locale, { notes: string; businessNotes: string }>;
 
 export const getDemoCustomerText = (locale: Locale = "fr") => customerText[locale];

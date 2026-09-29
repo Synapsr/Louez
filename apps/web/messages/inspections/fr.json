@@ -1,0 +1,55 @@
+{
+  "documentType": {
+    "departure": "État des lieux - Départ",
+    "return": "État des lieux - Retour"
+  },
+  "documentNumber": "N° {number}",
+  "reservationNumber": "Réservation #{number}",
+  "sections": {
+    "inspectionDetails": "Détails de l'inspection",
+    "equipment": "Équipements inspectés",
+    "signature": "Signature",
+    "notes": "Notes générales"
+  },
+  "parties": {
+    "store": "Loueur",
+    "customer": "Client"
+  },
+  "period": {
+    "date": "Date",
+    "time": "Heure",
+    "performedBy": "Effectué par"
+  },
+  "condition": {
+    "excellent": "Excellent",
+    "good": "Bon état",
+    "fair": "Usure",
+    "damaged": "Endommagé",
+    "label": "État"
+  },
+  "table": {
+    "equipment": "Équipement",
+    "condition": "État",
+    "photos": "Photos",
+    "notes": "Remarques"
+  },
+  "signature": {
+    "customerSignature": "Signature du client",
+    "signedAt": "Signé le",
+    "ipAddress": "Adresse IP",
+    "notSigned": "Non signé"
+  },
+  "footer": {
+    "poweredBy": "Généré par Louez.io",
+    "generatedOn": "Généré le",
+    "page": "Page",
+    "of": "sur"
+  },
+  "summary": {
+    "totalItems": "équipements",
+    "withIssues": "avec remarques",
+    "photos": "photos",
+    "damageDetected": "Dommage détecté",
+    "noDamage": "Aucun dommage"
+  }
+}

@@ -269,7 +269,7 @@ export function ContractDocument({
   fullCgvHtml,
 }: ContractDocumentProps) {
   const primaryColor = store.primaryColor || "#0066FF";
-  const styles = createContractStyles(primaryColor);
+  const styles = createContractStyles(primaryColor, locale);
   const cgvBlocks = parseCgvHtml(fullCgvHtml);
 
   // Create a currency formatter for this document

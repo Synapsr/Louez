@@ -1,11 +1,6 @@
+import { getInspectionTranslations } from "./inspection-i18n";
 import { renderToBuffer } from "@react-pdf/renderer";
-import {
-  InspectionReportDocument,
-  InspectionTranslations,
-  SupportedLocale,
-  defaultTranslationsFr,
-  defaultTranslationsEn,
-} from "./inspection-report";
+import { InspectionReportDocument, SupportedLocale } from "./inspection-report";
 import { db } from "@louez/db";
 import {
   inspections,
@@ -25,11 +20,6 @@ interface GenerateInspectionReportOptions {
   inspectionId: string;
   regenerate?: boolean;
   locale?: SupportedLocale;
-}
-
-// Get translations for the specified locale
-function getTranslations(locale: SupportedLocale): InspectionTranslations {
-  return locale === "fr" ? defaultTranslationsFr : defaultTranslationsEn;
 }
 
 export async function generateInspectionReport({
@@ -127,7 +117,7 @@ export async function generateInspectionReport({
   const documentNumber = await generateInspectionDocumentNumber(store.id);
 
   // Get translations for the locale
-  const translations = getTranslations(locale);
+  const translations = getInspectionTranslations(locale);
 
   // Convert store logo to PDF-compatible format
   const pdfLogoUrl = await convertImageForPdf(getLogoForLightBackground(store));

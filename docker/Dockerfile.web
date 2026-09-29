@@ -119,7 +119,9 @@ RUN corepack enable pnpm && \
 
 # Posters are captured from the built app. Chromium stays in this build stage.
 FROM builder AS demo-posters
-RUN apk add --no-cache chromium
+# Chromium only brings Latin fonts; the capture stage also renders zh, ja and ko.
+# These system fonts stay in this build stage, outside the final application image.
+RUN apk add --no-cache chromium font-noto-cjk
 RUN pnpm --filter=@louez/web demo:posters --start --browser /usr/bin/chromium
 
 # -----------------------------------------------------------------------------

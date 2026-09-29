@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import type { Locale } from "@/i18n/config";
 import { Font } from "@react-pdf/renderer";
 
 /**
@@ -27,3 +28,18 @@ Font.register({
     { src: join(fontDirectory, "Inter-Bold.ttf"), fontWeight: 700 },
   ],
 });
+
+// Full CJK coverage includes merchant data and customer names, not just UI labels.
+for (const locale of ["zh", "ja", "ko"] as const) {
+  Font.register({
+    family: `LouezCJK-${locale}`,
+    src: join(fontDirectory, `NotoSansCJK-${locale}.woff`),
+  });
+}
+
+export const getPdfFonts = (locale: Locale) => {
+  const family = locale === "zh" || locale === "ja" || locale === "ko"
+    ? `LouezCJK-${locale}`
+    : PDF_FONT_FAMILY;
+  return { regular: family, bold: family };
+};

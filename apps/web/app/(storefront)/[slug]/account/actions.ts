@@ -1,5 +1,7 @@
 "use server";
 
+import { locales } from "@/i18n/config";
+
 import { randomInt } from "node:crypto";
 
 import { and, eq, gt, isNull } from "drizzle-orm";
@@ -57,16 +59,7 @@ export type VerifyCodeResult =
   | { ok: true }
   | { ok: false; error: VerifyCodeError; retryAfterSeconds?: number };
 
-const EMAIL_LOCALES = [
-  "fr",
-  "en",
-  "de",
-  "es",
-  "it",
-  "nl",
-  "pl",
-  "pt",
-] as const satisfies readonly EmailLocale[];
+const EMAIL_LOCALES = locales;
 
 const isEmailLocale = (locale: string): locale is EmailLocale =>
   EMAIL_LOCALES.some((candidate) => candidate === locale);

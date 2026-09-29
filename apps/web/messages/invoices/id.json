@@ -1,0 +1,48 @@
+{
+  "documentType": {
+    "invoice": "Faktur",
+    "creditNote": "Catatan kredit"
+  },
+  "labels": {
+    "number": "Tidak.",
+    "date": "Tanggal",
+    "seller": "Penjual",
+    "buyer": "Pelanggan",
+    "contact": "Kontak",
+    "companyNumber": "Nomor perusahaan",
+    "siret": "SIRET",
+    "vatNumber": "nomor PPN",
+    "rcs": "Daftar perdagangan",
+    "shareCapital": "Bagikan modal",
+    "precedingInvoice": "Catatan kredit untuk faktur",
+    "payment": "Pembayaran",
+    "paymentDate": "Tanggal pembayaran",
+    "paymentMethod": "Metode pembayaran"
+  },
+  "table": {
+    "description": "Deskripsi",
+    "quantity": "Jumlah",
+    "unitPriceExclTax": "Harga satuan tidak termasuk. pajak",
+    "vatRate": "PPN",
+    "totalExclTax": "Jumlah tidak termasuk. pajak"
+  },
+  "vat": {
+    "title": "rincian PPN",
+    "rate": "Nilai",
+    "taxableAmount": "Jumlah kena pajak",
+    "taxAmount": "PPN"
+  },
+  "totals": {
+    "exclTax": "Jumlah tidak termasuk. pajak",
+    "tax": "Jumlah PPN",
+    "inclTax": "Jumlah termasuk. pajak"
+  },
+  "methods": {
+    "stripe": "Kartu daring",
+    "cash": "Uang tunai",
+    "card": "Kartu",
+    "transfer": "Transfer bank",
+    "check": "Periksa",
+    "other": "Lainnya"
+  }
+}

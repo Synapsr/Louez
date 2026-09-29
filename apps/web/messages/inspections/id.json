@@ -1,0 +1,55 @@
+{
+  "documentType": {
+    "departure": "Laporan Inspeksi - Keberangkatan",
+    "return": "Laporan Inspeksi - Pengembalian"
+  },
+  "documentNumber": "Nomor {number}",
+  "reservationNumber": "Reservasi #{number}",
+  "sections": {
+    "inspectionDetails": "Detail Inspeksi",
+    "equipment": "Peralatan yang Diperiksa",
+    "signature": "Tanda tangan",
+    "notes": "Catatan Umum"
+  },
+  "parties": {
+    "store": "Perusahaan Penyewaan",
+    "customer": "Pelanggan"
+  },
+  "period": {
+    "date": "Tanggal",
+    "time": "Waktu",
+    "performedBy": "Dilakukan oleh"
+  },
+  "condition": {
+    "excellent": "Luar biasa",
+    "good": "Bagus",
+    "fair": "Adil",
+    "damaged": "Rusak",
+    "label": "Kondisi"
+  },
+  "table": {
+    "equipment": "Peralatan",
+    "condition": "Kondisi",
+    "photos": "Foto",
+    "notes": "Catatan"
+  },
+  "signature": {
+    "customerSignature": "Tanda Tangan Pelanggan",
+    "signedAt": "Ditandatangani di",
+    "ipAddress": "Alamat IP",
+    "notSigned": "Tidak ditandatangani"
+  },
+  "footer": {
+    "poweredBy": "Didukung oleh Louez.io",
+    "generatedOn": "Dihasilkan pada",
+    "page": "Halaman",
+    "of": "dari"
+  },
+  "summary": {
+    "totalItems": "item",
+    "withIssues": "dengan masalah",
+    "photos": "foto",
+    "damageDetected": "Kerusakan terdeteksi",
+    "noDamage": "Tidak ada kerusakan"
+  }
+}

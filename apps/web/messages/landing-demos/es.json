@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "Bicicleta urbana",
+    "demo-electric-bike": "Bicicleta eléctrica",
+    "demo-child-bike": "Bicicleta infantil",
+    "demo-gravel": "Gravel",
+    "demo-mountain": "Bicicleta de montaña eléctrica",
+    "demo-cargo": "Bicicleta de carga",
+    "demo-longtail": "Bicicleta longtail",
+    "demo-road": "Bicicleta de carretera",
+    "demo-trailer": "Remolque infantil",
+    "demo-panniers": "Alforjas de viaje",
+    "demo-child-seat": "Silla infantil",
+    "demo-touring": "Bicicleta de cicloturismo"
+  },
+  "categories": {
+    "bikes": "Bicicletas",
+    "electric": "Bicicletas eléctricas",
+    "family": "En familia",
+    "accessories": "Accesorios"
+  },
+  "depositAuthorized": "Retención en tarjeta registrada",
+  "paymentReceived": "Pago recibido en línea",
+  "advisorReply": "Para un paseo por la ciudad, le recomiendo la bicicleta urbana: cómoda y fácil de manejar. ¿Para qué fecha desea alquilarla?",
+  "customerNotes": "Pasaremos a la hora de apertura para aprovechar el día.",
+  "internalNotes": "Preparar las bicicletas y comprobar la presión de los neumáticos antes de la salida.",
+  "steps": ["El cliente reserva", "Usted prepara", "Todo queda registrado"],
+  "customer": "Cliente",
+  "owner": "Propietario",
+  "play": "Iniciar la demo",
+  "pause": "Pausa",
+  "restart": "Volver a empezar",
+  "toggleMenu": "Mostrar u ocultar el menú"
+}

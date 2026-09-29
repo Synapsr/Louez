@@ -3,7 +3,7 @@
 Single source of truth for shared modules:
 
 - UI primitives and base design tokens: `packages/ui`
-- Shared domain types: `packages/types`
+- Shared domain types and supported language registry: `packages/types` (`src/locale.ts`)
 - Shared Zod validations: `packages/validations`
 - Shared pricing logic and helpers: `packages/utils/src/pricing`
 - Database schema and DB runtime exports: `packages/db`

@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "Vélo de ville",
+    "demo-electric-bike": "Vélo électrique",
+    "demo-child-bike": "Vélo enfant",
+    "demo-gravel": "Gravel",
+    "demo-mountain": "VTT électrique",
+    "demo-cargo": "Vélo cargo",
+    "demo-longtail": "Vélo longtail",
+    "demo-road": "Vélo de route",
+    "demo-trailer": "Remorque enfant",
+    "demo-panniers": "Sacoches de randonnée",
+    "demo-child-seat": "Siège enfant",
+    "demo-touring": "Vélo de randonnée"
+  },
+  "categories": {
+    "bikes": "Vélos",
+    "electric": "Vélos électriques",
+    "family": "En famille",
+    "accessories": "Accessoires"
+  },
+  "depositAuthorized": "Empreinte bancaire enregistrée",
+  "paymentReceived": "Paiement reçu en ligne",
+  "advisorReply": "Pour une balade en ville, je vous conseille le vélo de ville : confortable et facile à prendre en main. Pour quelle date souhaitez-vous le louer ?",
+  "customerNotes": "Nous passerons à l’ouverture pour profiter de la journée.",
+  "internalNotes": "Préparer les vélos et vérifier la pression des pneus avant le départ.",
+  "steps": ["Le client réserve", "Vous préparez", "Tout est suivi"],
+  "customer": "Client",
+  "owner": "Loueur",
+  "play": "Lancer la démo",
+  "pause": "Pause",
+  "restart": "Recommencer",
+  "toggleMenu": "Afficher ou masquer le menu"
+}

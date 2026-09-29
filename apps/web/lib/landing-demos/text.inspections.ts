@@ -1,3 +1,4 @@
+import { supplementalMessages } from "@/lib/i18n/supplemental-messages";
 import { defaultLocale, type Locale } from "@/i18n/config";
 
 interface InspectionDemoText {
@@ -56,6 +57,26 @@ const text = {
     returnNote: "Porównanie ze zdjęciami wykonanymi przy odbiorze.",
     damageNote: "Przy zwrocie stwierdzono rysę na ramie.",
   },
+  zh: {wearNote: supplementalMessages.zh.demo_inspections_wearNote,
+departureNote: supplementalMessages.zh.demo_inspections_departureNote,
+returnNote: supplementalMessages.zh.demo_inspections_returnNote,
+damageNote: supplementalMessages.zh.demo_inspections_damageNote,},
+  ja: {wearNote: supplementalMessages.ja.demo_inspections_wearNote,
+departureNote: supplementalMessages.ja.demo_inspections_departureNote,
+returnNote: supplementalMessages.ja.demo_inspections_returnNote,
+damageNote: supplementalMessages.ja.demo_inspections_damageNote,},
+  ru: {wearNote: supplementalMessages.ru.demo_inspections_wearNote,
+departureNote: supplementalMessages.ru.demo_inspections_departureNote,
+returnNote: supplementalMessages.ru.demo_inspections_returnNote,
+damageNote: supplementalMessages.ru.demo_inspections_damageNote,},
+  id: {wearNote: supplementalMessages.id.demo_inspections_wearNote,
+departureNote: supplementalMessages.id.demo_inspections_departureNote,
+returnNote: supplementalMessages.id.demo_inspections_returnNote,
+damageNote: supplementalMessages.id.demo_inspections_damageNote,},
+  ko: {wearNote: supplementalMessages.ko.demo_inspections_wearNote,
+departureNote: supplementalMessages.ko.demo_inspections_departureNote,
+returnNote: supplementalMessages.ko.demo_inspections_returnNote,
+damageNote: supplementalMessages.ko.demo_inspections_damageNote,},
 } satisfies Record<Locale, InspectionDemoText>;
 
 export const getInspectionDemoText = (locale: Locale = defaultLocale): InspectionDemoText =>

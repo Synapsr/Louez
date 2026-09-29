@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "城市自行车",
+    "demo-electric-bike": "电动自行车",
+    "demo-child-bike": "儿童自行车",
+    "demo-gravel": "碎石自行车",
+    "demo-mountain": "电动山地自行车",
+    "demo-cargo": "货运自行车",
+    "demo-longtail": "长尾自行车",
+    "demo-road": "公路自行车",
+    "demo-trailer": "儿童拖车",
+    "demo-panniers": "旅行包",
+    "demo-child-seat": "儿童座椅",
+    "demo-touring": "旅行自行车"
+  },
+  "categories": {
+    "bikes": "自行车",
+    "electric": "电动自行车",
+    "family": "家庭",
+    "accessories": "配件"
+  },
+  "depositAuthorized": "持卡记录",
+  "paymentReceived": "网上收到付款",
+  "advisorReply": "如果要在城里骑行，我建议使用城市自行车：舒适且易于操控。您想在哪一天租用？",
+  "customerNotes": "我们将在开放时间过来，充分利用这一天。",
+  "internalNotes": "取车前准备好自行车并检查轮胎压力。",
+  "steps": ["客户的书", "你准备", "一切都被追踪"],
+  "customer": "客户",
+  "owner": "业主",
+  "play": "播放演示",
+  "pause": "暂停",
+  "restart": "重新开始",
+  "toggleMenu": "显示或隐藏菜单"
+}

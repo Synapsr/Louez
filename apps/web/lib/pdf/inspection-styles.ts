@@ -1,5 +1,6 @@
+import type { Locale } from "@/i18n/config";
+import { getPdfFonts } from "./fonts";
 import { StyleSheet } from "@react-pdf/renderer";
-import { PDF_FONT_FAMILY } from "./fonts";
 import { pdfPalette } from "./styles";
 
 /** Text colour of each condition pill; the pill itself stays on the neutral block. */
@@ -10,8 +11,9 @@ export const CONDITION_COLORS: Record<"excellent" | "good" | "fair" | "damaged",
   damaged: pdfPalette.danger,
 };
 
-export function createInspectionStyles(_primaryColor: string = "#0066FF") {
+export function createInspectionStyles(_primaryColor: string = "#0066FF", locale: Locale = "fr") {
   const c = pdfPalette;
+  const fonts = getPdfFonts(locale);
 
   return StyleSheet.create({
     // Page
@@ -20,7 +22,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
       paddingBottom: 64,
       paddingHorizontal: 44,
       fontSize: 9,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.regular,
       color: c.body,
       lineHeight: 1.45,
     },
@@ -48,7 +50,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
     },
     storeName: {
       fontSize: 16,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.bold,
       fontWeight: 700,
       color: c.ink,
     },
@@ -61,7 +63,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
     },
     documentType: {
       fontSize: 14,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.bold,
       fontWeight: 700,
       color: c.ink,
       textAlign: "right",
@@ -71,7 +73,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
     },
     documentNumber: {
       fontSize: 9,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.bold,
       fontWeight: 700,
       color: c.ink,
       marginBottom: 1,
@@ -92,7 +94,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
     },
     sectionTitle: {
       fontSize: 7.5,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.bold,
       fontWeight: 700,
       color: c.muted,
       marginBottom: 10,
@@ -117,7 +119,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
     },
     detailValue: {
       fontSize: 10,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.bold,
       fontWeight: 700,
       color: c.ink,
     },
@@ -139,7 +141,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
     summaryValue: {
       fontSize: 16,
       lineHeight: 1.2,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.bold,
       fontWeight: 700,
       color: c.ink,
     },
@@ -175,7 +177,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
     },
     itemName: {
       fontSize: 10.5,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.bold,
       fontWeight: 700,
       color: c.ink,
       flex: 1,
@@ -191,7 +193,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
     conditionText: {
       fontSize: 7,
       lineHeight: 1,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.bold,
       fontWeight: 700,
       textTransform: "uppercase",
       letterSpacing: 0.5,
@@ -241,7 +243,7 @@ export function createInspectionStyles(_primaryColor: string = "#0066FF") {
     },
     morePhotosText: {
       fontSize: 12,
-      fontFamily: PDF_FONT_FAMILY,
+      fontFamily: fonts.bold,
       fontWeight: 700,
       color: c.muted,
     },

@@ -1,0 +1,34 @@
+{
+  "products": {
+    "demo-city-bike": "Stadsfiets",
+    "demo-electric-bike": "Elektrische fiets",
+    "demo-child-bike": "Kinderfiets",
+    "demo-gravel": "Gravelbike",
+    "demo-mountain": "Elektrische mountainbike",
+    "demo-cargo": "Bakfiets",
+    "demo-longtail": "Longtailfiets",
+    "demo-road": "Racefiets",
+    "demo-trailer": "Kinderaanhanger",
+    "demo-panniers": "Fietstassen",
+    "demo-child-seat": "Kinderzitje",
+    "demo-touring": "Toerfiets"
+  },
+  "categories": {
+    "bikes": "Fietsen",
+    "electric": "Elektrische fietsen",
+    "family": "Gezin",
+    "accessories": "Accessoires"
+  },
+  "depositAuthorized": "Kaartreservering geregistreerd",
+  "paymentReceived": "Betaling online ontvangen",
+  "advisorReply": "Voor een ritje door de stad raad ik de stadsfiets aan: comfortabel en makkelijk te besturen. Voor welke datum wilt u hem huren?",
+  "customerNotes": "We komen bij opening langs om de hele dag te benutten.",
+  "internalNotes": "Fietsen klaarzetten en de bandenspanning controleren voor het ophalen.",
+  "steps": ["De klant boekt", "U bereidt voor", "Alles wordt gevolgd"],
+  "customer": "Klant",
+  "owner": "Verhuurder",
+  "play": "Demo starten",
+  "pause": "Pauze",
+  "restart": "Opnieuw beginnen",
+  "toggleMenu": "Menu tonen of verbergen"
+}

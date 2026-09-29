@@ -1,0 +1,48 @@
+{
+  "documentType": {
+    "invoice": "송장",
+    "creditNote": "신용 메모"
+  },
+  "labels": {
+    "number": "아니요.",
+    "date": "날짜",
+    "seller": "판매자",
+    "buyer": "고객",
+    "contact": "연락처",
+    "companyNumber": "회사번호",
+    "siret": "시렛",
+    "vatNumber": "VAT 번호",
+    "rcs": "무역등록부",
+    "shareCapital": "자본금 공유",
+    "precedingInvoice": "송장에 대한 신용 전표",
+    "payment": "결제",
+    "paymentDate": "결제일",
+    "paymentMethod": "결제수단"
+  },
+  "table": {
+    "description": "설명",
+    "quantity": "수량",
+    "unitPriceExclTax": "단가 제외 세금",
+    "vatRate": "부가가치세",
+    "totalExclTax": "총 제외 세금"
+  },
+  "vat": {
+    "title": "부가가치세 내역",
+    "rate": "요금",
+    "taxableAmount": "과세금액",
+    "taxAmount": "부가가치세"
+  },
+  "totals": {
+    "exclTax": "총 제외 세금",
+    "tax": "총 부가가치세",
+    "inclTax": "총 포함 세금"
+  },
+  "methods": {
+    "stripe": "온라인 카드",
+    "cash": "현금",
+    "card": "카드",
+    "transfer": "은행 송금",
+    "check": "확인",
+    "other": "기타"
+  }
+}

@@ -56,7 +56,7 @@ Whether you rent cameras, tools, party equipment, or vehicles — **Louez** give
 
 |             ⚡ **Deploy in Minutes**             |                 🌍 **Multi-language**                 |        📱 **Mobile Ready**         |
 | :----------------------------------------------: | :---------------------------------------------------: | :--------------------------------: |
-| One command and you're live — database included. | 8 languages built-in: EN, FR, DE, ES, IT, NL, PL, PT. | Responsive design for all devices. |
+| One command and you're live — database included. | 13 languages built-in: EN, FR, DE, ES, IT, NL, PL, PT, ZH, JA, RU, ID, KO. | Responsive design for all devices. |
 
 ---
 
@@ -265,7 +265,7 @@ louez/
 │   │   ├── app/           # App Router routes
 │   │   ├── components/    # Dashboard & storefront components
 │   │   ├── lib/           # Business logic, email, PDF, AI
-│   │   └── messages/      # i18n translations (8 languages)
+│   │   └── messages/      # i18n translations (13 languages)
 │   └── voice-relay/       # Optional streaming voice bridge (AI receptionist)
 ├── packages/
 │   ├── api/               # oRPC routers & services

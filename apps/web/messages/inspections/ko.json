@@ -1,0 +1,55 @@
+{
+  "documentType": {
+    "departure": "검사 보고서 - 출발",
+    "return": "검사 보고서 - 반품"
+  },
+  "documentNumber": "번호 {number}",
+  "reservationNumber": "예약 #{number}",
+  "sections": {
+    "inspectionDetails": "검사 내용",
+    "equipment": "검사 장비",
+    "signature": "서명",
+    "notes": "일반 사항"
+  },
+  "parties": {
+    "store": "렌탈 회사",
+    "customer": "고객"
+  },
+  "period": {
+    "date": "날짜",
+    "time": "시간",
+    "performedBy": "수행자:"
+  },
+  "condition": {
+    "excellent": "우수",
+    "good": "좋음",
+    "fair": "박람회",
+    "damaged": "손상됨",
+    "label": "상태"
+  },
+  "table": {
+    "equipment": "장비",
+    "condition": "상태",
+    "photos": "사진",
+    "notes": "메모"
+  },
+  "signature": {
+    "customerSignature": "고객 서명",
+    "signedAt": "서명 날짜",
+    "ipAddress": "IP 주소",
+    "notSigned": "서명되지 않음"
+  },
+  "footer": {
+    "poweredBy": "Louez.io로 구동",
+    "generatedOn": "생성 날짜",
+    "page": "페이지",
+    "of": "의"
+  },
+  "summary": {
+    "totalItems": "아이템",
+    "withIssues": "문제가 있는",
+    "photos": "사진",
+    "damageDetected": "손상 감지됨",
+    "noDamage": "손상 없음"
+  }
+}

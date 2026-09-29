@@ -315,6 +315,9 @@ importers:
       '@faker-js/faker':
         specifier: ^10.2.0
         version: 10.2.0
+      '@formatjs/icu-messageformat-parser':
+        specifier: 2.11.4
+        version: 2.11.4
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.1.18

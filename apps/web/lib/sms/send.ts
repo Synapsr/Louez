@@ -1,3 +1,4 @@
+import { formatSupplementalMessage } from "@/lib/i18n/supplemental-messages";
 /**
  * SMS Sending Functions
  *
@@ -5,33 +6,47 @@
  * Mirrors the pattern from src/lib/email/send.ts for consistency.
  */
 
-import { db } from '@louez/db'
-import { smsLogs } from '@louez/db'
-import { sendSms, isSmsConfigured } from './client'
-import { validateAndNormalizePhone } from './phone'
-import {
-  getSmsQuotaStatus,
-  determineSmsSource,
-  deductPrepaidSmsCredit,
-} from '@/lib/plan-limits'
-import { getEmailMessages, getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
-import { getConfiguredFormatLocale } from '@/lib/i18n/configured-format-locale'
+import { db } from "@louez/db";
+import { smsLogs } from "@louez/db";
+import { sendSms, isSmsConfigured } from "./client";
+import { validateAndNormalizePhone } from "./phone";
+import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from "@/lib/plan-limits";
+import { getEmailMessages, getLocaleFromCountry, type EmailLocale } from "@/lib/email/i18n";
+import { getConfiguredFormatLocale } from "@/lib/i18n/configured-format-locale";
 
 /**
  * Localized SMS templates for customer notifications
  * Keep messages short - SMS are limited to 160 chars for single segment
  */
-const SMS_TEMPLATES: Record<EmailLocale, {
-  reservation_confirmation: (vars: { storeName: string; number: string; startDate: string; endDate: string }) => string
-  reminder_pickup: (vars: { storeName: string; number: string; date: string }) => string
-  reminder_return: (vars: { storeName: string; number: string; date: string }) => string
-  request_received: (vars: { storeName: string; number: string }) => string
-  request_accepted: (vars: { storeName: string; number: string }) => string
-  request_rejected: (vars: { storeName: string; number: string }) => string
-  instant_access: (vars: { storeName: string; number: string; url: string }) => string
-  payment_request: (vars: { storeName: string; number: string; amount: string; url: string }) => string
-  deposit_authorization_request: (vars: { storeName: string; number: string; amount: string; url: string }) => string
-}> = {
+const SMS_TEMPLATES: Record<
+  EmailLocale,
+  {
+    reservation_confirmation: (vars: {
+      storeName: string;
+      number: string;
+      startDate: string;
+      endDate: string;
+    }) => string;
+    reminder_pickup: (vars: { storeName: string; number: string; date: string }) => string;
+    reminder_return: (vars: { storeName: string; number: string; date: string }) => string;
+    request_received: (vars: { storeName: string; number: string }) => string;
+    request_accepted: (vars: { storeName: string; number: string }) => string;
+    request_rejected: (vars: { storeName: string; number: string }) => string;
+    instant_access: (vars: { storeName: string; number: string; url: string }) => string;
+    payment_request: (vars: {
+      storeName: string;
+      number: string;
+      amount: string;
+      url: string;
+    }) => string;
+    deposit_authorization_request: (vars: {
+      storeName: string;
+      number: string;
+      amount: string;
+      url: string;
+    }) => string;
+  }
+> = {
   fr: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
       `${storeName}\nRéservation #${number} confirmée\nDu ${startDate} au ${endDate}`,
@@ -192,13 +207,294 @@ const SMS_TEMPLATES: Record<EmailLocale, {
     deposit_authorization_request: ({ storeName, number, amount, url }) =>
       `${storeName}\nDeposito de ${amount} a autorizar para #${number}\n${url}`,
   },
-}
+
+  zh: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_reservation_confirmation", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(startDate),
+        value3: String(endDate),
+      }),
+    reminder_pickup: ({ storeName, number, date }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_reminder_pickup", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    reminder_return: ({ storeName, number, date }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_reminder_return", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    request_received: ({ storeName, number }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_request_received", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_accepted: ({ storeName, number }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_request_accepted", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    instant_access: ({ storeName, number, url }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_instant_access", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(url),
+      }),
+    payment_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_payment_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("zh", "send_SMS_TEMPLATES_deposit_authorization_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+  },
+  ja: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_reservation_confirmation", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(startDate),
+        value3: String(endDate),
+      }),
+    reminder_pickup: ({ storeName, number, date }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_reminder_pickup", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    reminder_return: ({ storeName, number, date }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_reminder_return", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    request_received: ({ storeName, number }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_request_received", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_accepted: ({ storeName, number }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_request_accepted", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    instant_access: ({ storeName, number, url }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_instant_access", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(url),
+      }),
+    payment_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_payment_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("ja", "send_SMS_TEMPLATES_deposit_authorization_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+  },
+  ru: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_reservation_confirmation", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(startDate),
+        value3: String(endDate),
+      }),
+    reminder_pickup: ({ storeName, number, date }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_reminder_pickup", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    reminder_return: ({ storeName, number, date }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_reminder_return", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    request_received: ({ storeName, number }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_request_received", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_accepted: ({ storeName, number }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_request_accepted", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    instant_access: ({ storeName, number, url }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_instant_access", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(url),
+      }),
+    payment_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_payment_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("ru", "send_SMS_TEMPLATES_deposit_authorization_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+  },
+  id: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_reservation_confirmation", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(startDate),
+        value3: String(endDate),
+      }),
+    reminder_pickup: ({ storeName, number, date }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_reminder_pickup", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    reminder_return: ({ storeName, number, date }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_reminder_return", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    request_received: ({ storeName, number }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_request_received", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_accepted: ({ storeName, number }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_request_accepted", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    instant_access: ({ storeName, number, url }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_instant_access", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(url),
+      }),
+    payment_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_payment_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("id", "send_SMS_TEMPLATES_deposit_authorization_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+  },
+  ko: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_reservation_confirmation", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(startDate),
+        value3: String(endDate),
+      }),
+    reminder_pickup: ({ storeName, number, date }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_reminder_pickup", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    reminder_return: ({ storeName, number, date }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_reminder_return", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(date),
+      }),
+    request_received: ({ storeName, number }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_request_received", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_accepted: ({ storeName, number }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_request_accepted", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    request_rejected: ({ storeName, number }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_request_rejected", {
+        value0: String(storeName),
+        value1: String(number),
+      }),
+    instant_access: ({ storeName, number, url }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_instant_access", {
+        value0: String(storeName),
+        value1: String(number),
+        value2: String(url),
+      }),
+    payment_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_payment_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      formatSupplementalMessage("ko", "send_SMS_TEMPLATES_deposit_authorization_request", {
+        value0: String(storeName),
+        value1: String(amount),
+        value2: String(number),
+        value3: String(url),
+      }),
+  },
+};
 
 /**
  * Get SMS template for a specific locale, falling back to English
  */
-function getSmsTemplate(locale: EmailLocale = 'en') {
-  return SMS_TEMPLATES[locale] || SMS_TEMPLATES.en
+function getSmsTemplate(locale: EmailLocale = "en") {
+  return SMS_TEMPLATES[locale] || SMS_TEMPLATES.en;
 }
 
 /**
@@ -207,41 +503,41 @@ function getSmsTemplate(locale: EmailLocale = 'en') {
 function formatSmsDate(
   date: Date,
   locale: EmailLocale,
-  options?: Intl.DateTimeFormatOptions
+  options?: Intl.DateTimeFormatOptions,
 ): string {
   return date.toLocaleDateString(getConfiguredFormatLocale(locale).intl, {
-    day: '2-digit',
-    month: '2-digit',
+    day: "2-digit",
+    month: "2-digit",
     ...options,
-  })
+  });
 }
 
 /**
  * SMS send result with optional limit info for UI handling
  */
 export interface SmsSendResult {
-  success: boolean
-  error?: string
-  limitReached?: boolean
+  success: boolean;
+  error?: string;
+  limitReached?: boolean;
   limitInfo?: {
-    current: number
-    limit: number
-    planSlug: string
-  }
+    current: number;
+    limit: number;
+    planSlug: string;
+  };
 }
 
 interface Store {
-  id: string
-  name: string
+  id: string;
+  name: string;
   settings?: {
-    country?: string
-  } | null
+    country?: string;
+  } | null;
 }
 
 interface Customer {
-  firstName: string
-  lastName: string
-  phone?: string | null
+  firstName: string;
+  lastName: string;
+  phone?: string | null;
 }
 
 /**
@@ -257,18 +553,18 @@ async function logSms({
   status,
   messageId,
   error,
-  creditSource = 'plan',
+  creditSource = "plan",
 }: {
-  storeId: string
-  reservationId?: string
-  customerId?: string
-  to: string
-  message: string
-  templateType: string
-  status: 'sent' | 'failed'
-  messageId?: string
-  error?: string
-  creditSource?: 'plan' | 'topup'
+  storeId: string;
+  reservationId?: string;
+  customerId?: string;
+  to: string;
+  message: string;
+  templateType: string;
+  status: "sent" | "failed";
+  messageId?: string;
+  error?: string;
+  creditSource?: "plan" | "topup";
 }) {
   try {
     await db.insert(smsLogs).values({
@@ -282,9 +578,9 @@ async function logSms({
       messageId: messageId || null,
       error: error || null,
       creditSource,
-    })
+    });
   } catch (e) {
-    console.error('Failed to log SMS:', e)
+    console.error("Failed to log SMS:", e);
   }
 }
 
@@ -293,19 +589,19 @@ async function logSms({
  * Returns error result if quota exceeded
  */
 async function checkSmsQuotaAndSource(storeId: string): Promise<{
-  allowed: boolean
-  creditSource: 'plan' | 'topup'
-  error?: SmsSendResult
+  allowed: boolean;
+  creditSource: "plan" | "topup";
+  error?: SmsSendResult;
 }> {
-  const quota = await getSmsQuotaStatus(storeId)
+  const quota = await getSmsQuotaStatus(storeId);
 
   if (!quota.allowed) {
     return {
       allowed: false,
-      creditSource: 'plan',
+      creditSource: "plan",
       error: {
         success: false,
-        error: 'SMS limit reached',
+        error: "SMS limit reached",
         limitReached: true,
         limitInfo: {
           current: quota.current,
@@ -313,19 +609,19 @@ async function checkSmsQuotaAndSource(storeId: string): Promise<{
           planSlug: quota.planSlug,
         },
       },
-    }
+    };
   }
 
-  const creditSource = await determineSmsSource(storeId)
-  return { allowed: true, creditSource }
+  const creditSource = await determineSmsSource(storeId);
+  return { allowed: true, creditSource };
 }
 
 /**
  * Handle post-send operations (deduct prepaid credit if needed)
  */
-async function handlePostSend(storeId: string, creditSource: 'plan' | 'topup', success: boolean) {
-  if (success && creditSource === 'topup') {
-    await deductPrepaidSmsCredit(storeId)
+async function handlePostSend(storeId: string, creditSource: "plan" | "topup", success: boolean) {
+  if (success && creditSource === "topup") {
+    await deductPrepaidSmsCredit(storeId);
   }
 }
 
@@ -334,7 +630,7 @@ async function handlePostSend(storeId: string, creditSource: 'plan' | 'topup', s
  * Standard SMS: 160 chars, concatenated SMS: 153 chars per segment
  */
 function buildSmsMessage(lines: string[]): string {
-  return lines.filter(Boolean).join('\n')
+  return lines.filter(Boolean).join("\n");
 }
 
 /**
@@ -348,53 +644,53 @@ export async function sendAccessLinkSms({
   reservation,
   accessUrl,
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-  }
-  accessUrl: string
+    id: string;
+    number: string;
+  };
+  accessUrl: string;
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country)
-  const templates = getSmsTemplate(locale)
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
 
   // Build localized message (SMS are limited to 160 chars for single segment)
   const message = templates.instant_access({
     storeName: store.name,
     number: reservation.number,
     url: accessUrl,
-  })
+  });
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -402,23 +698,23 @@ export async function sendAccessLinkSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'instant_access',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "instant_access",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
     // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -426,13 +722,13 @@ export async function sendAccessLinkSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'instant_access',
-      status: 'failed',
+      templateType: "instant_access",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -444,58 +740,58 @@ export async function sendReservationConfirmationSms({
   customer,
   reservation,
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-    startDate: Date
-    endDate: Date
-  }
+    id: string;
+    number: string;
+    startDate: Date;
+    endDate: Date;
+  };
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country)
-  const templates = getSmsTemplate(locale)
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
 
   // Format dates for locale
-  const startDateStr = formatSmsDate(reservation.startDate, locale)
-  const endDateStr = formatSmsDate(reservation.endDate, locale)
+  const startDateStr = formatSmsDate(reservation.startDate, locale);
+  const endDateStr = formatSmsDate(reservation.endDate, locale);
 
   const message = templates.reservation_confirmation({
     storeName: store.name,
     number: reservation.number,
     startDate: startDateStr,
     endDate: endDateStr,
-  })
+  });
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -503,23 +799,23 @@ export async function sendReservationConfirmationSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'reservation_confirmation',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "reservation_confirmation",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
     // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -527,13 +823,13 @@ export async function sendReservationConfirmationSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'reservation_confirmation',
-      status: 'failed',
+      templateType: "reservation_confirmation",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -545,55 +841,55 @@ export async function sendReminderPickupSms({
   customer,
   reservation,
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-    startDate: Date
-  }
+    id: string;
+    number: string;
+    startDate: Date;
+  };
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country)
-  const templates = getSmsTemplate(locale)
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
 
   // Format date for locale (with weekday for reminders)
-  const startDateStr = formatSmsDate(reservation.startDate, locale, { weekday: 'short' })
+  const startDateStr = formatSmsDate(reservation.startDate, locale, { weekday: "short" });
 
   const message = templates.reminder_pickup({
     storeName: store.name,
     number: reservation.number,
     date: startDateStr,
-  })
+  });
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -601,23 +897,23 @@ export async function sendReminderPickupSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'reminder_pickup',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "reminder_pickup",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
     // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -625,13 +921,13 @@ export async function sendReminderPickupSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'reminder_pickup',
-      status: 'failed',
+      templateType: "reminder_pickup",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -643,55 +939,55 @@ export async function sendReminderReturnSms({
   customer,
   reservation,
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-    endDate: Date
-  }
+    id: string;
+    number: string;
+    endDate: Date;
+  };
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country)
-  const templates = getSmsTemplate(locale)
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
 
   // Format date for locale (with weekday for reminders)
-  const endDateStr = formatSmsDate(reservation.endDate, locale, { weekday: 'short' })
+  const endDateStr = formatSmsDate(reservation.endDate, locale, { weekday: "short" });
 
   const message = templates.reminder_return({
     storeName: store.name,
     number: reservation.number,
     date: endDateStr,
-  })
+  });
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -699,23 +995,23 @@ export async function sendReminderReturnSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'reminder_return',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "reminder_return",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
     // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -723,13 +1019,13 @@ export async function sendReminderReturnSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'reminder_return',
-      status: 'failed',
+      templateType: "reminder_return",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -741,50 +1037,50 @@ export async function sendRequestReceivedSms({
   customer,
   reservation,
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-  }
+    id: string;
+    number: string;
+  };
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country)
-  const templates = getSmsTemplate(locale)
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
 
   const message = templates.request_received({
     storeName: store.name,
     number: reservation.number,
-  })
+  });
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -792,22 +1088,22 @@ export async function sendRequestReceivedSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'request_received',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "request_received",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -815,13 +1111,13 @@ export async function sendRequestReceivedSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'request_received',
-      status: 'failed',
+      templateType: "request_received",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -833,50 +1129,50 @@ export async function sendRequestAcceptedSms({
   customer,
   reservation,
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-  }
+    id: string;
+    number: string;
+  };
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country)
-  const templates = getSmsTemplate(locale)
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
 
   const message = templates.request_accepted({
     storeName: store.name,
     number: reservation.number,
-  })
+  });
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -884,22 +1180,22 @@ export async function sendRequestAcceptedSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'request_accepted',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "request_accepted",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -907,13 +1203,13 @@ export async function sendRequestAcceptedSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'request_accepted',
-      status: 'failed',
+      templateType: "request_accepted",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -925,50 +1221,50 @@ export async function sendRequestRejectedSms({
   customer,
   reservation,
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-  }
+    id: string;
+    number: string;
+  };
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country)
-  const templates = getSmsTemplate(locale)
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
 
   const message = templates.request_rejected({
     storeName: store.name,
     number: reservation.number,
-  })
+  });
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -976,22 +1272,22 @@ export async function sendRequestRejectedSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'request_rejected',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "request_rejected",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -999,13 +1295,13 @@ export async function sendRequestRejectedSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'request_rejected',
-      status: 'failed',
+      templateType: "request_rejected",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -1018,44 +1314,44 @@ export async function sendCustomSms({
   reservation,
   message: customMessage,
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation?: {
-    id: string
-    number: string
-  }
-  message: string
+    id: string;
+    number: string;
+  };
+  message: string;
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
-  const message = buildSmsMessage([`${store.name}`, customMessage])
+  const message = buildSmsMessage([`${store.name}`, customMessage]);
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -1063,23 +1359,23 @@ export async function sendCustomSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'custom',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "custom",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
     // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -1087,13 +1383,13 @@ export async function sendCustomSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'custom',
-      status: 'failed',
+      templateType: "custom",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -1105,57 +1401,53 @@ export async function sendThankYouReviewSms({
   customer,
   reservation,
   reviewUrl,
-  locale = 'fr',
+  locale = "fr",
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-  }
-  reviewUrl: string
-  locale?: EmailLocale
+    id: string;
+    number: string;
+  };
+  reviewUrl: string;
+  locale?: EmailLocale;
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota (includes plan limit + prepaid credits)
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get localized messages
-  const messages = getEmailMessages(locale)
-  const smsThankYou = messages.emails.thankYouReview.smsThankYou
-  const smsReview = messages.emails.thankYouReview.smsReview
+  const messages = getEmailMessages(locale);
+  const smsThankYou = messages.emails.thankYouReview.smsThankYou;
+  const smsReview = messages.emails.thankYouReview.smsReview;
 
   // Keep message short - SMS are limited to 160 chars
-  const message = buildSmsMessage([
-    `${store.name}`,
-    smsThankYou,
-    `${smsReview} ${reviewUrl}`,
-  ])
+  const message = buildSmsMessage([`${store.name}`, smsThankYou, `${smsReview} ${reviewUrl}`]);
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -1163,23 +1455,23 @@ export async function sendThankYouReviewSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'thank_you_review',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "thank_you_review",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
     // Deduct prepaid credit if needed
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -1187,13 +1479,13 @@ export async function sendThankYouReviewSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'thank_you_review',
-      status: 'failed',
+      templateType: "thank_you_review",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -1206,63 +1498,63 @@ export async function sendPaymentRequestSms({
   reservation,
   amount,
   paymentUrl,
-  currency = 'EUR',
+  currency = "EUR",
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-  }
-  amount: number
-  paymentUrl: string
-  currency?: string
+    id: string;
+    number: string;
+  };
+  amount: number;
+  paymentUrl: string;
+  currency?: string;
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country)
-  const templates = getSmsTemplate(locale)
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
 
   // Format amount
   const formattedAmount = new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
-    style: 'currency',
+    style: "currency",
     currency,
-  }).format(amount)
+  }).format(amount);
 
   const message = templates.payment_request({
     storeName: store.name,
     number: reservation.number,
     amount: formattedAmount,
     url: paymentUrl,
-  })
+  });
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -1270,22 +1562,22 @@ export async function sendPaymentRequestSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'payment_request',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "payment_request",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -1293,13 +1585,13 @@ export async function sendPaymentRequestSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'payment_request',
-      status: 'failed',
+      templateType: "payment_request",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -1312,63 +1604,63 @@ export async function sendDepositAuthorizationRequestSms({
   reservation,
   depositAmount,
   authorizationUrl,
-  currency = 'EUR',
+  currency = "EUR",
 }: {
-  store: Store
-  customer: Customer & { id: string }
+  store: Store;
+  customer: Customer & { id: string };
   reservation: {
-    id: string
-    number: string
-  }
-  depositAmount: number
-  authorizationUrl: string
-  currency?: string
+    id: string;
+    number: string;
+  };
+  depositAmount: number;
+  authorizationUrl: string;
+  currency?: string;
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
-    return { success: false, error: 'Customer has no phone number' }
+    return { success: false, error: "Customer has no phone number" };
   }
 
   if (!isSmsConfigured()) {
-    return { success: false, error: 'SMS not configured' }
+    return { success: false, error: "SMS not configured" };
   }
 
   // Check SMS quota
-  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id);
   if (!quotaCheck.allowed) {
-    return quotaCheck.error!
+    return quotaCheck.error!;
   }
-  const { creditSource } = quotaCheck
+  const { creditSource } = quotaCheck;
 
   // Validate and normalize phone number
-  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  const phoneValidation = validateAndNormalizePhone(customer.phone);
   if (!phoneValidation.valid || !phoneValidation.normalized) {
-    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+    return { success: false, error: phoneValidation.error || "Invalid phone number format" };
   }
-  const normalizedPhone = phoneValidation.normalized
+  const normalizedPhone = phoneValidation.normalized;
 
   // Get locale from store country
-  const locale = getLocaleFromCountry(store.settings?.country)
-  const templates = getSmsTemplate(locale)
+  const locale = getLocaleFromCountry(store.settings?.country);
+  const templates = getSmsTemplate(locale);
 
   // Format amount
   const formattedAmount = new Intl.NumberFormat(getConfiguredFormatLocale(locale).intl, {
-    style: 'currency',
+    style: "currency",
     currency,
-  }).format(depositAmount)
+  }).format(depositAmount);
 
   const message = templates.deposit_authorization_request({
     storeName: store.name,
     number: reservation.number,
     amount: formattedAmount,
     url: authorizationUrl,
-  })
+  });
 
   try {
     const result = await sendSms({
       to: normalizedPhone,
       message,
-      sender: 'Louez',
-    })
+      sender: "Louez",
+    });
 
     await logSms({
       storeId: store.id,
@@ -1376,22 +1668,22 @@ export async function sendDepositAuthorizationRequestSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'deposit_authorization_request',
-      status: result.success ? 'sent' : 'failed',
+      templateType: "deposit_authorization_request",
+      status: result.success ? "sent" : "failed",
       messageId: result.messageId,
       error: result.error,
       creditSource,
-    })
+    });
 
-    await handlePostSend(store.id, creditSource, result.success)
+    await handlePostSend(store.id, creditSource, result.success);
 
     if (!result.success) {
-      return { success: false, error: result.error }
+      return { success: false, error: result.error };
     }
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     await logSms({
       storeId: store.id,
@@ -1399,15 +1691,15 @@ export async function sendDepositAuthorizationRequestSms({
       customerId: customer.id,
       to: normalizedPhone,
       message,
-      templateType: 'deposit_authorization_request',
-      status: 'failed',
+      templateType: "deposit_authorization_request",
+      status: "failed",
       error: errorMessage,
       creditSource,
-    })
+    });
 
-    return { success: false, error: errorMessage }
+    return { success: false, error: errorMessage };
   }
 }
 
 // Re-export client functions for convenience
-export { isSmsConfigured, getSmsConfigStatus } from './client'
+export { isSmsConfigured, getSmsConfigStatus } from "./client";
