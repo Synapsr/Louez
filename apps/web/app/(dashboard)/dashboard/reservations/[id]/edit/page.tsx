@@ -345,8 +345,18 @@ export default async function EditReservationPage({ params }: EditReservationPag
         }
       : null;
 
+  // Cache Components keeps this page's client state alive after the owner
+  // leaves it. Without a fresh mount, a later visit reuses the old draft: an
+  // item added last time still carries its temporary "new-" id, and saving
+  // deletes the real item (and its unit assignments) to insert a copy.
+  const formKey = [
+    reservation.updatedAt.getTime(),
+    ...reservation.items.map((item) => `${item.id}:${item.quantity}`),
+  ].join("|");
+
   return (
     <EditReservationForm
+      key={formKey}
       dateChangeRequest={
         getDateChangeRequests(reservation.activity).find(
           (request) => request.status === "pending",
