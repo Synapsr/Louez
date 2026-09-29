@@ -180,7 +180,7 @@
     "loginDescription": "Entrez votre email pour continuer. Si vous n'avez pas de compte, il sera créé automatiquement.",
     "reeentLoginTitle": "Bienvenue sur louez × <reeent>reeent</reeent>",
     "reeentLoginDescription": "reeent est la vitrine, louez est votre outil : réservations, paiements et calendrier se gèrent ici. Si vous n'avez pas de compte, il sera créé automatiquement.",
-    "linkWillBeSent": "Un lien sécurisé vous sera envoyé par email. Pas de mot de passe à retenir.",
+    "linkWillBeSent": "Un code à usage unique vous sera envoyé par e-mail. Le mot de passe reste facultatif.",
     "checkEmail": "Vérifiez votre boîte mail",
     "emailSentTo": "Un lien de connexion a été envoyé à",
     "clickLinkToSignIn": "Cliquez sur le lien dans l'email pour vous connecter. Le lien expire dans 24 heures.",
@@ -200,7 +200,19 @@
       "verification": "Le lien de vérification est invalide ou a expiré.",
       "default": "Une erreur est survenue. Veuillez réessayer.",
       "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères.",
-      "registrationClosed": "Les inscriptions sont fermées sur cette instance. Demandez une invitation au propriétaire."
+      "registrationClosed": "Les inscriptions sont fermées sur cette instance. Demandez une invitation au propriétaire.",
+      "invalidCode": "Ce code est incorrect.",
+      "codeExpired": "Ce code a expiré. Demandez-en un nouveau.",
+      "tooManyAttempts": "Trop d'essais avec ce code. Demandez-en un nouveau.",
+      "tooManyRequests": "Trop de tentatives. Patientez une minute avant de réessayer.",
+      "passwordTooLong": "Le mot de passe ne peut pas dépasser 128 caractères.",
+      "invalidPassword": "Le mot de passe actuel est incorrect.",
+      "currentPasswordRequired": "Saisissez votre mot de passe actuel.",
+      "passwordAlreadySet": "Un mot de passe est déjà défini sur ce compte.",
+      "passwordNotSet": "Aucun mot de passe n'est défini sur ce compte.",
+      "passwordRemovalUnavailable": "Le mot de passe est le seul moyen de connexion sur cette instance : il ne peut pas être retiré.",
+      "sessionExpired": "Votre session a expiré. Reconnectez-vous puis réessayez.",
+      "passwordSignUpDisabled": "La création de compte par mot de passe n'est pas disponible. Utilisez un code reçu par e-mail."
     },
     "referralBanner": "{storeName} vous a invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
     "referralBannerGeneric": "🎁 Vous avez été invité sur Louez — créez votre boutique et démarrez avec {count} réservations offertes.",
@@ -224,7 +236,22 @@
     "alreadyHaveAccount": "Vous avez déjà un compte ?",
     "usePasswordInstead": "Se connecter avec un mot de passe",
     "useEmailCodeInstead": "Se connecter avec un code par e-mail",
-    "passwordLoginDescription": "Connectez-vous avec votre e-mail et votre mot de passe."
+    "passwordLoginDescription": "Connectez-vous avec votre e-mail et votre mot de passe.",
+    "forgotPasswordTitle": "Mot de passe oublié",
+    "forgotPasswordDescription": "Saisissez l'e-mail de votre compte : nous vous envoyons un code pour choisir un nouveau mot de passe.",
+    "forgotPasswordLogsDescription": "Saisissez l'e-mail de votre compte. Cette instance n'envoie pas d'e-mails : le code s'affichera dans les journaux du serveur.",
+    "resetCodeSentDescription": "Si un compte existe pour <strong>{email}</strong>, un code à 6 chiffres vient de lui être envoyé. Saisissez-le ci-dessous pour choisir un nouveau mot de passe.",
+    "newPasswordTitle": "Choisissez un nouveau mot de passe",
+    "newPasswordDescription": "Vous serez connecté dès qu'il sera enregistré. Vos autres appareils seront déconnectés.",
+    "newPassword": "Nouveau mot de passe",
+    "saveNewPassword": "Enregistrer et me connecter",
+    "requestNewCode": "Recevoir un nouveau code",
+    "backToLogin": "Retour à la connexion",
+    "showPassword": "Afficher le mot de passe",
+    "hidePassword": "Masquer le mot de passe",
+    "passwordRules": {
+      "minLength": "Au moins {count} caractères"
+    }
   },
   "invitation": {
     "inviteToJoin": "{name} vous invite à rejoindre l'équipe",
@@ -5444,7 +5471,7 @@
         "active": "Actif",
         "activeSessions": "Sessions actives",
         "activeSessionsDescription": "Gérez vos sessions de connexion",
-        "sessionCount": "{count} session",
+        "sessionCount": "{count, plural, one {# appareil connecté} other {# appareils connectés}}",
         "changePassword": "Changer de mot de passe",
         "dangerZone": "Zone de danger",
         "dangerZoneDescription": "Actions irréversibles sur votre compte",
@@ -5507,6 +5534,51 @@
           "saved": "Raccourcis enregistrés",
           "conflict": "Ce raccourci est déjà utilisé pour « {action} ».",
           "resetAction": "Réinitialiser « {action} »"
+        },
+        "signIn": {
+          "title": "Connexion",
+          "description": "Les moyens de vous connecter à votre compte",
+          "emailCode": "Code par e-mail",
+          "alwaysActive": "Toujours actif",
+          "unavailable": "Indisponible",
+          "google": "Google",
+          "linked": "Lié",
+          "notLinked": "Non lié",
+          "linkGoogle": "Lier",
+          "googleLinkError": "Impossible de lier ce compte Google. Vérifiez qu'il utilise la même adresse e-mail que votre compte Louez.",
+          "password": "Mot de passe",
+          "passwordNotSet": "Non défini",
+          "passwordSetOn": "Défini le {date}",
+          "setPassword": "Définir",
+          "changePassword": "Modifier",
+          "removePassword": "Retirer",
+          "setPasswordTitle": "Définir un mot de passe",
+          "setPasswordDescription": "Le mot de passe est facultatif : le code reçu par e-mail reste toujours disponible. Vos autres appareils seront déconnectés.",
+          "newPasswordLabel": "Nouveau mot de passe",
+          "currentPasswordLabel": "Mot de passe actuel",
+          "setPasswordSubmit": "Définir le mot de passe",
+          "changePasswordDescription": "Vos autres appareils seront déconnectés.",
+          "changePasswordSubmit": "Modifier le mot de passe",
+          "removePasswordTitle": "Retirer le mot de passe ?",
+          "removePasswordDescription": "Vous continuerez à vous connecter avec un code reçu par e-mail. Vous pourrez définir un nouveau mot de passe à tout moment.",
+          "removePasswordConfirm": "Retirer le mot de passe",
+          "cancel": "Annuler",
+          "passwordSetToast": "Mot de passe défini",
+          "passwordChangedToast": "Mot de passe modifié",
+          "passwordRemovedToast": "Mot de passe retiré"
+        },
+        "passwordAlert": {
+          "title": "Ce n'était pas vous ?",
+          "description": "Le mot de passe du compte {email} vient d'être ajouté, modifié ou retiré. Si vous n'y êtes pour rien, sécurisez votre compte maintenant.",
+          "effectPassword": "Le mot de passe sera retiré du compte.",
+          "effectSessions": "Tous les appareils seront déconnectés, y compris celui-ci.",
+          "effectSignIn": "Vous vous reconnecterez avec un code reçu par e-mail.",
+          "unavailable": "Sur cette instance, le mot de passe est le seul moyen de connexion : il ne peut pas être retiré. Modifiez-le depuis votre compte.",
+          "confirm": "Sécuriser mon compte",
+          "itWasMe": "C'était bien moi",
+          "doneTitle": "Votre compte est sécurisé",
+          "doneDescription": "Le mot de passe a été retiré et tous les appareils ont été déconnectés. Reconnectez-vous avec un code reçu par e-mail.",
+          "signInAgain": "Me reconnecter"
         }
       },
       "admin": {
@@ -6096,6 +6168,10 @@
         "reservation-creation-simplified": {
           "title": "Une réservation, une seule page",
           "description": "Plus d'étapes à enchaîner : client, période, produits et livraison tiennent sur une page, avec le récapitulatif toujours à côté. Et tout ce qui obligeait à rouvrir la réservation ensuite — une remise, un prix négocié, la caution, un client de passage — se règle maintenant sur place."
+        },
+        "optional-password": {
+          "title": "Un mot de passe, si vous le souhaitez",
+          "description": "Ajoutez un mot de passe à votre compte pour vous connecter sans attendre le code reçu par e-mail. Le code, lui, reste toujours disponible."
         }
       }
     },

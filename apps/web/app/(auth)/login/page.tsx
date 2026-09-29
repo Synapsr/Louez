@@ -7,7 +7,7 @@ import { getInstanceConfig } from '@/lib/deployment';
 import { getReferralInviteContext } from '@/lib/referral/invite';
 
 import { LoginPageClient } from './_components/login-page-client';
-import type { SignInMethods } from './_components/sign-in-methods';
+import { resolveSignInMethods } from './_components/sign-in-methods';
 
 // TODO: Cache Components adoption. Refactor this route so this opt-out can be removed.
 // See: https://nextjs.org/docs/app/guides/migrating-to-cache-components
@@ -31,19 +31,7 @@ export default async function LoginPage({
     getReferralInviteContext(),
     searchParams.then(({ from }) => resolveSignupOrigin(from)),
   ]);
-  const instance = getInstanceConfig();
-
-  const signInMethods: SignInMethods = {
-    password: instance.standalone,
-    emailOtp: instance.emailConfigured,
-    google: instance.googleAuthConfigured,
-  };
-
-  // A platform instance without SMTP or Google would otherwise render no
-  // sign-in method at all; keep today's OTP form (it surfaces a send error).
-  if (!signInMethods.password && !signInMethods.emailOtp && !signInMethods.google) {
-    signInMethods.emailOtp = true;
-  }
+  const signInMethods = resolveSignInMethods(getInstanceConfig());
 
   return (
     <Suspense>
