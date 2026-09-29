@@ -111,8 +111,6 @@ export function UnitAssignmentSelector({
     initialAssignedUnitIds,
   );
   const [openPopovers, setOpenPopovers] = useState<Record<number, boolean>>({});
-  const [hasChanges, setHasChanges] = useState(false);
-  const [wasAutofilled, setWasAutofilled] = useState(false);
   const [bufferOverrideFailure, setBufferOverrideFailure] =
     useState<AssignmentFailure | null>(null);
 
@@ -158,10 +156,10 @@ export function UnitAssignmentSelector({
     }
 
     setAvailableUnits(units);
-    // Show what is saved, unless the user has unsaved edits in progress. Units
-    // are never pre-selected here: an owner who cleared an assignment must find
-    // it cleared after a reload.
-    if (!bufferOverrideFailure && !hasChanges) {
+    // Every choice is saved as soon as it is made, so the slots always mirror
+    // the server (optimistically during a save). Units are never pre-selected:
+    // an owner who cleared an assignment must find it cleared after a reload.
+    if (!bufferOverrideFailure) {
       setSelectedUnitIds(assigned);
     }
     setIsLoading(false);
@@ -172,7 +170,6 @@ export function UnitAssignmentSelector({
     unitsQuery.isError,
     unitsQuery.isLoading,
     bufferOverrideFailure,
-    hasChanges,
   ]);
 
   // Don't render anything if product doesn't track units
@@ -203,13 +200,13 @@ export function UnitAssignmentSelector({
     }
 
     setSelectedUnitIds(newSelected);
-    setHasChanges(true);
-    setWasAutofilled(false);
     setOpenPopovers((prev) => ({ ...prev, [slotIndex]: false }));
+    // Saved right away: a choice left unsaved used to be lost when the owner
+    // left the page, e.g. to edit the reservation.
+    handleSave(false, newSelected);
   };
 
-  // Fills the empty slots with free units, on request only. Nothing is saved
-  // until the user clicks Save.
+  // Fills the empty slots with free units, on request only, and saves them.
   const handleSuggestUnits = () => {
     const taken = new Set(selectedUnitIds.filter(Boolean));
     const free = availableUnits.filter((unit) => !taken.has(unit.id));
@@ -218,8 +215,7 @@ export function UnitAssignmentSelector({
       (_, index) => selectedUnitIds[index] || free.shift()?.id || '',
     );
     setSelectedUnitIds(next);
-    setHasChanges(true);
-    setWasAutofilled(true);
+    handleSave(false, next);
   };
 
   const getUnitIdentifiers = (unitIds: string[] | undefined) => {
@@ -282,9 +278,6 @@ export function UnitAssignmentSelector({
           }),
         );
 
-        setHasChanges(false);
-        setWasAutofilled(false);
-
         return { previous };
       },
       onError: (error, input, ctx) => {
@@ -296,7 +289,7 @@ export function UnitAssignmentSelector({
             ctx.previous,
           );
         }
-        setHasChanges(true);
+        setSelectedUnitIds(ctx?.previous?.assigned ?? initialAssignedUnitIds);
         toastManager.add({ title: tErrors('generic'), type: 'error' });
         void error;
       },
@@ -332,11 +325,11 @@ export function UnitAssignmentSelector({
               ctx.previous,
             );
           }
-          setHasChanges(true);
-
           if (failure.bufferConflict) {
+            // Keep the attempted choice on screen while the owner decides.
             setBufferOverrideFailure(failure);
           } else {
+            setSelectedUnitIds(ctx?.previous?.assigned ?? initialAssignedUnitIds);
             showAssignmentFailure(failure);
           }
           return;
@@ -581,26 +574,18 @@ export function UnitAssignmentSelector({
         })}
       </div>
 
-      {/* Footer with save button and optional hint */}
+      {/* Footer with the suggestion action */}
       <div className="flex items-center justify-between pt-1">
         <div className="space-y-0.5">
           <p className="text-muted-foreground text-xs">{t('optional')}</p>
-          {wasAutofilled && hasChanges && (
-            <p className="text-muted-foreground text-xs">{t('autofillHint')}</p>
-          )}
         </div>
-        {!hasChanges && !allAssigned && availableUnits.length > 0 && (
+        {!allAssigned && availableUnits.length > 0 && (
           <Button
             variant="outline"
             onClick={handleSuggestUnits}
-            disabled={isPending}
+            isPending={isPending}
           >
             {t('suggestUnits')}
-          </Button>
-        )}
-        {hasChanges && (
-          <Button onClick={() => handleSave()} isPending={isPending}>
-            {t('save')}
           </Button>
         )}
       </div>

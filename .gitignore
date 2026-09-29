@@ -93,3 +93,7 @@ SPECIFICATIONS*.md
 
 # pnpm store accidentally created in-repo by sandboxed runs
 .pnpm-store/
+
+# Local MCP servers (Gleap, OAuth per developer)
+.mcp.json
+.codex/config.toml
